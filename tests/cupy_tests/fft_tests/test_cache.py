@@ -35,6 +35,7 @@ class TestPlanCache(unittest.TestCase):
                 cache = config.get_plan_cache()
                 self.old_sizes.append(cache.get_size())
                 cache.clear()
+                cache.set_memsize(-1)
                 cache.set_size(2)
             self.caches.append(cache)
 
@@ -44,6 +45,7 @@ class TestPlanCache(unittest.TestCase):
                 cache = config.get_plan_cache()
                 cache.clear()
                 cache.set_size(self.old_sizes[i])
+                cache.set_memsize(-1)
 
     def test_LRU_cache1(self):
         # test if insertion and clean-up works
@@ -412,3 +414,26 @@ class TestPlanCache(unittest.TestCase):
         assert cache1.get_curr_size() == 0 <= cache1.get_size()
         assert cache0.get_curr_memsize() == 0
         assert cache1.get_curr_memsize() == 0
+
+    @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
+    @testing.multi_gpu(2)
+    def test_LRU_cache12(self):
+        # test if an error is raise when one of the caches is unable
+        # to fit it a multi-GPU plan
+        cache0 = self.caches[0]
+        cache1 = self.caches[1]
+
+        # ensure a fresh state
+        assert cache0.get_curr_size() == 0 <= cache0.get_size()
+        assert cache1.get_curr_size() == 0 <= cache1.get_size()
+
+        # make it impossible to cache
+        cache1.set_memsize(1)
+
+        # do a multi-GPU FFT
+        with pytest.raises(RuntimeError) as e:
+            c = testing.shaped_random((128,), cupy, cupy.complex64)
+            cupy.fft.fft(c)
+        assert 'plan memsize is too large for device 1' in str(e.value)
+        assert cache0.get_curr_size() == 0 <= cache0.get_size()
+        assert cache1.get_curr_size() == 0 <= cache1.get_size()
