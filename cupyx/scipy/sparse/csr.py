@@ -400,8 +400,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError()
 
     def _get_intXslice(self, row, col):
-        if col.step in {1, None}:
-            return self._get_submatrix(row, col, copy=True)
+        if col.step in (1, None):
+            return self._get_submatrix(slice(row, row+1, 1), col, copy=True)
 
         M, N = self.shape
         start, stop, stride = col.indices(N)
@@ -431,9 +431,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                           dtype=self.dtype, copy=False)
 
     def _get_sliceXint(self, row, col):
-        if row.step in {1, None}:
-            return self._get_submatrix(row, col, copy=True)
-        return self._major_slice(row)._get_submatrix(minor=col)
+        if row.step in (1, None):
+            return self._get_submatrix(row, slice(col, col+1, 1), copy=True)
+        return self._major_slice(row)._get_submatrix(minor=slice(col, col+1, 1))
 
     def _get_sliceXarray(self, row, col):
         raise NotImplementedError()

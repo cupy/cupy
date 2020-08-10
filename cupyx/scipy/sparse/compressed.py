@@ -495,7 +495,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _get_sliceXslice(self, row, col):
 
         major, minor = self._swap(row, col)
-        if major.step in {1, None} and minor.step in {1, None}:
+        if major.step in (1, None) and minor.step in (1, None):
             return self._get_submatrix(major, minor, copy=True)
         return self._major_slice(major)._minor_slice(minor)
 
@@ -573,7 +573,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_submatrix(self, major=None, minor=None, copy=False):
         """Return a submatrix of this matrix.
-        major, minor: None, int, or slice with step 1
+        major, minor: None or slice with step 1
         """
         M, N = self._swap(*self.shape)
         i0, i1 = self._process_slice(major, M)
@@ -606,6 +606,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         row_nnz = cupy.diff(self.indptr)
         idx_dtype = self.indices.dtype
         res_indptr = cupy.empty(M+1, dtype=idx_dtype)
+        res_indptr[0] = 0
+
         cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 
         if step == 1:

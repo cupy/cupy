@@ -4,6 +4,8 @@
 import cupy
 from cupy import core
 
+from cupyx.scipy.sparse.base import spmatrix, isspmatrix
+
 import numpy
 
 
@@ -31,32 +33,22 @@ def _get_csr_submatrix(Ap, Aj, Ax,
         Bx : data array of output sparse matrix
     """
 
-    Bp = Ap[start_maj:stop_maj+1]
-
-    start_offset = Bp[0]
-    stop_offset = Bp[-1]
-
+    # Major slicing
+    Ap = Ap[start_maj : stop_maj + 1]
+    start_offset, stop_offset = int(Ap[0]), int(Ap[-1])
+    Ap = Ap - start_offset
     Aj = Aj[start_offset:stop_offset]
     Ax = Ax[start_offset:stop_offset]
 
-    Aj_copy = cupy.empty(Aj.size+1, dtype=Aj.dtype)
-    Aj_copy[1:] = Aj
-
-    Aj_copy[Aj_copy < start_min] = -1
-    Aj_copy[Aj_copy >= stop_min] = -1
-
-    mask = Aj_copy > -1
-
-    Aj_copy[mask] = 1
-    Aj_copy[~mask] = 0
-
-    cupy.cumsum(Aj_copy, out=Aj_copy)
-
-    Aj_copy -= Aj_copy[0]
-
-    Bp = Aj_copy[Bp-start_offset]
-    Bj = Aj[mask[1:]] - start_min
-    Bx = Ax[mask[1:]]
+    # Minor slicing
+    mask = (start_min <= Aj) & (Aj < stop_min)
+    mask_sum = cupy.empty(Aj.size + 1, dtype=Aj.dtype)
+    mask_sum[0] = 0
+    mask_sum[1:] = mask
+    cupy.cumsum(mask_sum, out=mask_sum)
+    Bp = mask_sum[Ap]
+    Bj = Aj[mask] - start_min
+    Bx = Ax[mask]
 
     return Bp, Bj, Bx
 
@@ -70,7 +62,7 @@ _set_boolean_mask_for_offsets = core.ElementwiseKernel(
     ''', 'set_boolean_mask_for_offsets', no_return=True)
 
 
-def _csr_row_slice(start, step, Ap, Aj, Ax, Bp):
+def _csr_row_slice(start_maj, step_maj, Ap, Aj, Ax, Bp):
     """Populate indices and data arrays of sparse matrix by slicing the
     rows of an input sparse matrix
 
@@ -87,11 +79,15 @@ def _csr_row_slice(start, step, Ap, Aj, Ax, Bp):
         Bx : data array of output sparse matrix
     """
 
-    in_rows = cupy.arange(Bp.size-1, dtype=Bp.dtype) * step + start
+    assert step_maj not in (-1, 0, 1)
+
+    in_rows = cupy.arange(start_maj, start_maj + (Bp.size - 1) * step_maj,
+                          step_maj, dtype=Bp.dtype)
+
     start_offsets = Ap[in_rows]
     stop_offsets = Ap[in_rows+1]
 
-    Aj_mask = cupy.empty_like(Aj, dtype='bool')
+    Aj_mask = cupy.zeros_like(Aj, dtype='bool')
 
     _set_boolean_mask_for_offsets(
         start_offsets, stop_offsets, Aj_mask, size=start_offsets.size)
@@ -99,7 +95,7 @@ def _csr_row_slice(start, step, Ap, Aj, Ax, Bp):
     Bj = Aj[Aj_mask]
     Bx = Ax[Aj_mask]
 
-    if step < 0:
+    if step_maj < 0:
         Bj = Bj[::-1].copy()
         Bx = Bx[::-1].copy()
 
@@ -269,13 +265,12 @@ def _unpack_index(index):
     Valid type for row/col is integer, slice, or array of integers.
     """
     # First, check if indexing with single boolean matrix.
-    from .base import spmatrix, isspmatrix
     if (isinstance(index, (spmatrix, cupy.ndarray)) and
             index.ndim == 2 and index.dtype.kind == 'b'):
         return index.nonzero()
 
     # Parse any ellipses.
-    index = _check_ellipsis(index)
+    index = _eliminate_ellipsis(index)
 
     # Next, parse the tuple or object
     if isinstance(index, tuple):
@@ -310,7 +305,7 @@ def _unpack_index(index):
     return row, col
 
 
-def _check_ellipsis(index):
+def _eliminate_ellipsis(index):
     """Process indices with Ellipsis. Returns modified index."""
     if index is Ellipsis:
         return (slice(None), slice(None))
@@ -343,11 +338,10 @@ def _check_ellipsis(index):
             tail.append(v)
     nd = first_ellipsis + len(tail)
     nslice = max(0, 2 - nd)
-    return index[:first_ellipsis] + (slice(None),)*nslice + tuple(tail)
+    return index[:first_ellipsis] + (slice(None),) * nslice + tuple(tail,)
 
 
 def _normalize_index(x, dim, name):
-    x = int(x)
     if x < -dim or x >= dim:
         raise IndexError('{} ({}) out of range'.format(name, x))
     if x < 0:
@@ -376,6 +370,7 @@ def _compatible_boolean_index(idx):
     """
     # Presence of attribute `ndim` indicates a compatible array type.
     if hasattr(idx, 'ndim') or _first_element_bool(idx):
+        print("IDX: " + str(idx))
         idx = cupy.asanyarray(idx)
         if idx.dtype.kind == 'b':
             return idx

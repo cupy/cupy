@@ -17,7 +17,13 @@ import pytest
 @testing.gpu
 class TestIndexing(unittest.TestCase):
 
-    def _run(self, maj, min=None):
+    def _run(self, maj, min=None, format=None):
+
+        # Skipping tests that are only supported in one
+        # format for now.
+        if format is not None and format != self.format:
+            pytest.skip()
+
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
                           density=self.density)
@@ -65,6 +71,38 @@ class TestIndexing(unittest.TestCase):
     def test_major_slice_minor_all(self):
         self._run(slice(1, 5), slice(None))
         self._run(slice(5, 1), slice(None))
+
+    def test_major_slice_with_step(self):
+
+        # CSR Tests
+        self._run(slice(1, 20, 2), slice(1, 5, 1),
+                  format='csr')
+        self._run(slice(20, 1, 2), slice(1, 5, 1),
+                  format='csr')
+        self._run(slice(1, 15, 2), slice(1, 5, 1),
+                  format='csr')
+        self._run(slice(15, 1, 5), slice(1, 5, 1),
+                  format='csr')
+        self._run(slice(1, 15, 5), slice(1, 5, 1),
+                  format='csr')
+        self._run(slice(20, 1, 5), slice(None),
+                  format='csr')
+        self._run(slice(1, 20, 5), slice(None),
+                  format='csr')
+
+        # CSC Tests
+        self._run(slice(1, 5, 1), slice(1, 20, 2),
+                  format='csc')
+        self._run(slice(1, 5, 1), slice(20, 1, 2),
+                  format='csc')
+        self._run(slice(1, 5, 1), slice(1, 15, 2),
+                  format='csc')
+        self._run(slice(1, 5, 1), slice(15, 1, 5),
+                  format='csc')
+        self._run(slice(None), slice(20, 1, 5),
+                  format='csc')
+        self._run(slice(None), slice(1, 20, 5),
+                  format='csc')
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
