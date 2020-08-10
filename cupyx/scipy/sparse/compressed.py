@@ -484,7 +484,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return self._add(other, True, False)
 
     def _get_intXint(self, row, col):
-        M, N = self._swap(*self.shape)
         major, minor = self._swap(row, col)
 
         indptr, indices, data = _index._get_csr_submatrix(
@@ -493,7 +492,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return data.sum(dtype=self.dtype)
 
     def _get_sliceXslice(self, row, col):
-
         major, minor = self._swap(row, col)
         if major.step in (1, None) and minor.step in (1, None):
             return self._get_submatrix(major, minor, copy=True)
@@ -605,8 +603,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         row_nnz = cupy.diff(self.indptr)
         idx_dtype = self.indices.dtype
-        res_indptr = cupy.empty(M+1, dtype=idx_dtype)
-        res_indptr[0] = 0
+        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
 
         cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
 

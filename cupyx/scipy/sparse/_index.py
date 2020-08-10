@@ -92,6 +92,7 @@ def _csr_row_slice(start_maj, step_maj, Ap, Aj, Ax, Bp):
     _set_boolean_mask_for_offsets(
         start_offsets, stop_offsets, Aj_mask, size=start_offsets.size)
 
+    Aj_mask = Aj_mask.nonzero()
     Bj = Aj[Aj_mask]
     Bx = Ax[Aj_mask]
 
