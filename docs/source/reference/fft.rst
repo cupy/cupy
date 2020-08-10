@@ -58,6 +58,8 @@ Helper routines
    cupy.fft.fftshift
    cupy.fft.ifftshift
    cupy.fft.config.set_cufft_gpus
+   cupy.fft.config.get_plan_cache
+   cupy.fft.config.show_plan_cache_info
 
 
 Normalization
