@@ -10,8 +10,8 @@ import pytest
     'format': ['csr', 'csc'],
     'density': [0.5],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [1500],
-    'n_cols': [1500]
+    'n_rows': [15000],
+    'n_cols': [15000]
 }))
 @testing.with_requires('scipy')
 class TestSetitemIndexing(unittest.TestCase):

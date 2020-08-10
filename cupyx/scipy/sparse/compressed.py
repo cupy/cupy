@@ -874,6 +874,29 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # only assign zeros to the existing sparsity structure
         self.data[offsets[offsets > -1]] = 0
 
+    # Create a filter mask based on the lowest value of order
+    _unique_mask_kern = core.ElementwiseKernel(
+        '''raw I rows, raw I cols, raw I order''',
+        '''raw bool mask''',
+        """
+        I cur_row = rows[i];
+        I next_row = rows[i+1];
+
+        I cur_col = cols[i];
+        I next_col = cols[i+1];
+
+        I cur_order = order[i];
+        I next_order = order[i+1];
+
+        if(cur_row == next_row && cur_col == next_col) {
+            if(cur_order < next_order)
+                mask[i] = false;
+            else
+                mask[i+1] = false;
+        }
+        """, no_return=True
+    )
+
     def _insert_many(self, i, j, x):
         """Inserts new nonzero at each (i, j) with value x
         Here (i,j) index major and minor respectively.
@@ -882,6 +905,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         Maintains has_sorted_indices property.
         Modifies i, j, x in place.
         """
+
+        import time
+
+        start_time = time.time()
+
         order = cupy.argsort(i)  # stable for duplicates
         i = i.take(order)
         j = j.take(order)
@@ -908,29 +936,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         mask = cupy.ones(indptr_inserts.size, dtype='bool')
 
-        # Create a filter mask based on the lowest value of order
-        core.ElementwiseKernel(
-            '''raw I rows, raw I cols, raw I order''',
-            '''raw bool mask''',
-            """
-            I cur_row = rows[i];
-            I next_row = rows[i+1];
-
-            I cur_col = cols[i];
-            I next_col = cols[i+1];
-
-            I cur_order = order[i];
-            I next_order = order[i+1];
-
-            if(cur_row == next_row && cur_col == next_col) {
-                if(cur_order < next_order)
-                    mask[i] = false;
-                else
-                    mask[i+1] = false;
-            }
-            """, no_return=True
-        )(indptr_inserts, indices_inserts, order, mask,
-          size=indptr_inserts.size-1)
+        self._unique_mask_kern(indptr_inserts, indices_inserts, order, mask,
+                  size=indptr_inserts.size-1)
 
         indptr_inserts = indptr_inserts[mask]
         indices_inserts = indices_inserts[mask]
@@ -955,9 +962,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         new_indptr = cupy.cumsum(nnzs, out=nnzs).astype(idx_dtype)
         s = new_indptr[-1].item()
 
-        new_indices = cupy.zeros(s, dtype=idx_dtype)
-        new_data = cupy.zeros(s, dtype=self.data.dtype)
+        new_indices = cupy.empty(s, dtype=idx_dtype)
+        new_data = cupy.empty(s, dtype=self.data.dtype)
 
+        # TODO(cjnolet): Construct this in sorted order to remove the
+        # need for the costly sort afterwards
         self._csr_copy_existing_indices_kern(
             self.indptr, self.indices, self.data, new_indptr, new_indices,
             new_data, size=self.indptr.size-1)
@@ -970,6 +979,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self.indptr = new_indptr
         self.indices = new_indices
         self.data = new_data
+
+        cupy.cuda.Stream.null.synchronize()
+        print("Cupy _insert_many: %s" % str(time.time()-start_time))
 
         if do_sort:
             self.has_sorted_indices = False
