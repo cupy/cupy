@@ -315,8 +315,9 @@ def compile_with_cache(
     # We silently ignore CUPY_CACHE_IN_MEMORY if nvcc is in use, because it
     # must dump files to disk.
     # TODO(leofang): check if hiprtc can avoid disk access
-    cache_in_memory = _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
-    cache_in_memory &= (backend == 'nvrtc')
+    cache_in_memory = (
+        _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
+        and backend == 'nvrtc')
 
     if runtime.is_hip:
         return _compile_with_cache_hipcc(
