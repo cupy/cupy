@@ -54,6 +54,8 @@ def diagflat(v, k=0):
     Returns:
         cupy.ndarray: A 2-D diagonal array with the diagonal copied from ``v``.
 
+    .. seealso:: :func:`numpy.diagflat`
+
     """
     if numpy.isscalar(v):
         v = numpy.asarray(v)
@@ -78,7 +80,7 @@ def tri(N, M=None, k=0, dtype=float):
 
     Args:
         N (int): Number of rows.
-        M (int): Number of columns. M == N by default.
+        M (int): Number of columns. ``M == N`` by default.
         k (int): The sub-diagonal at and below which the array is filled. Zero
             is the main diagonal, a positive value is above it, and a negative
             value is below.

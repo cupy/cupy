@@ -17,13 +17,13 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
             Otherwise this function always returns a new array.
         order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
             (Fortran-style) order.
-            When ``order`` is 'A', it uses 'F' if ``a`` is column-major and
-            uses 'C' otherwise.
-            And when ``order`` is 'K', it keeps strides as closely as
+            When ``order`` is ``'A'``, it uses ``'F'`` if ``a`` is column-major
+            and uses ``'C'`` otherwise.
+            And when ``order`` is ``'K'``, it keeps strides as closely as
             possible.
-            If ``obj`` is :class:`numpy.ndarray`, the function returns 'C' or
-            'F' order array.
-        subok (bool): If True, then sub-classes will be passed-through,
+            If ``obj`` is :class:`numpy.ndarray`, the function returns ``'C'``
+            or ``'F'`` order array.
+        subok (bool): If ``True``, then sub-classes will be passed-through,
             otherwise the returned array will be forced to be a base-class
             array (default).
         ndmin (int): Minimum number of dimensions. Ones are inserted to the
@@ -31,8 +31,6 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
 
     Returns:
         cupy.ndarray: An array on the current device.
-
-
 
     .. note::
        This method currently does not support ``subok`` argument.
@@ -54,8 +52,8 @@ def asarray(a, dtype=None, order=None):
         dtype: Data type specifier. It is inferred from the input by default.
         order ({'C', 'F'}):
             Whether to use row-major (C-style) or column-major (Fortran-style)
-            memory representation. Defaults to 'C'. ``order`` is ignored for
-            objects that are not :class:`cupy.ndarray`, but have the
+            memory representation. Defaults to ``'C'``. ``order`` is ignored
+            for objects that are not :class:`cupy.ndarray`, but have the
             ``__cuda_array_interface__`` attribute.
 
     Returns:
@@ -72,7 +70,7 @@ def asanyarray(a, dtype=None, order=None):
     """Converts an object to array.
 
     This is currently equivalent to :func:`~cupy.asarray`, since there is no
-    subclass of ndarray in CuPy. Note that the original
+    subclass of :class:`~cupy.ndarray` in CuPy. Note that the original
     :func:`numpy.asanyarray` returns the input array as is if it is an instance
     of a subtype of :class:`numpy.ndarray`.
 
@@ -113,15 +111,15 @@ def copy(a, order='K'):
         a (cupy.ndarray): The source array.
         order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
             (Fortran-style) order.
-            When `order` is 'A', it uses 'F' if `a` is column-major and
-            uses `C` otherwise.
-            And when `order` is 'K', it keeps strides as closely as
+            When ``order`` is ``'A'``, it uses ``'F'`` if ``a`` is column-major
+            and uses ``'C'`` otherwise.
+            And when ``order`` is ``'K'``, it keeps strides as closely as
             possible.
 
     Returns:
         cupy.ndarray: The copy of ``a`` on the current device.
 
-    See: :func:`numpy.copy`, :meth:`cupy.ndarray.copy`
+    .. seealso:: :func:`numpy.copy`, :meth:`cupy.ndarray.copy`
 
     """
     if fusion._is_fusing():
@@ -146,8 +144,8 @@ def fromfile(*args, **kwargs):
         Uses NumPy's ``fromfile`` and coerces the result to a CuPy array.
 
     .. seealso:: :func:`numpy.fromfile`
-    """
 
+    """
     return asarray(numpy.fromfile(*args, **kwargs))
 
 

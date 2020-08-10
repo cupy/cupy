@@ -9,7 +9,8 @@ from cupy import core
 def arange(start, stop=None, step=1, dtype=None):
     """Returns an array with evenly spaced values within a given interval.
 
-    Values are generated within the half-open interval [start, stop). The first
+    Values are generated within the half-open interval
+    :math:`[\\mbox{start}, \\mbox{stop})`. The first
     three arguments are mapped like the ``range`` built-in function, i.e. start
     and step are optional.
 
@@ -133,12 +134,14 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
         dtype: Data type specifier. It is inferred from the start and stop
             arguments by default.
         axis (int):  The axis in the result to store the samples.  Relevant
-            only if start or stop are array-like.  By default (0), the samples
-            will be along a new axis inserted at the beginning. Use -1 to get
-            an axis at the end.
+            only if start or stop are array-like.  By default ``0``, the
+            samples will be along a new axis inserted at the beginning.
+            Use ``-1`` to get an axis at the end.
 
     Returns:
         cupy.ndarray: The 1-D array of ranged values.
+
+    .. seealso:: :func:`numpy.linspace`
 
     """
     if num < 0:
@@ -221,6 +224,8 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
     Returns:
         cupy.ndarray: The 1-D array of ranged values.
 
+    .. seealso:: :func:`numpy.logspace`
+
     """
     y = linspace(start, stop, num=num, endpoint=endpoint)
     if dtype is None:
@@ -231,12 +236,12 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
 def meshgrid(*xi, **kwargs):
     """Return coordinate matrices from coordinate vectors.
 
-    Given one-dimensional coordinate arrays x1, x2, ..., xn, this function
-    makes N-D grids.
+    Given one-dimensional coordinate arrays :math:`x_1, x_2, ... , x_n` this
+    function makes N-D grids.
 
-    For one-dimensional arrays x1, x2, ..., xn with lengths ``Ni = len(xi)``,
-    this function returns ``(N1, N2, N3, ..., Nn)`` shaped arrays
-    if indexing='ij' or ``(N2, N1, N3, ..., Nn)`` shaped arrays
+    For one-dimensional arrays :math:`x_1, x_2, ... , x_n` with lengths
+    ``Ni = len(xi)``, this function returns ``(N1, N2, N3, ..., Nn)`` shaped
+    arrays if indexing='ij' or ``(N2, N1, N3, ..., Nn)`` shaped arrays
     if indexing='xy'.
 
     Unlike NumPy, CuPy currently only supports 1-D arrays as inputs.
@@ -246,8 +251,8 @@ def meshgrid(*xi, **kwargs):
             of a grid.
         indexing ({'xy', 'ij'}, optional): Cartesian ('xy', default) or
             matrix ('ij') indexing of output.
-        sparse (bool, optional): If ``True`` a sparse grid is returned in order
-            to conserve memory. Default is False.
+        sparse (bool, optional): If ``True``, a sparse grid is returned in
+            order to conserve memory. Default is False.
         copy (bool, optional): If ``False``, a view
             into the original arrays are returned. Default is True.
 
@@ -257,7 +262,6 @@ def meshgrid(*xi, **kwargs):
     .. seealso:: :func:`numpy.meshgrid`
 
     """
-
     indexing = kwargs.pop('indexing', 'xy')
     copy = bool(kwargs.pop('copy', True))
     sparse = bool(kwargs.pop('sparse', False))
