@@ -254,7 +254,8 @@ def _nd_plan_is_possible(axes_sorted, ndim):
                 for n in range(len(axes_sorted) - 1)]))
 
 
-def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
+def _get_cufft_plan_nd(
+        shape, fft_type, axes=None, order='C', out_size=None, to_cache=True):
     """Generate a CUDA FFT plan for transforming up to three axes.
 
     Args:
@@ -270,6 +271,8 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
             Fortran ordered data layout.
         out_size (int): The output length along the last axis for R2C/C2R FFTs.
             For C2C FFT, this is ignored (and set to `None`).
+        to_cache (bool): Whether to cache the generated plan. Default is
+            ``True``.
 
     Returns:
         plan (cufft.PlanNd): A cuFFT Plan for the chosen `fft_type`.
@@ -397,7 +400,8 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
         plan = cached_plan
     else:
         plan = cufft.PlanNd(*keys)
-        cache[keys] = plan
+        if to_cache:
+            cache[keys] = plan
     return plan
 
 

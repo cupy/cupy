@@ -113,12 +113,14 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         raise ValueError('C2R/R2C PlanNd for F-order arrays is not supported')
 
     # generate plan
+    # (load from cache if it exists, otherwise create one but not cache it)
     if n > 1:  # ND transform
         out_size = _get_fftn_out_size(
             shape, transformed_shape, axes[-1], value_type)
         # _get_cufft_plan_nd handles the interaction with plan cache
         plan = _get_cufft_plan_nd(
-            shape, fft_type, axes=axes, order=order, out_size=out_size)
+            shape, fft_type, axes=axes, order=order, out_size=out_size,
+            to_cache=False)
     else:  # 1D transform
         # prepare plan arguments
         if value_type != 'C2R':
@@ -129,7 +131,6 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         batch = prod(shape) // shape[axis1D]
         devices = None if not config.use_multi_gpus else config._devices
 
-        # load from cache if it exists, otherwise create and store in cache
         keys = (out_size, fft_type, batch, devices)
         cache = get_plan_cache()
         cached_plan = cache.get(keys)
@@ -137,7 +138,6 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             plan = cached_plan
         else:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
-            cache[keys] = plan
 
     return plan
 
