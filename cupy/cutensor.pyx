@@ -3,7 +3,7 @@ import warnings
 
 import cupy
 from cupy_backends.cuda.api import runtime
-from cupy.cuda import cutensor
+from cupy_backends.cuda.libs cimport cutensor
 from cupy.cuda import device
 from cupy.core import _reduction
 

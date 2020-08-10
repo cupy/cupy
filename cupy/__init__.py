@@ -54,7 +54,6 @@ __version__ = _version.__version__
 
 from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
-from cupy import creation  # NOQA
 from cupy import fft  # NOQA
 from cupy import functional  # NOQA
 from cupy import indexing  # NOQA
@@ -252,36 +251,36 @@ from builtins import complex  # NOQA
 # -----------------------------------------------------------------------------
 # Array creation routines
 # -----------------------------------------------------------------------------
-from cupy.creation.basic import empty  # NOQA
-from cupy.creation.basic import empty_like  # NOQA
-from cupy.creation.basic import eye  # NOQA
-from cupy.creation.basic import full  # NOQA
-from cupy.creation.basic import full_like  # NOQA
-from cupy.creation.basic import identity  # NOQA
-from cupy.creation.basic import ones  # NOQA
-from cupy.creation.basic import ones_like  # NOQA
-from cupy.creation.basic import zeros  # NOQA
-from cupy.creation.basic import zeros_like  # NOQA
+from cupy._creation.basic import empty  # NOQA
+from cupy._creation.basic import empty_like  # NOQA
+from cupy._creation.basic import eye  # NOQA
+from cupy._creation.basic import full  # NOQA
+from cupy._creation.basic import full_like  # NOQA
+from cupy._creation.basic import identity  # NOQA
+from cupy._creation.basic import ones  # NOQA
+from cupy._creation.basic import ones_like  # NOQA
+from cupy._creation.basic import zeros  # NOQA
+from cupy._creation.basic import zeros_like  # NOQA
 
-from cupy.creation.from_data import copy  # NOQA
-from cupy.creation.from_data import array  # NOQA
-from cupy.creation.from_data import asanyarray  # NOQA
-from cupy.creation.from_data import asarray  # NOQA
-from cupy.creation.from_data import ascontiguousarray  # NOQA
-from cupy.creation.from_data import fromfile  # NOQA
+from cupy._creation.from_data import copy  # NOQA
+from cupy._creation.from_data import array  # NOQA
+from cupy._creation.from_data import asanyarray  # NOQA
+from cupy._creation.from_data import asarray  # NOQA
+from cupy._creation.from_data import ascontiguousarray  # NOQA
+from cupy._creation.from_data import fromfile  # NOQA
 
-from cupy.creation.ranges import arange  # NOQA
-from cupy.creation.ranges import linspace  # NOQA
-from cupy.creation.ranges import logspace  # NOQA
-from cupy.creation.ranges import meshgrid  # NOQA
-from cupy.creation.ranges import mgrid  # NOQA
-from cupy.creation.ranges import ogrid  # NOQA
+from cupy._creation.ranges import arange  # NOQA
+from cupy._creation.ranges import linspace  # NOQA
+from cupy._creation.ranges import logspace  # NOQA
+from cupy._creation.ranges import meshgrid  # NOQA
+from cupy._creation.ranges import mgrid  # NOQA
+from cupy._creation.ranges import ogrid  # NOQA
 
-from cupy.creation.matrix import diag  # NOQA
-from cupy.creation.matrix import diagflat  # NOQA
-from cupy.creation.matrix import tri  # NOQA
-from cupy.creation.matrix import tril  # NOQA
-from cupy.creation.matrix import triu  # NOQA
+from cupy._creation.matrix import diag  # NOQA
+from cupy._creation.matrix import diagflat  # NOQA
+from cupy._creation.matrix import tri  # NOQA
+from cupy._creation.matrix import tril  # NOQA
+from cupy._creation.matrix import triu  # NOQA
 
 # -----------------------------------------------------------------------------
 # Functional routines
@@ -552,7 +551,11 @@ from cupy.logic.truth import any  # NOQA
 # ------------------------------------------------------------------------------
 # Polynomial functions
 # ------------------------------------------------------------------------------
-from cupy.lib.polynomial import poly1d  # NOQA
+from cupy.lib import poly1d  # NOQA
+from cupy.lib import polyadd  # NOQA
+from cupy.lib import polysub  # NOQA
+from cupy.lib import polymul  # NOQA
+from cupy.lib import roots  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -659,9 +662,9 @@ from cupy.math.misc import convolve  # NOQA
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
-from cupy.misc import may_share_memory  # NOQA
-from cupy.misc import shares_memory  # NOQA
-from cupy.misc import who  # NOQA
+from cupy._misc.memory_ranges import may_share_memory  # NOQA
+from cupy._misc.memory_ranges import shares_memory  # NOQA
+from cupy._misc.who import who  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -764,6 +767,8 @@ def asnumpy(a, stream=None, order='C'):
     """
     if isinstance(a, ndarray):
         return a.get(stream=stream, order=order)
+    elif hasattr(a, "__cuda_array_interface__"):
+        return array(a).get(stream=stream, order=order)
     else:
         return numpy.asarray(a, order=order)
 
