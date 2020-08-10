@@ -136,6 +136,53 @@ cdef class _LinkedList:
 #####################################################################
 
 cdef class PlanCache:
+    """A per-thread, per-device, least recently used (LRU) cache for cuFFT
+    plans.
+
+    Args:
+        size (int): The number of plans that the cache can accommodate. The
+            default is 16. Setting this to ``-1`` will make this limit ignored.
+        memsize (int): The amount of GPU memory, in bytes, that the plans in
+            the cache will use for their work areas. Default is ``-1``, meaning
+            it is unlimited.
+        dev (int): The ID of the device for which the cache targets.
+
+    .. note::
+        1. By setting either ``size`` to ``0`` (by calling :meth:`set_size`) or
+            ``memsize`` to ``0`` (by calling :meth:`set_memsize`), the cache is
+            disabled, and any operation is no-op. To re-enable it, simply set
+            a nonzero ``size`` and/or ``memsize``.
+
+        2. This class can be instantiated by users, but it is discouraged.
+            Instead, we expect the following canonical usage pattern to
+            retrieve a handle to the cache through :func:`get_plan_cache`:
+
+            .. code-block:: python
+
+                from cupy.cuda import Device
+                from cupy.fft.config import get_plan_cache
+
+                # get the cache for Device n
+                with Device(n):
+                    cache = get_plan_cache()
+                    cache.set_size(0)  # disable the cache
+
+            In particular, the cache for Device n should be manaipulated under
+            the Device n's context.
+
+        3. This class is thread-safe since by default it is created on a
+            per-thread basis. When starting a new thread a new cache is not
+            initialized until :func:`~cupy.fft.config.get_plan_cache` is
+            called or when the constructor is manually invoked.
+
+        4. For multi-GPU plans, the plan will be added to all participating
+            GPUs' caches. Upon removal (by any of the caches), the plan will
+            be removed from all participating GPU's caches.
+
+        5. This cache supports the iterator protocol, and returns a 2-tuple:
+            ``(key, node)`` starting from the most recently used plan.
+
+    """
     # total number of plans, regardless of plan type
     # -1: unlimited/ignored, cache size is restricted by "memsize"
     # 0: disable cache
@@ -170,14 +217,10 @@ cdef class PlanCache:
     # ---------------------- Python methods ---------------------- #
 
     def __init__(self, Py_ssize_t size=16, Py_ssize_t memsize=-1, int dev=-1):
-        # TODO(leofang): use stream as part of cache key?
         self._validate_size_memsize(size, memsize)
         self._set_size_memsize(size, memsize)
         self._reset()
-        if dev == -1:
-            self.dev = runtime.getDevice()
-        else:
-            self.dev = dev
+        self.dev = dev if dev != -1 else runtime.getDevice()
 
     def __getitem__(self, tuple key):
         # no-op if cache is disabled
@@ -529,6 +572,8 @@ cpdef clear_plan_cache():
 
 
 cpdef show_plan_cache_info():
+    """Show all of the plan caches's info on this thread."""
+
     cdef _ThreadLocal tls = _ThreadLocal.get()
     cdef list caches = tls.per_device_cufft_cache
     cdef int dev
