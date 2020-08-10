@@ -140,7 +140,7 @@ class _minmax_mixin(object):
     def _min_or_max_axis(self, axis, min_or_max, explicit):
         N = self.shape[axis]
         if N == 0:
-            raise ValueError("zero-size array to reduction operation")
+            raise ValueError('zero-size array to reduction operation')
         M = self.shape[1 - axis]
 
         mat = self.tocsc() if axis == 0 else self.tocsr()
@@ -165,14 +165,14 @@ class _minmax_mixin(object):
 
     def _min_or_max(self, axis, out, min_or_max, explicit):
         if out is not None:
-            raise ValueError(("Sparse matrices do not support "
-                              "an 'out' parameter."))
+            raise ValueError(('Sparse matrices do not support '
+                              'an \'out\' parameter.'))
 
         sputils.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:
-                raise ValueError("zero-size array to reduction operation")
+                raise ValueError('zero-size array to reduction operation')
 
             zero = cupy.zeros((), dtype=self.dtype)
             if self.nnz == 0:
@@ -193,12 +193,12 @@ class _minmax_mixin(object):
         if axis == 0 or axis == 1:
             return self._min_or_max_axis(axis, min_or_max, explicit)
         else:
-            raise ValueError("axis out of range")
+            raise ValueError('axis out of range')
 
     def _arg_min_or_max_axis(self, axis, op):
         if self.shape[axis] == 0:
-            raise ValueError("Can't apply the operation along a zero-sized "
-                             "dimension.")
+            raise ValueError('Can\'t apply the operation along a zero-sized '
+                             'dimension.')
 
         mat = self.tocsc() if axis == 0 else self.tocsr()
         mat.sum_duplicates()
@@ -213,15 +213,15 @@ class _minmax_mixin(object):
 
     def _arg_min_or_max(self, axis, out, op, compare):
         if out is not None:
-            raise ValueError("Sparse matrices do not support "
-                             "an 'out' parameter.")
+            raise ValueError('Sparse matrices do not support '
+                             'an \'out\' parameter.')
 
         sputils.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:
-                raise ValueError("Can't apply the operation to "
-                                 "an empty matrix.")
+                raise ValueError('Can\'t apply the operation to '
+                                 'an empty matrix.')
 
             if self.nnz == 0:
                 return 0

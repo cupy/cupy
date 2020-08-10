@@ -4,22 +4,22 @@ import cupy
 from cupy import core
 
 _blackman_kernel = core.ElementwiseKernel(
-    "float32 alpha",
-    "float64 out",
+    'float32 alpha',
+    'float64 out',
     """
     out = 0.42 - 0.5 * cos(i * alpha) + 0.08 * cos(2 * alpha * i);
-    """, name="cupy_blackman")
+    """, name='cupy_blackman')
 
 
 _bartlett_kernel = core.ElementwiseKernel(
-    "float32 alpha",
-    "T arr",
+    'float32 alpha',
+    'T arr',
     """
     if (i < alpha)
         arr = i / alpha;
     else
         arr = 2.0 - i / alpha;
-    """, name="cupy_bartlett")
+    """, name='cupy_bartlett')
 
 
 def bartlett(M):
@@ -81,11 +81,11 @@ def blackman(M):
 
 
 _hamming_kernel = core.ElementwiseKernel(
-    "float32 alpha",
-    "float64 out",
+    'float32 alpha',
+    'float64 out',
     """
     out = 0.54 - 0.46 * cos(i * alpha);
-    """, name="cupy_hamming")
+    """, name='cupy_hamming')
 
 
 def hamming(M):
@@ -117,11 +117,11 @@ def hamming(M):
 
 
 _hanning_kernel = core.ElementwiseKernel(
-    "float32 alpha",
-    "float64 out",
+    'float32 alpha',
+    'float64 out',
     """
     out = 0.5 - 0.5 * cos(i * alpha);
-    """, name="cupy_hanning")
+    """, name='cupy_hanning')
 
 
 def hanning(M):
@@ -153,13 +153,13 @@ def hanning(M):
 
 
 _kaiser_kernel = core.ElementwiseKernel(
-    "float32 beta, float32 alpha",
-    "T arr",
+    'float32 beta, float32 alpha',
+    'T arr',
     """
     float temp = (i - alpha) / alpha;
     arr = cyl_bessel_i0(beta * sqrt(1 - (temp * temp)));
     arr /= cyl_bessel_i0(beta);
-    """, name="cupy_kaiser")
+    """, name='cupy_kaiser')
 
 
 def kaiser(M, beta):

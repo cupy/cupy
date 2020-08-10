@@ -191,14 +191,14 @@ def select(condlist, choicelist, default=0):
             'list of cases must be same length as list of conditions')
 
     if len(condlist) == 0:
-        raise ValueError("select with an empty condition list is not possible")
+        raise ValueError('select with an empty condition list is not possible')
 
     if not cupy.isscalar(default):
-        raise TypeError("default only accepts scalar values")
+        raise TypeError('default only accepts scalar values')
 
     for i in range(len(choicelist)):
         if not isinstance(choicelist[i], cupy.ndarray):
-            raise TypeError("choicelist only accepts lists of cupy ndarrays")
+            raise TypeError('choicelist only accepts lists of cupy ndarrays')
         cond = condlist[i]
         if cond.dtype.type is not cupy.bool_:
             raise ValueError(

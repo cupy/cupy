@@ -384,7 +384,7 @@ def _as_pairs(x, ndim, as_index=False):
             # x was supplied as a single value
             x = x.ravel()  # Ensure x[0] works for x.ndim == 0, 1, 2
             if as_index and x < 0:
-                raise ValueError("index can't contain negative values")
+                raise ValueError('index can\'t contain negative values')
             return ((x[0], x[0]),) * ndim
 
         if x.size == 2 and x.shape != (2, 1):
@@ -394,11 +394,11 @@ def _as_pairs(x, ndim, as_index=False):
             # e.g. [[1], [2]] -> [[1, 1], [2, 2]] not [[1, 2], [1, 2]]
             x = x.ravel()  # Ensure x[0], x[1] works
             if as_index and (x[0] < 0 or x[1] < 0):
-                raise ValueError("index can't contain negative values")
+                raise ValueError('index can\'t contain negative values')
             return ((x[0], x[1]),) * ndim
 
     if as_index and x.min() < 0:
-        raise ValueError("index can't contain negative values")
+        raise ValueError('index can\'t contain negative values')
 
     # Converting the array with `tolist` seems to improve performance
     # when iterating and indexing the result (see usage in `pad`)
@@ -642,10 +642,10 @@ def pad(array, pad_width, mode='constant', **kwargs):
     try:
         unsupported_kwargs = set(kwargs) - set(allowed_kwargs[mode])
     except KeyError:
-        raise ValueError("mode '{}' is not supported".format(mode))
+        raise ValueError('mode \'{}\' is not supported'.format(mode))
     if unsupported_kwargs:
         raise ValueError(
-            "unsupported keyword arguments for mode '{}': {}".format(
+            'unsupported keyword arguments for mode \'{}\': {}'.format(
                 mode, unsupported_kwargs
             )
         )
@@ -687,8 +687,8 @@ def pad(array, pad_width, mode='constant', **kwargs):
         for axis, width_pair in zip(axes, pad_width):
             if array.shape[axis] == 0 and any(width_pair):
                 raise ValueError(
-                    "can't extend empty axis {} using modes other than "
-                    "'constant' or 'empty'".format(axis)
+                    'can\'t extend empty axis {} using modes other than '
+                    '\'constant\' or \'empty\''.format(axis)
                 )
         # passed, don't need to do anything more as _pad_simple already
         # returned the correct result

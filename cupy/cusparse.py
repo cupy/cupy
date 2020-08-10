@@ -867,7 +867,7 @@ def coosort(x, sort_by='r'):
             handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
             P.data.ptr, buf.data.ptr)
     else:
-        raise ValueError("sort_by must be either 'r' or 'c'")
+        raise ValueError('sort_by must be either \'r\' or \'c\'')
     _call_cusparse(
         'gthr', x.dtype,
         handle, nnz, data_orig.data.ptr, x.data.data.ptr,

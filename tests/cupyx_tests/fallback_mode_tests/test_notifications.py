@@ -57,7 +57,7 @@ class TestNotificationModes(unittest.TestCase):
 
         _ufunc_config.seterr(**old)
         output = saved_stdout.getvalue().strip()
-        assert output == ""
+        assert output == ''
 
     def test_notification_print(self):
 
@@ -72,9 +72,9 @@ class TestNotificationModes(unittest.TestCase):
         _ufunc_config.seterr(**old)
         nf = self.func._numpy_object
         output = saved_stdout.getvalue().strip()
-        msg1 = "'{}' method not in cupy, ".format(nf.__name__)
-        msg2 = "falling back to '{}.{}'".format(nf.__module__, nf.__name__)
-        assert output == ("Warning: " + msg1 + msg2)
+        msg1 = '\'{}\' method not in cupy, '.format(nf.__name__)
+        msg2 = 'falling back to \'{}.{}\''.format(nf.__module__, nf.__name__)
+        assert output == ('Warning: ' + msg1 + msg2)
 
     def test_notification_warn(self):
 
@@ -122,10 +122,10 @@ class TestNotificationVectorize(unittest.TestCase):
 
         _ufunc_config.seterr(**old)
         output = saved_stdout.getvalue().strip()
-        msg = "'vectorize' method not in cupy, "
-        msg += "falling back to '"
-        msg += numpy.vectorize.__module__ + ".vectorize'"
-        assert output == ("Warning: " + msg + "\nWarning: " + msg)
+        msg = '\'vectorize\' method not in cupy, '
+        msg += 'falling back to \''
+        msg += numpy.vectorize.__module__ + '.vectorize\''
+        assert output == ('Warning: ' + msg + '\nWarning: ' + msg)
 
     @test_utils.enable_slice_copy
     def test_cupy_supported_pyfunc(self):
@@ -140,12 +140,12 @@ class TestNotificationVectorize(unittest.TestCase):
 
         _ufunc_config.seterr(**old)
         output = saved_stdout.getvalue().strip()
-        msg1 = "'vectorize' method not in cupy, "
-        msg1 += "falling back to '"
-        msg1 += numpy.vectorize.__module__ + ".vectorize'"
-        msg2 = "'absolute' method is available in cupy but cannot be used, "
-        msg2 += "falling back to its numpy implementation"
-        assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)
+        msg1 = '\'vectorize\' method not in cupy, '
+        msg1 += 'falling back to \''
+        msg1 += numpy.vectorize.__module__ + '.vectorize\''
+        msg2 = '\'absolute\' method is available in cupy but cannot be used, '
+        msg2 += 'falling back to its numpy implementation'
+        assert output == ('Warning: ' + msg1 + '\nWarning: ' + msg2)
 
     @test_utils.enable_slice_copy
     def test_numpy_only_pyfunc(self):
@@ -160,9 +160,9 @@ class TestNotificationVectorize(unittest.TestCase):
 
         _ufunc_config.seterr(**old)
         output = saved_stdout.getvalue().strip()
-        msg1 = "'vectorize' method not in cupy, "
-        msg1 += "falling back to '"
-        msg1 += numpy.vectorize.__module__ + ".vectorize'"
-        msg2 = "'fabs' method not in cupy, "
-        msg2 += "falling back to its numpy implementation"
-        assert output == ("Warning: " + msg1 + "\nWarning: " + msg2)
+        msg1 = '\'vectorize\' method not in cupy, '
+        msg1 += 'falling back to \''
+        msg1 += numpy.vectorize.__module__ + '.vectorize\''
+        msg2 = '\'fabs\' method not in cupy, '
+        msg2 += 'falling back to its numpy implementation'
+        assert output == ('Warning: ' + msg1 + '\nWarning: ' + msg2)

@@ -361,12 +361,13 @@ class RandomState(object):
 
         if method not in {'eigh', 'svd', 'cholesky'}:
             raise ValueError(
-                "method must be one of {'eigh', 'svd', 'cholesky'}")
+                'method must be one of {\'eigh\', \'svd\', \'cholesky\'}')
 
         if check_valid != 'ignore':
             if check_valid != 'warn' and check_valid != 'raise':
                 raise ValueError(
-                    "check_valid must equal 'warn', 'raise', or 'ignore'")
+                    'check_valid must equal '
+                    '\'warn\', \'raise\', or \'ignore\'')
 
         if check_valid == 'warn':
             with cupyx.errstate(linalg='raise'):
@@ -384,14 +385,14 @@ class RandomState(object):
                                                     cov, rtol=tol, atol=tol)
                             decomp = u * cupy.sqrt(cupy.abs(s))
                             if not psd:
-                                warnings.warn("covariance is not positive-" +
-                                              "semidefinite, output may be " +
-                                              "invalid.", RuntimeWarning)
+                                warnings.warn('covariance is not positive-' +
+                                              'semidefinite, output may be ' +
+                                              'invalid.', RuntimeWarning)
 
                         else:
-                            warnings.warn("covariance is not positive-" +
-                                          "semidefinite, output *is* " +
-                                          "invalid.", RuntimeWarning)
+                            warnings.warn('covariance is not positive-' +
+                                          'semidefinite, output *is* ' +
+                                          'invalid.', RuntimeWarning)
                             decomp = cupy.linalg.cholesky(cov)
 
         else:
@@ -407,9 +408,9 @@ class RandomState(object):
                         decomp = u * cupy.sqrt(cupy.abs(s))
 
                 except LinAlgError:
-                    raise LinAlgError("Matrix is not positive definite; if " +
-                                      "matrix is positive-semidefinite, set" +
-                                      "'check_valid' to 'warn'")
+                    raise LinAlgError('Matrix is not positive definite; if ' +
+                                      'matrix is positive-semidefinite, set' +
+                                      '\'check_valid\' to \'warn\'')
 
         x = self.standard_normal(final_shape,
                                  dtype=dtype).reshape(-1, mean.shape[0])

@@ -88,7 +88,7 @@ def who(vardict=None):
         prval = 'Name {} Shape {} Bytes {} Type'.format(
             sp1 * ' ', sp2 * ' ', sp3 * ' '
         )
-        print("{}\n{}\n".format(prval, "=" * (len(prval) + 5)))
+        print('{}\n{}\n'.format(prval, '=' * (len(prval) + 5)))
 
     for k in range(len(sta)):
         val = sta[k]

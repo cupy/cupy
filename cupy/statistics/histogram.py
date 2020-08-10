@@ -63,14 +63,14 @@ def _ravel_and_check_weights(a, weights):
 
     # Ensure that the array is a "subtractable" dtype
     if a.dtype == cupy.bool_:
-        warnings.warn("Converting input from {} to {} for compatibility."
+        warnings.warn('Converting input from {} to {} for compatibility.'
                       .format(a.dtype, cupy.uint8),
                       RuntimeWarning, stacklevel=3)
         a = a.astype(cupy.uint8)
 
     if weights is not None:
         if not isinstance(weights, cupy.ndarray):
-            raise ValueError("weights must be a cupy.ndarray")
+            raise ValueError('weights must be a cupy.ndarray')
         if weights.shape != a.shape:
             raise ValueError(
                 'weights should have the same shape as a.')
@@ -91,7 +91,7 @@ def _get_outer_edges(a, range):
                 'max must be larger than min in range parameter.')
         if not (numpy.isfinite(first_edge) and numpy.isfinite(last_edge)):
             raise ValueError(
-                "supplied range of [{}, {}] is not finite".format(
+                'supplied range of [{}, {}] is not finite'.format(
                     first_edge, last_edge))
     elif a.size == 0:
         first_edge = 0.0
@@ -101,7 +101,7 @@ def _get_outer_edges(a, range):
         last_edge = float(a.max())
         if not (cupy.isfinite(first_edge) and cupy.isfinite(last_edge)):
             raise ValueError(
-                "autodetected range of [{}, {}] is not finite".format(
+                'autodetected range of [{}, {}] is not finite'.format(
                     first_edge, last_edge))
 
     # expand empty range to avoid divide by zero
@@ -148,7 +148,7 @@ def _get_bin_edges(a, bins, range):
 
     elif isinstance(bins, str):
         raise NotImplementedError(
-            "only integer and array bins are implemented")
+            'only integer and array bins are implemented')
 
     if n_equal_bins is not None:
         # numpy's gh-10322 means that type resolution rules are dependent on
@@ -203,7 +203,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
         raise NotImplementedError('complex number is not supported')
 
     if not isinstance(x, cupy.ndarray):
-        raise ValueError("x must be a cupy.ndarray")
+        raise ValueError('x must be a cupy.ndarray')
 
     x, weights = _ravel_and_check_weights(x, weights)
     bin_edges = _get_bin_edges(x, bins, range)
@@ -251,8 +251,8 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
         if not simple_weights:
             # object dtype such as Decimal are supported in NumPy, but not here
             raise NotImplementedError(
-                "only weights with dtype that can be cast to float or complex "
-                "are supported")
+                'only weights with dtype that can be cast to float or complex '
+                'are supported')
         if weights.dtype.kind == 'c':
             y = cupy.zeros(bin_edges.size - 1, dtype=cupy.complex128)
             _weighted_histogram_kernel(

@@ -308,21 +308,21 @@ def ravel_multi_index(multi_index, dims, mode='wrap', order='C'):
     ndim = len(dims)
     if len(multi_index) != ndim:
         raise ValueError(
-            "parameter multi_index must be a sequence of "
-            "length {}".format(ndim))
+            'parameter multi_index must be a sequence of '
+            'length {}'.format(ndim))
 
     for d in dims:
         if not isinstance(d, numbers.Integral):
             raise TypeError(
-                "{} object cannot be interpreted as an integer".format(
+                '{} object cannot be interpreted as an integer'.format(
                     type(d)))
 
     if isinstance(mode, str):
         mode = (mode, ) * ndim
 
     if functools.reduce(operator.mul, dims) > cupy.iinfo(cupy.int64).max:
-        raise ValueError("invalid dims: array size defined by dims is larger "
-                         "than the maximum possible size")
+        raise ValueError('invalid dims: array size defined by dims is larger '
+                         'than the maximum possible size')
 
     s = 1
     ravel_strides = [1] * ndim
@@ -344,7 +344,7 @@ def ravel_multi_index(multi_index, dims, mode='wrap', order='C'):
     for d, stride, idx, _mode in zip(dims, ravel_strides, multi_index, mode):
 
         if not isinstance(idx, cupy.ndarray):
-            raise TypeError("elements of multi_index must be cupy arrays")
+            raise TypeError('elements of multi_index must be cupy arrays')
         if not cupy.can_cast(idx, cupy.int64, 'same_kind'):
             raise TypeError(
                 'multi_index entries could not be cast from dtype(\'{}\') to '
@@ -352,10 +352,10 @@ def ravel_multi_index(multi_index, dims, mode='wrap', order='C'):
                     idx.dtype, cupy.int64().dtype))
         idx = idx.astype(cupy.int64, copy=False)
 
-        if _mode == "raise":
+        if _mode == 'raise':
             if cupy.any(cupy.logical_or(idx >= d, idx < 0)):
-                raise ValueError("invalid entry in coordinates array")
-        elif _mode == "clip":
+                raise ValueError('invalid entry in coordinates array')
+        elif _mode == 'clip':
             idx = cupy.clip(idx, 0, d - 1)
         elif _mode == 'wrap':
             idx = idx % d

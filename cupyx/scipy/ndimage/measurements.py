@@ -46,7 +46,7 @@ def label(input, structure=None, output=None):
 
     if isinstance(output, cupy.ndarray):
         if output.shape != input.shape:
-            raise ValueError("output shape not correct")
+            raise ValueError('output shape not correct')
         caller_provided_output = True
     else:
         caller_provided_output = False
@@ -306,8 +306,8 @@ def variance(input, labels=None, index=None):
         raise TypeError('input must be cupy.ndarray')
 
     if input.dtype in (cupy.complex64, cupy.complex128):
-        raise TypeError("cupyx.scipy.ndimage.variance doesn't support %{}"
-                        "".format(input.dtype.type))
+        raise TypeError('cupyx.scipy.ndimage.variance doesn\'t support %{}'
+                        ''.format(input.dtype.type))
 
     use_kern = False
     # There is constraints on types because of atomicAdd() in CUDA.
@@ -381,7 +381,7 @@ def sum(input, labels=None, index=None):
         raise TypeError('input must be cupy.ndarray')
 
     if input.dtype in (cupy.complex64, cupy.complex128):
-        raise TypeError("cupyx.scipy.ndimage.sum doesnt support %{}".format(
+        raise TypeError('cupyx.scipy.ndimage.sum doesnt support %{}'.format(
             input.dtype.type))
 
     use_kern = False
@@ -446,7 +446,7 @@ def mean(input, labels=None, index=None):
         raise TypeError('input must be cupy.ndarray')
 
     if input.dtype in (cupy.complex64, cupy.complex128):
-        raise TypeError("cupyx.scipy.ndimage.mean doesnt support %{}".format(
+        raise TypeError('cupyx.scipy.ndimage.mean doesnt support %{}'.format(
             input.dtype.type))
 
     use_kern = False

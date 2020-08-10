@@ -201,7 +201,7 @@ def _prep_fftn_axes(ndim, s=None, axes=None, value_type='C2C'):
 
     # compatibility checks for cupy.cuda.cufft.PlanNd
     if (s is not None) and (axes is not None) and len(s) != len(axes):
-        raise ValueError("Shape and axes have different lengths.")
+        raise ValueError('Shape and axes have different lengths.')
 
     if axes is None:
         if s is None:
@@ -215,7 +215,7 @@ def _prep_fftn_axes(ndim, s=None, axes=None, value_type='C2C'):
         if not axes:
             return (), ()
         if _reduce(min, axes) < -ndim or _reduce(max, axes) > ndim - 1:
-            raise ValueError("The specified axes exceed the array dimensions.")
+            raise ValueError('The specified axes exceed the array dimensions.')
         if value_type == 'C2C':
             axes_sorted = tuple(sorted([ax % ndim for ax in axes]))
         else:  # C2R or R2C
@@ -277,10 +277,10 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
 
     if not _nd_plan_is_possible(fft_axes, ndim):
         raise ValueError(
-            "An n-dimensional cuFFT plan could not be created. The axes must "
-            "be contiguous and non-repeating. Between one and three axes can "
-            "be transformed and either the first or last axis must be "
-            "included in axes.")
+            'An n-dimensional cuFFT plan could not be created. The axes must '
+            'be contiguous and non-repeating. Between one and three axes can '
+            'be transformed and either the first or last axis must be '
+            'included in axes.')
 
     if order not in ['C', 'F']:
         raise ValueError('order must be \'C\' or \'F\'')

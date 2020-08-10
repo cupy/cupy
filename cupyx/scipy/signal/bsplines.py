@@ -26,7 +26,7 @@ def sepfir2d(input, hrow, hcol):
         # to support complex types (which they could easily if not for the
         # scipy compatibility requirement of forbidding complex and using
         # float64 intermediates)
-        raise TypeError("complex types not currently supported")
+        raise TypeError('complex types not currently supported')
     if dtype == cupy.float32 or dtype.itemsize <= 2:
         dtype = cupy.float32
     else:

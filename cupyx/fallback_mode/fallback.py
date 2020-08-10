@@ -82,11 +82,11 @@ class _RecursiveAttr(object):
     def __repr__(self):
 
         if isinstance(self._numpy_object, types.ModuleType):
-            return "<numpy = module {}, cupy = module {}>".format(
+            return '<numpy = module {}, cupy = module {}>'.format(
                 self._numpy_object.__name__,
                 getattr(self._cupy_object, '__name__', None))
 
-        return "<numpy = {}, cupy = {}>".format(
+        return '<numpy = {}, cupy = {}>'.format(
             self._numpy_object, self._cupy_object)
 
     @property
@@ -130,7 +130,7 @@ class _RecursiveAttr(object):
         """
 
         if not callable(self._numpy_object):
-            raise TypeError("'{}' object is not callable".format(
+            raise TypeError('\'{}\' object is not callable'.format(
                 type(self._numpy_object).__name__))
 
         # _RecursiveAttr gets called from ndarray

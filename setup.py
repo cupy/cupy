@@ -177,9 +177,9 @@ setup(
     url='https://cupy.dev/',
     license='MIT License',
     project_urls={
-        "Bug Tracker": "https://github.com/cupy/cupy/issues",
-        "Documentation": "https://docs.cupy.dev/",
-        "Source Code": "https://github.com/cupy/cupy",
+        'Bug Tracker': 'https://github.com/cupy/cupy/issues',
+        'Documentation': 'https://docs.cupy.dev/',
+        'Source Code': 'https://github.com/cupy/cupy',
     },
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
     packages=find_packages(exclude=['install', 'tests']),

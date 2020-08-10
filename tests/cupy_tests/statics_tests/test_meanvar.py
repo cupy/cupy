@@ -7,7 +7,7 @@ import cupy
 from cupy import testing
 
 ignore_runtime_warnings = pytest.mark.filterwarnings(
-    "ignore", category=RuntimeWarning)
+    'ignore', category=RuntimeWarning)
 
 
 @testing.gpu

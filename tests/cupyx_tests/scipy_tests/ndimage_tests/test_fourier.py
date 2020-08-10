@@ -20,32 +20,32 @@ except ImportError:
     *(
         testing.product(
             {
-                "shape": [(32, 16), (31, 15)],
-                "dtype": [numpy.float32, numpy.float64, numpy.complex64,
+                'shape': [(32, 16), (31, 15)],
+                'dtype': [numpy.float32, numpy.float64, numpy.complex64,
                           numpy.complex128],
-                "shift": [1, -3, (5, 5.3), (3, 5)],
+                'shift': [1, -3, (5, 5.3), (3, 5)],
             }
         )
         + testing.product(
             {
-                "shape": [(5, 16, 7), ],
-                "dtype": [numpy.float32, numpy.float64, numpy.complex64,
+                'shape': [(5, 16, 7), ],
+                'dtype': [numpy.float32, numpy.float64, numpy.complex64,
                           numpy.complex128],
-                "shift": [3, (-1, 2.5, 1)],
+                'shift': [3, (-1, 2.5, 1)],
             }
         )
         + testing.product(
             {
-                "shape": [(15, ), ],
-                "dtype": [numpy.float32, numpy.float64, numpy.complex64,
+                'shape': [(15, ), ],
+                'dtype': [numpy.float32, numpy.float64, numpy.complex64,
                           numpy.complex128],
-                "shift": [8.5, (5,)],
+                'shift': [8.5, (5,)],
             }
         )
     )
 )
 @testing.gpu
-@testing.with_requires("scipy")
+@testing.with_requires('scipy')
 class TestFourierShift(unittest.TestCase):
 
     def _test_real_nd(self, xp, scp, x, real_axis):
@@ -65,8 +65,8 @@ class TestFourierShift(unittest.TestCase):
             a = a.real
         return xp.ascontiguousarray(a)
 
-    @testing.with_requires("scipy>=1.4.0")
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.with_requires('scipy>=1.4.0')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_real_fft_axis0(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         if x.dtype.kind == 'c':
@@ -74,8 +74,8 @@ class TestFourierShift(unittest.TestCase):
             return x
         return self._test_real_nd(xp, scp, x, 0)
 
-    @testing.with_requires("scipy>=1.4.0")
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.with_requires('scipy>=1.4.0')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_real_fft_axis1(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         if x.dtype.kind == 'c' or x.ndim < 2:
@@ -83,7 +83,7 @@ class TestFourierShift(unittest.TestCase):
             return x
         return self._test_real_nd(xp, scp, x, 1)
 
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_complex_fft(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         a = scp.fftpack.fftn(x)
@@ -93,7 +93,7 @@ class TestFourierShift(unittest.TestCase):
             a = a.real
         return xp.ascontiguousarray(a)
 
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_complex_fft_with_output(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         a = scp.fftpack.fftn(x)
@@ -108,32 +108,32 @@ class TestFourierShift(unittest.TestCase):
     *(
         testing.product(
             {
-                "shape": [(32, 16), (31, 15)],
-                "dtype": [numpy.float32, numpy.float64, numpy.complex64,
+                'shape': [(32, 16), (31, 15)],
+                'dtype': [numpy.float32, numpy.float64, numpy.complex64,
                           numpy.complex128],
-                "sigma": [1, (5, 5.3), (3, 5)],
+                'sigma': [1, (5, 5.3), (3, 5)],
             }
         )
         + testing.product(
             {
-                "shape": [(5, 16, 7), ],
-                "dtype": [numpy.float32, numpy.float64, numpy.complex64,
+                'shape': [(5, 16, 7), ],
+                'dtype': [numpy.float32, numpy.float64, numpy.complex64,
                           numpy.complex128],
-                "sigma": [3, (1, 2.5, 3)],
+                'sigma': [3, (1, 2.5, 3)],
             }
         )
         + testing.product(
             {
-                "shape": [(15, ), ],
-                "dtype": [numpy.float32, numpy.float64, numpy.complex64,
+                'shape': [(15, ), ],
+                'dtype': [numpy.float32, numpy.float64, numpy.complex64,
                           numpy.complex128],
-                "sigma": [8.5, (5,)],
+                'sigma': [8.5, (5,)],
             }
         )
     )
 )
 @testing.gpu
-@testing.with_requires("scipy")
+@testing.with_requires('scipy')
 class TestFourierGaussian(unittest.TestCase):
 
     def _test_real_nd(self, xp, scp, x, real_axis):
@@ -153,8 +153,8 @@ class TestFourierGaussian(unittest.TestCase):
             a = a.real
         return xp.ascontiguousarray(a)
 
-    @testing.with_requires("scipy>=1.4.0")
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.with_requires('scipy>=1.4.0')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_real_fft_axis0(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         if x.dtype.kind == 'c':
@@ -162,8 +162,8 @@ class TestFourierGaussian(unittest.TestCase):
             return x
         return self._test_real_nd(xp, scp, x, 0)
 
-    @testing.with_requires("scipy>=1.4.0")
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.with_requires('scipy>=1.4.0')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_real_fft_axis1(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         if x.dtype.kind == 'c' or x.ndim < 2:
@@ -171,7 +171,7 @@ class TestFourierGaussian(unittest.TestCase):
             return x
         return self._test_real_nd(xp, scp, x, 1)
 
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_complex_fft(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         a = scp.fftpack.fftn(x)
@@ -181,7 +181,7 @@ class TestFourierGaussian(unittest.TestCase):
             a = a.real
         return xp.ascontiguousarray(a)
 
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_complex_fft_with_output(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         a = scp.fftpack.fftn(x)
@@ -196,32 +196,32 @@ class TestFourierGaussian(unittest.TestCase):
     *(
         testing.product(
             {
-                "shape": [(32, 16), (31, 15)],
-                "dtype": [numpy.float32, numpy.float64, numpy.complex64,
+                'shape': [(32, 16), (31, 15)],
+                'dtype': [numpy.float32, numpy.float64, numpy.complex64,
                           numpy.complex128],
-                "size": [1, (5, 5.3), (3, 5)],
+                'size': [1, (5, 5.3), (3, 5)],
             }
         )
         + testing.product(
             {
-                "shape": [(5, 16, 7), ],
-                "dtype": [numpy.float32, numpy.float64, numpy.complex64,
+                'shape': [(5, 16, 7), ],
+                'dtype': [numpy.float32, numpy.float64, numpy.complex64,
                           numpy.complex128],
-                "size": [3, (1, 2.5, 3)],
+                'size': [3, (1, 2.5, 3)],
             }
         )
         + testing.product(
             {
-                "shape": [(15, ), ],
-                "dtype": [numpy.float32, numpy.float64, numpy.complex64,
+                'shape': [(15, ), ],
+                'dtype': [numpy.float32, numpy.float64, numpy.complex64,
                           numpy.complex128],
-                "size": [8.5, (5,)],
+                'size': [8.5, (5,)],
             }
         )
     )
 )
 @testing.gpu
-@testing.with_requires("scipy")
+@testing.with_requires('scipy')
 class TestFourierUniform(unittest.TestCase):
 
     def _test_real_nd(self, xp, scp, x, real_axis):
@@ -241,8 +241,8 @@ class TestFourierUniform(unittest.TestCase):
             a = a.real
         return xp.ascontiguousarray(a)
 
-    @testing.with_requires("scipy>=1.4.0")
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.with_requires('scipy>=1.4.0')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_real_fft_axis0(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         if x.dtype.kind == 'c':
@@ -250,8 +250,8 @@ class TestFourierUniform(unittest.TestCase):
             return x
         return self._test_real_nd(xp, scp, x, 0)
 
-    @testing.with_requires("scipy>=1.4.0")
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.with_requires('scipy>=1.4.0')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_real_fft_axis1(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         if x.dtype.kind == 'c' or x.ndim < 2:
@@ -259,7 +259,7 @@ class TestFourierUniform(unittest.TestCase):
             return x
         return self._test_real_nd(xp, scp, x, 1)
 
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_complex_fft(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         a = scp.fftpack.fftn(x)
@@ -269,7 +269,7 @@ class TestFourierUniform(unittest.TestCase):
             a = a.real
         return xp.ascontiguousarray(a)
 
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name="scp")
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_complex_fft_with_output(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.dtype)
         a = scp.fftpack.fftn(x)

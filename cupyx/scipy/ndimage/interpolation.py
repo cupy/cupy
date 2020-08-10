@@ -159,7 +159,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
             offset = matrix[:-1, -1]
             matrix = matrix[:-1, :-1]
         if matrix.shape != (input.ndim, input.ndim):
-            raise RuntimeError("improper affine shape")
+            raise RuntimeError('improper affine shape')
 
     if mode == 'opencv':
         m = cupy.zeros((input.ndim + 1, input.ndim + 1))

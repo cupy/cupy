@@ -25,39 +25,39 @@ def _dispatch_notification(func, cupy_support=False):
 
     if not cupy_support:
         if _name and _module:
-            msg = "'{}' method not in cupy, falling back to '{}.{}'".format(
+            msg = '`{}` method not in cupy, falling back to `{}.{}`'.format(
                 _name, _module, _name)
         elif _name:
-            msg = "'{}' method not in cupy, ".format(_name)
-            msg += "falling back to its numpy implementation"
+            msg = '`{}` method not in cupy, '.format(_name)
+            msg += 'falling back to its numpy implementation'
         else:
-            msg = "This method is not available in cupy, "
-            msg += "falling back to numpy"
+            msg = 'This method is not available in cupy, '
+            msg += 'falling back to numpy'
 
         if _name:
-            raise_msg = "'{}' method not found in cupy".format(_name)
+            raise_msg = '`{}` method not found in cupy'.format(_name)
         else:
-            raise_msg = "This method is not available in cupy"
+            raise_msg = 'This method is not available in cupy'
     else:
         if _name and _module:
-            msg = "'{}' method is available in cupy but ".format(_name)
-            msg += "cannot be used, falling back to '{}.{}'".format(
+            msg = '`{}` method is available in cupy but '.format(_name)
+            msg += 'cannot be used, falling back to `{}.{}`'.format(
                 _module, _name)
         elif _name:
-            msg = "'{}' method is available in cupy but ".format(_name)
-            msg += "cannot be used, falling back to its numpy implementation"
+            msg = '`{}` method is available in cupy but '.format(_name)
+            msg += 'cannot be used, falling back to its numpy implementation'
         else:
-            msg = "This method is available in cupy, but cannot be used"
-            msg += "falling back to numpy"
+            msg = 'This method is available in cupy, but cannot be used'
+            msg += 'falling back to numpy'
 
         if _name:
-            raise_msg = "'{}' method is available in cupy ".format(_name)
-            raise_msg += "but cannot be used"
+            raise_msg = '`{}` method is available in cupy '.format(_name)
+            raise_msg += 'but cannot be used'
         else:
-            raise_msg = "This method is available in cupy but cannot be used"
+            raise_msg = 'This method is available in cupy but cannot be used'
 
     if dispatch_type == 'print':
-        print("Warning: {}".format(msg))
+        print('Warning: {}'.format(msg))
 
     elif dispatch_type == 'warn':
         warnings.warn(msg, FallbackWarning, stacklevel=3)

@@ -1094,7 +1094,7 @@ class TestRfft2(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
                         10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1108,7 +1108,7 @@ class TestRfft2(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
                         10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1120,7 +1120,7 @@ class TestRfft2(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1145,7 +1145,7 @@ class TestRfft2(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1168,7 +1168,7 @@ class TestRfft2(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1196,7 +1196,7 @@ class TestRfft2(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
                         10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1335,7 +1335,7 @@ class TestRfftn(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
                         10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1349,7 +1349,7 @@ class TestRfftn(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
                         10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1361,7 +1361,7 @@ class TestRfftn(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1386,7 +1386,7 @@ class TestRfftn(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1409,7 +1409,7 @@ class TestRfftn(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1437,7 +1437,7 @@ class TestRfftn(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
                         10020 >= cp.cuda.runtime.runtimeGetVersion() >= 10010,
-                        reason="Known to fail with Pascal or older")
+                        reason='Known to fail with Pascal or older')
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,

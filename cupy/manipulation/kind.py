@@ -58,12 +58,12 @@ def require(a, dtype=None, requirements=None):
         try:
             return cupy.asanyarray(a, dtype=dtype)
         except TypeError:
-            raise(ValueError("Incorrect dtype \"{}\" provided".format(dtype)))
+            raise(ValueError('Incorrect dtype "{}" provided'.format(dtype)))
     else:
         try:
             requirements = {possible_flags[x.upper()] for x in requirements}
         except KeyError:
-            raise(ValueError("Incorrect flag \"{}\" in requirements".format(
+            raise(ValueError('Incorrect flag "{}" in requirements'.format(
                              (set(requirements) -
                               set(possible_flags.keys())).pop())))
 
@@ -81,5 +81,5 @@ def require(a, dtype=None, requirements=None):
     try:
         arr = cupy.array(a, dtype=dtype, order=order, copy=copy, subok=False)
     except TypeError:
-        raise(ValueError("Incorrect dtype \"{}\" provided".format(dtype)))
+        raise(ValueError('Incorrect dtype "{}" provided'.format(dtype)))
     return arr

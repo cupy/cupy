@@ -141,7 +141,7 @@ def grey_closing(input, size=None, footprint=None, structure=None,
     .. seealso:: :func:`scipy.ndimage.grey_closing`
     """
     if (size is not None) and (footprint is not None):
-        warnings.warn("ignoring size because footprint is set", UserWarning,
+        warnings.warn('ignoring size because footprint is set', UserWarning,
                       stacklevel=2)
     tmp = grey_dilation(input, size, footprint, structure, None, mode, cval,
                         origin)
@@ -182,7 +182,7 @@ def grey_opening(input, size=None, footprint=None, structure=None,
     .. seealso:: :func:`scipy.ndimage.grey_opening`
     """
     if (size is not None) and (footprint is not None):
-        warnings.warn("ignoring size because footprint is set", UserWarning,
+        warnings.warn('ignoring size because footprint is set', UserWarning,
                       stacklevel=2)
     tmp = grey_erosion(input, size, footprint, structure, None, mode, cval,
                        origin)

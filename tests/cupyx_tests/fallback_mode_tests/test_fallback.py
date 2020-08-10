@@ -12,7 +12,7 @@ from cupyx.fallback_mode.notification import FallbackWarning
 
 
 ignore_fallback_warnings = pytest.mark.filterwarnings(
-    "ignore", category=FallbackWarning)
+    'ignore', category=FallbackWarning)
 
 
 def numpy_fallback_equal(name='xp'):

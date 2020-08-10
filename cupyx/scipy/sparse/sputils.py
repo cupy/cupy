@@ -74,18 +74,18 @@ def validateaxis(axis):
         # dimensions, so let's make it explicit that they are not
         # allowed to be passed in
         if axis_type == tuple:
-            raise TypeError(("Tuples are not accepted for the 'axis' "
-                             "parameter. Please pass in one of the "
-                             "following: {-2, -1, 0, 1, None}."))
+            raise TypeError(('Tuples are not accepted for the \'axis\' '
+                             'parameter. Please pass in one of the '
+                             'following: {-2, -1, 0, 1, None}.'))
 
         # If not a tuple, check that the provided axis is actually
         # an integer and raise a TypeError similar to NumPy's
         if not cupy.issubdtype(cupy.dtype(axis_type), cupy.integer):
-            raise TypeError("axis must be an integer, not {name}"
+            raise TypeError('axis must be an integer, not {name}'
                             .format(name=axis_type.__name__))
 
         if not (-2 <= axis <= 1):
-            raise ValueError("axis out of range")
+            raise ValueError('axis out of range')
 
 
 def upcast(*args):

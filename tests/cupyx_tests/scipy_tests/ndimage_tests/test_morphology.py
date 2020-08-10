@@ -78,9 +78,9 @@ class TestGreyErosionAndDilation(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_grey_erosion_and_dilation(self, xp, scp):
         if self.mode == 'mirror' and 1 in self.shape:
-            raise unittest.SkipTest("not testable against scipy")
+            raise unittest.SkipTest('not testable against scipy')
         if self.x_dtype == self.output:
-            raise unittest.SkipTest("redundant")
+            raise unittest.SkipTest('redundant')
         x = testing.shaped_random(self.shape, xp, self.x_dtype)
         return self._filter(xp, scp, x)
 

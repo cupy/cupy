@@ -177,7 +177,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_ifloordiv_array(self):
         if '1.16.1' <= numpy.lib.NumpyVersion(numpy.__version__) < '1.18.0':
-            self.skipTest("NumPy Issue #12927")
+            self.skipTest('NumPy Issue #12927')
         with testing.NumpyError(divide='ignore'):
             self.check_array_array_op(operator.ifloordiv, no_complex=True)
 
@@ -268,7 +268,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
 
     def test_broadcasted_ifloordiv(self):
         if '1.16.1' <= numpy.lib.NumpyVersion(numpy.__version__) < '1.18.0':
-            self.skipTest("NumPy Issue #12927")
+            self.skipTest('NumPy Issue #12927')
         with testing.NumpyError(divide='ignore'):
             self.check_array_broadcasted_op(operator.ifloordiv,
                                             no_complex=True)

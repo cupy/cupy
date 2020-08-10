@@ -2,11 +2,11 @@ from cupy import core
 
 
 def _negative_gcd_error():
-    raise TypeError("gcd cannot be computed with boolean arrays")
+    raise TypeError('gcd cannot be computed with boolean arrays')
 
 
 def _negative_lcm_error():
-    raise TypeError("lcm cannot be computed with boolean arrays")
+    raise TypeError('lcm cannot be computed with boolean arrays')
 
 
 _gcd_preamble = '''

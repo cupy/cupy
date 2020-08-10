@@ -272,12 +272,12 @@ def slogdet(a):
 
     # ipiv is 1-origin
     non_zero = cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1)
-    if dtype.kind == "f":
+    if dtype.kind == 'f':
         non_zero += cupy.count_nonzero(diag < 0, axis=-1)
 
     # Note: sign == -1 ** (non_zero % 2)
     sign = (non_zero % 2) * -2 + 1
-    if dtype.kind == "c":
+    if dtype.kind == 'c':
         sign = sign * cupy.prod(diag / cupy.abs(diag), axis=-1)
 
     singular = dev_info > 0

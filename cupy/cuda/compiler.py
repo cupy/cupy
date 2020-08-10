@@ -573,7 +573,7 @@ def _convert_to_hip_source(source):
     for i, j in table:
         source = source.replace(i, j)
 
-    return "#include <hip/hip_runtime.h>\n" + source
+    return '#include <hip/hip_runtime.h>\n' + source
 
 
 def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,

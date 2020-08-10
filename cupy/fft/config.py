@@ -31,8 +31,8 @@ def set_cufft_gpus(gpus):
     elif isinstance(gpus, list):
         devs = gpus
     else:
-        raise ValueError("gpus must be an int or a list of int.")
+        raise ValueError('gpus must be an int or a list of int.')
     if len(devs) <= 1:
-        raise ValueError("Must use at least 2 GPUs.")
+        raise ValueError('Must use at least 2 GPUs.')
 
     _devices = devs

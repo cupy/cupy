@@ -180,7 +180,7 @@ class TestFilter(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         if self.dtype == getattr(self, 'output', None):
-            raise unittest.SkipTest("redundant")
+            raise unittest.SkipTest('redundant')
         return self._filter(xp, scp)
 
 
@@ -492,7 +492,7 @@ class TestWeightDtype(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         if self.dtype == self.wdtype:
-            raise unittest.SkipTest("redundant")
+            raise unittest.SkipTest('redundant')
         return self._filter(xp, scp)
 
 

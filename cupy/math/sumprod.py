@@ -198,7 +198,7 @@ def diff(a, n=1, axis=-1, prepend=None, append=None):
         return a
     if n < 0:
         raise ValueError(
-            "order must be non-negative but got " + repr(n))
+            'order must be non-negative but got ' + repr(n))
 
     a = cupy.asanyarray(a)
     nd = a.ndim

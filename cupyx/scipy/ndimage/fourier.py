@@ -16,10 +16,10 @@ def _get_output_fourier(output, input, complex_only=False):
             output = cupy.zeros(input.shape, dtype=types[-1])
     elif type(output) is type:
         if output not in types:
-            raise RuntimeError("output type not supported")
+            raise RuntimeError('output type not supported')
         output = cupy.zeros(input.shape, dtype=output)
     elif output.shape != input.shape:
-        raise RuntimeError("output shape not correct")
+        raise RuntimeError('output shape not correct')
     return output
 
 

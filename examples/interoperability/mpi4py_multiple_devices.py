@@ -13,10 +13,10 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 if size != 2:
-    raise RuntimeError("run this script with 2 processes: mpiexec -n 2 ...")
+    raise RuntimeError('run this script with 2 processes: mpiexec -n 2 ...')
 device_count = cupy.cuda.runtime.getDeviceCount()
 if device_count < 2:
-    raise RuntimeError("this script requires 2 GPUs")
+    raise RuntimeError('this script requires 2 GPUs')
 
 # Select device based on local MPI rank.
 # Caveat: for simplicity we assume local_rank == rank here, which may or may
@@ -50,4 +50,4 @@ else:
     comm.Recv(arr1, source=0, tag=89)
 assert (arr1 + arr2 == arr_total).all()
 
-print("process {}: finished".format(rank))
+print('process {}: finished'.format(rank))

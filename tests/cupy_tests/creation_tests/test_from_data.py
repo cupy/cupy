@@ -443,10 +443,10 @@ class TestFromData(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_fromfile(self, xp):
         with tempfile.TemporaryFile() as fh:
-            fh.write(b"\x00\x01\x02\x03\x04")
+            fh.write(b'\x00\x01\x02\x03\x04')
             fh.flush()
             fh.seek(0)
-            return xp.fromfile(fh, dtype="u1")
+            return xp.fromfile(fh, dtype='u1')
 
 
 max_cuda_array_interface_version = 2
