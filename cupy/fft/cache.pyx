@@ -149,38 +149,38 @@ cdef class PlanCache:
 
     .. note::
         1. By setting either ``size`` to ``0`` (by calling :meth:`set_size`) or
-            ``memsize`` to ``0`` (by calling :meth:`set_memsize`), the cache is
-            disabled, and any operation is no-op. To re-enable it, simply set
-            a nonzero ``size`` and/or ``memsize``.
+           ``memsize`` to ``0`` (by calling :meth:`set_memsize`), the cache is
+           disabled, and any operation is no-op. To re-enable it, simply set
+           a nonzero ``size`` and/or ``memsize``.
 
         2. This class can be instantiated by users, but it is discouraged.
-            Instead, we expect the following canonical usage pattern to
-            retrieve a handle to the cache through :func:`get_plan_cache`:
+           Instead, we expect the following canonical usage pattern to
+           retrieve a handle to the cache through :func:`get_plan_cache`:
 
-            .. code-block:: python
+           .. code-block:: python
 
-                from cupy.cuda import Device
-                from cupy.fft.config import get_plan_cache
+               from cupy.cuda import Device
+               from cupy.fft.config import get_plan_cache
 
-                # get the cache for Device n
-                with Device(n):
-                    cache = get_plan_cache()
-                    cache.set_size(0)  # disable the cache
+               # get the cache for Device n
+               with Device(n):
+                   cache = get_plan_cache()
+                   cache.set_size(0)  # disable the cache
 
-            In particular, the cache for Device n should be manaipulated under
-            the Device n's context.
+           In particular, the cache for Device n should be manaipulated under
+           the Device n's context.
 
         3. This class is thread-safe since by default it is created on a
-            per-thread basis. When starting a new thread a new cache is not
-            initialized until :func:`~cupy.fft.config.get_plan_cache` is
-            called or when the constructor is manually invoked.
+           per-thread basis. When starting a new thread a new cache is not
+           initialized until :func:`~cupy.fft.config.get_plan_cache` is
+           called or when the constructor is manually invoked.
 
         4. For multi-GPU plans, the plan will be added to all participating
-            GPUs' caches. Upon removal (by any of the caches), the plan will
-            be removed from all participating GPU's caches.
+           GPUs' caches. Upon removal (by any of the caches), the plan will
+           be removed from all participating GPU's caches.
 
         5. This cache supports the iterator protocol, and returns a 2-tuple:
-            ``(key, node)`` starting from the most recently used plan.
+           ``(key, node)`` starting from the most recently used plan.
 
     """
     # total number of plans, regardless of plan type
@@ -527,7 +527,7 @@ cpdef inline PlanCache get_plan_cache():
     """Get the per-thread, per-device plan cache, or create one if not found.
 
     .. seealso::
-        :class:`PlanCache`
+        :class:`~cupy.fft.cache.PlanCache`
 
     """
     cdef _ThreadLocal tls = _ThreadLocal.get()
@@ -579,7 +579,7 @@ cpdef show_plan_cache_info():
     """Show all of the plan caches's info on this thread.
 
     .. seealso::
-        :class:`PlanCache`
+        :class:`~cupy.fft.cache.PlanCache`
 
     """
 
