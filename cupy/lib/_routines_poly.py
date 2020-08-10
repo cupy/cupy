@@ -144,7 +144,11 @@ def polyval(p, x):
         return out[0].astype(dtype, copy=False)
     # to match the shape of NumPy's results
     if cupy.isscalar(x) or x.ndim == 0:
-        return dtype.type(out.item())
+        return out.astype(dtype, copy=False).reshape()
+    # to match the dtype of NumPy's results
+    if p.dtype == numpy.complex128 and val.dtype in [
+       numpy.float16, numpy.float32, numpy.complex64]:
+        return out.astype(numpy.complex64, copy=False)
     # To handle mixed integer and float dtypes combinations for inputs,
     # output should be cast according to NumPy's promotion rules.
     if p.dtype.kind in 'c' or (issubclass(
