@@ -525,6 +525,10 @@ cdef inline void _check_multi_gpu_plan_fit(list gpus, plan) except*:
 
 cpdef inline PlanCache get_plan_cache():
     """Get the per-thread, per-device plan cache, or create one if not found.
+
+    .. seealso::
+        :class:`PlanCache`
+
     """
     cdef _ThreadLocal tls = _ThreadLocal.get()
     cdef int dev = runtime.getDevice()
@@ -572,7 +576,12 @@ cpdef clear_plan_cache():
 
 
 cpdef show_plan_cache_info():
-    """Show all of the plan caches's info on this thread."""
+    """Show all of the plan caches's info on this thread.
+
+    .. seealso::
+        :class:`PlanCache`
+
+    """
 
     cdef _ThreadLocal tls = _ThreadLocal.get()
     cdef list caches = tls.per_device_cufft_cache
