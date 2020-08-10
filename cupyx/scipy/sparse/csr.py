@@ -433,7 +433,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     def _get_sliceXint(self, row, col):
         if row.step in (1, None):
             return self._get_submatrix(row, slice(col, col+1, 1), copy=True)
-        return self._major_slice(row)._get_submatrix(minor=slice(col, col+1, 1))
+        return self._major_slice(row)._get_submatrix(
+            minor=slice(col, col+1, 1))
 
     def _get_sliceXarray(self, row, col):
         raise NotImplementedError()

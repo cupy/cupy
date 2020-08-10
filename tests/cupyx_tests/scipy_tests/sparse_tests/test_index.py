@@ -64,6 +64,7 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_scalar(self):
         self._run(10)
+        self._run(-10)
 
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))

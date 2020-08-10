@@ -325,12 +325,14 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     def _get_intXslice(self, row, col):
         if col.step in {1, None}:
             return self._get_submatrix(major=col, minor=row, copy=True)
-        return self._major_slice(col)._get_submatrix(minor=slice(row, row+1, 1))
+        return self._major_slice(col)._get_submatrix(
+            minor=slice(row, row+1, 1))
 
     def _get_sliceXint(self, row, col):
         if row.step in {1, None}:
             return self._get_submatrix(major=col, minor=row, copy=True)
-        return self._get_submatrix(major=slice(col, col+1, 1))._minor_slice(row)
+        return self._get_submatrix(
+            major=slice(col, col+1, 1))._minor_slice(row)
 
     def _get_sliceXarray(self, row, col):
         raise NotImplementedError()

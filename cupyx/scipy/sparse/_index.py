@@ -34,7 +34,7 @@ def _get_csr_submatrix(Ap, Aj, Ax,
     """
 
     # Major slicing
-    Ap = Ap[start_maj : stop_maj + 1]
+    Ap = Ap[start_maj: stop_maj + 1]
     start_offset, stop_offset = int(Ap[0]), int(Ap[-1])
     Ap = Ap - start_offset
     Aj = Aj[start_offset:stop_offset]
@@ -173,6 +173,9 @@ class IndexMixin(object):
     def _asindices(self, idx, length):
         """Convert `idx` to a valid index for an axis with a given length.
         Subclasses that need special validation can override this method.
+
+        idx is assumed to be at least a 1-dimensional array-like, but can
+        have no more than 2 dimensions.
         """
         try:
             x = cupy.asarray(idx, dtype=self.indices.dtype)
@@ -263,6 +266,13 @@ class IndexMixin(object):
 def _unpack_index(index):
     """ Parse index. Always return a tuple of the form (row, col).
     Valid type for row/col is integer, slice, or array of integers.
+
+    Returns:
+          resulting row & col indices : single integer, slice, or
+          array of integers. If row & column indices are supplied
+          explicitly, they are used as the major/minor indices.
+          If only one index is supplied, the minor index is
+          assumed to be all (e.g., [maj, :]).
     """
     # First, check if indexing with single boolean matrix.
     if (isinstance(index, (spmatrix, cupy.ndarray)) and
@@ -368,12 +378,14 @@ def _compatible_boolean_index(idx):
     """Returns a boolean index array that can be converted to
     integer array. Returns None if no such array exists.
     """
-    # Presence of attribute `ndim` indicates a compatible array type.
-    if hasattr(idx, 'ndim') or _first_element_bool(idx):
-        print("IDX: " + str(idx))
-        idx = cupy.asanyarray(idx)
+
+    # presence of attribute `ndim` indicates a compatible array type.
+    if hasattr(idx, 'ndim'):
         if idx.dtype.kind == 'b':
             return idx
+    # non-ndarray bool collection should be converted to ndarray
+    elif _first_element_bool(idx):
+        return cupy.asarray(idx, dtype='bool')
     return None
 
 
