@@ -223,12 +223,117 @@ class TestPlanCache(unittest.TestCase):
     @testing.multi_gpu(2)
     def test_LRU_cache7(self):
         # test accessing a multi-GPU plan
-        pass
+        with device.Device(0):
+            cache0 = config.get_plan_cache()
+            cache0.clear()
+            cache0.set_size(2)
+        with device.Device(1):
+            cache1 = config.get_plan_cache()
+            cache1.clear()
+            cache1.set_size(2)
+
+        # ensure a fresh state
+        assert cache0.get_curr_size() == 0 <= cache0.get_size()
+        assert cache1.get_curr_size() == 0 <= cache1.get_size()
+
+        # do some computation on GPU 0
+        with device.Device(0):
+            a = testing.shaped_random((10,), cupy, cupy.float32)
+            b = cupy.fft.fft(a)
+        assert cache0.get_curr_size() == 1 <= cache0.get_size()
+        assert cache1.get_curr_size() == 0 <= cache1.get_size()
+
+        # do a multi-GPU FFT
+        config.use_multi_gpus = True
+        config.set_cufft_gpus([0, 1])
+        c = testing.shaped_random((128,), cupy, cupy.complex64)
+        d = cupy.fft.fft(c)
+        assert cache0.get_curr_size() == 2 <= cache0.get_size()
+        assert cache1.get_curr_size() == 1 <= cache1.get_size()
+
+        # check both devices' caches see the same multi-GPU plan
+        plan0 = next(iter(cache0))[1].plan
+        plan1 = next(iter(cache1))[1].plan
+        assert plan0 is plan1
+
+        # reset
+        config.use_multi_gpus = False
+        config._device = None
+
+        # do some computation on GPU 1
+        with device.Device(1):
+            e = testing.shaped_random((20,), cupy, cupy.complex128)
+            f = cupy.fft.fft(e)
+        assert cache0.get_curr_size() == 2 <= cache0.get_size()
+        assert cache1.get_curr_size() == 2 <= cache1.get_size()
+
+        # by this time, the multi-GPU plan remains the most recently
+        # used one on GPU 0, but not on GPU 1
+        assert plan0 is next(iter(cache0))[1].plan
+        assert plan1 is not next(iter(cache1))[1].plan
+
+        # now use it again to make it the most recent
+        config.use_multi_gpus = True
+        config.set_cufft_gpus([0, 1])
+        c = testing.shaped_random((128,), cupy, cupy.complex64)
+        d = cupy.fft.fft(c)
+        assert cache0.get_curr_size() == 2 <= cache0.get_size()
+        assert cache1.get_curr_size() == 2 <= cache1.get_size()
+        assert plan0 is next(iter(cache0))[1].plan
+        assert plan1 is next(iter(cache1))[1].plan
+        # reset
+        config.use_multi_gpus = False
+        config._device = None
+
+        # Do 2 more different FFTs on one of the devices, and the
+        # multi-GPU plan would be discarded from both caches
+        with device.Device(1):
+            x = testing.shaped_random((30,), cupy, cupy.complex128)
+            cupy.fft.fft(x)
+            y = testing.shaped_random((40, 40), cupy, cupy.complex64)
+            cupy.fft.fftn(y)
+        for _, node in cache0:
+            assert plan0 is not node.plan
+        for _, node in cache1:
+            assert plan1 is not node.plan
+        assert cache0.get_curr_size() == 1 <= cache0.get_size()
+        assert cache1.get_curr_size() == 2 <= cache1.get_size()
 
     def test_LRU_cache8(self):
         # test if Plan1d and PlanNd can coexist in the same cache
-        pass
+        cache = config.get_plan_cache()
+        assert cache.get_curr_size() == 0 <= cache.get_size()
+
+        # do a 1D FFT
+        a = testing.shaped_random((10,), cupy, cupy.float32)
+        b = cupy.fft.fft(a)
+        assert cache.get_curr_size() == 1 <= cache.get_size()
+        assert isinstance(next(iter(cache))[1].plan, cufft.Plan1d)
+
+        # then a 3D FFT
+        a = testing.shaped_random((8, 8, 8), cupy, cupy.complex128)
+        b = cupy.fft.fftn(a)
+        assert cache.get_curr_size() == 2 <= cache.get_size()
+        iterator = iter(cache)
+
+        # the cached order is 1. PlanNd, 2. Plan1d
+        assert isinstance(next(iterator)[1].plan, cufft.PlanNd)
+        assert isinstance(next(iterator)[1].plan, cufft.Plan1d)
 
     def test_LRU_cache9(self):
         # test if memsizes in the cache adds up
-        pass
+        cache = config.get_plan_cache()
+        assert cache.get_curr_size() == 0 <= cache.get_size()
+
+        memsize = 0
+        a = testing.shaped_random((10,), cupy, cupy.float32)
+        b = cupy.fft.fft(a)
+        assert cache.get_curr_size() == 1 <= cache.get_size()
+        memsize += next(iter(cache))[1].plan.work_area.mem.size
+
+        a = testing.shaped_random((48,), cupy, cupy.complex64)
+        b = cupy.fft.fft(a)
+        assert cache.get_curr_size() == 2 <= cache.get_size()
+        memsize += next(iter(cache))[1].plan.work_area.mem.size
+
+        assert memsize == cache.get_curr_memsize()

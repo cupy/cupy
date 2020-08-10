@@ -304,8 +304,9 @@ cdef class PlanCache:
             raise RuntimeError('the plan memsize is too large')
 
     # The four helpers below (_move_plan_to_end, _add_plan, _remove_plan, and
-    # _eject_until_fit) only change the internal state of the current device's
-    # cache (self); they are not responsible for other devices'.
+    # _eject_until_fit) most of the time only change the internal state of the
+    # current device's cache (self); the only exception is when removing a
+    # multi-GPU plan from the caches (in _eject_until_fit).
 
     cdef void _move_plan_to_end(self, tuple key=None, _Node node=None) except*:
         # either key is None or node is None
@@ -352,6 +353,8 @@ cdef class PlanCache:
     cdef void _eject_until_fit(
             self, Py_ssize_t size, Py_ssize_t memsize):
         cdef _Node unwanted_node
+        cdef list gpus
+
         while True:
             if (self.curr_size == 0
                 or ((self.curr_size <= size or size == -1)
@@ -361,7 +364,11 @@ cdef class PlanCache:
                 # remove from the front to free up space
                 unwanted_node = self.lru.head.next
                 if unwanted_node is not self.lru.tail:
-                    self._remove_plan(key=None, node=unwanted_node)
+                    gpus = unwanted_node.gpus
+                    if gpus is None:
+                        self._remove_plan(key=None, node=unwanted_node)
+                    else:
+                        _remove_multi_gpu_plan(gpus, unwanted_node.key)
 
     # -------------- helpers also exposed to Python -------------- #
 
