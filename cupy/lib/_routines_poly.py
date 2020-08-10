@@ -116,34 +116,33 @@ def polyval(p, x):
 
     .. warning::
 
-        This function doesn't currently support poly1d objects nor
-        multidimensional ndarrays as values used in evaluation.
+        This function doesn't currently support poly1d values to evaluate.
 
     .. seealso:: :func:`numpy.polyval`
 
     """
     if isinstance(p, cupy.poly1d):
         p = p.coeffs
-    if cupy.isscalar(p) or p.ndim == 0:
+    if not isinstance(p, cupy.ndarray) or p.ndim == 0:
         raise TypeError('p can be 1d ndarray or poly1d object only')
     if p.ndim != 1:
         # to be consistent with polyarithmetic routines' behavior of
         # not allowing multidimensional polynomial inputs.
         raise ValueError('p can be 1d ndarray or poly1d object only')
-        # TODO(Dahlia-Chehata): Support poly1d and multidimensional x
-    if isinstance(x, cupy.poly1d) or (isinstance(x, cupy.ndarray)
-                                      and x.ndim > 1):
-        raise NotImplementedError('poly1d or non 1d values are not'
-                                  ' currently supported')
-    val = cupy.asarray(x).reshape(-1, 1)
-    exp = cupy.tile(cupy.arange(p.size), (val.size, 1))
-    out = p[::-1] * cupy.power(val, exp)
+        # TODO(Dahlia-Chehata): Support poly1d x
+    if (isinstance(x, cupy.ndarray) and x.ndim <= 1) or numpy.isscalar(x):
+        val = cupy.asarray(x).reshape(-1, 1)
+    else:
+        raise NotImplementedError(
+            'poly1d or non 1d values are not currently supported')
+    out = p[::-1] * cupy.power(val, cupy.arange(p.size))
     out = out.sum(axis=1)
     dtype = cupy.result_type(p, val)
     # For case: when p is of shape (0,) and x is (), output is
     #  of single valued array to match NumPy's behavior
     if isinstance(x, cupy.ndarray) and x.ndim == 0 and p.size == 0:
         return out[0].astype(dtype, copy=False)
+    # to match the shape of NumPy's results
     if cupy.isscalar(x) or x.ndim == 0:
         return dtype.type(out.item())
     # To handle mixed integer and float dtypes combinations for inputs,
