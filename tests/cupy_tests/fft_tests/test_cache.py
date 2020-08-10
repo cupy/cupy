@@ -13,6 +13,15 @@ from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.fft import config
 
+from .test_fft import multi_gpu_config
+
+
+def intercept_stdout(func):
+    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+        func()
+        stdout = buf.getvalue()
+    return stdout
+
 
 class TestPlanCache(unittest.TestCase):
     def setUp(self):
@@ -131,24 +140,18 @@ class TestPlanCache(unittest.TestCase):
                 with device.Device(i):
                     config.get_plan_cache()
 
-        def intercept_stdout():
-            with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-                config.show_plan_cache_info()
-                stdout = buf.getvalue()
-            return stdout
-
         # Testing in the current thread is tricky as we don't know if
         # the cache for device 2 is initialized or not by this point.
         # Let us force its initialization.
         n_devices = runtime.getDeviceCount()
         init_caches(range(n_devices))
-        stdout = intercept_stdout()
+        stdout = intercept_stdout(config.show_plan_cache_info)
         assert 'uninitialized' not in stdout
 
         def thread_show_plan_cache_info(queue):
             # allow output from another thread to be accessed by the
             # main thread
-            stdout = intercept_stdout()
+            stdout = intercept_stdout(config.show_plan_cache_info)
             queue.put(stdout)
 
         # When starting a new thread, the cache is uninitialized there
@@ -338,3 +341,78 @@ class TestPlanCache(unittest.TestCase):
         memsize += next(iter(cache))[1].plan.work_area.mem.size
 
         assert memsize == cache.get_curr_memsize()
+
+    def test_LRU_cache10(self):
+        # test if deletion works and if show_info() is consistent with data
+        cache = config.get_plan_cache()
+        assert cache.get_curr_size() == 0 <= cache.get_size()
+
+        curr_size = 0
+        size = 2
+        curr_memsize = 0
+        memsize = '(unlimited)'  # default
+
+        a = testing.shaped_random((16, 16), cupy, cupy.float32)
+        cupy.fft.fft2(a)
+        assert cache.get_curr_size() == 1 <= cache.get_size()
+        node1 = next(iter(cache))[1]
+        curr_size += 1
+        curr_memsize += node1.plan.work_area.mem.size
+        stdout = intercept_stdout(cache.show_info)
+        assert '{0} / {1} (counts)'.format(curr_size, size) in stdout
+        assert '{0} / {1} (bytes)'.format(curr_memsize, memsize) in stdout
+        assert str(node1) in stdout
+
+        a = testing.shaped_random((1024,), cupy, cupy.complex64)
+        cupy.fft.ifft(a)
+        assert cache.get_curr_size() == 2 <= cache.get_size()
+        node2 = next(iter(cache))[1]
+        curr_size += 1
+        curr_memsize += node2.plan.work_area.mem.size
+        stdout = intercept_stdout(cache.show_info)
+        assert '{0} / {1} (counts)'.format(curr_size, size) in stdout
+        assert '{0} / {1} (bytes)'.format(curr_memsize, memsize) in stdout
+        assert str(node2) + '\n' + str(node1) in stdout
+
+        # test deletion
+        key = node2.key
+        del cache[key]
+        assert cache.get_curr_size() == 1 <= cache.get_size()
+        curr_size -= 1
+        curr_memsize -= node2.plan.work_area.mem.size
+        stdout = intercept_stdout(cache.show_info)
+        assert '{0} / {1} (counts)'.format(curr_size, size) in stdout
+        assert '{0} / {1} (bytes)'.format(curr_memsize, memsize) in stdout
+        assert str(node2) not in stdout
+
+    @testing.multi_gpu(2)
+    @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
+    def test_LRU_cache11(self):
+        # test if collectively deleting a multi-GPU plan works
+        with device.Device(0):
+            cache0 = config.get_plan_cache()
+            cache0.clear()
+            cache0.set_size(2)
+        with device.Device(1):
+            cache1 = config.get_plan_cache()
+            cache1.clear()
+            cache1.set_size(2)
+
+        # ensure a fresh state
+        assert cache0.get_curr_size() == 0 <= cache0.get_size()
+        assert cache1.get_curr_size() == 0 <= cache1.get_size()
+
+        # do a multi-GPU FFT
+        c = testing.shaped_random((128,), cupy, cupy.complex64)
+        cupy.fft.fft(c)
+        assert cache0.get_curr_size() == 1 <= cache0.get_size()
+        assert cache1.get_curr_size() == 1 <= cache1.get_size()
+
+        # delete
+        node0 = next(iter(cache0))[1]
+        node1 = next(iter(cache1))[1]
+        assert node0.key == node1.key
+        assert node0.plan is node1.plan
+        del cache0[node0.key]
+        assert cache0.get_curr_size() == 0 <= cache0.get_size()
+        assert cache1.get_curr_size() == 0 <= cache1.get_size()
