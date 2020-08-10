@@ -4,7 +4,6 @@ import queue
 import threading
 import unittest
 
-import numpy as np
 import pytest
 
 import cupy
@@ -29,9 +28,11 @@ class TestPlanCache(unittest.TestCase):
         # test if insertion and clean-up works
         cache = config.get_plan_cache()
         assert cache.get_curr_size() == 0 <= cache.get_size()
+
         a = testing.shaped_random((10,), cupy, cupy.float32)
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 1 <= cache.get_size()
+
         cache.clear()
         assert cache.get_curr_size() == 0 <= cache.get_size()
 
@@ -42,13 +43,13 @@ class TestPlanCache(unittest.TestCase):
 
         # run once and fetch the cached plan
         a = testing.shaped_random((10,), cupy, cupy.float32)
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 1 <= cache.get_size()
         iterator = iter(cache)
         plan0 = next(iterator)[1].plan
 
         # repeat
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 1 <= cache.get_size()
         iterator = iter(cache)
         plan1 = next(iterator)[1].plan
@@ -63,7 +64,7 @@ class TestPlanCache(unittest.TestCase):
 
         # run once and fetch the cached plan
         a = testing.shaped_random((10,), cupy, cupy.float32)
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 1 <= cache.get_size()
         iterator = iter(cache)
         plan = next(iterator)[1].plan
@@ -71,10 +72,10 @@ class TestPlanCache(unittest.TestCase):
         # run another two FFTs with different sizes so that the first
         # plan is discarded from the cache
         a = testing.shaped_random((20,), cupy, cupy.float32)
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 2 <= cache.get_size()
         a = testing.shaped_random((30,), cupy, cupy.float32)
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 2 <= cache.get_size()
 
         # check if the first plan is indeed not cached
@@ -88,12 +89,12 @@ class TestPlanCache(unittest.TestCase):
 
         # this creates a Plan1d
         a = testing.shaped_random((10,), cupy, cupy.float32)
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 1 <= cache.get_size()
 
         # this creates a PlanNd
         a = testing.shaped_random((10, 20), cupy, cupy.float32)
-        b = cupy.fft.fftn(a)
+        cupy.fft.fftn(a)
         assert cache.get_curr_size() == 2 <= cache.get_size()
 
         # The first in the cache is the most recently used one;
@@ -107,7 +108,7 @@ class TestPlanCache(unittest.TestCase):
 
         # this brings Plan1d to the top
         a = testing.shaped_random((10,), cupy, cupy.float32)
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 2 <= cache.get_size()
         iterator = iter(cache)
         assert isinstance(next(iterator)[1].plan, cufft.Plan1d)
@@ -128,7 +129,7 @@ class TestPlanCache(unittest.TestCase):
         def init_caches(gpus):
             for i in gpus:
                 with device.Device(i):
-                    cache = config.get_plan_cache()
+                    config.get_plan_cache()
 
         def intercept_stdout():
             with io.StringIO() as buf, contextlib.redirect_stdout(buf):
@@ -154,7 +155,7 @@ class TestPlanCache(unittest.TestCase):
         # (for both devices)
         q = queue.Queue()
         thread = threading.Thread(target=thread_show_plan_cache_info,
-                                   args=(q,))
+                                  args=(q,))
         thread.start()
         thread.join()
         stdout = q.get()
@@ -166,7 +167,7 @@ class TestPlanCache(unittest.TestCase):
 
         # Now let's try initializing device 0 on another thread
         thread = threading.Thread(target=thread_init_caches,
-                                   args=([0], q,))
+                                  args=([0], q,))
         thread.start()
         thread.join()
         stdout = q.get()
@@ -174,7 +175,7 @@ class TestPlanCache(unittest.TestCase):
 
         # ...and this time both devices
         thread = threading.Thread(target=thread_init_caches,
-                                   args=([0, 1], q,))
+                                  args=([0, 1], q,))
         thread.start()
         thread.join()
         stdout = q.get()
@@ -199,14 +200,14 @@ class TestPlanCache(unittest.TestCase):
         # do some computation on GPU 0
         with device.Device(0):
             a = testing.shaped_random((10,), cupy, cupy.float32)
-            b = cupy.fft.fft(a)
+            cupy.fft.fft(a)
         assert cache0.get_curr_size() == 1 <= cache0.get_size()
         assert cache1.get_curr_size() == 0 <= cache1.get_size()
 
         # do some computation on GPU 1
         with device.Device(1):
             c = testing.shaped_random((16,), cupy, cupy.float64)
-            d = cupy.fft.fft(c)
+            cupy.fft.fft(c)
         assert cache0.get_curr_size() == 1 <= cache0.get_size()
         assert cache1.get_curr_size() == 1 <= cache1.get_size()
 
@@ -239,7 +240,7 @@ class TestPlanCache(unittest.TestCase):
         # do some computation on GPU 0
         with device.Device(0):
             a = testing.shaped_random((10,), cupy, cupy.float32)
-            b = cupy.fft.fft(a)
+            cupy.fft.fft(a)
         assert cache0.get_curr_size() == 1 <= cache0.get_size()
         assert cache1.get_curr_size() == 0 <= cache1.get_size()
 
@@ -247,7 +248,7 @@ class TestPlanCache(unittest.TestCase):
         config.use_multi_gpus = True
         config.set_cufft_gpus([0, 1])
         c = testing.shaped_random((128,), cupy, cupy.complex64)
-        d = cupy.fft.fft(c)
+        cupy.fft.fft(c)
         assert cache0.get_curr_size() == 2 <= cache0.get_size()
         assert cache1.get_curr_size() == 1 <= cache1.get_size()
 
@@ -263,7 +264,7 @@ class TestPlanCache(unittest.TestCase):
         # do some computation on GPU 1
         with device.Device(1):
             e = testing.shaped_random((20,), cupy, cupy.complex128)
-            f = cupy.fft.fft(e)
+            cupy.fft.fft(e)
         assert cache0.get_curr_size() == 2 <= cache0.get_size()
         assert cache1.get_curr_size() == 2 <= cache1.get_size()
 
@@ -276,7 +277,7 @@ class TestPlanCache(unittest.TestCase):
         config.use_multi_gpus = True
         config.set_cufft_gpus([0, 1])
         c = testing.shaped_random((128,), cupy, cupy.complex64)
-        d = cupy.fft.fft(c)
+        cupy.fft.fft(c)
         assert cache0.get_curr_size() == 2 <= cache0.get_size()
         assert cache1.get_curr_size() == 2 <= cache1.get_size()
         assert plan0 is next(iter(cache0))[1].plan
@@ -306,13 +307,13 @@ class TestPlanCache(unittest.TestCase):
 
         # do a 1D FFT
         a = testing.shaped_random((10,), cupy, cupy.float32)
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 1 <= cache.get_size()
         assert isinstance(next(iter(cache))[1].plan, cufft.Plan1d)
 
         # then a 3D FFT
         a = testing.shaped_random((8, 8, 8), cupy, cupy.complex128)
-        b = cupy.fft.fftn(a)
+        cupy.fft.fftn(a)
         assert cache.get_curr_size() == 2 <= cache.get_size()
         iterator = iter(cache)
 
@@ -327,12 +328,12 @@ class TestPlanCache(unittest.TestCase):
 
         memsize = 0
         a = testing.shaped_random((10,), cupy, cupy.float32)
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 1 <= cache.get_size()
         memsize += next(iter(cache))[1].plan.work_area.mem.size
 
         a = testing.shaped_random((48,), cupy, cupy.complex64)
-        b = cupy.fft.fft(a)
+        cupy.fft.fft(a)
         assert cache.get_curr_size() == 2 <= cache.get_size()
         memsize += next(iter(cache))[1].plan.work_area.mem.size
 
