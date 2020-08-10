@@ -385,8 +385,8 @@ class TestPlanCache(unittest.TestCase):
         assert '{0} / {1} (bytes)'.format(curr_memsize, memsize) in stdout
         assert str(node2) not in stdout
 
-    @testing.multi_gpu(2)
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
+    @testing.multi_gpu(2)
     def test_LRU_cache11(self):
         # test if collectively deleting a multi-GPU plan works
         with device.Device(0):
@@ -408,11 +408,16 @@ class TestPlanCache(unittest.TestCase):
         assert cache0.get_curr_size() == 1 <= cache0.get_size()
         assert cache1.get_curr_size() == 1 <= cache1.get_size()
 
-        # delete
         node0 = next(iter(cache0))[1]
         node1 = next(iter(cache1))[1]
         assert node0.key == node1.key
         assert node0.plan is node1.plan
+        assert cache0.get_curr_memsize() == node0.memsize > 0
+        assert cache1.get_curr_memsize() == node1.memsize > 0
+
+        # delete
         del cache0[node0.key]
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
         assert cache1.get_curr_size() == 0 <= cache1.get_size()
+        assert cache0.get_curr_memsize() == 0
+        assert cache1.get_curr_memsize() == 0
