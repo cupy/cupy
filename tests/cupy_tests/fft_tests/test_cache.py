@@ -23,15 +23,27 @@ def intercept_stdout(func):
     return stdout
 
 
+n_devices = runtime.getDeviceCount()
+
+
 class TestPlanCache(unittest.TestCase):
     def setUp(self):
-        config.clear_plan_cache()
-        self.old_size = config.get_plan_cache_size()
-        config.set_plan_cache_size(2)
+        self.caches = []
+        self.old_sizes = []
+        for i in range(n_devices):
+            with device.Device(i):
+                cache = config.get_plan_cache()
+                self.old_sizes.append(cache.get_size())
+                cache.clear()
+                cache.set_size(2)
+            self.caches.append(cache)
 
     def tearDown(self):
-        config.clear_plan_cache()
-        config.set_plan_cache_size(self.old_size)
+        for i in range(n_devices):
+            with device.Device(i):
+                cache = config.get_plan_cache()
+                cache.clear()
+                cache.set_size(self.old_sizes[i])
 
     def test_LRU_cache1(self):
         # test if insertion and clean-up works
@@ -140,11 +152,8 @@ class TestPlanCache(unittest.TestCase):
                 with device.Device(i):
                     config.get_plan_cache()
 
-        # Testing in the current thread is tricky as we don't know if
-        # the cache for device 2 is initialized or not by this point.
-        # Let us force its initialization.
-        n_devices = runtime.getDeviceCount()
-        init_caches(range(n_devices))
+        # Testing in the current thread: in setUp() we ensure all caches
+        # are initialized
         stdout = intercept_stdout(config.show_plan_cache_info)
         assert 'uninitialized' not in stdout
 
@@ -187,14 +196,8 @@ class TestPlanCache(unittest.TestCase):
     @testing.multi_gpu(2)
     def test_LRU_cache6(self):
         # test if each device has a seperate cache
-        with device.Device(0):
-            cache0 = config.get_plan_cache()
-            cache0.clear()
-            cache0.set_size(2)
-        with device.Device(1):
-            cache1 = config.get_plan_cache()
-            cache1.clear()
-            cache1.set_size(2)
+        cache0 = self.caches[0]
+        cache1 = self.caches[1]
 
         # ensure a fresh state
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
@@ -227,14 +230,8 @@ class TestPlanCache(unittest.TestCase):
     @testing.multi_gpu(2)
     def test_LRU_cache7(self):
         # test accessing a multi-GPU plan
-        with device.Device(0):
-            cache0 = config.get_plan_cache()
-            cache0.clear()
-            cache0.set_size(2)
-        with device.Device(1):
-            cache1 = config.get_plan_cache()
-            cache1.clear()
-            cache1.set_size(2)
+        cache0 = self.caches[0]
+        cache1 = self.caches[1]
 
         # ensure a fresh state
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
@@ -389,14 +386,8 @@ class TestPlanCache(unittest.TestCase):
     @testing.multi_gpu(2)
     def test_LRU_cache11(self):
         # test if collectively deleting a multi-GPU plan works
-        with device.Device(0):
-            cache0 = config.get_plan_cache()
-            cache0.clear()
-            cache0.set_size(2)
-        with device.Device(1):
-            cache1 = config.get_plan_cache()
-            cache1.clear()
-            cache1.set_size(2)
+        cache0 = self.caches[0]
+        cache1 = self.caches[1]
 
         # ensure a fresh state
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
