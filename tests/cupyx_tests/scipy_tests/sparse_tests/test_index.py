@@ -5,6 +5,8 @@ import cupy
 from cupy import sparse
 from cupy import testing
 
+import numpy
+
 import pytest
 
 
@@ -53,7 +55,7 @@ class TestIndexing(unittest.TestCase):
                 actual.data, expected.data)
         else:
             testing.assert_array_equal(
-                actual, expected)
+                actual.ravel(), numpy.asarray(expected).ravel())
 
     # 2D Slicing
 
@@ -67,12 +69,46 @@ class TestIndexing(unittest.TestCase):
     def test_major_scalar(self):
         self._run(10)
 
+    def test_major_fancy(self):
+        self._run([1, 5, 4])
+        self._run([10, 2])
+        self._run([2])
+
+    def test_major_bool_fancy(self):
+        rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
+        self._run(rand_bool)
+
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
 
     def test_major_slice_minor_all(self):
         self._run(slice(1, 5), slice(None))
         self._run(slice(5, 1), slice(None))
+
+    def test_major_slice_minor_fancy(self):
+        self._run(slice(1, 10, 2), [1, 5, 4])
+
+    def test_major_scalar_minor_fancy(self):
+        self._run(5, [1, 5, 4])
+
+    def test_major_all_minor_fancy(self):
+        self._run(slice(None), [1, 5, 2, 3, 4, 5, 4, 1, 5])
+        self._run(slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5])
+
+    def test_major_fancy_minor_fancy(self):
+        self._run([1, 5, 4], [1, 5, 4])
+        self._run([2, 0, 10], [9, 2, 1])
+        self._run([2, 0], [2, 1])
+
+    def test_major_fancy_minor_all(self):
+        self._run([1, 5, 4], slice(None))
+
+    def test_major_fancy_minor_scalar(self):
+        self._run([1, 5, 4], 5)
+
+    def test_major_fancy_minor_slice(self):
+        self._run([1, 5, 4], slice(1, 5))
+        self._run([1, 5, 4], slice(5, 1, -1))
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
