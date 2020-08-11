@@ -67,7 +67,7 @@ cpdef Handle get_handle():
     return _handles[dev]
 
 
-cpdef int get_cuda_dtype(numpy_dtype):
+cpdef int get_cuda_dtype(numpy_dtype) except -1:
     if numpy_dtype == numpy.float16:
         return runtime.CUDA_R_16F
     elif numpy_dtype == numpy.float32:
@@ -82,7 +82,7 @@ cpdef int get_cuda_dtype(numpy_dtype):
         raise TypeError('Dtype {} is not supported'.format(numpy_dtype))
 
 
-cpdef int get_cutensor_dtype(numpy_dtype):
+cpdef int get_cutensor_dtype(numpy_dtype) except -1:
     if numpy_dtype == numpy.float16:
         return cutensor.R_MIN_16F
     elif numpy_dtype == numpy.float32:
