@@ -142,13 +142,13 @@ class CuFFTError(RuntimeError):
 
 
 @cython.profile(False)
-cpdef inline check_result(int result):
+cpdef inline void check_result(int result) except *:
     if result != 0:
         raise CuFFTError(result)
 
 
 cpdef size_t getVersion() except? -1:
-    cdef int version
+    cdef int version, result
     result = cufftGetVersion(&version)
     check_result(result)
     return version
@@ -251,6 +251,7 @@ class Plan1d(object):
                  devices=None, out=None):
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
+        cdef int result
 
         self.plan = 0
         self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
@@ -466,8 +467,10 @@ class Plan1d(object):
             execZ2Z(plan, a.data.ptr, out.data.ptr, direction)
         elif self.fft_type == CUFFT_D2Z:
             execD2Z(plan, a.data.ptr, out.data.ptr)
-        else:
+        elif self.fft_type == CUFFT_Z2D:
             execZ2D(plan, a.data.ptr, out.data.ptr)
+        else:
+            raise ValueError
 
     def _multi_gpu_setup_buffer(self, a):
         cdef XtArrayDesc* xtArr_desc
@@ -482,9 +485,7 @@ class Plan1d(object):
         # uncessary memory usage. Note that these buffers are used for in-place
         # transforms, and are re-used (lifetime tied to the plan).
 
-        # TODO(leofang): revisit this when NumPy support is added
-        # if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
-        if isinstance(a, cupy.ndarray):
+        if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
             if self.xtArr == 0 and self.xtArr_buffer is None:
                 nGPUs = len(self.gpus)
 
@@ -501,9 +502,8 @@ class Plan1d(object):
                 # get buffer
                 if isinstance(a, cupy.ndarray):
                     fmt = CUFFT_XT_FORMAT_INPLACE
-                # TODO(leofang): revisit this when NumPy support is added
-                # else:  # from numpy
-                #     fmt = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
+                else:  # from numpy
+                    fmt = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
                 ptr, xtArr_buffer = _XtMalloc(self.gpus, sizes, fmt)
 
                 xtArr = <XtArray*>ptr
@@ -523,9 +523,8 @@ class Plan1d(object):
                 if self.batch == 1:
                     if isinstance(a, cupy.ndarray):
                         fmt = CUFFT_XT_FORMAT_INPLACE
-                    # TODO(leofang): revisit this when NumPy support is added
-                    # else:  # from numpy
-                    #     fmt = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
+                    else:  # from numpy
+                        fmt = CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED
                     xtArr.subFormat = fmt
         elif isinstance(a, list):
             # TODO(leofang): For users running Plan1d.fft() (bypassing all
@@ -540,26 +539,26 @@ class Plan1d(object):
     def _multi_gpu_memcpy(self, a, str action):
         cdef Handle plan = self.plan
         cdef list xtArr_buffer, share
-        cdef int nGPUs, dev, s_device, start, count
+        cdef int nGPUs, dev, s_device, start, count, result
         cdef XtArray* arr
         cdef intptr_t ptr, ptr2
         cdef size_t size
 
-        # TODO(leofang): revisit this when NumPy support is added
-        # if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
-        if isinstance(a, cupy.ndarray):
-            start = 0
-            assert a._c_contiguous
-            b = a.ravel()
-            assert b.flags['OWNDATA'] is False
-            assert self.xtArr_buffer is not None
-            ptr = self.xtArr
-            arr = <XtArray*>ptr
-            xtArr_buffer = self.xtArr_buffer
-            nGPUs = len(self.gpus)
-            share = self.batch_share
+        assert isinstance(a, (cupy.ndarray, numpy.ndarray))
 
-            if action == 'scatter':
+        start = 0
+        assert a._c_contiguous
+        b = a.ravel()
+        assert b.flags['OWNDATA'] is False
+        assert self.xtArr_buffer is not None
+        ptr = self.xtArr
+        arr = <XtArray*>ptr
+        xtArr_buffer = self.xtArr_buffer
+        nGPUs = len(self.gpus)
+        share = self.batch_share
+
+        if action == 'scatter':
+            if isinstance(a, cupy.ndarray):
                 s_device = b.data.device_id
                 if s_device not in self.scatter_streams:
                     self._multi_gpu_get_scatter_streams_events(s_device)
@@ -583,15 +582,15 @@ class Plan1d(object):
                     start += count
                 assert start == b.size
                 self.scatter_events[s_device][-1].synchronize()
-                # TODO(leofang): revisit this when NumPy support is added
-                # else:  # numpy
-                #     ptr2 = b.ctypes.data
-                #     with nogil:
-                #         result = cufftXtMemcpy(
-                #             plan, <void*>arr, <void*>ptr2,
-                #             CUFFT_COPY_HOST_TO_DEVICE)
-                #     check_result(result)
-            elif action == 'gather':
+            else:  # numpy
+                ptr2 = b.ctypes.data
+                with nogil:
+                    result = cufftXtMemcpy(
+                        plan, <void*>arr, <void*>ptr2,
+                        CUFFT_COPY_HOST_TO_DEVICE)
+                check_result(result)
+        elif action == 'gather':
+            if isinstance(a, cupy.ndarray):
                 if self.batch == 1:
                     _reorder_buffers(plan, self.xtArr, xtArr_buffer)
 
@@ -614,16 +613,15 @@ class Plan1d(object):
                     start += count
                 assert start == b.size
                 self.gather_events[-1].synchronize()
-                # TODO(leofang): revisit this when NumPy support is added
-                # else:  # numpy
-                #     ptr2 = b.ctypes.data
-                #     with nogil:
-                #         result = cufftXtMemcpy(
-                #             plan, <void*>ptr2, <void*>arr,
-                #             CUFFT_COPY_DEVICE_TO_HOST)
-                #     check_result(result)
-            else:
-                raise ValueError
+            else:  # numpy
+                ptr2 = b.ctypes.data
+                with nogil:
+                    result = cufftXtMemcpy(
+                        plan, <void*>ptr2, <void*>arr,
+                        CUFFT_COPY_DEVICE_TO_HOST)
+                check_result(result)
+        else:
+            raise ValueError
 
     def _multi_gpu_fft(self, a, out, direction):
         # When we arrive here, the normal CuPy call path ensures a and out
@@ -695,7 +693,7 @@ class PlanNd(object):
                  int fft_type, int batch, str order, int last_axis, last_size):
         cdef Handle plan
         cdef size_t work_size
-        cdef int ndim, i
+        cdef int ndim, i, result
         cdef vector.vector[int] shape_arr = shape
         cdef vector.vector[int] inembed_arr
         cdef vector.vector[int] onembed_arr
@@ -779,6 +777,8 @@ class PlanNd(object):
     def fft(self, a, out, direction):
         cdef Handle plan = self.plan
         cdef intptr_t stream = stream_module.get_current_stream_ptr()
+        cdef int result
+
         with nogil:
             result = cufftSetStream(plan, <driver.Stream>stream)
         check_result(result)
