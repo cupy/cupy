@@ -4,7 +4,8 @@
 import cupy
 from cupy import core
 
-from cupyx.scipy.sparse.base import spmatrix, isspmatrix
+from cupyx.scipy.sparse.base import isspmatrix
+from cupyx.scipy.sparse.base import spmatrix
 
 import numpy
 
