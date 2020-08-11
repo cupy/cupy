@@ -703,7 +703,6 @@ def irfft(a, n=None, axis=-1, norm=None):
 
     Args:
         a (cupy.ndarray): Array to be transform.
-            WARNING: May be modified in CUDA 10.1 and above.
         n (None or int): Length of the transformed axis of the output. For
             ``n`` output points, ``n//2+1`` input points are necessary. If
             ``n`` is not given, it is determined from the length of the input
@@ -717,6 +716,8 @@ def irfft(a, n=None, axis=-1, norm=None):
             will convert to complex if the input is other. If ``n`` is not
             given, the length of the transformed axis is`2*(m-1)` where `m`
             is the length of the transformed axis of the input.
+
+    .. warning:: The input array may be modified in CUDA 10.1 and above.
 
     .. seealso:: :func:`numpy.fft.irfft`
     """
@@ -751,7 +752,6 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
 
     Args:
         a (cupy.ndarray): Array to be transform.
-            WARNING: May be modified in CUDA 10.1 and above.
         s (None or tuple of ints): Shape of the output. If ``s`` is not given,
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
@@ -765,6 +765,8 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
             given, the length of final transformed axis of output will be
             `2*(m-1)` where `m` is the length of the final transformed axis of
             the input.
+
+    .. warning:: The input array may be modified in CUDA 10.1 and above.
 
     .. seealso:: :func:`numpy.fft.irfft2`
     """
@@ -822,6 +824,8 @@ def irfftn(a, s=None, axes=None, norm=None):
             given, the length of final transformed axis of output will be
             ``2*(m-1)`` where `m` is the length of the final transformed axis
             of the input.
+
+    .. warning:: The input array may be modified in CUDA 10.1 and above.
 
     .. seealso:: :func:`numpy.fft.irfftn`
     """
