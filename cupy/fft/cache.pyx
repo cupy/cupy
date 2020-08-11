@@ -36,16 +36,17 @@ cdef class _ThreadLocal:
         return tls
 
 
-cdef inline Py_ssize_t _get_plan_memsize(plan) except -1:
+cdef inline Py_ssize_t _get_plan_memsize(plan, int curr_dev=-1) except -1:
     cdef Py_ssize_t memsize = 0
     cdef memory.MemoryPointer ptr
-    cdef int dev, curr_dev
+    cdef int dev
 
     # work_area could be None for "empty" plans...
     if plan is not None and plan.work_area is not None:
         if plan.gpus is not None:
             # multi-GPU plan
-            curr_dev = runtime.getDevice()
+            if curr_dev == -1:
+                curr_dev = runtime.getDevice()
             for dev, ptr in zip(plan.gpus, plan.work_area):
                 if dev == curr_dev:
                     memsize = <Py_ssize_t>(ptr.mem.size)
@@ -74,10 +75,10 @@ cdef class _Node:
     cdef _Node prev
     cdef _Node next
 
-    def __init__(self, tuple key, plan=None):
+    def __init__(self, tuple key, plan=None, int curr_dev=-1):
         self.key = key
         self.plan = plan
-        self.memsize = _get_plan_memsize(plan)
+        self.memsize = _get_plan_memsize(plan, curr_dev)
         self.gpus = plan.gpus if plan is not None else None
 
         self.prev = None
@@ -342,7 +343,7 @@ cdef class PlanCache:
         self.is_enabled = (size != 0 and memsize != 0)
 
     cdef void _check_plan_fit(self, plan) except*:
-        cdef Py_ssize_t memsize = _get_plan_memsize(plan)
+        cdef Py_ssize_t memsize = _get_plan_memsize(plan, self.dev)
         if (memsize > self.memsize > 0):
             raise RuntimeError('the plan memsize is too large')
 
@@ -361,7 +362,7 @@ cdef class PlanCache:
         self.lru.append_node(node)
 
     cdef void _add_plan(self, tuple key, plan) except*:
-        cdef _Node node = _Node(key, plan)
+        cdef _Node node = _Node(key, plan, self.dev)
         cdef _Node unwanted_node
 
         # Now we ensure we have room to insert, check if the key already exists
