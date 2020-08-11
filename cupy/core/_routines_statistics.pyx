@@ -7,6 +7,7 @@ import cupy
 from cupy.core import _reduction
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
+from cupy import cutensor
 
 from cupy.core cimport _accelerator
 from cupy.core cimport _routines_math as _math
@@ -18,26 +19,41 @@ if not cupy.cuda.runtime.is_hip:
 else:
     cub = None
 
+if cupy.cuda.cutensor_enabled:
+    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
+    from cupy import cutensor
+else:
+    cuda_cutensor = None
+    cutensor = None
+
 
 cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        result = None
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MAX, axis, dtype, out, keepdims)
-            if result is not None:
-                return result
+        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_MAX, 1, 0)
+        if result is not None:
+            return result
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        result = None
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MIN, axis, out, dtype, keepdims)
-            if result is not None:
-                return result
+        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_MIN, 1, 0)
+        if result is not None:
+            return result
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
@@ -51,6 +67,13 @@ cdef ndarray _ndarray_ptp(ndarray self, axis, out, keepdims):
                 result -= cub.cub_reduction(
                     self, cub.CUPY_CUB_MIN, axis, None, None, keepdims)
                 return result
+        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            maxv = cutensor._try_reduction_routine(
+                self, axis, None, out, keepdims, cuda_cutensor.OP_MAX, 1, 0)
+            if maxv is None:
+                continue
+            return cutensor._try_reduction_routine(
+                self, axis, None, maxv, keepdims, cuda_cutensor.OP_MIN, -1, 1)
 
     result = _amax(self, axis=axis, out=out, keepdims=keepdims)
     result -= _amin(self, axis=axis, out=None, keepdims=keepdims)
@@ -82,6 +105,8 @@ cdef ndarray _ndarray_argmin(ndarray self, axis, out, dtype, keepdims):
 
 
 cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
+    cdef Py_ssize_t n
+
     dtype_sum = dtype_out = dtype
     if dtype is None:
         if self.dtype.kind in 'iub':
@@ -102,6 +127,17 @@ cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims):
             if result is not None:
                 n = self.size // result.size
                 cupy.true_divide(result, n, out=result, casting='unsafe')
+                break
+        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            reduce_axis, _ = _reduction._get_axis(axis, self._shape.size())
+            n = 1
+            for i in reduce_axis:
+                n *= self._shape[i]
+            n = max(n, 1)
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype_sum, out, keepdims,
+                cuda_cutensor.OP_ADD, 1.0 / n, 0)
+            if result is not None:
                 break
     else:
         result = _mean(
