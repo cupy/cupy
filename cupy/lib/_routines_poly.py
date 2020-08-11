@@ -104,12 +104,12 @@ def polymul(a1, a2):
 
 
 @_wraps_polyroutine
-def polydiv(a1, a2):
+def polydiv(u, v):
     """Computes the quotient and remainder of a polynomial division.
 
     Args:
-        a1 (scalar, cupy.ndarray or cupy.poly1d): first input polynomial.
-        a2 (scalar, cupy.ndarray or cupy.poly1d): second input polynomial.
+        u (scalar, cupy.ndarray or cupy.poly1d): polynomial numerator.
+        v (scalar, cupy.ndarray or cupy.poly1d): polynomial denominator.
 
     Returns:
         cupy.ndarray or cupy.poly1d: coefficients of the quotient.
@@ -118,7 +118,34 @@ def polydiv(a1, a2):
     .. seealso:: :func:`numpy.polydiv`
 
     """
+    u = u.astype(numpy.float64, copy=False)
+    v = v.astype(numpy.float64, copy=False)
 
+    u = cupy.trim_zeros(u, trim='f')
+    v = cupy.trim_zeros(v, trim='f')
+
+    if u.size == 0:
+        u = cupy.array([0.])
+    if v.size == 0:
+        v = cupy.array([0.])
+
+    len1 = u.size
+    len2 = v.size
+
+    if len2 == 1:
+        return u/v[0], u[:1] * 0
+    elif len1 < len2:
+        return u[:1] * 0, u
+    else:
+        dlen = len1 - len2
+        scale = v[0]
+        v = v[1:] / scale
+        for i in range(1, dlen + 2):
+            u[i: i + len2 - 1] -= v * u[i - 1]
+        rem = cupy.trim_zeros(u[dlen + 1:], trim='f')
+        if rem.size == 0:
+            rem = cupy.array([0.])
+        return u[: dlen + 1] / scale, rem
 
 
 def roots(p):
