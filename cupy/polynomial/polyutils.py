@@ -1,3 +1,5 @@
+__all__ = ['as_series', 'trimseq']
+
 import cupy
 
 import operator
