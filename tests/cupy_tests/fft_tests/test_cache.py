@@ -437,3 +437,45 @@ class TestPlanCache(unittest.TestCase):
         assert 'plan memsize is too large for device 1' in str(e.value)
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
         assert cache1.get_curr_size() == 0 <= cache1.get_size()
+
+    def test_LRU_cache13(self):
+        # test if plan insertion respect the memory size limit
+        cache = config.get_plan_cache()
+        cache.set_memsize(1024)
+
+        # ensure a fresh state
+        assert cache.get_curr_size() == 0 <= cache.get_size()
+
+        # On CUDA 10.0 + sm75, this generates a plan of size 1024 bytes
+        a = testing.shaped_random((128,), cupy, cupy.complex64)
+        cupy.fft.ifft(a)
+        assert cache.get_curr_size() == 1 <= cache.get_size()
+        assert cache.get_curr_memsize() == 1024 == cache.get_memsize()
+
+        # a second plan (of same size) is generated, but the cache is full,
+        # so the first plan is evicted
+        a = testing.shaped_random((64,), cupy, cupy.complex128)
+        cupy.fft.ifft(a)
+        assert cache.get_curr_size() == 1 <= cache.get_size()
+        assert cache.get_curr_memsize() == 1024 == cache.get_memsize()
+        plan = next(iter(cache))[1].plan
+
+        # this plan is twice as large, so won't fit in
+        a = testing.shaped_random((128,), cupy, cupy.complex128)
+        with pytest.raises(RuntimeError) as e:
+            cupy.fft.ifft(a)
+        assert 'memsize is too large' in str(e.value)
+        # the cache remains intact
+        assert cache.get_curr_size() == 1 <= cache.get_size()
+        assert cache.get_curr_memsize() == 1024 == cache.get_memsize()
+        plan1 = next(iter(cache))[1].plan
+        assert plan1 is plan
+
+        # double the cache size would make the plan just fit (and evict
+        # the existing one)
+        cache.set_memsize(2048)
+        cupy.fft.ifft(a)
+        assert cache.get_curr_size() == 1 <= cache.get_size()
+        assert cache.get_curr_memsize() == 2048 == cache.get_memsize()
+        plan2 = next(iter(cache))[1].plan
+        assert plan2 is not plan
