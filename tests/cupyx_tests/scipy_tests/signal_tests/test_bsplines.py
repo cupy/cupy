@@ -12,8 +12,8 @@ except ImportError:
 
 @testing.parameterize(*testing.product({
     'input': [(256, 256), (4, 512), (512, 3)],
-    'hrow': [1, 3, 4],
-    'hcol': [1, 3, 4],
+    'hrow': [1, 3],
+    'hcol': [1, 3],
 }))
 @testing.gpu
 @testing.with_requires('scipy')
