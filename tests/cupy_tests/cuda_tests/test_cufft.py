@@ -56,9 +56,6 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
         assert numpy.allclose(out_cp, out_np, rtol=1e-4, atol=1e-7)
 
         # compute it again to ensure Plan1d's internal state is reset
-        cufft_type = _convert_fft_type(a.dtype, 'C2C')
-        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config._devices)
-        out_cp = numpy.empty_like(a)
         plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
 
         assert numpy.allclose(out_cp, out_np, rtol=1e-4, atol=1e-7)
@@ -91,9 +88,6 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
         assert numpy.allclose(out_cp, out_np, rtol=1e-4, atol=1e-7)
 
         # compute it again to ensure Plan1d's internal state is reset
-        cufft_type = _convert_fft_type(a.dtype, 'C2C')
-        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config._devices)
-        out_cp = numpy.empty_like(a)
         plan.fft(a, out_cp, cufft.CUFFT_INVERSE)
         # normalization
         out_cp /= nx
