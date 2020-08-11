@@ -122,10 +122,10 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
     Args:
         start (scalar or array_like): Starting value(s) of the sequence.
         stop (scalar or array_like): Ending value(s) of the sequence, unless
-            `endpoint` is set to False. In that case, the sequence consists of
-            all but the last of ``num + 1`` evenly spaced samples, so that
-            `stop` is excluded.  Note that the step size changes when
-            `endpoint` is False.
+            ``endpoint`` is set to ``False``. In that case, the sequence
+            consists of all but the last of ``num + 1`` evenly spaced samples,
+            so that ``stop`` is excluded.  Note that the step size changes when
+            ``endpoint`` is ``False``.
         num: Number of elements.
         endpoint (bool): If ``True``, the stop value is included as the last
             element. Otherwise, the stop value is omitted.
@@ -252,9 +252,9 @@ def meshgrid(*xi, **kwargs):
         indexing ({'xy', 'ij'}, optional): Cartesian ('xy', default) or
             matrix ('ij') indexing of output.
         sparse (bool, optional): If ``True``, a sparse grid is returned in
-            order to conserve memory. Default is False.
+            order to conserve memory. Default is ``False``.
         copy (bool, optional): If ``False``, a view
-            into the original arrays are returned. Default is True.
+            into the original arrays are returned. Default is ``True``.
 
     Returns:
         list of cupy.ndarray

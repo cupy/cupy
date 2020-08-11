@@ -68,7 +68,6 @@ def empty_like(a, dtype=None, order='K', subok=None, shape=None):
             ``order='K'`` and the number of dimensions is unchanged, will try
             to keep order, otherwise, ``order='C'`` is implied.
 
-
     Returns:
         cupy.ndarray: A new array with same shape and dtype of ``a`` with
         elements not initialized.
