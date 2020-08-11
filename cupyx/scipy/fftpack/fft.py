@@ -113,7 +113,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         raise ValueError('C2R/R2C PlanNd for F-order arrays is not supported')
 
     # generate plan
-    # (load from cache if it exists, otherwise create one but not cache it)
+    # (load from cache if it exists, otherwise create one but don't cache it)
     if n > 1:  # ND transform
         out_size = _get_fftn_out_size(
             shape, transformed_shape, axes[-1], value_type)

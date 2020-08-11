@@ -146,7 +146,7 @@ cdef class PlanCache:
         memsize (int): The amount of GPU memory, in bytes, that the plans in
             the cache will use for their work areas. Default is ``-1``, meaning
             it is unlimited.
-        dev (int): The ID of the device for which the cache targets.
+        dev (int): The ID of the device that the cache targets.
 
     .. note::
         1. By setting either ``size`` to ``0`` (by calling :meth:`set_size`) or
@@ -163,22 +163,22 @@ cdef class PlanCache:
                from cupy.cuda import Device
                from cupy.fft.config import get_plan_cache
 
-               # get the cache for Device n
+               # get the cache for device n
                with Device(n):
                    cache = get_plan_cache()
                    cache.set_size(0)  # disable the cache
 
-           In particular, the cache for Device n should be manaipulated under
-           the Device n's context.
+           In particular, the cache for device n should be manipulated under
+           the device n's context.
 
         3. This class is thread-safe since by default it is created on a
-           per-thread basis. When starting a new thread a new cache is not
+           per-thread basis. When starting a new thread, a new cache is not
            initialized until :func:`~cupy.fft.config.get_plan_cache` is
            called or when the constructor is manually invoked.
 
-        4. For multi-GPU plans, the plan will be added to all participating
-           GPUs' caches. Upon removal (by any of the caches), the plan will
-           be removed from all participating GPU's caches.
+        4. For multi-GPU plans, the plan will be added to each participating
+           GPU's cache. Upon removal (by any of the caches), the plan will
+           be removed from each participating GPU's cache.
 
         5. This cache supports the iterator protocol, and returns a 2-tuple:
            ``(key, node)`` starting from the most recently used plan.
@@ -577,7 +577,7 @@ cpdef clear_plan_cache():
 
 
 cpdef show_plan_cache_info():
-    """Show all of the plan caches's info on this thread.
+    """Show all of the plan caches' info on this thread.
 
     .. seealso::
         :class:`~cupy.fft.cache.PlanCache`
