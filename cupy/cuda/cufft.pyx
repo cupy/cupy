@@ -547,7 +547,7 @@ class Plan1d(object):
         assert isinstance(a, (cupy.ndarray, numpy.ndarray))
 
         start = 0
-        assert a._c_contiguous
+        assert a.flags.c_contiguous  # NumPy does not have _c_contiguous
         b = a.ravel()
         assert b.flags['OWNDATA'] is False
         assert self.xtArr_buffer is not None
