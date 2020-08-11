@@ -1481,8 +1481,7 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 
         # This test is adapted from Scipy's CSC tests
         N = 10
-        cupy.random.seed(0)
-        X = testing.shaped_random((N, N), cupy)
+        X = testing.shaped_random((N, N), cupy, seed=0)
         X[X > 0.7] = 0
         Xcsc = sparse.csc_matrix(X)
 
@@ -1496,8 +1495,7 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getcol(self):
         # This test is adapted from Scipy's CSC tests
         N = 10
-        cupy.random.seed(0)
-        X = testing.shaped_random((N, N), cupy)
+        X = testing.shaped_random((N, N), cupy, seed=0)
         X[X > 0.7] = 0
         Xcsc = sparse.csc_matrix(X)
 
