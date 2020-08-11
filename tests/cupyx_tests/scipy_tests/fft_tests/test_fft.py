@@ -1103,7 +1103,12 @@ class TestRfft2(unittest.TestCase):
         x_orig = x.copy()
         out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes,
                                      norm=self.norm)
-        testing.assert_array_equal(x, x_orig)
+
+        # CUDA 10.1 and above may modify input, this fails for complex64
+        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 and
+                dtype is np.complex64):
+            testing.assert_array_equal(x, x_orig)
+
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
@@ -1141,7 +1146,12 @@ class TestRfft2(unittest.TestCase):
             kw = {}
         out = _fft_module(xp).irfft2(
             x, s=self.s, axes=self.axes, norm=self.norm, **kw)
-        testing.assert_array_equal(x, x_orig)
+
+        # CUDA 10.1 and above may modify input, this fails for complex64
+        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 and
+                dtype is np.complex64):
+            testing.assert_array_equal(x, x_orig)
+
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
@@ -1191,7 +1201,12 @@ class TestRfft2(unittest.TestCase):
             assert get_current_plan() is None
         else:
             out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes)
-        testing.assert_array_equal(x, x_orig)
+
+        # CUDA 10.1 and above may modify input, this fails for complex64
+        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 and
+                dtype is np.complex64):
+            testing.assert_array_equal(x, x_orig)
+
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
@@ -1344,7 +1359,12 @@ class TestRfftn(unittest.TestCase):
         x_orig = x.copy()
         out = _fft_module(xp).irfftn(x, s=self.s, axes=self.axes,
                                      norm=self.norm)
-        testing.assert_array_equal(x, x_orig)
+
+        # CUDA 10.1 and above may modify input, this fails for complex64
+        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 and
+                dtype is np.complex64):
+            testing.assert_array_equal(x, x_orig)
+
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
@@ -1382,7 +1402,12 @@ class TestRfftn(unittest.TestCase):
             kw = {}
         out = _fft_module(xp).irfftn(
             x, s=self.s, axes=self.axes, norm=self.norm, **kw)
-        testing.assert_array_equal(x, x_orig)
+
+        # CUDA 10.1 and above may modify input, this fails for complex64
+        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 and
+                dtype is np.complex64):
+            testing.assert_array_equal(x, x_orig)
+
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
@@ -1432,7 +1457,12 @@ class TestRfftn(unittest.TestCase):
             assert get_current_plan() is None
         else:
             out = _fft_module(xp).irfftn(x, s=self.s, axes=self.axes)
-        testing.assert_array_equal(x, x_orig)
+
+        # CUDA 10.1 and above may modify input, this fails for complex64
+        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 and
+                dtype is np.complex64):
+            testing.assert_array_equal(x, x_orig)
+
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70 and
