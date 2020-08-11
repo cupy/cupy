@@ -7,7 +7,6 @@ from cupy import util
 from cupy.core import _reduction
 
 
-
 def flip(a, axis=None):
     """Reverse the order of elements in an array along the given axis.
 
