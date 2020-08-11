@@ -9,8 +9,7 @@ from cupy import core
 def arange(start, stop=None, step=1, dtype=None):
     """Returns an array with evenly spaced values within a given interval.
 
-    Values are generated within the half-open interval
-    :math:`[\\mbox{start}, \\mbox{stop})`. The first
+    Values are generated within the half-open interval [start, stop). The first
     three arguments are mapped like the ``range`` built-in function, i.e. start
     and step are optional.
 
@@ -236,10 +235,10 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
 def meshgrid(*xi, **kwargs):
     """Return coordinate matrices from coordinate vectors.
 
-    Given one-dimensional coordinate arrays :math:`x_1, x_2, ... , x_n` this
+    Given one-dimensional coordinate arrays ``x1, x2, ... , xn`` this
     function makes N-D grids.
 
-    For one-dimensional arrays :math:`x_1, x_2, ... , x_n` with lengths
+    For one-dimensional arrays ``x1, x2, ... , xn`` with lengths
     ``Ni = len(xi)``, this function returns ``(N1, N2, N3, ..., Nn)`` shaped
     arrays if indexing='ij' or ``(N2, N1, N3, ..., Nn)`` shaped arrays
     if indexing='xy'.
