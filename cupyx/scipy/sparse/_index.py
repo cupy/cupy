@@ -88,7 +88,7 @@ def _csr_row_index(rows,
         Bx : data array of output sparse matrix
     """
 
-    nnz = Bp[-1].item()
+    nnz = int(Bp[-1])
     Bj = cupy.empty(nnz, dtype=Aj.dtype)
     Bx = cupy.empty(nnz, dtype=Ax.dtype)
 
@@ -230,14 +230,7 @@ class IndexMixin(object):
         if x.ndim not in (1, 2):
             raise IndexError('Index dimension must be <= 2')
 
-        if x.size == 0:
-            return x
-
-        if x[x < 0].size > 0:
-            if x is idx or not x.flags.owndata:
-                x = x.copy()
-            x[x < 0] += length
-        return x
+        return x % length
 
     def getrow(self, i):
         """Return a copy of row i of the matrix, as a (1 x n) row vector.
