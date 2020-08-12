@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 import cupy
+from cupy.core import _accelerator
 from cupy import testing
 from cupy.cuda import compiler
 from cupy.cuda import memory
@@ -372,11 +373,24 @@ class TestRaw(unittest.TestCase):
             backend=self.backend)
 
     def tearDown(self):
+        if (self.in_memory == '1'
+                and _accelerator.ACCELERATOR_CUB not in
+                _accelerator.get_reduction_accelerators()):
+            # should not write any file to the cache dir, but the CUB reduction
+            # kernel uses nvcc, with which I/O cannot be avoided
+            files = os.listdir(self.cache_dir)
+            for f in files:
+                if f == 'test_load_cubin.cu':
+                    count = 1
+                    break
+            else:
+                count = 0
+            assert len(files) == count
+        self.temporary_cache_dir_context.__exit__(*sys.exc_info())
         if _in_memory_cache is not None:
             os.environ['CUPY_CACHE_IN_MEMORY'] = _in_memory_cache
         else:
             os.environ.pop('CUPY_CACHE_IN_MEMORY')
-        compiler._empty_file_preprocess_cache = {}
 
     def _helper(self, kernel, dtype):
         N = 10
