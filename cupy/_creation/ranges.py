@@ -248,8 +248,8 @@ def meshgrid(*xi, **kwargs):
     Args:
         xi (tuple of ndarrays): 1-D arrays representing the coordinates
             of a grid.
-        indexing ({'xy', 'ij'}, optional): Cartesian (``'xy'``, default) or
-            matrix (``'ij'``) indexing of output.
+        indexing ({'xy', 'ij'}, optional): Cartesian (*'xy'*, default) or
+            matrix (*'ij'*) indexing of output.
         sparse (bool, optional): If ``True``, a sparse grid is returned in
             order to conserve memory. Default is ``False``.
         copy (bool, optional): If ``False``, a view

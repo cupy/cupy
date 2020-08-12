@@ -60,9 +60,9 @@ def empty_like(a, dtype=None, order='K', subok=None, shape=None):
         a (cupy.ndarray): Base array.
         dtype: Data type specifier. The data type of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
-            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
-            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
-            ``'K'`` means match the layout of ``a`` as closely as possible.
+            result. *'C'* means C-order, *'F'* means F-order, *'A'* means
+            *'F'* if ``a`` is Fortran contiguous, *'C'* otherwise.
+            *'K'* means match the layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try
@@ -162,9 +162,9 @@ def ones_like(a, dtype=None, order='K', subok=None, shape=None):
         a (cupy.ndarray): Base array.
         dtype: Data type specifier. The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
-            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
-            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
-            ``'K'`` means match the layout of ``a`` as closely as possible.
+            result. *'C'* means C-order, *'F'* means F-order, *'A'* means
+            *'F'* if ``a`` is Fortran contiguous, *'C'* otherwise.
+            *'K'* means match the layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try
@@ -218,9 +218,9 @@ def zeros_like(a, dtype=None, order='K', subok=None, shape=None):
         a (cupy.ndarray): Base array.
         dtype: Data type specifier. The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
-            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
-            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
-            ``'K'`` means match the layout of ``a`` as closely as possible.
+            result. *'C'* means C-order, *'F'* means F-order, *'A'* means
+            *'F'* if ``a`` is Fortran contiguous, *'C'* otherwise.
+            *'K'* means match the layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try
@@ -283,9 +283,9 @@ def full_like(a, fill_value, dtype=None, order='K', subok=None, shape=None):
         fill_value: A scalar value to fill a new array.
         dtype: Data type specifier. The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
-            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
-            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
-            ``'K'`` means match the layout of ``a`` as closely as possible.
+            result. *'C'* means C-order, *'F'* means F-order, *'A'* means
+            *'F'* if ``a`` is Fortran contiguous, *'C'* otherwise.
+            *'K'* means match the layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try

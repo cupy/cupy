@@ -17,12 +17,12 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
             Otherwise this function always returns a new array.
         order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
             (Fortran-style) order.
-            When ``order`` is ``'A'``, it uses ``'F'`` if ``a`` is column-major
-            and uses ``'C'`` otherwise.
-            And when ``order`` is ``'K'``, it keeps strides as closely as
+            When ``order`` is *'A'*, it uses *'F'* if ``a`` is column-major
+            and uses *'C'* otherwise.
+            And when ``order`` is *'K'*, it keeps strides as closely as
             possible.
-            If ``obj`` is :class:`numpy.ndarray`, the function returns ``'C'``
-            or ``'F'`` order array.
+            If ``obj`` is :class:`numpy.ndarray`, the function returns *'C'*
+            or *'F'* order array.
         subok (bool): If ``True``, then sub-classes will be passed-through,
             otherwise the returned array will be forced to be a base-class
             array (default).
@@ -52,7 +52,7 @@ def asarray(a, dtype=None, order=None):
         dtype: Data type specifier. It is inferred from the input by default.
         order ({'C', 'F'}):
             Whether to use row-major (C-style) or column-major (Fortran-style)
-            memory representation. Defaults to ``'C'``. ``order`` is ignored
+            memory representation. Defaults to *'C'*. ``order`` is ignored
             for objects that are not :class:`cupy.ndarray`, but have the
             ``__cuda_array_interface__`` attribute.
 
@@ -111,9 +111,9 @@ def copy(a, order='K'):
         a (cupy.ndarray): The source array.
         order ({'C', 'F', 'A', 'K'}): Row-major (C-style) or column-major
             (Fortran-style) order.
-            When ``order`` is ``'A'``, it uses ``'F'`` if ``a`` is column-major
-            and uses ``'C'`` otherwise.
-            And when ``order`` is ``'K'``, it keeps strides as closely as
+            When ``order`` is *'A'*, it uses *'F'* if ``a`` is column-major
+            and uses *'C'* otherwise.
+            And when ``order`` is *'K'*, it keeps strides as closely as
             possible.
 
     Returns:
