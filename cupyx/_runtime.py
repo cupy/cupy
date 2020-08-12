@@ -3,6 +3,7 @@ import io
 import os
 
 import cupy
+import numpy
 
 try:
     import cupy.cuda.thrust as thrust
@@ -28,6 +29,11 @@ try:
     import cupy_backends.cuda.libs.cutensor as cutensor
 except ImportError:
     cutensor = None
+
+try:
+    import scipy
+except ImportError:
+    scipy = None
 
 
 def _eval_or_error(func, errors):
@@ -103,6 +109,9 @@ class _RuntimeInfo(object):
     cub_build_version = None
     cutensor_version = None
 
+    numpy_version = None
+    scipy_version = None
+
     def __init__(self):
         self.cupy_version = cupy.__version__
 
@@ -159,6 +168,10 @@ class _RuntimeInfo(object):
         if cutensor is not None:
             self.cutensor_version = cutensor.get_version()
 
+        self.numpy_version = numpy.version.full_version
+        if scipy is not None:
+            self.scipy_version = scipy.version.full_version
+
     def __str__(self):
         records = [
             ('CuPy Version', self.cupy_version),
@@ -187,6 +200,11 @@ class _RuntimeInfo(object):
             ('NCCL Build Version', self.nccl_build_version),
             ('NCCL Runtime Version', self.nccl_runtime_version),
             ('cuTENSOR Version', self.cutensor_version),
+        ]
+
+        records += [
+            ('NumPy Version', self.numpy_version),
+            ('SciPy Version', self.scipy_version),
         ]
 
         width = max([len(r[0]) for r in records]) + 2
