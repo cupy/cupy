@@ -141,7 +141,8 @@ def fromfile(*args, **kwargs):
     """Reads an array from a file.
 
     .. note::
-        Uses NumPy's ``fromfile`` and coerces the result to a CuPy array.
+       Uses NumPy's :func:`numpy.fromfile` and coerces the result to a CuPy
+       array.
 
     .. seealso:: :func:`numpy.fromfile`
 

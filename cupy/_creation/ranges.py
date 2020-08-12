@@ -240,23 +240,23 @@ def meshgrid(*xi, **kwargs):
 
     For one-dimensional arrays ``x1, x2, ... , xn`` with lengths
     ``Ni = len(xi)``, this function returns ``(N1, N2, N3, ..., Nn)`` shaped
-    arrays if indexing='ij' or ``(N2, N1, N3, ..., Nn)`` shaped arrays
-    if indexing='xy'.
+    arrays if ``indexing='ij'`` or ``(N2, N1, N3, ..., Nn)`` shaped arrays
+    if ``indexing='xy'``.
 
     Unlike NumPy, CuPy currently only supports 1-D arrays as inputs.
 
     Args:
         xi (tuple of ndarrays): 1-D arrays representing the coordinates
             of a grid.
-        indexing ({'xy', 'ij'}, optional): Cartesian ('xy', default) or
-            matrix ('ij') indexing of output.
+        indexing ({'xy', 'ij'}, optional): Cartesian (``'xy'``, default) or
+            matrix (``'ij'``) indexing of output.
         sparse (bool, optional): If ``True``, a sparse grid is returned in
             order to conserve memory. Default is ``False``.
         copy (bool, optional): If ``False``, a view
             into the original arrays are returned. Default is ``True``.
 
     Returns:
-        list of cupy.ndarray
+        list of cupy.ndarray: Return value.
 
     .. seealso:: :func:`numpy.meshgrid`
 
