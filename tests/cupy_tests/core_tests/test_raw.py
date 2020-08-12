@@ -341,6 +341,7 @@ def use_temporary_cache_dir():
             with mock.patch(target2, temp_cache):
                 yield path
 
+
 _in_memory_cache = os.environ.get('CUPY_CACHE_IN_MEMORY')
 
 
