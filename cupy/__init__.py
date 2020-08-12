@@ -52,7 +52,6 @@ def is_available():
 __version__ = _version.__version__
 
 
-from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
 from cupy import fft  # NOQA
 from cupy import functional  # NOQA
@@ -339,16 +338,16 @@ from cupy.manipulation.rearrange import rot90  # NOQA
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
-from cupy.binary.elementwise import bitwise_and  # NOQA
-from cupy.binary.elementwise import bitwise_or  # NOQA
-from cupy.binary.elementwise import bitwise_xor  # NOQA
-from cupy.binary.elementwise import bitwise_not  # NOQA
-from cupy.binary.elementwise import invert  # NOQA
-from cupy.binary.elementwise import left_shift  # NOQA
-from cupy.binary.elementwise import right_shift  # NOQA
+from cupy._binary.elementwise import bitwise_and  # NOQA
+from cupy._binary.elementwise import bitwise_or  # NOQA
+from cupy._binary.elementwise import bitwise_xor  # NOQA
+from cupy._binary.elementwise import bitwise_not  # NOQA
+from cupy._binary.elementwise import invert  # NOQA
+from cupy._binary.elementwise import left_shift  # NOQA
+from cupy._binary.elementwise import right_shift  # NOQA
 
-from cupy.binary.packing import packbits  # NOQA
-from cupy.binary.packing import unpackbits  # NOQA
+from cupy._binary.packing import packbits  # NOQA
+from cupy._binary.packing import unpackbits  # NOQA
 
 
 def binary_repr(num, width=None):
