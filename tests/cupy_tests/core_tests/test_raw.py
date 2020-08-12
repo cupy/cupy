@@ -345,10 +345,11 @@ def use_temporary_cache_dir():
 _in_memory_cache = os.environ.get('CUPY_CACHE_IN_MEMORY')
 
 
-@testing.parameterize(*testing.product({
-    'backend': ('nvrtc', 'nvcc'),
-    'in_memory': ('1', '0'),
-}))
+@testing.parameterize(
+    {'backend': 'nvrtc', 'in_memory': False},
+    {'backend': 'nvrtc', 'in_memory': True},
+    {'backend': 'nvcc', 'in_memory': False},
+)
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
