@@ -1,14 +1,16 @@
 import contextlib
-import mock
 import os
-import pytest
 import sys
 import tempfile
 import unittest
+from unittest import mock
+
+import pytest
 
 import cupy
-from cupy.core import _accelerator
 from cupy import testing
+from cupy import util
+from cupy.core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
 
@@ -342,26 +344,47 @@ def use_temporary_cache_dir():
                 yield path
 
 
-_in_memory_cache = os.environ.get('CUPY_CACHE_IN_MEMORY')
+@contextlib.contextmanager
+def compile_in_memory(in_memory):
+    target = 'cupy.cuda.compiler._get_bool_env_variable'
+
+    def new_target(name, default):
+        if name == 'CUPY_CACHE_IN_MEMORY':
+            return in_memory
+        else:
+            # below is the source code of _get_bool_env_variable
+            val = os.environ.get(name)
+            if val is None or len(val) == 0:
+                return default
+            try:
+                return int(val) == 1
+            except ValueError:
+                return False
+
+    with mock.patch(target, new_target) as m:
+        yield m
 
 
 @testing.parameterize(
     {'backend': 'nvrtc', 'in_memory': False},
+    # this run will read from in-memory cache
     {'backend': 'nvrtc', 'in_memory': True},
+    # this run will force recompilation
+    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True},
     {'backend': 'nvcc', 'in_memory': False},
 )
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
-        if self.backend == 'nvcc' and self.in_memory == '1':
-            self.skipTest('nvcc does not support in-memory cache')
-        os.environ['CUPY_CACHE_IN_MEMORY'] = self.in_memory
-
+        if hasattr(self, 'clean_up'):
+            util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
 
         self.temporary_cache_dir_context = use_temporary_cache_dir()
+        self.in_memory_context = compile_in_memory(self.in_memory)
         self.cache_dir = self.temporary_cache_dir_context.__enter__()
+        self.in_memory_context.__enter__()
 
         self.kern = cupy.RawKernel(
             _test_source1, 'test_sum',
@@ -375,7 +398,7 @@ class TestRaw(unittest.TestCase):
             backend=self.backend)
 
     def tearDown(self):
-        if (self.in_memory == '1'
+        if (self.in_memory
                 and _accelerator.ACCELERATOR_CUB not in
                 _accelerator.get_reduction_accelerators()):
             # should not write any file to the cache dir, but the CUB reduction
@@ -388,11 +411,9 @@ class TestRaw(unittest.TestCase):
             else:
                 count = 0
             assert len(files) == count
+
+        self.in_memory_context.__exit__(*sys.exc_info())
         self.temporary_cache_dir_context.__exit__(*sys.exc_info())
-        if _in_memory_cache is not None:
-            os.environ['CUPY_CACHE_IN_MEMORY'] = _in_memory_cache
-        else:
-            os.environ.pop('CUPY_CACHE_IN_MEMORY')
 
     def _helper(self, kernel, dtype):
         N = 10
