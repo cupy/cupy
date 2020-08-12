@@ -1492,7 +1492,7 @@ class TestRfftn(unittest.TestCase):
 class TestHfft(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=2e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_hfft(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -1502,7 +1502,7 @@ class TestHfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=2e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_hfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -1521,7 +1521,7 @@ class TestHfft(unittest.TestCase):
 
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=2e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_hfft_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
