@@ -164,7 +164,14 @@ class TestBasic(unittest.TestCase):
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_eye(self, xp, dtype, order):
+    def test_eye(self, xp, dtype):
+        return xp.eye(5, 4, 1, dtype)
+
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    @testing.with_requires('numpy>=1.14.0')
+    def test_eye_order(self, xp, dtype, order):
         return xp.eye(5, 4, 1, dtype, order=order)
 
     @testing.for_all_dtypes()
