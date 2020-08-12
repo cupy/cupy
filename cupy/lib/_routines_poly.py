@@ -118,34 +118,45 @@ def polydiv(u, v):
     .. seealso:: :func:`numpy.polydiv`
 
     """
-    u = u.astype(numpy.float64, copy=False)
-    v = v.astype(numpy.float64, copy=False)
+    if u.dtype.kind in 'b' or v.dtype.kind in 'b':
+        raise NotImplementedError('bool type inputs are currently not supported')
+    if u.size == 0 or v.size == 0:
+        raise IndexError('Empty inputs are not allowed')
 
-    u = cupy.trim_zeros(u, trim='f')
-    v = cupy.trim_zeros(v, trim='f')
-
-    if u.size == 0:
-        u = cupy.array([0.])
-    if v.size == 0:
-        v = cupy.array([0.])
+    u = u + 0.0
+    v = v + 0.0
 
     len1 = u.size
     len2 = v.size
+    dtype = cupy.result_type(u, v)
 
     if len2 == 1:
-        return u/v[0], u[:1] * 0
+        quotient, remainder = u/v[0], u[:1] * 0
     elif len1 < len2:
-        return u[:1] * 0, u
+        quotient = cupy.trim_zeros(u[:1] * 0, trim='f')
+        remainder = cupy.trim_zeros (u, trim='f')
     else:
         dlen = len1 - len2
         scale = v[0]
         v = v[1:] / scale
+
+        u = u.astype(dtype, copy=False)
+        v = v.astype(dtype, copy=False)
+
         for i in range(1, dlen + 2):
             u[i: i + len2 - 1] -= v * u[i - 1]
-        rem = cupy.trim_zeros(u[dlen + 1:], trim='f')
-        if rem.size == 0:
-            rem = cupy.array([0.])
-        return u[: dlen + 1] / scale, rem
+
+        quotient = u[: dlen + 1] / scale
+        remainder = cupy.trim_zeros(u[dlen + 1:], trim='f')
+
+    if quotient.size == 0:
+        quotient = cupy.array([0.])
+    if remainder.size == 0:
+        remainder = cupy.array([0.])
+    quotient = quotient.astype(dtype, copy=False)
+    remainder = remainder.astype(dtype, copy=False)
+
+    return quotient, remainder
 
 
 def roots(p):

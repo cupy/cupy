@@ -428,11 +428,57 @@ class TestPolyArithmeticShapeCombination(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'fname': ['polyadd', 'polysub', 'polymul'],
+    'shape1': [(), (3,), (5,)],
+    'shape2': [(), (1,), (3,), (5,)],
+}))
+class TestPolydivShapeCombination(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polydiv(self, xp, dtype):
+        a = testing.shaped_arange(self.shape1, xp, dtype)
+        b = testing.shaped_arange(self.shape2, xp, dtype)
+        return xp.polydiv(a, b)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_polydiv_zero_numerator(self, xp, dtype):
+        a = xp.zeros(self.shape1, dtype)
+        b = testing.shaped_arange(self.shape2, xp, dtype)
+        return xp.polydiv(a, b)
+
+    # @testing.for_all_dtypes(no_bool=True)
+    # @testing.numpy_cupy_array_equal()
+    # def test_polydiv_zero_denominator(self, xp, dtype):
+    #     a = testing.shaped_arange(self.shape1, xp, dtype)
+    #     b = xp.zeros(self.shape2, dtype)
+    #     return xp.polydiv(a, b)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'shape1': [(), (5,)],
+    'shape2': [(),],
+}))
+class TestPolydivInvalidShapeCombination(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_polydiv(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((0,), xp, dtype)
+            b = testing.shaped_arange((5,), xp, dtype)
+            with pytest.raises(IndexError):
+                xp.polydiv(a, b)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'fname': ['polyadd', 'polysub', 'polymul', 'polydiv'],
 }))
 class TestPolyArithmeticDiffTypes(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
     def test_polyroutine_diff_types_array(self, xp, dtype1, dtype2):
         func = getattr(xp, self.fname)
@@ -440,7 +486,8 @@ class TestPolyArithmeticDiffTypes(unittest.TestCase):
         b = testing.shaped_arange((5,), xp, dtype2)
         return func(a, b)
 
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
     def test_polyroutine_diff_types_poly1d(self, xp, dtype1, dtype2):
         func = getattr(xp, self.fname)
@@ -449,8 +496,28 @@ class TestPolyArithmeticDiffTypes(unittest.TestCase):
         a = xp.poly1d(a, variable='z')
         b = xp.poly1d(b, variable='y')
         out = func(a, b)
-        assert out.variable == 'x'
+        if self.fname == 'polydiv':
+            assert out[0].variable == 'x'
+            assert out[1].variable == 'x'
+        else:
+            assert out.variable == 'x'
         return out
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'fname': ['polyadd', 'polysub', 'polymul', 'polydiv'],
+}))
+class TestPolyArithmeticNdim(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_polyroutine_ndim(self, dtype):
+        for xp in (numpy, cupy):
+            func = getattr(xp, self.fname)
+            a = testing.shaped_arange((2, 3, 4), xp, dtype)
+            b = testing.shaped_arange((10, 5), xp, dtype)
+            with pytest.raises(ValueError):
+                func(a, b)
 
 
 @testing.gpu
@@ -472,22 +539,6 @@ class TestRootsReal(unittest.TestCase):
         a = xp.array(self.input, dtype)
         out = xp.roots(xp.poly1d(a))
         return xp.sort(out)
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'fname': ['polyadd', 'polysub', 'polymul'],
-}))
-class TestPolyArithmeticNdim(unittest.TestCase):
-
-    @testing.for_all_dtypes()
-    def test_polyroutine_ndim(self, dtype):
-        for xp in (numpy, cupy):
-            func = getattr(xp, self.fname)
-            a = testing.shaped_arange((2, 3, 4), xp, dtype)
-            b = testing.shaped_arange((10, 5), xp, dtype)
-            with pytest.raises(ValueError):
-                func(a, b)
 
 
 @testing.gpu
