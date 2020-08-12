@@ -89,7 +89,7 @@ _available_cusparse_version = {
     'csrgeam2': (9020, None),
     'csrgemm': (8000, 11000),
     'csrgemm2': (8000, None),
-    'spmv': (10200, None),
+    'spmv': ({'Linux': 10200, 'Windows': 11000}, None),
     'spmm': (10301, None),  # accuracy bugs in cuSparse 10.3.0
     'csr2dense': (8000, None),
     'csc2dense': (8000, None),
@@ -112,7 +112,8 @@ def _get_version(x):
     if isinstance(x, dict):
         os_name = platform.system()
         if os_name not in x:
-            msg = 'No version information specified for the OS {}'.os_name
+            msg = 'No version information specified for the OS: {}'.format(
+                os_name)
             raise ValueError(msg)
         return x[os_name]
     return x
@@ -121,7 +122,7 @@ def _get_version(x):
 @util.memoize()
 def check_availability(name):
     if name not in _available_cusparse_version:
-        msg = 'No available version information specified for {}'.name
+        msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
     version_added, version_removed = _available_cusparse_version[name]
     version_added = _get_version(version_added)

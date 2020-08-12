@@ -46,9 +46,7 @@ Here are the environment variables CuPy uses.
 |                                    | See :doc:`memory` for details.                     |
 |                                    | ``0`` (unlimited) is used by default.              |
 +------------------------------------+----------------------------------------------------+
-| ``CUPY_SEED``                      | Set the seed for random number generators. For     |
-|                                    | historical reasons ``CHAINER_SEED`` is used if     |
-|                                    | ``CUPY_SEED`` is unspecified.                      |
+| ``CUPY_SEED``                      | Set the seed for random number generators.         |
 +------------------------------------+----------------------------------------------------+
 | ``CUPY_EXPERIMENTAL_SLICE_COPY``   | If set to 1, the following syntax is enabled:      |
 |                                    | ``cupy_ndarray[:] = numpy_ndarray``.               |
@@ -76,9 +74,6 @@ These environment variables are used during installation (building CuPy from sou
 +-----------------------------+----------------------------------------------------------------+
 | ``CUTENSOR_PATH``           | Path to the cuTENSOR root directory that contains ``lib`` and  |
 |                             | ``include`` directories. (experimental)                        |
-+-----------------------------+----------------------------------------------------------------+
-| ``CUPY_CUB_PATH``           | Path to the CUB root directory that contains the folders       |
-|                             | ``cub``, ``examples``, etc.                                    |
 +-----------------------------+----------------------------------------------------------------+
 | ``NVCC``                    | Define the compiler to use when compiling CUDA files.          |
 +-----------------------------+----------------------------------------------------------------+

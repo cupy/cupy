@@ -1,7 +1,18 @@
 import numpy
 
-import cupy
 from cupy.core.core cimport ndarray
+
+import cupy
+from cupy.lib import _routines_poly
+
+cimport cython  # NOQA
+
+
+@cython.profile(False)
+cdef inline _should_use_rop(x, y):
+    xp = getattr(x, '__array_priority__', 0)
+    yp = getattr(y, '__array_priority__', 0)
+    return xp < yp and not isinstance(y, poly1d)
 
 
 cdef class poly1d:
@@ -19,6 +30,7 @@ cdef class poly1d:
 
     """
     __hash__ = None
+    __array_priority__ = 100
 
     cdef:
         readonly ndarray _coeffs
@@ -48,10 +60,9 @@ cdef class poly1d:
     def order(self):
         return self.coeffs.size - 1
 
-    # TODO(Dahlia-Chehata): implement using cupy.roots
     @property
     def roots(self):
-        raise NotImplementedError
+        return _routines_poly.roots(self._coeffs)
 
     @property
     def r(self):
@@ -93,6 +104,10 @@ cdef class poly1d:
             variable = 'x'
         self._variable = variable
 
+    @property
+    def __cuda_array_interface__(self):
+        return self.coeffs.__cuda_array_interface__
+
     def __array__(self, dtype=None):
         raise TypeError(
             'Implicit conversion to a NumPy array is not allowed. '
@@ -117,19 +132,37 @@ cdef class poly1d:
     def __pos__(self):
         return self
 
-    # TODO(Dahlia-Chehata): use polymul for non-scalars
     def __mul__(self, other):
+        if _should_use_rop(self, other):
+            return other.__rmul__(self)
         if cupy.isscalar(other):
+            # case: poly1d * python scalar
+            # the return type of cupy.polymul output is
+            # inconsistent with NumPy's output for this case.
             return poly1d(self.coeffs * other)
-        raise NotImplementedError
+        if isinstance(self, numpy.generic):
+            # case: numpy scalar * poly1d
+            # poly1d addition and subtraction don't support this case
+            # so it is not supported here for consistency purposes
+            # between polyarithmetic routines
+            raise TypeError('Numpy scalar and poly1d multiplication'
+                            ' is not supported currently.')
+        if cupy.isscalar(self) and isinstance(other, poly1d):
+            # case: python scalar * poly1d
+            # the return type of cupy.polymul output is
+            # inconsistent with NumPy's output for this case
+            # So casting python scalar is required.
+            self = other._coeffs.dtype.type(self)
+        return _routines_poly.polymul(self, other)
 
-    # TODO(Dahlia-Chehata): implement using polyadd
     def __add__(self, other):
-        raise NotImplementedError
-
-    # TODO(Dahlia-Chehata): implement using polyadd
-    def __radd__(self, other):
-        raise NotImplementedError
+        if _should_use_rop(self, other):
+            return other.__radd__(self)
+        if isinstance(self, numpy.generic):
+            # for the case: numpy scalar + poly1d
+            raise TypeError('Numpy scalar and poly1d '
+                            'addition is not supported')
+        return _routines_poly.polyadd(self, other)
 
     # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):
@@ -137,13 +170,14 @@ cdef class poly1d:
             raise ValueError('Power to non-negative integers only.')
         raise NotImplementedError
 
-    # TODO(Dahlia-Chehata): implement using polysub
     def __sub__(self, other):
-        raise NotImplementedError
-
-    # TODO(Dahlia-Chehata): implement using polysub
-    def __rsub__(self, other):
-        raise NotImplementedError
+        if _should_use_rop(self, other):
+            return other.__rsub__(self)
+        if isinstance(self, numpy.generic):
+            # for the case: numpy scalar - poly1d
+            raise TypeError('Numpy scalar and poly1d '
+                            'subtraction is not supported')
+        return _routines_poly.polysub(self, other)
 
     # TODO(Dahlia-Chehata): use polydiv for non-scalars
     def __truediv__(self, other):

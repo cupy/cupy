@@ -66,10 +66,7 @@ def _get_arch():
     # See Supported Compile Options section of NVRTC User Guide for
     # the maximum value allowed for `--gpu-architecture`.
     major, minor = _get_nvrtc_version()
-    if major < 9:
-        # CUDA 8.0
-        _nvrtc_max_compute_capability = '52'
-    elif major < 10 or (major == 10 and minor == 0):
+    if major < 10 or (major == 10 and minor == 0):
         # CUDA 9.x / 10.0
         _nvrtc_max_compute_capability = '70'
     elif major < 11:
