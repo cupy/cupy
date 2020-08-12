@@ -175,6 +175,8 @@ class _RuntimeInfo(object):
     def __str__(self):
         records = [
             ('CuPy Version', self.cupy_version),
+            ('NumPy Version', self.numpy_version),
+            ('SciPy Version', self.scipy_version),
             ('CUDA Root', self.cuda_path),
 
             ('CUDA Build Version', self.cuda_build_version),
@@ -200,11 +202,6 @@ class _RuntimeInfo(object):
             ('NCCL Build Version', self.nccl_build_version),
             ('NCCL Runtime Version', self.nccl_runtime_version),
             ('cuTENSOR Version', self.cutensor_version),
-        ]
-
-        records += [
-            ('NumPy Version', self.numpy_version),
-            ('SciPy Version', self.scipy_version),
         ]
 
         width = max([len(r[0]) for r in records]) + 2
