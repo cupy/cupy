@@ -1106,7 +1106,7 @@ class TestRfft2(unittest.TestCase):
 
         # CUDA 10.1 and above may modify input, this fails for complex64
         if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype is not np.complex64):
+                dtype not in [np.complex64, np.complex128]):
             testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
@@ -1149,7 +1149,7 @@ class TestRfft2(unittest.TestCase):
 
         # CUDA 10.1 and above may modify input, this fails for complex64
         if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype is not np.complex64):
+                dtype not in [np.complex64, np.complex128]):
             testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
@@ -1204,7 +1204,7 @@ class TestRfft2(unittest.TestCase):
 
         # CUDA 10.1 and above may modify input, this fails for complex64
         if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype is not np.complex64):
+                dtype not in [np.complex64, np.complex128]):
             testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
@@ -1362,7 +1362,7 @@ class TestRfftn(unittest.TestCase):
 
         # CUDA 10.1 and above may modify input, this fails for complex64
         if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype is not np.complex64):
+                dtype not in [np.complex64, np.complex128]):
             testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
@@ -1405,7 +1405,7 @@ class TestRfftn(unittest.TestCase):
 
         # CUDA 10.1 and above may modify input, this fails for complex64
         if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype is not np.complex64):
+                dtype not in [np.complex64, np.complex128]):
             testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
@@ -1460,7 +1460,7 @@ class TestRfftn(unittest.TestCase):
 
         # CUDA 10.1 and above may modify input, this fails for complex64
         if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype is not np.complex64):
+                dtype not in [np.complex64, np.complex128]):
             testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
