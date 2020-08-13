@@ -147,9 +147,9 @@ def polyval(p, x):
     p_kind_score = core._kernel.get_kind_score(ord(p.dtype.kind))
     x_kind_score = core._kernel.get_kind_score(ord(val.dtype.kind))
     if (p.dtype.kind not in 'c' and (p_kind_score == x_kind_score
-                                     or val.dtype.kind in 'c')) or(
-       issubclass(p.dtype.type, numpy.integer) and issubclass(
-                  val.dtype.type, numpy.floating)):
+                                     or val.dtype.kind in 'c')) or (
+            issubclass(p.dtype.type, numpy.integer)
+            and issubclass(val.dtype.type, numpy.floating)):
         return out.astype(val.dtype, copy=False)
     return out.astype(dtype, copy=False)
 
