@@ -118,16 +118,21 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             elif other.ndim == 1:
                 self.sum_duplicates()
                 other = cupy.asfortranarray(other)
-                # csrmvEx does not work if nnz == 0
-                if self.nnz > 0 and cusparse.csrmvExIsAligned(self, other):
-                    if cupy.cuda.cub_enabled and other.flags.c_contiguous:
-                        return device_csrmv(
-                            self.shape[0], self.shape[1], self.nnz, self.data,
-                            self.indptr, self.indices, other)
-                    else:
-                        return cusparse.csrmvEx(self, other)
+                if cupy.cuda.cub_enabled and other.flags.c_contiguous:
+                    return device_csrmv(
+                        self.shape[0], self.shape[1], self.nnz, self.data,
+                        self.indptr, self.indices, other)
+                if (cusparse.check_availability('csrmvEx') and self.nnz > 0 and
+                        cusparse.csrmvExIsAligned(self, other)):
+                    # csrmvEx does not work if nnz == 0
+                    csrmv = cusparse.csrmvEx
+                elif cusparse.check_availability('csrmv'):
+                    csrmv = cusparse.csrmv
+                elif cusparse.check_availability('spmv'):
+                    csrmv = cusparse.spmv
                 else:
-                    return cusparse.csrmv(self, other)
+                    raise NotImplementedError
+                return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
                 return cusparse.csrmm2(self, cupy.asfortranarray(other))
