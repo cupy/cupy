@@ -245,17 +245,19 @@ class Poly1dTestBase(unittest.TestCase):
         lambda x, y: x + y,
         lambda x, y: x - y,
         lambda x, y: x * y,
+        lambda x, y: x / y,
     ],
     'type_l': ['poly1d', 'python_scalar', 'ndarray'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
 class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
+        print(self.func(a1, a2))
         return self.func(a1, a2)
 
 
@@ -428,7 +430,7 @@ class TestPolyArithmeticShapeCombination(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'shape1': [(), (3,), (5,)],
+    'shape1': [(), (1,), (3,), (5,)],
     'shape2': [(), (1,), (3,), (5,)],
 }))
 class TestPolydivShapeCombination(unittest.TestCase):
@@ -447,12 +449,12 @@ class TestPolydivShapeCombination(unittest.TestCase):
         b = testing.shaped_arange(self.shape2, xp, dtype)
         return xp.polydiv(a, b)
 
-    # @testing.for_all_dtypes(no_bool=True)
-    # @testing.numpy_cupy_array_equal()
-    # def test_polydiv_zero_denominator(self, xp, dtype):
-    #     a = testing.shaped_arange(self.shape1, xp, dtype)
-    #     b = xp.zeros(self.shape2, dtype)
-    #     return xp.polydiv(a, b)
+    @testing.for_all_dtypes(no_bool=True)
+    def test_polydiv_zero_denominator(self, dtype):
+        a = testing.shaped_arange(self.shape1, cupy, dtype)
+        b = cupy.zeros(self.shape2, dtype)
+        with pytest.raises(ZeroDivisionError):
+            cupy.polydiv(a, b)
 
 
 @testing.gpu

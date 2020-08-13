@@ -179,11 +179,12 @@ cdef class poly1d:
                             'subtraction is not supported')
         return _routines_poly.polysub(self, other)
 
-    # TODO(Dahlia-Chehata): use polydiv for non-scalars
     def __truediv__(self, other):
+        if _should_use_rop(self, other):
+            return other.__rdiv__(self)
         if cupy.isscalar(other):
             return poly1d(self.coeffs / other)
-        raise NotImplementedError
+        return _routines_poly.polydiv(self, other)
 
     def __eq__(self, other):
         if not isinstance(other, poly1d):

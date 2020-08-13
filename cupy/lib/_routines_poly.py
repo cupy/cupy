@@ -122,7 +122,10 @@ def polydiv(u, v):
         raise NotImplementedError('bool type inputs are currently not supported')
     if u.size == 0 or v.size == 0:
         raise IndexError('Empty inputs are not allowed')
-
+    if not v.any():
+        raise ZeroDivisionError()
+    print(u)
+    print(v)
     u = u + 0.0
     v = v + 0.0
 
@@ -131,10 +134,12 @@ def polydiv(u, v):
     dtype = cupy.result_type(u, v)
 
     if len2 == 1:
-        quotient, remainder = u/v[0], u[:1] * 0
+        quotient, remainder = u / v[0], u[:1] * 0
     elif len1 < len2:
         quotient = cupy.trim_zeros(u[:1] * 0, trim='f')
-        remainder = cupy.trim_zeros (u, trim='f')
+        if quotient.size == 0:
+            quotient = cupy.array([0.])
+        remainder = cupy.trim_zeros(u, trim='f')
     else:
         dlen = len1 - len2
         scale = v[0]
@@ -149,10 +154,9 @@ def polydiv(u, v):
         quotient = u[: dlen + 1] / scale
         remainder = cupy.trim_zeros(u[dlen + 1:], trim='f')
 
-    if quotient.size == 0:
-        quotient = cupy.array([0.])
     if remainder.size == 0:
         remainder = cupy.array([0.])
+
     quotient = quotient.astype(dtype, copy=False)
     remainder = remainder.astype(dtype, copy=False)
 
