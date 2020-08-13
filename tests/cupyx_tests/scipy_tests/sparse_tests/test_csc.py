@@ -1462,7 +1462,7 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 
     # SciPy prior to 1.4 has bugs where either an IndexError is raised or a
     # segfault occurs instead of returning an empty slice.
-    @testing.with_requires('scipy>=1.4')
+    @testing.with_requires('scipy>=1.4.0')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, 3:2]
@@ -1472,6 +1472,7 @@ class TestCsrMatrixGetitem(unittest.TestCase):
         # This test is adapted from Scipy's CSC tests
         return _make(xp, sp, self.dtype)[slice(None, None, None)]
 
+    @testing.with_requires('scipy>=1.4.0')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_rowslice_negative_stop(self, xp, sp):
         # This test is adapted from Scipy's CSC tests
