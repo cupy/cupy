@@ -54,7 +54,6 @@ __version__ = _version.__version__
 
 import cupy.core.fusion  # NOQA
 from cupy import fft  # NOQA
-from cupy import functional  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
@@ -282,7 +281,7 @@ from cupy._creation.matrix import triu  # NOQA
 # -----------------------------------------------------------------------------
 # Functional routines
 # -----------------------------------------------------------------------------
-from cupy.functional.piecewise import piecewise  # NOQA
+from cupy._functional.piecewise import piecewise  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
