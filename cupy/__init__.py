@@ -61,7 +61,6 @@ from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 # `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
-from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
 from cupy import util  # NOQA
 from cupy import lib  # NOQA
@@ -697,31 +696,31 @@ from cupy._sorting.sort import sort  # NOQA
 # -----------------------------------------------------------------------------
 # Statistics
 # -----------------------------------------------------------------------------
-from cupy.statistics.correlation import corrcoef  # NOQA
-from cupy.statistics.correlation import cov  # NOQA
-from cupy.statistics.correlation import correlate  # NOQA
+from cupy._statistics.correlation import corrcoef  # NOQA
+from cupy._statistics.correlation import cov  # NOQA
+from cupy._statistics.correlation import correlate  # NOQA
 
-from cupy.statistics.order import amax  # NOQA
-from cupy.statistics.order import amax as max  # NOQA
-from cupy.statistics.order import amin  # NOQA
-from cupy.statistics.order import amin as min  # NOQA
-from cupy.statistics.order import nanmax  # NOQA
-from cupy.statistics.order import nanmin  # NOQA
-from cupy.statistics.order import percentile  # NOQA
-from cupy.statistics.order import ptp  # NOQA
+from cupy._statistics.order import amax  # NOQA
+from cupy._statistics.order import amax as max  # NOQA
+from cupy._statistics.order import amin  # NOQA
+from cupy._statistics.order import amin as min  # NOQA
+from cupy._statistics.order import nanmax  # NOQA
+from cupy._statistics.order import nanmin  # NOQA
+from cupy._statistics.order import percentile  # NOQA
+from cupy._statistics.order import ptp  # NOQA
 
-from cupy.statistics.meanvar import median  # NOQA
-from cupy.statistics.meanvar import average  # NOQA
-from cupy.statistics.meanvar import mean  # NOQA
-from cupy.statistics.meanvar import std  # NOQA
-from cupy.statistics.meanvar import var  # NOQA
-from cupy.statistics.meanvar import nanmean  # NOQA
-from cupy.statistics.meanvar import nanstd  # NOQA
-from cupy.statistics.meanvar import nanvar  # NOQA
+from cupy._statistics.meanvar import median  # NOQA
+from cupy._statistics.meanvar import average  # NOQA
+from cupy._statistics.meanvar import mean  # NOQA
+from cupy._statistics.meanvar import std  # NOQA
+from cupy._statistics.meanvar import var  # NOQA
+from cupy._statistics.meanvar import nanmean  # NOQA
+from cupy._statistics.meanvar import nanstd  # NOQA
+from cupy._statistics.meanvar import nanvar  # NOQA
 
-from cupy.statistics.histogram import bincount  # NOQA
-from cupy.statistics.histogram import digitize  # NOQA
-from cupy.statistics.histogram import histogram  # NOQA
+from cupy._statistics.histogram import bincount  # NOQA
+from cupy._statistics.histogram import digitize  # NOQA
+from cupy._statistics.histogram import histogram  # NOQA
 
 # -----------------------------------------------------------------------------
 # Undocumented functions
