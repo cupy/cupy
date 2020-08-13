@@ -522,13 +522,20 @@ class TestPolyvalInvalidShapeCombination(unittest.TestCase):
 
 
 @testing.gpu
-class TestPolyvalDiffTypes(unittest.TestCase):
+class TestPolyvalDtypesCombination(unittest.TestCase):
 
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'], full=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_polyval_diff_types_array(self, xp, dtype1, dtype2):
+    def test_polyval_diff_types_array_array(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((10,), xp, dtype1)
         b = testing.shaped_arange((5,), xp, dtype2)
+        return xp.polyval(a, b)
+
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'], full=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_polyval_diff_types_array_scalar(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((10,), xp, dtype1)
+        b = dtype2(5)
         return xp.polyval(a, b)
 
 

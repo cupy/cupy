@@ -3,6 +3,7 @@ import functools
 import numpy
 
 import cupy
+from cupy import core
 
 
 def _wraps_polyroutine(func):
@@ -138,28 +139,19 @@ def polyval(p, x):
     out = p[::-1] * cupy.power(val, cupy.arange(p.size))
     out = out.sum(axis=1)
     dtype = cupy.result_type(p, val)
-    # For case: when p is of shape (0,) and x is (), output is
-    #  of single valued array to match NumPy's behavior
-    if isinstance(x, cupy.ndarray) and x.ndim == 0 and p.size == 0:
-        return out[0].astype(dtype, copy=False)
-    # to match the shape of NumPy's results
     if cupy.isscalar(x) or x.ndim == 0:
         return out.astype(dtype, copy=False).reshape()
-    # to match the dtype of NumPy's results
     if p.dtype == numpy.complex128 and val.dtype in [
        numpy.float16, numpy.float32, numpy.complex64]:
         return out.astype(numpy.complex64, copy=False)
-    # To handle mixed integer and float dtypes combinations for inputs,
-    # output should be cast according to NumPy's promotion rules.
-    if p.dtype.kind in 'c' or (issubclass(
-            val.dtype.type, numpy.integer) and issubclass(
-            p.dtype.type, numpy.floating)):
-        return out.astype(dtype, copy=False)
-    # To handle bool values used in evaluation, casting the output
-    # to polynomial dtype is required to match NumPy's results.
-    if val.dtype.kind in 'b':
-        return out.astype(p.dtype, copy=False)
-    return out.astype(val.dtype, copy=False)
+    p_kind_score = core._kernel.get_kind_score(ord(p.dtype.kind))
+    x_kind_score = core._kernel.get_kind_score(ord(val.dtype.kind))
+    if (p.dtype.kind not in 'c' and (p_kind_score == x_kind_score
+                                     or val.dtype.kind in 'c')) or(
+       issubclass(p.dtype.type, numpy.integer) and issubclass(
+                  val.dtype.type, numpy.floating)):
+        return out.astype(val.dtype, copy=False)
+    return out.astype(dtype, copy=False)
 
 
 def roots(p):
