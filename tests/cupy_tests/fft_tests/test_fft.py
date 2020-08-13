@@ -53,7 +53,7 @@ def multi_gpu_config(gpu_configs=None):
     """Decorator for parameterized tests with different GPU configurations.
 
     Args:
-        gpu_configs(list of list): The GPUs to test.
+        gpu_configs (list of list): The GPUs to test.
 
     .. notes:
         The decorated tests are skipped if no or only one GPU is available.
@@ -71,14 +71,16 @@ def multi_gpu_config(gpu_configs=None):
                         assert nGPUs >= 2, 'Must use at least two gpus'
                         config.use_multi_gpus = True
                         config.set_cufft_gpus(gpus)
+                        self.gpus = gpus
 
                         impl(self, *args, **kw)
-                    except Exception:
+                    except:
                         print('GPU config is:', gpus)
                         raise
             finally:
                 config.use_multi_gpus = use_multi_gpus
                 config._devices = _devices
+                del self.gpus
 
         return test_func
     return decorator
@@ -159,6 +161,16 @@ class TestFftOrder(unittest.TestCase):
         return out
 
 
+def _skip_multi_gpu_bug(shape, gpus):
+    # avoid CUDA 11 bug triggered by
+    # - batch = 1
+    # - gpus = [1, 0]
+    if (cupy.cuda.runtime.runtimeGetVersion() == 11000
+            and len(shape) == 1
+            and gpus == [1, 0]):
+        raise unittest.SkipTest('avoid CUDA 11 bug')
+
+
 # Almost identical to the TestFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
@@ -169,11 +181,14 @@ class TestFftOrder(unittest.TestCase):
 }))
 @testing.multi_gpu(2)
 class TestMultiGpuFft(unittest.TestCase):
+
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
@@ -191,6 +206,8 @@ class TestMultiGpuFft(unittest.TestCase):
     @testing.with_requires('numpy!=1.17.0')
     @testing.with_requires('numpy!=1.17.1')
     def test_ifft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
@@ -216,6 +233,8 @@ class TestMultiGpuFftOrder(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
             a = xp.asfortranarray(a)
@@ -232,6 +251,8 @@ class TestMultiGpuFftOrder(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
             a = xp.asfortranarray(a)
@@ -640,6 +661,8 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
@@ -662,6 +685,8 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
