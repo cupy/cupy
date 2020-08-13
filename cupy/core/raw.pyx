@@ -431,7 +431,7 @@ cdef class RawModule:
         return memptr
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_raw_module(str code, str path, tuple options=(), str backend='nvrtc',
                     bint translate_cucomplex=False,
                     bint enable_cooperative_groups=False,

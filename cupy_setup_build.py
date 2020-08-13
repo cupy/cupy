@@ -84,7 +84,7 @@ cuda_files = [
     'cupy.cuda.stream',
     'cupy.cuda.texture',
     'cupy.lib.polynomial',
-    'cupy.util'
+    'cupy._util'
 ]
 
 if use_hip:

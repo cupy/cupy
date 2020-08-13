@@ -7,7 +7,7 @@ import cupy
 from cupy_backends.cuda.libs import cusparse
 from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
-from cupy import util
+from cupy import _util
 import cupyx.scipy.sparse
 
 
@@ -24,7 +24,7 @@ class MatDescriptor(object):
     def __reduce__(self):
         return self.create, ()
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.descriptor:
@@ -119,7 +119,7 @@ def _get_version(x):
     return x
 
 
-@util.memoize()
+@_util.memoize()
 def check_availability(name):
     if name not in _available_cusparse_version:
         msg = 'No available version information specified for {}'.format(name)
@@ -1183,7 +1183,7 @@ class BaseDescriptor(object):
         self.get = get
         self.destroy = destroyer
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.destroy is None:

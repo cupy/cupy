@@ -5,7 +5,7 @@ import numpy
 import cupy
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core._ufuncs import elementwise_copy
-from cupy import util
+from cupy import _util
 
 try:
     from cupy.cuda import thrust
@@ -253,7 +253,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
     return data.argsort(_axis)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _partition_kernel(dtype):
     name = 'partition_kernel'
     merge_kernel = 'partition_merge_kernel'

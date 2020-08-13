@@ -117,10 +117,10 @@ def enable_slice_copy(func):
     And then restores it to previous state.
     """
     def decorator(*args, **kwargs):
-        old = cupy.util.ENABLE_SLICE_COPY
-        cupy.util.ENABLE_SLICE_COPY = True
+        old = cupy._util.ENABLE_SLICE_COPY
+        cupy._util.ENABLE_SLICE_COPY = True
         func(*args, **kwargs)
-        cupy.util.ENABLE_SLICE_COPY = old
+        cupy._util.ENABLE_SLICE_COPY = old
 
     return decorator
 
