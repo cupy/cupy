@@ -1590,7 +1590,7 @@ class TestIsspmatrixCsr(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.4.0')
 class TestCsrMatrixGetitem(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
@@ -1671,7 +1671,6 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 
     # SciPy prior to 1.4 has bugs where either an IndexError is raised or a
     # segfault occurs instead of returning an empty slice.
-    @testing.with_requires('scipy>=1.4.0')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
         return _make(xp, sp, self.dtype)[3:2]
@@ -1689,7 +1688,6 @@ class TestCsrMatrixGetitem(unittest.TestCase):
         # This test is adapted from Scipy
         return _make(xp, sp, self.dtype)[slice(None, None, None)]
 
-    @testing.with_requires('scipy>=1.4.0')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_rowslice_negative_stop(self, xp, sp):
         # This test is adapted from Scipy
@@ -1727,7 +1725,7 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
-@testing.with_requires('scipy>=1.0.0')
+@testing.with_requires('scipy>=1.4.0')
 class TestCsrMatrixGetitem2(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
