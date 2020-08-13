@@ -3,6 +3,7 @@ import unittest
 
 import numpy
 
+import cupy
 from cupy import testing
 from cupy.cuda import cufft
 from cupy.fft import config
@@ -33,6 +34,14 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     def test_fft(self, dtype):
+        # avoid CUDA 11 bug triggered by
+        # - batch = 1
+        # - gpus = [1, 0]
+        if (cupy.cuda.runtime.runtimeGetVersion() == 11000
+                and len(self.shape) == 1
+                and self.gpus == [1, 0]):
+            self.skipTest('avoid CUDA 11 bug')
+
         a = testing.shaped_random(self.shape, numpy, dtype)
 
         if len(self.shape) == 1:
@@ -63,6 +72,14 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     def test_ifft(self, dtype):
+        # avoid CUDA 11 bug triggered by
+        # - batch = 1
+        # - gpus = [1, 0]
+        if (cupy.cuda.runtime.runtimeGetVersion() == 11000
+                and len(self.shape) == 1
+                and self.gpus == [1, 0]):
+            self.skipTest('avoid CUDA 11 bug')
+
         a = testing.shaped_random(self.shape, numpy, dtype)
 
         if len(self.shape) == 1:

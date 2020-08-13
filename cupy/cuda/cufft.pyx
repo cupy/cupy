@@ -761,6 +761,8 @@ class PlanNd(object):
 
     def __del__(self):
         cdef Handle plan = self.plan
+        cdef int result
+
         if plan != 0:
             with nogil:
                 result = cufftDestroy(plan)
@@ -850,6 +852,7 @@ class PlanNd(object):
 
 
 cpdef execC2C(Handle plan, intptr_t idata, intptr_t odata, int direction):
+    cdef int result
     with nogil:
         result = cufftExecC2C(plan, <Complex*>idata, <Complex*>odata,
                               direction)
@@ -857,18 +860,21 @@ cpdef execC2C(Handle plan, intptr_t idata, intptr_t odata, int direction):
 
 
 cpdef execR2C(Handle plan, intptr_t idata, intptr_t odata):
+    cdef int result
     with nogil:
         result = cufftExecR2C(plan, <Float*>idata, <Complex*>odata)
     check_result(result)
 
 
 cpdef execC2R(Handle plan, intptr_t idata, intptr_t odata):
+    cdef int result
     with nogil:
         result = cufftExecC2R(plan, <Complex*>idata, <Float*>odata)
     check_result(result)
 
 
 cpdef execZ2Z(Handle plan, intptr_t idata, intptr_t odata, int direction):
+    cdef int result
     with nogil:
         result = cufftExecZ2Z(plan, <DoubleComplex*>idata,
                               <DoubleComplex*>odata, direction)
@@ -876,12 +882,14 @@ cpdef execZ2Z(Handle plan, intptr_t idata, intptr_t odata, int direction):
 
 
 cpdef execD2Z(Handle plan, intptr_t idata, intptr_t odata):
+    cdef int result
     with nogil:
         result = cufftExecD2Z(plan, <Double*>idata, <DoubleComplex*>odata)
     check_result(result)
 
 
 cpdef execZ2D(Handle plan, intptr_t idata, intptr_t odata):
+    cdef int result
     with nogil:
         result = cufftExecZ2D(plan, <DoubleComplex*>idata, <Double*>odata)
     check_result(result)
@@ -889,6 +897,7 @@ cpdef execZ2D(Handle plan, intptr_t idata, intptr_t odata):
 
 cpdef multi_gpu_execC2C(Handle plan, intptr_t idata, intptr_t odata,
                         int direction):
+    cdef int result
     with nogil:
         result = cufftXtExecDescriptorC2C(plan, <XtArray*>idata,
                                           <XtArray*>odata, direction)
@@ -897,6 +906,7 @@ cpdef multi_gpu_execC2C(Handle plan, intptr_t idata, intptr_t odata,
 
 cpdef multi_gpu_execZ2Z(Handle plan, intptr_t idata, intptr_t odata,
                         int direction):
+    cdef int result
     with nogil:
         result = cufftXtExecDescriptorZ2Z(plan, <XtArray*>idata,
                                           <XtArray*>odata, direction)
