@@ -74,7 +74,7 @@ def multi_gpu_config(gpu_configs=None):
                         self.gpus = gpus
 
                         impl(self, *args, **kw)
-                    except:
+                    except Exception:
                         print('GPU config is:', gpus)
                         raise
             finally:
@@ -161,6 +161,7 @@ class TestFftOrder(unittest.TestCase):
         return out
 
 
+# See #3757 and NVIDIA internal ticket 3093094
 def _skip_multi_gpu_bug(shape, gpus):
     # avoid CUDA 11 bug triggered by
     # - batch = 1
