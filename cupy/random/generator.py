@@ -1273,8 +1273,6 @@ def get_random_state():
     rs = _random_states.get(dev.id, None)
     if rs is None:
         seed = os.getenv('CUPY_SEED')
-        if seed is None:
-            seed = os.getenv('CHAINER_SEED')
         if seed is not None:
             seed = numpy.uint64(int(seed))
         rs = RandomState(seed)

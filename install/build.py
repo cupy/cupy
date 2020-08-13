@@ -14,8 +14,8 @@ PLATFORM_DARWIN = sys.platform.startswith('darwin')
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 8000
-minimum_cudnn_version = 5000
+minimum_cuda_version = 9000
+minimum_cudnn_version = 7000
 maximum_cudnn_version = 8099
 
 _cuda_path = 'NOT_INITIALIZED'
@@ -177,7 +177,7 @@ def get_compiler_setting(use_hip):
     old_cub_path = os.environ.get('CUB_PATH', '')
     if old_cub_path:
         utils.print_warning('CUB_PATH is detected: ' + old_cub_path,
-                            'It is no longer used by CuPy and will be igrnoed')
+                            'It is no longer used by CuPy and will be ignored')
     if cuda_path:
         cuda_cub_path = os.path.join(cuda_path, 'include', 'cub')
         if not os.path.exists(cuda_cub_path):
@@ -302,7 +302,7 @@ def check_cuda_version(compiler, settings):
     if _cuda_version < minimum_cuda_version:
         utils.print_warning(
             'CUDA version is too old: %d' % _cuda_version,
-            'CUDA v7.0 or newer is required')
+            'CUDA 9.0 or newer is required')
         return False
 
     return True

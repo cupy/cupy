@@ -4,7 +4,8 @@ import cupy
 
 import warnings
 
-from . import filters
+from cupyx.scipy.ndimage import _util
+from cupyx.scipy.ndimage import filters
 
 
 def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
@@ -89,7 +90,7 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
         footprint = cupy.array(footprint)
         footprint = footprint[tuple([slice(None, None, -1)] * footprint.ndim)]
 
-    origin = filters._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
     for i in range(len(origin)):
         origin[i] = -origin[i]
         if footprint is not None:

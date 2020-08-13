@@ -20,6 +20,12 @@ from cupyx.scipy.ndimage.filters import maximum_filter1d  # NOQA
 from cupyx.scipy.ndimage.filters import median_filter  # NOQA
 from cupyx.scipy.ndimage.filters import rank_filter  # NOQA
 from cupyx.scipy.ndimage.filters import percentile_filter  # NOQA
+from cupyx.scipy.ndimage.filters import generic_filter  # NOQA
+from cupyx.scipy.ndimage.filters import generic_filter1d  # NOQA
+
+from cupyx.scipy.ndimage.fourier import fourier_gaussian  # NOQA
+from cupyx.scipy.ndimage.fourier import fourier_shift  # NOQA
+from cupyx.scipy.ndimage.fourier import fourier_uniform  # NOQA
 
 from cupyx.scipy.ndimage.interpolation import affine_transform  # NOQA
 from cupyx.scipy.ndimage.interpolation import map_coordinates  # NOQA
