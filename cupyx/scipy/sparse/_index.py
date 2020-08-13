@@ -5,9 +5,15 @@ import cupy
 import cupyx
 from cupy import core
 
-from cupyx.scipy.sparse.base import spmatrix, isspmatrix
+from cupyx.scipy.sparse.base import isspmatrix
+from cupyx.scipy.sparse.base import spmatrix
 
 import numpy
+try:
+    import scipy
+    scipy_available = True
+except ImportError:
+    scipy_available = False
 
 _int_scalar_types = (int, numpy.integer)
 
@@ -238,7 +244,7 @@ def _csr_row_index(rows,
         Bx : data array of output sparse matrix
     """
 
-    nnz = Bp[-1].item()
+    nnz = int(Bp[-1])
     Bj = cupy.empty(nnz, dtype=Aj.dtype)
     Bx = cupy.empty(nnz, dtype=Ax.dtype)
 
@@ -303,6 +309,14 @@ class IndexMixin(object):
     """
 
     def __getitem__(self, key):
+
+        # For testing- Scipy >= 1.4.0 is needed to guarantee
+        # results match.
+        if scipy_available and numpy.lib.NumpyVersion(
+                scipy.__version__) < '1.4.0':
+            raise NotImplementedError(
+                "Sparse __getitem__() requires Scipy >= 1.4.0")
+
         row, col = self._parse_indices(key)
         # Dispatch to specialized methods.
         if isinstance(row, _int_scalar_types):
@@ -380,14 +394,7 @@ class IndexMixin(object):
         if x.ndim not in (1, 2):
             raise IndexError('Index dimension must be <= 2')
 
-        if x.size == 0:
-            return x
-
-        if x[x < 0].size > 0:
-            if x is idx or not x.flags.owndata:
-                x = x.copy()
-            x[x < 0] += length
-        return x
+        return x % length
 
     def getrow(self, i):
         """Return a copy of row i of the matrix, as a (1 x n) row vector.
