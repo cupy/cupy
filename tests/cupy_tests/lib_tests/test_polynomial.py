@@ -257,7 +257,6 @@ class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
     def test_poly1d_arithmetic(self, xp, dtype):
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
-        print(self.func(a1, a2))
         return self.func(a1, a2)
 
 
@@ -284,6 +283,7 @@ class TestPoly1dMathArithmetic(Poly1dTestBase):
         lambda x, y: x + y,
         lambda x, y: x - y,
         lambda x, y: x * y,
+        lambda x, y: x / y,
     ],
     'type_l': ['numpy_scalar'],
     'type_r': ['poly1d'],
@@ -306,13 +306,15 @@ class TestPoly1dArithmeticInvalid(Poly1dTestBase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
+    # TODO(Dahlia-Chehata): Add 'polydiv' after NumPy's bug is fixed
+    # https://github.com/numpy/numpy/issues/17076
     'fname': ['polyadd', 'polysub', 'polymul'],
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
     'type_r': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
 }))
 class TestPoly1dRoutines(Poly1dTestBase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_routine(self, xp, dtype):
         func = getattr(xp, self.fname)
@@ -347,6 +349,12 @@ class UserDefinedArray:
     def __rmul__(self, other):
         self.rop_count += 1
 
+    def __truediv__(self, other):
+        self.op_count += 1
+
+    def __rdiv__(self, other):
+        self.rop_count += 1
+
 
 @testing.gpu
 @testing.parameterize(*testing.product({
@@ -354,6 +362,7 @@ class UserDefinedArray:
         lambda x, y: x + y,
         lambda x, y: x - y,
         lambda x, y: x * y,
+        lambda x, y: x / y,
     ],
 }))
 class TestPoly1dArrayPriority(Poly1dTestBase):
@@ -459,16 +468,16 @@ class TestPolydivShapeCombination(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'shape1': [(), (5,)],
-    'shape2': [(),],
+    'shape1': [(0,), (5,)],
+    'shape2': [(0,)],
 }))
 class TestPolydivInvalidShapeCombination(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     def test_polydiv(self, dtype):
         for xp in (numpy, cupy):
-            a = testing.shaped_arange((0,), xp, dtype)
-            b = testing.shaped_arange((5,), xp, dtype)
+            a = testing.shaped_arange(self.shape1, xp, dtype)
+            b = testing.shaped_arange(self.shape2, xp, dtype)
             with pytest.raises(IndexError):
                 xp.polydiv(a, b)
 

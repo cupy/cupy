@@ -182,8 +182,19 @@ cdef class poly1d:
     def __truediv__(self, other):
         if _should_use_rop(self, other):
             return other.__rdiv__(self)
+        if isinstance(self, numpy.generic):
+            # case: numpy scalar / poly1d
+            # poly1d addition and subtraction don't support this case
+            # so it is not supported here for consistency purposes
+            # between polyarithmetic routines
+            raise TypeError('Numpy scalar and poly1d division'
+                            ' is not supported currently.')
         if cupy.isscalar(other):
             return poly1d(self.coeffs / other)
+        if cupy.isscalar(self) and isinstance(other, poly1d):
+            # case: python scalar / poly1d
+            # to match NumPy's results
+            return poly1d(self / other.coeffs)
         return _routines_poly.polydiv(self, other)
 
     def __eq__(self, other):
