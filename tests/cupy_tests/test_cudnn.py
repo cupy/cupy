@@ -23,7 +23,7 @@ try:
     if cudnn_version >= 6000:
         coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
 
-    from cupy import cudnn
+    from cupy import _cudnn
 except ImportError:
     cudnn_enabled = False
     cudnn_version = -1
@@ -47,10 +47,10 @@ class TestCudnnActivation(unittest.TestCase):
         self.g = testing.shaped_arange((3, 4), cupy, self.dtype)
 
     def test_activation_forward(self):
-        cudnn.activation_forward(self.x, self.mode)
+        _cudnn.activation_forward(self.x, self.mode)
 
     def test_activation_backward(self):
-        cudnn.activation_backward(self.x, self.y, self.g, self.mode)
+        _cudnn.activation_backward(self.x, self.y, self.g, self.mode)
 
 
 @testing.parameterize(*testing.product({
@@ -67,10 +67,10 @@ class TestCudnnActivationCoef(unittest.TestCase):
         self.coef = self.dtype(0.75)
 
     def test_activation_forward(self):
-        cudnn.activation_forward(self.x, self.mode, self.coef)
+        _cudnn.activation_forward(self.x, self.mode, self.coef)
 
     def test_activation_backward(self):
-        cudnn.activation_backward(self.x, self.y, self.g, self.mode,
+        _cudnn.activation_backward(self.x, self.y, self.g, self.mode,
                                   self.coef)
 
 
@@ -85,7 +85,7 @@ class TestCudnnDropout(unittest.TestCase):
     def setUp(self):
         self.x = testing.shaped_arange((3, 4), cupy, self.dtype)
         self.gy = testing.shaped_arange((3, 4), cupy, self.dtype)
-        self.states = cudnn.DropoutStates(None, self.seed)
+        self.states = _cudnn.DropoutStates(None, self.seed)
 
     def test_dropout_forward(self):
         _, y = self.states.forward(None, self.x, self.ratio)
@@ -107,7 +107,7 @@ class TestCudnnDropout(unittest.TestCase):
 
     def test_dropout_seed(self):
         # initialize Dropoutstates with the same seed
-        states2 = cudnn.DropoutStates(None, self.seed)
+        states2 = _cudnn.DropoutStates(None, self.seed)
 
         rspace, y = self.states.forward(None, self.x, self.ratio)
         rspace2, y2 = states2.forward(None, self.x, self.ratio)
@@ -179,14 +179,14 @@ class TestConvolutionForward(unittest.TestCase):
             self.err = ValueError
         elif ndim > 2 and self.dilate > 1:
             self.err = libcudnn.CuDNNError
-        self._workspace_size = cudnn.get_max_workspace_size()
-        cudnn.set_max_workspace_size(self.max_workspace_size)
+        self._workspace_size = _cudnn.get_max_workspace_size()
+        _cudnn.set_max_workspace_size(self.max_workspace_size)
 
     def tearDown(self):
-        cudnn.set_max_workspace_size(self._workspace_size)
+        _cudnn.set_max_workspace_size(self._workspace_size)
 
     def call(self):
-        cudnn.convolution_forward(
+        _cudnn.convolution_forward(
             self.x, self.W, self.b, self.y,
             self.pads, self.strides, self.dilations, self.groups,
             auto_tune=self.auto_tune, tensor_core=self.tensor_core,
@@ -255,14 +255,14 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
                 (ndim > 2 and version < 6000) or
                 (ndim > 2 and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
-        self._workspace_size = cudnn.get_max_workspace_size()
-        cudnn.set_max_workspace_size(self.max_workspace_size)
+        self._workspace_size = _cudnn.get_max_workspace_size()
+        _cudnn.set_max_workspace_size(self.max_workspace_size)
 
     def tearDown(self):
-        cudnn.set_max_workspace_size(self._workspace_size)
+        _cudnn.set_max_workspace_size(self._workspace_size)
 
     def call(self):
-        cudnn.convolution_backward_filter(
+        _cudnn.convolution_backward_filter(
             self.x, self.gy, self.gW,
             self.pads, self.strides, self.dilations, self.groups,
             deterministic=self.deterministic,
@@ -331,14 +331,14 @@ class TestConvolutionBackwardData(unittest.TestCase):
                 (ndim > 2 and version < 6000) or
                 (ndim > 2 and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
-        self._workspace_size = cudnn.get_max_workspace_size()
-        cudnn.set_max_workspace_size(self.max_workspace_size)
+        self._workspace_size = _cudnn.get_max_workspace_size()
+        _cudnn.set_max_workspace_size(self.max_workspace_size)
 
     def tearDown(self):
-        cudnn.set_max_workspace_size(self._workspace_size)
+        _cudnn.set_max_workspace_size(self._workspace_size)
 
     def call(self):
-        cudnn.convolution_backward_data(
+        _cudnn.convolution_backward_data(
             self.W, self.gy, self.b, self.gx,
             self.pads, self.strides, self.dilations, self.groups,
             deterministic=self.deterministic,
@@ -398,18 +398,18 @@ class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
         self.gx = cupy.empty(x_shape, dtype=self.dtype)
         self.gW = cupy.empty(W_shape, dtype=self.dtype)
         self.gy = cupy.ones(y_shape, dtype=self.dtype)
-        self._workspace_size = cudnn.get_max_workspace_size()
-        cudnn.set_max_workspace_size(0)
+        self._workspace_size = _cudnn.get_max_workspace_size()
+        _cudnn.set_max_workspace_size(0)
 
     def tearDown(self):
-        cudnn.set_max_workspace_size(self._workspace_size)
+        _cudnn.set_max_workspace_size(self._workspace_size)
 
     def test_backward_filter(self):
         if not (self.layout == libcudnn.CUDNN_TENSOR_NHWC and
                 self.dtype == numpy.float64):
             return unittest.SkipTest()
         with self.assertRaises(RuntimeError):
-            cudnn.convolution_backward_filter(
+            _cudnn.convolution_backward_filter(
                 self.x, self.gy, self.gW,
                 pad=(self.pad, self.pad), stride=(self.stride, self.stride),
                 dilation=(1, 1), groups=1, deterministic=False,
@@ -420,7 +420,7 @@ class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
         if self.layout != libcudnn.CUDNN_TENSOR_NHWC:
             return unittest.SkipTest()
         with self.assertRaises(RuntimeError):
-            cudnn.convolution_backward_data(
+            _cudnn.convolution_backward_data(
                 self.W, self.gy, None, self.gx,
                 pad=(self.pad, self.pad), stride=(self.stride, self.stride),
                 dilation=(1, 1), groups=1, deterministic=0,

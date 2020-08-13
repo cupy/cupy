@@ -160,7 +160,7 @@ if not use_hip:
         'name': 'cudnn',
         'file': [
             'cupy_backends.cuda.libs.cudnn',
-            'cupy.cudnn',
+            'cupy._cudnn',
         ],
         'include': [
             'cudnn.h',
