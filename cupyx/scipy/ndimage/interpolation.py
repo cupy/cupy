@@ -4,23 +4,10 @@ import warnings
 import cupy
 import numpy
 
+from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _interp_kernels
 
 _prod = cupy.core.internal.prod
-
-
-def _get_output(output, input, shape=None):
-    if shape is None:
-        shape = input.shape
-    if isinstance(output, cupy.ndarray):
-        if output.shape != tuple(shape):
-            raise ValueError('output shape is not correct')
-    else:
-        dtype = output
-        if dtype is None:
-            dtype = input.dtype
-        output = cupy.zeros(shape, dtype)
-    return output
 
 
 def _check_parameter(func_name, order, mode):
@@ -91,7 +78,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
         coordinates = cupy.add(coordinates, 1)
         mode = 'constant'
 
-    ret = _get_output(output, input, coordinates.shape[1:])
+    ret = _util._get_output(output, input, coordinates.shape[1:])
     integer_output = ret.dtype.kind in 'iu'
 
     if input.dtype.kind in 'iu':
@@ -160,8 +147,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
 
     _check_parameter('affine_transform', order, mode)
 
-    if not hasattr(offset, '__iter__') and type(offset) is not cupy.ndarray:
-        offset = [offset] * input.ndim
+    offset = _util._fix_sequence_arg(offset, input.ndim, 'offset', float)
 
     if matrix.ndim not in [1, 2] or matrix.shape[0] < 1:
         raise RuntimeError('no proper affine matrix provided')
@@ -193,7 +179,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     if order is None:
         order = 1
     ndim = input.ndim
-    output = _get_output(output, input, shape=output_shape)
+    output = _util._get_output(output, input, shape=output_shape)
     if input.dtype.kind in 'iu':
         input = input.astype(cupy.float32)
 
@@ -362,8 +348,7 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
 
     _check_parameter('shift', order, mode)
 
-    if not hasattr(shift, '__iter__') and type(shift) is not cupy.ndarray:
-        shift = [shift] * input.ndim
+    shift = _util._fix_sequence_arg(shift, input.ndim, 'shift', float)
 
     if mode == 'opencv':
         mode = '_opencv_edge'
@@ -382,7 +367,7 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
     else:
         if order is None:
             order = 1
-        output = _get_output(output, input)
+        output = _util._get_output(output, input)
         if input.dtype.kind in 'iu':
             input = input.astype(cupy.float32)
         integer_output = output.dtype.kind in 'iu'
@@ -429,8 +414,8 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
 
     _check_parameter('zoom', order, mode)
 
-    if not hasattr(zoom, '__iter__') and type(zoom) is not cupy.ndarray:
-        zoom = [zoom] * input.ndim
+    zoom = _util._fix_sequence_arg(zoom, input.ndim, 'zoom', float)
+
     output_shape = []
     for s, z in zip(input.shape, zoom):
         output_shape.append(int(round(s * z)))
@@ -470,7 +455,7 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
             else:
                 zoom.append(0)
 
-        output = _get_output(output, input, shape=output_shape)
+        output = _util._get_output(output, input, shape=output_shape)
         if input.dtype.kind in 'iu':
             input = input.astype(cupy.float32)
         integer_output = output.dtype.kind in 'iu'
