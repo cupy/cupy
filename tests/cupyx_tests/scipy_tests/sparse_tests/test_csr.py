@@ -474,6 +474,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(TypeError):
                 len(m)
 
+    @testing.with_requires('scipy>=1.4.0')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_iter(self, xp, sp):
         m = self.make(xp, sp, self.dtype)

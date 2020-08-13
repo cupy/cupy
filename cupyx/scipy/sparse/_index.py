@@ -8,7 +8,11 @@ from cupyx.scipy.sparse.base import isspmatrix
 from cupyx.scipy.sparse.base import spmatrix
 
 import numpy
-import scipy
+try:
+    import scipy
+    scipy_available = True
+except ImportError:
+    scipy_available = False
 
 
 _int_scalar_types = (int, numpy.integer)
@@ -112,7 +116,10 @@ class IndexMixin(object):
 
     def __getitem__(self, key):
 
-        if numpy.lib.NumpyVersion(scipy.__version__) < '1.4.0':
+        # For testing- Scipy >= 1.4.0 is needed to guarantee
+        # results match.
+        if scipy_available and numpy.lib.NumpyVersion(
+                scipy.__version__) < '1.4.0':
             raise NotImplementedError(
                 "Sparse __getitem__() requires Scipy >= 1.4.0")
 
