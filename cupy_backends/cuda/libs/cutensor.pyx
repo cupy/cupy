@@ -9,6 +9,9 @@ from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 from cupy_backends.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
 
+from cupy_backends.cuda.api import _error
+
+
 cdef extern from 'cupy_cutensor.h' nogil:
     ctypedef int Status 'cutensorStatus_t'
     ctypedef int Algo 'cutensorAlgo_t'
@@ -222,21 +225,17 @@ cdef class ContractionPlan:
 # Error handling
 ###############################################################################
 
-class CuTensorError(RuntimeError):
+class CuTensorError(_error.CudaErrorBase):
 
-    def __init__(self, int status):
-        self.status = status
-        msg = cutensorGetErrorString(<Status>status)
-        super(CuTensorError, self).__init__(msg.decode())
-
-    def __reduce__(self):
-        return (type(self), (self.status,))
+    def _init_from_status_code(self, int status):
+        return self._init_from_msg(
+            'cuTENSOR Error', cutensorGetErrorString(<Status>status))
 
 
 @cython.profile(False)
 cdef inline check_status(int status):
     if status != STATUS_SUCCESS:
-        raise CuTensorError(status)
+        raise CuTensorError(status=status)
 
 
 ###############################################################################

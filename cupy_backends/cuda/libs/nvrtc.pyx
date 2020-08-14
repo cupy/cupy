@@ -14,6 +14,8 @@ There are four differences compared to the original C API.
 cimport cython  # NOQA
 from libcpp cimport vector
 
+from cupy_backends.cuda.api import _error
+
 
 ###############################################################################
 # Extern
@@ -40,22 +42,18 @@ cdef extern from 'cupy_nvrtc.h' nogil:
 # Error handling
 ###############################################################################
 
-class NVRTCError(RuntimeError):
+class NVRTCError(_error._CudaErrorBase):
 
-    def __init__(self, status):
-        self.status = status
+    def _init_from_status_code(self, int status):
         cdef bytes msg = nvrtcGetErrorString(<Result>status)
-        super(NVRTCError, self).__init__(
-            '{} ({})'.format(msg.decode(), status))
-
-    def __reduce__(self):
-        return (type(self), (self.status,))
+        self._init_from_msg(
+            'NVRTC Error', '{} ({})'.format(msg.decode(), status))
 
 
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
-        raise NVRTCError(status)
+        raise NVRTCError(status=status)
 
 
 cpdef tuple getVersion():

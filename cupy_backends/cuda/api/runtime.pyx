@@ -16,6 +16,8 @@ cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver
 
+from cupy_backends.cuda.api import _error
+
 
 cdef class PointerAttributes:
 
@@ -225,17 +227,13 @@ errorPeerAccessAlreadyEnabled = cudaErrorPeerAccessAlreadyEnabled
 # Error handling
 ###############################################################################
 
-class CUDARuntimeError(RuntimeError):
+class CUDARuntimeError(_error._CudaErrorBase):
 
-    def __init__(self, status):
-        self.status = status
+    def _init_from_status_code(self, int status):
         cdef bytes name = cudaGetErrorName(<Error>status)
         cdef bytes msg = cudaGetErrorString(<Error>status)
-        super(CUDARuntimeError, self).__init__(
-            '%s: %s' % (name.decode(), msg.decode()))
-
-    def __reduce__(self):
-        return (type(self), (self.status,))
+        return self._init_from_msg(
+            '{}: {}'.format(name.decode(), msg.decode()))
 
 
 @cython.profile(False)
@@ -243,7 +241,7 @@ cpdef inline check_status(int status):
     if status != 0:
         # to reset error status
         cudaGetLastError()
-        raise CUDARuntimeError(status)
+        raise CUDARuntimeError(status=status)
 
 
 ###############################################################################

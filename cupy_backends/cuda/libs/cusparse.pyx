@@ -4,6 +4,8 @@ from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api.runtime cimport DataType
 from cupy_backends.cuda cimport stream as stream_module
 
+from cupy_backends.cuda.api import _error
+
 
 cdef extern from '../cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
@@ -1275,20 +1277,16 @@ cdef class DnMatBatchAttributes:
         self.stride = stride
 
 
-class CuSparseError(RuntimeError):
+class CuSparseError(_error._CudaErrorBase):
 
-    def __init__(self, int status):
-        self.status = status
-        super(CuSparseError, self).__init__('%s' % (STATUS[status]))
-
-    def __reduce__(self):
-        return (type(self), (self.status,))
+    def _init_from_status_code(self, int status):
+        return self._init_from_msg('cuSPARSE Error', STATUS[status])
 
 
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
-        raise CuSparseError(status)
+        raise CuSparseError(status=status)
 
 
 @cython.profile(False)

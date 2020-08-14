@@ -15,6 +15,8 @@ cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
+from cupy_backends.cuda.api import _error
+
 ###############################################################################
 # Extern
 ###############################################################################
@@ -102,26 +104,21 @@ cdef extern from '../cupy_cuda.h' nogil:
 # Error handling
 ###############################################################################
 
-class CUDADriverError(RuntimeError):
+class CUDADriverError(_error._CudaErrorBase):
 
-    def __init__(self, Result status):
-        self.status = status
+    def _init_from_status_code(self, Result status):
         cdef const char *name
         cdef const char *msg
         cuGetErrorName(status, &name)
         cuGetErrorString(status, &msg)
         cdef bytes s_name = name, s_msg = msg
-        super(CUDADriverError, self).__init__(
-            '%s: %s' % (s_name.decode(), s_msg.decode()))
-
-    def __reduce__(self):
-        return (type(self), (self.status,))
+        self._init_from_msg(s_name.decode(), s_msg.decode())
 
 
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
-        raise CUDADriverError(status)
+        raise CUDADriverError(status=status)
 
 
 @cython.profile(False)
@@ -130,7 +127,7 @@ cdef inline check_attribute_status(int status, int* pi):
     if status == CUDA_ERROR_INVALID_VALUE:
         pi[0] = -1
     elif status != 0:
-        raise CUDADriverError(status)
+        raise CUDADriverError(status=status)
 
 
 ###############################################################################

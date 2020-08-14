@@ -9,6 +9,7 @@ import threading
 import cupy
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.api import _error
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.device import Device
@@ -131,20 +132,16 @@ cdef dict RESULT = {
 }
 
 
-class CuFFTError(RuntimeError):
+class CuFFTError(_error._CudaErrorBase):
 
-    def __init__(self, int result):
-        self.result = result
-        super(CuFFTError, self).__init__('%s' % (RESULT[result]))
-
-    def __reduce__(self):
-        return (type(self), (self.result,))
+    def _init_from_status_code(self, int status):
+        self._init_from_msg('cuFFT Error', RESULT[status])
 
 
 @cython.profile(False)
-cpdef inline check_result(int result):
-    if result != 0:
-        raise CuFFTError(result)
+cpdef inline check_result(int status):
+    if status != 0:
+        raise CuFFTError(status=status)
 
 
 cpdef size_t getVersion() except? -1:

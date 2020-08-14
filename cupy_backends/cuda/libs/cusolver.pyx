@@ -5,6 +5,9 @@ cimport cython  # NOQA
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda cimport stream as stream_module
 
+from cupy_backends.cuda.api import _error
+
+
 ###############################################################################
 # Extern
 ###############################################################################
@@ -684,20 +687,16 @@ cdef dict STATUS = {
 }
 
 
-class CUSOLVERError(RuntimeError):
+class CUSOLVERError(_error._CudaErrorBase):
 
-    def __init__(self, status):
-        self.status = status
-        super(CUSOLVERError, self).__init__(STATUS[status])
-
-    def __reduce__(self):
-        return (type(self), (self.status,))
+    def _init_from_status_code(self, int status):
+        return self._init_from_msg('cuSOLVER Error', STATUS[status])
 
 
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
-        raise CUSOLVERError(status)
+        raise CUSOLVERError(status=status)
 
 
 ###############################################################################

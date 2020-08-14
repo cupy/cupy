@@ -8,6 +8,9 @@ from libcpp cimport vector
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda cimport stream as stream_module
 
+from cupy_backends.cuda.api import _error
+
+
 ###############################################################################
 # Extern
 ###############################################################################
@@ -753,36 +756,17 @@ cdef class CuDNNAlgoPerf:
 # Error handling
 ###############################################################################
 
-class CuDNNError(RuntimeError):
+class CuDNNError(_error._CudaErrorBase):
 
-    def __init__(self, int status):
-        self.status = status
+    def _init_from_status_code(self, int status):
         msg = cudnnGetErrorString(<Status>status)
-        super(CuDNNError, self).__init__(
-            'cuDNN Error: {}'.format(msg.decode()))
-        self._infos = []
-
-    def add_info(self, info):
-        assert isinstance(info, str)
-        self._infos.append(info)
-
-    def add_infos(self, infos):
-        assert isinstance(infos, list)
-        self._infos.extend(infos)
-
-    def __str__(self):
-        base = super(CuDNNError, self).__str__()
-        return base + ''.join(
-            '\n  ' + info for info in self._infos)
-
-    def __reduce__(self):
-        return (type(self), (self.status,))
+        self._init_from_msg('cuDNN Error', msg.decode())
 
 
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
-        raise CuDNNError(status)
+        raise CuDNNError(status=status)
 
 
 ###############################################################################

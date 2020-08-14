@@ -8,6 +8,9 @@ from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
+from cupy_backends.cuda.api import _error
+
+
 ###############################################################################
 # Extern
 ###############################################################################
@@ -295,20 +298,16 @@ cdef dict STATUS = {
 }
 
 
-class CUBLASError(RuntimeError):
+class CUBLASError(_error._CudaErrorBase):
 
-    def __init__(self, status):
-        self.status = status
-        super(CUBLASError, self).__init__(STATUS[status])
-
-    def __reduce__(self):
-        return (type(self), (self.status,))
+    def _init_from_status_code(self, int status):
+        self._init_from_msg('cuBLAS Error', STATUS[status])
 
 
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
-        raise CUBLASError(status)
+        raise CUBLASError(status=status)
 
 
 ###############################################################################
