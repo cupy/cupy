@@ -235,7 +235,7 @@ class TestPoly1d(unittest.TestCase):
 @testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(), (0,), (5,)],
-    'exp': [0, 4, 5, numpy.int64(5)],
+    'exp': [0, 4, 5, numpy.int32(5), numpy.int64(5)],
 }))
 class TestPoly1dPow(unittest.TestCase):
 

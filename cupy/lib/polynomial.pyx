@@ -174,22 +174,13 @@ cdef class poly1d:
         base = self.coeffs
         dtype = base.dtype
 
-        if base.dtype.kind == 'b':
-            base = base.astype(cupy.result_type(base, val), copy=False)
-        elif base.dtype.kind != 'c':
+        if base.dtype.kind == 'c':
+            base = base.astype(numpy.complex128, copy=False)
+        elif issubclass(dtype.type, numpy.floating) or dtype == numpy.uint64:
             base = base.astype(numpy.float64, copy=False)
-        out = _routines_poly._polypow(base, val)
-
-        if val != 0:
-            if dtype.kind == 'c':
-                out = out.astype(numpy.complex128, copy=False)
-            elif dtype.kind == 'b' or (issubclass(dtype.type, numpy.integer)
-                                       and dtype != numpy.uint64):
-                out = out.astype(numpy.int64, copy=False)
-            else:
-                out = out.astype(numpy.float64, copy=False)
-
-        return poly1d(out)
+        else:
+            base = base.astype(numpy.int64, copy=False)
+        return poly1d(_routines_poly._polypow(base, val))
 
     def __sub__(self, other):
         if _should_use_rop(self, other):
