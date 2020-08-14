@@ -174,9 +174,9 @@ cdef class poly1d:
         base = self.coeffs
         dtype = base.dtype
 
-        if base.dtype.kind == 'c':
+        if dtype.kind == 'c':
             base = base.astype(numpy.complex128, copy=False)
-        elif issubclass(dtype.type, numpy.floating) or dtype == numpy.uint64:
+        elif dtype.kind == 'f' or dtype == numpy.uint64:
             base = base.astype(numpy.float64, copy=False)
         else:
             base = base.astype(numpy.int64, copy=False)
