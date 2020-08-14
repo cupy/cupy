@@ -59,14 +59,13 @@ def empty_like(a, dtype=None, order='K', subok=None, shape=None):
         a (cupy.ndarray): Base array.
         dtype: Data type specifier. The data type of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
-            result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
-            ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
-            layout of ``a`` as closely as possible.
+            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
+            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
+            ``'K'`` means match the layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
         shape (int or tuple of ints): Overrides the shape of the result. If
-            order='K' and the number of dimensions is unchanged, will try to
-            keep order, otherwise, order='C' is implied.
-
+            ``order='K'`` and the number of dimensions is unchanged, will try
+            to keep order, otherwise, ``order='C'`` is implied.
 
     Returns:
         cupy.ndarray: A new array with same shape and dtype of ``a`` with
@@ -91,7 +90,7 @@ def eye(N, M=None, k=0, dtype=float):
 
     Args:
         N (int): Number of rows.
-        M (int): Number of columns. M == N by default.
+        M (int): Number of columns. ``M == N`` by default.
         k (int): Index of the diagonal. Zero indicates the main diagonal,
             a positive index an upper diagonal, and a negative index a lower
             diagonal.
@@ -159,13 +158,13 @@ def ones_like(a, dtype=None, order='K', subok=None, shape=None):
         a (cupy.ndarray): Base array.
         dtype: Data type specifier. The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
-            result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
-            ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
-            layout of ``a`` as closely as possible.
+            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
+            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
+            ``'K'`` means match the layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
         shape (int or tuple of ints): Overrides the shape of the result. If
-            order='K' and the number of dimensions is unchanged, will try to
-            keep order, otherwise, order='C' is implied.
+            ``order='K'`` and the number of dimensions is unchanged, will try
+            to keep order, otherwise, ``order='C'`` is implied.
 
     Returns:
         cupy.ndarray: An array filled with ones.
@@ -215,13 +214,13 @@ def zeros_like(a, dtype=None, order='K', subok=None, shape=None):
         a (cupy.ndarray): Base array.
         dtype: Data type specifier. The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
-            result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
-            ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
-            layout of ``a`` as closely as possible.
+            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
+            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
+            ``'K'`` means match the layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
         shape (int or tuple of ints): Overrides the shape of the result. If
-            order='K' and the number of dimensions is unchanged, will try to
-            keep order, otherwise, order='C' is implied.
+            ``order='K'`` and the number of dimensions is unchanged, will try
+            to keep order, otherwise, ``order='C'`` is implied.
 
     Returns:
         cupy.ndarray: An array filled with zeros.
@@ -279,13 +278,13 @@ def full_like(a, fill_value, dtype=None, order='K', subok=None, shape=None):
         fill_value: A scalar value to fill a new array.
         dtype: Data type specifier. The dtype of ``a`` is used by default.
         order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
-            result. 'C' means C-order, 'F' means F-order, 'A' means 'F' if
-            ``a`` is Fortran contiguous, 'C' otherwise. 'K' means match the
-            layout of ``a`` as closely as possible.
+            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
+            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
+            ``'K'`` means match the layout of ``a`` as closely as possible.
         subok: Not supported yet, must be None.
         shape (int or tuple of ints): Overrides the shape of the result. If
-            order='K' and the number of dimensions is unchanged, will try to
-            keep order, otherwise, order='C' is implied.
+            ``order='K'`` and the number of dimensions is unchanged, will try
+            to keep order, otherwise, ``order='C'`` is implied.
 
     Returns:
         cupy.ndarray: An array filled with ``fill_value``.
