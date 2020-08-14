@@ -1,5 +1,7 @@
 import functools
 
+import numpy
+
 import cupy
 
 
@@ -99,3 +101,13 @@ def polymul(a1, a2):
     if a2.size == 0:
         a2 = cupy.array([0.])
     return cupy.convolve(a1, a2)
+
+
+def _polypow(x, n):
+    if n == 0:
+        return cupy.ones((1,), numpy.int64)
+    if n == 1:
+        return x
+    if n % 2 == 0:
+        return _polypow(cupy.convolve(x, x), n / 2)
+    return cupy.convolve(x, _polypow(cupy.convolve(x, x), (n - 1) / 2))
