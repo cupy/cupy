@@ -186,9 +186,6 @@ cdef class poly1d:
             elif dtype.kind == 'b' or (issubclass(dtype.type, numpy.integer)
                                        and dtype != numpy.uint64):
                 out = out.astype(numpy.int64, copy=False)
-            else:
-                out = out.astype(numpy.float64, copy=False)
-
         return poly1d(out)
 
     def __sub__(self, other):
