@@ -163,10 +163,10 @@ class TestFftOrder(unittest.TestCase):
 
 # See #3757 and NVIDIA internal ticket 3093094
 def _skip_multi_gpu_bug(shape, gpus):
-    # avoid CUDA 11 bug triggered by
+    # avoid CUDA 11.0 (will be fixed by CUDA 11.2) bug triggered by
     # - batch = 1
     # - gpus = [1, 0]
-    if (cupy.cuda.runtime.runtimeGetVersion() == 11000
+    if (11000 <= cupy.cuda.runtime.runtimeGetVersion() < 11200
             and len(shape) == 1
             and gpus == [1, 0]):
         raise unittest.SkipTest('avoid CUDA 11 bug')
