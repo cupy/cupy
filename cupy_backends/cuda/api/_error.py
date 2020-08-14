@@ -31,4 +31,4 @@ class _CudaErrorBase(RuntimeError):
         if self.status is not None:
             return (type(self), (self.status,))
         else:
-            super(_CudaErrorBase, self).__reduce__()
+            return super(_CudaErrorBase, self).__reduce__()

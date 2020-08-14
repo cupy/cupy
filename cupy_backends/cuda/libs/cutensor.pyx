@@ -225,7 +225,7 @@ cdef class ContractionPlan:
 # Error handling
 ###############################################################################
 
-class CuTensorError(_error.CudaErrorBase):
+class CuTensorError(_error._CudaErrorBase):
 
     def _init_from_status_code(self, int status):
         return self._init_from_msg(

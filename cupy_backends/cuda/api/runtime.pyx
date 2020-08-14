@@ -232,8 +232,7 @@ class CUDARuntimeError(_error._CudaErrorBase):
     def _init_from_status_code(self, int status):
         cdef bytes name = cudaGetErrorName(<Error>status)
         cdef bytes msg = cudaGetErrorString(<Error>status)
-        return self._init_from_msg(
-            '{}: {}'.format(name.decode(), msg.decode()))
+        return self._init_from_msg(name.decode(), msg.decode())
 
 
 @cython.profile(False)
