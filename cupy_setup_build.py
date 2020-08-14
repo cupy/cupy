@@ -205,6 +205,7 @@ if not use_hip:
         'name': 'cutensor',
         'file': [
             'cupy_backends.cuda.libs.cutensor',
+            'cupy.cutensor',
         ],
         'include': [
             'cutensor.h',

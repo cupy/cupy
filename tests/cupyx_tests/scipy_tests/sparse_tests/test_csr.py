@@ -302,6 +302,7 @@ class TestCsrMatrix(unittest.TestCase):
 
     def test_pickle_roundtrip(self):
         s = _make(cupy, sparse, self.dtype)
+
         s2 = pickle.loads(pickle.dumps(s))
         assert s._descr.descriptor != s2._descr.descriptor
         assert s.shape == s2.shape
@@ -473,6 +474,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(TypeError):
                 len(m)
 
+    @testing.with_requires('scipy>=1.4.0')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_iter(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -1444,7 +1446,7 @@ class TestIsspmatrixCsr(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.4.0')
 class TestCsrMatrixGetitem(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
@@ -1525,14 +1527,9 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 
     # SciPy prior to 1.4 has bugs where either an IndexError is raised or a
     # segfault occurs instead of returning an empty slice.
-    @testing.with_requires('scipy>=1.4')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
         return _make(xp, sp, self.dtype)[3:2]
-
-    def test_getitem_slice_step_2(self):
-        with self.assertRaises(ValueError):
-            _make(cupy, sparse, self.dtype)[0::2]
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_ellipsis(self, xp, sp):
@@ -1542,11 +1539,49 @@ class TestCsrMatrixGetitem(unittest.TestCase):
     def test_getitem_int_ellipsis(self, xp, sp):
         return _make(xp, sp, self.dtype)[1, ...]
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_rowslice_all(self, xp, sp):
+        # This test is adapted from Scipy
+        return _make(xp, sp, self.dtype)[slice(None, None, None)]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_rowslice_negative_stop(self, xp, sp):
+        # This test is adapted from Scipy
+        return _make(xp, sp, self.dtype)[slice(1, -2, 2)]
+
+    def test_getrow(self):
+
+        # This test is adapted from Scipy's CSR tests
+        N = 10
+        X = testing.shaped_random((N, N), cupy, seed=0)
+        X[X > 0.7] = 0
+        Xcsr = sparse.csr_matrix(X)
+
+        for i in range(N):
+            arr_row = X[i:i + 1, :]
+            csr_row = Xcsr.getrow(i)
+            assert sparse.isspmatrix_csr(csr_row)
+            assert (arr_row == csr_row.toarray()).all()
+
+    def test_getcol(self):
+        # This test is adapted from Scipy's CSR tests
+        N = 10
+        X = testing.shaped_random((N, N), cupy, seed=0)
+        X[X > 0.7] = 0
+        Xcsr = sparse.csr_matrix(X)
+
+        for i in range(N):
+            arr_col = X[:, i:i + 1]
+            csr_col = Xcsr.getcol(i)
+
+            assert sparse.isspmatrix_csr(csr_col)
+            assert (arr_col == csr_col.toarray()).all()
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
-@testing.with_requires('scipy>=1.0.0')
+@testing.with_requires('scipy>=1.4.0')
 class TestCsrMatrixGetitem2(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')

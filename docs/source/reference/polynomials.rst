@@ -39,6 +39,8 @@ Basics
    :nosignatures:
 
     cupy.poly1d
+    cupy.polyval
+    cupy.roots
 
 
 Arithmetic

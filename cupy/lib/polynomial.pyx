@@ -62,10 +62,9 @@ cdef class poly1d:
     def order(self):
         return self.coeffs.size - 1
 
-    # TODO(Dahlia-Chehata): implement using cupy.roots
     @property
     def roots(self):
-        raise NotImplementedError
+        return _routines_poly.roots(self._coeffs)
 
     @property
     def r(self):
@@ -107,6 +106,10 @@ cdef class poly1d:
             variable = 'x'
         self._variable = variable
 
+    @property
+    def __cuda_array_interface__(self):
+        return self.coeffs.__cuda_array_interface__
+
     def __array__(self, dtype=None):
         raise TypeError(
             'Implicit conversion to a NumPy array is not allowed. '
@@ -121,9 +124,8 @@ cdef class poly1d:
     def __str__(self):
         return str(self.get())
 
-    # TODO(Dahlia-Chehata): implement using polyval
     def __call__(self, val):
-        raise NotImplementedError
+        return _routines_poly.polyval(self.coeffs, val)
 
     def __neg__(self):
         return poly1d(-self.coeffs)
