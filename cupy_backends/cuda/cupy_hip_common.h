@@ -89,6 +89,10 @@ typedef hipChannelFormatDesc cudaChannelFormatDesc;
 typedef hipResourceDesc cudaResourceDesc;
 typedef hipTextureDesc cudaTextureDesc;
 
+// IPC operations
+typedef hipIpcMemHandle_st cudaIpcMemHandle_t;
+typedef hipIpcEventHandle_st cudaIpcEventHandle_t;
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // blas
