@@ -883,7 +883,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             base_opts = build.get_compiler_base_options()
             self.set_executable('compiler_so', rcom_path)
 
-            postargs = ['-O2', '-fPIC']
+            postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
             print('HIPCC options:', postargs)
 
             return unixccompiler.UnixCCompiler._compile(
