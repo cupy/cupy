@@ -203,6 +203,7 @@ class TestEinSumError(unittest.TestCase):
 @testing.with_requires('numpy!=1.14.0')
 class TestListArgEinSumError(unittest.TestCase):
 
+    @testing.with_requires('numpy<1.19')
     @testing.numpy_cupy_raises()
     def test_invalid_sub1(self, xp):
         xp.einsum(xp.arange(2), [None])

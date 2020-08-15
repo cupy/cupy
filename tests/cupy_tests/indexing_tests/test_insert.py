@@ -129,6 +129,7 @@ class TestPutRaises(unittest.TestCase):
         vals = testing.shaped_random((4,), xp, dtype)
         xp.put(a, inds, vals, mode='raise')
 
+    @testing.with_requires('numpy<1.19')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises(accept_error=TypeError)
     def test_put_mode_error(self, xp, dtype):

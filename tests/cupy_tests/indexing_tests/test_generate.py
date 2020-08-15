@@ -152,6 +152,7 @@ class TestUnravelIndex(unittest.TestCase):
         a = xp.minimum(a, 6 * 4 - 1)
         return xp.unravel_index(a, (6, 4), order=order)
 
+    @testing.with_requires('numpy<1.19')
     @testing.for_int_dtypes()
     @testing.numpy_cupy_raises(accept_error=TypeError)
     def test_invalid_order(self, xp, dtype):

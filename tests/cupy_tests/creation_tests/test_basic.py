@@ -143,6 +143,7 @@ class TestBasic(unittest.TestCase):
         self.assertEqual(b.strides, bg.strides)
         return
 
+    @testing.with_requires('numpy<1.19')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_raises(accept_error=TypeError)
     def test_empty_like_invalid_order(self, xp, dtype):
