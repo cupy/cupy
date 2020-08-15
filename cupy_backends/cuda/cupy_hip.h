@@ -260,7 +260,11 @@ cudaError_t cudaIpcCloseMemHandle(void* devPtr) {
 }
 
 cudaError_t cudaIpcGetEventHandle(cudaIpcEventHandle_t* handle, cudaEvent_t event) {
-    return hipIpcGetEventHandle(handle, event);
+    return hipErrorUnknown;
+
+    // TODO(leofang): this is supported after ROCm-Developer-Tools/HIP#1996 is released;
+    // as of ROCm 3.5.0 it is still not supported
+    //return hipIpcGetEventHandle(handle, event);
 }
 
 cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
@@ -268,7 +272,11 @@ cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
 }
 
 cudaError_t cudaIpcOpenEventHandle(cudaEvent_t* event, cudaIpcEventHandle_t handle) {
-    return hipIpcOpenEventHandle(event, handle);
+    return hipErrorUnknown;
+
+    // TODO(leofang): this is supported after ROCm-Developer-Tools/HIP#1996 is released;
+    // as of ROCm 3.5.0 it is still not supported
+    //return hipIpcOpenEventHandle(event, handle);
 }
 
 cudaError_t cudaIpcOpenMemHandle(void** devPtr, cudaIpcMemHandle_t handle, unsigned int flags) {
