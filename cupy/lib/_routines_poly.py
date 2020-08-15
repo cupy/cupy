@@ -106,7 +106,7 @@ def polymul(a1, a2):
 
 def _polypow(x, n):
     if n == 0:
-        return cupy.ones((1,), numpy.int64)
+        return 1
     if n == 1:
         return x
     if n % 2 == 0:
