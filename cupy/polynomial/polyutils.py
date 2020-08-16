@@ -75,3 +75,26 @@ def as_series(alist, trim=True):
     dtype = cupy.common_type(*arrays)
     ret = [a.astype(dtype, copy=False) for a in arrays]
     return ret
+
+
+def trimcoef(c, tol=0):
+    """Removes small trailing coefficients from a polynomial.
+
+    Args:
+        c(cupy.ndarray): 1d array of coefficients from lowest to highest order.
+        tol(number, optional): trailing coefficients whose absolute value are
+            less than or equal to ``tol`` are trimmed.
+
+    Returns:
+        cupy.ndarray: trimmed 1d array.
+
+    .. seealso:: :func:`numpy.polynomial.polyutils.trimcoef`
+
+    """
+    if tol < 0:
+        raise ValueError('tol must be non-negative')
+    [c] = as_series([c])
+    [ind] = cupy.nonzero(cupy.abs(c) > tol)
+    if ind.size == 0:
+        return c[:1] * 0
+    return c[:ind[-1] + 1]
