@@ -75,3 +75,28 @@ def as_series(alist, trim=True):
     dtype = cupy.common_type(*arrays)
     ret = [a.astype(dtype, copy=False) for a in arrays]
     return ret
+
+
+def _add(c1, c2):
+    """Helper function used in ``<type>add`` functions.
+    """
+    if c1.size > c2.size:
+        c1[:c2.size] += c2
+        ret = c1
+    else:
+        c2[:c1.size] += c1
+        ret = c2
+    return ret
+
+
+def _sub(c1, c2):
+    """Helper function used in ``<type>sub`` functions.
+    """
+    if c1.size > c2.size:
+        c1[:c2.size] -= c2
+        ret = c1
+    else:
+        c2 = -c2
+        c2[:c1.size] += c1
+        ret = c2
+    return ret

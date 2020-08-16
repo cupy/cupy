@@ -53,3 +53,33 @@ Arithmetic
     cupy.polyadd
     cupy.polysub
     cupy.polymul
+
+
+Chebyshev Series
+----------------
+
+Constants
+~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+    cupy.chebdomain
+    cupy.chebzero
+    cupy.chebone
+    cupy.chebx
+
+
+Arithmetic
+~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+    cupy.chebadd
+    cupy.chebsub
+    cupy.chebmul
+    cupy.chebmulx
+    cupy.chebpow
