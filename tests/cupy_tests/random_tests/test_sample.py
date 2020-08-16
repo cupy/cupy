@@ -148,17 +148,17 @@ class TestRandintDtype(unittest.TestCase):
 class TestRandomIntegers(unittest.TestCase):
 
     def test_normal(self):
-        with mock.patch('cupy.random._sample_.randint') as m:
+        with mock.patch('cupy.random._sample.randint') as m:
             random.random_integers(3, 5)
         m.assert_called_with(3, 6, None)
 
     def test_high_is_none(self):
-        with mock.patch('cupy.random._sample_.randint') as m:
+        with mock.patch('cupy.random._sample.randint') as m:
             random.random_integers(3, None)
         m.assert_called_with(1, 4, None)
 
     def test_size_is_not_none(self):
-        with mock.patch('cupy.random._sample_.randint') as m:
+        with mock.patch('cupy.random._sample.randint') as m:
             random.random_integers(3, 5, (1, 2, 3))
         m.assert_called_with(3, 6, (1, 2, 3))
 
@@ -251,13 +251,13 @@ class TestChoice(unittest.TestCase):
 class TestRandomSample(unittest.TestCase):
 
     def test_rand(self):
-        with mock.patch('cupy.random._sample_.random_sample') as m:
+        with mock.patch('cupy.random._sample.random_sample') as m:
             random.rand(1, 2, 3, dtype=numpy.float32)
         m.assert_called_once_with(
             size=(1, 2, 3), dtype=numpy.float32)
 
     def test_rand_default_dtype(self):
-        with mock.patch('cupy.random._sample_.random_sample') as m:
+        with mock.patch('cupy.random._sample.random_sample') as m:
             random.rand(1, 2, 3)
         m.assert_called_once_with(
             size=(1, 2, 3), dtype=float)
