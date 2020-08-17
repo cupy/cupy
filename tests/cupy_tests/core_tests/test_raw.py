@@ -1,10 +1,10 @@
 import contextlib
-import mock
 import os
 import pytest
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import cupy
 from cupy import testing
