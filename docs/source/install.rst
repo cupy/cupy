@@ -58,11 +58,11 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :docs:environment: for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.0 / v2.1 / v2.2 / v2.3 / v2.4
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.0 / v2.1 / v2.2 / v2.3 / v2.4 / v2.5 / v2.6 / v2.7
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7 / v7.1 / v7.2 / v7.3 / v7.4 / v7.5 / v7.6 / v8.0
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.0 / v7.1 / v7.2 / v7.3 / v7.4 / v7.5 / v7.6 / v8.0
 
     * The library to accelerate deep neural network computations.
 
