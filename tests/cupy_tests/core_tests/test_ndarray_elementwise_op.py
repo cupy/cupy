@@ -315,7 +315,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
         self.check_array_broadcasted_op(operator.ne)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def check_array_doubly_broadcasted_op(self, op, xp, x_type, y_type,
                                           no_bool=False, no_complex=False):
         x_dtype = numpy.dtype(x_type)

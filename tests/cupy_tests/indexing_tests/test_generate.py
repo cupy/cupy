@@ -4,7 +4,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy.indexing import generate
+from cupy._indexing import generate
 from cupy import testing
 
 
@@ -138,7 +138,7 @@ class TestAxisConcatenator(unittest.TestCase):
 
     def test_AxisConcatenator_init1(self):
         with self.assertRaises(TypeError):
-            cupy.indexing.generate.AxisConcatenator.__init__()
+            generate.AxisConcatenator.__init__()
 
     def test_len(self):
         a = generate.AxisConcatenator()
