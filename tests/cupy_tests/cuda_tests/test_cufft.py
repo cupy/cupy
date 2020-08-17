@@ -3,13 +3,12 @@ import unittest
 
 import numpy
 
-import cupy
 from cupy import testing
 from cupy.cuda import cufft
 from cupy.fft import config
 from cupy.fft.fft import _convert_fft_type
 
-from ..fft_tests.test_fft import multi_gpu_config
+from ..fft_tests.test_fft import (multi_gpu_config, _skip_multi_gpu_bug)
 
 
 class TestExceptionPicklable(unittest.TestCase):
@@ -34,13 +33,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     def test_fft(self, dtype):
-        # avoid CUDA 11 bug triggered by
-        # - batch = 1
-        # - gpus = [1, 0]
-        if (cupy.cuda.runtime.runtimeGetVersion() == 11000
-                and len(self.shape) == 1
-                and self.gpus == [1, 0]):
-            self.skipTest('avoid CUDA 11 bug')
+        _skip_multi_gpu_bug(self.shape, self.gpus)
 
         a = testing.shaped_random(self.shape, numpy, dtype)
 
@@ -72,13 +65,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     def test_ifft(self, dtype):
-        # avoid CUDA 11 bug triggered by
-        # - batch = 1
-        # - gpus = [1, 0]
-        if (cupy.cuda.runtime.runtimeGetVersion() == 11000
-                and len(self.shape) == 1
-                and self.gpus == [1, 0]):
-            self.skipTest('avoid CUDA 11 bug')
+        _skip_multi_gpu_bug(self.shape, self.gpus)
 
         a = testing.shaped_random(self.shape, numpy, dtype)
 
