@@ -262,6 +262,9 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False):
         cupy.ndarray:
             The transformed array.
 
+    .. warning:: The input array may be modified in CUDA 10.1 and above, even
+                 when `overwrite_x is False`.
+
     .. seealso:: :func:`scipy.fft.irfft`
     """
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R',
@@ -312,6 +315,9 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False):
             given, the length of final transformed axis of output will be
             `2*(m-1)` where `m` is the length of the final transformed axis of
             the input.
+
+    .. warning:: The input array may be modified in CUDA 10.1 and above, even
+                 when `overwrite_x is False`.
 
     .. seealso:: :func:`scipy.fft.irfft2`
     """
@@ -364,6 +370,9 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False):
             given, the length of final transformed axis of output will be
             ``2*(m-1)`` where `m` is the length of the final transformed axis
             of the input.
+
+    .. warning:: The input array may be modified in CUDA 10.1 and above, even
+                 when `overwrite_x is False`.
 
     .. seealso:: :func:`scipy.fft.irfftn`
     """

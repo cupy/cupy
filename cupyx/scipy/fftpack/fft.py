@@ -388,6 +388,9 @@ def irfft(x, n=None, axis=-1, overwrite_x=False):
         cupy.ndarray:
             The transformed array.
 
+    .. warning:: The input array may be modified in CUDA 10.1 and above, even
+                 when `overwrite_x is False`.
+
     .. seealso:: :func:`scipy.fftpack.irfft`
     """
     if n is None:
