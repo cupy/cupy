@@ -1675,7 +1675,7 @@ __CUDA_FP16_DECL__ __half __hdiv(__half a, __half b) {
     fa = __half2float(a);
     fb = __half2float(b);
 
-    asm("{rcp.approx.f32 %0, %1;\n}" :"=f"(rcp) : "f"(fb));
+    asm("{rcp.approx.ftz.f32 %0, %1;\n}" :"=f"(rcp) : "f"(fb));
 
     fv = rcp * fa;
 

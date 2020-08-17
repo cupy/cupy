@@ -3024,6 +3024,208 @@ __CUDA_FP16_DECL__ bool __hgtu(const __half a, const __half b);
 * \endinternal
 */
 __CUDA_FP16_DECL__ bool __hisnan(const __half a);
+#if __CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__)
+/**
+* \ingroup CUDA_MATH__HALF_COMPARISON
+* \brief Calculates \p half maximum of two input values.
+*
+* \details Calculates \p half max(\p a, \p b)
+* defined as (\p a > \p b) ? \p a : \p b.
+* - If either of inputs is NaN, the other input is returned.
+* - If both inputs are NaNs, then canonical NaN is returned.
+* - If values of both inputs are 0.0, then +0.0 > -0.0
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+*
+* \returns half
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half __hmax(const __half a, const __half b);
+/**
+* \ingroup CUDA_MATH__HALF_COMPARISON
+* \brief Calculates \p half minimum of two input values.
+*
+* \details Calculates \p half min(\p a, \p b)
+* defined as (\p a < \p b) ? \p a : \p b.
+* - If either of inputs is NaN, the other input is returned.
+* - If both inputs are NaNs, then canonical NaN is returned.
+* - If values of both inputs are 0.0, then +0.0 > -0.0
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+*
+* \returns half
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half __hmin(const __half a, const __half b);
+/**
+* \ingroup CUDA_MATH__HALF_COMPARISON
+* \brief Calculates \p half maximum of two input values, NaNs pass through.
+*
+* \details Calculates \p half max(\p a, \p b)
+* defined as (\p a > \p b) ? \p a : \p b.
+* - If either of inputs is NaN, then canonical NaN is returned.
+* - If values of both inputs are 0.0, then +0.0 > -0.0
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+*
+* \returns half
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half __hmax_nan(const __half a, const __half b);
+/**
+* \ingroup CUDA_MATH__HALF_COMPARISON
+* \brief Calculates \p half minimum of two input values, NaNs pass through.
+*
+* \details Calculates \p half min(\p a, \p b)
+* defined as (\p a < \p b) ? \p a : \p b.
+* - If either of inputs is NaN, then canonical NaN is returned.
+* - If values of both inputs are 0.0, then +0.0 > -0.0
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+*
+* \returns half
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half __hmin_nan(const __half a, const __half b);
+/**
+* \ingroup CUDA_MATH__HALF_ARITHMETIC
+* \brief Performs \p half fused multiply-add in round-to-nearest-even mode with relu saturation.
+*
+* \details Performs \p half multiply on inputs \p a and \p b,
+* then performs a \p half add of the result with \p c,
+* rounding the result once in round-to-nearest-even mode.
+* Then negative result is clamped to 0.
+* NaN result is converted to canonical NaN.
+* \param[in] a - half. Is only being read.
+* \param[in] b - half. Is only being read.
+* \param[in] c - half. Is only being read.
+*
+* \returns half
+* \retval The result of fused multiply-add operation on \p
+* a, \p b, and \p c with relu saturation.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half __hfma_relu(const __half a, const __half b, const __half c);
+/**
+* \ingroup CUDA_MATH__HALF2_COMPARISON
+* \brief Calculates \p half2 vector maximum of two inputs.
+*
+* \details Calculates \p half2 vector max(\p a, \p b)
+* Elementwise \p half operation is defined as
+* (\p a > \p b) ? \p a : \p b.
+* - If either of inputs is NaN, the other input is returned.
+* - If both inputs are NaNs, then canonical NaN is returned.
+* - If values of both inputs are 0.0, then +0.0 > -0.0
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
+* \returns half2
+* \retval The result of elementwise maximum of vectors \p a  and \p b
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half2 __hmax2(const __half2 a, const __half2 b);
+/**
+* \ingroup CUDA_MATH__HALF2_COMPARISON
+* \brief Calculates \p half2 vector minimum of two inputs.
+*
+* \details Calculates \p half2 vector min(\p a, \p b)
+* Elementwise \p half operation is defined as
+* (\p a < \p b) ? \p a : \p b.
+* - If either of inputs is NaN, the other input is returned.
+* - If both inputs are NaNs, then canonical NaN is returned.
+* - If values of both inputs are 0.0, then +0.0 > -0.0
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
+* \returns half2
+* \retval The result of elementwise minimum of vectors \p a  and \p b
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half2 __hmin2(const __half2 a, const __half2 b);
+/**
+* \ingroup CUDA_MATH__HALF2_COMPARISON
+* \brief Calculates \p half2 vector maximum of two inputs, NaNs pass through.
+*
+* \details Calculates \p half2 vector max(\p a, \p b)
+* Elementwise \p half operation is defined as
+* (\p a > \p b) ? \p a : \p b.
+* - If either of inputs is NaN, then canonical NaN is returned.
+* - If values of both inputs are 0.0, then +0.0 > -0.0
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
+* \returns half2
+* \retval The result of elementwise maximum of vectors \p a  and \p b, with NaNs pass through
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half2 __hmax2_nan(const __half2 a, const __half2 b);
+/**
+* \ingroup CUDA_MATH__HALF2_COMPARISON
+* \brief Calculates \p half2 vector minimum of two inputs, NaNs pass through.
+*
+* \details Calculates \p half2 vector min(\p a, \p b)
+* Elementwise \p half operation is defined as
+* (\p a < \p b) ? \p a : \p b.
+* - If either of inputs is NaN, then canonical NaN is returned.
+* - If values of both inputs are 0.0, then +0.0 > -0.0
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+*
+* \returns half2
+* \retval The result of elementwise minimum of vectors \p a  and \p b, with NaNs pass through
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half2 __hmin2_nan(const __half2 a, const __half2 b);
+/**
+* \ingroup CUDA_MATH__HALF2_ARITHMETIC
+* \brief Performs \p half2 vector fused multiply-add in round-to-nearest-even
+* mode with relu saturation.
+*
+* \details Performs \p half2 vector multiply on inputs \p a and \p b,
+* then performs a \p half2 vector add of the result with \p c,
+* rounding the result once in round-to-nearest-even mode.
+* Then negative result is clamped to 0.
+* NaN result is converted to canonical NaN.
+* \param[in] a - half2. Is only being read.
+* \param[in] b - half2. Is only being read.
+* \param[in] c - half2. Is only being read.
+*
+* \returns half2
+* \retval The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c with relu saturation.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_FP16_DECL__ __half2 __hfma2_relu(const __half2 a, const __half2 b, const __half2 c);
+#endif /*__CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__)*/
 /**
 * \ingroup CUDA_MATH__HALF_FUNCTIONS
 * \brief Calculates \p half square root in round-to-nearest-even mode.
