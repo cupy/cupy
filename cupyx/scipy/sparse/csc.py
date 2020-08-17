@@ -9,6 +9,7 @@ from cupy import cusparse
 import cupyx.scipy.sparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
+from cupyx.scipy.sparse import _index
 
 
 class csc_matrix(compressed._compressed_sparse_matrix):
@@ -69,8 +70,6 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     def _swap(self, x, y):
         return (y, x)
-
-    # TODO(unno): Implement __getitem__
 
     def __mul__(self, other):
         if cupy.isscalar(other):
@@ -291,6 +290,58 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
         trans.has_canonical_format = self.has_canonical_format
         return trans
+
+    def getrow(self, i):
+        """Returns a copy of row i of the matrix, as a (1 x n)
+        CSR matrix (row vector).
+
+        Args:
+            i (integer): Row
+
+        Returns:
+            cupyx.scipy.sparse.csc_matrix: Sparse matrix with single row
+        """
+        M, N = self.shape
+        i = _index._normalize_index(i, M, 'index')
+        return self._get_submatrix(minor=slice(i, i+1, 1)).tocsr()
+
+    def getcol(self, i):
+        """Returns a copy of column i of the matrix, as a (m x 1)
+        CSC matrix (column vector).
+
+        Args:
+            i (integer): Column
+
+        Returns:
+            cupyx.scipy.sparse.csc_matrix: Sparse matrix with single column
+        """
+        M, N = self.shape
+        i = _index._normalize_index(i, N, 'index')
+        return self._get_submatrix(major=slice(i, i+1, 1), copy=True)
+
+    def _get_intXarray(self, row, col):
+        raise NotImplementedError()
+
+    def _get_intXslice(self, row, col):
+        if col.step in {1, None}:
+            return self._get_submatrix(major=col, minor=row, copy=True)
+        return self._major_slice(col)._get_submatrix(
+            minor=slice(row, row+1, 1))
+
+    def _get_sliceXint(self, row, col):
+        if row.step in {1, None}:
+            return self._get_submatrix(major=col, minor=row, copy=True)
+        return self._get_submatrix(
+            major=slice(col, col+1, 1))._minor_slice(row)
+
+    def _get_sliceXarray(self, row, col):
+        raise NotImplementedError()
+
+    def _get_arrayXint(self, row, col):
+        raise NotImplementedError()
+
+    def _get_arrayXslice(self, row, col):
+        raise NotImplementedError()
 
 
 def isspmatrix_csc(x):

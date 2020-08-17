@@ -246,6 +246,15 @@ cdef extern from '../cupy_cuda.h' nogil:
         const void *beta,
         void *C, runtime.DataType Ctype, int ldc,
         runtime.DataType computetype, GemmAlgo algo)
+    int cublasGemmEx_v11(
+        Handle handle, Operation transa, Operation transb,
+        int m, int n, int k,
+        const void *alpha,
+        const void *A, runtime.DataType Atype, int lda,
+        const void *B, runtime.DataType Btype, int ldb,
+        const void *beta,
+        void *C, runtime.DataType Ctype, int ldc,
+        ComputeType computetype, GemmAlgo algo)
     int cublasStpttr(
         Handle handle, FillMode uplo, int n, const float *AP, float *A,
         int lda)
@@ -1029,14 +1038,24 @@ cpdef gemmEx(
         int ldc, int computeType, int algo):
     _setStream(handle)
     with nogil:
-        status = cublasGemmEx(
-            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            <const void*>alpha,
-            <const void*>A, <runtime.DataType>Atype, lda,
-            <const void*>B, <runtime.DataType>Btype, ldb,
-            <const void*>beta,
-            <void*>C, <runtime.DataType>Ctype, ldc,
-            <runtime.DataType>computeType, <GemmAlgo>algo)
+        if computeType >= CUBLAS_COMPUTE_16F:
+            status = cublasGemmEx_v11(
+                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+                <const void*>alpha,
+                <const void*>A, <runtime.DataType>Atype, lda,
+                <const void*>B, <runtime.DataType>Btype, ldb,
+                <const void*>beta,
+                <void*>C, <runtime.DataType>Ctype, ldc,
+                <ComputeType>computeType, <GemmAlgo>algo)
+        else:
+            status = cublasGemmEx(
+                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+                <const void*>alpha,
+                <const void*>A, <runtime.DataType>Atype, lda,
+                <const void*>B, <runtime.DataType>Btype, ldb,
+                <const void*>beta,
+                <void*>C, <runtime.DataType>Ctype, ldc,
+                <runtime.DataType>computeType, <GemmAlgo>algo)
     check_status(status)
 
 
