@@ -147,7 +147,7 @@ the installation of a particular CUDA version (say 10.0) for driver compatibilit
 Installing CuPy from Source
 ---------------------------
 
-Use of wheel packages are recommended whenever possible.
+Use of wheel packages is recommended whenever possible.
 However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / cuDNN / NCCL not supported by wheels), you can also build CuPy from source.
 
 .. note::
