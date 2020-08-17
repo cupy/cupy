@@ -25,13 +25,13 @@ You need to have the following components to use CuPy.
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_
     * Compute Capability of the GPU must be at least 3.0.
 * `CUDA Toolkit <https://developer.nvidia.com/cuda-zone>`_
-    * Supported Versions: 8.0, 9.0, 9.1, 9.2, 10.0, 10.1 and 10.2
+    * Supported Versions: 8.0, 9.0, 9.1, 9.2, 10.0, 10.1, 10.2 and 11.0.
     * If you have multiple versions of CUDA Toolkit installed, CuPy will choose one of the CUDA installations automatically.
       See :ref:`install_cuda` for details.
 * `Python <https://python.org/>`_
     * Supported Versions: 3.5.1+, 3.6.0+, 3.7.0+ and 3.8.0+.
 * `NumPy <http://www.numpy.org/>`_
-    * Supported Versions: 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 1.16, 1.17 and 1.18.
+    * Supported Versions: 1.9, 1.10, 1.11, 1.12, 1.13, 1.14, 1.15, 1.16, 1.17, 1.18 and 1.19.
     * NumPy will be installed automatically during the installation of CuPy.
 
 Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
@@ -53,9 +53,9 @@ Optional Libraries
 Some features in CuPy will only be enabled if the corresponding libraries are installed.
 
 * `cuDNN <https://developer.nvidia.com/cudnn>`_ (library to accelerate deep neural network computations)
-    * Supported Versions: v5, v5.1, v6, v7, v7.1, v7.2, v7.3, v7.4 and v7.5.
+    * Supported Versions: v5, v5.1, v6, v7, v7.1, v7.2, v7.3, v7.4, v7.5, v7.6 and v8.0.
 * `NCCL <https://developer.nvidia.com/nccl>`_  (library to perform collective multi-GPU / multi-node computations)
-    * Supported Versions: v1.3.4, v2, v2.1, v2.2, v2.3 and v2.4.
+    * Supported Versions: v1.3.4, v2, v2.1, v2.2, v2.3, v2.4, v2.5, v2.6 and v2.7.
 * `cuTENSOR <https://developer.nvidia.com/cutensor>`_ (library for high-performance tensor operations)
     * Supported Versions: v1.0.0 (experimental)
 
@@ -63,7 +63,7 @@ Some features in CuPy will only be enabled if the corresponding libraries are in
 Install CuPy
 ------------
 
-Wheels (precompiled binary packages) are available for Linux (Python 2.7 or later) and Windows (Python 3.6 or later).
+Wheels (precompiled binary packages) are available for Linux (Python 3.5 or later) and Windows (Python 3.6 or later).
 Package names are different depending on the CUDA version you have installed on your host.
 
 ::
@@ -89,10 +89,14 @@ Package names are different depending on the CUDA version you have installed on 
   (For CUDA 10.2)
   $ pip install cupy-cuda102
 
+  (For CUDA 11.0)
+  $ pip install cupy-cuda110
+
 .. note::
 
-   The latest version of cuDNN and NCCL libraries are included in these wheels.
-   You don't have to install them manually.
+   The latest version of cuDNN and NCCL libraries are included in these wheels except for CUDA 11.0.
+   For CUDA 11.0, you need to manually download and install cuDNN 8.0.x.
+   For other CUDA versions, you don't have to install them manually.
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.
 Any of these packages and ``cupy`` package (source installation) conflict with each other.
@@ -368,3 +372,21 @@ For example, if you have CUDA installed at ``/usr/local/cuda-9.0``::
   export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
 
 Also see :ref:`install_cuda`.
+
+Build fails with CUDA 11.0 on Ubuntu 16.04, CentOS 6 or 7
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to build CuPy from source with CUDA 11.0 on systems with legacy GCC (g++-5 or earlier), you need to manually set up g++-6 or later and configure ``NVCC`` environment variable.
+
+On Ubuntu 16.04::
+
+  $ sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+  $ sudo apt update
+  $ sudo apt install g++-6
+  $ export NVCC="nvcc --compiler-bindir gcc-6"
+
+On CentOS 6 / 7::
+
+  $ sudo yum install centos-release-scl
+  $ sudo yum install devtoolset-7-gcc-c++
+  $ export NVCC="nvcc --compiler-bidir gcc-7"
