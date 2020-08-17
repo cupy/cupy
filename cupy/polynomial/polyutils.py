@@ -96,5 +96,5 @@ def trimcoef(c, tol=0):
     [c] = as_series([c])
     [ind] = cupy.nonzero(cupy.abs(c) > tol)
     if ind.size == 0:
-        return c[:1] * 0
+        return cupy.zeros_like(c[:1])
     return c[:ind[-1] + 1]
