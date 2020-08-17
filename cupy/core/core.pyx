@@ -2968,7 +2968,7 @@ cpdef ndarray tensordot_core_v11(
     cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
     cdef int b_cuda_dtype = to_cuda_dtype(b.dtype, is_half_allowed=True)
     cdef int c_cuda_dtype = to_cuda_dtype(c.dtype, is_half_allowed=True)
-    handle = device.get_cublas_handle()
+    cdef intptr_t handle = device.get_cublas_handle()
     cublas.gemmEx(
         handle, <int>transa, <int>transb, <int>m, <int>n, <int>k, one_ptr,
         a.data.ptr, a_cuda_dtype, <int>lda, b.data.ptr, b_cuda_dtype, <int>ldb,
