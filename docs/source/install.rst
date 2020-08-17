@@ -24,8 +24,8 @@ These components must be installed to use CuPy:
 
    On Windows, CuPy only supports Python 3.6.0 or later.
 
-Python Libraries
-~~~~~~~~~~~~~~~~
+Python Dependencies
+~~~~~~~~~~~~~~~~~~~
 
 NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.19 and SciPy 1.5, and has been tested against the following versions:
 
