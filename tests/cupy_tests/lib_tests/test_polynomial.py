@@ -477,7 +477,7 @@ class TestPolyfitParametersCombinations(unittest.TestCase):
         return xp.polyfit(x, y, self.deg, self.rcond, True, w)
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
+    @testing.numpy_cupy_allclose(rtol=1e-6, contiguous_check=False)
     def test_polyfit_default(self, xp, dtype):
         x = testing.shaped_arange(self.shape1, xp, dtype)
         y = testing.shaped_arange(self.shape2, xp, dtype)

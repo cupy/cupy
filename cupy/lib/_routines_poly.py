@@ -105,7 +105,7 @@ def polymul(a1, a2):
     return cupy.convolve(a1, a2)
 
 
-def _astype(x):
+def _polyfit_typecast(x):
     if x.dtype.kind == 'c':
         return x.astype(numpy.complex128, copy=False)
     return x.astype(numpy.float64, copy=False)
@@ -156,8 +156,8 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     if isinstance(y, cupy.poly1d):
         y = y.coeffs
 
-    x = _astype(x)
-    y = _astype(y)
+    x = _polyfit_typecast(x)
+    y = _polyfit_typecast(y)
     deg = int(deg)
 
     if deg < 0:
@@ -175,7 +175,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     rhs = y
 
     if w is not None:
-        w = _astype(w)
+        w = _polyfit_typecast(w)
         if w.ndim != 1:
             raise TypeError('expected a 1-d array for weights')
         if w.size != x.size:
@@ -198,9 +198,6 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     if rank != order and not full:
         msg = 'Polyfit may be poorly conditioned'
         warnings.warn(msg, numpy.RankWarning, stacklevel=4)
-
-    if y.ndim != 1:
-        c = cupy.ascontiguousarray(c)
 
     if full:
         return c, resids, rank, s, rcond
