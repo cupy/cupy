@@ -5,6 +5,7 @@ import numpy
 from cupy import testing
 
 
+@testing.with_requires('numpy<1.19')
 class TestIsScalar(testing.NumpyAliasBasicTestBase):
 
     func = 'isscalar'

@@ -115,6 +115,7 @@ class TestDims(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp)
         return xp.expand_dims(a, -2)
 
+    @testing.with_requires('numpy<1.19')
     @testing.with_requires('numpy>=1.13')
     @testing.numpy_cupy_array_equal()
     def test_expand_dims_negative2(self, xp):

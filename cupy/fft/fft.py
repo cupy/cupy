@@ -639,6 +639,8 @@ def irfft(a, n=None, axis=-1, norm=None):
             given, the length of the transformed axis is`2*(m-1)` where `m`
             is the length of the transformed axis of the input.
 
+    .. warning:: The input array may be modified in CUDA 10.1 and above.
+
     .. seealso:: :func:`numpy.fft.irfft`
     """
     return _fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R')
@@ -684,6 +686,8 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
             given, the length of final transformed axis of output will be
             `2*(m-1)` where `m` is the length of the final transformed axis of
             the input.
+
+    .. warning:: The input array may be modified in CUDA 10.1 and above.
 
     .. seealso:: :func:`numpy.fft.irfft2`
     """
@@ -739,6 +743,8 @@ def irfftn(a, s=None, axes=None, norm=None):
             given, the length of final transformed axis of output will be
             ``2*(m-1)`` where `m` is the length of the final transformed axis
             of the input.
+
+    .. warning:: The input array may be modified in CUDA 10.1 and above.
 
     .. seealso:: :func:`numpy.fft.irfftn`
     """

@@ -463,6 +463,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         self.assertTrue(a.flags.f_contiguous)
         return a
 
+    @testing.with_requires('numpy<1.19')
     @testing.numpy_cupy_raises(sp_name='sp', accept_error=TypeError)
     def test_toarray_unknown_order(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
