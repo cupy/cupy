@@ -85,7 +85,7 @@ def empty_like(a, dtype=None, order='K', subok=None, shape=None):
     return cupy.ndarray(shape, dtype, memptr, strides, order)
 
 
-def eye(N, M=None, k=0, dtype=float):
+def eye(N, M=None, k=0, dtype=float, order='C'):
     """Returns a 2-D array with ones on the diagonals and zeros elsewhere.
 
     Args:
@@ -95,6 +95,8 @@ def eye(N, M=None, k=0, dtype=float):
             a positive index an upper diagonal, and a negative index a lower
             diagonal.
         dtype: Data type specifier.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
 
     Returns:
         cupy.ndarray: A 2-D array with given diagonals filled with ones and
@@ -105,7 +107,7 @@ def eye(N, M=None, k=0, dtype=float):
     """
     if M is None:
         M = N
-    ret = zeros((N, M), dtype)
+    ret = zeros((N, M), dtype, order=order)
     ret.diagonal(k)[:] = 1
     return ret
 
@@ -128,7 +130,7 @@ def identity(n, dtype=float):
     return eye(n, dtype=dtype)
 
 
-def ones(shape, dtype=float):
+def ones(shape, dtype=float, order='C'):
     """Returns a new array of given shape and dtype, filled with ones.
 
     This function currently does not support ``order`` option.
@@ -136,6 +138,8 @@ def ones(shape, dtype=float):
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
         dtype: Data type specifier.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
 
     Returns:
         cupy.ndarray: An array filled with ones.
@@ -143,8 +147,7 @@ def ones(shape, dtype=float):
     .. seealso:: :func:`numpy.ones`
 
     """
-    # TODO(beam2d): Support ordering option
-    a = cupy.ndarray(shape, dtype)
+    a = cupy.ndarray(shape, dtype, order=order)
     a.fill(1)
     return a
 
@@ -241,7 +244,7 @@ def zeros_like(a, dtype=None, order='K', subok=None, shape=None):
     return a
 
 
-def full(shape, fill_value, dtype=None):
+def full(shape, fill_value, dtype=None, order='C'):
     """Returns a new array of given shape and dtype, filled with a given value.
 
     This function currently does not support ``order`` option.
@@ -250,6 +253,8 @@ def full(shape, fill_value, dtype=None):
         shape (int or tuple of ints): Dimensionalities of the array.
         fill_value: A scalar value to fill a new array.
         dtype: Data type specifier.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order.
 
     Returns:
         cupy.ndarray: An array filled with ``fill_value``.
@@ -257,13 +262,12 @@ def full(shape, fill_value, dtype=None):
     .. seealso:: :func:`numpy.full`
 
     """
-    # TODO(beam2d): Support ordering option
     if dtype is None:
         if isinstance(fill_value, cupy.ndarray):
             dtype = fill_value.dtype
         else:
             dtype = numpy.array(fill_value).dtype
-    a = cupy.ndarray(shape, dtype)
+    a = cupy.ndarray(shape, dtype, order=order)
     a.fill(fill_value)
     return a
 
