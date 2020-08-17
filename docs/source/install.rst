@@ -9,11 +9,6 @@ The following Linux distributions are recommended.
 * `Ubuntu <https://www.ubuntu.com/>`_ 18.04 LTS (x86_64)
 * `CentOS <https://www.centos.org/>`_ 7 (x86_64)
 
-.. note::
-
-   CuPy requires ``g++-6`` or later.
-   Follow the instructions :ref:`here <install_gcc6>` if you are using Ubuntu 16.04, CentOS 6 or 7.
-
 These components must be installed to use CuPy:
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
@@ -152,8 +147,11 @@ Installing CuPy from Source
 Use of wheel packages are recommended whenever possible.
 However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / cuDNN / NCCL not supported by wheels), you can also build CuPy from source.
 
-When installing from source, C++ compiler such as ``g++`` is required.
-You need to install it before installing CuPy, e.g, ``apt-get install g++`` on Ubuntu 18.04.
+.. note::
+
+   CuPy source build requires ``g++-6`` or later.
+   For Ubuntu 18.04, run ``apt-get install g++``.
+   For Ubuntu 16.04, CentOS 6 or 7, follow the instructions :ref:`here <install_gcc6>`.
 
 .. note::
 
