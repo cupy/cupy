@@ -109,7 +109,7 @@ configs {
 
 # ROCm build test
 configs {
-  key: "cupy.py37.amd"
+  key: "cupy.py3.amd"
   value {
     requirement {
       cpu: 2
