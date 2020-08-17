@@ -254,6 +254,12 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
                 (ndim > 2 and deterministic and version < 6000) or
                 (ndim > 2 and deterministic and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
+        elif (8000 <= version and
+              self.max_workspace_size == 0 and
+              int(cupy.cuda.device.get_compute_capability()) < 70 and
+              self.groups > 1 and ndim > 2 and
+              self.dtype == numpy.float16):
+            self.err = RuntimeError
         self._workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
 
@@ -327,6 +333,11 @@ class TestConvolutionBackwardData(unittest.TestCase):
                 (ndim > 2 and version < 6000) or
                 (ndim > 2 and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
+        elif (8000 <= version and
+              int(cupy.cuda.device.get_compute_capability()) < 70 and
+              self.dilate > 1 and self.groups > 1 and ndim > 2 and
+              self.dtype == numpy.float16):
+            self.err = RuntimeError
         self._workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
 
