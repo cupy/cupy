@@ -232,6 +232,49 @@ class TestPoly1d(unittest.TestCase):
         return b(a)
 
 
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'shape': [(), (0,), (5,)],
+    'exp': [0, 4, 5, numpy.int32(5), numpy.int64(5)],
+}))
+class TestPoly1dPow(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-1)
+    def test_poly1d_pow_scalar(self, xp, dtype):
+        a = testing.shaped_arange(self.shape, xp, dtype)
+        return xp.poly1d(a) ** self.exp
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'shape': [(5,), (5, 2)],
+    'exp': [-10, 3.5, [1, 2, 3]],
+}))
+class TestPoly1dPowInvalidValue(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_poly1d_pow(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange(self.shape, xp, dtype)
+            with pytest.raises(ValueError):
+                xp.poly1d(a) ** self.exp
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'exp': [3.0, numpy.float64(5)],
+}))
+class TestPoly1dPowInvalidType(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    def test_poly1d_pow(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((5,), xp, dtype)
+            with pytest.raises(TypeError):
+                xp.poly1d(a) ** self.exp
+
+
 class Poly1dTestBase(unittest.TestCase):
 
     def _get_input(self, xp, in_type, dtype):
