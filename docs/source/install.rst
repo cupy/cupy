@@ -53,7 +53,7 @@ Optional Libraries
 Some features in CuPy will only be enabled if the corresponding libraries are installed.
 
 * `cuDNN <https://developer.nvidia.com/cudnn>`_ (library to accelerate deep neural network computations)
-    * Supported Versions: v5, v5.1, v6, v7, v7.1, v7.2, v7.3, v7.4, v7.5 and v8.0.
+    * Supported Versions: v5, v5.1, v6, v7, v7.1, v7.2, v7.3, v7.4, v7.5, v7.6 and v8.0.
 * `NCCL <https://developer.nvidia.com/nccl>`_  (library to perform collective multi-GPU / multi-node computations)
     * Supported Versions: v1.3.4, v2, v2.1, v2.2, v2.3, v2.4, v2.5, v2.6 and v2.7.
 * `cuTENSOR <https://developer.nvidia.com/cutensor>`_ (library for high-performance tensor operations)
