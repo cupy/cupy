@@ -29,7 +29,7 @@ Python Dependencies
 
 NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.19 and SciPy 1.5, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.15 / v1.16 / v1.17 / v1.18 / v1.19
+* `NumPy <https://numpy.org/>`_: v1.16 / v1.17 / v1.18 / v1.19
 
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.3 / v1.4 / v1.5
 
