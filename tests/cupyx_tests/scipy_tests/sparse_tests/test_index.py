@@ -11,7 +11,7 @@ import pytest
 
 
 @testing.parameterize(*testing.product({
-    'format': ['csr', 'csc'],  # Taking out CSC until minor_fancy is included
+    'format': ['csr', 'csc'],
     'density': [0.1, 0.4, 0.9],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
     'n_rows': [25, 150],
