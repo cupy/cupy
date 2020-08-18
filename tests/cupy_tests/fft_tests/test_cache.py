@@ -13,7 +13,7 @@ from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.fft import config
 
-from .test_fft import multi_gpu_config
+from .test_fft import (multi_gpu_config, _skip_multi_gpu_bug)
 
 
 def intercept_stdout(func):
@@ -388,6 +388,7 @@ class TestPlanCache(unittest.TestCase):
     @testing.multi_gpu(2)
     def test_LRU_cache11(self):
         # test if collectively deleting a multi-GPU plan works
+        _skip_multi_gpu_bug((128,), self.gpus)
         cache0 = self.caches[0]
         cache1 = self.caches[1]
 
