@@ -70,6 +70,7 @@ cdef inline _should_use_rop(x, y):
 
 
 cdef tuple _HANDLED_TYPES
+cdef int use_tf32 = -1
 
 
 cdef class ndarray:
@@ -2921,21 +2922,28 @@ cpdef ndarray tensordot_core_v11(
     cdef cuComplex one_F, zero_F
     cdef cuDoubleComplex one_D, zero_D
     cdef size_t one_ptr, zero_ptr
+    global use_tf32
+
+    cdef int compute_capability = int(device.get_compute_capability())
+    if compute_capability >= 80 and use_tf32 < 0:
+        use_tf32 = int(os.getenv('CUPY_TF32', '0'))
 
     cdef int compute_type
     if c.dtype.char in 'efF':
         compute_type = cublas.CUBLAS_COMPUTE_32F
+        if use_tf32 > 0 and c.dtype.char in 'fF':
+            compute_type = cublas.CUBLAS_COMPUTE_32F_FAST_TF32
     elif c.dtype.char in 'dD':
         compute_type = cublas.CUBLAS_COMPUTE_64F
 
-    cdef int compute_capability = int(device.get_compute_capability())
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
     if ((compute_capability >= 80) or
             (compute_capability >= 70 and c.dtype == 'e')):
         algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
 
     if c.dtype.char in 'efd':
-        if compute_type == cublas.CUBLAS_COMPUTE_32F:
+        if compute_type in (cublas.CUBLAS_COMPUTE_32F,
+                            cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
             one_f = 1
             zero_f = 0
             one_ptr = <size_t>&one_f
@@ -2948,7 +2956,8 @@ cpdef ndarray tensordot_core_v11(
         else:
             raise ValueError('Invalid compute type: {}'.format(compute_type))
     elif c.dtype.char in 'FD':
-        if compute_type == cublas.CUBLAS_COMPUTE_32F:
+        if compute_type in (cublas.CUBLAS_COMPUTE_32F,
+                            cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
             one_F = cuComplex(1, 0)
             zero_F = cuComplex(0, 0)
             one_ptr = <size_t>&one_F
