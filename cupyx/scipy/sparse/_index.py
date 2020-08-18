@@ -8,6 +8,9 @@ from cupy import core
 from cupyx.scipy.sparse.base import isspmatrix
 from cupyx.scipy.sparse.base import spmatrix
 
+from cupy_backends.cuda.libs import cusparse
+from cupy.cuda import device
+
 from scipy.sparse.base import spmatrix as scipy_spmatrix
 
 import numpy
@@ -211,20 +214,20 @@ def _get_csr_submatrix(Ap, Aj, Ax,
 
 
 _csr_row_index_ker = core.ElementwiseKernel(
-    '''raw I rows, raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
+    '''raw I out_rows, raw I rows, raw I Ap, raw I Aj,
+    raw T Ax, raw I Bp''',
     '''raw I Bj, raw T Bx''', '''
-    const I row = rows[i];
-    const I row_start = Ap[row];
-    const I row_end = Ap[row+1];
 
-    I out_row_idx = Bp[i];
+    const I out_row = out_rows[i];
+    const I row = rows[out_row];
 
-    // Copy columns
-    for(I j = row_start; j < row_end; j++) {
-        Bj[out_row_idx] = Aj[j];
-        Bx[out_row_idx] = Ax[j];
-        out_row_idx++;
-    }
+    // Look up starting offset
+    const I starting_output_offset = Bp[out_row];
+    const I output_offset = i - starting_output_offset;
+    const I starting_input_offset = Ap[row];
+
+    Bj[i] = Aj[starting_input_offset + output_offset];
+    Bx[i] = Ax[starting_input_offset + output_offset];
 ''', 'csr_row_index_ker', no_return=True)
 
 
@@ -250,7 +253,18 @@ def _csr_row_index(rows,
     Bj = cupy.empty(nnz, dtype=Aj.dtype)
     Bx = cupy.empty(nnz, dtype=Ax.dtype)
 
-    _csr_row_index_ker(rows, Ap, Aj, Ax, Bp, Bj, Bx, size=rows.size)
+    out_rows = cupy.empty(nnz, dtype=rows.dtype)
+
+    # Build a COO row array from output CSR indptr.
+    # Calling backend cusparse API directly to avoid
+    # constructing a whole COO object.
+    handle = device.get_cusparse_handle()
+    cusparse.xcsr2coo(
+        handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
+        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+
+    _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp, Bj, Bx,
+                       size=out_rows.size)
 
     return Bj, Bx
 
