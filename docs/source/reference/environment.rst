@@ -57,6 +57,12 @@ Here are the environment variables CuPy uses.
 |                                    | its priority. Default is empty string (all         |
 |                                    | accelerators are disabled).                        |
 +------------------------------------+----------------------------------------------------+
+| ``NVCC``                           | Define the compiler to use when compiling CUDA     |
+|                                    | source. Note that most CuPy kernels are built with |
+|                                    | NVRTC; this environment is only effective for      |
+|                                    | RawKernels/RawModules with ``nvcc`` backend or     |
+|                                    | when using ``cub`` as the accelerator.             |
++------------------------------------+----------------------------------------------------+
 
 Moreover, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit
 Documentation`_ will also be honored.
