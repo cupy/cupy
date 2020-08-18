@@ -5,6 +5,8 @@ import cupy
 from cupy import sparse
 from cupy import testing
 
+import numpy
+
 import pytest
 
 
@@ -19,16 +21,19 @@ import pytest
 @testing.gpu
 class TestIndexing(unittest.TestCase):
 
-    def _run(self, maj, min=None, format=None):
-
-        # Skipping tests that are only supported in one
-        # format for now.
-        if format is not None and format != self.format:
-            pytest.skip()
+    def _run(self, maj, min=None, flip_for_csc=True):
 
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
                           density=self.density)
+
+        if self.format == 'csc' and flip_for_csc:
+            tmp = maj
+            maj = min
+            min = tmp
+
+        # None is not valid for major when minor is not None
+        maj = slice(None) if maj is None else maj
 
         # sparse.random doesn't support complex types
         # so we need to cast
@@ -82,35 +87,13 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_slice_with_step(self):
 
-        # CSR Tests
-        self._run(slice(1, 20, 2), slice(1, 5, 1),
-                  format='csr')
-        self._run(slice(20, 1, 2), slice(1, 5, 1),
-                  format='csr')
-        self._run(slice(1, 15, 2), slice(1, 5, 1),
-                  format='csr')
-        self._run(slice(15, 1, 5), slice(1, 5, 1),
-                  format='csr')
-        self._run(slice(1, 15, 5), slice(1, 5, 1),
-                  format='csr')
-        self._run(slice(20, 1, 5), slice(None),
-                  format='csr')
-        self._run(slice(1, 20, 5), slice(None),
-                  format='csr')
-
-        # CSC Tests
-        self._run(slice(1, 5, 1), slice(1, 20, 2),
-                  format='csc')
-        self._run(slice(1, 5, 1), slice(20, 1, 2),
-                  format='csc')
-        self._run(slice(1, 5, 1), slice(1, 15, 2),
-                  format='csc')
-        self._run(slice(1, 5, 1), slice(15, 1, 5),
-                  format='csc')
-        self._run(slice(None), slice(20, 1, 5),
-                  format='csc')
-        self._run(slice(None), slice(1, 20, 5),
-                  format='csc')
+        self._run(slice(1, 20, 2), slice(1, 5, 1))
+        self._run(slice(20, 1, 2), slice(1, 5, 1))
+        self._run(slice(1, 15, 2), slice(1, 5, 1))
+        self._run(slice(15, 1, 5), slice(1, 5, 1))
+        self._run(slice(1, 15, 5), slice(1, 5, 1))
+        self._run(slice(20, 1, 5), slice(None))
+        self._run(slice(1, 20, 5), slice(None))
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
@@ -142,18 +125,53 @@ class TestIndexing(unittest.TestCase):
     # Major Indexing
 
     def test_major_bool_fancy(self):
-        rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
-        self._run(rand_bool)
+
+        size = self.n_rows if self.format == 'csr' else self.n_cols
+
+        self._run(cupy.random.random(size).astype(cupy.bool))
+        self._run(numpy.random.random(size).astype(numpy.bool))
+        self._run(numpy.random.random(size).astype(numpy.bool).tolist())
 
     def test_major_fancy_minor_all(self):
+
         self._run([1, 5, 4, 2, 5, 1], slice(None))
+        self._run(numpy.array([1, 5, 4, 2, 5, 1], dtype=numpy.int32),
+                  slice(None))
+        self._run(cupy.array([1, 5, 4, 2, 5, 1], dtype=cupy.int32),
+                  slice(None))
+        self._run(numpy.array([1, 5, 4, 2, 5, 1], dtype=numpy.int64),
+                  slice(None))
+        self._run(cupy.array([1, 5, 4, 2, 5, 1], dtype=cupy.int64),
+                  slice(None))
 
     def test_major_fancy_minor_scalar(self):
         self._run([1, 5, 4, 5, 1], 5)
+        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int32), 5)
+        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int64), 5)
+        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int32), 5)
+        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int64), 5)
 
     def test_major_fancy_minor_slice(self):
         self._run([1, 5, 4, 5, 1], slice(1, 5))
         self._run([1, 5, 4, 5, 1], slice(5, 1, 1))
+
+        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int32),
+                  slice(1, 5))
+        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int32),
+                  slice(5, 1, 1))
+        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int64),
+                  slice(1, 5))
+        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int64),
+                  slice(5, 1, 1))
+
+        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int32),
+                  slice(1, 5))
+        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int32),
+                  slice(5, 1, 1))
+        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int64),
+                  slice(1, 5))
+        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int64),
+                  slice(5, 1, 1))
 
     # Minor Indexing
 
@@ -162,6 +180,15 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_scalar_minor_fancy(self):
         self._run(5, [1, 5, 4])
+
+def test_ellipsis(self):
+        self._run(Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, 1, flip_for_csc=False)
+        self._run(1, Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(None), flip_for_csc=False)
+        self._run(slice(None), Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(1, None), flip_for_csc=False)
+        self._run(slice(1, None), Ellipsis, flip_for_csc=False)
 
     def test_bad_indexing(self):
         with pytest.raises(IndexError):

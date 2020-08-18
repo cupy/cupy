@@ -8,6 +8,8 @@ from cupy import core
 from cupyx.scipy.sparse.base import isspmatrix
 from cupyx.scipy.sparse.base import spmatrix
 
+from scipy.sparse.base import spmatrix as scipy_spmatrix
+
 import numpy
 try:
     import scipy
@@ -477,7 +479,8 @@ def _unpack_index(index):
           assumed to be all (e.g., [maj, :]).
     """
     # First, check if indexing with single boolean matrix.
-    if (isinstance(index, (spmatrix, cupy.ndarray)) and
+    if (isinstance(index, (spmatrix, cupy.ndarray,
+                           scipy_spmatrix, numpy.ndarray)) and
             index.ndim == 2 and index.dtype.kind == 'b'):
         return index.nonzero()
 
@@ -594,4 +597,5 @@ def _compatible_boolean_index(idx):
 def _boolean_index_to_array(idx):
     if idx.ndim > 1:
         raise IndexError('invalid index shape')
+    idx = cupy.array(idx, dtype=idx.dtype)
     return cupy.where(idx)[0]
