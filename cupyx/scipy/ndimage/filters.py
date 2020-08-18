@@ -999,11 +999,47 @@ def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
     # Also tried insertion sort, which is always slower than either one
     sorter = __SELECTION_SORT if filter_size <= 255 else \
         __SHELL_SORT.format(gap=_get_shell_gap(filter_size))
+
+    if filter_size > 255:
+        array_size = filter_size
+        found_post = ''
+        post = 'sort(values,{});\ny=cast<Y>(values[{}]);'.format(
+            filter_size, rank)
+    else:
+        s_rank = min(rank, filter_size - rank - 1)
+        if s_rank == rank:
+            comp_op = '<'
+        else:
+            comp_op = '>'
+        array_size = s_rank + 1
+        found_post = '''
+            if (iv > {rank} + 1) {{{{
+                iv--;
+                int target_iv = {rank} + 1;
+                X target_val = values[{rank} + 1];
+                for (int jv = 0; jv <= {rank}; jv++) {{{{
+                    if (target_val {comp_op} values[jv]) {{{{
+                        target_val = values[jv];
+                        target_iv = jv;
+                    }}}}
+                }}}}
+                if (target_iv <= {rank}) {{{{
+                    values[target_iv] = values[{rank} + 1];
+                }}}}
+            }}}}'''.format(rank=s_rank, comp_op=comp_op)
+        post = '''
+            X target_val = values[0];
+            for (int jv = 1; jv <= {rank}; jv++) {{
+                if (target_val {comp_op} values[jv]) {{
+                    target_val = values[jv];
+                }}
+            }}
+            y=cast<Y>(target_val);'''.format(rank=s_rank, comp_op=comp_op)
+
     return _filters_core._generate_nd_kernel(
         'rank_{}_{}'.format(filter_size, rank),
-        'int iv = 0;\nX values[{}];'.format(filter_size),
-        'values[iv++] = {value};',
-        'sort(values,{});\ny=cast<Y>(values[{}]);'.format(filter_size, rank),
+        'int iv = 0;\nX values[{}];'.format(array_size),
+        'values[iv++] = {value};' + found_post, post,
         mode, w_shape, int_type, offsets, cval, preamble=sorter)
 
 
