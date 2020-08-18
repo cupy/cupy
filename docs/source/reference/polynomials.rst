@@ -65,8 +65,8 @@ Arithmetic
    :toctree: generated/
    :nosignatures:
 
-    cupy.chebadd
-    cupy.chebsub
-    cupy.chebmul
-    cupy.chebmulx
-    cupy.chebpow
+    cupy.polynomial.chebyshev.chebadd
+    cupy.polynomial.chebyshev.chebsub
+    cupy.polynomial.chebyshev.chebmul
+    cupy.polynomial.chebyshev.chebmulx
+    cupy.polynomial.chebyshev.chebpow
