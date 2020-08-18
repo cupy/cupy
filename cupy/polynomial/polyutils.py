@@ -82,11 +82,9 @@ def _add(c1, c2):
     """
     if c1.size > c2.size:
         c1[:c2.size] += c2
-        ret = c1
-    else:
-        c2[:c1.size] += c1
-        ret = c2
-    return ret
+        return c1
+    c2[:c1.size] += c1
+    return c2
 
 
 def _sub(c1, c2):
@@ -94,9 +92,7 @@ def _sub(c1, c2):
     """
     if c1.size > c2.size:
         c1[:c2.size] -= c2
-        ret = c1
-    else:
-        c2 = -c2
-        c2[:c1.size] += c1
-        ret = c2
-    return ret
+        return c1
+    c2 -= 2 * c2
+    c2[:c1.size] += c1
+    return c2
