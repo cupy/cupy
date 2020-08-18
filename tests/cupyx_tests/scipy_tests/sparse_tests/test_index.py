@@ -65,6 +65,14 @@ class TestIndexing(unittest.TestCase):
             testing.assert_array_equal(
                 actual, expected)
 
+    @staticmethod
+    def _get_index_combos(idx):
+        return [dict['arr_fn'](idx, dtype=dict['dtype'])
+         for dict in testing.product({
+            "arr_fn": [numpy.array, cupy.array],
+            "dtype": [numpy.int32, numpy.int64]
+        })]
+
     # 2D Slicing
 
     def test_major_slice(self):
@@ -119,50 +127,31 @@ class TestIndexing(unittest.TestCase):
 
         size = self.n_rows if self.format == 'csr' else self.n_cols
 
-        self._run(cupy.random.random(size).astype(cupy.bool))
-        self._run(numpy.random.random(size).astype(numpy.bool))
-        self._run(numpy.random.random(size).astype(numpy.bool).tolist())
+        for rand in [cupy.random.random, numpy.random.random]:
+            self._run(rand(size).astype(numpy.bool))
+            self._run(rand(size).astype(numpy.bool).tolist())
 
     def test_major_fancy_minor_all(self):
 
         self._run([1, 5, 4, 2, 5, 1], slice(None))
-        self._run(numpy.array([1, 5, 4, 2, 5, 1], dtype=numpy.int32),
-                  slice(None))
-        self._run(cupy.array([1, 5, 4, 2, 5, 1], dtype=cupy.int32),
-                  slice(None))
-        self._run(numpy.array([1, 5, 4, 2, 5, 1], dtype=numpy.int64),
-                  slice(None))
-        self._run(cupy.array([1, 5, 4, 2, 5, 1], dtype=cupy.int64),
-                  slice(None))
+
+        for idx in self._get_index_combos([1, 5, 4, 2, 5, 1]):
+            self._run(idx, slice(None))
 
     def test_major_fancy_minor_scalar(self):
         self._run([1, 5, 4, 5, 1], 5)
-        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int32), 5)
-        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int64), 5)
-        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int32), 5)
-        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int64), 5)
+        for idx in self._get_index_combos([1, 5, 4, 2, 5, 1]):
+            self._run(idx, 5)
 
     def test_major_fancy_minor_slice(self):
         self._run([1, 5, 4, 5, 1], slice(1, 5))
         self._run([1, 5, 4, 5, 1], slice(5, 1, 1))
 
-        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int32),
-                  slice(1, 5))
-        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int32),
-                  slice(5, 1, 1))
-        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int64),
-                  slice(1, 5))
-        self._run(numpy.array([1, 5, 4, 5, 1], dtype=numpy.int64),
-                  slice(5, 1, 1))
+        for idx in self._get_index_combos([1, 5, 4, 5, 1]):
+            self._run(idx, slice(5, 1, 1))
 
-        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int32),
-                  slice(1, 5))
-        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int32),
-                  slice(5, 1, 1))
-        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int64),
-                  slice(1, 5))
-        self._run(cupy.array([1, 5, 4, 5, 1], dtype=cupy.int64),
-                  slice(5, 1, 1))
+        for idx in self._get_index_combos([1, 5, 4, 5, 1]):
+            self._run(idx, slice(1, 5))
 
     def test_ellipsis(self):
         self._run(Ellipsis, flip_for_csc=False)
