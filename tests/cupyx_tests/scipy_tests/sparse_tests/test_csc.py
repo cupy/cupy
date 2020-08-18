@@ -1038,14 +1038,15 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
     def _make_data_max(self, xp, sp, dense=False):
         return -self._make_data_min(xp, sp, dense=dense)
 
-    def _make_data_min_nonzero(self, xp, sp, axis):
+    def _make_data_min_explicit(self, xp, sp, axis):
         dm_data = testing.shaped_random((10, 20), xp=xp, scale=1.0)
         if xp is cupy:
             dm_data[dm_data < 0.95] = 0
         else:
-            # As SciPy sparse matrix does not have `nonzero` parameter, we make
-            # SciPy inputs such that SciPy's spmatrix.min(axis=axis) returns
-            # the same value as CuPy's spmatrix.min(axis=axis, nonzero=True).
+            # As SciPy sparse matrix does not have `explicit` parameter, we
+            # make SciPy inputs such that SciPy's spmatrix.min(axis=axis)
+            # returns the same value as CuPy's spmatrix.min(axis=axis,
+            # explicit=True).
 
             # Put infinity instead of zeros so spmatrix.min(axis=axis) returns
             # the smallest numbers except for zero.
@@ -1073,8 +1074,8 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
 
         return sp.csc_matrix(xp.array(dm_data))
 
-    def _make_data_max_nonzero(self, xp, sp, axis):
-        return -self._make_data_min_nonzero(xp, sp, axis=axis)
+    def _make_data_max_explicit(self, xp, sp, axis):
+        return -self._make_data_min_explicit(xp, sp, axis=axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_min(self, xp, sp):
@@ -1082,10 +1083,10 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
         return data.min(axis=self.axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_min_nonzero(self, xp, sp):
-        data = self._make_data_min_nonzero(xp, sp, axis=self.axis)
+    def test_min_explicit(self, xp, sp):
+        data = self._make_data_min_explicit(xp, sp, axis=self.axis)
         if xp is cupy:
-            return data.min(axis=self.axis, nonzero=True)
+            return data.min(axis=self.axis, explicit=True)
         else:
             return data.min(axis=self.axis)
 
@@ -1095,10 +1096,10 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
         return data.max(axis=self.axis)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_max_nonzero(self, xp, sp):
-        data = self._make_data_max_nonzero(xp, sp, axis=self.axis)
+    def test_max_explicit(self, xp, sp):
+        data = self._make_data_max_explicit(xp, sp, axis=self.axis)
         if xp is cupy:
-            return data.max(axis=self.axis, nonzero=True)
+            return data.max(axis=self.axis, explicit=True)
         else:
             return data.max(axis=self.axis)
 
@@ -1241,7 +1242,7 @@ class TestIsspmatrixCsc(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.4.0')
 class TestCsrMatrixGetitem(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
@@ -1304,7 +1305,6 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 
     # SciPy prior to 1.4 has bugs where either an IndexError is raised or a
     # segfault occurs instead of returning an empty slice.
-    @testing.with_requires('scipy>=1.4')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, 3:2]
@@ -1315,79 +1315,44 @@ class TestCsrMatrixGetitem(unittest.TestCase):
         return _make(xp, sp, self.dtype)[slice(None, None, None)]
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_getitem_rowslice_reverse(self, xp, sp):
-        # This test is adapted from Scipy's CSC tests
-        return _make(xp, sp, self.dtype)[slice(None, None, -1)]
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_rowslice_negative_stop(self, xp, sp):
         # This test is adapted from Scipy's CSC tests
         return _make(xp, sp, self.dtype)[slice(1, -2, 2)]
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_getitem_rowslice_negative_start_step(self, xp, sp):
-        # This test is adapted from Scipy's CSC tests
-        return _make(xp, sp, self.dtype)[slice(-2, 1, -2)]
-
-    def test_getitem_bool_indexing(self):
-        # This test is adapted from Scipy's CSC tests
-        sp_data = scipy.sparse.csc_matrix([[0, 1, 2], [3, 4, 5], [6, 7, 8]],
-                                          dtype=self.dtype)
-        data = cupy.sparse.csc_matrix(sp_data)
-        list_indices1 = [False, True, False]
-        array_indices1 = cupy.array(list_indices1)
-        list_indices2 = [[False, True, False], [
-            False, True, False], [False, True, False]]
-        array_indices2 = cupy.array(list_indices2)
-        list_indices3 = ([False, True, False], [False, True, False])
-        array_indices3 = (cupy.array(
-            list_indices3[0]), cupy.array(list_indices3[1]))
-        slice_list1 = data[list_indices1].toarray()
-        slice_array1 = data[array_indices1].toarray()
-        slice_list2 = data[list_indices2]
-        slice_array2 = data[array_indices2]
-        slice_list3 = data[list_indices3]
-        slice_array3 = data[array_indices3]
-        assert (slice_list1 == slice_array1).all()
-        assert (slice_list2 == slice_array2).all()
-        assert (slice_list3 == slice_array3).all()
 
     def test_getrow(self):
 
         # This test is adapted from Scipy's CSC tests
         N = 10
-        cupy.random.seed(0)
-        X = cupy.random.random((N, N))
+        X = testing.shaped_random((N, N), cupy, seed=0)
         X[X > 0.7] = 0
-        Xcsc = cupy.sparse.csc_matrix(X)
+        Xcsc = sparse.csc_matrix(X)
 
         for i in range(N):
             arr_row = X[i:i + 1, :]
             csc_row = Xcsc.getrow(i)
 
-            cupy.testing.assert_array_almost_equal(arr_row, csc_row.toarray())
-            numpy.testing.assert_(type(csc_row) is cupy.sparse.csr_matrix)
+            assert sparse.isspmatrix_csr(csc_row)
+            assert (arr_row == csc_row.toarray()).all()
 
     def test_getcol(self):
         # This test is adapted from Scipy's CSC tests
         N = 10
-        cupy.random.seed(0)
-        X = cupy.random.random((N, N))
+        X = testing.shaped_random((N, N), cupy, seed=0)
         X[X > 0.7] = 0
-        Xcsc = cupy.sparse.csc_matrix(X)
+        Xcsc = sparse.csc_matrix(X)
 
         for i in range(N):
             arr_col = X[:, i:i + 1]
             csc_col = Xcsc.getcol(i)
 
-            cupy.testing.assert_array_almost_equal(arr_col, csc_col.toarray())
-            numpy.testing.assert_(type(csc_col) is cupy.sparse.csc_matrix)
+            assert sparse.isspmatrix_csc(csc_col)
+            assert (arr_col == csc_col.toarray()).all()
 
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.with_requires('scipy>=1.0.0')
+@testing.with_requires('scipy>=1.4.0')
 class TestCsrMatrixGetitem2(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')

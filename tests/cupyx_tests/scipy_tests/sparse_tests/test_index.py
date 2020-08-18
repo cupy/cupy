@@ -1,6 +1,8 @@
 import unittest
 
 import cupy
+
+from cupy import sparse
 from cupy import testing
 
 import pytest
@@ -10,8 +12,8 @@ import pytest
     'format': ['csr', 'csc'],
     'density': [0.5],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [15000],
-    'n_cols': [15000]
+    'n_rows': [1500],
+    'n_cols': [1500]
 }))
 @testing.with_requires('scipy')
 class TestSetitemIndexing(unittest.TestCase):
@@ -219,56 +221,47 @@ class TestSetitemIndexing(unittest.TestCase):
     'n_rows': [25, 150],
     'n_cols': [25, 150]
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.4.0')
+@testing.gpu
 class TestGetItemIndexing(unittest.TestCase):
 
-    def _run(self, maj, min=None):
-        a = cupy.sparse.random(self.n_rows, self.n_cols,
-                               format=self.format,
-                               density=self.density)
+    def _run(self, maj, min=None, format=None):
+
+        # Skipping tests that are only supported in one
+        # format for now.
+        if format is not None and format != self.format:
+            pytest.skip()
+
+        a = sparse.random(self.n_rows, self.n_cols,
+                          format=self.format,
+                          density=self.density)
 
         # sparse.random doesn't support complex types
         # so we need to cast
         a = a.astype(self.dtype)
 
-        if isinstance(maj, cupy.ndarray):
-            maj_h = maj.get()
-        else:
-            maj_h = maj
-
-        if isinstance(min, cupy.ndarray):
-            min_h = min.get()
-        else:
-            min_h = min
+        expected = a.get()
 
         if min is not None:
-
-            expected = a.get()
-            expected = expected[maj_h, min_h]
-
+            expected = expected[maj, min]
             actual = a[maj, min]
-            cupy.cuda.Stream.null.synchronize()
         else:
-            expected = a.get()
-            expected = expected[maj_h]
-
+            expected = expected[maj]
             actual = a[maj]
-            cupy.cuda.Stream.null.synchronize()
 
-        if cupy.sparse.isspmatrix(actual):
+        if sparse.isspmatrix(actual):
             actual.sort_indices()
             expected.sort_indices()
 
-            cupy.testing.assert_array_equal(
+            testing.assert_array_equal(
                 actual.indptr, expected.indptr)
-            cupy.testing.assert_array_equal(
+            testing.assert_array_equal(
                 actual.indices, expected.indices)
-            cupy.testing.assert_array_equal(
+            testing.assert_array_equal(
                 actual.data, expected.data)
         else:
-
-            cupy.testing.assert_array_equal(
-                actual.ravel(), cupy.array(expected).ravel())
+            testing.assert_array_equal(
+                actual, expected)
 
     def test_major_slice(self):
         self._run(slice(5, 9))
@@ -279,15 +272,7 @@ class TestGetItemIndexing(unittest.TestCase):
 
     def test_major_scalar(self):
         self._run(10)
-
-    def test_major_fancy(self):
-        self._run([1, 5, 4])
-        self._run([10, 2])
-        self._run([2])
-
-    def test_major_bool_fancy(self):
-        rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
-        self._run(rand_bool)
+        self._run(-10)
 
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
@@ -296,13 +281,37 @@ class TestGetItemIndexing(unittest.TestCase):
         self._run(slice(1, 5), slice(None))
         self._run(slice(5, 1), slice(None))
 
-    def test_major_slice_minor_scalar(self):
-        self._run(slice(1, 5), 5)
-        self._run(slice(5, 1), 5)
-        self._run(slice(5, 1, -1), 5)
+    def test_major_slice_with_step(self):
 
-    def test_major_slice_minor_fancy(self):
-        self._run(slice(1, 10, 2), [1, 5, 4])
+        # CSR Tests
+        self._run(slice(1, 20, 2), slice(1, 5, 1),
+                  format='csr')
+        self._run(slice(20, 1, 2), slice(1, 5, 1),
+                  format='csr')
+        self._run(slice(1, 15, 2), slice(1, 5, 1),
+                  format='csr')
+        self._run(slice(15, 1, 5), slice(1, 5, 1),
+                  format='csr')
+        self._run(slice(1, 15, 5), slice(1, 5, 1),
+                  format='csr')
+        self._run(slice(20, 1, 5), slice(None),
+                  format='csr')
+        self._run(slice(1, 20, 5), slice(None),
+                  format='csr')
+
+        # CSC Tests
+        self._run(slice(1, 5, 1), slice(1, 20, 2),
+                  format='csc')
+        self._run(slice(1, 5, 1), slice(20, 1, 2),
+                  format='csc')
+        self._run(slice(1, 5, 1), slice(1, 15, 2),
+                  format='csc')
+        self._run(slice(1, 5, 1), slice(15, 1, 5),
+                  format='csc')
+        self._run(slice(None), slice(20, 1, 5),
+                  format='csc')
+        self._run(slice(None), slice(1, 20, 5),
+                  format='csc')
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
@@ -313,9 +322,6 @@ class TestGetItemIndexing(unittest.TestCase):
     def test_major_scalar_minor_scalar(self):
         self._run(5, 5)
 
-    def test_major_scalar_minor_fancy(self):
-        self._run(5, [1, 5, 4])
-
     def test_major_all_minor_scalar(self):
         self._run(slice(None), 5)
 
@@ -324,100 +330,6 @@ class TestGetItemIndexing(unittest.TestCase):
 
     def test_major_all_minor_all(self):
         self._run(slice(None), slice(None))
-
-    def test_major_all_minor_fancy(self):
-        self._run(slice(None), [1, 5, 2, 3, 4, 5, 4, 1, 5])
-        self._run(slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5])
-
-    def test_major_fancy_minor_fancy(self):
-        self._run([1, 5, 4], [1, 5, 4])
-        self._run([2, 0, 10], [9, 2, 1])
-        self._run([2, 0], [2, 1])
-
-    def test_major_fancy_minor_all(self):
-        self._run([1, 5, 4], slice(None))
-
-    def test_major_fancy_minor_scalar(self):
-        self._run([1, 5, 4], 5)
-
-    def test_major_fancy_minor_slice(self):
-        self._run([1, 5, 4], slice(1, 5))
-        self._run([1, 5, 4], slice(5, 1, -1))
-
-    def test_major_slice_with_step(self):
-
-        # positive step
-        self._run(slice(1, 10, 2))
-        self._run(slice(2, 10, 5))
-        self._run(slice(0, 10, 10))
-
-        self._run(slice(1, None, 2))
-        self._run(slice(2, None, 5))
-        self._run(slice(0, None,  10))
-
-        # negative step
-        self._run(slice(10, 1, -2))
-        self._run(slice(10, 2, -5))
-        self._run(slice(10, 0, -10))
-
-        self._run(slice(10, None, -2))
-        self._run(slice(10, None, -5))
-        self._run(slice(10, None, -10))
-
-    def test_major_slice_with_step_minor_slice_with_step(self):
-
-        # positive step
-        self._run(slice(1, 10, 2), slice(1, 10, 2))
-        self._run(slice(2, 10, 5), slice(2, 10, 5))
-        self._run(slice(0, 10, 10), slice(0, 10, 10))
-
-        # negative step
-        self._run(slice(10, 1, 2), slice(10, 1, 2))
-        self._run(slice(10, 2, 5), slice(10, 2, 5))
-        self._run(slice(10, 0, 10), slice(10, 0, 10))
-
-    def test_major_slice_with_step_minor_all(self):
-
-        # positive step
-        self._run(slice(1, 10, 2), slice(None))
-        self._run(slice(2, 10, 5), slice(None))
-        self._run(slice(0, 10, 10), slice(None))
-
-        # negative step
-        self._run(slice(10, 1, 2), slice(None))
-        self._run(slice(10, 2, 5), slice(None))
-        self._run(slice(10, 0, 10), slice(None))
-
-    def test_major_all_minor_slice_step(self):
-
-        # positive step incr
-        self._run(slice(None), slice(1, 10, 2))
-        self._run(slice(None), slice(2, 10, 5))
-        self._run(slice(None), slice(0, 10, 10))
-
-        # positive step decr
-        self._run(slice(None), slice(10, 1, 2))
-        self._run(slice(None), slice(10, 2, 5))
-        self._run(slice(None), slice(10, 0, 10))
-
-        # positive step incr
-        self._run(slice(None), slice(10, 1, 2))
-        self._run(slice(None), slice(10, 2, 5))
-        self._run(slice(None), slice(10, 0, 10))
-
-        # negative step decr
-        self._run(slice(None), slice(10, 1, -2))
-        self._run(slice(None), slice(10, 2, -5))
-        self._run(slice(None), slice(10, 0, -10))
-
-    def test_major_reorder(self):
-        self._run(slice(None, None, -1))
-        self._run(slice(None, None, -2))
-        self._run(slice(None, None, -50))
-
-    def test_major_reorder_minor_reorder(self):
-        self._run(slice(None, None, -1), slice(None, None, -1))
-        self._run(slice(None, None, -3), slice(None, None, -3))
 
     def test_ellipsis(self):
         self._run(Ellipsis)

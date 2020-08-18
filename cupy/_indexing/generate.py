@@ -8,7 +8,7 @@ import numpy
 
 import cupy
 from cupy import core
-from cupy.creation import from_data
+from cupy._creation import from_data
 from cupy.manipulation import join
 
 

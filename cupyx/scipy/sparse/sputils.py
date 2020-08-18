@@ -1,6 +1,4 @@
 import cupy
-import operator
-import warnings
 
 from cupy.core._dtype import get_dtype
 
@@ -17,29 +15,6 @@ def isdense(x):
 def isscalarlike(x):
     """Is x either a scalar, an array scalar, or a 0-dim array?"""
     return cupy.isscalar(x) or (isdense(x) and x.ndim == 0)
-
-
-def isintlike(x):
-    """Is x appropriate as an index into a sparse matrix? Returns True
-    if it can be cast safely to a machine int.
-    """
-    # Fast-path check to eliminate non-scalar values. operator.index would
-    # catch this case too, but the exception catching is slow.
-    # if cupy.ndim(x) != 0:
-    if isinstance(x, cupy.core.ndarray) and x.ndim != 0:
-        return False
-    try:
-        operator.index(x)
-    except (TypeError, ValueError):
-        try:
-            loose_int = bool(int(x) == x)
-        except (TypeError, ValueError):
-            return False
-        if loose_int:
-            warnings.warn("Inexact indices into sparse matrices are "
-                          "deprecated", DeprecationWarning)
-        return loose_int
-    return True
 
 
 def get_index_dtype(arrays=(), maxval=None, check_contents=False):
