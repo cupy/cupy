@@ -7,6 +7,9 @@ from cupy import core
 from cupyx.scipy.sparse.base import isspmatrix
 from cupyx.scipy.sparse.base import spmatrix
 
+from cupy_backends.cuda.libs import cusparse
+from cupy.cuda import device
+
 from scipy.sparse.base import spmatrix as scipy_spmatrix
 
 import numpy
@@ -61,17 +64,17 @@ def _get_csr_submatrix(Ap, Aj, Ax,
 
 
 _csr_row_index_ker = core.ElementwiseKernel(
-    '''raw I out_rows, raw I in_rows, raw I Ap, raw I Aj,
+    '''raw I out_rows, raw I rows, raw I Ap, raw I Aj,
     raw T Ax, raw I Bp''',
     '''raw I Bj, raw T Bx''', '''
 
     const I out_row = out_rows[i];
-    const I in_row = in_rows[i];
+    const I row = rows[out_row];
 
     // Look up starting offset
     const I starting_output_offset = Bp[out_row];
     const I output_offset = i - starting_output_offset;
-    const I starting_input_offset = Ap[in_row];
+    const I starting_input_offset = Ap[row];
 
     Bj[i] = Aj[starting_input_offset + output_offset];
     Bx[i] = Ax[starting_input_offset + output_offset];
@@ -100,15 +103,16 @@ def _csr_row_index(rows,
     Bj = cupy.empty(nnz, dtype=Aj.dtype)
     Bx = cupy.empty(nnz, dtype=Ax.dtype)
 
-    Bp_counts = cupy.diff(Bp).tolist()
+    out_rows = cupy.empty(nnz, dtype=rows.dtype)
 
-    # TODO(cjnolet): Using a list for repeat is very slow.
-    out_rows = cupy.arange(rows.size, dtype=rows.dtype)
-    in_rows = cupy.repeat(rows, Bp_counts)
-    out_rows = cupy.repeat(out_rows, Bp_counts)
+    # Build a COO row array from output CSR indptr
+    handle = device.get_cusparse_handle()
+    cusparse.xcsr2coo(
+        handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
+        cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
-    _csr_row_index_ker(out_rows, in_rows, Ap, Aj, Ax, Bp, Bj, Bx,
-                       size=in_rows.size)
+    _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp, Bj, Bx,
+                       size=out_rows.size)
 
     return Bj, Bx
 
