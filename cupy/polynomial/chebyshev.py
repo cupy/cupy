@@ -19,7 +19,7 @@ def _wraps_chebroutine(func):
 
     def wrapper(*args):
         [c1, *c2] = cupy.polynomial.polyutils.as_series(
-                    [_get_coeffs(x) for x in args])
+            [_get_coeffs(x) for x in args])
         return cupy.polynomial.polyutils.trimseq(func(c1, *c2))
 
     return functools.update_wrapper(wrapper, func)
