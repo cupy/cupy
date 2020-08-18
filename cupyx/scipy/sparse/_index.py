@@ -105,7 +105,9 @@ def _csr_row_index(rows,
 
     out_rows = cupy.empty(nnz, dtype=rows.dtype)
 
-    # Build a COO row array from output CSR indptr
+    # Build a COO row array from output CSR indptr.
+    # Calling backend cusparse API directly to avoid
+    # constructing a whole COO object.
     handle = device.get_cusparse_handle()
     cusparse.xcsr2coo(
         handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
