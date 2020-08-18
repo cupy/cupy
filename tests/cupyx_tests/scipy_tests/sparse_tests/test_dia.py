@@ -270,6 +270,7 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         return m.transpose()
 
     @testing.numpy_cupy_raises(sp_name='sp')
+    @testing.with_requires('scipy<1.5.0')
     @testing.with_requires('scipy>=1.0')
     def test_diagonal_error(self, xp, sp):
         m = _make(xp, sp, self.dtype)
