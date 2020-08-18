@@ -58,19 +58,6 @@ Arithmetic
 Chebyshev Series
 ----------------
 
-Constants
-~~~~~~~~~
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-    cupy.chebdomain
-    cupy.chebzero
-    cupy.chebone
-    cupy.chebx
-
-
 Arithmetic
 ~~~~~~~~~~
 
