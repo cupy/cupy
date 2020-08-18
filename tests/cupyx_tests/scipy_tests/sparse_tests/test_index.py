@@ -68,10 +68,10 @@ class TestIndexing(unittest.TestCase):
     @staticmethod
     def _get_index_combos(idx):
         return [dict['arr_fn'](idx, dtype=dict['dtype'])
-         for dict in testing.product({
-            "arr_fn": [numpy.array, cupy.array],
-            "dtype": [numpy.int32, numpy.int64]
-        })]
+                for dict in testing.product({
+                    "arr_fn": [numpy.array, cupy.array],
+                    "dtype": [numpy.int32, numpy.int64]
+                })]
 
     # 2D Slicing
 
