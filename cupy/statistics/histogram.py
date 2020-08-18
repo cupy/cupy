@@ -6,6 +6,7 @@ import numpy
 import cupy
 from cupy import core
 from cupy.core import _accelerator
+from cupy.cuda import device
 # TODO(leofang): always import cub when hipCUB is supported
 if not cupy.cuda.runtime.is_hip:
     from cupy.cuda import cub
@@ -223,7 +224,8 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                     bin_type = numpy.float
                 else:
                     # TODO(okuta): support float16
-                    if bin_type == numpy.float16:
+                    if (bin_type == numpy.float16 and
+                            int(device.get_compute_capability()) < 53):
                         bin_type = numpy.float32
                     x = x.astype(bin_type, copy=False)
                 acc_bin_edge = bin_edges.astype(bin_type, copy=True)
@@ -264,7 +266,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
 
     if density:
         db = cupy.array(cupy.diff(bin_edges), cupy.float64)
-        return y/db/y.sum(), bin_edges
+        return y / db / y.sum(), bin_edges
     return y, bin_edges
 
 
