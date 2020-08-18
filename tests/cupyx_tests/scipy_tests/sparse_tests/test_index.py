@@ -121,15 +121,6 @@ class TestIndexing(unittest.TestCase):
     def test_major_all_minor_all(self):
         self._run(slice(None), slice(None))
 
-    def test_ellipsis(self):
-        self._run(Ellipsis)
-        self._run(Ellipsis, 1)
-        self._run(1, Ellipsis)
-        self._run(Ellipsis, slice(None))
-        self._run(slice(None), Ellipsis)
-        self._run(Ellipsis, slice(1, None))
-        self._run(slice(1, None), Ellipsis)
-
     # Major Indexing
 
     def test_major_bool_fancy(self):
@@ -171,13 +162,13 @@ class TestIndexing(unittest.TestCase):
         self._run(5, [1, 5, 4])
 
     def test_ellipsis(self):
-            self._run(Ellipsis, flip_for_csc=False)
-            self._run(Ellipsis, 1, flip_for_csc=False)
-            self._run(1, Ellipsis, flip_for_csc=False)
-            self._run(Ellipsis, slice(None), flip_for_csc=False)
-            self._run(slice(None), Ellipsis, flip_for_csc=False)
-            self._run(Ellipsis, slice(1, None), flip_for_csc=False)
-            self._run(slice(1, None), Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, 1, flip_for_csc=False)
+        self._run(1, Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(None), flip_for_csc=False)
+        self._run(slice(None), Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(1, None), flip_for_csc=False)
+        self._run(slice(1, None), Ellipsis, flip_for_csc=False)
 
     def test_bad_indexing(self):
         with pytest.raises(IndexError):
