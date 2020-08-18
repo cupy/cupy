@@ -211,9 +211,9 @@ cusparseStatus_t cusparseZcsrgeam2(...) {
 
 #endif // #if CUDA_VERSION < 9020
 
-#if (CUDA_VERSION < 10010) || defined(_WIN32)
+#if (CUDA_VERSION < 10010) || (CUDA_VERSION < 11000 && defined(_WIN32))
 // Types, macro and functions added in CUDA 10.1 except Windows
-// TODO(anaruse): check availability on Windows when CUDA 11 is released
+// Windows support added in cuSparse 11.0
 
 #define CUSPARSE_VERSION CUDA_VERSION // CUDA_VERSION used instead
 
