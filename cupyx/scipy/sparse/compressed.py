@@ -7,7 +7,7 @@ except ImportError:
 
 import cupy
 from cupy import core
-from cupy.creation import basic
+from cupy._creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import data as sparse_data

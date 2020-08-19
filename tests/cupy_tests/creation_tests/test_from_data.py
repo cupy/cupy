@@ -500,6 +500,14 @@ class TestCudaArrayInterface(unittest.TestCase):
         assert a.data.ptr == 0
         assert a.size == 0
 
+    @testing.for_all_dtypes()
+    def test_asnumpy(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = DummyObjectWithCudaArrayInterface(a, self.ver, self.strides)
+        a_cpu = cupy.asnumpy(a)
+        b_cpu = cupy.asnumpy(b)
+        testing.assert_array_equal(a_cpu, b_cpu)
+
 
 @testing.gpu
 @testing.parameterize(*testing.product({

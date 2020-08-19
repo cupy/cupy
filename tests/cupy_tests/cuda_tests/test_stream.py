@@ -1,6 +1,6 @@
 import unittest
 
-from cupy.creation import from_data
+from cupy._creation import from_data
 from cupy import cuda
 from cupy import testing
 from cupy.testing import attr

@@ -137,7 +137,7 @@ class _minmax_mixin(object):
 
     """
 
-    def _min_or_max_axis(self, axis, min_or_max, nonzero):
+    def _min_or_max_axis(self, axis, min_or_max, explicit):
         N = self.shape[axis]
         if N == 0:
             raise ValueError("zero-size array to reduction operation")
@@ -147,7 +147,7 @@ class _minmax_mixin(object):
         mat.sum_duplicates()
 
         # Do the reudction
-        value = mat._minor_reduce(min_or_max, axis, nonzero)
+        value = mat._minor_reduce(min_or_max, axis, explicit)
         major_index = cupy.arange(M)
 
         mask = value != 0
@@ -163,7 +163,7 @@ class _minmax_mixin(object):
                 (value, (major_index, cupy.zeros(len(value)))),
                 dtype=self.dtype, shape=(M, 1))
 
-    def _min_or_max(self, axis, out, min_or_max, non_zero):
+    def _min_or_max(self, axis, out, min_or_max, explicit):
         if out is not None:
             raise ValueError(("Sparse matrices do not support "
                               "an 'out' parameter."))
@@ -179,7 +179,7 @@ class _minmax_mixin(object):
                 return zero
             self.sum_duplicates()
             m = min_or_max(self.data)
-            if non_zero:
+            if explicit:
                 return m
             if self.nnz != internal.prod(self.shape):
                 if min_or_max is cupy.min:
@@ -191,7 +191,7 @@ class _minmax_mixin(object):
             return m
 
         if axis == 0 or axis == 1:
-            return self._min_or_max_axis(axis, min_or_max, non_zero)
+            return self._min_or_max_axis(axis, min_or_max, explicit)
         else:
             raise ValueError("axis out of range")
 
@@ -250,7 +250,7 @@ class _minmax_mixin(object):
 
         return self._arg_min_or_max_axis(axis, op)
 
-    def max(self, axis=None, out=None, nonzero=False):
+    def max(self, axis=None, out=None, *, explicit=False):
         """Returns the maximum of the matrix or maximum along an axis.
 
         Args:
@@ -262,9 +262,11 @@ class _minmax_mixin(object):
                 This argument is in the signature *solely* for NumPy
                 compatibility reasons. Do not pass in anything except
                 for the default value, as this argument is not used.
-            nonzero (bool): Return the maximum nonzero value and ignore all
-                zero entries. If the dimension has no nonzero values, a zero is
-                then returned to indicate that it is the only available value.
+            explicit (bool): Return the maximum value explicitly specified and
+                ignore all implicit zero entries. If the dimension has no
+                explicit values, a zero is then returned to indicate that it is
+                the only implicit value. This parameter is experimental and may
+                change in the future.
 
         Returns:
             (cupy.ndarray or float): Maximum of ``a``. If ``axis`` is
@@ -278,10 +280,13 @@ class _minmax_mixin(object):
           matrices
 
         """
+        if explicit:
+            api_name = 'explicit of cupyx.scipy.sparse.{}.max'.format(
+                self.__class__.__name__)
+            cupy.util.experimental(api_name)
+        return self._min_or_max(axis, out, cupy.max, explicit)
 
-        return self._min_or_max(axis, out, cupy.max, nonzero)
-
-    def min(self, axis=None, out=None, nonzero=False):
+    def min(self, axis=None, out=None, *, explicit=False):
         """Returns the minimum of the matrix or maximum along an axis.
 
         Args:
@@ -293,9 +298,11 @@ class _minmax_mixin(object):
                 This argument is in the signature *solely* for NumPy
                 compatibility reasons. Do not pass in anything except for
                 the default value, as this argument is not used.
-            nonzero (bool): Return the minimum nonzero value and ignore all
-                zero entries. If the dimension has no nonzero values, a zero is
-                then returned to indicate that it is the only available value.
+            explicit (bool): Return the minimum value explicitly specified and
+                ignore all implicit zero entries. If the dimension has no
+                explicit values, a zero is then returned to indicate that it is
+                the only implicit value. This parameter is experimental and may
+                change in the future.
 
         Returns:
             (cupy.ndarray or float): Minimum of ``a``. If ``axis`` is
@@ -309,8 +316,11 @@ class _minmax_mixin(object):
           matrices
 
         """
-
-        return self._min_or_max(axis, out, cupy.min, nonzero)
+        if explicit:
+            api_name = 'explicit of cupyx.scipy.sparse.{}.min'.format(
+                self.__class__.__name__)
+            cupy.util.experimental(api_name)
+        return self._min_or_max(axis, out, cupy.min, explicit)
 
     def argmax(self, axis=None, out=None):
         """Returns indices of maximum elements along an axis.
@@ -334,7 +344,6 @@ class _minmax_mixin(object):
                 its size along ``axis`` is 1.
 
         """
-
         return self._arg_min_or_max(axis, out, cupy.argmax, cupy.greater)
 
     def argmin(self, axis=None, out=None):
@@ -360,7 +369,6 @@ class _minmax_mixin(object):
                 its size along ``axis`` is 1.
 
         """
-
         return self._arg_min_or_max(axis, out, cupy.argmin, cupy.less)
 
 
