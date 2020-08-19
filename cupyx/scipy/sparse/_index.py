@@ -216,6 +216,12 @@ class IndexMixin(object):
             return self.__class__(cupy.atleast_2d(row).shape, dtype=self.dtype)
         return self._get_arrayXarray(row, col)
 
+    def _is_scalar(self, index):
+        if isinstance(index, (cupy.ndarray, numpy.ndarray)) and \
+                index.ndim == 0 and index.size == 1:
+            return True
+        return False
+
     def _parse_indices(self, key):
         M, N = self.shape
         row, col = _unpack_index(key)
@@ -223,6 +229,11 @@ class IndexMixin(object):
         # Scipy calls sputils.isintlike() rather than
         # isinstance(x, _int_scalar_types). Comparing directly to int
         # here to minimize the impact of nested exception catching
+
+        if self._is_scalar(row):
+            row = row.item()
+        if self._is_scalar(col):
+            col = col.item()
 
         if isinstance(row, _int_scalar_types):
             row = _normalize_index(row, M, 'row')

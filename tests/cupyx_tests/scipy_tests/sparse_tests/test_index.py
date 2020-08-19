@@ -86,6 +86,12 @@ class TestIndexing(unittest.TestCase):
         self._run(10)
         self._run(-10)
 
+        self._run(numpy.array(10))
+        self._run(numpy.array(-10))
+
+        self._run(cupy.array(10))
+        self._run(cupy.array(-10))
+
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
 
@@ -105,12 +111,17 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
+        self._run(numpy.array(5), slice(1, 5))
+        self._run(cupy.array(5), slice(1, 5))
 
     def test_major_scalar_minor_all(self):
         self._run(5, slice(None))
+        self._run(numpy.array(5), slice(None))
 
     def test_major_scalar_minor_scalar(self):
         self._run(5, 5)
+        self._run(numpy.array(5), numpy.array(5))
+        self._run(cupy.array(5), cupy.array(5))
 
     def test_major_all_minor_scalar(self):
         self._run(slice(None), 5)
