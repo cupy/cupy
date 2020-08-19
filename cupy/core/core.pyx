@@ -38,6 +38,7 @@ from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
 from cupy.core._dtype cimport to_cuda_dtype
 from cupy.core._kernel cimport create_ufunc
+from cupy.core cimport _routines_binary as _binary
 from cupy.core cimport _routines_indexing as _indexing
 from cupy.core cimport _routines_logic as _logic
 from cupy.core cimport _routines_manipulation as _manipulation
@@ -998,7 +999,7 @@ cdef class ndarray:
         return _math._absolute(self)
 
     def __invert__(self):
-        return invert(self)
+        return _binary._invert(self)
 
     # Arithmetic:
 
@@ -1067,31 +1068,31 @@ cdef class ndarray:
         if _should_use_rop(x, y):
             return y.__rlshift__(x)
         else:
-            return left_shift(x, y)
+            return _binary._left_shift(x, y)
 
     def __rshift__(x, y):
         if _should_use_rop(x, y):
             return y.__rrshift__(x)
         else:
-            return right_shift(x, y)
+            return _binary._right_shift(x, y)
 
     def __and__(x, y):
         if _should_use_rop(x, y):
             return y.__rand__(x)
         else:
-            return bitwise_and(x, y)
+            return _binary._bitwise_and(x, y)
 
     def __or__(x, y):
         if _should_use_rop(x, y):
             return y.__ror__(x)
         else:
-            return bitwise_or(x, y)
+            return _binary._bitwise_or(x, y)
 
     def __xor__(x, y):
         if _should_use_rop(x, y):
             return y.__rxor__(x)
         else:
-            return bitwise_xor(x, y)
+            return _binary._bitwise_xor(x, y)
 
     # Arithmetic, in-place:
 
@@ -1120,19 +1121,19 @@ cdef class ndarray:
         return _math._power(self, other, self)
 
     def __ilshift__(self, other):
-        return left_shift(self, other, self)
+        return _binary._left_shift(self, other, self)
 
     def __irshift__(self, other):
-        return right_shift(self, other, self)
+        return _binary._right_shift(self, other, self)
 
     def __iand__(self, other):
-        return bitwise_and(self, other, self)
+        return _binary._bitwise_and(self, other, self)
 
     def __ior__(self, other):
-        return bitwise_or(self, other, self)
+        return _binary._bitwise_or(self, other, self)
 
     def __ixor__(self, other):
-        return bitwise_xor(self, other, self)
+        return _binary._bitwise_xor(self, other, self)
 
     cpdef ndarray conj(self):
         return _math._ndarray_conj(self)
@@ -2327,92 +2328,6 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
     newarray = ndarray((1,) if zero_dim else a.shape, dtype, order='F')
     elementwise_copy(a, newarray)
     return newarray
-
-
-# -----------------------------------------------------------------------------
-# Binary operations
-# -----------------------------------------------------------------------------
-
-cpdef _create_bit_op(name, op, no_bool, doc=''):
-    types = () if no_bool else ('??->?',)
-    return create_ufunc(
-        'cupy_' + name,
-        types + ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-                 'LL->L', 'qq->q', 'QQ->Q'),
-        'out0 = in0 %s in1' % op,
-        doc=doc)
-
-
-bitwise_and = _create_bit_op(
-    'bitwise_and', '&', False,
-    '''Computes the bitwise AND of two arrays elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. seealso:: :data:`numpy.bitwise_and`
-
-    ''')
-
-
-bitwise_or = _create_bit_op(
-    'bitwise_or', '|', False,
-    '''Computes the bitwise OR of two arrays elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. seealso:: :data:`numpy.bitwise_or`
-
-    ''')
-
-
-bitwise_xor = _create_bit_op(
-    'bitwise_xor', '^', False,
-    '''Computes the bitwise XOR of two arrays elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. seealso:: :data:`numpy.bitwise_xor`
-
-    ''')
-
-
-invert = create_ufunc(
-    'cupy_invert',
-    (('?->?', 'out0 = !in0'), 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I',
-     'l->l', 'L->L', 'q->q', 'Q->Q'),
-    'out0 = ~in0',
-    doc='''Computes the bitwise NOT of an array elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. note::
-        :func:`cupy.bitwise_not` is an alias for :func:`cupy.invert`.
-
-    .. seealso:: :data:`numpy.invert`
-
-    ''')
-
-
-left_shift = _create_bit_op(
-    'left_shift', '<<', True,
-    '''Shifts the bits of each integer element to the left.
-
-    Only integer arrays are handled.
-
-    .. seealso:: :data:`numpy.left_shift`
-
-    ''')
-
-
-right_shift = _create_bit_op(
-    'right_shift', '>>', True,
-    '''Shifts the bits of each integer element to the right.
-
-    Only integer arrays are handled
-
-    .. seealso:: :data:`numpy.right_shift`
-
-    ''')
 
 
 # -----------------------------------------------------------------------------
