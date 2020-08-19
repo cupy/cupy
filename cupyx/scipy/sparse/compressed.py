@@ -855,7 +855,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 raise IndexError('index (%d) out of range (< -%d)' %
                                  (idx, bound))
 
-        i = cupy.array(i, dtype=self.indices.dtype,
+        i = cupy.array(i, dtype=self.indptr.dtype,
                        copy=True, ndmin=1).ravel()
         j = cupy.array(j, dtype=self.indices.dtype,
                        copy=True, ndmin=1).ravel()
@@ -1061,9 +1061,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         idx_dtype = sputils.get_index_dtype((self.indptr, self.indices))
         self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
-
-        # @TODO(cjnolet): Is this necessary?
-        # self.data = sputils.to_native(self.data)
 
         # check array shapes
         for x in [self.data.ndim, self.indices.ndim, self.indptr.ndim]:

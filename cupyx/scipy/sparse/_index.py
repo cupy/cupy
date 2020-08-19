@@ -297,6 +297,8 @@ def _csr_row_index(rows,
  */
 """
 
+
+# TODO: Should be able build a COO and find duplicates / pull the offsets
 _csr_sample_offsets_ker = core.ElementwiseKernel(
     '''I n_row, I n_col, raw I Ap, raw I Aj, raw I Bi, raw I Bj''',
     'raw I Bp, raw bool dupl', '''
@@ -315,6 +317,7 @@ _csr_sample_offsets_ker = core.ElementwiseKernel(
                 if (Aj[jj] == k) {
                     offset = -2;
                     dupl[0] = true;
+                    return;
                 }
             }
         }
@@ -327,6 +330,14 @@ def _csr_sample_offsets(n_row, n_col,
                         Ap, Aj, n_samples,
                         Bi, Bj):
 
+    # Bi[Bi < 0] += n_row
+    # Bj[Bj < 0] += n_col
+    #
+    # sel = mat[Bi, Bj]
+    #
+    #
+    #
+    #
     offsets = cupy.zeros(n_samples, dtype=Aj.dtype)
 
     dupl = cupy.array([False], dtype='bool')
@@ -335,7 +346,7 @@ def _csr_sample_offsets(n_row, n_col,
                             offsets, dupl,
                             size=n_samples)
 
-    return offsets, dupl.item()
+    return offsets, bool(dupl)
 
 
 def _csr_row_slice(start_maj, step_maj, Ap, Aj, Ax, Bp):
