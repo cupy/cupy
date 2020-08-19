@@ -126,18 +126,17 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     to the data y sampled at x.
 
     Args:
-        x (cupy.ndarray or cupy.poly1d): x-coordinates of the sample
-            points of shape (M, ).
-        y (cupy.ndarray or cupy.poly1d): y-coordinates of the sample
-            points of shape (M, ) or (M, K).
+        x (cupy.ndarray): x-coordinates of the sample points of shape (M,).
+        y (cupy.ndarray): y-coordinates of the sample points of shape
+            (M,) or (M, K).
         deg (int): degree of the fitting polynomial.
         rcond (float, optional): relative condition number of the fit.
-            The default value is len(x) * eps.
+            The default value is ``len(x) * eps``.
         full (bool, optional): indicator of the return value nature.
             When False (default), only the coefficients are returned.
             When True, diagnostic information is also returned.
         w (cupy.ndarray, optional): weights applied to the y-coordinates
-            of the sample points of shape (M, ).
+            of the sample points of shape (M,).
         cov (bool or str, optional): if given, returns the coefficients
             along with the covariance matrix.
 
@@ -145,27 +144,22 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
         cupy.ndarray: of shape (deg + 1,) or (deg + 1, K).
             Polynomial coefficients from highest to lowest degree
         tuple (cupy.ndarray, int, cupy.ndarray, float):
-            Present only if ``full`` = True.
+            Present only if ``full=True``.
             Sum of squared residuals of the least-squares fit,
             rank of the scaled Vandermonde coefficient matrix,
             its singular values, and the specified value of ``rcond``.
         cupy.ndarray: of shape (M, M) or (M, M, K).
-            Present only if ``full`` = False and ``cov`` = True.
+            Present only if ``full=False`` and ``cov=True``.
             The covariance matrix of the polynomial coefficient estimates.
 
     .. warning::
 
         numpy.RankWarning: The rank of the coefficient matrix in the
-        least-squares fit is deficient. It is raised if ``full`` = False.
+        least-squares fit is deficient. It is raised if ``full=False``.
 
     .. seealso:: :func:`numpy.polyfit`
 
     """
-    if isinstance(x, cupy.poly1d):
-        x = x.coeffs
-    if isinstance(y, cupy.poly1d):
-        y = y.coeffs
-
     x = _polyfit_typecast(x)
     y = _polyfit_typecast(y)
     deg = int(deg)
@@ -202,7 +196,9 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     scale = cupy.sqrt((cupy.square(lhs)).sum(axis=0))
     lhs /= scale
     c, resids, rank, s = cupy.linalg.lstsq(lhs, rhs, rcond)
-    c = (c.T / scale).T
+    if y.ndim > 1:
+        scale = scale.reshape(-1, 1)
+    c /= scale
 
     order = deg + 1
     if rank != order and not full:

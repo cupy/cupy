@@ -575,13 +575,6 @@ class TestPolyfit(unittest.TestCase):
             with pytest.warns(numpy.RankWarning):
                 xp.polyfit(x, y, 6)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_polyfit_poly1d(self, xp, dtype):
-        x = xp.poly1d(testing.shaped_arange((5,), xp, dtype))
-        y = xp.poly1d(testing.shaped_arange((5,), xp, dtype))
-        return xp.polyfit(x, y, 5)
-
 
 @testing.gpu
 @testing.parameterize(*testing.product({
