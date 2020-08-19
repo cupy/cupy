@@ -333,7 +333,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         diff = diff_out;
         ''', 'has_canonical_format')
 
-    _csr_copy_existing_indices_kern = core.ElementwiseKernel(
+    _insert_many_populate_arrays = core.ElementwiseKernel(
         '''raw I insert_indices, raw T insert_values, raw I insertion_indptr,
         raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
         'raw I Bj, raw T Bx', '''
@@ -626,17 +626,57 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_columnXarray(self, row, col):
         # outer indexing
-        raise NotImplementedError()
+        major, minor = self._swap(*(row, col))
+        return self._major_index_fancy(major)._minor_index_fancy(minor)
 
     def _major_index_fancy(self, idx):
         """Index along the major axis where idx is an array of ints.
         """
-        raise NotImplementedError()
+        _, N = self._swap(*self.shape)
+        M = len(idx)
+        new_shape = self._swap(M, N)
+        if M == 0:
+            return self.__class__(new_shape)
+
+        row_nnz = cupy.diff(self.indptr)
+        idx_dtype = self.indices.dtype
+        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
+        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
+
+        res_indices, res_data = _index._csr_row_index(
+            idx, self.indptr,
+            self.indices, self.data, res_indptr)
+
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
 
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
         """
-        raise NotImplementedError()
+
+        idx_dtype = self.indices.dtype
+        idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
+
+        M, N = self._swap(*self.shape)
+        k = len(idx)
+        new_shape = self._swap(M, k)
+        if k == 0:
+            return self.__class__(new_shape)
+
+        # pass 1: count idx entries and compute new indptr
+        col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
+
+        index1_outs = _index._csr_column_index1(idx, self.indptr, self.indices)
+        res_indptr, indices_mask, col_counts, sort_idxs = index1_outs
+
+        # pass 2: copy indices/data for selected idxs
+
+        res_indices, res_data = _index._csr_column_index2(
+            col_order, col_counts, sort_idxs, self.indptr, indices_mask,
+            self.data, res_indptr)
+
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
 
     def _minor_slice(self, idx, copy=False):
         """Index along the minor axis where idx is a slice object.
@@ -744,16 +784,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                               shape=new_shape, copy=False)
 
     def _set_intXint(self, row, col, x):
-        i, j = self._swap(*(row, col))
+        i, j = self._swap(row, col)
         self._set_many(i, j, x)
 
     def _set_arrayXarray(self, row, col, x):
-        i, j = self._swap(*(row, col))
+        i, j = self._swap(row, col)
         self._set_many(i, j, x)
 
     def _set_arrayXarray_sparse(self, row, col, x):
         # clear entries that will be overwritten
-        self._zero_many(*self._swap(*(row, col)))
+        self._zero_many(*self._swap(row, col))
 
         M, N = row.shape  # matches col.shape
         broadcast_row = M != 1 and x.shape[0] == 1
@@ -769,7 +809,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             c = cupy.tile(cupy.arange(N), c.size)
             x = cupy.repeat(x, N)
         # only assign entries in the new sparsity structure
-        i, j = self._swap(*(row[r, c], col[r, c]))
+        i, j = self._swap(row[r, c], col[r, c])
         self._set_many(i, j, x)
 
     def _setdiag(self, values, k):
@@ -785,7 +825,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             else:
                 max_index = min(M + k, N, values.size)
             i = cupy.arange(max_index, dtype=self.indices.dtype)
-            j = cupy.arange(max_index, dtype=self.indices.dtype)
+            j = i.copy()
             i -= k
 
         else:
@@ -794,7 +834,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             else:
                 max_index = min(M, N - k, values.size)
             i = cupy.arange(max_index, dtype=self.indices.dtype)
-            j = cupy.arange(max_index, dtype=self.indices.dtype)
+            j = i.copy()
             j += k
 
         if not broadcast:
@@ -947,7 +987,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         new_indptr_lookup[1:][rows] = row_counts
         cupy.cumsum(new_indptr_lookup, out=new_indptr_lookup)
 
-        self._csr_copy_existing_indices_kern(
+        self._insert_many_populate_arrays(
             indices_inserts, data_inserts, new_indptr_lookup,
             self.indptr, self.indices, self.data, new_indptr, new_indices,
             new_data, size=self.indptr.size-1)
@@ -1034,13 +1074,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if (self.indptr.size != major_dim + 1):
             raise ValueError("index pointer size ({}) should be ({})"
                              "".format(self.indptr.size, major_dim + 1))
-        if (self.indptr[0].item() != 0):
+        if (int(self.indptr[0]) != 0):
             raise ValueError("index pointer should start with 0")
 
         # check index and data arrays
         if (self.indices.size != self.data.size):
             raise ValueError("indices and data should have the same size")
-        if (self.indptr[-1].item() > self.indices.size):
+        if (int(self.indptr[-1]) > self.indices.size):
             raise ValueError("Last value of index pointer should be less than "
                              "the size of index and data arrays")
 

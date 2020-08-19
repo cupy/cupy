@@ -412,7 +412,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                           dtype=self.dtype, copy=False)
 
     def _get_intXarray(self, row, col):
-        raise NotImplementedError()
+        return self.getrow(row)._minor_index_fancy(col)
 
     def _get_intXslice(self, row, col):
         if col.step in (1, None):
@@ -452,13 +452,16 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             minor=slice(col, col+1, 1))
 
     def _get_sliceXarray(self, row, col):
-        raise NotImplementedError()
+        return self._major_slice(row)._minor_index_fancy(col)
 
     def _get_arrayXint(self, row, col):
-        raise NotImplementedError()
+        return self._major_index_fancy(row)._get_submatrix(minor=col)
 
     def _get_arrayXslice(self, row, col):
-        raise NotImplementedError()
+        if col.step not in (1, None):
+            col = cupy.arange(*col.indices(self.shape[1]))
+            return self._get_arrayXarray(row, col)
+        return self._major_index_fancy(row)._get_submatrix(minor=col)
 
 
 def isspmatrix_csr(x):

@@ -5,6 +5,8 @@ import cupy
 from cupy import sparse
 from cupy import testing
 
+import numpy
+
 import pytest
 
 
@@ -72,8 +74,12 @@ class TestSetitemIndexing(unittest.TestCase):
                 cupy.cuda.Stream.null.synchronize()
                 gpu_stop = time.time() - gpu_time
 
-        print("maj=%s, min=%s, format=%s, cpu_time=%s, gpu_time=%s"
-              % (maj, min, self.format, cpu_stop, gpu_stop))
+        dense = actual.todense().ravel()
+
+        print("maj=%s, min=%s, format=%s, result_size=%s, cpu_time=%s, "
+              "gpu_time=%s"
+              % (maj, min, self.format, len(dense[dense == 5]),
+                 cpu_stop, gpu_stop))
 
         # if cupy.sparse.isspmatrix(actual):
         #     actual.sort_indices()
@@ -227,20 +233,24 @@ class TestSetitemIndexing(unittest.TestCase):
     'n_rows': [25, 150],
     'n_cols': [25, 150]
 }))
-@testing.with_requires('scipy>=1.4.0')
+# @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
 class TestGetItemIndexing(unittest.TestCase):
 
-    def _run(self, maj, min=None, format=None):
-
-        # Skipping tests that are only supported in one
-        # format for now.
-        if format is not None and format != self.format:
-            pytest.skip()
+    def _run(self, maj, min=None, flip_for_csc=True,
+             compare_dense=False):
 
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
                           density=self.density)
+
+        if self.format == 'csc' and flip_for_csc:
+            tmp = maj
+            maj = min
+            min = tmp
+
+        # None is not valid for major when minor is not None
+        maj = slice(None) if maj is None else maj
 
         # sparse.random doesn't support complex types
         # so we need to cast
@@ -248,12 +258,22 @@ class TestGetItemIndexing(unittest.TestCase):
 
         expected = a.get()
 
+        if compare_dense:
+            expected = expected.todense()
+
+        maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
+        min_h = min.get() if isinstance(min, cupy.ndarray) else min
+
         if min is not None:
-            expected = expected[maj, min]
+
+            expected = expected[maj_h, min_h]
             actual = a[maj, min]
         else:
-            expected = expected[maj]
+            expected = expected[maj_h]
             actual = a[maj]
+
+        if compare_dense:
+            actual = actual.todense()
 
         if sparse.isspmatrix(actual):
             actual.sort_indices()
@@ -269,6 +289,16 @@ class TestGetItemIndexing(unittest.TestCase):
             testing.assert_array_equal(
                 actual, expected)
 
+    @staticmethod
+    def _get_index_combos(idx):
+        return [dict['arr_fn'](idx, dtype=dict['dtype'])
+                for dict in testing.product({
+                    "arr_fn": [numpy.array, cupy.array],
+                    "dtype": [numpy.int32, numpy.int64]
+                })]
+
+    # 2D Slicing
+
     def test_major_slice(self):
         self._run(slice(5, 9))
         self._run(slice(9, 5))
@@ -280,6 +310,12 @@ class TestGetItemIndexing(unittest.TestCase):
         self._run(10)
         self._run(-10)
 
+        self._run(numpy.array(10))
+        self._run(numpy.array(-10))
+
+        self._run(cupy.array(10))
+        self._run(cupy.array(-10))
+
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
 
@@ -289,44 +325,27 @@ class TestGetItemIndexing(unittest.TestCase):
 
     def test_major_slice_with_step(self):
 
-        # CSR Tests
-        self._run(slice(1, 20, 2), slice(1, 5, 1),
-                  format='csr')
-        self._run(slice(20, 1, 2), slice(1, 5, 1),
-                  format='csr')
-        self._run(slice(1, 15, 2), slice(1, 5, 1),
-                  format='csr')
-        self._run(slice(15, 1, 5), slice(1, 5, 1),
-                  format='csr')
-        self._run(slice(1, 15, 5), slice(1, 5, 1),
-                  format='csr')
-        self._run(slice(20, 1, 5), slice(None),
-                  format='csr')
-        self._run(slice(1, 20, 5), slice(None),
-                  format='csr')
-
-        # CSC Tests
-        self._run(slice(1, 5, 1), slice(1, 20, 2),
-                  format='csc')
-        self._run(slice(1, 5, 1), slice(20, 1, 2),
-                  format='csc')
-        self._run(slice(1, 5, 1), slice(1, 15, 2),
-                  format='csc')
-        self._run(slice(1, 5, 1), slice(15, 1, 5),
-                  format='csc')
-        self._run(slice(None), slice(20, 1, 5),
-                  format='csc')
-        self._run(slice(None), slice(1, 20, 5),
-                  format='csc')
+        self._run(slice(1, 20, 2), slice(1, 5, 1))
+        self._run(slice(20, 1, 2), slice(1, 5, 1))
+        self._run(slice(1, 15, 2), slice(1, 5, 1))
+        self._run(slice(15, 1, 5), slice(1, 5, 1))
+        self._run(slice(1, 15, 5), slice(1, 5, 1))
+        self._run(slice(20, 1, 5), slice(None))
+        self._run(slice(1, 20, 5), slice(None))
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
+        self._run(numpy.array(5), slice(1, 5))
+        self._run(cupy.array(5), slice(1, 5))
 
     def test_major_scalar_minor_all(self):
         self._run(5, slice(None))
+        self._run(numpy.array(5), slice(None))
 
     def test_major_scalar_minor_scalar(self):
         self._run(5, 5)
+        self._run(numpy.array(5), numpy.array(5))
+        self._run(cupy.array(5), cupy.array(5))
 
     def test_major_all_minor_scalar(self):
         self._run(slice(None), 5)
@@ -337,14 +356,97 @@ class TestGetItemIndexing(unittest.TestCase):
     def test_major_all_minor_all(self):
         self._run(slice(None), slice(None))
 
+    # Major Indexing
+
+    def test_major_bool_fancy(self):
+
+        size = self.n_rows if self.format == 'csr' else self.n_cols
+
+        a = numpy.random.random(size)
+        self._run(cupy.array(a).astype(cupy.bool))  # Cupy
+        self._run(a.astype(numpy.bool))             # Numpy
+        self._run(a.astype(numpy.bool).tolist(),    # List
+                  # In older environments (e.g., py35, scipy 1.4),
+                  # scipy sparse arrays are crashing when indexed with
+                  # native Python boolean list.
+                  compare_dense=True)
+
+    def test_major_fancy_minor_all(self):
+
+        self._run([1, 5, 4, 2, 5, 1], slice(None))
+
+        for idx in self._get_index_combos([1, 5, 4, 2, 5, 1]):
+            self._run(idx, slice(None))
+
+    def test_major_fancy_minor_scalar(self):
+        self._run([1, 5, 4, 5, 1], 5)
+        for idx in self._get_index_combos([1, 5, 4, 2, 5, 1]):
+            self._run(idx, 5)
+
+    def test_major_fancy_minor_slice(self):
+        self._run([1, 5, 4, 5, 1], slice(1, 5))
+        self._run([1, 5, 4, 5, 1], slice(5, 1, 1))
+
+        for idx in self._get_index_combos([1, 5, 4, 5, 1]):
+            self._run(idx, slice(5, 1, 1))
+
+        for idx in self._get_index_combos([1, 5, 4, 5, 1]):
+            self._run(idx, slice(1, 5))
+
+    # Minor Indexing
+
+    def test_major_all_minor_bool(self):
+        size = self.n_cols if self.format == 'csr' else self.n_rows
+
+        a = numpy.random.random(size)
+        self._run(slice(None), cupy.array(a).astype(cupy.bool))  # Cupy
+        self._run(slice(None), a.astype(numpy.bool))  # Numpy
+        self._run(slice(None), a.astype(numpy.bool).tolist(),  # List
+                  # In older environments (e.g., py35, scipy 1.4),
+                  # scipy sparse arrays are crashing when indexed with
+                  # native Python boolean list.
+                  compare_dense=True)
+
+    def test_major_slice_minor_bool(self):
+        size = self.n_cols if self.format == 'csr' else self.n_rows
+
+        a = numpy.random.random(size)
+        self._run(slice(1, 10, 2), cupy.array(a).astype(cupy.bool))  # Cupy
+        self._run(slice(1, 10, 2), a.astype(numpy.bool))  # Numpy
+        self._run(slice(1, 10, 2), a.astype(numpy.bool).tolist(),  # List
+                  # In older environments (e.g., py35, scipy 1.4),
+                  # scipy sparse arrays are crashing when indexed with
+                  # native Python boolean list.
+                  compare_dense=True)
+
+    def test_major_all_minor_fancy(self):
+        self._run(slice(None), [1, 5, 4, 5, 2, 4, 1])
+
+        for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
+            self._run(slice(None), idx)
+
+    def test_major_slice_minor_fancy(self):
+
+        self._run(slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1])
+
+        for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
+            self._run(slice(1, 10, 2), idx)
+
+    def test_major_scalar_minor_fancy(self):
+
+        self._run(5, [1, 5, 4, 1, 2])
+
+        for idx in self._get_index_combos([1, 5, 4, 1, 2]):
+            self._run(5, idx)
+
     def test_ellipsis(self):
-        self._run(Ellipsis)
-        self._run(Ellipsis, 1)
-        self._run(1, Ellipsis)
-        self._run(Ellipsis, slice(None))
-        self._run(slice(None), Ellipsis)
-        self._run(Ellipsis, slice(1, None))
-        self._run(slice(1, None), Ellipsis)
+        self._run(Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, 1, flip_for_csc=False)
+        self._run(1, Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(None), flip_for_csc=False)
+        self._run(slice(None), Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(1, None), flip_for_csc=False)
+        self._run(slice(1, None), Ellipsis, flip_for_csc=False)
 
     def test_bad_indexing(self):
         with pytest.raises(IndexError):
