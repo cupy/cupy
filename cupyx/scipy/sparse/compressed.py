@@ -935,7 +935,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         new_indptr[1:] = indptr_diff
 
         # Build output arrays
-        cupy.cumsum(new_indptr, out=new_indptr).astype(idx_dtype)
+        cupy.cumsum(new_indptr, out=new_indptr)
         out_nnz = int(new_indptr[-1])
 
         new_indices = cupy.empty(out_nnz, dtype=idx_dtype)
