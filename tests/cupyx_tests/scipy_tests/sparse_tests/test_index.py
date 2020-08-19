@@ -12,8 +12,8 @@ import pytest
     'format': ['csr', 'csc'],
     'density': [0.5],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [1500],
-    'n_cols': [1500]
+    'n_rows': [15000],
+    'n_cols': [15000]
 }))
 @testing.with_requires('scipy')
 class TestSetitemIndexing(unittest.TestCase):
@@ -72,7 +72,8 @@ class TestSetitemIndexing(unittest.TestCase):
                 cupy.cuda.Stream.null.synchronize()
                 gpu_stop = time.time() - gpu_time
 
-        print("cpu_time=%s, gpu_time=%s" % (cpu_stop, gpu_stop))
+        print("maj=%s, min=%s, format=%s, cpu_time=%s, gpu_time=%s"
+              % (maj, min, self.format, cpu_stop, gpu_stop))
 
         if cupy.sparse.isspmatrix(actual):
             actual.sort_indices()

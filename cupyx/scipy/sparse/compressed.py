@@ -409,7 +409,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     cur_existing_value = Ax[input_row_start+input_offset];
                 }
 
-            } else if(insert_offset < insert_count) {
+            } else {
                     Bj[output_n] = cur_insert_index;
                     Bx[output_n] = cur_insert_value;
 
@@ -420,8 +420,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                         cur_insert_value =
                             insert_values[insert_row_start+insert_offset];
                     }
-            } else {
-                printf("Something went wrong\\n");
             }
 
             output_n++;
@@ -990,7 +988,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ui_indptr = cupy.hstack([ui_indptr, to_add])
 
         # Compute the counts for each row in the insertion array
-
         row_counts = cupy.zeros(ui_indptr.size-1, dtype=idx_dtype)
         cupyx.scatter_add(
             row_counts, cupy.searchsorted(rows, indptr_inserts), 1)
