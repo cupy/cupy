@@ -4,7 +4,6 @@ import warnings
 import numpy
 
 import cupy
-import cupyx
 from cupy import core
 
 
@@ -69,7 +68,7 @@ def correlate(a, v, mode='valid'):
         raise ValueError('object too deep for desired array')
     # choose_conv_method does not choose from the values in
     # the input array, so no need to apply conj.
-    method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
+    method = cupy.math.misc._choose_conv_method(a, v, mode)
     if method == 'direct':
         out = cupy.math.misc._dot_convolve(a, v.conj()[::-1], mode)
     elif method == 'fft':
