@@ -6,7 +6,7 @@ import numpy
 import cupy
 from cupy import core
 from cupy.core import _accelerator
-from cupy.cuda import device
+from cupy.cuda import common
 # TODO(leofang): always import cub when hipCUB is supported
 if not cupy.cuda.runtime.is_hip:
     from cupy.cuda import cub
@@ -219,13 +219,13 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                 # Need to ensure the dtype of bin_edges as it's needed for both
                 # the CUB call and the correction later
                 assert isinstance(bin_edges, cupy.ndarray)
-                bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
                 if numpy.issubdtype(x.dtype, numpy.integer):
                     bin_type = numpy.float
                 else:
+                    bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
                     # TODO(okuta): support float16
                     if (bin_type == numpy.float16 and
-                            int(device.get_compute_capability()) < 53):
+                            not common._is_fp16_supported()):
                         bin_type = numpy.float32
                     x = x.astype(bin_type, copy=False)
                 acc_bin_edge = bin_edges.astype(bin_type, copy=True)
