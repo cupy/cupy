@@ -23,6 +23,8 @@ class TestIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None, flip_for_csc=True):
 
+        print("maj=%s, min=%s" % (maj, min))
+
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
                           density=self.density)
@@ -138,9 +140,10 @@ class TestIndexing(unittest.TestCase):
 
         size = self.n_rows if self.format == 'csr' else self.n_cols
 
-        for rand in [cupy.random.random, numpy.random.random]:
-            self._run(rand(size).astype(numpy.bool))
-            self._run(rand(size).astype(numpy.bool).tolist())
+        a = numpy.random.random(size)
+        self._run(cupy.array(a).astype(cupy.bool))  # Cupy
+        self._run(a.astype(numpy.bool))             # Numpy
+        self._run(a.astype(numpy.bool).tolist())    # List
 
     def test_major_fancy_minor_all(self):
 
