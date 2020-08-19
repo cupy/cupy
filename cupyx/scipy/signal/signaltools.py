@@ -55,7 +55,7 @@ def convolve(in1, in2, mode='full', method='auto'):
 def correlate(in1, in2, mode='full', method='auto'):
     """Cross-correlate two N-dimensional arrays.
 
-    Convolve ``in1`` and ``in2``, with the output size determined by the
+    Cross-correlate ``in1`` and ``in2``, with the output size determined by the
     ``mode`` argument.
 
     Args:
@@ -189,14 +189,14 @@ def correlate2d(in1, in2, mode='full', boundary='fill', fillvalue=0):
         in2 (cupy.ndarray): Second input. Should have the same number of
             dimensions as ``in1``.
         mode (str): Indicates the size of the output:
-            ``'full'``: output is the full discrete linear convolution
+            ``'full'``: output is the full discrete linear cross-correlation
                         (default)
             ``'valid'``: output consists only of those elements that do not
                          rely on the zero-padding. Either ``in1`` or ``in2``
                          must be at least as large as the other in every
                          dimension.
             ``'same'``: output is the same size as ``in1``, centered
-                      with respect to the 'full' output
+                        with respect to the 'full' output
         boundary (str): Indicates how to handle boundaries:
             ``fill``: pad input arrays with fillvalue (default)
             ``wrap``: circular boundary conditions

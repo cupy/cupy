@@ -60,7 +60,6 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
     if not isinstance(output, cupy.ndarray):
         output = cupy.empty(out_shape, output)
     elif output.shape != out_shape:
-        print(output.shape, out_shape)
         raise ValueError("out has wrong shape")
 
     # Get and run the CuPy kernel
