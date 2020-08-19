@@ -25,7 +25,7 @@ You need to have the following components to use CuPy.
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_
     * Compute Capability of the GPU must be at least 3.0.
 * `CUDA Toolkit <https://developer.nvidia.com/cuda-zone>`_
-    * Supported Versions: 8.0, 9.0, 9.1, 9.2, 10.0, 10.1 and 10.2
+    * Supported Versions: 9.0, 9.2, 10.0, 10.1 and 10.2
     * If you have multiple versions of CUDA Toolkit installed, CuPy will choose one of the CUDA installations automatically.
       See :ref:`install_cuda` for details.
 * `Python <https://python.org/>`_
@@ -53,9 +53,9 @@ Optional Libraries
 Some features in CuPy will only be enabled if the corresponding libraries are installed.
 
 * `cuDNN <https://developer.nvidia.com/cudnn>`_ (library to accelerate deep neural network computations)
-    * Supported Versions: v5, v5.1, v6, v7, v7.1, v7.2, v7.3, v7.4 and v7.5.
+    * Supported Versions: v7, v7.1, v7.2, v7.3, v7.4 and v7.5.
 * `NCCL <https://developer.nvidia.com/nccl>`_  (library to perform collective multi-GPU / multi-node computations)
-    * Supported Versions: v1.3.4, v2, v2.1, v2.2, v2.3 and v2.4.
+    * Supported Versions: v2, v2.1, v2.2, v2.3 and v2.4.
 * `cuTENSOR <https://developer.nvidia.com/cutensor>`_ (library for high-performance tensor operations)
     * Supported Versions: v1.0.0 (experimental)
 
@@ -68,14 +68,8 @@ Package names are different depending on the CUDA version you have installed on 
 
 ::
 
-  (For CUDA 8.0)
-  $ pip install cupy-cuda80
-
   (For CUDA 9.0)
   $ pip install cupy-cuda90
-
-  (For CUDA 9.1)
-  $ pip install cupy-cuda91
 
   (For CUDA 9.2)
   $ pip install cupy-cuda92
@@ -191,12 +185,6 @@ Use pip to uninstall CuPy::
 
 .. note::
 
-   When you upgrade Chainer, ``pip`` sometimes installs the new version without removing the old one in ``site-packages``.
-   In this case, ``pip uninstall`` only removes the latest one.
-   To ensure that CuPy is completely removed, run the above command repeatedly until ``pip`` returns an error.
-
-.. note::
-
    If you are using a wheel, ``cupy`` shall be replaced with ``cupy-cudaXX`` (where XX is a CUDA version number).
 
 .. note::
@@ -248,15 +236,6 @@ Or run the interpreter directly::
 
 FAQ
 ---
-
-Warning message "cuDNN is not enabled" appears when using Chainer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You failed to build CuPy with cuDNN.
-If you don't need cuDNN, ignore this message.
-Otherwise, retry to install CuPy with cuDNN.
-
-See :ref:`install_cudnn` and :ref:`install_error` for details.
 
 .. _install_error:
 

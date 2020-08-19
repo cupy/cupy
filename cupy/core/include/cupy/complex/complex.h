@@ -75,12 +75,29 @@ struct complex {
 
   /* --- Constructors --- */
 
+  /*! Construct a complex number with an imaginary part of 0.
+   *
+   *  \param re The real part of the number.
+   */
+  inline __host__ __device__ complex(const T& re);
+
   /*! Construct a complex number from its real and imaginary parts.
    *
    *  \param re The real part of the number.
    *  \param im The imaginary part of the number.
    */
-  inline __host__ __device__ complex(const T& re = T(), const T& im = T());
+  inline __host__ __device__ complex(const T& re, const T& im);
+
+  /*! Default construct a complex number.
+   */
+  inline __host__ __device__ complex();
+
+  /*! This copy constructor copies from a \p complex with a type that is
+   *  convertible to this \p complex's \c value_type.
+   *
+   *  \param z The \p complex to copy from.
+   */
+  inline __host__ __device__ complex(const complex<T>& z);
 
   /*! This copy constructor copies from a \p complex with a type that
    *  is convertible to this \p complex \c value_type.
@@ -91,6 +108,32 @@ struct complex {
    */
   template <typename X>
   inline __host__ __device__ complex(const complex<X>& z);
+
+  /* --- Assignment Operators --- */
+
+  /*! Assign `re` to the real part of this \p complex and set the imaginary part
+   *  to 0.
+   *
+   *  \param re The real part of the number.
+   */
+  inline __host__ __device__ complex& operator=(const T& re);
+
+  /*! Assign `z.real()` and `z.imag()` to the real and imaginary parts of this
+   *  \p complex respectively.
+   *
+   *  \param z The \p complex to copy from.
+   */
+  inline __host__ __device__ complex& operator=(const complex<T>& z);
+
+  /*! Assign `z.real()` and `z.imag()` to the real and imaginary parts of this
+   *  \p complex respectively.
+   *
+   *  \param z The \p complex to copy from.
+   *
+   *  \tparam U is convertible to \c value_type.
+   */
+  template <typename U>
+  inline __host__ __device__ complex& operator=(const complex<U>& z);
 
   /* --- Compound Assignment Operators --- */
 
