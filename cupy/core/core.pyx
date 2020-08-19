@@ -961,17 +961,17 @@ cdef class ndarray:
         if isinstance(other, numpy.ndarray) and other.ndim == 0:
             other = other.item()  # Workaround for numpy<1.13
         if op == 0:
-            return less(self, other)
+            return _logic._ndarray_less(self, other)
         if op == 1:
-            return less_equal(self, other)
+            return _logic._ndarray_less_equal(self, other)
         if op == 2:
-            return equal(self, other)
+            return _logic._ndarray_equal(self, other)
         if op == 3:
-            return not_equal(self, other)
+            return _logic._ndarray_not_equal(self, other)
         if op == 4:
-            return greater(self, other)
+            return _logic._ndarray_greater(self, other)
         if op == 5:
-            return greater_equal(self, other)
+            return _logic._ndarray_greater_equal(self, other)
         return NotImplemented
 
     # Truth value of an array (bool):
@@ -2993,86 +2993,6 @@ cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
         return a.copy(), 1
     else:
         return a, a._strides[rundim] // a.itemsize
-
-# -----------------------------------------------------------------------------
-# Logic functions
-# -----------------------------------------------------------------------------
-
-cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
-
-    if no_complex_dtype:
-        ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
-               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?')
-    else:
-        ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
-               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?',
-               'FF->?', 'DD->?')
-
-    return create_ufunc(
-        'cupy_' + name,
-        ops,
-        'out0 = in0 %s in1' % op,
-        doc=doc)
-
-
-greater = create_comparison(
-    'greater', '>',
-    '''Tests elementwise if ``x1 > x2``.
-
-    .. seealso:: :data:`numpy.greater`
-
-    ''',
-    no_complex_dtype=False)
-
-
-greater_equal = create_comparison(
-    'greater_equal', '>=',
-    '''Tests elementwise if ``x1 >= x2``.
-
-    .. seealso:: :data:`numpy.greater_equal`
-
-    ''',
-    no_complex_dtype=False)
-
-
-less = create_comparison(
-    'less', '<',
-    '''Tests elementwise if ``x1 < x2``.
-
-    .. seealso:: :data:`numpy.less`
-
-    ''',
-    no_complex_dtype=False)
-
-
-less_equal = create_comparison(
-    'less_equal', '<=',
-    '''Tests elementwise if ``x1 <= x2``.
-
-    .. seealso:: :data:`numpy.less_equal`
-
-    ''',
-    no_complex_dtype=False)
-
-
-equal = create_comparison(
-    'equal', '==',
-    '''Tests elementwise if ``x1 == x2``.
-
-    .. seealso:: :data:`numpy.equal`
-
-    ''',
-    no_complex_dtype=False)
-
-
-not_equal = create_comparison(
-    'not_equal', '!=',
-    '''Tests elementwise if ``x1 != x2``.
-
-    .. seealso:: :data:`numpy.equal`
-
-    ''',
-    no_complex_dtype=False)
 
 
 cpdef ndarray _convert_object_with_cuda_array_interface(a):

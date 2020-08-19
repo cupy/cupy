@@ -86,6 +86,9 @@ class TestIndexing(unittest.TestCase):
         self._run(10)
         self._run(-10)
 
+        self._run(numpy.asscalar([10]))
+        self._run(numpy.asscalar([-10]))
+
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
 
@@ -111,6 +114,9 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_scalar_minor_scalar(self):
         self._run(5, 5)
+
+        scalar = numpy.asscalar([5])
+        self._run(scalar, scalar)
 
     def test_major_all_minor_scalar(self):
         self._run(slice(None), 5)

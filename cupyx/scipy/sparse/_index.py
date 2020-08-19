@@ -2,6 +2,7 @@
 """
 
 import cupy
+
 from cupy import core
 
 from cupyx.scipy.sparse.base import isspmatrix
@@ -10,9 +11,8 @@ from cupyx.scipy.sparse.base import spmatrix
 from cupy_backends.cuda.libs import cusparse
 from cupy.cuda import device
 
-from scipy.sparse.base import spmatrix as scipy_spmatrix
-
 import numpy
+
 try:
     import scipy
     scipy_available = True
@@ -149,23 +149,14 @@ def _csr_row_slice(start_maj, step_maj, Ap, Aj, Ax, Bp):
 
     in_rows = cupy.arange(start_maj, start_maj + (Bp.size - 1) * step_maj,
                           step_maj, dtype=Bp.dtype)
-
-    start_offsets = Ap[in_rows]
-    stop_offsets = Ap[in_rows+1]
-
-    Aj_mask = cupy.zeros_like(Aj, dtype='bool')
-
-    _set_boolean_mask_for_offsets(
-        start_offsets, stop_offsets, Aj_mask, size=start_offsets.size)
-
-    Aj_mask = Aj_mask.nonzero()
-    Bj = Aj[Aj_mask]
-    Bx = Ax[Aj_mask]
-
-    if step_maj < 0:
-        Bj = Bj[::-1].copy()
-        Bx = Bx[::-1].copy()
-
+    offsetsB = Ap[in_rows] - Bp[:-1]
+    B_size = int(Bp[-1])
+    offsetsA = offsetsB[
+        cupy.searchsorted(
+            Bp, cupy.arange(B_size, dtype=Bp.dtype), 'right') - 1]
+    offsetsA += cupy.arange(offsetsA.size, dtype=offsetsA.dtype)
+    Bj = Aj[offsetsA]
+    Bx = Ax[offsetsA]
     return Bj, Bx
 
 
@@ -331,6 +322,12 @@ class IndexMixin(object):
         self._set_arrayXarray(row, col, x)
 
 
+def _try_is_scipy_spmatrix(index):
+    if scipy_available:
+        return isinstance(index, scipy.sparse.base.spmatrix)
+    return False
+
+
 def _unpack_index(index):
     """ Parse index. Always return a tuple of the form (row, col).
     Valid type for row/col is integer, slice, or array of integers.
@@ -343,9 +340,10 @@ def _unpack_index(index):
           assumed to be all (e.g., [maj, :]).
     """
     # First, check if indexing with single boolean matrix.
-    if (isinstance(index, (spmatrix, cupy.ndarray,
-                           scipy_spmatrix, numpy.ndarray)) and
-            index.ndim == 2 and index.dtype.kind == 'b'):
+    if ((isinstance(index, (spmatrix, cupy.ndarray,
+                            numpy.ndarray))
+         or _try_is_scipy_spmatrix(index))
+            and index.ndim == 2 and index.dtype.kind == 'b'):
         return index.nonzero()
 
     # Parse any ellipses.
