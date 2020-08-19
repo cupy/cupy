@@ -93,8 +93,18 @@ def trimcoef(c, tol=0):
     """
     if tol < 0:
         raise ValueError('tol must be non-negative')
-    [c] = as_series([c])
-    [ind] = cupy.nonzero(cupy.abs(c) > tol)
-    if ind.size == 0:
+    if c.size == 0:
+        raise ValueError('Coefficient array is empty')
+    if c.ndim > 1:
+        raise ValueError('Coefficient array is not 1-d')
+    if c.dtype.kind == 'b':
+        raise ValueError('bool inputs are not allowed')
+    if c.ndim == 0:
+        c = c.ravel()
+    c = c.astype(cupy.common_type(c), copy=False)
+    filt = (cupy.abs(c) > tol)[::-1]
+    ind = c.size - cupy.manipulation.add_remove._first_nonzero_krnl(
+        filt, c.size).item()
+    if ind == 0:
         return cupy.zeros_like(c[:1])
-    return c[:ind[-1] + 1]
+    return c[: ind]
