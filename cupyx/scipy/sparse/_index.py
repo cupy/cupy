@@ -2,7 +2,6 @@
 """
 
 import cupy
-from cupy import core
 
 from cupyx.scipy.sparse.base import isspmatrix
 from cupyx.scipy.sparse.base import spmatrix
@@ -59,15 +58,6 @@ def _get_csr_submatrix(Ap, Aj, Ax,
     return Bp, Bj, Bx
 
 
-_set_boolean_mask_for_offsets = core.ElementwiseKernel(
-    'raw T start_offsets, raw T stop_offsets', 'raw bool mask',
-    '''
-    for (int jj = start_offsets[i]; jj < stop_offsets[i]; jj++) {
-        mask[jj] = true;
-    }
-    ''', 'set_boolean_mask_for_offsets', no_return=True)
-
-
 def _csr_row_slice(start_maj, step_maj, Ap, Aj, Ax, Bp):
     """Populate indices and data arrays of sparse matrix by slicing the
     rows of an input sparse matrix
@@ -89,23 +79,14 @@ def _csr_row_slice(start_maj, step_maj, Ap, Aj, Ax, Bp):
 
     in_rows = cupy.arange(start_maj, start_maj + (Bp.size - 1) * step_maj,
                           step_maj, dtype=Bp.dtype)
-
-    start_offsets = Ap[in_rows]
-    stop_offsets = Ap[in_rows+1]
-
-    Aj_mask = cupy.zeros_like(Aj, dtype='bool')
-
-    _set_boolean_mask_for_offsets(
-        start_offsets, stop_offsets, Aj_mask, size=start_offsets.size)
-
-    Aj_mask = Aj_mask.nonzero()
-    Bj = Aj[Aj_mask]
-    Bx = Ax[Aj_mask]
-
-    if step_maj < 0:
-        Bj = Bj[::-1].copy()
-        Bx = Bx[::-1].copy()
-
+    offsetsB = Ap[in_rows] - Bp[:-1]
+    B_size = int(Bp[-1])
+    offsetsA = offsetsB[
+        cupy.searchsorted(
+            Bp, cupy.arange(B_size, dtype=Bp.dtype), 'right') - 1]
+    offsetsA += cupy.arange(offsetsA.size, dtype=offsetsA.dtype)
+    Bj = Aj[offsetsA]
+    Bx = Ax[offsetsA]
     return Bj, Bx
 
 
