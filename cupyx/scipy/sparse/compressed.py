@@ -428,25 +428,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
     ''', 'csr_copy_existing_indices_kern', no_return=True)
 
-    _csr_populate_inserts_kern = core.ElementwiseKernel(
-        '''raw I Ap, raw I x, raw I sc, raw I Aj, raw T Ax, raw I Bp''',
-        'raw I Bj, raw T Bx', '''
-
-        const I r = x[i];
-        const I input_start = sc[i];
-        const I input_stop = sc[i+1];
-
-        const I offset = Ap[r+1] - Ap[r];
-        I output_start = Bp[r] + offset;
-
-        for(I jj = input_start; jj < input_stop; jj++) {
-            Bj[output_start] = Aj[jj];
-            Bx[output_start] = Ax[jj];
-            output_start++;
-        }
-
-    ''', 'csr_populate_inserts_kern', no_return=True)
-
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None:
             if not util.isshape(shape):
@@ -927,6 +908,56 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """, no_return=True
     )
 
+    def _select_last_indices(self, i, j, x, idx_dtype):
+        """Find the unique indices for each row and keep only the last"""
+        i = cupy.asarray(i, dtype=idx_dtype)
+        j = cupy.asarray(j, dtype=idx_dtype)
+
+        stacked = cupy.stack([j, i])
+        order = cupy.lexsort(stacked).astype(idx_dtype)
+
+        indptr_inserts = i[order]
+        indices_inserts = j[order]
+        data_inserts = x[order]
+
+        mask = cupy.ones(indptr_inserts.size, dtype='bool')
+        self._unique_mask_kern(indptr_inserts, indices_inserts, order, mask,
+                               size=indptr_inserts.size-1)
+
+        return indptr_inserts[mask], indices_inserts[mask], data_inserts[mask]
+
+    def _perform_insert(self, indices_inserts, data_inserts,
+                        rows, row_counts, idx_dtype):
+        """Insert new elements into current sparse matrix in sorted order"""
+        indptr_diff = cupy.diff(self.indptr)
+        indptr_diff[rows] += row_counts
+
+        new_indptr = cupy.empty(self.indptr.shape, dtype=idx_dtype)
+        new_indptr[0] = idx_dtype(0)
+        new_indptr[1:] = indptr_diff
+
+        # Build output arrays
+        cupy.cumsum(new_indptr, out=new_indptr).astype(idx_dtype)
+        out_nnz = int(new_indptr[-1])
+
+        new_indices = cupy.empty(out_nnz, dtype=idx_dtype)
+        new_data = cupy.empty(out_nnz, dtype=self.data.dtype)
+
+        # Build an indexed indptr that contains the offsets for each
+        # row but only for in i, j, and x.
+        new_indptr_lookup = cupy.zeros(new_indptr.size, dtype=idx_dtype)
+        new_indptr_lookup[1:][rows] = row_counts
+        cupy.cumsum(new_indptr_lookup, out=new_indptr_lookup)
+
+        self._csr_copy_existing_indices_kern(
+            indices_inserts, data_inserts, new_indptr_lookup,
+            self.indptr, self.indices, self.data, new_indptr, new_indices,
+            new_data, size=self.indptr.size-1)
+
+        self.indptr = new_indptr
+        self.indices = new_indices
+        self.data = new_data
+
     def _insert_many(self, i, j, x):
         """Inserts new nonzero at each (i, j) with value x
         Here (i,j) index major and minor respectively.
@@ -942,67 +973,30 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         x = x.take(order)
 
         # Update index data type
+
         idx_dtype = sputils.get_index_dtype(
             (self.indices, self.indptr), maxval=(
                 self.nnz + x.size))
 
         self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
-        i = cupy.asarray(i, dtype=idx_dtype)
-        j = cupy.asarray(j, dtype=idx_dtype)
 
-        stacked = cupy.stack([j, i])
-        order = cupy.lexsort(stacked).astype(idx_dtype)
+        indptr_inserts, indices_inserts, data_inserts = \
+            self._select_last_indices(i, j, x, idx_dtype)
 
-        indptr_inserts = i[order]
-        indices_inserts = j[order]
-        data_inserts = x[order]
-
-        mask = cupy.ones(indptr_inserts.size, dtype='bool')
-
-        self._unique_mask_kern(indptr_inserts, indices_inserts, order, mask,
-                               size=indptr_inserts.size-1)
-
-        indptr_inserts = indptr_inserts[mask]
-        indices_inserts = indices_inserts[mask]
-        data_inserts = data_inserts[mask]
-
-        ui, ui_indptr = cupy.unique(indptr_inserts, return_index=True)
+        rows, ui_indptr = cupy.unique(indptr_inserts, return_index=True)
 
         to_add = cupy.array([j.size], ui_indptr.dtype)
         ui_indptr = cupy.hstack([ui_indptr, to_add])
 
-        sc = cupy.zeros(ui_indptr.size, dtype=idx_dtype)
-        cupyx.scatter_add(sc[1:], cupy.searchsorted(ui, indptr_inserts), 1)
-        cupy.cumsum(sc, out=sc)
+        # Compute the counts for each row in the insertion array
 
-        # Build output indptr diff
-        indptr_diff = cupy.diff(self.indptr)
-        indptr_diff[ui] += cupy.diff(sc)
-        nnzs = cupy.empty(self.indptr.shape, dtype=idx_dtype)
-        nnzs[0] = idx_dtype(0)
-        nnzs[1:] = indptr_diff
+        row_counts = cupy.zeros(ui_indptr.size-1, dtype=idx_dtype)
+        cupyx.scatter_add(
+            row_counts, cupy.searchsorted(rows, indptr_inserts), 1)
 
-        new_indptr = cupy.cumsum(nnzs, out=nnzs).astype(idx_dtype)
-        s = new_indptr[-1].item()
-
-        new_indices = cupy.empty(s, dtype=idx_dtype)
-        new_data = cupy.empty(s, dtype=self.data.dtype)
-
-        new_indptr_lookup = cupy.zeros(new_indptr.size, dtype=idx_dtype)
-        new_indptr_lookup[1:][ui] = cupy.diff(sc)
-
-        cupy.cumsum(new_indptr_lookup, out=new_indptr_lookup)
-
-        self._csr_copy_existing_indices_kern(
-            indices_inserts, data_inserts, new_indptr_lookup,
-            self.indptr, self.indices, self.data, new_indptr, new_indices,
-            new_data, size=self.indptr.size-1)
-
-        # update attributes
-        self.indptr = new_indptr
-        self.indices = new_indices
-        self.data = new_data
+        self._perform_insert(indices_inserts, data_inserts,
+                             rows, row_counts, idx_dtype)
 
         self.check_format(full_check=False)
 
