@@ -8,19 +8,24 @@ import cupy
 def _wraps_chebroutine(func):
     def _get_coeffs(x):
         if isinstance(x, cupy.poly1d):
-            return x._coeffs
-        if cupy.isscalar(x):
-            return cupy.atleast_1d(x)
+            x = x._coeffs
+        elif cupy.isscalar(x):
+            x = cupy.atleast_1d(x)
         if isinstance(x, cupy.ndarray):
+            if x.size == 0:
+                raise ValueError('Coefficient array is empty')
             if x.ndim > 1:
-                raise ValueError('non 1-d inputs are not allowed')
-            return x
+                raise ValueError('Coefficient array is not 1-d')
+            if x.dtype.kind == 'b':
+                raise ValueError('bool inputs are not allowed')
+            return x.ravel()
         raise TypeError('Unsupported type')
 
     def wrapper(*args):
-        [c1, *c2] = cupy.polynomial.polyutils.as_series(
-            [_get_coeffs(x) for x in args])
-        return cupy.polynomial.polyutils.trimseq(func(c1, *c2))
+        coeffs = [_get_coeffs(x) for x in args]
+        dtype = cupy.common_type(*coeffs)
+        coeffs = [c.astype(dtype, copy=False) for c in coeffs]
+        return cupy.polynomial.polyutils.trimseq(func(*coeffs))
 
     return functools.update_wrapper(wrapper, func)
 
