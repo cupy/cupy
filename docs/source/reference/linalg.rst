@@ -80,7 +80,6 @@ Special Matrices
 ----------------
 
 .. autosummary::
-
    :toctree: generated/
    :nosignatures:
 

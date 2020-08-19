@@ -9,15 +9,15 @@ __all__ = ['tri', 'tril', 'triu', 'toeplitz', 'circulant', 'hankel',
 
 def tri(N, M=None, k=0, dtype=None):
     """ Construct (``N``, ``M``) matrix filled with ones at and below the
-    ``k``th diagonal. The matrix has ``A[i,j] == 1`` for ``i <= j + k``.
+    ``k``-th diagonal. The matrix has ``A[i,j] == 1`` for ``i <= j + k``.
 
     Args:
         N (int): The size of the first dimension of the matrix.
         M (int, optional): The size of the second dimension of the matrix. If
             ``M`` is None, ``M = N`` is assumed.
         k (int, optional):  Number of subdiagonal below which matrix is filled
-            with ones. ``k`` = 0 is the main diagonal, ``k`` < 0 subdiagonal
-            and ``k`` > 0 superdiagonal.
+            with ones. ``k = 0`` is the main diagonal, ``k < 0`` subdiagonal
+            and ``k > 0`` superdiagonal.
         dtype (dtype, optional): Data type of the matrix.
 
     Returns:
@@ -37,13 +37,14 @@ def tri(N, M=None, k=0, dtype=None):
 
 
 def tril(m, k=0):
-    """Make a copy of a matrix with elements above the ``k``th diagonal zeroed.
+    """Make a copy of a matrix with elements above the ``k``-th diagonal
+    zeroed.
 
     Args:
         m (cupy.ndarray): Matrix whose elements to return
         k (int, optional): Diagonal above which to zero elements.
-            ``k`` == 0 is the main diagonal, ``k`` < 0 subdiagonal and
-            ``k`` > 0 superdiagonal.
+            ``k == 0`` is the main diagonal, ``k < 0`` subdiagonal and
+            ``k > 0`` superdiagonal.
 
     Returns:
         (cupy.ndarray): Return is the same shape and type as ``m``.
@@ -57,13 +58,14 @@ def tril(m, k=0):
 
 
 def triu(m, k=0):
-    """Make a copy of a matrix with elements below the ``k``th diagonal zeroed.
+    """Make a copy of a matrix with elements below the ``k``-th diagonal
+    zeroed.
 
     Args:
         m (cupy.ndarray): Matrix whose elements to return
         k (int, optional): Diagonal above which to zero elements.
-            ``k`` == 0 is the main diagonal, ``k`` < 0 subdiagonal and
-            ``k`` > 0 superdiagonal.
+            ``k == 0`` is the main diagonal, ``k < 0`` subdiagonal and
+            ``k > 0`` superdiagonal.
 
     Returns:
         (cupy.ndarray): Return matrix with zeroed elements below the kth
@@ -253,8 +255,9 @@ def kron(a, b):
 def block_diag(*arrs):
     """Create a block diagonal matrix from provided arrays.
 
-    Given the inputs ``A``, ``B`` and ``C``, the output will have these
+    Given the inputs ``A``, ``B``, and ``C``, the output will have these
     arrays arranged on the diagonal::
+
         [A, 0, 0]
         [0, B, 0]
         [0, 0, C]
