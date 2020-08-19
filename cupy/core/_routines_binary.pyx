@@ -4,7 +4,7 @@ from cupy.core._reduction import create_reduction_func
 from cupy.core.core cimport ndarray
 
 
-cpdef _create_bit_op(name, op, no_bool, doc=''):
+cdef _create_bit_op(name, op, no_bool, doc=''):
     types = () if no_bool else ('??->?',)
     return create_ufunc(
         'cupy_' + name,
