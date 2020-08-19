@@ -223,7 +223,6 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                     bin_type = numpy.float
                 else:
                     bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
-                    # TODO(okuta): support float16
                     if (bin_type == numpy.float16 and
                             not common._is_fp16_supported()):
                         bin_type = numpy.float32
