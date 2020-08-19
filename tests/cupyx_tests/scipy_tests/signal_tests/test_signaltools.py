@@ -55,12 +55,19 @@ class TestConvolveCorrelate(unittest.TestCase):
         return self._filter('correlate', dtype, xp, scp)
 
 
-@testing.parameterize(*testing.product({
+@testing.parameterize(*(testing.product({
     'in1': [(5, 10), (10, 7)],
     'in2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
     'mode': ['full', 'same', 'valid'],
-    'boundary': ['fill', 'wrap', 'symm'],
-}))
+    'boundary': ['fill'],
+    'fillvalue': [0, 1, -1],
+}) + testing.product({
+    'in1': [(5, 10), (10, 7)],
+    'in2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
+    'mode': ['full', 'same', 'valid'],
+    'boundary': ['wrap', 'symm'],
+    'fillvalue': [0],
+})))
 @testing.gpu
 @testing.with_requires('scipy')
 class TestConvolveCorrelate2D(unittest.TestCase):
@@ -70,7 +77,8 @@ class TestConvolveCorrelate2D(unittest.TestCase):
             raise unittest.SkipTest('broken in scipy')
         in1 = testing.shaped_random(self.in1, xp, dtype)
         in2 = testing.shaped_random(self.in2, xp, dtype)
-        return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary)
+        return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary,
+                                         self.fillvalue)
 
     # TODO: support complex
     # Note: float16 is tested separately
