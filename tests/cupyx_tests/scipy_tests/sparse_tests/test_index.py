@@ -179,11 +179,49 @@ class TestIndexing(unittest.TestCase):
 
     # Minor Indexing
 
+    def test_major_all_minor_bool(self):
+        size = self.n_cols if self.format == 'csr' else self.n_rows
+
+        a = numpy.random.random(size)
+        self._run(slice(None), cupy.array(a).astype(cupy.bool))  # Cupy
+        self._run(slice(None), a.astype(numpy.bool))  # Numpy
+        self._run(slice(None), a.astype(numpy.bool).tolist(),  # List
+                  # In older environments (e.g., py35, scipy 1.4),
+                  # scipy sparse arrays are crashing when indexed with
+                  # native Python boolean list.
+                  compare_dense=True)
+
+    def test_major_slice_minor_bool(self):
+        size = self.n_cols if self.format == 'csr' else self.n_rows
+
+        a = numpy.random.random(size)
+        self._run(slice(1, 10, 2), cupy.array(a).astype(cupy.bool))  # Cupy
+        self._run(slice(1, 10, 2), a.astype(numpy.bool))  # Numpy
+        self._run(slice(1, 10, 2), a.astype(numpy.bool).tolist(),  # List
+                  # In older environments (e.g., py35, scipy 1.4),
+                  # scipy sparse arrays are crashing when indexed with
+                  # native Python boolean list.
+                  compare_dense=True)
+
+    def test_major_all_minor_fancy(self):
+        self._run(slice(None), [1, 5, 4, 5, 2, 4, 1])
+
+        for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
+            self._run(slice(None), idx)
+
     def test_major_slice_minor_fancy(self):
+
         self._run(slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1])
 
+        for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
+            self._run(slice(1, 10, 2), idx)
+
     def test_major_scalar_minor_fancy(self):
-        self._run(5, [1, 5, 4])
+
+        self._run(5, [1, 5, 4, 1, 2])
+
+        for idx in self._get_index_combos([1, 5, 4, 1, 2]):
+            self._run(5, idx)
 
     def test_ellipsis(self):
         self._run(Ellipsis, flip_for_csc=False)
