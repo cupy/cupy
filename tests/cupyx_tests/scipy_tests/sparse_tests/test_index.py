@@ -17,13 +17,12 @@ import pytest
     'n_rows': [25, 150],
     'n_cols': [25, 150]
 }))
-@testing.with_requires('scipy>=1.4.0')
+# @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
 class TestIndexing(unittest.TestCase):
 
-    def _run(self, maj, min=None, flip_for_csc=True):
-
-        print("maj=%s, min=%s" % (maj, min))
+    def _run(self, maj, min=None, flip_for_csc=True,
+             compare_dense=False):
 
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
@@ -43,15 +42,22 @@ class TestIndexing(unittest.TestCase):
 
         expected = a.get()
 
+        if compare_dense:
+            expected = expected.todense()
+
         maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
         min_h = min.get() if isinstance(min, cupy.ndarray) else min
 
         if min is not None:
+
             expected = expected[maj_h, min_h]
             actual = a[maj, min]
         else:
             expected = expected[maj_h]
             actual = a[maj]
+
+        if compare_dense:
+            actual = actual.todense()
 
         if sparse.isspmatrix(actual):
             actual.sort_indices()
@@ -143,7 +149,11 @@ class TestIndexing(unittest.TestCase):
         a = numpy.random.random(size)
         self._run(cupy.array(a).astype(cupy.bool))  # Cupy
         self._run(a.astype(numpy.bool))             # Numpy
-        self._run(a.astype(numpy.bool).tolist())    # List
+        self._run(a.astype(numpy.bool).tolist(),    # List
+                  # In older environments (e.g., py35, scipy 1.4),
+                  # scipy sparse arrays are crashing when indexed with
+                  # native Python boolean list.
+                  compare_dense=True)
 
     def test_major_fancy_minor_all(self):
 

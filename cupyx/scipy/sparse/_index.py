@@ -19,7 +19,8 @@ try:
 except ImportError:
     scipy_available = False
 
-_int_scalar_types = (int, numpy.integer)
+_int_scalar_types = (int, numpy.integer, numpy.int_)
+_bool_scalar_types = (bool, numpy.bool, numpy.bool_)
 
 
 def _get_csr_submatrix(Ap, Aj, Ax,
@@ -119,15 +120,6 @@ def _csr_row_index(rows,
     return Bj, Bx
 
 
-_set_boolean_mask_for_offsets = core.ElementwiseKernel(
-    'raw T start_offsets, raw T stop_offsets', 'raw bool mask',
-    '''
-    for (int jj = start_offsets[i]; jj < stop_offsets[i]; jj++) {
-        mask[jj] = true;
-    }
-    ''', 'set_boolean_mask_for_offsets', no_return=True)
-
-
 def _csr_row_slice(start_maj, step_maj, Ap, Aj, Ax, Bp):
     """Populate indices and data arrays of sparse matrix by slicing the
     rows of an input sparse matrix
@@ -175,6 +167,7 @@ class IndexMixin(object):
                 "Sparse __getitem__() requires Scipy >= 1.4.0")
 
         row, col = self._parse_indices(key)
+
         # Dispatch to specialized methods.
         if isinstance(row, _int_scalar_types):
             if isinstance(col, _int_scalar_types):
@@ -447,7 +440,7 @@ def _first_element_bool(idx, max_dim=2):
         first = idx[0] if len(idx) > 0 else None
     except TypeError:
         return None
-    if isinstance(first, bool):
+    if isinstance(first, _bool_scalar_types):
         return True
     return _first_element_bool(first, max_dim-1)
 
@@ -456,7 +449,6 @@ def _compatible_boolean_index(idx):
     """Returns a boolean index array that can be converted to
     integer array. Returns None if no such array exists.
     """
-
     # presence of attribute `ndim` indicates a compatible array type.
     if hasattr(idx, 'ndim'):
         if idx.dtype.kind == 'b':
