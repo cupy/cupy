@@ -19,53 +19,58 @@ import pytest
 class TestSetitemIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None, data=5):
-        a = cupy.sparse.random(self.n_rows, self.n_cols,
-                               format=self.format,
-                               density=self.density)
 
-        # sparse.random doesn't support complex types
-        # so we need to cast
-        a = a.astype(self.dtype)
-        # cupy.cuda.Stream.null.synchronize()
+        for i in range(2):
+            a = cupy.sparse.random(self.n_rows, self.n_cols,
+                                   format=self.format,
+                                   density=self.density)
 
-        if isinstance(maj, cupy.ndarray):
-            maj_h = maj.get()
-        else:
-            maj_h = maj
+            # sparse.random doesn't support complex types
+            # so we need to cast
+            a = a.astype(self.dtype)
 
-        if isinstance(min, cupy.ndarray):
-            min_h = min.get()
-        else:
-            min_h = min
+            if isinstance(maj, cupy.ndarray):
+                maj_h = maj.get()
+            else:
+                maj_h = maj
 
-        import time
+            if isinstance(min, cupy.ndarray):
+                min_h = min.get()
+            else:
+                min_h = min
 
-        if min is not None:
-            expected = a.get()
+            import time
 
-            cpu_time = time.time()
-            expected[maj_h, min_h] = data
-            cpu_stop = time.time() - cpu_time
+            if min is not None:
+                expected = a.get()
 
-            actual = a
+                cupy.cuda.Stream.null.synchronize()
+                cpu_time = time.time()
+                expected[maj_h, min_h] = data
+                cpu_stop = time.time() - cpu_time
 
-            gpu_time = time.time()
-            actual[maj, min] = data
-            cupy.cuda.Stream.null.synchronize()
-            gpu_stop = time.time() - gpu_time
-        else:
-            expected = a.get()
+                actual = a
 
-            cpu_time = time.time()
-            expected[maj_h] = data
-            cpu_stop = time.time() - cpu_time
+                gpu_time = time.time()
+                cupy.cuda.Stream.null.synchronize()
+                actual[maj, min] = data
+                cupy.cuda.Stream.null.synchronize()
+                gpu_stop = time.time() - gpu_time
+            else:
+                expected = a.get()
 
-            actual = a
+                cupy.cuda.Stream.null.synchronize()
+                cpu_time = time.time()
+                expected[maj_h] = data
+                cpu_stop = time.time() - cpu_time
 
-            gpu_time = time.time()
-            actual[maj] = data
-            cupy.cuda.Stream.null.synchronize()
-            gpu_stop = time.time() - gpu_time
+                actual = a
+
+                gpu_time = time.time()
+                cupy.cuda.Stream.null.synchronize()
+                actual[maj] = data
+                cupy.cuda.Stream.null.synchronize()
+                gpu_stop = time.time() - gpu_time
 
         print("cpu_time=%s, gpu_time=%s" % (cpu_stop, gpu_stop))
 

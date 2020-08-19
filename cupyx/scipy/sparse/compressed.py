@@ -334,15 +334,96 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ''', 'has_canonical_format')
 
     _csr_copy_existing_indices_kern = core.ElementwiseKernel(
-        '''raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
+        '''raw I insert_indices, raw T insert_values, raw I insertion_indptr,
+        raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
         'raw I Bj, raw T Bx', '''
+
         const I input_row_start = Ap[i];
         const I input_row_end = Ap[i+1];
+        const I input_count = input_row_end - input_row_start;
+
+        const I insert_row_start = insertion_indptr[i];
+        const I insert_row_end = insertion_indptr[i+1];
+        const I insert_count = insert_row_end - insert_row_start;
+
+        I input_offset = 0;
+        I insert_offset = 0;
+
         I output_n = Bp[i];
 
-        for(I jj = input_row_start; jj < input_row_end; jj++) {
-            Bj[output_n] = Aj[jj];
-            Bx[output_n] = Ax[jj];
+        I cur_existing_index = -1;
+        T cur_existing_value = -1;
+
+        I cur_insert_index = -1;
+        T cur_insert_value = -1;
+
+        if(input_offset < input_count) {
+            cur_existing_index = Aj[input_row_start+input_offset];
+            cur_existing_value = Ax[input_row_start+input_offset];
+        }
+
+        if(insert_offset < insert_count) {
+            cur_insert_index = insert_indices[insert_row_start+insert_offset];
+            cur_insert_value = insert_values[insert_row_start+insert_offset];
+        }
+
+
+        for(I jj = 0; jj < input_count + insert_count; jj++) {
+
+            // if we have both available, use the lowest one.
+            if(input_offset < input_count &&
+               insert_offset < insert_count) {
+
+                if(cur_existing_index < cur_insert_index) {
+                    Bj[output_n] = cur_existing_index;
+                    Bx[output_n] = cur_existing_value;
+
+                    ++input_offset;
+
+                    if(input_offset < input_count) {
+                        cur_existing_index = Aj[input_row_start+input_offset];
+                        cur_existing_value = Ax[input_row_start+input_offset];
+                    }
+
+
+                } else {
+                    Bj[output_n] = cur_insert_index;
+                    Bx[output_n] = cur_insert_value;
+
+                    ++insert_offset;
+                    if(insert_offset < insert_count) {
+                        cur_insert_index =
+                            insert_indices[insert_row_start+insert_offset];
+                        cur_insert_value =
+                            insert_values[insert_row_start+insert_offset];
+                    }
+                }
+
+            } else if(input_offset < input_count) {
+                Bj[output_n] = cur_existing_index;
+                Bx[output_n] = cur_existing_value;
+
+                ++input_offset;
+                if(input_offset < input_count) {
+                    cur_existing_index = Aj[input_row_start+input_offset];
+                    cur_existing_value = Ax[input_row_start+input_offset];
+                }
+
+            } else if(insert_offset < insert_count) {
+                    Bj[output_n] = cur_insert_index;
+                    Bx[output_n] = cur_insert_value;
+
+                    ++insert_offset;
+                    if(insert_offset < insert_count) {
+                        cur_insert_index =
+                            insert_indices[insert_row_start+insert_offset];
+                        cur_insert_value =
+                            insert_values[insert_row_start+insert_offset];
+                    }
+            } else {
+                printf("Something went wrong\\n");
+            }
+
             output_n++;
         }
     ''', 'csr_copy_existing_indices_kern', no_return=True)
@@ -855,16 +936,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         Modifies i, j, x in place.
         """
 
-        import time
-
-        start_time = time.time()
-
         order = cupy.argsort(i)  # stable for duplicates
         i = i.take(order)
         j = j.take(order)
         x = x.take(order)
-
-        do_sort = self.has_sorted_indices
 
         # Update index data type
         idx_dtype = sputils.get_index_dtype(
@@ -914,29 +989,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         new_indices = cupy.empty(s, dtype=idx_dtype)
         new_data = cupy.empty(s, dtype=self.data.dtype)
 
-        # TODO(cjnolet): Construct this in sorted order to remove the
-        # need for the costly sort afterwards
+        new_indptr_lookup = cupy.zeros(new_indptr.size, dtype=idx_dtype)
+        new_indptr_lookup[1:][ui] = cupy.diff(sc)
+
+        cupy.cumsum(new_indptr_lookup, out=new_indptr_lookup)
+
         self._csr_copy_existing_indices_kern(
+            indices_inserts, data_inserts, new_indptr_lookup,
             self.indptr, self.indices, self.data, new_indptr, new_indices,
             new_data, size=self.indptr.size-1)
-
-        self._csr_populate_inserts_kern(
-            self.indptr, ui, sc, indices_inserts, data_inserts,
-            new_indptr, new_indices, new_data, size=ui.size)
 
         # update attributes
         self.indptr = new_indptr
         self.indices = new_indices
         self.data = new_data
 
-        cupy.cuda.Stream.null.synchronize()
-        print("Cupy _insert_many: %s" % str(time.time()-start_time))
-
-        if do_sort:
-            self.has_sorted_indices = False
-            self.sort_indices()
-        #
-        # self.check_format(full_check=False)
+        self.check_format(full_check=False)
 
     def check_format(self, full_check=True):
         """check whether the matrix format is valid
