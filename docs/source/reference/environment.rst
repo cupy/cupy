@@ -23,6 +23,12 @@ Here are the environment variables CuPy uses.
 |                                    | Note: source file will not be saved if the         |
 |                                    | compiled binary is already stored in the cache.    |
 +------------------------------------+----------------------------------------------------+
+| ``CUPY_CACHE_IN_MEMORY``           | If set to 1, ``CUPY_CACHE_DIR`` (and its default)  |
+|                                    | and ``CUPY_CACHE_SAVE_CUDA_SOURCE`` will be        |
+|                                    | ignored, and the cache is in memory. This env var  |
+|                                    | allows reducing disk I/O, but is ignoed when       |
+|                                    | ``nvcc`` is set to be the compiler backend.        |
++------------------------------------+----------------------------------------------------+
 | ``CUPY_DUMP_CUDA_SOURCE_ON_ERROR`` | If set to 1, when CUDA kernel compilation fails,   |
 |                                    | CuPy dumps CUDA kernel code to standard error.     |
 |                                    | It is disabled by default.                         |
@@ -50,6 +56,12 @@ Here are the environment variables CuPy uses.
 |                                    | acceleration backends used in CuPy operations and  |
 |                                    | its priority. Default is empty string (all         |
 |                                    | accelerators are disabled).                        |
++------------------------------------+----------------------------------------------------+
+| ``NVCC``                           | Define the compiler to use when compiling CUDA     |
+|                                    | source. Note that most CuPy kernels are built with |
+|                                    | NVRTC; this environment is only effective for      |
+|                                    | RawKernels/RawModules with ``nvcc`` backend or     |
+|                                    | when using ``cub`` as the accelerator.             |
 +------------------------------------+----------------------------------------------------+
 
 Moreover, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit

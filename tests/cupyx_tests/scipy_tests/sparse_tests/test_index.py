@@ -17,11 +17,12 @@ import pytest
     'n_rows': [25, 150],
     'n_cols': [25, 150]
 }))
-@testing.with_requires('scipy>=1.4.0')
+# @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
 class TestIndexing(unittest.TestCase):
 
-    def _run(self, maj, min=None, flip_for_csc=True):
+    def _run(self, maj, min=None, flip_for_csc=True,
+             compare_dense=False):
 
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
@@ -41,15 +42,22 @@ class TestIndexing(unittest.TestCase):
 
         expected = a.get()
 
+        if compare_dense:
+            expected = expected.todense()
+
         maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
         min_h = min.get() if isinstance(min, cupy.ndarray) else min
 
         if min is not None:
+
             expected = expected[maj_h, min_h]
             actual = a[maj, min]
         else:
             expected = expected[maj_h]
             actual = a[maj]
+
+        if compare_dense:
+            actual = actual.todense()
 
         if sparse.isspmatrix(actual):
             actual.sort_indices()
@@ -86,6 +94,12 @@ class TestIndexing(unittest.TestCase):
         self._run(10)
         self._run(-10)
 
+        self._run(numpy.array(10))
+        self._run(numpy.array(-10))
+
+        self._run(cupy.array(10))
+        self._run(cupy.array(-10))
+
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
 
@@ -105,12 +119,17 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
+        self._run(numpy.array(5), slice(1, 5))
+        self._run(cupy.array(5), slice(1, 5))
 
     def test_major_scalar_minor_all(self):
         self._run(5, slice(None))
+        self._run(numpy.array(5), slice(None))
 
     def test_major_scalar_minor_scalar(self):
         self._run(5, 5)
+        self._run(numpy.array(5), numpy.array(5))
+        self._run(cupy.array(5), cupy.array(5))
 
     def test_major_all_minor_scalar(self):
         self._run(slice(None), 5)
@@ -127,9 +146,14 @@ class TestIndexing(unittest.TestCase):
 
         size = self.n_rows if self.format == 'csr' else self.n_cols
 
-        for rand in [cupy.random.random, numpy.random.random]:
-            self._run(rand(size).astype(numpy.bool))
-            self._run(rand(size).astype(numpy.bool).tolist())
+        a = numpy.random.random(size)
+        self._run(cupy.array(a).astype(cupy.bool))  # Cupy
+        self._run(a.astype(numpy.bool))             # Numpy
+        self._run(a.astype(numpy.bool).tolist(),    # List
+                  # In older environments (e.g., py35, scipy 1.4),
+                  # scipy sparse arrays are crashing when indexed with
+                  # native Python boolean list.
+                  compare_dense=True)
 
     def test_major_fancy_minor_all(self):
 
