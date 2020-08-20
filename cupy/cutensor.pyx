@@ -58,12 +58,14 @@ cdef class _Scalar(object):
         return self._array.item()
 
 
-cpdef Handle get_handle():
+cdef Handle _get_handle():
+    cdef Handle handle
     cdef int dev = device.get_device_id()
     if dev not in _handles:
         handle = Handle()
         cutensor.init(handle)
         _handles[dev] = handle
+        return handle
     return _handles[dev]
 
 
@@ -149,7 +151,7 @@ cpdef TensorDescriptor create_tensor_descriptor(
             tensor descriptor and its destructor.
     """
     if handle is None:
-        handle = get_handle()
+        handle = _get_handle()
     key = (handle.ptr, a.dtype, tuple(a.shape), tuple(a.strides), uop)
     if key in _tensor_descriptors:
         desc = _tensor_descriptors[key]
@@ -230,7 +232,7 @@ def elementwise_trinary(
         compute_dtype = A.dtype
 
     return _elementwise_trinary_impl(
-        get_handle(),
+        _get_handle(),
         _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
         _Scalar(beta, compute_dtype), B, desc_B, _auto_create_mode(B, mode_B),
         _Scalar(gamma, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
@@ -289,7 +291,7 @@ def elementwise_binary(
         compute_dtype = A.dtype
 
     return _elementwise_binary_impl(
-        get_handle(),
+        _get_handle(),
         _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
         _Scalar(gamma, compute_dtype), C, desc_C, _auto_create_mode(A, mode_C),
         out, op_AC, get_cuda_dtype(compute_dtype)
@@ -431,7 +433,7 @@ def contraction(
     compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
 
     return _contraction_impl(
-        get_handle(),
+        _get_handle(),
         _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
         B, desc_B, _auto_create_mode(B, mode_B),
         _Scalar(beta, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
@@ -536,7 +538,7 @@ def reduction(
     compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
 
     return _reduction_impl(
-        get_handle(),
+        _get_handle(),
         _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
         _Scalar(beta, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
         reduce_op, get_cutensor_dtype(compute_dtype))
@@ -660,7 +662,7 @@ def _try_reduction_routine(
     in_arg._set_contiguous_strides(in_arg.itemsize, True)
     out_arg._set_contiguous_strides(out_arg.itemsize, True)
 
-    handle = get_handle()
+    handle = _get_handle()
 
     desc_in = create_tensor_descriptor(in_arg, handle=handle)
     desc_out = create_tensor_descriptor(out_arg, handle=handle)
