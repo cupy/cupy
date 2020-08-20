@@ -1,3 +1,5 @@
+import numbers
+
 import numpy
 
 from cupy.core.core cimport ndarray
@@ -60,10 +62,9 @@ cdef class poly1d:
     def order(self):
         return self.coeffs.size - 1
 
-    # TODO(Dahlia-Chehata): implement using cupy.roots
     @property
     def roots(self):
-        raise NotImplementedError
+        return _routines_poly.roots(self._coeffs)
 
     @property
     def r(self):
@@ -105,6 +106,10 @@ cdef class poly1d:
             variable = 'x'
         self._variable = variable
 
+    @property
+    def __cuda_array_interface__(self):
+        return self.coeffs.__cuda_array_interface__
+
     def __array__(self, dtype=None):
         raise TypeError(
             'Implicit conversion to a NumPy array is not allowed. '
@@ -119,9 +124,8 @@ cdef class poly1d:
     def __str__(self):
         return str(self.get())
 
-    # TODO(Dahlia-Chehata): implement using polyval
     def __call__(self, val):
-        raise NotImplementedError
+        return _routines_poly.polyval(self.coeffs, val)
 
     def __neg__(self):
         return poly1d(-self.coeffs)
@@ -161,11 +165,22 @@ cdef class poly1d:
                             'addition is not supported')
         return _routines_poly.polyadd(self, other)
 
-    # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):
         if not cupy.isscalar(val) or int(val) != val or val < 0:
             raise ValueError('Power to non-negative integers only.')
-        raise NotImplementedError
+        if not isinstance(val, numbers.Integral):
+            raise TypeError('float object cannot be interpreted as an integer')
+
+        base = self.coeffs
+        dtype = base.dtype
+
+        if dtype.kind == 'c':
+            base = base.astype(numpy.complex128, copy=False)
+        elif dtype.kind == 'f' or dtype == numpy.uint64:
+            base = base.astype(numpy.float64, copy=False)
+        else:
+            base = base.astype(numpy.int64, copy=False)
+        return poly1d(_routines_poly._polypow(base, val))
 
     def __sub__(self, other):
         if _should_use_rop(self, other):

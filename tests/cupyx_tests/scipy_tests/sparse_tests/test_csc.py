@@ -1021,9 +1021,8 @@ class TestCscMatrixScipyCompressed(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    # TODO(takagi) Test dtypes
-    # TODO(takagi) Test negative axis
-    'axis': [None, 0, 1],
+    # TODO(takagi): Test dtypes
+    'axis': [None, -2, -1, 0, 1],
     'dense': [False, True],  # means a sparse matrix but all elements filled
 }))
 @testing.with_requires('scipy>=0.19.0')
@@ -1059,6 +1058,9 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
                 if numpy.isinf(dm_data).all():
                     dm_data[0, 0] = 0
             else:
+                if axis < 0:
+                    axis += 2
+
                 # If all elements in a row/column are set to infinity, we make
                 # it have at least a zero so spmatrix.min(axis=axis) returns
                 # zero for the row/column.
@@ -1242,7 +1244,7 @@ class TestIsspmatrixCsc(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.4.0')
 class TestCsrMatrixGetitem(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
@@ -1305,20 +1307,54 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 
     # SciPy prior to 1.4 has bugs where either an IndexError is raised or a
     # segfault occurs instead of returning an empty slice.
-    @testing.with_requires('scipy>=1.4')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
         return _make(xp, sp, self.dtype)[:, 3:2]
 
-    def test_getitem_slice_step_2(self):
-        with self.assertRaises(ValueError):
-            _make(cupy, sparse, self.dtype)[:, 0::2]
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_rowslice_all(self, xp, sp):
+        # This test is adapted from Scipy's CSC tests
+        return _make(xp, sp, self.dtype)[slice(None, None, None)]
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_getitem_rowslice_negative_stop(self, xp, sp):
+        # This test is adapted from Scipy's CSC tests
+        return _make(xp, sp, self.dtype)[slice(1, -2, 2)]
+
+    def test_getrow(self):
+
+        # This test is adapted from Scipy's CSC tests
+        N = 10
+        X = testing.shaped_random((N, N), cupy, seed=0)
+        X[X > 0.7] = 0
+        Xcsc = sparse.csc_matrix(X)
+
+        for i in range(N):
+            arr_row = X[i:i + 1, :]
+            csc_row = Xcsc.getrow(i)
+
+            assert sparse.isspmatrix_csr(csc_row)
+            assert (arr_row == csc_row.toarray()).all()
+
+    def test_getcol(self):
+        # This test is adapted from Scipy's CSC tests
+        N = 10
+        X = testing.shaped_random((N, N), cupy, seed=0)
+        X[X > 0.7] = 0
+        Xcsc = sparse.csc_matrix(X)
+
+        for i in range(N):
+            arr_col = X[:, i:i + 1]
+            csc_col = Xcsc.getcol(i)
+
+            assert sparse.isspmatrix_csc(csc_col)
+            assert (arr_col == csc_col.toarray()).all()
 
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.with_requires('scipy>=1.0.0')
+@testing.with_requires('scipy>=1.4.0')
 class TestCsrMatrixGetitem2(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(sp_name='sp')
