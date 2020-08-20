@@ -287,7 +287,7 @@ class TestGetItemIndexing(unittest.TestCase):
                 actual.data, expected.data)
         else:
             testing.assert_array_equal(
-                actual, expected)
+                actual.ravel(), numpy.asarray(expected).ravel())
 
     @staticmethod
     def _get_index_combos(idx):
@@ -318,13 +318,6 @@ class TestGetItemIndexing(unittest.TestCase):
 
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
-
-    def test_major_slice_minor_all(self):
-        self._run(slice(1, 5), slice(None))
-        self._run(slice(5, 1), slice(None))
-
-    def test_major_slice_with_step(self):
-
         self._run(slice(1, 20, 2), slice(1, 5, 1))
         self._run(slice(20, 1, 2), slice(1, 5, 1))
         self._run(slice(1, 15, 2), slice(1, 5, 1))
@@ -332,6 +325,24 @@ class TestGetItemIndexing(unittest.TestCase):
         self._run(slice(1, 15, 5), slice(1, 5, 1))
         self._run(slice(20, 1, 5), slice(None))
         self._run(slice(1, 20, 5), slice(None))
+
+    def test_major_slice_minor_all(self):
+        self._run(slice(1, 5), slice(None))
+        self._run(slice(5, 1), slice(None))
+
+    def test_major_slice_minor_scalar(self):
+        self._run(slice(1, 5), 5)
+        self._run(slice(5, 1), 5)
+        self._run(slice(5, 1, -1), 5)
+
+    def test_major_all_minor_fancy(self):
+        self._run(slice(None), [1, 5, 2, 3, 4, 5, 4, 1, 5])
+        self._run(slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5])
+
+    def test_major_fancy_minor_fancy(self):
+        self._run([1, 5, 4], [1, 5, 4])
+        self._run([2, 0, 10], [9, 2, 1])
+        self._run([2, 0], [2, 1])
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
