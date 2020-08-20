@@ -376,6 +376,9 @@ def compile_in_memory(in_memory):
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
+        if cupy.cuda.runtime.is_hip and self.in_memory:
+            self.skipTest('ROCm/HIP does not support in-memory compilation')
+
         if hasattr(self, 'clean_up'):
             util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
@@ -509,6 +512,7 @@ class TestRaw(unittest.TestCase):
         x1, x2, y = self._helper(ker, cupy.float32)
         assert cupy.allclose(y, x1 / (x2 + 1.0))
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'hcc uses hsaco, not ptx')
     def test_load_ptx(self):
         # generate ptx in the temp dir
         file_path = self._generate_file('ptx')
