@@ -511,7 +511,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         if major.ndim == 1:
             # Scipy returns `matrix` here
-            return val
+            return cupy.expand_dims(val, 0)
         return self.__class__(val.reshape(major.shape))
 
     def _get_columnXarray(self, row, col):
