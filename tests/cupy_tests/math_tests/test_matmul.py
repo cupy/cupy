@@ -136,6 +136,49 @@ class TestMatmulLarge(unittest.TestCase):
             ((200, 300), (300, 100)),
             ((300, 100), (100, 200)),
         ],
+        'compute_type': [
+            cupy.core.core.COMPUTE_TYPE_DEFAULT,
+            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
+        ],
+    }))
+@testing.gpu
+class TestMatmulFp16ComputeTypes(unittest.TestCase):
+    dtype = numpy.float16
+
+    def setUp(self):
+        self.old_compute_type = cupy.core.get_compute_type(self.dtype)
+        cupy.core.set_compute_type(self.dtype, self.compute_type)
+
+    def tearDown(self):
+        cupy.core.set_compute_type(self.dtype, self.old_compute_type)
+
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_operator_matmul(self, xp):
+        shape1, shape2 = self.shape_pair
+        x1 = testing.shaped_random(shape1, xp, self.dtype)
+        x2 = testing.shaped_random(shape2, xp, self.dtype)
+        return operator.matmul(x1, x2)
+
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_cupy_matmul(self, xp):
+        shape1, shape2 = self.shape_pair
+        x1 = testing.shaped_random(shape1, xp, self.dtype)
+        x2 = testing.shaped_random(shape2, xp, self.dtype)
+        return xp.matmul(x1, x2)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape_pair': [
+            ((100, 200), (200, 300)),
+            ((200, 300), (300, 100)),
+            ((300, 100), (100, 200)),
+        ],
+        'compute_type': [
+            cupy.core.core.COMPUTE_TYPE_DEFAULT,
+            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
+            cupy.core.core.COMPUTE_TYPE_TF32,
+        ],
         'dtype_pair': [
             (numpy.float16, numpy.float32),
             (numpy.float32, numpy.float32),
@@ -143,21 +186,17 @@ class TestMatmulLarge(unittest.TestCase):
             (numpy.float32, numpy.complex64),
             (numpy.complex64, numpy.complex64),
         ],
-        'fp32_compute_type': [
-            cupy.core.core.FP32_COMPUTE_DEFAULT,
-            cupy.core.core.FP32_COMPUTE_PEDANTIC,
-            cupy.core.core.FP32_COMPUTE_FAST_TF32,
-        ],
     }))
 @testing.gpu
 class TestMatmulFp32ComputeTypes(unittest.TestCase):
+    dtype = numpy.float32
 
     def setUp(self):
-        self.old_fp32_compute_type = cupy.core.get_fp32_compute_type()
-        cupy.core.set_fp32_compute_type(self.fp32_compute_type)
+        self.old_compute_type = cupy.core.get_compute_type(self.dtype)
+        cupy.core.set_compute_type(self.dtype, self.compute_type)
 
     def tearDown(self):
-        cupy.core.set_fp32_compute_type(self.old_fp32_compute_type)
+        cupy.core.set_compute_type(self.dtype, self.old_compute_type)
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
     def test_operator_matmul(self, xp):
@@ -168,6 +207,54 @@ class TestMatmulFp32ComputeTypes(unittest.TestCase):
         return operator.matmul(x1, x2)
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_cupy_matmul(self, xp):
+        shape1, shape2 = self.shape_pair
+        dtype1, dtype2 = self.dtype_pair
+        x1 = testing.shaped_random(shape1, xp, dtype1)
+        x2 = testing.shaped_random(shape2, xp, dtype2)
+        return xp.matmul(x1, x2)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape_pair': [
+            ((100, 200), (200, 300)),
+            ((200, 300), (300, 100)),
+            ((300, 100), (100, 200)),
+        ],
+        'compute_type': [
+            cupy.core.core.COMPUTE_TYPE_DEFAULT,
+            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
+        ],
+        'dtype_pair': [
+            (numpy.float32, numpy.float64),
+            (numpy.float64, numpy.float64),
+            (numpy.float32, numpy.complex128),
+            (numpy.float64, numpy.complex128),
+            (numpy.complex64, numpy.complex128),
+            (numpy.complex128, numpy.complex128),
+        ],
+    }))
+@testing.gpu
+class TestMatmulFp64ComputeTypes(unittest.TestCase):
+    dtype = numpy.float64
+
+    def setUp(self):
+        self.old_compute_type = cupy.core.get_compute_type(self.dtype)
+        cupy.core.set_compute_type(self.dtype, self.compute_type)
+
+    def tearDown(self):
+        cupy.core.set_compute_type(self.dtype, self.old_compute_type)
+
+    @testing.numpy_cupy_allclose()
+    def test_operator_matmul(self, xp):
+        shape1, shape2 = self.shape_pair
+        dtype1, dtype2 = self.dtype_pair
+        x1 = testing.shaped_random(shape1, xp, dtype1)
+        x2 = testing.shaped_random(shape2, xp, dtype2)
+        return operator.matmul(x1, x2)
+
+    @testing.numpy_cupy_allclose()
     def test_cupy_matmul(self, xp):
         shape1, shape2 = self.shape_pair
         dtype1, dtype2 = self.dtype_pair
