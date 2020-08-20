@@ -238,7 +238,7 @@ class TestSetitemIndexing(unittest.TestCase):
 class TestGetItemIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None, flip_for_csc=True,
-             compare_dense=False):
+             compare_dense=False, test_scipy=True):
 
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
@@ -272,22 +272,23 @@ class TestGetItemIndexing(unittest.TestCase):
             actual = a[maj]
             expected = expected[maj_h]
 
-        if compare_dense:
-            actual = actual.todense()
+        if test_scipy:
+            if compare_dense:
+                actual = actual.todense()
 
-        if sparse.isspmatrix(actual):
-            actual.sort_indices()
-            expected.sort_indices()
+            if sparse.isspmatrix(actual):
+                actual.sort_indices()
+                expected.sort_indices()
 
-            testing.assert_array_equal(
-                actual.indptr, expected.indptr)
-            testing.assert_array_equal(
-                actual.indices, expected.indices)
-            testing.assert_array_equal(
-                actual.data, expected.data)
-        else:
-            testing.assert_array_equal(
-                actual.ravel(), numpy.asarray(expected).ravel())
+                testing.assert_array_equal(
+                    actual.indptr, expected.indptr)
+                testing.assert_array_equal(
+                    actual.indices, expected.indices)
+                testing.assert_array_equal(
+                    actual.data, expected.data)
+            else:
+                testing.assert_array_equal(
+                    actual.ravel(), numpy.asarray(expected).ravel())
 
     @staticmethod
     def _get_index_combos(idx):
@@ -335,11 +336,6 @@ class TestGetItemIndexing(unittest.TestCase):
         self._run(slice(5, 1), 5)
         self._run(slice(5, 1, -1), 5)
 
-    def test_major_fancy_minor_fancy(self):
-        self._run([1, 5, 4], [1, 5, 4])
-        self._run([2, 0, 10], [9, 2, 1])
-        self._run([2, 0], [2, 1])
-
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
         self._run(numpy.array(5), slice(1, 5))
@@ -362,6 +358,15 @@ class TestGetItemIndexing(unittest.TestCase):
 
     def test_major_all_minor_all(self):
         self._run(slice(None), slice(None))
+
+    def test_ellipsis(self):
+        self._run(Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, 1, flip_for_csc=False)
+        self._run(1, Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(None), flip_for_csc=False)
+        self._run(slice(None), Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(1, None), flip_for_csc=False)
+        self._run(slice(1, None), Ellipsis, flip_for_csc=False)
 
     # Major Indexing
 
@@ -449,14 +454,32 @@ class TestGetItemIndexing(unittest.TestCase):
         for idx in self._get_index_combos([1, 5, 4, 1, 2]):
             self._run(5, idx)
 
-    def test_ellipsis(self):
-        self._run(Ellipsis, flip_for_csc=False)
-        self._run(Ellipsis, 1, flip_for_csc=False)
-        self._run(1, Ellipsis, flip_for_csc=False)
-        self._run(Ellipsis, slice(None), flip_for_csc=False)
-        self._run(slice(None), Ellipsis, flip_for_csc=False)
-        self._run(Ellipsis, slice(1, None), flip_for_csc=False)
-        self._run(slice(1, None), Ellipsis, flip_for_csc=False)
+    # Inner Indexing
+
+    def test_major_fancy_minor_fancy(self):
+
+        for idx in self._get_index_combos([1, 5, 4]):
+            self._run(idx, idx)
+
+        self._run([1, 5, 4], [1, 5, 4])
+
+        maj = self._get_index_combos([2, 0, 10, 0, 2])
+        min = self._get_index_combos([9, 2, 1, 0, 2])
+
+        for (idx1, idx2) in zip(maj, min):
+            self._run(idx1, idx2)
+
+        self._run([2, 0, 10, 0], [9, 2, 1, 0])
+
+        maj = self._get_index_combos([2, 0, 2])
+        min = self._get_index_combos([2, 1, 1])
+
+        for (idx1, idx2) in zip(maj, min):
+            self._run(idx1, idx2)
+
+        self._run([2, 0, 2], [2, 1, 2])
+
+    # Bad Indexing
 
     def test_bad_indexing(self):
         with pytest.raises(IndexError):
@@ -467,6 +490,9 @@ class TestGetItemIndexing(unittest.TestCase):
 
         with pytest.raises(ValueError):
             self._run([1, 2, 3], [1, 2, 3, 4])
+
+        with pytest.raises(IndexError):
+            self._run([[0, 0], [1, 1]])
 
         with pytest.raises(IndexError):
             self._run([[0, 0], [1, 1]])

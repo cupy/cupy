@@ -624,7 +624,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # inner indexing
         idx_dtype = self.indices.dtype
         M, N = self._swap(*self.shape)
-        major, minor = self._swap(*(row, col))
+        major, minor = self._swap(row, col)
         major = cupy.asarray(major, dtype=idx_dtype)
         minor = cupy.asarray(minor, dtype=idx_dtype)
 

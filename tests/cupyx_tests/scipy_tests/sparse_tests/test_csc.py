@@ -1021,9 +1021,8 @@ class TestCscMatrixScipyCompressed(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    # TODO(takagi) Test dtypes
-    # TODO(takagi) Test negative axis
-    'axis': [None, 0, 1],
+    # TODO(takagi): Test dtypes
+    'axis': [None, -2, -1, 0, 1],
     'dense': [False, True],  # means a sparse matrix but all elements filled
 }))
 @testing.with_requires('scipy>=0.19.0')
@@ -1059,6 +1058,9 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
                 if numpy.isinf(dm_data).all():
                     dm_data[0, 0] = 0
             else:
+                if axis < 0:
+                    axis += 2
+
                 # If all elements in a row/column are set to infinity, we make
                 # it have at least a zero so spmatrix.min(axis=axis) returns
                 # zero for the row/column.
