@@ -116,3 +116,9 @@ cdef ndarray _ndarray_init(const shape_t& shape, dtype)
 
 cdef ndarray _create_ndarray_from_shape_strides(
     const shape_t& shape, const strides_t& strides, dtype)
+
+cpdef enum:
+    FP32_COMPUTE_TBD = 0
+    FP32_COMPUTE_DEFAULT = 1    # default
+    FP32_COMPUTE_PEDANTIC = 2   # disable algorithmic optimizations
+    FP32_COMPUTE_FAST_TF32 = 3  # allow down-converting inputs to TF32

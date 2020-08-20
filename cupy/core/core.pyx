@@ -20,7 +20,6 @@ from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
 from cupy.core import syncdetect
 from cupy import cuda
-from cupy.cuda import device
 from cupy.cuda import memory as memory_module
 
 
@@ -46,6 +45,7 @@ from cupy.core cimport _routines_sorting as _sorting
 from cupy.core cimport _routines_statistics as _statistics
 from cupy.core cimport dlpack
 from cupy.core cimport internal
+from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport memory
@@ -70,7 +70,29 @@ cdef inline _should_use_rop(x, y):
 
 
 cdef tuple _HANDLED_TYPES
-cdef int use_tf32 = -1
+cdef int fp32_compute_type = FP32_COMPUTE_TBD
+
+
+cpdef set_fp32_compute_type(type):
+    global fp32_compute_type
+    cdef int compute_capability = int(device.get_compute_capability())
+    if type in (FP32_COMPUTE_TBD, FP32_COMPUTE_DEFAULT, FP32_COMPUTE_PEDANTIC):
+        fp32_compute_type = type
+    elif type == FP32_COMPUTE_FAST_TF32:
+        if compute_capability >= 80:
+            fp32_compute_type = type
+        else:
+            fp32_compute_type = FP32_COMPUTE_DEFAULT
+            warnings.warn('FP32_COMPUTE_FAST_TF32 is only available on GPUs'
+                          ' with compute capability 8.0 or higher.'
+                          ' FP32_COMPUTE_DEFAULT will be used instead.')
+    else:
+        raise ValueError('Unknown fp32 compute type: {}'.format(type))
+
+
+cpdef get_fp32_compute_type():
+    global fp32_compute_type
+    return fp32_compute_type
 
 
 cdef class ndarray:
@@ -2922,20 +2944,29 @@ cpdef ndarray tensordot_core_v11(
     cdef cuComplex one_F, zero_F
     cdef cuDoubleComplex one_D, zero_D
     cdef size_t one_ptr, zero_ptr
-    global use_tf32
 
-    cdef int compute_capability = int(device.get_compute_capability())
-    if compute_capability >= 80 and use_tf32 < 0:
-        use_tf32 = int(os.getenv('CUPY_TF32', '0'))
+    if get_fp32_compute_type() == FP32_COMPUTE_TBD:
+        fp32_compute_type = FP32_COMPUTE_DEFAULT
+        if int(os.getenv('CUPY_TF32', '0')) > 0:
+            fp32_compute_type = FP32_COMPUTE_FAST_TF32
+        set_fp32_compute_type(fp32_compute_type)
 
     cdef int compute_type
-    if c.dtype.char in 'efF':
+    if c.dtype.char == 'e':
         compute_type = cublas.CUBLAS_COMPUTE_32F
-        if use_tf32 > 0 and c.dtype.char in 'fF':
+    elif c.dtype.char in 'fF':
+        if get_fp32_compute_type() == FP32_COMPUTE_FAST_TF32:
             compute_type = cublas.CUBLAS_COMPUTE_32F_FAST_TF32
+        elif get_fp32_compute_type() == FP32_COMPUTE_PEDANTIC:
+            compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
+        else:
+            compute_type = cublas.CUBLAS_COMPUTE_32F
     elif c.dtype.char in 'dD':
         compute_type = cublas.CUBLAS_COMPUTE_64F
+    else:
+        raise ValueError('Invalid dtype: {}'.format(c.dtype))
 
+    cdef int compute_capability = int(device.get_compute_capability())
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
     if ((compute_capability >= 80) or
             (compute_capability >= 70 and c.dtype == 'e')):
@@ -2943,6 +2974,7 @@ cpdef ndarray tensordot_core_v11(
 
     if c.dtype.char in 'efd':
         if compute_type in (cublas.CUBLAS_COMPUTE_32F,
+                            cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
                             cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
             one_f = 1
             zero_f = 0
@@ -2957,6 +2989,7 @@ cpdef ndarray tensordot_core_v11(
             raise ValueError('Invalid compute type: {}'.format(compute_type))
     elif c.dtype.char in 'FD':
         if compute_type in (cublas.CUBLAS_COMPUTE_32F,
+                            cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
                             cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
             one_F = cuComplex(1, 0)
             zero_F = cuComplex(0, 0)
