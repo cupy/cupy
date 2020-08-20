@@ -138,6 +138,10 @@ pygments_style = 'sphinx'
 # If true, keep warnings as "system message" paragraphs in the built documents.
 #keep_warnings = False
 
+# Suppress a warning that multiple targets are found for a cross-reference.
+# See #3250
+suppress_warnings = ['ref.python']
+
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
@@ -342,7 +346,6 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
-    'chainer': ('https://docs.chainer.org/en/latest/', None),
 }
 
 doctest_global_setup = '''

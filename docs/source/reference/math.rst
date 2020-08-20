@@ -158,6 +158,7 @@ Miscellaneous
    :toctree: generated/
    :nosignatures:
 
+   cupy.convolve
    cupy.clip
    cupy.sqrt
    cupy.cbrt
@@ -169,6 +170,8 @@ Miscellaneous
    cupy.fmax
    cupy.fmin
    cupy.nan_to_num
+   cupy.bartlett
    cupy.blackman
    cupy.hamming
    cupy.hanning
+   cupy.kaiser

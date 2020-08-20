@@ -1,5 +1,7 @@
 from libcpp cimport vector
 
+from cupy.core._carray cimport shape_t
+from cupy.core._carray cimport strides_t
 from cupy.core.core cimport ndarray
 
 
@@ -25,8 +27,7 @@ cpdef ndarray _expand_dims(ndarray a, tuple axis)
 cpdef ndarray moveaxis(ndarray a, source, destination)
 cpdef ndarray rollaxis(ndarray a, Py_ssize_t axis, Py_ssize_t start=*)
 cpdef ndarray broadcast_to(ndarray array, shape)
-cpdef ndarray _reshape(ndarray self,
-                       const vector.vector[Py_ssize_t] &shape_spec)
+cpdef ndarray _reshape(ndarray self, const shape_t &shape_spec)
 cpdef ndarray _T(ndarray self)
 cpdef ndarray _transpose(ndarray self, const vector.vector[Py_ssize_t] &axes)
 cpdef ndarray _concatenate(

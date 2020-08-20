@@ -139,3 +139,15 @@ class TestReductionKernelInvalidArgument(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Invalid kernel name'):
             cupy.ReductionKernel(
                 'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1')
+
+
+@testing.gpu
+class TestLargeMultiDimReduction(
+        ReductionKernelTestBase, unittest.TestCase):
+
+    def test_large_dims_keep_kernels(self):
+        # This test creates a CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES
+        # if the output array dims are not reduced
+        shape = (4, 3, 2, 4, 3, 2, 2)
+        axis = (1, 4, 3, 6)
+        self.check_int8_sum(shape, axis=axis, keepdims=True)

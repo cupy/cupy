@@ -2,7 +2,7 @@ Difference between CuPy and NumPy
 =================================
 
 The interface of CuPy is designed to obey that of NumPy.
-However, there are some differeneces.
+However, there are some differences.
 
 
 Cast behavior from float to integer
@@ -11,7 +11,7 @@ Cast behavior from float to integer
 Some casting behaviors from float to integer are not defined in C++ specification.
 The casting from a negative float to unsigned integer and infinity to integer is one of such examples.
 The behavior of NumPy depends on your CPU architecture.
-This is Intel CPU result.
+This is the result on an Intel CPU:
 
   >>> np.array([-1], dtype=np.float32).astype(np.uint32)
   array([4294967295], dtype=uint32)
@@ -27,8 +27,9 @@ This is Intel CPU result.
 Random methods support dtype argument
 -------------------------------------
 
-NumPy's random value generator does not support dtype option and it always returns a ``float32`` value.
-We support the option in CuPy because cuRAND, which is used in CuPy, supports any types of float values.
+NumPy's random value generator does not support a `dtype` argument and instead always returns a ``float64`` value.
+We support the option in CuPy because cuRAND, which is used in CuPy, supports both ``float32`` and ``float64``.
+
 
   >>> np.random.randn(dtype=np.float32)
   Traceback (most recent call last):

@@ -1,13 +1,12 @@
 import unittest
-
-import mock
+from unittest import mock
 
 import cupy
 import cupyx
 
 
 try:
-    import cupy.cuda.cudnn as cudnn
+    import cupy_backends.cuda.libs.cudnn as cudnn
 except ImportError:
     cudnn = None
 
@@ -30,21 +29,21 @@ class TestRuntime(unittest.TestCase):
         assert 'Error' not in str(runtime)
 
         with mock.patch(
-                'cupy.cuda.runtime.driverGetVersion',
+                'cupy_backends.cuda.api.runtime.driverGetVersion',
                 side_effect=_get_error_func(
                     cupy.cuda.runtime.CUDARuntimeError, 0)):
             runtime = cupyx.get_runtime_info()
             assert 'CUDARuntimeError' in str(runtime)
 
         with mock.patch(
-                'cupy.cuda.runtime.runtimeGetVersion',
+                'cupy_backends.cuda.api.runtime.runtimeGetVersion',
                 side_effect=_get_error_func(
                     cupy.cuda.runtime.CUDARuntimeError, 0)):
             runtime = cupyx.get_runtime_info()
             assert 'CUDARuntimeError' in str(runtime)
 
         with mock.patch(
-                'cupy.cuda.cudnn.getVersion',
+                'cupy_backends.cuda.libs.cudnn.getVersion',
                 side_effect=_get_error_func(cudnn.CuDNNError, 0)):
             runtime = cupyx.get_runtime_info()
             assert 'CuDNNError' in str(runtime)

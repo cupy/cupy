@@ -259,7 +259,7 @@ class TestFusionArraySetItem(unittest.TestCase):
 
 
 @testing.gpu
-class TestFusionArrayCopy(unittest.TestCase):
+class TestFusionArrayMethods(unittest.TestCase):
 
     def generate_inputs(self, xp, dtype):
         x = testing.shaped_random((3, 4), xp, dtype, scale=10, seed=0)
@@ -270,6 +270,36 @@ class TestFusionArrayCopy(unittest.TestCase):
     def test_copy(self, xp, dtype):
         return lambda x: x.copy()
 
+    @testing.for_all_dtypes()
+    @fusion_utils.check_fusion()
+    def test_sum(self, xp, dtype):
+        return lambda x: x.sum()
+
+    @testing.for_all_dtypes()
+    @fusion_utils.check_fusion()
+    def test_prod(self, xp, dtype):
+        return lambda x: x.prod()
+
+    @testing.for_all_dtypes()
+    @fusion_utils.check_fusion()
+    def test_max(self, xp, dtype):
+        return lambda x: x.max()
+
+    @testing.for_all_dtypes()
+    @fusion_utils.check_fusion()
+    def test_min(self, xp, dtype):
+        return lambda x: x.min()
+
+    @testing.for_all_dtypes(no_complex=True)
+    @fusion_utils.check_fusion()
+    def test_all(self, xp, dtype):
+        return lambda x: x.all()
+
+    @testing.for_all_dtypes(no_complex=True)
+    @fusion_utils.check_fusion()
+    def test_any(self, xp, dtype):
+        return lambda x: x.any()
+
 
 @testing.gpu
 class TestFusionArrayAsType(unittest.TestCase):
@@ -278,6 +308,7 @@ class TestFusionArrayAsType(unittest.TestCase):
         x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
         return (x,), {}
 
+    # TODO(asi1024): Raise complex warnings.
     @testing.for_all_dtypes(name='dtype1', no_complex=True)
     @testing.for_all_dtypes(name='dtype2')
     @fusion_utils.check_fusion()

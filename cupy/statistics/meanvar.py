@@ -5,7 +5,33 @@ import cupy
 from cupy.core import _routines_statistics as _statistics
 
 
-# TODO(okuta): Implement median
+def median(a, axis=None, out=None, overwrite_input=False, keepdims=False):
+    """Compute the median along the specified axis.
+
+    Returns the median of the array elements.
+
+    Args:
+        a (cupy.ndarray): Array to compute the median.
+        axis (int): Axis along which the medians are computed. The flattened
+            array is used by default.
+        out (cupy.ndarray): Output array.
+        overwrite_input (bool): If ``True``, then allow use of memory of input
+            array a for calculations. The input array will be modified by the
+            call to median. This will save memory when you do not need to
+            preserve the contents of the input array. Treat the input as
+            undefined, but it will probably be fully or partially sorted.
+            Default is ``False``. If ``overwrite_input`` is ``True`` and ``a``
+            is not already an ndarray, an error will be raised.
+        keepdims (bool): If ``True``, the axis is remained as an axis of size
+            one.
+
+    Returns:
+        cupy.ndarray: The median of ``a``, along the axis if specified.
+
+    .. seealso:: :func:`numpy.median`
+
+    """
+    return _statistics._median(a, axis, out, overwrite_input, keepdims)
 
 
 def average(a, axis=None, weights=None, returned=False):

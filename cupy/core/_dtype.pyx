@@ -1,6 +1,8 @@
 cimport cython  # NOQA
 import numpy
 
+from cupy_backends.cuda.api cimport runtime
+
 
 all_type_chars = '?bhilqBHILQefdFD'
 # for c in '?bhilqBHILQefdFD':
@@ -9,12 +11,12 @@ all_type_chars = '?bhilqBHILQefdFD'
 # b ... int8
 # h ... int16
 # i ... int32
-# l ... int64
+# l ... int64  (int32 in windows)
 # q ... int64
 # B ... uint8
 # H ... uint16
 # I ... uint32
-# L ... uint64
+# L ... uint64  (uint32 in windows)
 # Q ... uint64
 # e ... float16
 # f ... float32
@@ -62,3 +64,19 @@ cpdef tuple get_dtype_with_itemsize(t):
         t = _dtype(t)
         return t, t.itemsize
     return ret
+
+
+cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
+    cdef str dtype_char = dtype.char
+    if dtype_char == 'e' and is_half_allowed:
+        return runtime.CUDA_R_16F
+    elif dtype_char == 'f':
+        return runtime.CUDA_R_32F
+    elif dtype_char == 'd':
+        return runtime.CUDA_R_64F
+    elif dtype_char == 'F':
+        return runtime.CUDA_C_32F
+    elif dtype_char == 'D':
+        return runtime.CUDA_C_64F
+    else:
+        raise TypeError('dtype is not supported: {}'.format(dtype))

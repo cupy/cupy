@@ -9,6 +9,7 @@ from cupy import cusparse
 import cupyx.scipy.sparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
+from cupyx.scipy.sparse import _index
 
 
 class csc_matrix(compressed._compressed_sparse_matrix):
@@ -35,7 +36,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         copy (bool): If ``True``, copies of given arrays are always used.
 
     .. seealso::
-       :class:`scipy.sparse.csc_matrix`
+        :class:`scipy.sparse.csc_matrix`
 
     """
 
@@ -70,8 +71,6 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     def _swap(self, x, y):
         return (y, x)
 
-    # TODO(unno): Implement __getitem__
-
     def __mul__(self, other):
         if cupy.isscalar(other):
             self.sum_duplicates()
@@ -79,11 +78,30 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         elif cupyx.scipy.sparse.isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            return cusparse.csrgemm(self.T, other, transa=True)
+            if cusparse.check_availability('csrgemm'):
+                a = self.T
+                return cusparse.csrgemm(a, other, transa=True)
+            elif cusparse.check_availability('csrgemm2'):
+                a = self.tocsr()
+                a.sum_duplicates()
+                return cusparse.csrgemm2(a, other)
+            else:
+                raise NotImplementedError
         elif isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            return cusparse.csrgemm(self.T, other.T, transa=True, transb=True)
+            if cusparse.check_availability('csrgemm'):
+                a = self.T
+                b = other.T
+                return cusparse.csrgemm(a, b, transa=True, transb=True)
+            elif cusparse.check_availability('csrgemm2'):
+                a = self.tocsr()
+                b = other.tocsr()
+                a.sum_duplicates()
+                b.sum_duplicates()
+                return cusparse.csrgemm2(a, b)
+            else:
+                raise NotImplementedError
         elif cupyx.scipy.sparse.isspmatrix(other):
             return self * other.tocsr()
         elif base.isdense(other):
@@ -92,12 +110,22 @@ class csc_matrix(compressed._compressed_sparse_matrix):
                 return self._with_data(self.data * other)
             elif other.ndim == 1:
                 self.sum_duplicates()
-                return cusparse.csrmv(
-                    self.T, cupy.asfortranarray(other), transa=True)
+                if cusparse.check_availability('csrmv'):
+                    csrmv = cusparse.csrmv
+                elif cusparse.check_availability('spmv'):
+                    csrmv = cusparse.spmv
+                else:
+                    raise NotImplementedError
+                return csrmv(self.T, cupy.asfortranarray(other), transa=True)
             elif other.ndim == 2:
                 self.sum_duplicates()
-                return cusparse.csrmm2(
-                    self.T, cupy.asfortranarray(other), transa=True)
+                if cusparse.check_availability('csrmm2'):
+                    csrmm = cusparse.csrmm2
+                elif cusparse.check_availability('spmm'):
+                    csrmm = cusparse.spmm
+                else:
+                    raise NotImplementedError
+                return csrmm(self.T, cupy.asfortranarray(other), transa=True)
             else:
                 raise ValueError('could not interpret dimensions')
         else:
@@ -122,8 +150,15 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement reshape
 
     def sort_indices(self):
-        """Sorts the indices of the matrix in place."""
-        cusparse.cscsort(self)
+        """Sorts the indices of this matrix *in place*.
+
+        .. warning::
+            Calling this function might synchronize the device.
+
+        """
+        if not self.has_sorted_indices:
+            cusparse.cscsort(self)
+            self.has_sorted_indices = True
 
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value.
@@ -141,25 +176,33 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         """
         if order is None:
             order = 'C'
-
+        order = order.upper()
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
-        self.sum_duplicates()
+        x = self.copy()
+        x.has_canonical_format = False  # need to enforce sum_duplicates
+        x.sum_duplicates()
         # csc2dense and csr2dense returns F-contiguous array.
         if order == 'C':
             # To return C-contiguous array, it uses transpose.
-            return cusparse.csr2dense(self.T).T
+            return cusparse.csr2dense(x.T).T
         elif order == 'F':
-            return cusparse.csc2dense(self)
+            return cusparse.csc2dense(x)
         else:
-            raise TypeError('order not understood')
+            raise ValueError('order not understood')
 
     def _add_sparse(self, other, alpha, beta):
         self.sum_duplicates()
         other = other.tocsc().T
         other.sum_duplicates()
-        return cusparse.csrgeam(self.T, other, alpha, beta).T
+        if cusparse.check_availability('csrgeam2'):
+            csrgeam = cusparse.csrgeam2
+        elif cusparse.check_availability('csrgeam'):
+            csrgeam = cusparse.csrgeam
+        else:
+            raise NotImplementedError
+        return csrgeam(self.T, other, alpha, beta).T
 
     # TODO(unno): Implement tobsr
 
@@ -174,7 +217,14 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.coo_matrix: Converted matrix.
 
         """
-        return self.T.tocoo(copy).T
+        if copy:
+            data = self.data.copy()
+            indices = self.indices.copy()
+        else:
+            data = self.data
+            indices = self.indices
+
+        return cusparse.csc2coo(self, data, indices)
 
     def tocsc(self, copy=None):
         """Converts the matrix to Compressed Sparse Column format.
@@ -204,7 +254,15 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.csr_matrix: Converted matrix.
 
         """
-        return self.T.tocsc(copy=False).T
+        # copy is ignored
+        if cusparse.check_availability('csc2csr'):
+            csc2csr = cusparse.csc2csr
+        elif cusparse.check_availability('csc2csrEx2'):
+            csc2csr = cusparse.csc2csrEx2
+        else:
+            raise NotImplementedError
+        # don't touch has_sorted_indices, as cuSPARSE made no guarantee
+        return csc2csr(self)
 
     # TODO(unno): Implement todia
     # TODO(unno): Implement todok
@@ -230,8 +288,60 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         shape = self.shape[1], self.shape[0]
         trans = cupyx.scipy.sparse.csr.csr_matrix(
             (self.data, self.indices, self.indptr), shape=shape, copy=copy)
-        trans._has_canonical_format = self._has_canonical_format
+        trans.has_canonical_format = self.has_canonical_format
         return trans
+
+    def getrow(self, i):
+        """Returns a copy of row i of the matrix, as a (1 x n)
+        CSR matrix (row vector).
+
+        Args:
+            i (integer): Row
+
+        Returns:
+            cupyx.scipy.sparse.csc_matrix: Sparse matrix with single row
+        """
+        M, N = self.shape
+        i = _index._normalize_index(i, M, 'index')
+        return self._get_submatrix(minor=slice(i, i+1, 1)).tocsr()
+
+    def getcol(self, i):
+        """Returns a copy of column i of the matrix, as a (m x 1)
+        CSC matrix (column vector).
+
+        Args:
+            i (integer): Column
+
+        Returns:
+            cupyx.scipy.sparse.csc_matrix: Sparse matrix with single column
+        """
+        M, N = self.shape
+        i = _index._normalize_index(i, N, 'index')
+        return self._get_submatrix(major=slice(i, i+1, 1), copy=True)
+
+    def _get_intXarray(self, row, col):
+        return self._major_index_fancy(col)._get_submatrix(minor=row)
+
+    def _get_intXslice(self, row, col):
+        if col.step in {1, None}:
+            return self._get_submatrix(major=col, minor=row, copy=True)
+        return self._major_slice(col)._get_submatrix(
+            minor=slice(row, row+1, 1))
+
+    def _get_sliceXint(self, row, col):
+        if row.step in {1, None}:
+            return self._get_submatrix(major=col, minor=row, copy=True)
+        return self._get_submatrix(
+            major=slice(col, col+1, 1))._minor_slice(row)
+
+    def _get_sliceXarray(self, row, col):
+        return self._major_index_fancy(col)._minor_slice(row)
+
+    def _get_arrayXint(self, row, col):
+        return self._get_submatrix(major=col)._minor_index_fancy(row)
+
+    def _get_arrayXslice(self, row, col):
+        return self._major_slice(col)._minor_index_fancy(row)
 
 
 def isspmatrix_csc(x):

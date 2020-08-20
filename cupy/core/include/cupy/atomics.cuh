@@ -41,6 +41,12 @@ __device__ float16 atomicAdd(float16* address, float16 val) {
 };
 
 
+__device__ long long atomicAdd(long long *address, long long val) {
+    return atomicAdd(reinterpret_cast<unsigned long long*>(address),
+                     static_cast<unsigned long long>(val));
+}
+
+
 __device__ float atomicMax(float* address, float val) {
   int* address_as_i = reinterpret_cast<int*>(address);
   int old = *address_as_i, assumed;

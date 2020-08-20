@@ -13,6 +13,8 @@ cdef ndarray _ndarray_mean(ndarray self, axis, dtype, out, keepdims)
 cdef ndarray _ndarray_var(ndarray self, axis, dtype, out, ddof, keepdims)
 cdef ndarray _ndarray_std(ndarray self, axis, dtype, out, ddof, keepdims)
 
+cpdef ndarray _median(ndarray a, axis, out, overwrite_input, keepdims)
+
 cpdef ndarray _nanmean(ndarray a, axis, dtype, out, keepdims)
 cpdef ndarray _nanvar(ndarray a, axis, dtype, out, ddof, keepdims)
 cpdef ndarray _nanstd(ndarray a, axis, dtype, out, ddof, keepdims)

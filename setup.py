@@ -1,10 +1,23 @@
 #!/usr/bin/env python
 
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 import sys
 
 import cupy_setup_build
+
+
+if len(os.listdir('cupy/core/include/cupy/cub/')) == 0:
+    msg = '''
+    The folder cupy/core/include/cupy/cub/ is a git submodule but is
+    currently empty. Please use the command
+
+        git submodule update --init
+
+    to populate the folder before building from source.
+    '''
+    print(msg, file=sys.stderr)
+    sys.exit(1)
 
 
 if sys.version_info[:3] == (3, 5, 0):
@@ -28,22 +41,21 @@ requirements = {
         'fastrlock>=0.3',
     ],
     'stylecheck': [
-        'autopep8==1.3.5',
-        'flake8==3.5.0',
+        'autopep8==1.4.4',
+        'flake8==3.7.9',
         'pbr==4.0.4',
-        'pycodestyle==2.3.1',
+        'pycodestyle==2.5.0',
     ],
     'test': [
         'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.
         'attrs<19.2.0',  # pytest 4.1.1 does not run with attrs==19.2.0
-        'mock',
     ],
     'doctest': [
         'matplotlib',
-        'theano',
+        'optuna',
     ],
     'docs': [
-        'sphinx',
+        'sphinx==3.0.4',
         'sphinx_rtd_theme',
     ],
     'travis': [
@@ -114,10 +126,12 @@ package_data = {
         'core/include/cupy/carray.cuh',
         'core/include/cupy/complex.cuh',
         'core/include/cupy/atomics.cuh',
+        'core/include/cupy/type_dispatcher.cuh',
         'core/include/cupy/cuComplex_bridge.h',
         'core/include/cupy/_cuda/cuda-*/*.h',
         'core/include/cupy/_cuda/cuda-*/*.hpp',
         'cuda/cupy_thrust.cu',
+        'cuda/cupy_cub.cu',
     ],
 }
 
@@ -143,13 +157,13 @@ Programming Language :: Python :: 3
 Programming Language :: Python :: 3.5
 Programming Language :: Python :: 3.6
 Programming Language :: Python :: 3.7
+Programming Language :: Python :: 3.8
 Programming Language :: Python :: 3 :: Only
 Programming Language :: Cython
 Topic :: Software Development
 Topic :: Scientific/Engineering
-Operating System :: Microsoft :: Windows
 Operating System :: POSIX
-Operating System :: MacOS
+Operating System :: Microsoft :: Windows
 """
 
 
@@ -160,51 +174,15 @@ setup(
     long_description=long_description,
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
-    url='https://cupy.chainer.org/',
+    url='https://cupy.dev/',
     license='MIT License',
     project_urls={
         "Bug Tracker": "https://github.com/cupy/cupy/issues",
-        "Documentation": "https://docs-cupy.chainer.org/",
+        "Documentation": "https://docs.cupy.dev/",
         "Source Code": "https://github.com/cupy/cupy",
     },
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
-    packages=[
-        'cupy',
-        'cupy.binary',
-        'cupy.core',
-        'cupy.creation',
-        'cupy.cuda',
-        'cupy.cuda.memory_hooks',
-        'cupy.fft',
-        'cupy.indexing',
-        'cupy.io',
-        'cupy.lib',
-        'cupy.linalg',
-        'cupy.logic',
-        'cupy.manipulation',
-        'cupy.math',
-        'cupy.misc',
-        'cupy.padding',
-        'cupy.prof',
-        'cupy.random',
-        'cupy._sorting',
-        'cupy.sparse',
-        'cupy.sparse.linalg',
-        'cupy.statistics',
-        'cupy.testing',
-        'cupyx',
-        'cupyx.fallback_mode',
-        'cupyx.scipy',
-        'cupyx.scipy.fft',
-        'cupyx.scipy.fftpack',
-        'cupyx.scipy.ndimage',
-        'cupyx.scipy.sparse',
-        'cupyx.scipy.sparse.linalg',
-        'cupyx.scipy.special',
-        'cupyx.scipy.linalg',
-        'cupyx.linalg',
-        'cupyx.linalg.sparse'
-    ],
+    packages=find_packages(exclude=['install', 'tests']),
     package_data=package_data,
     zip_safe=False,
     python_requires='>=3.5.0',
