@@ -1,9 +1,13 @@
+import contextlib
+
 import cupy
-import cupyx
+import cupyx.scipy.fft
 
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
+from cupy.cuda import cufft
+from cupy.fft.fft import _output_dtype
 from cupy.lib import stride_tricks
 
 
@@ -16,6 +20,28 @@ _dot_kernel = core.ReductionKernel(
     '0',
     'dot_product'
 )
+
+
+def _choose_conv_method(in1, in2, mode):
+    if in1.ndim != 1 or in2.ndim != 1:
+        raise NotImplementedError('Only 1d inputs are supported currently')
+
+    if in1.dtype.kind in 'bui' or in2.dtype.kind in 'bui':
+        return 'direct'
+
+    if _fftconv_faster(in1, in2, mode):
+        return 'fft'
+
+    return 'direct'
+
+
+def _fftconv_faster(x, h, mode):
+    """
+    .. seealso:: :func: `scipy.signal.signaltools._fftconv_faster`
+
+    """
+    # TODO(Dahlia-Chehata): replace with GPU-based constants.
+    return True
 
 
 def convolve(a, v, mode='full'):
@@ -43,9 +69,9 @@ def convolve(a, v, mode='full'):
     a = a.ravel()
     v = v.ravel()
 
-    method = cupyx.scipy.signal.choose_conv_method(a, v, mode)
+    method = _choose_conv_method(a, v, mode)
     if method == 'direct':
-        _, out = _dot_convolve(a, v, mode)
+        out = _dot_convolve(a, v, mode)
     elif method == 'fft':
         out = _fft_convolve(a, v, mode)
     else:
@@ -55,25 +81,52 @@ def convolve(a, v, mode='full'):
 
 def _fft_convolve(a1, a2, mode):
 
+    offset = 0
     if a1.size < a2.size:
         a1, a2 = a2, a1
+        offset = 1 - a2.size % 2
 
+    # if either of them is complex, the dtype after multiplication will also be
     if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
         fft, ifft = cupy.fft.fft, cupy.fft.ifft
+        is_c2c = True
     else:
         fft, ifft = cupy.fft.rfft, cupy.fft.irfft
+        is_c2c = False
 
-    dtype = cupy.result_type(a1, a2)
+    # hack to work around NumPy/CuPy FFT dtype incompatibility:
+    # CuPy internally converts fp16 to fp32 before doing FFT (whereas Numpy
+    # converts both fp16 and fp32 to fp64), so here we do the cast early and
+    # explicitly, and make sure a correct cuFFT plan can be generated. After
+    # the fft-ifft round trip, we cast the output dtype to the correct one.
+    out_dtype = cupy.result_type(a1, a2)
+    dtype = _output_dtype(out_dtype, 'C2C' if is_c2c else 'R2C')
+    a1 = a1.astype(dtype, copy=False)
+    a2 = a2.astype(dtype, copy=False)
+
     n1, n2 = a1.size, a2.size
-    out_size = n1 + n2 - 1
-    fa1 = fft(a1, out_size)
-    fa2 = fft(a2, out_size)
-    out = ifft(fa1 * fa2, out_size)
+    out_size = cupyx.scipy.fft.next_fast_len(n1 + n2 - 1)
+    # skip calling get_fft_plan() as we know the args exactly
+    if is_c2c:
+        fft_t = cufft.CUFFT_C2C if dtype == cupy.complex64 else cufft.CUFFT_Z2Z
+        fft_plan = cufft.Plan1d(out_size, fft_t, 1)
+        ifft_plan = fft_plan
+    else:
+        fft_t = cufft.CUFFT_R2C if dtype == cupy.float32 else cufft.CUFFT_D2Z
+        fft_plan = cufft.Plan1d(out_size, fft_t, 1)
+        # this is a no-op context manager
+        # TODO(leofang): use contextlib.nullcontext() for PY37+?
+        ifft_plan = contextlib.suppress()
+    with fft_plan:
+        fa1 = fft(a1, out_size)
+        fa2 = fft(a2, out_size)
+    with ifft_plan:
+        out = ifft(fa1 * fa2, out_size)
 
     if mode == 'full':
-        start, end = None, None
+        start, end = 0, n1 + n2 - 1
     elif mode == 'same':
-        start = (n2 - 1) // 2
+        start = (n2 - 1) // 2 + offset
         end = start + n1
     elif mode == 'valid':
         start, end = n2 - 1, n1
@@ -81,22 +134,20 @@ def _fft_convolve(a1, a2, mode):
         raise ValueError(
             'acceptable mode flags are `valid`, `same`, or `full`.')
 
-    out = out[start: end]
+    out = out[start:end]
 
-    if dtype.kind in 'iu':
+    if out.dtype.kind in 'iu':
         out = cupy.around(out)
 
-    return out.astype(dtype, copy=False)
+    return out.astype(out_dtype, copy=False)
 
 
 def _dot_convolve(a1, a2, mode):
-    if a1.size == 0 or a2.size == 0:
-        raise ValueError('Array arguments cannot be empty')
 
-    is_inverted = False
+    offset = 0
     if a1.size < a2.size:
         a1, a2 = a2, a1
-        is_inverted = True
+        offset = 1 - a2.size % 2
 
     dtype = cupy.result_type(a1, a2)
     n1, n2 = a1.size, a2.size
@@ -108,7 +159,7 @@ def _dot_convolve(a1, a2, mode):
         a1 = cupy.pad(a1, n2 - 1)
     elif mode == 'same':
         out_size = n1
-        pad_size = (n2 - 1) // 2
+        pad_size = (n2 - 1) // 2 + offset
         a1 = cupy.pad(a1, (n2 - 1 - pad_size, pad_size))
     elif mode == 'valid':
         out_size = n1 - n2 + 1
@@ -116,7 +167,7 @@ def _dot_convolve(a1, a2, mode):
     stride = a1.strides[0]
     a1 = stride_tricks.as_strided(a1, (out_size, n2), (stride, stride))
     output = _dot_kernel(a1, a2[::-1], axis=1)
-    return is_inverted, output
+    return output
 
 
 def clip(a, a_min=None, a_max=None, out=None):

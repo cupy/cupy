@@ -1,54 +1,20 @@
+import numbers
+
 import numpy
 
-import cupy
 from cupy.core.core cimport ndarray
 
+import cupy
+from cupy.lib import _routines_poly
 
-def _fft_poly(seq):
-    n = seq.shape[0]
-    if n == 1:
-        return seq[0]
-    if n == 2:
-        return cupy.math.misc._fft_convolve(seq[0], seq[1], 'full')
-    return cupy.math.misc._fft_convolve(_fft_poly(seq[:n/2]),
-                                        _fft_poly(seq[n/2:]), 'full')
+cimport cython  # NOQA
 
 
-def poly(seq):
-    """Computes the coefficients of a polynomial with the given roots sequence.
-
-    Args:
-        seq (cupy.ndarray): a sequence of polynomial roots.
-
-    Returns:
-        cupy.ndarray: polynomial coefficients from highest to lowest degree.
-
-    .. warning::
-
-        This function doesn't support general 2d square arrays currently.
-        Only complex Hermitian and real symmetric 2d arrays are allowed.
-
-    .. seealso:: :func:`numpy.poly`
-
-    """
-    if seq.ndim == 2 and seq.shape[0] == seq.shape[1] and seq.shape[0] != 0:
-        if cupy.array_equal(seq, seq.conj().T):
-            seq = cupy.linalg.eigvalsh(seq)
-        else:
-            raise NotImplementedError('Only complex Hermitian and real '
-                                      'symmetric 2d arrays are supported '
-                                      'currently')
-    elif seq.ndim == 1:
-        seq = seq.astype(cupy.mintypecode(seq.dtype.char), copy=False)
-    elif seq.ndim == 0:
-        raise TypeError('Input must be 1d or non-empty square 2d array.')
-    else:
-        raise ValueError('Input must be 1d or non-empty square 2d array.')
-
-    if seq.size == 0:
-        return 1.0
-
-    return _fft_poly(cupy.column_stack((cupy.ones(seq.size, seq.dtype), -seq)))
+@cython.profile(False)
+cdef inline _should_use_rop(x, y):
+    xp = getattr(x, '__array_priority__', 0)
+    yp = getattr(y, '__array_priority__', 0)
+    return xp < yp and not isinstance(y, poly1d)
 
 
 cdef class poly1d:
@@ -57,7 +23,7 @@ cdef class poly1d:
     Args:
         c_or_r (array_like): The polynomial's
          coefficients in decreasing powers
-        r (bool, optional): If True, ```c_or_r`` specifies the
+        r (bool, optional): If True, ``c_or_r`` specifies the
             polynomial's roots; the default is False.
         variable (str, optional): Changes the variable used when
             printing the polynomial from ``x`` to ``variable``
@@ -66,13 +32,21 @@ cdef class poly1d:
 
     """
     __hash__ = None
+    __array_priority__ = 100
 
     cdef:
         readonly ndarray _coeffs
         readonly str _variable
+        readonly bint _trimmed
 
     @property
     def coeffs(self):
+        if self._trimmed:
+            return self._coeffs
+        self._coeffs = cupy.trim_zeros(self._coeffs, trim='f')
+        if self._coeffs.size == 0:
+            self._coeffs = cupy.array([0.])
+        self._trimmed = True
         return self._coeffs
 
     @coeffs.setter
@@ -86,12 +60,11 @@ cdef class poly1d:
 
     @property
     def order(self):
-        return self._coeffs.size - 1
+        return self.coeffs.size - 1
 
-    # TODO(Dahlia-Chehata): implement using cupy.roots
     @property
     def roots(self):
-        raise NotImplementedError
+        return _routines_poly.roots(self._coeffs)
 
     @property
     def r(self):
@@ -117,21 +90,24 @@ cdef class poly1d:
         if isinstance(c_or_r, (numpy.poly1d, poly1d)):
             self._coeffs = cupy.asarray(c_or_r.coeffs)
             self._variable = c_or_r._variable
+            self._trimmed = True
             if variable is not None:
                 self._variable = variable
             return
         if r:
-            c_or_r = poly(c_or_r)
+            c_or_r = _routines_poly.poly(c_or_r)
         c_or_r = cupy.atleast_1d(c_or_r)
         if c_or_r.ndim > 1:
             raise ValueError('Polynomial must be 1d only.')
-        c_or_r = cupy.trim_zeros(c_or_r, trim='f')
-        if c_or_r.size == 0:
-            c_or_r = cupy.array([0.])
         self._coeffs = c_or_r
+        self._trimmed = False
         if variable is None:
             variable = 'x'
         self._variable = variable
+
+    @property
+    def __cuda_array_interface__(self):
+        return self.coeffs.__cuda_array_interface__
 
     def __array__(self, dtype=None):
         raise TypeError(
@@ -147,9 +123,8 @@ cdef class poly1d:
     def __str__(self):
         return str(self.get())
 
-    # TODO(Dahlia-Chehata): implement using polyval
     def __call__(self, val):
-        raise NotImplementedError
+        return _routines_poly.polyval(self.coeffs, val)
 
     def __neg__(self):
         return poly1d(-self.coeffs)
@@ -157,33 +132,63 @@ cdef class poly1d:
     def __pos__(self):
         return self
 
-    # TODO(Dahlia-Chehata): use polymul for non-scalars
     def __mul__(self, other):
+        if _should_use_rop(self, other):
+            return other.__rmul__(self)
         if cupy.isscalar(other):
+            # case: poly1d * python scalar
+            # the return type of cupy.polymul output is
+            # inconsistent with NumPy's output for this case.
             return poly1d(self.coeffs * other)
-        raise NotImplementedError
+        if isinstance(self, numpy.generic):
+            # case: numpy scalar * poly1d
+            # poly1d addition and subtraction don't support this case
+            # so it is not supported here for consistency purposes
+            # between polyarithmetic routines
+            raise TypeError('Numpy scalar and poly1d multiplication'
+                            ' is not supported currently.')
+        if cupy.isscalar(self) and isinstance(other, poly1d):
+            # case: python scalar * poly1d
+            # the return type of cupy.polymul output is
+            # inconsistent with NumPy's output for this case
+            # So casting python scalar is required.
+            self = other._coeffs.dtype.type(self)
+        return _routines_poly.polymul(self, other)
 
-    # TODO(Dahlia-Chehata): implement using polyadd
     def __add__(self, other):
-        raise NotImplementedError
+        if _should_use_rop(self, other):
+            return other.__radd__(self)
+        if isinstance(self, numpy.generic):
+            # for the case: numpy scalar + poly1d
+            raise TypeError('Numpy scalar and poly1d '
+                            'addition is not supported')
+        return _routines_poly.polyadd(self, other)
 
-    # TODO(Dahlia-Chehata): implement using polyadd
-    def __radd__(self, other):
-        raise NotImplementedError
-
-    # TODO(Dahlia-Chehata): implement using polymul
     def __pow__(self, val, modulo):
         if not cupy.isscalar(val) or int(val) != val or val < 0:
             raise ValueError('Power to non-negative integers only.')
-        raise NotImplementedError
+        if not isinstance(val, numbers.Integral):
+            raise TypeError('float object cannot be interpreted as an integer')
 
-    # TODO(Dahlia-Chehata): implement using polysub
+        base = self.coeffs
+        dtype = base.dtype
+
+        if dtype.kind == 'c':
+            base = base.astype(numpy.complex128, copy=False)
+        elif dtype.kind == 'f' or dtype == numpy.uint64:
+            base = base.astype(numpy.float64, copy=False)
+        else:
+            base = base.astype(numpy.int64, copy=False)
+        return poly1d(_routines_poly._polypow(base, val))
+
     def __sub__(self, other):
-        raise NotImplementedError
-
-    # TODO(Dahlia-Chehata): implement using polysub
-    def __rsub__(self, other):
-        raise NotImplementedError
+        if _should_use_rop(self, other):
+            return other.__rsub__(self)
+        if isinstance(self, numpy.generic):
+            # for the case: numpy scalar - poly1d
+            raise TypeError('Numpy scalar and poly1d '
+                            'subtraction is not supported')
+        return _routines_poly.polysub(self, other)
 
     # TODO(Dahlia-Chehata): use polydiv for non-scalars
     def __truediv__(self, other):
@@ -204,20 +209,17 @@ cdef class poly1d:
         return not self.__eq__(other)
 
     def __getitem__(self, val):
-        ind = self.order - val
-        if val > self.order or val < 0:
-            return 0
-        return self.coeffs[ind]
+        if 0 <= val < self._coeffs.size:
+            return self._coeffs[-val-1]
+        return 0
 
     def __setitem__(self, key, val):
-        ind = self.order - key
         if key < 0:
             raise ValueError('Negative powers are not supported.')
-        if key > self.order:
-            zeroz = cupy.zeros(key - self.order, self.coeffs.dtype)
-            self._coeffs = cupy.concatenate((zeroz, self.coeffs))
-            ind = 0
-        self._coeffs[ind] = val
+        if key >= self._coeffs.size:
+            self._coeffs = cupy.pad(self._coeffs,
+                                    (key - (self._coeffs.size - 1), 0))
+        self._coeffs[-key-1] = val
         return
 
     def __iter__(self):

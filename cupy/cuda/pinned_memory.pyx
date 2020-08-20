@@ -5,10 +5,10 @@ import weakref
 
 from fastrlock cimport rlock
 
-from cupy.cuda import runtime
+from cupy_backends.cuda.api import runtime
 
 from cupy.core cimport internal
-from cupy.cuda cimport runtime
+from cupy_backends.cuda.api cimport runtime
 from cupy import util
 
 
@@ -305,7 +305,7 @@ cdef class PinnedMemoryPool:
                 try:
                     mem = self._alloc(size).mem
                 except runtime.CUDARuntimeError as e:
-                    if e.status != runtime.cudaErrorMemoryAllocation:
+                    if e.status != runtime.errorMemoryAllocation:
                         raise
                     self.free_all_blocks()
                     mem = self._alloc(size).mem

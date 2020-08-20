@@ -40,3 +40,17 @@ Basics
 
     cupy.poly1d
     cupy.poly
+    cupy.polyval
+    cupy.roots
+
+
+Arithmetic
+~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+    cupy.polyadd
+    cupy.polysub
+    cupy.polymul

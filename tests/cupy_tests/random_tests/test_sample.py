@@ -148,17 +148,17 @@ class TestRandintDtype(unittest.TestCase):
 class TestRandomIntegers(unittest.TestCase):
 
     def test_normal(self):
-        with mock.patch('cupy.random.sample_.randint') as m:
+        with mock.patch('cupy.random._sample.randint') as m:
             random.random_integers(3, 5)
         m.assert_called_with(3, 6, None)
 
     def test_high_is_none(self):
-        with mock.patch('cupy.random.sample_.randint') as m:
+        with mock.patch('cupy.random._sample.randint') as m:
             random.random_integers(3, None)
         m.assert_called_with(1, 4, None)
 
     def test_size_is_not_none(self):
-        with mock.patch('cupy.random.sample_.randint') as m:
+        with mock.patch('cupy.random._sample.randint') as m:
             random.random_integers(3, 5, (1, 2, 3))
         m.assert_called_with(3, 6, (1, 2, 3))
 
@@ -205,14 +205,14 @@ class TestRandomIntegers2(unittest.TestCase):
 class TestChoice(unittest.TestCase):
 
     def setUp(self):
-        self.rs_tmp = random.generator._random_states
+        self.rs_tmp = random._generator._random_states
         device_id = cuda.Device().id
         self.m = mock.Mock()
         self.m.choice.return_value = 0
-        random.generator._random_states = {device_id: self.m}
+        random._generator._random_states = {device_id: self.m}
 
     def tearDown(self):
-        random.generator._random_states = self.rs_tmp
+        random._generator._random_states = self.rs_tmp
 
     def test_size_and_replace_and_p_are_none(self):
         random.choice(3)
@@ -251,13 +251,13 @@ class TestChoice(unittest.TestCase):
 class TestRandomSample(unittest.TestCase):
 
     def test_rand(self):
-        with mock.patch('cupy.random.sample_.random_sample') as m:
+        with mock.patch('cupy.random._sample.random_sample') as m:
             random.rand(1, 2, 3, dtype=numpy.float32)
         m.assert_called_once_with(
             size=(1, 2, 3), dtype=numpy.float32)
 
     def test_rand_default_dtype(self):
-        with mock.patch('cupy.random.sample_.random_sample') as m:
+        with mock.patch('cupy.random._sample.random_sample') as m:
             random.rand(1, 2, 3)
         m.assert_called_once_with(
             size=(1, 2, 3), dtype=float)
@@ -267,13 +267,13 @@ class TestRandomSample(unittest.TestCase):
             random.rand(1, 2, 3, unnecessary='unnecessary_argument')
 
     def test_randn(self):
-        with mock.patch('cupy.random.distributions.normal') as m:
+        with mock.patch('cupy.random._distributions.normal') as m:
             random.randn(1, 2, 3, dtype=numpy.float32)
         m.assert_called_once_with(
             size=(1, 2, 3), dtype=numpy.float32)
 
     def test_randn_default_dtype(self):
-        with mock.patch('cupy.random.distributions.normal') as m:
+        with mock.patch('cupy.random._distributions.normal') as m:
             random.randn(1, 2, 3)
         m.assert_called_once_with(
             size=(1, 2, 3), dtype=float)

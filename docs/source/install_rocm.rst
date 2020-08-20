@@ -79,7 +79,7 @@ You can install CuPy from the tarball::
 
 You can also install the development version of CuPy from a cloned Git repository::
 
-  $ git clone https://github.com/cupy/cupy.git
+  $ git clone --recursive https://github.com/cupy/cupy.git
   $ cd cupy
   $ export HCC_AMDGPU_TARGET=gfx900  # This value should be changed based on your GPU
   $ export __HIP_PLATFORM_HCC__
@@ -94,12 +94,6 @@ Uninstall CuPy
 Use pip to uninstall CuPy::
 
   $ pip uninstall cupy
-
-.. note::
-
-   When you upgrade Chainer, ``pip`` sometimes installs the new version without removing the old one in ``site-packages``.
-   In this case, ``pip uninstall`` only removes the latest one.
-   To ensure that CuPy is completely removed, run the above command repeatedly until ``pip`` returns an error.
 
 Upgrade CuPy
 ------------

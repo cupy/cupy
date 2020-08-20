@@ -3,12 +3,13 @@
 import threading
 
 from cupy.core import syncdetect
-from cupy.cuda import cublas
-from cupy.cuda import cusolver
-from cupy.cuda import cusparse
-from cupy.cuda cimport runtime
-from cupy.cuda import runtime as runtime_module
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.api import runtime as runtime_module
+from cupy_backends.cuda.libs import cublas
+from cupy_backends.cuda.libs import cusolver
+from cupy_backends.cuda.libs import cusparse
 from cupy import util
+
 
 # This flag is kept for backward compatibility.
 # It is always True as cuSOLVER library is always available in CUDA 8.0+.
@@ -42,19 +43,19 @@ cdef class Handle:
         self._destroy_func(self.handle)
 
 
-cpdef size_t get_cublas_handle() except? 0:
+cpdef intptr_t get_cublas_handle() except? 0:
     return _get_device().cublas_handle
 
 
-cpdef size_t get_cusolver_handle() except? 0:
+cpdef intptr_t get_cusolver_handle() except? 0:
     return _get_device().cusolver_handle
 
 
-cpdef get_cusolver_sp_handle():
+cpdef intptr_t get_cusolver_sp_handle() except? 0:
     return _get_device().cusolver_sp_handle
 
 
-cpdef size_t get_cusparse_handle() except? 0:
+cpdef intptr_t get_cusparse_handle() except? 0:
     return _get_device().cusparse_handle
 
 
@@ -76,7 +77,7 @@ def _get_attributes(device_id):
                 name = k.replace('cudaDevAttr', '', 1)
                 d[name] = runtime.deviceGetAttribute(v, device_id)
             except runtime_module.CUDARuntimeError as e:
-                if e.status != runtime.cudaErrorInvalidValue:
+                if e.status != runtime.errorInvalidValue:
                     raise
     return d
 

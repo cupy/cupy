@@ -164,14 +164,6 @@ We can also use :meth:`cupy.ndarray.get()`:
 
    >>> x_cpu = x_gpu.get()
 
-.. note::
-
-   If you work with Chainer, you can also use :func:`~chainer.backends.cuda.to_cpu` and
-   :func:`~chainer.backends.cuda.to_gpu` to move arrays back and forth between
-   a device and a host, or between different devices.
-   Note that :func:`~chainer.backends.cuda.to_gpu` has ``device`` option to specify
-   the device which arrays are transferred.
-
 How to write CPU/GPU agnostic code
 ----------------------------------
 
