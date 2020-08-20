@@ -129,21 +129,7 @@ class TestMatmulLarge(unittest.TestCase):
         return xp.matmul(x1, x2)
 
 
-@testing.parameterize(
-    *testing.product({
-        'shape_pair': [
-            ((100, 200), (200, 300)),
-            ((200, 300), (300, 100)),
-            ((300, 100), (100, 200)),
-        ],
-        'compute_type': [
-            cupy.core.core.COMPUTE_TYPE_DEFAULT,
-            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
-        ],
-    }))
-@testing.gpu
-class TestMatmulFp16ComputeTypes(unittest.TestCase):
-    dtype = numpy.float16
+class _TestMatmulComputeTypes(unittest.TestCase):
 
     def setUp(self):
         self.old_compute_type = cupy.core.get_compute_type(self.dtype)
@@ -152,32 +138,50 @@ class TestMatmulFp16ComputeTypes(unittest.TestCase):
     def tearDown(self):
         cupy.core.set_compute_type(self.dtype, self.old_compute_type)
 
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
-    def test_operator_matmul(self, xp):
-        shape1, shape2 = self.shape_pair
-        x1 = testing.shaped_random(shape1, xp, self.dtype)
-        x2 = testing.shaped_random(shape2, xp, self.dtype)
-        return operator.matmul(x1, x2)
-
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
-    def test_cupy_matmul(self, xp):
-        shape1, shape2 = self.shape_pair
-        x1 = testing.shaped_random(shape1, xp, self.dtype)
-        x2 = testing.shaped_random(shape2, xp, self.dtype)
-        return xp.matmul(x1, x2)
+    def make_x1_x2(self, xp, shapes, dtypes):
+        x1 = testing.shaped_random(shapes[0], xp, dtypes[0])
+        x2 = testing.shaped_random(shapes[1], xp, dtypes[1])
+        return x1, x2
 
 
 @testing.parameterize(
     *testing.product({
+        'compute_type': [
+            cupy.core.core.COMPUTE_TYPE_DEFAULT,
+            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
+        ],
         'shape_pair': [
             ((100, 200), (200, 300)),
             ((200, 300), (300, 100)),
             ((300, 100), (100, 200)),
         ],
+    }))
+@testing.gpu
+class TestMatmulFp16ComputeTypes(_TestMatmulComputeTypes):
+    dtype = numpy.float16
+
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_operator_matmul(self, xp):
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, (self.dtype, self.dtype))
+        return operator.matmul(x1, x2)
+
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_cupy_matmul(self, xp):
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, (self.dtype, self.dtype))
+        return xp.matmul(x1, x2)
+
+
+@testing.parameterize(
+    *testing.product({
         'compute_type': [
             cupy.core.core.COMPUTE_TYPE_DEFAULT,
             cupy.core.core.COMPUTE_TYPE_PEDANTIC,
             cupy.core.core.COMPUTE_TYPE_TF32,
+        ],
+        'shape_pair': [
+            ((100, 200), (200, 300)),
+            ((200, 300), (300, 100)),
+            ((300, 100), (100, 200)),
         ],
         'dtype_pair': [
             (numpy.float16, numpy.float32),
@@ -188,43 +192,30 @@ class TestMatmulFp16ComputeTypes(unittest.TestCase):
         ],
     }))
 @testing.gpu
-class TestMatmulFp32ComputeTypes(unittest.TestCase):
+class TestMatmulFp32ComputeTypes(_TestMatmulComputeTypes):
     dtype = numpy.float32
-
-    def setUp(self):
-        self.old_compute_type = cupy.core.get_compute_type(self.dtype)
-        cupy.core.set_compute_type(self.dtype, self.compute_type)
-
-    def tearDown(self):
-        cupy.core.set_compute_type(self.dtype, self.old_compute_type)
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
     def test_operator_matmul(self, xp):
-        shape1, shape2 = self.shape_pair
-        dtype1, dtype2 = self.dtype_pair
-        x1 = testing.shaped_random(shape1, xp, dtype1)
-        x2 = testing.shaped_random(shape2, xp, dtype2)
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, self.dtype_pair)
         return operator.matmul(x1, x2)
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
     def test_cupy_matmul(self, xp):
-        shape1, shape2 = self.shape_pair
-        dtype1, dtype2 = self.dtype_pair
-        x1 = testing.shaped_random(shape1, xp, dtype1)
-        x2 = testing.shaped_random(shape2, xp, dtype2)
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, self.dtype_pair)
         return xp.matmul(x1, x2)
 
 
 @testing.parameterize(
     *testing.product({
+        'compute_type': [
+            cupy.core.core.COMPUTE_TYPE_DEFAULT,
+            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
+        ],
         'shape_pair': [
             ((100, 200), (200, 300)),
             ((200, 300), (300, 100)),
             ((300, 100), (100, 200)),
-        ],
-        'compute_type': [
-            cupy.core.core.COMPUTE_TYPE_DEFAULT,
-            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
         ],
         'dtype_pair': [
             (numpy.float32, numpy.float64),
@@ -236,30 +227,17 @@ class TestMatmulFp32ComputeTypes(unittest.TestCase):
         ],
     }))
 @testing.gpu
-class TestMatmulFp64ComputeTypes(unittest.TestCase):
+class TestMatmulFp64ComputeTypes(_TestMatmulComputeTypes):
     dtype = numpy.float64
-
-    def setUp(self):
-        self.old_compute_type = cupy.core.get_compute_type(self.dtype)
-        cupy.core.set_compute_type(self.dtype, self.compute_type)
-
-    def tearDown(self):
-        cupy.core.set_compute_type(self.dtype, self.old_compute_type)
 
     @testing.numpy_cupy_allclose()
     def test_operator_matmul(self, xp):
-        shape1, shape2 = self.shape_pair
-        dtype1, dtype2 = self.dtype_pair
-        x1 = testing.shaped_random(shape1, xp, dtype1)
-        x2 = testing.shaped_random(shape2, xp, dtype2)
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, self.dtype_pair)
         return operator.matmul(x1, x2)
 
     @testing.numpy_cupy_allclose()
     def test_cupy_matmul(self, xp):
-        shape1, shape2 = self.shape_pair
-        dtype1, dtype2 = self.dtype_pair
-        x1 = testing.shaped_random(shape1, xp, dtype1)
-        x2 = testing.shaped_random(shape2, xp, dtype2)
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, self.dtype_pair)
         return xp.matmul(x1, x2)
 
 
