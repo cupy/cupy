@@ -128,7 +128,7 @@ cpdef bytes getPTX(intptr_t prog):
         status = nvrtcGetPTXSize(<Program>prog, &ptxSizeRet)
     check_status(status)
     if ptxSizeRet == 0:
-        return ''
+        return b''
     ptx.resize(ptxSizeRet)
     ptx_ptr = ptx.data()
     with nogil:
