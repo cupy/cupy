@@ -12,10 +12,10 @@ import pytest
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.5],
+    'density': [0.2, 0.5, 0.8],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [1500],
-    'n_cols': [1500]
+    'n_rows': [25, 150],
+    'n_cols': [25, 150]
 }))
 @testing.with_requires('scipy')
 class TestSetitemIndexing(unittest.TestCase):
@@ -44,42 +44,17 @@ class TestSetitemIndexing(unittest.TestCase):
             import time
 
             if min is not None:
-                expected = a.get()
-
-                cupy.cuda.Stream.null.synchronize()
-                cpu_time = time.time()
-                expected[maj_h, min_h] = data
-                cpu_stop = time.time() - cpu_time
-
                 actual = a
-
-                gpu_time = time.time()
-                cupy.cuda.Stream.null.synchronize()
                 actual[maj, min] = data
-                cupy.cuda.Stream.null.synchronize()
-                gpu_stop = time.time() - gpu_time
-            else:
+
                 expected = a.get()
-
-                cupy.cuda.Stream.null.synchronize()
-                cpu_time = time.time()
-                expected[maj_h] = data
-                cpu_stop = time.time() - cpu_time
-
+                expected[maj_h, min_h] = data
+            else:
                 actual = a
-
-                gpu_time = time.time()
-                cupy.cuda.Stream.null.synchronize()
                 actual[maj] = data
-                cupy.cuda.Stream.null.synchronize()
-                gpu_stop = time.time() - gpu_time
 
-        dense = actual.todense().ravel()
-
-        print("maj=%s, min=%s, format=%s, result_size=%s, cpu_time=%s, "
-              "gpu_time=%s"
-              % (maj, min, self.format, len(dense[dense == 5]),
-                 cpu_stop, gpu_stop))
+                expected = a.get()
+                expected[maj_h] = data
 
         if cupy.sparse.isspmatrix(actual):
             actual.sort_indices()
@@ -228,7 +203,7 @@ class TestSetitemIndexing(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.2, 0.8],
+    'density': [0.2, 0.5, 0.8],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
     'n_rows': [25, 150],
     'n_cols': [25, 150]
@@ -238,7 +213,7 @@ class TestSetitemIndexing(unittest.TestCase):
 class TestGetItemIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None, flip_for_csc=True,
-             compare_dense=False, test_scipy=True):
+             compare_dense=False):
 
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
@@ -272,23 +247,22 @@ class TestGetItemIndexing(unittest.TestCase):
             actual = a[maj]
             expected = expected[maj_h]
 
-        if test_scipy:
-            if compare_dense:
-                actual = actual.todense()
+        if compare_dense:
+            actual = actual.todense()
 
-            if sparse.isspmatrix(actual):
-                actual.sort_indices()
-                expected.sort_indices()
+        if sparse.isspmatrix(actual):
+            actual.sort_indices()
+            expected.sort_indices()
 
-                testing.assert_array_equal(
-                    actual.indptr, expected.indptr)
-                testing.assert_array_equal(
-                    actual.indices, expected.indices)
-                testing.assert_array_equal(
-                    actual.data, expected.data)
-            else:
-                testing.assert_array_equal(
-                    actual, numpy.asarray(expected))
+            testing.assert_array_equal(
+                actual.indptr, expected.indptr)
+            testing.assert_array_equal(
+                actual.indices, expected.indices)
+            testing.assert_array_equal(
+                actual.data, expected.data)
+        else:
+            testing.assert_array_equal(
+                actual, numpy.asarray(expected))
 
     @staticmethod
     def _get_index_combos(idx):
@@ -490,9 +464,6 @@ class TestGetItemIndexing(unittest.TestCase):
 
         with pytest.raises(ValueError):
             self._run([1, 2, 3], [1, 2, 3, 4])
-
-        with pytest.raises(IndexError):
-            self._run([[0, 0], [1, 1]])
 
         with pytest.raises(IndexError):
             self._run([[0, 0], [1, 1]])
