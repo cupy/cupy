@@ -858,22 +858,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _prepare_indices(self, i, j):
         M, N = self._swap(*self.shape)
 
-        def check_bounds(indices, bound):
-            idx = indices.max()
-            if idx >= bound:
-                raise IndexError('index (%d) out of range (>= %d)' %
-                                 (idx, bound))
-            idx = indices.min()
-            if idx < -bound:
-                raise IndexError('index (%d) out of range (< -%d)' %
-                                 (idx, bound))
-
+        # TODO(cjnolet) Verify whether this is needed.
+        # def check_bounds(indices, bound):
+        #     idx = indices.max()
+        #     if idx >= bound:
+        #         raise IndexError('index (%d) out of range (>= %d)' %
+        #                          (idx, bound))
+        #     idx = indices.min()
+        #     if idx < -bound:
+        #         raise IndexError('index (%d) out of range (< -%d)' %
+        #                          (idx, bound))
+        #
         i = cupy.array(i, dtype=self.indptr.dtype,
                        copy=True, ndmin=1).ravel()
         j = cupy.array(j, dtype=self.indices.dtype,
                        copy=True, ndmin=1).ravel()
-        check_bounds(i, M)
-        check_bounds(j, N)
+        # check_bounds(i, M)
+        # check_bounds(j, N)
         return i, j, M, N
 
     @cupy.prof.TimeRangeDecorator(message="_set_many", color_id=9)
@@ -1096,18 +1097,19 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         self.prune()
 
-        if full_check:
-            # check format validity (more expensive)
-            if self.nnz > 0:
-                if self.indices.max() >= minor_dim:
-                    raise ValueError("{} index values must be < {}"
-                                     "".format(minor_name, minor_dim))
-                if self.indices.min() < 0:
-                    raise ValueError("{} index values must be >= 0"
-                                     "".format(minor_name))
-                if cupy.diff(self.indptr).min() < 0:
-                    raise ValueError("index pointer values must form a "
-                                     "non-decreasing sequence")
+        # TODO(cjnolet) Verify whether this is needed
+        # if full_check:
+        #     # check format validity (more expensive)
+        #     if self.nnz > 0:
+        #         if self.indices.max() >= minor_dim:
+        #             raise ValueError("{} index values must be < {}"
+        #                              "".format(minor_name, minor_dim))
+        #         if self.indices.min() < 0:
+        #             raise ValueError("{} index values must be >= 0"
+        #                              "".format(minor_name))
+        #         if cupy.diff(self.indptr).min() < 0:
+        #             raise ValueError("index pointer values must form a "
+        #                              "non-decreasing sequence")
 
     def __get_has_canonical_format(self):
         """Determine whether the matrix has sorted indices and no duplicates.
