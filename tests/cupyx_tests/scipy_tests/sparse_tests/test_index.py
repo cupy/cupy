@@ -17,7 +17,7 @@ import pytest
     'n_rows': [25, 150],
     'n_cols': [25, 150]
 }))
-# @testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy>=1.4.0')
 @testing.gpu
 class TestIndexing(unittest.TestCase):
 
