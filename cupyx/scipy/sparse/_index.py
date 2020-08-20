@@ -126,7 +126,7 @@ def _csr_column_inv_idx(idxs):
     Returns
         idxs_adj : inverted indices where idxs_adj[idxs[i]] = i
     """
-    max_idx = idxs.max().item()
+    max_idx = int(idxs.max())
     idxs_adj = cupy.zeros(max_idx + 1, dtype=idxs.dtype)
     idxs_adj[idxs] = cupy.arange(idxs.size)
 
