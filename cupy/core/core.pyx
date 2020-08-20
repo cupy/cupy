@@ -2951,7 +2951,7 @@ cpdef ndarray tensordot_core_v11(
             fp32_compute_type = FP32_COMPUTE_FAST_TF32
         set_fp32_compute_type(fp32_compute_type)
 
-    cdef int compute_type
+    cdef int compute_type = -1
     if c.dtype.char == 'e':
         compute_type = cublas.CUBLAS_COMPUTE_32F
     elif c.dtype.char in 'fF':
@@ -2963,8 +2963,6 @@ cpdef ndarray tensordot_core_v11(
             compute_type = cublas.CUBLAS_COMPUTE_32F
     elif c.dtype.char in 'dD':
         compute_type = cublas.CUBLAS_COMPUTE_64F
-    else:
-        raise ValueError('Invalid dtype: {}'.format(c.dtype))
 
     cdef int compute_capability = int(device.get_compute_capability())
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
