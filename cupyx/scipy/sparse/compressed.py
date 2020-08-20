@@ -503,7 +503,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_columnXarray(self, row, col):
         # outer indexing
-        major, minor = self._swap(*(row, col))
+        major, minor = self._swap(row, col)
         return self._major_index_fancy(major)._minor_index_fancy(minor)
 
     def _major_index_fancy(self, idx):
