@@ -64,8 +64,8 @@ from cupy.core.core import ndarray  # NOQA
 from cupy.core.core import not_equal  # NOQA
 from cupy.core.core import right_shift  # NOQA
 from cupy.core.core import tensordot_core  # NOQA
-from cupy.core.core import set_fp32_compute_type  # NOQA
-from cupy.core.core import get_fp32_compute_type  # NOQA
+from cupy.core.core import set_compute_type  # NOQA
+from cupy.core.core import get_compute_type  # NOQA
 from cupy.core.dlpack import fromDlpack  # NOQA
 from cupy.core.internal import complete_slice  # NOQA
 from cupy.core.internal import get_size  # NOQA

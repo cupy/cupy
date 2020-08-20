@@ -70,29 +70,51 @@ cdef inline _should_use_rop(x, y):
 
 
 cdef tuple _HANDLED_TYPES
-cdef int fp32_compute_type = FP32_COMPUTE_TBD
+cdef list compute_types = [COMPUTE_TYPE_TBD,  # float16
+                           COMPUTE_TYPE_TBD,  # float32
+                           COMPUTE_TYPE_TBD]  # float64
 
 
-cpdef set_fp32_compute_type(type):
-    global fp32_compute_type
-    cdef int compute_capability = int(device.get_compute_capability())
-    if type in (FP32_COMPUTE_TBD, FP32_COMPUTE_DEFAULT, FP32_COMPUTE_PEDANTIC):
-        fp32_compute_type = type
-    elif type == FP32_COMPUTE_FAST_TF32:
-        if compute_capability >= 80:
-            fp32_compute_type = type
-        else:
-            fp32_compute_type = FP32_COMPUTE_DEFAULT
-            warnings.warn('FP32_COMPUTE_FAST_TF32 is only available on GPUs'
-                          ' with compute capability 8.0 or higher.'
-                          ' FP32_COMPUTE_DEFAULT will be used instead.')
+cpdef int to_compute_type_index(dtype) except -1:
+    cdef str dtype_char = numpy.dtype(dtype).char
+    if dtype_char == 'e':
+        return 0
+    elif dtype_char in 'fF':
+        return 1
+    elif dtype_char in 'dD':
+        return 2
     else:
-        raise ValueError('Unknown fp32 compute type: {}'.format(type))
+        raise TypeError('dtype is not supported: {}'.format(dtype))
 
 
-cpdef get_fp32_compute_type():
-    global fp32_compute_type
-    return fp32_compute_type
+cpdef set_compute_type(dtype, compute_type):
+    global compute_types
+    if compute_type in (COMPUTE_TYPE_TBD, COMPUTE_TYPE_DEFAULT,
+                        COMPUTE_TYPE_PEDANTIC, COMPUTE_TYPE_FP16,
+                        COMPUTE_TYPE_FP32, COMPUTE_TYPE_FP64):
+        compute_types[to_compute_type_index(dtype)] = compute_type
+    elif compute_type in (COMPUTE_TYPE_BF16, COMPUTE_TYPE_TF32):
+        if int(device.get_compute_capability()) >= 80:
+            compute_types[to_compute_type_index(dtype)] = compute_type
+        else:
+            warnings.warn('COMPUTE_TYPE_BF16 and COMPUTE_TYPE_TF32 are only '
+                          'available on GPUs with compute capability 8.0 or '
+                          'higher. COMPUTE_TYPE_DEFAULT will be used instead.')
+            compute_types[to_compute_type_index(dtype)] = COMPUTE_TYPE_DEFAULT
+    else:
+        raise ValueError('Unknown compute type: {}'.format(compute_type))
+
+
+cpdef get_compute_type(dtype):
+    global compute_types
+    cdef int index = to_compute_type_index(dtype)
+    if compute_types[index] == COMPUTE_TYPE_TBD:
+        compute_type = COMPUTE_TYPE_DEFAULT
+        dtype_char = numpy.dtype(dtype).char
+        if dtype_char in 'fF' and int(os.getenv('CUPY_TF32', '0')) > 0:
+            compute_type = COMPUTE_TYPE_TF32
+        set_compute_type(dtype, compute_type)
+    return compute_types[index]
 
 
 cdef class ndarray:
@@ -2945,61 +2967,61 @@ cpdef ndarray tensordot_core_v11(
     cdef cuDoubleComplex one_D, zero_D
     cdef size_t one_ptr, zero_ptr
 
-    if get_fp32_compute_type() == FP32_COMPUTE_TBD:
-        fp32_compute_type = FP32_COMPUTE_DEFAULT
-        if int(os.getenv('CUPY_TF32', '0')) > 0:
-            fp32_compute_type = FP32_COMPUTE_FAST_TF32
-        set_fp32_compute_type(fp32_compute_type)
-
-    cdef int compute_type = -1
-    if c.dtype.char == 'e':
-        compute_type = cublas.CUBLAS_COMPUTE_32F
-    elif c.dtype.char in 'fF':
-        if get_fp32_compute_type() == FP32_COMPUTE_FAST_TF32:
-            compute_type = cublas.CUBLAS_COMPUTE_32F_FAST_TF32
-        elif get_fp32_compute_type() == FP32_COMPUTE_PEDANTIC:
-            compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
-        else:
-            compute_type = cublas.CUBLAS_COMPUTE_32F
-    elif c.dtype.char in 'dD':
-        compute_type = cublas.CUBLAS_COMPUTE_64F
-
     cdef int compute_capability = int(device.get_compute_capability())
+    cdef int compute_type = get_compute_type(c.dtype)
+    cdef int cublas_compute_type = -1
+    if c.dtype.char in 'efF':
+        if compute_type == COMPUTE_TYPE_PEDANTIC:
+            cublas_compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
+        elif compute_type == COMPUTE_TYPE_TF32 and c.dtype.char in 'fF':
+            cublas_compute_type = cublas.CUBLAS_COMPUTE_32F_FAST_TF32
+        else:
+            cublas_compute_type = cublas.CUBLAS_COMPUTE_32F
+    elif c.dtype.char in 'dD':
+        if compute_type == COMPUTE_TYPE_PEDANTIC:
+            cublas_compute_type = cublas.CUBLAS_COMPUTE_64F_PEDANTIC
+        else:
+            cublas_compute_type = cublas.CUBLAS_COMPUTE_64F
+
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
     if ((compute_capability >= 80) or
             (compute_capability >= 70 and c.dtype == 'e')):
         algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
 
     if c.dtype.char in 'efd':
-        if compute_type in (cublas.CUBLAS_COMPUTE_32F,
-                            cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
-                            cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
+        if cublas_compute_type in (cublas.CUBLAS_COMPUTE_32F,
+                                   cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
+                                   cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
             one_f = 1
             zero_f = 0
             one_ptr = <size_t>&one_f
             zero_ptr = <size_t>&zero_f
-        elif compute_type == cublas.CUBLAS_COMPUTE_64F:
+        elif cublas_compute_type in (cublas.CUBLAS_COMPUTE_64F,
+                                     cublas.CUBLAS_COMPUTE_64F_PEDANTIC):
             one_d = 1
             zero_d = 0
             one_ptr = <size_t>&one_d
             zero_ptr = <size_t>&zero_d
         else:
-            raise ValueError('Invalid compute type: {}'.format(compute_type))
+            raise ValueError('Invalid cublas compute type: {}'
+                             .format(cublas_compute_type))
     elif c.dtype.char in 'FD':
-        if compute_type in (cublas.CUBLAS_COMPUTE_32F,
-                            cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
-                            cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
+        if cublas_compute_type in (cublas.CUBLAS_COMPUTE_32F,
+                                   cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
+                                   cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
             one_F = cuComplex(1, 0)
             zero_F = cuComplex(0, 0)
             one_ptr = <size_t>&one_F
             zero_ptr = <size_t>&zero_F
-        elif compute_type == cublas.CUBLAS_COMPUTE_64F:
+        elif cublas_compute_type in (cublas.CUBLAS_COMPUTE_64F,
+                                     cublas.CUBLAS_COMPUTE_64F_PEDANTIC):
             one_D = cuDoubleComplex(1, 0)
             zero_D = cuDoubleComplex(0, 0)
             one_ptr = <size_t>&one_D
             zero_ptr = <size_t>&zero_D
         else:
-            raise ValueError('Invalid compute type: {}'.format(compute_type))
+            raise ValueError('Invalid cublas compute type: {}'
+                             .format(cublas_compute_type))
     else:
         raise ValueError('Invalid dtype: {}'.format(c.dtype))
 
@@ -3010,7 +3032,8 @@ cpdef ndarray tensordot_core_v11(
     cublas.gemmEx(
         handle, <int>transa, <int>transb, <int>m, <int>n, <int>k, one_ptr,
         a.data.ptr, a_cuda_dtype, <int>lda, b.data.ptr, b_cuda_dtype, <int>ldb,
-        zero_ptr, c.data.ptr, c_cuda_dtype, <int>ldc, compute_type, algo)
+        zero_ptr, c.data.ptr, c_cuda_dtype, <int>ldc, cublas_compute_type,
+        algo)
 
 
 @cython.profile(False)
