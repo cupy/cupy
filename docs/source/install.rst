@@ -143,6 +143,7 @@ the installation of a particular CUDA version (say 10.0) for driver compatibilit
     If you did not install CUDA Toolkit yourselves, the ``nvcc`` compiler might not be available.
     The ``cudatoolkit`` package from Anaconda does not have ``nvcc`` included.
 
+.. _install_cupy_from_source:
 
 Installing CuPy from Source
 ---------------------------
