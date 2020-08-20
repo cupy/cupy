@@ -22,7 +22,7 @@ import pytest
 class TestIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None, flip_for_csc=True,
-             compare_dense=False, test_scipy=True):
+             compare_dense=False):
 
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
@@ -50,31 +50,28 @@ class TestIndexing(unittest.TestCase):
 
         if min is not None:
 
-            if test_scipy:
-                expected = expected[maj_h, min_h]
             actual = a[maj, min]
+            expected = expected[maj_h, min_h]
         else:
-            if test_scipy:
-                expected = expected[maj_h]
             actual = a[maj]
+            expected = expected[maj_h]
 
-        if test_scipy:
-            if compare_dense:
-                actual = actual.todense()
+        if compare_dense:
+            actual = actual.todense()
 
-            if sparse.isspmatrix(actual):
-                actual.sort_indices()
-                expected.sort_indices()
+        if sparse.isspmatrix(actual):
+            actual.sort_indices()
+            expected.sort_indices()
 
-                testing.assert_array_equal(
-                    actual.indptr, expected.indptr)
-                testing.assert_array_equal(
-                    actual.indices, expected.indices)
-                testing.assert_array_equal(
-                    actual.data, expected.data)
-            else:
-                testing.assert_array_equal(
-                    actual, numpy.asarray(expected))
+            testing.assert_array_equal(
+                actual.indptr, expected.indptr)
+            testing.assert_array_equal(
+                actual.indices, expected.indices)
+            testing.assert_array_equal(
+                actual.data, expected.data)
+        else:
+            testing.assert_array_equal(
+                actual, numpy.asarray(expected))
 
     @staticmethod
     def _get_index_combos(idx):
@@ -270,13 +267,13 @@ class TestIndexing(unittest.TestCase):
 
     def test_bad_indexing(self):
         with pytest.raises(IndexError):
-            self._run("foo", test_scipy=False)
+            self._run("foo")
 
         with pytest.raises(IndexError):
-            self._run(2, "foo", test_scipy=False)
+            self._run(2, "foo")
 
         with pytest.raises(ValueError):
-            self._run([1, 2, 3], [1, 2, 3, 4], test_scipy=False)
+            self._run([1, 2, 3], [1, 2, 3, 4])
 
         with pytest.raises(IndexError):
-            self._run([[0, 0], [1, 1]], test_scipy=False)
+            self._run([[0, 0], [1, 1]])
