@@ -69,7 +69,7 @@ cdef Handle _get_handle():
     return _handles[dev]
 
 
-cpdef int get_cuda_dtype(numpy_dtype) except -1:
+cdef int _get_cuda_dtype(numpy_dtype) except -1:
     if numpy_dtype == numpy.float16:
         return runtime.CUDA_R_16F
     elif numpy_dtype == numpy.float32:
@@ -84,7 +84,7 @@ cpdef int get_cuda_dtype(numpy_dtype) except -1:
         raise TypeError('Dtype {} is not supported'.format(numpy_dtype))
 
 
-cpdef int get_cutensor_dtype(numpy_dtype) except -1:
+cdef int _get_cutensor_dtype(numpy_dtype) except -1:
     if numpy_dtype == numpy.float16:
         return cutensor.R_MIN_16F
     elif numpy_dtype == numpy.float32:
@@ -159,7 +159,7 @@ cpdef TensorDescriptor create_tensor_descriptor(
     num_modes = a.ndim
     extent = numpy.array(a.shape, dtype=numpy.int64)
     stride = numpy.array(a.strides, dtype=numpy.int64) // a.itemsize
-    cuda_dtype = get_cuda_dtype(a.dtype)
+    cuda_dtype = _get_cuda_dtype(a.dtype)
     desc = TensorDescriptor()
     cutensor.initTensorDescriptor(
         handle, desc, num_modes, extent.ctypes.data, stride.ctypes.data,
@@ -236,7 +236,7 @@ def elementwise_trinary(
         _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
         _Scalar(beta, compute_dtype), B, desc_B, _auto_create_mode(B, mode_B),
         _Scalar(gamma, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
-        out, op_AB, op_ABC, get_cuda_dtype(compute_dtype))
+        out, op_AB, op_ABC, _get_cuda_dtype(compute_dtype))
 
 
 cdef inline ndarray _elementwise_trinary_impl(
@@ -294,7 +294,7 @@ def elementwise_binary(
         _get_handle(),
         _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
         _Scalar(gamma, compute_dtype), C, desc_C, _auto_create_mode(A, mode_C),
-        out, op_AC, get_cuda_dtype(compute_dtype)
+        out, op_AC, _get_cuda_dtype(compute_dtype)
     )
 
 
@@ -437,7 +437,7 @@ def contraction(
         _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
         B, desc_B, _auto_create_mode(B, mode_B),
         _Scalar(beta, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
-        get_cutensor_dtype(compute_dtype), algo, ws_pref)
+        _get_cutensor_dtype(compute_dtype), algo, ws_pref)
 
 
 cdef inline ndarray _contraction_impl(
@@ -541,7 +541,7 @@ def reduction(
         _get_handle(),
         _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
         _Scalar(beta, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
-        reduce_op, get_cutensor_dtype(compute_dtype))
+        reduce_op, _get_cutensor_dtype(compute_dtype))
 
 
 cdef inline ndarray _reduction_impl(
@@ -679,6 +679,6 @@ def _try_reduction_routine(
         out_arg,
         desc_out,
         _create_mode_with_cache(out_axis),
-        reduce_op, get_cutensor_dtype(compute_dtype))
+        reduce_op, _get_cutensor_dtype(compute_dtype))
 
     return out
