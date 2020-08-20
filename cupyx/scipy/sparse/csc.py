@@ -320,7 +320,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         return self._get_submatrix(major=slice(i, i+1, 1), copy=True)
 
     def _get_intXarray(self, row, col):
-        raise NotImplementedError()
+        return self._major_index_fancy(col)._get_submatrix(minor=row)
 
     def _get_intXslice(self, row, col):
         if col.step in {1, None}:
@@ -335,13 +335,13 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             major=slice(col, col+1, 1))._minor_slice(row)
 
     def _get_sliceXarray(self, row, col):
-        raise NotImplementedError()
+        return self._major_index_fancy(col)._minor_slice(row)
 
     def _get_arrayXint(self, row, col):
-        raise NotImplementedError()
+        return self._get_submatrix(major=col)._minor_index_fancy(row)
 
     def _get_arrayXslice(self, row, col):
-        raise NotImplementedError()
+        return self._major_slice(col)._minor_index_fancy(row)
 
 
 def isspmatrix_csc(x):
