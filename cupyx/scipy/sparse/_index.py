@@ -311,7 +311,6 @@ def _csr_sample_values(n_row, n_col,
         Ax : data array for input sparse matrix
         Bi : array of rows to extract from input sparse matrix
         Bj : array of columns to extract from input sparse matrix
-        tpb : threads per block for kernel
     Returns
         Bx : data array for output sparse matrix
     """
