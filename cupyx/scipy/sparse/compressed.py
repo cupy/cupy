@@ -508,7 +508,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _major_index_fancy(self, idx):
         """Index along the major axis where idx is an array of ints.
         """
-        raise NotImplementedError()
+        _, N = self._swap(*self.shape)
+        M = len(idx)
+        new_shape = self._swap(M, N)
+        if M == 0:
+            return self.__class__(new_shape)
+
+        row_nnz = cupy.diff(self.indptr)
+        idx_dtype = self.indices.dtype
+        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
+        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
+
+        res_indices, res_data = _index._csr_row_index(
+            idx, self.indptr,
+            self.indices, self.data, res_indptr)
+
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
 
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.

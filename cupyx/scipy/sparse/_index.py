@@ -3,18 +3,24 @@
 
 import cupy
 
+from cupy import core
+
 from cupyx.scipy.sparse.base import isspmatrix
 from cupyx.scipy.sparse.base import spmatrix
 
+from cupy_backends.cuda.libs import cusparse
+from cupy.cuda import device
+
 import numpy
+
 try:
     import scipy
     scipy_available = True
 except ImportError:
     scipy_available = False
 
-
-_int_scalar_types = (int, numpy.integer)
+_int_scalar_types = (int, numpy.integer, numpy.int_)
+_bool_scalar_types = (bool, numpy.bool, numpy.bool_)
 
 
 def _get_csr_submatrix(Ap, Aj, Ax,
@@ -56,6 +62,62 @@ def _get_csr_submatrix(Ap, Aj, Ax,
     Bx = Ax[mask]
 
     return Bp, Bj, Bx
+
+
+_csr_row_index_ker = core.ElementwiseKernel(
+    '''raw I out_rows, raw I rows, raw I Ap, raw I Aj,
+    raw T Ax, raw I Bp''',
+    '''raw I Bj, raw T Bx''', '''
+
+    const I out_row = out_rows[i];
+    const I row = rows[out_row];
+
+    // Look up starting offset
+    const I starting_output_offset = Bp[out_row];
+    const I output_offset = i - starting_output_offset;
+    const I starting_input_offset = Ap[row];
+
+    Bj[i] = Aj[starting_input_offset + output_offset];
+    Bx[i] = Ax[starting_input_offset + output_offset];
+''', 'csr_row_index_ker', no_return=True)
+
+
+def _csr_row_index(rows,
+                   Ap, Aj, Ax,
+                   Bp):
+    """Populate indices and data arrays from the given row index
+
+    Args
+        rows : index array of rows to populate
+        Ap : indptr array from input sparse matrix
+        Aj : indices array from input sparse matrix
+        Ax : data array from input sparse matrix
+        Bp : indptr array for output sparse matrix
+        tpb : threads per block of row index kernel
+
+    Returns
+        Bj : indices array of output sparse matrix
+        Bx : data array of output sparse matrix
+    """
+
+    nnz = int(Bp[-1])
+    Bj = cupy.empty(nnz, dtype=Aj.dtype)
+    Bx = cupy.empty(nnz, dtype=Ax.dtype)
+
+    out_rows = cupy.empty(nnz, dtype=rows.dtype)
+
+    # Build a COO row array from output CSR indptr.
+    # Calling backend cusparse API directly to avoid
+    # constructing a whole COO object.
+    handle = device.get_cusparse_handle()
+    cusparse.xcsr2coo(
+        handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
+        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+
+    _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp, Bj, Bx,
+                       size=out_rows.size)
+
+    return Bj, Bx
 
 
 def _csr_row_slice(start_maj, step_maj, Ap, Aj, Ax, Bp):
@@ -105,6 +167,7 @@ class IndexMixin(object):
                 "Sparse __getitem__() requires Scipy >= 1.4.0")
 
         row, col = self._parse_indices(key)
+
         # Dispatch to specialized methods.
         if isinstance(row, _int_scalar_types):
             if isinstance(col, _int_scalar_types):
@@ -146,6 +209,12 @@ class IndexMixin(object):
             return self.__class__(cupy.atleast_2d(row).shape, dtype=self.dtype)
         return self._get_arrayXarray(row, col)
 
+    def _is_scalar(self, index):
+        if isinstance(index, (cupy.ndarray, numpy.ndarray)) and \
+                index.ndim == 0 and index.size == 1:
+            return True
+        return False
+
     def _parse_indices(self, key):
         M, N = self.shape
         row, col = _unpack_index(key)
@@ -153,6 +222,11 @@ class IndexMixin(object):
         # Scipy calls sputils.isintlike() rather than
         # isinstance(x, _int_scalar_types). Comparing directly to int
         # here to minimize the impact of nested exception catching
+
+        if self._is_scalar(row):
+            row = row.item()
+        if self._is_scalar(col):
+            col = col.item()
 
         if isinstance(row, _int_scalar_types):
             row = _normalize_index(row, M, 'row')
@@ -181,14 +255,7 @@ class IndexMixin(object):
         if x.ndim not in (1, 2):
             raise IndexError('Index dimension must be <= 2')
 
-        if x.size == 0:
-            return x
-
-        if x[x < 0].size > 0:
-            if x is idx or not x.flags.owndata:
-                x = x.copy()
-            x[x < 0] += length
-        return x
+        return x % length
 
     def getrow(self, i):
         """Return a copy of row i of the matrix, as a (1 x n) row vector.
@@ -259,6 +326,12 @@ class IndexMixin(object):
         self._set_arrayXarray(row, col, x)
 
 
+def _try_is_scipy_spmatrix(index):
+    if scipy_available:
+        return isinstance(index, scipy.sparse.base.spmatrix)
+    return False
+
+
 def _unpack_index(index):
     """ Parse index. Always return a tuple of the form (row, col).
     Valid type for row/col is integer, slice, or array of integers.
@@ -271,8 +344,10 @@ def _unpack_index(index):
           assumed to be all (e.g., [maj, :]).
     """
     # First, check if indexing with single boolean matrix.
-    if (isinstance(index, (spmatrix, cupy.ndarray)) and
-            index.ndim == 2 and index.dtype.kind == 'b'):
+    if ((isinstance(index, (spmatrix, cupy.ndarray,
+                            numpy.ndarray))
+         or _try_is_scipy_spmatrix(index))
+            and index.ndim == 2 and index.dtype.kind == 'b'):
         return index.nonzero()
 
     # Parse any ellipses.
@@ -365,7 +440,7 @@ def _first_element_bool(idx, max_dim=2):
         first = idx[0] if len(idx) > 0 else None
     except TypeError:
         return None
-    if isinstance(first, bool):
+    if isinstance(first, _bool_scalar_types):
         return True
     return _first_element_bool(first, max_dim-1)
 
@@ -374,7 +449,6 @@ def _compatible_boolean_index(idx):
     """Returns a boolean index array that can be converted to
     integer array. Returns None if no such array exists.
     """
-
     # presence of attribute `ndim` indicates a compatible array type.
     if hasattr(idx, 'ndim'):
         if idx.dtype.kind == 'b':
@@ -388,4 +462,5 @@ def _compatible_boolean_index(idx):
 def _boolean_index_to_array(idx):
     if idx.ndim > 1:
         raise IndexError('invalid index shape')
+    idx = cupy.array(idx, dtype=idx.dtype)
     return cupy.where(idx)[0]
