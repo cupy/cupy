@@ -266,11 +266,11 @@ class TestGetItemIndexing(unittest.TestCase):
 
         if min is not None:
 
-            expected = expected[maj_h, min_h]
             actual = a[maj, min]
+            expected = expected[maj_h, min_h]
         else:
-            expected = expected[maj_h]
             actual = a[maj]
+            expected = expected[maj_h]
 
         if compare_dense:
             actual = actual.todense()
@@ -467,3 +467,6 @@ class TestGetItemIndexing(unittest.TestCase):
 
         with pytest.raises(ValueError):
             self._run([1, 2, 3], [1, 2, 3, 4])
+
+        with pytest.raises(IndexError):
+            self._run([[0, 0], [1, 1]])
