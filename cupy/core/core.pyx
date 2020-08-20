@@ -2982,48 +2982,42 @@ cpdef ndarray tensordot_core_v11(
             cublas_compute_type = cublas.CUBLAS_COMPUTE_64F_PEDANTIC
         else:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_64F
+    else:
+        raise ValueError('Invalid dtype: {}'.format(c.dtype))
 
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
     if ((compute_capability >= 80) or
             (compute_capability >= 70 and c.dtype == 'e')):
         algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
 
-    if c.dtype.char in 'efd':
-        if cublas_compute_type in (cublas.CUBLAS_COMPUTE_32F,
-                                   cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
-                                   cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
+    if cublas_compute_type in (cublas.CUBLAS_COMPUTE_32F,
+                               cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
+                               cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
+        if c.dtype.char in 'efd':
             one_f = 1
             zero_f = 0
             one_ptr = <size_t>&one_f
             zero_ptr = <size_t>&zero_f
-        elif cublas_compute_type in (cublas.CUBLAS_COMPUTE_64F,
-                                     cublas.CUBLAS_COMPUTE_64F_PEDANTIC):
+        else:
+            one_F = cuComplex(1, 0)
+            zero_F = cuComplex(0, 0)
+            one_ptr = <size_t>&one_F
+            zero_ptr = <size_t>&zero_F
+    elif cublas_compute_type in (cublas.CUBLAS_COMPUTE_64F,
+                                 cublas.CUBLAS_COMPUTE_64F_PEDANTIC):
+        if c.dtype.char in 'efd':
             one_d = 1
             zero_d = 0
             one_ptr = <size_t>&one_d
             zero_ptr = <size_t>&zero_d
         else:
-            raise ValueError('Invalid cublas compute type: {}'
-                             .format(cublas_compute_type))
-    elif c.dtype.char in 'FD':
-        if cublas_compute_type in (cublas.CUBLAS_COMPUTE_32F,
-                                   cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
-                                   cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
-            one_F = cuComplex(1, 0)
-            zero_F = cuComplex(0, 0)
-            one_ptr = <size_t>&one_F
-            zero_ptr = <size_t>&zero_F
-        elif cublas_compute_type in (cublas.CUBLAS_COMPUTE_64F,
-                                     cublas.CUBLAS_COMPUTE_64F_PEDANTIC):
             one_D = cuDoubleComplex(1, 0)
             zero_D = cuDoubleComplex(0, 0)
             one_ptr = <size_t>&one_D
             zero_ptr = <size_t>&zero_D
-        else:
-            raise ValueError('Invalid cublas compute type: {}'
-                             .format(cublas_compute_type))
     else:
-        raise ValueError('Invalid dtype: {}'.format(c.dtype))
+        raise ValueError('Invalid cublas compute type: {}'
+                         .format(cublas_compute_type))
 
     cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
     cdef int b_cuda_dtype = to_cuda_dtype(b.dtype, is_half_allowed=True)
