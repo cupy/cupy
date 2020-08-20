@@ -21,6 +21,7 @@ cdef extern from *:
     ctypedef int SideMode 'cublasSideMode_t'
     ctypedef int GemmAlgo 'cublasGemmAlgo_t'
     ctypedef int Math 'cublasMath_t'
+    ctypedef int ComputeType 'cublasComputeType_t'
 
 
 ###############################################################################
@@ -54,6 +55,19 @@ cpdef enum:
 
     CUBLAS_DEFAULT_MATH = 0
     CUBLAS_TENSOR_OP_MATH = 1
+
+    # cublasComputeType_t added in CUDA 11.0
+    CUBLAS_COMPUTE_16F = 64            # half - default
+    CUBLAS_COMPUTE_16F_PEDANTIC = 65   # half - pedantic
+    CUBLAS_COMPUTE_32F = 68            # float - default
+    CUBLAS_COMPUTE_32F_PEDANTIC = 69   # float - pedantic
+    CUBLAS_COMPUTE_32F_FAST_16F = 74   # float - fast, allows down-converting inputs to half or TF32  # NOQA
+    CUBLAS_COMPUTE_32F_FAST_16BF = 75  # float - fast, allows down-converting inputs to bfloat16 or TF32  # NOQA
+    CUBLAS_COMPUTE_32F_FAST_TF32 = 77  # float - fast, allows down-converting inputs to TF32  # NOQA
+    CUBLAS_COMPUTE_64F = 70            # double - default
+    CUBLAS_COMPUTE_64F_PEDANTIC = 71   # double - pedantic
+    CUBLAS_COMPUTE_32I = 72            # signed 32-bit int - default
+    CUBLAS_COMPUTE_32I_PEDANTIC = 73   # signed 32-bit int - pedantic
 
 ###############################################################################
 # Context
