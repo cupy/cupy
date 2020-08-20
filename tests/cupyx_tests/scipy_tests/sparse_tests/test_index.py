@@ -14,8 +14,8 @@ import pytest
     'format': ['csr', 'csc'],
     'density': [0.5],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n_rows': [15000],
-    'n_cols': [15000]
+    'n_rows': [1500],
+    'n_cols': [1500]
 }))
 @testing.with_requires('scipy')
 class TestSetitemIndexing(unittest.TestCase):
@@ -81,21 +81,21 @@ class TestSetitemIndexing(unittest.TestCase):
               % (maj, min, self.format, len(dense[dense == 5]),
                  cpu_stop, gpu_stop))
 
-        # if cupy.sparse.isspmatrix(actual):
-        #     actual.sort_indices()
-        #     expected.sort_indices()
-        #
-        #     cupy.testing.assert_array_equal(
-        #         actual.indptr, expected.indptr)
-        #     cupy.testing.assert_array_equal(
-        #         actual.indices, expected.indices)
-        #     cupy.testing.assert_array_equal(
-        #         actual.data, expected.data)
-        #
-        # else:
-        #
-        #     cupy.testing.assert_array_equal(
-        #         actual.ravel(), cupy.array(expected).ravel())
+        if cupy.sparse.isspmatrix(actual):
+            actual.sort_indices()
+            expected.sort_indices()
+
+            cupy.testing.assert_array_equal(
+                actual.indptr, expected.indptr)
+            cupy.testing.assert_array_equal(
+                actual.indices, expected.indices)
+            cupy.testing.assert_array_equal(
+                actual.data, expected.data)
+
+        else:
+
+            cupy.testing.assert_array_equal(
+                actual.ravel(), cupy.array(expected).ravel())
 
     def test_major_slice(self):
         self._run(slice(5, 10000), data=5)

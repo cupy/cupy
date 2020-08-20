@@ -296,16 +296,11 @@ def _csr_row_index(rows,
  *
  */
 """
-
-
-# TODO: Should be able build a COO and find duplicates / pull the offsets
 _csr_sample_offsets_ker = core.ElementwiseKernel(
     '''I n_row, I n_col, raw I Ap, raw I Aj, raw I Bi, raw I Bj''',
     'raw I Bp, raw bool dupl', '''
-    const I Bi_i = Bi[i];
-    const I Bj_i = Bj[i];
-    const I j = Bi_i < 0 ? Bi_i + n_row : Bi_i; // sample row
-    const I k = Bj_i < 0 ? Bj_i + n_col : Bj_i; // sample column
+    const I j = Bi[i]; // sample row
+    const I k = Bj[i]; // sample column
     const I row_start = Ap[j];
     const I row_end   = Ap[j+1];
     I offset = -1;
@@ -330,14 +325,9 @@ def _csr_sample_offsets(n_row, n_col,
                         Ap, Aj, n_samples,
                         Bi, Bj):
 
-    # Bi[Bi < 0] += n_row
-    # Bj[Bj < 0] += n_col
-    #
-    # sel = mat[Bi, Bj]
-    #
-    #
-    #
-    #
+    Bi[Bi < 0] += n_row
+    Bj[Bj < 0] += n_col
+
     offsets = cupy.zeros(n_samples, dtype=Aj.dtype)
 
     dupl = cupy.array([False], dtype='bool')
