@@ -455,7 +455,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             minor=slice(col, col+1, 1))
 
     def _get_sliceXarray(self, row, col):
-        raise NotImplementedError()
+        return self._major_slice(row)._minor_index_fancy(col)
 
     def _get_arrayXint(self, row, col):
         return self._major_index_fancy(row)._get_submatrix(minor=col)
