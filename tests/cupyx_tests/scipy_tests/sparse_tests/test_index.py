@@ -74,7 +74,7 @@ class TestIndexing(unittest.TestCase):
                     actual.data, expected.data)
             else:
                 testing.assert_array_equal(
-                    actual.ravel(), numpy.asarray(expected).ravel())
+                    actual, numpy.asarray(expected).squeeze())
 
     @staticmethod
     def _get_index_combos(idx):
