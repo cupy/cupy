@@ -335,10 +335,6 @@ class TestGetItemIndexing(unittest.TestCase):
         self._run(slice(5, 1), 5)
         self._run(slice(5, 1, -1), 5)
 
-    def test_major_all_minor_fancy(self):
-        self._run(slice(None), [1, 5, 2, 3, 4, 5, 4, 1, 5])
-        self._run(slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5])
-
     def test_major_fancy_minor_fancy(self):
         self._run([1, 5, 4], [1, 5, 4])
         self._run([2, 0, 10], [9, 2, 1])
@@ -431,6 +427,9 @@ class TestGetItemIndexing(unittest.TestCase):
                   compare_dense=True)
 
     def test_major_all_minor_fancy(self):
+        self._run(slice(None), [1, 5, 2, 3, 4, 5, 4, 1, 5])
+        self._run(slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5])
+
         self._run(slice(None), [1, 5, 4, 5, 2, 4, 1])
 
         for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
