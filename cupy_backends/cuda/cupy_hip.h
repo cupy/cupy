@@ -791,6 +791,10 @@ cublasStatus_t cublasGemmEx(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
+cublasStatus_t cublasGemmEx_v11(...) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+
 cublasStatus_t cublasStrsm(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }

@@ -110,6 +110,9 @@ typedef enum {} cublasMath_t;
 typedef int cudaDataType_t;
 typedef hipblasStatus_t cublasStatus_t;
 
+// TODO(leofang): as of ROCm 3.5.0 this does not exist yet
+typedef enum {} cublasComputeType_t;
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // library_types.h
