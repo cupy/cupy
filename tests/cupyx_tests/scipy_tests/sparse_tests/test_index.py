@@ -41,8 +41,6 @@ class TestSetitemIndexing(unittest.TestCase):
             else:
                 min_h = min
 
-            import time
-
             if min is not None:
                 actual = a
                 actual[maj, min] = data
