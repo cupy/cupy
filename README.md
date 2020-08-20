@@ -27,14 +27,8 @@ For detailed instructions on installing CuPy, see [the installation guide](https
 You can install CuPy using `pip`:
 
 ```sh
-(Binary Package for CUDA 8.0)
-$ pip install cupy-cuda80
-
 (Binary Package for CUDA 9.0)
 $ pip install cupy-cuda90
-
-(Binary Package for CUDA 9.1)
-$ pip install cupy-cuda91
 
 (Binary Package for CUDA 9.2)
 $ pip install cupy-cuda92
@@ -47,6 +41,9 @@ $ pip install cupy-cuda101
 
 (Binary Package for CUDA 10.2)
 $ pip install cupy-cuda102
+
+(Binary Package for CUDA 11.0)
+$ pip install cupy-cuda110
 
 (Source Package)
 $ pip install cupy

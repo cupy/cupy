@@ -141,23 +141,27 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             elif other.ndim == 1:
                 self.sum_duplicates()
                 other = cupy.asfortranarray(other)
-                # csrmvEx does not work if nnz == 0
-                if self.nnz > 0 and cusparse.csrmvExIsAligned(self, other):
-                    for accelerator in _accelerator.get_routine_accelerators():
-                        if (accelerator == _accelerator.ACCELERATOR_CUB
-                                and other.flags.c_contiguous):
-                            return cub.device_csrmv(
-                                self.shape[0], self.shape[1], self.nnz,
-                                self.data, self.indptr, self.indices, other)
-                    return cusparse.csrmvEx(self, other)
+                # need extra padding to ensure not stepping on the CUB bug,
+                # see cupy/cupy#3679 for discussion
+                is_cub_safe = (self.indptr.data.mem.size
+                               > self.indptr.size * self.indptr.dtype.itemsize)
+                for accelerator in _accelerator.get_routine_accelerators():
+                    if (accelerator == _accelerator.ACCELERATOR_CUB
+                            and is_cub_safe and other.flags.c_contiguous):
+                        return cub.device_csrmv(
+                            self.shape[0], self.shape[1], self.nnz,
+                            self.data, self.indptr, self.indices, other)
+                if (cusparse.check_availability('csrmvEx') and self.nnz > 0 and
+                        cusparse.csrmvExIsAligned(self, other)):
+                    # csrmvEx does not work if nnz == 0
+                    csrmv = cusparse.csrmvEx
+                elif cusparse.check_availability('csrmv'):
+                    csrmv = cusparse.csrmv
+                elif cusparse.check_availability('spmv'):
+                    csrmv = cusparse.spmv
                 else:
-                    if cusparse.check_availability('csrmv'):
-                        csrmv = cusparse.csrmv
-                    elif cusparse.check_availability('spmv'):
-                        csrmv = cusparse.spmv
-                    else:
-                        raise NotImplementedError
-                    return csrmv(self, other)
+                    raise NotImplementedError
+                return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
                 if cusparse.check_availability('csrmm2'):
@@ -179,6 +183,20 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def __truediv__(self, other):
+        """Point-wise division by scalar"""
+        if util.isscalarlike(other):
+            if self.dtype == numpy.complex64:
+                # Note: This is a work-around to make the output dtype the same
+                # as SciPy. It might be SciPy version dependent.
+                dtype = numpy.float32
+            else:
+                if cupy.isscalar(other):
+                    dtype = numpy.float64
+                else:
+                    dtype = numpy.promote_types(numpy.float64, other.dtype)
+            d = cupy.array(1. / other, dtype=dtype)
+            return multiply_by_scalar(self, d)
+        # TODO(anaruse): Implement divide by dense or sparse matrix
         raise NotImplementedError
 
     def __rtruediv__(self, other):

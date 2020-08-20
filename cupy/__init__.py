@@ -52,16 +52,11 @@ def is_available():
 __version__ = _version.__version__
 
 
-from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
-from cupy import creation  # NOQA
 from cupy import fft  # NOQA
-from cupy import functional  # NOQA
-from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
-from cupy import padding  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 from cupy import _sorting  # NOQA
@@ -252,41 +247,41 @@ from builtins import complex  # NOQA
 # -----------------------------------------------------------------------------
 # Array creation routines
 # -----------------------------------------------------------------------------
-from cupy.creation.basic import empty  # NOQA
-from cupy.creation.basic import empty_like  # NOQA
-from cupy.creation.basic import eye  # NOQA
-from cupy.creation.basic import full  # NOQA
-from cupy.creation.basic import full_like  # NOQA
-from cupy.creation.basic import identity  # NOQA
-from cupy.creation.basic import ones  # NOQA
-from cupy.creation.basic import ones_like  # NOQA
-from cupy.creation.basic import zeros  # NOQA
-from cupy.creation.basic import zeros_like  # NOQA
+from cupy._creation.basic import empty  # NOQA
+from cupy._creation.basic import empty_like  # NOQA
+from cupy._creation.basic import eye  # NOQA
+from cupy._creation.basic import full  # NOQA
+from cupy._creation.basic import full_like  # NOQA
+from cupy._creation.basic import identity  # NOQA
+from cupy._creation.basic import ones  # NOQA
+from cupy._creation.basic import ones_like  # NOQA
+from cupy._creation.basic import zeros  # NOQA
+from cupy._creation.basic import zeros_like  # NOQA
 
-from cupy.creation.from_data import copy  # NOQA
-from cupy.creation.from_data import array  # NOQA
-from cupy.creation.from_data import asanyarray  # NOQA
-from cupy.creation.from_data import asarray  # NOQA
-from cupy.creation.from_data import ascontiguousarray  # NOQA
-from cupy.creation.from_data import fromfile  # NOQA
+from cupy._creation.from_data import copy  # NOQA
+from cupy._creation.from_data import array  # NOQA
+from cupy._creation.from_data import asanyarray  # NOQA
+from cupy._creation.from_data import asarray  # NOQA
+from cupy._creation.from_data import ascontiguousarray  # NOQA
+from cupy._creation.from_data import fromfile  # NOQA
 
-from cupy.creation.ranges import arange  # NOQA
-from cupy.creation.ranges import linspace  # NOQA
-from cupy.creation.ranges import logspace  # NOQA
-from cupy.creation.ranges import meshgrid  # NOQA
-from cupy.creation.ranges import mgrid  # NOQA
-from cupy.creation.ranges import ogrid  # NOQA
+from cupy._creation.ranges import arange  # NOQA
+from cupy._creation.ranges import linspace  # NOQA
+from cupy._creation.ranges import logspace  # NOQA
+from cupy._creation.ranges import meshgrid  # NOQA
+from cupy._creation.ranges import mgrid  # NOQA
+from cupy._creation.ranges import ogrid  # NOQA
 
-from cupy.creation.matrix import diag  # NOQA
-from cupy.creation.matrix import diagflat  # NOQA
-from cupy.creation.matrix import tri  # NOQA
-from cupy.creation.matrix import tril  # NOQA
-from cupy.creation.matrix import triu  # NOQA
+from cupy._creation.matrix import diag  # NOQA
+from cupy._creation.matrix import diagflat  # NOQA
+from cupy._creation.matrix import tri  # NOQA
+from cupy._creation.matrix import tril  # NOQA
+from cupy._creation.matrix import triu  # NOQA
 
 # -----------------------------------------------------------------------------
 # Functional routines
 # -----------------------------------------------------------------------------
-from cupy.functional.piecewise import piecewise  # NOQA
+from cupy._functional.piecewise import piecewise  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -342,16 +337,16 @@ from cupy.manipulation.rearrange import rot90  # NOQA
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
-from cupy.binary.elementwise import bitwise_and  # NOQA
-from cupy.binary.elementwise import bitwise_or  # NOQA
-from cupy.binary.elementwise import bitwise_xor  # NOQA
-from cupy.binary.elementwise import bitwise_not  # NOQA
-from cupy.binary.elementwise import invert  # NOQA
-from cupy.binary.elementwise import left_shift  # NOQA
-from cupy.binary.elementwise import right_shift  # NOQA
+from cupy._binary.elementwise import bitwise_and  # NOQA
+from cupy._binary.elementwise import bitwise_or  # NOQA
+from cupy._binary.elementwise import bitwise_xor  # NOQA
+from cupy._binary.elementwise import bitwise_not  # NOQA
+from cupy._binary.elementwise import invert  # NOQA
+from cupy._binary.elementwise import left_shift  # NOQA
+from cupy._binary.elementwise import right_shift  # NOQA
 
-from cupy.binary.packing import packbits  # NOQA
-from cupy.binary.packing import unpackbits  # NOQA
+from cupy._binary.packing import packbits  # NOQA
+from cupy._binary.packing import unpackbits  # NOQA
 
 
 def binary_repr(num, width=None):
@@ -442,29 +437,29 @@ from numpy import typename  # NOQA
 # -----------------------------------------------------------------------------
 # Indexing routines
 # -----------------------------------------------------------------------------
-from cupy.indexing.generate import c_  # NOQA
-from cupy.indexing.generate import indices  # NOQA
-from cupy.indexing.generate import ix_  # NOQA
-from cupy.indexing.generate import r_  # NOQA
-from cupy.indexing.generate import ravel_multi_index  # NOQA
-from cupy.indexing.generate import unravel_index  # NOQA
+from cupy._indexing.generate import c_  # NOQA
+from cupy._indexing.generate import indices  # NOQA
+from cupy._indexing.generate import ix_  # NOQA
+from cupy._indexing.generate import r_  # NOQA
+from cupy._indexing.generate import ravel_multi_index  # NOQA
+from cupy._indexing.generate import unravel_index  # NOQA
 
-from cupy.indexing.indexing import choose  # NOQA
-from cupy.indexing.indexing import compress  # NOQA
-from cupy.indexing.indexing import diagonal  # NOQA
-from cupy.indexing.indexing import extract  # NOQA
-from cupy.indexing.indexing import select  # NOQA
-from cupy.indexing.indexing import take  # NOQA
-from cupy.indexing.indexing import take_along_axis  # NOQA
+from cupy._indexing.indexing import choose  # NOQA
+from cupy._indexing.indexing import compress  # NOQA
+from cupy._indexing.indexing import diagonal  # NOQA
+from cupy._indexing.indexing import extract  # NOQA
+from cupy._indexing.indexing import select  # NOQA
+from cupy._indexing.indexing import take  # NOQA
+from cupy._indexing.indexing import take_along_axis  # NOQA
 
-from cupy.indexing.insert import place  # NOQA
-from cupy.indexing.insert import put  # NOQA
-from cupy.indexing.insert import putmask  # NOQA
-from cupy.indexing.insert import fill_diagonal  # NOQA
-from cupy.indexing.insert import diag_indices  # NOQA
-from cupy.indexing.insert import diag_indices_from  # NOQA
+from cupy._indexing.insert import place  # NOQA
+from cupy._indexing.insert import put  # NOQA
+from cupy._indexing.insert import putmask  # NOQA
+from cupy._indexing.insert import fill_diagonal  # NOQA
+from cupy._indexing.insert import diag_indices  # NOQA
+from cupy._indexing.insert import diag_indices_from  # NOQA
 
-from cupy.indexing.iterate import flatiter  # NOQA
+from cupy._indexing.iterate import flatiter  # NOQA
 
 # -----------------------------------------------------------------------------
 # Input and output
@@ -552,7 +547,12 @@ from cupy.logic.truth import any  # NOQA
 # ------------------------------------------------------------------------------
 # Polynomial functions
 # ------------------------------------------------------------------------------
-from cupy.lib.polynomial import poly1d  # NOQA
+from cupy.lib import poly1d  # NOQA
+from cupy.lib import polyadd  # NOQA
+from cupy.lib import polysub  # NOQA
+from cupy.lib import polymul  # NOQA
+from cupy.lib import polyval  # NOQA
+from cupy.lib import roots  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -659,15 +659,15 @@ from cupy.math.misc import convolve  # NOQA
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
-from cupy.misc import may_share_memory  # NOQA
-from cupy.misc import shares_memory  # NOQA
-from cupy.misc import who  # NOQA
+from cupy._misc.memory_ranges import may_share_memory  # NOQA
+from cupy._misc.memory_ranges import shares_memory  # NOQA
+from cupy._misc.who import who  # NOQA
 
 
 # -----------------------------------------------------------------------------
 # Padding
 # -----------------------------------------------------------------------------
-pad = padding.pad.pad
+from cupy._padding.pad import pad  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -764,6 +764,8 @@ def asnumpy(a, stream=None, order='C'):
     """
     if isinstance(a, ndarray):
         return a.get(stream=stream, order=order)
+    elif hasattr(a, "__cuda_array_interface__"):
+        return array(a).get(stream=stream, order=order)
     else:
         return numpy.asarray(a, order=order)
 

@@ -7,6 +7,21 @@ Upgrade Guide
 This is a list of changes introduced in each release that users should be aware of when migrating from older versions.
 Most changes are carefully designed not to break existing code; however changes that may possibly break them are highlighted with a box.
 
+CuPy v8
+=======
+
+Dropping Support of CUDA 8.0 and 9.1
+------------------------------------
+
+Starting from CuPy v8, CUDA 8.0 and 9.1 are no longer supported.
+Use CUDA 9.0, 9.2, 10.0 or later.
+
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 10.2 and Python 3.6.
+
+
 CuPy v7
 =======
 
@@ -15,7 +30,7 @@ Dropping Support of Python 2.7 and 3.4
 
 Starting from CuPy v7, Python 2.7 and 3.4 are no longer supported as it reaches its end-of-life (EOL) in January 2020 (2.7) and March 2019 (3.4).
 Python 3.5.1 is the minimum Python version supported by CuPy v7.
-Please upgrade the Python version if you are using affected versions of Python to any later versions listed under :ref:`install-guide`.
+Please upgrade the Python version if you are using affected versions of Python to any later versions listed under :doc:`install`.
 
 
 CuPy v6

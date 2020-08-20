@@ -7,7 +7,7 @@ except ImportError:
 
 import cupy
 from cupy import core
-from cupy.creation import basic
+from cupy._creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import data as sparse_data
@@ -524,7 +524,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         _, N = self._swap(*self.shape)
         M = len(idx)
-        new_shape = self._swap(*(M, N))
+        new_shape = self._swap(M, N)
         if M == 0:
             return self.__class__(new_shape)
 

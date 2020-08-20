@@ -17,20 +17,24 @@ import pytest
     'n_rows': [25, 150],
     'n_cols': [25, 150]
 }))
-@testing.with_requires('scipy')
+# @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
 class TestIndexing(unittest.TestCase):
 
-    def _run(self, maj, min=None, format=None):
-
-        # Skipping tests that are only supported in one
-        # format for now.
-        if format is not None and format != self.format:
-            pytest.skip()
+    def _run(self, maj, min=None, flip_for_csc=True,
+             compare_dense=False):
 
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
                           density=self.density)
+
+        if self.format == 'csc' and flip_for_csc:
+            tmp = maj
+            maj = min
+            min = tmp
+
+        # None is not valid for major when minor is not None
+        maj = slice(None) if maj is None else maj
 
         # sparse.random doesn't support complex types
         # so we need to cast
@@ -38,15 +42,22 @@ class TestIndexing(unittest.TestCase):
 
         expected = a.get()
 
+        if compare_dense:
+            expected = expected.todense()
+
         maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
         min_h = min.get() if isinstance(min, cupy.ndarray) else min
 
         if min is not None:
+
             expected = expected[maj_h, min_h]
             actual = a[maj, min]
         else:
             expected = expected[maj_h]
             actual = a[maj]
+
+        if compare_dense:
+            actual = actual.todense()
 
         if sparse.isspmatrix(actual):
             actual.sort_indices()
@@ -62,6 +73,14 @@ class TestIndexing(unittest.TestCase):
             testing.assert_array_equal(
                 actual.ravel(), numpy.asarray(expected).ravel())
 
+    @staticmethod
+    def _get_index_combos(idx):
+        return [dict['arr_fn'](idx, dtype=dict['dtype'])
+                for dict in testing.product({
+                    "arr_fn": [numpy.array, cupy.array],
+                    "dtype": [numpy.int32, numpy.int64]
+                })]
+
     # 2D Slicing
 
     def test_major_slice(self):
@@ -75,13 +94,21 @@ class TestIndexing(unittest.TestCase):
         self._run(10)
         self._run(-10)
 
-    def test_major_fancy(self):
-        self._run([1, 5, 4])
-        self._run([10, 2])
-        self._run([2])
+        self._run(numpy.array(10))
+        self._run(numpy.array(-10))
+
+        self._run(cupy.array(10))
+        self._run(cupy.array(-10))
 
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
+        self._run(slice(1, 20, 2), slice(1, 5, 1))
+        self._run(slice(20, 1, 2), slice(1, 5, 1))
+        self._run(slice(1, 15, 2), slice(1, 5, 1))
+        self._run(slice(15, 1, 5), slice(1, 5, 1))
+        self._run(slice(1, 15, 5), slice(1, 5, 1))
+        self._run(slice(20, 1, 5), slice(None))
+        self._run(slice(1, 20, 5), slice(None))
 
     def test_major_slice_minor_all(self):
         self._run(slice(1, 5), slice(None))
@@ -103,12 +130,17 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
+        self._run(numpy.array(5), slice(1, 5))
+        self._run(cupy.array(5), slice(1, 5))
 
     def test_major_scalar_minor_all(self):
         self._run(5, slice(None))
+        self._run(numpy.array(5), slice(None))
 
     def test_major_scalar_minor_scalar(self):
         self._run(5, 5)
+        self._run(numpy.array(5), numpy.array(5))
+        self._run(cupy.array(5), cupy.array(5))
 
     def test_major_all_minor_scalar(self):
         self._run(slice(None), 5)
@@ -119,113 +151,97 @@ class TestIndexing(unittest.TestCase):
     def test_major_all_minor_all(self):
         self._run(slice(None), slice(None))
 
-    def test_ellipsis(self):
-        self._run(Ellipsis)
-        self._run(Ellipsis, 1)
-        self._run(1, Ellipsis)
-        self._run(Ellipsis, slice(None))
-        self._run(slice(None), Ellipsis)
-        self._run(Ellipsis, slice(1, None))
-        self._run(slice(1, None), Ellipsis)
-
     # Major Indexing
 
     def test_major_bool_fancy(self):
-        rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
-        self._run(rand_bool)
+
+        size = self.n_rows if self.format == 'csr' else self.n_cols
+
+        a = numpy.random.random(size)
+        self._run(cupy.array(a).astype(cupy.bool))  # Cupy
+        self._run(a.astype(numpy.bool))             # Numpy
+        self._run(a.astype(numpy.bool).tolist(),    # List
+                  # In older environments (e.g., py35, scipy 1.4),
+                  # scipy sparse arrays are crashing when indexed with
+                  # native Python boolean list.
+                  compare_dense=True)
 
     def test_major_fancy_minor_all(self):
+
         self._run([1, 5, 4, 2, 5, 1], slice(None))
+
+        for idx in self._get_index_combos([1, 5, 4, 2, 5, 1]):
+            self._run(idx, slice(None))
 
     def test_major_fancy_minor_scalar(self):
         self._run([1, 5, 4, 5, 1], 5)
+        for idx in self._get_index_combos([1, 5, 4, 2, 5, 1]):
+            self._run(idx, 5)
 
     def test_major_fancy_minor_slice(self):
         self._run([1, 5, 4, 5, 1], slice(1, 5))
         self._run([1, 5, 4, 5, 1], slice(5, 1, 1))
 
-    def test_major_slice_with_step(self):
+        for idx in self._get_index_combos([1, 5, 4, 5, 1]):
+            self._run(idx, slice(5, 1, 1))
 
-        # positive step
-        self._run(slice(1, 10, 2))
-        self._run(slice(2, 10, 5))
-        self._run(slice(0, 10, 10))
-
-        self._run(slice(1, None, 2))
-        self._run(slice(2, None, 5))
-        self._run(slice(0, None,  10))
-
-        # negative step
-        self._run(slice(10, 1, -2))
-        self._run(slice(10, 2, -5))
-        self._run(slice(10, 0, -10))
-
-        self._run(slice(10, None, -2))
-        self._run(slice(10, None, -5))
-        self._run(slice(10, None, -10))
-
-    def test_major_slice_with_step_minor_slice_with_step(self):
-
-        # positive step
-        self._run(slice(1, 10, 2), slice(1, 10, 2))
-        self._run(slice(2, 10, 5), slice(2, 10, 5))
-        self._run(slice(0, 10, 10), slice(0, 10, 10))
-
-        # negative step
-        self._run(slice(10, 1, 2), slice(10, 1, 2))
-        self._run(slice(10, 2, 5), slice(10, 2, 5))
-        self._run(slice(10, 0, 10), slice(10, 0, 10))
-
-    def test_major_slice_with_step_minor_all(self):
-
-        # positive step
-        self._run(slice(1, 10, 2), slice(None))
-        self._run(slice(2, 10, 5), slice(None))
-        self._run(slice(0, 10, 10), slice(None))
-
-        # negative step
-        self._run(slice(10, 1, 2), slice(None))
-        self._run(slice(10, 2, 5), slice(None))
-        self._run(slice(10, 0, 10), slice(None))
-
-    def test_major_all_minor_slice_step(self):
-
-        # positive step incr
-        self._run(slice(None), slice(1, 10, 2))
-        self._run(slice(None), slice(2, 10, 5))
-        self._run(slice(None), slice(0, 10, 10))
-
-        # positive step decr
-        self._run(slice(None), slice(10, 1, 2))
-        self._run(slice(None), slice(10, 2, 5))
-        self._run(slice(None), slice(10, 0, 10))
-
-        # positive step incr
-        self._run(slice(None), slice(10, 1, 2))
-        self._run(slice(None), slice(10, 2, 5))
-        self._run(slice(None), slice(10, 0, 10))
-
-        # negative step decr
-        self._run(slice(None), slice(10, 1, -2))
-        self._run(slice(None), slice(10, 2, -5))
-        self._run(slice(None), slice(10, 0, -10))
-
-    def test_major_reorder(self):
-        self._run(slice(None, None, -1))
-        self._run(slice(None, None, -2))
-        self._run(slice(None, None, -50))
-
-    def test_major_reorder_minor_reorder(self):
-        self._run(slice(None, None, -1), slice(None, None, -1))
-        self._run(slice(None, None, -3), slice(None, None, -3))
+        for idx in self._get_index_combos([1, 5, 4, 5, 1]):
+            self._run(idx, slice(1, 5))
 
     # Minor Indexing
 
+    def test_major_all_minor_bool(self):
+        size = self.n_cols if self.format == 'csr' else self.n_rows
+
+        a = numpy.random.random(size)
+        self._run(slice(None), cupy.array(a).astype(cupy.bool))  # Cupy
+        self._run(slice(None), a.astype(numpy.bool))  # Numpy
+        self._run(slice(None), a.astype(numpy.bool).tolist(),  # List
+                  # In older environments (e.g., py35, scipy 1.4),
+                  # scipy sparse arrays are crashing when indexed with
+                  # native Python boolean list.
+                  compare_dense=True)
+
+    def test_major_slice_minor_bool(self):
+        size = self.n_cols if self.format == 'csr' else self.n_rows
+
+        a = numpy.random.random(size)
+        self._run(slice(1, 10, 2), cupy.array(a).astype(cupy.bool))  # Cupy
+        self._run(slice(1, 10, 2), a.astype(numpy.bool))  # Numpy
+        self._run(slice(1, 10, 2), a.astype(numpy.bool).tolist(),  # List
+                  # In older environments (e.g., py35, scipy 1.4),
+                  # scipy sparse arrays are crashing when indexed with
+                  # native Python boolean list.
+                  compare_dense=True)
+
+    def test_major_all_minor_fancy(self):
+        self._run(slice(None), [1, 5, 4, 5, 2, 4, 1])
+
+        for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
+            self._run(slice(None), idx)
+
     def test_major_slice_minor_fancy(self):
+
         self._run(slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1])
 
+        for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
+            self._run(slice(1, 10, 2), idx)
+
     def test_major_scalar_minor_fancy(self):
-        self._run(5, [1, 5, 4])
+
+        self._run(5, [1, 5, 4, 1, 2])
+
+        for idx in self._get_index_combos([1, 5, 4, 1, 2]):
+            self._run(5, idx)
+
+    def test_ellipsis(self):
+        self._run(Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, 1, flip_for_csc=False)
+        self._run(1, Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(None), flip_for_csc=False)
+        self._run(slice(None), Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(1, None), flip_for_csc=False)
+        self._run(slice(1, None), Ellipsis, flip_for_csc=False)
 
     def test_bad_indexing(self):
         with pytest.raises(IndexError):

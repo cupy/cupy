@@ -66,10 +66,7 @@ def _get_arch():
     # See Supported Compile Options section of NVRTC User Guide for
     # the maximum value allowed for `--gpu-architecture`.
     major, minor = _get_nvrtc_version()
-    if major < 9:
-        # CUDA 8.0
-        _nvrtc_max_compute_capability = '52'
-    elif major < 10 or (major == 10 and minor == 0):
+    if major < 10 or (major == 10 and minor == 0):
         # CUDA 9.x / 10.0
         _nvrtc_max_compute_capability = '70'
     elif major < 11:
@@ -134,18 +131,14 @@ def _get_bool_env_variable(name, default):
 
 
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
-                        name_expressions=None, log_stream=None):
+                        name_expressions=None, log_stream=None,
+                        cache_in_memory=False):
     if not arch:
         arch = _get_arch()
 
     options += ('-arch=compute_{}'.format(arch),)
 
-    with tempfile.TemporaryDirectory() as root_dir:
-        cu_path = os.path.join(root_dir, filename)
-
-        with open(cu_path, 'w') as cu_file:
-            cu_file.write(source)
-
+    def _compile(source, options, cu_path, name_expressions, log_stream):
         prog = _NVRTCProgram(source, cu_path,
                              name_expressions=name_expressions)
         try:
@@ -156,8 +149,19 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
             if dump:
                 e.dump(sys.stderr)
             raise
-
         return ptx, mapping
+
+    if not cache_in_memory:
+        with tempfile.TemporaryDirectory() as root_dir:
+            cu_path = os.path.join(root_dir, filename)
+
+            with open(cu_path, 'w') as cu_file:
+                cu_file.write(source)
+
+            return _compile(source, options, cu_path,
+                            name_expressions, log_stream)
+    else:
+        return _compile(source, options, '', name_expressions, log_stream)
 
 
 def compile_using_nvcc(source, options=(), arch=None,
@@ -305,19 +309,27 @@ def compile_with_cache(
         if runtime.is_hip or backend != 'nvrtc':
             raise NotImplementedError
 
+    # We silently ignore CUPY_CACHE_IN_MEMORY if nvcc is in use, because it
+    # must dump files to disk.
+    # TODO(leofang): check if hiprtc can avoid disk access
+    cache_in_memory = (
+        _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
+        and backend == 'nvrtc')
+
     if runtime.is_hip:
         return _compile_with_cache_hipcc(
             source, options, arch, cache_dir, extra_source)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
-            enable_cooperative_groups, name_expressions, log_stream)
+            enable_cooperative_groups, name_expressions, log_stream,
+            cache_in_memory)
 
 
 def _compile_with_cache_cuda(
         source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None):
+        log_stream=None, cache_in_memory=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -344,35 +356,45 @@ def _compile_with_cache_cuda(
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
-
     key_src = key_src.encode('utf-8')
     name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
 
-    if not os.path.isdir(cache_dir):
-        try:
-            os.makedirs(cache_dir)
-        except OSError:
-            if not os.path.isdir(cache_dir):
-                raise
     mod = function.Module()
-    # To handle conflicts in concurrent situation, we adopt lock-free method
-    # to avoid performance degradation.
-    # We force recompiling to retrieve C++ mangled names if so desired.
-    path = os.path.join(cache_dir, name)
-    if os.path.exists(path) and not name_expressions:
-        with open(path, 'rb') as file:
-            data = file.read()
-        if len(data) >= 32:
-            hash = data[:32]
-            cubin = data[32:]
-            cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
-            if hash == cubin_hash:
-                mod.load(cubin)
-                return mod
+
+    if not cache_in_memory:
+        # Read from disk cache
+
+        if not os.path.isdir(cache_dir):
+            try:
+                os.makedirs(cache_dir)
+            except OSError:
+                if not os.path.isdir(cache_dir):
+                    raise
+
+        # To handle conflicts in concurrent situation, we adopt lock-free
+        # method to avoid performance degradation.
+        # We force recompiling to retrieve C++ mangled names if so desired.
+        path = os.path.join(cache_dir, name)
+        if os.path.exists(path) and not name_expressions:
+            with open(path, 'rb') as file:
+                data = file.read()
+            if len(data) >= 32:
+                hash = data[:32]
+                cubin = data[32:]
+                cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+                if hash == cubin_hash:
+                    mod.load(cubin)
+                    return mod
+    else:
+        # Enforce compiling -- the resulting kernel will be cached elsewhere,
+        # so we do nothing
+        pass
 
     if backend == 'nvrtc':
+        cu_name = '' if cache_in_memory else name + '.cu'
         ptx, mapping = compile_using_nvrtc(
-            source, options, arch, name + '.cu', name_expressions, log_stream)
+            source, options, arch, cu_name, name_expressions,
+            log_stream, cache_in_memory)
         ls = function.LinkState()
         ls.add_ptr_data(ptx, 'cupy.ptx')
         # for separate compilation
@@ -390,21 +412,28 @@ def _compile_with_cache_cuda(
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
+    if not cache_in_memory:
+        # Write to disk cache
 
-    # shutil.move is not atomic operation, so it could result in a corrupted
-    # file. We detect it by appending md5 hash at the beginning of each cache
-    # file. If the file is corrupted, it will be ignored next time it is read.
-    with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
-        tf.write(cubin_hash)
-        tf.write(cubin)
-        temp_path = tf.name
-    shutil.move(temp_path, path)
+        cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
 
-    # Save .cu source file along with .cubin
-    if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
-        with open(path + '.cu', 'w') as f:
-            f.write(source)
+        # shutil.move is not atomic operation, so it could result in a
+        # corrupted file. We detect it by appending md5 hash at the beginning
+        # of each cache file. If the file is corrupted, it will be ignored
+        # next time it is read.
+        with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
+            tf.write(cubin_hash)
+            tf.write(cubin)
+            temp_path = tf.name
+        shutil.move(temp_path, path)
+
+        # Save .cu source file along with .cubin
+        if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
+            with open(path + '.cu', 'w') as f:
+                f.write(source)
+    else:
+        # we don't do any disk I/O
+        pass
 
     mod.load(cubin)
     return mod
