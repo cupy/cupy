@@ -22,7 +22,7 @@ import pytest
 class TestIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None, flip_for_csc=True,
-             compare_dense=False):
+             compare_dense=False, test_scipy=True):
 
         a = sparse.random(self.n_rows, self.n_cols,
                           format=self.format,
@@ -50,28 +50,31 @@ class TestIndexing(unittest.TestCase):
 
         if min is not None:
 
-            expected = expected[maj_h, min_h]
+            if test_scipy:
+                expected = expected[maj_h, min_h]
             actual = a[maj, min]
         else:
-            expected = expected[maj_h]
+            if test_scipy:
+                expected = expected[maj_h]
             actual = a[maj]
 
-        if compare_dense:
-            actual = actual.todense()
+        if test_scipy:
+            if compare_dense:
+                actual = actual.todense()
 
-        if sparse.isspmatrix(actual):
-            actual.sort_indices()
-            expected.sort_indices()
+            if sparse.isspmatrix(actual):
+                actual.sort_indices()
+                expected.sort_indices()
 
-            testing.assert_array_equal(
-                actual.indptr, expected.indptr)
-            testing.assert_array_equal(
-                actual.indices, expected.indices)
-            testing.assert_array_equal(
-                actual.data, expected.data)
-        else:
-            testing.assert_array_equal(
-                actual.ravel(), numpy.asarray(expected).ravel())
+                testing.assert_array_equal(
+                    actual.indptr, expected.indptr)
+                testing.assert_array_equal(
+                    actual.indices, expected.indices)
+                testing.assert_array_equal(
+                    actual.data, expected.data)
+            else:
+                testing.assert_array_equal(
+                    actual.ravel(), numpy.asarray(expected).ravel())
 
     @staticmethod
     def _get_index_combos(idx):
@@ -247,16 +250,16 @@ class TestIndexing(unittest.TestCase):
 
         self._run([1, 5, 4], [1, 5, 4])
 
-        maj = self._get_index_combos([2, 0, 10])
-        min = self._get_index_combos([9, 2, 1])
+        maj = self._get_index_combos([2, 0, 10, 0, 2])
+        min = self._get_index_combos([9, 2, 1, 0, 2])
 
         for (idx1, idx2) in zip(maj, min):
             self._run(idx1, idx2)
 
         self._run([2, 0, 10, 0], [9, 2, 1, 0])
 
-        maj = self._get_index_combos([2, 0])
-        min = self._get_index_combos([2, 1])
+        maj = self._get_index_combos([2, 0, 2])
+        min = self._get_index_combos([2, 1, 1])
 
         for (idx1, idx2) in zip(maj, min):
             self._run(idx1, idx2)
@@ -267,10 +270,13 @@ class TestIndexing(unittest.TestCase):
 
     def test_bad_indexing(self):
         with pytest.raises(IndexError):
-            self._run("foo")
+            self._run("foo", test_scipy=False)
 
         with pytest.raises(IndexError):
-            self._run(2, "foo")
+            self._run(2, "foo", test_scipy=False)
 
         with pytest.raises(ValueError):
-            self._run([1, 2, 3], [1, 2, 3, 4])
+            self._run([1, 2, 3], [1, 2, 3, 4], test_scipy=False)
+
+        with pytest.raises(IndexError):
+            self._run([[0, 0], [1, 1]], test_scipy=False)
