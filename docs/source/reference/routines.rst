@@ -31,7 +31,7 @@ These functions cover a subset of
 
 
 CUB/cuTENSOR backend for reduction routines
-----------------------------------
+-------------------------------------------
 Some CuPy reduction routines, including :func:`~cupy.sum`, :func:`~cupy.min`, :func:`~cupy.max`,
 :func:`~cupy.argmin`, :func:`~cupy.argmax`, and other functions built on top of them, can be
 accelerated by switching to the `CUB`_ or `cuTENSOR`_ backend. These backends can be enabled
