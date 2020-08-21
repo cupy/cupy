@@ -1100,7 +1100,7 @@ def for_contiguous_axes(name='axis'):
                 try:
                     kw[name] = a
                     impl(self, *args, **kw)
-                    a = tuple(i - ndim for i in a)
+                    a = tuple([i - ndim for i in a])
                     kw[name] = a
                     impl(self, *args, **kw)
                 except Exception:
