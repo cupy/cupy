@@ -129,7 +129,7 @@ cpdef launchCooperativeKernel(
 # Kernel attributes
 ###############################################################################
 
-cpdef int funcGetAttribute(int attribute, intptr_t func) except -1
+cpdef int funcGetAttribute(int attribute, intptr_t func)
 cpdef funcSetAttribute(intptr_t func, int attribute, int value)
 
 ###############################################################################
