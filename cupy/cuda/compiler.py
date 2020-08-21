@@ -316,9 +316,9 @@ def compile_with_cache(
             raise ValueError(
                 'Cooperative groups is not supported in HIP.')
 
-    if name_expressions is not None:
-        if runtime.is_hip or backend != 'nvrtc':
-            raise NotImplementedError
+    # TODO(leofang): handle HIP environment
+    if name_expressions is not None and backend != 'nvrtc':
+        raise NotImplementedError
 
     # We silently ignore CUPY_CACHE_IN_MEMORY if nvcc is in use, because it
     # must dump files to disk.

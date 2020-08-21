@@ -481,6 +481,7 @@ class TestRaw(unittest.TestCase):
 
     def _generate_file(self, ext: str):
         # generate cubin/ptx by calling nvcc
+        # TODO(leofang): also test hsaco generation for HIP
 
         nvcc = cupy.cuda.get_nvcc_path()
         # split() is needed because nvcc could come from the env var NVCC
@@ -500,10 +501,12 @@ class TestRaw(unittest.TestCase):
         else:
             raise ValueError
         cmd += [arch, flag, source, '-o', file_path]
-        compiler._run_nvcc(cmd, self.cache_dir)
+        cc = 'nvcc' if not cupy.cuda.runtime.is_hip else 'hipcc'
+        compiler._run_cc(cmd, self.cache_dir, cc)
 
         return file_path
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'hcc uses hsaco, not cubin')
     def test_load_cubin(self):
         # generate cubin in the temp dir
         file_path = self._generate_file('cubin')
@@ -534,7 +537,8 @@ class TestRaw(unittest.TestCase):
                 path=os.path.expanduser('~/this_does_not_exist.cubin'),
                 backend=self.backend)
             mod.get_function('nonexisting_kernel')  # enforce loading
-        assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
+        assert ('CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)  # CUDA
+                or 'hipErrorFileNotFound' in str(ex.value))  # HIP
 
     def test_module_neither_code_nor_path(self):
         with pytest.raises(TypeError):
@@ -725,6 +729,9 @@ class TestRaw(unittest.TestCase):
         ker((1,), (100,), (output_arr, cupy.int32(100)))
         assert (data == output_arr).all()
 
+    # TODO(leofang): handle this once hiprtc (#3238) is in
+    @unittest.skipIf(cupy.cuda.runtime.is_hip,
+                     'hipcc does not provide the name expression mapping')
     def test_template_specialization(self):
         if self.backend == 'nvcc':
             self.skipTest('nvcc does not support template specialization')
@@ -765,8 +772,10 @@ class TestRaw(unittest.TestCase):
         # 2. compile code without specializations
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',))
         # ...try to get a specialized kernel
-        with pytest.raises(cupy.cuda.driver.CUDADriverError,
-                           match='named symbol not found'):
+        # TODO(leofang): perhaps hipcc should not test template specializations
+        match = ('named symbol not found' if not cupy.cuda.runtime.is_hip else
+                 'hipErrorNotFound')
+        with pytest.raises(cupy.cuda.driver.CUDADriverError, match=match):
             mod.get_function('my_sqrt<int>')
 
         # 3. compile code without specifying C++ standard
@@ -777,6 +786,9 @@ class TestRaw(unittest.TestCase):
         # 4. try to fetch something we didn't specialize for
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              name_expressions=name_expressions)
+        if cupy.cuda.runtime.is_hip:
+            # TODO(leofang): handle this once hiprtc (#3238) is in
+            self.skipTest('hipcc does not provide the name expression mapping')
         with pytest.raises(cupy.cuda.driver.CUDADriverError,
                            match='named symbol not found'):
             mod.get_function('my_sqrt<double>')
