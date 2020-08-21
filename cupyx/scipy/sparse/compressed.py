@@ -426,30 +426,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self._descr = cusparse.MatDescriptor.create()
         self._shape = shape
 
-    def _prune_array(self, array):
-        """Return an array equivalent to the input array. If the input
-        array is a view of a much larger array, copy its contents to a
-        newly allocated array. Otherwise, return the input unchanged.
-        """
-        if array.base is not None and array.size < array.base.size // 2:
-            return array.copy()
-        return array
-
-    def prune(self):
-        """Remove empty space after all non-zero elements.
-        """
-        major_dim = self._swap(*self.shape)[0]
-
-        if len(self.indptr) != major_dim + 1:
-            raise ValueError('index pointer has invalid length')
-        if len(self.indices) < self.nnz:
-            raise ValueError('indices array has fewer than nnz elements')
-        if len(self.data) < self.nnz:
-            raise ValueError('data array has fewer than nnz elements')
-
-        self.indices = self._prune_array(self.indices[:self.nnz])
-        self.data = self._prune_array(self.data[:self.nnz])
-
     def _with_data(self, data, copy=True):
         if copy:
             return self.__class__(
@@ -764,23 +740,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _prepare_indices(self, i, j):
         M, N = self._swap(*self.shape)
 
-        # TODO(cjnolet) Verify whether this is needed.
-        # def check_bounds(indices, bound):
-        #     idx = indices.max()
-        #     if idx >= bound:
-        #         raise IndexError('index (%d) out of range (>= %d)' %
-        #                          (idx, bound))
-        #     idx = indices.min()
-        #     if idx < -bound:
-        #         raise IndexError('index (%d) out of range (< -%d)' %
-        #                          (idx, bound))
-        #
+        def check_bounds(indices, bound):
+            idx = indices.max()
+            if idx >= bound:
+                raise IndexError('index (%d) out of range (>= %d)' %
+                                 (idx, bound))
+            idx = indices.min()
+            if idx < -bound:
+                raise IndexError('index (%d) out of range (< -%d)' %
+                                 (idx, bound))
+
         i = cupy.array(i, dtype=self.indptr.dtype,
                        copy=True, ndmin=1).ravel()
         j = cupy.array(j, dtype=self.indices.dtype,
                        copy=True, ndmin=1).ravel()
-        # check_bounds(i, M)
-        # check_bounds(j, N)
+        check_bounds(i, M)
+        check_bounds(j, N)
         return i, j, M, N
 
     def _set_many(self, i, j, x):
@@ -842,24 +817,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # only assign zeros to the existing sparsity structure
         self.data[offsets[offsets > -1]] = 0
 
-    def _select_last_indices(self, i, j, x, idx_dtype):
-        """Find the unique indices for each row and keep only the last"""
-        i = cupy.asarray(i, dtype=idx_dtype)
-        j = cupy.asarray(j, dtype=idx_dtype)
-
-        stacked = cupy.stack([j, i])
-        order = cupy.lexsort(stacked).astype(idx_dtype)
-
-        indptr_inserts = i[order]
-        indices_inserts = j[order]
-        data_inserts = x[order]
-
-        mask = cupy.ones(indptr_inserts.size, dtype='bool')
-        _index._unique_mask_kern(indptr_inserts, indices_inserts, order, mask,
-                                 size=indptr_inserts.size-1)
-
-        return indptr_inserts[mask], indices_inserts[mask], data_inserts[mask]
-
     def _perform_insert(self, indices_inserts, data_inserts,
                         rows, row_counts, idx_dtype):
         """Insert new elements into current sparse matrix in sorted order"""
@@ -916,7 +873,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
 
         indptr_inserts, indices_inserts, data_inserts = \
-            self._select_last_indices(i, j, x, idx_dtype)
+            _index._select_last_indices(i, j, x, idx_dtype)
 
         rows, ui_indptr = cupy.unique(indptr_inserts, return_index=True)
 
@@ -930,68 +887,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         self._perform_insert(indices_inserts, data_inserts,
                              rows, row_counts, idx_dtype)
-
-        self.check_format(full_check=False)
-
-    def check_format(self, full_check=True):
-        """check whether the matrix format is valid
-
-        Args:
-            full_check (bool): optional. If `True`,
-                rigorous check, O(N) operations. Otherwise
-                basic check, O(1) operations (default True).
-        """
-
-        # use _swap to determine proper bounds
-        major_name, minor_name = self._swap(*('row', 'column'))
-        major_dim, minor_dim = self._swap(*self.shape)
-
-        # index arrays should have integer data types
-        if self.indptr.dtype.kind != 'i':
-            warnings.warn("indptr array has non-integer dtype ({})"
-                          "".format(self.indptr.dtype.name))
-        if self.indices.dtype.kind != 'i':
-            warnings.warn("indices array has non-integer dtype ({})"
-                          "".format(self.indices.dtype.name))
-
-        idx_dtype = sputils.get_index_dtype((self.indptr, self.indices))
-        self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
-        self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
-
-        # check array shapes
-        for x in [self.data.ndim, self.indices.ndim, self.indptr.ndim]:
-            if x != 1:
-                raise ValueError('data, indices, and indptr should be 1-D')
-
-        # check index pointer
-        if (self.indptr.size != major_dim + 1):
-            raise ValueError("index pointer size ({}) should be ({})"
-                             "".format(self.indptr.size, major_dim + 1))
-        if (int(self.indptr[0]) != 0):
-            raise ValueError("index pointer should start with 0")
-
-        # check index and data arrays
-        if (self.indices.size != self.data.size):
-            raise ValueError("indices and data should have the same size")
-        if (int(self.indptr[-1]) > self.indices.size):
-            raise ValueError("Last value of index pointer should be less than "
-                             "the size of index and data arrays")
-
-        self.prune()
-
-        # TODO(cjnolet) Verify whether this is needed
-        # if full_check:
-        #     # check format validity (more expensive)
-        #     if self.nnz > 0:
-        #         if self.indices.max() >= minor_dim:
-        #             raise ValueError("{} index values must be < {}"
-        #                              "".format(minor_name, minor_dim))
-        #         if self.indices.min() < 0:
-        #             raise ValueError("{} index values must be >= 0"
-        #                              "".format(minor_name))
-        #         if cupy.diff(self.indptr).min() < 0:
-        #             raise ValueError("index pointer values must form a "
-        #                              "non-decreasing sequence")
 
     def __get_has_canonical_format(self):
         """Determine whether the matrix has sorted indices and no duplicates.
