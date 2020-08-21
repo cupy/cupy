@@ -317,7 +317,7 @@ cpdef launchCooperativeKernel(
 # Function attributes
 ###############################################################################
 
-cpdef int funcGetAttribute(int attribute, intptr_t f):
+cpdef int funcGetAttribute(int attribute, intptr_t f) except -1:
     cdef int pi
     with nogil:
         status = cuFuncGetAttribute(

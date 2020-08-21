@@ -120,8 +120,8 @@ CUresult cuLaunchCooperativeKernel(...) {
 
 
 // Function attribute
-CUresult cuFuncGetAttribute(...) {
-    return hipErrorUnknown;
+CUresult cuFuncGetAttribute(int* pi, CUfunction_attribute attrib, CUfunction hfunc) {
+    return hipFuncGetAttribute(pi, attrib, hfunc);
 }
 
 CUresult cuFuncSetAttribute(...) {
