@@ -116,6 +116,8 @@ def _polypow(x, n):
 
 
 def _polyfit_typecast(x):
+    if x.dtype == numpy.float16:
+        raise NotImplementedError('float16 is currently not supported')
     if x.dtype.kind == 'c':
         return x.astype(numpy.complex128, copy=False)
     return x.astype(numpy.float64, copy=False)
@@ -206,6 +208,8 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
         warnings.warn(msg, numpy.RankWarning, stacklevel=4)
 
     if full:
+        if resids.dtype.kind == 'c':
+            resids = cupy.absolute(resids)
         return c, resids, rank, s, rcond
     if cov:
         base = cupy.linalg.inv(cupy.dot(lhs.T, lhs))

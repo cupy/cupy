@@ -519,21 +519,21 @@ class TestPolyfitParametersCombinations(unittest.TestCase):
         w = x if self.weighted else None
         return xp.polyfit(x, y, self.deg, self.rcond, True, w)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_allclose(rtol=1e-6, contiguous_check=False)
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-9, contiguous_check=False)
     def test_polyfit_default(self, xp, dtype):
         x = testing.shaped_arange(self.shape1, xp, dtype)
         y = testing.shaped_arange(self.shape2, xp, dtype)
         w = x if self.weighted else None
         return xp.polyfit(x, y, self.deg, self.rcond, w=w)
 
-    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_full(self, dtype):
         cp_c, cp_resids, cp_rank, cp_s, cp_rcond = self._full_fit(cupy, dtype)
         np_c, np_resids, np_rank, np_s, np_rcond = self._full_fit(numpy, dtype)
 
-        testing.assert_allclose(cp_c, np_c, rtol=1e-5)
-        testing.assert_allclose(cp_resids, np_resids)
+        testing.assert_allclose(cp_c, np_c, atol=1e-9)
+        testing.assert_allclose(cp_resids, np_resids, atol=1e-9)
         testing.assert_allclose(cp_s, np_s)
         assert cp_rank == np_rank
         if self.rcond is not None:
@@ -582,7 +582,7 @@ class TestPolyfit(unittest.TestCase):
 }))
 class TestPolyfitInvalidShapes(unittest.TestCase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_x_invalid_shape(self, dtype):
         for xp in (numpy, cupy):
             x = testing.shaped_arange(self.shape, xp, dtype)
@@ -590,7 +590,7 @@ class TestPolyfitInvalidShapes(unittest.TestCase):
             with pytest.raises(TypeError):
                 xp.polyfit(x, y, 5)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_y_invalid_shape(self, dtype):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((5,), xp, dtype)
@@ -598,7 +598,7 @@ class TestPolyfitInvalidShapes(unittest.TestCase):
             with pytest.raises(TypeError):
                 xp.polyfit(x, y, 5)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_w_invalid_shape(self, dtype):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((5,), xp, dtype)
@@ -610,7 +610,7 @@ class TestPolyfitInvalidShapes(unittest.TestCase):
 @testing.gpu
 class TestPolyfitInvalid(unittest.TestCase):
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_neg_degree(self, dtype):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((5,), xp, dtype)
@@ -618,7 +618,7 @@ class TestPolyfitInvalid(unittest.TestCase):
             with pytest.raises(ValueError):
                 xp.polyfit(x, y, -4)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_complex_degree(self, dtype):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((5,), xp, dtype)
@@ -626,7 +626,7 @@ class TestPolyfitInvalid(unittest.TestCase):
             with pytest.raises(TypeError):
                 xp.polyfit(x, y, 5j)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_xy_mismatched_length(self, dtype):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((10,), xp, dtype)
@@ -634,7 +634,7 @@ class TestPolyfitInvalid(unittest.TestCase):
             with pytest.raises(TypeError):
                 xp.polyfit(x, y, 5)
 
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_yw_mismatched_length(self, dtype):
         for xp in (numpy, cupy):
             y = testing.shaped_arange((10,), xp, dtype)
