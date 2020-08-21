@@ -1,6 +1,7 @@
-from cupy import core
+from cupy.core import _kernel
+from cupy.core import _routines_logic
 
-logical_and = core.create_comparison(
+logical_and = _routines_logic.create_comparison(
     'logical_and', '&&',
     '''Computes the logical AND of two arrays.
 
@@ -9,7 +10,7 @@ logical_and = core.create_comparison(
     ''')
 
 
-logical_or = core.create_comparison(
+logical_or = _routines_logic.create_comparison(
     'logical_or', '||',
     '''Computes the logical OR of two arrays.
 
@@ -18,7 +19,7 @@ logical_or = core.create_comparison(
     ''')
 
 
-logical_not = core.create_ufunc(
+logical_not = _kernel.create_ufunc(
     'cupy_logical_not',
     ('?->?', 'b->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?'),
@@ -30,7 +31,7 @@ logical_not = core.create_ufunc(
     ''')
 
 
-logical_xor = core.create_ufunc(
+logical_xor = _kernel.create_ufunc(
     'cupy_logical_xor',
     ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?', 'll->?',
      'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?'),

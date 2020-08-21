@@ -30,7 +30,7 @@ from cupy import util
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
-from libc.stdint cimport int64_t
+from libc.stdint cimport int64_t, intptr_t
 
 from cupy.core cimport _accelerator
 from cupy.core cimport _carray
@@ -961,17 +961,17 @@ cdef class ndarray:
         if isinstance(other, numpy.ndarray) and other.ndim == 0:
             other = other.item()  # Workaround for numpy<1.13
         if op == 0:
-            return less(self, other)
+            return _logic._ndarray_less(self, other)
         if op == 1:
-            return less_equal(self, other)
+            return _logic._ndarray_less_equal(self, other)
         if op == 2:
-            return equal(self, other)
+            return _logic._ndarray_equal(self, other)
         if op == 3:
-            return not_equal(self, other)
+            return _logic._ndarray_not_equal(self, other)
         if op == 4:
-            return greater(self, other)
+            return _logic._ndarray_greater(self, other)
         if op == 5:
-            return greater_equal(self, other)
+            return _logic._ndarray_greater_equal(self, other)
         return NotImplemented
 
     # Truth value of an array (bool):
@@ -2254,6 +2254,7 @@ cpdef ndarray _internal_ascontiguousarray(ndarray a):
 cpdef ndarray _internal_asfortranarray(ndarray a):
     cdef ndarray newarray
     cdef int m, n
+    cdef intptr_t handle
 
     if a._f_contiguous:
         return a
@@ -2669,7 +2670,7 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    handle = device.get_cublas_handle()
+    cdef intptr_t handle = device.get_cublas_handle()
 
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
     if not use_broadcast:
@@ -2781,7 +2782,8 @@ cpdef ndarray tensordot_core(
         Py_ssize_t k, const shape_t& ret_shape):
     cdef shape_t shape
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
-    cdef Py_ssize_t mode, handle
+    cdef Py_ssize_t mode
+    cdef intptr_t handle
     cdef bint use_sgemmEx
     cdef float one_fp32, zero_fp32
     cdef str ret_dtype = a.dtype.char
@@ -2966,7 +2968,7 @@ cpdef ndarray tensordot_core_v11(
     cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
     cdef int b_cuda_dtype = to_cuda_dtype(b.dtype, is_half_allowed=True)
     cdef int c_cuda_dtype = to_cuda_dtype(c.dtype, is_half_allowed=True)
-    handle = device.get_cublas_handle()
+    cdef intptr_t handle = device.get_cublas_handle()
     cublas.gemmEx(
         handle, <int>transa, <int>transb, <int>m, <int>n, <int>k, one_ptr,
         a.data.ptr, a_cuda_dtype, <int>lda, b.data.ptr, b_cuda_dtype, <int>ldb,
@@ -2993,86 +2995,6 @@ cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
         return a.copy(), 1
     else:
         return a, a._strides[rundim] // a.itemsize
-
-# -----------------------------------------------------------------------------
-# Logic functions
-# -----------------------------------------------------------------------------
-
-cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
-
-    if no_complex_dtype:
-        ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
-               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?')
-    else:
-        ops = ('??->?', 'bb->?', 'BB->?', 'hh->?', 'HH->?', 'ii->?', 'II->?',
-               'll->?', 'LL->?', 'qq->?', 'QQ->?', 'ee->?', 'ff->?', 'dd->?',
-               'FF->?', 'DD->?')
-
-    return create_ufunc(
-        'cupy_' + name,
-        ops,
-        'out0 = in0 %s in1' % op,
-        doc=doc)
-
-
-greater = create_comparison(
-    'greater', '>',
-    '''Tests elementwise if ``x1 > x2``.
-
-    .. seealso:: :data:`numpy.greater`
-
-    ''',
-    no_complex_dtype=False)
-
-
-greater_equal = create_comparison(
-    'greater_equal', '>=',
-    '''Tests elementwise if ``x1 >= x2``.
-
-    .. seealso:: :data:`numpy.greater_equal`
-
-    ''',
-    no_complex_dtype=False)
-
-
-less = create_comparison(
-    'less', '<',
-    '''Tests elementwise if ``x1 < x2``.
-
-    .. seealso:: :data:`numpy.less`
-
-    ''',
-    no_complex_dtype=False)
-
-
-less_equal = create_comparison(
-    'less_equal', '<=',
-    '''Tests elementwise if ``x1 <= x2``.
-
-    .. seealso:: :data:`numpy.less_equal`
-
-    ''',
-    no_complex_dtype=False)
-
-
-equal = create_comparison(
-    'equal', '==',
-    '''Tests elementwise if ``x1 == x2``.
-
-    .. seealso:: :data:`numpy.equal`
-
-    ''',
-    no_complex_dtype=False)
-
-
-not_equal = create_comparison(
-    'not_equal', '!=',
-    '''Tests elementwise if ``x1 != x2``.
-
-    .. seealso:: :data:`numpy.equal`
-
-    ''',
-    no_complex_dtype=False)
 
 
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
