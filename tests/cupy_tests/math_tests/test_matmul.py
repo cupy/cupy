@@ -151,9 +151,9 @@ class _TestMatmulComputeTypes(unittest.TestCase):
             cupy.core.core.COMPUTE_TYPE_PEDANTIC,
         ],
         'shape_pair': [
-            ((100, 200), (200, 300)),
-            ((200, 300), (300, 100)),
-            ((300, 100), (100, 200)),
+            ((32, 64), (64, 96)),
+            ((64, 96), (96, 32)),
+            ((96, 32), (32, 64)),
         ],
     }))
 @testing.gpu
