@@ -1,4 +1,7 @@
+import numbers
+
 import cupy
+from cupyx.scipy import fft
 from cupyx.scipy.ndimage import filters
 from cupyx.scipy.ndimage import _util
 
@@ -95,3 +98,87 @@ def _inputs_swap_needed(mode, shape1, shape2, axes=None):
         raise ValueError("For 'valid' mode, one must be at least "
                          "as large as the other in every dimension")
     return not_ok1
+
+
+def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
+    # See scipy's documentation in scipy.signal.signaltools
+    s1, s2 = in1.shape, in2.shape
+    axes = _init_nd_and_axes(in1, axes)
+    # Length-1 axes can rely on broadcasting rules, no fft needed
+    axes = [a for a in axes if s1[a] != 1 and s2[a] != 1]
+    if sorted_axes:
+        axes.sort()
+
+    # Check that unused axes are either 1 (broadcast) or the same length
+    if not all(s1[a] == s2[a] or s1[a] == 1 or s2[a] == 1
+               for a in range(in1.ndim) if a not in axes):
+        raise ValueError("incompatible shapes for in1 and in2:"
+                         " {} and {}".format(s1, s2))
+
+    # Check that input sizes are compatible with 'valid' mode.
+    if _inputs_swap_needed(mode, s1, s2, axes=axes):
+        # Convolution is commutative
+        in1, in2 = in2, in1
+
+    return in1, in2, axes
+
+
+def _init_nd_and_axes(x, axes):
+    # See documentation in scipy.fft._helper._init_nd_shape_and_axes
+    # except shape argument is always None and doesn't return new shape
+    if axes is None:
+        axes = range(x.ndim)
+        shape = x.shape
+    else:
+        # Get the list of axes
+        if isinstance(axes, numbers.Number):
+            axes = (axes,)
+        axes = [cupy.util._normalize_axis_index(a, x.ndim) for a in axes]
+
+        # Check the axes
+        if not len(axes):
+            raise ValueError("when provided, axes cannot be empty")
+        if len(set(axes)) != len(axes):
+            raise ValueError("all axes must be unique")
+
+        # Get the resulting shape
+        shape = (x.shape[a] for a in axes)
+
+    # Check the resulting shape
+    if any(s < 1 for s in shape):
+        raise ValueError(
+            "invalid number of data points ({0}) specified".format(shape))
+
+    return axes
+
+
+def _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=False):
+    # See scipy's documentation in scipy.signal.signaltools
+    # TODO: cupyx.scipy.fftpack.get_fft_plan may be useful, however:
+    #  * only complex-to-complex planning is possible
+    #  * only 3, consecutive, axes from either the start or end of the input
+    #  * only C or F contiguous inputs allowed
+    real = (in1.dtype.kind != 'c' and in2.dtype.kind != 'c')
+    fshape = ([fft.next_fast_len(shape[a], real) for a in axes]
+              if calc_fast_len else shape)
+    fftn, ifftn = (fft.rfftn, fft.irfftn) if real else (fft.fftn, fft.ifftn)
+
+    # Perform the convolution
+    sp1 = fftn(in1, fshape, axes=axes)
+    sp2 = fftn(in2, fshape, axes=axes)
+    out = ifftn(sp1 * sp2, fshape, axes=axes)
+
+    return out[tuple(slice(x) for x in shape)] if calc_fast_len else out
+
+
+def _apply_conv_mode(full, s1, s2, mode, axes):
+    # See scipy's documentation in scipy.signal.signaltools
+    if mode == 'full':
+        return cupy.ascontiguousarray(full)
+    if mode == 'valid':
+        s1 = [full.shape[a] if a not in axes else s1[a] - s2[a] + 1
+              for a in range(full.ndim)]
+    starts = [(cur-new)//2 for cur, new in zip(full.shape, s1)]
+    slices = tuple(slice(start, start+length)
+                   for start, length in zip(starts, s1))
+    return cupy.ascontiguousarray(full[slices])

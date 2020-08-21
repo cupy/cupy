@@ -55,6 +55,59 @@ class TestConvolveCorrelate(unittest.TestCase):
         return self._filter('correlate', dtype, xp, scp)
 
 
+@testing.parameterize(*testing.product({
+    'in1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
+    'in2': [3, 4, 5, 10],
+    'mode': ['full', 'same', 'valid'],
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestFFTConvolve(unittest.TestCase):
+    def _filter(self, func, dtype, xp, scp, **kwargs):
+        in1 = testing.shaped_random(self.in1, xp, dtype)
+        in2 = testing.shaped_random((self.in2,)*in1.ndim, xp, dtype)
+        return getattr(scp.signal, func)(in1, in2, self.mode, **kwargs)
+
+    # Note: float16 is tested separately
+    @testing.for_all_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=5e-4, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_fftconvolve(self, xp, scp, dtype):
+        return self._filter('fftconvolve', dtype, xp, scp)
+
+    # float16 has significantly worse error tolerances
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_fftconvolve_float16(self, xp, scp, dtype=cupy.float16):
+        return self._filter('fftconvolve', dtype, xp, scp)
+
+    # Note: float16 is tested separately
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=5e-4, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_convolve_fft(self, xp, scp, dtype):
+        return self._filter('convolve', dtype, xp, scp, method='fft')
+
+    # float16 has significantly worse error tolerances
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_convolve_fft_float16(self, xp, scp, dtype=cupy.float16):
+        return self._filter('convolve', dtype, xp, scp, method='fft')
+
+    # Note: float16 is tested separately
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=5e-4, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_correlate_fft(self, xp, scp, dtype):
+        return self._filter('correlate', dtype, xp, scp, method='fft')
+
+    # float16 has significantly worse error tolerances
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_correlate_fft_float16(self, xp, scp, dtype=cupy.float16):
+        return self._filter('correlate', dtype, xp, scp, method='fft')
+
+
 @testing.parameterize(*(testing.product({
     'in1': [(5, 10), (10, 7)],
     'in2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
