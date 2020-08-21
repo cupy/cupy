@@ -3,6 +3,7 @@ import functools
 import numpy
 
 import cupy
+from cupy import core
 
 
 def _wraps_polyroutine(func):
@@ -161,6 +162,66 @@ def polydiv(u, v):
         rem = cupy.array([0.])
 
     return quot.astype(dtype, copy=False), rem.astype(dtype, copy=False)
+
+
+def _polypow(x, n):
+    if n == 0:
+        return 1
+    if n == 1:
+        return x
+    if n % 2 == 0:
+        return _polypow(cupy.convolve(x, x), n // 2)
+    return cupy.convolve(x, _polypow(cupy.convolve(x, x), (n - 1) // 2))
+
+
+def polyval(p, x):
+    """Evaluates a polynomial at specific values.
+
+    Args:
+        p (cupy.ndarray or cupy.poly1d): input polynomial.
+        x (scalar, cupy.ndarray): values at which the polynomial
+        is evaluated.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: polynomial evaluated at x.
+
+    .. warning::
+
+        This function doesn't currently support poly1d values to evaluate.
+
+    .. seealso:: :func:`numpy.polyval`
+
+    """
+    if isinstance(p, cupy.poly1d):
+        p = p.coeffs
+    if not isinstance(p, cupy.ndarray) or p.ndim == 0:
+        raise TypeError('p can be 1d ndarray or poly1d object only')
+    if p.ndim != 1:
+        # to be consistent with polyarithmetic routines' behavior of
+        # not allowing multidimensional polynomial inputs.
+        raise ValueError('p can be 1d ndarray or poly1d object only')
+        # TODO(Dahlia-Chehata): Support poly1d x
+    if (isinstance(x, cupy.ndarray) and x.ndim <= 1) or numpy.isscalar(x):
+        val = cupy.asarray(x).reshape(-1, 1)
+    else:
+        raise NotImplementedError(
+            'poly1d or non 1d values are not currently supported')
+    out = p[::-1] * cupy.power(val, cupy.arange(p.size))
+    out = out.sum(axis=1)
+    dtype = cupy.result_type(p, val)
+    if cupy.isscalar(x) or x.ndim == 0:
+        return out.astype(dtype, copy=False).reshape()
+    if p.dtype == numpy.complex128 and val.dtype in [
+       numpy.float16, numpy.float32, numpy.complex64]:
+        return out.astype(numpy.complex64, copy=False)
+    p_kind_score = core._kernel.get_kind_score(ord(p.dtype.kind))
+    x_kind_score = core._kernel.get_kind_score(ord(val.dtype.kind))
+    if (p.dtype.kind not in 'c' and (p_kind_score == x_kind_score
+                                     or val.dtype.kind in 'c')) or (
+            issubclass(p.dtype.type, numpy.integer)
+            and issubclass(val.dtype.type, numpy.floating)):
+        return out.astype(val.dtype, copy=False)
+    return out.astype(dtype, copy=False)
 
 
 def roots(p):

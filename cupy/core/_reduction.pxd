@@ -7,6 +7,12 @@ from cupy.cuda cimport function
 cdef Py_ssize_t _block_size
 
 
+cpdef tuple _get_axis(object axis, Py_ssize_t ndim)
+
+cpdef shape_t _get_out_shape(
+    const shape_t& shape, tuple reduce_axis, tuple out_axis, bint keepdims)
+
+
 cdef class _AbstractReductionKernel:
 
     cdef:

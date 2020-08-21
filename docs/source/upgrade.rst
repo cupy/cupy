@@ -16,6 +16,11 @@ Dropping Support of CUDA 8.0 and 9.1
 Starting from CuPy v8, CUDA 8.0 and 9.1 are no longer supported.
 Use CUDA 9.0, 9.2, 10.0 or later.
 
+Update of Docker Images
+-----------------------
+
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 10.2 and Python 3.6.
+
 
 CuPy v7
 =======
