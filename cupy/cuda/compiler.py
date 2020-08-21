@@ -25,7 +25,12 @@ class NVCCException(Exception):
     pass
 
 
-def _run_nvcc(cmd, cwd, log_stream=None):
+class HIPCCException(Exception):
+    pass
+
+
+def _run_cc(cmd, cwd, backend, log_stream=None):
+    # backend in ('nvcc', 'hipcc')
     try:
         log = subprocess.check_output(cmd, cwd=cwd,
                                       stderr=subprocess.STDOUT,
@@ -34,19 +39,25 @@ def _run_nvcc(cmd, cwd, log_stream=None):
             log_stream.write(log)
         return log
     except subprocess.CalledProcessError as e:
-        msg = ('`nvcc` command returns non-zero exit status. \n'
-               'command: {0}\n'
-               'return-code: {1}\n'
+        msg = ('`{0}` command returns non-zero exit status. \n'
+               'command: {1}\n'
+               'return-code: {2}\n'
                'stdout/stderr: \n'
-               '{2}'.format(e.cmd,
+               '{3}'.format(backend,
+                            e.cmd,
                             e.returncode,
                             e.output))
-        raise NVCCException(msg)
+        if backend == 'nvcc':
+            raise NVCCException(msg)
+        elif backend == 'hipcc':
+            raise HIPCCException(msg)
+        else:
+            raise RuntimeError(msg)
     except OSError as e:
-        msg = 'Failed to run `nvcc` command. ' \
+        msg = 'Failed to run `{0}` command. ' \
               'Check PATH environment variable: ' \
               + str(e)
-        raise OSError(msg)
+        raise OSError(msg.format(backend))
 
 
 def _get_nvrtc_version():
@@ -200,7 +211,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             cmd.append(cu_path)
 
             try:
-                _run_nvcc(cmd, root_dir, log_stream)
+                _run_cc(cmd, root_dir, 'nvcc', log_stream)
             except NVCCException as e:
                 cex = CompileException(str(e), source, cu_path, options,
                                        'nvcc')
@@ -220,7 +231,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             cmd.append(cu_path)
 
             try:
-                _run_nvcc(cmd, root_dir, log_stream)
+                _run_cc(cmd, root_dir, 'nvcc', log_stream)
             except NVCCException as e:
                 cex = CompileException(str(e), source, cu_path, options,
                                        'nvcc')
@@ -237,7 +248,7 @@ def compile_using_nvcc(source, options=(), arch=None,
             cmd = cmd_partial + list(options)
 
             try:
-                _run_nvcc(cmd, root_dir, log_stream)
+                _run_cc(cmd, root_dir, 'nvcc', log_stream)
             except NVCCException as e:
                 cex = CompileException(str(e), '', '', options, 'nvcc')
                 raise cex
@@ -311,14 +322,14 @@ def compile_with_cache(
 
     # We silently ignore CUPY_CACHE_IN_MEMORY if nvcc is in use, because it
     # must dump files to disk.
-    # TODO(leofang): check if hiprtc can avoid disk access
     cache_in_memory = (
         _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
         and backend == 'nvrtc')
 
     if runtime.is_hip:
-        return _compile_with_cache_hipcc(
-            source, options, arch, cache_dir, extra_source)
+        return _compile_with_cache_hip(
+            source, options, arch, cache_dir, extra_source,
+            log_stream)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
@@ -530,29 +541,11 @@ def _get_hipcc_version():
     global _hipcc_version
     if _hipcc_version is None:
         cmd = ['hipcc', '--version']
-        _hipcc_version = _run_hipcc(cmd)
+        _hipcc_version = _run_cc(cmd, '.', 'hipcc')
     return _hipcc_version
 
 
-def _run_hipcc(cmd, cwd='.', env=None):
-    try:
-        return subprocess.check_output(cmd, stderr=subprocess.STDOUT, cwd=cwd,
-                                       env=env)
-    except subprocess.CalledProcessError as e:
-        # TODO(leofang): raise an "HIPCCException"?
-        raise RuntimeError(
-            '`hipcc` command returns non-zero exit status. \n'
-            'command: {0}\n'
-            'return-code: {1}\n'
-            'stdout/stderr: \n'
-            '{2}'.format(e.cmd, e.returncode, e.output.decode('utf-8')))
-    except OSError as e:
-        raise OSError('Failed to run `hipcc` command. '
-                      'Check PATH environment variable: '
-                      + str(e))
-
-
-def _hipcc(source, options, arch):
+def compile_using_hipcc(source, options, arch, log_stream=None):
     assert len(arch) > 0
     # pass HCC_AMDGPU_TARGET same as arch
     cmd = ['hipcc', '--genco'] + list(options)
@@ -567,11 +560,20 @@ def _hipcc(source, options, arch):
 
         cmd += [in_path, '-o', out_path]
 
-        env = os.environ.copy()
+        try:
+            output = _run_cc(cmd, root_dir, 'hipcc', log_stream)
+        except HIPCCException as e:
+            cex = CompileException(str(e), source, in_path, options,
+                                   'hipcc')
 
-        output = _run_hipcc(cmd, root_dir, env)
+            dump = _get_bool_env_variable(
+                'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+            if dump:
+                cex.dump(sys.stderr)
+
+            raise cex
         if not os.path.isfile(out_path):
-            raise RuntimeError(
+            raise HIPCCException(
                 '`hipcc` command does not generate output file. \n'
                 'command: {0}\n'
                 'stdout/stderr: \n'
@@ -590,9 +592,9 @@ def _preprocess_hipcc(source, options):
             cu_file.write(source)
 
         cmd.append(cu_path)
-        pp_src = _run_hipcc(cmd, root_dir)
-        assert isinstance(pp_src, bytes)
-        return re.sub(b'(?m)^#.*$', b'', pp_src)
+        pp_src = _run_cc(cmd, root_dir, 'hipcc')
+        assert isinstance(pp_src, str)
+        return re.sub('(?m)^#.*$', '', pp_src)
 
 
 def _convert_to_hip_source(source):
@@ -608,9 +610,13 @@ def _convert_to_hip_source(source):
     return "#include <hip/hip_runtime.h>\n" + source
 
 
-def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
-                              use_converter=True):
+def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
+                              log_stream=None, use_converter=True):
     global _empty_file_preprocess_cache
+
+    if _is_cudadevrt_needed(options):
+        raise ValueError('separate compilation is not supported in HIP')
+
     if cache_dir is None:
         cache_dir = get_cache_dir()
     if arch is None:
@@ -643,8 +649,8 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
     # to avoid performance degradation.
     path = os.path.join(cache_dir, name)
     if os.path.exists(path):
-        with open(path, 'rb') as file:
-            data = file.read()
+        with open(path, 'rb') as f:
+            data = f.read()
         if len(data) >= 32:
             hash_value = data[:32]
             binary = data[32:]
@@ -653,9 +659,7 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
                 mod.load(binary)
                 return mod
 
-    # TODO(leofang): catch HIPCCException and convert it to CompileException
-    # with backend='hipcc'
-    binary = _hipcc(source, options, arch)
+    binary = compile_using_hipcc(source, options, arch, log_stream)
     binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
 
     # shutil.move is not atomic operation, so it could result in a corrupted

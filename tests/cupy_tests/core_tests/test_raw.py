@@ -552,6 +552,8 @@ class TestRaw(unittest.TestCase):
             self.mod2.get_function('no_such_kernel')
         assert 'CUDA_ERROR_NOT_FOUND' in str(ex.value)
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip,
+                     'ROCm/HIP does not support dynamic parallelism')
     def test_dynamical_parallelism(self):
         ker = cupy.RawKernel(_test_source4, 'test_kernel', options=('-dc',),
                              backend=self.backend)
@@ -569,10 +571,14 @@ class TestRaw(unittest.TestCase):
         inner_chunk = 2
         x = cupy.zeros((N,), dtype=cupy.float32)
         if self.backend == 'nvrtc':
+            # TODO(leofang): fix this in #3238
+            if cupy.cuda.runtime.is_hip:
+                self.skipTest('hiprtc is not yet supported')
+
             # raised when calling ls.complete()
             with pytest.raises(cupy.cuda.driver.CUDADriverError):
                 ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
-        else:  # nvcc
+        else:  # nvcc or hipcc
             with pytest.raises(cupy.cuda.compiler.CompileException):
                 ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
 
