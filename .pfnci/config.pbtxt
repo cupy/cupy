@@ -112,8 +112,9 @@ configs {
   key: "cupy.py3.amd"
   value {
     requirement {
-      cpu: 2
-      memory: 10
+      cpu: 8
+      memory: 24
+      disk: 10
     }
     time_limit: {
       seconds: 3600
