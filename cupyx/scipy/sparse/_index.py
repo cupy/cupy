@@ -329,8 +329,9 @@ def _csr_sample_offsets(n_row, n_col,
     Bj[Bj < 0] += n_col
 
     offsets = cupy.zeros(n_samples, dtype=Aj.dtype)
-
     dupl = cupy.array([False], dtype='bool')
+
+    # TODO(cjnolet): find a way to increase parallelism
     _csr_sample_offsets_ker(n_row, n_col,
                             Ap, Aj, Bi, Bj,
                             offsets, dupl,
@@ -369,6 +370,124 @@ def _csr_row_slice(start_maj, step_maj, Ap, Aj, Ax, Bp):
     return Bj, Bx
 
 
+_insert_many_populate_arrays = core.ElementwiseKernel(
+        '''raw I insert_indices, raw T insert_values, raw I insertion_indptr,
+        raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
+        'raw I Bj, raw T Bx', '''
+
+        const I input_row_start = Ap[i];
+        const I input_row_end = Ap[i+1];
+        const I input_count = input_row_end - input_row_start;
+
+        const I insert_row_start = insertion_indptr[i];
+        const I insert_row_end = insertion_indptr[i+1];
+        const I insert_count = insert_row_end - insert_row_start;
+
+        I input_offset = 0;
+        I insert_offset = 0;
+
+        I output_n = Bp[i];
+
+        I cur_existing_index = -1;
+        T cur_existing_value = -1;
+
+        I cur_insert_index = -1;
+        T cur_insert_value = -1;
+
+        if(input_offset < input_count) {
+            cur_existing_index = Aj[input_row_start+input_offset];
+            cur_existing_value = Ax[input_row_start+input_offset];
+        }
+
+        if(insert_offset < insert_count) {
+            cur_insert_index = insert_indices[insert_row_start+insert_offset];
+            cur_insert_value = insert_values[insert_row_start+insert_offset];
+        }
+
+
+        for(I jj = 0; jj < input_count + insert_count; jj++) {
+
+            // if we have both available, use the lowest one.
+            if(input_offset < input_count &&
+               insert_offset < insert_count) {
+
+                if(cur_existing_index < cur_insert_index) {
+                    Bj[output_n] = cur_existing_index;
+                    Bx[output_n] = cur_existing_value;
+
+                    ++input_offset;
+
+                    if(input_offset < input_count) {
+                        cur_existing_index = Aj[input_row_start+input_offset];
+                        cur_existing_value = Ax[input_row_start+input_offset];
+                    }
+
+
+                } else {
+                    Bj[output_n] = cur_insert_index;
+                    Bx[output_n] = cur_insert_value;
+
+                    ++insert_offset;
+                    if(insert_offset < insert_count) {
+                        cur_insert_index =
+                            insert_indices[insert_row_start+insert_offset];
+                        cur_insert_value =
+                            insert_values[insert_row_start+insert_offset];
+                    }
+                }
+
+            } else if(input_offset < input_count) {
+                Bj[output_n] = cur_existing_index;
+                Bx[output_n] = cur_existing_value;
+
+                ++input_offset;
+                if(input_offset < input_count) {
+                    cur_existing_index = Aj[input_row_start+input_offset];
+                    cur_existing_value = Ax[input_row_start+input_offset];
+                }
+
+            } else {
+                    Bj[output_n] = cur_insert_index;
+                    Bx[output_n] = cur_insert_value;
+
+                    ++insert_offset;
+                    if(insert_offset < insert_count) {
+                        cur_insert_index =
+                            insert_indices[insert_row_start+insert_offset];
+                        cur_insert_value =
+                            insert_values[insert_row_start+insert_offset];
+                    }
+            }
+
+            output_n++;
+        }
+    ''', 'csr_copy_existing_indices_kern', no_return=True)
+
+
+# Create a filter mask based on the lowest value of order
+_unique_mask_kern = core.ElementwiseKernel(
+    '''raw I rows, raw I cols, raw I order''',
+    '''raw bool mask''',
+    """
+    I cur_row = rows[i];
+    I next_row = rows[i+1];
+
+    I cur_col = cols[i];
+    I next_col = cols[i+1];
+
+    I cur_order = order[i];
+    I next_order = order[i+1];
+
+    if(cur_row == next_row && cur_col == next_col) {
+        if(cur_order < next_order)
+            mask[i] = false;
+        else
+            mask[i+1] = false;
+    }
+    """, no_return=True
+)
+
+
 def _csr_sample_values(n_row, n_col,
                        Ap, Aj, Ax,
                        Bi, Bj):
@@ -389,6 +508,8 @@ def _csr_sample_values(n_row, n_col,
     Bj[Bj < 0] += n_col
 
     Bx = cupy.empty(Bi.size, dtype=Ax.dtype)
+
+    # TODO(cjnolet): find a way to increase parallelism
     _csr_sample_values_kern(n_row, n_col,
                             Ap, Aj, Ax,
                             Bi, Bj, Bx, size=Bi.size)
@@ -496,7 +617,6 @@ class IndexMixin(object):
         if i.shape != j.shape:
             raise IndexError('number of row and column indices differ')
 
-        from .base import isspmatrix
         if isspmatrix(x):
             if i.ndim == 1:
                 # Inner indexing, so treat them like row vectors.
@@ -531,14 +651,14 @@ class IndexMixin(object):
         M, N = self.shape
         row, col = _unpack_index(key)
 
-        # Scipy calls sputils.isintlike() rather than
-        # isinstance(x, _int_scalar_types). Comparing directly to int
-        # here to minimize the impact of nested exception catching
-
         if self._is_scalar(row):
             row = row.item()
         if self._is_scalar(col):
             col = col.item()
+
+        # Scipy calls sputils.isintlike() rather than
+        # isinstance(x, _int_scalar_types). Comparing directly to int
+        # here to minimize the impact of nested exception catching
 
         if isinstance(row, _int_scalar_types):
             row = _normalize_index(row, M, 'row')

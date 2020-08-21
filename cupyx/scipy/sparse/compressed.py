@@ -5,7 +5,6 @@ try:
 except ImportError:
     scipy_available = False
 
-import cupy.prof
 import warnings
 
 import cupy
@@ -332,99 +331,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         diff = diff_out;
         ''', 'has_canonical_format')
-
-    _insert_many_populate_arrays = core.ElementwiseKernel(
-        '''raw I insert_indices, raw T insert_values, raw I insertion_indptr,
-        raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
-        'raw I Bj, raw T Bx', '''
-
-        const I input_row_start = Ap[i];
-        const I input_row_end = Ap[i+1];
-        const I input_count = input_row_end - input_row_start;
-
-        const I insert_row_start = insertion_indptr[i];
-        const I insert_row_end = insertion_indptr[i+1];
-        const I insert_count = insert_row_end - insert_row_start;
-
-        I input_offset = 0;
-        I insert_offset = 0;
-
-        I output_n = Bp[i];
-
-        I cur_existing_index = -1;
-        T cur_existing_value = -1;
-
-        I cur_insert_index = -1;
-        T cur_insert_value = -1;
-
-        if(input_offset < input_count) {
-            cur_existing_index = Aj[input_row_start+input_offset];
-            cur_existing_value = Ax[input_row_start+input_offset];
-        }
-
-        if(insert_offset < insert_count) {
-            cur_insert_index = insert_indices[insert_row_start+insert_offset];
-            cur_insert_value = insert_values[insert_row_start+insert_offset];
-        }
-
-
-        for(I jj = 0; jj < input_count + insert_count; jj++) {
-
-            // if we have both available, use the lowest one.
-            if(input_offset < input_count &&
-               insert_offset < insert_count) {
-
-                if(cur_existing_index < cur_insert_index) {
-                    Bj[output_n] = cur_existing_index;
-                    Bx[output_n] = cur_existing_value;
-
-                    ++input_offset;
-
-                    if(input_offset < input_count) {
-                        cur_existing_index = Aj[input_row_start+input_offset];
-                        cur_existing_value = Ax[input_row_start+input_offset];
-                    }
-
-
-                } else {
-                    Bj[output_n] = cur_insert_index;
-                    Bx[output_n] = cur_insert_value;
-
-                    ++insert_offset;
-                    if(insert_offset < insert_count) {
-                        cur_insert_index =
-                            insert_indices[insert_row_start+insert_offset];
-                        cur_insert_value =
-                            insert_values[insert_row_start+insert_offset];
-                    }
-                }
-
-            } else if(input_offset < input_count) {
-                Bj[output_n] = cur_existing_index;
-                Bx[output_n] = cur_existing_value;
-
-                ++input_offset;
-                if(input_offset < input_count) {
-                    cur_existing_index = Aj[input_row_start+input_offset];
-                    cur_existing_value = Ax[input_row_start+input_offset];
-                }
-
-            } else {
-                    Bj[output_n] = cur_insert_index;
-                    Bx[output_n] = cur_insert_value;
-
-                    ++insert_offset;
-                    if(insert_offset < insert_count) {
-                        cur_insert_index =
-                            insert_indices[insert_row_start+insert_offset];
-                        cur_insert_value =
-                            insert_values[insert_row_start+insert_offset];
-                    }
-            }
-
-            output_n++;
-        }
-    ''', 'csr_copy_existing_indices_kern', no_return=True)
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None:
@@ -877,7 +783,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # check_bounds(j, N)
         return i, j, M, N
 
-    @cupy.prof.TimeRangeDecorator(message="_set_many", color_id=9)
     def _set_many(self, i, j, x):
         """Sets value at each (i, j) to x
         Here (i,j) index major and minor respectively, and must not contain
@@ -937,29 +842,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # only assign zeros to the existing sparsity structure
         self.data[offsets[offsets > -1]] = 0
 
-    # Create a filter mask based on the lowest value of order
-    _unique_mask_kern = core.ElementwiseKernel(
-        '''raw I rows, raw I cols, raw I order''',
-        '''raw bool mask''',
-        """
-        I cur_row = rows[i];
-        I next_row = rows[i+1];
-
-        I cur_col = cols[i];
-        I next_col = cols[i+1];
-
-        I cur_order = order[i];
-        I next_order = order[i+1];
-
-        if(cur_row == next_row && cur_col == next_col) {
-            if(cur_order < next_order)
-                mask[i] = false;
-            else
-                mask[i+1] = false;
-        }
-        """, no_return=True
-    )
-
     def _select_last_indices(self, i, j, x, idx_dtype):
         """Find the unique indices for each row and keep only the last"""
         i = cupy.asarray(i, dtype=idx_dtype)
@@ -973,8 +855,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         data_inserts = x[order]
 
         mask = cupy.ones(indptr_inserts.size, dtype='bool')
-        self._unique_mask_kern(indptr_inserts, indices_inserts, order, mask,
-                               size=indptr_inserts.size-1)
+        _index._unique_mask_kern(indptr_inserts, indices_inserts, order, mask,
+                                 size=indptr_inserts.size-1)
 
         return indptr_inserts[mask], indices_inserts[mask], data_inserts[mask]
 
@@ -1001,7 +883,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         new_indptr_lookup[1:][rows] = row_counts
         cupy.cumsum(new_indptr_lookup, out=new_indptr_lookup)
 
-        self._insert_many_populate_arrays(
+        _index._insert_many_populate_arrays(
             indices_inserts, data_inserts, new_indptr_lookup,
             self.indptr, self.indices, self.data, new_indptr, new_indices,
             new_data, size=self.indptr.size-1)
