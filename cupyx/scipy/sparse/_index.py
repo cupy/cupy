@@ -390,9 +390,9 @@ def _select_last_indices(i, j, x, idx_dtype):
 
 
 _insert_many_populate_arrays = core.ElementwiseKernel(
-        '''raw I insert_indices, raw T insert_values, raw I insertion_indptr,
+    '''raw I insert_indices, raw T insert_values, raw I insertion_indptr,
         raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
-        'raw I Bj, raw T Bx', '''
+    'raw I Bj, raw T Bx', '''
 
         const I input_row_start = Ap[i];
         const I input_row_end = Ap[i+1];
