@@ -127,25 +127,30 @@ def polydiv(u, v):
     if not v.any():
         raise ZeroDivisionError()
 
-    u = u + 0.0
-    v = v + 0.0
+    if (u.dtype.kind == 'f' and v.dtype.kind in 'ui') or (
+            u.dtype.kind in 'ui' and v.dtype.kind == 'f'):
+        dtype = numpy.float64
+    elif (u.dtype.kind == 'c' and v.dtype.kind in 'ui') or (
+            u.dtype.kind in 'ui' and v.dtype.kind == 'c'):
+        dtype = numpy.complex128
+    else:
+        dtype = cupy.result_type(u, v, 0.0)
+
+    u = u.astype(dtype, copy=False)
+    v = v.astype(dtype, copy=False)
 
     len1 = u.size
     len2 = v.size
-    dtype = cupy.result_type(u, v)
 
     if len2 == 1:
         quot = u / v[0]
-        rem = u[:1] * 0
+        rem = cupy.zeros_like(u[:1])
     elif len1 < len2:
-        quot = cupy.trim_zeros(u[:1] * 0, trim='f')
-        if quot.size == 0:
-            quot = cupy.array([0.])
+        quot = cupy.zeros_like(u[:1])
+        quot = cupy.polynomial.polyutils.trimseq(quot[::-1])[::-1]
         rem = u
     else:
         dlen = len1 - len2
-        u = u.astype(dtype, copy=False)
-        v = v.astype(dtype, copy=False)
         scale = v[0]
         v = v[1:] / scale
 
@@ -155,13 +160,7 @@ def polydiv(u, v):
         quot = u[: dlen + 1] / scale
         rem = u[dlen + 1:]
 
-    mask = cupy.allclose(rem, 0, rtol=1e-05, atol=1e-05)
-    rem[mask] = 0
-    rem = cupy.trim_zeros(rem, trim='f')
-    if rem.size == 0:
-        rem = cupy.array([0.])
-
-    return quot.astype(dtype, copy=False), rem.astype(dtype, copy=False)
+    return quot, cupy.polynomial.polyutils.trimcoef(rem[::-1], 1e-5)[::-1]
 
 
 def _polypow(x, n):

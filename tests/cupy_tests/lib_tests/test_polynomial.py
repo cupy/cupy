@@ -539,7 +539,7 @@ class TestPolydivInvalidShapeCombination(unittest.TestCase):
 class TestPolyArithmeticDiffTypes(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'], no_bool=True)
+        names=['dtype1', 'dtype2'], no_bool=True, full=True)
     @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
     def test_polyroutine_diff_types_array(self, xp, dtype1, dtype2):
         func = getattr(xp, self.fname)
@@ -548,7 +548,7 @@ class TestPolyArithmeticDiffTypes(unittest.TestCase):
         return func(a, b)
 
     @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'], no_bool=True)
+        names=['dtype1', 'dtype2'], no_bool=True, full=True)
     @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
     def test_polyroutine_diff_types_poly1d(self, xp, dtype1, dtype2):
         func = getattr(xp, self.fname)
