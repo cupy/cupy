@@ -118,6 +118,9 @@ configs {
     time_limit: {
       seconds: 3600
     }
+    checkout_strategy {
+      include_dot_git: true
+    }
     command: "bash .pfnci/script.sh py37.amd"
   }
 }
