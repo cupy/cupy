@@ -499,7 +499,20 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_arrayXarray(self, row, col):
         # inner indexing
-        raise NotImplementedError()
+        idx_dtype = self.indices.dtype
+        M, N = self._swap(*self.shape)
+        major, minor = self._swap(row, col)
+        major = cupy.asarray(major, dtype=idx_dtype)
+        minor = cupy.asarray(minor, dtype=idx_dtype)
+
+        val = _index._csr_sample_values(
+            M, N, self.indptr, self.indices, self.data,
+            major.ravel(), minor.ravel())
+
+        if major.ndim == 1:
+            # Scipy returns `matrix` here
+            return cupy.expand_dims(val, 0)
+        return self.__class__(val.reshape(major.shape))
 
     def _get_columnXarray(self, row, col):
         # outer indexing

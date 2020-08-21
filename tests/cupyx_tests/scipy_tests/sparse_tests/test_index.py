@@ -50,11 +50,11 @@ class TestIndexing(unittest.TestCase):
 
         if min is not None:
 
-            expected = expected[maj_h, min_h]
             actual = a[maj, min]
+            expected = expected[maj_h, min_h]
         else:
-            expected = expected[maj_h]
             actual = a[maj]
+            expected = expected[maj_h]
 
         if compare_dense:
             actual = actual.todense()
@@ -71,7 +71,7 @@ class TestIndexing(unittest.TestCase):
                 actual.data, expected.data)
         else:
             testing.assert_array_equal(
-                actual, expected)
+                actual, numpy.asarray(expected))
 
     @staticmethod
     def _get_index_combos(idx):
@@ -102,13 +102,6 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
-
-    def test_major_slice_minor_all(self):
-        self._run(slice(1, 5), slice(None))
-        self._run(slice(5, 1), slice(None))
-
-    def test_major_slice_with_step(self):
-
         self._run(slice(1, 20, 2), slice(1, 5, 1))
         self._run(slice(20, 1, 2), slice(1, 5, 1))
         self._run(slice(1, 15, 2), slice(1, 5, 1))
@@ -116,6 +109,15 @@ class TestIndexing(unittest.TestCase):
         self._run(slice(1, 15, 5), slice(1, 5, 1))
         self._run(slice(20, 1, 5), slice(None))
         self._run(slice(1, 20, 5), slice(None))
+
+    def test_major_slice_minor_all(self):
+        self._run(slice(1, 5), slice(None))
+        self._run(slice(5, 1), slice(None))
+
+    def test_major_slice_minor_scalar(self):
+        self._run(slice(1, 5), 5)
+        self._run(slice(5, 1), 5)
+        self._run(slice(5, 1, -1), 5)
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
@@ -139,6 +141,15 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_all_minor_all(self):
         self._run(slice(None), slice(None))
+
+    def test_ellipsis(self):
+        self._run(Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, 1, flip_for_csc=False)
+        self._run(1, Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(None), flip_for_csc=False)
+        self._run(slice(None), Ellipsis, flip_for_csc=False)
+        self._run(Ellipsis, slice(1, None), flip_for_csc=False)
+        self._run(slice(1, None), Ellipsis, flip_for_csc=False)
 
     # Major Indexing
 
@@ -204,6 +215,10 @@ class TestIndexing(unittest.TestCase):
                   compare_dense=True)
 
     def test_major_all_minor_fancy(self):
+
+        self._run(slice(None), [1, 5, 2, 3, 4, 5, 4, 1, 5])
+        self._run(slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5])
+
         self._run(slice(None), [1, 5, 4, 5, 2, 4, 1])
 
         for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
@@ -223,14 +238,32 @@ class TestIndexing(unittest.TestCase):
         for idx in self._get_index_combos([1, 5, 4, 1, 2]):
             self._run(5, idx)
 
-    def test_ellipsis(self):
-        self._run(Ellipsis, flip_for_csc=False)
-        self._run(Ellipsis, 1, flip_for_csc=False)
-        self._run(1, Ellipsis, flip_for_csc=False)
-        self._run(Ellipsis, slice(None), flip_for_csc=False)
-        self._run(slice(None), Ellipsis, flip_for_csc=False)
-        self._run(Ellipsis, slice(1, None), flip_for_csc=False)
-        self._run(slice(1, None), Ellipsis, flip_for_csc=False)
+    # Inner Indexing
+
+    def test_major_fancy_minor_fancy(self):
+
+        for idx in self._get_index_combos([1, 5, 4]):
+            self._run(idx, idx)
+
+        self._run([1, 5, 4], [1, 5, 4])
+
+        maj = self._get_index_combos([2, 0, 10, 0, 2])
+        min = self._get_index_combos([9, 2, 1, 0, 2])
+
+        for (idx1, idx2) in zip(maj, min):
+            self._run(idx1, idx2)
+
+        self._run([2, 0, 10, 0], [9, 2, 1, 0])
+
+        maj = self._get_index_combos([2, 0, 2])
+        min = self._get_index_combos([2, 1, 1])
+
+        for (idx1, idx2) in zip(maj, min):
+            self._run(idx1, idx2)
+
+        self._run([2, 0, 2], [2, 1, 2])
+
+    # Bad Indexing
 
     def test_bad_indexing(self):
         with pytest.raises(IndexError):
@@ -241,3 +274,6 @@ class TestIndexing(unittest.TestCase):
 
         with pytest.raises(ValueError):
             self._run([1, 2, 3], [1, 2, 3, 4])
+
+        with pytest.raises(IndexError):
+            self._run([[0, 0], [1, 1]])
