@@ -66,7 +66,7 @@ Here are the environment variables CuPy uses.
 
 Moreover, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit
 Documentation`_ will also be honored. When ``CUPY_ACCELERATORS`` or ``NVCC`` environment variables
-are set, g++-6 or later is required as the runtime host compiler. Please refer
+are set, g++-6 or later is required as the runtime host compiler. Please refer to
 :ref:`install_cupy_from_source` for the details on how to install g++.
 
 .. _CUDA Toolkit Documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#env-vars
