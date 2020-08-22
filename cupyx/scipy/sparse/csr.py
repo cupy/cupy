@@ -202,6 +202,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     def __rtruediv__(self, other):
         raise NotImplementedError
 
+    # TODO(unno): Implement check_format
+
     def diagonal(self, k=0):
         # TODO(unno): Implement diagonal
         raise NotImplementedError
@@ -236,6 +238,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         else:
             msg = 'expected scalar, dense matrix/vector or csr matrixr'
             raise TypeError(msg)
+
+    # TODO(unno): Implement prune
 
     # TODO(unno): Implement reshape
 
