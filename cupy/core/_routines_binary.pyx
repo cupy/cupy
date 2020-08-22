@@ -1,8 +1,6 @@
 from cupy.core._kernel import create_ufunc
 from cupy.core._reduction import create_reduction_func
 
-from cupy.core.core cimport ndarray
-
 
 cdef _create_bit_op(name, op, no_bool, doc=''):
     types = () if no_bool else ('??->?',)
