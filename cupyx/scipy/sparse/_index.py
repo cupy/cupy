@@ -312,7 +312,6 @@ _csr_sample_offsets_ker = core.ElementwiseKernel(
                 if (Aj[jj] == k) {
                     offset = -2;
                     dupl[0] = true;
-                    return;
                 }
             }
         }

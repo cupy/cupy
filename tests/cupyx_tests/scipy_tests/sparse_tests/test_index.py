@@ -12,7 +12,7 @@ import pytest
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.2, 0.5, 0.9],
+    'density': [0.9],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
     'n_rows': [25, 150],
     'n_cols': [25, 150]
@@ -117,6 +117,7 @@ class TestSetitemIndexing(unittest.TestCase):
 
     def test_major_scalar_minor_scalar(self):
         self._run(5, 5)
+        self._run(10, 24, 5)
 
     def test_major_scalar_minor_fancy(self):
         self._run(5, [1, 5, 4])
@@ -191,13 +192,26 @@ class TestSetitemIndexing(unittest.TestCase):
         self._run(slice(10, 2, 5), slice(None))
         self._run(slice(10, 0, 10), slice(None))
 
-    def test_fancy_setting(self):
-        self._run(0, 0, 5)
-        self._run([0, 5, 10, 2], 0, [1, 2, 3, 2])
-
-        self._run([[True], [False], [True]], data=5)
+    @testing.with_requires('scipy>=1.5.0')
+    def test_fancy_setting_bool(self):
+        # Unfortunately, boolean setting is implemented slightly
+        # differently between Scipy 1.4 and 1.5. Using the most
+        # up-to-date version in CuPy.
         self._run([[True], [False], [False], [True], [True], [True]], data=5)
         self._run([True, False, False, True, True, True], data=5)
+        self._run([[True], [False], [True]], data=5)
+
+    def test_fancy_setting(self):
+        self._run([0, 5, 10, 2], 0, [1, 2, 3, 2])
+
+        # Indexes with duplicates should follow 'last-in-wins'
+        # But Cupy dense indexing doesn't support this yet:
+        # ref: https://github.com/cupy/cupy/issues/3836
+        # Starting with an empty array for now, since insertions
+        # use `last-in-wins`.
+        self.density = 0.0  # Zeroing out density to force only insertions
+        self._run([0, 5, 10, 2, 0, 10], [1, 2, 3, 4, 1, 3],
+                  [1, 2, 3, 4, 5, 6])
 
 
 @testing.parameterize(*testing.product({

@@ -877,8 +877,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         rows, ui_indptr = cupy.unique(indptr_inserts, return_index=True)
 
-        to_add = cupy.array([j.size], ui_indptr.dtype)
-        ui_indptr = cupy.hstack([ui_indptr, to_add])
+        to_add = cupy.empty(ui_indptr.size+1, ui_indptr.dtype)
+        to_add[-1] = j.size
+        to_add[:-1] = ui_indptr
+        ui_indptr = to_add
 
         # Compute the counts for each row in the insertion array
         row_counts = cupy.zeros(ui_indptr.size-1, dtype=idx_dtype)
