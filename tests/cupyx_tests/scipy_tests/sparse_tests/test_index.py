@@ -12,12 +12,13 @@ import pytest
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.2, 0.5, 0.8],
+    'density': [0.2, 0.5, 0.9],
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
     'n_rows': [25, 150],
     'n_cols': [25, 150]
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.4.0')
+@testing.gpu
 class TestSetitemIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None, data=5):
