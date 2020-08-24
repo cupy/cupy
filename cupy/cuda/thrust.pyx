@@ -14,9 +14,6 @@ from cupy.cuda cimport stream
 from cupy_backends.cuda.api cimport runtime
 
 
-available = True
-
-
 ###############################################################################
 # Memory Management
 ###############################################################################
@@ -66,6 +63,10 @@ cdef extern from 'cupy_thrust.h':
 ###############################################################################
 # Python interface
 ###############################################################################
+
+
+available = True
+
 
 def get_build_version():
     return THRUST_VERSION
