@@ -23,9 +23,9 @@ _cudnn_records = []
 
 
 def _make_cudnn_url(public_version, filename):
-    # http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.2/cudnn-11.0-linux-x64-v8.0.2.39.tgz
+    # https://developer.download.nvidia.com/compute/redist/cudnn/v8.0.2/cudnn-11.0-linux-x64-v8.0.2.39.tgz
     return (
-        'http://developer.download.nvidia.com/compute/redist/cudnn' +
+        'https://developer.download.nvidia.com/compute/redist/cudnn' +
         '/v{}/{}'.format(public_version, filename))
 
 
