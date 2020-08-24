@@ -14,6 +14,7 @@ import json
 import os
 import platform
 import shutil
+import sys
 import tempfile
 import urllib.request
 
@@ -117,7 +118,7 @@ def calculate_destination(prefix, cuda, lib, lib_ver):
     return os.path.join(prefix, cuda, lib, lib_ver)
 
 
-def main():
+def main(args):
     parser = argparse.ArgumentParser()
 
     # TODO(kmaehashi) support cuTENSOR and NCCL
@@ -130,7 +131,7 @@ def main():
     parser.add_argument('--action', choices=['install', 'dump'],
                         default='install',
                         help='Action to perform')
-    params = parser.parse_args()
+    params = parser.parse_args(args)
 
     if params.prefix is not None:
         params.prefix = os.path.abspath(params.prefix)
@@ -147,4 +148,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
