@@ -124,7 +124,7 @@ def _make_col(xp, sp, dtype):
 
 
 def _make_shape(xp, sp, dtype):
-    return sp.csr_matrix((3, 4))
+    return sp.csr_matrix((3, 4), dtype=dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -1105,6 +1105,30 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         y = m / xp.array(2)
         return y.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_dense_row(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(4, dtype=self.dtype)
+        return m / x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_dense_col(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(3, dtype=self.dtype).reshape(3, 1)
+        return m / x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_dense_matrix(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(12, dtype=self.dtype).reshape(3, 4)
+        return m / x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_csr_matrix(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = _make4(xp, sp, self.dtype)
+        return m / x
 
 
 @testing.parameterize(*testing.product({
