@@ -3,7 +3,6 @@ This file must not depend on any other CuPy modules.
 """
 
 import ctypes
-import importlib
 import json
 import os
 import os.path
