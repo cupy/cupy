@@ -269,36 +269,6 @@ def _csr_row_index(rows,
     return Bj, Bx
 
 
-def _csr_row_slice(start_maj, step_maj, Ap, Aj, Ax, Bp):
-    """Populate indices and data arrays of sparse matrix by slicing the
-    rows of an input sparse matrix
-
-    Args
-        start : starting row
-        step : step increment size
-        Ap : indptr array of input sparse matrix
-        Aj : indices array of input sparse matrix
-        Ax : data array of input sparse matrix
-        Bp : indices array of output sparse matrix
-
-    Returns
-        Bj : indices array of output sparse matrix
-        Bx : data array of output sparse matrix
-    """
-
-    in_rows = cupy.arange(start_maj, start_maj + (Bp.size - 1) * step_maj,
-                          step_maj, dtype=Bp.dtype)
-    offsetsB = Ap[in_rows] - Bp[:-1]
-    B_size = int(Bp[-1])
-    offsetsA = offsetsB[
-        cupy.searchsorted(
-            Bp, cupy.arange(B_size, dtype=Bp.dtype), 'right') - 1]
-    offsetsA += cupy.arange(offsetsA.size, dtype=offsetsA.dtype)
-    Bj = Aj[offsetsA]
-    Bx = Ax[offsetsA]
-    return Bj, Bx
-
-
 def _csr_sample_values(n_row, n_col,
                        Ap, Aj, Ax,
                        Bi, Bj):

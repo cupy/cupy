@@ -667,8 +667,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                                      copy=copy)
             res_data = cupy.array(self.data[idx_start:idx_stop], copy=copy)
         else:
-            res_indices, res_data = _index._csr_row_slice(
-                start, step, self.indptr, self.indices, self.data, res_indptr)
+            rows = cupy.arange(
+                start, start + (res_indptr.size - 1) * step, step,
+                dtype=res_indptr.dtype)
+            res_indices, res_data = _index._csr_row_index(
+                rows, self.indptr, self.indices, self.data, res_indptr)
 
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
