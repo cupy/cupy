@@ -1,4 +1,4 @@
-from cupy import core
+from cupy import _core
 
 
 def rollaxis(a, axis, start=0):
@@ -15,7 +15,7 @@ def rollaxis(a, axis, start=0):
     .. seealso:: :func:`numpy.rollaxis`
 
     """
-    return core.rollaxis(a, axis, start)
+    return _core.rollaxis(a, axis, start)
 
 
 def swapaxes(a, axis1, axis2):
@@ -57,7 +57,7 @@ def moveaxis(a, source, destination):
 
     """
     # TODO(fukatani): check type
-    return core.moveaxis(a, source, destination)
+    return _core.moveaxis(a, source, destination)
 
 
 def transpose(a, axes=None):

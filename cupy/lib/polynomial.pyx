@@ -2,7 +2,7 @@ import numbers
 
 import numpy
 
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 
 import cupy
 from cupy.lib import _routines_poly

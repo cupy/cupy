@@ -7,7 +7,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import cuda
 from cupy.random import _generator
 from cupy import testing
@@ -483,7 +483,7 @@ class TestLogNormal(RandomGeneratorTestCase):
         vals = self.generate_many(
             self.args[0], self.args[1], self.size, dtype, _count=10)
 
-        shape = core.get_size(self.size)
+        shape = _core.get_size(self.size)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype == dtype
@@ -544,7 +544,7 @@ class TestMultivariateNormal(RandomGeneratorTestCase):
             mean=self.args[0], cov=self.args[1], size=self.size, tol=self.tol,
             dtype=dtype, _count=10)
 
-        shape = core.get_size(self.size)
+        shape = _core.get_size(self.size)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype == dtype
@@ -633,7 +633,7 @@ class TestNormal(RandomGeneratorTestCase):
         vals = self.generate_many(
             self.args[0], self.args[1], self.size, dtype, _count=10)
 
-        shape = core.get_size(self.size)
+        shape = _core.get_size(self.size)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype == dtype
@@ -728,7 +728,7 @@ class TestRandomSample(unittest.TestCase):
     def check_random_sample(self, dtype):
         vals = [self.rs.random_sample(self.size, dtype) for _ in range(10)]
 
-        shape = core.get_size(self.size)
+        shape = _core.get_size(self.size)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype == dtype

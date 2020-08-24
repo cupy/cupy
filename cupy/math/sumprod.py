@@ -1,8 +1,8 @@
 import numpy
 
 import cupy
-from cupy.core import _routines_math as _math
-from cupy.core import _fusion_thread_local
+from cupy._core import _routines_math as _math
+from cupy._core import _fusion_thread_local
 from cupy.util import _normalize_axis_index
 
 

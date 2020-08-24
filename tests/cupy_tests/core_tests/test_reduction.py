@@ -1,7 +1,7 @@
 import unittest
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import testing
 
 
@@ -40,7 +40,7 @@ class AbstractReductionTestBase:
 class SimpleReductionFunctionTestBase(AbstractReductionTestBase):
 
     def get_sum_func(self):
-        return core.create_reduction_func(
+        return _core.create_reduction_func(
             'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None), 0)
 
 

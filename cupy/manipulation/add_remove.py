@@ -1,6 +1,6 @@
 import cupy
 
-from cupy import core
+from cupy import _core
 
 # TODO(okuta): Implement delete
 
@@ -13,7 +13,7 @@ from cupy import core
 
 # TODO(okuta): Implement resize
 
-_first_nonzero_krnl = core.ReductionKernel(
+_first_nonzero_krnl = _core.ReductionKernel(
     'T data, int64 len',
     'int64 y',
     'data == T(0) ? len : _j',

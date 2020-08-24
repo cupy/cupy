@@ -9,7 +9,7 @@ except ImportError:
     _optuna_available = False
 
 
-from cupy.core import _optimize_config
+from cupy._core import _optimize_config
 from cupyx import time
 
 

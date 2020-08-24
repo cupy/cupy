@@ -2,7 +2,7 @@ import math
 
 import unittest
 
-from cupy.core import internal
+from cupy._core import internal
 from cupy import testing
 
 

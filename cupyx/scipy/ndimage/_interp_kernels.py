@@ -1,5 +1,5 @@
 import cupy
-import cupy.core.internal
+import cupy._core.internal
 
 from cupyx.scipy.ndimage import _util
 

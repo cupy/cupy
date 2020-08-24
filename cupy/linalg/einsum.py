@@ -4,7 +4,7 @@ import string
 import warnings
 
 import cupy
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 from cupy import util
 from cupy.linalg.einsum_opt import _greedy_path
 from cupy.linalg.einsum_opt import _optimal_path
@@ -287,7 +287,7 @@ def _flatten_transpose(a, axeses):
         shapes.append([a.shape[axis] for axis in axes])
     return (
         a.transpose(transpose_axes).reshape(
-            tuple([cupy.core.internal.prod(shape) for shape in shapes])),
+            tuple([cupy._core.internal.prod(shape) for shape in shapes])),
         shapes
     )
 

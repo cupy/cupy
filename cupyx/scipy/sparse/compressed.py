@@ -6,7 +6,7 @@ except ImportError:
     scipy_available = False
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy._creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
@@ -20,12 +20,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                                 sparse_data._minmax_mixin,
                                 _index.IndexMixin):
 
-    _compress_getitem_kern = core.ElementwiseKernel(
+    _compress_getitem_kern = _core.ElementwiseKernel(
         'T d, S ind, int32 minor', 'raw T answer',
         'if (ind == minor) atomicAdd(&answer[0], d);',
         'compress_getitem')
 
-    _compress_getitem_complex_kern = core.ElementwiseKernel(
+    _compress_getitem_complex_kern = _core.ElementwiseKernel(
         'T real, T imag, S ind, int32 minor',
         'raw T answer_real, raw T answer_imag',
         '''
@@ -36,7 +36,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ''',
         'compress_getitem_complex')
 
-    _max_reduction_kern = core.RawKernel(r'''
+    _max_reduction_kern = _core.RawKernel(r'''
         extern "C" __global__
         void max_reduction(double* data, int* x, int* y, int length,
                            double* z) {
@@ -73,7 +73,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         ''', 'max_reduction')
 
-    _max_nonzero_reduction_kern = core.RawKernel(r'''
+    _max_nonzero_reduction_kern = _core.RawKernel(r'''
         extern "C" __global__
         void max_nonzero_reduction(double* data, int* x, int* y, int length,
                                    double* z) {
@@ -110,7 +110,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         ''', 'max_nonzero_reduction')
 
-    _min_reduction_kern = core.RawKernel(r'''
+    _min_reduction_kern = _core.RawKernel(r'''
         extern "C" __global__
         void min_reduction(double* data, int* x, int* y, int length,
                            double* z) {
@@ -147,7 +147,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         ''', 'min_reduction')
 
-    _min_nonzero_reduction_kern = core.RawKernel(r'''
+    _min_nonzero_reduction_kern = _core.RawKernel(r'''
         extern "C" __global__
         void min_nonzero_reduction(double* data, int* x, int* y, int length,
                                    double* z) {
@@ -184,7 +184,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         ''', 'min_nonzero_reduction')
 
-    _max_arg_reduction_kern = core.RawKernel(r'''
+    _max_arg_reduction_kern = _core.RawKernel(r'''
         extern "C" __global__
         void max_arg_reduction(double* data, int* indices, int* x, int* y,
                                int length, long long* z) {
@@ -239,7 +239,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         ''', 'max_arg_reduction')
 
-    _min_arg_reduction_kern = core.RawKernel(r'''
+    _min_arg_reduction_kern = _core.RawKernel(r'''
         extern "C" __global__
         void min_arg_reduction(double* data, int* indices, int* x, int* y,
                                int length, long long* z) {
@@ -296,7 +296,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ''', 'min_arg_reduction')
 
     # TODO(leofang): rewrite a more load-balanced approach than this naive one?
-    _has_sorted_indices_kern = core.ElementwiseKernel(
+    _has_sorted_indices_kern = _core.ElementwiseKernel(
         'raw T indptr, raw T indices',
         'bool diff',
         '''
@@ -310,7 +310,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ''', 'has_sorted_indices')
 
     # TODO(leofang): rewrite a more load-balanced approach than this naive one?
-    _has_canonical_format_kern = core.ElementwiseKernel(
+    _has_canonical_format_kern = _core.ElementwiseKernel(
         'raw T indptr, raw T indices',
         'bool diff',
         '''
@@ -508,7 +508,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _major_index_fancy(self, idx):
         """Index along the major axis where idx is an array of ints.
         """
-        raise NotImplementedError()
+        _, N = self._swap(*self.shape)
+        M = len(idx)
+        new_shape = self._swap(M, N)
+        if M == 0:
+            return self.__class__(new_shape)
+
+        row_nnz = cupy.diff(self.indptr)
+        idx_dtype = self.indices.dtype
+        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
+        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
+
+        res_indices, res_data = _index._csr_row_index(
+            idx, self.indptr,
+            self.indices, self.data, res_indptr)
+
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
 
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.

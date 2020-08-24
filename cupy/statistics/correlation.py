@@ -4,7 +4,7 @@ import warnings
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 
 
 def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None):
@@ -126,7 +126,7 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None):
         y = cupy.array(y, copy=False, ndmin=2, dtype=dtype)
         if not rowvar and y.shape[0] != 1:
             y = y.T
-        X = core.concatenate_method((X, y), axis=0)
+        X = _core.concatenate_method((X, y), axis=0)
 
     if ddof is None:
         ddof = 0 if bias else 1

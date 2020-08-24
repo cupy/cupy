@@ -7,9 +7,9 @@ import sys
 import cupy_setup_build
 
 
-if len(os.listdir('cupy/core/include/cupy/cub/')) == 0:
+if len(os.listdir('cupy/_core/include/cupy/cub/')) == 0:
     msg = '''
-    The folder cupy/core/include/cupy/cub/ is a git submodule but is
+    The folder cupy/_core/include/cupy/cub/ is a git submodule but is
     currently empty. Please use the command
 
         git submodule update --init
@@ -103,33 +103,33 @@ tests_require = requirements['test']
 
 package_data = {
     'cupy': [
-        'core/include/cupy/complex/arithmetic.h',
-        'core/include/cupy/complex/catrig.h',
-        'core/include/cupy/complex/catrigf.h',
-        'core/include/cupy/complex/ccosh.h',
-        'core/include/cupy/complex/ccoshf.h',
-        'core/include/cupy/complex/cexp.h',
-        'core/include/cupy/complex/cexpf.h',
-        'core/include/cupy/complex/clog.h',
-        'core/include/cupy/complex/clogf.h',
-        'core/include/cupy/complex/complex.h',
-        'core/include/cupy/complex/complex_inl.h',
-        'core/include/cupy/complex/cpow.h',
-        'core/include/cupy/complex/cproj.h',
-        'core/include/cupy/complex/csinh.h',
-        'core/include/cupy/complex/csinhf.h',
-        'core/include/cupy/complex/csqrt.h',
-        'core/include/cupy/complex/csqrtf.h',
-        'core/include/cupy/complex/ctanh.h',
-        'core/include/cupy/complex/ctanhf.h',
-        'core/include/cupy/complex/math_private.h',
-        'core/include/cupy/carray.cuh',
-        'core/include/cupy/complex.cuh',
-        'core/include/cupy/atomics.cuh',
-        'core/include/cupy/type_dispatcher.cuh',
-        'core/include/cupy/cuComplex_bridge.h',
-        'core/include/cupy/_cuda/cuda-*/*.h',
-        'core/include/cupy/_cuda/cuda-*/*.hpp',
+        '_core/include/cupy/complex/arithmetic.h',
+        '_core/include/cupy/complex/catrig.h',
+        '_core/include/cupy/complex/catrigf.h',
+        '_core/include/cupy/complex/ccosh.h',
+        '_core/include/cupy/complex/ccoshf.h',
+        '_core/include/cupy/complex/cexp.h',
+        '_core/include/cupy/complex/cexpf.h',
+        '_core/include/cupy/complex/clog.h',
+        '_core/include/cupy/complex/clogf.h',
+        '_core/include/cupy/complex/complex.h',
+        '_core/include/cupy/complex/complex_inl.h',
+        '_core/include/cupy/complex/cpow.h',
+        '_core/include/cupy/complex/cproj.h',
+        '_core/include/cupy/complex/csinh.h',
+        '_core/include/cupy/complex/csinhf.h',
+        '_core/include/cupy/complex/csqrt.h',
+        '_core/include/cupy/complex/csqrtf.h',
+        '_core/include/cupy/complex/ctanh.h',
+        '_core/include/cupy/complex/ctanhf.h',
+        '_core/include/cupy/complex/math_private.h',
+        '_core/include/cupy/carray.cuh',
+        '_core/include/cupy/complex.cuh',
+        '_core/include/cupy/atomics.cuh',
+        '_core/include/cupy/type_dispatcher.cuh',
+        '_core/include/cupy/cuComplex_bridge.h',
+        '_core/include/cupy/_cuda/cuda-*/*.h',
+        '_core/include/cupy/_cuda/cuda-*/*.hpp',
         'cuda/cupy_thrust.cu',
         'cuda/cupy_cub.cu',
     ],

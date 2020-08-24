@@ -139,7 +139,7 @@ def medfilt(volume, kernel_size=None):
         warnings.warn('kernel_size exceeds volume extent: '
                       'volume will be zero-padded')
 
-    size = cupy.core.internal.prod(kernel_size)
+    size = cupy._core.internal.prod(kernel_size)
     return filters.rank_filter(volume, size // 2, size=kernel_size,
                                output=float, mode='constant')
 

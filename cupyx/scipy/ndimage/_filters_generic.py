@@ -36,7 +36,7 @@ def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
     in_param, out_param = rk.in_params[0], rk.out_params[0]
     out_ctype = out_param.ctype
     if out_param.dtype is None:  # resolve template
-        out_ctype = cupy.core._scalar.get_typename(
+        out_ctype = cupy._core._scalar.get_typename(
             in_dtype if out_param.ctype == in_param.ctype else out_dtype)
 
     # Get code chunks
@@ -127,7 +127,7 @@ def _cindexer_ctor(name, shape):
     return ('CIndexer<{ndim}> {name}; {{ '
             'ptrdiff_t* _raw = (ptrdiff_t*)&{name}; '
             '_raw[0] = {size}; {shape} }}').format(
-        name=name, ndim=len(shape), size=cupy.core.internal.prod(shape),
+        name=name, ndim=len(shape), size=cupy._core.internal.prod(shape),
         shape=_assign_array(shape, 1))
 
 
@@ -150,7 +150,7 @@ def _carray_ctor(name, ctype, ptr, shape, strides=None, c_contig=None):
             '(({ctype}**)_raw)[0] = {ptr}; '
             '_raw[1] = {size}; {shape} {strides} }}'
             ).format(name=name, ctype=ctype, ptr=ptr,
-                     size=cupy.core.internal.prod(shape),
+                     size=cupy._core.internal.prod(shape),
                      c_contig=c_contig, shape=_assign_array(shape, 2),
                      strides=_assign_array(strides, 2+len(shape)))
 
@@ -174,7 +174,7 @@ def _get_type_info(param, dtype, types):
     if param.dtype is not None:
         return param.ctype
     # Template type -> map to actual output type
-    ctype = cupy.core._scalar.get_typename(dtype)
+    ctype = cupy._core._scalar.get_typename(dtype)
     types.setdefault(param.ctype, ctype)
     return ctype
 

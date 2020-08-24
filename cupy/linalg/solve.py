@@ -2,7 +2,7 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy.core import core
+from cupy import _core
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
@@ -173,7 +173,7 @@ def tensorsolve(a, b, axes=None):
         a = a.transpose(allaxes)
 
     oldshape = a.shape[-(a.ndim - b.ndim):]
-    prod = cupy.core.internal.prod(oldshape)
+    prod = cupy._core.internal.prod(oldshape)
 
     a = a.reshape(-1, prod)
     b = b.ravel()
@@ -241,13 +241,13 @@ def lstsq(a, b, rcond=1e-15):
     if b.ndim == 2:
         s1 = cupy.repeat(s1.reshape(-1, 1), b.shape[1], axis=1)
     # Solve the least-squares solution
-    z = core.dot(u.transpose(), b) * s1
-    x = core.dot(vt.transpose(), z)
+    z = _core.dot(u.transpose(), b) * s1
+    x = _core.dot(vt.transpose(), z)
     # Calculate squared Euclidean 2-norm for each column in b - a*x
     if rank != n or m <= n:
         resids = cupy.array([], dtype=a.dtype)
     elif b.ndim == 2:
-        e = b - core.dot(a, x)
+        e = b - _core.dot(a, x)
         resids = cupy.sum(cupy.square(e), axis=0)
     else:
         e = b - cupy.dot(a, x)
@@ -432,7 +432,7 @@ def pinv(a, rcond=1e-15):
     cutoff = rcond * s.max()
     s1 = 1 / s
     s1[s <= cutoff] = 0
-    return core.dot(vt.T, s1[:, None] * u.T)
+    return _core.dot(vt.T, s1[:, None] * u.T)
 
 
 def tensorinv(a, ind=2):
@@ -468,7 +468,7 @@ def tensorinv(a, ind=2):
         raise ValueError('Invalid ind argument')
     oldshape = a.shape
     invshape = oldshape[ind:] + oldshape[:ind]
-    prod = cupy.core.internal.prod(oldshape[ind:])
+    prod = cupy._core.internal.prod(oldshape[ind:])
     a = a.reshape(prod, -1)
     a_inv = inv(a)
     return a_inv.reshape(*invshape)

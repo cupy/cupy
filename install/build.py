@@ -172,7 +172,7 @@ def get_compiler_setting(use_hip):
 
     # for <cupy/complex.cuh>
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                               '../cupy/core/include')
+                               '../cupy/_core/include')
     # TODO(leofang): remove this detection in CuPy v9
     old_cub_path = os.environ.get('CUB_PATH', '')
     if old_cub_path:

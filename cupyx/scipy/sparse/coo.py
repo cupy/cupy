@@ -6,7 +6,7 @@ except ImportError:
     _scipy_available = False
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import csc
@@ -45,7 +45,7 @@ class coo_matrix(sparse_data._data_matrix):
 
     format = 'coo'
 
-    _sum_duplicates_diff = core.ElementwiseKernel(
+    _sum_duplicates_diff = _core.ElementwiseKernel(
         'raw T row, raw T col',
         'T diff',
         '''

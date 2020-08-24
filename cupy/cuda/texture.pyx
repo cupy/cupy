@@ -3,7 +3,7 @@ from libc.string cimport memset as c_memset
 
 import numpy
 
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime cimport Array,\

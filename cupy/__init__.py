@@ -16,10 +16,10 @@ try:
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', category=ImportWarning,
                                 message='can\'t resolve package from __spec__')
-        from cupy import core  # NOQA
+        from cupy import _core  # NOQA
 except ImportError as e:
-    # core is a c-extension module.
-    # When a user cannot import core, it represents that CuPy is not correctly
+    # _core is a c-extension module.
+    # When a user cannot import _core, it represents that CuPy is not correctly
     # built.
     exc_info = sys.exc_info()
     msg = ('''\
@@ -52,7 +52,7 @@ def is_available():
 __version__ = _version.__version__
 
 
-import cupy.core.fusion  # NOQA
+import cupy._core.fusion  # NOQA
 from cupy import fft  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
@@ -68,8 +68,8 @@ from cupy import lib  # NOQA
 
 
 # import class and function
-from cupy.core import ndarray  # NOQA
-from cupy.core import ufunc  # NOQA
+from cupy._core import ndarray  # NOQA
+from cupy._core import ufunc  # NOQA
 
 
 # =============================================================================
@@ -725,7 +725,7 @@ from cupy.statistics.histogram import histogram  # NOQA
 # -----------------------------------------------------------------------------
 # Undocumented functions
 # -----------------------------------------------------------------------------
-from cupy.core import size  # NOQA
+from cupy._core import size  # NOQA
 
 # -----------------------------------------------------------------------------
 # CuPy specific functions
@@ -734,16 +734,16 @@ from cupy.core import size  # NOQA
 from cupy.util import clear_memo  # NOQA
 from cupy.util import memoize  # NOQA
 
-from cupy.core import ElementwiseKernel  # NOQA
-from cupy.core import RawKernel  # NOQA
-from cupy.core import RawModule  # NOQA
-from cupy.core._reduction import ReductionKernel  # NOQA
+from cupy._core import ElementwiseKernel  # NOQA
+from cupy._core import RawKernel  # NOQA
+from cupy._core import RawModule  # NOQA
+from cupy._core._reduction import ReductionKernel  # NOQA
 
 # -----------------------------------------------------------------------------
 # DLPack
 # -----------------------------------------------------------------------------
 
-from cupy.core import fromDlpack  # NOQA
+from cupy._core import fromDlpack  # NOQA
 
 
 def asnumpy(a, stream=None, order='C'):
@@ -798,13 +798,13 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, sparse.spmatrix,
-                            cupy.core.fusion._FusionVarArray,
-                            cupy.core.new_fusion._ArrayProxy)):
+                            cupy._core.fusion._FusionVarArray,
+                            cupy._core.new_fusion._ArrayProxy)):
             return _cupy
     return numpy
 
 
-fuse = cupy.core.fusion.fuse
+fuse = cupy._core.fusion.fuse
 
 disable_experimental_feature_warning = False
 

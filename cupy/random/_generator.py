@@ -11,7 +11,7 @@ import warnings
 from numpy.linalg import LinAlgError
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import cuda
 from cupy.cuda import curand
 from cupy.cuda import device
@@ -73,7 +73,7 @@ class RandomState(object):
         # * curand.generateNormalDouble
         # * curand.generateLogNormal
         # * curand.generateLogNormalDouble
-        size = core.get_size(size)
+        size = _core.get_size(size)
         element_size = functools.reduce(operator.mul, size, 1)
         if element_size % 2 == 0:
             out = cupy.empty(size, dtype=dtype)
@@ -240,7 +240,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    _laplace_kernel = core.ElementwiseKernel(
+    _laplace_kernel = _core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = loc + scale * ((x <= 0.5) ? log(x + x): -log(x + x - 1.0))',
         'laplace_kernel')
@@ -593,7 +593,7 @@ class RandomState(object):
                             % ', '.join(kwarg.keys()))
         return self.normal(size=size, dtype=dtype)
 
-    _mod1_kernel = core.ElementwiseKernel(
+    _mod1_kernel = _core.ElementwiseKernel(
         '', 'T x', 'x = (x == (T)1) ? 0 : x', 'cupy_random_x_mod_1')
 
     def _random_sample_raw(self, size, dtype):
@@ -834,7 +834,7 @@ class RandomState(object):
         sample &= cupy.iinfo(cupy.int_).max
         return sample
 
-    _triangular_kernel = core.ElementwiseKernel(
+    _triangular_kernel = _core.ElementwiseKernel(
         'L left, M mode, R right', 'T x',
         """
         T base, leftbase, ratio, leftprod, rightprod;
@@ -881,7 +881,7 @@ class RandomState(object):
         x = self.random_sample(size=size, dtype=dtype)
         return RandomState._triangular_kernel(left, mode, right, x)
 
-    _scale_kernel = core.ElementwiseKernel(
+    _scale_kernel = _core.ElementwiseKernel(
         'T low, T high', 'T x',
         'x = T(low) + x * T(high - low)',
         'cupy_scale')
@@ -919,7 +919,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    _wald_kernel = core.ElementwiseKernel(
+    _wald_kernel = _core.ElementwiseKernel(
         'T mean, T scale, T U', 'T X',
         """
             T mu_2l;
@@ -1122,7 +1122,7 @@ class RandomState(object):
             array = cupy.argsort(sample)
         return array
 
-    _gumbel_kernel = core.ElementwiseKernel(
+    _gumbel_kernel = _core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = T(loc) - log(-log(x)) * T(scale)',
         'gumbel_kernel')
@@ -1173,7 +1173,7 @@ class RandomState(object):
         return x
 
 
-_cupy_permutation = core.ElementwiseKernel(
+_cupy_permutation = _core.ElementwiseKernel(
     'raw int32 sample, int32 j_start, int32 _j_end',
     'raw int32 array',
     '''

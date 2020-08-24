@@ -11,7 +11,7 @@ import warnings
 import numpy
 
 import cupy
-from cupy.core import internal
+from cupy._core import internal
 from cupy.testing import array
 from cupy.testing import parameterized
 import cupyx

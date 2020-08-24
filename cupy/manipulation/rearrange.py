@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 from cupy import util
-from cupy.core import _reduction
+from cupy._core import _reduction
 
 
 def flip(a, axis=None):

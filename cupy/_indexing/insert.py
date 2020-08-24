@@ -1,7 +1,7 @@
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 
 
 def place(arr, mask, vals):
@@ -67,7 +67,7 @@ def put(a, ind, v, mode='wrap'):
     a.put(ind, v, mode=mode)
 
 
-_putmask_kernel = core.ElementwiseKernel(
+_putmask_kernel = _core.ElementwiseKernel(
     'Q mask, raw S values, uint64 len_vals', 'T out',
     '''
     if (mask) out = (T) values[i % len_vals];

@@ -2,7 +2,7 @@
 
 import threading
 
-from cupy.core import syncdetect
+from cupy._core import syncdetect
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api import runtime as runtime_module
 from cupy_backends.cuda.libs import cublas

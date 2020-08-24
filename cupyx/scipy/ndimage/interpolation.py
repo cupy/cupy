@@ -7,7 +7,7 @@ import numpy
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _interp_kernels
 
-_prod = cupy.core.internal.prod
+_prod = cupy._core.internal.prod
 
 
 def _check_parameter(func_name, order, mode):

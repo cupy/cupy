@@ -4,8 +4,8 @@ import warnings
 import numpy
 
 import cupy
-from cupy import core
-from cupy.core import _accelerator
+from cupy import _core
+from cupy._core import _accelerator
 # TODO(leofang): always import cub when hipCUB is supported
 if not cupy.cuda.runtime.is_hip:
     from cupy.cuda import cub
@@ -14,7 +14,7 @@ else:
 
 
 # TODO(unno): use searchsorted
-_histogram_kernel = core.ElementwiseKernel(
+_histogram_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int32 n_bins',
     'raw U y',
     '''
@@ -36,7 +36,7 @@ _histogram_kernel = core.ElementwiseKernel(
     ''')
 
 
-_weighted_histogram_kernel = core.ElementwiseKernel(
+_weighted_histogram_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int32 n_bins, raw W weights',
     'raw Y y',
     '''
@@ -279,13 +279,13 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
 # TODO(okuta): Implement histogramdd
 
 
-_bincount_kernel = core.ElementwiseKernel(
+_bincount_kernel = _core.ElementwiseKernel(
     'S x', 'raw U bin',
     'atomicAdd(&bin[x], U(1))',
     'bincount_kernel')
 
 
-_bincount_with_weight_kernel = core.ElementwiseKernel(
+_bincount_with_weight_kernel = _core.ElementwiseKernel(
     'S x, T w', 'raw U bin',
     'atomicAdd(&bin[x], w)',
     'bincount_with_weight_kernel')

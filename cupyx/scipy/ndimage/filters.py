@@ -1125,8 +1125,8 @@ def generic_filter1d(input, function, filter_size, axis=-1, output=None,
     origin = _util._check_origin(origin, filter_size)
     _util._check_mode(mode)
     output = _util._get_output(output, input)
-    in_ctype = cupy.core._scalar.get_typename(input.dtype)
-    out_ctype = cupy.core._scalar.get_typename(output.dtype)
+    in_ctype = cupy._core._scalar.get_typename(input.dtype)
+    out_ctype = cupy._core._scalar.get_typename(output.dtype)
     int_type = _util._get_inttype(input)
     n_lines = input.size // input.shape[axis]
     kernel = _filters_generic._get_generic_filter1d(

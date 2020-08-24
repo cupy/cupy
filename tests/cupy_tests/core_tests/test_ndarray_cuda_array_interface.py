@@ -1,7 +1,7 @@
 import unittest
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import testing
 
 
@@ -74,7 +74,7 @@ class TestElementwiseKernel(unittest.TestCase):
 class SimpleReductionFunction(unittest.TestCase):
 
     def setUp(self):
-        self.my_int8_sum = core.create_reduction_func(
+        self.my_int8_sum = _core.create_reduction_func(
             'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None))
 
     @testing.numpy_cupy_allclose()
@@ -102,7 +102,7 @@ class SimpleReductionFunction(unittest.TestCase):
 class TestReductionKernel(unittest.TestCase):
 
     def setUp(self):
-        self.my_sum = core.ReductionKernel(
+        self.my_sum = _core.ReductionKernel(
             'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
 
     @testing.numpy_cupy_allclose()

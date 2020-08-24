@@ -5,7 +5,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import cuda
 from cupy import get_array_module
 from cupy import testing
@@ -14,10 +14,10 @@ from cupy import testing
 class TestGetSize(unittest.TestCase):
 
     def test_none(self):
-        assert core.get_size(None) == ()
+        assert _core.get_size(None) == ()
 
     def check_collection(self, a):
-        assert core.get_size(a) == tuple(a)
+        assert _core.get_size(a) == tuple(a)
 
     def test_list(self):
         self.check_collection([1, 2, 3])
@@ -26,11 +26,11 @@ class TestGetSize(unittest.TestCase):
         self.check_collection((1, 2, 3))
 
     def test_int(self):
-        assert core.get_size(1) == (1,)
+        assert _core.get_size(1) == (1,)
 
     def test_float(self):
         with pytest.raises(ValueError):
-            core.get_size(1.0)
+            _core.get_size(1.0)
 
 
 def wrap_take(array, *args, **kwargs):
@@ -98,7 +98,7 @@ class TestNdarrayInit(unittest.TestCase):
 
     def test_order(self):
         shape = (2, 3, 4)
-        a = core.ndarray(shape, order='F')
+        a = _core.ndarray(shape, order='F')
         a_cpu = numpy.ndarray(shape, order='F')
         assert a.strides == a_cpu.strides
         assert a.flags.f_contiguous
@@ -106,7 +106,7 @@ class TestNdarrayInit(unittest.TestCase):
 
     def test_order_none(self):
         shape = (2, 3, 4)
-        a = core.ndarray(shape, order=None)
+        a = _core.ndarray(shape, order=None)
         a_cpu = numpy.ndarray(shape, order=None)
         assert a.flags.c_contiguous == a_cpu.flags.c_contiguous
         assert a.flags.f_contiguous == a_cpu.flags.f_contiguous
@@ -142,7 +142,7 @@ class TestNdarrayInitRaise(unittest.TestCase):
     def test_unsupported_type(self):
         arr = numpy.ndarray((2, 3), dtype=object)
         with pytest.raises(ValueError):
-            core.array(arr)
+            _core.array(arr)
 
 
 @testing.parameterize(
@@ -162,13 +162,13 @@ class TestNdarrayDeepCopy(unittest.TestCase):
         testing.assert_array_equal(arr, arr2)
 
     def test_deepcopy(self):
-        arr = core.ndarray(self.shape)
+        arr = _core.ndarray(self.shape)
         arr2 = copy.deepcopy(arr)
         self._check_deepcopy(arr, arr2)
 
     @testing.multi_gpu(2)
     def test_deepcopy_multi_device(self):
-        arr = core.ndarray(self.shape)
+        arr = _core.ndarray(self.shape)
         with cuda.Device(1):
             arr2 = copy.deepcopy(arr)
         self._check_deepcopy(arr, arr2)
@@ -181,7 +181,7 @@ class TestNdarrayCopy(unittest.TestCase):
     @testing.multi_gpu(2)
     @testing.for_orders('CFA')
     def test_copy_multi_device_non_contiguous(self, order):
-        arr = core.ndarray((20,))[::2]
+        arr = _core.ndarray((20,))[::2]
         dev1 = cuda.Device(1)
         with dev1:
             arr2 = arr.copy(order)
@@ -190,7 +190,7 @@ class TestNdarrayCopy(unittest.TestCase):
 
     @testing.multi_gpu(2)
     def test_copy_multi_device_non_contiguous_K(self):
-        arr = core.ndarray((20,))[::2]
+        arr = _core.ndarray((20,))[::2]
         with cuda.Device(1):
             with self.assertRaises(NotImplementedError):
                 arr.copy('K')

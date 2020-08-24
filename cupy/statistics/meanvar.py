@@ -2,7 +2,7 @@ import functools
 import numpy
 
 import cupy
-from cupy.core import _routines_statistics as _statistics
+from cupy._core import _routines_statistics as _statistics
 
 
 def median(a, axis=None, out=None, overwrite_input=False, keepdims=False):

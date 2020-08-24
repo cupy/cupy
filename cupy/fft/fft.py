@@ -10,7 +10,7 @@ from cupy.fft import config
 
 
 _reduce = functools.reduce
-_prod = cupy.core.internal.prod
+_prod = cupy._core.internal.prod
 
 
 @cupy.util.memoize()
