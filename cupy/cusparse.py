@@ -6,7 +6,6 @@ import platform
 import cupy
 from cupy.core import _dtype
 from cupy_backends.cuda.libs import cusparse
-from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
 from cupy import util
 import cupyx.scipy.sparse
