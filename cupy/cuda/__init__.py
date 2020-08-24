@@ -24,7 +24,7 @@ from cupy_backends.cuda.libs import profiler  # NOQA
 _available = None
 
 
-class UnavailableModule():
+class _UnavailableModule():
     available = False
 
     def __init__(self, name):
@@ -35,37 +35,38 @@ class UnavailableModule():
 if not runtime.is_hip:
     from cupy.cuda import cub  # NOQA
 else:
-    cub = UnavailableModule('cub')
+    cub = _UnavailableModule('cupy.cuda.cub')
 
 try:
     from cupy.cuda import nvtx  # NOQA
 except ImportError:
-    nvtx = UnavailableModule('nvtx')
+    nvtx = _UnavailableModule('cupy.cuda.nvtx')
 
 try:
     from cupy.cuda import thrust  # NOQA
 except ImportError:
-    thrust = UnavailableModule('thrust')
+    thrust = _UnavailableModule('cupy.cuda.thrust')
 
 try:
     from cupy.cuda import nccl  # NOQA
 except ImportError:
-    nccl = UnavailableModule('nccl')
+    nccl = _UnavailableModule('cupy.cuda.nccl')
 
 try:
     from cupy_backends.cuda.libs import cutensor
 except ImportError:
-    cutensor = UnavailableModule('cutensor')
+    cutensor = _UnavailableModule('cupy.cuda.cutensor')
 
 
-# `*_enabled` flags are kept for backward compatibility.
 def __getattr__(key):
+    # `*_enabled` flags are kept for backward compatibility.
+    # Note: module-level getattr only runs on Python 3.7+.
     if key == 'cusolver_enabled':
         # cuSOLVER is always available in CUDA 8.0+.
         warnings.warn('''
 cupy.cuda.cusolver_enabled has been deprecated in CuPy v8 and will be removed in the future release.
 This flag always returns True as cuSOLVER is always available in CUDA 8.0 or later.
-            ''')  # NOQA
+            ''', DeprecationWarning)  # NOQA
         return True
 
     for mod in [nvtx, nccl, thrust, cub, cutensor]:
@@ -73,11 +74,12 @@ This flag always returns True as cuSOLVER is always available in CUDA 8.0 or lat
         if key == flag:
             warnings.warn('''
 cupy.cuda.{} has been deprecated in CuPy v8 and will be removed in the future release.
-Use {}.available instead.'''.format(flag, mod.__name__))
-            return not isinstance(mod, UnavailableModule)
+Use {}.available instead.
+                '''.format(flag, mod.__name__), DeprecationWarning)  # NOQA
+            return not isinstance(mod, _UnavailableModule)
 
     raise AttributeError(
-        'module \'{}\' has no attribute \'{}\''.format(__name__, key))
+        "module '{}' has no attribute '{}'".format(__name__, key))
 
 
 def is_available():
