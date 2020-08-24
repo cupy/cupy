@@ -5,7 +5,7 @@ from cupy import cuda
 from cupy import prof
 
 
-@unittest.skipUnless(cuda.nvtx_enabled, 'nvtx is required for time_range')
+@unittest.skipUnless(cuda.nvtx.available, 'nvtx is required for time_range')
 class TestTimeRange(unittest.TestCase):
 
     def test_time_range(self):
@@ -82,11 +82,11 @@ class TestTimeRange(unittest.TestCase):
 class TestTimeRangeNVTXUnavailable(unittest.TestCase):
 
     def setUp(self):
-        self.nvtx_enabled = cuda.nvtx_enabled
-        cuda.nvtx_enabled = False
+        self.nvtx_available = cuda.nvtx.available
+        cuda.nvtx.available = False
 
     def tearDown(self):
-        cuda.nvtx_enabled = self.nvtx_enabled
+        cuda.nvtx.available = self.nvtx_available
 
     def test_time_range(self):
         with self.assertRaises(RuntimeError):

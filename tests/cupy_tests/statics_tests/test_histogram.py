@@ -315,7 +315,7 @@ class TestHistogram(unittest.TestCase):
 
 # This class compares CUB results against NumPy's
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubHistogram(unittest.TestCase):
 
     def setUp(self):

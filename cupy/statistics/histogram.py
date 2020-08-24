@@ -6,11 +6,7 @@ import numpy
 import cupy
 from cupy import core
 from cupy.core import _accelerator
-# TODO(leofang): always import cub when hipCUB is supported
-if not cupy.cuda.runtime.is_hip:
-    from cupy.cuda import cub
-else:
-    cub = None
+from cupy.cuda import cub
 
 
 # TODO(unno): use searchsorted
