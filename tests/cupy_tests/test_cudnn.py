@@ -3,10 +3,13 @@ import unittest
 import numpy
 
 import cupy
+import cupy.cuda.cudnn as libcudnn
 
-try:
-    import cupy.cuda.cudnn as libcudnn
-    cudnn_enabled = True
+
+cudnn_enabled = libcudnn.available
+
+
+if cudnn_enabled:
     modes = [
         libcudnn.CUDNN_ACTIVATION_SIGMOID,
         libcudnn.CUDNN_ACTIVATION_RELU,
@@ -24,8 +27,7 @@ try:
         coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
 
     from cupy import cudnn
-except ImportError:
-    cudnn_enabled = False
+else:
     cudnn_version = -1
     modes = []
     coef_modes = []
