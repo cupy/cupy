@@ -997,8 +997,8 @@ uint64_t nvtxRangeStartEx(...) {
 void nvtxRangeEnd(...) {
 }
 
-#endif // #if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
-
 } // extern "C"
+
+#endif // #if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_H
