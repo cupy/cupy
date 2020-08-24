@@ -9,7 +9,6 @@ import os
 import os.path
 import shutil
 import sys
-import types
 import warnings
 
 
