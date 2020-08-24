@@ -4,6 +4,7 @@ import numpy
 
 import cupy
 import cupy.cuda.cudnn as libcudnn
+from cupy import testing
 
 
 cudnn_enabled = libcudnn.available
@@ -32,8 +33,6 @@ else:
     modes = []
     coef_modes = []
     layouts = []
-
-from cupy import testing
 
 
 @testing.parameterize(*testing.product({
