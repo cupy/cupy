@@ -2,46 +2,74 @@ import numpy
 import warnings
 
 import cupy
-from cupy_backends.cuda.api import runtime
+
+from libc.stdint cimport intptr_t, uint32_t, uint64_t
+from cupy.core._carray cimport shape_t
+from cupy.core.core cimport ndarray
+from cupy.core cimport internal
+from cupy_backends.cuda.libs.cutensor cimport Handle
+from cupy_backends.cuda.libs.cutensor cimport TensorDescriptor
+from cupy_backends.cuda.libs.cutensor cimport ContractionDescriptor
+from cupy_backends.cuda.libs.cutensor cimport ContractionFind
+from cupy_backends.cuda.libs.cutensor cimport ContractionPlan
+
+from cupy.core cimport core
+from cupy.core cimport _reduction
+from cupy.cuda cimport device
+from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cutensor
-from cupy.cuda import device
-from cupy.core import _reduction
-
-_handles = {}
-_tensor_descriptors = {}
-_contraction_descriptors = {}
-_contraction_finds = {}
-_contraction_plans = {}
 
 
-class Mode(object):
+cdef dict _handles = {}
+cdef dict _tensor_descriptors = {}
+cdef dict _contraction_descriptors = {}
+cdef dict _contraction_finds = {}
+cdef dict _contraction_plans = {}
+
+
+cdef class Mode(object):
+
+    cdef:
+        object _array
+        readonly int ndim
+        readonly intptr_t data
 
     def __init__(self, mode):
-        self.mode = numpy.array(mode, dtype=numpy.int32)
-        assert self.mode.ndim == 1
-
-    @property
-    def ndim(self):
-        return self.mode.size
-
-    @property
-    def data(self):
-        return self.mode.ctypes.data
+        self._array = numpy.array(mode, dtype=numpy.int32)
+        assert self._array.ndim == 1
+        self.ndim = self._array.size
+        self.data = self._array.ctypes.data
 
     def __repr__(self):
-        return 'mode([' + ', '.join(self.mode) + '])'
+        return 'mode([' + ', '.join(self._array) + '])'
 
 
-def get_handle():
-    dev = device.get_device_id()
+cdef class _Scalar(object):
+
+    cdef:
+        object _array
+        readonly intptr_t ptr
+
+    def __init__(self, value, dtype):
+        self._array = numpy.asarray(value, dtype=dtype)
+        self.ptr = self._array.ctypes.data
+
+    def __repr__(self):
+        return self._array.item()
+
+
+cdef Handle _get_handle():
+    cdef Handle handle
+    cdef int dev = device.get_device_id()
     if dev not in _handles:
-        handle = cutensor.Handle()
+        handle = Handle()
         cutensor.init(handle)
         _handles[dev] = handle
+        return handle
     return _handles[dev]
 
 
-def get_cuda_dtype(numpy_dtype):
+cdef int _get_cuda_dtype(numpy_dtype) except -1:
     if numpy_dtype == numpy.float16:
         return runtime.CUDA_R_16F
     elif numpy_dtype == numpy.float32:
@@ -56,7 +84,7 @@ def get_cuda_dtype(numpy_dtype):
         raise TypeError('Dtype {} is not supported'.format(numpy_dtype))
 
 
-def get_cutensor_dtype(numpy_dtype):
+cdef int _get_cutensor_dtype(numpy_dtype) except -1:
     if numpy_dtype == numpy.float16:
         return cutensor.R_MIN_16F
     elif numpy_dtype == numpy.float32:
@@ -89,7 +117,7 @@ def create_mode(*mode):
     return Mode(integer_mode)
 
 
-def _auto_create_mode(array, mode):
+cdef inline Mode _auto_create_mode(ndarray array, mode):
     if not isinstance(mode, Mode):
         mode = create_mode(*mode)
     if array.ndim != mode.ndim:
@@ -98,7 +126,7 @@ def _auto_create_mode(array, mode):
     return mode
 
 
-def _set_compute_dtype(array_dtype, compute_dtype=None):
+cdef inline _set_compute_dtype(array_dtype, compute_dtype=None):
     if compute_dtype is None:
         if array_dtype == numpy.float16:
             compute_dtype = numpy.float32
@@ -107,7 +135,8 @@ def _set_compute_dtype(array_dtype, compute_dtype=None):
     return compute_dtype
 
 
-def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
+cpdef TensorDescriptor create_tensor_descriptor(
+        ndarray a, int uop=cutensor.OP_IDENTITY, Handle handle=None):
     """Create a tensor descriptor
 
     Args:
@@ -121,7 +150,8 @@ def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
         (Descriptor): A instance of class Descriptor which holds a pointer to
             tensor descriptor and its destructor.
     """
-    handle = get_handle()
+    if handle is None:
+        handle = _get_handle()
     key = (handle.ptr, a.dtype, tuple(a.shape), tuple(a.strides), uop)
     if key in _tensor_descriptors:
         desc = _tensor_descriptors[key]
@@ -129,8 +159,8 @@ def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
     num_modes = a.ndim
     extent = numpy.array(a.shape, dtype=numpy.int64)
     stride = numpy.array(a.strides, dtype=numpy.int64) // a.itemsize
-    cuda_dtype = get_cuda_dtype(a.dtype)
-    desc = cutensor.TensorDescriptor()
+    cuda_dtype = _get_cuda_dtype(a.dtype)
+    desc = TensorDescriptor()
     cutensor.initTensorDescriptor(
         handle, desc, num_modes, extent.ctypes.data, stride.ctypes.data,
         cuda_dtype, uop)
@@ -138,12 +168,12 @@ def create_tensor_descriptor(a, uop=cutensor.OP_IDENTITY):
     return desc
 
 
-def elementwise_trinary(alpha, A, desc_A, mode_A,
-                        beta, B, desc_B, mode_B,
-                        gamma, C, desc_C, mode_C,
-                        out=None,
-                        op_AB=cutensor.OP_ADD, op_ABC=cutensor.OP_ADD,
-                        compute_dtype=None):
+def elementwise_trinary(
+        alpha, ndarray A, TensorDescriptor desc_A, mode_A,
+        beta, ndarray B, TensorDescriptor desc_B, mode_B,
+        gamma, ndarray C, TensorDescriptor desc_C, mode_C,
+        ndarray out=None,
+        op_AB=cutensor.OP_ADD, op_ABC=cutensor.OP_ADD, compute_dtype=None):
     """Element-wise tensor operation for three input tensors
 
     This function performs a element-wise tensor operation of the form:
@@ -186,49 +216,50 @@ def elementwise_trinary(alpha, A, desc_A, mode_A,
     if not (A.dtype == B.dtype == C.dtype):
         raise ValueError(
             'dtype mismatch: ({}, {}, {})'.format(A.dtype, B.dtype, C.dtype))
-    if not (A.flags.c_contiguous
-            and B.flags.c_contiguous
-            and C.flags.c_contiguous):
+    if not (A._c_contiguous and B._c_contiguous and C._c_contiguous):
         raise ValueError('The inputs should be contiguous arrays.')
 
     if out is None:
-        out = cupy.ndarray(C.shape, dtype=C.dtype)
+        out = core._ndarray_init(C._shape, dtype=C.dtype)
     elif C.dtype != out.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
-    elif C.shape != out.shape:
+    elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
-    elif not out.flags.c_contiguous:
+    elif not out._c_contiguous:
         raise ValueError('`out` should be a contiguous array.')
-
-    mode_A = _auto_create_mode(A, mode_A)
-    mode_B = _auto_create_mode(B, mode_B)
-    mode_C = _auto_create_mode(C, mode_C)
 
     if compute_dtype is None:
         compute_dtype = A.dtype
-    alpha = numpy.asarray(alpha, compute_dtype)
-    beta = numpy.asarray(beta, compute_dtype)
-    gamma = numpy.asarray(gamma, compute_dtype)
-    handle = get_handle()
-    cuda_dtype = get_cuda_dtype(compute_dtype)
+
+    return _elementwise_trinary_impl(
+        _get_handle(),
+        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
+        _Scalar(beta, compute_dtype), B, desc_B, _auto_create_mode(B, mode_B),
+        _Scalar(gamma, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
+        out, op_AB, op_ABC, _get_cuda_dtype(compute_dtype))
+
+
+cdef inline ndarray _elementwise_trinary_impl(
+        Handle handle,
+        _Scalar alpha, ndarray A, TensorDescriptor desc_A, Mode mode_A,
+        _Scalar beta, ndarray B, TensorDescriptor desc_B, Mode mode_B,
+        _Scalar gamma, ndarray C, TensorDescriptor desc_C, Mode mode_C,
+        ndarray out, int op_AB, int op_ABC, int compute_type):
     cutensor.elementwiseTrinary(
         handle,
-        alpha.ctypes.data,
-        A.data.ptr, desc_A, mode_A.data,
-        beta.ctypes.data,
-        B.data.ptr, desc_B, mode_B.data,
-        gamma.ctypes.data,
-        C.data.ptr, desc_C, mode_C.data,
+        alpha.ptr, A.data.ptr, desc_A, mode_A.data,
+        beta.ptr, B.data.ptr, desc_B, mode_B.data,
+        gamma.ptr, C.data.ptr, desc_C, mode_C.data,
         out.data.ptr, desc_C, mode_C.data,
-        op_AB, op_ABC, cuda_dtype)
+        op_AB, op_ABC, compute_type)
     return out
 
 
-def elementwise_binary(alpha, A, desc_A, mode_A,
-                       gamma, C, desc_C, mode_C,
-                       out=None,
-                       op_AC=cutensor.OP_ADD,
-                       compute_dtype=None):
+def elementwise_binary(
+        alpha, ndarray A, TensorDescriptor desc_A, mode_A,
+        gamma, ndarray C, TensorDescriptor desc_C, mode_C,
+        ndarray out=None,
+        op_AC=cutensor.OP_ADD, compute_dtype=None):
     """Element-wise tensor operation for two input tensors
 
     This function performs a element-wise tensor operation of the form:
@@ -244,62 +275,67 @@ def elementwise_binary(alpha, A, desc_A, mode_A,
     """
     if A.dtype != C.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(A.dtype, C.dtype))
-    if not (A.flags.c_contiguous and C.flags.c_contiguous):
+    if not (A._c_contiguous and C._c_contiguous):
         raise ValueError('The inputs should be contiguous arrays.')
 
     if out is None:
-        out = cupy.ndarray(C.shape, dtype=C.dtype)
+        out = core._ndarray_init(C._shape, dtype=C.dtype)
     elif C.dtype != out.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
-    elif C.shape != out.shape:
+    elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
-    elif not out.flags.c_contiguous:
+    elif not out._c_contiguous:
         raise ValueError('`out` should be a contiguous array.')
-
-    mode_A = _auto_create_mode(A, mode_A)
-    mode_C = _auto_create_mode(C, mode_C)
 
     if compute_dtype is None:
         compute_dtype = A.dtype
-    alpha = numpy.asarray(alpha, compute_dtype)
-    gamma = numpy.asarray(gamma, compute_dtype)
-    handle = get_handle()
-    cuda_dtype = get_cuda_dtype(compute_dtype)
+
+    return _elementwise_binary_impl(
+        _get_handle(),
+        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
+        _Scalar(gamma, compute_dtype), C, desc_C, _auto_create_mode(A, mode_C),
+        out, op_AC, _get_cuda_dtype(compute_dtype)
+    )
+
+
+cdef inline ndarray _elementwise_binary_impl(
+        Handle handle,
+        _Scalar alpha, ndarray A, TensorDescriptor desc_A, Mode mode_A,
+        _Scalar gamma, ndarray C, TensorDescriptor desc_C, Mode mode_C,
+        ndarray out, int op_AC, int compute_type):
     cutensor.elementwiseBinary(
         handle,
-        alpha.ctypes.data,
-        A.data.ptr, desc_A, mode_A.data,
-        gamma.ctypes.data,
-        C.data.ptr, desc_C, mode_C.data,
+        alpha.ptr, A.data.ptr, desc_A, mode_A.data,
+        gamma.ptr, C.data.ptr, desc_C, mode_C.data,
         out.data.ptr, desc_C, mode_C.data,
-        op_AC, cuda_dtype)
+        op_AC, compute_type)
     return out
 
 
-def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
-                                   C, desc_C, mode_C, compute_dtype=None):
+cdef inline ContractionDescriptor _create_contraction_descriptor(
+        Handle handle,
+        ndarray A, TensorDescriptor desc_A, Mode mode_A,
+        ndarray B, TensorDescriptor desc_B, Mode mode_B,
+        ndarray C, TensorDescriptor desc_C, Mode mode_C,
+        int cutensor_compute_type):
     """Create a contraction descriptor"""
-    assert A.dtype == B.dtype == C.dtype
-    assert A.ndim == mode_A.ndim
-    assert B.ndim == mode_B.ndim
-    assert C.ndim == mode_C.ndim
-    compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
-    handle = get_handle()
-    alignment_req_A = cutensor.getAlignmentRequirement(
+    cdef uint32_t alignment_req_A = cutensor.getAlignmentRequirement(
         handle, A.data.ptr, desc_A)
-    alignment_req_B = cutensor.getAlignmentRequirement(
+    cdef uint32_t alignment_req_B = cutensor.getAlignmentRequirement(
         handle, B.data.ptr, desc_B)
-    alignment_req_C = cutensor.getAlignmentRequirement(
+    cdef uint32_t alignment_req_C = cutensor.getAlignmentRequirement(
         handle, C.data.ptr, desc_C)
-    key = (handle.ptr, compute_dtype,
+    cdef ContractionDescriptor desc
+
+    key = (handle.ptr, cutensor_compute_type,
            desc_A.ptr, mode_A.data, alignment_req_A,
            desc_B.ptr, mode_B.data, alignment_req_B,
            desc_C.ptr, mode_C.data, alignment_req_C)
     if key in _contraction_descriptors:
         desc = _contraction_descriptors[key]
         return desc
-    cutensor_dtype = get_cutensor_dtype(compute_dtype)
-    desc = cutensor.ContractionDescriptor()
+
+    desc = ContractionDescriptor()
     cutensor.initContractionDescriptor(
         handle,
         desc,
@@ -307,52 +343,48 @@ def _create_contraction_descriptor(A, desc_A, mode_A, B, desc_B, mode_B,
         desc_B, mode_B.data, alignment_req_B,
         desc_C, mode_C.data, alignment_req_C,
         desc_C, mode_C.data, alignment_req_C,
-        cutensor_dtype)
+        cutensor_compute_type)
     _contraction_descriptors[key] = desc
     return desc
 
 
-def _create_contraction_plan(desc, algo, ws_pref):
-    """Create a contraction plan"""
-    handle = get_handle()
+cdef inline ContractionFind _create_contraction_find(Handle handle, int algo):
+    """Create a contraction find"""
+    cdef ContractionFind find
+
     key = (handle.ptr, algo)
     if key in _contraction_finds:
         find = _contraction_finds[key]
     else:
-        find = cutensor.ContractionFind()
+        find = ContractionFind()
         cutensor.initContractionFind(handle, find, algo)
         _contraction_finds[key] = find
+    return find
 
-    ws_allocation_success = False
-    for pref in (ws_pref, cutensor.WORKSPACE_MIN):
-        ws_size = cutensor.contractionGetWorkspace(handle, desc, find, pref)
-        try:
-            ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
-            ws_allocation_success = True
-        except Exception:
-            warnings.warn('cuTENSOR: failed to allocate memory of workspace '
-                          'with preference ({}) and size ({}).'
-                          ''.format(pref, ws_size))
-        if ws_allocation_success:
-            break
-    if not ws_allocation_success:
-        raise RuntimeError('cuTENSOR: failed to allocate memory of workspace.')
+
+cdef inline ContractionPlan _create_contraction_plan(
+        Handle handle,
+        ContractionDescriptor desc, ContractionFind find, uint64_t ws_size):
+    """Create a contraction plan"""
+    cdef ContractionPlan plan
 
     key = (handle.ptr, desc.ptr, find.ptr, ws_size)
     if key in _contraction_plans:
         plan = _contraction_plans[key]
     else:
-        plan = cutensor.ContractionPlan()
+        plan = ContractionPlan()
         cutensor.initContractionPlan(handle, plan, desc, find, ws_size)
         _contraction_plans[key] = plan
+    return plan
 
-    return plan, ws, ws_size
 
-
-def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
-                beta, C, desc_C, mode_C, compute_dtype=None,
-                algo=cutensor.ALGO_DEFAULT,
-                ws_pref=cutensor.WORKSPACE_RECOMMENDED):
+def contraction(
+        alpha, ndarray A, TensorDescriptor desc_A, mode_A,
+        ndarray B, TensorDescriptor desc_B, mode_B,
+        beta, ndarray C, TensorDescriptor desc_C, mode_C,
+        compute_dtype=None,
+        int algo=cutensor.ALGO_DEFAULT,
+        int ws_pref=cutensor.WORKSPACE_RECOMMENDED):
     """General tensor contraction
 
     This routine computes the tensor contraction:
@@ -378,7 +410,7 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
         mode_C (cutensor.Mode): A mode object created by `create_mode`.
         compute_dtype (numpy.dtype): Compute type for the intermediate
             computation.
-        algo (cutenorAlgo_t): Allows users to select a specific algorithm.
+        algo (cutensorAlgo_t): Allows users to select a specific algorithm.
             ALGO_DEFAULT lets the heuristic choose the algorithm.
             Any value >= 0 selects a specific GEMM-like algorithm and
             deactivates the heuristic. If a specified algorithm is not
@@ -395,29 +427,61 @@ def contraction(alpha, A, desc_A, mode_A, B, desc_B, mode_B,
     if not (A.dtype == B.dtype == C.dtype):
         raise ValueError(
             'dtype mismatch: ({}, {}, {})'.format(A.dtype, B.dtype, C.dtype))
-    if not (A.flags.c_contiguous
-            and B.flags.c_contiguous
-            and C.flags.c_contiguous):
+    if not (A._c_contiguous and B._c_contiguous and C._c_contiguous):
         raise ValueError('The inputs should be contiguous arrays.')
 
-    mode_A = _auto_create_mode(A, mode_A)
-    mode_B = _auto_create_mode(B, mode_B)
-    mode_C = _auto_create_mode(C, mode_C)
+    compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
+
+    return _contraction_impl(
+        _get_handle(),
+        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
+        B, desc_B, _auto_create_mode(B, mode_B),
+        _Scalar(beta, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
+        _get_cutensor_dtype(compute_dtype), algo, ws_pref)
+
+
+cdef inline ndarray _contraction_impl(
+        Handle handle,
+        _Scalar alpha, ndarray A, TensorDescriptor desc_A, Mode mode_A,
+        ndarray B, TensorDescriptor desc_B, Mode mode_B,
+        _Scalar beta, ndarray C, TensorDescriptor desc_C, Mode mode_C,
+        int cutensor_compute_type, int algo, int ws_pref):
+    cdef ContractionDescriptor desc
+    cdef ContractionFind find
+    cdef ContractionPlan plan
+    cdef uint64_t ws_size
+    cdef ndarray out, ws
 
     out = C
-    compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
-    handle = get_handle()
-    alpha = numpy.asarray(alpha, compute_dtype)
-    beta = numpy.asarray(beta, compute_dtype)
-    desc = _create_contraction_descriptor(A, desc_A, mode_A,
-                                          B, desc_B, mode_B,
-                                          C, desc_C, mode_C,
-                                          compute_dtype=compute_dtype)
-    plan, ws, ws_size = _create_contraction_plan(desc, algo, ws_pref)
-    cutensor.contraction(handle, plan,
-                         alpha.ctypes.data, A.data.ptr, B.data.ptr,
-                         beta.ctypes.data, C.data.ptr, out.data.ptr,
-                         ws.data.ptr, ws_size)
+
+    desc = _create_contraction_descriptor(
+        handle,
+        A, desc_A, mode_A,
+        B, desc_B, mode_B,
+        C, desc_C, mode_C,
+        cutensor_compute_type)
+
+    find = _create_contraction_find(handle, algo)
+
+    # Allocate workspace
+    ws_size = cutensor.contractionGetWorkspace(handle, desc, find, ws_pref)
+    try:
+        ws = core._ndarray_init(shape_t(1, ws_size), dtype=numpy.int8)
+    except Exception:
+        warnings.warn('cuTENSOR: failed to allocate memory of workspace '
+                      'with preference ({}) and size ({}).'
+                      ''.format(ws_pref, ws_size))
+        ws_size = cutensor.contractionGetWorkspace(
+            handle, desc, find, cutensor.WORKSPACE_MIN)
+        ws = core._ndarray_init(shape_t(1, ws_size), dtype=numpy.int8)
+
+    plan = _create_contraction_plan(handle, desc, find, ws_size)
+
+    cutensor.contraction(
+        handle, plan,
+        alpha.ptr, A.data.ptr, B.data.ptr,
+        beta.ptr, C.data.ptr, out.data.ptr,
+        ws.data.ptr, ws_size)
     return out
 
 
@@ -429,8 +493,10 @@ def contraction_max_algos():
     return cutensor.contractionMaxAlgos()
 
 
-def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
-              reduce_op=cutensor.OP_ADD, compute_dtype=None):
+def reduction(
+        alpha, ndarray A, TensorDescriptor desc_A, mode_A,
+        beta, ndarray C, TensorDescriptor desc_C, mode_C,
+        int reduce_op=cutensor.OP_ADD, compute_dtype=None):
     """Tensor reduction
 
     This routine computes the tensor reduction:
@@ -462,40 +528,51 @@ def reduction(alpha, A, desc_A, mode_A, beta, C, desc_C, mode_C,
     Examples:
         See examples/cutensor/reduction.py
     """
+    cdef Handle handle
+
     if A.dtype != C.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(A.dtype, C.dtype))
-    if not (A.flags.c_contiguous and C.flags.c_contiguous):
+    if not (A._c_contiguous and C._c_contiguous):
         raise ValueError('The inputs should be contiguous arrays.')
 
-    mode_A = _auto_create_mode(A, mode_A)
-    mode_C = _auto_create_mode(C, mode_C)
+    compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
+
+    return _reduction_impl(
+        _get_handle(),
+        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
+        _Scalar(beta, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
+        reduce_op, _get_cutensor_dtype(compute_dtype))
+
+
+cdef inline ndarray _reduction_impl(
+        Handle handle,
+        _Scalar alpha, ndarray A, TensorDescriptor desc_A, Mode mode_A,
+        _Scalar beta, ndarray C, TensorDescriptor desc_C, Mode mode_C,
+        int reduce_op, int cutensor_compute_type):
+    cdef uint64_t ws_size
+    cdef ndarray ws, out
 
     out = C
-    compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
-    alpha = numpy.asarray(alpha, compute_dtype)
-    beta = numpy.asarray(beta, compute_dtype)
-    handle = get_handle()
-    cutensor_dtype = get_cutensor_dtype(compute_dtype)
     ws_size = cutensor.reductionGetWorkspace(
         handle,
         A.data.ptr, desc_A, mode_A.data,
         C.data.ptr, desc_C, mode_C.data,
         out.data.ptr, desc_C, mode_C.data,
-        reduce_op, cutensor_dtype)
+        reduce_op, cutensor_compute_type)
     try:
-        ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
+        ws = core._ndarray_init(shape_t(1, ws_size), dtype=numpy.int8)
     except cupy.cuda.memory.OutOfMemoryError:
         warnings.warn('cuTENSOR: failed to allocate memory of workspace '
                       '(size: {}).'.format(ws_size))
         ws_size = 0
-        ws = cupy.ndarray((ws_size,), dtype=numpy.int8)
-    cutensor.reduction(handle,
-                       alpha.ctypes.data,
-                       A.data.ptr, desc_A, mode_A.data,
-                       beta.ctypes.data,
-                       C.data.ptr, desc_C, mode_C.data,
-                       out.data.ptr, desc_C, mode_C.data,
-                       reduce_op, cutensor_dtype, ws.data.ptr, ws_size)
+        ws = core._ndarray_init(shape_t(1, ws_size), dtype=numpy.int8)
+
+    cutensor.reduction(
+        handle,
+        alpha.ptr, A.data.ptr, desc_A, mode_A.data,
+        beta.ptr, C.data.ptr, desc_C, mode_C.data,
+        out.data.ptr, desc_C, mode_C.data,
+        reduce_op, cutensor_compute_type, ws.data.ptr, ws_size)
     return out
 
 
@@ -509,7 +586,42 @@ _cutensor_dtypes = [
 ]
 
 
-def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
+cdef dict _modes = {}
+cdef dict _scalars = {}
+
+
+cdef inline Mode _create_mode_with_cache(axis_or_ndim):
+    cdef Mode mode
+    if axis_or_ndim in _modes:
+        mode = _modes[axis_or_ndim]
+    else:
+        if type(axis_or_ndim) is int:
+            mode = Mode(tuple(range(axis_or_ndim)))
+        else:
+            mode = Mode(axis_or_ndim)
+        _modes[axis_or_ndim] = mode
+    return mode
+
+
+cdef inline _Scalar _create_scalar_with_cache(scale, dtype):
+    cdef _Scalar scalar
+    key = (scale, dtype)
+    if key in _scalars:
+        scalar = _scalars[key]
+    else:
+        scalar = _Scalar(scale, dtype)
+        _scalars[key] = scalar
+    return scalar
+
+
+def _try_reduction_routine(
+        ndarray x, axis, dtype, ndarray out, keepdims, reduce_op, alpha, beta):
+    cdef Handle handle
+    cdef ndarray in_arg, out_arg
+    cdef shape_t out_shape
+    cdef tuple reduce_axis, out_axis
+    cdef TensorDescriptor desc_in, desc_out
+
     if dtype is None:
         dtype = x.dtype
 
@@ -527,11 +639,11 @@ def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
     in_arg = x
 
     reduce_axis, out_axis = _reduction._get_axis(axis, x.ndim)
-    out_shape = tuple(
-        _reduction._get_out_shape(x.shape, reduce_axis, out_axis, keepdims))
+    out_shape = _reduction._get_out_shape(
+        x._shape, reduce_axis, out_axis, keepdims)
     if out is None:
-        out = cupy.empty(out_shape, dtype)
-    elif out.shape != out_shape:
+        out = core._ndarray_init(out_shape, dtype=dtype)
+    elif not internal.vector_equal(out._shape, out_shape):
         # TODO(asi1024): Support broadcast
         return None
     elif out.dtype != dtype:
@@ -542,7 +654,7 @@ def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
 
     if keepdims:
         out_arg = out.reshape(
-            _reduction._get_out_shape(x.shape, reduce_axis, out_axis, False))
+            _reduction._get_out_shape(x._shape, reduce_axis, out_axis, False))
     else:
         out_arg = out
 
@@ -550,13 +662,23 @@ def _try_reduction_routine(x, axis, dtype, out, keepdims, op, alpha, beta):
     in_arg._set_contiguous_strides(in_arg.itemsize, True)
     out_arg._set_contiguous_strides(out_arg.itemsize, True)
 
-    desc_in = create_tensor_descriptor(in_arg)
-    desc_out = create_tensor_descriptor(out_arg)
-    mode_in = list(range(in_arg.ndim))
-    mode_out = [axis for axis in mode_in if (axis not in reduce_axis)]
+    handle = _get_handle()
 
-    reduction(
-        alpha, in_arg, desc_in, mode_in, beta, out_arg, desc_out, mode_out,
-        op, dtype)
+    desc_in = create_tensor_descriptor(in_arg, handle=handle)
+    desc_out = create_tensor_descriptor(out_arg, handle=handle)
+
+    compute_dtype = _set_compute_dtype(in_arg.dtype, dtype)
+
+    _reduction_impl(
+        handle,
+        _create_scalar_with_cache(alpha, compute_dtype),
+        in_arg,
+        desc_in,
+        _create_mode_with_cache(in_arg._shape.size()),
+        _create_scalar_with_cache(beta, compute_dtype),
+        out_arg,
+        desc_out,
+        _create_mode_with_cache(out_axis),
+        reduce_op, _get_cutensor_dtype(compute_dtype))
 
     return out
