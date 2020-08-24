@@ -59,6 +59,7 @@ from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
+# `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
