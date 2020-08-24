@@ -1103,11 +1103,7 @@ class TestRfft2(unittest.TestCase):
         x_orig = x.copy()
         out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes,
                                      norm=self.norm)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1146,11 +1142,7 @@ class TestRfft2(unittest.TestCase):
             kw = {}
         out = _fft_module(xp).irfft2(
             x, s=self.s, axes=self.axes, norm=self.norm, **kw)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1201,11 +1193,7 @@ class TestRfft2(unittest.TestCase):
             assert get_current_plan() is None
         else:
             out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1359,11 +1347,7 @@ class TestRfftn(unittest.TestCase):
         x_orig = x.copy()
         out = _fft_module(xp).irfftn(x, s=self.s, axes=self.axes,
                                      norm=self.norm)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1402,11 +1386,7 @@ class TestRfftn(unittest.TestCase):
             kw = {}
         out = _fft_module(xp).irfftn(
             x, s=self.s, axes=self.axes, norm=self.norm, **kw)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1457,11 +1437,7 @@ class TestRfftn(unittest.TestCase):
             assert get_current_plan() is None
         else:
             out = _fft_module(xp).irfftn(x, s=self.s, axes=self.axes)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
