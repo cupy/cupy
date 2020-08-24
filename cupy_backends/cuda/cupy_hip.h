@@ -6,6 +6,9 @@
 #include <hiprand/hiprand.h>
 #include "cupy_hip_common.h"
 #include "cupy_cuComplex.h"
+#ifndef CUPY_NO_NVTX
+#include <roctx.h>
+#endif // #ifndef CUPY_NO_NVTX
 
 extern "C" {
 
@@ -1064,6 +1067,38 @@ cudaError_t cudaProfilerStart() {
 
 cudaError_t cudaProfilerStop() {
   return hipProfilerStop();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// roctx
+///////////////////////////////////////////////////////////////////////////////
+
+void nvtxMarkA(const char* message) {
+    roctxMarkA(message);
+}
+
+int nvtxRangePushA(const char* message) {
+    return roctxRangePushA(message);
+}
+
+int nvtxRangePop() {
+    return roctxRangePop();
+}
+
+// ----- stubs that are no-ops (copied from cupy_backends/cuda/cupy_cuda.h) -----
+void nvtxMarkEx(...) {
+}
+
+int nvtxRangePushEx(...) {
+    return 0;
+}
+
+uint64_t nvtxRangeStartEx(...) {
+    return 0;
+}
+
+void nvtxRangeEnd(...) {
 }
 
 } // extern "C"

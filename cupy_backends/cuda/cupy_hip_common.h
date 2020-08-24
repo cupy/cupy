@@ -125,6 +125,55 @@ typedef enum libraryPropertyType_t {
     PATCH_LEVEL
 } libraryPropertyType;
 
+
+///////////////////////////////////////////////////////////////////////////////
+// roctx
+///////////////////////////////////////////////////////////////////////////////
+
+// this is to make roctxMarkA etc work; ROCm does not yet support the "Ex" APIs
+#define NVTX_VERSION (100 * ROCTX_VERSION_MAJOR + 10 * ROCTX_VERSION_MINOR)
+
+// ----- stubs that are no-ops (copied from cupy_backends/cuda/cupy_cuda.h) -----
+typedef enum nvtxColorType_t
+{
+    NVTX_COLOR_UNKNOWN  = 0,
+    NVTX_COLOR_ARGB     = 1
+} nvtxColorType_t;
+
+typedef enum nvtxMessageType_t
+{
+    NVTX_MESSAGE_UNKNOWN          = 0,
+    NVTX_MESSAGE_TYPE_ASCII       = 1,
+    NVTX_MESSAGE_TYPE_UNICODE     = 2,
+} nvtxMessageType_t;
+
+typedef union nvtxMessageValue_t
+{
+    const char* ascii;
+    const wchar_t* unicode;
+} nvtxMessageValue_t;
+
+typedef struct nvtxEventAttributes_v1
+{
+    uint16_t version;
+    uint16_t size;
+    uint32_t category;
+    int32_t colorType;
+    uint32_t color;
+    int32_t payloadType;
+    int32_t reserved0;
+    union payload_t
+    {
+        uint64_t ullValue;
+        int64_t llValue;
+        double dValue;
+    } payload;
+    int32_t messageType;
+    nvtxMessageValue_t message;
+} nvtxEventAttributes_v1;
+
+typedef nvtxEventAttributes_v1 nvtxEventAttributes_t;
+
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_HIP_COMMON_H
