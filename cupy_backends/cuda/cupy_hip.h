@@ -1086,21 +1086,6 @@ int nvtxRangePop() {
     return roctxRangePop();
 }
 
-// ----- stubs that are no-ops (copied from cupy_backends/cuda/cupy_cuda.h) -----
-void nvtxMarkEx(...) {
-}
-
-int nvtxRangePushEx(...) {
-    return 0;
-}
-
-uint64_t nvtxRangeStartEx(...) {
-    return 0;
-}
-
-void nvtxRangeEnd(...) {
-}
-
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_HIP_H
