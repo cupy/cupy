@@ -963,26 +963,6 @@ __device__ void sort(X *array, int size) {{
 }}'''
 
 
-__SELECTION_SORT = '''
-__device__ void sort(X *array, int size) {
-    for (int i = 0; i < size-1; ++i) {
-        X min_val = array[i];
-        int min_idx = i;
-        for (int j = i+1; j < size; ++j) {
-            X val_j = array[j];
-            if (val_j < min_val) {
-                min_idx = j;
-                min_val = val_j;
-            }
-        }
-        if (i != min_idx) {
-            array[min_idx] = array[i];
-            array[i] = min_val;
-        }
-    }
-}'''
-
-
 @cupy.util.memoize()
 def _get_shell_gap(filter_size):
     gap = 1
@@ -994,16 +974,51 @@ def _get_shell_gap(filter_size):
 @cupy.util.memoize(for_each_device=True)
 def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
                      int_type):
-    # Below 225 (15x15 median filter) selection sort is 1.5-2.5x faster
-    # Above, shell sort does progressively better (by 3025 (55x55) it is 9x)
-    # Also tried insertion sort, which is always slower than either one
-    sorter = __SELECTION_SORT if filter_size <= 255 else \
-        __SHELL_SORT.format(gap=_get_shell_gap(filter_size))
+    s_rank = min(rank, filter_size - rank - 1)
+    if s_rank <= 80:
+        # When s_rank is small and register usage is low, this partial
+        # selection sort approach is faster than general sorting approach
+        # using shell sort.
+        if s_rank == rank:
+            comp_op = '<'
+        else:
+            comp_op = '>'
+        array_size = s_rank + 1
+        found_post = '''
+            if (iv > {rank} + 1) {{{{
+                int target_iv = 0;
+                X target_val = values[0];
+                for (int jv = 1; jv <= {rank} + 1; jv++) {{{{
+                    if (target_val {comp_op} values[jv]) {{{{
+                        target_val = values[jv];
+                        target_iv = jv;
+                    }}}}
+                }}}}
+                if (target_iv <= {rank}) {{{{
+                    values[target_iv] = values[{rank} + 1];
+                }}}}
+                iv = {rank} + 1;
+            }}}}'''.format(rank=s_rank, comp_op=comp_op)
+        post = '''
+            X target_val = values[0];
+            for (int jv = 1; jv <= {rank}; jv++) {{
+                if (target_val {comp_op} values[jv]) {{
+                    target_val = values[jv];
+                }}
+            }}
+            y=cast<Y>(target_val);'''.format(rank=s_rank, comp_op=comp_op)
+        sorter = ''
+    else:
+        array_size = filter_size
+        found_post = ''
+        post = 'sort(values,{});\ny=cast<Y>(values[{}]);'.format(
+            filter_size, rank)
+        sorter = __SHELL_SORT.format(gap=_get_shell_gap(filter_size))
+
     return _filters_core._generate_nd_kernel(
         'rank_{}_{}'.format(filter_size, rank),
-        'int iv = 0;\nX values[{}];'.format(filter_size),
-        'values[iv++] = {value};',
-        'sort(values,{});\ny=cast<Y>(values[{}]);'.format(filter_size, rank),
+        'int iv = 0;\nX values[{}];'.format(array_size),
+        'values[iv++] = {value};' + found_post, post,
         mode, w_shape, int_type, offsets, cval, preamble=sorter)
 
 
