@@ -45,11 +45,11 @@ class RandomState(object):
             are available::
 
                cupy.cuda.curand.CURAND_RNG_PSEUDO_DEFAULT
-               cupy.cuda.curand.CURAND_RNG_XORWOW
-               cupy.cuda.curand.CURAND_RNG_MRG32K3A
-               cupy.cuda.curand.CURAND_RNG_MTGP32
-               cupy.cuda.curand.CURAND_RNG_MT19937
-               cupy.cuda.curand.CURAND_RNG_PHILOX4_32_10
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_XORWOW
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_MRG32K3A
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_MTGP32
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_MT19937
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_PHILOX4_32_10
 
     """
 
