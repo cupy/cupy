@@ -4,6 +4,7 @@ import numpy
 import platform
 
 import cupy
+from cupy.core import _dtype
 from cupy_backends.cuda.libs import cusparse
 from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
@@ -65,19 +66,6 @@ def _call_cusparse(name, dtype, *args):
         raise TypeError
     f = getattr(cusparse, prefix + name)
     return f(*args)
-
-
-def _dtype_to_DataType(dtype):
-    if dtype == 'f':
-        return runtime.CUDA_R_32F
-    elif dtype == 'd':
-        return runtime.CUDA_R_64F
-    elif dtype == 'F':
-        return runtime.CUDA_C_32F
-    elif dtype == 'D':
-        return runtime.CUDA_C_64F
-    else:
-        raise TypeError
 
 
 _available_cusparse_version = {
@@ -252,7 +240,7 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
     if y is None:
         y = cupy.zeros(m, dtype)
 
-    datatype = _dtype_to_DataType(dtype)
+    datatype = _dtype.to_cuda_dtype(dtype)
     algmode = cusparse.CUSPARSE_ALG_MERGE_PATH if \
         merge_path else cusparse.CUSPARSE_ALG_NAIVE
     transa_flag = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
@@ -960,7 +948,7 @@ def csr2cscEx2(x):
         indptr = cupy.zeros(n + 1, 'i')
     else:
         indptr = cupy.empty(n + 1, 'i')
-        x_dtype = _dtype_to_DataType(x.dtype)
+        x_dtype = _dtype.to_cuda_dtype(x.dtype)
         action = cusparse.CUSPARSE_ACTION_NUMERIC
         ibase = cusparse.CUSPARSE_INDEX_BASE_ZERO
         algo = cusparse.CUSPARSE_CSR2CSC_ALG1
@@ -1036,7 +1024,7 @@ def csc2csrEx2(x):
         indptr = cupy.zeros(m + 1, 'i')
     else:
         indptr = cupy.empty(m + 1, 'i')
-        x_dtype = _dtype_to_DataType(x.dtype)
+        x_dtype = _dtype.to_cuda_dtype(x.dtype)
         action = cusparse.CUSPARSE_ACTION_NUMERIC
         ibase = cusparse.CUSPARSE_INDEX_BASE_ZERO
         algo = cusparse.CUSPARSE_CSR2CSC_ALG1
@@ -1205,7 +1193,7 @@ class SpMatDescriptor(BaseDescriptor):
         assert cupyx.scipy.sparse.issparse(a)
         rows, cols = a.shape
         idx_base = cusparse.CUSPARSE_INDEX_BASE_ZERO
-        cuda_dtype = _dtype_to_DataType(a.dtype)
+        cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
         if a.format == 'csr':
             desc = cusparse.createCsr(
                 rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
@@ -1229,7 +1217,7 @@ class DnVecDescriptor(BaseDescriptor):
 
     @classmethod
     def create(cls, x):
-        cuda_dtype = _dtype_to_DataType(x.dtype)
+        cuda_dtype = _dtype.to_cuda_dtype(x.dtype)
         desc = cusparse.createDnVec(x.size, x.data.ptr, cuda_dtype)
         get = cusparse.dnVecGet
         destroy = cusparse.destroyDnVec
@@ -1244,7 +1232,7 @@ class DnMatDescriptor(BaseDescriptor):
         assert a.flags.f_contiguous
         rows, cols = a.shape
         ld = rows
-        cuda_dtype = _dtype_to_DataType(a.dtype)
+        cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
         desc = cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype,
                                     cusparse.CUSPARSE_ORDER_COL)
         get = cusparse.dnMatGet
@@ -1307,7 +1295,7 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     op_a = _transpose_flag(transa)
     alpha = numpy.array(alpha, a.dtype).ctypes
     beta = numpy.array(beta, a.dtype).ctypes
-    cuda_dtype = _dtype_to_DataType(a.dtype)
+    cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
     alg = cusparse.CUSPARSE_MV_ALG_DEFAULT
     buff_size = cusparse.spMV_bufferSize(handle, op_a, alpha.data,
                                          desc_a.desc, desc_x.desc, beta.data,
@@ -1382,7 +1370,7 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     op_b = _transpose_flag(transb)
     alpha = numpy.array(alpha, a.dtype).ctypes
     beta = numpy.array(beta, a.dtype).ctypes
-    cuda_dtype = _dtype_to_DataType(a.dtype)
+    cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
     alg = cusparse.CUSPARSE_MM_ALG_DEFAULT
     buff_size = cusparse.spMM_bufferSize(handle, op_a, op_b, alpha.data,
                                          desc_a.desc, desc_b.desc, beta.data,
