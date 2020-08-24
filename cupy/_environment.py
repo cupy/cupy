@@ -208,7 +208,8 @@ def _preload_libraries():
 
         lib64dir = 'bin' if sys.platform.startswith('win32') else 'lib64'
         libpath = os.path.join(
-            cupy_cuda_lib_path, config['cuda'], lib, version, lib64dir)
+            cupy_cuda_lib_path, config['cuda'], lib, version, lib64dir,
+            filename)
         if os.path.exists(libpath):
             _log('Trying to load {}'.format(libpath))
             try:
