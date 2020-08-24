@@ -178,3 +178,8 @@ to use these functions.
    cupy.cuda.runtime.eventQuery
    cupy.cuda.runtime.eventRecord
    cupy.cuda.runtime.eventSynchronize
+   cupy.cuda.runtime.ipcGetMemHandle
+   cupy.cuda.runtime.ipcOpenMemHandle
+   cupy.cuda.runtime.ipcCloseMemHandle
+   cupy.cuda.runtime.ipcGetEventHandle
+   cupy.cuda.runtime.ipcOpenEventHandle
