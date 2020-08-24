@@ -230,9 +230,9 @@ def _preload_libraries():
                 _preload_libs[lib] = (filename, ctypes.CDLL(filename))
                 _log('Loaded')
             except Exception as e:
-                # Fallback to the standard shared library lookup which only uses
-                # the major version (e.g., `libcudnn.so.X`).
-                _log('Library {} could not be preloaded'.format(lib))
+                # Fallback to the standard shared library lookup which only
+                # uses the major version (e.g., `libcudnn.so.X`).
+                _log('Library {} could not be preloaded: {}'.format(lib, e))
 
 
 def _get_preload_logs():
@@ -249,4 +249,5 @@ Reason: {exc_type} ({exc})
 
 You can install the library by:
   $ python -m cupyx.tools.install_library --library {lib} --cuda {cuda}
-'''.format(lib=lib, exc_type=type(exc).__name__, exc=str(exc), cuda=config['cuda']))
+'''.format(lib=lib, exc_type=type(exc).__name__, exc=str(exc),
+           cuda=config['cuda']))
