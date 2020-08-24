@@ -8,7 +8,8 @@ from cupy import testing
 from cupy.cuda import runtime
 from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
                                ResourceDescriptor, TextureDescriptor,
-                               TextureObject, TextureReference)
+                               TextureObject, TextureReference,
+                               SurfaceObject)
 
 
 dev = cupy.cuda.Device(runtime.getDevice())
@@ -70,7 +71,7 @@ class TestCUDAarray(unittest.TestCase):
         assert (arr == arr2).all()
 
 
-source_obj = r'''
+source_texobj = r'''
 extern "C"{
 __global__ void copyKernel1Dfetch(float* output,
                                   cudaTextureObject_t texObj,
@@ -153,7 +154,7 @@ __global__ void copyKernel3D_4ch(float* output_x,
 '''
 
 
-source_ref = r'''
+source_texref = r'''
 extern "C"{
 texture<float, cudaTextureType1D, cudaReadModeElementType> texref1D;
 texture<float, cudaTextureType2D, cudaReadModeElementType> texref2D;
@@ -302,9 +303,9 @@ class TestTexture(unittest.TestCase):
         if self.target == 'object':
             # create a texture object
             texobj = TextureObject(res, tex)
-            mod = cupy.RawModule(code=source_obj)
+            mod = cupy.RawModule(code=source_texobj)
         else:  # self.target == 'reference'
-            mod = cupy.RawModule(code=source_ref)
+            mod = cupy.RawModule(code=source_texref)
             texref_name = 'texref'
             texref_name += '3D' if dim == 3 else '2D' if dim == 2 else '1D'
             texrefPtr = mod.get_texref(texref_name)
@@ -375,9 +376,9 @@ class TestTextureVectorType(unittest.TestCase):
         if self.target == 'object':
             # create a texture object
             texobj = TextureObject(res, tex)
-            mod = cupy.RawModule(code=source_obj)
+            mod = cupy.RawModule(code=source_texobj)
         else:  # self.target == 'reference'
-            mod = cupy.RawModule(code=source_ref)
+            mod = cupy.RawModule(code=source_texref)
             texrefPtr = mod.get_texref('texref3Df4')
             # bind texture ref to resource
             texref = TextureReference(texrefPtr, res, tex)  # noqa
@@ -400,3 +401,110 @@ class TestTextureVectorType(unittest.TestCase):
         assert (real_output_y == tex_data[..., 1::4]).all()
         assert (real_output_z == tex_data[..., 2::4]).all()
         assert (real_output_w == tex_data[..., 3::4]).all()
+
+
+source_surfobj = r"""
+extern "C" {
+__global__ void writeKernel1D(cudaSurfaceObject_t surf,
+                              int width)
+{
+    unsigned int w = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (w < width)
+    {
+        float value = w;
+        value *= 3.0;
+        surf1Dwrite(value, surf, w * 4);
+    }
+}
+
+__global__ void writeKernel2D(cudaSurfaceObject_t surf,
+                              int width, int height)
+{
+    unsigned int w = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int h = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (w < width && h < height)
+    {
+        float value = h * width + w;
+        value *= 3.0;
+        surf2Dwrite(value, surf, w * 4, h);
+    }
+}
+
+__global__ void writeKernel3D(cudaSurfaceObject_t surf,
+                              int width, int height, int depth)
+{
+    unsigned int w = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int h = blockIdx.y * blockDim.y + threadIdx.y;
+    unsigned int d = blockIdx.z * blockDim.z + threadIdx.z;
+
+    if (w < width && h < height && d < depth)
+    {
+        float value = d * width * height + h * width + w;
+        value *= 3.0;
+        surf3Dwrite(value, surf, w * 4, h, d);
+    }
+}
+}
+"""
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'dimensions': ((64, 0, 0), (64, 32, 0), (64, 32, 32)),
+}))
+class TestSurface(unittest.TestCase):
+    def test_write_float_surface(self):
+        width, height, depth = self.dimensions
+        dim = 3 if depth != 0 else 2 if height != 0 else 1
+
+        # generate input data and allocate output buffer
+        shape = (depth, height, width) if dim == 3 else \
+                (height, width) if dim == 2 else \
+                (width,)
+
+        # prepare input, output, and surface memory
+        real_output = cupy.zeros(shape, dtype=cupy.float32)
+        assert real_output.flags['C_CONTIGUOUS']
+        ch = ChannelFormatDescriptor(32, 0, 0, 0,
+                                     runtime.cudaChannelFormatKindFloat)
+        expected_output = cupy.arange(numpy.prod(shape), dtype=cupy.float32)
+        expected_output = expected_output.reshape(shape) * 3.0
+        assert expected_output.flags['C_CONTIGUOUS']
+
+        # create resource descriptor
+        # note that surface memory only support CUDA array
+        arr = CUDAarray(ch, width, height, depth,
+                        runtime.cudaArraySurfaceLoadStore)
+        arr.copy_from(real_output)  # init to zero
+        res = ResourceDescriptor(runtime.cudaResourceTypeArray, cuArr=arr)
+
+        # create a surface object; currently we don't support surface reference
+        surfobj = SurfaceObject(res)
+        mod = cupy.RawModule(code=source_surfobj)
+
+        # get and launch the kernel
+        ker_name = 'writeKernel'
+        ker_name += '3D' if dim == 3 else '2D' if dim == 2 else '1D'
+        ker = mod.get_function(ker_name)
+        block = (4, 4, 2) if dim == 3 else (4, 4) if dim == 2 else (4,)
+        grid = ()
+        args = (surfobj,)
+        if dim >= 1:
+            grid_x = (width + block[0] - 1)//block[0]
+            grid = grid + (grid_x,)
+            args = args + (width,)
+        if dim >= 2:
+            grid_y = (height + block[1] - 1)//block[1]
+            grid = grid + (grid_y,)
+            args = args + (height,)
+        if dim == 3:
+            grid_z = (depth + block[2] - 1)//block[2]
+            grid = grid + (grid_z,)
+            args = args + (depth,)
+        ker(grid, block, args)
+
+        # validate result
+        arr.copy_to(real_output)
+        assert (real_output == expected_output).all()

@@ -1,6 +1,7 @@
 import contextlib
 import threading
 
+
 _config = threading.local()
 
 
@@ -48,23 +49,36 @@ def get_config_linalg():
     return value
 
 
+def get_config_fallback_mode():
+    try:
+        value = _config.fallback_mode
+    except AttributeError:
+        value = _config.fallback_mode = 'ignore'
+    return value
+
+
 @contextlib.contextmanager
-def errstate(*, divide=None, over=None, under=None, invalid=None, linalg=None):
+def errstate(*, divide=None, over=None, under=None,
+             invalid=None, linalg=None, fallback_mode=None):
     """
     TODO(hvy): Write docs.
     """
     old_state = seterr(
-        divide=divide, over=over, under=under, invalid=invalid, linalg=linalg)
+        divide=divide, over=over, under=under,
+        invalid=invalid, linalg=linalg, fallback_mode=fallback_mode)
     try:
         yield  # Return `None` similar to `numpy.errstate`.
     finally:
         seterr(**old_state)
 
 
-def seterr(*, divide=None, over=None, under=None, invalid=None, linalg=None):
+def seterr(*, divide=None, over=None, under=None,
+           invalid=None, linalg=None, fallback_mode=None):
     """
     TODO(hvy): Write docs.
     """
+    old_state = geterr()
+
     if divide is not None:
         raise NotImplementedError()
     if over is not None:
@@ -76,8 +90,14 @@ def seterr(*, divide=None, over=None, under=None, invalid=None, linalg=None):
     if linalg is not None:
         if linalg not in ('ignore', 'raise'):
             raise NotImplementedError()
-
-    old_state = geterr()
+    if fallback_mode is not None:
+        if fallback_mode in ['print', 'warn', 'ignore', 'raise']:
+            _config.fallback_mode = fallback_mode
+        elif fallback_mode in ['log', 'call']:
+            raise NotImplementedError
+        else:
+            raise ValueError(
+                '{} is not a valid dispatch type'.format(fallback_mode))
 
     _config.divide = divide
     _config.under = under
@@ -98,4 +118,5 @@ def geterr():
         under=get_config_under(),
         invalid=get_config_invalid(),
         linalg=get_config_linalg(),
+        fallback_mode=get_config_fallback_mode(),
     )

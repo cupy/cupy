@@ -6,7 +6,7 @@ from libcpp.pair cimport pair
 from libcpp.vector cimport vector
 
 
-cdef pair[Py_ssize_t, Py_ssize_t] _get_bound(ndarray array):
+cpdef pair[Py_ssize_t, Py_ssize_t] get_bound(ndarray array):
     cdef Py_ssize_t left = array.data.ptr
     cdef Py_ssize_t right = left
     cdef pair[Py_ssize_t, Py_ssize_t] ret
@@ -33,7 +33,7 @@ cpdef bint may_share_bounds(ndarray a, ndarray b):
             or a.size == 0 or b.size == 0):
         return False
 
-    a_range = _get_bound(a)
-    b_range = _get_bound(b)
+    a_range = get_bound(a)
+    b_range = get_bound(b)
 
     return a_range.first < b_range.second and b_range.first < a_range.second

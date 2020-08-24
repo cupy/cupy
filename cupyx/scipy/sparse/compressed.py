@@ -7,15 +7,18 @@ except ImportError:
 
 import cupy
 from cupy import core
-from cupy.creation import basic
+from cupy._creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import util
 
+from cupyx.scipy.sparse import _index
+
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,
-                                sparse_data._minmax_mixin):
+                                sparse_data._minmax_mixin,
+                                _index.IndexMixin):
 
     _compress_getitem_kern = core.ElementwiseKernel(
         'T d, S ind, int32 minor', 'raw T answer',
@@ -292,6 +295,38 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         ''', 'min_arg_reduction')
 
+    # TODO(leofang): rewrite a more load-balanced approach than this naive one?
+    _has_sorted_indices_kern = core.ElementwiseKernel(
+        'raw T indptr, raw T indices',
+        'bool diff',
+        '''
+        bool diff_out = true;
+        for (T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
+            if (indices[jj] > indices[jj+1]){
+                diff_out = false;
+            }
+        }
+        diff = diff_out;
+        ''', 'has_sorted_indices')
+
+    # TODO(leofang): rewrite a more load-balanced approach than this naive one?
+    _has_canonical_format_kern = core.ElementwiseKernel(
+        'raw T indptr, raw T indices',
+        'bool diff',
+        '''
+        bool diff_out = true;
+        if (indptr[i] > indptr[i+1]) {
+            diff = false;
+            return;
+        }
+        for (T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
+            if (indices[jj] >= indices[jj+1]) {
+                diff_out = false;
+            }
+        }
+        diff = diff_out;
+        ''', 'has_canonical_format')
+
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None:
             if not util.isshape(shape):
@@ -311,7 +346,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if shape is None:
                 shape = arg1.shape
 
-            has_canonical_format = x.has_canonical_format
         elif util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
@@ -321,7 +355,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
-            has_canonical_format = True
 
         elif scipy_available and scipy.sparse.issparse(arg1):
             # Convert scipy.sparse to cupyx.scipy.sparse
@@ -333,7 +366,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             if shape is None:
                 shape = arg1.shape
-            has_canonical_format = x.has_canonical_format
 
         elif isinstance(arg1, tuple) and len(arg1) == 3:
             data, indices, indptr = arg1
@@ -346,8 +378,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
 
-            has_canonical_format = False
-
         elif base.isdense(arg1):
             if arg1.ndim > 2:
                 raise TypeError('expected dimension <= 2 array or matrix')
@@ -359,8 +389,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             copy = False
             if shape is None:
                 shape = arg1.shape
-
-            has_canonical_format = True
 
         else:
             raise ValueError(
@@ -392,7 +420,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         self._descr = cusparse.MatDescriptor.create()
         self._shape = shape
-        self._has_canonical_format = has_canonical_format
 
     def _with_data(self, data, copy=True):
         if copy:
@@ -456,57 +483,130 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def __rsub__(self, other):
         return self._add(other, True, False)
 
-    def __getitem__(self, slices):
-        if isinstance(slices, tuple):
-            slices = list(slices)
-        elif isinstance(slices, list):
-            slices = list(slices)
-            if all([isinstance(s, int) for s in slices]):
-                slices = [slices]
-        else:
-            slices = [slices]
-
-        ellipsis = -1
-        n_ellipsis = 0
-        for i, s in enumerate(slices):
-            if s is None:
-                raise IndexError('newaxis is not supported')
-            elif s is Ellipsis:
-                ellipsis = i
-                n_ellipsis += 1
-        if n_ellipsis > 0:
-            ellipsis_size = self.ndim - (len(slices) - 1)
-            slices[ellipsis:ellipsis + 1] = [slice(None)] * ellipsis_size
-
-        if len(slices) == 2:
-            row, col = slices
-        elif len(slices) == 1:
-            row, col = slices[0], slice(None)
-        else:
-            raise IndexError('invalid number of indices')
-
+    def _get_intXint(self, row, col):
         major, minor = self._swap(row, col)
-        major_size, minor_size = self._swap(*self._shape)
-        if numpy.isscalar(major):
-            i = int(major)
-            if i < 0:
-                i += major_size
-            if not (0 <= i < major_size):
-                raise IndexError('index out of bounds')
-            if numpy.isscalar(minor):
-                j = int(minor)
-                if j < 0:
-                    j += minor_size
-                if not (0 <= j < minor_size):
-                    raise IndexError('index out of bounds')
-                return self._get_single(i, j)
-            elif minor == slice(None):
-                return self._get_major_slice(slice(i, i + 1))
-        elif isinstance(major, slice):
-            if minor == slice(None):
-                return self._get_major_slice(major)
 
-        raise ValueError('unsupported indexing')
+        indptr, indices, data = _index._get_csr_submatrix(
+            self.indptr, self.indices, self.data,
+            major, major + 1, minor, minor + 1)
+        return data.sum(dtype=self.dtype)
+
+    def _get_sliceXslice(self, row, col):
+        major, minor = self._swap(row, col)
+        if major.step in (1, None) and minor.step in (1, None):
+            return self._get_submatrix(major, minor, copy=True)
+        return self._major_slice(major)._minor_slice(minor)
+
+    def _get_arrayXarray(self, row, col):
+        # inner indexing
+        idx_dtype = self.indices.dtype
+        M, N = self._swap(*self.shape)
+        major, minor = self._swap(row, col)
+        major = cupy.asarray(major, dtype=idx_dtype)
+        minor = cupy.asarray(minor, dtype=idx_dtype)
+
+        val = _index._csr_sample_values(
+            M, N, self.indptr, self.indices, self.data,
+            major.ravel(), minor.ravel())
+
+        if major.ndim == 1:
+            # Scipy returns `matrix` here
+            return cupy.expand_dims(val, 0)
+        return self.__class__(val.reshape(major.shape))
+
+    def _get_columnXarray(self, row, col):
+        # outer indexing
+        major, minor = self._swap(row, col)
+        return self._major_index_fancy(major)._minor_index_fancy(minor)
+
+    def _major_index_fancy(self, idx):
+        """Index along the major axis where idx is an array of ints.
+        """
+        _, N = self._swap(*self.shape)
+        M = len(idx)
+        new_shape = self._swap(M, N)
+        if M == 0:
+            return self.__class__(new_shape)
+
+        row_nnz = cupy.diff(self.indptr)
+        idx_dtype = self.indices.dtype
+        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
+        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
+
+        res_indices, res_data = _index._csr_row_index(
+            idx, self.indptr,
+            self.indices, self.data, res_indptr)
+
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
+
+    def _minor_index_fancy(self, idx):
+        """Index along the minor axis where idx is an array of ints.
+        """
+
+        idx_dtype = self.indices.dtype
+        idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
+
+        M, N = self._swap(*self.shape)
+        k = len(idx)
+        new_shape = self._swap(M, k)
+        if k == 0:
+            return self.__class__(new_shape)
+
+        # pass 1: count idx entries and compute new indptr
+        col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
+
+        index1_outs = _index._csr_column_index1(idx, self.indptr, self.indices)
+        res_indptr, indices_mask, col_counts, sort_idxs = index1_outs
+
+        # pass 2: copy indices/data for selected idxs
+
+        res_indices, res_data = _index._csr_column_index2(
+            col_order, col_counts, sort_idxs, self.indptr, indices_mask,
+            self.data, res_indptr)
+
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
+
+    def _minor_slice(self, idx, copy=False):
+        """Index along the minor axis where idx is a slice object.
+        """
+
+        if idx == slice(None):
+            return self.copy() if copy else self
+
+        M, N = self._swap(*self.shape)
+        start, stop, step = idx.indices(N)
+        N = len(range(start, stop, step))
+        if N == 0:
+            return self.__class__(self._swap(M, N))
+        if step == 1:
+            return self._get_submatrix(minor=idx, copy=copy)
+        return self._minor_index_fancy(cupy.arange(start, stop, step))
+
+    @staticmethod
+    def _process_slice(sl, num):
+        if sl is None:
+            i0, i1 = 0, num
+        elif isinstance(sl, slice):
+            i0, i1, stride = sl.indices(num)
+            if stride != 1:
+                raise ValueError('slicing with step != 1 not supported')
+            i0 = min(i0, i1)  # give an empty slice when i0 > i1
+
+        # Scipy calls sputils.isintlike(). Comparing directly to int
+        # here to minimize the impact of nested exception catching
+        elif isinstance(sl, _index._int_scalar_types):
+            if sl < 0:
+                sl += num
+            i0, i1 = sl, sl + 1
+            if i0 < 0 or i1 > num:
+                raise IndexError('index out of bounds: 0 <= %d < %d <= %d' %
+                                 (i0, i1, num))
+        else:
+            raise TypeError('expected slice or scalar')
+
+        return i0, i1
 
     def _get_single(self, major, minor):
         start = self.indptr[major]
@@ -522,45 +622,128 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 data, indices, minor, answer)
         return answer[()]
 
-    def _get_major_slice(self, major):
-        major_size, minor_size = self._swap(*self._shape)
-        # major.indices cannot be used because scipy.sparse behaves differently
-        major_start = major.start
-        major_stop = major.stop
-        major_step = major.step
-        if major_start is None:
-            major_start = 0
-        if major_stop is None:
-            major_stop = major_size
-        if major_step is None:
-            major_step = 1
-        if major_start < 0:
-            major_start += major_size
-        if major_stop < 0:
-            major_stop += major_size
-        major_start = max(min(major_start, major_size), 0)
-        major_stop = max(min(major_stop, major_size), 0)
+    def _get_submatrix(self, major=None, minor=None, copy=False):
+        """Return a submatrix of this matrix.
+        major, minor: None or slice with step 1
+        """
+        M, N = self._swap(*self.shape)
+        i0, i1 = self._process_slice(major, M)
+        j0, j1 = self._process_slice(minor, N)
 
-        if major_step != 1:
-            raise ValueError('slicing with step != 1 not supported')
+        if i0 == 0 and j0 == 0 and i1 == M and j1 == N:
+            return self.copy() if copy else self
 
-        if not (major_start <= major_stop):
-            # will give an empty slice, but preserve shape on the other axis
-            major_start = major_stop
+        indptr, indices, data = _index._get_csr_submatrix(
+            self.indptr, self.indices, self.data, i0, i1, j0, j1)
 
-        start = self.indptr[major_start]
-        stop = self.indptr[major_stop]
-        data = self.data[start:stop]
-        indptr = self.indptr[major_start:major_stop + 1] - start
-        indices = self.indices[start:stop]
+        shape = self._swap(i1 - i0, j1 - j0)
+        return self.__class__((data, indices, indptr), shape=shape,
+                              dtype=self.dtype, copy=False)
 
-        shape = self._swap(len(indptr) - 1, minor_size)
-        return self.__class__(
-            (data, indices, indptr), shape=shape, dtype=self.dtype, copy=False)
+    def _major_slice(self, idx, copy=False):
+        """Index along the major axis where idx is a slice object.
+        """
 
-    @property
-    def has_canonical_format(self):
+        if idx == slice(None):
+            return self.copy() if copy else self
+
+        M, N = self._swap(*self.shape)
+        start, stop, step = idx.indices(M)
+        M = len(range(start, stop, step))
+        new_shape = self._swap(M, N)
+        if M == 0:
+            return self.__class__(new_shape)
+
+        row_nnz = cupy.diff(self.indptr)
+        idx_dtype = self.indices.dtype
+        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
+
+        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
+
+        if step == 1:
+            idx_start = self.indptr[start]
+            idx_stop = self.indptr[stop]
+            res_indices = cupy.array(self.indices[idx_start:idx_stop],
+                                     copy=copy)
+            res_data = cupy.array(self.data[idx_start:idx_stop], copy=copy)
+        else:
+            res_indices, res_data = _index._csr_row_slice(
+                start, step, self.indptr, self.indices, self.data, res_indptr)
+
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
+
+    def __get_has_canonical_format(self):
+        """Determine whether the matrix has sorted indices and no duplicates.
+
+        Returns
+            bool: ``True`` if the above applies, otherwise ``False``.
+
+        .. note::
+            :attr:`has_canonical_format` implies :attr:`has_sorted_indices`, so
+            if the latter flag is ``False``, so will the former be; if the
+            former is found ``True``, the latter flag is also set.
+
+        .. warning::
+            Getting this property might synchronize the device.
+
+        """
+        # Modified from the SciPy counterpart.
+
+        # In CuPy the implemented conversions do not exactly match those of
+        # SciPy's, so it's hard to put this exactly as where it is in SciPy,
+        # but this should do the job.
+        if self.data.size == 0:
+            self._has_canonical_format = True
+        # check to see if result was cached
+        elif not getattr(self, '_has_sorted_indices', True):
+            # not sorted => not canonical
+            self._has_canonical_format = False
+        elif not hasattr(self, '_has_canonical_format'):
+            is_canonical = self._has_canonical_format_kern(
+                self.indptr, self.indices, size=self.indptr.size-1)
+            self._has_canonical_format = bool(is_canonical.all())
         return self._has_canonical_format
+
+    def __set_has_canonical_format(self, val):
+        """Taken from SciPy as is."""
+        self._has_canonical_format = bool(val)
+        if val:
+            self.has_sorted_indices = True
+
+    has_canonical_format = property(fget=__get_has_canonical_format,
+                                    fset=__set_has_canonical_format)
+
+    def __get_sorted(self):
+        """Determine whether the matrix has sorted indices.
+
+        Returns
+            bool:
+                ``True`` if the indices of the matrix are in sorted order,
+                otherwise ``False``.
+
+        .. warning::
+            Getting this property might synchronize the device.
+
+        """
+        # Modified from the SciPy counterpart.
+
+        # In CuPy the implemented conversions do not exactly match those of
+        # SciPy's, so it's hard to put this exactly as where it is in SciPy,
+        # but this should do the job.
+        if self.data.size == 0:
+            self._has_sorted_indices = True
+        # check to see if result was cached
+        elif not hasattr(self, '_has_sorted_indices'):
+            is_sorted = self._has_sorted_indices_kern(
+                self.indptr, self.indices, size=self.indptr.size-1)
+            self._has_sorted_indices = bool(is_sorted.all())
+        return self._has_sorted_indices
+
+    def __set_sorted(self, val):
+        self._has_sorted_indices = bool(val)
+
+    has_sorted_indices = property(fget=__get_sorted, fset=__set_sorted)
 
     def get_shape(self):
         """Returns the shape of the matrix.
@@ -586,18 +769,45 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         else:
             raise ValueError
 
-    # TODO(unno): Implement sorted_indices
+    def sorted_indices(self):
+        """Return a copy of this matrix with sorted indices
+
+        .. warning::
+            Calling this function might synchronize the device.
+
+        """
+        # Taken from SciPy as is.
+        A = self.copy()
+        A.sort_indices()
+        return A
+
+    def sort_indices(self):
+        # Unlike in SciPy, here this is implemented in child classes because
+        # each child needs to call its own sort function from cuSPARSE
+        raise NotImplementedError
 
     def sum_duplicates(self):
-        if self._has_canonical_format:
+        """Eliminate duplicate matrix entries by adding them together.
+
+        .. note::
+            This is an *in place* operation.
+
+        .. warning::
+            Calling this function might synchronize the device.
+
+        .. seealso::
+           :meth:`scipy.sparse.csr_matrix.sum_duplicates`,
+           :meth:`scipy.sparse.csc_matrix.sum_duplicates`
+
+        """
+        if self.has_canonical_format:
             return
-        if self.data.size == 0:
-            self._has_canonical_format = True
-            return
+        # TODO(leofang): add a kernel for compressed sparse matrices without
+        # converting to coo
         coo = self.tocoo()
         coo.sum_duplicates()
         self.__init__(coo.asformat(self.format))
-        self._has_canonical_format = True
+        self.has_canonical_format = True
 
     #####################
     # Reduce operations #

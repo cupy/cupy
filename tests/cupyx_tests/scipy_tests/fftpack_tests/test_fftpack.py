@@ -563,6 +563,55 @@ class TestRfft(unittest.TestCase):
                                 overwrite_x=True)
 
     @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_rfft_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        if scp is cupyx.scipy:
+            plan = scp.fftpack.get_fft_plan(x, shape=self.n, axes=self.axis,
+                                            value_type='R2C')
+            out = scp.fftpack.rfft(x, n=self.n, axis=self.axis, plan=plan)
+        else:  # scipy
+            out = scp.fftpack.rfft(x, n=self.n, axis=self.axis)
+        testing.assert_array_equal(x, x_orig)
+        return out
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_rfft_overwrite_plan(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        if scp is cupyx.scipy:
+            plan = scp.fftpack.get_fft_plan(x, shape=self.n, axes=self.axis,
+                                            value_type='R2C')
+            x = scp.fftpack.rfft(x, n=self.n, axis=self.axis,
+                                 overwrite_x=True, plan=plan)
+        else:  # scipy
+            x = scp.fftpack.rfft(x, n=self.n, axis=self.axis,
+                                 overwrite_x=True)
+        return x
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+                                 contiguous_check=False, scipy_name='scp')
+    def test_rfft_plan_manager(self, xp, scp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        if scp is cupyx.scipy:
+            from cupy.cuda.cufft import get_current_plan
+            plan = scp.fftpack.get_fft_plan(x, shape=self.n, axes=self.axis,
+                                            value_type='R2C')
+            with plan:
+                assert id(plan) == id(get_current_plan())
+                out = scp.fftpack.rfft(x, n=self.n, axis=self.axis)
+            assert get_current_plan() is None
+        else:  # scipy
+            out = scp.fftpack.rfft(x, n=self.n, axis=self.axis)
+        testing.assert_array_equal(x, x_orig)
+        return out
+
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False, scipy_name='scp')
     def test_irfft(self, xp, scp, dtype):

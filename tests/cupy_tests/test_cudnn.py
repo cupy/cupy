@@ -255,6 +255,12 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
                 (ndim > 2 and version < 6000) or
                 (ndim > 2 and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
+        elif (8000 <= version and
+              self.max_workspace_size == 0 and
+              int(cupy.cuda.device.get_compute_capability()) < 70 and
+              self.groups > 1 and ndim > 2 and
+              self.dtype == numpy.float16):
+            self.err = RuntimeError
         self._workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
 
@@ -331,6 +337,11 @@ class TestConvolutionBackwardData(unittest.TestCase):
                 (ndim > 2 and version < 6000) or
                 (ndim > 2 and self.dtype == numpy.float64)):
             self.err = libcudnn.CuDNNError
+        elif (8000 <= version and
+              int(cupy.cuda.device.get_compute_capability()) < 70 and
+              self.dilate > 1 and self.groups > 1 and ndim > 2 and
+              self.dtype == numpy.float16):
+            self.err = RuntimeError
         self._workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
 
@@ -363,8 +374,8 @@ class TestConvolutionBackwardData(unittest.TestCase):
     'stride': [2, 4],
     'auto_tune': [True, False],
 }))
-@unittest.skipIf(not cudnn_enabled or cudnn_version < 7500,
-                 'cuDNN 7.5.0 or later is required')
+@unittest.skipIf(not cudnn_enabled or cudnn_version < 7500 or
+                 cudnn_version >= 8000, 'cuDNN 7.5.0 or later is required')
 class TestConvolutionNoAvailableAlgorithm(unittest.TestCase):
     '''Checks if an expected error is raised.
 

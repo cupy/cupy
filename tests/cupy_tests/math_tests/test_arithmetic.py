@@ -198,13 +198,6 @@ class ArithmeticBinaryBase:
             if dtype2 in complex_types and (np1 == 0).any():
                 return xp.array(True)
 
-            # TODO(niboshi): Fix this: xp.power(0j, 0)
-            #     numpy => 1+0j
-            #     cupy => 0j
-            c_arg1 = dtype1 in complex_types
-            if c_arg1 and (np1 == 0j).any() and (np2 == 0).any():
-                return xp.array(True)
-
         # TODO(niboshi): Fix this: xp.add(0j, xp.array([2.], 'f')).dtype
         #     numpy => complex64
         #     cupy => complex128

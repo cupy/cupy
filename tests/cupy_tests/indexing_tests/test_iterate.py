@@ -8,6 +8,47 @@ import cupy
 from cupy import testing
 
 
+@testing.gpu
+class TestFlatiter(unittest.TestCase):
+
+    def test_base(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros((2, 3, 4))
+            assert a.flat.base is a
+
+    def test_iter(self):
+        for xp in (numpy, cupy):
+            it = xp.zeros((2, 3, 4)).flat
+            assert iter(it) is it
+
+    def test_next(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            e = a.flatten()
+            for ai, ei in zip(a.flat, e):
+                assert ai == ei
+
+    def test_len(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros((2, 3, 4))
+            assert len(a.flat) == 24
+            assert len(a[::2].flat) == 12
+
+    @testing.numpy_cupy_array_equal()
+    def test_copy(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        o = a.flat.copy()
+        assert a is not o
+        return a.flat.copy()
+
+    @testing.numpy_cupy_array_equal()
+    def test_copy_next(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        it = a.flat
+        it.__next__()
+        return it.copy()  # Returns the flattened copy of whole `a`
+
+
 @testing.parameterize(
     {'shape': (2, 3, 4), 'index': Ellipsis},
     {'shape': (2, 3, 4), 'index': 0},

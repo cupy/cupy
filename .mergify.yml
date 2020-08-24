@@ -5,11 +5,7 @@ pull_request_rules:
       - label=st:test-and-merge
       - status-success=Jenkins
       - status-success=continuous-integration/travis-ci/pr
-      - status-success=pfn-public-ci/cupy.py2.cv.examples
-      - status-success=pfn-public-ci/cupy.py2.cv.gpu
       - status-success=pfn-public-ci/cupy.py3.amd
-      - status-success=pfn-public-ci/cupy.py3.cv.examples
-      - status-success=pfn-public-ci/cupy.py3.cv.gpu
     actions:
       merge:
         method: merge

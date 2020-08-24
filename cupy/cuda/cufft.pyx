@@ -7,9 +7,9 @@ import numpy
 import threading
 
 import cupy
-from cupy.cuda cimport driver
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport memory
-from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Event, Stream
@@ -203,9 +203,9 @@ cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
     _XtFree(temp_xtArr)
 
 
+# This is meant to replace cufftXtMalloc().
 # We need to manage the buffers ourselves in order to 1. avoid excessive,
 # uncessary memory usage, and 2. use CuPy's memory pool.
-# This is meant to replace cufftXtMalloc().
 cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
     cdef XtArrayDesc* xtArr_desc
     cdef XtArray* xtArr
@@ -213,8 +213,8 @@ cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
     cdef int i, nGPUs
     cdef size_t size
 
-    assert len(gpus) == len(sizes)
     nGPUs = len(gpus)
+    assert nGPUs == len(sizes)
     xtArr_desc = <XtArrayDesc*>PyMem_Malloc(sizeof(XtArrayDesc))
     xtArr = <XtArray*>PyMem_Malloc(sizeof(XtArray))
     c_memset(xtArr_desc, 0, sizeof(XtArrayDesc))
@@ -252,17 +252,32 @@ class Plan1d(object):
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
 
+        self.plan = 0
+        self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
+        self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
+
         with nogil:
             result = cufftCreate(&plan)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
         check_result(result)
 
-        # set plan, work_area, gpus, streams, and events
-        if not use_multi_gpus:
-            self._single_gpu_get_plan(plan, nx, fft_type, batch)
-        else:
-            self._multi_gpu_get_plan(plan, nx, fft_type, batch, devices, out)
+        self.plan = plan
+        self.work_area = None
+        self.gpus = None
+
+        self.gather_streams = None
+        self.gather_events = None
+        self.scatter_streams = None
+        self.scatter_events = None
+
+        if batch != 0:
+            # set plan, work_area, gpus, streams, and events
+            if not use_multi_gpus:
+                self._single_gpu_get_plan(plan, nx, fft_type, batch)
+            else:
+                self._multi_gpu_get_plan(
+                    plan, nx, fft_type, batch, devices, out)
 
         self.nx = nx
         self.fft_type = fft_type
@@ -270,8 +285,6 @@ class Plan1d(object):
 
         self._use_multi_gpus = use_multi_gpus
         self.batch_share = None
-        self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
-        self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
 
     def _single_gpu_get_plan(self, Handle plan, int nx, int fft_type,
                              int batch):
@@ -290,19 +303,15 @@ class Plan1d(object):
             with nogil:
                 result = cufftMakePlan1d(plan, nx, <Type>fft_type, batch,
                                          &work_size)
-
         check_result(result)
+
         work_area = memory.alloc(work_size)
         ptr = work_area.ptr
         with nogil:
             result = cufftSetWorkArea(plan, <void*>(ptr))
         check_result(result)
 
-        self.plan = plan
         self.work_area = work_area  # this is for cuFFT plan
-        self.gpus = None
-        self.streams = None
-        self.events = None
 
     def _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch,
                             devices, out):
@@ -310,8 +319,8 @@ class Plan1d(object):
         cdef vector.vector[int] gpus
         cdef vector.vector[size_t] work_size
         cdef list work_area = []
-        cdef list streams = []
-        cdef list events = []
+        cdef list gather_streams = []
+        cdef list gather_events = []
         cdef vector.vector[void*] work_area_ptr
 
         # some sanity checks
@@ -368,26 +377,52 @@ class Plan1d(object):
                 stream = Stream()
                 event = Event()
             work_area.append(buf)
-            streams.append(stream)
-            events.append(event)
             work_area_ptr.push_back(<void*>buf.ptr)
+            gather_streams.append(stream)
+            gather_events.append(event)
         with nogil:
             result = cufftXtSetWorkArea(plan, work_area_ptr.data())
         check_result(result)
 
-        self.plan = plan
         self.work_area = work_area  # this is for cuFFT plan
         self.gpus = list(gpus)
-        self.streams = streams      # for async, overlapped copies
-        self.events = events        # for async, overlapped copies
+
+        # For async, overlapped copies. We need to distinguish scatter and
+        # gather because for async memcpy, the stream is on the source device
+        self.gather_streams = gather_streams
+        self.gather_events = gather_events
+        self.scatter_streams = {}
+        self.scatter_events = {}
+        self._multi_gpu_get_scatter_streams_events(runtime.getDevice())
+
+    def _multi_gpu_get_scatter_streams_events(self, int curr_device):
+        '''
+        create a list of streams and events on the current device
+        '''
+        cdef int i
+        cdef list scatter_streams = []
+        cdef list scatter_events = []
+
+        assert curr_device in self.gpus
+
+        with Device(curr_device):
+            for i in self.gpus:
+                scatter_streams.append(Stream())
+                scatter_events.append(Event())
+
+        self.scatter_streams[curr_device] = scatter_streams
+        self.scatter_events[curr_device] = scatter_events
 
     def __del__(self):
         cdef Handle plan = self.plan
         cdef int dev = runtime.getDevice()
+        cdef int result
 
-        with nogil:
-            result = cufftDestroy(plan)
-        check_result(result)
+        if plan != 0:
+            with nogil:
+                result = cufftDestroy(plan)
+            check_result(result)
+            self.plan = 0
 
         # cuFFT bug: after cufftDestroy(), the current device is mistakenly
         # set to the last device in self.gpus, so we must correct it. See
@@ -408,16 +443,15 @@ class Plan1d(object):
 
     def fft(self, a, out, direction):
         if self._use_multi_gpus:
-            # Note: mult-GPU plans cannot set stream
             self._multi_gpu_fft(a, out, direction)
         else:
             self._single_gpu_fft(a, out, direction)
 
     def _single_gpu_fft(self, a, out, direction):
         cdef Handle plan = self.plan
-        cdef intptr_t stream
+        cdef intptr_t stream = stream_module.get_current_stream_ptr()
+        cdef int result
 
-        stream = stream_module.get_current_stream_ptr()
         with nogil:
             result = cufftSetStream(plan, <driver.Stream>stream)
         check_result(result)
@@ -506,7 +540,7 @@ class Plan1d(object):
     def _multi_gpu_memcpy(self, a, str action):
         cdef Handle plan = self.plan
         cdef list xtArr_buffer, share
-        cdef int start, nGPUs, i, count, result
+        cdef int nGPUs, dev, s_device, start, count
         cdef XtArray* arr
         cdef intptr_t ptr, ptr2
         cdef size_t size
@@ -515,6 +549,7 @@ class Plan1d(object):
         # if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
         if isinstance(a, cupy.ndarray):
             start = 0
+            assert a._c_contiguous
             b = a.ravel()
             assert b.flags['OWNDATA'] is False
             assert self.xtArr_buffer is not None
@@ -525,27 +560,29 @@ class Plan1d(object):
             share = self.batch_share
 
             if action == 'scatter':
-                if isinstance(a, cupy.ndarray):
-                    for i in range(nGPUs):
-                        count = int(share[i] * self.nx)
-                        size = count * b.dtype.itemsize
-                        curr_stream = self.streams[i]
-                        if i == 0:
-                            # When we come here, another stream could still be
-                            # copying data for us, so we wait patiently...
-                            outer_stream = stream_module.get_current_stream()
-                            outer_stream.synchronize()
-                        xtArr_buffer[i].copy_from_device_async(
-                            b[start:start+count].data, size, curr_stream)
-                        if i != 0:
-                            prev_event = self.events[i-1]
-                            curr_stream.wait_event(prev_event)
-                        curr_event = self.events[i]
-                        curr_event.record(curr_stream)
-                        if i == nGPUs - 1:
-                            curr_event.synchronize()
-                        start += count
-                    assert start == b.size
+                s_device = b.data.device_id
+                if s_device not in self.scatter_streams:
+                    self._multi_gpu_get_scatter_streams_events(s_device)
+
+                # When we come here, another stream could still be
+                # copying data for us, so we wait patiently...
+                outer_stream = stream_module.get_current_stream()
+                outer_stream.synchronize()
+
+                for dev in range(nGPUs):
+                    count = int(share[dev] * self.nx)
+                    size = count * b.dtype.itemsize
+                    curr_stream = self.scatter_streams[s_device][dev]
+                    curr_event = self.scatter_events[s_device][dev]
+                    xtArr_buffer[dev].copy_from_device_async(
+                        b[start:start+count].data, size, curr_stream)
+                    if dev != 0:
+                        prev_event = self.scatter_events[s_device][dev-1]
+                        curr_stream.wait_event(prev_event)
+                    curr_event.record(curr_stream)
+                    start += count
+                assert start == b.size
+                self.scatter_events[s_device][-1].synchronize()
                 # TODO(leofang): revisit this when NumPy support is added
                 # else:  # numpy
                 #     ptr2 = b.ctypes.data
@@ -555,30 +592,28 @@ class Plan1d(object):
                 #             CUFFT_COPY_HOST_TO_DEVICE)
                 #     check_result(result)
             elif action == 'gather':
-                if isinstance(a, cupy.ndarray):
-                    if self.batch == 1:
-                        _reorder_buffers(plan, self.xtArr, xtArr_buffer)
+                if self.batch == 1:
+                    _reorder_buffers(plan, self.xtArr, xtArr_buffer)
 
-                    for i in range(nGPUs):
-                        count = int(share[i] * self.nx)
-                        size = count * b.dtype.itemsize
-                        curr_stream = self.streams[i]
-                        if i == 0:
-                            # When we come here, another stream could still be
-                            # copying data for us, so we wait patiently...
-                            outer_stream = stream_module.get_current_stream()
-                            outer_stream.synchronize()
-                        b[start:start+count].data.copy_from_device_async(
-                            xtArr_buffer[i], size, curr_stream)
-                        if i != 0:
-                            prev_event = self.events[i-1]
-                            curr_stream.wait_event(prev_event)
-                        curr_event = self.events[i]
-                        curr_event.record(curr_stream)
-                        if i == nGPUs - 1:
-                            curr_event.synchronize()
-                        start += count
-                    assert start == b.size
+                # When we come here, another stream could still be
+                # copying data for us, so we wait patiently...
+                outer_stream = stream_module.get_current_stream()
+                outer_stream.synchronize()
+
+                for i in range(nGPUs):
+                    count = int(share[i] * self.nx)
+                    size = count * b.dtype.itemsize
+                    curr_stream = self.gather_streams[i]
+                    curr_event = self.gather_events[i]
+                    b[start:start+count].data.copy_from_device_async(
+                        xtArr_buffer[i], size, curr_stream)
+                    if i != 0:
+                        prev_event = self.gather_events[i-1]
+                        curr_stream.wait_event(prev_event)
+                    curr_event.record(curr_stream)
+                    start += count
+                assert start == b.size
+                self.gather_events[-1].synchronize()
                 # TODO(leofang): revisit this when NumPy support is added
                 # else:  # numpy
                 #     ptr2 = b.ctypes.data
@@ -599,6 +634,7 @@ class Plan1d(object):
         self._multi_gpu_memcpy(a, 'scatter')
 
         # Actual workhorses
+        # Note: mult-GPU plans cannot set stream
         if self.fft_type == CUFFT_C2C:
             multi_gpu_execC2C(self.plan, self.xtArr, self.xtArr, direction)
         elif self.fft_type == CUFFT_Z2Z:
@@ -656,51 +692,59 @@ class Plan1d(object):
 class PlanNd(object):
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
-                 int fft_type, int batch):
+                 int fft_type, int batch, str order, int last_axis, last_size):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, i
-        cdef int[:] shape_arr = numpy.asarray(shape, dtype=numpy.intc)
-        cdef int[:] inembed_arr
-        cdef int[:] onembed_arr
-        cdef int* shape_ptr = &shape_arr[0]
+        cdef vector.vector[int] shape_arr = shape
+        cdef vector.vector[int] inembed_arr
+        cdef vector.vector[int] onembed_arr
+        cdef int* shape_ptr = shape_arr.data()
         cdef int* inembed_ptr
         cdef int* onembed_ptr
+        self.plan = 0
+
         ndim = len(shape)
 
         if inembed is None:
             inembed_ptr = NULL  # ignore istride and use default strides
         else:
-            inembed_arr = numpy.asarray(inembed, dtype=numpy.intc)
-            inembed_ptr = &inembed_arr[0]
+            inembed_arr = inembed
+            inembed_ptr = inembed_arr.data()
 
         if onembed is None:
             onembed_ptr = NULL  # ignore ostride and use default strides
         else:
-            onembed_arr = numpy.asarray(onembed, dtype=numpy.intc)
-            onembed_ptr = &onembed_arr[0]
+            onembed_arr = onembed
+            onembed_ptr = onembed_arr.data()
 
         with nogil:
             result = cufftCreate(&plan)
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
-            if result == 0:
-                result = cufftMakePlanMany(plan, ndim, shape_ptr,
-                                           inembed_ptr, istride, idist,
-                                           onembed_ptr, ostride, odist,
-                                           <Type>fft_type, batch,
-                                           &work_size)
+        check_result(result)
+        self.plan = plan
 
-        # cufftMakePlanMany could use a large amount of memory
-        if result == 2:
-            cupy.get_default_memory_pool().free_all_blocks()
+        if batch == 0:
+            work_size = 0
+        else:
             with nogil:
                 result = cufftMakePlanMany(plan, ndim, shape_ptr,
                                            inembed_ptr, istride, idist,
                                            onembed_ptr, ostride, odist,
                                            <Type>fft_type, batch,
                                            &work_size)
-        check_result(result)
+
+            # cufftMakePlanMany could use a large amount of memory
+            if result == 2:
+                cupy.get_default_memory_pool().free_all_blocks()
+                with nogil:
+                    result = cufftMakePlanMany(plan, ndim, shape_ptr,
+                                               inembed_ptr, istride, idist,
+                                               onembed_ptr, ostride, odist,
+                                               <Type>fft_type, batch,
+                                               &work_size)
+            check_result(result)
 
         # TODO: for CUDA>=9.2 could also allow setting a work area policy
         # result = cufftXtSetWorkAreaPolicy(plan, policy, &work_size)
@@ -709,16 +753,21 @@ class PlanNd(object):
         with nogil:
             result = cufftSetWorkArea(plan, <void *>(work_area.ptr))
         check_result(result)
+
         self.shape = tuple(shape)
         self.fft_type = fft_type
-        self.plan = plan
         self.work_area = work_area
+        self.order = order  # either 'C' or 'F'
+        self.last_axis = last_axis  # ignored for C2C
+        self.last_size = last_size  # = None (and ignored) for C2C
 
     def __del__(self):
         cdef Handle plan = self.plan
-        with nogil:
-            result = cufftDestroy(plan)
-        check_result(result)
+        if plan != 0:
+            with nogil:
+                result = cufftDestroy(plan)
+            check_result(result)
+            self.plan = 0
 
     def __enter__(self):
         _thread_local._current_plan = self
@@ -729,36 +778,75 @@ class PlanNd(object):
 
     def fft(self, a, out, direction):
         cdef Handle plan = self.plan
-        stream = stream_module.get_current_stream_ptr()
+        cdef intptr_t stream = stream_module.get_current_stream_ptr()
         with nogil:
             result = cufftSetStream(plan, <driver.Stream>stream)
         check_result(result)
+
         if self.fft_type == CUFFT_C2C:
             execC2C(plan, a.data.ptr, out.data.ptr, direction)
+        elif self.fft_type == CUFFT_R2C:
+            execR2C(plan, a.data.ptr, out.data.ptr)
+        elif self.fft_type == CUFFT_C2R:
+            execC2R(plan, a.data.ptr, out.data.ptr)
         elif self.fft_type == CUFFT_Z2Z:
             execZ2Z(plan, a.data.ptr, out.data.ptr, direction)
+        elif self.fft_type == CUFFT_D2Z:
+            execD2Z(plan, a.data.ptr, out.data.ptr)
+        elif self.fft_type == CUFFT_Z2D:
+            execZ2D(plan, a.data.ptr, out.data.ptr)
         else:
-            raise NotImplementedError('only C2C and Z2Z implemented')
+            raise ValueError
 
-    def get_output_array(self, a, order='C'):
+    def _output_dtype_and_shape(self, a):
         shape = list(a.shape)
         if self.fft_type == CUFFT_C2C:
-            return cupy.empty(shape, numpy.complex64, order=order)
+            dtype = numpy.complex64
+        elif self.fft_type == CUFFT_R2C:
+            shape[self.last_axis] = self.last_size
+            dtype = numpy.complex64
+        elif self.fft_type == CUFFT_C2R:
+            shape[self.last_axis] = self.last_size
+            dtype = numpy.float32
         elif self.fft_type == CUFFT_Z2Z:
-            return cupy.empty(shape, numpy.complex128, order=order)
-        else:
-            raise NotImplementedError('only C2C and Z2Z implemented')
+            dtype = numpy.complex128
+        elif self.fft_type == CUFFT_D2Z:
+            shape[self.last_axis] = self.last_size
+            dtype = numpy.complex128
+        else:  # CUFFT_Z2D
+            shape[self.last_axis] = self.last_size
+            dtype = numpy.float64
+        return tuple(shape), dtype
+
+    def get_output_array(self, a, order='C'):
+        shape, dtype = self._output_dtype_and_shape(a)
+        return cupy.empty(shape, dtype, order=order)
 
     def check_output_array(self, a, out):
         if out is a:
+            # TODO(leofang): think about in-place transforms for C2R & R2C
             return
-        if out.dtype != a.dtype:
-            raise ValueError('output dtype mismatch')
+        if self.fft_type in (CUFFT_C2C, CUFFT_Z2Z):
+            if out.shape != a.shape:
+                raise ValueError('output shape mismatch')
+            if out.dtype != a.dtype:
+                raise ValueError('output dtype mismatch')
+        else:
+            if out.ndim != a.ndim:
+                raise ValueError('output dimension mismatch')
+            for i, size in enumerate(out.shape):
+                if (i != self.last_axis and size != a.shape[i]) or \
+                   (i == self.last_axis and size != self.last_size):
+                    raise ValueError('output shape is incorrecct')
+            if self.fft_type in (CUFFT_R2C, CUFFT_D2Z):
+                if out.dtype != cupy.dtype(a.dype.char.upper()):
+                    raise ValueError('output dtype is unexpected')
+            else:  # CUFFT_C2R or CUFFT_Z2D
+                if out.dtype != cupy.dtype(a.dype.char.lower()):
+                    raise ValueError('output dtype is unexpected')
         if not ((out.flags.f_contiguous == a.flags.f_contiguous) and
                 (out.flags.c_contiguous == a.flags.c_contiguous)):
             raise ValueError('output contiguity mismatch')
-        if out.shape != a.shape:
-            raise ValueError('output shape mismatch')
 
 
 cpdef execC2C(Handle plan, intptr_t idata, intptr_t odata, int direction):

@@ -29,13 +29,7 @@ cdef class CScalar(CPointer):
     cpdef get_numpy_type(self)
 
 
-cdef object get_min_scalar_type(object numpy_scalar)
-
 cpdef str get_typename(dtype)
 
-cpdef python_scalar_to_numpy_scalar(x)
 cdef CScalar scalar_to_c_scalar(object x)
 cdef object scalar_to_numpy_scalar(object x)
-cdef bint is_scalar(object x)
-cdef bint is_python_scalar(object x)
-cdef bint is_numpy_scalar(object x)
