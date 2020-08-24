@@ -1,3 +1,9 @@
+import warnings
+
+warnings.warn(
+    'cupy.sparse is deprecated. Use cupyx.scipy.sparse instead.',
+    DeprecationWarning)
+
 from cupyx.scipy.sparse.base import issparse  # NOQA
 from cupyx.scipy.sparse.base import isspmatrix  # NOQA
 from cupyx.scipy.sparse.base import spmatrix  # NOQA
