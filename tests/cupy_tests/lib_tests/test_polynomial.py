@@ -650,22 +650,27 @@ class TestPolyfitInvalid(unittest.TestCase):
             with pytest.raises(ValueError):
                 xp.polyfit(x, y, 5, cov=True)
 
+    def test_polyfit_float16(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((5,), xp, numpy.float16)
+            with pytest.raises(TypeError):
+                xp.polyfit(x, x, 4)
+
 
 @testing.gpu
 class TestPolyfitDiffTypes(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2'], no_float16=True, no_bool=True)
-    @testing.numpy_cupy_allclose()
+        names=['dtype1', 'dtype2'], no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-9)
     def test_polyfit_unweighted_diff_types(self, xp, dtype1, dtype2):
         x = testing.shaped_arange((5,), xp, dtype1)
         y = testing.shaped_arange((5,), xp, dtype2)
         return xp.polyfit(x, y, 5)
 
-    @testing.for_all_dtypes_combination(
-        names=['dtype1', 'dtype2', 'dtype3'],
-        no_float16=True, no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-3)
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2', 'dtype3'],
+                                        no_float16=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-9)
     def test_polyfit_weighted_diff_types(self, xp, dtype1, dtype2, dtype3):
         x = testing.shaped_arange((5,), xp, dtype1)
         y = testing.shaped_arange((5,), xp, dtype2)

@@ -117,7 +117,7 @@ def _polypow(x, n):
 
 def _polyfit_typecast(x):
     if x.dtype == numpy.float16:
-        raise NotImplementedError('float16 is currently not supported')
+        raise TypeError('float16 inputs are not supported')
     if x.dtype.kind == 'c':
         return x.astype(numpy.complex128, copy=False)
     return x.astype(numpy.float64, copy=False)
