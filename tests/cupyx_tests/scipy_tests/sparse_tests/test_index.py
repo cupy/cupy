@@ -2,8 +2,8 @@ import unittest
 
 import cupy
 
-from cupy import sparse
 from cupy import testing
+from cupyx.scipy import sparse
 
 import numpy
 

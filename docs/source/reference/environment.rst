@@ -57,6 +57,11 @@ Here are the environment variables CuPy uses.
 |                                    | its priority. Default is empty string (all         |
 |                                    | accelerators are disabled).                        |
 +------------------------------------+----------------------------------------------------+
+| ``CUPY_TF32``                      | If set to 1, it allows CUDA libraries to use       |
+|                                    | Tensor Cores TF32 compute for 32-bit floating      |
+|                                    | point compute.                                     |
+|                                    | The default is 0 and TF32 is not used.             |
++------------------------------------+----------------------------------------------------+
 | ``NVCC``                           | Define the compiler to use when compiling CUDA     |
 |                                    | source. Note that most CuPy kernels are built with |
 |                                    | NVRTC; this environment is only effective for      |
