@@ -215,55 +215,38 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         self.indices = compress.indices
         self.indptr = compress.indptr
 
-    def maximum(self, other):
+    def _maximum_minimum(self, other, cupy_op, op_name, dense_check):
         if util.isscalarlike(other):
             other = cupy.asarray(other, dtype=self.dtype)
-            if other > 0:
+            if dense_check(other):
                 # Note: This is a work-around to make the output dtype the same
                 # as SciPy. It might be SciPy version dependent.
                 dtype = numpy.promote_types(self.dtype, numpy.float64)
                 other = other.astype(dtype)
-                new_array = cupy.maximum(self.todense(), other)
+                new_array = cupy_op(self.todense(), other)
                 return csr_matrix(new_array)
             else:
                 self.sum_duplicates()
-                new_data = cupy.maximum(self.data, other)
+                new_data = cupy_op(self.data, other)
                 return csr_matrix((new_data, self.indices, self.indptr),
                                   shape=self.shape, dtype=self.dtype)
         elif util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
-            return cupy.maximum(self.todense(), other)
+            return cupy_op(self.todense(), other)
         elif isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            return maxmin_csr(self, other, is_maximum=True)
+            return binopt_csr(self, other, op_name)
         raise NotImplementedError
 
+    def maximum(self, other):
+        return self._maximum_minimum(other, cupy.maximum, '_maximum_',
+                                     lambda x: x > 0)
+
     def minimum(self, other):
-        if util.isscalarlike(other):
-            other = cupy.asarray(other, dtype=self.dtype)
-            if other < 0:
-                # Note: This is a work-around to make the output dtype the same
-                # as SciPy. It might be SciPy version dependent.
-                dtype = numpy.promote_types(self.dtype, numpy.float64)
-                other = other.astype(dtype)
-                new_array = cupy.minimum(self.todense(), other)
-                return csr_matrix(new_array)
-            else:
-                self.sum_duplicates()
-                new_data = cupy.minimum(self.data, other)
-                return csr_matrix((new_data, self.indices, self.indptr),
-                                  shape=self.shape, dtype=self.dtype)
-        elif util.isdense(other):
-            self.sum_duplicates()
-            other = cupy.atleast_2d(other)
-            return cupy.minimum(self.todense(), other)
-        elif isspmatrix_csr(other):
-            self.sum_duplicates()
-            other.sum_duplicates()
-            return maxmin_csr(self, other, is_maximum=False)
-        raise NotImplementedError
+        return self._maximum_minimum(other, cupy.minimum, '_minimum_',
+                                     lambda x: x < 0)
 
     def multiply(self, other):
         """Point-wise multiplication by another matrix, vector or scalar"""
@@ -742,20 +725,27 @@ def cupy_multiply_by_csr_step2():
     )
 
 
-__SELECT_MIN = '''
-__device__ inline void select(T &out, T in1, T in2) {
-    out = min(in1, in2);
+_BINOPT_MAX_ = '''
+__device__ inline O binopt(T in1, T in2) {
+    return max(in1, in2);
 }
 '''
 
-__SELECT_MAX = '''
-__device__ inline void select(T &out, T in1, T in2) {
-    out = max(in1, in2);
+_BINOPT_MIN_ = '''
+__device__ inline O binopt(T in1, T in2) {
+    return min(in1, in2);
+}
+'''
+
+_CHECK_MAX_MIN_ = '''
+__device__ inline bool check(O out) {
+    if (out == (O)0) return false;
+    return true;
 }
 '''
 
 
-def maxmin_csr(a, b, is_maximum=True):
+def binopt_csr(a, b, op_name):
     if a.shape != b.shape:
         raise ValueError('inconsistent shape')
     m, n = a.shape
@@ -763,15 +753,19 @@ def maxmin_csr(a, b, is_maximum=True):
     b_info = cupy.zeros(b.nnz + 1, dtype=b.indices.dtype)
     a_valid = cupy.zeros(a.nnz, dtype=numpy.int8)
     b_valid = cupy.zeros(b.nnz, dtype=numpy.int8)
-    a_tmp_data = cupy.empty(a.nnz, dtype=a.data.dtype)
-    b_tmp_data = cupy.empty(b.nnz, dtype=b.data.dtype)
     c_indptr = cupy.zeros(m + 1, dtype=a.indptr.dtype)
-    if is_maximum:
-        select = __SELECT_MAX
+    if op_name == '_maximum_':
+        funcs = _BINOPT_MAX_ + _CHECK_MAX_MIN_
+        out_dtype = a.data.dtype
+    elif op_name == '_minimum_':
+        funcs = _BINOPT_MIN_ + _CHECK_MAX_MIN_
+        out_dtype = a.data.dtype
     else:
-        select = __SELECT_MIN
+        raise ValueError('invalid op_name: {}'.format(op_name))
+    a_tmp_data = cupy.empty(a.nnz, dtype=out_dtype)
+    b_tmp_data = cupy.empty(b.nnz, dtype=out_dtype)
     _size = a.nnz + b.nnz
-    cupy_maxmin_csr_step1(preamble=select)(
+    cupy_binopt_csr_step1(op_name, preamble=funcs)(
         m, n,
         a.indptr, a.indices, a.data, a.nnz,
         b.indptr, b.indices, b.data, b.nnz,
@@ -783,8 +777,8 @@ def maxmin_csr(a, b, is_maximum=True):
     c_indptr = cupy.cumsum(c_indptr, dtype=c_indptr.dtype)
     c_nnz = int(c_indptr[-1])
     c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
-    c_data = cupy.empty(c_nnz, dtype=a.data.dtype)
-    cupy_maxmin_csr_step2()(
+    c_data = cupy.empty(c_nnz, dtype=out_dtype)
+    cupy_binopt_csr_step2(op_name)(
         a.indices, a_info, a_valid, a_tmp_data, a.nnz,
         b.indices, b_info, b_valid, b_tmp_data, b.nnz,
         c_indices, c_data, size=_size)
@@ -792,7 +786,8 @@ def maxmin_csr(a, b, is_maximum=True):
 
 
 @cupy.util.memoize(for_each_device=True)
-def cupy_maxmin_csr_step1(preamble=''):
+def cupy_binopt_csr_step1(op_name, preamble=''):
+    name = 'cupy_binopt_csr' + op_name + 'step1'
     return cupy.ElementwiseKernel(
         '''
         int32 M, int32 N,
@@ -800,15 +795,15 @@ def cupy_maxmin_csr_step1(preamble=''):
         raw I B_INDPTR, raw I B_INDICES, raw T B_DATA, int32 B_NNZ
         ''',
         '''
-        raw I A_INFO, raw B A_VALID, raw T A_TMP_DATA,
-        raw I B_INFO, raw B B_VALID, raw T B_TMP_DATA,
+        raw I A_INFO, raw B A_VALID, raw O A_TMP_DATA,
+        raw I B_INFO, raw B B_VALID, raw O B_TMP_DATA,
         raw I C_INFO
         ''',
         '''
         int j;
         const int *MY_INDPTR, *MY_INDICES;  int *MY_INFO;  const T *MY_DATA;
         const int *OP_INDPTR, *OP_INDICES;  int *OP_INFO;  const T *OP_DATA;
-        signed char *MY_VALID;  T *MY_TMP_DATA;
+        signed char *MY_VALID;  O *MY_TMP_DATA;
         if (i < A_NNZ) {
             j = i;
             MY_INDPTR  = &(A_INDPTR[0]);   OP_INDPTR  = &(B_INDPTR[0]);
@@ -864,13 +859,15 @@ def cupy_maxmin_csr_step1(preamble=''):
         }
 
         if (i < A_NNZ || my_col != op_col) {
-            T out;
+            O out;
             if (my_col == op_col) {
-                select(out, MY_DATA[j], OP_DATA[op_j]);
+                if (i < A_NNZ) out = binopt(MY_DATA[j], OP_DATA[op_j]);
+                else           out = binopt(OP_DATA[op_j], MY_DATA[j]);
             } else {
-                select(out, MY_DATA[j], (T)0);
+                if (i < A_NNZ) out = binopt(MY_DATA[j], (T)0);
+                else           out = binopt((T)0, MY_DATA[j]);
             }
-            if (out != (T)0) {
+            if (check(out)) {
                 if (my_col > op_col) { op_j += 1; }
                 MY_VALID[j] = 1;
                 MY_TMP_DATA[j] = out;
@@ -880,21 +877,21 @@ def cupy_maxmin_csr_step1(preamble=''):
             }
         }
         ''',
-        'cupy_maxmin_csr_step1',
-        preamble=preamble,
+        name, preamble=preamble,
     )
 
 
 @cupy.util.memoize(for_each_device=True)
-def cupy_maxmin_csr_step2():
+def cupy_binopt_csr_step2(op_name):
+    name = 'cupy_binopt_csr' + op_name + 'step2'
     return cupy.ElementwiseKernel(
         '''
-        raw I A_INDICES, raw I A_INFO, raw B A_VALID, raw T A_TMP_DATA,
+        raw I A_INDICES, raw I A_INFO, raw B A_VALID, raw O A_TMP_DATA,
         int32 A_NNZ,
-        raw I B_INDICES, raw I B_INFO, raw B B_VALID, raw T B_TMP_DATA,
+        raw I B_INDICES, raw I B_INFO, raw B B_VALID, raw O B_TMP_DATA,
         int32 B_NNZ
         ''',
-        'raw I C_INDICES, raw T C_DATA',
+        'raw I C_INDICES, raw O C_DATA',
         '''
         if (i < A_NNZ) {
             int j = i;
@@ -910,5 +907,5 @@ def cupy_maxmin_csr_step2():
             }
         }
         ''',
-        'cupy_maxmin_csr_step2'
+        name,
     )
