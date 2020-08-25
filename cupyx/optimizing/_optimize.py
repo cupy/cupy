@@ -56,9 +56,9 @@ def optimize(*, key=None, path=None, readonly=False, **config_dict):
         key (string or None): The cache key of optimizations.
         path (string or None): The path to save optimization cache records.
             When path is specified and exists, records will be loaded from
-            the path. When readonly option is set to False, optimization
+            the path. When readonly option is set to ``False``, optimization
             cache records will be saved to the path after the optimization.
-        readonly (bool): See the description of path option.
+        readonly (bool): See the description of ``path`` option.
         max_trials (int): The number of trials that defaults to 100.
         timeout (float):
             Stops study after the given number of seconds. Default is 1.
@@ -97,7 +97,7 @@ def optimize(*, key=None, path=None, readonly=False, **config_dict):
             warnings.warn('''
 The specified path {} could not be found, and the readonly option is set.
 The optimization results will never be stored.
-                '''.format(path))
+'''.format(path))
 
     try:
         yield context
