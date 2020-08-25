@@ -766,11 +766,6 @@ def maxmin_csr(a, b, is_maximum=True):
     a_tmp_data = cupy.empty(a.nnz, dtype=a.data.dtype)
     b_tmp_data = cupy.empty(b.nnz, dtype=b.data.dtype)
     c_indptr = cupy.zeros(m + 1, dtype=a.indptr.dtype)
-    # print('# a.indptr: {}'.format(a.indptr))
-    # print('# a.indices: {}'.format(a.indices))
-    # print('# b.indptr: {}'.format(b.indptr))
-    # print('# b.indices: {}'.format(b.indices))
-    # print('# c_indptr: {}'.format(c_indptr))
     if is_maximum:
         select = __SELECT_MAX
     else:
@@ -787,19 +782,12 @@ def maxmin_csr(a, b, is_maximum=True):
     b_info = cupy.cumsum(b_info, dtype=b_info.dtype)
     c_indptr = cupy.cumsum(c_indptr, dtype=c_indptr.dtype)
     c_nnz = int(c_indptr[-1])
-    # print('# a_info: {}'.format(a_info))
-    # print('# a_valid: {}'.format(a_valid))
-    # print('# b_info: {}'.format(b_info))
-    # print('# b_valid: {}'.format(b_valid))
-    # print('# c_indptr: {}'.format(c_indptr))
-    # print('# c_nnz: {}'.format(c_nnz))
     c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
     c_data = cupy.empty(c_nnz, dtype=a.data.dtype)
     cupy_maxmin_csr_step2()(
         a.indices, a_info, a_valid, a_tmp_data, a.nnz,
         b.indices, b_info, b_valid, b_tmp_data, b.nnz,
         c_indices, c_data, size=_size)
-    # print('# c_indices: {}'.format(c_indices))
     return csr_matrix((c_data, c_indices, c_indptr), shape=(m, n))
 
 
