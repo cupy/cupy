@@ -244,7 +244,7 @@ def compile_using_nvcc(source, options=(), arch=None,
 
         if code_type == 'ptx':
             with open(result_path, 'rb') as ptx_file:
-                return ptx_file.read().decode('utf-8')
+                return ptx_file.read()
         elif code_type == 'cubin':
             with open(result_path, 'rb') as bin_file:
                 return bin_file.read()
@@ -278,7 +278,7 @@ def _preprocess(source, options, arch, backend):
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    assert isinstance(result, str)
+    assert isinstance(result, bytes)
     return result
 
 
