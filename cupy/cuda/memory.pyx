@@ -1436,7 +1436,6 @@ cdef class CFunctionAllocator:
         return MemoryPointer(mem, 0)
 
 
-@cython.no_gc
 cdef class PythonFunctionAllocatorMemory(BaseMemory):
 
     def __init__(self, size_t size, malloc_func, free_func,

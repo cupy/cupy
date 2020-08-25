@@ -84,7 +84,6 @@ cdef class CFunctionAllocator:
     cpdef MemoryPointer malloc(self, size_t size)
 
 
-@cython.no_gc
 cdef class PythonFunctionAllocatorMemory(BaseMemory):
 
     cdef:
