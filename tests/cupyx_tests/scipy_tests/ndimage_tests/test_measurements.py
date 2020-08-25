@@ -141,15 +141,6 @@ class TestStats(unittest.TestCase):
         return op(image, labels, index)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_equal(scipy_name='scp')
-    def test_ndimage_zero_dim(self, xp, scp, dtype):
-        image = self._make_image((), xp, dtype)
-        label = testing.shaped_random((), xp, dtype=xp.int32, scale=4)
-        index = xp.array([1, 2, 3])
-        op = getattr(scp.ndimage, self.op)
-        return op(image, label, index)
-
-    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_only_input(self, xp, scp, dtype):
         image = self._make_image((100,), xp, dtype)
