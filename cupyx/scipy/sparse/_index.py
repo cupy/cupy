@@ -76,6 +76,62 @@ def _get_csr_submatrix_minor_axis(Ap, Aj, Ax, start, stop):
     return Bp, Bj, Bx
 
 
+_csr_row_index_ker = core.ElementwiseKernel(
+    '''raw I out_rows, raw I rows, raw I Ap, raw I Aj,
+    raw T Ax, raw I Bp''',
+    '''raw I Bj, raw T Bx''', '''
+
+    const I out_row = out_rows[i];
+    const I row = rows[out_row];
+
+    // Look up starting offset
+    const I starting_output_offset = Bp[out_row];
+    const I output_offset = i - starting_output_offset;
+    const I starting_input_offset = Ap[row];
+
+    Bj[i] = Aj[starting_input_offset + output_offset];
+    Bx[i] = Ax[starting_input_offset + output_offset];
+''', 'csr_row_index_ker', no_return=True)
+
+
+def _csr_row_index(rows,
+                   Ap, Aj, Ax,
+                   Bp):
+    """Populate indices and data arrays from the given row index
+
+    Args
+        rows : index array of rows to populate
+        Ap : indptr array from input sparse matrix
+        Aj : indices array from input sparse matrix
+        Ax : data array from input sparse matrix
+        Bp : indptr array for output sparse matrix
+        tpb : threads per block of row index kernel
+
+    Returns
+        Bj : indices array of output sparse matrix
+        Bx : data array of output sparse matrix
+    """
+
+    nnz = int(Bp[-1])
+    Bj = cupy.empty(nnz, dtype=Aj.dtype)
+    Bx = cupy.empty(nnz, dtype=Ax.dtype)
+
+    out_rows = cupy.empty(nnz, dtype=rows.dtype)
+
+    # Build a COO row array from output CSR indptr.
+    # Calling backend cusparse API directly to avoid
+    # constructing a whole COO object.
+    handle = device.get_cusparse_handle()
+    cusparse.xcsr2coo(
+        handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
+        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+
+    _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp, Bj, Bx,
+                       size=out_rows.size)
+
+    return Bj, Bx
+
+
 def _csr_column_index1_indptr(unique_idxs, sort_idxs, col_counts,
                               Ap, Aj):
     """Construct output indptr by counting column indices
@@ -221,62 +277,6 @@ def _csr_column_index2(col_order,
         idxs, col_counts, col_order,
         Ap, Aj_mask, Ax, Bp, Bj, Bx,
         size=Ap.size-1)
-
-    return Bj, Bx
-
-
-_csr_row_index_ker = core.ElementwiseKernel(
-    '''raw I out_rows, raw I rows, raw I Ap, raw I Aj,
-    raw T Ax, raw I Bp''',
-    '''raw I Bj, raw T Bx''', '''
-
-    const I out_row = out_rows[i];
-    const I row = rows[out_row];
-
-    // Look up starting offset
-    const I starting_output_offset = Bp[out_row];
-    const I output_offset = i - starting_output_offset;
-    const I starting_input_offset = Ap[row];
-
-    Bj[i] = Aj[starting_input_offset + output_offset];
-    Bx[i] = Ax[starting_input_offset + output_offset];
-''', 'csr_row_index_ker', no_return=True)
-
-
-def _csr_row_index(rows,
-                   Ap, Aj, Ax,
-                   Bp):
-    """Populate indices and data arrays from the given row index
-
-    Args
-        rows : index array of rows to populate
-        Ap : indptr array from input sparse matrix
-        Aj : indices array from input sparse matrix
-        Ax : data array from input sparse matrix
-        Bp : indptr array for output sparse matrix
-        tpb : threads per block of row index kernel
-
-    Returns
-        Bj : indices array of output sparse matrix
-        Bx : data array of output sparse matrix
-    """
-
-    nnz = int(Bp[-1])
-    Bj = cupy.empty(nnz, dtype=Aj.dtype)
-    Bx = cupy.empty(nnz, dtype=Ax.dtype)
-
-    out_rows = cupy.empty(nnz, dtype=rows.dtype)
-
-    # Build a COO row array from output CSR indptr.
-    # Calling backend cusparse API directly to avoid
-    # constructing a whole COO object.
-    handle = device.get_cusparse_handle()
-    cusparse.xcsr2coo(
-        handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
-        cusparse.CUSPARSE_INDEX_BASE_ZERO)
-
-    _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp, Bj, Bx,
-                       size=out_rows.size)
 
     return Bj, Bx
 
