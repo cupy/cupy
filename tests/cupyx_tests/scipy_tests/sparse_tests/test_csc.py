@@ -1197,6 +1197,101 @@ class TestCscMatrixData(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
+}))
+@testing.with_requires('scipy')
+class TestCheckFormatPrune(unittest.TestCase):
+
+    def test_check_format_incorrect_indptr_size(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.indptr = data.indptr[:-1]
+        with pytest.raises(ValueError):
+            data.check_format()
+
+    def test_check_format_incorrect_indptr_start(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.indptr[0] = -1
+        with pytest.raises(ValueError):
+            data.check_format()
+
+    def test_check_format_incorrect_indptr_end(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.indptr[-1] = 1
+        with pytest.raises(ValueError):
+            data.check_format()
+
+    def test_check_format_incorrect_indices_size(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.indices = data.indices[:-1]
+        with pytest.raises(ValueError):
+            data.check_format()
+
+    def test_check_format_incorrect_data_size(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.data = data.data[:-1]
+        with pytest.raises(ValueError):
+            data.check_format()
+
+    def test_check_format_full_indices_upper_oob(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.indices[0] = data.shape[1]+1
+        with pytest.raises(ValueError):
+            data.check_format(full_check=True)
+
+    def test_check_format_full_indices_lower_oob(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.indices[0] = -1
+        with pytest.raises(ValueError):
+            data.check_format(full_check=True)
+
+    def test_check_format_full_indptr_incorrect_offsets(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.indptr[1] = data.indptr[2]+1
+        with pytest.raises(ValueError):
+            data.check_format(full_check=True)
+
+    def test_successful_check_format(self):
+        data = _make(cupy, sparse, self.dtype)
+        try:
+            data.check_format()
+        except Exception:
+            pytest.fail("Exception was raised.")
+
+        try:
+            data.check_format(full_check=True)
+        except Exception:
+            pytest.fail("Exception was raised.")
+
+    def test_prune_incorrect_indptr_size(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.indptr = data.indptr[:-1]
+        with pytest.raises(ValueError):
+            data.prune()
+
+    def test_prune_incorrect_indices_size(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.indices = data.indices[:1]
+        with pytest.raises(ValueError):
+            data.prune()
+
+    def test_prune_incorrect_data_size(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.data = data.data[:1]
+        with pytest.raises(ValueError):
+            data.prune()
+
+    def test_prune(self):
+        data = _make(cupy, sparse, self.dtype)
+        data.data = cupy.ones(data.shape[0]+10, dtype=data.data.dtype)
+        data.indices = cupy.ones(data.shape[0]+10, dtype=data.indices.dtype)
+
+        data.prune()
+
+        assert data.data.size == int(data.indptr[-1])
+        assert data.indices.size == int(data.indptr[-1])
+
+
+@testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'ufunc': [
         'arcsin', 'arcsinh', 'arctan', 'arctanh', 'ceil', 'deg2rad', 'expm1',

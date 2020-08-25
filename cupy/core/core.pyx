@@ -20,7 +20,6 @@ from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
 from cupy.core import syncdetect
 from cupy import cuda
-from cupy.cuda import device
 from cupy.cuda import memory as memory_module
 
 
@@ -38,6 +37,7 @@ from cupy.core cimport _dtype
 from cupy.core._dtype cimport get_dtype
 from cupy.core._dtype cimport to_cuda_dtype
 from cupy.core._kernel cimport create_ufunc
+from cupy.core cimport _routines_binary as _binary
 from cupy.core cimport _routines_indexing as _indexing
 from cupy.core cimport _routines_logic as _logic
 from cupy.core cimport _routines_manipulation as _manipulation
@@ -46,6 +46,7 @@ from cupy.core cimport _routines_sorting as _sorting
 from cupy.core cimport _routines_statistics as _statistics
 from cupy.core cimport dlpack
 from cupy.core cimport internal
+from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport memory
@@ -70,6 +71,51 @@ cdef inline _should_use_rop(x, y):
 
 
 cdef tuple _HANDLED_TYPES
+cdef list compute_types = [COMPUTE_TYPE_TBD,  # float16
+                           COMPUTE_TYPE_TBD,  # float32
+                           COMPUTE_TYPE_TBD]  # float64
+
+
+cpdef int to_compute_type_index(dtype) except -1:
+    cdef str dtype_char = numpy.dtype(dtype).char
+    if dtype_char == 'e':
+        return 0
+    elif dtype_char in 'fF':
+        return 1
+    elif dtype_char in 'dD':
+        return 2
+    else:
+        raise TypeError('dtype is not supported: {}'.format(dtype))
+
+
+cpdef set_compute_type(dtype, compute_type):
+    global compute_types
+    if compute_type in (COMPUTE_TYPE_TBD, COMPUTE_TYPE_DEFAULT,
+                        COMPUTE_TYPE_PEDANTIC, COMPUTE_TYPE_FP16,
+                        COMPUTE_TYPE_FP32, COMPUTE_TYPE_FP64):
+        compute_types[to_compute_type_index(dtype)] = compute_type
+    elif compute_type in (COMPUTE_TYPE_BF16, COMPUTE_TYPE_TF32):
+        if int(device.get_compute_capability()) >= 80:
+            compute_types[to_compute_type_index(dtype)] = compute_type
+        else:
+            warnings.warn('COMPUTE_TYPE_BF16 and COMPUTE_TYPE_TF32 are only '
+                          'available on GPUs with compute capability 8.0 or '
+                          'higher. COMPUTE_TYPE_DEFAULT will be used instead.')
+            compute_types[to_compute_type_index(dtype)] = COMPUTE_TYPE_DEFAULT
+    else:
+        raise ValueError('Unknown compute type: {}'.format(compute_type))
+
+
+cpdef get_compute_type(dtype):
+    global compute_types
+    cdef int index = to_compute_type_index(dtype)
+    if compute_types[index] == COMPUTE_TYPE_TBD:
+        compute_type = COMPUTE_TYPE_DEFAULT
+        dtype_char = numpy.dtype(dtype).char
+        if dtype_char in 'fF' and int(os.getenv('CUPY_TF32', '0')) > 0:
+            compute_type = COMPUTE_TYPE_TF32
+        set_compute_type(dtype, compute_type)
+    return compute_types[index]
 
 
 cdef class ndarray:
@@ -998,7 +1044,7 @@ cdef class ndarray:
         return _math._absolute(self)
 
     def __invert__(self):
-        return invert(self)
+        return _binary._invert(self)
 
     # Arithmetic:
 
@@ -1067,31 +1113,31 @@ cdef class ndarray:
         if _should_use_rop(x, y):
             return y.__rlshift__(x)
         else:
-            return left_shift(x, y)
+            return _binary._left_shift(x, y)
 
     def __rshift__(x, y):
         if _should_use_rop(x, y):
             return y.__rrshift__(x)
         else:
-            return right_shift(x, y)
+            return _binary._right_shift(x, y)
 
     def __and__(x, y):
         if _should_use_rop(x, y):
             return y.__rand__(x)
         else:
-            return bitwise_and(x, y)
+            return _binary._bitwise_and(x, y)
 
     def __or__(x, y):
         if _should_use_rop(x, y):
             return y.__ror__(x)
         else:
-            return bitwise_or(x, y)
+            return _binary._bitwise_or(x, y)
 
     def __xor__(x, y):
         if _should_use_rop(x, y):
             return y.__rxor__(x)
         else:
-            return bitwise_xor(x, y)
+            return _binary._bitwise_xor(x, y)
 
     # Arithmetic, in-place:
 
@@ -1120,19 +1166,19 @@ cdef class ndarray:
         return _math._power(self, other, self)
 
     def __ilshift__(self, other):
-        return left_shift(self, other, self)
+        return _binary._left_shift(self, other, self)
 
     def __irshift__(self, other):
-        return right_shift(self, other, self)
+        return _binary._right_shift(self, other, self)
 
     def __iand__(self, other):
-        return bitwise_and(self, other, self)
+        return _binary._bitwise_and(self, other, self)
 
     def __ior__(self, other):
-        return bitwise_or(self, other, self)
+        return _binary._bitwise_or(self, other, self)
 
     def __ixor__(self, other):
-        return bitwise_xor(self, other, self)
+        return _binary._bitwise_xor(self, other, self)
 
     cpdef ndarray conj(self):
         return _math._ndarray_conj(self)
@@ -2331,92 +2377,6 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
 
 
 # -----------------------------------------------------------------------------
-# Binary operations
-# -----------------------------------------------------------------------------
-
-cpdef _create_bit_op(name, op, no_bool, doc=''):
-    types = () if no_bool else ('??->?',)
-    return create_ufunc(
-        'cupy_' + name,
-        types + ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-                 'LL->L', 'qq->q', 'QQ->Q'),
-        'out0 = in0 %s in1' % op,
-        doc=doc)
-
-
-bitwise_and = _create_bit_op(
-    'bitwise_and', '&', False,
-    '''Computes the bitwise AND of two arrays elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. seealso:: :data:`numpy.bitwise_and`
-
-    ''')
-
-
-bitwise_or = _create_bit_op(
-    'bitwise_or', '|', False,
-    '''Computes the bitwise OR of two arrays elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. seealso:: :data:`numpy.bitwise_or`
-
-    ''')
-
-
-bitwise_xor = _create_bit_op(
-    'bitwise_xor', '^', False,
-    '''Computes the bitwise XOR of two arrays elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. seealso:: :data:`numpy.bitwise_xor`
-
-    ''')
-
-
-invert = create_ufunc(
-    'cupy_invert',
-    (('?->?', 'out0 = !in0'), 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I',
-     'l->l', 'L->L', 'q->q', 'Q->Q'),
-    'out0 = ~in0',
-    doc='''Computes the bitwise NOT of an array elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. note::
-        :func:`cupy.bitwise_not` is an alias for :func:`cupy.invert`.
-
-    .. seealso:: :data:`numpy.invert`
-
-    ''')
-
-
-left_shift = _create_bit_op(
-    'left_shift', '<<', True,
-    '''Shifts the bits of each integer element to the left.
-
-    Only integer arrays are handled.
-
-    .. seealso:: :data:`numpy.left_shift`
-
-    ''')
-
-
-right_shift = _create_bit_op(
-    'right_shift', '>>', True,
-    '''Shifts the bits of each integer element to the right.
-
-    Only integer arrays are handled
-
-    .. seealso:: :data:`numpy.right_shift`
-
-    ''')
-
-
-# -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
 
@@ -2924,46 +2884,57 @@ cpdef ndarray tensordot_core_v11(
     cdef cuDoubleComplex one_D, zero_D
     cdef size_t one_ptr, zero_ptr
 
-    cdef int compute_type
-    if c.dtype.char in 'efF':
-        compute_type = cublas.CUBLAS_COMPUTE_32F
-    elif c.dtype.char in 'dD':
-        compute_type = cublas.CUBLAS_COMPUTE_64F
-
     cdef int compute_capability = int(device.get_compute_capability())
+    cdef int compute_type = get_compute_type(c.dtype)
+    cdef int cublas_compute_type = -1
+    if c.dtype.char in 'efF':
+        if compute_type == COMPUTE_TYPE_PEDANTIC:
+            cublas_compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
+        elif compute_type == COMPUTE_TYPE_TF32 and c.dtype.char in 'fF':
+            cublas_compute_type = cublas.CUBLAS_COMPUTE_32F_FAST_TF32
+        else:
+            cublas_compute_type = cublas.CUBLAS_COMPUTE_32F
+    elif c.dtype.char in 'dD':
+        if compute_type == COMPUTE_TYPE_PEDANTIC:
+            cublas_compute_type = cublas.CUBLAS_COMPUTE_64F_PEDANTIC
+        else:
+            cublas_compute_type = cublas.CUBLAS_COMPUTE_64F
+    else:
+        raise ValueError('Invalid dtype: {}'.format(c.dtype))
+
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
     if ((compute_capability >= 80) or
             (compute_capability >= 70 and c.dtype == 'e')):
         algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
 
-    if c.dtype.char in 'efd':
-        if compute_type == cublas.CUBLAS_COMPUTE_32F:
+    if cublas_compute_type in (cublas.CUBLAS_COMPUTE_32F,
+                               cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
+                               cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
+        if c.dtype.char in 'efd':
             one_f = 1
             zero_f = 0
             one_ptr = <size_t>&one_f
             zero_ptr = <size_t>&zero_f
-        elif compute_type == cublas.CUBLAS_COMPUTE_64F:
+        else:
+            one_F = cuComplex(1, 0)
+            zero_F = cuComplex(0, 0)
+            one_ptr = <size_t>&one_F
+            zero_ptr = <size_t>&zero_F
+    elif cublas_compute_type in (cublas.CUBLAS_COMPUTE_64F,
+                                 cublas.CUBLAS_COMPUTE_64F_PEDANTIC):
+        if c.dtype.char in 'efd':
             one_d = 1
             zero_d = 0
             one_ptr = <size_t>&one_d
             zero_ptr = <size_t>&zero_d
         else:
-            raise ValueError('Invalid compute type: {}'.format(compute_type))
-    elif c.dtype.char in 'FD':
-        if compute_type == cublas.CUBLAS_COMPUTE_32F:
-            one_F = cuComplex(1, 0)
-            zero_F = cuComplex(0, 0)
-            one_ptr = <size_t>&one_F
-            zero_ptr = <size_t>&zero_F
-        elif compute_type == cublas.CUBLAS_COMPUTE_64F:
             one_D = cuDoubleComplex(1, 0)
             zero_D = cuDoubleComplex(0, 0)
             one_ptr = <size_t>&one_D
             zero_ptr = <size_t>&zero_D
-        else:
-            raise ValueError('Invalid compute type: {}'.format(compute_type))
     else:
-        raise ValueError('Invalid dtype: {}'.format(c.dtype))
+        raise ValueError('Invalid cublas compute type: {}'
+                         .format(cublas_compute_type))
 
     cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
     cdef int b_cuda_dtype = to_cuda_dtype(b.dtype, is_half_allowed=True)
@@ -2972,7 +2943,8 @@ cpdef ndarray tensordot_core_v11(
     cublas.gemmEx(
         handle, <int>transa, <int>transb, <int>m, <int>n, <int>k, one_ptr,
         a.data.ptr, a_cuda_dtype, <int>lda, b.data.ptr, b_cuda_dtype, <int>ldb,
-        zero_ptr, c.data.ptr, c_cuda_dtype, <int>ldc, compute_type, algo)
+        zero_ptr, c.data.ptr, c_cuda_dtype, <int>ldc, cublas_compute_type,
+        algo)
 
 
 @cython.profile(False)

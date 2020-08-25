@@ -393,8 +393,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """
         M, N = self.shape
         i = _index._normalize_index(i, M, 'index')
-        indptr, indices, data = _index._get_csr_submatrix(
-            self.indptr, self.indices, self.data, i, i + 1, 0, N)
+        indptr, indices, data = _index._get_csr_submatrix_major_axis(
+            self.indptr, self.indices, self.data, i, i + 1)
         return csr_matrix((data, indices, indptr), shape=(1, N),
                           dtype=self.dtype, copy=False)
 
@@ -410,8 +410,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """
         M, N = self.shape
         i = _index._normalize_index(i, N, 'index')
-        indptr, indices, data = _index._get_csr_submatrix(
-            self.indptr, self.indices, self.data, 0, M, i, i + 1)
+        indptr, indices, data = _index._get_csr_submatrix_minor_axis(
+            self.indptr, self.indices, self.data, i, i + 1)
         return csr_matrix((data, indices, indptr), shape=(M, 1),
                           dtype=self.dtype, copy=False)
 

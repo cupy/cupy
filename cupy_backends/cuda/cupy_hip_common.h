@@ -89,6 +89,10 @@ typedef hipChannelFormatDesc cudaChannelFormatDesc;
 typedef hipResourceDesc cudaResourceDesc;
 typedef hipTextureDesc cudaTextureDesc;
 
+// IPC operations
+typedef hipIpcMemHandle_st cudaIpcMemHandle_t;
+typedef hipIpcEventHandle_st cudaIpcEventHandle_t;
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // blas
@@ -105,6 +109,9 @@ typedef enum {} cublasGemmAlgo_t;
 typedef enum {} cublasMath_t;
 typedef int cudaDataType_t;
 typedef hipblasStatus_t cublasStatus_t;
+
+// TODO(leofang): as of ROCm 3.5.0 this does not exist yet
+typedef enum {} cublasComputeType_t;
 
 
 ///////////////////////////////////////////////////////////////////////////////
