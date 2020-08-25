@@ -77,21 +77,19 @@ def _get_csr_submatrix_minor_axis(Ap, Aj, Ax, start, stop):
 
 
 _csr_row_index_ker = core.ElementwiseKernel(
-    '''raw I out_rows, raw I rows, raw I Ap, raw I Aj,
-    raw T Ax, raw I Bp''',
-    '''raw I Bj, raw T Bx''', '''
-
-    const I out_row = out_rows[i];
-    const I row = rows[out_row];
+    'I out_rows, raw I rows, raw I Ap, raw I Aj, raw T Ax, raw I Bp',
+    'I Bj, T Bx',
+    '''
+    const I row = rows[out_rows];
 
     // Look up starting offset
-    const I starting_output_offset = Bp[out_row];
+    const I starting_output_offset = Bp[out_rows];
     const I output_offset = i - starting_output_offset;
     const I starting_input_offset = Ap[row];
 
-    Bj[i] = Aj[starting_input_offset + output_offset];
-    Bx[i] = Ax[starting_input_offset + output_offset];
-''', 'csr_row_index_ker', no_return=True)
+    Bj = Aj[starting_input_offset + output_offset];
+    Bx = Ax[starting_input_offset + output_offset];
+''', 'csr_row_index_ker')
 
 
 def _csr_row_index(rows, Ap, Aj, Ax, Bp):
@@ -110,8 +108,6 @@ def _csr_row_index(rows, Ap, Aj, Ax, Bp):
 
     """
     nnz = int(Bp[-1])
-    Bj = cupy.empty(nnz, dtype=Aj.dtype)
-    Bx = cupy.empty(nnz, dtype=Ax.dtype)
 
     out_rows = cupy.empty(nnz, dtype=rows.dtype)
 
@@ -123,10 +119,7 @@ def _csr_row_index(rows, Ap, Aj, Ax, Bp):
         handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
-    _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp, Bj, Bx,
-                       size=out_rows.size)
-
-    return Bj, Bx
+    return _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp)
 
 
 def _csr_column_index1_indptr(unique_idxs, sort_idxs, col_counts,
