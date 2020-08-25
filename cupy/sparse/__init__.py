@@ -16,6 +16,8 @@ if (3, 7) <= sys.version_info:
             msg = 'cupy.sparse is deprecated. Use cupyx.scipy.sparse instead.'
             warnings.warn(msg, DeprecationWarning)
             return getattr(cupyx.scipy.sparse, name)
+        raise AttributeError(
+            "module 'cupyx.scipy.sparse' has no attribute '{}'".format(name))
 else:
     from cupyx.scipy.sparse.base import issparse  # NOQA
     from cupyx.scipy.sparse.base import isspmatrix  # NOQA
