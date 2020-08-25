@@ -1,5 +1,17 @@
-# Functions from the following SciPy document
-# https://docs.scipy.org/doc/scipy/reference/sparse.linalg.html
+import sys
+import warnings
 
-# "NOQA" to suppress flake8 warning
-from cupyx.scipy.sparse.linalg.solve import lsqr  # NOQA
+import cupyx.scipy.sparse.linalg
+
+
+if (3, 7) <= sys.version_info:
+    def __getattr__(name):
+        if hasattr(cupyx.scipy.sparse.linalg, name):
+            warnings.warn(
+                'cupy.sparse.linalg is deprecated.'
+                ' Use cupyx.scipy.sparse.linalg instead.', DeprecationWarning)
+            return getattr(cupyx.scipy.sparse.linalg, name)
+        raise AttributeError(
+            "module 'cupy.sparse.linalg' has no attribute {!r}".format(name))
+else:
+    from cupyx.scipy.sparse.linalg import *  # NOQA
