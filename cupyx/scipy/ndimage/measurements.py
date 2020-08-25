@@ -380,7 +380,7 @@ def sum(input, labels=None, index=None):
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
 
-    if input.dtype in (cupy.complex64, cupy.complex128):
+    if input.dtype.kind == 'c':
         raise TypeError("cupyx.scipy.ndimage.sum doesnt support %{}".format(
             input.dtype.type))
 
