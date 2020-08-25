@@ -11,7 +11,6 @@ cdef class PointerAttributes:
         public intptr_t devicePointer
         public intptr_t hostPointer
 
-
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
     ctypedef int DataType 'cudaDataType'
@@ -100,6 +99,32 @@ cdef extern from *:
     ctypedef struct IpcEventHandle 'cudaIpcEventHandle_t':
         unsigned char[64] reserved
 
+    ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        char name[256]
+        size_t totalGlobalMem
+        size_t sharedMemPerBlock
+        int regsPerBlock
+        int warpSize
+        int maxThreadsPerBlock
+        int maxThreadsDim[3]
+        int maxGridSize[3]
+        int clockRate
+        int memoryClockRate
+        int memoryBusWidth
+        size_t totalConstMem
+        int major
+        int minor
+        int multiProcessorCount
+        int l2CacheSize
+        int maxThreadsPerMultiprocessor
+        int computeMode
+        int clockInstructionRate
+        int concurrentKernels
+        int pciBusID
+        int pciDeviceID
+        size_t maxSharedMemoryPerMultiProcessor
+        int isMultiGpuBoard
+        int canMapHostMemory
 
 ###############################################################################
 # Enum
@@ -338,6 +363,7 @@ cpdef str deviceGetPCIBusId(int device)
 cpdef int getDeviceCount() except? -1
 cpdef setDevice(int device)
 cpdef deviceSynchronize()
+cpdef getDeviceProperties(int device)
 
 cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1
 cpdef deviceEnablePeerAccess(int peerDevice)

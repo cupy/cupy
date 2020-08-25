@@ -84,6 +84,7 @@ cdef extern from '../cupy_cuda_runtime.h' nogil:
     int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device)
     int cudaDeviceGetByPCIBusId(int* device, const char* pciBusId)
     int cudaDeviceGetPCIBusId(char* pciBusId, int len, int device)
+    int cudaGetDeviceProperties(cudaDeviceProp* prop, int device)
     int cudaGetDeviceCount(int* count)
     int cudaSetDevice(int device)
     int cudaDeviceSynchronize()
@@ -279,6 +280,39 @@ cpdef int deviceGetAttribute(int attrib, int device) except? -1:
     status = cudaDeviceGetAttribute(&ret, <DeviceAttr>attrib, device)
     check_status(status)
     return ret
+
+cpdef getDeviceProperties(int device):
+    cdef cudaDeviceProp props
+    status = cudaGetDeviceProperties(&props, device)
+    # TODO(ecastill) add more parameters
+    properties = {
+        'name': props.name,
+        'totalGlobalMem': props.totalGlobalMem,
+        'sharedMemPerBlock': props.sharedMemPerBlock,
+        'regsPerBlock': props.regsPerBlock,
+        'warpSize': props.warpSize,
+        'maxThreadsPerBlock': props.maxThreadsPerBlock,
+        'maxThreadsDim': (
+            props.maxThreadsDim[0],
+            props.maxThreadsDim[1],
+            props.maxThreadsDim[2]),
+        'maxGridSize': (
+            props.maxGridSize[0],
+            props.maxGridSize[1],
+            props.maxGridSize[2]),
+        'totalConstMem': props.totalConstMem,
+        'major': props.major,
+        'minor': props.minor,
+        'clockRate': props.clockRate,
+        'multiProcessorCount': props.multiProcessorCount,
+        'canMapHostMemory': props.canMapHostMemory,
+        'computeMode': props.computeMode,
+        'concurrentKernels': props.concurrentKernels,
+        'pciBusID': props.pciBusID,
+        'pciDeviceID': props.pciDeviceID,
+    }
+    check_status(status)
+    return properties
 
 cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
     # Encode the python string before passing to native code
