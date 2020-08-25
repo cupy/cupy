@@ -17,6 +17,6 @@ if (3, 7) <= sys.version_info:
             warnings.warn(msg, DeprecationWarning)
             return getattr(cupyx.scipy.sparse, name)
         raise AttributeError(
-            "module 'cupyx.scipy.sparse' has no attribute '{}'".format(name))
+            "module 'cupy.sparse' has no attribute {!r}".format(name))
 else:
     from cupyx.scipy.sparse import *  # NOQA

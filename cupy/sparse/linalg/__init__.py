@@ -12,7 +12,6 @@ if (3, 7) <= sys.version_info:
                 ' Use cupyx.scipy.sparse.linalg instead.', DeprecationWarning)
             return getattr(cupyx.scipy.sparse.linalg, name)
         raise AttributeError(
-            "module 'cupyx.scipy.sparse.linalg' has no attribute '{}'".format(
-                name))
+            "module 'cupy.sparse.linalg' has no attribute {!r}".format(name))
 else:
     from cupyx.scipy.sparse.linalg import *  # NOQA
