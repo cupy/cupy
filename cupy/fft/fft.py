@@ -30,16 +30,17 @@ def _output_dtype(dtype, value_type):
     return dtype
 
 
-def _convert_dtype(a, value_type):
+def _convert_dtype(a, readonly, value_type):
     out_dtype = _output_dtype(a.dtype, value_type)
     if out_dtype != a.dtype:
         a = a.astype(out_dtype)
-    return a
+        readonly = False
+    return a, readonly
 
 
-def _cook_shape(a, s, axes, value_type, order='C'):
+def _cook_shape(a, readonly, s, axes, value_type, order='C'):
     if s is None or s == a.shape:
-        return a
+        return a, readonly
     if (value_type == 'C2R') and (s[-1] is not None):
         s = list(s)
         s[-1] = s[-1] // 2 + 1
@@ -57,7 +58,8 @@ def _cook_shape(a, s, axes, value_type, order='C'):
                 z = cupy.zeros(shape, a.dtype.char, order=order)
                 z[index] = a
                 a = z
-    return a
+                readonly = False
+    return a, readonly
 
 
 def _convert_fft_type(dtype, value_type):
@@ -77,20 +79,22 @@ def _convert_fft_type(dtype, value_type):
         raise ValueError
 
 
-def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
-              out_size=None, out=None, plan=None):
+def _exec_fft(a, readonly, direction, value_type, norm, axis,
+              out_size=None, plan=None):
     fft_type = _convert_fft_type(a.dtype, value_type)
 
     if axis % a.ndim != a.ndim - 1:
         a = a.swapaxes(axis, -1)
 
-    if a.base is not None or not a.flags.c_contiguous:
+    if not a.flags.c_contiguous:
         a = a.copy()
-    elif (value_type == 'C2R' and not overwrite_x and
+        readonly = False
+    elif (value_type == 'C2R' and not readonly and
             10010 <= cupy.cuda.runtime.runtimeGetVersion()):
         # The input array may be modified in CUDA 10.1 and above.
         # See #3763 for the discussion.
         a = a.copy()
+        readonly = False
 
     n = a.shape[-1]
     if n < 1:
@@ -126,13 +130,11 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         if config.use_multi_gpus != plan._use_multi_gpus:
             raise ValueError('Unclear if multiple GPUs are to be used or not.')
 
-    if overwrite_x and value_type == 'C2C':
-        out = a
-    elif out is not None:
-        # verify that out has the expected shape and dtype
-        plan.check_output_array(a, out)
-    else:
+    if readonly or value_type != 'C2C':
         out = plan.get_output_array(a)
+        readonly = False
+    else:
+        out = a
 
     if batch != 0:
         plan.fft(a, out, direction)
@@ -149,13 +151,14 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     if axis % a.ndim != a.ndim - 1:
         out = out.swapaxes(axis, -1)
 
-    return out
+    return out, readonly
 
 
-def _fft_c2c(a, direction, norm, axes, overwrite_x, plan=None):
+def _fft_c2c(a, readonly, direction, norm, axes, plan=None):
     for axis in axes:
-        a = _exec_fft(a, direction, 'C2C', norm, axis, overwrite_x, plan=plan)
-    return a
+        a, readonly = _exec_fft(
+            a, readonly, direction, 'C2C', norm, axis, plan=plan)
+    return a, readonly
 
 
 def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
@@ -180,20 +183,23 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
             return a
         else:
             raise IndexError('list index out of range')
-    a = _convert_dtype(a, value_type)
-    a = _cook_shape(a, s, axes, value_type)
+
+    readonly = not overwrite_x
+    a, readonly = _convert_dtype(a, readonly, value_type)
+    a, readonly = _cook_shape(a, readonly, s, axes, value_type)
 
     if value_type == 'C2C':
-        a = _fft_c2c(a, direction, norm, axes, overwrite_x, plan=plan)
+        a, readonly = _fft_c2c(a, readonly, direction, norm, axes, plan=plan)
     elif value_type == 'R2C':
-        a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x)
-        a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
+        a, readonly = _exec_fft(
+            a, readonly, direction, value_type, norm, axes[-1])
+        a, readonly = _fft_c2c(a, readonly, direction, norm, axes[:-1])
     else:  # C2R
-        a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
+        a, readonly = _fft_c2c(a, readonly, direction, norm, axes[:-1])
         # _cook_shape tells us input shape only, and no output shape
         out_size = _get_fftn_out_size(a.shape, s, axes[-1], value_type)
-        a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
-                      out_size)
+        a, readonly = _exec_fft(
+            a, readonly, direction, value_type, norm, axes[-1], out_size)
 
     return a
 
@@ -406,23 +412,24 @@ def _get_fftn_out_size(in_shape, s, last_axis, value_type):
     return out_size
 
 
-def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
-               plan=None, out=None, out_size=None):
+def _exec_fftn(a, readonly, direction, value_type, norm, axes, order,
+               plan=None, out_size=None):
 
     fft_type = _convert_fft_type(a.dtype, value_type)
 
-    if a.flags.c_contiguous:
-        order = 'C'
-    elif a.flags.f_contiguous:
-        order = 'F'
-    else:
-        raise ValueError('a must be contiguous')
+    if order == 'C' and not a.flags.c_contiguous:
+        a = cupy.ascontiguousarray(a)
+        readonly = False
+    elif order == 'F' and not a.flags.f_contiguous:
+        a = cupy.asfortranarray(a)
+        readonly = False
 
-    if (value_type == 'C2R' and not overwrite_x and
+    if (value_type == 'C2R' and readonly and
             10010 <= cupy.cuda.runtime.runtimeGetVersion()):
         # The input array may be modified in CUDA 10.1 and above.
         # See #3763 for the discussion.
         a = a.copy()
+        readonly = False
 
     curr_plan = cufft.get_current_plan()
     if curr_plan is not None:
@@ -462,12 +469,11 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
                                  'mismatch')
 
     # TODO(leofang): support in-place transform for R2C/C2R
-    if overwrite_x and value_type == 'C2C':
-        out = a
-    elif out is None:
+    if readonly or value_type != 'C2C':
         out = plan.get_output_array(a, order=order)
+        readonly = False
     else:
-        plan.check_output_array(a, out)
+        out = a
 
     if out.size != 0:
         plan.fft(a, out, direction)
@@ -485,7 +491,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
 
 
 def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
-          overwrite_x=False, out=None):
+          overwrite_x=False):
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or "ortho".'
                          % norm)
@@ -496,7 +502,9 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
             return a
         else:
             raise IndexError('list index out of range')
-    a = _convert_dtype(a, value_type)
+
+    readonly = not overwrite_x
+    a, readonly = _convert_dtype(a, readonly, value_type)
 
     if order == 'A':
         if a.flags.f_contiguous:
@@ -506,27 +514,23 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
         else:
             a = cupy.ascontiguousarray(a)
             order = 'C'
+            readonly = False
     elif order not in ['C', 'F']:
         raise ValueError('Unsupported order: {}'.format(order))
 
     # Note: need to call _cook_shape prior to sorting the axes
-    a = _cook_shape(a, s, axes, value_type, order=order)
+    a, readonly = _cook_shape(a, readonly, s, axes, value_type, order=order)
 
     for n in a.shape:
         if n < 1:
             raise ValueError(
                 'Invalid number of FFT data points (%d) specified.' % n)
 
-    if order == 'C' and not a.flags.c_contiguous:
-        a = cupy.ascontiguousarray(a)
-    elif order == 'F' and not a.flags.f_contiguous:
-        a = cupy.asfortranarray(a)
-
     # _cook_shape tells us input shape only, and not output shape
     out_size = _get_fftn_out_size(a.shape, s, axes_sorted[-1], value_type)
 
-    a = _exec_fftn(a, direction, value_type, norm=norm, axes=axes_sorted,
-                   overwrite_x=overwrite_x, plan=plan, out=out,
+    a = _exec_fftn(a, readonly, direction, value_type, norm=norm,
+                   axes=axes_sorted, plan=plan, order=order,
                    out_size=out_size)
     return a
 
