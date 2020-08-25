@@ -8,8 +8,8 @@ from cupy import _environment
 from cupy import _version
 
 
-if sys.platform.startswith('win32') and (3, 8) <= sys.version_info:  # NOQA
-    _environment._setup_win32_dll_directory()  # NOQA
+_environment._setup_win32_dll_directory()  # NOQA
+_environment._preload_libraries()  # NOQA
 
 
 try:
@@ -59,7 +59,7 @@ from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
-from cupy import _sorting  # NOQA
+# `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
@@ -797,7 +797,7 @@ def get_array_module(*args):
 
     """
     for arg in args:
-        if isinstance(arg, (ndarray, sparse.spmatrix,
+        if isinstance(arg, (ndarray, _cupyx.scipy.sparse.spmatrix,
                             cupy.core.fusion._FusionVarArray,
                             cupy.core.new_fusion._ArrayProxy)):
             return _cupy

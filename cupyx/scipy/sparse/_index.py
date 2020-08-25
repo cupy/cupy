@@ -23,6 +23,59 @@ _int_scalar_types = (int, numpy.integer, numpy.int_)
 _bool_scalar_types = (bool, numpy.bool, numpy.bool_)
 
 
+def _get_csr_submatrix_major_axis(Ap, Aj, Ax, start, stop):
+    """Return a submatrix of the input sparse matrix by slicing major axis.
+
+    Args:
+        Ap (cupy.ndarray): indptr array from input sparse matrix
+        Aj (cupy.ndarray): indices array from input sparse matrix
+        Ax (cupy.ndarray): data array from input sparse matrix
+        start (int): starting index of major axis
+        stop (int): ending index of major axis
+
+    Returns:
+        Bp (cupy.ndarray): indptr array of output sparse matrix
+        Bj (cupy.ndarray): indices array of output sparse matrix
+        Bx (cupy.ndarray): data array of output sparse matrix
+
+    """
+    Ap = Ap[start:stop + 1]
+    start_offset, stop_offset = int(Ap[0]), int(Ap[-1])
+    Bp = Ap - start_offset
+    Bj = Aj[start_offset:stop_offset]
+    Bx = Ax[start_offset:stop_offset]
+
+    return Bp, Bj, Bx
+
+
+def _get_csr_submatrix_minor_axis(Ap, Aj, Ax, start, stop):
+    """Return a submatrix of the input sparse matrix by slicing minor axis.
+
+    Args:
+        Ap (cupy.ndarray): indptr array from input sparse matrix
+        Aj (cupy.ndarray): indices array from input sparse matrix
+        Ax (cupy.ndarray): data array from input sparse matrix
+        start (int): starting index of minor axis
+        stop (int): ending index of minor axis
+
+    Returns:
+        Bp (cupy.ndarray): indptr array of output sparse matrix
+        Bj (cupy.ndarray): indices array of output sparse matrix
+        Bx (cupy.ndarray): data array of output sparse matrix
+
+    """
+    mask = (start <= Aj) & (Aj < stop)
+    mask_sum = cupy.empty(Aj.size + 1, dtype=Aj.dtype)
+    mask_sum[0] = 0
+    mask_sum[1:] = mask
+    cupy.cumsum(mask_sum, out=mask_sum)
+    Bp = mask_sum[Ap]
+    Bj = Aj[mask] - start
+    Bx = Ax[mask]
+
+    return Bp, Bj, Bx
+
+
 def _csr_column_index1_indptr(unique_idxs, sort_idxs, col_counts,
                               Ap, Aj):
     """Construct output indptr by counting column indices
@@ -170,47 +223,6 @@ def _csr_column_index2(col_order,
         size=Ap.size-1)
 
     return Bj, Bx
-
-
-def _get_csr_submatrix(Ap, Aj, Ax,
-                       start_maj, stop_maj,
-                       start_min, stop_min):
-    """Return a submatrix of the input sparse matrix by
-    slicing both major and minor axes.
-
-    Args
-        Ap : indptr array from input sparse matrix
-        Aj : indices array from input sparse matrix
-        Ax : data array from input sparse matrix
-        start_maj : starting index of major axis
-        stop_maj : ending index of major axis
-        start_min : starting index of minor axis
-        stop_min : ending index of minor axis
-
-    Returns
-        Bp : indptr array of output sparse matrix
-        Bj : indices array of output sparse matrix
-        Bx : data array of output sparse matrix
-    """
-
-    # Major slicing
-    Ap = Ap[start_maj: stop_maj + 1]
-    start_offset, stop_offset = int(Ap[0]), int(Ap[-1])
-    Ap = Ap - start_offset
-    Aj = Aj[start_offset:stop_offset]
-    Ax = Ax[start_offset:stop_offset]
-
-    # Minor slicing
-    mask = (start_min <= Aj) & (Aj < stop_min)
-    mask_sum = cupy.empty(Aj.size + 1, dtype=Aj.dtype)
-    mask_sum[0] = 0
-    mask_sum[1:] = mask
-    cupy.cumsum(mask_sum, out=mask_sum)
-    Bp = mask_sum[Ap]
-    Bj = Aj[mask] - start_min
-    Bx = Ax[mask]
-
-    return Bp, Bj, Bx
 
 
 _csr_row_index_ker = core.ElementwiseKernel(
