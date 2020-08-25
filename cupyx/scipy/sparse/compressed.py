@@ -436,6 +436,26 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 shape=self.shape,
                 dtype=data.dtype)
 
+    def prune(self):
+        """Remove empty space after all non-zero elements.
+        """
+        major_dim = self._swap(*self.shape)[0]
+
+        if self.indptr.size != major_dim + 1:
+            raise ValueError('index pointer has invalid length')
+
+        if self.indices.size < self.indptr[-1]:
+            raise ValueError('indices array has fewer than nnz elements')
+
+        # NOTE: With the current getnnz implementation, this would
+        # never fail because getnnz returns self.data.size. Using
+        # indptr[-1] instead.
+        if self.data.size < self.indptr[-1]:
+            raise ValueError('data array has fewer than nnz elements')
+
+        self.indices = util.prune_array(self.indices[:self.indptr[-1]])
+        self.data = util.prune_array(self.data[:self.indptr[-1]])
+
     def check_format(self, full_check=True):
         """check whether the matrix format is valid
         Parameters
@@ -445,8 +465,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             basic check, O(1) operations (default True).
         """
         # use _swap to determine proper bounds
-        major_name, minor_name = self._swap(('row', 'column'))
-        major_dim, minor_dim = self._swap(self.shape)
+        major_name, minor_name = self._swap('row', 'column')
+        major_dim, minor_dim = self._swap(*self.shape)
 
         # index arrays should have integer data types
         if self.indptr.dtype.kind != 'i':
@@ -467,22 +487,20 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 raise ValueError('data, indices, and indptr should be 1-D')
 
         # check index pointer
-        if (len(self.indptr) != major_dim + 1):
+        if (self.indptr.size != major_dim + 1):
             raise ValueError("index pointer size ({}) should be ({})"
                              "".format(len(self.indptr), major_dim + 1))
         if (self.indptr[0] != 0):
             raise ValueError("index pointer should start with 0")
 
         # check index and data arrays
-        if (len(self.indices) != len(self.data)):
+        if (self.indices.size != self.data.size):
             raise ValueError("indices and data should have the same size")
-        if (self.indptr[-1] > len(self.indices)):
+        if (self.indptr[-1] > self.indices.size):
             raise ValueError("Last value of index pointer should be less than "
                              "the size of index and data arrays")
 
-        # TODO(cjnolet): Uncertain that the current methods are able to cause
-        # a condition that would warrant pruning.
-        # self.prune()
+        self.prune()
 
         if full_check:
             # check format validity (more expensive)
