@@ -205,6 +205,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             dtype = numpy.promote_types(self.dtype, other.dtype)
             if dtype.char not in 'FD':
                 dtype = numpy.promote_types(numpy.float64, dtype)
+            # Note: The following implementation converts two sparse matrices
+            # into dense matrices and then performs a point-wise division,
+            # which can use lots of memory.
             return self.todense().astype(dtype) / other.todense().astype(dtype)
         raise NotImplementedError
 
