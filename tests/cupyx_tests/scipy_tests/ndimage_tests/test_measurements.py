@@ -163,7 +163,7 @@ class TestStats(unittest.TestCase):
         op = getattr(scp.ndimage, self.op)
         return op(image, labels, 1)
 
-    @testing.for_dtypes([cupy.complex64, cupy.complex128])
+    @testing.for_complex_dtypes()
     def test_invalid_image_dtype(self, dtype):
         image = self._make_image((100,), cupy, dtype)
         labels = testing.shaped_random((100,), cupy, dtype=cupy.int32, scale=4)
