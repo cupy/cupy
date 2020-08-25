@@ -1254,12 +1254,12 @@ class TestCheckFormatPrune(unittest.TestCase):
         data = _make(cupy, sparse, self.dtype)
         try:
             data.check_format()
-        except:
+        except Exception:
             pytest.fail("Exception was raised.")
 
         try:
             data.check_format(full_check=True)
-        except:
+        except Exception:
             pytest.fail("Exception was raised.")
 
     def test_prune_incorrect_indptr_size(self):
