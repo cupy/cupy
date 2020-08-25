@@ -6,6 +6,7 @@ import typing as tp  # NOQA
 import unittest
 
 from cupy.testing import _bundle
+from cupy.cuda import cufft
 from cupy.cuda import driver
 
 
@@ -91,7 +92,7 @@ def _parameterize_test_case(base, i, param):
                 for k, v in sorted(param.items()):
                     s.write('  {}: {}\n'.format(k, v))
                 err_class = e.__class__
-                if isinstance(e, driver.CUDADriverError):
+                if isinstance(e, (driver.CUDADriverError, cufft.CuFFTError)):
                     err_class, = err_class.__bases__
                 raise err_class(s.getvalue()).with_traceback(e.__traceback__)
         return new_method

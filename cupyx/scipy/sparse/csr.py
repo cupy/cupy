@@ -392,8 +392,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """
         M, N = self.shape
         i = _index._normalize_index(i, M, 'index')
-        indptr, indices, data = _index._get_csr_submatrix(
-            self.indptr, self.indices, self.data, i, i + 1, 0, N)
+        indptr, indices, data = _index._get_csr_submatrix_major_axis(
+            self.indptr, self.indices, self.data, i, i + 1)
         return csr_matrix((data, indices, indptr), shape=(1, N),
                           dtype=self.dtype, copy=False)
 
@@ -409,13 +409,13 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """
         M, N = self.shape
         i = _index._normalize_index(i, N, 'index')
-        indptr, indices, data = _index._get_csr_submatrix(
-            self.indptr, self.indices, self.data, 0, M, i, i + 1)
+        indptr, indices, data = _index._get_csr_submatrix_minor_axis(
+            self.indptr, self.indices, self.data, i, i + 1)
         return csr_matrix((data, indices, indptr), shape=(M, 1),
                           dtype=self.dtype, copy=False)
 
     def _get_intXarray(self, row, col):
-        raise NotImplementedError()
+        return self.getrow(row)._minor_index_fancy(col)
 
     def _get_intXslice(self, row, col):
         if col.step in (1, None):
@@ -455,13 +455,16 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             minor=slice(col, col+1, 1))
 
     def _get_sliceXarray(self, row, col):
-        raise NotImplementedError()
+        return self._major_slice(row)._minor_index_fancy(col)
 
     def _get_arrayXint(self, row, col):
-        raise NotImplementedError()
+        return self._major_index_fancy(row)._get_submatrix(minor=col)
 
     def _get_arrayXslice(self, row, col):
-        raise NotImplementedError()
+        if col.step not in (1, None):
+            col = cupy.arange(*col.indices(self.shape[1]))
+            return self._get_arrayXarray(row, col)
+        return self._major_index_fancy(row)._get_submatrix(minor=col)
 
 
 def isspmatrix_csr(x):

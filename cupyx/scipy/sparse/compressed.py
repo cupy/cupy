@@ -550,9 +550,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _get_intXint(self, row, col):
         major, minor = self._swap(row, col)
 
-        indptr, indices, data = _index._get_csr_submatrix(
-            self.indptr, self.indices, self.data,
-            major, major + 1, minor, minor + 1)
+        indptr, indices, data = _index._get_csr_submatrix_major_axis(
+            self.indptr, self.indices, self.data, major, major + 1)
+        indptr, indices, data = _index._get_csr_submatrix_minor_axis(
+            indptr, indices, data, minor, minor + 1)
         return data.sum(dtype=self.dtype)
 
     def _get_sliceXslice(self, row, col):
@@ -563,21 +564,74 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_arrayXarray(self, row, col):
         # inner indexing
-        raise NotImplementedError()
+        idx_dtype = self.indices.dtype
+        M, N = self._swap(*self.shape)
+        major, minor = self._swap(row, col)
+        major = cupy.asarray(major, dtype=idx_dtype)
+        minor = cupy.asarray(minor, dtype=idx_dtype)
+
+        val = _index._csr_sample_values(
+            M, N, self.indptr, self.indices, self.data,
+            major.ravel(), minor.ravel())
+
+        if major.ndim == 1:
+            # Scipy returns `matrix` here
+            return cupy.expand_dims(val, 0)
+        return self.__class__(val.reshape(major.shape))
 
     def _get_columnXarray(self, row, col):
         # outer indexing
-        raise NotImplementedError()
+        major, minor = self._swap(row, col)
+        return self._major_index_fancy(major)._minor_index_fancy(minor)
 
     def _major_index_fancy(self, idx):
         """Index along the major axis where idx is an array of ints.
         """
-        raise NotImplementedError()
+        _, N = self._swap(*self.shape)
+        M = len(idx)
+        new_shape = self._swap(M, N)
+        if M == 0:
+            return self.__class__(new_shape)
+
+        row_nnz = cupy.diff(self.indptr)
+        idx_dtype = self.indices.dtype
+        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
+        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
+
+        res_indices, res_data = _index._csr_row_index(
+            idx, self.indptr,
+            self.indices, self.data, res_indptr)
+
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
 
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
         """
-        raise NotImplementedError()
+
+        idx_dtype = self.indices.dtype
+        idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
+
+        M, N = self._swap(*self.shape)
+        k = len(idx)
+        new_shape = self._swap(M, k)
+        if k == 0:
+            return self.__class__(new_shape)
+
+        # pass 1: count idx entries and compute new indptr
+        col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
+
+        index1_outs = _index._csr_column_index1(idx, self.indptr, self.indices)
+        res_indptr, indices_mask, col_counts, sort_idxs = index1_outs
+
+        # pass 2: copy indices/data for selected idxs
+
+        res_indices, res_data = _index._csr_column_index2(
+            col_order, col_counts, sort_idxs, self.indptr, indices_mask,
+            self.data, res_indptr)
+
+        return self.__class__((res_data, res_indices, res_indptr),
+                              shape=new_shape, copy=False)
 
     def _minor_slice(self, idx, copy=False):
         """Index along the minor axis where idx is a slice object.
@@ -641,11 +695,20 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i0, i1 = self._process_slice(major, M)
         j0, j1 = self._process_slice(minor, N)
 
-        if i0 == 0 and j0 == 0 and i1 == M and j1 == N:
+        is_major_full = i0 == 0 and i1 == M
+        is_minor_full = j0 == 0 and j1 == N
+
+        if is_major_full and is_minor_full:
             return self.copy() if copy else self
 
-        indptr, indices, data = _index._get_csr_submatrix(
-            self.indptr, self.indices, self.data, i0, i1, j0, j1)
+        indptr, indices, data = self.indptr, self.indices, self.data
+
+        if not is_major_full:
+            indptr, indices, data = _index._get_csr_submatrix_major_axis(
+                indptr, indices, data, i0, i1)
+        if not is_minor_full:
+            indptr, indices, data = _index._get_csr_submatrix_minor_axis(
+                indptr, indices, data, j0, j1)
 
         shape = self._swap(i1 - i0, j1 - j0)
         return self.__class__((data, indices, indptr), shape=shape,

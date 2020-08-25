@@ -82,3 +82,18 @@ cdef class CFunctionAllocator:
         object _owner
 
     cpdef MemoryPointer malloc(self, size_t size)
+
+
+cdef class PythonFunctionAllocatorMemory(BaseMemory):
+
+    cdef:
+        object _free_func
+
+
+cdef class PythonFunctionAllocator:
+
+    cdef:
+        object _malloc_func
+        object _free_func
+
+    cpdef MemoryPointer malloc(self, size_t size)
