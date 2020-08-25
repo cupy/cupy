@@ -340,6 +340,14 @@ class TestCubHistogram(unittest.TestCase):
         # ...then perform the actual computation
         return xp.histogram(x)
 
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_histogram_range_float(self, xp, dtype):
+        a = testing.shaped_arange((10,), xp, dtype)
+        h, b = xp.histogram(a, testing.shaped_arange((10,), xp, numpy.float64))
+        assert int(h.sum()) == 10
+        return h, b
+
 
 @testing.gpu
 @testing.parameterize(*testing.product(
