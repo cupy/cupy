@@ -216,11 +216,53 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         self.indptr = compress.indptr
 
     def maximum(self, other):
-        # TODO(unno): Implement maximum
+        if util.isscalarlike(other):
+            other = cupy.asarray(other, dtype=self.dtype)
+            if other > 0:
+                # Note: This is a work-around to make the output dtype the same
+                # as SciPy. It might be SciPy version dependent.
+                dtype = numpy.promote_types(self.dtype, numpy.float64)
+                other = other.astype(dtype)
+                new_array = cupy.maximum(self.todense(), other)
+                return csr_matrix(new_array)
+            else:
+                self.sum_duplicates()
+                new_data = cupy.maximum(self.data, other)
+                return csr_matrix((new_data, self.indices, self.indptr),
+                                  shape=self.shape, dtype=self.dtype)
+        elif util.isdense(other):
+            self.sum_duplicates()
+            other = cupy.atleast_2d(other)
+            return cupy.maximum(self.todense(), other)
+        elif isspmatrix_csr(other):
+            self.sum_duplicates()
+            other.sum_duplicates()
+            return maxmin_csr(self, other, is_maximum=True)
         raise NotImplementedError
 
     def minimum(self, other):
-        # TODO(unno): Implement minimum
+        if util.isscalarlike(other):
+            other = cupy.asarray(other, dtype=self.dtype)
+            if other < 0:
+                # Note: This is a work-around to make the output dtype the same
+                # as SciPy. It might be SciPy version dependent.
+                dtype = numpy.promote_types(self.dtype, numpy.float64)
+                other = other.astype(dtype)
+                new_array = cupy.minimum(self.todense(), other)
+                return csr_matrix(new_array)
+            else:
+                self.sum_duplicates()
+                new_data = cupy.minimum(self.data, other)
+                return csr_matrix((new_data, self.indices, self.indptr),
+                                  shape=self.shape, dtype=self.dtype)
+        elif util.isdense(other):
+            self.sum_duplicates()
+            other = cupy.atleast_2d(other)
+            return cupy.minimum(self.todense(), other)
+        elif isspmatrix_csr(other):
+            self.sum_duplicates()
+            other.sum_duplicates()
+            return maxmin_csr(self, other, is_maximum=False)
         raise NotImplementedError
 
     def multiply(self, other):
@@ -697,4 +739,188 @@ def cupy_multiply_by_csr_step2():
         }
         ''',
         'cupy_multiply_by_csr_step2'
+    )
+
+
+__SELECT_MIN = '''
+__device__ inline void select(T &out, T in1, T in2) {
+    out = min(in1, in2);
+}
+'''
+
+__SELECT_MAX = '''
+__device__ inline void select(T &out, T in1, T in2) {
+    out = max(in1, in2);
+}
+'''
+
+
+def maxmin_csr(a, b, is_maximum=True):
+    if a.shape != b.shape:
+        raise ValueError('inconsistent shape')
+    m, n = a.shape
+    a_info = cupy.zeros(a.nnz + 1, dtype=a.indices.dtype)
+    b_info = cupy.zeros(b.nnz + 1, dtype=b.indices.dtype)
+    a_valid = cupy.zeros(a.nnz, dtype=numpy.int8)
+    b_valid = cupy.zeros(b.nnz, dtype=numpy.int8)
+    a_tmp_data = cupy.empty(a.nnz, dtype=a.data.dtype)
+    b_tmp_data = cupy.empty(b.nnz, dtype=b.data.dtype)
+    c_indptr = cupy.zeros(m + 1, dtype=a.indptr.dtype)
+    # print('# a.indptr: {}'.format(a.indptr))
+    # print('# a.indices: {}'.format(a.indices))
+    # print('# b.indptr: {}'.format(b.indptr))
+    # print('# b.indices: {}'.format(b.indices))
+    # print('# c_indptr: {}'.format(c_indptr))
+    if is_maximum:
+        select = __SELECT_MAX
+    else:
+        select = __SELECT_MIN
+    _size = a.nnz + b.nnz
+    cupy_maxmin_csr_step1(preamble=select)(
+        m, n,
+        a.indptr, a.indices, a.data, a.nnz,
+        b.indptr, b.indices, b.data, b.nnz,
+        a_info, a_valid, a_tmp_data,
+        b_info, b_valid, b_tmp_data,
+        c_indptr, size=_size)
+    a_info = cupy.cumsum(a_info, dtype=a_info.dtype)
+    b_info = cupy.cumsum(b_info, dtype=b_info.dtype)
+    c_indptr = cupy.cumsum(c_indptr, dtype=c_indptr.dtype)
+    c_nnz = int(c_indptr[-1])
+    # print('# a_info: {}'.format(a_info))
+    # print('# a_valid: {}'.format(a_valid))
+    # print('# b_info: {}'.format(b_info))
+    # print('# b_valid: {}'.format(b_valid))
+    # print('# c_indptr: {}'.format(c_indptr))
+    # print('# c_nnz: {}'.format(c_nnz))
+    c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
+    c_data = cupy.empty(c_nnz, dtype=a.data.dtype)
+    cupy_maxmin_csr_step2()(
+        a.indices, a_info, a_valid, a_tmp_data, a.nnz,
+        b.indices, b_info, b_valid, b_tmp_data, b.nnz,
+        c_indices, c_data, size=_size)
+    # print('# c_indices: {}'.format(c_indices))
+    return csr_matrix((c_data, c_indices, c_indptr), shape=(m, n))
+
+
+@cupy.util.memoize(for_each_device=True)
+def cupy_maxmin_csr_step1(preamble=''):
+    return cupy.ElementwiseKernel(
+        '''
+        int32 M, int32 N,
+        raw I A_INDPTR, raw I A_INDICES, raw T A_DATA, int32 A_NNZ,
+        raw I B_INDPTR, raw I B_INDICES, raw T B_DATA, int32 B_NNZ
+        ''',
+        '''
+        raw I A_INFO, raw B A_VALID, raw T A_TMP_DATA,
+        raw I B_INFO, raw B B_VALID, raw T B_TMP_DATA,
+        raw I C_INFO
+        ''',
+        '''
+        int j;
+        const int *MY_INDPTR, *MY_INDICES;  int *MY_INFO;  const T *MY_DATA;
+        const int *OP_INDPTR, *OP_INDICES;  int *OP_INFO;  const T *OP_DATA;
+        signed char *MY_VALID;  T *MY_TMP_DATA;
+        if (i < A_NNZ) {
+            j = i;
+            MY_INDPTR  = &(A_INDPTR[0]);   OP_INDPTR  = &(B_INDPTR[0]);
+            MY_INDICES = &(A_INDICES[0]);  OP_INDICES = &(B_INDICES[0]);
+            MY_INFO    = &(A_INFO[0]);     OP_INFO    = &(B_INFO[0]);
+            MY_DATA    = &(A_DATA[0]);     OP_DATA    = &(B_DATA[0]);
+            MY_VALID   = &(A_VALID[0]);
+            MY_TMP_DATA= &(A_TMP_DATA[0]);
+        } else if (i < A_NNZ + B_NNZ) {
+            j = i - A_NNZ;
+            MY_INDPTR  = &(B_INDPTR[0]);   OP_INDPTR  = &(A_INDPTR[0]);
+            MY_INDICES = &(B_INDICES[0]);  OP_INDICES = &(A_INDICES[0]);
+            MY_INFO    = &(B_INFO[0]);     OP_INFO    = &(A_INFO[0]);
+            MY_DATA    = &(B_DATA[0]);     OP_DATA    = &(A_DATA[0]);
+            MY_VALID   = &(B_VALID[0]);
+            MY_TMP_DATA= &(B_TMP_DATA[0]);
+        } else {
+            return;
+        }
+        int _min = 0;
+        int _max = M - 1;
+        int row = (_min + _max) / 2;
+        while (_min < _max) {
+            if (j < MY_INDPTR[row]) {
+                _max = row - 1;
+            } else if (j >= MY_INDPTR[row + 1]) {
+                _min = row + 1;
+            } else {
+                break;
+            }
+            row = (_min + _max) / 2;
+        }
+        int my_col = MY_INDICES[j];
+
+        _min = OP_INDPTR[row];
+        _max = OP_INDPTR[row + 1] - 1;
+        int op_j = _min;
+        int op_col = N;
+        if (_min <= _max) {
+            op_j = (_min + _max) / 2;
+            op_col = OP_INDICES[op_j];
+            while (_min < _max) {
+                if (my_col > op_col) {
+                    _min = op_j + 1;
+                } else if (my_col < op_col) {
+                    _max = op_j;
+                } else {
+                    break;
+                }
+                op_j = (_min + _max) / 2;
+                op_col = OP_INDICES[op_j];
+            }
+        }
+
+        if (i < A_NNZ || my_col != op_col) {
+            T out;
+            if (my_col == op_col) {
+                select(out, MY_DATA[j], OP_DATA[op_j]);
+            } else {
+                select(out, MY_DATA[j], (T)0);
+            }
+            if (out != (T)0) {
+                if (my_col > op_col) { op_j += 1; }
+                MY_VALID[j] = 1;
+                MY_TMP_DATA[j] = out;
+                atomicAdd( &(C_INFO[row + 1]), 1 );
+                atomicAdd( &(MY_INFO[j + 1]), 1 );
+                atomicAdd( &(OP_INFO[op_j]), 1 );
+            }
+        }
+        ''',
+        'cupy_maxmin_csr_step1',
+        preamble=preamble,
+    )
+
+
+@cupy.util.memoize(for_each_device=True)
+def cupy_maxmin_csr_step2():
+    return cupy.ElementwiseKernel(
+        '''
+        raw I A_INDICES, raw I A_INFO, raw B A_VALID, raw T A_TMP_DATA,
+        int32 A_NNZ,
+        raw I B_INDICES, raw I B_INFO, raw B B_VALID, raw T B_TMP_DATA,
+        int32 B_NNZ
+        ''',
+        'raw I C_INDICES, raw T C_DATA',
+        '''
+        if (i < A_NNZ) {
+            int j = i;
+            if (A_VALID[j]) {
+                C_INDICES[A_INFO[j]] = A_INDICES[j];
+                C_DATA[A_INFO[j]]    = A_TMP_DATA[j];
+            }
+        } else if (i < A_NNZ + B_NNZ) {
+            int j = i - A_NNZ;
+            if (B_VALID[j]) {
+                C_INDICES[B_INFO[j]] = B_INDICES[j];
+                C_DATA[B_INFO[j]]    = B_TMP_DATA[j];
+            }
+        }
+        ''',
+        'cupy_maxmin_csr_step2'
     )
