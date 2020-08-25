@@ -19,7 +19,6 @@ from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import sputils
 from cupyx.scipy.sparse import util
-from cupyx.scipy.sparse import sputils
 
 from cupyx.scipy.sparse import _index
 
