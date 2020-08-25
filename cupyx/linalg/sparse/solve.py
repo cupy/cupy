@@ -4,7 +4,7 @@ import cupy
 from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import util
-import cupy.sparse
+from cupyx.scipy import sparse
 
 
 def lschol(A, b):
@@ -15,8 +15,8 @@ def lschol(A, b):
     decomposed into ``L * L^*``.
 
     Args:
-        A (cupy.ndarray or cupy.sparse.csr_matrix): The input matrix with
-            dimension ``(N, N)``. Must be positive-definite input matrix.
+        A (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): The input matrix
+            with dimension ``(N, N)``. Must be positive-definite input matrix.
             Only symmetric real matrix is supported currently.
         b (cupy.ndarray): Right-hand side vector.
 
@@ -25,8 +25,8 @@ def lschol(A, b):
 
     """
 
-    if not cupy.sparse.isspmatrix_csr(A):
-        A = cupy.sparse.csr_matrix(A)
+    if not sparse.isspmatrix_csr(A):
+        A = sparse.csr_matrix(A)
     util._assert_nd_squareness(A)
     util._assert_cupy_array(b)
     m = A.shape[0]
