@@ -668,9 +668,9 @@ class TestPolyfitDiffTypes(unittest.TestCase):
         y = testing.shaped_arange((5,), xp, dtype2)
         return xp.polyfit(x, y, 5)
 
-    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2', 'dtype3'],
-                                        no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-9)
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2', 'dtype3'], no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-9, accept_error=TypeError)
     def test_polyfit_weighted_diff_types(self, xp, dtype1, dtype2, dtype3):
         x = testing.shaped_arange((5,), xp, dtype1)
         y = testing.shaped_arange((5,), xp, dtype2)
