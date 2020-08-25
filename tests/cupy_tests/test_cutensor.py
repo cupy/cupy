@@ -5,9 +5,10 @@ import numpy
 import cupy
 from cupy import testing
 
-if cupy.cuda.cutensor_enabled:
+from cupy.cuda import cutensor as ct
+
+if ct.available:
     from cupy import cutensor
-    from cupy.cuda import cutensor as ct
 
 
 @testing.parameterize(
@@ -17,7 +18,7 @@ if cupy.cuda.cutensor_enabled:
     {'dtype': numpy.complex64, 'tol': 1e-6},
     {'dtype': numpy.complex128, 'tol': 1e-12},
 )
-@unittest.skipUnless(cupy.cuda.cutensor_enabled, 'cuTensor is unavailable')
+@unittest.skipUnless(ct.available, 'cuTensor is unavailable')
 class TestCuTensor(unittest.TestCase):
 
     def setUp(self):
@@ -161,7 +162,7 @@ class TestCuTensor(unittest.TestCase):
         )
 
 
-@unittest.skipUnless(cupy.cuda.cutensor_enabled, 'cuTensor is unavailable')
+@unittest.skipUnless(ct.available, 'cuTensor is unavailable')
 class TestCuTensorDescriptor(unittest.TestCase):
 
     def setUp(self):
