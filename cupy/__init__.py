@@ -727,6 +727,24 @@ from cupy.statistics.histogram import histogram  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.core import size  # NOQA
 
+
+def ndim(a):
+    """Returns the number of dimensions of an array.
+
+    Args:
+        a (array-like): If it is not already an `cupy.ndarray`, a conversion
+            via :func:`numpy.asarray` is attempted.
+
+    Returns:
+        (int): The number of dimensions in `a`.
+
+    """
+    try:
+        return a.ndim
+    except AttributeError:
+        return numpy.ndim(a)
+
+
 # -----------------------------------------------------------------------------
 # CuPy specific functions
 # -----------------------------------------------------------------------------
