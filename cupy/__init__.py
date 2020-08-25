@@ -701,7 +701,7 @@ def ndim(a):
     try:
         return a.ndim
     except AttributeError:
-        return numpy.asarray(a).ndim
+        return numpy.ndim(a)
 
 
 # -----------------------------------------------------------------------------
