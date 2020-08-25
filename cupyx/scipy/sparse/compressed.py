@@ -486,9 +486,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _get_intXint(self, row, col):
         major, minor = self._swap(row, col)
 
-        indptr, indices, data = _index._get_csr_submatrix(
-            self.indptr, self.indices, self.data,
-            major, major + 1, minor, minor + 1)
+        indptr, indices, data = _index._get_csr_submatrix_major_axis(
+            self.indptr, self.indices, self.data, major, major + 1)
+        indptr, indices, data = _index._get_csr_submatrix_minor_axis(
+            indptr, indices, data, minor, minor + 1)
         return data.sum(dtype=self.dtype)
 
     def _get_sliceXslice(self, row, col):
@@ -630,11 +631,20 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i0, i1 = self._process_slice(major, M)
         j0, j1 = self._process_slice(minor, N)
 
-        if i0 == 0 and j0 == 0 and i1 == M and j1 == N:
+        is_major_full = i0 == 0 and i1 == M
+        is_minor_full = j0 == 0 and j1 == N
+
+        if is_major_full and is_minor_full:
             return self.copy() if copy else self
 
-        indptr, indices, data = _index._get_csr_submatrix(
-            self.indptr, self.indices, self.data, i0, i1, j0, j1)
+        indptr, indices, data = self.indptr, self.indices, self.data
+
+        if not is_major_full:
+            indptr, indices, data = _index._get_csr_submatrix_major_axis(
+                indptr, indices, data, i0, i1)
+        if not is_minor_full:
+            indptr, indices, data = _index._get_csr_submatrix_minor_axis(
+                indptr, indices, data, j0, j1)
 
         shape = self._swap(i1 - i0, j1 - j0)
         return self.__class__((data, indices, indptr), shape=shape,
