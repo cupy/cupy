@@ -5,7 +5,6 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.testing import condition
 import cupyx
 
 
@@ -75,7 +74,7 @@ class TestTensorSolve(unittest.TestCase):
 class TestInv(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
-    @condition.retry(10)
+    @testing.retry(10)
     def check_x(self, a_shape, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)
@@ -131,7 +130,7 @@ class TestInvInvalid(unittest.TestCase):
 class TestPinv(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
-    @condition.retry(10)
+    @testing.retry(10)
     def check_x(self, a_shape, rcond, dtype):
         a_gpu = testing.shaped_random(a_shape, dtype=dtype)
         a_cpu = cupy.asnumpy(a_gpu)
@@ -240,7 +239,7 @@ class TestLstsq(unittest.TestCase):
 class TestTensorInv(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
-    @condition.retry(10)
+    @testing.retry(10)
     def check_x(self, a_shape, ind, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)
