@@ -38,7 +38,7 @@ See :doc:`install` for details.
 The following environment variables are no longer effective:
 
 * ``CUB_DISABLED``: Use ``CUPY_ACCELERATORS`` as aforementioned.
-* ``CUB_PATH``: No longer required as CuPy uses CUB source tree bundled with CUDA (only when using CUDA 11.0 or later) or CuPy distribution.
+* ``CUB_PATH``: No longer required as CuPy uses either the CUB source bundled with CUDA (only when using CUDA 11.0 or later) or the one in the CuPy distribution.
 
 API Changes
 -----------
