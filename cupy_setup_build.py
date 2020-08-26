@@ -600,6 +600,9 @@ def parse_args():
              'the latter is the relative path within cupy wheel. '
              '(can be specified for multiple times)')
     parser.add_argument(
+        '--cupy-wheel-metadata', type=str, default=None,
+        help='wheel metadata (cupy/_wheel.json)')
+    parser.add_argument(
         '--cupy-no-rpath', action='store_true', default=False,
         help='disable adding default library directories to RPATH')
     parser.add_argument(
@@ -622,6 +625,7 @@ def parse_args():
         'long_description': opts.cupy_long_description,
         'wheel_libs': opts.cupy_wheel_lib,  # list
         'wheel_includes': opts.cupy_wheel_include,  # list
+        'wheel_metadata': opts.cupy_wheel_metadata,
         'no_rpath': opts.cupy_no_rpath,
         'profile': opts.cupy_profile,
         'linetrace': opts.cupy_coverage,
@@ -680,6 +684,12 @@ def prepare_wheel_libs():
         srcpath, relpath = include_path_spec.rsplit(':', 1)
         dstpath = os.path.join(data_dir, 'include', relpath)
         files_to_copy.append((srcpath, dstpath))
+
+    # Wheel meta data
+    wheel_metadata = cupy_setup_options['wheel_metadata']
+    if wheel_metadata:
+        files_to_copy.append(
+            (wheel_metadata, os.path.join('cupy', '_wheel.json')))
 
     # Copy
     for srcpath, dstpath in files_to_copy:
