@@ -92,7 +92,7 @@ _csr_row_index_ker = core.ElementwiseKernel(
 ''', 'csr_row_index_ker')
 
 
-def _csr_row_index(rows, Ap, Aj, Ax, Bp):
+def _csr_row_index(rows, Ap, Aj, Ax):
     """Populate indices and data arrays from the given row index
 
     Args:
@@ -100,13 +100,17 @@ def _csr_row_index(rows, Ap, Aj, Ax, Bp):
         Ap (cupy.ndarray): indptr array from input sparse matrix
         Aj (cupy.ndarray): indices array from input sparse matrix
         Ax (cupy.ndarray): data array from input sparse matrix
-        Bp (cupy.ndarray): indptr array for output sparse matrix
 
     Returns:
+        Bp (cupy.ndarray): indptr array for output sparse matrix
         Bj (cupy.ndarray): indices array of output sparse matrix
         Bx (cupy.ndarray): data array of output sparse matrix
 
     """
+    row_nnz = cupy.diff(Ap)
+    Bp = cupy.empty(rows.size + 1, dtype=Ap.dtype)
+    Bp[0] = 0
+    cupy.cumsum(row_nnz[rows], out=Bp[1:])
     nnz = int(Bp[-1])
 
     out_rows = cupy.empty(nnz, dtype=rows.dtype)
@@ -119,7 +123,8 @@ def _csr_row_index(rows, Ap, Aj, Ax, Bp):
         handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
-    return _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp)
+    Bj, Bx = _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp)
+    return Bp, Bj, Bx
 
 
 def _csr_column_index1_indptr(unique_idxs, sort_idxs, col_counts,
