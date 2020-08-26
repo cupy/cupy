@@ -5,7 +5,6 @@ from distutils import errors
 from distutils import msvccompiler
 from distutils import sysconfig
 from distutils import unixccompiler
-import glob
 import os
 from os import path
 import shutil
