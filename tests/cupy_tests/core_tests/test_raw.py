@@ -603,6 +603,8 @@ class TestRaw(unittest.TestCase):
             with pytest.raises(cupy.cuda.compiler.CompileException):
                 ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip,
+                     'HIP code should not use cuFloatComplex')
     def test_cuFloatComplex(self):
         N = 100
         block = 32
@@ -665,6 +667,8 @@ class TestRaw(unittest.TestCase):
         ker((grid,), (block,), (a, b, out))
         assert (out == a + b).all()
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip,
+                     'HIP code should not use cuDoubleComplex')
     def test_cuDoubleComplex(self):
         N = 100
         block = 32
