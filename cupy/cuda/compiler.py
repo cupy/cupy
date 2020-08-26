@@ -244,7 +244,7 @@ def compile_using_nvcc(source, options=(), arch=None,
 
         if code_type == 'ptx':
             with open(result_path, 'rb') as ptx_file:
-                return ptx_file.read().decode('utf-8')
+                return ptx_file.read()
         elif code_type == 'cubin':
             with open(result_path, 'rb') as bin_file:
                 return bin_file.read()
@@ -278,7 +278,7 @@ def _preprocess(source, options, arch, backend):
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    assert isinstance(result, str)
+    assert isinstance(result, bytes)
     return result
 
 
@@ -317,8 +317,9 @@ def compile_with_cache(
         and backend == 'nvrtc')
 
     if runtime.is_hip:
-        return _compile_with_cache_hipcc(
-            source, options, arch, cache_dir, extra_source)
+        backend = 'hiprtc' if backend == 'nvrtc' else 'hipcc'
+        return _compile_with_cache_hip(
+            source, options, arch, cache_dir, extra_source, backend)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
@@ -608,8 +609,8 @@ def _convert_to_hip_source(source):
     return "#include <hip/hip_runtime.h>\n" + source
 
 
-def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
-                              use_converter=True):
+def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
+                            backend='hiprtc', use_converter=True):
     global _empty_file_preprocess_cache
     if cache_dir is None:
         cache_dir = get_cache_dir()
@@ -653,9 +654,13 @@ def _compile_with_cache_hipcc(source, options, arch, cache_dir, extra_source,
                 mod.load(binary)
                 return mod
 
-    # TODO(leofang): catch HIPCCException and convert it to CompileException
-    # with backend='hipcc'
-    binary = _hipcc(source, options, arch)
+    if backend == 'hiprtc':
+        # compile_using_nvrtc calls hiprtc for hip builds
+        binary = compile_using_nvrtc(source, options, arch, name + '.cu')
+    else:
+        # TODO(leofang): catch HIPCCException and convert it to
+        # CompileException with backend='hipcc'
+        binary = _hipcc(source, options, arch)
     binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
 
     # shutil.move is not atomic operation, so it could result in a corrupted

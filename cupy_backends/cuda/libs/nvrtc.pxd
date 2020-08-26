@@ -23,7 +23,7 @@ cpdef intptr_t createProgram(unicode src, unicode name, headers,
                              include_names) except? 0
 cpdef destroyProgram(intptr_t prog)
 cpdef compileProgram(intptr_t prog, options)
-cpdef unicode getPTX(intptr_t prog)
+cpdef bytes getPTX(intptr_t prog)
 cpdef unicode getProgramLog(intptr_t prog)
 cpdef addAddNameExpression(intptr_t prog, str name)
 cpdef str getLoweredName(intptr_t prog, str name)

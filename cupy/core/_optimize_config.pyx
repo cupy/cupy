@@ -27,16 +27,19 @@ cdef class _OptimizationContext:
         self.key = key
         self.config = config
         self._params_map = {}
+        self._dirty = False
 
     def get_params(self, key):
         return self._params_map.get(key)
 
     def set_params(self, key, params):
         self._params_map[key] = params
+        self._dirty = True
 
     def save(self, filepath):
         with open(filepath, mode='wb') as f:
             pickle.dump((self.key, self._params_map), f)
+        self._dirty = False
 
     def load(self, filepath):
         with open(filepath, mode='rb') as f:
@@ -45,6 +48,10 @@ cdef class _OptimizationContext:
             raise ValueError(
                 'Optimization key mismatch {} != {}'.format(key, self.key))
         self._params_map = params_map
+        self._dirty = False
+
+    def _is_dirty(self):
+        return self._dirty
 
 
 cpdef _OptimizationContext get_current_context():

@@ -26,6 +26,8 @@ cdef dict _tensor_descriptors = {}
 cdef dict _contraction_descriptors = {}
 cdef dict _contraction_finds = {}
 cdef dict _contraction_plans = {}
+cdef dict _modes = {}
+cdef dict _scalars = {}
 
 
 cdef class Mode(object):
@@ -121,6 +123,30 @@ cdef inline _set_compute_dtype(array_dtype, compute_dtype=None):
     return compute_dtype
 
 
+cdef inline _Scalar _create_scalar(scale, dtype):
+    cdef _Scalar scalar
+    key = (scale, dtype)
+    if key in _scalars:
+        scalar = _scalars[key]
+    else:
+        scalar = _Scalar(scale, dtype)
+        _scalars[key] = scalar
+    return scalar
+
+
+cdef inline Mode _create_mode_with_cache(axis_or_ndim):
+    cdef Mode mode
+    if axis_or_ndim in _modes:
+        mode = _modes[axis_or_ndim]
+    else:
+        if type(axis_or_ndim) is int:
+            mode = Mode(tuple(range(axis_or_ndim)))
+        else:
+            mode = Mode(axis_or_ndim)
+        _modes[axis_or_ndim] = mode
+    return mode
+
+
 cpdef TensorDescriptor create_tensor_descriptor(
         ndarray a, int uop=cutensor.OP_IDENTITY, Handle handle=None):
     """Create a tensor descriptor
@@ -172,17 +198,17 @@ def elementwise_trinary(
     See cupy/cuda/cutensor.elementwiseTrinary() for details.
 
     Args:
-        alpha (scalar or 0-dim numpy.ndarray): Scaling factor for tensor A.
+        alpha (scalar): Scaling factor for tensor A.
         A (cupy.ndarray): Input tensor.
         desc_A (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor A.
         mode_A (cutensor.Mode): A mode object created by `create_mode`.
-        beta (scalar or 0-dim numpy.ndarray): Scaling factor for tensor B.
+        beta (scalar): Scaling factor for tensor B.
         B (cupy.ndarray): Input tensor.
         desc_B (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor B.
         mode_B (cutensor.Mode): A mode object created by `create_mode`.
-        gamma (scalar or 0-dim numpy.ndarray): Scaling factor for tensor C.
+        gamma (scalar): Scaling factor for tensor C.
         C (cupy.ndarray): Input tensor.
         desc_C (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor C.
@@ -219,11 +245,14 @@ def elementwise_trinary(
 
     return _elementwise_trinary_impl(
         _get_handle(),
-        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
-        _Scalar(beta, compute_dtype), B, desc_B, _auto_create_mode(B, mode_B),
-        _Scalar(gamma, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
-        out, op_AB, op_ABC, _dtype.to_cuda_dtype(compute_dtype,
-                                                 is_half_allowed=True))
+        _create_scalar(alpha, compute_dtype),
+        A, desc_A, _auto_create_mode(A, mode_A),
+        _create_scalar(beta, compute_dtype),
+        B, desc_B, _auto_create_mode(B, mode_B),
+        _create_scalar(gamma, compute_dtype),
+        C, desc_C, _auto_create_mode(C, mode_C),
+        out, op_AB, op_ABC,
+        _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True))
 
 
 cdef inline ndarray _elementwise_trinary_impl(
@@ -279,10 +308,11 @@ def elementwise_binary(
 
     return _elementwise_binary_impl(
         _get_handle(),
-        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
-        _Scalar(gamma, compute_dtype), C, desc_C, _auto_create_mode(A, mode_C),
-        out, op_AC, _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True)
-    )
+        _create_scalar(alpha, compute_dtype),
+        A, desc_A, _auto_create_mode(A, mode_A),
+        _create_scalar(gamma, compute_dtype),
+        C, desc_C, _auto_create_mode(A, mode_C),
+        out, op_AC, _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True))
 
 
 cdef inline ndarray _elementwise_binary_impl(
@@ -381,7 +411,7 @@ def contraction(
     See cupy/cuda/cutensor.contraction for details.
 
     Args:
-        alpha (scalar or 0-dim numpy.ndarray): Scaling factor for A * B.
+        alpha (scalar): Scaling factor for A * B.
         A (cupy.ndarray): Input tensor.
         desc_A (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor A.
@@ -390,7 +420,7 @@ def contraction(
         desc_B (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor B.
         mode_B (cutensor.Mode): A mode object created by `create_mode`.
-        beta (scalar or 0-dim numpy.ndarray): Scaling factor for C.
+        beta (scalar): Scaling factor for C.
         C (cupy.ndarray): Input/output tensor.
         desc_C (class Descriptor): A descriptor that holds the information
             about the data type, modes, and strides of tensor C.
@@ -421,9 +451,11 @@ def contraction(
 
     return _contraction_impl(
         _get_handle(),
-        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
+        _create_scalar(alpha, compute_dtype),
+        A, desc_A, _auto_create_mode(A, mode_A),
         B, desc_B, _auto_create_mode(B, mode_B),
-        _Scalar(beta, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
+        _create_scalar(beta, compute_dtype),
+        C, desc_C, _auto_create_mode(C, mode_C),
         _get_cutensor_dtype(compute_dtype), algo, ws_pref)
 
 
@@ -493,13 +525,13 @@ def reduction(
     See :func:`cupy.cuda.cutensor.reduction` for details.
 
     Args:
-        alpha (scalar or 0-dim numpy.ndarray): Scaling factor for A.
+        alpha (scalar): Scaling factor for A.
         A (cupy.ndarray): Input tensor.
         desc_A (class Descriptor): A descriptor that holds the information
             about the data type, modes, strides and unary operator (uop_A) of
             tensor A.
         mode_A (cutensor.Mode): A mode object created by `create_mode`.
-        beta (scalar or 0-dim numpy.ndarray): Scaling factor for C.
+        beta (scalar): Scaling factor for C.
         C (cupy.ndarray): Input/output tensor.
         desc_C (class Descriptor): A descriptor that holds the information
             about the data type, modes, strides and unary operator (uop_C) of
@@ -526,9 +558,12 @@ def reduction(
 
     return _reduction_impl(
         _get_handle(),
-        _Scalar(alpha, compute_dtype), A, desc_A, _auto_create_mode(A, mode_A),
-        _Scalar(beta, compute_dtype), C, desc_C, _auto_create_mode(C, mode_C),
-        reduce_op, _get_cutensor_dtype(compute_dtype))
+        _create_scalar(alpha, compute_dtype),
+        A, desc_A, _auto_create_mode(A, mode_A),
+        _create_scalar(beta, compute_dtype),
+        C, desc_C, _auto_create_mode(C, mode_C),
+        reduce_op, _get_cutensor_dtype(compute_dtype)
+    )
 
 
 cdef inline ndarray _reduction_impl(
@@ -571,34 +606,6 @@ _cutensor_dtypes = [
     numpy.complex64,
     numpy.complex128,
 ]
-
-
-cdef dict _modes = {}
-cdef dict _scalars = {}
-
-
-cdef inline Mode _create_mode_with_cache(axis_or_ndim):
-    cdef Mode mode
-    if axis_or_ndim in _modes:
-        mode = _modes[axis_or_ndim]
-    else:
-        if type(axis_or_ndim) is int:
-            mode = Mode(tuple(range(axis_or_ndim)))
-        else:
-            mode = Mode(axis_or_ndim)
-        _modes[axis_or_ndim] = mode
-    return mode
-
-
-cdef inline _Scalar _create_scalar_with_cache(scale, dtype):
-    cdef _Scalar scalar
-    key = (scale, dtype)
-    if key in _scalars:
-        scalar = _scalars[key]
-    else:
-        scalar = _Scalar(scale, dtype)
-        _scalars[key] = scalar
-    return scalar
 
 
 def _try_reduction_routine(
@@ -658,11 +665,11 @@ def _try_reduction_routine(
 
     _reduction_impl(
         handle,
-        _create_scalar_with_cache(alpha, compute_dtype),
+        _create_scalar(alpha, compute_dtype),
         in_arg,
         desc_in,
         _create_mode_with_cache(in_arg._shape.size()),
-        _create_scalar_with_cache(beta, compute_dtype),
+        _create_scalar(beta, compute_dtype),
         out_arg,
         desc_out,
         _create_mode_with_cache(out_axis),

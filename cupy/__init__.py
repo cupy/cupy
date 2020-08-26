@@ -59,6 +59,7 @@ from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
+# `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
@@ -726,6 +727,24 @@ from cupy.statistics.histogram import histogram  # NOQA
 # -----------------------------------------------------------------------------
 from cupy.core import size  # NOQA
 
+
+def ndim(a):
+    """Returns the number of dimensions of an array.
+
+    Args:
+        a (array-like): If it is not already an `cupy.ndarray`, a conversion
+            via :func:`numpy.asarray` is attempted.
+
+    Returns:
+        (int): The number of dimensions in `a`.
+
+    """
+    try:
+        return a.ndim
+    except AttributeError:
+        return numpy.ndim(a)
+
+
 # -----------------------------------------------------------------------------
 # CuPy specific functions
 # -----------------------------------------------------------------------------
@@ -796,7 +815,7 @@ def get_array_module(*args):
 
     """
     for arg in args:
-        if isinstance(arg, (ndarray, sparse.spmatrix,
+        if isinstance(arg, (ndarray, _cupyx.scipy.sparse.spmatrix,
                             cupy.core.fusion._FusionVarArray,
                             cupy.core.new_fusion._ArrayProxy)):
             return _cupy
