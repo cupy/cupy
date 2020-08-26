@@ -35,13 +35,11 @@ cdef class RawKernel:
             ``cuLaunchCooperativeKernel`` so that cooperative groups can be
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
-        log_stream (object): Pass either ``sys.stdout`` or a file object to
-            which the compiler output will be written.
     """
 
     def __init__(self, str code, str name, tuple options=(),
                  str backend='nvrtc', *, bint translate_cucomplex=False,
-                 bint enable_cooperative_groups=False, log_stream=None):
+                 bint enable_cooperative_groups=False):
 
         self.code = code
         self.name = name
@@ -49,7 +47,6 @@ cdef class RawKernel:
         self.backend = backend
         self.translate_cucomplex = translate_cucomplex
         self.enable_cooperative_groups = enable_cooperative_groups
-        self.log_stream = log_stream
 
         # only used when RawKernels are produced from RawModule
         self.file_path = None  # for cubin/ptx
@@ -83,6 +80,9 @@ cdef class RawKernel:
 
     @property
     def kernel(self):
+        return self._kernel()
+
+    def _kernel(self, log_stream=None):
         # The kernel is cached, so on the device where this has been called,
         # we would just look up from the cache, and do recompiling only when
         # switching to a different device
@@ -100,7 +100,7 @@ cdef class RawKernel:
             mod = _get_raw_module(
                 self.code, self.file_path, self.options, self.backend,
                 self.translate_cucomplex, self.enable_cooperative_groups,
-                self.name_expressions, self.log_stream)
+                self.name_expressions, log_stream)
             ker = mod.get_function(self.name)
             self._kernel_cache[dev] = ker
         return ker
@@ -223,6 +223,21 @@ cdef class RawKernel:
         attr = driver.CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT
         driver.funcSetAttribute(self.kernel.ptr, attr, fraction)
 
+    def compile(self, log_stream=None):
+        """Compile the current kernel.
+
+        In general, you don't have to call this method;
+        kernels are compiled implicitly on the first call.
+
+        Args:
+            log_stream (object): Pass either ``sys.stdout`` or a file object to
+                which the compiler output will be written.
+                Defaults to ``None``.
+        """
+        # Flush the cache when compilation is explicitly requested
+        self._kernel_cache = [None] * runtime.getDeviceCount()
+        self._kernel(log_stream=log_stream)
+
 
 cdef class RawModule:
     """User-defined custom module.
@@ -245,7 +260,7 @@ cdef class RawModule:
         options (tuple of str): Compiler options passed to the backend (NVRTC
             or NVCC). For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
-            https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description
+            https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description.
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
         translate_cucomplex (bool): Whether the CUDA source includes the header
             `cuComplex.h` or not. If set to ``True``, any code that uses the
@@ -263,8 +278,6 @@ cdef class RawModule:
             the template kernel ``func1<T>`` and non-template kernel ``func2``.
             Strings in this tuple must then be passed, one at a time, to
             :meth:`get_function` to retrieve the corresponding kernel.
-        log_stream (object): Pass either ``sys.stdout`` or a file object to
-            which the compiler output will be written.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
@@ -278,7 +291,7 @@ cdef class RawModule:
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
                  bint enable_cooperative_groups=False,
-                 name_expressions=None, log_stream=None):
+                 name_expressions=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
@@ -303,7 +316,6 @@ cdef class RawModule:
         self.code = code
         self.file_path = path
         self.enable_cooperative_groups = enable_cooperative_groups
-        self.log_stream = log_stream
 
         if self.code is not None:
             self.options = options
@@ -316,15 +328,37 @@ cdef class RawModule:
 
     @property
     def module(self):
+        return self._module()
+
+    def _module(self, log_stream=None):
         # The module is cached, so on the device where this has been called,
         # we would just look up from the cache, and do recompiling only when
         # switching to a different device
         cdef Module mod
+
         mod = _get_raw_module(
             self.code, self.file_path, self.options, self.backend,
             self.translate_cucomplex, self.enable_cooperative_groups,
-            self.name_expressions, self.log_stream)
+            self.name_expressions, log_stream)
         return mod
+
+    def compile(self, log_stream=None):
+        """Compile the current module.
+
+        In general, you don't have to call this method;
+        kernels are compiled implicitly on the first call.
+
+        Args:
+            log_stream (object): Pass either ``sys.stdout`` or a file object to
+                which the compiler output will be written.
+                Defaults to ``None``.
+
+        .. note::
+            Calling :meth:`compile` will reset the internal state of
+            a :class:`RawKernel`.
+
+        """
+        self._module(log_stream)
 
     def get_function(self, str name):
         """Retrieve a CUDA kernel by its name from the module.
@@ -377,8 +411,8 @@ cdef class RawModule:
         ker = RawKernel(
             self.code, name, self.options, self.backend,
             translate_cucomplex=self.translate_cucomplex,
-            enable_cooperative_groups=self.enable_cooperative_groups,
-            log_stream=self.log_stream)
+            enable_cooperative_groups=self.enable_cooperative_groups)
+
         # for lookup in case we loaded from cubin/ptx
         ker.file_path = self.file_path
         # for lookup in case we specialize a template
@@ -432,10 +466,11 @@ cdef class RawModule:
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_raw_module(str code, str path, tuple options=(), str backend='nvrtc',
-                    bint translate_cucomplex=False,
-                    bint enable_cooperative_groups=False,
-                    tuple name_expressions=None, log_stream=None):
+def _get_raw_module(str code, str path, tuple options, str backend,
+                    bint translate_cucomplex,
+                    bint enable_cooperative_groups,
+                    tuple name_expressions,
+                    object log_stream):
     cdef Module mod
     if code is not None:
         mod = cupy.core.core.compile_with_cache(

@@ -43,19 +43,19 @@ cdef class Handle:
         self._destroy_func(self.handle)
 
 
-cpdef size_t get_cublas_handle() except? 0:
+cpdef intptr_t get_cublas_handle() except? 0:
     return _get_device().cublas_handle
 
 
-cpdef size_t get_cusolver_handle() except? 0:
+cpdef intptr_t get_cusolver_handle() except? 0:
     return _get_device().cusolver_handle
 
 
-cpdef get_cusolver_sp_handle():
+cpdef intptr_t get_cusolver_sp_handle() except? 0:
     return _get_device().cusolver_sp_handle
 
 
-cpdef size_t get_cusparse_handle() except? 0:
+cpdef intptr_t get_cusparse_handle() except? 0:
     return _get_device().cusparse_handle
 
 

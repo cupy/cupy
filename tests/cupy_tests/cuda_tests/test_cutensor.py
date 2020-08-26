@@ -1,14 +1,10 @@
 import pickle
 import unittest
 
-try:
-    from cupy.cuda import cutensor
-    cutensor_available = True
-except Exception:
-    cutensor_available = False
+from cupy.cuda import cutensor
 
 
-@unittest.skipUnless(cutensor_available, 'cuTensor is unavailable')
+@unittest.skipUnless(cutensor.available, 'cuTensor is unavailable')
 class TestExceptionPicklable(unittest.TestCase):
 
     def test(self):

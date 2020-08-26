@@ -12,10 +12,10 @@ except ImportError:
     scipy_available = False
 
 import cupy as cp
-import cupy.sparse as sp
 from cupy import testing
 from cupy.testing import condition
 import cupyx
+import cupyx.scipy.sparse as sp
 
 
 @testing.parameterize(*testing.product({

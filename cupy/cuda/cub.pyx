@@ -74,6 +74,9 @@ cdef extern from 'cupy_cub.h' nogil:
 # Python interface
 ###############################################################################
 
+available = True
+
+
 def get_build_version():
     if CUPY_CUB_VERSION_CODE == -1:
         return '<unknown>'

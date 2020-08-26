@@ -61,7 +61,7 @@ cpdef function.Function _get_simple_elementwise_kernel(
     return module.get_function(name)
 
 
-cdef inline int get_kind_score(int kind):
+cpdef inline int get_kind_score(int kind):
     if b'b' == kind:
         return 0
     if b'u' == kind or b'i' == kind:

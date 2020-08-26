@@ -146,6 +146,7 @@ def get_compiler_setting(use_hip):
 
     if rocm_path:
         include_dirs.append(os.path.join(rocm_path, 'include'))
+        include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
         include_dirs.append(os.path.join(rocm_path, 'rocrand', 'include'))
         library_dirs.append(os.path.join(rocm_path, 'lib'))
         library_dirs.append(os.path.join(rocm_path, 'rocrand', 'lib'))

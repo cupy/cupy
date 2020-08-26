@@ -147,7 +147,7 @@ class _minmax_mixin(object):
         mat = self.tocsc() if axis == 0 else self.tocsr()
         mat.sum_duplicates()
 
-        # Do the reudction
+        # Do the reduction
         value = mat._minor_reduce(min_or_max, axis, explicit)
         major_index = cupy.arange(M)
 
@@ -191,10 +191,10 @@ class _minmax_mixin(object):
                     assert False
             return m
 
-        if axis == 0 or axis == 1:
-            return self._min_or_max_axis(axis, min_or_max, explicit)
-        else:
-            raise ValueError("axis out of range")
+        if axis < 0:
+            axis += 2
+
+        return self._min_or_max_axis(axis, min_or_max, explicit)
 
     def _arg_min_or_max_axis(self, axis, op):
         if self.shape[axis] == 0:
@@ -204,7 +204,7 @@ class _minmax_mixin(object):
         mat = self.tocsc() if axis == 0 else self.tocsr()
         mat.sum_duplicates()
 
-        # Do the reudction
+        # Do the reduction
         value = mat._arg_minor_reduce(op, axis)
 
         if axis == 0:
@@ -248,6 +248,9 @@ class _minmax_mixin(object):
                             return min(zero_ind, am)
                         else:
                             return zero_ind
+
+        if axis < 0:
+            axis += 2
 
         return self._arg_min_or_max_axis(axis, op)
 

@@ -3,6 +3,7 @@ import warnings
 import numpy
 
 import cupy
+from cupy import core
 from cupy import _util
 
 
@@ -110,13 +111,13 @@ def _label(x, structure, y):
 
 
 def _kernel_init():
-    return cupy.ElementwiseKernel(
+    return core.ElementwiseKernel(
         'X x', 'Y y', 'if (x == 0) { y = -1; } else { y = i; }',
         'cupyx_nd_label_init')
 
 
 def _kernel_connect():
-    return cupy.ElementwiseKernel(
+    return core.ElementwiseKernel(
         'raw int32 shape, raw int32 dirs, int32 ndirs, int32 ndim',
         'raw Y y',
         '''
@@ -159,7 +160,7 @@ def _kernel_connect():
 
 
 def _kernel_count():
-    return cupy.ElementwiseKernel(
+    return core.ElementwiseKernel(
         '', 'raw Y y, raw int32 count',
         '''
         if (y[i] < 0) continue;
@@ -172,7 +173,7 @@ def _kernel_count():
 
 
 def _kernel_labels():
-    return cupy.ElementwiseKernel(
+    return core.ElementwiseKernel(
         '', 'raw Y y, raw int32 count, raw int32 labels',
         '''
         if (y[i] != i) continue;
@@ -183,7 +184,7 @@ def _kernel_labels():
 
 
 def _kernel_finalize():
-    return cupy.ElementwiseKernel(
+    return core.ElementwiseKernel(
         'int32 maxlabel', 'raw int32 labels, raw Y y',
         '''
         if (y[i] < 0) {
@@ -205,7 +206,7 @@ def _kernel_finalize():
         'cupyx_nd_label_finalize')
 
 
-_ndimage_variance_kernel = cupy.ElementwiseKernel(
+_ndimage_variance_kernel = core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size, raw float64 mean',
     'raw float64 out',
     """
@@ -218,7 +219,7 @@ _ndimage_variance_kernel = cupy.ElementwiseKernel(
     """)
 
 
-_ndimage_sum_kernel = cupy.ElementwiseKernel(
+_ndimage_sum_kernel = core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size',
     'raw float64 out',
     """
@@ -241,7 +242,7 @@ def _ndimage_sum_kernel_2(input, labels, index, sum_val, batch_size=4):
     return sum_val
 
 
-_ndimage_mean_kernel = cupy.ElementwiseKernel(
+_ndimage_mean_kernel = core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size',
     'raw float64 out, raw uint64 count',
     """

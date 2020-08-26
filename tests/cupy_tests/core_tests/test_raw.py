@@ -1,13 +1,17 @@
 import contextlib
-import mock
+import io
 import os
-import pytest
 import sys
 import tempfile
 import unittest
+from unittest import mock
+
+import pytest
 
 import cupy
 from cupy import testing
+from cupy import util
+from cupy.core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
 
@@ -18,6 +22,16 @@ void test_sum(const float* x1, const float* x2, float* y, unsigned int N) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N)
         y[tid] = x1[tid] + x2[tid];
+}
+'''
+
+_test_compile_src = r'''
+extern "C" __global__
+void test_op(const float* x1, const float* x2, float* y, unsigned int N) {
+    int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    int j;  // To generate a warning to appear in the log stream
+    if (tid < N)
+        y[tid] = x1[tid] OP x2[tid];
 }
 '''
 
@@ -341,17 +355,47 @@ def use_temporary_cache_dir():
                 yield path
 
 
-@testing.parameterize(*testing.product({
-    'backend': ('nvrtc', 'nvcc'),
-}))
+@contextlib.contextmanager
+def compile_in_memory(in_memory):
+    target = 'cupy.cuda.compiler._get_bool_env_variable'
+
+    def new_target(name, default):
+        if name == 'CUPY_CACHE_IN_MEMORY':
+            return in_memory
+        else:
+            # below is the source code of _get_bool_env_variable
+            val = os.environ.get(name)
+            if val is None or len(val) == 0:
+                return default
+            try:
+                return int(val) == 1
+            except ValueError:
+                return False
+
+    with mock.patch(target, new_target) as m:
+        yield m
+
+
+@testing.parameterize(
+    {'backend': 'nvrtc', 'in_memory': False},
+    # this run will read from in-memory cache
+    {'backend': 'nvrtc', 'in_memory': True},
+    # this run will force recompilation
+    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True},
+    {'backend': 'nvcc', 'in_memory': False},
+)
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
+        if hasattr(self, 'clean_up'):
+            util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
 
         self.temporary_cache_dir_context = use_temporary_cache_dir()
+        self.in_memory_context = compile_in_memory(self.in_memory)
         self.cache_dir = self.temporary_cache_dir_context.__enter__()
+        self.in_memory_context.__enter__()
 
         self.kern = cupy.RawKernel(
             _test_source1, 'test_sum',
@@ -365,6 +409,21 @@ class TestRaw(unittest.TestCase):
             backend=self.backend)
 
     def tearDown(self):
+        if (self.in_memory
+                and _accelerator.ACCELERATOR_CUB not in
+                _accelerator.get_reduction_accelerators()):
+            # should not write any file to the cache dir, but the CUB reduction
+            # kernel uses nvcc, with which I/O cannot be avoided
+            files = os.listdir(self.cache_dir)
+            for f in files:
+                if f == 'test_load_cubin.cu':
+                    count = 1
+                    break
+            else:
+                count = 0
+            assert len(files) == count
+
+        self.in_memory_context.__exit__(*sys.exc_info())
         self.temporary_cache_dir_context.__exit__(*sys.exc_info())
 
     def _helper(self, kernel, dtype):
@@ -872,6 +931,42 @@ class TestRaw(unittest.TestCase):
 
             # check results
             assert cupy.allclose(in_arr, out_arr)
+
+
+class TestCompile(unittest.TestCase):
+
+    def _helper(self, kernel, dtype):
+        N = 10
+        x1 = cupy.arange(N**2, dtype=dtype).reshape(N, N)
+        x2 = cupy.ones((N, N), dtype=dtype)
+        y = cupy.zeros((N, N), dtype=dtype)
+        kernel((N,), (N,), (x1, x2, y, N**2))
+        return x1, x2, y
+
+    def test_compile_kernel(self):
+        kern = cupy.RawKernel(
+            _test_compile_src, 'test_op',
+            options=('-DOP=+',),
+            backend='nvcc')
+        log = io.StringIO()
+        with use_temporary_cache_dir():
+            kern.compile(log_stream=log)
+        assert 'warning' in log.getvalue()
+        x1, x2, y = self._helper(kern, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
+
+    def test_compile_module(self):
+        module = cupy.RawModule(
+            code=_test_compile_src,
+            backend='nvcc',
+            options=('-DOP=+',))
+        log = io.StringIO()
+        with use_temporary_cache_dir():
+            module.compile(log_stream=log)
+        assert 'warning' in log.getvalue()
+        kern = module.get_function('test_op')
+        x1, x2, y = self._helper(kern, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
 
 
 _test_grid_sync = r'''
