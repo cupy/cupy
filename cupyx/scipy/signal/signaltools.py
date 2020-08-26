@@ -3,7 +3,7 @@ import warnings
 import cupy
 
 from cupyx.scipy.ndimage import _util
-from cupyx.scipy.ndimage import filters
+from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
 
 
@@ -272,10 +272,10 @@ def wiener(im, mysize=None, noise=None):
     im = im.astype(float, copy=False)
 
     # Estimate the local mean
-    local_mean = filters.uniform_filter(im, mysize, mode='constant')
+    local_mean = _filters.uniform_filter(im, mysize, mode='constant')
 
     # Estimate the local variance
-    local_var = filters.uniform_filter(im*im, mysize, mode='constant')
+    local_var = _filters.uniform_filter(im*im, mysize, mode='constant')
     local_var -= local_mean*local_mean
 
     # Estimate the noise power if needed.
@@ -318,7 +318,7 @@ def order_filter(a, domain, rank):
     if any(x % 2 != 1 for x in domain.shape):
         raise ValueError("Each dimension of domain argument "
                          " should have an odd number of elements.")
-    return filters.rank_filter(a, rank, footprint=domain, mode='constant')
+    return _filters.rank_filter(a, rank, footprint=domain, mode='constant')
 
 
 def medfilt(volume, kernel_size=None):
@@ -343,7 +343,7 @@ def medfilt(volume, kernel_size=None):
     """
     if volume.dtype.kind == 'c':
         # scipy doesn't support complex
-        # (and filters.rank_filter raise TypeError)
+        # (and _filters.rank_filter raise TypeError)
         raise ValueError("complex types not supported")
     # output is forced to float64 to match scipy
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
@@ -352,8 +352,8 @@ def medfilt(volume, kernel_size=None):
                       'volume will be zero-padded')
 
     size = cupy.core.internal.prod(kernel_size)
-    return filters.rank_filter(volume, size // 2, size=kernel_size,
-                               output=float, mode='constant')
+    return _filters.rank_filter(volume, size // 2, size=kernel_size,
+                                output=float, mode='constant')
 
 
 def medfilt2d(input, kernel_size=3):
@@ -386,7 +386,8 @@ def medfilt2d(input, kernel_size=3):
         raise ValueError('input must be 2d')
     kernel_size = _get_kernel_size(kernel_size, input.ndim)
     order = kernel_size[0] * kernel_size[1] // 2
-    return filters.rank_filter(input, order, size=kernel_size, mode='constant')
+    return _filters.rank_filter(
+        input, order, size=kernel_size, mode='constant')
 
 
 def _get_kernel_size(kernel_size, ndim):

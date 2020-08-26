@@ -1,5 +1,5 @@
 import cupy
-from cupyx.scipy.ndimage import filters
+from cupyx.scipy.ndimage import _filters
 from cupyx.scipy.ndimage import _util
 
 
@@ -64,7 +64,7 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
 
     # Get and run the CuPy kernel
     int_type = _util._get_inttype(in1)
-    kernel = filters._get_correlate_kernel(
+    kernel = _filters._get_correlate_kernel(
         boundary, in2.shape, int_type, offsets, fillvalue)
     in2 = _reverse_and_conj(in2) if convolution else in2
     if not swapped_inputs:
