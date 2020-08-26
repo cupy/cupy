@@ -963,8 +963,7 @@ class TestRaw(unittest.TestCase):
             # check results
             assert cupy.allclose(in_arr, out_arr)
 
-    @unittest.skipUnless((not cupy.cuda.runtime.is_hip
-                          and self.in_memory is False),
+    @unittest.skipUnless(not cupy.cuda.runtime.is_hip,
                          'only CUDA raises warning')
     def test_compile_kernel(self):
         kern = cupy.RawKernel(
@@ -978,8 +977,7 @@ class TestRaw(unittest.TestCase):
         x1, x2, y = self._helper(kern, cupy.float32)
         assert cupy.allclose(y, x1 + x2)
 
-    @unittest.skipUnless((not cupy.cuda.runtime.is_hip
-                          and self.in_memory is False),
+    @unittest.skipUnless(not cupy.cuda.runtime.is_hip,
                          'only CUDA raises warning')
     def test_compile_module(self):
         module = cupy.RawModule(
