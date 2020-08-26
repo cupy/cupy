@@ -963,22 +963,14 @@ class TestRaw(unittest.TestCase):
             # check results
             assert cupy.allclose(in_arr, out_arr)
 
-
-class TestCompile(unittest.TestCase):
-
-    def _helper(self, kernel, dtype):
-        N = 10
-        x1 = cupy.arange(N**2, dtype=dtype).reshape(N, N)
-        x2 = cupy.ones((N, N), dtype=dtype)
-        y = cupy.zeros((N, N), dtype=dtype)
-        kernel((N,), (N,), (x1, x2, y, N**2))
-        return x1, x2, y
-
+    @unittest.skipUnless((not cupy.cuda.runtime.is_hip
+                          and self.in_memory is False),
+                         'only CUDA raises warning')
     def test_compile_kernel(self):
         kern = cupy.RawKernel(
             _test_compile_src, 'test_op',
             options=('-DOP=+',),
-            backend='nvcc')
+            backend=self.backend)
         log = io.StringIO()
         with use_temporary_cache_dir():
             kern.compile(log_stream=log)
@@ -986,10 +978,13 @@ class TestCompile(unittest.TestCase):
         x1, x2, y = self._helper(kern, cupy.float32)
         assert cupy.allclose(y, x1 + x2)
 
+    @unittest.skipUnless((not cupy.cuda.runtime.is_hip
+                          and self.in_memory is False),
+                         'only CUDA raises warning')
     def test_compile_module(self):
         module = cupy.RawModule(
             code=_test_compile_src,
-            backend='nvcc',
+            backend=self.backend,
             options=('-DOP=+',))
         log = io.StringIO()
         with use_temporary_cache_dir():
