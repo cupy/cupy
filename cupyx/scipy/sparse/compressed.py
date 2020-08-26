@@ -544,30 +544,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
         """
-
-        idx_dtype = self.indices.dtype
-        idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
-
         M, N = self._swap(*self.shape)
-        k = len(idx)
+        k = idx.size
         new_shape = self._swap(M, k)
         if k == 0:
             return self.__class__(new_shape)
 
-        # pass 1: count idx entries and compute new indptr
-        col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
+        if idx.size * M < self.nnz:
+            # TODO (asi1024): Implement faster algorithm.
+            pass
 
-        index1_outs = _index._csr_column_index1(idx, self.indptr, self.indices)
-        res_indptr, indices_mask, col_counts, sort_idxs = index1_outs
-
-        # pass 2: copy indices/data for selected idxs
-
-        res_indices, res_data = _index._csr_column_index2(
-            col_order, col_counts, sort_idxs, self.indptr, indices_mask,
-            self.data, res_indptr)
-
-        return self.__class__((res_data, res_indices, res_indptr),
-                              shape=new_shape, copy=False)
+        name = type(self).__name__
+        if name == 'csr_matrix':
+            return self.tocsc()._major_index_fancy(idx).tocsr()
+        if name == 'csc_matrix':
+            return self.tocsr()._major_index_fancy(idx).tocsc()
+        assert False
 
     def _minor_slice(self, idx, copy=False):
         """Index along the minor axis where idx is a slice object.
