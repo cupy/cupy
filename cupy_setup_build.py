@@ -601,7 +601,7 @@ def parse_args():
              '(can be specified for multiple times)')
     parser.add_argument(
         '--cupy-wheel-metadata', type=str, default=None,
-        help='wheel metadata (cupy/data/_wheel.json)')
+        help='wheel metadata (cupy/.data/_wheel.json)')
     parser.add_argument(
         '--cupy-no-rpath', action='store_true', default=False,
         help='disable adding default library directories to RPATH')
