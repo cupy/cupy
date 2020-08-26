@@ -743,9 +743,6 @@ class TestRaw(unittest.TestCase):
         ker((1,), (100,), (output_arr, cupy.int32(100)))
         assert (data == output_arr).all()
 
-    # TODO(leofang): handle this once hiprtc (#3238) is in
-    @unittest.skipIf(cupy.cuda.runtime.is_hip,
-                     'hipcc does not provide the name expression mapping')
     def test_template_specialization(self):
         if self.backend == 'nvcc':
             self.skipTest('nvcc does not support template specialization')
@@ -759,6 +756,12 @@ class TestRaw(unittest.TestCase):
         dtypes = (cupy.int32, cupy.float32, cupy.complex128, cupy.float64)
         for ker_T, dtype in zip(name_expressions, dtypes):
             # get specialized kernels
+            if cupy.cuda.runtime.is_hip:
+                # TODO(leofang): investigate why getLoweredName has no error
+                # but returns an empty string for my_sqrt<complex<double>>
+                mangled_name = mod.module.mapping.get(ker_T)
+                if mangled_name == '':
+                    continue
             ker = mod.get_function(ker_T)
 
             # prepare inputs & expected outputs
@@ -801,10 +804,10 @@ class TestRaw(unittest.TestCase):
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              name_expressions=name_expressions)
         if cupy.cuda.runtime.is_hip:
-            # TODO(leofang): handle this once hiprtc (#3238) is in
-            self.skipTest('hipcc does not provide the name expression mapping')
-        with pytest.raises(cupy.cuda.driver.CUDADriverError,
-                           match='named symbol not found'):
+            msg = 'hipErrorNotFound'
+        else:
+            msg = 'named symbol not found'
+        with pytest.raises(cupy.cuda.driver.CUDADriverError, match=msg):
             mod.get_function('my_sqrt<double>')
 
     def test_raw_pointer(self):

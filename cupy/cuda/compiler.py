@@ -316,7 +316,6 @@ def compile_with_cache(
             raise ValueError(
                 'Cooperative groups is not supported in HIP.')
 
-    # TODO(leofang): handle HIP environment
     if name_expressions is not None and backend != 'nvrtc':
         raise NotImplementedError
 
@@ -330,7 +329,7 @@ def compile_with_cache(
         backend = 'hiprtc' if backend == 'nvrtc' else 'hipcc'
         return _compile_with_cache_hip(
             source, options, arch, cache_dir, extra_source, backend,
-            log_stream)
+            name_expressions, log_stream)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
@@ -625,8 +624,8 @@ def _convert_to_hip_source(source, extra_source, is_hiprtc):
 
 
 def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
-                            backend='hiprtc', log_stream=None,
-                            use_converter=True):
+                            backend='hiprtc', name_expressions=None,
+                            log_stream=None, use_converter=True):
     global _empty_file_preprocess_cache
 
     if _is_cudadevrt_needed(options):
@@ -664,8 +663,9 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     mod = function.Module()
     # To handle conflicts in concurrent situation, we adopt lock-free method
     # to avoid performance degradation.
+    # We force recompiling to retrieve C++ mangled names if so desired.
     path = os.path.join(cache_dir, name)
-    if os.path.exists(path):
+    if os.path.exists(path) and not name_expressions:
         with open(path, 'rb') as f:
             data = f.read()
         if len(data) >= 32:
@@ -680,7 +680,8 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         # compile_using_nvrtc calls hiprtc for hip builds
         #source = fix_include(source, extra_source)
         binary, mapping = compile_using_nvrtc(
-            source, options, arch, name + '.cu', log_stream=log_stream)
+            source, options, arch, name + '.cu', name_expressions, log_stream)
+        mod._set_mapping(mapping)
     else:
         binary = compile_using_hipcc(source, options, arch, log_stream)
     binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
