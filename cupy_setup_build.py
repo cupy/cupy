@@ -654,64 +654,44 @@ def get_long_description():
 def prepare_wheel_libs():
     """Prepare shared libraries and include files for wheels.
 
-    On Windows, DLLs will be placed under `cupy/cuda`.
-    On other platforms, shared libraries are placed under `cupy/.data/lib` and
-    RUNPATH will be set to this directory later.
+    Shared libraries are placed under `cupy/.data/lib` and
+    RUNPATH will be set to this directory later (Linux only).
     Include files are placed under `cupy/.data/include`.
+
+    Returns the list of files (path relative to `cupy` module) to add to
+    the sdist/wheel distribution.
     """
-    data_dir = '.data'
+    data_dir = os.path.abspath(os.path.join('cupy', '.data'))
     if os.path.exists(data_dir):
         print('Removing directory: {}'.format(data_dir))
         shutil.rmtree(data_dir)
 
-    if PLATFORM_WIN32:
-        lib_dirname = 'cuda'
-        # Clean up existing libraries.
-        libfiles = glob.glob('cupy/{}/*.dll'.format(lib_dirname))
-        for libfile in libfiles:
-            print('Removing file: {}'.format(libfile))
-            os.remove(libfile)
-    else:
-        lib_dirname = os.path.join(data_dir, 'lib')
-
-    include_dirname = os.path.join(data_dir, 'include')
-
-    # Collect files to copy
+    # Generate list files to copy
+    # tuple of (src_path, dst_path)
     files_to_copy = []
 
     # Library files
-    lib_base_path = os.path.join('cupy', lib_dirname)
     for srcpath in cupy_setup_options['wheel_libs']:
         relpath = os.path.basename(srcpath)
-        dstpath = path.join(lib_base_path, relpath)
-        files_to_copy.append((
-            srcpath,
-            dstpath,
-            path.join(lib_dirname, relpath)))
+        dstpath = os.path.join(data_dir, 'lib', relpath)
+        files_to_copy.append((srcpath, dstpath))
 
     # Include files
-    include_base_path = os.path.join('cupy', include_dirname)
     for include_path_spec in cupy_setup_options['wheel_includes']:
-        # TODO(niboshi): Consider using platform-dependent path delimiter.
         srcpath, relpath = include_path_spec.rsplit(':', 1)
-        dstpath = os.path.join(include_base_path, relpath)
-        files_to_copy.append((
-            srcpath,
-            dstpath,
-            path.join(include_dirname, relpath)))
+        dstpath = os.path.join(data_dir, 'include', relpath)
+        files_to_copy.append((srcpath, dstpath))
 
     # Copy
-    package_data = []
-    for srcpath, dstpath, package_path in files_to_copy:
+    for srcpath, dstpath in files_to_copy:
         # Note: symlink is resolved by shutil.copy2.
         print('Copying file for wheel: {}'.format(srcpath))
         dirpath = os.path.dirname(dstpath)
         if not os.path.isdir(dirpath):
             os.makedirs(dirpath)
         shutil.copy2(srcpath, dstpath)
-        package_data.append(package_path)
 
-    return package_data
+    return [os.path.relpath(x[1], 'cupy') for x in files_to_copy]
 
 
 try:
