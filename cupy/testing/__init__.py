@@ -1,6 +1,8 @@
 from cupy.testing import array  # NOQA
 from cupy.testing import attr  # NOQA
+from cupy.testing import condition  # NOQA
 from cupy.testing import helper  # NOQA
+from cupy.testing import hypothesis  # NOQA
 from cupy.testing import parameterized  # NOQA
 from cupy.testing import random  # NOQA
 
@@ -14,6 +16,9 @@ from cupy.testing.array import assert_array_max_ulp  # NOQA
 from cupy.testing.attr import gpu  # NOQA
 from cupy.testing.attr import multi_gpu  # NOQA
 from cupy.testing.attr import slow  # NOQA
+from cupy.testing.condition import repeat_with_success_at_least  # NOQA
+from cupy.testing.condition import repeat  # NOQA
+from cupy.testing.condition import retry  # NOQA
 from cupy.testing.helper import assert_warns  # NOQA
 from cupy.testing.helper import for_all_dtypes  # NOQA
 from cupy.testing.helper import for_all_dtypes_combination  # NOQA
@@ -48,6 +53,7 @@ from cupy.testing.helper import shaped_arange  # NOQA
 from cupy.testing.helper import shaped_random  # NOQA
 from cupy.testing.helper import shaped_reverse_arange  # NOQA
 from cupy.testing.helper import with_requires  # NOQA
+from cupy.testing.hypothesis import chi_square_test  # NOQA
 from cupy.testing.parameterized import from_pytest_parameterize  # NOQA
 from cupy.testing.parameterized import parameterize  # NOQA
 from cupy.testing.parameterized import parameterize_pytest  # NOQA
