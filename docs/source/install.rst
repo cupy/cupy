@@ -35,7 +35,7 @@ NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.19 and SciPy 1.5, and 
 
     * Required only when using :doc:`reference/scipy` (``cupyx.scipy``).
 
-* `Optuna <https://optuna.org/>`_ (*optional*): v1.x
+* `Optuna <https://optuna.org/>`_ (*optional*): v2.x
 
     * Required only when using :doc:`reference/optimize`.
 

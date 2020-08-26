@@ -1,4 +1,5 @@
 import contextlib
+import io
 import os
 import sys
 import tempfile
@@ -21,6 +22,16 @@ void test_sum(const float* x1, const float* x2, float* y, unsigned int N) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N)
         y[tid] = x1[tid] + x2[tid];
+}
+'''
+
+_test_compile_src = r'''
+extern "C" __global__
+void test_op(const float* x1, const float* x2, float* y, unsigned int N) {
+    int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    int j;  // To generate a warning to appear in the log stream
+    if (tid < N)
+        y[tid] = x1[tid] OP x2[tid];
 }
 '''
 
@@ -945,6 +956,42 @@ class TestRaw(unittest.TestCase):
 
             # check results
             assert cupy.allclose(in_arr, out_arr)
+
+
+class TestCompile(unittest.TestCase):
+
+    def _helper(self, kernel, dtype):
+        N = 10
+        x1 = cupy.arange(N**2, dtype=dtype).reshape(N, N)
+        x2 = cupy.ones((N, N), dtype=dtype)
+        y = cupy.zeros((N, N), dtype=dtype)
+        kernel((N,), (N,), (x1, x2, y, N**2))
+        return x1, x2, y
+
+    def test_compile_kernel(self):
+        kern = cupy.RawKernel(
+            _test_compile_src, 'test_op',
+            options=('-DOP=+',),
+            backend='nvcc')
+        log = io.StringIO()
+        with use_temporary_cache_dir():
+            kern.compile(log_stream=log)
+        assert 'warning' in log.getvalue()
+        x1, x2, y = self._helper(kern, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
+
+    def test_compile_module(self):
+        module = cupy.RawModule(
+            code=_test_compile_src,
+            backend='nvcc',
+            options=('-DOP=+',))
+        log = io.StringIO()
+        with use_temporary_cache_dir():
+            module.compile(log_stream=log)
+        assert 'warning' in log.getvalue()
+        kern = module.get_function('test_op')
+        x1, x2, y = self._helper(kern, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
 
 
 _test_grid_sync = r'''

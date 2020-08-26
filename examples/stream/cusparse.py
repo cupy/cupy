@@ -1,5 +1,6 @@
 # nvprof --print-gpu-trace python examples/stream/cusparse.py
 import cupy
+import cupyx
 
 
 def _make(xp, sp, dtype):
@@ -12,7 +13,7 @@ def _make(xp, sp, dtype):
     return sp.csc_matrix((data, indices, indptr), shape=(3, 4))
 
 
-x = _make(cupy, cupy.sparse, float)
+x = _make(cupy, cupyx.scipy.sparse, float)
 expected = cupy.cusparse.cscsort(x)
 cupy.cuda.Device().synchronize()
 

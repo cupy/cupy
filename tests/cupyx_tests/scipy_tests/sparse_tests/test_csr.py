@@ -1610,7 +1610,7 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubSpmv(unittest.TestCase):
 
     def setUp(self):

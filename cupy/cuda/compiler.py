@@ -255,7 +255,7 @@ def compile_using_nvcc(source, options=(), arch=None,
 
         if code_type == 'ptx':
             with open(result_path, 'rb') as ptx_file:
-                return ptx_file.read().decode('utf-8')
+                return ptx_file.read()
         elif code_type == 'cubin':
             with open(result_path, 'rb') as bin_file:
                 return bin_file.read()
@@ -289,7 +289,7 @@ def _preprocess(source, options, arch, backend):
     else:
         raise ValueError('Invalid backend %s' % backend)
 
-    assert isinstance(result, str)
+    assert isinstance(result, bytes)
     return result
 
 
@@ -327,8 +327,9 @@ def compile_with_cache(
         and backend == 'nvrtc')
 
     if runtime.is_hip:
+        backend = 'hiprtc' if backend == 'nvrtc' else 'hipcc'
         return _compile_with_cache_hip(
-            source, options, arch, cache_dir, extra_source,
+            source, options, arch, cache_dir, extra_source, backend,
             log_stream)
     else:
         return _compile_with_cache_cuda(
@@ -527,7 +528,8 @@ class _NVRTCProgram(object):
             return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
-            raise CompileException(log, self.src, self.name, options, 'nvrtc')
+            raise CompileException(log, self.src, self.name, options,
+                                   'nvrtc' if not runtime.is_hip else 'hiprtc')
 
 
 def is_valid_kernel_name(name):
@@ -611,7 +613,8 @@ def _convert_to_hip_source(source):
 
 
 def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
-                            log_stream=None, use_converter=True):
+                            backend='hiprtc', log_stream=None,
+                            use_converter=True):
     global _empty_file_preprocess_cache
 
     if _is_cudadevrt_needed(options):
@@ -659,7 +662,12 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
                 mod.load(binary)
                 return mod
 
-    binary = compile_using_hipcc(source, options, arch, log_stream)
+    if backend == 'hiprtc':
+        # compile_using_nvrtc calls hiprtc for hip builds
+        binary = compile_using_nvrtc(source, options, arch, name + '.cu',
+                                     log_stream=log_stream)
+    else:
+        binary = compile_using_hipcc(source, options, arch, log_stream)
     binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
 
     # shutil.move is not atomic operation, so it could result in a corrupted

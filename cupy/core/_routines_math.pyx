@@ -23,7 +23,7 @@ if not cupy.cuda.runtime.is_hip:
 else:
     cub = None
 
-if cupy.cuda.cutensor_enabled:
+if cupy.cuda.cutensor.available:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
     from cupy import cutensor
 else:

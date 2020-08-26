@@ -4,30 +4,11 @@ import os
 
 import cupy
 
-try:
-    import cupy.cuda.thrust as thrust
-except ImportError:
-    thrust = None
-
-try:
-    import cupy_backends.cuda.libs.cudnn as cudnn
-except ImportError:
-    cudnn = None
-
-try:
-    import cupy.cuda.nccl as nccl
-except ImportError:
-    nccl = None
-
-try:
-    import cupy.cuda.cub as cub
-except ImportError:
-    cub = None
-
-try:
-    import cupy_backends.cuda.libs.cutensor as cutensor
-except ImportError:
-    cutensor = None
+from cupy.cuda import cub
+from cupy.cuda import cudnn
+from cupy.cuda import cutensor
+from cupy.cuda import nccl
+from cupy.cuda import thrust
 
 
 def _eval_or_error(func, errors):
@@ -138,25 +119,25 @@ class _RuntimeInfo(object):
             cupy.cuda.nvrtc.getVersion,
             cupy.cuda.nvrtc.NVRTCError)
 
-        if thrust is not None:
+        if thrust.available:
             self.thrust_version = thrust.get_build_version()
 
-        if cudnn is not None:
+        if cudnn.available:
             self.cudnn_build_version = cudnn.get_build_version()
             self.cudnn_version = _eval_or_error(
                 cudnn.getVersion, cudnn.CuDNNError)
 
-        if nccl is not None:
+        if nccl.available:
             self.nccl_build_version = nccl.get_build_version()
             nccl_runtime_version = nccl.get_version()
             if nccl_runtime_version == 0:
                 nccl_runtime_version = '(unknown)'
             self.nccl_runtime_version = nccl_runtime_version
 
-        if cub is not None:
+        if cub.available:
             self.cub_build_version = cub.get_build_version()
 
-        if cutensor is not None:
+        if cutensor.available:
             self.cutensor_version = cutensor.get_version()
 
     def __str__(self):

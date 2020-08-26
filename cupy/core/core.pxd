@@ -116,3 +116,13 @@ cdef ndarray _ndarray_init(const shape_t& shape, dtype)
 
 cdef ndarray _create_ndarray_from_shape_strides(
     const shape_t& shape, const strides_t& strides, dtype)
+
+cpdef enum:
+    COMPUTE_TYPE_TBD = 0
+    COMPUTE_TYPE_DEFAULT = 1   # default
+    COMPUTE_TYPE_PEDANTIC = 2  # disable algorithmic optimizations
+    COMPUTE_TYPE_FP16 = 3      # allow converting inputs to FP16
+    COMPUTE_TYPE_FP32 = 4      # allow converting inputs to FP32
+    COMPUTE_TYPE_FP64 = 5      # allow converting inputs to FP64
+    COMPUTE_TYPE_BF16 = 6      # allow converting inputs to BF16
+    COMPUTE_TYPE_TF32 = 7      # allow converting inputs to TF32
