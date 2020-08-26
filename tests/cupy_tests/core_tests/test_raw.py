@@ -591,17 +591,13 @@ class TestRaw(unittest.TestCase):
         N = 10
         inner_chunk = 2
         x = cupy.zeros((N,), dtype=cupy.float32)
-        if self.backend == 'nvrtc':
-            # TODO(leofang): fix this in #3238
-            if cupy.cuda.runtime.is_hip:
-                self.skipTest('hiprtc is not yet supported')
-
+        if self.backend == 'nvrtc' and not cupy.cuda.runtime.is_hip:
             # raised when calling ls.complete()
-            with pytest.raises(cupy.cuda.driver.CUDADriverError):
-                ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
-        else:  # nvcc or hipcc
-            with pytest.raises(cupy.cuda.compiler.CompileException):
-                ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
+            error = cupy.cuda.driver.CUDADriverError
+        else:  # nvcc, hipcc, hiprtc
+            error = cupy.cuda.compiler.CompileException
+        with pytest.raises(error):
+            ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
 
     @unittest.skipIf(cupy.cuda.runtime.is_hip,
                      'HIP code should not use cuFloatComplex')
