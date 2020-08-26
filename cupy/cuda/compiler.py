@@ -599,7 +599,7 @@ def _preprocess_hipcc(source, options):
         return re.sub('(?m)^#.*$', '', pp_src)
 
 
-def _convert_to_hip_source(source):
+def _convert_to_hip_source(source, extra_source, is_hiprtc):
     table = [
         ('threadIdx.', 'hipThreadIdx_'),
         ('blockIdx.', 'hipBlockIdx_'),
@@ -608,8 +608,26 @@ def _convert_to_hip_source(source):
     ]
     for i, j in table:
         source = source.replace(i, j)
+    if not is_hiprtc:
+        return '#include <hip/hip_runtime.h>\n' + source
 
-    return "#include <hip/hip_runtime.h>\n" + source
+    if 'cuComplex_bridge.h' in source:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(current_dir, '../core/include/cupy/cuComplex_bridge.h')) as f:
+            hdr = f.read()
+            source = source.replace('#include <cupy/cuComplex_bridge.h>', hdr)
+
+    source = source.split('\n')
+    #source = source[:4]
+    if extra_source is not None:
+        source = extra_source.split('\n') + source
+    source = [line for line in source if (not line.startswith('#include')
+                      and not line.startswith('#pragma once'))]
+    source = ('#include <hip/hip_runtime.h>\n'
+              + '#include <hip/hip_fp16.h>\n'
+              + '\n'.join(source))
+
+    return source
 
 
 def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
@@ -627,7 +645,9 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         if arch is None:
             raise RuntimeError('HCC_AMDGPU_TARGET is not set')
     if use_converter:
-        source = _convert_to_hip_source(source)
+        source = _convert_to_hip_source(source, extra_source,
+                                        is_hiprtc=(backend == 'hiprtc'))
+        #print(source[-200:], flush=True)
 
     env = (arch, options, _get_hipcc_version())
     base = _empty_file_preprocess_cache.get(env, None)
@@ -664,8 +684,9 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if backend == 'hiprtc':
         # compile_using_nvrtc calls hiprtc for hip builds
-        binary = compile_using_nvrtc(source, options, arch, name + '.cu',
-                                     log_stream=log_stream)
+        #source = fix_include(source, extra_source)
+        binary, mapping = compile_using_nvrtc(
+            source, options, arch, name + '.cu', log_stream=log_stream)
     else:
         binary = compile_using_hipcc(source, options, arch, log_stream)
     binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
@@ -681,8 +702,21 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     # Save .cu source file along with .hsaco
     if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
-        with open(path + '.cu', 'w') as f:
+        with open(path + '.cpp', 'w') as f:
             f.write(source)
 
     mod.load(binary)
     return mod
+
+
+#def fix_include(source, extra_source):
+#    source = source.split('\n')
+#    source = source[:4]
+#    source = extra_source.split('\n') + source
+#    source = [line for line in source if (
+#                  not line.startswith('#include')
+#                  and not line.startswith('#pragma once'))]
+#    source = ('#include <hip/hip_runtime.h>\n'
+#              + '#include <hip/hip_fp16.h>\n'
+#              + '\n'.join(source))
+#    return source

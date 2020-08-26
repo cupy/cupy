@@ -483,6 +483,9 @@ class TestRaw(unittest.TestCase):
         assert cupy.allclose(y, x1 * x2)
 
     def test_invalid_compiler_flag(self):
+        if cupy.cuda.runtime.is_hip and self.backend == 'nvrtc':
+            self.skipTest('hiprtc does not handle #error macro properly')
+
         with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
             mod = cupy.RawModule(code=_test_source3,
                                  options=('-DPRECISION=3',),
