@@ -201,7 +201,7 @@ def get_preload_config():
     global _preload_config
     if _preload_config is None:
         config_path = os.path.join(
-            get_cupy_install_path(), 'cupy', '_wheel.json')
+            get_cupy_install_path(), 'cupy', '.data', '_wheel.json')
         if not os.path.exists(config_path):
             return None
         _preload_config = json.load(open(config_path))
@@ -211,8 +211,8 @@ def get_preload_config():
 def _preload_libraries():
     """Preload dependent shared libraries.
 
-    The preload configuration file (cupy/_wheel.json) will be added during
-    the wheel build process.
+    The preload configuration file (cupy/.data/_wheel.json) will be added
+    during the wheel build process.
     """
 
     config = get_preload_config()
