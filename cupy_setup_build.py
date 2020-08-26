@@ -601,7 +601,7 @@ def parse_args():
              '(can be specified for multiple times)')
     parser.add_argument(
         '--cupy-wheel-metadata', type=str, default=None,
-        help='wheel metadata (cupy/_wheel.json)')
+        help='wheel metadata (cupy/data/_wheel.json)')
     parser.add_argument(
         '--cupy-no-rpath', action='store_true', default=False,
         help='disable adding default library directories to RPATH')
@@ -689,7 +689,7 @@ def prepare_wheel_libs():
     wheel_metadata = cupy_setup_options['wheel_metadata']
     if wheel_metadata:
         files_to_copy.append(
-            (wheel_metadata, os.path.join('cupy', '_wheel.json')))
+            (wheel_metadata, os.path.join(data_dir, '_wheel.json')))
 
     # Copy
     for srcpath, dstpath in files_to_copy:
