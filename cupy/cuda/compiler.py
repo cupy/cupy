@@ -610,11 +610,11 @@ def _convert_to_hip_source(source, extra_source, is_hiprtc):
         return '#include <hip/hip_runtime.h>\n' + source
 
     source = source.split('\n')
-    #source = source[:4]
     if extra_source is not None:
         source = extra_source.split('\n') + source
-    source = [line for line in source if (not line.startswith('#include')
-                      and not line.startswith('#pragma once'))]
+    source = [line for line in source if (
+        not line.startswith('#include')
+        and not line.startswith('#pragma once'))]
     source = ('#include <hip/hip_runtime.h>\n'
               + '#include <hip/hip_fp16.h>\n'
               + '\n'.join(source))
@@ -640,7 +640,6 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     if use_converter:
         source = _convert_to_hip_source(source, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))
-        #print(source[-200:], flush=True)
 
     env = (arch, options, _get_hipcc_version())
     base = _empty_file_preprocess_cache.get(env, None)
@@ -685,7 +684,6 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if backend == 'hiprtc':
         # compile_using_nvrtc calls hiprtc for hip builds
-        #source = fix_include(source, extra_source)
         binary, mapping = compile_using_nvrtc(
             source, options, arch, name + '.cu', name_expressions,
             log_stream, cache_in_memory)
@@ -717,16 +715,3 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     mod.load(binary)
     return mod
-
-
-#def fix_include(source, extra_source):
-#    source = source.split('\n')
-#    source = source[:4]
-#    source = extra_source.split('\n') + source
-#    source = [line for line in source if (
-#                  not line.startswith('#include')
-#                  and not line.startswith('#pragma once'))]
-#    source = ('#include <hip/hip_runtime.h>\n'
-#              + '#include <hip/hip_fp16.h>\n'
-#              + '\n'.join(source))
-#    return source
