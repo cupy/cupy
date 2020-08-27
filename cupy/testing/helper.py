@@ -299,14 +299,12 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name):
     Returns:
         The tuple of cupy.ndarray and numpy.ndarray.
     """
-    if sp_name is not None:
+    if sp_name is not None and cupyx.scipy.sparse.issparse(c_out):
+        # Sparse output case.
         import scipy.sparse
-        if cupyx.scipy.sparse.issparse(c_out):
-            # Sparse output case.
-            if scipy.sparse.issparse(n_out):
-                return c_out.A, n_out.A
-            if isinstance(n_out, numpy.generic):
-                return c_out.A, n_out
+        assert scipy.sparse.issparse(n_out)
+        assert c_out.format == n_out.format
+        return c_out.A, n_out.A
     if (isinstance(c_out, cupy.ndarray)
             and isinstance(n_out, (numpy.ndarray, numpy.generic))):
         # ndarray output case.
