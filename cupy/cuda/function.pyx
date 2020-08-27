@@ -1,6 +1,7 @@
 # distutils: language = c++
 
 import numpy
+import warnings
 
 cimport cpython  # NOQA
 from libc.stdint cimport int8_t
@@ -18,6 +19,7 @@ from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport stream as stream_module
 from cupy.cuda.memory cimport MemoryPointer
 from cupy.cuda.texture cimport TextureObject, SurfaceObject
+from cupy.cuda import device
 
 
 cdef class CPointer:
@@ -157,6 +159,20 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
     runtime._ensure_context()
 
     if enable_cooperative_groups:
+        dev_id = device.get_device_id()
+        num_sm = device._get_attributes(dev_id)['MultiProcessorCount']
+        max_grid_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
+            func, block0 * block1 * block2, shared_mem) * num_sm
+        if grid0 * grid1 * grid2 > max_grid_size:
+            if grid1 == grid2 == 1:
+                warnings.warn('The grid size will be reduced from {} to {}, '
+                              'as the specified grid size exceeds the limit.'.
+                              format(grid0, max_grid_size))
+                grid0 = max_grid_size
+            else:
+                raise ValueError('The specified grid size ({} * {} * {}) '
+                                 'exceeds the limit ({}).'.
+                                 format(grid0, grid1, grid2, max_grid_size))
         driver.launchCooperativeKernel(
             func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
             <int>shared_mem, stream, <intptr_t>kargs.data())
