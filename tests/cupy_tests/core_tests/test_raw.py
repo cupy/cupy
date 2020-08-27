@@ -491,24 +491,35 @@ class TestRaw(unittest.TestCase):
         assert 'precision not supported' in str(ex.value)
 
     def _generate_file(self, ext: str):
-        # generate cubin/ptx by calling nvcc
-        # TODO(leofang): also test hsaco generation for HIP
+        # generate cubin/ptx by calling nvcc/hipcc
 
-        nvcc = cupy.cuda.get_nvcc_path()
+        if not cupy.cuda.runtime.is_hip:
+            cc = cupy.cuda.get_nvcc_path()
+            arch = '-gencode=arch=compute_{CC},code=sm_{CC}'.format(
+                CC=compiler._get_arch())
+            code = _test_source5
+        else:
+            # TODO(leofang): We currently instruct users to set up
+            # $ROCM_HOME, but perhaps it could be relaxed after we add
+            # get_hipcc_path().
+            cc = os.path.join(os.environ['ROCM_HOME'], 'bin/hipcc')
+            arch = '-v'  # dummy
+            code = compiler._convert_to_hip_source(_test_source5, None, False)
         # split() is needed because nvcc could come from the env var NVCC
-        cmd = nvcc.split()
-        arch = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(
-            cc=compiler._get_arch())
+        cmd = cc.split()
         source = '{}/test_load_cubin.cu'.format(self.cache_dir)
         file_path = self.cache_dir + 'test_load_cubin'
         with open(source, 'w') as f:
-            f.write(_test_source5)
+            f.write(code)
         if ext == 'cubin':
             file_path += '.cubin'
             flag = '-cubin'
         elif ext == 'ptx':
             file_path += '.ptx'
             flag = '-ptx'
+        elif ext == 'hsaco':
+            file_path += '.hsaco'
+            flag = '--genco'
         else:
             raise ValueError
         cmd += [arch, flag, source, '-o', file_path]
@@ -517,7 +528,7 @@ class TestRaw(unittest.TestCase):
 
         return file_path
 
-    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'hcc uses hsaco, not cubin')
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP uses hsaco, not cubin')
     def test_load_cubin(self):
         # generate cubin in the temp dir
         file_path = self._generate_file('cubin')
@@ -528,12 +539,24 @@ class TestRaw(unittest.TestCase):
         x1, x2, y = self._helper(ker, cupy.float32)
         assert cupy.allclose(y, x1 / (x2 + 1.0))
 
-    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'hcc uses hsaco, not ptx')
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP uses hsaco, not ptx')
     def test_load_ptx(self):
         # generate ptx in the temp dir
         file_path = self._generate_file('ptx')
 
         # load ptx and test the kernel
+        mod = cupy.RawModule(path=file_path, backend=self.backend)
+        ker = mod.get_function('test_div')
+        x1, x2, y = self._helper(ker, cupy.float32)
+        assert cupy.allclose(y, x1 / (x2 + 1.0))
+
+    @unittest.skipIf(not cupy.cuda.runtime.is_hip,
+                     'CUDA uses cubin/ptx, not hsaco')
+    def test_load_hsaco(self):
+        # generate hsaco in the temp dir
+        file_path = self._generate_file('hsaco')
+
+        # load cubin and test the kernel
         mod = cupy.RawModule(path=file_path, backend=self.backend)
         ker = mod.get_function('test_div')
         x1, x2, y = self._helper(ker, cupy.float32)
@@ -792,7 +815,6 @@ class TestRaw(unittest.TestCase):
         # 2. compile code without specializations
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',))
         # ...try to get a specialized kernel
-        # TODO(leofang): perhaps hipcc should not test template specializations
         match = ('named symbol not found' if not cupy.cuda.runtime.is_hip else
                  'hipErrorNotFound')
         with pytest.raises(cupy.cuda.driver.CUDADriverError, match=match):

@@ -32,7 +32,8 @@ class HIPCCException(Exception):
 def _run_cc(cmd, cwd, backend, log_stream=None):
     # backend in ('nvcc', 'hipcc')
     try:
-        log = subprocess.check_output(cmd, cwd=cwd,
+        env = os.environ if backend == 'hipcc' else None
+        log = subprocess.check_output(cmd, cwd=cwd, env=env,
                                       stderr=subprocess.STDOUT,
                                       universal_newlines=True)
         if log_stream is not None:
