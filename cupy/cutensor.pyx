@@ -453,7 +453,7 @@ cdef inline ContractionPlan _create_contraction_plan(
     return plan
 
 
-cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype):
+cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype, compute_dtype):
     key = a_dtype.char + b_dtype.char + out_dtype.char
     if cutensor.get_version() >= 10200:
         # version 1.2.0 or later
@@ -463,14 +463,25 @@ cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype):
     if key not in dict_contraction:
         raise ValueError('Un-supported dtype combinations: ({}, {}, {})'.
                          format(a_dtype, b_dtype, out_dtype))
-    compute_type = cupy.core.get_compute_type(out_dtype)
+    if compute_dtype is None:
+        compute_type = cupy.core.get_compute_type(out_dtype)
+    else:
+        if compute_dtype.char == 'e':
+            compute_type = core.COMPUTE_TYPE_FP16
+        elif compute_dtype.char in 'fF':
+            compute_type = core.COMPUTE_TYPE_FP32
+        elif compute_dtype.char in 'dD':
+            compute_type = core.COMPUTE_TYPE_FP64
+        else:
+            raise ValueError('Un-supported dtype: {}'.format(compute_dtype))
     if compute_type in dict_contraction[key]:
         return dict_contraction[key][compute_type]
     else:
         warnings.warn('Use of compute type ({}) for the dtype combination '
                       '({}, {}, {}) is not supported in cuTENSOR contraction. '
                       'Default compute type will be used instead.'.
-                      format(compute_type, a_dtype, b_dtype, out_dtype))
+                      format(cupy.core.compute_type_to_str(compute_type),
+                             a_dtype, b_dtype, out_dtype))
         return dict_contraction[key][core.COMPUTE_TYPE_DEFAULT]
 
 
@@ -527,14 +538,11 @@ def contraction(
     Examples:
         See examples/cutensor/contraction.py
     """
-    if compute_dtype is not None:
-        warnings.warn('Argument `compute_dtype` is deprecated. To set compute '
-                      'type, use a function `cupy.core.set_compute_type()` '
-                      'instead.')
-    compute_type = _get_contraction_compute_type(A.dtype, B.dtype, C.dtype)
-    scalar_dtype = _get_scalar_dtype(C.dtype)
     if not (A._c_contiguous and B._c_contiguous and C._c_contiguous):
         raise ValueError('The inputs should be contiguous arrays.')
+    compute_type = _get_contraction_compute_type(A.dtype, B.dtype, C.dtype,
+                                                 compute_dtype)
+    scalar_dtype = _get_scalar_dtype(C.dtype)
 
     return _contraction_impl(
         _get_handle(),
