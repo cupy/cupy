@@ -319,8 +319,8 @@ def compile_with_cache(
     if name_expressions is not None and backend != 'nvrtc':
         raise NotImplementedError
 
-    # We silently ignore CUPY_CACHE_IN_MEMORY if nvcc is in use, because it
-    # must dump files to disk.
+    # We silently ignore CUPY_CACHE_IN_MEMORY if nvcc/hipcc are in use, because
+    # they must dump files to disk.
     cache_in_memory = (
         _get_bool_env_variable('CUPY_CACHE_IN_MEMORY', False)
         and backend == 'nvrtc')
@@ -329,7 +329,7 @@ def compile_with_cache(
         backend = 'hiprtc' if backend == 'nvrtc' else 'hipcc'
         return _compile_with_cache_hip(
             source, options, arch, cache_dir, extra_source, backend,
-            name_expressions, log_stream)
+            name_expressions, log_stream, cache_in_memory)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
@@ -374,7 +374,6 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         # Read from disk cache
-
         if not os.path.isdir(cache_dir):
             try:
                 os.makedirs(cache_dir)
@@ -425,7 +424,6 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         # Write to disk cache
-
         cubin_hash = hashlib.md5(cubin).hexdigest().encode('ascii')
 
         # shutil.move is not atomic operation, so it could result in a
@@ -625,7 +623,8 @@ def _convert_to_hip_source(source, extra_source, is_hiprtc):
 
 def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
                             backend='hiprtc', name_expressions=None,
-                            log_stream=None, use_converter=True):
+                            log_stream=None, cache_in_memory=False,
+                            use_converter=True):
     global _empty_file_preprocess_cache
 
     if _is_cudadevrt_needed(options):
@@ -648,57 +647,72 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         # This is checking of HIPCC compiler internal version
         base = _preprocess_hipcc('', options)
         _empty_file_preprocess_cache[env] = base
-    key_src = '%s %s %s %s' % (env, base, source, extra_source)
 
+    key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
     name = '%s.hsaco' % hashlib.md5(key_src).hexdigest()
 
-    if not os.path.isdir(cache_dir):
-        try:
-            os.makedirs(cache_dir)
-        except OSError:
-            if not os.path.isdir(cache_dir):
-                raise
-
     mod = function.Module()
-    # To handle conflicts in concurrent situation, we adopt lock-free method
-    # to avoid performance degradation.
-    # We force recompiling to retrieve C++ mangled names if so desired.
-    path = os.path.join(cache_dir, name)
-    if os.path.exists(path) and not name_expressions:
-        with open(path, 'rb') as f:
-            data = f.read()
-        if len(data) >= 32:
-            hash_value = data[:32]
-            binary = data[32:]
-            binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
-            if hash_value == binary_hash:
-                mod.load(binary)
-                return mod
+
+    if not cache_in_memory:
+        # Read from disk cache
+        if not os.path.isdir(cache_dir):
+            try:
+                os.makedirs(cache_dir)
+            except OSError:
+                if not os.path.isdir(cache_dir):
+                    raise
+
+        # To handle conflicts in concurrent situation, we adopt lock-free
+        # method to avoid performance degradation.
+        # We force recompiling to retrieve C++ mangled names if so desired.
+        path = os.path.join(cache_dir, name)
+        if os.path.exists(path) and not name_expressions:
+            with open(path, 'rb') as f:
+                data = f.read()
+            if len(data) >= 32:
+                hash_value = data[:32]
+                binary = data[32:]
+                binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
+                if hash_value == binary_hash:
+                    mod.load(binary)
+                    return mod
+    else:
+        # Enforce compiling -- the resulting kernel will be cached elsewhere,
+        # so we do nothing
+        pass
 
     if backend == 'hiprtc':
         # compile_using_nvrtc calls hiprtc for hip builds
         #source = fix_include(source, extra_source)
         binary, mapping = compile_using_nvrtc(
-            source, options, arch, name + '.cu', name_expressions, log_stream)
+            source, options, arch, name + '.cu', name_expressions,
+            log_stream, cache_in_memory)
         mod._set_mapping(mapping)
     else:
         binary = compile_using_hipcc(source, options, arch, log_stream)
-    binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
 
-    # shutil.move is not atomic operation, so it could result in a corrupted
-    # file. We detect it by appending md5 hash at the beginning of each cache
-    # file. If the file is corrupted, it will be ignored next time it is read.
-    with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
-        tf.write(binary_hash)
-        tf.write(binary)
-        temp_path = tf.name
-    shutil.move(temp_path, path)
+    if not cache_in_memory:
+        # Write to disk cache
+        binary_hash = hashlib.md5(binary).hexdigest().encode('ascii')
 
-    # Save .cu source file along with .hsaco
-    if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
-        with open(path + '.cpp', 'w') as f:
-            f.write(source)
+        # shutil.move is not atomic operation, so it could result in a
+        # corrupted file. We detect it by appending md5 hash at the beginning
+        # of each cache file. If the file is corrupted, it will be ignored
+        # next time it is read.
+        with tempfile.NamedTemporaryFile(dir=cache_dir, delete=False) as tf:
+            tf.write(binary_hash)
+            tf.write(binary)
+            temp_path = tf.name
+        shutil.move(temp_path, path)
+
+        # Save .cu source file along with .hsaco
+        if _get_bool_env_variable('CUPY_CACHE_SAVE_CUDA_SOURCE', False):
+            with open(path + '.cpp', 'w') as f:
+                f.write(source)
+    else:
+        # we don't do any disk I/O
+        pass
 
     mod.load(binary)
     return mod

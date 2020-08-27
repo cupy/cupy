@@ -387,9 +387,6 @@ def compile_in_memory(in_memory):
 class TestRaw(unittest.TestCase):
 
     def setUp(self):
-        if cupy.cuda.runtime.is_hip and self.in_memory:
-            self.skipTest('ROCm/HIP does not support in-memory compilation')
-
         if hasattr(self, 'clean_up'):
             util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
@@ -746,6 +743,12 @@ class TestRaw(unittest.TestCase):
     def test_template_specialization(self):
         if self.backend == 'nvcc':
             self.skipTest('nvcc does not support template specialization')
+
+        # TODO(leofang): investigate why hiprtc generates a wrong source code
+        # when the same code is compiled and discarded. It seems hiprtc has
+        # an internal cache that conflicts with the 2nd compilation attempt.
+        if cupy.cuda.runtime.is_hip and hasattr(self, 'clean_up'):
+            self.skipTest('skip a potential hiprtc bug')
 
         # compile code
         name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
