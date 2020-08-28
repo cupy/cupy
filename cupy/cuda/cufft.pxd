@@ -36,18 +36,19 @@ cdef class Plan1d:
     cdef:
         Handle plan
         object work_area  # can be MemoryPointer or a list of it
-        int nx
-        Type fft_type
-        int batch
+        readonly int nx
+        readonly int batch
+        readonly Type fft_type
 
         list gpus
-        bint _use_multi_gpus
+        readonly bint _use_multi_gpus
         list batch_share
         list gather_streams
         list gather_events
         list scatter_streams
         list scatter_events
         intptr_t xtArr
+        list xtArr_buffer
 
         void _single_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch) except*
         void _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch, devices, out) except*
@@ -58,10 +59,10 @@ cdef class Plan1d:
 cdef class PlanNd:
     cdef:
         Handle plan
-        tuple shape
-        Type fft_type
         memory.MemoryPointer work_area
-        str order
+        readonly tuple shape
+        readonly Type fft_type
+        readonly str order
         int last_axis
         object last_size
 
