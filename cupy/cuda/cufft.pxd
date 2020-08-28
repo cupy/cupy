@@ -64,7 +64,7 @@ cdef class PlanNd:
         readonly tuple shape
         readonly Type fft_type
         readonly str order
-        int last_axis
-        object last_size
+        readonly int last_axis
+        readonly object last_size
 
     #cpdef fft(self, a, out, direction)
