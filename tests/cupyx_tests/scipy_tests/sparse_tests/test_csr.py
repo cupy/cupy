@@ -1643,68 +1643,92 @@ class TestCubSpmv(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64],
     'is_complex': [False, True],
     'shape': [(4, 25), (10, 10), (25, 4)],
-    'nnz_rate': [0.1, 0.5],
+    'nz_rate': [0.1, 0.5],
+    'opt': ['maximum', 'minimum'],
 }))
 @testing.with_requires('scipy')
 @testing.gpu
-class TestCsrMatrixMinimumMaximum(unittest.TestCase):
+class TestCsrMatrixMaximumMinimum(unittest.TestCase):
 
-    def _make_array(self, xp):
-        a = testing.shaped_random(self.shape, xp, dtype=self.dtype, scale=2)
-        a = (a - 1) / self.nnz_rate
+    def _make_array(self, shape, xp):
+        a = testing.shaped_random(shape, xp, dtype=self.dtype, scale=2)
+        a = (a - 1) / self.nz_rate
         a[a > 1] = 0
         a[a < -1] = 0
         return a
 
-    def _make_matrix(self, xp):
-        a = self._make_array(xp)
+    def _make_matrix(self, shape, xp):
+        a = self._make_array(shape, xp)
         if self.is_complex:
-            a = a + 1j * self._make_array(xp)
+            a = a + 1j * self._make_array(shape, xp)
         return a
 
     def _make_sp_matrix(self, xp, sp):
-        return sp.csr_matrix(self._make_matrix(xp))
+        return sp.csr_matrix(self._make_matrix(self.shape, xp))
+
+    def _make_sp_matrix_row(self, xp, sp):
+        shape = 1, self.shape[1]
+        return sp.csr_matrix(self._make_matrix(shape, xp))
+
+    def _make_sp_matrix_col(self, xp, sp):
+        shape = self.shape[0], 1
+        return sp.csr_matrix(self._make_matrix(shape, xp))
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_minimum_sparse(self, xp, sp):
+    def test_sparse(self, xp, sp):
         a = self._make_sp_matrix(xp, sp)
         b = self._make_sp_matrix(xp, sp)
-        return a.minimum(b)
+        return getattr(a, self.opt)(b)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_maximum_sparse(self, xp, sp):
+    def test_sparse_row(self, xp, sp):
         a = self._make_sp_matrix(xp, sp)
-        b = self._make_sp_matrix(xp, sp)
-        return a.maximum(b)
+        b = self._make_sp_matrix_row(xp, sp)
+        if xp == numpy:
+            # SciPy does not support sparse broadcasting
+            return getattr(a, self.opt)(b.toarray())
+        else:
+            return getattr(a, self.opt)(b).toarray()
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_minimum_dense(self, xp, sp):
+    def test_sparse_col(self, xp, sp):
         a = self._make_sp_matrix(xp, sp)
-        b = self._make_matrix(xp)
-        return a.minimum(b)
+        b = self._make_sp_matrix_col(xp, sp)
+        if xp == numpy:
+            # SciPy does not support sparse broadcasting
+            return getattr(a, self.opt)(b.toarray())
+        else:
+            return getattr(a, self.opt)(b).toarray()
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_maximum_dense(self, xp, sp):
+    def test_dense(self, xp, sp):
         a = self._make_sp_matrix(xp, sp)
-        b = self._make_matrix(xp)
-        return a.minimum(b)
+        b = self._make_sp_matrix(xp, sp).toarray()
+        return getattr(a, self.opt)(b)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_minimum_scalar_plus(self, xp, sp):
+    def test_dense_row(self, xp, sp):
         a = self._make_sp_matrix(xp, sp)
-        return a.minimum(0.5)
+        b = self._make_sp_matrix_row(xp, sp).toarray()
+        return getattr(a, self.opt)(b)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_maximum_scalar_plus(self, xp, sp):
+    def test_dense_col(self, xp, sp):
         a = self._make_sp_matrix(xp, sp)
-        return a.maximum(0.5)
+        b = self._make_sp_matrix_col(xp, sp).toarray()
+        return getattr(a, self.opt)(b)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_minimum_scalar_minus(self, xp, sp):
+    def test_scalar_plus(self, xp, sp):
         a = self._make_sp_matrix(xp, sp)
-        return a.minimum(-0.5)
+        return getattr(a, self.opt)(0.5)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
-    def test_maximum_scalar_minus(self, xp, sp):
+    def test_scalar_minus(self, xp, sp):
         a = self._make_sp_matrix(xp, sp)
-        return a.maximum(-0.5)
+        return getattr(a, self.opt)(-0.5)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_scalar_zero(self, xp, sp):
+        a = self._make_sp_matrix(xp, sp)
+        return getattr(a, self.opt)(0)
