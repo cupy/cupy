@@ -97,12 +97,14 @@ if use_hip:
             'hip/hiprtc.h',
             'hipblas.h',
             'hiprand/hiprand.h',
+            'hipfft.h',
         ],
         'libraries': [
             'hiprtc',
             'hip_hcc',
             'hipblas',
             'hiprand',
+            'rocfft',
         ],
     })
 else:

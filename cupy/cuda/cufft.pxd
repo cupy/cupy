@@ -1,9 +1,20 @@
+from libc.stdint cimport intptr_t
+
+from cupy.cuda cimport memory
+
+
 cdef extern from *:
     ctypedef float Float 'cufftReal'
     ctypedef double Double 'cufftDoubleReal'
     ctypedef int Result 'cufftResult_t'
-    ctypedef int Handle 'cufftHandle'
-    ctypedef int Type 'cufftType_t'
+    #ctypedef int Handle 'cufftHandle'
+
+    ctypedef struct c_handle 'hipfftHandle_t':
+        pass
+    ctypedef c_handle* Handle 'cufftHandle'
+
+    ctypedef enum Type 'cufftType_t':
+        pass
 
 
 cpdef enum:
@@ -19,3 +30,39 @@ cpdef enum:
 
 
 cpdef get_current_plan()
+
+
+cdef class Plan1d:
+    cdef:
+        Handle plan
+        object work_area  # can be MemoryPointer or a list of it
+        int nx
+        Type fft_type
+        int batch
+
+        list gpus
+        bint _use_multi_gpus
+        list batch_share
+        list gather_streams
+        list gather_events
+        list scatter_streams
+        list scatter_events
+        intptr_t xtArr
+
+        void _single_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch) except*
+        void _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch, devices, out) except*
+
+    #cpdef _single_gpu_fft(self, a, out, direction)
+
+
+cdef class PlanNd:
+    cdef:
+        Handle plan
+        tuple shape
+        Type fft_type
+        memory.MemoryPointer work_area
+        str order
+        int last_axis
+        object last_size
+
+    #cpdef fft(self, a, out, direction)
