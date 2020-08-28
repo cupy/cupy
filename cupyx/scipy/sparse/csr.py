@@ -746,13 +746,20 @@ __device__ inline bool check(O out) {
 
 
 def binopt_csr(a, b, op_name):
-    if a.shape != b.shape:
+    a_m, a_n = a.shape
+    b_m, b_n = b.shape
+    if not (a_m == b_m or a_m == 1 or b_m == 1):
         raise ValueError('inconsistent shape')
-    m, n = a.shape
-    a_info = cupy.zeros(a.nnz + 1, dtype=a.indices.dtype)
-    b_info = cupy.zeros(b.nnz + 1, dtype=b.indices.dtype)
-    a_valid = cupy.zeros(a.nnz, dtype=numpy.int8)
-    b_valid = cupy.zeros(b.nnz, dtype=numpy.int8)
+    if not (a_n == b_n or a_n == 1 or b_n == 1):
+        raise ValueError('inconsistent shape')
+    m, n = max(a_m, b_m), max(a_n, b_n)
+    a_nnz = a.nnz * (m // a_m) * (n // a_n)
+    b_nnz = b.nnz * (m // b_m) * (n // b_n)
+
+    a_info = cupy.zeros(a_nnz + 1, dtype=a.indices.dtype)
+    b_info = cupy.zeros(b_nnz + 1, dtype=b.indices.dtype)
+    a_valid = cupy.zeros(a_nnz, dtype=numpy.int8)
+    b_valid = cupy.zeros(b_nnz, dtype=numpy.int8)
     c_indptr = cupy.zeros(m + 1, dtype=a.indptr.dtype)
     if op_name == '_maximum_':
         funcs = _BINOPT_MAX_ + _CHECK_MAX_MIN_
@@ -762,15 +769,17 @@ def binopt_csr(a, b, op_name):
         out_dtype = a.data.dtype
     else:
         raise ValueError('invalid op_name: {}'.format(op_name))
-    a_tmp_data = cupy.empty(a.nnz, dtype=out_dtype)
-    b_tmp_data = cupy.empty(b.nnz, dtype=out_dtype)
-    _size = a.nnz + b.nnz
+    a_tmp_data = cupy.empty(a_nnz, dtype=out_dtype)
+    b_tmp_data = cupy.empty(b_nnz, dtype=out_dtype)
+    a_tmp_indices = cupy.empty(a_nnz, dtype=a.indices.dtype)
+    b_tmp_indices = cupy.empty(b_nnz, dtype=b.indices.dtype)
+    _size = a_nnz + b_nnz
     cupy_binopt_csr_step1(op_name, preamble=funcs)(
         m, n,
-        a.indptr, a.indices, a.data, a.nnz,
-        b.indptr, b.indices, b.data, b.nnz,
-        a_info, a_valid, a_tmp_data,
-        b_info, b_valid, b_tmp_data,
+        a.indptr, a.indices, a.data, a_m, a_n, a.nnz, a_nnz,
+        b.indptr, b.indices, b.data, b_m, b_n, b.nnz, b_nnz,
+        a_info, a_valid, a_tmp_indices, a_tmp_data,
+        b_info, b_valid, b_tmp_indices, b_tmp_data,
         c_indptr, size=_size)
     a_info = cupy.cumsum(a_info, dtype=a_info.dtype)
     b_info = cupy.cumsum(b_info, dtype=b_info.dtype)
@@ -779,8 +788,8 @@ def binopt_csr(a, b, op_name):
     c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
     c_data = cupy.empty(c_nnz, dtype=out_dtype)
     cupy_binopt_csr_step2(op_name)(
-        a.indices, a_info, a_valid, a_tmp_data, a.nnz,
-        b.indices, b_info, b_valid, b_tmp_data, b.nnz,
+        a_info, a_valid, a_tmp_indices, a_tmp_data, a_nnz,
+        b_info, b_valid, b_tmp_indices, b_tmp_data, b_nnz,
         c_indices, c_data, size=_size)
     return csr_matrix((c_data, c_indices, c_indptr), shape=(m, n))
 
@@ -791,88 +800,152 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
     return cupy.ElementwiseKernel(
         '''
         int32 M, int32 N,
-        raw I A_INDPTR, raw I A_INDICES, raw T A_DATA, int32 A_NNZ,
-        raw I B_INDPTR, raw I B_INDICES, raw T B_DATA, int32 B_NNZ
+        raw I A_INDPTR, raw I A_INDICES, raw T A_DATA,
+        int32 A_M, int32 A_N, int32 A_NNZ_ACT, int32 A_NNZ,
+        raw I B_INDPTR, raw I B_INDICES, raw T B_DATA,
+        int32 B_M, int32 B_N, int32 B_NNZ_ACT, int32 B_NNZ
         ''',
         '''
-        raw I A_INFO, raw B A_VALID, raw O A_TMP_DATA,
-        raw I B_INFO, raw B B_VALID, raw O B_TMP_DATA,
+        raw I A_INFO, raw B A_VALID, raw I A_TMP_INDICES, raw O A_TMP_DATA,
+        raw I B_INFO, raw B B_VALID, raw I B_TMP_INDICES, raw O B_TMP_DATA,
         raw I C_INFO
         ''',
         '''
-        int j;
+        if (i >= A_NNZ + B_NNZ) return;
+
         const int *MY_INDPTR, *MY_INDICES;  int *MY_INFO;  const T *MY_DATA;
         const int *OP_INDPTR, *OP_INDICES;  int *OP_INFO;  const T *OP_DATA;
-        signed char *MY_VALID;  O *MY_TMP_DATA;
+        int MY_M, MY_N, MY_NNZ_ACT, MY_NNZ;
+        int OP_M, OP_N, OP_NNZ_ACT, OP_NNZ;
+        signed char *MY_VALID;  I *MY_TMP_INDICES;  O *MY_TMP_DATA;
+
+        int my_j;
         if (i < A_NNZ) {
-            j = i;
+            // in charge of one of non-zero element of sparse matrix A
+            my_j = i;
             MY_INDPTR  = &(A_INDPTR[0]);   OP_INDPTR  = &(B_INDPTR[0]);
             MY_INDICES = &(A_INDICES[0]);  OP_INDICES = &(B_INDICES[0]);
             MY_INFO    = &(A_INFO[0]);     OP_INFO    = &(B_INFO[0]);
             MY_DATA    = &(A_DATA[0]);     OP_DATA    = &(B_DATA[0]);
+            MY_M       = A_M;              OP_M       = B_M;
+            MY_N       = A_N;              OP_N       = B_N;
+            MY_NNZ_ACT = A_NNZ_ACT;        OP_NNZ_ACT = B_NNZ_ACT;
+            MY_NNZ     = A_NNZ;            OP_NNZ     = B_NNZ;
             MY_VALID   = &(A_VALID[0]);
             MY_TMP_DATA= &(A_TMP_DATA[0]);
-        } else if (i < A_NNZ + B_NNZ) {
-            j = i - A_NNZ;
+            MY_TMP_INDICES = &(A_TMP_INDICES[0]);
+        } else {
+            // in charge of one of non-zero element of sparse matrix B
+            my_j = i - A_NNZ;
             MY_INDPTR  = &(B_INDPTR[0]);   OP_INDPTR  = &(A_INDPTR[0]);
             MY_INDICES = &(B_INDICES[0]);  OP_INDICES = &(A_INDICES[0]);
             MY_INFO    = &(B_INFO[0]);     OP_INFO    = &(A_INFO[0]);
             MY_DATA    = &(B_DATA[0]);     OP_DATA    = &(A_DATA[0]);
+            MY_M       = B_M;              OP_M       = A_M;
+            MY_N       = B_N;              OP_N       = A_N;
+            MY_NNZ_ACT = B_NNZ_ACT;        OP_NNZ_ACT = A_NNZ_ACT;
+            MY_NNZ     = B_NNZ;            OP_NNZ     = A_NNZ;
             MY_VALID   = &(B_VALID[0]);
             MY_TMP_DATA= &(B_TMP_DATA[0]);
-        } else {
-            return;
+            MY_TMP_INDICES = &(B_TMP_INDICES[0]);
         }
+
+        // get column location
+        int my_col;
+        int my_j_act = my_j;
+        if (MY_M == 1 && MY_M < M) {
+            if (MY_N == 1 && MY_N < N) my_j_act = 0;
+            else                       my_j_act = my_j % MY_NNZ_ACT;
+        } else {
+            if (MY_N == 1 && MY_N < N) my_j_act = my_j / N;
+        }
+        my_col = MY_INDICES[my_j_act];
+        if (MY_N == 1 && MY_N < N) {
+            my_col = my_j % N;
+        }
+
+        // get row location
+        int my_row;
         int _min = 0;
-        int _max = M - 1;
-        int row = (_min + _max) / 2;
+        int _max = MY_M - 1;
+        int _mid = (_min + _max) / 2;
         while (_min < _max) {
-            if (j < MY_INDPTR[row]) {
-                _max = row - 1;
-            } else if (j >= MY_INDPTR[row + 1]) {
-                _min = row + 1;
+            if (my_j_act < MY_INDPTR[_mid]) {
+                _max = _mid - 1;
+            } else if (my_j_act >= MY_INDPTR[_mid + 1]) {
+                _min = _mid + 1;
             } else {
                 break;
             }
-            row = (_min + _max) / 2;
+            _mid = (_min + _max) / 2;
         }
-        int my_col = MY_INDICES[j];
+        my_row = _mid;
+        if (MY_M == 1 && MY_M < M) {
+            if (MY_N == 1 && MY_N < N) my_row = my_j / N;
+            else                       my_row = my_j / MY_NNZ_ACT;
+        }
 
-        _min = OP_INDPTR[row];
-        _max = OP_INDPTR[row + 1] - 1;
-        int op_j = _min;
-        int op_col = N;
+        int op_row = my_row;
+        int op_row_act = op_row;
+        if (OP_M == 1 && OP_M < M) {
+            op_row_act = 0;
+        }
+
+        int op_col = 0;
+        _min = OP_INDPTR[op_row_act];
+        _max = OP_INDPTR[op_row_act + 1] - 1;
+        int op_j_act = _min;
+        bool op_nz = false;
         if (_min <= _max) {
-            op_j = (_min + _max) / 2;
-            op_col = OP_INDICES[op_j];
-            while (_min < _max) {
-                if (my_col > op_col) {
-                    _min = op_j + 1;
-                } else if (my_col < op_col) {
-                    _max = op_j;
-                } else {
-                    break;
+            if (OP_N == 1 && OP_N < N) {
+                op_col = my_col;
+                op_nz = true;
+            }
+            else {
+                _mid = (_min + _max) / 2;
+                op_col = OP_INDICES[_mid];
+                while (_min < _max) {
+                    if (op_col < my_col) {
+                        _min = _mid + 1;
+                    } else if (op_col > my_col) {
+                        _max = _mid;
+                    } else {
+                        break;
+                    }
+                    _mid = (_min + _max) / 2;
+                    op_col = OP_INDICES[_mid];
                 }
-                op_j = (_min + _max) / 2;
-                op_col = OP_INDICES[op_j];
+                op_j_act = _mid;
+                if (op_col == my_col) {
+                    op_nz = true;
+                } else if (op_col < my_col) {
+                    op_col = N;
+                    op_j_act += 1;
+                }
             }
         }
 
-        if (i < A_NNZ || my_col != op_col) {
+        int op_j = op_j_act;
+        if (OP_M == 1 && OP_M < M) {
+            if (OP_N == 1 && OP_N < N) op_j = (op_col + N * op_row) * OP_NNZ_ACT;
+            else                       op_j = op_j_act + OP_NNZ_ACT * op_row;
+        } else {
+            if (OP_N == 1 && OP_N < N) op_j = op_col + N * op_j_act;
+        }
+
+        if (i < A_NNZ || !op_nz) {
+            T my_data = MY_DATA[my_j_act];
+            T op_data = 0;
+            if (op_nz) op_data = OP_DATA[op_j_act];
             O out;
-            if (my_col == op_col) {
-                if (i < A_NNZ) out = binopt(MY_DATA[j], OP_DATA[op_j]);
-                else           out = binopt(OP_DATA[op_j], MY_DATA[j]);
-            } else {
-                if (i < A_NNZ) out = binopt(MY_DATA[j], (T)0);
-                else           out = binopt((T)0, MY_DATA[j]);
-            }
+            if (i < A_NNZ) out = binopt(my_data, op_data);
+            else           out = binopt(op_data, my_data);
             if (check(out)) {
-                if (my_col > op_col) { op_j += 1; }
-                MY_VALID[j] = 1;
-                MY_TMP_DATA[j] = out;
-                atomicAdd( &(C_INFO[row + 1]), 1 );
-                atomicAdd( &(MY_INFO[j + 1]), 1 );
+                MY_VALID[my_j] = 1;
+                MY_TMP_DATA[my_j] = out;
+                MY_TMP_INDICES[my_j] = my_col;
+                atomicAdd( &(C_INFO[my_row + 1]), 1 );
+                atomicAdd( &(MY_INFO[my_j + 1]), 1 );
                 atomicAdd( &(OP_INFO[op_j]), 1 );
             }
         }
@@ -886,23 +959,21 @@ def cupy_binopt_csr_step2(op_name):
     name = 'cupy_binopt_csr' + op_name + 'step2'
     return cupy.ElementwiseKernel(
         '''
-        raw I A_INDICES, raw I A_INFO, raw B A_VALID, raw O A_TMP_DATA,
-        int32 A_NNZ,
-        raw I B_INDICES, raw I B_INFO, raw B B_VALID, raw O B_TMP_DATA,
-        int32 B_NNZ
+        raw I A_INFO, raw B A_VALID, raw I A_TMP_INDICES, raw O A_TMP_DATA, int32 A_NNZ,
+        raw I B_INFO, raw B B_VALID, raw I B_TMP_INDICES, raw O B_TMP_DATA, int32 B_NNZ
         ''',
         'raw I C_INDICES, raw O C_DATA',
         '''
         if (i < A_NNZ) {
             int j = i;
             if (A_VALID[j]) {
-                C_INDICES[A_INFO[j]] = A_INDICES[j];
+                C_INDICES[A_INFO[j]] = A_TMP_INDICES[j];
                 C_DATA[A_INFO[j]]    = A_TMP_DATA[j];
             }
         } else if (i < A_NNZ + B_NNZ) {
             int j = i - A_NNZ;
             if (B_VALID[j]) {
-                C_INDICES[B_INFO[j]] = B_INDICES[j];
+                C_INDICES[B_INFO[j]] = B_TMP_INDICES[j];
                 C_DATA[B_INFO[j]]    = B_TMP_DATA[j];
             }
         }
