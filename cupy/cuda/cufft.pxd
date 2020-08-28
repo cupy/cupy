@@ -9,6 +9,7 @@ cdef extern from *:
     ctypedef int Result 'cufftResult_t'
     #ctypedef int Handle 'cufftHandle'
 
+    # TODO(leofang): use a macro to split cuda/hip path
     ctypedef struct c_handle 'hipfftHandle_t':
         pass
     ctypedef c_handle* Handle 'cufftHandle'
