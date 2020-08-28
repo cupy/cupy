@@ -254,6 +254,35 @@ cudaError_t cudaDeviceSetLimit(cudaLimit limit, size_t value) {
     return hipErrorUnknown;
 }
 
+// IPC operations
+cudaError_t cudaIpcCloseMemHandle(void* devPtr) {
+    return hipIpcCloseMemHandle(devPtr);
+}
+
+cudaError_t cudaIpcGetEventHandle(cudaIpcEventHandle_t* handle, cudaEvent_t event) {
+    return hipErrorUnknown;
+
+    // TODO(leofang): this is supported after ROCm-Developer-Tools/HIP#1996 is released;
+    // as of ROCm 3.5.0 it is still not supported
+    //return hipIpcGetEventHandle(handle, event);
+}
+
+cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
+    return hipIpcGetMemHandle(handle, devPtr);
+}
+
+cudaError_t cudaIpcOpenEventHandle(cudaEvent_t* event, cudaIpcEventHandle_t handle) {
+    return hipErrorUnknown;
+
+    // TODO(leofang): this is supported after ROCm-Developer-Tools/HIP#1996 is released;
+    // as of ROCm 3.5.0 it is still not supported
+    //return hipIpcOpenEventHandle(event, handle);
+}
+
+cudaError_t cudaIpcOpenMemHandle(void** devPtr, cudaIpcMemHandle_t handle, unsigned int flags) {
+    return hipIpcOpenMemHandle(devPtr, handle, flags);
+}
+
 // Memory management
 cudaError_t cudaMalloc(void** ptr, size_t size) {
     return hipMalloc(ptr, size);
@@ -759,6 +788,10 @@ cublasStatus_t cublasSgemmEx(
 }
 
 cublasStatus_t cublasGemmEx(...) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+
+cublasStatus_t cublasGemmEx_v11(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 

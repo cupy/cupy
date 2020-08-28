@@ -1,5 +1,6 @@
 import warnings
 
+import numpy
 import cupy
 
 from cupyx.scipy.ndimage import _util
@@ -102,7 +103,7 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
 
 
 def _call_kernel(kernel, input, weights, output, structure=None,
-                 weights_dtype=cupy.float64, structure_dtype=cupy.float64):
+                 weights_dtype=numpy.float64, structure_dtype=numpy.float64):
     """
     Calls a constructed ElementwiseKernel. The kernel must take an input image,
     an optional array of weights, an optional array for the structure, and an

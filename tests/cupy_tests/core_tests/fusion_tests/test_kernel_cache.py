@@ -1,6 +1,6 @@
 import unittest
+from unittest import mock
 
-import mock
 import numpy
 
 import cupy

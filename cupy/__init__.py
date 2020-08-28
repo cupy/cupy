@@ -8,8 +8,8 @@ from cupy import _environment
 from cupy import _version
 
 
-if sys.platform.startswith('win32') and (3, 8) <= sys.version_info:  # NOQA
-    _environment._setup_win32_dll_directory()  # NOQA
+_environment._setup_win32_dll_directory()  # NOQA
+_environment._preload_libraries()  # NOQA
 
 
 try:
@@ -52,18 +52,14 @@ def is_available():
 __version__ = _version.__version__
 
 
-from cupy import binary  # NOQA
 import cupy.core.fusion  # NOQA
 from cupy import fft  # NOQA
-from cupy import functional  # NOQA
-from cupy import indexing  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import manipulation  # NOQA
-from cupy import padding  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
-from cupy import _sorting  # NOQA
+# `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
@@ -285,7 +281,7 @@ from cupy._creation.matrix import triu  # NOQA
 # -----------------------------------------------------------------------------
 # Functional routines
 # -----------------------------------------------------------------------------
-from cupy.functional.piecewise import piecewise  # NOQA
+from cupy._functional.piecewise import piecewise  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -341,16 +337,16 @@ from cupy.manipulation.rearrange import rot90  # NOQA
 # -----------------------------------------------------------------------------
 # Binary operations
 # -----------------------------------------------------------------------------
-from cupy.binary.elementwise import bitwise_and  # NOQA
-from cupy.binary.elementwise import bitwise_or  # NOQA
-from cupy.binary.elementwise import bitwise_xor  # NOQA
-from cupy.binary.elementwise import bitwise_not  # NOQA
-from cupy.binary.elementwise import invert  # NOQA
-from cupy.binary.elementwise import left_shift  # NOQA
-from cupy.binary.elementwise import right_shift  # NOQA
+from cupy._binary.elementwise import bitwise_and  # NOQA
+from cupy._binary.elementwise import bitwise_or  # NOQA
+from cupy._binary.elementwise import bitwise_xor  # NOQA
+from cupy._binary.elementwise import bitwise_not  # NOQA
+from cupy._binary.elementwise import invert  # NOQA
+from cupy._binary.elementwise import left_shift  # NOQA
+from cupy._binary.elementwise import right_shift  # NOQA
 
-from cupy.binary.packing import packbits  # NOQA
-from cupy.binary.packing import unpackbits  # NOQA
+from cupy._binary.packing import packbits  # NOQA
+from cupy._binary.packing import unpackbits  # NOQA
 
 
 def binary_repr(num, width=None):
@@ -441,29 +437,29 @@ from numpy import typename  # NOQA
 # -----------------------------------------------------------------------------
 # Indexing routines
 # -----------------------------------------------------------------------------
-from cupy.indexing.generate import c_  # NOQA
-from cupy.indexing.generate import indices  # NOQA
-from cupy.indexing.generate import ix_  # NOQA
-from cupy.indexing.generate import r_  # NOQA
-from cupy.indexing.generate import ravel_multi_index  # NOQA
-from cupy.indexing.generate import unravel_index  # NOQA
+from cupy._indexing.generate import c_  # NOQA
+from cupy._indexing.generate import indices  # NOQA
+from cupy._indexing.generate import ix_  # NOQA
+from cupy._indexing.generate import r_  # NOQA
+from cupy._indexing.generate import ravel_multi_index  # NOQA
+from cupy._indexing.generate import unravel_index  # NOQA
 
-from cupy.indexing.indexing import choose  # NOQA
-from cupy.indexing.indexing import compress  # NOQA
-from cupy.indexing.indexing import diagonal  # NOQA
-from cupy.indexing.indexing import extract  # NOQA
-from cupy.indexing.indexing import select  # NOQA
-from cupy.indexing.indexing import take  # NOQA
-from cupy.indexing.indexing import take_along_axis  # NOQA
+from cupy._indexing.indexing import choose  # NOQA
+from cupy._indexing.indexing import compress  # NOQA
+from cupy._indexing.indexing import diagonal  # NOQA
+from cupy._indexing.indexing import extract  # NOQA
+from cupy._indexing.indexing import select  # NOQA
+from cupy._indexing.indexing import take  # NOQA
+from cupy._indexing.indexing import take_along_axis  # NOQA
 
-from cupy.indexing.insert import place  # NOQA
-from cupy.indexing.insert import put  # NOQA
-from cupy.indexing.insert import putmask  # NOQA
-from cupy.indexing.insert import fill_diagonal  # NOQA
-from cupy.indexing.insert import diag_indices  # NOQA
-from cupy.indexing.insert import diag_indices_from  # NOQA
+from cupy._indexing.insert import place  # NOQA
+from cupy._indexing.insert import put  # NOQA
+from cupy._indexing.insert import putmask  # NOQA
+from cupy._indexing.insert import fill_diagonal  # NOQA
+from cupy._indexing.insert import diag_indices  # NOQA
+from cupy._indexing.insert import diag_indices_from  # NOQA
 
-from cupy.indexing.iterate import flatiter  # NOQA
+from cupy._indexing.iterate import flatiter  # NOQA
 
 # -----------------------------------------------------------------------------
 # Input and output
@@ -555,6 +551,7 @@ from cupy.lib import poly1d  # NOQA
 from cupy.lib import polyadd  # NOQA
 from cupy.lib import polysub  # NOQA
 from cupy.lib import polymul  # NOQA
+from cupy.lib import polyval  # NOQA
 from cupy.lib import roots  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -670,7 +667,7 @@ from cupy._misc.who import who  # NOQA
 # -----------------------------------------------------------------------------
 # Padding
 # -----------------------------------------------------------------------------
-pad = padding.pad.pad
+from cupy._padding.pad import pad  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -729,6 +726,24 @@ from cupy.statistics.histogram import histogram  # NOQA
 # Undocumented functions
 # -----------------------------------------------------------------------------
 from cupy.core import size  # NOQA
+
+
+def ndim(a):
+    """Returns the number of dimensions of an array.
+
+    Args:
+        a (array-like): If it is not already an `cupy.ndarray`, a conversion
+            via :func:`numpy.asarray` is attempted.
+
+    Returns:
+        (int): The number of dimensions in `a`.
+
+    """
+    try:
+        return a.ndim
+    except AttributeError:
+        return numpy.ndim(a)
+
 
 # -----------------------------------------------------------------------------
 # CuPy specific functions
@@ -800,7 +815,7 @@ def get_array_module(*args):
 
     """
     for arg in args:
-        if isinstance(arg, (ndarray, sparse.spmatrix,
+        if isinstance(arg, (ndarray, _cupyx.scipy.sparse.spmatrix,
                             cupy.core.fusion._FusionVarArray,
                             cupy.core.new_fusion._ArrayProxy)):
             return _cupy

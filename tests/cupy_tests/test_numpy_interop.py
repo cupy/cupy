@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 from cupy import testing
-
+import cupyx
 
 try:
     import scipy.sparse
@@ -19,7 +19,7 @@ class TestGetArrayModule(unittest.TestCase):
     def test_get_array_module_1(self):
         n1 = numpy.array([2], numpy.float32)
         c1 = cupy.array([2], numpy.float32)
-        csr1 = cupy.sparse.csr_matrix((5, 3), dtype=numpy.float32)
+        csr1 = cupyx.scipy.sparse.csr_matrix((5, 3), dtype=numpy.float32)
 
         self.assertIs(numpy, cupy.get_array_module())
         self.assertIs(numpy, cupy.get_array_module(n1))

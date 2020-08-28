@@ -6,7 +6,15 @@ from cupy import cuda
 from cupy import testing
 
 
-@unittest.skipUnless(cuda.nccl_enabled, 'nccl is not installed')
+nccl_available = cuda.nccl.available
+
+if nccl_available:
+    nccl_version = cuda.nccl.get_version()
+else:
+    nccl_version = -1
+
+
+@unittest.skipUnless(nccl_available, 'nccl is not installed')
 class TestNCCL(unittest.TestCase):
 
     @testing.gpu
@@ -17,14 +25,14 @@ class TestNCCL(unittest.TestCase):
         comm.destroy()
 
     @testing.gpu
-    @unittest.skipUnless(cuda.nccl.get_version() >= 2400, 'Using old NCCL')
+    @unittest.skipUnless(nccl_version >= 2400, 'Using old NCCL')
     def test_abort(self):
         id = cuda.nccl.get_unique_id()
         comm = cuda.nccl.NcclCommunicator(1, id, 0)
         comm.abort()
 
     @testing.gpu
-    @unittest.skipUnless(cuda.nccl.get_version() >= 2400, 'Using old NCCL')
+    @unittest.skipUnless(nccl_version >= 2400, 'Using old NCCL')
     def test_check_async_error(self):
         id = cuda.nccl.get_unique_id()
         comm = cuda.nccl.NcclCommunicator(1, id, 0)
@@ -40,7 +48,6 @@ class TestNCCL(unittest.TestCase):
             comms[i].destroy()
 
     @testing.gpu
-    @unittest.skipUnless(cuda.nccl.get_version() >= 2000, 'Using old NCCL')
     def test_single_proc_single_dev(self):
         comms = cuda.nccl.NcclCommunicator.initAll(1)
         cuda.nccl.groupStart()
@@ -61,7 +68,7 @@ class TestNCCL(unittest.TestCase):
         assert 1 == comm.size()
 
     @testing.multi_gpu(2)
-    @unittest.skipUnless(cuda.nccl.get_version() >= 2700, 'Using old NCCL')
+    @unittest.skipUnless(nccl_version >= 2700, 'Using old NCCL')
     def test_send_recv(self):
         devs = [0, 1]
         comms = cuda.nccl.NcclCommunicator.initAll(devs)
@@ -89,7 +96,7 @@ class TestNCCL(unittest.TestCase):
             assert (recvbuf == expected).all()
 
 
-@unittest.skipUnless(cuda.nccl_enabled, 'nccl is not installed')
+@unittest.skipUnless(nccl_available, 'nccl is not installed')
 class TestExceptionPicklable(unittest.TestCase):
 
     def test(self):

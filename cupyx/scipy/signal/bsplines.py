@@ -10,6 +10,8 @@ def sepfir2d(input, hrow, hcol):
     assumed. This function can be used to find an image given its B-spline
     representation.
 
+    The arguments `hrow` and `hcol` must be 1-dimensional and of off length.
+
     Args:
         input (cupy.ndarray): The input signal
         hrow (cupy.ndarray): Row direction filter
@@ -20,6 +22,8 @@ def sepfir2d(input, hrow, hcol):
 
     .. seealso:: :func:`scipy.signal.sepfir2d`
     """
+    if any(x.ndim != 1 or x.size % 2 == 0 for x in (hrow, hcol)):
+        raise ValueError('hrow and hcol must be 1 dimensional and odd length')
     dtype = input.dtype
     if dtype.kind == 'c':
         # TODO: adding support for complex types requires ndimage filters
@@ -35,6 +39,5 @@ def sepfir2d(input, hrow, hcol):
     hrow = hrow.astype(dtype, copy=False)
     hcol = hcol.astype(dtype, copy=False)
     filters = (hcol[::-1], hrow[::-1])
-    origins = [0 if x.size % 2 else -1 for x in filters]
     return cupyx.scipy.ndimage.filters._run_1d_correlates(
-        input, (0, 1), lambda i: filters[i], None, 'reflect', 0.0, origins)
+        input, (0, 1), lambda i: filters[i], None, 'reflect', 0)
