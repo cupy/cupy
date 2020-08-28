@@ -927,10 +927,15 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
 
         int op_j = op_j_act;
         if (OP_M == 1 && OP_M < M) {
-            if (OP_N == 1 && OP_N < N) op_j = (op_col + N * op_row) * OP_NNZ_ACT;
-            else                       op_j = op_j_act + OP_NNZ_ACT * op_row;
+            if (OP_N == 1 && OP_N < N) {
+                op_j = (op_col + N * op_row) * OP_NNZ_ACT;
+            } else {
+                op_j = op_j_act + OP_NNZ_ACT * op_row;
+            }
         } else {
-            if (OP_N == 1 && OP_N < N) op_j = op_col + N * op_j_act;
+            if (OP_N == 1 && OP_N < N) {
+                op_j = op_col + N * op_j_act;
+            }
         }
 
         if (i < A_NNZ || !op_nz) {
@@ -959,8 +964,10 @@ def cupy_binopt_csr_step2(op_name):
     name = 'cupy_binopt_csr' + op_name + 'step2'
     return cupy.ElementwiseKernel(
         '''
-        raw I A_INFO, raw B A_VALID, raw I A_TMP_INDICES, raw O A_TMP_DATA, int32 A_NNZ,
-        raw I B_INFO, raw B B_VALID, raw I B_TMP_INDICES, raw O B_TMP_DATA, int32 B_NNZ
+        raw I A_INFO, raw B A_VALID, raw I A_TMP_INDICES, raw O A_TMP_DATA,
+        int32 A_NNZ,
+        raw I B_INFO, raw B B_VALID, raw I B_TMP_INDICES, raw O B_TMP_DATA,
+        int32 B_NNZ
         ''',
         'raw I C_INDICES, raw O C_DATA',
         '''
