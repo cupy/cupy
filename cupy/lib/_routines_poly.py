@@ -116,8 +116,6 @@ def _polypow(x, n):
 
 
 def _polyfit_typecast(x):
-    if x.dtype == numpy.float16:
-        raise TypeError('float16 inputs are not supported')
     if x.dtype.kind == 'c':
         return x.astype(numpy.complex128, copy=False)
     return x.astype(numpy.float64, copy=False)
@@ -162,6 +160,12 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     .. seealso:: :func:`numpy.polyfit`
 
     """
+    if x.dtype.char == 'e' and y.dtype.kind == 'b':
+        raise NotImplementedError('float16 x and bool y are not'
+                                  ' currently supported')
+    if y.dtype == numpy.float16:
+        raise TypeError('float16 y are not supported')
+
     x = _polyfit_typecast(x)
     y = _polyfit_typecast(y)
     deg = int(deg)
