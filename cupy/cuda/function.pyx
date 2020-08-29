@@ -158,6 +158,9 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
 
     runtime._ensure_context()
 
+    cdef int dev_id
+    cdef int num_sm
+    cdef int max_grid_size
     if enable_cooperative_groups:
         dev_id = device.get_device_id()
         num_sm = device._get_attributes(dev_id)['MultiProcessorCount']
