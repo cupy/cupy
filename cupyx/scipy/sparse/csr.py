@@ -14,7 +14,7 @@ from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import _index
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 
 
 class csr_matrix(compressed._compressed_sparse_matrix):
@@ -179,7 +179,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     def __truediv__(self, other):
         """Point-wise division by scalar"""
-        if util.isscalarlike(other):
+        if _util.isscalarlike(other):
             if self.dtype == numpy.complex64:
                 # Note: This is a work-around to make the output dtype the same
                 # as SciPy. It might be SciPy version dependent.
@@ -222,7 +222,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """Point-wise multiplication by another matrix, vector or scalar"""
         if cupy.isscalar(other):
             return multiply_by_scalar(self, other)
-        elif util.isdense(other):
+        elif _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
             return multiply_by_dense(self, other)
