@@ -25,7 +25,7 @@ def time_range(message, color_id=None, argb_color=None, sync=False):
     .. seealso:: :func:`cupy.cuda.nvtx.RangePush`
         :func:`cupy.cuda.nvtx.RangePop`
     """
-    if not cuda.nvtx_enabled:
+    if not cuda.nvtx.available:
         raise RuntimeError('nvtx is not installed')
 
     if color_id is not None and argb_color is not None:
@@ -71,7 +71,7 @@ class TimeRangeDecorator(object):
 
     def __init__(self, message=None, color_id=None, argb_color=None,
                  sync=False):
-        if not cuda.nvtx_enabled:
+        if not cuda.nvtx.available:
             raise RuntimeError('nvtx is not installed')
 
         if color_id is not None and argb_color is not None:
