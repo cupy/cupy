@@ -1093,12 +1093,20 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = _make_col(xp, sp, self.dtype)
         return m.multiply(x).toarray()
 
+    def _make_scalar(self, dtype):
+        if numpy.issubdtype(dtype, numpy.integer):
+            return dtype(2)
+        elif numpy.issubdtype(dtype, numpy.floating):
+            return dtype(2.5)
+        else:
+            return dtype(2.5 - 1.5j)
+
     # divide
     @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_divide_scalar(self, xp, sp, dtype):
         m = self.make(xp, sp, self.dtype)
-        y = m / dtype(2)
+        y = m / self._make_scalar(dtype)
         return y.toarray()
 
     @testing.for_dtypes('ifdFD')
@@ -1106,7 +1114,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_allclose(sp_name='sp', type_check=False)
     def test_divide_scalarlike(self, xp, sp, dtype):
         m = self.make(xp, sp, self.dtype)
-        y = m / xp.array(2, dtype)
+        y = m / xp.array(self._make_scalar(dtype))
         return y.toarray()
 
 
