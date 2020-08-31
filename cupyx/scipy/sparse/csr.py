@@ -196,14 +196,19 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             check_shape_for_pointwise_op(self.shape, other.shape)
             return self.todense() / other
         elif base.isspmatrix(other):
-            check_shape_for_pointwise_op(self.shape, other.shape)
+            # Note: If broadcasting is needed, an exception is raised here for
+            # compatibility with SciPy, as SciPy does not support broadcasting
+            # in the "sparse / sparse" case.
+            check_shape_for_pointwise_op(self.shape, other.shape,
+                                         allow_broadcasting=False)
             dtype = numpy.promote_types(self.dtype, other.dtype)
             if dtype.char not in 'FD':
                 dtype = numpy.promote_types(numpy.float64, dtype)
             # Note: The following implementation converts two sparse matrices
             # into dense matrices and then performs a point-wise division,
             # which can use lots of memory.
-            return self.todense().astype(dtype) / other.todense().astype(dtype)
+            self_dense = self.todense().astype(dtype, copy=False)
+            return self_dense / other.todense()
         raise NotImplementedError
 
     def __rtruediv__(self, other):
@@ -484,13 +489,17 @@ def isspmatrix_csr(x):
     return isinstance(x, csr_matrix)
 
 
-def check_shape_for_pointwise_op(a_shape, b_shape):
-    a_m, a_n = a_shape
-    b_m, b_n = b_shape
-    if not (a_m == b_m or a_m == 1 or b_m == 1):
-        raise ValueError('inconsistent shape')
-    if not (a_n == b_n or a_n == 1 or b_n == 1):
-        raise ValueError('inconsistent shape')
+def check_shape_for_pointwise_op(a_shape, b_shape, allow_broadcasting=True):
+    if allow_broadcasting:
+        a_m, a_n = a_shape
+        b_m, b_n = b_shape
+        if not (a_m == b_m or a_m == 1 or b_m == 1):
+            raise ValueError('inconsistent shape')
+        if not (a_n == b_n or a_n == 1 or b_n == 1):
+            raise ValueError('inconsistent shape')
+    else:
+        if a_shape != b_shape:
+            raise ValueError('inconsistent shape')
 
 
 def multiply_by_scalar(sp, a):
