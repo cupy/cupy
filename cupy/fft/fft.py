@@ -91,6 +91,10 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         # The input array may be modified in CUDA 10.1 and above.
         # See #3763 for the discussion.
         a = a.copy()
+    elif cupy.cuda.runtime.is_hip and value_type != 'C2C':
+        # hipFFT's R2C would overwrite input
+        # hipFFT's C2R needs a workaround (see below)
+        a = a.copy()
 
     n = a.shape[-1]
     if n < 1:
@@ -434,6 +438,10 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
             10010 <= cupy.cuda.runtime.runtimeGetVersion()):
         # The input array may be modified in CUDA 10.1 and above.
         # See #3763 for the discussion.
+        a = a.copy()
+    elif cupy.cuda.runtime.is_hip and value_type != 'C2C':
+        # hipFFT's R2C would overwrite input
+        # hipFFT's C2R PlanNd is actually not in use so it's fine here
         a = a.copy()
 
     curr_plan = cufft.get_current_plan()
