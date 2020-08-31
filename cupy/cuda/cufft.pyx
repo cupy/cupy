@@ -250,7 +250,7 @@ cdef class Plan1d:
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
 
-        self.plan = <Handle>0
+        self.handle = <intptr_t>0
         self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
         self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
 
@@ -260,7 +260,7 @@ cdef class Plan1d:
                 result = cufftSetAutoAllocation(plan, 0)
         check_result(result)
 
-        self.plan = plan
+        self.handle = <intptr_t>plan
         self.work_area = None
         self.gpus = None
 
@@ -412,7 +412,7 @@ cdef class Plan1d:
         self.scatter_events[curr_device] = scatter_events
 
     def __del__(self):
-        cdef Handle plan = self.plan
+        cdef Handle plan = <Handle>self.handle
         cdef int dev = runtime.getDevice()
         cdef int result
 
@@ -420,7 +420,7 @@ cdef class Plan1d:
             with nogil:
                 result = cufftDestroy(plan)
             check_result(result)
-            self.plan = <Handle>0
+            self.handle = <intptr_t>0
 
         # cuFFT bug: after cufftDestroy(), the current device is mistakenly
         # set to the last device in self.gpus, so we must correct it. See
@@ -446,12 +446,12 @@ cdef class Plan1d:
             self._single_gpu_fft(a, out, direction)
 
     def _single_gpu_fft(self, a, out, direction):
-        cdef intptr_t plan = <intptr_t>self.plan
+        cdef intptr_t plan = self.handle
         cdef intptr_t stream = stream_module.get_current_stream_ptr()
         cdef int result
 
         with nogil:
-            result = cufftSetStream(self.plan, <driver.Stream>stream)
+            result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
         check_result(result)
 
         if self.fft_type == CUFFT_C2C:
@@ -536,7 +536,7 @@ cdef class Plan1d:
             raise ValueError('Impossible to reach.')
 
     def _multi_gpu_memcpy(self, a, str action):
-        cdef Handle plan = self.plan
+        cdef Handle plan = <Handle>self.handle
         cdef list xtArr_buffer, share
         cdef int nGPUs, dev, s_device, start, count
         cdef XtArray* arr
@@ -633,7 +633,7 @@ cdef class Plan1d:
 
         # Actual workhorses
         # Note: mult-GPU plans cannot set stream
-        cdef intptr_t plan = <intptr_t>self.plan
+        cdef intptr_t plan = self.handle
         if self.fft_type == CUFFT_C2C:
             multi_gpu_execC2C(plan, self.xtArr, self.xtArr, direction)
         elif self.fft_type == CUFFT_Z2Z:
@@ -701,8 +701,8 @@ cdef class PlanNd:
         cdef int* shape_ptr = shape_arr.data()
         cdef int* inembed_ptr
         cdef int* onembed_ptr
-        self.plan = <Handle>0
 
+        self.handle = <intptr_t>0
         ndim = len(shape)
 
         if inembed is None:
@@ -722,7 +722,7 @@ cdef class PlanNd:
             if result == 0:
                 result = cufftSetAutoAllocation(plan, 0)
         check_result(result)
-        self.plan = plan
+        self.handle = <intptr_t>plan
 
         if batch == 0:
             work_size = 0
@@ -761,12 +761,12 @@ cdef class PlanNd:
         self.last_size = last_size  # = None (and ignored) for C2C
 
     def __del__(self):
-        cdef Handle plan = self.plan
+        cdef Handle plan = <Handle>self.handle
         if plan != <Handle>0:
             with nogil:
                 result = cufftDestroy(plan)
             check_result(result)
-            self.plan = <Handle>0
+            self.handle = <intptr_t>0
 
     def __enter__(self):
         _thread_local._current_plan = self
@@ -776,10 +776,10 @@ cdef class PlanNd:
         _thread_local._current_plan = None
 
     def fft(self, a, out, direction):
-        cdef intptr_t plan = <intptr_t>self.plan
+        cdef intptr_t plan = self.handle
         cdef intptr_t stream = stream_module.get_current_stream_ptr()
         with nogil:
-            result = cufftSetStream(self.plan, <driver.Stream>stream)
+            result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
         check_result(result)
 
         if self.fft_type == CUFFT_C2C:

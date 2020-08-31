@@ -7,12 +7,13 @@ cdef extern from *:
     ctypedef float Float 'cufftReal'
     ctypedef double Double 'cufftDoubleReal'
     ctypedef int Result 'cufftResult_t'
-    #ctypedef int Handle 'cufftHandle'
 
-    # TODO(leofang): use a macro to split cuda/hip path
-    ctypedef struct c_handle 'hipfftHandle_t':
-        pass
-    ctypedef c_handle* Handle 'cufftHandle'
+    IF not use_hip:
+        ctypedef int Handle 'cufftHandle'
+    ELSE:
+        ctypedef struct hipHandle 'hipfftHandle_t':
+            pass
+        ctypedef hipHandle* Handle 'cufftHandle'
 
     ctypedef enum Type 'cufftType_t':
         pass
@@ -35,7 +36,7 @@ cpdef get_current_plan()
 
 cdef class Plan1d:
     cdef:
-        Handle plan
+        intptr_t handle
         object work_area  # can be MemoryPointer or a list of it
         readonly int nx
         readonly int batch
@@ -59,7 +60,7 @@ cdef class Plan1d:
 
 cdef class PlanNd:
     cdef:
-        Handle plan
+        intptr_t handle
         memory.MemoryPointer work_area
         readonly tuple shape
         readonly Type fft_type

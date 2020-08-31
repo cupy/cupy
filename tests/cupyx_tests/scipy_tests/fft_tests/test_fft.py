@@ -546,7 +546,7 @@ class TestFft2(unittest.TestCase):
     + testing.product({
         'shape': [(2, 3, 4)],
         's': [None, (1, 5), (1, 4, 10)],
-        'axes': [None, (-2, -1), (-1, -2, -3)],
+        'axes': [None, (0, 1), (-2, -1), (-1, -2, -3)],
         'norm': [None, 'ortho']
     })
     + testing.product({
