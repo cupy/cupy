@@ -815,20 +815,19 @@ class TestRfft(unittest.TestCase):
     def test_irfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
 
-        # Both cuFFT and hipFFT/rocFFT have this requirement that 0-th and
-        # N/2-th element must be real, but cuFFT internally simply ignores it.
-        # TODO(leofang): perhaps generates the input data from rfft is simpler?
-        if cupy.cuda.runtime.is_hip and dtype in (np.complex64, np.complex128):
-            a[..., 0] = a[..., 0].real + 0j
-            mid = self.n // 2 + 1 if self.n is not None else -1
-            if self.n is None:
-                mid = -1
-            elif self.n % 2 == 0:
-                mid = self.n // 2
-            else:
-                mid = None
-            if mid is not None:
-                a[..., mid] = a[..., mid].real + 0j
+        ## Both cuFFT and hipFFT/rocFFT have this requirement that 0-th and
+        ## N/2-th element must be real, but cuFFT internally simply ignores it.
+        ## TODO(leofang): perhaps generates the input data from rfft is simpler?
+        #if cupy.cuda.runtime.is_hip and dtype in (np.complex64, np.complex128):
+        #    a[..., 0] = a[..., 0].real + 0j
+        #    if self.n is None:
+        #        mid = -1
+        #    elif self.n % 2 == 0:
+        #        mid = self.n // 2
+        #    else:
+        #        mid = None
+        #    if mid is not None:
+        #        a[..., mid] = a[..., mid].real + 0j
 
         out = xp.fft.irfft(a, n=self.n, norm=self.norm)
 
@@ -872,20 +871,19 @@ class TestPlanCtxManagerRfft(unittest.TestCase):
     def test_irfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
 
-        # Both cuFFT and hipFFT/rocFFT have this requirement that 0-th and
-        # N/2-th element must be real, but cuFFT internally simply ignores it.
-        # TODO(leofang): perhaps generates the input data from rfft is simpler?
-        if cupy.cuda.runtime.is_hip and dtype in (np.complex64, np.complex128):
-            a[..., 0] = a[..., 0].real + 0j
-            mid = self.n // 2 + 1 if self.n is not None else -1
-            if self.n is None:
-                mid = -1
-            elif self.n % 2 == 0:
-                mid = self.n // 2
-            else:
-                mid = None
-            if mid is not None:
-                a[..., mid] = a[..., mid].real + 0j
+        ## Both cuFFT and hipFFT/rocFFT have this requirement that 0-th and
+        ## N/2-th element must be real, but cuFFT internally simply ignores it.
+        ## TODO(leofang): perhaps generates the input data from rfft is simpler?
+        #if cupy.cuda.runtime.is_hip and dtype in (np.complex64, np.complex128):
+        #    a[..., 0] = a[..., 0].real + 0j
+        #    if self.n is None:
+        #        mid = -1
+        #    elif self.n % 2 == 0:
+        #        mid = self.n // 2
+        #    else:
+        #        mid = None
+        #    if mid is not None:
+        #        a[..., mid] = a[..., mid].real + 0j
 
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan

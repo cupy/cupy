@@ -86,16 +86,29 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
 
     if a.base is not None or not a.flags.c_contiguous:
         a = a.copy()
-    elif (value_type == 'C2R' and not overwrite_x and
-            10010 <= cupy.cuda.runtime.runtimeGetVersion()):
+    elif (value_type == 'C2R' and not overwrite_x):
         # The input array may be modified in CUDA 10.1 and above.
         # See #3763 for the discussion.
-        a = a.copy()
+        if 10010 <= cupy.cuda.runtime.runtimeGetVersion():
+            a = a.copy()
+        #elif cupy.cuda.runtime.is_hip:
+        #    a = a.copy()
+        #    out = a
+        #    print("i am here")
 
     n = a.shape[-1]
     if n < 1:
         raise ValueError(
             'Invalid number of FFT data points (%d) specified.' % n)
+
+    if cupy.cuda.runtime.is_hip and value_type == 'C2R':
+        print(f"out_size = {out_size}")
+        a[..., 0] = a[..., 0].real + 0j
+        if out_size is None:
+            a[..., -1] = a[..., -1].real + 0j
+        elif out_size % 2 == 0:
+            a[..., out_size//2] = a[...,  out_size// 2].real + 0j
+        print("after c2c:", a)
 
     if out_size is None:
         out_size = n
@@ -126,8 +139,18 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         if config.use_multi_gpus != plan._use_multi_gpus:
             raise ValueError('Unclear if multiple GPUs are to be used or not.')
 
+#    if value_type == 'C2R' and cupy.cuda.runtime.is_hip:
+#        a = a.copy()
+#        dtype = cupy.float32 if a.dtype == cupy.complex64 else cupy.float64
+#        print(dtype)
+
     if overwrite_x and value_type == 'C2C':
         out = a
+#    elif value_type == 'C2R' and cupy.cuda.runtime.is_hip:
+#        a = a.copy()
+#        dtype = cupy.float32 if a.dtype == cupy.complex64 else cupy.float64
+#        out = a[0:out_size//2].view(dtype)
+#        print(out.shape, out.dtype, dtype)
     elif out is not None:
         # verify that out has the expected shape and dtype
         plan.check_output_array(a, out)
@@ -189,6 +212,24 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
         a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x)
         a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
     else:  # C2R
+        #if cupy.cuda.runtime.is_hip:  # hipFFT/rocFFT
+        #    print(a.dtype)
+        #    # _cook_shape tells us input shape only, and no output shape
+        #    out_size = _get_fftn_out_size(a.shape, s, axes[-1], value_type)
+        #    a = _exec_fft(a, direction, value_type, norm, axes[-1], overwrite_x,
+        #                  out_size)
+        #    out_dtype = a.dtype
+        #    if a.dtype == np.float64:
+        #        a = a.astype(np.complex128)
+        #    elif a.dtype == np.float32:
+        #        a = a.astype(np.complex64)
+        #    else:
+        #        raise
+        #    a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
+        #    a = a.real
+        #else:  # cuFFT
+        print("no fftn")
+        print("before c2c:", a)
         a = _fft_c2c(a, direction, norm, axes[:-1], overwrite_x)
         # _cook_shape tells us input shape only, and no output shape
         out_size = _get_fftn_out_size(a.shape, s, axes[-1], value_type)
@@ -410,6 +451,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
                plan=None, out=None, out_size=None):
 
     fft_type = _convert_fft_type(a.dtype, value_type)
+    print("i am in")
 
     if a.flags.c_contiguous:
         order = 'C'
@@ -557,6 +599,9 @@ def _default_fft_func(a, s=None, axes=None, plan=None, value_type='C2C'):
         if cupy.cuda.runtime.is_hip:
             if (0 == axes_sorted[0] and len(axes_sorted) != a.ndim
                     and a.flags.c_contiguous):
+                return _fft
+
+            if value_type == 'C2R':
                 return _fft
 
         # prefer Plan1D in the 1D case
