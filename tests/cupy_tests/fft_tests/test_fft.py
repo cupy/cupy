@@ -276,7 +276,11 @@ class TestDefaultPlanType(unittest.TestCase):
         for axes in [(0, 1), (1, 2), None, (0, 1, 2)]:
             fft_func = _default_fft_func(ca, axes=axes)
             if enable_nd:
-                assert fft_func is _fftn
+                # TODO(leofang): test newer ROCm versions
+                if axes == (0, 1) and cupy.cuda.runtime.is_hip:
+                    assert fft_func is _fft
+                else:
+                    assert fft_func is _fftn
             else:
                 assert fft_func is _fft
 
