@@ -1094,16 +1094,19 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         return m.multiply(x).toarray()
 
     # divide
+    @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_divide_scalar(self, xp, sp):
+    def test_divide_scalar(self, xp, sp, dtype):
         m = self.make(xp, sp, self.dtype)
-        y = m / 2
+        y = m / dtype(2)
         return y.toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_divide_scalarlike(self, xp, sp):
+    @testing.for_dtypes('ifdFD')
+    # type promotion rules are different for ()-shaped arrays
+    @testing.numpy_cupy_allclose(sp_name='sp', type_check=False)
+    def test_divide_scalarlike(self, xp, sp, dtype):
         m = self.make(xp, sp, self.dtype)
-        y = m / xp.array(2)
+        y = m / xp.array(2, dtype)
         return y.toarray()
 
 
