@@ -685,7 +685,7 @@ cdef class Plan1d:
         if out.dtype != dtype:
             raise ValueError(
                 'out dtype mismatch: found {}, expected {}'.format(
-                    out.dtype, a.dtype))
+                    out.dtype, dtype))
 
 
 cdef class PlanNd:
