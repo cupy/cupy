@@ -175,6 +175,8 @@ def _skip_multi_gpu_bug(shape, gpus):
 # Almost identical to the TestFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'hipFFT does not support multi-GPU FFT')
 @testing.parameterize(*testing.product({
     'n': [None, 0, 64],
     'shape': [(0,), (0, 10), (64,), (4, 64)],
@@ -222,6 +224,8 @@ class TestMultiGpuFft(unittest.TestCase):
 # Almost identical to the TestFftOrder class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'hipFFT does not support multi-GPU FFT')
 @testing.parameterize(*testing.product({
     'shape': [(10, 10), (10, 5, 10)],
     'data_order': ['F', 'C'],
@@ -671,6 +675,8 @@ class TestPlanCtxManagerFft(unittest.TestCase):
 # Almost identical to the TestPlanCtxManagerFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'hipFFT does not support multi-GPU FFT')
 @testing.parameterize(*testing.product({
     'n': [None, 64],
     'shape': [(64,), (128,)],
