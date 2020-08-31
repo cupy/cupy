@@ -113,6 +113,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
 
     # generate plan
     if n > 1:  # ND transform
+        if cupy.cuda.runtime.is_hip and value_type == 'C2R':
+            raise RuntimeError("hipFFT's C2R PlanNd is buggy and unsupported")
         out_size = _get_fftn_out_size(
             shape, transformed_shape, axes[-1], value_type)
         plan = _get_cufft_plan_nd(

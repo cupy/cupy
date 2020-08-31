@@ -1133,6 +1133,8 @@ class TestRfft2(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
+    @unittest.skipIf(cp.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1159,6 +1161,8 @@ class TestRfft2(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
+    @unittest.skipIf(cp.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1382,6 +1386,8 @@ class TestRfftn(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
+    @unittest.skipIf(cp.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1408,6 +1414,8 @@ class TestRfftn(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
+    @unittest.skipIf(cp.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
