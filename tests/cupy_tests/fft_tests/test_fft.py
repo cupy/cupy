@@ -304,7 +304,11 @@ class TestDefaultPlanType(unittest.TestCase):
                            [(-2, -1), (0, 1), None]):
             fft_func = _default_fft_func(ca, s=s, axes=axes, value_type='R2C')
             if enable_nd:
-                assert fft_func is _fftn
+                # TODO(leofang): test newer ROCm versions
+                if axes == (0, 1) and cupy.cuda.runtime.is_hip:
+                    assert fft_func is _fft
+                else:
+                    assert fft_func is _fftn
             else:
                 assert fft_func is _fft
 
@@ -317,7 +321,12 @@ class TestDefaultPlanType(unittest.TestCase):
                            [(-2, -1), (0, 1), None]):
             fft_func = _default_fft_func(ca, s=s, axes=axes, value_type='C2R')
             if enable_nd:
-                assert fft_func is _fftn
+                # To get around hipFFT's bug, we don't use PlanNd for C2R
+                # TODO(leofang): test newer ROCm versions
+                if cupy.cuda.runtime.is_hip:
+                    assert fft_func is _fft
+                else:
+                    assert fft_func is _fftn
             else:
                 assert fft_func is _fft
 
@@ -1103,6 +1112,14 @@ class TestRfftn(unittest.TestCase):
 @testing.gpu
 class TestPlanCtxManagerRfftn(unittest.TestCase):
 
+    def setUp(self):
+        if cupy.cuda.runtime.is_hip:
+            # TODO(leofang): test newer ROCm versions
+            if (self.axes == (0, 1) and self.shape == (2, 3, 4)):
+                raise unittest.SkipTest("hipFFT's PlanNd for this case "
+                                        "is buggy, so Plan1d is generated "
+                                        "instead")
+
     @nd_planning_states()
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1123,6 +1140,8 @@ class TestPlanCtxManagerRfftn(unittest.TestCase):
 
         return out
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
