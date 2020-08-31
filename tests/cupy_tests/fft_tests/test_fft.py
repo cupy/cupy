@@ -505,6 +505,14 @@ class TestFftn(unittest.TestCase):
 @testing.gpu
 class TestPlanCtxManagerFftn(unittest.TestCase):
 
+    def setUp(self):
+        if cupy.cuda.runtime.is_hip:
+            # TODO(leofang): test newer ROCm versions
+            if (self.axes == (0, 1) and self.shape == (2, 3, 4)):
+                raise unittest.SkipTest("hipFFT's PlanNd for this case "
+                                        "is buggy, so Plan1d is generated "
+                                        "instead")
+
     @nd_planning_states()
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,

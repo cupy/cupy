@@ -552,6 +552,12 @@ def _default_fft_func(a, s=None, axes=None, plan=None, value_type='C2C'):
 
     _, axes_sorted = _prep_fftn_axes(a.ndim, s, axes, value_type)
     if len(axes_sorted) > 1 and _nd_plan_is_possible(axes_sorted, a.ndim):
+        # circumvent a potential hipFFT/rocFFT bug as of ROCm 3.5.0
+        # TODO(leofang): understand hipFFT better and test newer ROCm versions
+        if cupy.cuda.runtime.is_hip:
+            if (0 == axes_sorted[0] and a.flags.c_contiguous):
+                return _fft
+
         # prefer Plan1D in the 1D case
         return _fftn
     return _fft
