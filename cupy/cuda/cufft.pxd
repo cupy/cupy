@@ -52,10 +52,11 @@ cdef class Plan1d:
         intptr_t xtArr
         list xtArr_buffer
 
-        void _single_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch) except*
-        void _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch, devices, out) except*
-
-    #cpdef _single_gpu_fft(self, a, out, direction)
+        void _single_gpu_get_plan(
+            self, Handle plan, int nx, int fft_type, int batch) except*
+        void _multi_gpu_get_plan(
+            self, Handle plan, int nx, int fft_type, int batch,
+            devices, out) except*
 
 
 cdef class PlanNd:
@@ -67,5 +68,3 @@ cdef class PlanNd:
         readonly str order
         readonly int last_axis
         readonly object last_size
-
-    #cpdef fft(self, a, out, direction)

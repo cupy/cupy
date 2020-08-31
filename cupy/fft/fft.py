@@ -111,7 +111,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         if out_size is None:
             a[..., -1] = a[..., -1].real + 0j
         elif out_size % 2 == 0:
-            a[..., out_size//2] = a[...,  out_size// 2].real + 0j
+            a[..., out_size // 2] = a[...,  out_size // 2].real + 0j
 
     if out_size is None:
         out_size = n

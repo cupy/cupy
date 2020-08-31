@@ -285,7 +285,7 @@ cdef class Plan1d:
         self.batch_share = None
 
     cdef void _single_gpu_get_plan(self, Handle plan, int nx, int fft_type,
-                             int batch) except*:
+                                   int batch) except*:
         cdef int result
         cdef size_t work_size
         cdef intptr_t ptr
@@ -311,8 +311,8 @@ cdef class Plan1d:
 
         self.work_area = work_area  # this is for cuFFT plan
 
-    cdef void _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type, int batch,
-                            devices, out) except*:
+    cdef void _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type,
+                                  int batch, devices, out) except*:
         cdef int nGPUs, min_len, result
         cdef vector.vector[int] gpus
         cdef vector.vector[size_t] work_size

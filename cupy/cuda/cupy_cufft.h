@@ -48,9 +48,9 @@ cufftResult_t cufftSetStream(cufftHandle plan, cudaStream_t stream) {
 }
 
 // cuFFT Plan Functions
-cufftResult_t cufftMakePlan1d(cufftHandle plan, 
-                              int nx, 
-                              cufftType_t type, 
+cufftResult_t cufftMakePlan1d(cufftHandle plan,
+                              int nx,
+                              cufftType_t type,
                               int batch,
                               size_t *workSize) {
     return hipfftMakePlan1d(plan, nx, type, batch, workSize);
@@ -71,7 +71,7 @@ cufftResult_t cufftMakePlanMany(cufftHandle plan,
 }
 
 // cuFFT Exec Function
-cufftResult_t cufftExecC2C(cufftHandle plan, 
+cufftResult_t cufftExecC2C(cufftHandle plan,
                            cufftComplex *idata,
                            cufftComplex *odata,
                            int direction) {
@@ -84,13 +84,13 @@ cufftResult_t cufftExecR2C(cufftHandle plan,
     return hipfftExecR2C(plan, idata, odata);
 }
 
-cufftResult_t cufftExecC2R(cufftHandle plan, 
+cufftResult_t cufftExecC2R(cufftHandle plan,
                            cufftComplex *idata,
                            cufftReal *odata) {
     return hipfftExecC2R(plan, idata, odata);
 }
 
-cufftResult_t cufftExecZ2Z(cufftHandle plan, 
+cufftResult_t cufftExecZ2Z(cufftHandle plan,
                            cufftDoubleComplex *idata,
                            cufftDoubleComplex *odata,
                            int direction) {
@@ -103,7 +103,7 @@ cufftResult_t cufftExecD2Z(cufftHandle plan,
     return hipfftExecD2Z(plan, idata, odata);
 }
 
-cufftResult_t cufftExecZ2D(cufftHandle plan, 
+cufftResult_t cufftExecZ2D(cufftHandle plan,
                            cufftDoubleComplex *idata,
                            cufftDoubleReal *odata) {
     return hipfftExecZ2D(plan, idata, odata);
