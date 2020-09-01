@@ -2,7 +2,6 @@
 import unittest
 
 import numpy
-import pytest
 
 from cupy import testing
 import cupyx.scipy.ndimage  # NOQA
@@ -12,10 +11,6 @@ try:
 except ImportError:
     pass
 
-# @pytest.mark.parametrize('rank, connectivity', [(2, 2)])
-# @testing.numpy_cupy_array_equal(scipy_name='scp')
-# def test_generate_binary_structure(xp, scp, rank, connectivity):
-#     return scp.ndimage.generate_binary_structure(rank, connectivity)
 
 @testing.parameterize(
     {'rank': 0, 'connectivity': 1},
