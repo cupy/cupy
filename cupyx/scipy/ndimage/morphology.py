@@ -1,11 +1,419 @@
+import operator
+import warnings
+
 import numpy
 
 import cupy
 
-import warnings
-
+from cupyx.scipy.ndimage import _filters_core
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import filters
+
+
+@cupy.util.memoize(for_each_device=True)
+def _get_binary_erosion_kernel(
+    w_shape, int_type, offsets, center_is_true, border_value, invert, masked
+):
+    if invert:
+        border_value = int(not border_value)
+        true_val = 0
+        false_val = 1
+    else:
+        true_val = 1
+        false_val = 0
+
+    if masked:
+        pre = """
+            bool mv = (bool)mask[i];
+            bool _in = (bool)x[i];
+            if (!mv) {{
+                y = cast<Y>(_in);
+                return;
+            }} else if ({center_is_true} && _in == {false_val}) {{
+                y = cast<Y>(_in);
+                return;
+            }}""".format(center_is_true=int(center_is_true),
+                         false_val=false_val)
+    else:
+        pre = """
+            bool _in = (bool)x[i];
+            if ({center_is_true} && _in == {false_val}) {{
+                y = cast<Y>(_in);
+                return;
+            }}""".format(center_is_true=int(center_is_true),
+                         false_val=false_val)
+    pre = pre + """
+            y = cast<Y>({true_val});""".format(true_val=true_val)
+
+    # {{{{ required because format is called again within _generate_nd_kernel
+    found = """
+        if ({{cond}}) {{{{
+            if (!{border_value}) {{{{
+                y = cast<Y>({false_val});
+                return;
+            }}}}
+        }}}} else {{{{
+            bool nn = {{value}} ? {true_val} : {false_val};
+            if (!nn) {{{{
+                y = cast<Y>({false_val});
+                return;
+            }}}}
+        }}}}""".format(true_val=int(true_val),
+                       false_val=int(false_val),
+                       border_value=int(border_value),)
+
+    name = 'binary_erosion'
+    if false_val:
+        name += '_invert'
+    return _filters_core._generate_nd_kernel(
+        name,
+        pre,
+        found,
+        '',
+        'constant', w_shape, int_type, offsets, 0, ctype='Y', has_weights=True,
+        has_structure=False, has_mask=masked, binary_morphology=True)
+
+
+def _center_is_true(structure, origin):
+    structure = cupy.asarray(structure)
+    coor = tuple([oo + ss // 2 for ss, oo in zip(structure.shape, origin)])
+    return bool(structure[coor])
+
+
+def iterate_structure(structure, iterations, origin=None):
+    """Iterate a structure by dilating it with itself.
+
+    Args:
+        structure(array_like): Structuring element (an array of bools,
+            for example), to be dilated with itself.
+        iterations(int): The number of dilations performed on the structure
+            with itself.
+        origin(int or tuple of int, optional): If origin is None, only the
+            iterated structure is returned. If not, a tuple of the iterated
+            structure and the modified origin is returned.
+
+    Returns:
+        cupy.ndarray: A new structuring element obtained by dilating
+             `structure` (`iterations` - 1) times with itself.
+
+    .. seealso:: :func:`scipy.ndimage.iterate_structure`
+    """
+    structure = cupy.asarray(structure)
+    if iterations < 2:
+        return structure.copy()
+    ni = iterations - 1
+    shape = [ii + ni * (ii - 1) for ii in structure.shape]
+    pos = [ni * (structure.shape[ii] // 2) for ii in range(len(shape))]
+    slc = tuple(
+        slice(pos[ii], pos[ii] + structure.shape[ii], None)
+        for ii in range(len(shape))
+    )
+    out = cupy.zeros(shape, bool)
+    out[slc] = structure != 0
+    out = binary_dilation(out, structure, iterations=ni)
+    if origin is None:
+        return out
+    else:
+        origin = _util._fix_sequence_arg(origin, structure.ndim, 'origin', int)
+        origin = [iterations * o for o in origin]
+        return out, origin
+
+
+def generate_binary_structure(rank, connectivity, *, on_cpu=False):
+    """Generate a binary structure for binary morphological operations.
+
+    Args:
+        rank(int): Number of dimensions of the array to which the structuring
+            element will be applied, as returned by `np.ndim`.
+        connectivity(int): `connectivity` determines which elements of the
+            output array belong to the structure, i.e., are considered as
+            neighbors of the central element. Elements up to a squared distance
+            of `connectivity` from the center are considered neighbors.
+            `connectivity` may range from 1 (no diagonal elements are
+            neighbors) to `rank` (all elements are neighbors).
+        on_cpu(bool, optional): If True, return a NumPy array rather than
+            transferring the structure to the GPU. (Default value = False)
+
+    Returns:
+        cupy.ndarray: Structuring element which may be used for binary
+            morphological operations, with `rank` dimensions and all dimensions
+            equal to 3.
+
+    .. seealso:: :func:`scipy.ndimage.generate_binary_structure`
+    """
+    if connectivity < 1:
+        connectivity = 1
+    if rank < 1:
+        if on_cpu:
+            return numpy.asarray(True, dtype=bool)
+        else:
+            return cupy.asarray(True, dtype=bool)
+    output = numpy.fabs(numpy.indices([3] * rank) - 1)
+    output = numpy.add.reduce(output, 0)
+    output = output <= connectivity
+    if on_cpu:
+        return output
+    return cupy.asarray(output)
+
+
+def _binary_erosion(
+    input,
+    structure,
+    iterations,
+    mask,
+    output,
+    border_value,
+    origin,
+    invert,
+    brute_force=True,
+):
+    """
+
+    Args:
+      input:
+      structure:
+      iterations:
+      mask:
+      output:
+      border_value:
+      origin:
+      invert:
+      brute_force:  (Default value = True)
+
+    Returns:
+
+    """
+    try:
+        iterations = operator.index(iterations)
+    except TypeError:
+        raise TypeError("iterations parameter should be an integer")
+
+    input = cupy.asarray(input)
+    if not input.flags.c_contiguous:
+        # TODO: grlee77: is C-contiguity required?
+        input = cupy.ascontiguousarray(input)
+    if input.dtype.kind == "c":
+        raise TypeError("Complex type not supported")
+    if structure is None:
+        structure = generate_binary_structure(input.ndim, 1)
+    else:
+        structure = cupy.asarray(structure, dtype=bool)
+    if structure.ndim != input.ndim:
+        raise RuntimeError("structure and input must have same dimensionality")
+    if not structure.flags.c_contiguous:
+        # TODO: grlee77: is C-contiguity required?
+        structure = cupy.ascontiguousarray(structure)
+    if structure.size < 1:
+        raise RuntimeError("structure must not be empty")
+
+    if mask is not None:
+        mask = cupy.asarray(mask)
+        if mask.shape != input.shape:
+            raise RuntimeError("mask and input must have equal sizes")
+        if not mask.flags.c_contiguous:
+            # TODO: grlee77: current indexing requires C contiguous arrays.
+            mask = cupy.asacontiguousarray(mask)
+        masked = True
+    else:
+        masked = False
+    origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    center_is_true = _center_is_true(structure, origin)
+    if isinstance(output, cupy.ndarray) and output.dtype.kind == 'c':
+        raise TypeError("Complex output type not supported")
+    else:
+        output = bool
+    output = _util._get_output(output, input)
+    temp_needed = cupy.shares_memory(output, input, "MAY_SHARE_BOUNDS")
+    if temp_needed:
+        # input and output arrays cannot share memory
+        temp = output
+        output = _util._get_output(output.dtype, input)
+    if structure.ndim == 0:
+        # kernel doesn't handle ndim=0, so special case it here
+        if float(structure):
+            output[...] = cupy.asarray(input, dtype=bool)
+        else:
+            output[...] = ~cupy.asarray(input, dtype=bool)
+        return output
+    origin = tuple(origin)
+    int_type = _util._get_inttype(input)
+    offsets = _filters_core._origins_to_offsets(origin, structure.shape)
+    erode_kernel = _get_binary_erosion_kernel(
+        structure.shape,
+        int_type,
+        offsets,
+        center_is_true,
+        border_value,
+        invert,
+        masked,
+    )
+
+    if iterations == 1:
+        if masked:
+            output = erode_kernel(input, structure, mask, output)
+        else:
+            output = erode_kernel(input, structure, output)
+    elif center_is_true and not brute_force:
+        raise NotImplementedError(
+            "only brute_force iteration has been implemented"
+        )
+    else:
+        if cupy.shares_memory(output, input, "MAY_SHARE_BOUNDS"):
+            raise ValueError("output and input may not overlap in memory")
+        tmp_in = cupy.empty_like(input, dtype=output.dtype)
+        tmp_out = output
+        if iterations >= 1 and not iterations & 1:
+            tmp_in, tmp_out = tmp_out, tmp_in
+        if masked:
+            tmp_out = erode_kernel(input, structure, mask, tmp_out)
+        else:
+            tmp_out = erode_kernel(input, structure, tmp_out)
+        # TODO: kernel doesn't return the changed status, so determine it here
+        changed = not (tmp_in == tmp_out).all()  # synchronize!
+        ii = 1
+        while ii < iterations or ((iterations < 1) and changed):
+            tmp_in, tmp_out = tmp_out, tmp_in
+            if masked:
+                tmp_out = erode_kernel(tmp_in, structure, mask, tmp_out)
+            else:
+                tmp_out = erode_kernel(tmp_in, structure, tmp_out)
+            changed = not (tmp_in == tmp_out).all()
+            ii += 1
+            if not changed and (not ii & 1):  # synchronize!
+                # can exit early if nothing changed
+                # (only do this after even number of tmp_in/out swaps)
+                break
+        output = tmp_out
+    if temp_needed:
+        temp[...] = output
+        output = temp
+    return output
+
+
+def binary_erosion(
+    input,
+    structure=None,
+    iterations=1,
+    mask=None,
+    output=None,
+    border_value=0,
+    origin=0,
+    brute_force=False,
+):
+    """Multidimensional binary erosion with a given structuring element.
+
+    Binary erosion is a mathematical morphology operation used for image
+    processing.
+    Args:
+        input(cupy.ndarray): The input binary array_like to be eroded.
+            Non-zero (True) elements form the subset to be eroded.
+        structure(cupy.ndarray, optional): The structuring element used for the
+            erosion. Non-zero elements are considered True. If no structuring
+            element is provided an element is generated with a square
+            connectivity equal to one. (Default value = None).
+        iterations(int, optional): The erosion is repeated `iterations` times
+            (one, by default). If iterations is less than 1, the erosion is
+            repeated until the result does not change anymore. Only an integer
+            of iterations is accepted.
+        mask(cupy.ndarray or None, optional): If a mask is given, only those
+            elements with a True value at the corresponding mask element are
+            modified at each iteration. (Default value = None)
+        output(cupy.ndarray, optional): Array of the same shape as input, into
+            which the output is placed. By default, a new array is created.
+        border_value(int (cast to 0 or 1), optional): Value at the
+            border in the output array. (Default value = 0)
+        origin(int or tuple of ints, optional): Placement of the filter, by
+            default 0.
+        brute_force(boolean, optional): Memory condition: if False, only the
+            pixels whose value was changed in the last iteration are tracked as
+            candidates to be updated (eroded) in the current iteration; if
+            True all pixels are considered as candidates for erosion,
+            regardless of what happened in the previous iteration.
+
+    Returns:
+        cupy.ndarray: The result of binary erosion.
+
+    .. seealso:: :func:`scipy.ndimage.binary_erosion`
+    """
+    return _binary_erosion(
+        input,
+        structure,
+        iterations,
+        mask,
+        output,
+        border_value,
+        origin,
+        0,
+        brute_force,
+    )
+
+
+
+def binary_dilation(
+    input,
+    structure=None,
+    iterations=1,
+    mask=None,
+    output=None,
+    border_value=0,
+    origin=0,
+    brute_force=False,
+):
+    """Multidimensional binary dilation with the given structuring element.
+
+    Args:
+        input(cupy.ndarray): The input binary array_like to be dilated.
+            Non-zero (True) elements form the subset to be dilated.
+        structure(cupy.ndarray, optional): The structuring element used for the
+            dilation. Non-zero elements are considered True. If no structuring
+            element is provided an element is generated with a square
+            connectivity equal to one. (Default value = None).
+        iterations(int, optional): The dilation is repeated `iterations` times
+            (one, by default). If iterations is less than 1, the dilation is
+            repeated until the result does not change anymore. Only an integer
+            of iterations is accepted.
+        mask(cupy.ndarray or None, optional): If a mask is given, only those
+            elements with a True value at the corresponding mask element are
+            modified at each iteration. (Default value = None)
+        output(cupy.ndarray, optional): Array of the same shape as input, into
+            which the output is placed. By default, a new array is created.
+        border_value(int (cast to 0 or 1), optional): Value at the
+            border in the output array. (Default value = 0)
+        origin(int or tuple of ints, optional): Placement of the filter, by
+            default 0.
+        brute_force(boolean, optional): Memory condition: if False, only the
+            pixels whose value was changed in the last iteration are tracked as
+            candidates to be updated (dilated) in the current iteration; if
+            True all pixels are considered as candidates for dilation,
+            regardless of what happened in the previous iteration.
+
+    Returns:
+        cupy.ndarray: The result of binary dilation.
+
+    .. seealso:: :func:`scipy.ndimage.binary_dilation`
+    """
+    input = cupy.asarray(input)
+    if structure is None:
+        structure = generate_binary_structure(input.ndim, 1)
+    origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
+    structure = cupy.asarray(structure)
+    structure = structure[tuple([slice(None, None, -1)] * structure.ndim)]
+    for ii in range(len(origin)):
+        origin[ii] = -origin[ii]
+        if not structure.shape[ii] & 1:
+            origin[ii] -= 1
+
+    return _binary_erosion(
+        input,
+        structure,
+        iterations,
+        mask,
+        output,
+        border_value,
+        origin,
+        1,
+        brute_force,
+    )
 
 
 def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
