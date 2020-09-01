@@ -14,6 +14,7 @@ _available_cuda_version = {
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
     'syevj': (9000, None),
+    'gesv': (10020, None),
 }
 
 
@@ -465,3 +466,68 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     v = v.astype(ret_v_dtype, copy=False)
     v = v.swapaxes(-2, -1).reshape(*batch_shape, m, m)
     return w, v
+
+
+def gesv(a, b):
+    """Solve a linear matrix equation using cusolverDn<t1><t2>gesv().
+
+    Computes the solution to a sysmte of linear equation ``ax = b``.
+
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(M, M)``.
+        b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
+
+    Returns:
+        cupy.ndarray:
+            The matrix with dimension ``(M)`` or ``(M, K)``.
+
+    """
+    if not check_availability('gesv'):
+        raise RuntimeError('gesv is not available.')
+
+    if a.ndim != 2:
+        raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))
+    if b.ndim not in (1, 2):
+        raise ValueError('b.ndim must be 1 or 2 (actual:{})'.format(b.ndim))
+    if a.shape[0] != a.shape[1]:
+        raise ValueError('a must be a square matrix.')
+    if a.shape[0] != b.shape[0]:
+        raise ValueError('shape mismatch (a:{}, b:{}).'.
+                         format(a.shape, b.shape))
+    if a.dtype != b.dtype:
+        raise ValueError('dtype mismatch (a:{}, b:{}).'.
+                         format(a.dtype, b.dtype))
+
+    n = a.shape[0]
+    nrhs = 1
+    if b.ndim == 2:
+        nrhs = b.shape[1]
+    if a.dtype == 'f':
+        helper = cusolver.ssgesv_bufferSize
+        solver = cusolver.ssgesv
+    elif a.dtype == 'd':
+        helper = cusolver.ddgesv_bufferSize
+        solver = cusolver.ddgesv
+    elif a.dtype == 'F':
+        helper = cusolver.ccgesv_bufferSize
+        solver = cusolver.ccgesv
+    elif a.dtype == 'D':
+        helper = cusolver.zzgesv_bufferSize
+        solver = cusolver.zzgesv
+    else:
+        raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+    a = cupy.asfortranarray(a)
+    b = cupy.asfortranarray(b)
+    x = cupy.empty_like(b)
+    dipiv = cupy.empty(n, dtype=numpy.int32)
+    dinfo = cupy.empty(1, dtype=numpy.int32)
+    handle = device.get_cusolver_handle()
+    lwork = helper(handle, n, nrhs, a.data.ptr, n, dipiv.data.ptr,
+                   b.data.ptr, n, x.data.ptr, n, 0)
+    dwork = cupy.empty(lwork, dtype=numpy.int8)
+    iter = solver(handle, n, nrhs, a.data.ptr, n, dipiv.data.ptr,
+                  b.data.ptr, n, x.data.ptr, n, dwork.data.ptr, lwork,
+                  dinfo.data.ptr)
+    if iter < 0:
+        raise RuntimeError('iterative refinement has failed.')
+    return x
