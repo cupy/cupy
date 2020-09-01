@@ -76,7 +76,7 @@ def _get_binary_erosion_kernel(
 
 def _center_is_true(structure, origin):
     coor = tuple([oo + ss // 2 for ss, oo in zip(structure.shape, origin)])
-    return bool(structure[coor])
+    return bool(structure[coor])  # devie synchronization
 
 
 def iterate_structure(structure, iterations, origin=None):
@@ -188,7 +188,7 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
     else:
         masked = False
     origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
-    center_is_true = _center_is_true(structure, origin)
+    center_is_true = _center_is_true(structure, origin)  # synchronization
     if isinstance(output, cupy.ndarray) and output.dtype.kind == 'c':
         raise TypeError("Complex output type not supported")
     else:
@@ -291,6 +291,10 @@ def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
     Returns:
         cupy.ndarray: The result of binary erosion.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`scipy.ndimage.binary_erosion`
     """
     return _binary_erosion(input, structure, iterations, mask, output,
@@ -329,6 +333,10 @@ def binary_dilation(input, structure=None, iterations=1, mask=None,
 
     Returns:
         cupy.ndarray: The result of binary dilation.
+
+    .. warning::
+
+        This function may synchronize the device.
 
     .. seealso:: :func:`scipy.ndimage.binary_dilation`
     """
@@ -381,6 +389,10 @@ def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
     Returns:
         cupy.ndarray: The result of binary opening.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`scipy.ndimage.binary_opening`
     """
     if structure is None:
@@ -429,6 +441,10 @@ def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
     Returns:
         cupy.ndarray: The result of binary closing.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`scipy.ndimage.binary_closing`
     """
     if structure is None:
@@ -470,6 +486,10 @@ def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
     Returns:
         cupy.ndarray: Hit-or-miss transform of `input` with the given
             structuring element (`structure1`, `structure2`).
+
+    .. warning::
+
+        This function may synchronize the device.
 
     .. seealso:: :func:`scipy.ndimage.binary_hit_or_miss`
     """
@@ -519,6 +539,10 @@ def binary_propagation(input, structure=None, mask=None, output=None,
     Returns:
         cupy.ndarray : Binary propagation of `input` inside `mask`.
 
+    .. warning::
+
+        This function may synchronize the device.
+
     .. seealso:: :func:`scipy.ndimage.binary_propagation`
     """
     return binary_dilation(input, structure, -1, mask, output, border_value,
@@ -545,8 +569,11 @@ def binary_fill_holes(input, structure=None, output=None, origin=0):
         cupy.ndarray: Transformation of the initial image `input` where holes
             have been filled.
 
-    .. seealso:: :func:`scipy.ndimage.binary_fill_holes`
+    .. warning::
 
+        This function may synchronize the device.
+
+    .. seealso:: :func:`scipy.ndimage.binary_fill_holes`
     """
     mask = cupy.logical_not(input)
     tmp = cupy.zeros(mask.shape, bool)
