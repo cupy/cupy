@@ -554,12 +554,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             # TODO (asi1024): Implement faster algorithm.
             pass
 
-        name = type(self).__name__
-        if name == 'csr_matrix':
-            return self.tocsc()._major_index_fancy(idx).tocsr()
-        if name == 'csc_matrix':
-            return self.tocsr()._major_index_fancy(idx).tocsc()
-        assert False
+        return self._tocsx()._major_index_fancy(idx)._tocsx()
 
     def _minor_slice(self, idx, copy=False):
         """Index along the minor axis where idx is a slice object.

@@ -340,6 +340,11 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         else:
             return self
 
+    def _tocsx(self):
+        """Inverts the format.
+        """
+        return self.tocsc()
+
     def todia(self, copy=False):
         # TODO(unno): Implement todia
         raise NotImplementedError
