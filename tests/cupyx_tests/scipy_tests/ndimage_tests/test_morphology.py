@@ -101,6 +101,226 @@ class BinaryErosionAndDilation1d(unittest.TestCase):
 
 @testing.parameterize(*(
     testing.product({
+        'x_dtype': [numpy.bool, numpy.float64],
+        'border_value': [0, 1],
+        'connectivity': [1, 2],
+        'origin': [0, 1],
+        'data': [[[0, 1, 0, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 0, 0, 0, 0, 0],
+                  [0, 1, 0, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 1, 0, 1, 0, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+
+                 [[1, 1, 1, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 1, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 0, 1, 1, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
+        'filter': ['binary_opening', 'binary_closing'],
+        'output': [None, numpy.float32, numpy.int8]}
+    ))
+)
+@testing.gpu
+@testing.with_requires('scipy>=1.1.0')
+class BinaryOpeningAndClosing(unittest.TestCase):
+    def _filter(self, xp, scp, x):
+        filter = getattr(scp.ndimage, self.filter)
+        structure = scp.ndimage.generate_binary_structure(x.ndim,
+                                                          self.connectivity)
+        return filter(x, structure, iterations=1, output=self.output,
+                      origin=self.origin, mask=None,
+                      border_value=self.border_value, brute_force=True)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_binary_opening_and_closing(self, xp, scp):
+        if self.x_dtype == self.output:
+            raise unittest.SkipTest("redundant")
+        x = xp.asarray(self.data, dtype=self.x_dtype)
+        return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*(
+    testing.product({
+        'x_dtype': [numpy.bool, numpy.float64],
+        'connectivity': [1, 2],
+        'origin': [-1, 0, 1],
+        'data': [[[0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 1, 1, 1, 1, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 1, 1, 1, 1, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+
+                 [[0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 1, 1, 0, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 1, 1, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+
+                 [[0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 1, 0, 0, 0, 0, 0],
+                  [0, 1, 0, 1, 0, 1, 1, 1],
+                  [0, 1, 0, 1, 0, 1, 0, 1],
+                  [0, 1, 0, 1, 0, 1, 0, 1],
+                  [0, 0, 1, 0, 0, 1, 1, 1],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
+        'output': [None, numpy.float32, numpy.int8]}
+    ))
+)
+@testing.gpu
+@testing.with_requires('scipy')
+class BinaryFillHoles(unittest.TestCase):
+    def _filter(self, xp, scp, x):
+        filter = scp.ndimage.binary_fill_holes
+        structure = scp.ndimage.generate_binary_structure(x.ndim,
+                                                          self.connectivity)
+        return filter(x, structure, output=self.output, origin=self.origin)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_binary_fill_holes(self, xp, scp):
+        if self.x_dtype == self.output:
+            raise unittest.SkipTest("redundant")
+        x = xp.asarray(self.data, dtype=self.x_dtype)
+        return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*(
+    testing.product({
+        'x_dtype': [numpy.bool, numpy.float64],
+        'struct': ['same', 'separate'],
+        'origins': [((0, 0), (0, 0)),
+                    ((0, 1), (-1, 0))],
+        'data': [[[0, 1, 0, 0, 0],
+                  [1, 1, 1, 0, 0],
+                  [0, 1, 0, 1, 1],
+                  [0, 0, 1, 1, 1],
+                  [0, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 1],
+                  [0, 1, 1, 1, 1],
+                  [0, 0, 0, 0, 0]],
+
+                 [[0, 1, 0, 0, 1, 1, 1, 0],
+                  [1, 1, 1, 0, 0, 1, 0, 0],
+                  [0, 1, 0, 1, 1, 1, 1, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+
+                 [[0, 1, 0, 0, 1, 1, 1, 0],
+                  [1, 1, 1, 0, 0, 0, 0, 0],
+                  [0, 1, 0, 1, 1, 1, 1, 0],
+                  [0, 0, 1, 1, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 0, 1, 1, 0],
+                  [0, 0, 0, 0, 1, 1, 1, 0],
+                  [0, 1, 1, 1, 1, 1, 1, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
+        'output': [None, numpy.float32, numpy.int8]}
+    ))
+)
+@testing.gpu
+@testing.with_requires('scipy')
+class BinaryHitOrMiss(unittest.TestCase):
+    def _filter(self, xp, scp, x):
+        filter = scp.ndimage.binary_hit_or_miss
+        if self.struct == 'same':
+            structure1 = scp.ndimage.generate_binary_structure(x.ndim, 1)
+            structure2 = structure1
+        elif self.struct == 'separate':
+            structure1 = xp.asarray([[0, 0, 0],
+                                     [1, 1, 1],
+                                     [0, 0, 0]])
+
+            structure2 = xp.asarray([[1, 1, 1],
+                                     [0, 0, 0],
+                                     [1, 1, 1]])
+        origin1, origin2 = self.origins
+        return filter(x, structure1, structure2, output=self.output,
+                      origin1=origin1, origin2=origin2)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_binary_hit_or_miss(self, xp, scp):
+        if self.x_dtype == self.output:
+            raise unittest.SkipTest("redundant")
+        x = xp.asarray(self.data, dtype=self.x_dtype)
+        return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*(
+    testing.product({
+        'x_dtype': [numpy.bool, numpy.float64],
+        'border_value': [0, 1],
+        'connectivity': [1, 2],
+        'origin': [0, 1],
+        'mask': [[[0, 1, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 1, 0],
+                  [0, 0, 0, 0, 1, 1, 0, 0],
+                  [0, 0, 1, 1, 1, 0, 0, 0],
+                  [0, 1, 1, 0, 1, 1, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+
+                 [[0, 1, 0, 0, 0, 0, 0, 0],
+                  [0, 1, 1, 0, 0, 0, 0, 0],
+                  [0, 0, 1, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 1, 1, 0, 0, 0],
+                  [0, 0, 1, 0, 0, 1, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
+        'data': [[[0, 1, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 1, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+
+                 [[0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0]],
+                 ],
+        'output': [None, numpy.float32, numpy.int8]}
+    ))
+)
+@testing.gpu
+@testing.with_requires('scipy')
+class BinaryPropagation(unittest.TestCase):
+    def _filter(self, xp, scp, x):
+        filter = scp.ndimage.binary_propagation
+        structure = scp.ndimage.generate_binary_structure(x.ndim,
+                                                          self.connectivity)
+        mask = xp.asarray(self.mask)
+        return filter(x, structure, mask=mask, output=self.output,
+                      border_value=self.border_value, origin=self.origin)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_binary_propagation(self, xp, scp):
+        if self.x_dtype == self.output:
+            raise unittest.SkipTest("redundant")
+        x = xp.asarray(self.data, dtype=self.x_dtype)
+        return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*(
+    testing.product({
         'x_dtype': [numpy.int8, numpy.float32],
         'border_value': [0, 1],
         'connectivity': [1, 2],
