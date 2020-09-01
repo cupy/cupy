@@ -391,8 +391,8 @@ cdef class Plan1d:
         # gather because for async memcpy, the stream is on the source device
         self.gather_streams = gather_streams
         self.gather_events = gather_events
-        self.scatter_streams = None
-        self.scatter_events = None
+        self.scatter_streams = {}
+        self.scatter_events = {}
         self._multi_gpu_get_scatter_streams_events(runtime.getDevice())
 
     def _multi_gpu_get_scatter_streams_events(self, int curr_device):
