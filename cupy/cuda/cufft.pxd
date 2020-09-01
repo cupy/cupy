@@ -47,8 +47,8 @@ cdef class Plan1d:
         list batch_share
         list gather_streams
         list gather_events
-        list scatter_streams
-        list scatter_events
+        dict scatter_streams
+        dict scatter_events
         intptr_t xtArr
         list xtArr_buffer
 
