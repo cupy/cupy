@@ -84,7 +84,10 @@ class TestIterateStructure(unittest.TestCase):
 class BinaryErosionAndDilation1d(unittest.TestCase):
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
-        return filter(x, self.structure, iterations=1, mask=None,
+        structure = self.structure
+        if structure is not None:
+            structure = xp.asarray(structure)
+        return filter(x, structure, iterations=1, mask=None,
                       output=self.output, border_value=self.border_value,
                       origin=self.origin, brute_force=True)
 

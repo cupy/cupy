@@ -75,7 +75,6 @@ def _get_binary_erosion_kernel(
 
 
 def _center_is_true(structure, origin):
-    structure = cupy.asarray(structure)
     coor = tuple([oo + ss // 2 for ss, oo in zip(structure.shape, origin)])
     return bool(structure[coor])
 
@@ -98,7 +97,6 @@ def iterate_structure(structure, iterations, origin=None):
 
     .. seealso:: :func:`scipy.ndimage.iterate_structure`
     """
-    structure = cupy.asarray(structure)
     if iterations < 2:
         return structure.copy()
     ni = iterations - 1
@@ -156,39 +154,13 @@ def generate_binary_structure(rank, connectivity, *, on_cpu=False):
     return cupy.asarray(output)
 
 
-def _binary_erosion(
-    input,
-    structure,
-    iterations,
-    mask,
-    output,
-    border_value,
-    origin,
-    invert,
-    brute_force=True,
-):
-    """
-
-    Args:
-      input:
-      structure:
-      iterations:
-      mask:
-      output:
-      border_value:
-      origin:
-      invert:
-      brute_force:  (Default value = True)
-
-    Returns:
-
-    """
+def _binary_erosion(input, structure, iterations, mask, output, border_value,
+                    origin, invert, brute_force=True):
     try:
         iterations = operator.index(iterations)
     except TypeError:
         raise TypeError("iterations parameter should be an integer")
 
-    input = cupy.asarray(input)
     if not input.flags.c_contiguous:
         # TODO: grlee77: is C-contiguity required?
         input = cupy.ascontiguousarray(input)
@@ -207,7 +179,6 @@ def _binary_erosion(
         raise RuntimeError("structure must not be empty")
 
     if mask is not None:
-        mask = cupy.asarray(mask)
         if mask.shape != input.shape:
             raise RuntimeError("mask and input must have equal sizes")
         if not mask.flags.c_contiguous:
@@ -239,13 +210,8 @@ def _binary_erosion(
     int_type = _util._get_inttype(input)
     offsets = _filters_core._origins_to_offsets(origin, structure.shape)
     erode_kernel = _get_binary_erosion_kernel(
-        structure.shape,
-        int_type,
-        offsets,
-        center_is_true,
-        border_value,
-        invert,
-        masked,
+        structure.shape, int_type, offsets, center_is_true, border_value,
+        invert, masked,
     )
 
     if iterations == 1:
@@ -290,16 +256,8 @@ def _binary_erosion(
     return output
 
 
-def binary_erosion(
-    input,
-    structure=None,
-    iterations=1,
-    mask=None,
-    output=None,
-    border_value=0,
-    origin=0,
-    brute_force=False,
-):
+def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
+                   border_value=0, origin=0, brute_force=False):
     """Multidimensional binary erosion with a given structuring element.
 
     Binary erosion is a mathematical morphology operation used for image
@@ -335,30 +293,12 @@ def binary_erosion(
 
     .. seealso:: :func:`scipy.ndimage.binary_erosion`
     """
-    return _binary_erosion(
-        input,
-        structure,
-        iterations,
-        mask,
-        output,
-        border_value,
-        origin,
-        0,
-        brute_force,
-    )
+    return _binary_erosion(input, structure, iterations, mask, output,
+                           border_value, origin, 0, brute_force)
 
 
-
-def binary_dilation(
-    input,
-    structure=None,
-    iterations=1,
-    mask=None,
-    output=None,
-    border_value=0,
-    origin=0,
-    brute_force=False,
-):
+def binary_dilation(input, structure=None, iterations=1, mask=None,
+                    output=None, border_value=0, origin=0, brute_force=False):
     """Multidimensional binary dilation with the given structuring element.
 
     Args:
@@ -392,28 +332,235 @@ def binary_dilation(
 
     .. seealso:: :func:`scipy.ndimage.binary_dilation`
     """
-    input = cupy.asarray(input)
     if structure is None:
         structure = generate_binary_structure(input.ndim, 1)
     origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
-    structure = cupy.asarray(structure)
     structure = structure[tuple([slice(None, None, -1)] * structure.ndim)]
     for ii in range(len(origin)):
         origin[ii] = -origin[ii]
         if not structure.shape[ii] & 1:
             origin[ii] -= 1
+    return _binary_erosion(input, structure, iterations, mask, output,
+                           border_value, origin, 1, brute_force)
 
-    return _binary_erosion(
-        input,
-        structure,
-        iterations,
-        mask,
-        output,
-        border_value,
-        origin,
-        1,
-        brute_force,
-    )
+
+def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
+                   mask=None, border_value=0, brute_force=False):
+    """
+    Multidimensional binary opening with the given structuring element.
+
+    The *opening* of an input image by a structuring element is the
+    *dilation* of the *erosion* of the image by the structuring element.
+
+    Args:
+        input(cupy.ndarray): The input binary array to be opened.
+            Non-zero (True) elements form the subset to be opened.
+        structure(cupy.ndarray, optional): The structuring element used for the
+            opening. Non-zero elements are considered True. If no structuring
+            element is provided an element is generated with a square
+            connectivity equal to one. (Default value = None).
+        iterations(int, optional): The opening is repeated `iterations` times
+            (one, by default). If iterations is less than 1, the opening is
+            repeated until the result does not change anymore. Only an integer
+            of iterations is accepted.
+        output(cupy.ndarray, optional): Array of the same shape as input, into
+            which the output is placed. By default, a new array is created.
+        origin(int or tuple of ints, optional): Placement of the filter, by
+            default 0.
+        mask(cupy.ndarray or None, optional): If a mask is given, only those
+            elements with a True value at the corresponding mask element are
+            modified at each iteration. (Default value = None)
+        border_value(int (cast to 0 or 1), optional): Value at the
+            border in the output array. (Default value = 0)
+        brute_force(boolean, optional): Memory condition: if False, only the
+            pixels whose value was changed in the last iteration are tracked as
+            candidates to be updated (dilated) in the current iteration; if
+            True all pixels are considered as candidates for opening,
+            regardless of what happened in the previous iteration.
+
+    Returns:
+        cupy.ndarray: The result of binary opening.
+
+    .. seealso:: :func:`scipy.ndimage.binary_opening`
+    """
+    if structure is None:
+        rank = input.ndim
+        structure = generate_binary_structure(rank, 1)
+    tmp = binary_erosion(input, structure, iterations, mask, None,
+                         border_value, origin, brute_force)
+    return binary_dilation(tmp, structure, iterations, mask, output,
+                           border_value, origin, brute_force)
+
+
+def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
+                   mask=None, border_value=0, brute_force=False):
+    """
+    Multidimensional binary closing with the given structuring element.
+
+    The *closing* of an input image by a structuring element is the
+    *erosion* of the *dilation* of the image by the structuring element.
+
+    Args:
+        input(cupy.ndarray): The input binary array to be closed.
+            Non-zero (True) elements form the subset to be closed.
+        structure(cupy.ndarray, optional): The structuring element used for the
+            closing. Non-zero elements are considered True. If no structuring
+            element is provided an element is generated with a square
+            connectivity equal to one. (Default value = None).
+        iterations(int, optional): The closing is repeated `iterations` times
+            (one, by default). If iterations is less than 1, the closing is
+            repeated until the result does not change anymore. Only an integer
+            of iterations is accepted.
+        output(cupy.ndarray, optional): Array of the same shape as input, into
+            which the output is placed. By default, a new array is created.
+        origin(int or tuple of ints, optional): Placement of the filter, by
+            default 0.
+        mask(cupy.ndarray or None, optional): If a mask is given, only those
+            elements with a True value at the corresponding mask element are
+            modified at each iteration. (Default value = None)
+        border_value(int (cast to 0 or 1), optional): Value at the
+            border in the output array. (Default value = 0)
+        brute_force(boolean, optional): Memory condition: if False, only the
+            pixels whose value was changed in the last iteration are tracked as
+            candidates to be updated (dilated) in the current iteration; if
+            True all pixels are considered as candidates for closing,
+            regardless of what happened in the previous iteration.
+
+    Returns:
+        cupy.ndarray: The result of binary closing.
+
+    .. seealso:: :func:`scipy.ndimage.binary_closing`
+    """
+    if structure is None:
+        rank = input.ndim
+        structure = generate_binary_structure(rank, 1)
+    tmp = binary_dilation(input, structure, iterations, mask, None,
+                          border_value, origin, brute_force)
+    return binary_erosion(tmp, structure, iterations, mask, output,
+                          border_value, origin, brute_force)
+
+
+def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
+                       origin1=0, origin2=None):
+    """
+    Multidimensional binary hit-or-miss transform.
+
+    The hit-or-miss transform finds the locations of a given pattern
+    inside the input image.
+
+    Args:
+        input (cupy.ndarray): Binary image where a pattern is to be detected.
+        structure1 (cupy.ndarray, optional): Part of the structuring element to
+            be fitted to the foreground (non-zero elements) of `input`. If no
+            value is provided, a structure of square connectivity 1 is chosen.
+        structure2 (cupy.ndarray, optional): Second part of the structuring
+            element that has to miss completely the foreground. If no value is
+            provided, the complementary of `structure1` is taken.
+        output (cupy.ndarray, dtype or None, optional): Array of the same shape
+            as input, into which the output is placed. By default, a new array
+            is created.
+        origin1 (int or tuple of ints, optional): Placement of the first part
+            of the structuring element `structure1`, by default 0 for a
+            centered structure.
+        origin2 (int or tuple of ints or None, optional): Placement of the
+            second part of the structuring element `structure2`, by default 0
+            for a centered structure. If a value is provided for `origin1` and
+            not for `origin2`, then `origin2` is set to `origin1`.
+
+    Returns:
+        cupy.ndarray: Hit-or-miss transform of `input` with the given
+            structuring element (`structure1`, `structure2`).
+
+    .. seealso:: :func:`scipy.ndimage.binary_hit_or_miss`
+    """
+    if structure1 is None:
+        structure1 = generate_binary_structure(input.ndim, 1)
+    if structure2 is None:
+        structure2 = cupy.logical_not(structure1)
+    origin1 = _util._fix_sequence_arg(origin1, input.ndim, 'origin1', int)
+    if origin2 is None:
+        origin2 = origin1
+    else:
+        origin2 = _util._fix_sequence_arg(origin2, input.ndim, 'origin2', int)
+
+    tmp1 = _binary_erosion(input, structure1, 1, None, None, 0, origin1, 0,
+                           False)
+    inplace = isinstance(output, cupy.ndarray)
+    result = _binary_erosion(input, structure2, 1, None, output, 0, origin2, 1,
+                             False)
+    if inplace:
+        cupy.logical_not(output, output)
+        cupy.logical_and(tmp1, output, output)
+    else:
+        cupy.logical_not(result, result)
+        return cupy.logical_and(tmp1, result)
+
+
+def binary_propagation(input, structure=None, mask=None, output=None,
+                       border_value=0, origin=0):
+    """
+    Multidimensional binary propagation with the given structuring element.
+
+    Args:
+        input (cupy.ndarray): Binary image to be propagated inside `mask`.
+        structure (cupy.ndarray, optional): Structuring element used in the
+            successive dilations. The output may depend on the structuring
+            element, especially if `mask` has several connex components. If no
+            structuring element is provided, an element is generated with a
+            squared connectivity equal to one.
+        mask (cupy.ndarray, optional): Binary mask defining the region into
+            which `input` is allowed to propagate.
+        output (cupy.ndarray, optional): Array of the same shape as input, into
+            which the output is placed. By default, a new array is created.
+        border_value (int, optional): Value at the border in the output array.
+            The value is cast to 0 or 1.
+        origin (int or tuple of ints, optional): Placement of the filter.
+
+    Returns:
+        cupy.ndarray : Binary propagation of `input` inside `mask`.
+
+    .. seealso:: :func:`scipy.ndimage.binary_propagation`
+    """
+    return binary_dilation(input, structure, -1, mask, output, border_value,
+                           origin, brute_force=True)
+
+
+def binary_fill_holes(input, structure=None, output=None, origin=0):
+    """Fill the holes in binary objects.
+
+    Args:
+        input (cupy.ndarray): N-D binary array with holes to be filled.
+        structure (cupy.ndarray, optional):  Structuring element used in the
+            computation; large-size elements make computations faster but may
+            miss holes separated from the background by thin regions. The
+            default element (with a square connectivity equal to one) yields
+            the intuitive result where all holes in the input have been filled.
+        output (cupy.ndarray, dtype or None, optional): Array of the same shape
+            as input, into which the output is placed. By default, a new array
+            is created.
+        origin (int, tuple of ints, optional): Position of the structuring
+            element.
+
+    Returns:
+        cupy.ndarray: Transformation of the initial image `input` where holes
+            have been filled.
+
+    .. seealso:: :func:`scipy.ndimage.binary_fill_holes`
+
+    """
+    mask = cupy.logical_not(input)
+    tmp = cupy.zeros(mask.shape, bool)
+    inplace = isinstance(output, cupy.ndarray)
+    # TODO (grlee77): set brute_force=False below once implemented
+    if inplace:
+        binary_dilation(tmp, structure, -1, mask, output, 1, origin,
+                        brute_force=True)
+        cupy.logical_not(output, output)
+    else:
+        output = binary_dilation(tmp, structure, -1, mask, None, 1, origin,
+                                 brute_force=True)
+        cupy.logical_not(output, output)
+        return output
 
 
 def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
