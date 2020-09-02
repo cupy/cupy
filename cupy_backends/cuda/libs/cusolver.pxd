@@ -247,10 +247,16 @@ cpdef size_t zzgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
 cpdef size_t zcgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
                                int ldda, size_t dipiv, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t zygesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
+                               int ldda, size_t dipiv, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
 cpdef size_t zkgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
                                int ldda, size_t dipiv, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1
 cpdef size_t ccgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
+                               int ldda, size_t dipiv, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t cygesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
                                int ldda, size_t dipiv, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1
 cpdef size_t ckgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
@@ -262,10 +268,16 @@ cpdef size_t ddgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
 cpdef size_t dsgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
                                int ldda, size_t dipiv, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t dxgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
+                               int ldda, size_t dipiv, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
 cpdef size_t dhgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
                                int ldda, size_t dipiv, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1
 cpdef size_t ssgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
+                               int ldda, size_t dipiv, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t sxgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
                                int ldda, size_t dipiv, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1
 cpdef size_t shgesv_bufferSize(intptr_t handle, int n, int nrhs, size_t dA,
@@ -278,6 +290,9 @@ cpdef int zzgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 cpdef int zcgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
                  size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int zygesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
+                 size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
 cpdef int zkgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
                  size_t dwork, size_t lwork_bytes, size_t dInfo)
@@ -287,16 +302,25 @@ cpdef int ccgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
 cpdef int ckgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
                  size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int cygesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
+                 size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
 cpdef int ddgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
                  size_t dwork, size_t lwork_bytes, size_t dInfo)
 cpdef int dsgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
                  size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int dxgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
+                 size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
 cpdef int dhgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
                  size_t dwork, size_t lwork_bytes, size_t dInfo)
 cpdef int ssgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
+                 size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int sxgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
                  size_t dwork, size_t lwork_bytes, size_t dInfo)
 cpdef int shgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,

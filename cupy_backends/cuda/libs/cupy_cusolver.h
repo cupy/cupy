@@ -240,6 +240,35 @@ cusolverStatus_t cusolverDnSHgesv_bufferSize(...) {
 }
 #endif // #if CUDA_VERSION < 10020
 
+#if CUDA_VERSION < 11000
+// Functions added in CUDA 11.0
+cusolverStatus_t cusolverDnZYgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCYgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDXgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSXgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZYgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCYgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDXgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSXgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+#endif // #if CUDA_VERSION < 11000
+
+
 #else // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #ifdef CUPY_USE_HIP
@@ -919,6 +948,31 @@ cusolverStatus_t cusolverDnSSgesv_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 cusolverStatus_t cusolverDnSHgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+// Functions added in CUDA 11.0
+cusolverStatus_t cusolverDnZYgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCYgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDXgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSXgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZYgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCYgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDXgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSXgesv_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
