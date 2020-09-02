@@ -964,7 +964,6 @@ __device__ void sort(X *array, int size) {{
 
 
 @cupy._util.memoize()
->>>>>>> master
 def _get_shell_gap(filter_size):
     gap = 1
     while gap < filter_size:
