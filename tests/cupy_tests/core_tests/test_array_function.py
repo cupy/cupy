@@ -9,6 +9,8 @@ from cupy import testing
 @testing.gpu
 class TestArrayFunction(unittest.TestCase):
 
+    # TODO(leofang): revisit this when rocSOLVER is supported
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'rocSOLVER is not yet supported')
     @testing.with_requires('numpy>=1.17.0')
     def test_array_function(self):
         a = numpy.random.randn(100, 100)
@@ -27,6 +29,20 @@ class TestArrayFunction(unittest.TestCase):
         else:
             self.assertEqual(qr_cpu.dtype, qr_gpu.dtype)
             cupy.testing.assert_allclose(qr_cpu, qr_gpu, atol=1e-4)
+
+    @testing.with_requires('numpy>=1.17.0')
+    def test_array_function2(self):
+        a = numpy.random.randn(100, 100)
+        a_cpu = numpy.asarray(a)
+        a_gpu = cupy.asarray(a)
+
+        # The numpy call for both CPU and GPU arrays is intentional to test the
+        # __array_function__ protocol
+        out_cpu = numpy.sum(a_cpu, axis=1)
+        out_gpu = numpy.sum(a_gpu, axis=1)
+
+        self.assertEqual(out_cpu.dtype, out_gpu.dtype)
+        cupy.testing.assert_allclose(out_cpu, out_gpu, atol=1e-4)
 
     @testing.with_requires('numpy>=1.17.0')
     @testing.numpy_cupy_equal()
