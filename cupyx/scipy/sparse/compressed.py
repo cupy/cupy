@@ -642,22 +642,19 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         start, stop, step = idx.indices(M)
         M = len(range(start, stop, step))
         new_shape = self._swap(M, N)
-        if M == 0:
+        if M == 0 or self.nnz == 0:
             return self.__class__(new_shape)
 
         if step == 1:
-            idx_start = self.indptr[start]
-            idx_stop = self.indptr[stop]
-            res_indices = cupy.array(self.indices[idx_start:idx_stop],
-                                     copy=copy)
-            res_data = cupy.array(self.data[idx_start:idx_stop], copy=copy)
+            indptr, indices, data = _index._get_csr_submatrix_major_axis(
+                self.indptr, self.indices, self.data, start, stop)
         else:
             rows = cupy.arange(
                 start, start + M * step, step, dtype=self.indptr.dtype)
-            res_indptr, res_indices, res_data = _index._csr_row_index(
+            indptr, indices, data = _index._csr_row_index(
                 rows, self.indptr, self.indices, self.data)
 
-        return self.__class__((res_data, res_indices, res_indptr),
+        return self.__class__((data, indices, indptr),
                               shape=new_shape, copy=False)
 
     def __get_has_canonical_format(self):
