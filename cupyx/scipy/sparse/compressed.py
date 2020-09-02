@@ -645,12 +645,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if M == 0:
             return self.__class__(new_shape)
 
-        row_nnz = cupy.diff(self.indptr)
-        idx_dtype = self.indices.dtype
-        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
-
-        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
-
         if step == 1:
             idx_start = self.indptr[start]
             idx_stop = self.indptr[stop]
@@ -659,10 +653,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             res_data = cupy.array(self.data[idx_start:idx_stop], copy=copy)
         else:
             rows = cupy.arange(
-                start, start + (res_indptr.size - 1) * step, step,
-                dtype=res_indptr.dtype)
-            res_indices, res_data = _index._csr_row_index(
-                rows, self.indptr, self.indices, self.data, res_indptr)
+                start, start + M * step, step, dtype=self.indptr.dtype)
+            res_indptr, res_indices, res_data = _index._csr_row_index(
+                rows, self.indptr, self.indices, self.data)
 
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
