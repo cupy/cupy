@@ -597,6 +597,9 @@ def _preprocess_hipcc(source, options):
         return re.sub('(?m)^#.*$', '', pp_src)
 
 
+_hip_extra_source = None
+
+
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
     table = [
         ('threadIdx.', 'hipThreadIdx_'),
@@ -609,15 +612,21 @@ def _convert_to_hip_source(source, extra_source, is_hiprtc):
     if not is_hiprtc:
         return '#include <hip/hip_runtime.h>\n' + source
 
+    # Workaround for hiprtc: it does not follow the -I option to search
+    # headers (as of ROCm 3.5.0), so we must prepend all CuPy's headers
+    global _hip_extra_source
+    if _hip_extra_source is None:
+        if extra_source is not None:
+            extra_source = extra_source.split('\n')
+            extra_source = [line for line in extra_source if (
+                not line.startswith('#include')
+                and not line.startswith('#pragma once'))]
+            _hip_extra_source = extra_source = '\n'.join(extra_source)
+
     source = source.split('\n')
-    if extra_source is not None:
-        source = extra_source.split('\n') + source
-    source = [line for line in source if (
-        not line.startswith('#include')
-        and not line.startswith('#pragma once'))]
-    source = ('#include <hip/hip_runtime.h>\n'
-              + '#include <hip/hip_fp16.h>\n'
-              + '\n'.join(source))
+    source = [line for line in source if not line.startswith('#include')]
+    source = ('#include <hip/hip_runtime.h>\n#include <hip/hip_fp16.h>\n'
+              + _hip_extra_source + '\n'.join(source))
 
     return source
 
@@ -628,11 +637,15 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
                             use_converter=True):
     global _empty_file_preprocess_cache
 
+    # TODO(leofang): this might be possible but is currently undocumented
     if _is_cudadevrt_needed(options):
         raise ValueError('separate compilation is not supported in HIP')
 
     if cache_dir is None:
         cache_dir = get_cache_dir()
+    # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
+    # pick up the right arch without needing HCC_AMDGPU_TARGET. Check the
+    # earliest ROCm version in which this happened.
     if arch is None:
         arch = os.environ.get('HCC_AMDGPU_TARGET')
         if arch is None:
