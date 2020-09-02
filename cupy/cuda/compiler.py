@@ -376,11 +376,7 @@ def _compile_with_cache_cuda(
     if not cache_in_memory:
         # Read from disk cache
         if not os.path.isdir(cache_dir):
-            try:
-                os.makedirs(cache_dir)
-            except OSError:
-                if not os.path.isdir(cache_dir):
-                    raise
+            os.makedirs(cache_dir, exist_ok=True)
 
         # To handle conflicts in concurrent situation, we adopt lock-free
         # method to avoid performance degradation.
@@ -631,6 +627,7 @@ def _convert_to_hip_source(source, extra_source, is_hiprtc):
     return source
 
 
+# TODO(leofang): evaluate if this can be merged with _compile_with_cache_cuda()
 def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
                             backend='hiprtc', name_expressions=None,
                             log_stream=None, cache_in_memory=False,
@@ -670,11 +667,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     if not cache_in_memory:
         # Read from disk cache
         if not os.path.isdir(cache_dir):
-            try:
-                os.makedirs(cache_dir)
-            except OSError:
-                if not os.path.isdir(cache_dir):
-                    raise
+            os.makedirs(cache_dir, exist_ok=True)
 
         # To handle conflicts in concurrent situation, we adopt lock-free
         # method to avoid performance degradation.
