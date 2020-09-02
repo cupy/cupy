@@ -426,9 +426,6 @@ def irfft(x, n=None, axis=-1, overwrite_x=False):
        This function does not support a precomputed `plan`. If you need this
        capability, please consider using :func:`cupy.fft.irfft` or :func:`
        cupyx.scipy.fft.irfft`.
-
-    .. warning:: The input array may be modified in CUDA 10.1 and above, even
-                 when `overwrite_x is False`.
     """
     if n is None:
         n = x.shape[axis]

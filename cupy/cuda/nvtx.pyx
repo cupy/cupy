@@ -65,6 +65,8 @@ colors[7] = 0xFFFF007F
 colors[8] = 0xFFFF7F00
 colors[9] = 0xFF7F7F7F
 
+available = True
+
 
 cdef nvtxEventAttributes_t make_event_attributes(message, color):
     cdef bytes b_message

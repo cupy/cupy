@@ -146,7 +146,7 @@ class _minmax_mixin(object):
         mat = self.tocsc() if axis == 0 else self.tocsr()
         mat.sum_duplicates()
 
-        # Do the reudction
+        # Do the reduction
         value = mat._minor_reduce(min_or_max, axis, explicit)
         major_index = cupy.arange(M)
 
@@ -203,7 +203,7 @@ class _minmax_mixin(object):
         mat = self.tocsc() if axis == 0 else self.tocsr()
         mat.sum_duplicates()
 
-        # Do the reudction
+        # Do the reduction
         value = mat._arg_minor_reduce(op, axis)
 
         if axis == 0:

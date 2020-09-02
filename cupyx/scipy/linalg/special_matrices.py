@@ -1,5 +1,7 @@
 import math
 import cupy
+from cupy import core
+
 
 __all__ = ['tri', 'tril', 'triu', 'toeplitz', 'circulant', 'hankel',
            'hadamard', 'leslie', 'kron', 'block_diag', 'companion',
@@ -189,7 +191,7 @@ def hadamard(n, dtype=int):
     return _hadamard_kernel(H, H)
 
 
-_hadamard_kernel = cupy.ElementwiseKernel(
+_hadamard_kernel = core.ElementwiseKernel(
     'T in', 'T out',
     'out = (__popc(_ind.get()[0] & _ind.get()[1]) & 1) ? -1 : 1;',
     'hadamard', reduce_dims=False)

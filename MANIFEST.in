@@ -1,3 +1,4 @@
+# Contents of sdist. See also `setup.py`.
 recursive-include cupy *.h *.hpp
 recursive-exclude cupy *.pyx *.pxd *.pxi
 recursive-include cupy_backends *.h *.hpp
@@ -8,4 +9,3 @@ recursive-include tests *.py
 include LICENSE
 include docs/LICENSE_THIRD_PARTY
 include docs/source/license.rst
-graft cupy/core/include/cupy/cub*
