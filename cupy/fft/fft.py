@@ -160,6 +160,8 @@ def _fft_c2c(a, direction, norm, axes, overwrite_x, plan=None):
 
 def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
          plan=None):
+    if isinstance(a, np.ndarray):
+        raise TypeError('The input array a must be a cupy.ndarray')
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or "ortho".'
                          % norm)
@@ -486,6 +488,8 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
 
 def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
           overwrite_x=False, out=None):
+    if isinstance(a, np.ndarray):
+        raise TypeError('The input array a must be a cupy.ndarray')
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or "ortho".'
                          % norm)
