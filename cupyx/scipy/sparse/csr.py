@@ -211,10 +211,16 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         if util.isscalarlike(other):
             other = cupy.asarray(other, dtype=self.dtype)
             if dense_check(other):
+                dtype = self.dtype
                 # Note: This is a work-around to make the output dtype the same
                 # as SciPy. It might be SciPy version dependent.
-                dtype = numpy.promote_types(self.dtype, numpy.float64)
-                other = other.astype(dtype)
+                if dtype == numpy.float32:
+                    dtype = numpy.float64
+                elif dtype == numpy.complex64:
+                    dtype = numpy.complex128
+                dtype = cupy.result_type(dtype, other)
+                other = other.astype(dtype, copy=False)
+                # Note: The computation steps below are different from SciPy.
                 new_array = cupy_op(self.todense(), other)
                 return csr_matrix(new_array)
             else:
@@ -736,7 +742,7 @@ __device__ inline O binopt(T in1, T in2) {
 
 _CHECK_MAX_MIN_ = '''
 __device__ inline bool check(O out) {
-    if (out == (O)0) return false;
+    if (out == static_cast<O>(0)) return false;
     return true;
 }
 '''
