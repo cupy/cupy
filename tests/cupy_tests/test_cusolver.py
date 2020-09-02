@@ -180,23 +180,26 @@ class TestSyevj(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-    'is_complex': [False, True],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'n': [10, 100],
     'nrhs': [None, 1, 10],
+    'compute_type': [None,
+                     cupy.core.core.COMPUTE_TYPE_FP16,
+                     cupy.core.core.COMPUTE_TYPE_TF32,
+                     cupy.core.core.COMPUTE_TYPE_FP32],
 }))
 @attr.gpu
 class TestGesv(unittest.TestCase):
     _tol = {'f': 1e-6, 'd': 1e-12}
 
     def _make_array(self, shape, alpha, beta):
-        a = testing.shaped_random(shape, numpy, dtype=self.dtype, scale=alpha)
-        a += beta
+        a = testing.shaped_random(shape, numpy, dtype=self.r_dtype,
+                                  scale=alpha) + beta
         return a
 
     def _make_matrix(self, shape, alpha, beta):
         a = self._make_array(shape, alpha, beta)
-        if self.is_complex:
+        if self.dtype.char in 'FD':
             a = a + 1j * self._make_array(shape, alpha, beta)
         return a
 
@@ -204,22 +207,34 @@ class TestGesv(unittest.TestCase):
         if not cusolver.check_availability('gesv'):
             pytest.skip('gesv is not available')
 
+        self.dtype = numpy.dtype(self.dtype)
+        if self.dtype.char in 'fF':
+            self.r_dtype = numpy.float32
+        else:
+            self.r_dtype = numpy.float64
         # Diagonally dominant matrix is used as it is stable
         alpha = 2.0 / self.n
         a = self._make_matrix((self.n, self.n), alpha, -alpha / 2)
-        a += numpy.diag(numpy.ones((self.n), dtype=self.dtype))
+        a += numpy.diag(numpy.ones((self.n), dtype=self.r_dtype))
         if self.nrhs is None:
             x_shape = (self.n, )
         else:
             x_shape = (self.n, self.nrhs)
         self.x_ref = self._make_matrix(x_shape, 0.9, 0.1)
         b = numpy.dot(a, self.x_ref)
-        if self.dtype == numpy.float32:
+        if self.r_dtype == numpy.float32:
             self.tol = self._tol['f']
-        elif self.dtype == numpy.float64:
+        elif self.r_dtype == numpy.float64:
             self.tol = self._tol['d']
         self.a = cupy.array(a)
         self.b = cupy.array(b)
+        if self.compute_type is not None:
+            self.old_compute_type = cupy.core.get_compute_type(self.dtype)
+            cupy.core.set_compute_type(self.dtype, self.compute_type)
+
+    def tearDonw(self):
+        if self.compute_type is not None:
+            cupy.core.set_compute_type(self.dtype, self.old_compute_type)
 
     def test_gesv(self):
         x = cusolver.gesv(self.a, self.b)
