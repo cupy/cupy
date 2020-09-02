@@ -5,8 +5,8 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
+from cupy.core import core
 from cupy import util
-
 
 _available_cuda_version = {
     'gesvdj': (9000, None),
@@ -471,7 +471,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
 def gesv(a, b):
     """Solve a linear matrix equation using cusolverDn<t1><t2>gesv().
 
-    Computes the solution to a sysmte of linear equation ``ax = b``.
+    Computes the solution to a system of linear equation ``ax = b``.
 
     Args:
         a (cupy.ndarray): The matrix with dimension ``(M, M)``.
@@ -498,24 +498,40 @@ def gesv(a, b):
         raise ValueError('dtype mismatch (a:{}, b:{}).'.
                          format(a.dtype, b.dtype))
 
-    n = a.shape[0]
-    nrhs = 1
     if b.ndim == 2:
-        nrhs = b.shape[1]
-    if a.dtype == 'f':
-        helper = cusolver.ssgesv_bufferSize
-        solver = cusolver.ssgesv
-    elif a.dtype == 'd':
-        helper = cusolver.ddgesv_bufferSize
-        solver = cusolver.ddgesv
-    elif a.dtype == 'F':
-        helper = cusolver.ccgesv_bufferSize
-        solver = cusolver.ccgesv
-    elif a.dtype == 'D':
-        helper = cusolver.zzgesv_bufferSize
-        solver = cusolver.zzgesv
+        n, nrhs = b.shape
+    else:
+        n, nrhs = b.shape[0], 1
+
+    compute_type = cupy.core.get_compute_type(a.dtype)
+    if a.dtype.char in 'fd':
+        if a.dtype.char == 'f':
+            t1 = t2 = 's'
+        else:
+            t1 = t2 = 'd'
+        if compute_type == core.COMPUTE_TYPE_FP16:
+            t2 = 'h'
+        elif compute_type == core.COMPUTE_TYPE_TF32:
+            t2 = 'x'
+        elif compute_type == core.COMPUTE_TYPE_FP32:
+            t2 = 's'
+    elif a.dtype.char in 'FD':
+        if a.dtype.char == 'F':
+            t1 = t2 = 'c'
+        else:
+            t1 = t2 = 'z'
+        if compute_type == core.COMPUTE_TYPE_FP16:
+            t2 = 'k'
+        elif compute_type == core.COMPUTE_TYPE_TF32:
+            t2 = 'y'
+        elif compute_type == core.COMPUTE_TYPE_FP32:
+            t2 = 'c'
     else:
         raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+    solver_name = t1 + t2 + 'gesv'
+    solver = getattr(cusolver, solver_name)
+    helper = getattr(cusolver, solver_name + '_bufferSize')
+
     a = cupy.asfortranarray(a)
     b = cupy.asfortranarray(b)
     x = cupy.empty_like(b)
@@ -525,9 +541,9 @@ def gesv(a, b):
     lwork = helper(handle, n, nrhs, a.data.ptr, n, dipiv.data.ptr,
                    b.data.ptr, n, x.data.ptr, n, 0)
     dwork = cupy.empty(lwork, dtype=numpy.int8)
-    iter = solver(handle, n, nrhs, a.data.ptr, n, dipiv.data.ptr,
-                  b.data.ptr, n, x.data.ptr, n, dwork.data.ptr, lwork,
-                  dinfo.data.ptr)
-    if iter < 0:
-        raise RuntimeError('iterative refinement has failed.')
+    niters = solver(handle, n, nrhs, a.data.ptr, n, dipiv.data.ptr,
+                    b.data.ptr, n, x.data.ptr, n, dwork.data.ptr, lwork,
+                    dinfo.data.ptr)
+    if niters < 0:
+        raise RuntimeError('gesv has failed ({}).'.format(niters))
     return x
