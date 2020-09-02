@@ -551,6 +551,7 @@ from cupy.lib import poly1d  # NOQA
 from cupy.lib import polyadd  # NOQA
 from cupy.lib import polysub  # NOQA
 from cupy.lib import polymul  # NOQA
+from cupy.lib import polyfit  # NOQA
 from cupy.lib import polyval  # NOQA
 from cupy.lib import roots  # NOQA
 
@@ -726,6 +727,24 @@ from cupy.statistics.histogram import histogram  # NOQA
 # Undocumented functions
 # -----------------------------------------------------------------------------
 from cupy.core import size  # NOQA
+
+
+def ndim(a):
+    """Returns the number of dimensions of an array.
+
+    Args:
+        a (array-like): If it is not already an `cupy.ndarray`, a conversion
+            via :func:`numpy.asarray` is attempted.
+
+    Returns:
+        (int): The number of dimensions in `a`.
+
+    """
+    try:
+        return a.ndim
+    except AttributeError:
+        return numpy.ndim(a)
+
 
 # -----------------------------------------------------------------------------
 # CuPy specific functions

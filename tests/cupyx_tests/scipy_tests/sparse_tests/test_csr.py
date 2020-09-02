@@ -1093,17 +1093,28 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = _make_col(xp, sp, self.dtype)
         return m.multiply(x).toarray()
 
+    def _make_scalar(self, dtype):
+        if numpy.issubdtype(dtype, numpy.integer):
+            return dtype(2)
+        elif numpy.issubdtype(dtype, numpy.floating):
+            return dtype(2.5)
+        else:
+            return dtype(2.5 - 1.5j)
+
     # divide
+    @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_divide_scalar(self, xp, sp):
+    def test_divide_scalar(self, xp, sp, dtype):
         m = self.make(xp, sp, self.dtype)
-        y = m / 2
+        y = m / self._make_scalar(dtype)
         return y.toarray()
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_divide_scalarlike(self, xp, sp):
+    @testing.for_dtypes('ifdFD')
+    # type promotion rules are different for ()-shaped arrays
+    @testing.numpy_cupy_allclose(sp_name='sp', type_check=False)
+    def test_divide_scalarlike(self, xp, sp, dtype):
         m = self.make(xp, sp, self.dtype)
-        y = m / xp.array(2)
+        y = m / xp.array(self._make_scalar(dtype))
         return y.toarray()
 
 
@@ -1610,7 +1621,7 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubSpmv(unittest.TestCase):
 
     def setUp(self):

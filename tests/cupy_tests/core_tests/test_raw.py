@@ -1,4 +1,5 @@
 import contextlib
+import io
 import os
 import sys
 import tempfile
@@ -21,6 +22,16 @@ void test_sum(const float* x1, const float* x2, float* y, unsigned int N) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N)
         y[tid] = x1[tid] + x2[tid];
+}
+'''
+
+_test_compile_src = r'''
+extern "C" __global__
+void test_op(const float* x1, const float* x2, float* y, unsigned int N) {
+    int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    int j;  // To generate a warning to appear in the log stream
+    if (tid < N)
+        y[tid] = x1[tid] OP x2[tid];
 }
 '''
 
@@ -922,24 +933,65 @@ class TestRaw(unittest.TestCase):
             assert cupy.allclose(in_arr, out_arr)
 
 
+class TestCompile(unittest.TestCase):
+
+    def _helper(self, kernel, dtype):
+        N = 10
+        x1 = cupy.arange(N**2, dtype=dtype).reshape(N, N)
+        x2 = cupy.ones((N, N), dtype=dtype)
+        y = cupy.zeros((N, N), dtype=dtype)
+        kernel((N,), (N,), (x1, x2, y, N**2))
+        return x1, x2, y
+
+    def test_compile_kernel(self):
+        kern = cupy.RawKernel(
+            _test_compile_src, 'test_op',
+            options=('-DOP=+',),
+            backend='nvcc')
+        log = io.StringIO()
+        with use_temporary_cache_dir():
+            kern.compile(log_stream=log)
+        assert 'warning' in log.getvalue()
+        x1, x2, y = self._helper(kern, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
+
+    def test_compile_module(self):
+        module = cupy.RawModule(
+            code=_test_compile_src,
+            backend='nvcc',
+            options=('-DOP=+',))
+        log = io.StringIO()
+        with use_temporary_cache_dir():
+            module.compile(log_stream=log)
+        assert 'warning' in log.getvalue()
+        kern = module.get_function('test_op')
+        x1, x2, y = self._helper(kern, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
+
+
 _test_grid_sync = r'''
 #include <cooperative_groups.h>
 
 extern "C" __global__
-void test_grid_sync(const float* x1, const float* x2, float* y) {
+void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
     namespace cg = cooperative_groups;
     cg::grid_group grid = cg::this_grid();
     int size = gridDim.x * blockDim.x;
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
-    y[tid] = x1[tid];
+    for (int i = tid; i < n; i += size) {
+        y[i] = x1[i];
+    }
     cg::sync(grid);
-    y[size - tid - 1] += x2[size - tid - 1];
+    for (int i = n - 1 - tid; i >= 0; i -= size) {
+        y[i] += x2[i];
+    }
 }
 '''
 
 
 @testing.parameterize(*testing.product({
-    'n': [10, 100, 256]
+    'n': [10, 100, 1000],
+    'block': [64, 256],
 }))
 @unittest.skipUnless(
     9000 <= cupy.cuda.runtime.runtimeGetVersion(),
@@ -958,7 +1010,9 @@ class TestRawGridSync(unittest.TestCase):
             x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
             x2 = cupy.ones((n, n), dtype='float32')
             y = cupy.zeros((n, n), dtype='float32')
-            kern_grid_sync((n,), (n,), (x1, x2, y, n ** 2))
+            block = self.block
+            grid = (n * n + block - 1) // block
+            kern_grid_sync((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)
 
     def test_grid_sync_rawmodule(self):
@@ -971,5 +1025,7 @@ class TestRawGridSync(unittest.TestCase):
             x2 = cupy.ones((n, n), dtype='float32')
             y = cupy.zeros((n, n), dtype='float32')
             kern = mod_grid_sync.get_function('test_grid_sync')
-            kern((n,), (n,), (x1, x2, y, n ** 2))
+            block = self.block
+            grid = (n * n + block - 1) // block
+            kern((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)

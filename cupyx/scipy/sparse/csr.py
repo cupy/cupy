@@ -8,18 +8,13 @@ except ImportError:
 
 import cupy
 from cupy.core import _accelerator
+from cupy.cuda import cub
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import _index
 from cupyx.scipy.sparse import util
-
-# TODO(leofang): always import cub when hipCUB is supported
-if not cupy.cuda.runtime.is_hip:
-    from cupy.cuda import cub
-else:
-    cub = None
 
 
 class csr_matrix(compressed._compressed_sparse_matrix):
@@ -185,16 +180,13 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     def __truediv__(self, other):
         """Point-wise division by scalar"""
         if util.isscalarlike(other):
-            if self.dtype == numpy.complex64:
+            dtype = self.dtype
+            if dtype == numpy.float32:
                 # Note: This is a work-around to make the output dtype the same
                 # as SciPy. It might be SciPy version dependent.
-                dtype = numpy.float32
-            else:
-                if cupy.isscalar(other):
-                    dtype = numpy.float64
-                else:
-                    dtype = numpy.promote_types(numpy.float64, other.dtype)
-            d = cupy.array(1. / other, dtype=dtype)
+                dtype = numpy.float64
+            dtype = cupy.result_type(dtype, other)
+            d = cupy.reciprocal(other, dtype=dtype)
             return multiply_by_scalar(self, d)
         # TODO(anaruse): Implement divide by dense or sparse matrix
         raise NotImplementedError
@@ -344,6 +336,11 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             return self.copy()
         else:
             return self
+
+    def _tocsx(self):
+        """Inverts the format.
+        """
+        return self.tocsc()
 
     def todia(self, copy=False):
         # TODO(unno): Implement todia

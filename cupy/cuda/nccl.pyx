@@ -103,6 +103,9 @@ cdef dict ERROR2 = {
 }
 
 
+available = True
+
+
 class NcclError(RuntimeError):
 
     def __init__(self, int status):

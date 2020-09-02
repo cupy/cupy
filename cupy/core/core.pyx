@@ -1979,21 +1979,17 @@ if (in1 == 0) {
 }'''
 
 cdef _round_complex = '''
-double x, inv_x;
 if (in1 == 0) {
-    x = inv_x = 1;
-    out0 = in0_type(rint(in0.real() * x),
-                    rint(in0.imag() * x));
+    out0 = in0_type(rint(in0.real()), rint(in0.imag()));
 } else {
-    x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
-    inv_x = 1.0 / x;
+    double x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
     if (in1 < 0) {
-        double y = x;
-        x = inv_x;
-        inv_x = y;
+        out0 = in0_type(rint(in0.real() / x) * x,
+                        rint(in0.imag() / x) * x);
+    } else {
+        out0 = in0_type(rint(in0.real() * x) / x,
+                        rint(in0.imag() * x) / x);
     }
-    out0 = in0_type(rint(in0.real() * x) * inv_x,
-                    rint(in0.imag() * x) * inv_x);
 }'''
 
 
