@@ -7,7 +7,6 @@ import subprocess
 import sys
 import tempfile
 
-import cupy
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy_backends.cuda.api import runtime
