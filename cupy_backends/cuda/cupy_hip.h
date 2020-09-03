@@ -120,8 +120,8 @@ CUresult cuLaunchCooperativeKernel(...) {
 
 
 // Function attribute
-CUresult cuFuncGetAttribute(...) {
-    return hipErrorUnknown;
+CUresult cuFuncGetAttribute(int* pi, CUfunction_attribute attrib, CUfunction hfunc) {
+    return hipFuncGetAttribute(pi, attrib, hfunc);
 }
 
 CUresult cuFuncSetAttribute(...) {
@@ -532,6 +532,8 @@ cublasStatus_t cublasDestroy(cublasHandle_t handle) {
 }
 
 cublasStatus_t cublasGetVersion(...) {
+    // TODO(leofang): perhaps call rocblas_get_version_string?
+    // or use ROCBLAS_VERSION_MAJOR/HIPBLAS_VERSION_MAJOR etc?
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 

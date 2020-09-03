@@ -1842,7 +1842,7 @@ cpdef str _get_header_source():
     if _header_source is None:
         source = []
         base_path = _get_header_dir_path()
-        for file_path in _cupy_header_list + _cupy_extra_header_list:
+        for file_path in _cupy_extra_header_list + _cupy_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
                 source.append(header_file.read())
