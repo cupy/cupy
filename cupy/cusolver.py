@@ -17,6 +17,10 @@ _available_cuda_version = {
     'gesv': (10020, None),
 }
 
+_available_compute_capability = {
+    'gesv': 70,
+}
+
 
 @util.memoize()
 def check_availability(name):
@@ -29,6 +33,10 @@ def check_availability(name):
         return False
     if version_removed is not None and cuda_version >= version_removed:
         return False
+    if name in _available_compute_capability:
+        compute_capability = int(device.get_compute_capability())
+        if compute_capability < _available_compute_capability[name]:
+            return False
     return True
 
 
