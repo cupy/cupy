@@ -222,21 +222,21 @@ class TestIndexing(unittest.TestCase):
         self._run(slice(None), [1, 5, 4, 5, 2, 4, 1])
 
         for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
-            self._run(slice(None), idx)
+            self._run(slice(None), idx, compare_dense=True)
 
     def test_major_slice_minor_fancy(self):
 
-        self._run(slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1])
+        self._run(slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1], compare_dense=True)
 
         for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
-            self._run(slice(1, 10, 2), idx)
+            self._run(slice(1, 10, 2), idx, compare_dense=True)
 
     def test_major_scalar_minor_fancy(self):
 
-        self._run(5, [1, 5, 4, 1, 2])
+        self._run(5, [1, 5, 4, 1, 2], compare_dense=True)
 
         for idx in self._get_index_combos([1, 5, 4, 1, 2]):
-            self._run(5, idx)
+            self._run(5, idx, compare_dense=True)
 
     # Inner Indexing
 

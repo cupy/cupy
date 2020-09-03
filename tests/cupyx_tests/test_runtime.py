@@ -40,7 +40,7 @@ class TestRuntime(unittest.TestCase):
             assert 'CUDARuntimeError' in str(runtime)
 
         with mock.patch(
-                'cupy.cuda.cudnn.getVersion',
+                'cupy_backends.cuda.libs.cudnn.getVersion',
                 side_effect=_get_error_func(cudnn.CuDNNError, 0)):
             runtime = cupyx.get_runtime_info()
             assert 'CuDNNError' in str(runtime)
