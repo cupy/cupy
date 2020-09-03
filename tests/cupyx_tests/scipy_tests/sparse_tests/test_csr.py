@@ -1691,6 +1691,9 @@ class TestCsrMatrixMaximumMinimum(unittest.TestCase):
         shape = self.shape[0], 1
         return sp.csr_matrix(self._make_matrix(shape, dtype, xp))
 
+    def _make_sp_matrix_shape(self, shape, dtype, xp, sp):
+        return sp.csr_matrix(self._make_matrix(shape, dtype, xp))
+
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_sparse(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
@@ -1749,3 +1752,12 @@ class TestCsrMatrixMaximumMinimum(unittest.TestCase):
     def test_scalar_zero(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(0)
+
+    def test_ng_shape(self):
+        xp, sp = cupy, sparse
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        for i, j in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            shape = self.shape[0] + i, self.shape[1] + j
+            b = self._make_sp_matrix_shape(shape, self.b_dtype, xp, sp)
+            with self.assertRaises(ValueError):
+                getattr(a, self.opt)(b)
