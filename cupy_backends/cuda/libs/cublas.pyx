@@ -1049,8 +1049,8 @@ cpdef int dgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
     return info
 
 cpdef int cgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
-                    size_t Aarray, int lda, size_t devIpiv,
-                    size_t Barray, int ldb, int batchSize):
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, int batchSize):
     cdef int info
     _setStream(handle)
     with nogil:
@@ -1062,8 +1062,8 @@ cpdef int cgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
     return info
 
 cpdef int zgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
-                    size_t Aarray, int lda, size_t devIpiv,
-                    size_t Barray, int ldb, int batchSize):
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, int batchSize):
     cdef int info
     _setStream(handle)
     with nogil:
