@@ -14,8 +14,9 @@ _environment._preload_libraries()  # NOQA
 
 try:
     with _warnings.catch_warnings():
-        _warnings.filterwarnings('ignore', category=ImportWarning,
-                                message='can\'t resolve package from __spec__')
+        _warnings.filterwarnings(
+            'ignore', category=ImportWarning,
+            message='can\'t resolve package from __spec__')
         from cupy import core  # NOQA
 except ImportError as e:
     # core is a c-extension module.
@@ -819,7 +820,7 @@ def get_array_module(*args):
                             cupy.core.fusion._FusionVarArray,
                             cupy.core.new_fusion._ArrayProxy)):
             return _cupy
-    return numpy
+    return _numpy
 
 
 fuse = cupy.core.fusion.fuse
