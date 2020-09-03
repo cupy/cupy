@@ -89,10 +89,8 @@ class TestPerfCaseResult(unittest.TestCase):
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times, (0,))
         expected = (
             'test_name_xxx       :'
-            '    CPU:    5.620 us   +/- 0.943 '
-            '(min:    4.200 / max:    7.100) us '
-            '    GPU-0:    6.600 us   +/- 2.344 '
-            '(min:    3.800 / max:    9.600) us'
+            '    CPU:    5.620 us   +/- 0.943 (max:    7.100) us '
+            '    GPU-0:    6.600 us   +/- 2.344 (max:    9.600) us'
         )
         assert str(perf) == expected
 
@@ -104,8 +102,7 @@ class TestPerfCaseResult(unittest.TestCase):
         perf = cupyx.time._PerfCaseResult('test_name_xxx', times, (0,))
         expected = (
             'test_name_xxx       :'
-            '    CPU:    5.620 us   +/- 0.943 '
-            '(min:    4.200 / max:    7.100) us'
+            '    CPU:    5.620 us   +/- 0.943 (max:    7.100) us'
         )
         assert perf.to_str() == expected
         # Checks if the result does not change.
