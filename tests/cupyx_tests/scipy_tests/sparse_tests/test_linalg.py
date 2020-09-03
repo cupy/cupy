@@ -14,7 +14,7 @@ import cupy
 from cupy import testing
 from cupy.testing import condition
 from cupyx.scipy import sparse
-import cupyx.scipy.sparse.linalg
+import cupyx.scipy.sparse.linalg  # NOQA
 
 
 @testing.parameterize(*testing.product({

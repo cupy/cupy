@@ -188,7 +188,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             dtype = cupy.result_type(dtype, other)
             d = cupy.reciprocal(other, dtype=dtype)
             return multiply_by_scalar(self, d)
-        elif util.isdense(other):
+        elif _util.isdense(other):
             other = cupy.atleast_2d(other)
             check_shape_for_pointwise_op(self.shape, other.shape)
             return self.todense() / other
