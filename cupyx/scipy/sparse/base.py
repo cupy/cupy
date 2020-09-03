@@ -1,7 +1,7 @@
 import numpy
 
 import cupy
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 from cupyx.scipy.sparse import sputils
 
 
@@ -154,7 +154,7 @@ class spmatrix(object):
         if m != n:
             raise TypeError('matrix is not square')
 
-        if util.isintlike(other):
+        if _util.isintlike(other):
             other = int(other)
             if other < 0:
                 raise ValueError('exponent must be >= 0')
@@ -171,7 +171,7 @@ class spmatrix(object):
                     return self * tmp * tmp
                 else:
                     return tmp * tmp
-        elif util.isscalarlike(other):
+        elif _util.isscalarlike(other):
             raise ValueError('exponent must be an integer')
         else:
             return NotImplemented
@@ -517,5 +517,5 @@ def issparse(x):
     return isinstance(x, spmatrix)
 
 
-isdense = util.isdense
+isdense = _util.isdense
 isspmatrix = issparse
