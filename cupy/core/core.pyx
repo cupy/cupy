@@ -1319,9 +1319,10 @@ cdef class ndarray:
                 type(slices) is slice
                 and slices == slice(None, None, None)
                 and isinstance(value, numpy.ndarray)
-                and (self.flags.f_contiguous or self.flags.c_contiguous)
         ):
-            if self.dtype == value.dtype and self.shape == value.shape:
+            if (self.dtype == value.dtype
+                    and self.shape == value.shape
+                    and (self.flags.f_contiguous or self.flags.c_contiguous)):
                 if self.strides == value.strides:
                     ptr = ctypes.c_void_p(value.__array_interface__['data'][0])
                 else:
