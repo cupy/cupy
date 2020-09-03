@@ -304,11 +304,30 @@ cdef dict STATUS = {
 }
 
 
+cdef dict HIP_STATUS = {
+    0: 'HIPBLAS_STATUS_SUCCESS',
+    1: 'HIPBLAS_STATUS_NOT_INITIALIZED',
+    2: 'HIPBLAS_STATUS_ALLOC_FAILED',
+    3: 'HIPBLAS_STATUS_INVALID_VALUE',
+    4: 'HIPBLAS_STATUS_MAPPING_ERROR',
+    5: 'HIPBLAS_STATUS_EXECUTION_FAILED',
+    6: 'HIPBLAS_STATUS_INTERNAL_ERROR',
+    7: 'HIPBLAS_STATUS_NOT_SUPPORTED',
+    8: 'HIPBLAS_STATUS_ARCH_MISMATCH',
+    9: 'HIPBLAS_STATUS_HANDLE_IS_NULLPTR',
+}
+
+
 class CUBLASError(RuntimeError):
 
     def __init__(self, status):
         self.status = status
-        super(CUBLASError, self).__init__(STATUS[status])
+        cdef str err
+        if runtime._is_hip_environment:
+            err = HIP_STATUS[status]
+        else:
+            err = STATUS[status]
+        super(CUBLASError, self).__init__(err)
 
     def __reduce__(self):
         return (type(self), (self.status,))
