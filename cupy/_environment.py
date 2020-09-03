@@ -135,14 +135,43 @@ def _get_cub_path():
 
 
 def _setup_win32_dll_directory():
-    # Setup DLL directory to load CUDA Toolkit libs on Windows & Python 3.8+.
-    if sys.platform.startswith('win32') and (3, 8) <= sys.version_info:
+    # Setup DLL directory to load CUDA Toolkit libs and shared libraries
+    # added during the build process.
+    if sys.platform.startswith('win32'):
+        # Path to the CUDA Toolkit binaries
         cuda_path = get_cuda_path()
-        if cuda_path is None:
-            raise RuntimeError('CUDA path could not be detected.')
-        cuda_bin_path = os.path.join(cuda_path, 'bin')
-        _log('Adding DLL search path: {}'.format(cuda_bin_path))
-        os.add_dll_directory(cuda_bin_path)
+        if cuda_path is not None:
+            cuda_bin_path = os.path.join(cuda_path, 'bin')
+        else:
+            cuda_bin_path = None
+            warnings.warn(
+                'CUDA path could not be detected.'
+                ' Set CUDA_PATH environment variable if CuPy fails to load.')
+        _log('CUDA_PATH: {}'.format(cuda_path))
+
+        # Path to shared libraries in wheel
+        wheel_libdir = os.path.join(
+            get_cupy_install_path(), 'cupy', '.data', 'lib')
+        if os.path.isdir(wheel_libdir):
+            _log('Wheel shared libraries: {}'.format(wheel_libdir))
+        else:
+            _log('Not wheel distribution ({} not found)'.format(
+                wheel_libdir))
+            wheel_libdir = None
+
+        if (3, 8) <= sys.version_info:
+            if cuda_bin_path is not None:
+                _log('Adding DLL search path: {}'.format(cuda_bin_path))
+                os.add_dll_directory(cuda_bin_path)
+            if wheel_libdir is not None:
+                _log('Adding DLL search path: {}'.format(wheel_libdir))
+                os.add_dll_directory(wheel_libdir)
+        else:
+            # Users are responsible for adding `%CUDA_PATH%/bin` to PATH.
+            if wheel_libdir is not None:
+                _log('Adding to PATH: {}'.format(wheel_libdir))
+                path = os.environ.get('PATH', '')
+                os.environ['PATH'] = wheel_libdir + os.pathsep + path
 
 
 def get_cupy_install_path():
@@ -172,7 +201,7 @@ def get_preload_config():
     global _preload_config
     if _preload_config is None:
         config_path = os.path.join(
-            get_cupy_install_path(), 'cupy', '_wheel.json')
+            get_cupy_install_path(), 'cupy', '.data', '_wheel.json')
         if not os.path.exists(config_path):
             return None
         _preload_config = json.load(open(config_path))
@@ -182,8 +211,8 @@ def get_preload_config():
 def _preload_libraries():
     """Preload dependent shared libraries.
 
-    The preload configuration file (cupy/_wheel.json) will be added during
-    the wheel build process.
+    The preload configuration file (cupy/.data/_wheel.json) will be added
+    during the wheel build process.
     """
 
     config = get_preload_config()

@@ -505,6 +505,182 @@ class TestPolyArithmeticDiffTypes(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
+    'shape1': [(3,)],
+    'shape2': [(3,), (3, 2)],
+    'deg': [0, 3, 3.0, 3.5, 10],
+    'rcond': [None, 0.5, 1e-15],
+    'weighted': [True, False]
+}))
+class TestPolyfitParametersCombinations(unittest.TestCase):
+
+    def _full_fit(self, xp, dtype):
+        x = testing.shaped_arange(self.shape1, xp, dtype)
+        y = testing.shaped_arange(self.shape2, xp, dtype)
+        w = x if self.weighted else None
+        return xp.polyfit(x, y, self.deg, self.rcond, True, w)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(
+        atol=1e-9, accept_error=TypeError, contiguous_check=False)
+    def test_polyfit_default(self, xp, dtype):
+        x = testing.shaped_arange(self.shape1, xp, dtype)
+        y = testing.shaped_arange(self.shape2, xp, dtype)
+        w = x if self.weighted else None
+        return xp.polyfit(x, y, self.deg, self.rcond, w=w)
+
+    @testing.for_all_dtypes(no_float16=True)
+    def test_polyfit_full(self, dtype):
+        cp_c, cp_resids, cp_rank, cp_s, cp_rcond = self._full_fit(cupy, dtype)
+        np_c, np_resids, np_rank, np_s, np_rcond = self._full_fit(numpy, dtype)
+
+        testing.assert_allclose(cp_c, np_c, atol=1e-9)
+        testing.assert_allclose(cp_resids, np_resids, atol=1e-9)
+        testing.assert_allclose(cp_s, np_s)
+        assert cp_rank == np_rank
+        if self.rcond is not None:
+            assert cp_rcond == np_rcond
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'shape': [(3,), (3, 2)],
+    'deg': [0, 1],
+    'rcond': [None, 1e-15],
+    'weighted': [True, False],
+    'cov': ['unscaled', True]
+}))
+class TestPolyfitCovMode(unittest.TestCase):
+
+    def _cov_fit(self, xp, dtype):
+        x = xp.array([0.008, 0.01, 0.015], dtype)
+        y = testing.shaped_arange(self.shape, xp, dtype)
+        w = x if self.weighted else None
+        return xp.polyfit(x, y, self.deg, self.rcond, w=w, cov=self.cov)
+
+    @testing.for_float_dtypes(no_float16=True)
+    def test_polyfit_cov(self, dtype):
+        cp_c, cp_cov = self._cov_fit(cupy, dtype)
+        np_c, np_cov = self._cov_fit(numpy, dtype)
+        testing.assert_allclose(cp_c, np_c, rtol=1e-5)
+        testing.assert_allclose(cp_cov, np_cov, rtol=1e-3)
+
+
+@testing.gpu
+class TestPolyfit(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True)
+    def test_polyfit_poor_fit(self, dtype):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((5,), xp, dtype)
+            y = testing.shaped_arange((5,), xp, dtype)
+            with pytest.warns(numpy.RankWarning):
+                xp.polyfit(x, y, 6)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'shape': [(), (0,), (5, 3, 3)],
+}))
+class TestPolyfitInvalidShapes(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True)
+    def test_polyfit_x_invalid_shape(self, dtype):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange(self.shape, xp, dtype)
+            y = testing.shaped_arange((5,), xp, dtype)
+            with pytest.raises(TypeError):
+                xp.polyfit(x, y, 5)
+
+    @testing.for_all_dtypes(no_float16=True)
+    def test_polyfit_y_invalid_shape(self, dtype):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((5,), xp, dtype)
+            y = testing.shaped_arange(self.shape, xp, dtype)
+            with pytest.raises(TypeError):
+                xp.polyfit(x, y, 5)
+
+    @testing.for_all_dtypes(no_float16=True)
+    def test_polyfit_w_invalid_shape(self, dtype):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((5,), xp, dtype)
+            w = testing.shaped_arange(self.shape, xp, dtype)
+            with pytest.raises(TypeError):
+                xp.polyfit(x, x, 5, w=w)
+
+
+@testing.gpu
+class TestPolyfitInvalid(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_float16=True)
+    def test_polyfit_neg_degree(self, dtype):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((5,), xp, dtype)
+            y = testing.shaped_arange((5,), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.polyfit(x, y, -4)
+
+    @testing.for_all_dtypes(no_float16=True)
+    def test_polyfit_complex_degree(self, dtype):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((5,), xp, dtype)
+            y = testing.shaped_arange((5,), xp, dtype)
+            with pytest.raises(TypeError):
+                xp.polyfit(x, y, 5j)
+
+    @testing.for_all_dtypes(no_float16=True)
+    def test_polyfit_xy_mismatched_length(self, dtype):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((10,), xp, dtype)
+            y = testing.shaped_arange((5,), xp, dtype)
+            with pytest.raises(TypeError):
+                xp.polyfit(x, y, 5)
+
+    @testing.for_all_dtypes(no_float16=True)
+    def test_polyfit_yw_mismatched_length(self, dtype):
+        for xp in (numpy, cupy):
+            y = testing.shaped_arange((10,), xp, dtype)
+            w = testing.shaped_arange((5,), xp, dtype)
+            with pytest.raises(TypeError):
+                xp.polyfit(y, y, 5, w=w)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True)
+    def test_polyfit_cov_invalid(self, dtype):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((5,), xp, dtype)
+            y = testing.shaped_arange((5,), xp, dtype)
+            with pytest.raises(ValueError):
+                xp.polyfit(x, y, 5, cov=True)
+
+    def test_polyfit_float16(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange((5,), xp, numpy.float16)
+            with pytest.raises(TypeError):
+                xp.polyfit(x, x, 4)
+
+
+@testing.gpu
+class TestPolyfitDiffTypes(unittest.TestCase):
+
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2'], no_bool=True, full=True)
+    @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, accept_error=TypeError)
+    def test_polyfit_unweighted_diff_types(self, xp, dtype1, dtype2):
+        x = testing.shaped_arange((5,), xp, dtype1)
+        y = testing.shaped_arange((5,), xp, dtype2)
+        return xp.polyfit(x, y, 5)
+
+    @testing.for_all_dtypes_combination(
+        names=['dtype1', 'dtype2', 'dtype3'], no_bool=True, full=True)
+    @testing.numpy_cupy_allclose(atol=1e-0, accept_error=TypeError)
+    def test_polyfit_weighted_diff_types(self, xp, dtype1, dtype2, dtype3):
+        x = testing.shaped_arange((5,), xp, dtype1)
+        y = testing.shaped_arange((5,), xp, dtype2)
+        w = testing.shaped_arange((5,), xp, dtype3)
+        return xp.polyfit(x, y, 5, w=w)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
     'type_l': ['poly1d', 'ndarray'],
     'type_r': ['ndarray', 'numpy_scalar', 'python_scalar'],
 }))
@@ -678,6 +854,7 @@ class TestRootsSpecialCases(unittest.TestCase):
         return xp.roots(xp.poly1d(a))
 
 
+@testing.gpu
 class TestRoots(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
