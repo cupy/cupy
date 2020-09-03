@@ -764,12 +764,15 @@ def binopt_csr(a, b, op_name):
     a_valid = cupy.zeros(a_nnz, dtype=numpy.int8)
     b_valid = cupy.zeros(b_nnz, dtype=numpy.int8)
     c_indptr = cupy.zeros(m + 1, dtype=a.indptr.dtype)
+    in_dtype = numpy.promote_types(a.dtype, b.dtype)
+    a_data = a.data.astype(in_dtype, copy=False)
+    b_data = b.data.astype(in_dtype, copy=False)
     if op_name == '_maximum_':
         funcs = _BINOPT_MAX_ + _CHECK_MAX_MIN_
-        out_dtype = a.data.dtype
+        out_dtype = in_dtype
     elif op_name == '_minimum_':
         funcs = _BINOPT_MIN_ + _CHECK_MAX_MIN_
-        out_dtype = a.data.dtype
+        out_dtype = in_dtype
     else:
         raise ValueError('invalid op_name: {}'.format(op_name))
     a_tmp_data = cupy.empty(a_nnz, dtype=out_dtype)
@@ -779,8 +782,8 @@ def binopt_csr(a, b, op_name):
     _size = a_nnz + b_nnz
     cupy_binopt_csr_step1(op_name, preamble=funcs)(
         m, n,
-        a.indptr, a.indices, a.data, a_m, a_n, a.nnz, a_nnz,
-        b.indptr, b.indices, b.data, b_m, b_n, b.nnz, b_nnz,
+        a.indptr, a.indices, a_data, a_m, a_n, a.nnz, a_nnz,
+        b.indptr, b.indices, b_data, b_m, b_n, b.nnz, b_nnz,
         a_info, a_valid, a_tmp_indices, a_tmp_data,
         b_info, b_valid, b_tmp_indices, b_tmp_data,
         c_indptr, size=_size)
