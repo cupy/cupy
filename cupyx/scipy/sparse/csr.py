@@ -773,12 +773,9 @@ __device__ inline bool check(O out) {
 
 
 def binopt_csr(a, b, op_name):
+    check_shape_for_pointwise_op(a.shape, b.shape)
     a_m, a_n = a.shape
     b_m, b_n = b.shape
-    if not (a_m == b_m or a_m == 1 or b_m == 1):
-        raise ValueError('inconsistent shape')
-    if not (a_n == b_n or a_n == 1 or b_n == 1):
-        raise ValueError('inconsistent shape')
     m, n = max(a_m, b_m), max(a_n, b_n)
     a_nnz = a.nnz * (m // a_m) * (n // a_n)
     b_nnz = b.nnz * (m // b_m) * (n // b_n)
