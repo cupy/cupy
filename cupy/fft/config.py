@@ -1,4 +1,4 @@
-from cupy import util
+from cupy import _util
 
 
 enable_nd_planning = True
@@ -23,7 +23,7 @@ def set_cufft_gpus(gpus):
     .. _Multiple GPU cuFFT Transforms:
         https://docs.nvidia.com/cuda/cufft/index.html#multiple-GPU-cufft-transforms
     '''
-    util.experimental('cupy.fft.config.set_cufft_gpus')
+    _util.experimental('cupy.fft.config.set_cufft_gpus')
     global _devices
 
     if isinstance(gpus, int):

@@ -40,7 +40,7 @@ from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
 from cupy.core._ufuncs import elementwise_copy
 from cupy.cuda import compiler
-from cupy import util
+from cupy import _util
 
 
 cpdef function.Function _create_reduction_function(
@@ -597,7 +597,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self._input_expr, self._output_expr, self._preamble, ())
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
@@ -760,7 +760,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self.preamble, self.options)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _ReductionKernel_get_cached_function(
         nin, nout, params, arginfos, _kernel._TypeMap type_map,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,

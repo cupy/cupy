@@ -350,7 +350,7 @@ class TestCubHistogram(unittest.TestCase):
             return xp.histogram(x)
 
         # xp is cupy, first ensure we really use CUB
-        cub_func = 'cupy.statistics.histogram.cub.device_histogram'
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
         with testing.AssertFunctionIsCalled(cub_func):
             xp.histogram(x)
         # ...then perform the actual computation

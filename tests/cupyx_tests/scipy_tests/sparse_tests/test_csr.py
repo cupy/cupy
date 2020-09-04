@@ -838,7 +838,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return x * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocsc()
@@ -1148,7 +1148,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestCsrMatrixPowScipyComparison(unittest.TestCase):
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_pow_0(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
         return m ** 0

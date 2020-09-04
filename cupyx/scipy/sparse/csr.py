@@ -14,7 +14,7 @@ from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import _index
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 
 
 class csr_matrix(compressed._compressed_sparse_matrix):
@@ -179,7 +179,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     def __truediv__(self, other):
         """Point-wise division by another matrix, vector or scalar"""
-        if util.isscalarlike(other):
+        if _util.isscalarlike(other):
             dtype = self.dtype
             if dtype == numpy.float32:
                 # Note: This is a work-around to make the output dtype the same
@@ -188,7 +188,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             dtype = cupy.result_type(dtype, other)
             d = cupy.reciprocal(other, dtype=dtype)
             return multiply_by_scalar(self, d)
-        elif util.isdense(other):
+        elif _util.isdense(other):
             other = cupy.atleast_2d(other)
             check_shape_for_pointwise_op(self.shape, other.shape)
             return self.todense() / other
@@ -267,7 +267,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """Point-wise multiplication by another matrix, vector or scalar"""
         if cupy.isscalar(other):
             return multiply_by_scalar(self, other)
-        elif util.isdense(other):
+        elif _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
             return multiply_by_dense(self, other)
@@ -568,7 +568,7 @@ def multiply_by_dense(sp, dn):
     return csr_matrix((data, indices, indptr), shape=(m, n))
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_dense():
     return cupy.ElementwiseKernel(
         '''
@@ -664,7 +664,7 @@ def multiply_by_csr(a, b):
     return csr_matrix((d_data, d_indices, d_indptr), shape=(m, n))
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step1():
     return cupy.ElementwiseKernel(
         '''
@@ -736,7 +736,7 @@ def cupy_multiply_by_csr_step1():
     )
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step2():
     return cupy.ElementwiseKernel(
         'T C_DATA, I C_INDICES, raw I FLAGS',
