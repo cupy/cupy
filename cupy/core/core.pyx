@@ -1322,8 +1322,8 @@ cdef class ndarray:
         ):
             if (self.dtype == value.dtype
                     and self.shape == value.shape
-                    and (self.flags.f_contiguous or self.flags.c_contiguous)):
-                order = 'F' if self.flags.f_contiguous else 'C'
+                    and (self._f_contiguous or self._c_contiguous)):
+                order = 'F' if self._f_contiguous else 'C'
                 tmp = value.ravel(order)
                 ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
                 stream_ptr = stream_module.get_current_stream_ptr()
