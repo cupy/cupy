@@ -13,6 +13,7 @@ _available_cuda_version = {
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
     'syevj': (9000, None),
+    'gesv': (None, None),
 }
 
 
@@ -464,3 +465,67 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     v = v.astype(ret_v_dtype, copy=False)
     v = v.swapaxes(-2, -1).reshape(*batch_shape, m, m)
     return w, v
+
+
+def gesv(a, b):
+    """Solve a linear matrix equation using cusolverDn<t>getr[fs]().
+
+    Computes the solution to a system of linear equation ``ax = b``.
+
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(M, M)``.
+        b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
+
+    Returns:
+        cupy.ndarray:
+            The matrix with dimension ``(M)`` or ``(M, K)``.
+    """
+    if not check_availability('gesv'):
+        raise RuntimeError('gesv is not available.')
+
+    if a.ndim != 2:
+        raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))
+    if b.ndim not in (1, 2):
+        raise ValueError('b.ndim must be 1 or 2 (actual:{})'.format(b.ndim))
+    if a.shape[0] != a.shape[1]:
+        raise ValueError('a must be a square matrix.')
+    if a.shape[0] != b.shape[0]:
+        raise ValueError('shape mismatch (a:{}, b:{}).'.
+                         format(a.shape, b.shape))
+
+    dtype = numpy.promote_types(a.dtype.char, 'f')
+    if dtype == 'f':
+        t = 's'
+    elif dtype == 'd':
+        t = 'd'
+    elif dtype == 'F':
+        t = 'c'
+    elif dtype == 'D':
+        t = 'z'
+    else:
+        raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+    helper = getattr(cusolver, t + 'getrf_bufferSize')
+    getrf = getattr(cusolver, t + 'getrf')
+    getrs = getattr(cusolver, t + 'getrs')
+
+    n = b.shape[0]
+    nrhs = b.shape[1] if b.ndim == 2 else 1
+    a_data_ptr = a.data.ptr
+    b_data_ptr = b.data.ptr
+    a = cupy.asfortranarray(a, dtype=dtype)
+    b = cupy.asfortranarray(b, dtype=dtype)
+    if a.data.ptr == a_data_ptr:
+        a = a.copy()
+    if b.data.ptr == b_data_ptr:
+        b = b.copy()
+
+    handle = device.get_cusolver_handle()
+    dipiv = cupy.empty(n, dtype=numpy.int32)
+    dinfo = cupy.empty(1, dtype=numpy.int32)
+    lwork = helper(handle, n, n, a.data.ptr, n)
+    dwork = cupy.empty(lwork, dtype=a.dtype)
+    getrf(handle, n, n, a.data.ptr, n, dwork.data.ptr, dipiv.data.ptr,
+          dinfo.data.ptr)
+    getrs(handle, cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
+          dipiv.data.ptr, b.data.ptr, n, dinfo.data.ptr)
+    return b
