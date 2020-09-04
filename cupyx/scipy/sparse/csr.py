@@ -225,7 +225,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         self.indptr = compress.indptr
 
     def _maximum_minimum(self, other, cupy_op, op_name, dense_check):
-        if util.isscalarlike(other):
+        if _util.isscalarlike(other):
             other = cupy.asarray(other, dtype=self.dtype)
             if dense_check(other):
                 dtype = self.dtype
@@ -245,7 +245,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 new_data = cupy_op(self.data, other)
                 return csr_matrix((new_data, self.indices, self.indptr),
                                   shape=self.shape, dtype=self.dtype)
-        elif util.isdense(other):
+        elif _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
             return cupy_op(self.todense(), other)
@@ -821,7 +821,7 @@ def binopt_csr(a, b, op_name):
     return csr_matrix((c_data, c_indices, c_indptr), shape=(m, n))
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_binopt_csr_step1(op_name, preamble=''):
     name = 'cupy_binopt_csr' + op_name + 'step1'
     return cupy.ElementwiseKernel(
@@ -986,7 +986,7 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
     )
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_binopt_csr_step2(op_name):
     name = 'cupy_binopt_csr' + op_name + 'step2'
     return cupy.ElementwiseKernel(
