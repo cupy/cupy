@@ -189,7 +189,7 @@ class TestSyevj(unittest.TestCase):
                      cupy.core.core.COMPUTE_TYPE_FP32],
 }))
 @attr.gpu
-class TestGesv(unittest.TestCase):
+class TestIrsGesv(unittest.TestCase):
     _tol = {'f': 1e-6, 'd': 1e-12}
 
     def _make_array(self, shape, alpha, beta):
@@ -204,8 +204,8 @@ class TestGesv(unittest.TestCase):
         return a
 
     def setUp(self):
-        if not cusolver.check_availability('gesv'):
-            pytest.skip('gesv is not available')
+        if not cusolver.check_availability('irs_gesv'):
+            pytest.skip('irs_gesv is not available')
 
         self.dtype = numpy.dtype(self.dtype)
         if self.dtype.char in 'fF':
@@ -236,7 +236,7 @@ class TestGesv(unittest.TestCase):
         if self.compute_type is not None:
             cupy.core.set_compute_type(self.dtype, self.old_compute_type)
 
-    def test_gesv(self):
-        x = cusolver.gesv(self.a, self.b)
+    def test_irs_gesv(self):
+        x = cusolver.irs_gesv(self.a, self.b)
         cupy.testing.assert_allclose(x, self.x_ref,
                                      rtol=self.tol, atol=self.tol)

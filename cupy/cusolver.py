@@ -6,7 +6,7 @@ from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.core import core
-from cupy import util
+from cupy import _util
 
 _available_cuda_version = {
     'gesvdj': (9000, None),
@@ -14,15 +14,15 @@ _available_cuda_version = {
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
     'syevj': (9000, None),
-    'gesv': (10020, None),
+    'irs_gesv': (10020, None),
 }
 
 _available_compute_capability = {
-    'gesv': 70,
+    'irs_gesv': 70,
 }
 
 
-@util.memoize()
+@_util.memoize()
 def check_availability(name):
     if name not in _available_cuda_version:
         msg = 'No available version information specified for {}'.format(name)
@@ -476,7 +476,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     return w, v
 
 
-def gesv(a, b):
+def irs_gesv(a, b):
     """Solve a linear matrix equation using cusolverDn<t1><t2>gesv().
 
     Computes the solution to a system of linear equation ``ax = b``.
@@ -490,8 +490,8 @@ def gesv(a, b):
             The matrix with dimension ``(M)`` or ``(M, K)``.
 
     """
-    if not check_availability('gesv'):
-        raise RuntimeError('gesv is not available.')
+    if not check_availability('irs_gesv'):
+        raise RuntimeError('irs_gesv is not available.')
 
     if a.ndim != 2:
         raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))

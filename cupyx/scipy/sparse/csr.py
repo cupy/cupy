@@ -14,7 +14,7 @@ from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import _index
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 
 
 class csr_matrix(compressed._compressed_sparse_matrix):
@@ -178,20 +178,34 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def __truediv__(self, other):
-        """Point-wise division by scalar"""
-        if util.isscalarlike(other):
-            if self.dtype == numpy.complex64:
+        """Point-wise division by another matrix, vector or scalar"""
+        if _util.isscalarlike(other):
+            dtype = self.dtype
+            if dtype == numpy.float32:
                 # Note: This is a work-around to make the output dtype the same
                 # as SciPy. It might be SciPy version dependent.
-                dtype = numpy.float32
-            else:
-                if cupy.isscalar(other):
-                    dtype = numpy.float64
-                else:
-                    dtype = numpy.promote_types(numpy.float64, other.dtype)
-            d = cupy.array(1. / other, dtype=dtype)
+                dtype = numpy.float64
+            dtype = cupy.result_type(dtype, other)
+            d = cupy.reciprocal(other, dtype=dtype)
             return multiply_by_scalar(self, d)
-        # TODO(anaruse): Implement divide by dense or sparse matrix
+        elif _util.isdense(other):
+            other = cupy.atleast_2d(other)
+            check_shape_for_pointwise_op(self.shape, other.shape)
+            return self.todense() / other
+        elif base.isspmatrix(other):
+            # Note: If broadcasting is needed, an exception is raised here for
+            # compatibility with SciPy, as SciPy does not support broadcasting
+            # in the "sparse / sparse" case.
+            check_shape_for_pointwise_op(self.shape, other.shape,
+                                         allow_broadcasting=False)
+            dtype = numpy.promote_types(self.dtype, other.dtype)
+            if dtype.char not in 'FD':
+                dtype = numpy.promote_types(numpy.float64, dtype)
+            # Note: The following implementation converts two sparse matrices
+            # into dense matrices and then performs a point-wise division,
+            # which can use lots of memory.
+            self_dense = self.todense().astype(dtype, copy=False)
+            return self_dense / other.todense()
         raise NotImplementedError
 
     def __rtruediv__(self, other):
@@ -222,7 +236,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         """Point-wise multiplication by another matrix, vector or scalar"""
         if cupy.isscalar(other):
             return multiply_by_scalar(self, other)
-        elif util.isdense(other):
+        elif _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
             return multiply_by_dense(self, other)
@@ -339,6 +353,11 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             return self.copy()
         else:
             return self
+
+    def _tocsx(self):
+        """Inverts the format.
+        """
+        return self.tocsc()
 
     def todia(self, copy=False):
         # TODO(unno): Implement todia
@@ -472,6 +491,19 @@ def isspmatrix_csr(x):
     return isinstance(x, csr_matrix)
 
 
+def check_shape_for_pointwise_op(a_shape, b_shape, allow_broadcasting=True):
+    if allow_broadcasting:
+        a_m, a_n = a_shape
+        b_m, b_n = b_shape
+        if not (a_m == b_m or a_m == 1 or b_m == 1):
+            raise ValueError('inconsistent shape')
+        if not (a_n == b_n or a_n == 1 or b_n == 1):
+            raise ValueError('inconsistent shape')
+    else:
+        if a_shape != b_shape:
+            raise ValueError('inconsistent shape')
+
+
 def multiply_by_scalar(sp, a):
     data = sp.data * a
     indices = sp.indices.copy()
@@ -480,12 +512,9 @@ def multiply_by_scalar(sp, a):
 
 
 def multiply_by_dense(sp, dn):
+    check_shape_for_pointwise_op(sp.shape, dn.shape)
     sp_m, sp_n = sp.shape
     dn_m, dn_n = dn.shape
-    if not (sp_m == dn_m or sp_m == 1 or dn_m == 1):
-        raise ValueError('inconsistent shape')
-    if not (sp_n == dn_n or sp_n == 1 or dn_n == 1):
-        raise ValueError('inconsistent shape')
     m, n = max(sp_m, dn_m), max(sp_n, dn_n)
     nnz = sp.nnz * (m // sp_m) * (n // sp_n)
     dtype = numpy.promote_types(sp.dtype, dn.dtype)
@@ -508,7 +537,7 @@ def multiply_by_dense(sp, dn):
     return csr_matrix((data, indices, indptr), shape=(m, n))
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_dense():
     return cupy.ElementwiseKernel(
         '''
@@ -562,12 +591,9 @@ def cupy_multiply_by_dense():
 
 
 def multiply_by_csr(a, b):
+    check_shape_for_pointwise_op(a.shape, b.shape)
     a_m, a_n = a.shape
     b_m, b_n = b.shape
-    if not (a_m == b_m or a_m == 1 or b_m == 1):
-        raise ValueError('inconsistent shape')
-    if not (a_n == b_n or a_n == 1 or b_n == 1):
-        raise ValueError('inconsistent shape')
     m, n = max(a_m, b_m), max(a_n, b_n)
     a_nnz = a.nnz * (m // a_m) * (n // a_n)
     b_nnz = b.nnz * (m // b_m) * (n // b_n)
@@ -607,7 +633,7 @@ def multiply_by_csr(a, b):
     return csr_matrix((d_data, d_indices, d_indptr), shape=(m, n))
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step1():
     return cupy.ElementwiseKernel(
         '''
@@ -679,7 +705,7 @@ def cupy_multiply_by_csr_step1():
     )
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step2():
     return cupy.ElementwiseKernel(
         'T C_DATA, I C_INDICES, raw I FLAGS',

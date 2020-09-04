@@ -149,10 +149,10 @@ def experimental(api_name):
 
     .. testcode::
 
-        from cupy import util
+        from cupy import _util
 
         def f(x):
-            util.experimental('cupy.foo.bar.f')
+            _util.experimental('cupy.foo.bar.f')
             # concrete implementation of f follows
 
         f(1)
@@ -170,7 +170,7 @@ The interface can change in the future. ...
 
         class C():
             def __init__(self):
-              util.experimental('cupy.foo.C')
+              _util.experimental('cupy.foo.C')
 
         C()
 
@@ -187,7 +187,7 @@ The interface can change in the future. ...
 
         class D():
             def __init__(self):
-                util.experimental('D.__init__')
+                _util.experimental('D.__init__')
 
         D()
 
@@ -205,7 +205,7 @@ The interface can change in the future. ...
 
         def g(x, experimental_arg=None):
             if experimental_arg is not None:
-                util.experimental('experimental_arg of cupy.foo.g')
+                _util.experimental('experimental_arg of cupy.foo.g')
 
     Args:
         api_name(str): The name of an API marked as experimental.

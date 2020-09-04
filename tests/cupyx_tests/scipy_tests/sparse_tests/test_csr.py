@@ -124,7 +124,7 @@ def _make_col(xp, sp, dtype):
 
 
 def _make_shape(xp, sp, dtype):
-    return sp.csr_matrix((3, 4))
+    return sp.csr_matrix((3, 4), dtype=dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -838,7 +838,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return x * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocsc()
@@ -1093,18 +1093,53 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         x = _make_col(xp, sp, self.dtype)
         return m.multiply(x).toarray()
 
+    def _make_scalar(self, dtype):
+        if numpy.issubdtype(dtype, numpy.integer):
+            return dtype(2)
+        elif numpy.issubdtype(dtype, numpy.floating):
+            return dtype(2.5)
+        else:
+            return dtype(2.5 - 1.5j)
+
     # divide
+    @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_divide_scalar(self, xp, sp):
+    def test_divide_scalar(self, xp, sp, dtype):
         m = self.make(xp, sp, self.dtype)
-        y = m / 2
+        y = m / self._make_scalar(dtype)
+        return y.toarray()
+
+    @testing.for_dtypes('ifdFD')
+    # type promotion rules are different for ()-shaped arrays
+    @testing.numpy_cupy_allclose(sp_name='sp', type_check=False)
+    def test_divide_scalarlike(self, xp, sp, dtype):
+        m = self.make(xp, sp, self.dtype)
+        y = m / xp.array(self._make_scalar(dtype))
         return y.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_divide_scalarlike(self, xp, sp):
+    def test_divide_dense_row(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
-        y = m / xp.array(2)
-        return y.toarray()
+        x = xp.arange(4, dtype=self.dtype)
+        return m / x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_dense_col(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(3, dtype=self.dtype).reshape(3, 1)
+        return m / x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_dense_matrix(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = xp.arange(12, dtype=self.dtype).reshape(3, 4)
+        return m / x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_divide_csr_matrix(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        x = _make4(xp, sp, self.dtype)
+        return m / x
 
 
 @testing.parameterize(*testing.product({
@@ -1113,7 +1148,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestCsrMatrixPowScipyComparison(unittest.TestCase):
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_pow_0(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
         return m ** 0

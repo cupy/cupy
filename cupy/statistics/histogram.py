@@ -125,7 +125,22 @@ def _get_bin_edges(a, bins, range):
     n_equal_bins = None
     bin_edges = None
 
-    if isinstance(bins, int):  # cupy.ndim(bins) == 0:
+    if isinstance(bins, str):
+        raise NotImplementedError(
+            "only integer and array bins are implemented")
+    elif isinstance(bins, cupy.ndarray) or numpy.ndim(bins) == 1:
+        # TODO(okuta): After #3060 is merged, `if cupy.ndim(bins) == 1:`.
+        if isinstance(bins, cupy.ndarray):
+            bin_edges = bins
+        else:
+            bin_edges = numpy.asarray(bins)
+
+        if (bin_edges[:-1] > bin_edges[1:]).any():  # synchronize! when CuPy
+            raise ValueError(
+                '`bins` must increase monotonically, when an array')
+        if isinstance(bin_edges, numpy.ndarray):
+            bin_edges = cupy.asarray(bin_edges)
+    elif numpy.ndim(bins) == 0:
         try:
             n_equal_bins = operator.index(bins)
         except TypeError:
@@ -135,17 +150,8 @@ def _get_bin_edges(a, bins, range):
             raise ValueError('`bins` must be positive, when an integer')
 
         first_edge, last_edge = _get_outer_edges(a, range)
-
-    elif isinstance(bins, cupy.ndarray):
-        if bins.ndim == 1:    # cupy.ndim(bins) == 0:
-            bin_edges = cupy.asarray(bins)
-            if (bin_edges[:-1] > bin_edges[1:]).any():  # synchronize!
-                raise ValueError(
-                    '`bins` must increase monotonically, when an array')
-
-    elif isinstance(bins, str):
-        raise NotImplementedError(
-            "only integer and array bins are implemented")
+    else:
+        raise ValueError('`bins` must be 1d, when an array')
 
     if n_equal_bins is not None:
         # numpy's gh-10322 means that type resolution rules are dependent on

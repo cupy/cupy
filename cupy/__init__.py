@@ -63,7 +63,6 @@ from cupy import random  # NOQA
 from cupy import sparse  # NOQA
 from cupy import statistics  # NOQA
 from cupy import testing  # NOQA  # NOQA
-from cupy import util  # NOQA
 from cupy import lib  # NOQA
 
 
@@ -551,6 +550,7 @@ from cupy.lib import poly1d  # NOQA
 from cupy.lib import polyadd  # NOQA
 from cupy.lib import polysub  # NOQA
 from cupy.lib import polymul  # NOQA
+from cupy.lib import polyfit  # NOQA
 from cupy.lib import polyval  # NOQA
 from cupy.lib import roots  # NOQA
 
@@ -749,8 +749,8 @@ def ndim(a):
 # CuPy specific functions
 # -----------------------------------------------------------------------------
 
-from cupy.util import clear_memo  # NOQA
-from cupy.util import memoize  # NOQA
+from cupy._util import clear_memo  # NOQA
+from cupy._util import memoize  # NOQA
 
 from cupy.core import ElementwiseKernel  # NOQA
 from cupy.core import RawKernel  # NOQA
