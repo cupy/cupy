@@ -224,19 +224,19 @@ cdef extern from '../cupy_cuda.h' nogil:
 
     int cublasSgetrsBatched(
         Handle handle, Operation trans, int n, int nrhs,
-        float **Aarray, int lda, int *devIpiv,
+        const float **Aarray, int lda, const int *devIpiv,
         float **Barray, int ldb, int *info, int batchSize)
     int cublasDgetrsBatched(
         Handle handle, Operation trans, int n, int nrhs,
-        double **Aarray, int lda, int *devIpiv,
+        const double **Aarray, int lda, const int *devIpiv,
         double **Barray, int ldb, int *info, int batchSize)
     int cublasCgetrsBatched(
         Handle handle, Operation trans, int n, int nrhs,
-        cuComplex **Aarray, int lda, int *devIpiv,
+        const cuComplex **Aarray, int lda, const int *devIpiv,
         cuComplex **Barray, int ldb, int *info, int batchSize)
     int cublasZgetrsBatched(
         Handle handle, Operation trans, int n, int nrhs,
-        cuDoubleComplex **Aarray, int lda, int *devIpiv,
+        const cuDoubleComplex **Aarray, int lda, const int *devIpiv,
         cuDoubleComplex **Barray, int ldb, int *info, int batchSize)
 
     int cublasSgetriBatched(
@@ -1030,7 +1030,7 @@ cpdef int sgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
     with nogil:
         status = cublasSgetrsBatched(
             <Handle>handle, <Operation>trans, n, nrhs,
-            <float**>Aarray, lda, <int*>devIpiv,
+            <const float**>Aarray, lda, <const int*>devIpiv,
             <float**>Barray, ldb, &info, batchSize)
     check_status(status)
     return info
@@ -1043,7 +1043,7 @@ cpdef int dgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
     with nogil:
         status = cublasDgetrsBatched(
             <Handle>handle, <Operation>trans, n, nrhs,
-            <double**>Aarray, lda, <int*>devIpiv,
+            <const double**>Aarray, lda, <const int*>devIpiv,
             <double**>Barray, ldb, &info, batchSize)
     check_status(status)
     return info
@@ -1056,7 +1056,7 @@ cpdef int cgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
     with nogil:
         status = cublasCgetrsBatched(
             <Handle>handle, <Operation>trans, n, nrhs,
-            <cuComplex**>Aarray, lda, <int*>devIpiv,
+            <const cuComplex**>Aarray, lda, <const int*>devIpiv,
             <cuComplex**>Barray, ldb, &info, batchSize)
     check_status(status)
     return info
@@ -1069,7 +1069,7 @@ cpdef int zgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
     with nogil:
         status = cublasZgetrsBatched(
             <Handle>handle, <Operation>trans, n, nrhs,
-            <cuDoubleComplex**>Aarray, lda, <int*>devIpiv,
+            <const cuDoubleComplex**>Aarray, lda, <const int*>devIpiv,
             <cuDoubleComplex**>Barray, ldb, &info, batchSize)
     check_status(status)
     return info
