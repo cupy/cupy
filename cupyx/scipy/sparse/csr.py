@@ -67,7 +67,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             (data, indices, indptr), shape=self._shape)
 
     def _convert_dense(self, x):
-        m = cusparse.dense2csr(x)
+        if x.dtype.char in 'fdFD':
+            m = cusparse.dense2csr(x)
+        else:
+            m = dense2csr(x)
         return m.data, m.indices, m.indptr
 
     def _swap(self, x, y):
@@ -86,6 +89,11 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         return csrgeam(self, other, alpha, beta)
 
     def __eq__(self, other):
+        if isspmatrix_csr(other):
+            res = binopt_csr(self, other, '_ne_')
+            all_true = cupy.ones(res.shape, dtype=numpy.bool)
+            out = all_true ^ res.toarray()
+            return csr_matrix(out)
         raise NotImplementedError
 
     def __ne__(self, other):
@@ -95,17 +103,31 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             return binopt_csr(self, other, '_ne_')
         raise NotImplementedError
 
-    def __lt__(self, other):
+    def _inequality(self, other, cupy_op, op_name):
+        if isspmatrix_csr(other):
+            self.sum_duplicates()
+            other.sum_duplicates()
+            if op_name in ('_lt_', '_gt_'):
+                return binopt_csr(self, other, op_name)
+
+            res = binopt_csr(self, other,
+                             '_gt_' if op_name == '_le_' else '_lt_')
+            all_true = cupy.ones(res.shape, dtype=numpy.bool)
+            out = all_true ^ res.toarray()
+            return csr_matrix(out)
         raise NotImplementedError
+
+    def __lt__(self, other):
+        return self._inequality(other, None, '_lt_')
 
     def __gt__(self, other):
-        raise NotImplementedError
+        return self._inequality(other, None, '_gt_')
 
     def __le__(self, other):
-        raise NotImplementedError
+        return self._inequality(other, None, '_le_')
 
     def __ge__(self, other):
-        raise NotImplementedError
+        return self._inequality(other, None, '_ge_')
 
     def __mul__(self, other):
         if cupy.isscalar(other):
@@ -316,7 +338,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
         if self.dtype.char not in 'fdFD':
-            return csr_toarray(self, order)
+            return csr2dense(self, order)
 
         x = self.copy()
         x.has_canonical_format = False  # need to enforce sum_duplicates
@@ -757,16 +779,24 @@ __device__ inline O binopt(T in1, T in2) {
     return max(in1, in2);
 }
 '''
-
 _BINOPT_MIN_ = '''
 __device__ inline O binopt(T in1, T in2) {
     return min(in1, in2);
 }
 '''
-
 _BINOPT_NE_ = '''
 __device__ inline O binopt(T in1, T in2) {
     return (in1 != in2);
+}
+'''
+_BINOPT_LT_ = '''
+__device__ inline O binopt(T in1, T in2) {
+    return (in1 < in2);
+}
+'''
+_BINOPT_GT_ = '''
+__device__ inline O binopt(T in1, T in2) {
+    return (in1 > in2);
 }
 '''
 
@@ -796,6 +826,12 @@ def binopt_csr(a, b, op_name):
         out_dtype = in_dtype
     elif op_name == '_ne_':
         funcs += _BINOPT_NE_
+        out_dtype = numpy.bool
+    elif op_name == '_lt_':
+        funcs += _BINOPT_LT_
+        out_dtype = numpy.bool
+    elif op_name == '_gt_':
+        funcs += _BINOPT_GT_
         out_dtype = numpy.bool
     else:
         raise ValueError('invalid op_name: {}'.format(op_name))
@@ -1006,16 +1042,16 @@ def cupy_binopt_csr_step2(op_name):
     )
 
 
-def csr_toarray(a, order):
+def csr2dense(a, order):
     out = cupy.zeros(a.shape, dtype=a.dtype, order=order)
     m, n = a.shape
-    cupy_csr_toarray()(m, n, a.indptr, a.indices, a.data,
-                       (order == 'C'), out)
+    cupy_csr2dense()(m, n, a.indptr, a.indices, a.data,
+                     (order == 'C'), out)
     return out
 
 
 @cupy._util.memoize(for_each_device=True)
-def cupy_csr_toarray():
+def cupy_csr2dense():
     return cupy.ElementwiseKernel(
         'int32 M, int32 N, raw I INDPTR, I INDICES, T DATA, bool C_ORDER',
         'raw T OUT',
@@ -1028,6 +1064,52 @@ def cupy_csr_toarray():
             OUT[row + M * col] += DATA;
         }
         ''',
-        'cupy_csr_toarray',
+        'cupy_csr2dense',
         preamble=_GET_ROW_ID_
     )
+
+
+def dense2csr(a):
+    m, n = a.shape
+    a = cupy.ascontiguousarray(a)
+    indptr = cupy.zeros(m + 1, dtype=numpy.int32)
+    info = cupy.zeros(m * n + 1, dtype=numpy.int32)
+    cupy_dense2csr_step1()(m, n, a, indptr, info)
+    indptr = cupy.cumsum(indptr, dtype=numpy.int32)
+    info = cupy.cumsum(info, dtype=numpy.int32)
+    nnz = int(indptr[-1])
+    indices = cupy.empty(nnz, dtype=numpy.int32)
+    data = cupy.empty(nnz, dtype=a.dtype)
+    cupy_dense2csr_step2()(m, n, a, info, indices, data)
+    return csr_matrix((data, indices, indptr), shape=(m, n))
+
+
+@cupy._util.memoize(for_each_device=True)
+def cupy_dense2csr_step1():
+    return cupy.ElementwiseKernel(
+        'int32 M, int32 N, T A',
+        'raw I INDPTR, raw I INFO',
+        '''
+        int row = i / N;
+        int col = i % N;
+        if (A == static_cast<T>(0)) return;
+        atomicAdd( &(INDPTR[row + 1]), 1 );
+        INFO[i + 1] = 1;
+        ''',
+        'cupy_dense2csr_step1')
+
+
+@cupy._util.memoize(for_each_device=True)
+def cupy_dense2csr_step2():
+    return cupy.ElementwiseKernel(
+        'int32 M, int32 N, T A, raw I INFO',
+        'raw I INDICES, raw T DATA',
+        '''
+        int row = i / N;
+        int col = i % N;
+        if (A == static_cast<T>(0)) return;
+        int idx = INFO[i];
+        INDICES[idx] = col;
+        DATA[idx] = A;
+        ''',
+        'cupy_dense2csr_step2')
