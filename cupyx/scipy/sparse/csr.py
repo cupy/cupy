@@ -89,6 +89,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def __ne__(self, other):
+        if isspmatrix_csr(other):
+            self.sum_duplicates()
+            other.sum_duplicates()
+            return binopt_csr(self, other, '_ne_')
         raise NotImplementedError
 
     def __lt__(self, other):
@@ -310,6 +314,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         order = 'C' if order is None else order.upper()
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
+
+        if self.dtype.char not in 'fdFD':
+            return csr_toarray(self, order)
 
         x = self.copy()
         x.has_canonical_format = False  # need to enforce sum_duplicates
@@ -568,6 +575,24 @@ def multiply_by_dense(sp, dn):
     return csr_matrix((data, indices, indptr), shape=(m, n))
 
 
+_GET_ROW_ID_ = '''
+__device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
+    int row = (min + max) / 2;
+    while (min < max) {
+        if (i < indptr[row]) {
+            max = row - 1;
+        } else if (i >= indptr[row + 1]) {
+            min = row + 1;
+        } else {
+            break;
+        }
+        row = (min + max) / 2;
+    }
+    return row;
+}
+'''
+
+
 @cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_dense():
     return cupy.ElementwiseKernel(
@@ -580,21 +605,7 @@ def cupy_multiply_by_dense():
         'O OUT_DATA, I OUT_INDICES',
         '''
         int i_out = i;
-        int _min = 0;
-        int _max = OUT_M - 1;
-        int m_out = (_min + _max) / 2;
-        while (_min < _max) {
-            if (i_out < OUT_INDPTR[m_out]) {
-                _max = m_out - 1;
-            }
-            else if (i_out >= OUT_INDPTR[m_out+1]) {
-                _min = m_out + 1;
-            }
-            else {
-                break;
-            }
-            m_out = (_min + _max) / 2;
-        }
+        int m_out = get_row_id(i_out, 0, OUT_M - 1, &(OUT_INDPTR[0]));
         int i_sp = i_out;
         if (OUT_M > SP_M && SP_M == 1) {
             i_sp -= OUT_INDPTR[m_out];
@@ -617,7 +628,8 @@ def cupy_multiply_by_dense():
         OUT_DATA = (O)(SP_DATA[i_sp] * DN_DATA[n_dn + (DN_N * m_dn)]);
         OUT_INDICES = n_out;
         ''',
-        'cupy_multiply_by_dense'
+        'cupy_multiply_by_dense',
+        preamble=_GET_ROW_ID_
     )
 
 
@@ -675,21 +687,8 @@ def cupy_multiply_by_csr_step1():
         'C C_DATA, I C_INDICES, raw I FLAGS, raw I NNZ_EACH_ROW',
         '''
         int i_c = i;
-        int _min = 0;
-        int _max = C_M - 1;
-        int m_c;
-        while (_min <= _max) {
-            m_c = (_min + _max) / 2;
-            if (i_c < C_INDPTR[m_c]) {
-                _max = m_c - 1;
-            }
-            else if (i_c >= C_INDPTR[m_c+1]) {
-                _min = m_c + 1;
-            }
-            else {
-                break;
-            }
-        }
+        int m_c = get_row_id(i_c, 0, C_M - 1, &(C_INDPTR[0]));
+
         int i_a = i;
         if (C_M > A_M && A_M == 1) {
             i_a -= C_INDPTR[m_c];
@@ -732,7 +731,8 @@ def cupy_multiply_by_csr_step1():
             C_INDICES = n_c;
         }
         ''',
-        'cupy_multiply_by_csr_step1'
+        'cupy_multiply_by_csr_step1',
+        preamble=_GET_ROW_ID_
     )
 
 
@@ -764,10 +764,9 @@ __device__ inline O binopt(T in1, T in2) {
 }
 '''
 
-_CHECK_MAX_MIN_ = '''
-__device__ inline bool check(O out) {
-    if (out == static_cast<O>(0)) return false;
-    return true;
+_BINOPT_NE_ = '''
+__device__ inline O binopt(T in1, T in2) {
+    return (in1 != in2);
 }
 '''
 
@@ -788,12 +787,16 @@ def binopt_csr(a, b, op_name):
     in_dtype = numpy.promote_types(a.dtype, b.dtype)
     a_data = a.data.astype(in_dtype, copy=False)
     b_data = b.data.astype(in_dtype, copy=False)
+    funcs = _GET_ROW_ID_
     if op_name == '_maximum_':
-        funcs = _BINOPT_MAX_ + _CHECK_MAX_MIN_
+        funcs += _BINOPT_MAX_
         out_dtype = in_dtype
     elif op_name == '_minimum_':
-        funcs = _BINOPT_MIN_ + _CHECK_MAX_MIN_
+        funcs += _BINOPT_MIN_
         out_dtype = in_dtype
+    elif op_name == '_ne_':
+        funcs += _BINOPT_NE_
+        out_dtype = numpy.bool
     else:
         raise ValueError('invalid op_name: {}'.format(op_name))
     a_tmp_data = cupy.empty(a_nnz, dtype=out_dtype)
@@ -876,6 +879,7 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
             MY_TMP_DATA= &(B_TMP_DATA[0]);
             MY_TMP_INDICES = &(B_TMP_INDICES[0]);
         }
+        int _min, _max, _mid;
 
         // get column location
         int my_col;
@@ -892,21 +896,7 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
         }
 
         // get row location
-        int my_row;
-        int _min = 0;
-        int _max = MY_M - 1;
-        int _mid = (_min + _max) / 2;
-        while (_min < _max) {
-            if (my_j_act < MY_INDPTR[_mid]) {
-                _max = _mid - 1;
-            } else if (my_j_act >= MY_INDPTR[_mid + 1]) {
-                _min = _mid + 1;
-            } else {
-                break;
-            }
-            _mid = (_min + _max) / 2;
-        }
-        my_row = _mid;
+        int my_row = get_row_id(my_j_act, 0, MY_M - 1, &(MY_INDPTR[0]));
         if (MY_M == 1 && MY_M < M) {
             if (MY_N == 1 && MY_N < N) my_row = my_j / N;
             else                       my_row = my_j / MY_NNZ_ACT;
@@ -972,7 +962,7 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
             O out;
             if (i < A_NNZ) out = binopt(my_data, op_data);
             else           out = binopt(op_data, my_data);
-            if (check(out)) {
+            if (out != static_cast<O>(0)) {
                 MY_VALID[my_j] = 1;
                 MY_TMP_DATA[my_j] = out;
                 MY_TMP_INDICES[my_j] = my_col;
@@ -1013,4 +1003,31 @@ def cupy_binopt_csr_step2(op_name):
         }
         ''',
         name,
+    )
+
+
+def csr_toarray(a, order):
+    out = cupy.zeros(a.shape, dtype=a.dtype, order=order)
+    m, n = a.shape
+    cupy_csr_toarray()(m, n, a.indptr, a.indices, a.data,
+                       (order == 'C'), out)
+    return out
+
+
+@cupy._util.memoize(for_each_device=True)
+def cupy_csr_toarray():
+    return cupy.ElementwiseKernel(
+        'int32 M, int32 N, raw I INDPTR, I INDICES, T DATA, bool C_ORDER',
+        'raw T OUT',
+        '''
+        int row = get_row_id(i, 0, M - 1, &(INDPTR[0]));
+        int col = INDICES;
+        if (C_ORDER) {
+            OUT[col + N * row] += DATA;
+        } else {
+            OUT[row + M * col] += DATA;
+        }
+        ''',
+        'cupy_csr_toarray',
+        preamble=_GET_ROW_ID_
     )
