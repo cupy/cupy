@@ -521,9 +521,56 @@ cudaError_t cudaDestroySurfaceObject(cudaSurfaceObject_t surfObject) {
 // blas
 ///////////////////////////////////////////////////////////////////////////////
 
-static hipblasOperation_t convert_hipblasOperation_t(hipblasOperation_t op) {
+static hipblasOperation_t convert_hipblasOperation_t(cublasOperation_t op) {
     return static_cast<hipblasOperation_t>(static_cast<int>(op) + 111);
 }
+
+static hipblasFillMode_t convert_hipblasFillMode_t(cublasFillMode_t mode) {
+    switch(static_cast<int>(mode)) {
+        case 0:  // CUBLAS_FILL_MODE_LOWER
+            return static_cast<hipblasFillMode_t>(122);  // HIPBLAS_FILL_MODE_LOWER
+        case 1:  // CUBLAS_FILL_MODE_UPPER
+            return static_cast<hipblasFillMode_t>(121);  // HIPBLAS_FILL_MODE_UPPER
+        default:
+            throw std::runtime_error("unrecognized mode");
+    }
+}
+
+static hipblasDiagType_t convert_hipblasDiagType_t(cublasDiagType_t type) {
+    return static_cast<hipblasDiagType_t>(static_cast<int>(type) + 131);
+}
+
+static hipblasSideMode_t convert_hipblasSideMode_t(cublasSideMode_t mode) {
+    return static_cast<hipblasSideMode_t>(static_cast<int>(mode) + 141);
+}
+
+static hipblasDatatype_t convert_hipblasDatatype_t(cudaDataType_t type) {
+    switch(static_cast<int>(type)) {
+        case 0:  // CUDA_R_32F
+            return static_cast<hipblasDatatype_t>(151);  // HIPBLAS_R_32F
+        case 1:  // CUDA_R_64F
+            return static_cast<hipblasDatatype_t>(152);  // HIPBLAS_R_64F
+        case 2:  // CUDA_R_16F
+            return static_cast<hipblasDatatype_t>(150);  // HIPBLAS_R_16F
+        case 3:  // CUDA_R_8I
+            return static_cast<hipblasDatatype_t>(160);  // HIPBLAS_R_8I
+        case 4:  // CUDA_C_32F
+            return static_cast<hipblasDatatype_t>(154);  // HIPBLAS_C_32F
+        case 5:  // CUDA_C_64F
+            return static_cast<hipblasDatatype_t>(155);  // HIPBLAS_C_64F
+        case 6:  // CUDA_C_16F
+            return static_cast<hipblasDatatype_t>(153);  // HIPBLAS_C_16F
+        case 7:  // CUDA_C_8I
+            return static_cast<hipblasDatatype_t>(164);  // HIPBLAS_C_8I
+        case 8:  // CUDA_R_8U
+            return static_cast<hipblasDatatype_t>(161);  // HIPBLAS_R_8U
+        case 9:  // CUDA_C_8U
+            return static_cast<hipblasDatatype_t>(165);  // HIPBLAS_C_8U
+        default:
+            throw std::runtime_error("unrecognized type");
+    }
+}
+
 
 // Context
 cublasStatus_t cublasCreate(cublasHandle_t* handle) {
@@ -852,28 +899,78 @@ cublasStatus_t cublasSgemmEx(
         static_cast<float*>(C), ldc);
 }
 
-cublasStatus_t cublasGemmEx(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasGemmEx(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+                            int m, int n, int k, const void *alpha,
+                            const void *A, cudaDataType_t Atype, int lda,
+                            const void *B, cudaDataType_t Btype, int ldb,
+                            const void *beta,
+                            void *C, cudaDataType_t Ctype, int ldc,
+                            cudaDataType_t computetype, cublasGemmAlgo_t algo) {
+    if (algo != -1) { // must be CUBLAS_GEMM_DEFAULT
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasGemmEx(handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+                         m, n, k, alpha,
+                         A, convert_hipblasDatatype_t(Atype), lda,
+                         B, convert_hipblasDatatype_t(Btype), ldb,
+                         beta,
+                         C, convert_hipblasDatatype_t(Ctype), ldc,
+                         convert_hipblasDatatype_t(computetype),
+                         static_cast<hipblasGemmAlgo_t>(160));  // HIPBLAS_GEMM_DEFAULT
 }
 
 cublasStatus_t cublasGemmEx_v11(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasStrsm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasStrsm(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                           cublasDiagType_t diag, int m, int n, const float* alpha,
+                           const float* A, int lda, float* B, int ldb) {
+    return hipblasStrsm(handle,
+                        convert_hipblasSideMode_t(size),
+                        convert_hipblasFillMode_t(uplo),
+                        convert_hipblasOperation_t(trans),
+                        convert_hipblasDiagType_t(diag),
+                        m, n, alpha, const_cast<float*>(A), lda, B, ldb);
 }
 
-cublasStatus_t cublasDtrsm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDtrsm(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                           cublasDiagType_t diag, int m, int n, const double* alpha,
+                           const double* A, int lda, double* B, int ldb) {
+    return hipblasDtrsm(handle,
+                        convert_hipblasSideMode_t(size),
+                        convert_hipblasFillMode_t(uplo),
+                        convert_hipblasOperation_t(trans),
+                        convert_hipblasDiagType_t(diag),
+                        m, n, alpha, const_cast<double*>(A), lda, B, ldb);
 }
 
-cublasStatus_t cublasCtrsm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCtrsm(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                           cublasDiagType_t diag, int m, int n, const cuComplex* alpha,
+                           const cuComplex* A, int lda, cuComplex* B, int ldb) {
+    return hipblasCtrsm(handle,
+                        convert_hipblasSideMode_t(size),
+                        convert_hipblasFillMode_t(uplo),
+                        convert_hipblasOperation_t(trans),
+                        convert_hipblasDiagType_t(diag),
+                        m, n,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<hipblasComplex*>(const_cast<cuComplex*>(A)), lda,
+                        reinterpret_cast<hipblasComplex*>(B), ldb);
 }
 
-cublasStatus_t cublasZtrsm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZtrsm(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                           cublasDiagType_t diag, int m, int n, const cuDoubleComplex* alpha,
+                           const cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb) {
+    return hipblasZtrsm(handle,
+                        convert_hipblasSideMode_t(size),
+                        convert_hipblasFillMode_t(uplo),
+                        convert_hipblasOperation_t(trans),
+                        convert_hipblasDiagType_t(diag),
+                        m, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<hipblasDoubleComplex*>(const_cast<cuDoubleComplex*>(A)), lda,
+                        reinterpret_cast<hipblasDoubleComplex*>(B), ldb);
 }
 
 
