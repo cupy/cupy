@@ -69,8 +69,8 @@ class TestIndexing(unittest.TestCase):
                 actual.data, expected.data)
             actual = actual.toarray()
             expected = expected.toarray()
-        else:
-            testing.assert_array_equal(actual, expected)
+
+        testing.assert_array_equal(actual, expected)
 
     @staticmethod
     def _get_index_combos(idx):
