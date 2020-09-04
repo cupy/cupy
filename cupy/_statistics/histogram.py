@@ -364,12 +364,13 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
             num = int(bins[i] + 1)  # synchronize!
             edges[i] = cupy.linspace(smin, smax, num)
         elif cupy.ndim(bins[i]) == 1:
-            edges[i] = cupy.asarray(bins[i])
-            if (edges[i][:-1] > edges[i][1:]).any():
+            if not isinstance(bins[i], cupy.ndarray):
+                raise ValueError("array-like bins not supported")
+            edges[i] = bins[i]
+            if (edges[i][:-1] > edges[i][1:]).any():  # synchronize!
                 raise ValueError(
-                    "`bins[{}]` must be monotonically increasing, when an array".format(
-                        i
-                    )
+                    "`bins[{}]` must be monotonically increasing, when an "
+                    "array".format(i)
                 )
         else:
             raise ValueError(
