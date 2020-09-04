@@ -124,6 +124,7 @@ class TestIndexing(unittest.TestCase):
         self._run(slice(1, 5), 5)
         self._run(slice(5, 1), 5)
         self._run(slice(5, 1, -1), 5)
+        self._run(5, slice(5, 1, -1))
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
