@@ -500,11 +500,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_arrayXarray(self, row, col):
         # inner indexing
-        idx_dtype = self.indices.dtype
         M, N = self._swap(*self.shape)
         major, minor = self._swap(row, col)
-        major = cupy.asarray(major, dtype=idx_dtype)
-        minor = cupy.asarray(minor, dtype=idx_dtype)
+        major = cupy.asarray(major, dtype=numpy.int32)
+        minor = cupy.asarray(minor, dtype=numpy.int32)
 
         val = _index._csr_sample_values(
             M, N, self.indptr, self.indices, self.data,
@@ -650,7 +649,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 self.indptr, self.indices, self.data, start, stop)
         else:
             rows = cupy.arange(
-                start, start + M * step, step, dtype=self.indptr.dtype)
+                start, start + M * step, step, dtype=numpy.int32)
             indptr, indices, data = _index._csr_row_index(
                 rows, self.indptr, self.indices, self.data)
 
