@@ -997,22 +997,6 @@ cublasStatus_t cublasSdgmm(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasSgetrfBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasDgetrfBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasCgetrfBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasZgetrfBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
-}
-
 cublasStatus_t cublasSgetriBatched(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
@@ -1112,6 +1096,31 @@ cublasStatus_t cublasStpttr(...) {
 cublasStatus_t cublasDtpttr(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
+
+cublasStatus_t cublasSgetrfBatched(cublasHandle_t handle, int n, float **Aarray, int lda,
+                                   int *PivotArray, int *infoArray, int batchSize) {
+    return hipblasSgetrfBatched(handle, n, Aarray, lda, PivotArray, infoArray, batchSize);
+}
+
+cublasStatus_t cublasDgetrfBatched(cublasHandle_t handle, int n, double **Aarray, int lda,
+                                   int *PivotArray, int *infoArray, int batchSize) {
+    return hipblasDgetrfBatched(handle, n, Aarray, lda, PivotArray, infoArray, batchSize);
+}
+
+cublasStatus_t cublasCgetrfBatched(cublasHandle_t handle, int n, cuComplex **Aarray, int lda,
+                                   int *PivotArray, int *infoArray, int batchSize) {
+    return hipblasCgetrfBatched(handle, n,
+                                reinterpret_cast<hipblasComplex** const>(Aarray), lda,
+                                PivotArray, infoArray, batchSize);
+}
+
+cublasStatus_t cublasZgetrfBatched(cublasHandle_t handle, int n, cuDoubleComplex **Aarray, int lda,
+                                   int *PivotArray, int *infoArray, int batchSize) {
+    return hipblasZgetrfBatched(handle, n,
+                                reinterpret_cast<hipblasDoubleComplex** const>(Aarray), lda,
+                                PivotArray, infoArray, batchSize);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // rand
