@@ -2,284 +2,247 @@ import unittest
 
 import numpy
 import pytest
+import scipy.sparse
 
 import cupy
 from cupy import testing
 from cupyx.scipy import sparse
 
 
+class IndexingTestBase(unittest.TestCase):
+
+    def _make_matrix(self, sp, dtype):
+        shape = self.n_rows, self.n_cols
+        return testing.shaped_sparse_random(
+            shape, sp, dtype, self.density, self.format)
+
+    def _make_indices(self, xp, dtype=None):
+        indices = []
+        for ind in self.indices:
+            if isinstance(ind, slice):
+                indices.append(ind)
+            else:
+                indices.append(xp.array(ind, dtype=dtype))
+
+        return tuple(indices)
+
+
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
     'density': [0.1, 0.4, 0.9],
-    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
     'n_rows': [25, 150],
-    'n_cols': [25, 150]
+    'n_cols': [25, 150],
+    'indices': [
+        # Single
+        (10,),
+        (-10,),
+        # Slice
+        (slice(5, 9),),
+        (slice(9, 5),),
+        (slice(None),),
+        # Int x Int
+        (5, 5),
+        # Slice x Slice
+        (slice(1, 5), slice(1, 5)),
+        (slice(1, 20, 2), slice(1, 5, 1)),
+        (slice(20, 1, 2), slice(1, 5, 1)),
+        (slice(1, 15, 2), slice(1, 5, 1)),
+        (slice(15, 1, 5), slice(1, 5, 1)),
+        (slice(1, 15, 5), slice(1, 5, 1)),
+        (slice(1, 5), slice(None)),
+        (slice(5, 1), slice(None)),
+        (slice(20, 1, 5), slice(None)),
+        (slice(1, 20, 5), slice(None)),
+        (slice(1, 5, 1), slice(1, 20, 2)),
+        (slice(1, 5, 1), slice(20, 1, 2)),
+        (slice(1, 5, 1), slice(1, 15, 2)),
+        (slice(1, 5, 1), slice(15, 1, 5)),
+        (slice(1, 5, 1), slice(1, 15, 5)),
+        (slice(None), slice(20, 1, 5)),
+        (slice(None), slice(1, 20, 5)),
+        (slice(1, 20, 2), slice(1, 20, 2)),
+        (slice(None), slice(None)),
+        (slice(1, 5), slice(None)),
+        (slice(5, 1), slice(None)),
+        # Slice x Int
+        (slice(1, 5), 5),
+        (slice(5, 1), 5),
+        (slice(5, 1, -1), 5),
+        (5, slice(1, 5)),
+        (5, slice(5, 1)),
+        (5, slice(5, 1, -1)),
+        # Ellipsis
+        (Ellipsis,),
+        (Ellipsis, slice(None)),
+        (slice(None), Ellipsis),
+        (Ellipsis, 1),
+        (1, Ellipsis),
+        (slice(1, None), Ellipsis),
+        (Ellipsis, slice(1, None)),
+    ],
 }))
 @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
-class TestIndexing(unittest.TestCase):
+class TestSliceIndexing(IndexingTestBase):
 
-    def _run(self, maj, min=None, flip_for_csc=True,
-             compare_dense=False):
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    def test_indexing(self, xp, sp, dtype):
+        a = self._make_matrix(sp, dtype)
+        return a[self.indices]
 
-        import scipy.sparse
-        shape = self.n_rows, self.n_cols
-        a = testing.shaped_sparse_random(
-            shape, sparse, self.dtype, self.density, self.format)
-        expected = testing.shaped_sparse_random(
-            shape, scipy.sparse, self.dtype, self.density, self.format)
 
-        if self.format == 'csc' and flip_for_csc:
-            tmp = maj
-            maj = min
-            min = tmp
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc'],
+    'density': [0.1, 0.4, 0.9],
+    'n_rows': [25, 150],
+    'n_cols': [25, 150],
+    'indices': [
+        # 0-dim array
+        (10,),
+        (-10,),
+        (5, slice(1, 5)),
+        (5, slice(None)),
+        (slice(None), 5),
+        (5, 5),
+        # Outer indexing
+        ([1, 5, 4, 2, 5, 1], slice(None)),
+        ([1, 5, 2, 3, 4, 5, 4, 1, 5], slice(None)),
+        ([0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5], slice(None)),
+        ([1, 5, 4, 5, 2, 4, 1], slice(None)),
+        (slice(None), [1, 5, 4, 2, 5, 1]),
+        (slice(None), [1, 5, 2, 3, 4, 5, 4, 1, 5]),
+        (slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5]),
+        (slice(None), [1, 5, 4, 5, 2, 4, 1]),
+        ([1, 5, 4, 5, 1], 5),
+        (5, [1, 5, 4, 5, 1]),
+        ([1, 5, 4, 5, 1], slice(1, 5)),
+        (slice(5, 1, 1), [1, 5, 4, 5, 1]),
+        # TODO (asi1024): Support
+        # ([1, 5, 4, 5, 2, 4, 1], slice(1, 10, 2)),
+        (slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1]),
+        # Inner indexing
+        ([1, 5, 4], [1, 5, 4]),
+        ([2, 0, 10, 0, 2], [9, 2, 1, 0, 2]),
+        ([2, 0, 10, 0], [9, 2, 1, 0]),
+        ([2, 0, 2], [2, 1, 1]),
+        ([2, 0, 2], [2, 1, 2]),
+    ],
+}))
+@testing.with_requires('scipy>=1.4.0')
+@testing.gpu
+class TestArrayIndexing(IndexingTestBase):
 
-        # None is not valid for major when minor is not None
-        maj = slice(None) if maj is None else maj
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_list_indexing(self, xp, sp, dtype):
+        a = self._make_matrix(sp, dtype)
+        return a[self.indices]
 
-        maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
-        min_h = min.get() if isinstance(min, cupy.ndarray) else min
+    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes('il', name='ind_dtype')
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_numpy_ndarray_indexing(self, xp, sp, dtype, ind_dtype):
+        a = self._make_matrix(sp, dtype)
+        indices = self._make_indices(numpy, ind_dtype)
+        return a[indices]
 
-        if min is not None:
-            actual = a[maj, min]
-            expected = expected[maj_h, min_h]
-        else:
-            actual = a[maj]
-            expected = expected[maj_h]
+    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes('il', name='ind_dtype')
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_cupy_ndarray_indexing(self, xp, sp, dtype, ind_dtype):
+        a = self._make_matrix(sp, dtype)
+        indices = self._make_indices(xp, ind_dtype)
+        print(indices)
+        return a[indices]
 
-        if compare_dense:
-            actual = actual.toarray()
-            expected = expected.toarray()
 
-        if sparse.isspmatrix(actual):
-            actual.sort_indices()
-            expected.sort_indices()
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc'],
+    'density': [0.1, 0.4, 0.9],
+    'n_rows': [3],
+    'n_cols': [5],
+    'indices': [
+        # Bool array x Int
+        ([True, False, True], 3),
+        (2, [True, False, True, False, True]),
+        # Bool array x All
+        ([True, False, True], slice(None)),
+        (slice(None), [True, False, True, False, True]),
+        # Bool array x Slice
+        ([True, False, True], slice(1, 4)),
+        (slice(1, 4), [True, False, True, False, True]),
+        # Bool array x Bool array
+        ([True, False, True], [True, False, True]),
+    ],
+}))
+@testing.with_requires('scipy>=1.4.0')
+@testing.gpu
+class TestBoolMaskIndexing(IndexingTestBase):
 
-            testing.assert_array_equal(
-                actual.indptr, expected.indptr)
-            testing.assert_array_equal(
-                actual.indices, expected.indices)
-            testing.assert_array_equal(
-                actual.data, expected.data)
-            actual = actual.toarray()
-            expected = expected.toarray()
-
-        testing.assert_array_equal(actual, expected)
-
-    @staticmethod
-    def _get_index_combos(idx):
-        return [dict['arr_fn'](idx, dtype=dict['dtype'])
-                for dict in testing.product({
-                    "arr_fn": [numpy.array, cupy.array],
-                    "dtype": [numpy.int32, numpy.int64]
-                })]
-
-    # 2D Slicing
-
-    def test_major_slice(self):
-        self._run(slice(5, 9))
-        self._run(slice(9, 5))
-
-    def test_major_all(self):
-        self._run(slice(None))
-
-    def test_major_scalar(self):
-        self._run(10)
-        self._run(-10)
-
-        self._run(numpy.array(10))
-        self._run(numpy.array(-10))
-
-        self._run(cupy.array(10))
-        self._run(cupy.array(-10))
-
-    def test_major_slice_minor_slice(self):
-        self._run(slice(1, 5), slice(1, 5))
-        self._run(slice(1, 20, 2), slice(1, 5, 1))
-        self._run(slice(20, 1, 2), slice(1, 5, 1))
-        self._run(slice(1, 15, 2), slice(1, 5, 1))
-        self._run(slice(15, 1, 5), slice(1, 5, 1))
-        self._run(slice(1, 15, 5), slice(1, 5, 1))
-        self._run(slice(20, 1, 5), slice(None))
-        self._run(slice(1, 20, 5), slice(None))
-        self._run(slice(1, 5, 1), slice(1, 20, 2))
-        self._run(slice(1, 5, 1), slice(20, 1, 2))
-        self._run(slice(1, 5, 1), slice(1, 15, 2))
-        self._run(slice(1, 5, 1), slice(15, 1, 5))
-        self._run(slice(1, 5, 1), slice(1, 15, 5))
-        self._run(slice(None), slice(20, 1, 5))
-        self._run(slice(None), slice(1, 20, 5))
-
-    def test_major_slice_minor_all(self):
-        self._run(slice(1, 5), slice(None))
-        self._run(slice(5, 1), slice(None))
-
-    def test_major_slice_minor_scalar(self):
-        self._run(slice(1, 5), 5)
-        self._run(slice(5, 1), 5)
-        self._run(slice(5, 1, -1), 5)
-        self._run(5, slice(5, 1, -1))
-
-    def test_major_scalar_minor_slice(self):
-        self._run(5, slice(1, 5))
-        self._run(numpy.array(5), slice(1, 5))
-        self._run(cupy.array(5), slice(1, 5))
-
-    def test_major_scalar_minor_all(self):
-        self._run(5, slice(None))
-        self._run(numpy.array(5), slice(None))
-
-    def test_major_scalar_minor_scalar(self):
-        self._run(5, 5)
-        self._run(numpy.array(5), numpy.array(5))
-        self._run(cupy.array(5), cupy.array(5))
-
-    def test_major_all_minor_scalar(self):
-        self._run(slice(None), 5)
-
-    def test_major_all_minor_slice(self):
-        self._run(slice(None), slice(5, 10))
-
-    def test_major_all_minor_all(self):
-        self._run(slice(None), slice(None))
-
-    def test_ellipsis(self):
-        self._run(Ellipsis, flip_for_csc=False)
-        self._run(Ellipsis, 1, flip_for_csc=False)
-        self._run(1, Ellipsis, flip_for_csc=False)
-        self._run(Ellipsis, slice(None), flip_for_csc=False)
-        self._run(slice(None), Ellipsis, flip_for_csc=False)
-        self._run(Ellipsis, slice(1, None), flip_for_csc=False)
-        self._run(slice(1, None), Ellipsis, flip_for_csc=False)
-
-    # Major Indexing
-
-    def test_major_bool_fancy(self):
-        size = self.n_rows if self.format == 'csr' else self.n_cols
-        a = numpy.random.random(size)
-        self._run(cupy.array(a).astype(cupy.bool))  # Cupy
-        self._run(a.astype(numpy.bool))             # Numpy
-
+    # In older environments (e.g., py35, scipy 1.4), scipy sparse arrays are
+    # crashing when indexed with native Python boolean list.
     @testing.with_requires('scipy>=1.5.0')
-    def test_major_bool_list_fancy(self):
-        # In older environments (e.g., py35, scipy 1.4), scipy sparse arrays
-        # are crashing when indexed with native Python boolean list.
-        size = self.n_rows if self.format == 'csr' else self.n_cols
-        a = numpy.random.random(size)
-        self._run(a.astype(numpy.bool).tolist())    # List
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    def test_bool_mask(self, xp, sp, dtype):
+        a = self._make_matrix(sp, dtype)
+        return a[self.indices]
 
-    def test_major_fancy_minor_all(self):
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    def test_numpy_bool_mask(self, xp, sp, dtype):
+        a = self._make_matrix(sp, dtype)
+        indices = self._make_indices(numpy)
+        return a[indices]
 
-        self._run([1, 5, 4, 2, 5, 1], slice(None))
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    def test_cupy_bool_mask(self, xp, sp, dtype):
+        a = self._make_matrix(sp, dtype)
+        indices = self._make_indices(xp)
+        return a[indices]
 
-        for idx in self._get_index_combos([1, 5, 4, 2, 5, 1]):
-            self._run(idx, slice(None))
 
-    def test_major_fancy_minor_scalar(self):
-        self._run([1, 5, 4, 5, 1], 5)
-        for idx in self._get_index_combos([1, 5, 4, 2, 5, 1]):
-            self._run(idx, 5)
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc'],
+    'density': [0.4],
+    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
+    'n_rows': [25, 150],
+    'n_cols': [25, 150],
+    'indices': [
+        ('foo',),
+        (2, 'foo'),
+        ([[0, 0], [1, 1]]),
+    ],
+}))
+@testing.with_requires('scipy>=1.4.0')
+@testing.gpu
+class TestIndexingIndexError(IndexingTestBase):
 
-    def test_major_fancy_minor_slice(self):
-        self._run([1, 5, 4, 5, 1], slice(1, 5))
-        self._run([1, 5, 4, 5, 1], slice(5, 1, 1))
+    def test_indexing_index_error(self):
+        for xp, sp in [(numpy, scipy.sparse), (cupy, sparse)]:
+            a = self._make_matrix(sp, numpy.float32)
+            with pytest.raises(IndexError):
+                a[self.indices]
 
-        for idx in self._get_index_combos([1, 5, 4, 5, 1]):
-            self._run(idx, slice(5, 1, 1))
 
-        for idx in self._get_index_combos([1, 5, 4, 5, 1]):
-            self._run(idx, slice(1, 5))
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc'],
+    'density': [0.4],
+    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
+    'n_rows': [25, 150],
+    'n_cols': [25, 150],
+    'indices': [
+        ([1, 2, 3], [1, 2, 3, 4]),
+    ],
+}))
+@testing.with_requires('scipy>=1.4.0')
+@testing.gpu
+class TestIndexingValueError(IndexingTestBase):
 
-    # Minor Indexing
-
-    def test_major_all_minor_bool(self):
-        size = self.n_cols if self.format == 'csr' else self.n_rows
-        a = numpy.random.random(size)
-        self._run(slice(None), cupy.array(a).astype(cupy.bool))  # Cupy
-        self._run(slice(None), a.astype(numpy.bool))  # Numpy
-
-    @testing.with_requires('scipy>=1.5.0')
-    def test_major_all_minor_bool_list(self):
-        # In older environments (e.g., py35, scipy 1.4), scipy sparse arrays
-        # are crashing when indexed with native Python boolean list.
-        size = self.n_cols if self.format == 'csr' else self.n_rows
-        a = numpy.random.random(size)
-        self._run(slice(None), a.astype(numpy.bool).tolist())  # List
-
-    def test_major_slice_minor_bool(self):
-        size = self.n_cols if self.format == 'csr' else self.n_rows
-        a = numpy.random.random(size)
-        self._run(slice(1, 10, 2), cupy.array(a).astype(cupy.bool))  # Cupy
-        self._run(slice(1, 10, 2), a.astype(numpy.bool))  # Numpy
-
-    @testing.with_requires('scipy>=1.5.0')
-    def test_major_slice_minor_bool_list(self):
-        # In older environments (e.g., py35, scipy 1.4), scipy sparse arrays
-        # are crashing when indexed with native Python boolean list.
-        size = self.n_cols if self.format == 'csr' else self.n_rows
-        a = numpy.random.random(size)
-        self._run(slice(1, 10, 2), a.astype(numpy.bool).tolist())  # List
-
-    def test_major_all_minor_fancy(self):
-
-        self._run(slice(None), [1, 5, 2, 3, 4, 5, 4, 1, 5])
-        self._run(slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5])
-
-        self._run(slice(None), [1, 5, 4, 5, 2, 4, 1])
-
-        for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
-            self._run(slice(None), idx, compare_dense=True)
-
-    def test_major_slice_minor_fancy(self):
-
-        self._run(slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1], compare_dense=True)
-
-        for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
-            self._run(slice(1, 10, 2), idx, compare_dense=True)
-
-    def test_major_scalar_minor_fancy(self):
-
-        self._run(5, [1, 5, 4, 1, 2], compare_dense=True)
-
-        for idx in self._get_index_combos([1, 5, 4, 1, 2]):
-            self._run(5, idx, compare_dense=True)
-
-    # Inner Indexing
-
-    def test_major_fancy_minor_fancy(self):
-
-        for idx in self._get_index_combos([1, 5, 4]):
-            self._run(idx, idx)
-
-        self._run([1, 5, 4], [1, 5, 4])
-
-        maj = self._get_index_combos([2, 0, 10, 0, 2])
-        min = self._get_index_combos([9, 2, 1, 0, 2])
-
-        for (idx1, idx2) in zip(maj, min):
-            self._run(idx1, idx2)
-
-        self._run([2, 0, 10, 0], [9, 2, 1, 0])
-
-        maj = self._get_index_combos([2, 0, 2])
-        min = self._get_index_combos([2, 1, 1])
-
-        for (idx1, idx2) in zip(maj, min):
-            self._run(idx1, idx2)
-
-        self._run([2, 0, 2], [2, 1, 2])
-
-    # Bad Indexing
-
-    def test_bad_indexing(self):
-        with pytest.raises(IndexError):
-            self._run("foo")
-
-        with pytest.raises(IndexError):
-            self._run(2, "foo")
-
-        with pytest.raises(ValueError):
-            self._run([1, 2, 3], [1, 2, 3, 4])
-
-        with pytest.raises(IndexError):
-            self._run([[0, 0], [1, 1]])
+    def test_indexing_value_error(self):
+        for xp, sp in [(numpy, scipy.sparse), (cupy, sparse)]:
+            a = self._make_matrix(sp, numpy.float32)
+            with pytest.raises(ValueError):
+                a[self.indices]
