@@ -635,47 +635,92 @@ cublasStatus_t cublasSscal(cublasHandle_t handle, int n, float* alpha, float* x,
     return hipblasSscal(handle, n, alpha, x, incx);
 }
 
+
 // BLAS Level 2
-cublasStatus_t cublasSgemv(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSgemv(cublasHandle_t handle, cublasOperation_t trans, int m, int n, float* alpha,
+                           float* A, int lda, float* x, int incx, float* beta,
+                           float* y, int incy) {
+    return hipblasSgemv(handle, convert_hipblasOperation_t(trans), m, n,
+                        alpha, A, lda, x, incx, beta, y, incy);
 }
 
-cublasStatus_t cublasDgemv(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDgemv(cublasHandle_t handle, cublasOperation_t trans, int m, int n, double* alpha,
+                           double* A, int lda, double* x, int incx, double* beta,
+                           double* y, int incy) {
+    return hipblasDgemv(handle, convert_hipblasOperation_t(trans), m, n,
+                        alpha, A, lda, x, incx, beta, y, incy);
 }
 
-
-cublasStatus_t cublasCgemv(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCgemv(cublasHandle_t handle, cublasOperation_t trans, int m, int n, cuComplex* alpha,
+                           cuComplex* A, int lda, cuComplex* x, int incx, cuComplex* beta,
+                           cuComplex* y, int incy) {
+    return hipblasCgemv(handle, convert_hipblasOperation_t(trans), m, n,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<const hipblasComplex*>(A), lda,
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<const hipblasComplex*>(beta),
+                        reinterpret_cast<hipblasComplex*>(y), incy);
 }
 
-cublasStatus_t cublasZgemv(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZgemv(cublasHandle_t handle, cublasOperation_t trans, int m, int n, cuDoubleComplex* alpha,
+                           cuDoubleComplex* A, int lda, cuDoubleComplex* x, int incx,
+                           cuDoubleComplex* beta, cuDoubleComplex* y, int incy) {
+    return hipblasZgemv(handle, convert_hipblasOperation_t(trans), m, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<const hipblasDoubleComplex*>(A), lda,
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<const hipblasDoubleComplex*>(beta),
+                        reinterpret_cast<hipblasDoubleComplex*>(y), incy);
 }
 
-cublasStatus_t cublasSger(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSger(cublasHandle_t handle, int m, int n, float* alpha, float* x, int incx,
+                          float* y, int incy, float* A, int lda) {
+    return hipblasSger(handle, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
-cublasStatus_t cublasDger(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDger(cublasHandle_t handle, int m, int n, double* alpha, double* x,
+                          int incx, double* y, int incy, double* A, int lda) {
+    return hipblasDger(handle, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
-int cublasCgeru(...) {
-    return 0;
+cublasStatus_t cublasCgeru(cublasHandle_t handle, int m, int n, cuComplex* alpha, cuComplex* x,
+                          int incx, cuComplex* y, int incy, cuComplex* A, int lda) {
+    return hipblasCgeru(handle, m, n,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<const hipblasComplex*>(y), incy,
+                        reinterpret_cast<hipblasComplex*>(A), lda);
 }
 
-int cublasCgerc(...) {
-    return 0;
+cublasStatus_t cublasCgerc(cublasHandle_t handle, int m, int n, cuComplex* alpha, cuComplex* x,
+                          int incx, cuComplex* y, int incy, cuComplex* A, int lda) {
+    return hipblasCgerc(handle, m, n,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<const hipblasComplex*>(y), incy,
+                        reinterpret_cast<hipblasComplex*>(A), lda);
 }
 
-int cublasZgeru(...) {
-    return 0;
+cublasStatus_t cublasZgeru(cublasHandle_t handle, int m, int n, cuDoubleComplex* alpha,
+                           cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
+                           cuDoubleComplex* A, int lda) {
+    return hipblasZgeru(handle, m, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<const hipblasDoubleComplex*>(y), incy,
+                        reinterpret_cast<hipblasDoubleComplex*>(A), lda);
 }
 
-int cublasZgerc(...) {
-    return 0;
+cublasStatus_t cublasZgerc(cublasHandle_t handle, int m, int n, cuDoubleComplex* alpha,
+                           cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
+                           cuDoubleComplex* A, int lda) {
+    return hipblasZgerc(handle, m, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<const hipblasDoubleComplex*>(y), incy,
+                        reinterpret_cast<hipblasDoubleComplex*>(A), lda);
 }
+
 
 // BLAS Level 3
 cublasStatus_t cublasSgemm(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
