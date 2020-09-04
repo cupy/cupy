@@ -312,7 +312,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     return operation, name
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
                     integer_output=False):
     in_params = 'raw X x, raw W coords'
@@ -331,7 +331,7 @@ def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
                       integer_output=False):
     in_params = 'raw X x, raw W shift'
@@ -350,7 +350,7 @@ def _get_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
                            integer_output=False):
     in_params = 'raw X x, raw W shift, raw W zoom'
@@ -369,7 +369,7 @@ def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
                      integer_output=False):
     in_params = 'raw X x, raw W zoom'
@@ -388,7 +388,7 @@ def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
     return cupy.ElementwiseKernel(in_params, out_params, operation, name)
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_affine_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
                        integer_output=False):
     in_params = 'raw X x, raw W mat'
