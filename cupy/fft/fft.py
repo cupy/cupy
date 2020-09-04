@@ -13,7 +13,7 @@ _reduce = functools.reduce
 _prod = cupy.core.internal.prod
 
 
-@cupy.util.memoize()
+@cupy._util.memoize()
 def _output_dtype(dtype, value_type):
     if value_type != 'R2C':
         if dtype in [np.float16, np.float32]:

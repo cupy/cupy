@@ -10,7 +10,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy import util
+from cupy import _util
 from cupy.core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
@@ -388,7 +388,7 @@ class TestRaw(unittest.TestCase):
 
     def setUp(self):
         if hasattr(self, 'clean_up'):
-            util.clear_memo()
+            _util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
 

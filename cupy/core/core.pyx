@@ -24,7 +24,7 @@ from cupy.cuda import memory as memory_module
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy import util
+from cupy import _util
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -1315,7 +1315,7 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        if util.ENABLE_SLICE_COPY and (
+        if _util.ENABLE_SLICE_COPY and (
                 type(slices) is slice
                 and slices == slice(None, None, None)
                 and isinstance(value, numpy.ndarray)
@@ -2284,7 +2284,7 @@ cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
             'could not be allocated. '
             'This generally occurs because of insufficient host memory. '
             'The original error was: {}'.format(nbytes, e),
-            util.PerformanceWarning)
+            _util.PerformanceWarning)
 
     return None
 

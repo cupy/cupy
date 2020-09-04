@@ -7,7 +7,7 @@ from cupy.core._reduction import create_reduction_func
 from cupy.core._kernel import create_ufunc
 from cupy.core._scalar import get_typename
 from cupy.core._ufuncs import elementwise_copy
-from cupy import util
+from cupy import _util
 
 from cupy.core cimport _accelerator
 from cupy.core._dtype cimport get_dtype
@@ -147,7 +147,7 @@ cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
 # private/internal
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _inclusive_batch_scan_kernel(
         dtype, block_size, op, src_c_cont, out_c_cont):
     """return Prefix Sum(Scan) cuda kernel
@@ -261,7 +261,7 @@ def _inclusive_batch_scan_kernel(
     return module.get_function(name)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _inclusive_scan_kernel(src_dtype, dtype, block_size, op, src_c_cont,
                            out_c_cont):
     """return Prefix Sum(Scan) cuda kernel
@@ -340,7 +340,7 @@ def _inclusive_scan_kernel(src_dtype, dtype, block_size, op, src_c_cont,
     return module.get_function(name)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
@@ -376,7 +376,7 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     return module.get_function(name)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _add_scan_blocked_sum_kernel(dtype, op, c_cont):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
@@ -532,7 +532,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
         else:
             scan(result, op, dtype, result)
     else:
-        axis = cupy.util._normalize_axis_index(axis, a.ndim)
+        axis = _util._normalize_axis_index(axis, a.ndim)
         result = _proc_as_batch(result, axis, dtype, op)
     # This is for when the original out param was not contiguous
     if out is not None and out.data != result.data:
