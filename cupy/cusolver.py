@@ -524,8 +524,14 @@ def gesv(a, b):
     dinfo = cupy.empty(1, dtype=numpy.int32)
     lwork = helper(handle, n, n, a.data.ptr, n)
     dwork = cupy.empty(lwork, dtype=a.dtype)
+    # LU factrization (A = L * U)
     getrf(handle, n, n, a.data.ptr, n, dwork.data.ptr, dipiv.data.ptr,
           dinfo.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        getrf, dinfo)
+    # Solves Ax = b
     getrs(handle, cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
           dipiv.data.ptr, b.data.ptr, n, dinfo.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        getrs, dinfo)
     return b
