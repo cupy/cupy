@@ -1,13 +1,13 @@
 import unittest
 
-import cupy
+import numpy
+import scipy.sparse
+import pytest
 
+import cupy
 from cupy import testing
 from cupyx.scipy import sparse
 
-import numpy
-
-import pytest
 
 
 @testing.parameterize(*testing.product({
@@ -24,9 +24,11 @@ class TestIndexing(unittest.TestCase):
     def _run(self, maj, min=None, flip_for_csc=True,
              compare_dense=False):
 
-        a = sparse.random(self.n_rows, self.n_cols,
-                          format=self.format,
-                          density=self.density)
+        shape = self.n_rows, self.n_cols
+        a = testing.shaped_sparse_random(
+            shape, sparse, self.dtype, self.density, self.format)
+        expected = testing.shaped_sparse_random(
+            shape, scipy.sparse, self.dtype, self.density, self.format)
 
         if self.format == 'csc' and flip_for_csc:
             tmp = maj
@@ -36,11 +38,6 @@ class TestIndexing(unittest.TestCase):
         # None is not valid for major when minor is not None
         maj = slice(None) if maj is None else maj
 
-        # sparse.random doesn't support complex types
-        # so we need to cast
-        a = a.astype(self.dtype)
-
-        expected = a.get()
 
         maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
         min_h = min.get() if isinstance(min, cupy.ndarray) else min
