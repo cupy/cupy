@@ -571,54 +571,69 @@ cublasStatus_t cublasIsamax(cublasHandle_t handle, int n, const float *x, int in
     return hipblasIsamax(handle, n, x, incx, result);
 }
 
-cublasStatus_t cublasIsamin(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasIsamin(cublasHandle_t handle, int n, float* x, int incx, int* result) {
+    return hipblasIsamin(handle, n, x, incx, result);
 }
 
-cublasStatus_t cublasSasum(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSasum(cublasHandle_t handle, int n, float* x, int incx, float* result) {
+    return hipblasSasum(handle, n, x, incx, result);
 }
 
-cublasStatus_t cublasSaxpy(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSaxpy(cublasHandle_t handle, int n, float* alpha, float* x, int incx, float* y, int incy) {
+    return hipblasSaxpy(handle, n, alpha, x, incx, y, incy);
 }
 
-cublasStatus_t cublasDaxpy(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDaxpy(cublasHandle_t handle, int n, double* alpha, double* x, int incx, double* y, int incy) {
+    return hipblasDaxpy(handle, n, alpha, x, incx, y, incy);
 }
 
-cublasStatus_t cublasSdot(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSdot(cublasHandle_t handle, int n, float* x, int incx, float* y, int incy, float* result) {
+    return hipblasSdot(handle, n, x, incx, y, incy, result);
 }
 
-cublasStatus_t cublasDdot(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDdot(cublasHandle_t handle, int n, double* x, int incx, double* y, int incy, double* result) {
+    return hipblasDdot(handle, n, x, incx, y, incy, result);
 }
 
-cublasStatus_t cublasCdotu(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCdotu(cublasHandle_t handle, int n, cuComplex* x, int incx, cuComplex* y,
+                           int incy, cuComplex* result) {
+    return hipblasCdotu(handle, n,
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<const hipblasComplex*>(y), incy,
+                        reinterpret_cast<hipblasComplex*>(result));
 }
 
-cublasStatus_t cublasCdotc(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCdotc(cublasHandle_t handle, int n, cuComplex* x, int incx, cuComplex* y,
+                           int incy, cuComplex* result) {
+    return hipblasCdotc(handle, n,
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<const hipblasComplex*>(y), incy,
+                        reinterpret_cast<hipblasComplex*>(result));
 }
 
-cublasStatus_t cublasZdotc(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZdotu(cublasHandle_t handle, int n, cuDoubleComplex* x, int incx, cuDoubleComplex* y,
+                           int incy, cuDoubleComplex* result) {
+    return hipblasZdotu(handle, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<const hipblasDoubleComplex*>(y), incy,
+                        reinterpret_cast<hipblasDoubleComplex*>(result));
 }
 
-cublasStatus_t cublasZdotu(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZdotc(cublasHandle_t handle, int n, cuDoubleComplex* x, int incx, cuDoubleComplex* y,
+                           int incy, cuDoubleComplex* result) {
+    return hipblasZdotc(handle, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<const hipblasDoubleComplex*>(y), incy,
+                        reinterpret_cast<hipblasDoubleComplex*>(result));
 }
 
-cublasStatus_t cublasSnrm2(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSnrm2(cublasHandle_t handle, int n, float* x, int incx, float* result) {
+    return hipblasSnrm2(handle, n, x, incx, result);
 }
 
-cublasStatus_t cublasSscal(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSscal(cublasHandle_t handle, int n, float* alpha, float* x, int incx) {
+    return hipblasSscal(handle, n, alpha, x, incx);
 }
-
 
 // BLAS Level 2
 cublasStatus_t cublasSgemv(...) {
