@@ -6,7 +6,7 @@ from cupy.cuda import device
 from cupy.linalg import util
 
 
-def batched_solve(a, b):
+def batched_gesv(a, b):
     """Solves multiple linear matrix equations using cublas<t>getr[fs]Batched().
 
     Computes the solution to system of linear equation ``ax = b``.
