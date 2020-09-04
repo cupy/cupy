@@ -483,3 +483,66 @@ class TestDigitizeInvalid(unittest.TestCase):
             bins = xp.array([[1], [2]])
             with pytest.raises(ValueError):
                 xp.digitize(x, bins)
+
+
+@testing.parameterize(
+    *testing.product(
+        {'weights': [None, 1, 2],
+         'weights_dtype': [numpy.int32, numpy.float64],
+         'density': [True, False],
+         'bins': [10, (8, 16, 12), (16, 8, 12), (16, 12, 8), (12, 8, 16),
+                  'array'],
+         'range': [None, ((20, 50), (10, 100), (0, 40))]}
+    )
+)
+@testing.gpu
+class TestHistogramdd(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-7, rtol=1e-7)
+    def test_histogramdd(self, xp, dtype):
+        x = testing.shaped_random((100, 3), xp, dtype, scale=100)
+        if self.bins == 'array':
+            bins = [xp.arange(0, 100, 4),
+                    xp.arange(0, 100, 10),
+                    xp.arange(25)]
+        else:
+            bins = self.bins
+        if self.weights is not None:
+            weights = xp.ones((x.shape[0],), dtype=self.weights_dtype)
+        else:
+            weights = None
+        y, bin_edges = xp.histogramdd(x, bins=bins, range=self.range,
+                                      weights=weights, density=self.density)
+        return [y, ] + [e for e in bin_edges]
+
+
+@testing.parameterize(
+    *testing.product(
+        {'weights': [None, 1, 2],
+         'weights_dtype': [numpy.int32, numpy.float64],
+         'density': [True, False],
+         'bins': [10, (8, 16), (16, 8), 'array'],
+         'range': [None, ((20, 50), (10, 100))]}
+    )
+)
+@testing.gpu
+class TestHistogram2d(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-7, rtol=1e-7)
+    def test_histogram2d(self, xp, dtype):
+        x = testing.shaped_random((100, ), xp, dtype, scale=100)
+        y = testing.shaped_random((100, ), xp, dtype, scale=100)
+        if self.bins == 'array':
+            bins = [xp.arange(0, 100, 4), xp.arange(0, 100, 10)]
+        else:
+            bins = self.bins
+        if self.weights is not None:
+            weights = xp.ones((x.shape[0],), dtype=self.weights_dtype)
+        else:
+            weights = None
+        y, edges0, edges1 = xp.histogram2d(x, y, bins=bins,
+                                           range=self.range, weights=weights,
+                                           density=self.density)
+        return y, edges0, edges1

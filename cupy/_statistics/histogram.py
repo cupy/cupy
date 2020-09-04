@@ -9,6 +9,9 @@ from cupy.core import _accelerator
 from cupy.cuda import cub
 from cupy.cuda import common
 
+# rename builtin range for use in functions that take a range argument
+_range = range
+
 
 # TODO(unno): use searchsorted
 _histogram_kernel = core.ElementwiseKernel(
@@ -271,10 +274,212 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
     return y, bin_edges
 
 
-# TODO(okuta): Implement histogram2d
+def histogramdd(sample, bins=10, range=None, weights=None, density=False):
+    """Compute the multidimensional histogram of some data.
+
+    Args:
+        sample (cupy.ndarray): The data to be histogrammed. (N, D) or (D, N)
+            array
+
+            Note the unusual interpretation of sample when an array_like:
+
+            * When an array, each row is a coordinate in a D-dimensional space -
+              such as ``histogramdd(cupy.array([p1, p2, p3]))``.
+            * When an array_like, each element is the list of values for single
+              coordinate - such as ``histogramdd((X, Y, Z))``.
+
+            The first form should be preferred.
+        bins (int or tuple of int or cupy.ndarray): The bin specification:
+
+            * A sequence of arrays describing the monotonically increasing bin
+              edges along each dimension.
+            * The number of bins for each dimension (nx, ny, ... =bins)
+            * The number of bins for all dimensions (nx=ny=...=bins).
+        range (sequence, optional): A sequence of length D, each an optional
+            (lower, upper) tuple giving the outer bin edges to be used if the
+            edges are not given explicitly in `bins`. An entry of None in the
+            sequence results in the minimum and maximum values being used for
+            the corresponding dimension. The default, None, is equivalent to
+            passing a tuple of D None values.
+        weights (cupy.ndarray): An array of values `w_i` weighing each sample
+            `(x_i, y_i, z_i, ...)`. The values of the returned histogram are
+            equal to the sum of the weights belonging to the samples falling
+            into each bin.
+        density (bool, optional): If False, the default, returns the number of
+            samples in each bin. If True, returns the probability *density*
+            function at the bin, ``bin_count / sample_count / bin_volume``.
+
+    Returns:
+        H (cupy.ndarray): The multidimensional histogram of sample x. See
+            normed and weights for the different possible semantics.
+        edges (list of cupy.ndarray): A list of D arrays describing the bin
+            edges for each dimension.
+
+    .. warning::
+
+        This function may synchronize the device.
+
+    .. seealso:: :func:`numpy.histogramdd`
+    """
+    if isinstance(sample, cupy.ndarray):
+        # Sample is an ND-array.
+        if sample.ndim == 1:
+            sample = sample[:, cupy.newaxis]
+        nsamples, ndim = sample.shape
+    else:
+        sample = cupy.stack(sample, axis=-1)
+        nsamples, ndim = sample.shape
+
+    nbin = numpy.empty(ndim, int)
+    edges = ndim * [None]
+    dedges = ndim * [None]
+    if weights is not None:
+        weights = cupy.asarray(weights)
+
+    try:
+        nbins = len(bins)
+        if nbins != ndim:
+            raise ValueError(
+                "The dimension of bins must be equal to the dimension of the "
+                " sample x."
+            )
+    except TypeError:
+        # bins is an integer
+        bins = ndim * [bins]
+
+    # normalize the range argument
+    if range is None:
+        range = (None,) * ndim
+    elif len(range) != ndim:
+        raise ValueError("range argument must have one entry per dimension")
+
+    # Create edge arrays
+    for i in _range(ndim):
+        if cupy.ndim(bins[i]) == 0:
+            if bins[i] < 1:
+                raise ValueError(
+                    "`bins[{}]` must be positive, when an integer".format(i)
+                )
+            smin, smax = _get_outer_edges(sample[:, i], range[i])
+            num = int(bins[i] + 1)  # synchronize!
+            edges[i] = cupy.linspace(smin, smax, num)
+        elif cupy.ndim(bins[i]) == 1:
+            edges[i] = cupy.asarray(bins[i])
+            if (edges[i][:-1] > edges[i][1:]).any():
+                raise ValueError(
+                    "`bins[{}]` must be monotonically increasing, when an array".format(
+                        i
+                    )
+                )
+        else:
+            raise ValueError(
+                "`bins[{}]` must be a scalar or 1d array".format(i)
+            )
+
+        nbin[i] = len(edges[i]) + 1  # includes an outlier on each end
+        dedges[i] = cupy.diff(edges[i])
+
+    # Compute the bin number each sample falls into.
+    ncount = tuple(
+        # avoid cupy.digitize to work around NumPy issue gh-11022
+        cupy.searchsorted(edges[i], sample[:, i], side="right")
+        for i in _range(ndim)
+    )
+
+    # Using digitize, values that fall on an edge are put in the right bin.
+    # For the rightmost bin, we want values equal to the right edge to be
+    # counted in the last bin, and not as an outlier.
+    for i in _range(ndim):
+        # Find which points are on the rightmost edge.
+        on_edge = sample[:, i] == edges[i][-1]
+        # Shift these points one bin to the left.
+        ncount[i][on_edge] -= 1
+
+    # Compute the sample indices in the flattened histogram matrix.
+    # This raises an error if the array is too large.
+    xy = cupy.ravel_multi_index(ncount, nbin)
+
+    # Compute the number of repetitions in xy and assign it to the
+    # flattened histmat.
+    hist = cupy.bincount(xy, weights, minlength=numpy.prod(nbin))
+
+    # Shape into a proper matrix
+    hist = hist.reshape(nbin)
+
+    # This preserves the (bad) behavior observed in NumPy gh-7845, for now.
+    hist = hist.astype(float)  # Note: NumPy uses casting='safe' here too
+
+    # Remove outliers (indices 0 and -1 for each dimension).
+    core = ndim * (slice(1, -1),)
+    hist = hist[core]
+
+    if density:
+        # calculate the probability density function
+        s = hist.sum()
+        for i in _range(ndim):
+            shape = [1] * ndim
+            shape[i] = nbin[i] - 2
+            hist = hist / dedges[i].reshape(shape)
+        hist /= s
+
+    if any(hist.shape != numpy.asarray(nbin) - 2):
+        raise RuntimeError("Internal Shape Error")
+    return hist, edges
 
 
-# TODO(okuta): Implement histogramdd
+def histogram2d(x, y, bins=10, range=None, weights=None, density=None):
+    """Compute the bi-dimensional histogram of two data samples.
+
+    Args:
+        x (cupy.ndarray): The first array of samples to be histogrammed.
+        y (cupy.ndarray): The second array of samples to be histogrammed.
+        bins (int or tuple of int or cupy.ndarray): The bin specification:
+
+            * A sequence of arrays describing the monotonically increasing bin
+              edges along each dimension.
+            * The number of bins for each dimension (nx, ny)
+            * The number of bins for all dimensions (nx=ny=bins).
+        range (sequence, optional): A sequence of length two, each an optional
+            (lower, upper) tuple giving the outer bin edges to be used if the
+            edges are not given explicitly in `bins`. An entry of None in the
+            sequence results in the minimum and maximum values being used for
+            the corresponding dimension. The default, None, is equivalent to
+            passing a tuple of two None values.
+        weights (cupy.ndarray): An array of values `w_i` weighing each sample
+            `(x_i, y_i)`. The values of the returned histogram are equal to the
+            sum of the weights belonging to the samples falling into each bin.
+        density (bool, optional): If False, the default, returns the number of
+            samples in each bin. If True, returns the probability *density*
+            function at the bin, ``bin_count / sample_count / bin_volume``.
+
+    Returns:
+        H (cupy.ndarray): The multidimensional histogram of sample x. See
+            normed and weights for the different possible semantics.
+        edges0 (tuple of cupy.ndarray): A list of D arrays describing the bin
+            edges for the first dimension.
+        edges1 (tuple of cupy.ndarray): A list of D arrays describing the bin
+            edges for the second dimension.
+
+    .. warning::
+
+        This function may synchronize the device.
+
+    .. seealso:: :func:`numpy.histogram2d`
+    """
+    try:
+        n = len(bins)
+    except TypeError:
+        n = 1
+
+    if n != 1 and n != 2:
+        if isinstance(bins, cupy.ndarray):
+            xedges = yedges = bins
+            bins = [xedges, yedges]
+        else:
+            raise ValueError("array-like bins not supported in CuPy")
+
+    hist, edges = histogramdd([x, y], bins, range, weights, density)
+    return hist, edges[0], edges[1]
 
 
 _bincount_kernel = core.ElementwiseKernel(
