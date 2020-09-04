@@ -9,7 +9,6 @@ from cupy import testing
 from cupyx.scipy import sparse
 
 
-
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
     'density': [0.1, 0.4, 0.9],
@@ -37,7 +36,6 @@ class TestIndexing(unittest.TestCase):
 
         # None is not valid for major when minor is not None
         maj = slice(None) if maj is None else maj
-
 
         maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
         min_h = min.get() if isinstance(min, cupy.ndarray) else min
