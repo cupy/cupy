@@ -11,7 +11,7 @@ from cupy.cuda import device
 from cupy.cuda import function
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
-from cupy import util
+from cupy import _util
 
 
 _nvrtc_version = None
@@ -73,7 +73,7 @@ def _get_nvrtc_version():
 _tegra_archs = ('53', '62', '72')
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_arch():
     # See Supported Compile Options section of NVRTC User Guide for
     # the maximum value allowed for `--gpu-architecture`.
@@ -500,7 +500,7 @@ class _NVRTCProgram(object):
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
         self.name_expressions = name_expressions
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.ptr:

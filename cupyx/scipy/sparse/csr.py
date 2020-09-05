@@ -505,7 +505,7 @@ def multiply_by_dense(sp, dn):
     return csr_matrix((data, indices, indptr), shape=(m, n))
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_dense():
     return cupy.ElementwiseKernel(
         '''
@@ -604,7 +604,7 @@ def multiply_by_csr(a, b):
     return csr_matrix((d_data, d_indices, d_indptr), shape=(m, n))
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step1():
     return cupy.ElementwiseKernel(
         '''
@@ -676,7 +676,7 @@ def cupy_multiply_by_csr_step1():
     )
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step2():
     return cupy.ElementwiseKernel(
         'T C_DATA, I C_INDICES, raw I FLAGS',
