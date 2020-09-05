@@ -200,7 +200,7 @@ class TestArrayCopyAndView(unittest.TestCase):
         a[a < 3] = 0
         return a
 
-    @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
     def test_copy_host_to_device_view(self):
         dev = cupy.empty((10, 10), dtype=numpy.float32)[2:5, 1:8]
         host = numpy.arange(3 * 7, dtype=numpy.float32).reshape(3, 7)
