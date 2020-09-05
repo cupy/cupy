@@ -6,6 +6,9 @@
 #include <hiprand/hiprand.h>
 #include "cupy_hip_common.h"
 #include "cupy_cuComplex.h"
+#ifndef CUPY_NO_NVTX
+#include <roctx.h>
+#endif // #ifndef CUPY_NO_NVTX
 
 extern "C" {
 
@@ -120,8 +123,8 @@ CUresult cuLaunchCooperativeKernel(...) {
 
 
 // Function attribute
-CUresult cuFuncGetAttribute(...) {
-    return hipErrorUnknown;
+CUresult cuFuncGetAttribute(int* pi, CUfunction_attribute attrib, CUfunction hfunc) {
+    return hipFuncGetAttribute(pi, attrib, hfunc);
 }
 
 CUresult cuFuncSetAttribute(...) {
@@ -532,6 +535,8 @@ cublasStatus_t cublasDestroy(cublasHandle_t handle) {
 }
 
 cublasStatus_t cublasGetVersion(...) {
+    // TODO(leofang): perhaps call rocblas_get_version_string?
+    // or use ROCBLAS_VERSION_MAJOR/HIPBLAS_VERSION_MAJOR etc?
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
@@ -1064,6 +1069,23 @@ cudaError_t cudaProfilerStart() {
 
 cudaError_t cudaProfilerStop() {
   return hipProfilerStop();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// roctx
+///////////////////////////////////////////////////////////////////////////////
+
+void nvtxMarkA(const char* message) {
+    roctxMarkA(message);
+}
+
+int nvtxRangePushA(const char* message) {
+    return roctxRangePushA(message);
+}
+
+int nvtxRangePop() {
+    return roctxRangePop();
 }
 
 } // extern "C"

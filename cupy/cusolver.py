@@ -5,8 +5,7 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
-from cupy import util
-
+from cupy import _util
 
 _available_cuda_version = {
     'gesvdj': (9000, None),
@@ -17,7 +16,7 @@ _available_cuda_version = {
 }
 
 
-@util.memoize()
+@_util.memoize()
 def check_availability(name):
     if name not in _available_cuda_version:
         msg = 'No available version information specified for {}'.format(name)
