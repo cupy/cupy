@@ -41,7 +41,6 @@ class TestIndexing(unittest.TestCase):
         min_h = min.get() if isinstance(min, cupy.ndarray) else min
 
         if min is not None:
-
             actual = a[maj, min]
             expected = expected[maj_h, min_h]
         else:
@@ -156,9 +155,7 @@ class TestIndexing(unittest.TestCase):
     # Major Indexing
 
     def test_major_bool_fancy(self):
-
         size = self.n_rows if self.format == 'csr' else self.n_cols
-
         a = numpy.random.random(size)
         self._run(cupy.array(a).astype(cupy.bool))  # Cupy
         self._run(a.astype(numpy.bool))             # Numpy
@@ -197,7 +194,6 @@ class TestIndexing(unittest.TestCase):
 
     def test_major_all_minor_bool(self):
         size = self.n_cols if self.format == 'csr' else self.n_rows
-
         a = numpy.random.random(size)
         self._run(slice(None), cupy.array(a).astype(cupy.bool))  # Cupy
         self._run(slice(None), a.astype(numpy.bool))  # Numpy
