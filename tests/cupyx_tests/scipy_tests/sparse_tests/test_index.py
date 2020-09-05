@@ -109,6 +109,13 @@ class TestIndexing(unittest.TestCase):
         self._run(slice(1, 15, 5), slice(1, 5, 1))
         self._run(slice(20, 1, 5), slice(None))
         self._run(slice(1, 20, 5), slice(None))
+        self._run(slice(1, 5, 1), slice(1, 20, 2))
+        self._run(slice(1, 5, 1), slice(20, 1, 2))
+        self._run(slice(1, 5, 1), slice(1, 15, 2))
+        self._run(slice(1, 5, 1), slice(15, 1, 5))
+        self._run(slice(1, 5, 1), slice(1, 15, 5))
+        self._run(slice(None), slice(20, 1, 5))
+        self._run(slice(None), slice(1, 20, 5))
 
     def test_major_slice_minor_all(self):
         self._run(slice(1, 5), slice(None))
