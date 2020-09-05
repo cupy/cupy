@@ -226,8 +226,9 @@ def _csr_column_index2(col_order,
 
 
 _csr_row_index_ker = core.ElementwiseKernel(
-    'I out_rows, raw I rows, raw I Ap, raw I Aj, raw T Ax, raw I Bp',
-    'I Bj, T Bx',
+    'int32 out_rows, raw I rows, '
+    'raw int32 Ap, raw int32 Aj, raw T Ax, raw int32 Bp',
+    'int32 Bj, T Bx',
     '''
     const I row = rows[out_rows];
 
@@ -262,7 +263,7 @@ def _csr_row_index(rows, Ap, Aj, Ax):
     cupy.cumsum(row_nnz[rows], out=Bp[1:])
     nnz = int(Bp[-1])
 
-    out_rows = cupy.empty(nnz, dtype=rows.dtype)
+    out_rows = cupy.empty(nnz, dtype=numpy.int32)
 
     # Build a COO row array from output CSR indptr.
     # Calling backend cusparse API directly to avoid

@@ -577,7 +577,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return self.__class__(self._swap(M, N))
         if step == 1:
             return self._get_submatrix(minor=idx, copy=copy)
-        return self._minor_index_fancy(cupy.arange(start, stop, step))
+        return self._minor_index_fancy(
+            cupy.arange(start, stop, step, dtype=self.indices.dtype))
 
     @staticmethod
     def _process_slice(sl, num):
