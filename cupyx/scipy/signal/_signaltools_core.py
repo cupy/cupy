@@ -155,7 +155,6 @@ def _init_nd_and_axes(x, axes):
 def _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=False):
     # See scipy's documentation in scipy.signal.signaltools
     # TODO: cupyx.scipy.fftpack.get_fft_plan may be useful, however:
-    #  * only complex-to-complex planning is possible
     #  * only 3, consecutive, axes from either the start or end of the input
     #  * only C or F contiguous inputs allowed
     real = (in1.dtype.kind != 'c' and in2.dtype.kind != 'c')
