@@ -14,16 +14,16 @@ except ImportError:
 
 
 @testing.parameterize(*testing.product({
-    'in1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
-    'in2': [3, 4, 5, 10],
+    'size1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
+    'size2': [3, 4, 5, 10],
     'mode': ['full', 'same', 'valid'],
 }))
 @testing.gpu
 @testing.with_requires('scipy')
 class TestConvolveCorrelate(unittest.TestCase):
     def _filter(self, func, dtype, xp, scp):
-        in1 = testing.shaped_random(self.in1, xp, dtype)
-        in2 = testing.shaped_random((self.in2,)*in1.ndim, xp, dtype)
+        in1 = testing.shaped_random(self.size1, xp, dtype)
+        in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, method='direct')
 
     # TODO: support complex
@@ -56,16 +56,16 @@ class TestConvolveCorrelate(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'in1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
-    'in2': [3, 4, 5, 10],
+    'size1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
+    'size2': [3, 4, 5, 10],
     'mode': ['full', 'same', 'valid'],
 }))
 @testing.gpu
 @testing.with_requires('scipy')
 class TestFFTConvolve(unittest.TestCase):
     def _filter(self, func, dtype, xp, scp, **kwargs):
-        in1 = testing.shaped_random(self.in1, xp, dtype)
-        in2 = testing.shaped_random((self.in2,)*in1.ndim, xp, dtype)
+        in1 = testing.shaped_random(self.size1, xp, dtype)
+        in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, **kwargs)
 
     # Note: float16 is tested separately
@@ -109,14 +109,14 @@ class TestFFTConvolve(unittest.TestCase):
 
 
 @testing.parameterize(*(testing.product({
-    'in1': [(5, 10), (10, 7)],
-    'in2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
+    'size1': [(5, 10), (10, 7)],
+    'size2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
     'mode': ['full', 'same', 'valid'],
     'boundary': ['fill'],
     'fillvalue': [0, 1, -1],
 }) + testing.product({
-    'in1': [(5, 10), (10, 7)],
-    'in2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
+    'size1': [(5, 10), (10, 7)],
+    'size2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],
     'mode': ['full', 'same', 'valid'],
     'boundary': ['wrap', 'symm'],
     'fillvalue': [0],
@@ -128,8 +128,8 @@ class TestConvolveCorrelate2D(unittest.TestCase):
         if self.mode == 'full' and self.boundary != 'constant':
             # See https://github.com/scipy/scipy/issues/12685
             raise unittest.SkipTest('broken in scipy')
-        in1 = testing.shaped_random(self.in1, xp, dtype)
-        in2 = testing.shaped_random(self.in2, xp, dtype)
+        in1 = testing.shaped_random(self.size1, xp, dtype)
+        in2 = testing.shaped_random(self.size2, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary,
                                          self.fillvalue)
 

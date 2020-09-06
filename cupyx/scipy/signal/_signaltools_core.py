@@ -10,11 +10,11 @@ def _check_conv_inputs(in1, in2, mode, convolution=True):
     if in1.ndim == in2.ndim == 0:
         return in1 * (in2 if convolution else in2.conj())
     if in1.ndim != in2.ndim:
-        raise ValueError("in1 and in2 should have the same dimensionality")
+        raise ValueError('in1 and in2 should have the same dimensionality')
     if in1.size == 0 or in2.size == 0:
         return cupy.array([], dtype=in1.dtype)
     if mode not in ('full', 'same', 'valid'):
-        raise ValueError("acceptable modes are 'valid', 'same', or 'full'")
+        raise ValueError('acceptable modes are "valid", "same", or "full"')
     return None
 
 
@@ -63,7 +63,7 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
     if not isinstance(output, cupy.ndarray):
         output = cupy.empty(out_shape, output)
     elif output.shape != out_shape:
-        raise ValueError("out has wrong shape")
+        raise ValueError('out has wrong shape')
 
     # Get and run the CuPy kernel
     int_type = _util._get_inttype(in1)
@@ -95,8 +95,8 @@ def _inputs_swap_needed(mode, shape1, shape2, axes=None):
     not_ok1 = any(shape1[i] < shape2[i] for i in axes)
     not_ok2 = any(shape1[i] > shape2[i] for i in axes)
     if not_ok1 and not_ok2:
-        raise ValueError("For 'valid' mode, one must be at least "
-                         "as large as the other in every dimension")
+        raise ValueError('For "valid" mode, one must be at least '
+                         'as large as the other in every dimension')
     return not_ok1
 
 
@@ -112,8 +112,8 @@ def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
     # Check that unused axes are either 1 (broadcast) or the same length
     if not all(s1[a] == s2[a] or s1[a] == 1 or s2[a] == 1
                for a in range(in1.ndim) if a not in axes):
-        raise ValueError("incompatible shapes for in1 and in2:"
-                         " {} and {}".format(s1, s2))
+        raise ValueError('incompatible shapes for in1 and in2:'
+                         ' {} and {}'.format(s1, s2))
 
     # Check that input sizes are compatible with 'valid' mode.
     if _inputs_swap_needed(mode, s1, s2, axes=axes):
@@ -126,9 +126,23 @@ def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
 def _init_nd_and_axes(x, axes):
     # See documentation in scipy.fft._helper._init_nd_shape_and_axes
     # except shape argument is always None and doesn't return new shape
+    axes = cupy.util._normalize_axis_indices(axes, x.ndim)
+    if not len(axes):
+        raise ValueError('when provided, axes cannot be empty')
+
+    # Check the resulting shape
+    if any(x.shape[a] < 1 for a in axes):
+        raise ValueError(
+            'invalid number of data points ({0}) specified'.format(shape))
+
+    return axes
+
+
+def _init_nd_and_axes(x, axes):
+    # See documentation in scipy.fft._helper._init_nd_shape_and_axes
+    # except shape argument is always None and doesn't return new shape
     if axes is None:
         axes = range(x.ndim)
-        shape = x.shape
     else:
         # Get the list of axes
         if isinstance(axes, numbers.Number):
@@ -137,26 +151,19 @@ def _init_nd_and_axes(x, axes):
 
         # Check the axes
         if not len(axes):
-            raise ValueError("when provided, axes cannot be empty")
+            raise ValueError('when provided, axes cannot be empty')
         if len(set(axes)) != len(axes):
-            raise ValueError("all axes must be unique")
-
-        # Get the resulting shape
-        shape = (x.shape[a] for a in axes)
+            raise ValueError('all axes must be unique')
 
     # Check the resulting shape
-    if any(s < 1 for s in shape):
-        raise ValueError(
-            "invalid number of data points ({0}) specified".format(shape))
+    if any(x.shape[a] < 1 for a in axes):
+        raise ValueError('invalid number of data points specified')
 
     return axes
 
 
 def _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=False):
     # See scipy's documentation in scipy.signal.signaltools
-    # TODO: cupyx.scipy.fftpack.get_fft_plan may be useful, however:
-    #  * only 3, consecutive, axes from either the start or end of the input
-    #  * only C or F contiguous inputs allowed
     real = (in1.dtype.kind != 'c' and in2.dtype.kind != 'c')
     fshape = ([fft.next_fast_len(shape[a], real) for a in axes]
               if calc_fast_len else shape)

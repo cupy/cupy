@@ -102,7 +102,7 @@ def _correlate(in1, in2, mode='full', method='auto', convolution=False):
     if quick_out is not None:
         return quick_out
     if method not in ('auto', 'direct', 'fft'):
-        raise ValueError("acceptable methods are 'auto', 'direct', or 'fft'")
+        raise ValueError('acceptable methods are "auto", "direct", or "fft"')
 
     if method == 'auto':
         method = choose_conv_method(in1, in2, mode=mode)
@@ -290,9 +290,9 @@ def _correlate2d(in1, in2, mode, boundary, fillvalue, convolution=False):
     }
     boundary = _boundaries.get(boundary)
     if boundary is None:
-        raise ValueError("Acceptable boundary flags are 'fill' (or 'pad'), "
-                         "'circular' (or 'wrap'), 'symmetric' (or 'symm'), "
-                         "and 'reflect'.")
+        raise ValueError('Acceptable boundary flags are "fill" (or "pad"), '
+                         '"circular" (or "wrap"), and '
+                         '"symmetric" (or "symm").')
     quick_out = _st_core._check_conv_inputs(in1, in2, mode, convolution)
     if quick_out is not None:
         return quick_out
