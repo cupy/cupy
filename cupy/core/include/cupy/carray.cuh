@@ -225,7 +225,7 @@ public:
       this->shape_[i] = shape[i];
       this->strides_[i] = strides[i];
     }
-  }
+  } 
 
 #if __cplusplus >= 201103
   template <typename Int, typename U=T>
@@ -261,6 +261,12 @@ public:
     assert(strides.size() == _ndim);
   }
 #endif
+
+  __device__ CArray() : data_(NULL), size_(1)
+  {
+    memset(this->shape_, 0, sizeof(this->shape_));
+    memset(this->strides_, 0, sizeof(this->strides_));
+  }
 
   __device__ ptrdiff_t size() const {
     return size_;
@@ -361,6 +367,8 @@ private:
 public:
   static const int ndim = 0;
 
+  __device__ CArray() : data_(NULL), size_(1) { }
+  
   __device__ explicit CArray(T* data) : data_(data), size_(1) { }
 
   template <typename Int>
@@ -381,6 +389,7 @@ public:
     assert(strides.size() == 0);
   }
 #endif
+
 
   __device__ ptrdiff_t size() const {
     return size_;
@@ -460,6 +469,12 @@ public:
     assert(index.size() == _ndim);
   }
 #endif
+
+  __device__ CIndexer() : size_(1) 
+  {
+    memset(this->shape_, 0, sizeof(this->shape_));
+    memset(this->index_, 0, sizeof(this->index_));
+  }
 
   __device__ ptrdiff_t size() const {
     return size_;
