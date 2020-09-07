@@ -410,35 +410,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         return self.getrow(row)._minor_index_fancy(col)
 
     def _get_intXslice(self, row, col):
-        if col.step in (1, None):
-            return self._get_submatrix(slice(row, row+1, 1), col, copy=True)
-
-        M, N = self.shape
-        start, stop, stride = col.indices(N)
-
-        ii, jj = self.indptr[row:row+2]
-        row_indices = self.indices[ii:jj]
-        row_data = self.data[ii:jj]
-
-        if stride > 0:
-            ind = (row_indices >= start) & (row_indices < stop)
-        else:
-            ind = (row_indices <= start) & (row_indices > stop)
-
-        if abs(stride) > 1:
-            ind &= (row_indices - start) % stride == 0
-
-        row_indices = (row_indices[ind] - start) // stride
-        row_data = row_data[ind]
-        row_indptr = cupy.array([0, row_indices.size])
-
-        if stride < 0:
-            row_data = row_data[::-1]
-            row_indices = cupy.abs(row_indices[::-1])
-
-        shape = (1, (stop - start + stride - 1) // stride)
-        return csr_matrix((row_data, row_indices, row_indptr), shape=shape,
-                          dtype=self.dtype, copy=False)
+        return self.getrow(row)._minor_slice(col)
 
     def _get_sliceXint(self, row, col):
         if row.step in (1, None):
