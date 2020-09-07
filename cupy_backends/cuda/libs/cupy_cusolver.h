@@ -178,6 +178,7 @@ cusolverStatus_t cusolverDnZgesvdaStridedBatched(...) {
 
 #elif defined(CUPY_USE_HIP) // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
+//#include "../cupy_hip.h"
 #include "../cupy_hip_common.h"
 #include <rocsolver.h>
 
@@ -189,71 +190,101 @@ extern "C" {
 typedef enum{} cusolverEigType_t;
 typedef enum{} cusolverEigMode_t;
 
-typedef void* cusolverDnHandle_t;
+typedef rocblas_handle cusolverDnHandle_t;
 typedef void* cusolverSpHandle_t;
 typedef void* cusparseMatDescr_t;
 typedef void* gesvdjInfo_t;
 typedef void* syevjInfo_t;
 
-cusolverStatus_t cusolverDnCreate(...) {
-    return rocblas_status_success;
+cusolverStatus_t cusolverDnCreate(cusolverDnHandle_t *handle) {
+    return rocblas_create_handle(handle);
 }
 
-cusolverStatus_t cusolverDnDestroy(...) {
-    return rocblas_status_success;
+cusolverStatus_t cusolverDnDestroy(cusolverDnHandle_t handle) {
+    return rocblas_destroy_handle(handle);
 }
 
-cusolverStatus_t cusolverDnGetStream(...) {
-    return rocblas_status_success;
+cusolverStatus_t cusolverDnGetStream(cusolverDnHandle_t handle,
+                                     cudaStream_t *streamId) {
+    return rocblas_get_stream(handle, streamId);
 }
 
 cusolverStatus_t cusolverSpGetStream(...) {
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnSetStream(...) {
-    return rocblas_status_success;
+cusolverStatus_t cusolverDnSetStream (cusolverDnHandle_t handle,
+                                      cudaStream_t streamId) {
+    return rocblas_set_stream(handle, streamId);
 }
 
 cusolverStatus_t cusolverSpSetStream(...) {
     return rocblas_status_success;
 }
 
-
 cusolverStatus_t cusolverGetProperty(...) {
     return rocblas_status_success;
 }
 
+static rocblas_fill convert_rocblas_fill(cublasFillMode_t mode) {
+    switch(static_cast<int>(mode)) {
+        case 0 /* CUBLAS_FILL_MODE_LOWER */: return rocblas_fill_lower;
+        case 1 /* CUBLAS_FILL_MODE_UPPER */: return rocblas_fill_upper;
+        default: throw std::runtime_error("unrecognized mode");
+    }
+}
+
+
 cusolverStatus_t cusolverDnSpotrf_bufferSize(...) {
+    // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
 }
 
 cusolverStatus_t cusolverDnDpotrf_bufferSize(...) {
+    // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
 }
 
 cusolverStatus_t cusolverDnCpotrf_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZpotrf_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
-cusolverStatus_t cusolverDnSpotrf(...) {
-    return rocblas_status_success;
+cusolverStatus_t cusolverDnSpotrf(cusolverDnHandle_t handle,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  float *A,
+                                  int lda,
+                                  float *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    // ignore Workspace and Lwork as rocSOLVER does not need them
+    return rocsolver_spotrf(handle, convert_rocblas_fill(uplo),
+                            n, A, lda, devInfo);
 }
 
-cusolverStatus_t cusolverDnDpotrf(...) {
-    return rocblas_status_success;
+cusolverStatus_t cusolverDnDpotrf(cusolverDnHandle_t handle,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  double *A,
+                                  int lda,
+                                  double *Workspace,
+                                  int Lwork,
+                                  int *devInfo ) {
+    // ignore Workspace and Lwork as rocSOLVER does not need them
+    return rocsolver_dpotrf(handle, convert_rocblas_fill(uplo),
+                            n, A, lda, devInfo);
 }
 
 cusolverStatus_t cusolverDnCpotrf(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZpotrf(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSpotrfBatched(...) {
