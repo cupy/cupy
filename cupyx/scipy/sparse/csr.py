@@ -1,4 +1,5 @@
 import numpy
+import operator
 
 try:
     import scipy.sparse
@@ -89,7 +90,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         return csrgeam(self, other, alpha, beta)
 
     def __eq__(self, other):
-        if isspmatrix_csr(other):
+        if _util.isdense(other):
+            return self.todense() == other
+        elif isspmatrix_csr(other):
             res = binopt_csr(self, other, '_ne_')
             all_true = cupy.ones(res.shape, dtype=numpy.bool)
             out = all_true ^ res.toarray()
@@ -97,14 +100,18 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def __ne__(self, other):
-        if isspmatrix_csr(other):
+        if _util.isdense(other):
+            return self.todense() != other
+        elif isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
             return binopt_csr(self, other, '_ne_')
         raise NotImplementedError
 
-    def _inequality(self, other, cupy_op, op_name):
-        if isspmatrix_csr(other):
+    def _inequality(self, other, op, op_name):
+        if _util.isdense(other):
+            return op(self.todense(), other)
+        elif isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
             if op_name in ('_lt_', '_gt_'):
@@ -118,16 +125,16 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def __lt__(self, other):
-        return self._inequality(other, None, '_lt_')
+        return self._inequality(other, operator.lt, '_lt_')
 
     def __gt__(self, other):
-        return self._inequality(other, None, '_gt_')
+        return self._inequality(other, operator.gt, '_gt_')
 
     def __le__(self, other):
-        return self._inequality(other, None, '_le_')
+        return self._inequality(other, operator.le, '_le_')
 
     def __ge__(self, other):
-        return self._inequality(other, None, '_ge_')
+        return self._inequality(other, operator.ge, '_ge_')
 
     def __mul__(self, other):
         if cupy.isscalar(other):
