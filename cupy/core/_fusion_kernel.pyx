@@ -16,7 +16,7 @@ from cupy_backends.cuda.api cimport runtime
 from cupy.core cimport _reduction
 
 from cupy.core import _dtype
-from cupy import util
+from cupy import _util
 from cupy.core import _fusion_emit_code
 from cupy.core import _fusion_op
 from cupy.core._fusion_variable import _AbstractDim
@@ -29,7 +29,7 @@ cdef Py_ssize_t _default_block_size = (
     256 if runtime._is_hip_environment else 512)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
     template = (
         '${preamble}\n\n'

@@ -4,7 +4,7 @@ import time
 import numpy
 
 import cupy
-from cupy import util
+from cupy import _util
 
 
 class _PerfCaseResult(object):
@@ -53,7 +53,7 @@ def repeat(
         func, args=(), kwargs={}, n_repeat=10000, *,
         name=None, n_warmup=10, max_duration=math.inf, devices=None):
 
-    util.experimental('cupyx.time.repeat')
+    _util.experimental('cupyx.time.repeat')
     if name is None:
         name = func.__name__
 

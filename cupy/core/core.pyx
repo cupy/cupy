@@ -24,7 +24,7 @@ from cupy.cuda import memory as memory_module
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy import util
+from cupy import _util
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -1332,7 +1332,7 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        if util.ENABLE_SLICE_COPY and (
+        if _util.ENABLE_SLICE_COPY and (
                 type(slices) is slice
                 and slices == slice(None, None, None)
                 and isinstance(value, numpy.ndarray)
@@ -1859,7 +1859,7 @@ cpdef str _get_header_source():
     if _header_source is None:
         source = []
         base_path = _get_header_dir_path()
-        for file_path in _cupy_header_list + _cupy_extra_header_list:
+        for file_path in _cupy_extra_header_list + _cupy_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
                 source.append(header_file.read())
@@ -1996,21 +1996,17 @@ if (in1 == 0) {
 }'''
 
 cdef _round_complex = '''
-double x, inv_x;
 if (in1 == 0) {
-    x = inv_x = 1;
-    out0 = in0_type(rint(in0.real() * x),
-                    rint(in0.imag() * x));
+    out0 = in0_type(rint(in0.real()), rint(in0.imag()));
 } else {
-    x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
-    inv_x = 1.0 / x;
+    double x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
     if (in1 < 0) {
-        double y = x;
-        x = inv_x;
-        inv_x = y;
+        out0 = in0_type(rint(in0.real() / x) * x,
+                        rint(in0.imag() / x) * x);
+    } else {
+        out0 = in0_type(rint(in0.real() * x) / x,
+                        rint(in0.imag() * x) / x);
     }
-    out0 = in0_type(rint(in0.real() * x) * inv_x,
-                    rint(in0.imag() * x) * inv_x);
 }'''
 
 
@@ -2301,7 +2297,7 @@ cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
             'could not be allocated. '
             'This generally occurs because of insufficient host memory. '
             'The original error was: {}'.format(nbytes, e),
-            util.PerformanceWarning)
+            _util.PerformanceWarning)
 
     return None
 
