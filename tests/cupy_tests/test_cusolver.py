@@ -180,9 +180,9 @@ class TestSyevj(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'n': [10, 40, 160],
-    'nrhs': [None, 1, 10],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'n': [3],
+    'nrhs': [None, 1, 4],
 }))
 @attr.gpu
 class TestGesv(unittest.TestCase):

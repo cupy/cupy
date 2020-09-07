@@ -480,13 +480,13 @@ def gesv(a, b):
             The matrix with dimension ``(M)`` or ``(M, K)``.
     """
     if a.ndim != 2:
-        raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))
+        raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
     if b.ndim not in (1, 2):
-        raise ValueError('b.ndim must be 1 or 2 (actual:{})'.format(b.ndim))
+        raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
     if a.shape[0] != a.shape[1]:
         raise ValueError('a must be a square matrix.')
     if a.shape[0] != b.shape[0]:
-        raise ValueError('shape mismatch (a:{}, b:{}).'.
+        raise ValueError('shape mismatch (a: {}, b: {}).'.
                          format(a.shape, b.shape))
 
     dtype = numpy.promote_types(a.dtype.char, 'f')
