@@ -143,8 +143,14 @@ if use_hip:
         'file': [
             'cupy_backends.cuda.libs.cusolver',
         ],
-        'include': [],
-        'libraries': [],
+        'include': [
+            'rocsolver.h',
+        ],
+        'libraries': [
+            'rocblas',
+            'rocsolver',
+        ],
+        'check_method': build.check_cuda_version,
     })
 else:
     MODULES.append({
