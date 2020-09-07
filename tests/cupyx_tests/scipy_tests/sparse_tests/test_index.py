@@ -42,9 +42,6 @@ class TestIndexing(unittest.TestCase):
 
         expected = a.get()
 
-        if compare_dense:
-            expected = expected.todense()
-
         maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
         min_h = min.get() if isinstance(min, cupy.ndarray) else min
 
@@ -57,7 +54,8 @@ class TestIndexing(unittest.TestCase):
             expected = expected[maj_h]
 
         if compare_dense:
-            actual = actual.todense()
+            actual = actual.toarray()
+            expected = expected.toarray()
 
         if sparse.isspmatrix(actual):
             actual.sort_indices()
@@ -69,9 +67,10 @@ class TestIndexing(unittest.TestCase):
                 actual.indices, expected.indices)
             testing.assert_array_equal(
                 actual.data, expected.data)
-        else:
-            testing.assert_array_equal(
-                actual, numpy.asarray(expected))
+            actual = actual.toarray()
+            expected = expected.toarray()
+
+        testing.assert_array_equal(actual, expected)
 
     @staticmethod
     def _get_index_combos(idx):
@@ -125,6 +124,7 @@ class TestIndexing(unittest.TestCase):
         self._run(slice(1, 5), 5)
         self._run(slice(5, 1), 5)
         self._run(slice(5, 1, -1), 5)
+        self._run(5, slice(5, 1, -1))
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
