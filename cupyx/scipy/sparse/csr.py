@@ -89,52 +89,55 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             raise NotImplementedError
         return csrgeam(self, other, alpha, beta)
 
-    def __eq__(self, other):
-        if _util.isdense(other):
-            return self.todense() == other
-        elif isspmatrix_csr(other):
-            res = binopt_csr(self, other, '_ne_')
-            all_true = cupy.ones(res.shape, dtype=numpy.bool)
-            out = all_true ^ res.toarray()
-            return csr_matrix(out)
-        raise NotImplementedError
-
-    def __ne__(self, other):
-        if _util.isdense(other):
-            return self.todense() != other
-        elif isspmatrix_csr(other):
-            self.sum_duplicates()
-            other.sum_duplicates()
-            return binopt_csr(self, other, '_ne_')
-        raise NotImplementedError
-
-    def _inequality(self, other, op, op_name):
-        if _util.isdense(other):
+    def _comparison(self, other, op, op_name):
+        if _util.isscalarlike(other):
+            data = cupy.asarray(other, dtype=self.dtype).reshape(1)
+            if numpy.isnan(data[0]):
+                if op_name == '_ne_':
+                    return csr_matrix(cupy.ones(self.shape, dtype=numpy.bool))
+                else:
+                    return csr_matrix(self.shape, dtype=numpy.bool)
+            indices = cupy.zeros((1,), dtype=numpy.int32)
+            indptr = cupy.arange(2, dtype=numpy.int32)
+            other = csr_matrix((data, indices, indptr), shape=(1, 1))
+            return binopt_csr(self, other, op_name)
+        elif _util.isdense(other):
             return op(self.todense(), other)
         elif isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if op_name in ('_lt_', '_gt_'):
+            if op_name in ('_ne_', '_lt_', '_gt_'):
                 return binopt_csr(self, other, op_name)
 
-            res = binopt_csr(self, other,
-                             '_gt_' if op_name == '_le_' else '_lt_')
+            if op_name == '_eq_':
+                opposite_op_name = '_ne_'
+            elif op_name == '_le_':
+                opposite_op_name = '_gt_'
+            elif op_name == '_ge_':
+                opposite_op_name = '_lt_'
+            res = binopt_csr(self, other, opposite_op_name)
             all_true = cupy.ones(res.shape, dtype=numpy.bool)
             out = all_true ^ res.toarray()
             return csr_matrix(out)
         raise NotImplementedError
 
+    def __eq__(self, other):
+        return self._comparison(other, operator.eq, '_eq_')
+
+    def __ne__(self, other):
+        return self._comparison(other, operator.ne, '_ne_')
+
     def __lt__(self, other):
-        return self._inequality(other, operator.lt, '_lt_')
+        return self._comparison(other, operator.lt, '_lt_')
 
     def __gt__(self, other):
-        return self._inequality(other, operator.gt, '_gt_')
+        return self._comparison(other, operator.gt, '_gt_')
 
     def __le__(self, other):
-        return self._inequality(other, operator.le, '_le_')
+        return self._comparison(other, operator.le, '_le_')
 
     def __ge__(self, other):
-        return self._inequality(other, operator.ge, '_ge_')
+        return self._comparison(other, operator.ge, '_ge_')
 
     def __mul__(self, other):
         if cupy.isscalar(other):
@@ -791,6 +794,11 @@ __device__ inline O binopt(T in1, T in2) {
     return min(in1, in2);
 }
 '''
+_BINOPT_EQ_ = '''
+__device__ inline O binopt(T in1, T in2) {
+    return (in1 == in2);
+}
+'''
 _BINOPT_NE_ = '''
 __device__ inline O binopt(T in1, T in2) {
     return (in1 != in2);
@@ -804,6 +812,16 @@ __device__ inline O binopt(T in1, T in2) {
 _BINOPT_GT_ = '''
 __device__ inline O binopt(T in1, T in2) {
     return (in1 > in2);
+}
+'''
+_BINOPT_LE_ = '''
+__device__ inline O binopt(T in1, T in2) {
+    return (in1 <= in2);
+}
+'''
+_BINOPT_GE_ = '''
+__device__ inline O binopt(T in1, T in2) {
+    return (in1 >= in2);
 }
 '''
 
@@ -831,6 +849,9 @@ def binopt_csr(a, b, op_name):
     elif op_name == '_minimum_':
         funcs += _BINOPT_MIN_
         out_dtype = in_dtype
+    elif op_name == '_eq_':
+        funcs += _BINOPT_EQ_
+        out_dtype = numpy.bool
     elif op_name == '_ne_':
         funcs += _BINOPT_NE_
         out_dtype = numpy.bool
@@ -839,6 +860,12 @@ def binopt_csr(a, b, op_name):
         out_dtype = numpy.bool
     elif op_name == '_gt_':
         funcs += _BINOPT_GT_
+        out_dtype = numpy.bool
+    elif op_name == '_le_':
+        funcs += _BINOPT_LE_
+        out_dtype = numpy.bool
+    elif op_name == '_ge_':
+        funcs += _BINOPT_GE_
         out_dtype = numpy.bool
     else:
         raise ValueError('invalid op_name: {}'.format(op_name))
