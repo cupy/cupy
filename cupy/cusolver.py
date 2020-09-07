@@ -13,7 +13,6 @@ _available_cuda_version = {
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
     'syevj': (9000, None),
-    'gesv': (None, None),
 }
 
 
@@ -480,9 +479,6 @@ def gesv(a, b):
         cupy.ndarray:
             The matrix with dimension ``(M)`` or ``(M, K)``.
     """
-    if not check_availability('gesv'):
-        raise RuntimeError('gesv is not available.')
-
     if a.ndim != 2:
         raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))
     if b.ndim not in (1, 2):
