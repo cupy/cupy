@@ -167,11 +167,14 @@ class TestIndexing(unittest.TestCase):
         a = numpy.random.random(size)
         self._run(cupy.array(a).astype(cupy.bool))  # Cupy
         self._run(a.astype(numpy.bool))             # Numpy
-        self._run(a.astype(numpy.bool).tolist(),    # List
-                  # In older environments (e.g., py35, scipy 1.4),
-                  # scipy sparse arrays are crashing when indexed with
-                  # native Python boolean list.
-                  compare_dense=True)
+
+    @testing.with_requires('scipy>=1.5.0')
+    def test_major_bool_list_fancy(self):
+        # In older environments (e.g., py35, scipy 1.4), scipy sparse arrays
+        # are crashing when indexed with native Python boolean list.
+        size = self.n_rows if self.format == 'csr' else self.n_cols
+        a = numpy.random.random(size)
+        self._run(a.astype(numpy.bool).tolist())    # List
 
     def test_major_fancy_minor_all(self):
 
@@ -203,23 +206,28 @@ class TestIndexing(unittest.TestCase):
         a = numpy.random.random(size)
         self._run(slice(None), cupy.array(a).astype(cupy.bool))  # Cupy
         self._run(slice(None), a.astype(numpy.bool))  # Numpy
-        self._run(slice(None), a.astype(numpy.bool).tolist(),  # List
-                  # In older environments (e.g., py35, scipy 1.4),
-                  # scipy sparse arrays are crashing when indexed with
-                  # native Python boolean list.
-                  compare_dense=True)
+
+    @testing.with_requires('scipy>=1.5.0')
+    def test_major_all_minor_bool_list(self):
+        # In older environments (e.g., py35, scipy 1.4), scipy sparse arrays
+        # are crashing when indexed with native Python boolean list.
+        size = self.n_cols if self.format == 'csr' else self.n_rows
+        a = numpy.random.random(size)
+        self._run(slice(None), a.astype(numpy.bool).tolist())  # List
 
     def test_major_slice_minor_bool(self):
         size = self.n_cols if self.format == 'csr' else self.n_rows
-
         a = numpy.random.random(size)
         self._run(slice(1, 10, 2), cupy.array(a).astype(cupy.bool))  # Cupy
         self._run(slice(1, 10, 2), a.astype(numpy.bool))  # Numpy
-        self._run(slice(1, 10, 2), a.astype(numpy.bool).tolist(),  # List
-                  # In older environments (e.g., py35, scipy 1.4),
-                  # scipy sparse arrays are crashing when indexed with
-                  # native Python boolean list.
-                  compare_dense=True)
+
+    @testing.with_requires('scipy>=1.5.0')
+    def test_major_slice_minor_bool_list(self):
+        # In older environments (e.g., py35, scipy 1.4), scipy sparse arrays
+        # are crashing when indexed with native Python boolean list.
+        size = self.n_cols if self.format == 'csr' else self.n_rows
+        a = numpy.random.random(size)
+        self._run(slice(1, 10, 2), a.astype(numpy.bool).tolist())  # List
 
     def test_major_all_minor_fancy(self):
 
