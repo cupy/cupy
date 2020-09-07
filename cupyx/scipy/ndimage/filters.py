@@ -164,7 +164,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     return _filters_core._call_kernel(kernel, input, weights, output)
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_correlate_kernel(mode, w_shape, int_type, offsets, cval):
     return _filters_core._generate_nd_kernel(
         'correlate',
@@ -414,7 +414,7 @@ def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
 
 
 def _prewitt_or_sobel(input, axis, output, mode, cval, weights):
-    axis = cupy.util._normalize_axis_index(axis, input.ndim)
+    axis = cupy._util._normalize_axis_index(axis, input.ndim)
 
     def get(is_diff):
         return cupy.array([-1, 0, 1]) if is_diff else weights
@@ -781,7 +781,7 @@ def _min_or_max_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
                                       weights_dtype=bool)
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_min_or_max_kernel(mode, w_shape, func, offsets, cval, int_type,
                            has_weights=True, has_structure=False,
                            has_central_value=True):
@@ -963,7 +963,7 @@ __device__ void sort(X *array, int size) {{
 }}'''
 
 
-@cupy.util.memoize()
+@cupy._util.memoize()
 def _get_shell_gap(filter_size):
     gap = 1
     while gap < filter_size:
@@ -971,7 +971,7 @@ def _get_shell_gap(filter_size):
     return gap
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
                      int_type):
     s_rank = min(rank, filter_size - rank - 1)
@@ -1136,7 +1136,7 @@ def generic_filter1d(input, function, filter_size, axis=-1, output=None,
         raise TypeError('bad function type')
     if filter_size < 1:
         raise RuntimeError('invalid filter size')
-    axis = cupy.util._normalize_axis_index(axis, input.ndim)
+    axis = cupy._util._normalize_axis_index(axis, input.ndim)
     origin = _util._check_origin(origin, filter_size)
     _util._check_mode(mode)
     output = _util._get_output(output, input)

@@ -4,7 +4,7 @@ from cupy import cuda
 from cupy.testing import attr
 
 
-@unittest.skipUnless(cuda.nvtx_enabled, 'nvtx is not installed')
+@unittest.skipUnless(cuda.nvtx.available, 'nvtx is not installed')
 class TestNVTX(unittest.TestCase):
 
     @attr.gpu

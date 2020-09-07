@@ -16,7 +16,7 @@ from cupy import cuda
 from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
-from cupy import util
+from cupy import _util
 
 import cupyx
 
@@ -45,11 +45,11 @@ class RandomState(object):
             are available::
 
                cupy.cuda.curand.CURAND_RNG_PSEUDO_DEFAULT
-               cupy.cuda.curand.CURAND_RNG_XORWOW
-               cupy.cuda.curand.CURAND_RNG_MRG32K3A
-               cupy.cuda.curand.CURAND_RNG_MTGP32
-               cupy.cuda.curand.CURAND_RNG_MT19937
-               cupy.cuda.curand.CURAND_RNG_PHILOX4_32_10
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_XORWOW
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_MRG32K3A
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_MTGP32
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_MT19937
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_PHILOX4_32_10
 
     """
 
@@ -58,7 +58,7 @@ class RandomState(object):
         self.method = method
         self.seed(seed)
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         # When createGenerator raises an error, _generator is not initialized
         if is_shutting_down():
             return
@@ -340,7 +340,7 @@ class RandomState(object):
             :meth:`numpy.random.RandomState.multivariate_normal
             <numpy.random.mtrand.RandomState.multivariate_normal>`
         """
-        util.experimental('cupy.random.RandomState.multivariate_normal')
+        _util.experimental('cupy.random.RandomState.multivariate_normal')
         mean = cupy.asarray(mean, dtype=dtype)
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:

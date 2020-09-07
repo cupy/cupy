@@ -193,7 +193,8 @@ def _contains_signed_and_unsigned(kw):
 
 
 def _make_decorator(check_func, name, type_check, contiguous_check,
-                    accept_error, sp_name=None, scipy_name=None):
+                    accept_error, sp_name=None, scipy_name=None,
+                    check_sparse_format=True):
     assert isinstance(name, str)
     assert sp_name is None or isinstance(sp_name, str)
     assert scipy_name is None or isinstance(scipy_name, str)
@@ -228,7 +229,8 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 
             # Check types
             cupy_numpy_result_ndarrays = [
-                _convert_output_to_ndarray(cupy_r, numpy_r, sp_name)
+                _convert_output_to_ndarray(
+                    cupy_r, numpy_r, sp_name, check_sparse_format)
                 for cupy_r, numpy_r in zip(cupy_result, numpy_result)]
 
             # Check dtypes
@@ -284,7 +286,7 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
     return decorator
 
 
-def _convert_output_to_ndarray(c_out, n_out, sp_name):
+def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
     """Checks type of cupy/numpy results and returns cupy/numpy ndarrays.
 
     Args:
@@ -295,18 +297,19 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name):
         sp_name(str or None): Argument name whose value is either
             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
             argument is given for the modules.
+        check_sparse_format (bool): If ``True``, consistency of format of
+            sparse matrix is also checked. Default is ``True``.
 
     Returns:
         The tuple of cupy.ndarray and numpy.ndarray.
     """
-    if sp_name is not None:
+    if sp_name is not None and cupyx.scipy.sparse.issparse(c_out):
+        # Sparse output case.
         import scipy.sparse
-        if cupyx.scipy.sparse.issparse(c_out):
-            # Sparse output case.
-            if scipy.sparse.issparse(n_out):
-                return c_out.A, n_out.A
-            if isinstance(n_out, numpy.generic):
-                return c_out.A, n_out
+        assert scipy.sparse.issparse(n_out)
+        if check_sparse_format:
+            assert c_out.format == n_out.format
+        return c_out.A, n_out.A
     if (isinstance(c_out, cupy.ndarray)
             and isinstance(n_out, (numpy.ndarray, numpy.generic))):
         # ndarray output case.
@@ -329,7 +332,8 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name):
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                         name='xp', type_check=True, accept_error=False,
-                        sp_name=None, scipy_name=None, contiguous_check=True):
+                        sp_name=None, scipy_name=None, contiguous_check=True,
+                        *, _check_sparse_format=True):
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
@@ -380,7 +384,8 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     def check_func(c, n):
         array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
     return _make_decorator(check_func, name, type_check, contiguous_check,
-                           accept_error, sp_name, scipy_name)
+                           accept_error, sp_name, scipy_name,
+                           _check_sparse_format)
 
 
 def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,

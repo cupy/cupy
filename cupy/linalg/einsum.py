@@ -5,11 +5,16 @@ import warnings
 
 import cupy
 from cupy.core import _accelerator
-from cupy import util
+from cupy import _util
+from cupy.cuda import cutensor as cuda_cutensor
 from cupy.linalg.einsum_opt import _greedy_path
 from cupy.linalg.einsum_opt import _optimal_path
-if cupy.cuda.cutensor_enabled:
+
+
+if cuda_cutensor.available:
     from cupy import cutensor
+else:
+    cutensor = None
 
 
 options = {
@@ -628,7 +633,7 @@ def einsum(*operands, **kwargs):
         if any(len(indices) > 2 for indices in path):
             warnings.warn(
                 'memory efficient einsum is not supported yet',
-                util.PerformanceWarning)
+                _util.PerformanceWarning)
 
     for idx0, idx1 in _iter_path_pairs(path):
         # "reduced" binary einsum

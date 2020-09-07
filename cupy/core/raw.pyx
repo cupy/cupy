@@ -459,13 +459,19 @@ cdef class RawModule:
         from cupy.cuda.memory import MemoryPointer, UnownedMemory
         cdef Module mod = self.module
         ptr = mod.get_global_var(name)
-        # unable to retrieve size, plus it's not used anywhere, so just put 0
-        mem = UnownedMemory(ptr, 0, mod)
+        # 1. unable to retrieve size, plus it's not used anywhere, so set to 0
+        # 2. it is safe to call getDevice() since self.module is cached on a
+        #    per-device basis
+        # 3. in CUDA, passing the device id saves us a look-up of the pointer
+        #    attributes; in ROCm, this is a must because there's a bug when
+        #    looking up a pointer to constant memory (hipErrorInvalidDevice)
+        cdef int dev = runtime.getDevice()
+        mem = UnownedMemory(ptr, 0, mod, dev)
         memptr = MemoryPointer(mem, 0)
         return memptr
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_raw_module(str code, str path, tuple options, str backend,
                     bint translate_cucomplex,
                     bint enable_cooperative_groups,

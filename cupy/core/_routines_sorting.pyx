@@ -5,12 +5,8 @@ import numpy
 import cupy
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core._ufuncs import elementwise_copy
-from cupy import util
-
-try:
-    from cupy.cuda import thrust
-except ImportError:
-    pass
+from cupy import _util
+from cupy.cuda import thrust
 
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core.core cimport compile_with_cache
@@ -21,7 +17,7 @@ cdef _ndarray_sort(ndarray self, int axis):
     cdef int ndim = self._shape.size()
     cdef ndarray data
 
-    if not cupy.cuda.thrust_enabled:
+    if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.sort. Please '
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')
@@ -63,7 +59,7 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
     cdef int _axis, ndim
     cdef ndarray data
 
-    if not cupy.cuda.thrust_enabled:
+    if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')
@@ -253,7 +249,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
     return data.argsort(_axis)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _partition_kernel(dtype):
     name = 'partition_kernel'
     merge_kernel = 'partition_merge_kernel'
