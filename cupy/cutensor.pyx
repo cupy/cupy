@@ -463,6 +463,10 @@ cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype, compute_dtype):
     if key not in dict_contraction:
         raise ValueError('Un-supported dtype combinations: ({}, {}, {})'.
                          format(a_dtype, b_dtype, out_dtype))
+    compute_capability = int(device.get_compute_capability())
+    if compute_capability < 70 and 'e' in key:
+        raise ValueError('FP16 dtype is only supported on GPU with compute '
+                         'capability 7.0 or higher.')
     if compute_dtype is None:
         compute_type = cupy.core.get_compute_type(out_dtype)
     else:
@@ -476,14 +480,19 @@ cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype, compute_dtype):
         else:
             raise ValueError('Un-supported dtype: {}'.format(compute_dtype))
     if compute_type in dict_contraction[key]:
-        return dict_contraction[key][compute_type]
-    else:
-        warnings.warn('Use of compute type ({}) for the dtype combination '
-                      '({}, {}, {}) is not supported in cuTENSOR contraction. '
-                      'Default compute type will be used instead.'.
-                      format(cupy.core.compute_type_to_str(compute_type),
-                             a_dtype, b_dtype, out_dtype))
-        return dict_contraction[key][core.COMPUTE_TYPE_DEFAULT]
+        cutensor_compute_type = dict_contraction[key][compute_type]
+        if not (compute_capability < 70 and
+                cutensor_compute_type in (cutensor.R_MIN_16F,
+                                          cutensor.C_MIN_16F,
+                                          cutensor.COMPUTE_16F)):
+            return cutensor_compute_type
+    warnings.warn('Use of compute type ({}) for the dtype combination '
+                  '({}, {}, {}) is not supported in cuTENSOR contraction on '
+                  'GPU with compute capability ({}). Default compute type '
+                  'will be used instead.'.
+                  format(cupy.core.compute_type_to_str(compute_type),
+                         a_dtype, b_dtype, out_dtype, compute_capability))
+    return dict_contraction[key][core.COMPUTE_TYPE_DEFAULT]
 
 
 cdef _get_scalar_dtype(out_dtype):

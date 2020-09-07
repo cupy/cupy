@@ -4,6 +4,7 @@ import numpy
 
 import cupy
 from cupy import testing
+from cupy.cuda import device
 
 from cupy.cuda import cutensor as ct
 
@@ -267,6 +268,9 @@ class TestCuTensorContraction(unittest.TestCase):
         return a
 
     def setUp(self):
+        compute_capability = int(device.get_compute_capability())
+        if compute_capability < 70 and 'e' in self.dtype_combo:
+            self.skipTest("Not supported")
         dtype_chars = list(self.dtype_combo)
         self.a_dtype = numpy.dtype(dtype_chars[0])
         self.b_dtype = numpy.dtype(dtype_chars[1])
