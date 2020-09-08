@@ -229,6 +229,8 @@ cusolverStatus_t cusolverGetProperty(...) {
 
 
 /* ---------- helpers ---------- */
+// TODO(leofang): perhaps these should be moved to cupy_hip.h and/or merged
+// with the support of hipBLAS?
 static rocblas_fill convert_rocblas_fill(cublasFillMode_t mode) {
     switch(static_cast<int>(mode)) {
         case 0 /* CUBLAS_FILL_MODE_LOWER */: return rocblas_fill_lower;
@@ -246,6 +248,7 @@ static rocblas_side convert_rocblas_side(cublasSideMode_t mode) {
 }
 
 
+/* ---------- potrf ---------- */
 cusolverStatus_t cusolverDnSpotrf_bufferSize(...) {
     // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
@@ -329,6 +332,7 @@ cusolverStatus_t cusolverDnZpotrfBatched(...) {
 }
 
 
+/* ---------- potrs ---------- */
 cusolverStatus_t cusolverDnSpotrs(...) {
     return rocblas_status_not_implemented;
 }
@@ -362,6 +366,7 @@ cusolverStatus_t cusolverDnZpotrsBatched(...) {
 }
 
 
+/* ---------- getrf ---------- */
 cusolverStatus_t cusolverDnSgetrf_bufferSize(...) {
     // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
@@ -435,6 +440,7 @@ cusolverStatus_t cusolverDnZgetrf(cusolverDnHandle_t handle,
 }
 
 
+/* ---------- getrs ---------- */
 cusolverStatus_t cusolverDnSgetrs(cusolverDnHandle_t handle,
                                   cublasOperation_t trans,
                                   int n,
@@ -506,6 +512,7 @@ cusolverStatus_t cusolverDnZgetrs(cusolverDnHandle_t handle,
 }
 
 
+/* ---------- geqrf ---------- */
 cusolverStatus_t cusolverDnSgeqrf_bufferSize(...) {
     // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
@@ -583,6 +590,7 @@ cusolverStatus_t cusolverDnZgeqrf(cusolverDnHandle_t handle,
 }
 
 
+/* ---------- orgqr ---------- */
 cusolverStatus_t cusolverDnSorgqr_bufferSize(...) {
     // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
@@ -622,6 +630,7 @@ cusolverStatus_t cusolverDnDorgqr(cusolverDnHandle_t handle,
 }
 
 
+/* ---------- ungqr ---------- */
 cusolverStatus_t cusolverDnCungqr_bufferSize(...) {
     return rocblas_status_not_implemented;
 }
@@ -639,6 +648,7 @@ cusolverStatus_t cusolverDnZungqr(...) {
 }
 
 
+/* ---------- ormqr ---------- */
 cusolverStatus_t cusolverDnSormqr_bufferSize(...) {
     // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
@@ -698,6 +708,7 @@ cusolverStatus_t cusolverDnDormqr(cusolverDnHandle_t handle,
 }
 
 
+/* ---------- unmqr ---------- */
 cusolverStatus_t cusolverDnCunmqr_bufferSize(...) {
     return rocblas_status_success;
 }
