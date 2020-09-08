@@ -281,6 +281,7 @@ from cupy._creation.matrix import triu  # NOQA
 # Functional routines
 # -----------------------------------------------------------------------------
 from cupy._functional.piecewise import piecewise  # NOQA
+from cupy.lib.shape_base import apply_along_axis  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
