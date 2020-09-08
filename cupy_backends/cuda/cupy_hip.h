@@ -6,7 +6,6 @@
 #include <hiprand/hiprand.h>
 #include "cupy_hip_common.h"
 #include "cupy_cuComplex.h"
-#include <rocsolver.h>
 #ifndef CUPY_NO_NVTX
 #include <roctx.h>
 #endif // #ifndef CUPY_NO_NVTX
@@ -533,10 +532,6 @@ cudaError_t cudaDestroySurfaceObject(cudaSurfaceObject_t surfObject) {
 // rocBLAS directly, since we need to expose its handle anyway
 
 
-typedef rocblas_status cusolverStatus_t;
-typedef rocblas_handle cusolverDnHandle_t;
-
-
 /* ---------- helpers ---------- */
 static hipblasOperation_t convert_hipblasOperation_t(cublasOperation_t op) {
     return static_cast<hipblasOperation_t>(static_cast<int>(op) + 111);
@@ -544,12 +539,9 @@ static hipblasOperation_t convert_hipblasOperation_t(cublasOperation_t op) {
 
 static hipblasFillMode_t convert_hipblasFillMode_t(cublasFillMode_t mode) {
     switch(static_cast<int>(mode)) {
-        case 0:  // CUBLAS_FILL_MODE_LOWER
-            return HIPBLAS_FILL_MODE_LOWER;
-        case 1:  // CUBLAS_FILL_MODE_UPPER
-            return HIPBLAS_FILL_MODE_UPPER;
-        default:
-            throw std::runtime_error("unrecognized mode");
+        case 0 /* CUBLAS_FILL_MODE_LOWER */: return HIPBLAS_FILL_MODE_LOWER;
+        case 1 /* CUBLAS_FILL_MODE_UPPER */: return HIPBLAS_FILL_MODE_UPPER;
+        default: throw std::runtime_error("unrecognized mode");
     }
 }
 
@@ -563,28 +555,17 @@ static hipblasSideMode_t convert_hipblasSideMode_t(cublasSideMode_t mode) {
 
 static hipblasDatatype_t convert_hipblasDatatype_t(cudaDataType_t type) {
     switch(static_cast<int>(type)) {
-        case 0:  // CUDA_R_32F
-            return HIPBLAS_R_32F;
-        case 1:  // CUDA_R_64F
-            return HIPBLAS_R_64F;
-        case 2:  // CUDA_R_16F
-            return HIPBLAS_R_16F;
-        case 3:  // CUDA_R_8I
-            return HIPBLAS_R_8I;
-        case 4:  // CUDA_C_32F
-            return HIPBLAS_C_32F;
-        case 5:  // CUDA_C_64F
-            return HIPBLAS_C_64F;
-        case 6:  // CUDA_C_16F
-            return HIPBLAS_C_16F;
-        case 7:  // CUDA_C_8I
-            return HIPBLAS_C_8I;
-        case 8:  // CUDA_R_8U
-            return HIPBLAS_R_8U;
-        case 9:  // CUDA_C_8U
-            return HIPBLAS_C_8U;
-        default:
-            throw std::runtime_error("unrecognized type");
+        case 0 /* CUDA_R_32F */: return HIPBLAS_R_32F;
+        case 1 /* CUDA_R_64F */: return HIPBLAS_R_64F;
+        case 2 /* CUDA_R_16F */: return HIPBLAS_R_16F;
+        case 3 /* CUDA_R_8I */ : return HIPBLAS_R_8I;
+        case 4 /* CUDA_C_32F */: return HIPBLAS_C_32F;
+        case 5 /* CUDA_C_64F */: return HIPBLAS_C_64F;
+        case 6 /* CUDA_C_16F */: return HIPBLAS_C_16F;
+        case 7 /* CUDA_C_8I */ : return HIPBLAS_C_8I;
+        case 8 /* CUDA_R_8U */ : return HIPBLAS_R_8U;
+        case 9 /* CUDA_C_8U */ : return HIPBLAS_C_8U;
+        default: throw std::runtime_error("unrecognized type");
     }
 }
 
