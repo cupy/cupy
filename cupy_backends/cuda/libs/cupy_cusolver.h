@@ -578,36 +578,60 @@ cusolverStatus_t cusolverDnZgeqrf(cusolverDnHandle_t handle,
 
 
 cusolverStatus_t cusolverDnSorgqr_bufferSize(...) {
+    // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
 }
 
 cusolverStatus_t cusolverDnDorgqr_bufferSize(...) {
+    // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
 }
 
+cusolverStatus_t cusolverDnSorgqr(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  float *A,
+                                  int lda,
+                                  const float *tau,
+                                  float *work,
+                                  int lwork,
+                                  int *info) {
+    // ignore work, lwork and info as rocSOLVER does not need them
+    return rocsolver_sorgqr(handle, m, n, k, A, lda, const_cast<float*>(tau));
+}
+
+cusolverStatus_t cusolverDnDorgqr(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  double *A,
+                                  int lda,
+                                  const double *tau,
+                                  double *work,
+                                  int lwork,
+                                  int *info) {
+    // ignore work, lwork and info as rocSOLVER does not need them
+    return rocsolver_dorgqr(handle, m, n, k, A, lda, const_cast<double*>(tau));
+}
+
+
 cusolverStatus_t cusolverDnCungqr_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZungqr_bufferSize(...) {
-    return rocblas_status_success;
-}
-
-cusolverStatus_t cusolverDnSorgqr(...) {
-    return rocblas_status_success;
-}
-
-cusolverStatus_t cusolverDnDorgqr(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCungqr(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZungqr(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
+
 
 cusolverStatus_t cusolverDnSormqr_bufferSize(...) {
     return rocblas_status_success;
