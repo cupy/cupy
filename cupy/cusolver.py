@@ -412,7 +412,8 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     *batch_shape, m, lda = a.shape
     batch_size = _numpy.prod(batch_shape)
     a = a.reshape(batch_size, m, lda)
-    v = _cupy.array(a.swapaxes(-2, -1), order='C', copy=True, dtype=inp_v_dtype)
+    v = _cupy.array(
+        a.swapaxes(-2, -1), order='C', copy=True, dtype=inp_v_dtype)
 
     w = _cupy.empty((batch_size, m), inp_w_dtype).swapaxes(-2, 1)
     dev_info = _cupy.empty((), _numpy.int32)
