@@ -1012,19 +1012,55 @@ cublasStatus_t cublasSdgmm(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasSgetriBatched(...) {
+cublasStatus_t cublasSgetriBatched(cublasHandle_t handle,
+                                   int n,
+                                   const float *const A[],
+                                   int lda,
+                                   const int *P,
+                                   float *const C[],
+                                   int ldc,
+                                   int *info,
+                                   int batchSize) {
+    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasDgetriBatched(...) {
+cublasStatus_t cublasDgetriBatched(cublasHandle_t handle,
+                                   int n,
+                                   const double *const A[],
+                                   int lda,
+                                   const int *P,
+                                   double *const C[],
+                                   int ldc,
+                                   int *info,
+                                   int batchSize) {
+    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasCgetriBatched(...) {
+cublasStatus_t cublasCgetriBatched(cublasHandle_t handle,
+                                   int n,
+                                   const cuComplex *const A[],
+                                   int lda,
+                                   const int *P,
+                                   cuComplex *const C[],
+                                   int ldc,
+                                   int *info,
+                                   int batchSize) {
+    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasZgetriBatched(...) {
+cublasStatus_t cublasZgetriBatched(cublasHandle_t handle,
+                                   int n,
+                                   const cuDoubleComplex *const A[],
+                                   int lda,
+                                   const int *P,
+                                   cuDoubleComplex *const C[],
+                                   int ldc,
+                                   int *info,
+                                   int batchSize) {
+    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
