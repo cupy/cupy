@@ -16,7 +16,7 @@ import string
 from cupy import _environment
 from cupy.core._kernel import _get_param_info
 from cupy.cuda import driver
-from cupy import util
+from cupy import _util
 
 
 cdef function.Function _create_cub_reduction_function(
@@ -197,7 +197,7 @@ __global__ void ${name}(${params}) {
     return module.get_function(name)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _SimpleCubReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,

@@ -11,7 +11,7 @@ from cupy.cuda import device
 from cupy.cuda import function
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
-from cupy import util
+from cupy import _util
 
 
 _nvrtc_version = None
@@ -73,7 +73,7 @@ def _get_nvrtc_version():
 _tegra_archs = ('53', '62', '72')
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_arch():
     # See Supported Compile Options section of NVRTC User Guide for
     # the maximum value allowed for `--gpu-architecture`.
@@ -376,11 +376,7 @@ def _compile_with_cache_cuda(
     if not cache_in_memory:
         # Read from disk cache
         if not os.path.isdir(cache_dir):
-            try:
-                os.makedirs(cache_dir)
-            except OSError:
-                if not os.path.isdir(cache_dir):
-                    raise
+            os.makedirs(cache_dir, exist_ok=True)
 
         # To handle conflicts in concurrent situation, we adopt lock-free
         # method to avoid performance degradation.
@@ -504,7 +500,7 @@ class _NVRTCProgram(object):
         self.ptr = nvrtc.createProgram(src, name, headers, include_names)
         self.name_expressions = name_expressions
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.ptr:
@@ -597,6 +593,9 @@ def _preprocess_hipcc(source, options):
         return re.sub('(?m)^#.*$', '', pp_src)
 
 
+_hip_extra_source = None
+
+
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
     table = [
         ('threadIdx.', 'hipThreadIdx_'),
@@ -609,30 +608,41 @@ def _convert_to_hip_source(source, extra_source, is_hiprtc):
     if not is_hiprtc:
         return '#include <hip/hip_runtime.h>\n' + source
 
+    # Workaround for hiprtc: it does not follow the -I option to search
+    # headers (as of ROCm 3.5.0), so we must prepend all CuPy's headers
+    global _hip_extra_source
+    if _hip_extra_source is None:
+        if extra_source is not None:
+            extra_source = extra_source.split('\n')
+            extra_source = [line for line in extra_source if (
+                not line.startswith('#include')
+                and not line.startswith('#pragma once'))]
+            _hip_extra_source = extra_source = '\n'.join(extra_source)
+
     source = source.split('\n')
-    if extra_source is not None:
-        source = extra_source.split('\n') + source
-    source = [line for line in source if (
-        not line.startswith('#include')
-        and not line.startswith('#pragma once'))]
-    source = ('#include <hip/hip_runtime.h>\n'
-              + '#include <hip/hip_fp16.h>\n'
-              + '\n'.join(source))
+    source = [line for line in source if not line.startswith('#include')]
+    source = ('#include <hip/hip_runtime.h>\n#include <hip/hip_fp16.h>\n'
+              + _hip_extra_source + '\n'.join(source))
 
     return source
 
 
+# TODO(leofang): evaluate if this can be merged with _compile_with_cache_cuda()
 def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
                             backend='hiprtc', name_expressions=None,
                             log_stream=None, cache_in_memory=False,
                             use_converter=True):
     global _empty_file_preprocess_cache
 
+    # TODO(leofang): this might be possible but is currently undocumented
     if _is_cudadevrt_needed(options):
         raise ValueError('separate compilation is not supported in HIP')
 
     if cache_dir is None:
         cache_dir = get_cache_dir()
+    # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
+    # pick up the right arch without needing HCC_AMDGPU_TARGET. Check the
+    # earliest ROCm version in which this happened.
     if arch is None:
         arch = os.environ.get('HCC_AMDGPU_TARGET')
         if arch is None:
@@ -657,11 +667,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     if not cache_in_memory:
         # Read from disk cache
         if not os.path.isdir(cache_dir):
-            try:
-                os.makedirs(cache_dir)
-            except OSError:
-                if not os.path.isdir(cache_dir):
-                    raise
+            os.makedirs(cache_dir, exist_ok=True)
 
         # To handle conflicts in concurrent situation, we adopt lock-free
         # method to avoid performance degradation.

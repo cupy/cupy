@@ -1,5 +1,6 @@
 import cupy
 from cupy.core import internal
+from cupy import _util
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import coo
 from cupyx.scipy.sparse import sputils
@@ -286,7 +287,7 @@ class _minmax_mixin(object):
         if explicit:
             api_name = 'explicit of cupyx.scipy.sparse.{}.max'.format(
                 self.__class__.__name__)
-            cupy.util.experimental(api_name)
+            _util.experimental(api_name)
         return self._min_or_max(axis, out, cupy.max, explicit)
 
     def min(self, axis=None, out=None, *, explicit=False):
@@ -322,7 +323,7 @@ class _minmax_mixin(object):
         if explicit:
             api_name = 'explicit of cupyx.scipy.sparse.{}.min'.format(
                 self.__class__.__name__)
-            cupy.util.experimental(api_name)
+            _util.experimental(api_name)
         return self._min_or_max(axis, out, cupy.min, explicit)
 
     def argmax(self, axis=None, out=None):

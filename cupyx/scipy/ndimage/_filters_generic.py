@@ -1,5 +1,6 @@
 import cupy
 
+from cupy import _util
 from cupyx.scipy.ndimage import _filters_core
 
 
@@ -28,7 +29,7 @@ def _get_sub_kernel(f):
         raise TypeError('bad function type')
 
 
-@cupy.util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
                             wshape, offsets, cval, int_type):
     """Generic filter implementation based on a reduction kernel."""
@@ -179,7 +180,7 @@ def _get_type_info(param, dtype, types):
     return ctype
 
 
-@cupy.util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_generic_filter_raw(rk, filter_size, mode, wshape, offsets, cval,
                             int_type):
     """Generic filter implementation based on a raw kernel."""
@@ -199,7 +200,7 @@ def _get_generic_filter_raw(rk, filter_size, mode, wshape, offsets, cval,
         options=rk.options)
 
 
-@cupy.util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
                           in_ctype, out_ctype, int_type):
     """

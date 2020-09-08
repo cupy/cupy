@@ -10,7 +10,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy import util
+from cupy import _util
 from cupy.core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
@@ -388,7 +388,7 @@ class TestRaw(unittest.TestCase):
 
     def setUp(self):
         if hasattr(self, 'clean_up'):
-            util.clear_memo()
+            _util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
 
@@ -1022,20 +1022,25 @@ _test_grid_sync = r'''
 #include <cooperative_groups.h>
 
 extern "C" __global__
-void test_grid_sync(const float* x1, const float* x2, float* y) {
+void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
     namespace cg = cooperative_groups;
     cg::grid_group grid = cg::this_grid();
     int size = gridDim.x * blockDim.x;
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
-    y[tid] = x1[tid];
+    for (int i = tid; i < n; i += size) {
+        y[i] = x1[i];
+    }
     cg::sync(grid);
-    y[size - tid - 1] += x2[size - tid - 1];
+    for (int i = n - 1 - tid; i >= 0; i -= size) {
+        y[i] += x2[i];
+    }
 }
 '''
 
 
 @testing.parameterize(*testing.product({
-    'n': [10, 100, 256]
+    'n': [10, 100, 1000],
+    'block': [64, 256],
 }))
 @unittest.skipUnless(
     9000 <= cupy.cuda.runtime.runtimeGetVersion(),
@@ -1054,7 +1059,9 @@ class TestRawGridSync(unittest.TestCase):
             x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
             x2 = cupy.ones((n, n), dtype='float32')
             y = cupy.zeros((n, n), dtype='float32')
-            kern_grid_sync((n,), (n,), (x1, x2, y, n ** 2))
+            block = self.block
+            grid = (n * n + block - 1) // block
+            kern_grid_sync((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)
 
     def test_grid_sync_rawmodule(self):
@@ -1067,5 +1074,7 @@ class TestRawGridSync(unittest.TestCase):
             x2 = cupy.ones((n, n), dtype='float32')
             y = cupy.zeros((n, n), dtype='float32')
             kern = mod_grid_sync.get_function('test_grid_sync')
-            kern((n,), (n,), (x1, x2, y, n ** 2))
+            block = self.block
+            grid = (n * n + block - 1) // block
+            kern((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)
