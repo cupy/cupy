@@ -312,6 +312,10 @@ def gradient(f, *varargs, axis=None, edge_order=1):
                     "when 1d, distances must match "
                     "the length of the corresponding dimension"
                 )
+            if numpy.issubdtype(distances.dtype, numpy.integer):
+                # Convert numpy integer types to float64 to avoid modular
+                # arithmetic in np.diff(distances).
+                distances = distances.astype(numpy.float64)
             diffx = cupy.diff(distances)
             # if distances are constant reduce to the scalar case
             # since it brings a consistent speedup
