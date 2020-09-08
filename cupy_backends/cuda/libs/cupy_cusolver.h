@@ -501,36 +501,81 @@ cusolverStatus_t cusolverDnZgetrs(cusolverDnHandle_t handle,
 
 
 cusolverStatus_t cusolverDnSgeqrf_bufferSize(...) {
+    // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
 }
 
 cusolverStatus_t cusolverDnDgeqrf_bufferSize(...) {
+    // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
 }
 
 cusolverStatus_t cusolverDnCgeqrf_bufferSize(...) {
+    // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
 }
 
 cusolverStatus_t cusolverDnZgeqrf_bufferSize(...) {
+    // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnSgeqrf(...) {
-    return rocblas_status_success;
+cusolverStatus_t cusolverDnSgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  float *A,
+                                  int lda,
+                                  float *TAU,
+                                  float *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    // ignore Workspace, Lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_sgeqrf(handle, m, n, A, lda, TAU);
 }
 
-cusolverStatus_t cusolverDnDgeqrf(...) {
-    return rocblas_status_success;
+cusolverStatus_t cusolverDnDgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  double *A,
+                                  int lda,
+                                  double *TAU,
+                                  double *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    // ignore Workspace, Lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_dgeqrf(handle, m, n, A, lda, TAU);
 }
 
-cusolverStatus_t cusolverDnCgeqrf(...) {
-    return rocblas_status_success;
+cusolverStatus_t cusolverDnCgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  cuComplex *A,
+                                  int lda,
+                                  cuComplex *TAU,
+                                  cuComplex *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    // ignore Workspace, Lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_cgeqrf(handle, m, n,
+                            reinterpret_cast<rocblas_float_complex*>(A), lda,
+                            reinterpret_cast<rocblas_float_complex*>(TAU));
 }
 
-cusolverStatus_t cusolverDnZgeqrf(...) {
-    return rocblas_status_success;
+cusolverStatus_t cusolverDnZgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  cuDoubleComplex *A,
+                                  int lda,
+                                  cuDoubleComplex *TAU,
+                                  cuDoubleComplex *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    // ignore Workspace, Lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_zgeqrf(handle, m, n,
+                            reinterpret_cast<rocblas_double_complex*>(A), lda,
+                            reinterpret_cast<rocblas_double_complex*>(TAU));
 }
+
 
 cusolverStatus_t cusolverDnSorgqr_bufferSize(...) {
     return rocblas_status_success;
