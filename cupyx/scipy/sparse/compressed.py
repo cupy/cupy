@@ -459,8 +459,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if self.data.size < new_nnz:
             raise ValueError('data array has fewer than nnz elements')
 
-        self.indices = util.prune_array(self.indices[:new_nnz])
-        self.data = util.prune_array(self.data[:new_nnz])
+        self.indices = _util.prune_array(self.indices[:new_nnz])
+        self.data = _util.prune_array(self.data[:new_nnz])
 
     def check_format(self, full_check=True):
         """Check whether the matrix format is valid
