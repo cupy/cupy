@@ -17,7 +17,6 @@ from cupy._creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import data as sparse_data
-from cupyx.scipy.sparse import sputils
 from cupyx.scipy.sparse import util
 from cupyx.scipy.sparse import sputils
 
@@ -449,17 +448,19 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if self.indptr.size != major_dim + 1:
             raise ValueError('index pointer has invalid length')
 
-        if self.indices.size < self.indptr[-1]:
+        new_nnz = self.indptr[-1]
+
+        if self.indices.size < new_nnz:
             raise ValueError('indices array has fewer than nnz elements')
 
         # NOTE: With the current getnnz implementation, this would
         # never fail because getnnz returns self.data.size. Using
         # indptr[-1] instead.
-        if self.data.size < self.indptr[-1]:
+        if self.data.size < new_nnz:
             raise ValueError('data array has fewer than nnz elements')
 
-        self.indices = util.prune_array(self.indices[:self.indptr[-1]])
-        self.data = util.prune_array(self.data[:self.indptr[-1]])
+        self.indices = util.prune_array(self.indices[:new_nnz])
+        self.data = util.prune_array(self.data[:new_nnz])
 
     def check_format(self, full_check=True):
         """Check whether the matrix format is valid
@@ -475,16 +476,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # index arrays should have integer data types
         if self.indptr.dtype.kind != 'i':
-            warn("indptr array has non-integer dtype ({})"
-                 "".format(self.indptr.dtype.name), stacklevel=3)
+            warn('indptr array has non-integer dtype ({})'
+                 .format(self.indptr.dtype.name), stacklevel=3)
         if self.indices.dtype.kind != 'i':
-            warn("indices array has non-integer dtype ({})"
-                 "".format(self.indices.dtype.name), stacklevel=3)
+            warn('indices array has non-integer dtype ({})'
+                 .format(self.indices.dtype.name), stacklevel=3)
 
         idx_dtype = sputils.get_index_dtype((self.indptr, self.indices))
-        self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
-        self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
-        self.data = sputils.to_native(self.data)
+        self.indptr = self.indptr.astype(idx_dtype)
+        self.indices = self.indices.astype(idx_dtype)
+        self.data = self.indices.astype(self.dtype)
 
         # check array shapes
         for x in [self.data.ndim, self.indices.ndim, self.indptr.ndim]:
@@ -493,17 +494,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # check index pointer
         if (self.indptr.size != major_dim + 1):
-            raise ValueError("index pointer size ({}) should be ({})"
-                             "".format(len(self.indptr), major_dim + 1))
+            raise ValueError('index pointer size ({}) should be ({})'
+                             .format(len(self.indptr), major_dim + 1))
         if (self.indptr[0] != 0):
-            raise ValueError("index pointer should start with 0")
+            raise ValueError('index pointer should start with 0')
 
         # check index and data arrays
         if (self.indices.size != self.data.size):
-            raise ValueError("indices and data should have the same size")
+            raise ValueError('indices and data should have the same size')
         if (self.indptr[-1] > self.indices.size):
-            raise ValueError("Last value of index pointer should be less than "
-                             "the size of index and data arrays")
+            raise ValueError('Last value of index pointer should be less than '
+                             'the size of index and data arrays')
 
         self.prune()
 
@@ -511,14 +512,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             # check format validity (more expensive)
             if self.nnz > 0:
                 if self.indices.max() >= minor_dim:
-                    raise ValueError("{} index values must be < {}"
-                                     "".format(minor_name, minor_dim))
+                    raise ValueError('{} index values must be < {}'
+                                     .format(minor_name, minor_dim))
                 if self.indices.min() < 0:
-                    raise ValueError("{} index values must be >= 0"
-                                     "".format(minor_name))
+                    raise ValueError('{} index values must be >= 0'
+                                     .format(minor_name))
                 if cupy.diff(self.indptr).min() < 0:
-                    raise ValueError("index pointer values must form a "
-                                     "non-decreasing sequence")
+                    raise ValueError('index pointer values must form a '
+                                     'non-decreasing sequence')
 
     def _convert_dense(self, x):
         raise NotImplementedError
