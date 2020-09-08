@@ -1,7 +1,7 @@
-import numpy
-import warnings
+import numpy as _numpy
+import warnings as _warnings
 
-import cupy
+import cupy as _cupy
 
 from libc.stdint cimport intptr_t, uint32_t, uint64_t
 from cupy.core._carray cimport shape_t
@@ -37,7 +37,7 @@ cdef class Mode(object):
         readonly intptr_t data
 
     def __init__(self, mode):
-        self._array = numpy.array(mode, dtype=numpy.int32)
+        self._array = _numpy.array(mode, dtype=_numpy.int32)
         assert self._array.ndim == 1
         self.ndim = self._array.size
         self.data = self._array.ctypes.data
@@ -53,7 +53,7 @@ cdef class _Scalar(object):
         readonly intptr_t ptr
 
     def __init__(self, value, dtype):
-        self._array = numpy.asarray(value, dtype=dtype)
+        self._array = _numpy.asarray(value, dtype=dtype)
         self.ptr = self._array.ctypes.data
 
     def __repr__(self):
@@ -72,30 +72,30 @@ cdef Handle _get_handle():
 
 
 cdef int _get_cuda_dtype(numpy_dtype) except -1:
-    if numpy_dtype == numpy.float16:
+    if numpy_dtype == _numpy.float16:
         return runtime.CUDA_R_16F
-    elif numpy_dtype == numpy.float32:
+    elif numpy_dtype == _numpy.float32:
         return runtime.CUDA_R_32F
-    elif numpy_dtype == numpy.float64:
+    elif numpy_dtype == _numpy.float64:
         return runtime.CUDA_R_64F
-    elif numpy_dtype == numpy.complex64:
+    elif numpy_dtype == _numpy.complex64:
         return runtime.CUDA_C_32F
-    elif numpy_dtype == numpy.complex128:
+    elif numpy_dtype == _numpy.complex128:
         return runtime.CUDA_C_64F
     else:
         raise TypeError('Dtype {} is not supported'.format(numpy_dtype))
 
 
 cdef int _get_cutensor_dtype(numpy_dtype) except -1:
-    if numpy_dtype == numpy.float16:
+    if numpy_dtype == _numpy.float16:
         return cutensor.R_MIN_16F
-    elif numpy_dtype == numpy.float32:
+    elif numpy_dtype == _numpy.float32:
         return cutensor.R_MIN_32F
-    elif numpy_dtype == numpy.float64:
+    elif numpy_dtype == _numpy.float64:
         return cutensor.R_MIN_64F
-    elif numpy_dtype == numpy.complex64:
+    elif numpy_dtype == _numpy.complex64:
         return cutensor.C_MIN_32F
-    elif numpy_dtype == numpy.complex128:
+    elif numpy_dtype == _numpy.complex128:
         return cutensor.C_MIN_64F
     else:
         raise TypeError('Dtype {} is not supported'.format(numpy_dtype))
@@ -130,8 +130,8 @@ cdef inline Mode _auto_create_mode(ndarray array, mode):
 
 cdef inline _set_compute_dtype(array_dtype, compute_dtype=None):
     if compute_dtype is None:
-        if array_dtype == numpy.float16:
-            compute_dtype = numpy.float32
+        if array_dtype == _numpy.float16:
+            compute_dtype = _numpy.float32
         else:
             compute_dtype = array_dtype
     return compute_dtype
@@ -183,8 +183,8 @@ cpdef TensorDescriptor create_tensor_descriptor(
         desc = _tensor_descriptors[key]
         return desc
     num_modes = a.ndim
-    extent = numpy.array(a.shape, dtype=numpy.int64)
-    stride = numpy.array(a.strides, dtype=numpy.int64) // a.itemsize
+    extent = _numpy.array(a.shape, dtype=_numpy.int64)
+    stride = _numpy.array(a.strides, dtype=_numpy.int64) // a.itemsize
     cuda_dtype = _get_cuda_dtype(a.dtype)
     desc = TensorDescriptor()
     cutensor.initTensorDescriptor(
@@ -499,14 +499,14 @@ cdef inline ndarray _contraction_impl(
     # Allocate workspace
     ws_size = cutensor.contractionGetWorkspace(handle, desc, find, ws_pref)
     try:
-        ws = core._ndarray_init(shape_t(1, ws_size), dtype=numpy.int8)
+        ws = core._ndarray_init(shape_t(1, ws_size), dtype=_numpy.int8)
     except Exception:
-        warnings.warn('cuTENSOR: failed to allocate memory of workspace '
-                      'with preference ({}) and size ({}).'
-                      ''.format(ws_pref, ws_size))
+        _warnings.warn('cuTENSOR: failed to allocate memory of workspace '
+                       'with preference ({}) and size ({}).'
+                       ''.format(ws_pref, ws_size))
         ws_size = cutensor.contractionGetWorkspace(
             handle, desc, find, cutensor.WORKSPACE_MIN)
-        ws = core._ndarray_init(shape_t(1, ws_size), dtype=numpy.int8)
+        ws = core._ndarray_init(shape_t(1, ws_size), dtype=_numpy.int8)
 
     plan = _create_contraction_plan(handle, desc, find, ws_size)
 
@@ -596,12 +596,12 @@ cdef inline ndarray _reduction_impl(
         out.data.ptr, desc_C, mode_C.data,
         reduce_op, cutensor_compute_type)
     try:
-        ws = core._ndarray_init(shape_t(1, ws_size), dtype=numpy.int8)
-    except cupy.cuda.memory.OutOfMemoryError:
-        warnings.warn('cuTENSOR: failed to allocate memory of workspace '
-                      '(size: {}).'.format(ws_size))
+        ws = core._ndarray_init(shape_t(1, ws_size), dtype=_numpy.int8)
+    except _cupy.cuda.memory.OutOfMemoryError:
+        _warnings.warn('cuTENSOR: failed to allocate memory of workspace '
+                       '(size: {}).'.format(ws_size))
         ws_size = 0
-        ws = core._ndarray_init(shape_t(1, ws_size), dtype=numpy.int8)
+        ws = core._ndarray_init(shape_t(1, ws_size), dtype=_numpy.int8)
 
     cutensor.reduction(
         handle,
@@ -614,11 +614,11 @@ cdef inline ndarray _reduction_impl(
 
 _cutensor_dtypes = [
     # TODO(asi1024): Support float16
-    # numpy.float16,
-    numpy.float32,
-    numpy.float64,
-    numpy.complex64,
-    numpy.complex128,
+    # _numpy.float16,
+    _numpy.float32,
+    _numpy.float64,
+    _numpy.complex64,
+    _numpy.complex128,
 ]
 
 
