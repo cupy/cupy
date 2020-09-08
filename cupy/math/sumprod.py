@@ -254,7 +254,7 @@ def gradient(f, *varargs, axis=None, edge_order=1):
             function.
         varargs (list of scalar or array, optional): Spacing between f values.
             Default unitary spacing for all dimensions. Spacing can be
-            specified using::
+            specified using:
 
             1. single scalar to specify a sample distance for all dimensions.
             2. N scalars to specify a constant sample distance for each
