@@ -2,7 +2,10 @@ import unittest
 
 import numpy
 import pytest
-import scipy.sparse
+try:
+    import scipy.sparse
+except ImportError:
+    pass
 
 import cupy
 from cupy import testing
