@@ -24,7 +24,7 @@ from cupy.cuda import memory as memory_module
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy import util
+from cupy import _util
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -74,6 +74,16 @@ cdef tuple _HANDLED_TYPES
 cdef list compute_types = [COMPUTE_TYPE_TBD,  # float16
                            COMPUTE_TYPE_TBD,  # float32
                            COMPUTE_TYPE_TBD]  # float64
+cdef dict compute_type_str = {
+    0: 'COMPUTE_TYPE_TBD',
+    1: 'COMPUTE_TYPE_DEFAULT',
+    2: 'COMPUTE_TYPE_PEDANTIC',
+    3: 'COMPUTE_TYPE_FP16',
+    4: 'COMPUTE_TYPE_FP32',
+    5: 'COMPUTE_TYPE_FP64',
+    6: 'COMPUTE_TYPE_BF16',
+    7: 'COMPUTE_TYPE_TF32',
+}
 
 
 cpdef int to_compute_type_index(dtype) except -1:
@@ -116,6 +126,13 @@ cpdef get_compute_type(dtype):
             compute_type = COMPUTE_TYPE_TF32
         set_compute_type(dtype, compute_type)
     return compute_types[index]
+
+
+cpdef compute_type_to_str(compute_type):
+    if compute_type in compute_type_str:
+        return compute_type_str[compute_type]
+    else:
+        return compute_type
 
 
 cdef class ndarray:
@@ -1315,18 +1332,17 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        if util.ENABLE_SLICE_COPY and (
+        if _util.ENABLE_SLICE_COPY and (
                 type(slices) is slice
                 and slices == slice(None, None, None)
                 and isinstance(value, numpy.ndarray)
         ):
-            if self.dtype == value.dtype and self.shape == value.shape:
-                if self.strides == value.strides:
-                    ptr = ctypes.c_void_p(value.__array_interface__['data'][0])
-                else:
-                    order = 'F' if self.flags.f_contiguous else 'C'
-                    tmp = value.ravel(order)
-                    ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
+            if (self.dtype == value.dtype
+                    and self.shape == value.shape
+                    and (self._f_contiguous or self._c_contiguous)):
+                order = 'F' if self._f_contiguous else 'C'
+                tmp = value.ravel(order)
+                ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
                 stream_ptr = stream_module.get_current_stream_ptr()
                 if stream_ptr == 0:
                     self.data.copy_from_host(ptr, self.nbytes)
@@ -1842,7 +1858,7 @@ cpdef str _get_header_source():
     if _header_source is None:
         source = []
         base_path = _get_header_dir_path()
-        for file_path in _cupy_header_list + _cupy_extra_header_list:
+        for file_path in _cupy_extra_header_list + _cupy_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
                 source.append(header_file.read())
@@ -1979,21 +1995,17 @@ if (in1 == 0) {
 }'''
 
 cdef _round_complex = '''
-double x, inv_x;
 if (in1 == 0) {
-    x = inv_x = 1;
-    out0 = in0_type(rint(in0.real() * x),
-                    rint(in0.imag() * x));
+    out0 = in0_type(rint(in0.real()), rint(in0.imag()));
 } else {
-    x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
-    inv_x = 1.0 / x;
+    double x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
     if (in1 < 0) {
-        double y = x;
-        x = inv_x;
-        inv_x = y;
+        out0 = in0_type(rint(in0.real() / x) * x,
+                        rint(in0.imag() / x) * x);
+    } else {
+        out0 = in0_type(rint(in0.real() * x) / x,
+                        rint(in0.imag() * x) / x);
     }
-    out0 = in0_type(rint(in0.real() * x) * inv_x,
-                    rint(in0.imag() * x) * inv_x);
 }'''
 
 
@@ -2284,7 +2296,7 @@ cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
             'could not be allocated. '
             'This generally occurs because of insufficient host memory. '
             'The original error was: {}'.format(nbytes, e),
-            util.PerformanceWarning)
+            _util.PerformanceWarning)
 
     return None
 

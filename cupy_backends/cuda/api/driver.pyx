@@ -125,7 +125,7 @@ cpdef inline check_status(int status):
 
 
 @cython.profile(False)
-cdef inline check_attribute_status(int status, int* pi):
+cdef inline void check_attribute_status(int status, int* pi) except *:
     # set attribute to -1 on older versions of CUDA where it was undefined
     if status == CUDA_ERROR_INVALID_VALUE:
         pi[0] = -1
@@ -317,7 +317,8 @@ cpdef launchCooperativeKernel(
 # Function attributes
 ###############################################################################
 
-cpdef int funcGetAttribute(int attribute, intptr_t f):
+# -1 is reserved by check_attribute_status
+cpdef int funcGetAttribute(int attribute, intptr_t f) except? -2:
     cdef int pi
     with nogil:
         status = cuFuncGetAttribute(
