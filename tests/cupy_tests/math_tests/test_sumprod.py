@@ -748,9 +748,18 @@ class TestGradient(unittest.TestCase):
             spacing = spacing + [0.5] * (len(normalized_axes) - 1)
         return xp.gradient(x, *spacing, axis=axis, edge_order=edge_order)
 
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.for_dtypes('fFdD')
     @testing.numpy_cupy_allclose(atol=1e-6, rtol=1e-5)
-    def test_gradient(self, xp, dtype):
+    def test_gradient_floating(self, xp, dtype):
+        return self._gradient(xp, dtype, self.shape, self.spacing, self.axis,
+                              self.edge_order)
+
+    # unsigned int behavior fixed in 1.18.1
+    # https://github.com/numpy/numpy/issues/15207
+    @testing.with_requires('numpy>=1.18.1')
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(atol=1e-6, rtol=1e-5)
+    def test_gradient_int(self, xp, dtype):
         return self._gradient(xp, dtype, self.shape, self.spacing, self.axis,
                               self.edge_order)
 
