@@ -11,7 +11,7 @@ from cupy.testing import attr
 @testing.parameterize(*testing.product({
     'dtype': ['float32', 'float64', 'complex64', 'complex128'],
     'n': [10, 33, 100],
-    'bs': [None, 1, 100],
+    'bs': [None, 1, 10],
     'nrhs': [None, 1, 10],
 }))
 @attr.gpu

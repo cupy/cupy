@@ -8,6 +8,7 @@ from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.linalg import decomposition
 from cupy.linalg import util
+from cupy.cublas import batched_gesv
 
 
 def solve(a, b):
@@ -53,6 +54,9 @@ def solve(a, b):
     b = b.astype(dtype)
     if a.ndim == 2:
         return cupy.cusolver.gesv(a, b)
+
+    if a.shape[-1] <= 256:
+        return batched_gesv(a, b)
 
     x = cupy.empty_like(b)
     shape = a.shape[:-2]
