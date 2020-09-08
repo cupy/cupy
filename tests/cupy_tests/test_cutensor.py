@@ -121,6 +121,10 @@ class TestCuTensor(unittest.TestCase):
         )
 
     def test_contraction(self):
+        compute_capability = int(device.get_compute_capability())
+        if compute_capability < 70 and self.dtype == numpy.float16:
+            self.skipTest('Not supported.')
+
         desc_a = cutensor.create_tensor_descriptor(self.a)
         desc_b = cutensor.create_tensor_descriptor(self.b)
         desc_c = cutensor.create_tensor_descriptor(self.c)
@@ -245,7 +249,7 @@ class TestCuTensorDescriptor(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'dtype_combo': ['eee', 'fff', 'ddd', 'FFF', 'DDD', 'dDD', 'DdD'],
     'compute_type_hint': [None, 'down-convert', 'TF32'],
-    'shape': [(40, 30, 20), (96, 64, 32)],
+    'shape': [(40, 30, 20)],
     'alpha': [1.0],
     'beta': [0.0, 1.0],
 }))
