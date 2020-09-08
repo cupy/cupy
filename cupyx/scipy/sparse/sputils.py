@@ -65,6 +65,10 @@ def get_index_dtype(arrays=(), maxval=None, check_contents=False):
     return dtype
 
 
+def to_native(A):
+    return cupy.asarray(A, dtype=A.dtype.newbyteorder('native'))
+
+
 def validateaxis(axis):
     if axis is not None:
         axis_type = type(axis)
