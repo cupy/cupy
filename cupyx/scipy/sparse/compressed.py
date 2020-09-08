@@ -11,7 +11,7 @@ from cupy._creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import data as sparse_data
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 
 from cupyx.scipy.sparse import _index
 
@@ -329,7 +329,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None:
-            if not util.isshape(shape):
+            if not _util.isshape(shape):
                 raise ValueError('invalid shape (must be a 2-tuple of int)')
             shape = int(shape[0]), int(shape[1])
 
@@ -346,7 +346,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if shape is None:
                 shape = arg1.shape
 
-        elif util.isshape(arg1):
+        elif _util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
             data = basic.zeros(0, dtype if dtype else 'd')
