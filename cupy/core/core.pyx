@@ -24,7 +24,7 @@ from cupy.cuda import memory as memory_module
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy import util
+from cupy import _util
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -1315,18 +1315,17 @@ cdef class ndarray:
             array([9998., 9999.])
 
         """
-        if util.ENABLE_SLICE_COPY and (
+        if _util.ENABLE_SLICE_COPY and (
                 type(slices) is slice
                 and slices == slice(None, None, None)
                 and isinstance(value, numpy.ndarray)
         ):
-            if self.dtype == value.dtype and self.shape == value.shape:
-                if self.strides == value.strides:
-                    ptr = ctypes.c_void_p(value.__array_interface__['data'][0])
-                else:
-                    order = 'F' if self.flags.f_contiguous else 'C'
-                    tmp = value.ravel(order)
-                    ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
+            if (self.dtype == value.dtype
+                    and self.shape == value.shape
+                    and (self._f_contiguous or self._c_contiguous)):
+                order = 'F' if self._f_contiguous else 'C'
+                tmp = value.ravel(order)
+                ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
                 stream_ptr = stream_module.get_current_stream_ptr()
                 if stream_ptr == 0:
                     self.data.copy_from_host(ptr, self.nbytes)
@@ -2280,7 +2279,7 @@ cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
             'could not be allocated. '
             'This generally occurs because of insufficient host memory. '
             'The original error was: {}'.format(nbytes, e),
-            util.PerformanceWarning)
+            _util.PerformanceWarning)
 
     return None
 

@@ -1672,3 +1672,116 @@ class TestCubSpmv(unittest.TestCase):
             m * x
         # ...then perform the actual computation
         return m * x
+
+
+@testing.parameterize(*testing.product({
+    'a_dtype': ['float32', 'float64', 'complex64', 'complex128'],
+    'b_dtype': ['float32', 'float64', 'complex64', 'complex128'],
+    'shape': [(4, 25), (10, 10), (25, 4)],
+    'nz_rate': [0.1, 0.5],
+    'opt': ['maximum', 'minimum'],
+}))
+@testing.with_requires('scipy')
+@testing.gpu
+class TestCsrMatrixMaximumMinimum(unittest.TestCase):
+
+    def _make_array(self, shape, dtype, xp):
+        dtype = numpy.dtype(dtype)
+        if dtype.char in 'fF':
+            real_dtype = 'float32'
+        elif dtype.char in 'dD':
+            real_dtype = 'float64'
+        a = testing.shaped_random(shape, xp, dtype=real_dtype, scale=2)
+        a = (a - 1) / self.nz_rate
+        a[a > 1] = 0
+        a[a < -1] = 0
+        return a
+
+    def _make_matrix(self, shape, dtype, xp):
+        dtype = numpy.dtype(dtype)
+        a = self._make_array(shape, dtype, xp)
+        if dtype.char in 'FD':
+            a = a + 1j * self._make_array(shape, dtype, xp)
+        return a
+
+    def _make_sp_matrix(self, dtype, xp, sp):
+        return sp.csr_matrix(self._make_matrix(self.shape, dtype, xp))
+
+    def _make_sp_matrix_row(self, dtype, xp, sp):
+        shape = 1, self.shape[1]
+        return sp.csr_matrix(self._make_matrix(shape, dtype, xp))
+
+    def _make_sp_matrix_col(self, dtype, xp, sp):
+        shape = self.shape[0], 1
+        return sp.csr_matrix(self._make_matrix(shape, dtype, xp))
+
+    def _make_sp_matrix_shape(self, shape, dtype, xp, sp):
+        return sp.csr_matrix(self._make_matrix(shape, dtype, xp))
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_sparse(self, xp, sp):
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        b = self._make_sp_matrix(self.b_dtype, xp, sp)
+        return getattr(a, self.opt)(b)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_sparse_row(self, xp, sp):
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        b = self._make_sp_matrix_row(self.b_dtype, xp, sp)
+        if xp == numpy:
+            # SciPy does not support sparse broadcasting
+            return getattr(a, self.opt)(b.toarray())
+        else:
+            return getattr(a, self.opt)(b).toarray()
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_sparse_col(self, xp, sp):
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        b = self._make_sp_matrix_col(self.b_dtype, xp, sp)
+        if xp == numpy:
+            # SciPy does not support sparse broadcasting
+            return getattr(a, self.opt)(b.toarray())
+        else:
+            return getattr(a, self.opt)(b).toarray()
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_dense(self, xp, sp):
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        b = self._make_sp_matrix(self.b_dtype, xp, sp).toarray()
+        return getattr(a, self.opt)(b)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_dense_row(self, xp, sp):
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        b = self._make_sp_matrix_row(self.b_dtype, xp, sp).toarray()
+        return getattr(a, self.opt)(b)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_dense_col(self, xp, sp):
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        b = self._make_sp_matrix_col(self.b_dtype, xp, sp).toarray()
+        return getattr(a, self.opt)(b)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_scalar_plus(self, xp, sp):
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        return getattr(a, self.opt)(0.5)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_scalar_minus(self, xp, sp):
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        return getattr(a, self.opt)(-0.5)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_scalar_zero(self, xp, sp):
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        return getattr(a, self.opt)(0)
+
+    def test_ng_shape(self):
+        xp, sp = cupy, sparse
+        a = self._make_sp_matrix(self.a_dtype, xp, sp)
+        for i, j in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            shape = self.shape[0] + i, self.shape[1] + j
+            b = self._make_sp_matrix_shape(shape, self.b_dtype, xp, sp)
+            with self.assertRaises(ValueError):
+                getattr(a, self.opt)(b)

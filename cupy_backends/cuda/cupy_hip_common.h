@@ -125,6 +125,14 @@ typedef enum libraryPropertyType_t {
     PATCH_LEVEL
 } libraryPropertyType;
 
+
+///////////////////////////////////////////////////////////////////////////////
+// roctx
+///////////////////////////////////////////////////////////////////////////////
+
+// this is to ensure we use non-"Ex" APIs like roctxMarkA etc
+#define NVTX_VERSION (100 * ROCTX_VERSION_MAJOR + 10 * ROCTX_VERSION_MINOR)
+
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_HIP_COMMON_H

@@ -936,6 +936,29 @@ cudaError_t cudaProfilerStop() {
 
 #define NVTX_VERSION 1
 
+void nvtxMarkA(...) {
+}
+
+int nvtxRangePushA(...) {
+    return 0;
+}
+
+int nvtxRangePop() {
+    return 0;
+}
+
+} // extern "C"
+
+#endif // #ifndef CUPY_NO_CUDA
+
+#if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
+// Common stubs shared by both no-cuda and hip environments
+extern "C" {
+
+///////////////////////////////////////////////////////////////////////////////
+// nvToolsExt.h
+///////////////////////////////////////////////////////////////////////////////
+
 typedef enum nvtxColorType_t
 {
     NVTX_COLOR_UNKNOWN  = 0,
@@ -976,21 +999,10 @@ typedef struct nvtxEventAttributes_v1
 
 typedef nvtxEventAttributes_v1 nvtxEventAttributes_t;
 
-void nvtxMarkA(...) {
-}
-
 void nvtxMarkEx(...) {
 }
 
-int nvtxRangePushA(...) {
-    return 0;
-}
-
 int nvtxRangePushEx(...) {
-    return 0;
-}
-
-int nvtxRangePop() {
     return 0;
 }
 
@@ -1003,5 +1015,6 @@ void nvtxRangeEnd(...) {
 
 } // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
+#endif // #if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
+
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_H
