@@ -1188,10 +1188,6 @@ cusolverStatus_t cusolverDnGetStream(cusolverDnHandle_t handle,
     return rocblas_get_stream(handle, streamId);
 }
 
-cusolverStatus_t cusolverSpGetStream(...) {
-    return rocblas_status_success;
-}
-
 cusolverStatus_t cusolverDnSetStream (cusolverDnHandle_t handle,
                                       cudaStream_t streamId) {
     return rocblas_set_stream(handle, streamId);
@@ -1199,13 +1195,25 @@ cusolverStatus_t cusolverDnSetStream (cusolverDnHandle_t handle,
 
 
 /* ---------- potrf ---------- */
-cusolverStatus_t cusolverDnSpotrf_bufferSize(...) {
+cusolverStatus_t cusolverDnSpotrf_bufferSize(cusolverDnHandle_t handle,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             float *A,
+                                             int lda,
+                                             int *Lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnDpotrf_bufferSize(...) {
+cusolverStatus_t cusolverDnDpotrf_bufferSize(cusolverDnHandle_t handle,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             double *A,
+                                             int lda,
+                                             int *Lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
     return rocblas_status_success;
 }
 
@@ -1259,23 +1267,47 @@ cusolverStatus_t cusolverDnDpotrfBatched(cusolverDnHandle_t handle,
 
 
 /* ---------- getrf ---------- */
-cusolverStatus_t cusolverDnSgetrf_bufferSize(...) {
+cusolverStatus_t cusolverDnSgetrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             float *A,
+                                             int lda,
+                                             int *Lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnDgetrf_bufferSize(...) {
+cusolverStatus_t cusolverDnDgetrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             double *A,
+                                             int lda,
+                                             int *Lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnCgetrf_bufferSize(...) {
+cusolverStatus_t cusolverDnCgetrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             cuComplex *A,
+                                             int lda,
+                                             int *Lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnZgetrf_bufferSize(...) {
+cusolverStatus_t cusolverDnZgetrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             cuDoubleComplex *A,
+                                             int lda,
+                                             int *Lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
     return rocblas_status_success;
 }
 
@@ -1405,23 +1437,47 @@ cusolverStatus_t cusolverDnZgetrs(cusolverDnHandle_t handle,
 
 
 /* ---------- geqrf ---------- */
-cusolverStatus_t cusolverDnSgeqrf_bufferSize(...) {
+cusolverStatus_t cusolverDnSgeqrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             float *A,
+                                             int lda,
+                                             int *lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnDgeqrf_bufferSize(...) {
+cusolverStatus_t cusolverDnDgeqrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             double *A,
+                                             int lda,
+                                             int *lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnCgeqrf_bufferSize(...) {
+cusolverStatus_t cusolverDnCgeqrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             cuComplex *A,
+                                             int lda,
+                                             int *lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnZgeqrf_bufferSize(...) {
+cusolverStatus_t cusolverDnZgeqrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             cuDoubleComplex *A,
+                                             int lda,
+                                             int *lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
     return rocblas_status_success;
 }
 
@@ -1483,13 +1539,29 @@ cusolverStatus_t cusolverDnZgeqrf(cusolverDnHandle_t handle,
 
 
 /* ---------- orgqr ---------- */
-cusolverStatus_t cusolverDnSorgqr_bufferSize(...) {
+cusolverStatus_t cusolverDnSorgqr_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const float *A,
+                                             int lda,
+                                             const float *tau,
+                                             int *lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnDorgqr_bufferSize(...) {
+cusolverStatus_t cusolverDnDorgqr_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const double *A,
+                                             int lda,
+                                             const double *tau,
+                                             int *lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
     return rocblas_status_success;
 }
 
@@ -1523,13 +1595,37 @@ cusolverStatus_t cusolverDnDorgqr(cusolverDnHandle_t handle,
 
 
 /* ---------- ormqr ---------- */
-cusolverStatus_t cusolverDnSormqr_bufferSize(...) {
+cusolverStatus_t cusolverDnSormqr_bufferSize(cusolverDnHandle_t handle,
+                                             cublasSideMode_t side,
+                                             cublasOperation_t trans,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const float *A,
+                                             int lda,
+                                             const float *tau,
+                                             const float *C,
+                                             int ldc,
+                                             int *lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
     return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnDormqr_bufferSize(...) {
+cusolverStatus_t cusolverDnDormqr_bufferSize(cusolverDnHandle_t handle,
+                                             cublasSideMode_t side,
+                                             cublasOperation_t trans,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const double *A,
+                                             int lda,
+                                             const double *tau,
+                                             const double *C,
+                                             int ldc,
+                                             int *lwork) {
     // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
     return rocblas_status_success;
 }
 

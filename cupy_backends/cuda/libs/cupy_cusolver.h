@@ -191,6 +191,10 @@ typedef void* cusparseMatDescr_t;
 typedef void* gesvdjInfo_t;
 typedef void* syevjInfo_t;
 
+cusolverStatus_t cusolverSpGetStream(...) {
+    return rocblas_status_success;
+}
+
 cusolverStatus_t cusolverSpSetStream(...) {
     return rocblas_status_success;
 }
