@@ -97,7 +97,7 @@ if use_hip:
         'file': cuda_files + [
             'cupy.cuda.nvtx',
             'cupy_backends.cuda.libs.cusolver',
-            ],
+        ],
         'include': [
             'hip/hip_runtime_api.h',
             'hip/hiprtc.h',
@@ -115,7 +115,6 @@ if use_hip:
             'rocblas',
             'rocsolver',
         ],
-        'check_method': build.check_cuda_version,
     })
 else:
     MODULES.append({
