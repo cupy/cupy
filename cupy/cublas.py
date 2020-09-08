@@ -43,13 +43,9 @@ def batched_gesv(a, b):
     getrf = getattr(cublas, t + 'getrfBatched')
     getrs = getattr(cublas, t + 'getrsBatched')
 
-    bs = 1
-    if a.ndim > 2:
-        bs = numpy.prod(a.shape[:-2])
+    bs = numpy.prod(a.shape[:-2]) if a.ndim > 2 else 1
     n = a.shape[-1]
-    nrhs = 1
-    if a.ndim == b.ndim:
-        nrhs = b.shape[-1]
+    nrhs = b.shape[-1] if a.ndim == b.ndim else 1
     b_shape = b.shape
     a_data_ptr = a.data.ptr
     b_data_ptr = b.data.ptr
@@ -73,7 +69,10 @@ def batched_gesv(a, b):
                           dtype=cupy.uintp)
     pivot = cupy.empty((bs, n), dtype=numpy.int32)
     info = cupy.empty((bs,), dtype=numpy.int32)
+    # LU factorization (A = L * U)
     getrf(handle, n, a_array.data.ptr, lda, pivot.data.ptr, info.data.ptr, bs)
+    util._check_cublas_info_array_if_synchronization_allowed(getrf, info)
+    # Solves Ax = b
     getrs(handle, cublas.CUBLAS_OP_N, n, nrhs, a_array.data.ptr, lda,
           pivot.data.ptr, b_array.data.ptr, ldb, bs)
     return b.transpose(0, 2, 1).reshape(b_shape)
