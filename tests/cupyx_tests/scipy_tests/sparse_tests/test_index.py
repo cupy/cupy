@@ -1,7 +1,6 @@
 import unittest
 
 import numpy
-import scipy.sparse
 import pytest
 
 import cupy
@@ -23,6 +22,7 @@ class TestIndexing(unittest.TestCase):
     def _run(self, maj, min=None, flip_for_csc=True,
              compare_dense=False):
 
+        import scipy.sparse
         shape = self.n_rows, self.n_cols
         a = testing.shaped_sparse_random(
             shape, sparse, self.dtype, self.density, self.format)
