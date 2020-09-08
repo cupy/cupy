@@ -227,6 +227,8 @@ cusolverStatus_t cusolverGetProperty(...) {
     return rocblas_status_success;
 }
 
+
+/* ---------- helpers ---------- */
 static rocblas_fill convert_rocblas_fill(cublasFillMode_t mode) {
     switch(static_cast<int>(mode)) {
         case 0 /* CUBLAS_FILL_MODE_LOWER */: return rocblas_fill_lower;
@@ -237,6 +239,10 @@ static rocblas_fill convert_rocblas_fill(cublasFillMode_t mode) {
 
 static rocblas_operation convert_rocblas_operation(cublasOperation_t op) {
     return static_cast<rocblas_operation>(static_cast<int>(op) + 111);
+}
+
+static rocblas_side convert_rocblas_side(cublasSideMode_t mode) {
+    return static_cast<rocblas_side>(static_cast<int>(mode) + 141);
 }
 
 
@@ -634,26 +640,69 @@ cusolverStatus_t cusolverDnZungqr(...) {
 
 
 cusolverStatus_t cusolverDnSormqr_bufferSize(...) {
+    // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
 }
 
 cusolverStatus_t cusolverDnDormqr_bufferSize(...) {
+    // this needs to return 0 because rocSolver does not rely on it
     return rocblas_status_success;
 }
+
+cusolverStatus_t cusolverDnSormqr(cusolverDnHandle_t handle,
+                                  cublasSideMode_t side,
+                                  cublasOperation_t trans,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  const float *A,
+                                  int lda,
+                                  const float *tau,
+                                  float *C,
+                                  int ldc,
+                                  float *work,
+                                  int lwork,
+                                  int *devInfo) {
+    // ignore work, lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_sormqr(handle,
+                            convert_rocblas_side(side),
+                            convert_rocblas_operation(trans),
+                            m, n, k,
+                            const_cast<float*>(A), lda,
+                            const_cast<float*>(tau),
+                            C, ldc);
+}
+
+cusolverStatus_t cusolverDnDormqr(cusolverDnHandle_t handle,
+                                  cublasSideMode_t side,
+                                  cublasOperation_t trans,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  const double *A,
+                                  int lda,
+                                  const double *tau,
+                                  double *C,
+                                  int ldc,
+                                  double *work,
+                                  int lwork,
+                                  int *devInfo) {
+    // ignore work, lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_dormqr(handle,
+                            convert_rocblas_side(side),
+                            convert_rocblas_operation(trans),
+                            m, n, k,
+                            const_cast<double*>(A), lda,
+                            const_cast<double*>(tau),
+                            C, ldc);
+}
+
 
 cusolverStatus_t cusolverDnCunmqr_bufferSize(...) {
     return rocblas_status_success;
 }
 
 cusolverStatus_t cusolverDnZunmqr_bufferSize(...) {
-    return rocblas_status_success;
-}
-
-cusolverStatus_t cusolverDnSormqr(...) {
-    return rocblas_status_success;
-}
-
-cusolverStatus_t cusolverDnDormqr(...) {
     return rocblas_status_success;
 }
 
