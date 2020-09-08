@@ -115,6 +115,7 @@ if use_hip:
             'rocblas',
             'rocsolver',
         ],
+        'check_method': build.check_cuda_version,
     })
 else:
     MODULES.append({

@@ -192,15 +192,15 @@ typedef void* gesvdjInfo_t;
 typedef void* syevjInfo_t;
 
 cusolverStatus_t cusolverSpGetStream(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpSetStream(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverGetProperty(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 
@@ -284,419 +284,419 @@ cusolverStatus_t cusolverDnZungqr(...) {
 
 /* ---------- unmqr ---------- */
 cusolverStatus_t cusolverDnCunmqr_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZunmqr_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCunmqr(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZunmqr(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSsytrf_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDsytrf_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCsytrf_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZsytrf_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSsytrf(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDsytrf(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCsytrf(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZsytrf(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSgebrd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDgebrd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCgebrd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZgebrd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSgebrd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDgebrd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCgebrd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZgebrd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSgesvd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDgesvd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCgesvd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZgesvd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSgesvd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDgesvd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCgesvd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZgesvd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCreateGesvdjInfo(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDestroyGesvdjInfo(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnXgesvdjSetTolerance(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnXgesvdjSetMaxSweeps(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnXgesvdjSetSortEig(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnXgesvdjGetResidual(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnXgesvdjGetSweeps(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSgesvdj_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDgesvdj_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCgesvdj_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZgesvdj_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSgesvdj(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDgesvdj(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCgesvdj(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZgesvdj(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSgesvdjBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDgesvdjBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCgesvdjBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSgesvdjBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDgesvdjBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCgesvdjBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZgesvdjBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSgesvdaStridedBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDgesvdaStridedBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCgesvdaStridedBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZgesvdaStridedBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSgesvdaStridedBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDgesvdaStridedBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCgesvdaStridedBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZgesvdaStridedBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSsyevd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDsyevd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCheevd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZheevd_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSsyevd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDsyevd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCheevd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZheevd(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCreateSyevjInfo(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDestroySyevjInfo(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnXsyevjSetTolerance(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnXsyevjSetMaxSweeps(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnXsyevjSetSortEig(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnXsyevjGetResidual(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnXsyevjGetSweeps(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSsyevj_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDsyevj_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCheevj_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZheevj_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSsyevj(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDsyevj(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCheevj(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZheevj(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSsyevjBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDsyevjBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCheevjBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZheevjBatched_bufferSize(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnSsyevjBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnDsyevjBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnCheevjBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverDnZheevjBatched(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpCreate(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpDestroy(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpScsrlsvqr(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpDcsrlsvqr(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpCcsrlsvqr(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpZcsrlsvqr(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpScsrlsvchol(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpDcsrlsvchol(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpCcsrlsvchol(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpZcsrlsvchol(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpScsreigvsi(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpDcsreigvsi(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpCcsreigvsi(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 cusolverStatus_t cusolverSpZcsreigvsi(...) {
-    return rocblas_status_success;
+    return rocblas_status_not_implemented;
 }
 
 
