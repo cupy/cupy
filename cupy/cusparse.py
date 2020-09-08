@@ -1258,7 +1258,7 @@ class DnMatDescriptor(BaseDescriptor):
         ld = rows
         cuda_dtype = _dtype_to_DataType(a.dtype)
         desc = _cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype,
-                                    _cusparse.CUSPARSE_ORDER_COL)
+                                     _cusparse.CUSPARSE_ORDER_COL)
         get = _cusparse.dnMatGet
         destroy = _cusparse.destroyDnMat
         return DnMatDescriptor(desc, get, destroy)
@@ -1322,11 +1322,11 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     cuda_dtype = _dtype_to_DataType(a.dtype)
     alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
     buff_size = _cusparse.spMV_bufferSize(handle, op_a, alpha.data,
-                                         desc_a.desc, desc_x.desc, beta.data,
-                                         desc_y.desc, cuda_dtype, alg)
+                                          desc_a.desc, desc_x.desc, beta.data,
+                                          desc_y.desc, cuda_dtype, alg)
     buff = _cupy.empty(buff_size, _cupy.int8)
     _cusparse.spMV(handle, op_a, alpha.data, desc_a.desc, desc_x.desc,
-                  beta.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
+                   beta.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
 
     return y
 
@@ -1397,11 +1397,11 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     cuda_dtype = _dtype_to_DataType(a.dtype)
     alg = _cusparse.CUSPARSE_MM_ALG_DEFAULT
     buff_size = _cusparse.spMM_bufferSize(handle, op_a, op_b, alpha.data,
-                                         desc_a.desc, desc_b.desc, beta.data,
-                                         desc_c.desc, cuda_dtype, alg)
+                                          desc_a.desc, desc_b.desc, beta.data,
+                                          desc_c.desc, cuda_dtype, alg)
     buff = _cupy.empty(buff_size, _cupy.int8)
     buff_size = _cusparse.spMM(handle, op_a, op_b, alpha.data, desc_a.desc,
-                              desc_b.desc, beta.data, desc_c.desc,
-                              cuda_dtype, alg, buff.data.ptr)
+                               desc_b.desc, beta.data, desc_c.desc,
+                               cuda_dtype, alg, buff.data.ptr)
 
     return c
