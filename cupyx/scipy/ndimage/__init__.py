@@ -38,6 +38,12 @@ from cupyx.scipy.ndimage.measurements import sum  # NOQA
 from cupyx.scipy.ndimage.measurements import mean  # NOQA
 from cupyx.scipy.ndimage.measurements import variance  # NOQA
 from cupyx.scipy.ndimage.measurements import standard_deviation  # NOQA
+from cupyx.scipy.ndimage.measurements import minimum  # NOQA
+from cupyx.scipy.ndimage.measurements import maximum  # NOQA
+from cupyx.scipy.ndimage.measurements import minimum_position  # NOQA
+from cupyx.scipy.ndimage.measurements import maximum_position  # NOQA
+from cupyx.scipy.ndimage.measurements import median  # NOQA
+from cupyx.scipy.ndimage.measurements import extrema  # NOQA
 
 from cupyx.scipy.ndimage.morphology import generate_binary_structure  # NOQA
 from cupyx.scipy.ndimage.morphology import iterate_structure  # NOQA

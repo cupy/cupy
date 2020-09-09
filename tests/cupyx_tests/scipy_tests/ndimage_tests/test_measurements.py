@@ -212,3 +212,61 @@ class TestStats(unittest.TestCase):
         index = xp.array([])
         op = getattr(scp.ndimage, self.op)
         return op(image, labels, index)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'op': ['maximum', 'median', 'minimum', 'maximum_position',
+           'minimum_position', 'extrema'],
+    'labels': [None, 5, 32],
+    'index': [None, 1, 'all', 'subset'],
+    'shape': [(512,), (32, 64)],
+}))
+@testing.with_requires('scipy')
+class TestMeasurementsSelect(unittest.TestCase):
+
+    # no_bool=True due to https://github.com/scipy/scipy/issues/12836
+    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_measurements_select(self, xp, scp, dtype):
+        shape = self.shape
+        rstate = numpy.random.RandomState(0)
+        # scale must be small enough to avoid potential integer overflow due to
+        # https://github.com/scipy/scipy/issues/12836
+        x = testing.shaped_random(shape, xp=xp, dtype=dtype, scale=32)
+        non_unique = xp.unique(x).size < x.size
+        if self.op in ['minimum_position', 'maximum_position'] and non_unique:
+            raise unittest.SkipTest(
+                'minimum/maximum position not guaranteed to be the same '
+                'when there are duplicate extrema'
+            )
+        if self.labels is None:
+            labels = self.labels
+        else:
+            labels = rstate.choice(self.labels, x.size).reshape(shape) + 1
+            labels = xp.asarray(labels)
+        if self.index is None or isinstance(self.index, int):
+            index = self.index
+        elif self.index == 'all':
+            if self.labels is not None:
+                index = xp.arange(1, self.labels + 1, dtype=cupy.intp)
+            else:
+                index = None
+        elif self.index == 'subset':
+            if self.labels is not None:
+                index = xp.arange(1, self.labels + 1, dtype=cupy.intp)[::2]
+            else:
+                index = None
+        func = getattr(scp.ndimage, self.op)
+        result = func(x, labels, index)
+        if self.op == 'extrema':
+            if non_unique:
+                # omit comparison of minimum_position, maximum_position
+                result = [xp.asarray(r) for r in result[:2]]
+            else:
+                result = [xp.asarray(r) for r in result]
+        else:
+            if isinstance(result, list):
+                # convert list of coordinate tuples to an array for comparison
+                result = xp.asarray(result)
+        return result
