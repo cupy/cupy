@@ -7,7 +7,7 @@ import numpy as np
 import cupy
 from cupy.cuda import cufft
 from cupy.fft import config
-from cupy.fft.cache import get_plan_cache
+from cupy.fft._cache import get_plan_cache
 
 
 _reduce = functools.reduce
