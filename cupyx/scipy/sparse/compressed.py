@@ -1,3 +1,5 @@
+import math
+
 import numpy
 try:
     import scipy.sparse
@@ -485,26 +487,24 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_intXint(self, row, col):
         major, minor = self._swap(row, col)
-
-        indptr, indices, data = _index._get_csr_submatrix_major_axis(
-            self.indptr, self.indices, self.data, major, major + 1)
-        indptr, indices, data = _index._get_csr_submatrix_minor_axis(
-            indptr, indices, data, minor, minor + 1)
+        data, indices, indptr = _index._get_csr_submatrix_major_axis(
+            self.data, self.indices, self.indptr, major, major + 1)
+        data, _, _ = _index._get_csr_submatrix_minor_axis(
+            data, indices, indptr, minor, minor + 1)
         return data.sum(dtype=self.dtype)
 
     def _get_sliceXslice(self, row, col):
         major, minor = self._swap(row, col)
-        if major.step in (1, None) and minor.step in (1, None):
-            return self._get_submatrix(major, minor, copy=True)
-        return self._major_slice(major)._minor_slice(minor)
+        copy = major.step in (1, None)
+        return self._major_slice(major)._minor_slice(minor, copy=copy)
 
     def _get_arrayXarray(self, row, col):
         # inner indexing
         idx_dtype = self.indices.dtype
         M, N = self._swap(*self.shape)
         major, minor = self._swap(row, col)
-        major = cupy.asarray(major, dtype=idx_dtype)
-        minor = cupy.asarray(minor, dtype=idx_dtype)
+        major = major.astype(idx_dtype, copy=False)
+        minor = minor.astype(idx_dtype, copy=False)
 
         val = _index._csr_sample_values(
             M, N, self.indptr, self.indices, self.data,
@@ -529,11 +529,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if self.nnz == 0 or M == 0:
             return self.__class__(new_shape)
 
-        res_indptr, res_indices, res_data = _index._csr_row_index(
-            idx, self.indptr, self.indices, self.data)
-
-        return self.__class__((res_data, res_indices, res_indptr),
-                              shape=new_shape, copy=False)
+        return self.__class__(
+            _index._csr_row_index(self.data, self.indices, self.indptr, idx),
+            shape=new_shape, copy=False)
 
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
@@ -550,113 +548,49 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         return self._tocsx()._major_index_fancy(idx)._tocsx()
 
-    def _minor_slice(self, idx, copy=False):
-        """Index along the minor axis where idx is a slice object.
-        """
-
-        if idx == slice(None):
-            return self.copy() if copy else self
-
-        M, N = self._swap(*self.shape)
-        start, stop, step = idx.indices(N)
-        N = len(range(start, stop, step))
-        if N == 0:
-            return self.__class__(self._swap(M, N))
-        if step == 1:
-            return self._get_submatrix(minor=idx, copy=copy)
-        return self._minor_index_fancy(
-            cupy.arange(start, stop, step, dtype=self.indices.dtype))
-
-    @staticmethod
-    def _process_slice(sl, num):
-        if sl is None:
-            i0, i1 = 0, num
-        elif isinstance(sl, slice):
-            i0, i1, stride = sl.indices(num)
-            if stride != 1:
-                raise ValueError('slicing with step != 1 not supported')
-            i0 = min(i0, i1)  # give an empty slice when i0 > i1
-
-        # Scipy calls sputils.isintlike(). Comparing directly to int
-        # here to minimize the impact of nested exception catching
-        elif isinstance(sl, _index._int_scalar_types):
-            if sl < 0:
-                sl += num
-            i0, i1 = sl, sl + 1
-            if i0 < 0 or i1 > num:
-                raise IndexError('index out of bounds: 0 <= %d < %d <= %d' %
-                                 (i0, i1, num))
-        else:
-            raise TypeError('expected slice or scalar')
-
-        return i0, i1
-
-    def _get_single(self, major, minor):
-        start = self.indptr[major]
-        end = self.indptr[major + 1]
-        answer = cupy.zeros((), self.dtype)
-        data = self.data[start:end]
-        indices = self.indices[start:end]
-        if self.dtype.kind == 'c':
-            self._compress_getitem_complex_kern(
-                data.real, data.imag, indices, minor, answer.real, answer.imag)
-        else:
-            self._compress_getitem_kern(
-                data, indices, minor, answer)
-        return answer[()]
-
-    def _get_submatrix(self, major=None, minor=None, copy=False):
-        """Return a submatrix of this matrix.
-        major, minor: None or slice with step 1
-        """
-        M, N = self._swap(*self.shape)
-        i0, i1 = self._process_slice(major, M)
-        j0, j1 = self._process_slice(minor, N)
-
-        is_major_full = i0 == 0 and i1 == M
-        is_minor_full = j0 == 0 and j1 == N
-
-        if is_major_full and is_minor_full:
-            return self.copy() if copy else self
-
-        indptr, indices, data = self.indptr, self.indices, self.data
-
-        if not is_major_full:
-            indptr, indices, data = _index._get_csr_submatrix_major_axis(
-                indptr, indices, data, i0, i1)
-        if not is_minor_full:
-            indptr, indices, data = _index._get_csr_submatrix_minor_axis(
-                indptr, indices, data, j0, j1)
-
-        shape = self._swap(i1 - i0, j1 - j0)
-        return self.__class__((data, indices, indptr), shape=shape,
-                              dtype=self.dtype, copy=False)
-
     def _major_slice(self, idx, copy=False):
         """Index along the major axis where idx is a slice object.
         """
-
-        if idx == slice(None):
-            return self.copy() if copy else self
-
         M, N = self._swap(*self.shape)
         start, stop, step = idx.indices(M)
-        M = len(range(start, stop, step))
+
+        if start == 0 and stop == M and step == 1:
+            return self.copy() if copy else self
+
+        M = max(0, math.ceil((stop - start) / step))
         new_shape = self._swap(M, N)
+
         if M == 0 or self.nnz == 0:
             return self.__class__(new_shape)
-
         if step == 1:
-            indptr, indices, data = _index._get_csr_submatrix_major_axis(
-                self.indptr, self.indices, self.data, start, stop)
-        else:
-            rows = cupy.arange(
-                start, start + M * step, step, dtype=self.indptr.dtype)
-            indptr, indices, data = _index._csr_row_index(
-                rows, self.indptr, self.indices, self.data)
+            return self.__class__(
+                _index._get_csr_submatrix_major_axis(
+                    self.data, self.indices, self.indptr, start, stop),
+                shape=new_shape, copy=copy)
+        rows = cupy.arange(start, stop, step, dtype=self.indptr.dtype)
+        return self._major_index_fancy(rows)
 
-        return self.__class__((data, indices, indptr),
-                              shape=new_shape, copy=False)
+    def _minor_slice(self, idx, copy=False):
+        """Index along the minor axis where idx is a slice object.
+        """
+        M, N = self._swap(*self.shape)
+        start, stop, step = idx.indices(N)
+
+        if start == 0 and stop == N and step == 1:
+            return self.copy() if copy else self
+
+        N = max(0, math.ceil((stop - start) / step))
+        new_shape = self._swap(M, N)
+
+        if N == 0 or self.nnz == 0:
+            return self.__class__(new_shape)
+        if step == 1:
+            return self.__class__(
+                _index._get_csr_submatrix_minor_axis(
+                    self.data, self.indices, self.indptr, start, stop),
+                shape=new_shape, copy=False)
+        cols = cupy.arange(start, stop, step, dtype=self.indices.dtype)
+        return self._minor_index_fancy(cols)
 
     def __get_has_canonical_format(self):
         """Determine whether the matrix has sorted indices and no duplicates.
