@@ -141,7 +141,7 @@ def grey_closing(input, size=None, footprint=None, structure=None,
     .. seealso:: :func:`scipy.ndimage.grey_closing`
     """
     if (size is not None) and (footprint is not None):
-        warnings.warn("ignoring size because footprint is set", UserWarning,
+        warnings.warn('ignoring size because footprint is set', UserWarning,
                       stacklevel=2)
     tmp = grey_dilation(input, size, footprint, structure, None, mode, cval,
                         origin)
@@ -182,7 +182,7 @@ def grey_opening(input, size=None, footprint=None, structure=None,
     .. seealso:: :func:`scipy.ndimage.grey_opening`
     """
     if (size is not None) and (footprint is not None):
-        warnings.warn("ignoring size because footprint is set", UserWarning,
+        warnings.warn('ignoring size because footprint is set', UserWarning,
                       stacklevel=2)
     tmp = grey_erosion(input, size, footprint, structure, None, mode, cval,
                        origin)
@@ -196,7 +196,7 @@ def morphological_gradient(
     footprint=None,
     structure=None,
     output=None,
-    mode="reflect",
+    mode='reflect',
     cval=0.0,
     origin=0,
 ):
@@ -255,7 +255,7 @@ def morphological_laplace(
     footprint=None,
     structure=None,
     output=None,
-    mode="reflect",
+    mode='reflect',
     cval=0.0,
     origin=0,
 ):
@@ -317,7 +317,7 @@ def white_tophat(
     footprint=None,
     structure=None,
     output=None,
-    mode="reflect",
+    mode='reflect',
     cval=0.0,
     origin=0,
 ):
@@ -354,7 +354,7 @@ def white_tophat(
     """
     if (size is not None) and (footprint is not None):
         warnings.warn(
-            "ignoring size because footprint is set", UserWarning, stacklevel=2
+            'ignoring size because footprint is set', UserWarning, stacklevel=2
         )
     tmp = grey_erosion(
         input, size, footprint, structure, None, mode, cval, origin
@@ -375,7 +375,7 @@ def black_tophat(
     footprint=None,
     structure=None,
     output=None,
-    mode="reflect",
+    mode='reflect',
     cval=0.0,
     origin=0,
 ):
@@ -412,7 +412,7 @@ def black_tophat(
     """
     if (size is not None) and (footprint is not None):
         warnings.warn(
-            "ignoring size because footprint is set", UserWarning, stacklevel=2
+            'ignoring size because footprint is set', UserWarning, stacklevel=2
         )
     tmp = grey_dilation(
         input, size, footprint, structure, None, mode, cval, origin
