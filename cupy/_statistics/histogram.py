@@ -283,8 +283,8 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
 
             Note the unusual interpretation of sample when an array_like:
 
-            * When an array, each row is a coordinate in a D-dimensional space -
-              such as ``histogramdd(cupy.array([p1, p2, p3]))``.
+            * When an array, each row is a coordinate in a D-dimensional
+              space - such as ``histogramdd(cupy.array([p1, p2, p3]))``.
             * When an array_like, each element is the list of values for single
               coordinate - such as ``histogramdd((X, Y, Z))``.
 
