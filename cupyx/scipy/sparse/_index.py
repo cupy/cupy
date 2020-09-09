@@ -335,6 +335,49 @@ def _csr_sample_offsets(n_row, n_col,
     return offsets, bool(dupl)
 
 
+def _csr_sample_values(n_row, n_col,
+                       Ap, Aj, Ax,
+                       Bi, Bj):
+    """Populate data array for a set of rows and columns
+    Args
+        n_row : total number of rows in input array
+        n_col : total number of columns in input array
+        Ap : indptr array for input sparse matrix
+        Aj : indices array for input sparse matrix
+        Ax : data array for input sparse matrix
+        Bi : array of rows to extract from input sparse matrix
+        Bj : array of columns to extract from input sparse matrix
+    Returns
+        Bx : data array for output sparse matrix
+    """
+
+    Bi[Bi < 0] += n_row
+    Bj[Bj < 0] += n_col
+
+    Bx = cupy.empty(Bi.size, dtype=Ax.dtype)
+    _csr_sample_values_kern(n_row, n_col,
+                            Ap, Aj, Ax,
+                            Bi, Bj, Bx, size=Bi.size)
+
+    return Bx
+
+
+_csr_sample_values_kern = core.ElementwiseKernel(
+    '''I n_row, I n_col, raw I Ap, raw I Aj, raw T Ax, raw I Bi, raw I Bj''',
+    'raw T Bx', '''
+    const I j = Bi[i]; // sample row
+    const I k = Bj[i]; // sample column
+    const I row_start = Ap[j];
+    const I row_end   = Ap[j+1];
+    T x = 0;
+    for(I jj = row_start; jj < row_end; jj++) {
+        if (Aj[jj] == k)
+            x += Ax[jj];
+    }
+    Bx[i] = x;
+''', 'csr_sample_values_kern', no_return=True)
+
+
 class IndexMixin(object):
     """
     This class provides common dispatching and validation logic for indexing.
