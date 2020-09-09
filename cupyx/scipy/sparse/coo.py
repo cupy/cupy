@@ -12,7 +12,7 @@ from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import csr
 from cupyx.scipy.sparse import data as sparse_data
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 
 
 class coo_matrix(sparse_data._data_matrix):
@@ -76,7 +76,7 @@ class coo_matrix(sparse_data._data_matrix):
 
             self.has_canonical_format = x.has_canonical_format
 
-        elif util.isshape(arg1):
+        elif _util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
             data = cupy.zeros(0, dtype if dtype else 'd')
@@ -153,7 +153,7 @@ class coo_matrix(sparse_data._data_matrix):
         sparse_data._data_matrix.__init__(self, data)
         self.row = row
         self.col = col
-        if not util.isshape(shape):
+        if not _util.isshape(shape):
             raise ValueError('invalid shape (must be a 2-tuple of int)')
         self._shape = int(shape[0]), int(shape[1])
 

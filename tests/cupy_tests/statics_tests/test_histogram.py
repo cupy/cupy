@@ -232,6 +232,22 @@ class TestHistogram(unittest.TestCase):
         y, bin_edges = xp.histogram(x, bins)
         return y, bin_edges
 
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_histogram_numpy_bins(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+        bins = testing.shaped_arange((3,), numpy, dtype)
+        y, bin_edges = xp.histogram(x, bins)
+        return y, bin_edges
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_histogram_list_bins(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+        bins = list(testing.shaped_arange((3,), numpy, dtype))
+        y, bin_edges = xp.histogram(x, bins)
+        return y, bin_edges
+
     # numpy 1.13.1 does not check this error correctly with unsigned int.
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     def test_histogram_bins_not_ordered(self, dtype):
@@ -334,7 +350,7 @@ class TestCubHistogram(unittest.TestCase):
             return xp.histogram(x)
 
         # xp is cupy, first ensure we really use CUB
-        cub_func = 'cupy.statistics.histogram.cub.device_histogram'
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
         with testing.AssertFunctionIsCalled(cub_func):
             xp.histogram(x)
         # ...then perform the actual computation
