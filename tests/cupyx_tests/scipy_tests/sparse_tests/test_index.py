@@ -1,3 +1,4 @@
+import itertools
 import unittest
 
 import numpy
@@ -30,66 +31,57 @@ class IndexingTestBase(unittest.TestCase):
         return tuple(indices)
 
 
+_int_index = [0, -1, 10, -10]
+_slice_index = [
+    slice(0, 0), slice(None), slice(3, 17), slice(17, 3, -1)
+]
+_slice_index_full = [
+    slice(0, 0), slice(0, 1), slice(5, 6), slice(None),
+    slice(3, 17, 1), slice(17, 3, 1), slice(2, -1, 1), slice(-1, 2, 1),
+    slice(3, 17, -1), slice(17, 3, -1), slice(2, -1, -1), slice(-1, 2, -1),
+    slice(3, 17, 2), slice(17, 3, 2), slice(3, 17, -2), slice(17, 3, -2),
+]
+_int_array_index = [
+    [], [0], [0, 0], [1, 5, 4, 5, 2, 4, 1]
+]
+
+
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.1, 0.4, 0.9],
-    'n_rows': [25, 150],
-    'n_cols': [25, 150],
-    'indices': [
-        # Single
-        (10,),
-        (-10,),
+    'density': [0.0, 0.5],
+    'n_rows': [1, 25],
+    'n_cols': [1, 25],
+    'indices': (
+        # Int
+        _int_index
         # Slice
-        (slice(5, 9),),
-        (slice(9, 5),),
-        (slice(None),),
+        + _slice_index_full
         # Int x Int
-        (5, 5),
+        + list(itertools.product(_int_index, _int_index))
         # Slice x Slice
-        (slice(1, 5), slice(1, 5)),
-        (slice(1, 20, 2), slice(1, 5, 1)),
-        (slice(20, 1, 2), slice(1, 5, 1)),
-        (slice(1, 15, 2), slice(1, 5, 1)),
-        (slice(15, 1, 5), slice(1, 5, 1)),
-        (slice(1, 15, 5), slice(1, 5, 1)),
-        (slice(1, 5), slice(None)),
-        (slice(5, 1), slice(None)),
-        (slice(20, 1, 5), slice(None)),
-        (slice(1, 20, 5), slice(None)),
-        (slice(1, 5, 1), slice(1, 20, 2)),
-        (slice(1, 5, 1), slice(20, 1, 2)),
-        (slice(1, 5, 1), slice(1, 15, 2)),
-        (slice(1, 5, 1), slice(15, 1, 5)),
-        (slice(1, 5, 1), slice(1, 15, 5)),
-        (slice(None), slice(20, 1, 5)),
-        (slice(None), slice(1, 20, 5)),
-        (slice(1, 20, 2), slice(1, 20, 2)),
-        (slice(None), slice(None)),
-        (slice(1, 5), slice(None)),
-        (slice(5, 1), slice(None)),
-        # Slice x Int
-        (slice(1, 5), 5),
-        (slice(5, 1), 5),
-        (slice(5, 1, -1), 5),
-        (5, slice(1, 5)),
-        (5, slice(5, 1)),
-        (5, slice(5, 1, -1)),
+        + list(itertools.product(_slice_index, _slice_index))
+        # Int x Slice
+        + list(itertools.product(_int_index, _slice_index))
+        + list(itertools.product(_slice_index, _int_index))
         # Ellipsis
-        (Ellipsis,),
-        (Ellipsis, slice(None)),
-        (slice(None), Ellipsis),
-        (Ellipsis, 1),
-        (1, Ellipsis),
-        (slice(1, None), Ellipsis),
-        (Ellipsis, slice(1, None)),
-    ],
+        + [
+            (Ellipsis,),
+            (Ellipsis, slice(None)),
+            (slice(None), Ellipsis),
+            (Ellipsis, 1),
+            (1, Ellipsis),
+            (slice(1, None), Ellipsis),
+            (Ellipsis, slice(1, None)),
+        ]
+    ),
 }))
 @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
 class TestSliceIndexing(IndexingTestBase):
 
     @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    @testing.numpy_cupy_array_equal(
+        sp_name='sp', type_check=False, accept_error=IndexError)
     def test_indexing(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         return a[self.indices]
@@ -97,56 +89,57 @@ class TestSliceIndexing(IndexingTestBase):
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.1, 0.4, 0.9],
-    'n_rows': [25, 150],
-    'n_cols': [25, 150],
-    'indices': [
-        # 0-dim array
-        (10,),
-        (-10,),
-        (5, slice(1, 5)),
-        (5, slice(None)),
-        (slice(None), 5),
-        (5, 5),
-        # Outer indexing
-        ([1, 5, 4, 2, 5, 1], slice(None)),
-        ([1, 5, 2, 3, 4, 5, 4, 1, 5], slice(None)),
-        ([0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5], slice(None)),
-        ([1, 5, 4, 5, 2, 4, 1], slice(None)),
-        (slice(None), [1, 5, 4, 2, 5, 1]),
-        (slice(None), [1, 5, 2, 3, 4, 5, 4, 1, 5]),
-        (slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5]),
-        (slice(None), [1, 5, 4, 5, 2, 4, 1]),
-        ([1, 5, 4, 5, 1], 5),
-        (5, [1, 5, 4, 5, 1]),
-        ([1, 5, 4, 5, 1], slice(1, 5)),
-        (slice(5, 1, 1), [1, 5, 4, 5, 1]),
-        (slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1]),
-        # Inner indexing
-        ([1, 5, 4], [1, 5, 4]),
-        ([2, 0, 10, 0, 2], [9, 2, 1, 0, 2]),
-        ([2, 0, 10, 0], [9, 2, 1, 0]),
-        ([2, 0, 2], [2, 1, 1]),
-        ([2, 0, 2], [2, 1, 2]),
-        # Somehow SciPy chose inner indexing for the following inputs.
-        ([1, 5, 4, 5, 2], slice(1, 10, 2)),
-        # SciPy returns undefined values.
-        # ([1, 5, 4, 5, 2, 4, 1], slice(1, 10, 2)),
-    ],
+    'density': [0.0, 0.5],
+    'n_rows': [1, 25],
+    'n_cols': [1, 25],
+    'indices': (
+        # Array
+        _int_array_index
+        # Array x Int
+        + list(itertools.product(_int_array_index, _int_index))
+        + list(itertools.product(_int_index, _int_array_index))
+        # Array x Slice
+        + list(itertools.product(_slice_index, _int_array_index))
+        # SciPy chose inner indexing for int-array x slice inputs.
+        # + list(itertools.product(_int_array_index, _slice_index))
+        # Array x Array (Inner indexing)
+        + [
+            ([], []),
+            ([0], [0]),
+            ([1, 5, 4], [1, 5, 4]),
+            ([2, 0, 10, 0, 2], [9, 2, 1, 0, 2]),
+            ([2, 0, 10, 0], [9, 2, 1, 0]),
+            ([2, 0, 2], [2, 1, 1]),
+            ([2, 0, 2], [2, 1, 2]),
+        ]
+    )
 }))
 @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
 class TestArrayIndexing(IndexingTestBase):
 
+    def setUp(self):
+        indices = self.indices
+        if not isinstance(indices, tuple):
+            indices = (indices,)
+        for index, size in zip(indices, [self.n_rows, self.n_cols]):
+            if isinstance(index, list):
+                for ind in index:
+                    if not (0 <= ind < size):
+                        # CuPy does not check boundaries.
+                        pytest.skip('Out of bounds')
+
     @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_array_equal(sp_name='sp')
+    @testing.numpy_cupy_array_equal(
+        sp_name='sp', type_check=False, accept_error=IndexError)
     def test_list_indexing(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         return a[self.indices]
 
     @testing.for_dtypes('fdFD')
     @testing.for_dtypes('il', name='ind_dtype')
-    @testing.numpy_cupy_array_equal(sp_name='sp')
+    @testing.numpy_cupy_array_equal(
+        sp_name='sp', type_check=False, accept_error=IndexError)
     def test_numpy_ndarray_indexing(self, xp, sp, dtype, ind_dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(numpy, ind_dtype)
@@ -154,7 +147,8 @@ class TestArrayIndexing(IndexingTestBase):
 
     @testing.for_dtypes('fdFD')
     @testing.for_dtypes('il', name='ind_dtype')
-    @testing.numpy_cupy_array_equal(sp_name='sp')
+    @testing.numpy_cupy_array_equal(
+        sp_name='sp', type_check=False, accept_error=IndexError)
     def test_cupy_ndarray_indexing(self, xp, sp, dtype, ind_dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp, ind_dtype)
@@ -164,26 +158,27 @@ class TestArrayIndexing(IndexingTestBase):
 
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
-    'density': [0.1, 0.4, 0.9],
-    'n_rows': [3],
-    'n_cols': [5],
+    'density': [0.0, 0.5],
     'indices': [
         # Bool array x Int
         ([True, False, True], 3),
         (2, [True, False, True, False, True]),
-        # Bool array x All
-        ([True, False, True], slice(None)),
-        (slice(None), [True, False, True, False, True]),
         # Bool array x Slice
+        ([True, False, True], slice(None)),
         ([True, False, True], slice(1, 4)),
+        (slice(None), [True, False, True, False, True]),
         (slice(1, 4), [True, False, True, False, True]),
         # Bool array x Bool array
+        # SciPy chose inner indexing for int-array x slice inputs.
         ([True, False, True], [True, False, True]),
     ],
 }))
 @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
 class TestBoolMaskIndexing(IndexingTestBase):
+
+    n_rows = 3
+    n_cols = 5
 
     # In older environments (e.g., py35, scipy 1.4), scipy sparse arrays are
     # crashing when indexed with native Python boolean list.
