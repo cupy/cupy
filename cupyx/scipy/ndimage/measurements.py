@@ -521,6 +521,69 @@ def _safely_castable_to_int(dt):
     return safe
 
 
+def _get_values(arrays, func):
+    """Concatenated result of applying func to a list of arrays.
+
+    func should be cupy.min, cupy.max or cupy.median
+    """
+    dtype = arrays[0].dtype
+    return cupy.concatenate(
+        [
+            func(a, keepdims=True)
+            if a.size != 0 else cupy.asarray([0], dtype=dtype)
+            for a in arrays
+        ]
+    )
+
+
+def _get_positions(arrays, position_arrays, arg_func):
+    """Concatenated positions from applying arg_func to arrays.
+
+    arg_func should be cupy.argmin or cupy.argmax
+    """
+    return cupy.concatenate(
+        [
+            pos[arg_func(a, keepdims=True)]
+            if a.size != 0 else cupy.asarray([0], dtype=int)
+            for pos, a in zip(position_arrays, arrays)
+        ]
+    )
+
+
+def _select_via_looping(input, labels, idxs, positions, find_min,
+                        find_min_positions, find_max, find_max_positions,
+                        find_median):
+    """Internal helper routine for _select.
+
+    With relatively few labels it is faster to call this function rather than
+    using the implementation based on cupy.lexsort.
+    """
+    find_positions = find_min_positions or find_max_positions
+
+    # extract labeled regions into separate arrays
+    arrays = []
+    position_arrays = []
+    for i in idxs:
+        label_idx = labels == i
+        arrays.append(input[label_idx])
+        if find_positions:
+            position_arrays.append(positions[label_idx])
+
+    result = []
+    # the order below matches the order expected by cupy.ndimage.extrema
+    if find_min:
+        result += [_get_values(arrays, cupy.min)]
+    if find_min_positions:
+        result += [_get_positions(arrays, position_arrays, cupy.argmin)]
+    if find_max:
+        result += [_get_values(arrays, cupy.max)]
+    if find_max_positions:
+        result += [_get_positions(arrays, position_arrays, cupy.argmax)]
+    if find_median:
+        result += [_get_values(arrays, cupy.median)]
+    return result
+
+
 def _select(
     input,
     labels=None,
@@ -598,11 +661,35 @@ def _select(
 
     idxs[~found] = labels.max() + 1
 
-    order = cupy.lexsort(cupy.stack((input.ravel(), labels.ravel())))
-    input = input.ravel()[order]
-    labels = labels.ravel()[order]
+    input = input.ravel()
+    labels = labels.ravel()
     if find_positions:
-        positions = positions.ravel()[order]
+        positions = positions.ravel()
+
+    using_cub = core._accelerator.ACCELERATOR_CUB in \
+        cupy.core.get_routine_accelerators()
+
+    if using_cub:
+        # cutoff values below were determined empirically for relatively large
+        # input arrays.
+        if find_positions or find_median:
+            n_label_cutoff = 15
+        else:
+            n_label_cutoff = 30
+    else:
+        n_label_cutoff = 0
+
+    if n_label_cutoff and len(idxs) <= n_label_cutoff:
+        return _select_via_looping(
+            input, labels, idxs, positions, find_min, find_min_positions,
+            find_max, find_max_positions, find_median
+        )
+
+    order = cupy.lexsort(cupy.stack((input.ravel(), labels.ravel())))
+    input = input[order]
+    labels = labels[order]
+    if find_positions:
+        positions = positions[order]
 
     # Determine indices corresponding to the min or max value for each label
     label_change_index = cupy.cumsum(cupy.bincount(labels))
@@ -614,6 +701,7 @@ def _select(
         max_index = label_change_index - 1
 
     result = []
+    # the order below matches the order expected by cupy.ndimage.extrema
     if find_min:
         mins = cupy.zeros(int(labels.max()) + 2, input.dtype)
         mins[labels[min_index]] = input[min_index]

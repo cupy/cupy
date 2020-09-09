@@ -5,6 +5,7 @@ import numpy
 
 import cupy
 from cupy import testing
+from cupy.core import _accelerator
 import cupyx.scipy.ndimage  # NOQA
 
 try:
@@ -218,12 +219,23 @@ class TestStats(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'op': ['maximum', 'median', 'minimum', 'maximum_position',
            'minimum_position', 'extrema'],
-    'labels': [None, 5, 32],
+    'labels': [None, 5, 50],
     'index': [None, 1, 'all', 'subset'],
     'shape': [(512,), (32, 64)],
+    'enable_cub': [True, False],
 }))
 @testing.with_requires('scipy')
 class TestMeasurementsSelect(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        if self.enable_cub:
+            _accelerator.set_routine_accelerators(['cub'])
+        else:
+            _accelerator.set_routine_accelerators([])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
 
     # no_bool=True due to https://github.com/scipy/scipy/issues/12836
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
