@@ -6,7 +6,7 @@ from cupy.cuda cimport memory
 
 import threading
 
-from cupy import util
+from cupy import _util
 from cupy.cuda import cufft
 
 
@@ -543,35 +543,35 @@ cpdef inline PlanCache get_plan_cache():
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
 cpdef Py_ssize_t get_plan_cache_size():
-    util.experimental('cupy.fft.cache.get_plan_cache_size')
+    _util.experimental('cupy.fft.cache.get_plan_cache_size')
     cdef PlanCache cache = get_plan_cache()
     return cache.get_size()
 
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
 cpdef set_plan_cache_size(size):
-    util.experimental('cupy.fft.cache.set_plan_cache_size')
+    _util.experimental('cupy.fft.cache.set_plan_cache_size')
     cdef PlanCache cache = get_plan_cache()
     cache.set_size(size)
 
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
 cpdef Py_ssize_t get_plan_cache_max_memsize():
-    util.experimental('cupy.fft.cache.get_plan_cache_max_memsize')
+    _util.experimental('cupy.fft.cache.get_plan_cache_max_memsize')
     cdef PlanCache cache = get_plan_cache()
     return cache.get_memsize()
 
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
 cpdef set_plan_cache_max_memsize(size):
-    util.experimental('cupy.fft.cache.set_plan_cache_max_memsize')
+    _util.experimental('cupy.fft.cache.set_plan_cache_max_memsize')
     cdef PlanCache cache = get_plan_cache()
     cache.set_memsize(size)
 
 
 # TODO(leofang): remove experimental warning when scipy/scipy#12512 is merged
 cpdef clear_plan_cache():
-    util.experimental('cupy.fft.cache.clear_plan_cache')
+    _util.experimental('cupy.fft.cache.clear_plan_cache')
     cdef PlanCache cache = get_plan_cache()
     cache.clear()
 
