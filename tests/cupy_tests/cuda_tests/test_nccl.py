@@ -6,13 +6,15 @@ from cupy import cuda
 from cupy import testing
 
 
-if cuda.nccl_enabled:
+nccl_available = cuda.nccl.available
+
+if nccl_available:
     nccl_version = cuda.nccl.get_version()
 else:
     nccl_version = -1
 
 
-@unittest.skipUnless(cuda.nccl_enabled, 'nccl is not installed')
+@unittest.skipUnless(nccl_available, 'nccl is not installed')
 class TestNCCL(unittest.TestCase):
 
     @testing.gpu
@@ -94,7 +96,7 @@ class TestNCCL(unittest.TestCase):
             assert (recvbuf == expected).all()
 
 
-@unittest.skipUnless(cuda.nccl_enabled, 'nccl is not installed')
+@unittest.skipUnless(nccl_available, 'nccl is not installed')
 class TestExceptionPicklable(unittest.TestCase):
 
     def test(self):

@@ -40,5 +40,3 @@ from cupyx.scipy.sparse.construct import kron  # NOQA
 # TODO(unno): implement isspmatrix_bsr(x)
 # TODO(unno): implement isspmatrix_lil(x)
 # TODO(unno): implement isspmatrix_dok(x)
-
-from cupyx.scipy.sparse import linalg  # NOQA

@@ -3,7 +3,7 @@ import numpy
 import cupy
 from cupy.core import _routines_math as _math
 from cupy.core import _fusion_thread_local
-from cupy.util import _normalize_axis_index
+from cupy._util import _normalize_axis_index
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):

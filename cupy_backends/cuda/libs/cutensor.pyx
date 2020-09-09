@@ -137,6 +137,9 @@ cdef extern from 'cupy_cutensor.h' nogil:
     size_t cutensorGetVersion()
 
 
+available = True
+
+
 ###############################################################################
 # Version information
 ###############################################################################

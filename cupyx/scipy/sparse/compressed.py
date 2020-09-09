@@ -18,7 +18,7 @@ from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import sputils
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 
 from cupyx.scipy.sparse import _index
 
@@ -336,7 +336,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def __init__(self, arg1, shape=None, dtype=None, copy=False):
         if shape is not None:
-            if not util.isshape(shape):
+            if not _util.isshape(shape):
                 raise ValueError('invalid shape (must be a 2-tuple of int)')
             shape = int(shape[0]), int(shape[1])
 
@@ -353,7 +353,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if shape is None:
                 shape = arg1.shape
 
-        elif util.isshape(arg1):
+        elif _util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
             data = basic.zeros(0, dtype if dtype else 'd')
@@ -610,19 +610,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """Index along the major axis where idx is an array of ints.
         """
         _, N = self._swap(*self.shape)
-        M = len(idx)
+        M = idx.size
         new_shape = self._swap(M, N)
-        if M == 0:
+        if self.nnz == 0 or M == 0:
             return self.__class__(new_shape)
 
-        row_nnz = cupy.diff(self.indptr)
-        idx_dtype = self.indices.dtype
-        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
-        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
-
-        res_indices, res_data = _index._csr_row_index(
-            idx, self.indptr,
-            self.indices, self.data, res_indptr)
+        res_indptr, res_indices, res_data = _index._csr_row_index(
+            idx, self.indptr, self.indices, self.data)
 
         return self.__class__((res_data, res_indices, res_indptr),
                               shape=new_shape, copy=False)
@@ -630,30 +624,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
         """
-
-        idx_dtype = self.indices.dtype
-        idx = cupy.asarray(idx, dtype=idx_dtype).ravel()
-
-        M, N = self._swap(*self.shape)
-        k = len(idx)
-        new_shape = self._swap(M, k)
-        if k == 0:
+        M, _ = self._swap(*self.shape)
+        N = idx.size
+        new_shape = self._swap(M, N)
+        if self.nnz == 0 or N == 0:
             return self.__class__(new_shape)
 
-        # pass 1: count idx entries and compute new indptr
-        col_order = cupy.argsort(idx).astype(idx_dtype, copy=False)
+        if idx.size * M < self.nnz:
+            # TODO (asi1024): Implement faster algorithm.
+            pass
 
-        index1_outs = _index._csr_column_index1(idx, self.indptr, self.indices)
-        res_indptr, indices_mask, col_counts, sort_idxs = index1_outs
-
-        # pass 2: copy indices/data for selected idxs
-
-        res_indices, res_data = _index._csr_column_index2(
-            col_order, col_counts, sort_idxs, self.indptr, indices_mask,
-            self.data, res_indptr)
-
-        return self.__class__((res_data, res_indices, res_indptr),
-                              shape=new_shape, copy=False)
+        return self._tocsx()._major_index_fancy(idx)._tocsx()
 
     def _minor_slice(self, idx, copy=False):
         """Index along the minor axis where idx is a slice object.
@@ -669,7 +650,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return self.__class__(self._swap(M, N))
         if step == 1:
             return self._get_submatrix(minor=idx, copy=copy)
-        return self._minor_index_fancy(cupy.arange(start, stop, step))
+        return self._minor_index_fancy(
+            cupy.arange(start, stop, step, dtype=self.indices.dtype))
 
     @staticmethod
     def _process_slice(sl, num):
@@ -747,26 +729,19 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         start, stop, step = idx.indices(M)
         M = len(range(start, stop, step))
         new_shape = self._swap(M, N)
-        if M == 0:
+        if M == 0 or self.nnz == 0:
             return self.__class__(new_shape)
 
-        row_nnz = cupy.diff(self.indptr)
-        idx_dtype = self.indices.dtype
-        res_indptr = cupy.zeros(M+1, dtype=idx_dtype)
-
-        cupy.cumsum(row_nnz[idx], out=res_indptr[1:])
-
         if step == 1:
-            idx_start = self.indptr[start]
-            idx_stop = self.indptr[stop]
-            res_indices = cupy.array(self.indices[idx_start:idx_stop],
-                                     copy=copy)
-            res_data = cupy.array(self.data[idx_start:idx_stop], copy=copy)
+            indptr, indices, data = _index._get_csr_submatrix_major_axis(
+                self.indptr, self.indices, self.data, start, stop)
         else:
-            res_indices, res_data = _index._csr_row_slice(
-                start, step, self.indptr, self.indices, self.data, res_indptr)
+            rows = cupy.arange(
+                start, start + M * step, step, dtype=self.indptr.dtype)
+            indptr, indices, data = _index._csr_row_index(
+                rows, self.indptr, self.indices, self.data)
 
-        return self.__class__((res_data, res_indices, res_indptr),
+        return self.__class__((data, indices, indptr),
                               shape=new_shape, copy=False)
 
     def _set_intXint(self, row, col, x):

@@ -3,7 +3,7 @@ import itertools
 import numpy
 
 import cupy
-from cupy import util
+from cupy import _util
 from cupy.core import _reduction
 
 
@@ -31,7 +31,7 @@ def flip(a, axis=None):
     if a_ndim < 1:
         raise numpy.AxisError('Input must be >= 1-d')
 
-    axes = util._normalize_axis_indices(axis, a_ndim)
+    axes = _util._normalize_axis_indices(axis, a_ndim)
     return _flip(a, axes)
 
 
