@@ -645,7 +645,12 @@ def _select(
         step = (hi - lo) // 2
         lo += step
         hi -= step
-        result += [(input[lo] + input[hi]) / 2.0]
+        if input.dtype.kind in 'iub':
+            # fix for https://github.com/scipy/scipy/issues/12836
+            result += [(input[lo].astype(float) + input[hi].astype(float)) /
+                       2.0]
+        else:
+            result += [(input[lo] + input[hi]) / 2.0]
 
     return result
 
