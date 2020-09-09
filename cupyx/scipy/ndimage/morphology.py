@@ -159,28 +159,28 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
     try:
         iterations = operator.index(iterations)
     except TypeError:
-        raise TypeError("iterations parameter should be an integer")
+        raise TypeError('iterations parameter should be an integer')
 
     if not input.flags.c_contiguous:
         # TODO: grlee77: is C-contiguity required?
         input = cupy.ascontiguousarray(input)
-    if input.dtype.kind == "c":
-        raise TypeError("Complex type not supported")
+    if input.dtype.kind == 'c':
+        raise TypeError('Complex type not supported')
     if structure is None:
         structure = generate_binary_structure(input.ndim, 1)
     else:
         structure = cupy.asarray(structure, dtype=bool)
     if structure.ndim != input.ndim:
-        raise RuntimeError("structure and input must have same dimensionality")
+        raise RuntimeError('structure and input must have same dimensionality')
     if not structure.flags.c_contiguous:
         # TODO: grlee77: is C-contiguity required?
         structure = cupy.ascontiguousarray(structure)
     if structure.size < 1:
-        raise RuntimeError("structure must not be empty")
+        raise RuntimeError('structure must not be empty')
 
     if mask is not None:
         if mask.shape != input.shape:
-            raise RuntimeError("mask and input must have equal sizes")
+            raise RuntimeError('mask and input must have equal sizes')
         if not mask.flags.c_contiguous:
             # TODO: grlee77: current indexing requires C contiguous arrays.
             mask = cupy.asacontiguousarray(mask)
@@ -190,11 +190,11 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
     origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
     center_is_true = _center_is_true(structure, origin)  # synchronization
     if isinstance(output, cupy.ndarray) and output.dtype.kind == 'c':
-        raise TypeError("Complex output type not supported")
+        raise TypeError('Complex output type not supported')
     else:
         output = bool
     output = _util._get_output(output, input)
-    temp_needed = cupy.shares_memory(output, input, "MAY_SHARE_BOUNDS")
+    temp_needed = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if temp_needed:
         # input and output arrays cannot share memory
         temp = output
@@ -221,11 +221,11 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
             output = erode_kernel(input, structure, output)
     elif center_is_true and not brute_force:
         raise NotImplementedError(
-            "only brute_force iteration has been implemented"
+            'only brute_force iteration has been implemented'
         )
     else:
-        if cupy.shares_memory(output, input, "MAY_SHARE_BOUNDS"):
-            raise ValueError("output and input may not overlap in memory")
+        if cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS'):
+            raise ValueError('output and input may not overlap in memory')
         tmp_in = cupy.empty_like(input, dtype=output.dtype)
         tmp_out = output
         if iterations >= 1 and not iterations & 1:
@@ -723,7 +723,7 @@ def grey_closing(input, size=None, footprint=None, structure=None,
     .. seealso:: :func:`scipy.ndimage.grey_closing`
     """
     if (size is not None) and (footprint is not None):
-        warnings.warn("ignoring size because footprint is set", UserWarning,
+        warnings.warn('ignoring size because footprint is set', UserWarning,
                       stacklevel=2)
     tmp = grey_dilation(input, size, footprint, structure, None, mode, cval,
                         origin)
@@ -764,7 +764,7 @@ def grey_opening(input, size=None, footprint=None, structure=None,
     .. seealso:: :func:`scipy.ndimage.grey_opening`
     """
     if (size is not None) and (footprint is not None):
-        warnings.warn("ignoring size because footprint is set", UserWarning,
+        warnings.warn('ignoring size because footprint is set', UserWarning,
                       stacklevel=2)
     tmp = grey_erosion(input, size, footprint, structure, None, mode, cval,
                        origin)

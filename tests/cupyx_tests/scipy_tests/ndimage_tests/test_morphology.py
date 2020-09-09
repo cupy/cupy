@@ -89,7 +89,7 @@ class BinaryErosionAndDilation1d(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_erosion_and_dilation_1d(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest("redundant")
+            raise unittest.SkipTest('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -136,7 +136,7 @@ class BinaryOpeningAndClosing(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_opening_and_closing(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest("redundant")
+            raise unittest.SkipTest('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -185,7 +185,7 @@ class BinaryFillHoles(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_fill_holes(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest("redundant")
+            raise unittest.SkipTest('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -245,7 +245,7 @@ class BinaryHitOrMiss(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_hit_or_miss(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest("redundant")
+            raise unittest.SkipTest('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -309,7 +309,7 @@ class BinaryPropagation(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_propagation(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest("redundant")
+            raise unittest.SkipTest('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -342,7 +342,7 @@ class BinaryErosionAndDilation(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_erosion_and_dilation(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest("redundant")
+            raise unittest.SkipTest('redundant')
         rstate = numpy.random.RandomState(5)
         x = rstate.randn(*self.shape) > self.density
         x = xp.asarray(x, dtype=self.x_dtype)
@@ -416,9 +416,9 @@ class TestGreyErosionAndDilation(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_grey_erosion_and_dilation(self, xp, scp):
         if self.mode == 'mirror' and 1 in self.shape:
-            raise unittest.SkipTest("not testable against scipy")
+            raise unittest.SkipTest('not testable against scipy')
         if self.x_dtype == self.output:
-            raise unittest.SkipTest("redundant")
+            raise unittest.SkipTest('redundant')
         x = testing.shaped_random(self.shape, xp, self.x_dtype)
         return self._filter(xp, scp, x)
 
