@@ -63,14 +63,14 @@ def _ravel_and_check_weights(a, weights):
 
     # Ensure that the array is a "subtractable" dtype
     if a.dtype == cupy.bool_:
-        warnings.warn("Converting input from {} to {} for compatibility."
+        warnings.warn('Converting input from {} to {} for compatibility.'
                       .format(a.dtype, cupy.uint8),
                       RuntimeWarning, stacklevel=3)
         a = a.astype(cupy.uint8)
 
     if weights is not None:
         if not isinstance(weights, cupy.ndarray):
-            raise ValueError("weights must be a cupy.ndarray")
+            raise ValueError('weights must be a cupy.ndarray')
         if weights.shape != a.shape:
             raise ValueError(
                 'weights should have the same shape as a.')
@@ -91,7 +91,7 @@ def _get_outer_edges(a, range):
                 'max must be larger than min in range parameter.')
         if not (numpy.isfinite(first_edge) and numpy.isfinite(last_edge)):
             raise ValueError(
-                "supplied range of [{}, {}] is not finite".format(
+                'supplied range of [{}, {}] is not finite'.format(
                     first_edge, last_edge))
     elif a.size == 0:
         first_edge = 0.0
@@ -101,7 +101,7 @@ def _get_outer_edges(a, range):
         last_edge = float(a.max())
         if not (cupy.isfinite(first_edge) and cupy.isfinite(last_edge)):
             raise ValueError(
-                "autodetected range of [{}, {}] is not finite".format(
+                'autodetected range of [{}, {}] is not finite'.format(
                     first_edge, last_edge))
 
     # expand empty range to avoid divide by zero
@@ -130,7 +130,7 @@ def _get_bin_edges(a, bins, range):
 
     if isinstance(bins, str):
         raise NotImplementedError(
-            "only integer and array bins are implemented")
+            'only integer and array bins are implemented')
     elif isinstance(bins, cupy.ndarray) or numpy.ndim(bins) == 1:
         # TODO(okuta): After #3060 is merged, `if cupy.ndim(bins) == 1:`.
         if isinstance(bins, cupy.ndarray):
@@ -209,7 +209,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
         raise NotImplementedError('complex number is not supported')
 
     if not isinstance(x, cupy.ndarray):
-        raise ValueError("x must be a cupy.ndarray")
+        raise ValueError('x must be a cupy.ndarray')
 
     x, weights = _ravel_and_check_weights(x, weights)
     bin_edges = _get_bin_edges(x, bins, range)
@@ -252,8 +252,8 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
         if not simple_weights:
             # object dtype such as Decimal are supported in NumPy, but not here
             raise NotImplementedError(
-                "only weights with dtype that can be cast to float or complex "
-                "are supported")
+                'only weights with dtype that can be cast to float or complex '
+                'are supported')
         if weights.dtype.kind == 'c':
             y = cupy.zeros(bin_edges.size - 1, dtype=cupy.complex128)
             _weighted_histogram_kernel(
@@ -340,8 +340,8 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
         nbins = len(bins)
         if nbins != ndim:
             raise ValueError(
-                "The dimension of bins must be equal to the dimension of the "
-                " sample x."
+                'The dimension of bins must be equal to the dimension of the '
+                ' sample x.'
             )
     except TypeError:
         # bins is an integer
@@ -351,30 +351,30 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
     if range is None:
         range = (None,) * ndim
     elif len(range) != ndim:
-        raise ValueError("range argument must have one entry per dimension")
+        raise ValueError('range argument must have one entry per dimension')
 
     # Create edge arrays
     for i in _range(ndim):
         if cupy.ndim(bins[i]) == 0:
             if bins[i] < 1:
                 raise ValueError(
-                    "`bins[{}]` must be positive, when an integer".format(i)
+                    '`bins[{}]` must be positive, when an integer'.format(i)
                 )
             smin, smax = _get_outer_edges(sample[:, i], range[i])
             num = int(bins[i] + 1)  # synchronize!
             edges[i] = cupy.linspace(smin, smax, num)
         elif cupy.ndim(bins[i]) == 1:
             if not isinstance(bins[i], cupy.ndarray):
-                raise ValueError("array-like bins not supported")
+                raise ValueError('array-like bins not supported')
             edges[i] = bins[i]
             if (edges[i][:-1] > edges[i][1:]).any():  # synchronize!
                 raise ValueError(
-                    "`bins[{}]` must be monotonically increasing, when an "
-                    "array".format(i)
+                    '`bins[{}]` must be monotonically increasing, when an '
+                    'array'.format(i)
                 )
         else:
             raise ValueError(
-                "`bins[{}]` must be a scalar or 1d array".format(i)
+                '`bins[{}]` must be a scalar or 1d array'.format(i)
             )
 
         nbin[i] = len(edges[i]) + 1  # includes an outlier on each end
@@ -383,7 +383,7 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
     # Compute the bin number each sample falls into.
     ncount = tuple(
         # avoid cupy.digitize to work around NumPy issue gh-11022
-        cupy.searchsorted(edges[i], sample[:, i], side="right")
+        cupy.searchsorted(edges[i], sample[:, i], side='right')
         for i in _range(ndim)
     )
 
@@ -424,7 +424,7 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
         hist /= s
 
     if any(hist.shape != numpy.asarray(nbin) - 2):
-        raise RuntimeError("Internal Shape Error")
+        raise RuntimeError('Internal Shape Error')
     return hist, edges
 
 
@@ -477,7 +477,7 @@ def histogram2d(x, y, bins=10, range=None, weights=None, density=None):
             xedges = yedges = bins
             bins = [xedges, yedges]
         else:
-            raise ValueError("array-like bins not supported in CuPy")
+            raise ValueError('array-like bins not supported in CuPy')
 
     hist, edges = histogramdd([x, y], bins, range, weights, density)
     return hist, edges[0], edges[1]
