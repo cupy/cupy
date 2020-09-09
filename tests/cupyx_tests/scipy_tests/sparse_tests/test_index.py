@@ -121,8 +121,6 @@ class TestSliceIndexing(IndexingTestBase):
         (5, [1, 5, 4, 5, 1]),
         ([1, 5, 4, 5, 1], slice(1, 5)),
         (slice(5, 1, 1), [1, 5, 4, 5, 1]),
-        # TODO (asi1024): Support
-        # ([1, 5, 4, 5, 2, 4, 1], slice(1, 10, 2)),
         (slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1]),
         # Inner indexing
         ([1, 5, 4], [1, 5, 4]),
@@ -130,6 +128,10 @@ class TestSliceIndexing(IndexingTestBase):
         ([2, 0, 10, 0], [9, 2, 1, 0]),
         ([2, 0, 2], [2, 1, 1]),
         ([2, 0, 2], [2, 1, 2]),
+        # Somehow SciPy chose inner indexing for the following inputs.
+        ([1, 5, 4, 5, 2], slice(1, 10, 2)),
+        # SciPy returns undefined values.
+        # ([1, 5, 4, 5, 2, 4, 1], slice(1, 10, 2)),
     ],
 }))
 @testing.with_requires('scipy>=1.4.0')
