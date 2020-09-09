@@ -825,8 +825,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             (self.indices, self.indptr), maxval=(
                 self.nnz + x.size))
 
-        self.indptr = cupy.asarray(self.indptr, dtype=idx_dtype)
-        self.indices = cupy.asarray(self.indices, dtype=idx_dtype)
+        self.indptr = self.indptr.astype(idx_dtype)
+        self.indices = self.indices.astype(idx_dtype)
+        self.data = self.data.astype(self.dtype)
 
         indptr_inserts, indices_inserts, data_inserts = \
             _index._select_last_indices(i, j, x, idx_dtype)
