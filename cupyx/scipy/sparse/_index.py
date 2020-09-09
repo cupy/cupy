@@ -264,49 +264,75 @@ _unique_mask_kern = core.ElementwiseKernel(
 )
 
 
-def _csr_sample_values(n_row, n_col,
-                       Ap, Aj, Ax,
-                       Bi, Bj):
-    """Populate data array for a set of rows and columns
-    Args
-        n_row : total number of rows in input array
-        n_col : total number of columns in input array
-        Ap : indptr array for input sparse matrix
-        Aj : indices array for input sparse matrix
-        Ax : data array for input sparse matrix
-        Bi : array of rows to extract from input sparse matrix
-        Bj : array of columns to extract from input sparse matrix
-    Returns
-        Bx : data array for output sparse matrix
-    """
-
-    Bi[Bi < 0] += n_row
-    Bj[Bj < 0] += n_col
-
-    Bx = cupy.empty(Bi.size, dtype=Ax.dtype)
-
-    # TODO(cjnolet): find a way to increase parallelism
-    _csr_sample_values_kern(n_row, n_col,
-                            Ap, Aj, Ax,
-                            Bi, Bj, Bx, size=Bi.size)
-
-    return Bx
-
-
-_csr_sample_values_kern = core.ElementwiseKernel(
-    '''I n_row, I n_col, raw I Ap, raw I Aj, raw T Ax, raw I Bi, raw I Bj''',
-    'raw T Bx', '''
+"""
+/*
+ * Determine the data offset at specific locations
+ *
+ * Input Arguments:
+ *   I  n_row         - number of rows in A
+ *   I  n_col         - number of columns in A
+ *   I  Ap[n_row+1]   - row pointer
+ *   I  Aj[nnz(A)]    - column indices
+ *   I  n_samples     - number of samples
+ *   I  Bi[N]         - sample rows
+ *   I  Bj[N]         - sample columns
+ *
+ * Output Arguments:
+ *   I  Bp[N]         - offsets into Aj; -1 if non-existent
+ *
+ * Return value:
+ *   1 if any sought entries are duplicated, in which case the
+ *   function has exited early; 0 otherwise.
+ *
+ * Note:
+ *   Output array Bp must be preallocated
+ *
+ *   Complexity: varies. See csr_sample_values
+ *
+ */
+"""
+_csr_sample_offsets_ker = core.ElementwiseKernel(
+    '''I n_row, I n_col, raw I Ap, raw I Aj, raw I Bi, raw I Bj''',
+    'raw I Bp, raw bool dupl', '''
     const I j = Bi[i]; // sample row
     const I k = Bj[i]; // sample column
     const I row_start = Ap[j];
     const I row_end   = Ap[j+1];
-    T x = 0;
-    for(I jj = row_start; jj < row_end; jj++) {
-        if (Aj[jj] == k)
-            x += Ax[jj];
+    I offset = -1;
+    for(I jj = row_start; jj < row_end; jj++)
+    {
+        if (Aj[jj] == k) {
+            offset = jj;
+            for (jj++; jj < row_end; jj++) {
+                if (Aj[jj] == k) {
+                    offset = -2;
+                    dupl[0] = true;
+                    return;
+                }
+            }
+        }
     }
-    Bx[i] = x;
-''', 'csr_sample_values_kern', no_return=True)
+    Bp[i] = offset;
+''', 'csr_sample_offsets_ker', no_return=True)
+
+
+def _csr_sample_offsets(n_row, n_col,
+                        Ap, Aj, n_samples,
+                        Bi, Bj):
+
+    Bi[Bi < 0] += n_row
+    Bj[Bj < 0] += n_col
+
+    offsets = cupy.zeros(n_samples, dtype=Aj.dtype)
+    dupl = cupy.array([False], dtype='bool')
+
+    # TODO(cjnolet): find a way to increase parallelism
+    _csr_sample_offsets_ker(n_row, n_col,
+                            Ap, Aj, Bi, Bj,
+                            offsets, dupl,
+                            size=n_samples)
+
+    return offsets, bool(dupl)
 
 
 class IndexMixin(object):

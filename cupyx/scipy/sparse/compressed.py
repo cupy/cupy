@@ -693,36 +693,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i, j = self._swap(row[r, c], col[r, c])
         self._set_many(i, j, x)
 
-    def _setdiag(self, values, k):
-        if 0 in self.shape:
-            return
-
-        M, N = self.shape
-        broadcast = (values.ndim == 0)
-
-        if k < 0:
-            if broadcast:
-                max_index = min(M + k, N)
-            else:
-                max_index = min(M + k, N, values.size)
-            i = cupy.arange(max_index, dtype=self.indices.dtype)
-            j = i.copy()
-            i -= k
-
-        else:
-            if broadcast:
-                max_index = min(M, N - k)
-            else:
-                max_index = min(M, N - k, values.size)
-            i = cupy.arange(max_index, dtype=self.indices.dtype)
-            j = i.copy()
-            j += k
-
-        if not broadcast:
-            values = values[:i.size]
-
-        self[i, j] = values
-
     def _prepare_indices(self, i, j):
         M, N = self._swap(*self.shape)
 
@@ -769,9 +739,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return
 
         else:
-            warnings.warn("Changing the sparsity structure of a "
-                          "{}_matrix is expensive."
-                          " lil_matrix is more efficient.".format(self.format))
+            warnings.warn('Changing the sparsity structure of a '
+                          '{}_matrix is expensive.'
+                          ' lil_matrix is more efficient.'.format(self.format))
             # replace where possible
             mask = offsets > -1
             self.data[offsets[mask]] = x[mask]
