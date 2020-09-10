@@ -7,6 +7,7 @@ import cupy
 from cupy import testing
 from cupy.testing import condition
 import cupyx
+from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
 
 
 @testing.gpu
@@ -33,6 +34,13 @@ class TestSolve(unittest.TestCase):
         self.check_x((2, 5, 5), (2, 5, 2))
         self.check_x((2, 3, 2, 2), (2, 3, 2,))
         self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
+        old_limit = get_batched_gesv_limit()
+        set_batched_gesv_limit(0)  # disable use of batched_gesv
+        self.check_x((2, 4, 4), (2, 4,))
+        self.check_x((2, 5, 5), (2, 5, 2))
+        self.check_x((2, 3, 2, 2), (2, 3, 2,))
+        self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
+        set_batched_gesv_limit(old_limit)
 
     def check_shape(self, a_shape, b_shape, error_type):
         for xp in (numpy, cupy):

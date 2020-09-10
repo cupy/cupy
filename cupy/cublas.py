@@ -1,9 +1,24 @@
 import numpy
+from numpy import linalg
+
+import warnings
 
 import cupy
 from cupy_backends.cuda.libs import cublas
 from cupy.cuda import device
 from cupy.linalg import util
+
+_batched_gesv_limit = 256
+
+
+def get_batched_gesv_limit():
+    global _batched_gesv_limit
+    return _batched_gesv_limit
+
+
+def set_batched_gesv_limit(limit):
+    global _batched_gesv_limit
+    _batched_gesv_limit = limit
 
 
 def batched_gesv(a, b):
@@ -58,6 +73,10 @@ def batched_gesv(a, b):
     if b.data.ptr == b_data_ptr:
         b = b.copy()
 
+    if n > get_batched_gesv_limit():
+        warnings.warn('The matrix size ({}) exceeds the set limit ({})'.
+                      format(n, get_batched_gesv_limit()))
+
     handle = device.get_cublas_handle()
     lda = n
     a_step = lda * n * a.itemsize
@@ -68,11 +87,18 @@ def batched_gesv(a, b):
     b_array = cupy.arange(b.data.ptr, b.data.ptr + b_step * bs, b_step,
                           dtype=cupy.uintp)
     pivot = cupy.empty((bs, n), dtype=numpy.int32)
-    info = cupy.empty((bs,), dtype=numpy.int32)
+    dinfo = cupy.empty((bs,), dtype=numpy.int32)
+    info = numpy.empty((1,), dtype=numpy.int32)
     # LU factorization (A = L * U)
-    getrf(handle, n, a_array.data.ptr, lda, pivot.data.ptr, info.data.ptr, bs)
-    util._check_cublas_info_array_if_synchronization_allowed(getrf, info)
+    getrf(handle, n, a_array.data.ptr, lda, pivot.data.ptr, dinfo.data.ptr, bs)
+    util._check_cublas_info_array_if_synchronization_allowed(getrf, dinfo)
     # Solves Ax = b
     getrs(handle, cublas.CUBLAS_OP_N, n, nrhs, a_array.data.ptr, lda,
-          pivot.data.ptr, b_array.data.ptr, ldb, bs)
+          pivot.data.ptr, b_array.data.ptr, ldb, info.ctypes.data, bs)
+    if info[0] != 0:
+        msg = 'Error reported by {} in cuBLAS. '.format(getrs.__name__)
+        if info[0] < 0:
+            msg += 'The {}-th parameter had an illegal value.'.format(-info[0])
+        raise linalg.LinAlgError(msg)
+
     return b.transpose(0, 2, 1).reshape(b_shape)

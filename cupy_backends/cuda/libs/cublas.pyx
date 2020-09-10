@@ -1024,55 +1024,47 @@ cpdef zgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
 
 cpdef int sgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
                         size_t Aarray, int lda, size_t devIpiv,
-                        size_t Barray, int ldb, int batchSize):
-    cdef int info
+                        size_t Barray, int ldb, size_t info, int batchSize):
     _setStream(handle)
     with nogil:
         status = cublasSgetrsBatched(
             <Handle>handle, <Operation>trans, n, nrhs,
             <const float**>Aarray, lda, <const int*>devIpiv,
-            <float**>Barray, ldb, &info, batchSize)
+            <float**>Barray, ldb, <int*>info, batchSize)
     check_status(status)
-    return info
 
 cpdef int dgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
                         size_t Aarray, int lda, size_t devIpiv,
-                        size_t Barray, int ldb, int batchSize):
-    cdef int info
+                        size_t Barray, int ldb, size_t info, int batchSize):
     _setStream(handle)
     with nogil:
         status = cublasDgetrsBatched(
             <Handle>handle, <Operation>trans, n, nrhs,
             <const double**>Aarray, lda, <const int*>devIpiv,
-            <double**>Barray, ldb, &info, batchSize)
+            <double**>Barray, ldb, <int*>info, batchSize)
     check_status(status)
-    return info
 
 cpdef int cgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
                         size_t Aarray, int lda, size_t devIpiv,
-                        size_t Barray, int ldb, int batchSize):
-    cdef int info
+                        size_t Barray, int ldb, size_t info, int batchSize):
     _setStream(handle)
     with nogil:
         status = cublasCgetrsBatched(
             <Handle>handle, <Operation>trans, n, nrhs,
             <const cuComplex**>Aarray, lda, <const int*>devIpiv,
-            <cuComplex**>Barray, ldb, &info, batchSize)
+            <cuComplex**>Barray, ldb, <int*>info, batchSize)
     check_status(status)
-    return info
 
 cpdef int zgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
                         size_t Aarray, int lda, size_t devIpiv,
-                        size_t Barray, int ldb, int batchSize):
-    cdef int info
+                        size_t Barray, int ldb, size_t info, int batchSize):
     _setStream(handle)
     with nogil:
         status = cublasZgetrsBatched(
             <Handle>handle, <Operation>trans, n, nrhs,
             <const cuDoubleComplex**>Aarray, lda, <const int*>devIpiv,
-            <cuDoubleComplex**>Barray, ldb, &info, batchSize)
+            <cuDoubleComplex**>Barray, ldb, <int*>info, batchSize)
     check_status(status)
-    return info
 
 
 cpdef sgetriBatched(
