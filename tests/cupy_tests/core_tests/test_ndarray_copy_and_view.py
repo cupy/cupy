@@ -180,11 +180,10 @@ class TestArrayCopyAndView(unittest.TestCase):
 
     @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
     def test_isinstance_numpy_copy_wrong_dtype(self):
-        for xp in (numpy, cupy):
-            a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
-            b = cupy.empty(a.shape, dtype=numpy.int32)
-            with pytest.raises(ValueError):
-                b[:] = a
+        a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
+        b = cupy.empty(a.shape, dtype=numpy.int32)
+        with pytest.raises(ValueError):
+            b[:] = a
 
     @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
     def test_isinstance_numpy_copy_wrong_shape(self):
@@ -200,6 +199,13 @@ class TestArrayCopyAndView(unittest.TestCase):
         a = xp.arange(5, dtype=numpy.float64)
         a[a < 3] = 0
         return a
+
+    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    def test_copy_host_to_device_view(self):
+        dev = cupy.empty((10, 10), dtype=numpy.float32)[2:5, 1:8]
+        host = numpy.arange(3 * 7, dtype=numpy.float32).reshape(3, 7)
+        with pytest.raises(ValueError):
+            dev[:] = host
 
 
 @testing.parameterize(
