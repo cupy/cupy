@@ -266,7 +266,7 @@ class TestMeasurementsSelect(unittest.TestCase):
                 index = None
         elif self.index == 'subset':
             if self.labels is not None:
-                index = xp.arange(1, self.labels + 1, dtype=cupy.intp)[::2]
+                index = xp.arange(1, self.labels + 1, dtype=cupy.intp)[1::2]
             else:
                 index = None
         func = getattr(scp.ndimage, self.op)

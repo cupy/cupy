@@ -584,21 +584,20 @@ def _select_via_looping(input, labels, idxs, positions, find_min,
     return result
 
 
-def _select(
-    input,
-    labels=None,
-    index=None,
-    find_min=False,
-    find_max=False,
-    find_min_positions=False,
-    find_max_positions=False,
-    find_median=False,
-):
-    """Returns min, max, or both, plus their positions (if requested), and
-    median."""
+def _select(input, labels=None, index=None, find_min=False, find_max=False,
+            find_min_positions=False, find_max_positions=False,
+            find_median=False):
+    """Return one or more of: min, max, min position, max position, median.
 
-    # input = cupy.asanyarray(input)
+    If neither `labels` or `index` is provided, these are the global values
+    in `input`. If `index` is None, but `labels` is provided, a global value
+    across all non-zero labels is given. When both `labels` and `index` are
+    provided, lists of values are provided for each labeled region specified
+    in `index`. See further details in :func:`cupyx.scipy.ndimage.minimum`,
+    etc.
 
+    Used by minimum, maximum, minimum_position, maximum_position, extrema.
+    """
     find_positions = find_min_positions or find_max_positions
     positions = None
     if find_positions:
@@ -640,26 +639,26 @@ def _select(
 
     index = cupy.asarray(index)
 
-    # remap labels to unique integers if necessary, or if the largest
-    # label is larger than the number of values.
-    if (
-        not _safely_castable_to_int(labels.dtype)
-        or labels.min() < 0
-        or labels.max() > labels.size
-    ):
-        # remap labels, and indexes
+    safe_int = _safely_castable_to_int(labels.dtype)
+    min_label = labels.min()
+    max_label = labels.max()
+
+    # Remap labels to unique integers if necessary, or if the largest label is
+    # larger than the number of values.
+    if (not safe_int or min_label < 0 or max_label > labels.size):
+        # Remap labels, and indexes
         unique_labels, labels = cupy.unique(labels, return_inverse=True)
         idxs = cupy.searchsorted(unique_labels, index)
 
-        # make all of idxs valid
+        # Make all of idxs valid
         idxs[idxs >= unique_labels.size] = 0
         found = unique_labels[idxs] == index
     else:
-        # labels are an integer type, and there aren't too many
+        # Labels are an integer type, and there aren't too many
         idxs = cupy.asanyarray(index, cupy.int).copy()
-        found = (idxs >= 0) & (idxs <= labels.max())
+        found = (idxs >= 0) & (idxs <= max_label)
 
-    idxs[~found] = labels.max() + 1
+    idxs[~found] = max_label + 1
 
     input = input.ravel()
     labels = labels.ravel()
@@ -670,7 +669,7 @@ def _select(
         cupy.core.get_routine_accelerators()
 
     if using_cub:
-        # cutoff values below were determined empirically for relatively large
+        # Cutoff values below were determined empirically for relatively large
         # input arrays.
         if find_positions or find_median:
             n_label_cutoff = 15
@@ -692,13 +691,14 @@ def _select(
         positions = positions[order]
 
     # Determine indices corresponding to the min or max value for each label
-    label_change_index = cupy.cumsum(cupy.bincount(labels))
+    label_change_index = cupy.searchsorted(labels,
+                                           cupy.arange(1, max_label + 2))
     if find_min or find_min_positions or find_median:
-        min_index = cupy.concatenate(
-            (cupy.asarray([0]), label_change_index[:-1])
-        )
+        # index corresponding to the minimum value at each label
+        min_index = label_change_index[:-1]
     if find_max or find_max_positions or find_median:
-        max_index = label_change_index - 1
+        # index corresponding to the maximum value at each label
+        max_index = label_change_index[1:] - 1
 
     result = []
     # the order below matches the order expected by cupy.ndimage.extrema
