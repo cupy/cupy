@@ -56,7 +56,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
 * `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.2
 
-    * The library to accelerate tensor operations. See :docs:environment: for the details.
+    * The library to accelerate tensor operations. See :doc:`reference/environment` for the details.
 
 * `NCCL <https://developer.nvidia.com/nccl>`_: v2.0 / v2.1 / v2.2 / v2.3 / v2.4 / v2.5 / v2.6 / v2.7
 

@@ -264,6 +264,11 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         # don't touch has_sorted_indices, as cuSPARSE made no guarantee
         return csc2csr(self)
 
+    def _tocsx(self):
+        """Inverts the format.
+        """
+        return self.tocsr()
+
     # TODO(unno): Implement todia
     # TODO(unno): Implement todok
     # TODO(unno): Implement tolil

@@ -4,6 +4,7 @@ import numpy
 import pytest
 try:
     import scipy.sparse
+    import scipy.sparse.linalg
     import scipy.stats
     scipy_available = True
 except ImportError:
@@ -12,6 +13,7 @@ except ImportError:
 import cupy
 from cupy import testing
 from cupyx.scipy import sparse
+import cupyx.scipy.sparse.linalg  # NOQA
 
 
 @testing.parameterize(*testing.product({

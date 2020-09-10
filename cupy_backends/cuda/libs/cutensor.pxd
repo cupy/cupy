@@ -64,8 +64,20 @@ cpdef enum:
     STATUS_CUDA_ERROR = 18
     STATUS_INSUFFICIENT_WORKSPACE = 19
     STATUS_INSUFFICIENT_DRIVER = 20  # NOQA, Indicates that the driver version is insufficient.
+    STATUS_IO_ERROR = 21
 
     # cutensorComputeType_t
+    # (*) compute types added in versoin 1.2
+    COMPUTE_16F  = 1     # NOQA, half
+    COMPUTE_16BF = 1024  # NOQA, bfloat
+    COMPUTE_TF32 = 4096  # NOQA, tensor-float-32
+    COMPUTE_32F  = 4     # NOQA, float
+    COMPUTE_64F  = 16    # NOQA, double
+    COMPUTE_8U   = 64    # NOQA, uint8
+    COMPUTE_8I   = 256   # NOQA, int8
+    COMPUTE_32U  = 128   # NOQA, uint32
+    COMPUTE_32I  = 512   # NOQA, int32
+    # (*) compute types below will be deprecated in the furture release.
     R_MIN_16F = 1    # NOQA, real as a half
     C_MIN_16F = 2    # NOQA, complex as a half
     R_MIN_32F = 4    # NOQA, real as a float
