@@ -9,6 +9,14 @@ from cupy import testing
 from cupyx.scipy import sparse
 
 
+def _get_index_combos(idx):
+    return [dict['arr_fn'](idx, dtype=dict['dtype'])
+            for dict in testing.product({
+             "arr_fn": [numpy.array, cupy.array],
+             "dtype": [numpy.int32, numpy.int64]
+            })]
+
+
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
     'density': [0.9],
@@ -23,36 +31,27 @@ class TestSetitemIndexing(unittest.TestCase):
     def _run(self, maj, min=None, data=5):
 
         for i in range(2):
-            a = cupyx.scipy.sparse.random(self.n_rows, self.n_cols,
-                                   format=self.format,
-                                   density=self.density)
+            import scipy.sparse
+            shape = self.n_rows, self.n_cols
+            a = testing.shaped_sparse_random(
+                shape, sparse, self.dtype, self.density, self.format)
+            expected = testing.shaped_sparse_random(
+                shape, scipy.sparse, self.dtype, self.density, self.format)
 
-            # sparse.random doesn't support complex types
-            # so we need to cast
-            a = a.astype(self.dtype)
-
-            if isinstance(maj, cupy.ndarray):
-                maj_h = maj.get()
-            else:
-                maj_h = maj
-
-            if isinstance(min, cupy.ndarray):
-                min_h = min.get()
-            else:
-                min_h = min
+            maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
+            min_h = min.get() if isinstance(min, cupy.ndarray) else min
+            data_h = data.get() if isinstance(data, cupy.ndarray) else data
 
             if min is not None:
                 actual = a
                 actual[maj, min] = data
 
-                expected = a.get()
-                expected[maj_h, min_h] = data
+                expected[maj_h, min_h] = data_h
             else:
                 actual = a
                 actual[maj] = data
 
-                expected = a.get()
-                expected[maj_h] = data
+                expected[maj_h] = data_h
 
         if cupyx.scipy.sparse.isspmatrix(actual):
             actual.sort_indices()
@@ -125,21 +124,52 @@ class TestSetitemIndexing(unittest.TestCase):
         self._run(slice(None), slice(None))
 
     def test_major_all_minor_fancy(self):
+
+        for maj, min in zip(_get_index_combos([1, 2, 3, 4, 1, 6, 1, 8, 9]),
+                            _get_index_combos([1, 5, 2, 3, 4, 5, 4, 1, 5])):
+            self._run(maj, min)
+
         self._run([1, 2, 3, 4, 1, 6, 1, 8, 9], [1, 5, 2, 3, 4, 5, 4, 1, 5])
+
+        for min in _get_index_combos(
+                [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5]):
+            self._run(slice(None), min)
+
         self._run(slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5])
 
     def test_major_fancy_minor_fancy(self):
+
+        for idx in _get_index_combos([1, 5, 4]):
+            self._run(idx, idx)
         self._run([1, 5, 4], [1, 5, 4])
+
+        for maj, min in zip(_get_index_combos([2, 0, 10]),
+                            _get_index_combos([9, 2, 1])):
+            self._run(maj, min)
         self._run([2, 0, 10], [9, 2, 1])
+
+        for maj, min in zip(_get_index_combos([2, 9]),
+                            _get_index_combos([2, 1])):
+            self._run(maj, min)
         self._run([2, 0], [2, 1])
 
     def test_major_fancy_minor_all(self):
+
+        for idx in _get_index_combos([1, 5, 4]):
+            self._run(idx, slice(None))
         self._run([1, 5, 4], slice(None))
 
     def test_major_fancy_minor_scalar(self):
+
+        for idx in _get_index_combos([1, 5, 4]):
+            self._run(idx, 5)
         self._run([1, 5, 4], 5)
 
     def test_major_fancy_minor_slice(self):
+
+        for idx in _get_index_combos([1, 5, 4]):
+            self._run(idx, slice(1, 5))
+            self._run(idx, slice(5, 1, -1))
         self._run([1, 5, 4], slice(1, 5))
         self._run([1, 5, 4], slice(5, 1, -1))
 
@@ -201,6 +231,10 @@ class TestSetitemIndexing(unittest.TestCase):
         self._run([[True], [False], [True]], data=5)
 
     def test_fancy_setting(self):
+
+        for maj, data in zip(_get_index_combos([0, 5, 10, 2]),
+                             _get_index_combos([1, 2, 3, 2])):
+            self._run(maj, 0, data)
         self._run([0, 5, 10, 2], 0, [1, 2, 3, 2])
 
         # Indexes with duplicates should follow 'last-in-wins'
@@ -209,8 +243,10 @@ class TestSetitemIndexing(unittest.TestCase):
         # Starting with an empty array for now, since insertions
         # use `last-in-wins`.
         self.density = 0.0  # Zeroing out density to force only insertions
-        self._run([0, 5, 10, 2, 0, 10], [1, 2, 3, 4, 1, 3],
-                  [1, 2, 3, 4, 5, 6])
+        for maj, min, data in zip(_get_index_combos([0, 5, 10, 2, 0, 10]),
+                                  _get_index_combos([1, 2, 3, 4, 1, 3]),
+                                  _get_index_combos([1, 2, 3, 4, 5, 6])):
+            self._run(maj, min, data)
 
 
 @testing.parameterize(*testing.product({
@@ -271,14 +307,6 @@ class TestGetItemIndexing(unittest.TestCase):
             expected = expected.toarray()
 
         testing.assert_array_equal(actual, expected)
-
-    @staticmethod
-    def _get_index_combos(idx):
-        return [dict['arr_fn'](idx, dtype=dict['dtype'])
-                for dict in testing.product({
-                    "arr_fn": [numpy.array, cupy.array],
-                    "dtype": [numpy.int32, numpy.int64]
-                })]
 
     # 2D Slicing
 
@@ -380,22 +408,22 @@ class TestGetItemIndexing(unittest.TestCase):
 
         self._run([1, 5, 4, 2, 5, 1], slice(None))
 
-        for idx in self._get_index_combos([1, 5, 4, 2, 5, 1]):
+        for idx in _get_index_combos([1, 5, 4, 2, 5, 1]):
             self._run(idx, slice(None))
 
     def test_major_fancy_minor_scalar(self):
         self._run([1, 5, 4, 5, 1], 5)
-        for idx in self._get_index_combos([1, 5, 4, 2, 5, 1]):
+        for idx in _get_index_combos([1, 5, 4, 2, 5, 1]):
             self._run(idx, 5)
 
     def test_major_fancy_minor_slice(self):
         self._run([1, 5, 4, 5, 1], slice(1, 5))
         self._run([1, 5, 4, 5, 1], slice(5, 1, 1))
 
-        for idx in self._get_index_combos([1, 5, 4, 5, 1]):
+        for idx in _get_index_combos([1, 5, 4, 5, 1]):
             self._run(idx, slice(5, 1, 1))
 
-        for idx in self._get_index_combos([1, 5, 4, 5, 1]):
+        for idx in _get_index_combos([1, 5, 4, 5, 1]):
             self._run(idx, slice(1, 5))
 
     # Minor Indexing
@@ -435,42 +463,42 @@ class TestGetItemIndexing(unittest.TestCase):
 
         self._run(slice(None), [1, 5, 4, 5, 2, 4, 1])
 
-        for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
+        for idx in _get_index_combos([1, 5, 4, 5, 2, 4, 1]):
             self._run(slice(None), idx, compare_dense=True)
 
     def test_major_slice_minor_fancy(self):
 
         self._run(slice(1, 10, 2), [1, 5, 4, 5, 2, 4, 1], compare_dense=True)
 
-        for idx in self._get_index_combos([1, 5, 4, 5, 2, 4, 1]):
+        for idx in _get_index_combos([1, 5, 4, 5, 2, 4, 1]):
             self._run(slice(1, 10, 2), idx, compare_dense=True)
 
     def test_major_scalar_minor_fancy(self):
 
         self._run(5, [1, 5, 4, 1, 2], compare_dense=True)
 
-        for idx in self._get_index_combos([1, 5, 4, 1, 2]):
+        for idx in _get_index_combos([1, 5, 4, 1, 2]):
             self._run(5, idx, compare_dense=True)
 
     # Inner Indexing
 
     def test_major_fancy_minor_fancy(self):
 
-        for idx in self._get_index_combos([1, 5, 4]):
+        for idx in _get_index_combos([1, 5, 4]):
             self._run(idx, idx)
 
         self._run([1, 5, 4], [1, 5, 4])
 
-        maj = self._get_index_combos([2, 0, 10, 0, 2])
-        min = self._get_index_combos([9, 2, 1, 0, 2])
+        maj = _get_index_combos([2, 0, 10, 0, 2])
+        min = _get_index_combos([9, 2, 1, 0, 2])
 
         for (idx1, idx2) in zip(maj, min):
             self._run(idx1, idx2)
 
         self._run([2, 0, 10, 0], [9, 2, 1, 0])
 
-        maj = self._get_index_combos([2, 0, 2])
-        min = self._get_index_combos([2, 1, 1])
+        maj = _get_index_combos([2, 0, 2])
+        min = _get_index_combos([2, 1, 1])
 
         for (idx1, idx2) in zip(maj, min):
             self._run(idx1, idx2)
