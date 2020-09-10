@@ -183,7 +183,7 @@ class TestSyevj(unittest.TestCase):
     'n': [3],
     'nrhs': [None, 1, 4],
 }))
-@attr.gpu
+@testing.gpu
 class TestGesv(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
