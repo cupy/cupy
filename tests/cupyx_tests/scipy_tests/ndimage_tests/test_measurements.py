@@ -247,10 +247,12 @@ class TestMeasurementsSelect(unittest.TestCase):
         # https://github.com/scipy/scipy/issues/12836
         x = testing.shaped_random(shape, xp=xp, dtype=dtype, scale=32)
         non_unique = xp.unique(x).size < x.size
-        if self.op in ['minimum_position', 'maximum_position'] and non_unique:
+
+        if (self.op in ['minimum_position', 'maximum_position'] and
+                non_unique and self.index is not None):
             raise unittest.SkipTest(
-                'minimum/maximum position not guaranteed to be the same '
-                'when there are duplicate extrema'
+                'Minimum/maximum position not guaranteed to be the same '
+                'when there are duplicate extrema and index is provided.'
             )
         if self.labels is None:
             labels = self.labels
@@ -272,7 +274,7 @@ class TestMeasurementsSelect(unittest.TestCase):
         func = getattr(scp.ndimage, self.op)
         result = func(x, labels, index)
         if self.op == 'extrema':
-            if non_unique:
+            if non_unique and self.index is not None:
                 # omit comparison of minimum_position, maximum_position
                 result = [xp.asarray(r) for r in result[:2]]
             else:
