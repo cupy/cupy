@@ -1,5 +1,3 @@
-import math
-
 import numpy
 try:
     import scipy.sparse
@@ -557,7 +555,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if start == 0 and stop == M and step == 1:
             return self.copy() if copy else self
 
-        M = max(0, math.ceil((stop - start) / step))
+        M = len(range(start, stop, step))
         new_shape = self._swap(M, N)
 
         if M == 0 or self.nnz == 0:
@@ -579,7 +577,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if start == 0 and stop == N and step == 1:
             return self.copy() if copy else self
 
-        N = max(0, math.ceil((stop - start) / step))
+        N = len(range(start, stop, step))
         new_shape = self._swap(M, N)
 
         if N == 0 or self.nnz == 0:
