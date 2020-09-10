@@ -723,15 +723,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         x = cupy.array(x, dtype=self.dtype, copy=True, ndmin=1).ravel()
         n_samples = x.size
 
-        offsets, ret = _index._csr_sample_offsets(M, N, self.indptr,
-                                                  self.indices, n_samples,
-                                                  i, j)
-        if ret:
-            # rinse and repeat
-            self.sum_duplicates()
-            offsets, _ = _index._csr_sample_offsets(M, N, self.indptr,
-                                                    self.indices,
-                                                    n_samples, i, j)
+        self.sum_duplicates()
+        offsets = _index._csr_sample_offsets(M, N, self.indptr,
+                                             self.indices,
+                                             n_samples, i, j)
 
         if -1 not in offsets:
             # only affects existing non-zero cells
@@ -760,15 +755,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i, j, M, N = self._prepare_indices(i, j)
 
         n_samples = i.size
-        offsets, ret = _index._csr_sample_offsets(M, N, self.indptr,
-                                                  self.indices,
-                                                  n_samples, i, j)
-        if ret == 1:
-            # rinse and repeat
-            self.sum_duplicates()
-            offsets, _ = _index._csr_sample_offsets(M, N, self.indptr,
-                                                    self.indices,
-                                                    n_samples, i, j)
+        # rinse and repeat
+        self.sum_duplicates()
+        offsets = _index._csr_sample_offsets(M, N, self.indptr,
+                                             self.indices,
+                                             n_samples, i, j)
 
         # only assign zeros to the existing sparsity structure
         self.data[offsets[offsets > -1]] = 0

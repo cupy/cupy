@@ -293,7 +293,7 @@ _unique_mask_kern = core.ElementwiseKernel(
 """
 _csr_sample_offsets_ker = core.ElementwiseKernel(
     '''I n_row, I n_col, raw I Ap, raw I Aj, raw I Bi, raw I Bj''',
-    'raw I Bp, raw bool dupl', '''
+    'raw I Bp', '''
     const I j = Bi[i]; // sample row
     const I k = Bj[i]; // sample column
     const I row_start = Ap[j];
@@ -303,13 +303,7 @@ _csr_sample_offsets_ker = core.ElementwiseKernel(
     {
         if (Aj[jj] == k) {
             offset = jj;
-            for (jj++; jj < row_end; jj++) {
-                if (Aj[jj] == k) {
-                    offset = -2;
-                    dupl[0] = true;
-                    return;
-                }
-            }
+            break;
         }
     }
     Bp[i] = offset;
@@ -324,15 +318,14 @@ def _csr_sample_offsets(n_row, n_col,
     Bj[Bj < 0] += n_col
 
     offsets = cupy.zeros(n_samples, dtype=Aj.dtype)
-    dupl = cupy.array([False], dtype='bool')
 
     # TODO(cjnolet): find a way to increase parallelism
     _csr_sample_offsets_ker(n_row, n_col,
                             Ap, Aj, Bi, Bj,
-                            offsets, dupl,
+                            offsets,
                             size=n_samples)
 
-    return offsets, bool(dupl)
+    return offsets
 
 
 def _csr_sample_values(n_row, n_col,

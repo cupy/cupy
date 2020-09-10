@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+import cupyx
 from cupy import testing
 from cupyx.scipy import sparse
 
@@ -22,7 +23,7 @@ class TestSetitemIndexing(unittest.TestCase):
     def _run(self, maj, min=None, data=5):
 
         for i in range(2):
-            a = cupy.sparse.random(self.n_rows, self.n_cols,
+            a = cupyx.scipy.sparse.random(self.n_rows, self.n_cols,
                                    format=self.format,
                                    density=self.density)
 
@@ -53,7 +54,7 @@ class TestSetitemIndexing(unittest.TestCase):
                 expected = a.get()
                 expected[maj_h] = data
 
-        if cupy.sparse.isspmatrix(actual):
+        if cupyx.scipy.sparse.isspmatrix(actual):
             actual.sort_indices()
             expected.sort_indices()
 
