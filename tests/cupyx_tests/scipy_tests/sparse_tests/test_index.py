@@ -35,8 +35,8 @@ class TestSetitemIndexing(unittest.TestCase):
 
     def _run(self, maj, min=None, data=5):
 
+        import scipy.sparse
         for i in range(2):
-            import scipy.sparse
             shape = self.n_rows, self.n_cols
             a = testing.shaped_sparse_random(
                 shape, sparse, self.dtype, self.density, self.format)
@@ -327,6 +327,7 @@ class TestSliceIndexing(IndexingTestBase):
         a = self._make_matrix(sp, dtype)
         return a[self.indices]
 
+
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
     'density': [0.0, 0.5],
@@ -442,6 +443,8 @@ class TestBoolMaskIndexing(IndexingTestBase):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp)
         return a[indices]
+
+
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
     'density': [0.4],
