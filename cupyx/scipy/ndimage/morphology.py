@@ -590,14 +590,14 @@ def grey_erosion(input, size=None, footprint=None, structure=None, output=None,
     Args:
         input (cupy.ndarray): The input array.
         size (tuple of ints): Shape of a flat and full structuring element used
-            for the greyscale erosion. Optional if ```footprint``` or
-            ```structure``` is provided.
+            for the greyscale erosion. Optional if ``footprint`` or
+            ``structure`` is provided.
         footprint (array of ints): Positions of non-infinite elements of a flat
             structuring element used for greyscale erosion. Non-zero values
             give the set of neighbors of the center over which minimum is
             chosen.
         structure (array of ints): Structuring element used for the greyscale
-            erosion. ```structure``` may be a non-flat structuring element.
+            erosion. ``structure`` may be a non-flat structuring element.
         output (cupy.ndarray, dtype or None): The array in which to place the
             output.
         mode (str): The array borders are handled according to the given mode
@@ -630,14 +630,14 @@ def grey_dilation(input, size=None, footprint=None, structure=None,
     Args:
         input (cupy.ndarray): The input array.
         size (tuple of ints): Shape of a flat and full structuring element used
-            for the greyscale dilation. Optional if ```footprint``` or
-            ```structure``` is provided.
+            for the greyscale dilation. Optional if ``footprint`` or
+            ``structure`` is provided.
         footprint (array of ints): Positions of non-infinite elements of a flat
             structuring element used for greyscale dilation. Non-zero values
             give the set of neighbors of the center over which maximum is
             chosen.
         structure (array of ints): Structuring element used for the greyscale
-            dilation. ```structure``` may be a non-flat structuring element.
+            dilation. ``structure`` may be a non-flat structuring element.
         output (cupy.ndarray, dtype or None): The array in which to place the
             output.
         mode (str): The array borders are handled according to the given mode
@@ -690,14 +690,14 @@ def grey_closing(input, size=None, footprint=None, structure=None,
     Args:
         input (cupy.ndarray): The input array.
         size (tuple of ints): Shape of a flat and full structuring element used
-            for the greyscale closing. Optional if ```footprint``` or
-            ```structure``` is provided.
+            for the greyscale closing. Optional if ``footprint`` or
+            ``structure`` is provided.
         footprint (array of ints): Positions of non-infinite elements of a flat
             structuring element used for greyscale closing. Non-zero values
             give the set of neighbors of the center over which closing is
             chosen.
         structure (array of ints): Structuring element used for the greyscale
-            closing. ```structure``` may be a non-flat structuring element.
+            closing. ``structure`` may be a non-flat structuring element.
         output (cupy.ndarray, dtype or None): The array in which to place the
             output.
         mode (str): The array borders are handled according to the given mode
@@ -731,14 +731,14 @@ def grey_opening(input, size=None, footprint=None, structure=None,
     Args:
         input (cupy.ndarray): The input array.
         size (tuple of ints): Shape of a flat and full structuring element used
-            for the greyscale opening. Optional if ```footprint``` or
-            ```structure``` is provided.
+            for the greyscale opening. Optional if ``footprint`` or
+            ``structure`` is provided.
         footprint (array of ints): Positions of non-infinite elements of a flat
             structuring element used for greyscale opening. Non-zero values
             give the set of neighbors of the center over which opening is
             chosen.
         structure (array of ints): Structuring element used for the greyscale
-            opening. ```structure``` may be a non-flat structuring element.
+            opening. ``structure`` may be a non-flat structuring element.
         output (cupy.ndarray, dtype or None): The array in which to place the
             output.
         mode (str): The array borders are handled according to the given mode
