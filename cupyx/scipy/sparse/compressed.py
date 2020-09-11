@@ -558,9 +558,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         M = len(range(start, stop, step))
         new_shape = self._swap(M, N)
 
-        if M == 0 or self.nnz == 0:
-            return self.__class__(new_shape)
         if step == 1:
+            if M == 0 or self.nnz == 0:
+                return self.__class__(new_shape, dtype=self.dtype)
             return self.__class__(
                 _index._get_csr_submatrix_major_axis(
                     self.data, self.indices, self.indptr, start, stop),
