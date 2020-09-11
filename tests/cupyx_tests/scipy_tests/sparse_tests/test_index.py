@@ -203,6 +203,7 @@ class TestBoolMaskIndexing(IndexingTestBase):
         indices = self._make_indices(xp)
         return a[indices]
 
+
 @testing.parameterize(*testing.product({
     'format': ['csr', 'csc'],
     'density': [0.4],
