@@ -93,7 +93,7 @@ def iterate_structure(structure, iterations, origin=None):
 
     Returns:
         cupy.ndarray: A new structuring element obtained by dilating
-             `structure` (`iterations` - 1) times with itself.
+             ``structure`` (``iterations`` - 1) times with itself.
 
     .. seealso:: :func:`scipy.ndimage.iterate_structure`
     """
@@ -117,40 +117,33 @@ def iterate_structure(structure, iterations, origin=None):
         return out, origin
 
 
-def generate_binary_structure(rank, connectivity, *, on_cpu=False):
+def generate_binary_structure(rank, connectivity):
     """Generate a binary structure for binary morphological operations.
 
     Args:
         rank(int): Number of dimensions of the array to which the structuring
-            element will be applied, as returned by `np.ndim`.
-        connectivity(int): `connectivity` determines which elements of the
+            element will be applied, as returned by ``np.ndim``.
+        connectivity(int): ``connectivity`` determines which elements of the
             output array belong to the structure, i.e., are considered as
             neighbors of the central element. Elements up to a squared distance
-            of `connectivity` from the center are considered neighbors.
-            `connectivity` may range from 1 (no diagonal elements are
-            neighbors) to `rank` (all elements are neighbors).
-        on_cpu(bool, optional): If True, return a NumPy array rather than
-            transferring the structure to the GPU. (Default value = False)
+            of ``connectivity`` from the center are considered neighbors.
+            ``connectivity`` may range from 1 (no diagonal elements are
+            neighbors) to ``rank`` (all elements are neighbors).
 
     Returns:
         cupy.ndarray: Structuring element which may be used for binary
-            morphological operations, with `rank` dimensions and all dimensions
-            equal to 3.
+            morphological operations, with ``rank`` dimensions and all
+            dimensions equal to 3.
 
     .. seealso:: :func:`scipy.ndimage.generate_binary_structure`
     """
     if connectivity < 1:
         connectivity = 1
     if rank < 1:
-        if on_cpu:
-            return numpy.asarray(True, dtype=bool)
-        else:
-            return cupy.asarray(True, dtype=bool)
+        return cupy.asarray(True, dtype=bool)
     output = numpy.fabs(numpy.indices([3] * rank) - 1)
     output = numpy.add.reduce(output, 0)
     output = output <= connectivity
-    if on_cpu:
-        return output
     return cupy.asarray(output)
 
 
@@ -169,7 +162,7 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
     if structure is None:
         structure = generate_binary_structure(input.ndim, 1)
     else:
-        structure = cupy.asarray(structure, dtype=bool)
+        structure = structure.astype(dtype=bool, copy=False)
     if structure.ndim != input.ndim:
         raise RuntimeError('structure and input must have same dimensionality')
     if not structure.flags.c_contiguous:
@@ -269,7 +262,7 @@ def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
             erosion. Non-zero elements are considered True. If no structuring
             element is provided an element is generated with a square
             connectivity equal to one. (Default value = None).
-        iterations(int, optional): The erosion is repeated `iterations` times
+        iterations(int, optional): The erosion is repeated ``iterations`` times
             (one, by default). If iterations is less than 1, the erosion is
             repeated until the result does not change anymore. Only an integer
             of iterations is accepted.
@@ -312,10 +305,10 @@ def binary_dilation(input, structure=None, iterations=1, mask=None,
             dilation. Non-zero elements are considered True. If no structuring
             element is provided an element is generated with a square
             connectivity equal to one. (Default value = None).
-        iterations(int, optional): The dilation is repeated `iterations` times
-            (one, by default). If iterations is less than 1, the dilation is
-            repeated until the result does not change anymore. Only an integer
-            of iterations is accepted.
+        iterations(int, optional): The dilation is repeated ``iterations``
+            times (one, by default). If iterations is less than 1, the dilation
+            is repeated until the result does not change anymore. Only an
+            integer of iterations is accepted.
         mask(cupy.ndarray or None, optional): If a mask is given, only those
             elements with a True value at the corresponding mask element are
             modified at each iteration. (Default value = None)
@@ -367,7 +360,7 @@ def binary_opening(input, structure=None, iterations=1, output=None, origin=0,
             opening. Non-zero elements are considered True. If no structuring
             element is provided an element is generated with a square
             connectivity equal to one. (Default value = None).
-        iterations(int, optional): The opening is repeated `iterations` times
+        iterations(int, optional): The opening is repeated ``iterations`` times
             (one, by default). If iterations is less than 1, the opening is
             repeated until the result does not change anymore. Only an integer
             of iterations is accepted.
@@ -419,7 +412,7 @@ def binary_closing(input, structure=None, iterations=1, output=None, origin=0,
             closing. Non-zero elements are considered True. If no structuring
             element is provided an element is generated with a square
             connectivity equal to one. (Default value = None).
-        iterations(int, optional): The closing is repeated `iterations` times
+        iterations(int, optional): The closing is repeated ``iterations`` times
             (one, by default). If iterations is less than 1, the closing is
             repeated until the result does not change anymore. Only an integer
             of iterations is accepted.
@@ -467,25 +460,25 @@ def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
     Args:
         input (cupy.ndarray): Binary image where a pattern is to be detected.
         structure1 (cupy.ndarray, optional): Part of the structuring element to
-            be fitted to the foreground (non-zero elements) of `input`. If no
+            be fitted to the foreground (non-zero elements) of ``input``. If no
             value is provided, a structure of square connectivity 1 is chosen.
         structure2 (cupy.ndarray, optional): Second part of the structuring
             element that has to miss completely the foreground. If no value is
-            provided, the complementary of `structure1` is taken.
+            provided, the complementary of ``structure1`` is taken.
         output (cupy.ndarray, dtype or None, optional): Array of the same shape
             as input, into which the output is placed. By default, a new array
             is created.
         origin1 (int or tuple of ints, optional): Placement of the first part
-            of the structuring element `structure1`, by default 0 for a
+            of the structuring element ``structure1``, by default 0 for a
             centered structure.
         origin2 (int or tuple of ints or None, optional): Placement of the
-            second part of the structuring element `structure2`, by default 0
-            for a centered structure. If a value is provided for `origin1` and
-            not for `origin2`, then `origin2` is set to `origin1`.
+            second part of the structuring element ``structure2``, by default 0
+            for a centered structure. If a value is provided for ``origin1``
+            and not for ``origin2``, then ``origin2`` is set to ``origin1``.
 
     Returns:
-        cupy.ndarray: Hit-or-miss transform of `input` with the given
-            structuring element (`structure1`, `structure2`).
+        cupy.ndarray: Hit-or-miss transform of ``input`` with the given
+            structuring element (``structure1``, ``structure2``).
 
     .. warning::
 
@@ -522,14 +515,14 @@ def binary_propagation(input, structure=None, mask=None, output=None,
     Multidimensional binary propagation with the given structuring element.
 
     Args:
-        input (cupy.ndarray): Binary image to be propagated inside `mask`.
+        input (cupy.ndarray): Binary image to be propagated inside ``mask``.
         structure (cupy.ndarray, optional): Structuring element used in the
             successive dilations. The output may depend on the structuring
-            element, especially if `mask` has several connex components. If no
-            structuring element is provided, an element is generated with a
+            element, especially if ``mask`` has several connex components. If
+            no structuring element is provided, an element is generated with a
             squared connectivity equal to one.
         mask (cupy.ndarray, optional): Binary mask defining the region into
-            which `input` is allowed to propagate.
+            which ``input`` is allowed to propagate.
         output (cupy.ndarray, optional): Array of the same shape as input, into
             which the output is placed. By default, a new array is created.
         border_value (int, optional): Value at the border in the output array.
@@ -537,7 +530,7 @@ def binary_propagation(input, structure=None, mask=None, output=None,
         origin (int or tuple of ints, optional): Placement of the filter.
 
     Returns:
-        cupy.ndarray : Binary propagation of `input` inside `mask`.
+        cupy.ndarray : Binary propagation of ``input`` inside ``mask``.
 
     .. warning::
 
@@ -566,7 +559,7 @@ def binary_fill_holes(input, structure=None, output=None, origin=0):
             element.
 
     Returns:
-        cupy.ndarray: Transformation of the initial image `input` where holes
+        cupy.ndarray: Transformation of the initial image ``input`` where holes
             have been filled.
 
     .. warning::
