@@ -10,7 +10,7 @@ from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import filters
 
 
-@cupy._util.memoize(for_each_device=True)
+@cupy.memoize(for_each_device=True)
 def _get_binary_erosion_kernel(
     w_shape, int_type, offsets, center_is_true, border_value, invert, masked
 ):
