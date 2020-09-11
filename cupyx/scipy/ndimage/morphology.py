@@ -209,14 +209,14 @@ def morphological_gradient(
     Args:
         input (cupy.ndarray): The input array.
         size (tuple of ints): Shape of a flat and full structuring element used
-            for the morphological gradient. Optional if `footprint` or
-            `structure` is provided.
+            for the morphological gradient. Optional if ``footprint`` or
+            ``structure`` is provided.
         footprint (array of ints): Positions of non-infinite elements of a flat
             structuring element used for morphological gradient. Non-zero
             values give the set of neighbors of the center over which opening
             is chosen.
         structure (array of ints): Structuring element used for the
-            morphological gradient. `structure` may be a non-flat
+            morphological gradient. ``structure`` may be a non-flat
             structuring element.
         output (cupy.ndarray, dtype or None): The array in which to place the
             output.
@@ -265,14 +265,14 @@ def morphological_laplace(
     Args:
         input (cupy.ndarray): The input array.
         size (tuple of ints): Shape of a flat and full structuring element used
-            for the morphological laplace. Optional if `footprint` or
-            `structure` is provided.
+            for the morphological laplace. Optional if ``footprint`` or
+            ``structure`` is provided.
         footprint (array of ints): Positions of non-infinite elements of a flat
             structuring element used for morphological laplace. Non-zero
             values give the set of neighbors of the center over which opening
             is chosen.
         structure (array of ints): Structuring element used for the
-            morphological laplace. `structure` may be a non-flat
+            morphological laplace. ``structure`` may be a non-flat
             structuring element.
         output (cupy.ndarray, dtype or None): The array in which to place the
             output.
@@ -327,14 +327,14 @@ def white_tophat(
     Args:
         input (cupy.ndarray): The input array.
         size (tuple of ints): Shape of a flat and full structuring element used
-            for the white tophat. Optional if `footprint` or `structure` is
+            for the white tophat. Optional if ``footprint`` or ``structure`` is
             provided.
         footprint (array of ints): Positions of non-infinite elements of a flat
             structuring element used for the white tophat. Non-zero values
             give the set of neighbors of the center over which opening is
             chosen.
         structure (array of ints): Structuring element used for the white
-            tophat. `structure` may be a non-flat structuring element.
+            tophat. ``structure`` may be a non-flat structuring element.
         output (cupy.ndarray, dtype or None): The array in which to place the
             output.
         mode (str): The array borders are handled according to the given mode
@@ -348,7 +348,7 @@ def white_tophat(
             ``(0,)*input.ndim``.
 
     Returns:
-        cupy.ndarray: Result of the filter of `input` with `structure`.
+        cupy.ndarray: Result of the filter of ``input`` with ``structure``.
 
     .. seealso:: :func:`scipy.ndimage.white_tophat`
     """
@@ -385,14 +385,14 @@ def black_tophat(
     Args:
         input (cupy.ndarray): The input array.
         size (tuple of ints): Shape of a flat and full structuring element used
-            for the black tophat. Optional if `footprint` or `structure` is
+            for the black tophat. Optional if ``footprint`` or ``structure`` is
             provided.
         footprint (array of ints): Positions of non-infinite elements of a flat
             structuring element used for the black tophat. Non-zero values
             give the set of neighbors of the center over which opening is
             chosen.
         structure (array of ints): Structuring element used for the black
-            tophat. `structure` may be a non-flat structuring element.
+            tophat. ``structure`` may be a non-flat structuring element.
         output (cupy.ndarray, dtype or None): The array in which to place the
             output.
         mode (str): The array borders are handled according to the given mode
@@ -406,7 +406,7 @@ def black_tophat(
             ``(0,)*input.ndim``.
 
     Returns:
-        cupy.ndarry : Result of the filter of `input` with `structure`.
+        cupy.ndarry : Result of the filter of ``input`` with ``structure``.
 
     .. seealso:: :func:`scipy.ndimage.black_tophat`
     """
