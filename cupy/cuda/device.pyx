@@ -8,7 +8,7 @@ from cupy_backends.cuda.api import runtime as runtime_module
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy_backends.cuda.libs import cusparse
-from cupy import util
+from cupy import _util
 
 
 # This flag is kept for backward compatibility.
@@ -43,19 +43,19 @@ cdef class Handle:
         self._destroy_func(self.handle)
 
 
-cpdef size_t get_cublas_handle() except? 0:
+cpdef intptr_t get_cublas_handle() except? 0:
     return _get_device().cublas_handle
 
 
-cpdef size_t get_cusolver_handle() except? 0:
+cpdef intptr_t get_cusolver_handle() except? 0:
     return _get_device().cusolver_handle
 
 
-cpdef get_cusolver_sp_handle():
+cpdef intptr_t get_cusolver_sp_handle() except? 0:
     return _get_device().cusolver_sp_handle
 
 
-cpdef size_t get_cusparse_handle() except? 0:
+cpdef intptr_t get_cusparse_handle() except? 0:
     return _get_device().cusparse_handle
 
 
@@ -67,7 +67,7 @@ cpdef str get_compute_capability():
     return Device().compute_capability
 
 
-@util.memoize()
+@_util.memoize()
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""
     d = {}

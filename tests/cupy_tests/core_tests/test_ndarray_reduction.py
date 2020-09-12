@@ -219,7 +219,7 @@ class TestArrayReduction(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubReduction(unittest.TestCase):
 
     def setUp(self):

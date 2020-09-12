@@ -47,6 +47,19 @@ CUresult cuLaunchCooperativeKernel(...) {
 
 #endif // #if CUDA_VERSION < 9000
 
+#if CUDA_VERSION >= 11000
+
+#define cublasGemmEx_v11 cublasGemmEx
+
+#else
+
+typedef enum{} cublasComputeType_t;
+cublasStatus_t cublasGemmEx_v11(...) {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+#endif // if CUDA_VERSION >= 11000
+
 } // extern "C"
 
 #else // #ifndef CUPY_NO_CUDA
@@ -735,6 +748,10 @@ cublasStatus_t cublasZtrsm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+typedef enum{} cublasComputeType_t;
+cublasStatus_t cublasGemmEx_v11(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
 
 // BLAS extension
 cublasStatus_t cublasSgeam(...) {
@@ -903,6 +920,29 @@ cudaError_t cudaProfilerStop() {
 
 #define NVTX_VERSION 1
 
+void nvtxMarkA(...) {
+}
+
+int nvtxRangePushA(...) {
+    return 0;
+}
+
+int nvtxRangePop() {
+    return 0;
+}
+
+} // extern "C"
+
+#endif // #ifndef CUPY_NO_CUDA
+
+#if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
+// Common stubs shared by both no-cuda and hip environments
+extern "C" {
+
+///////////////////////////////////////////////////////////////////////////////
+// nvToolsExt.h
+///////////////////////////////////////////////////////////////////////////////
+
 typedef enum nvtxColorType_t
 {
     NVTX_COLOR_UNKNOWN  = 0,
@@ -943,21 +983,10 @@ typedef struct nvtxEventAttributes_v1
 
 typedef nvtxEventAttributes_v1 nvtxEventAttributes_t;
 
-void nvtxMarkA(...) {
-}
-
 void nvtxMarkEx(...) {
 }
 
-int nvtxRangePushA(...) {
-    return 0;
-}
-
 int nvtxRangePushEx(...) {
-    return 0;
-}
-
-int nvtxRangePop() {
     return 0;
 }
 
@@ -970,5 +999,6 @@ void nvtxRangeEnd(...) {
 
 } // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
+#endif // #if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
+
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_H

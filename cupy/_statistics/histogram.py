@@ -6,11 +6,8 @@ import numpy
 import cupy
 from cupy import core
 from cupy.core import _accelerator
-# TODO(leofang): always import cub when hipCUB is supported
-if not cupy.cuda.runtime.is_hip:
-    from cupy.cuda import cub
-else:
-    cub = None
+from cupy.cuda import cub
+from cupy.cuda import common
 
 
 # TODO(unno): use searchsorted
@@ -128,7 +125,22 @@ def _get_bin_edges(a, bins, range):
     n_equal_bins = None
     bin_edges = None
 
-    if isinstance(bins, int):  # cupy.ndim(bins) == 0:
+    if isinstance(bins, str):
+        raise NotImplementedError(
+            "only integer and array bins are implemented")
+    elif isinstance(bins, cupy.ndarray) or numpy.ndim(bins) == 1:
+        # TODO(okuta): After #3060 is merged, `if cupy.ndim(bins) == 1:`.
+        if isinstance(bins, cupy.ndarray):
+            bin_edges = bins
+        else:
+            bin_edges = numpy.asarray(bins)
+
+        if (bin_edges[:-1] > bin_edges[1:]).any():  # synchronize! when CuPy
+            raise ValueError(
+                '`bins` must increase monotonically, when an array')
+        if isinstance(bin_edges, numpy.ndarray):
+            bin_edges = cupy.asarray(bin_edges)
+    elif numpy.ndim(bins) == 0:
         try:
             n_equal_bins = operator.index(bins)
         except TypeError:
@@ -138,17 +150,8 @@ def _get_bin_edges(a, bins, range):
             raise ValueError('`bins` must be positive, when an integer')
 
         first_edge, last_edge = _get_outer_edges(a, range)
-
-    elif isinstance(bins, cupy.ndarray):
-        if bins.ndim == 1:    # cupy.ndim(bins) == 0:
-            bin_edges = cupy.asarray(bins)
-            if (bin_edges[:-1] > bin_edges[1:]).any():  # synchronize!
-                raise ValueError(
-                    '`bins` must increase monotonically, when an array')
-
-    elif isinstance(bins, str):
-        raise NotImplementedError(
-            "only integer and array bins are implemented")
+    else:
+        raise ValueError('`bins` must be 1d, when an array')
 
     if n_equal_bins is not None:
         # numpy's gh-10322 means that type resolution rules are dependent on
@@ -217,29 +220,24 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                     and x.size <= 0x7fffffff and bin_edges.size <= 0x7fffffff):
                 # Need to ensure the dtype of bin_edges as it's needed for both
                 # the CUB call and the correction later
-                if isinstance(bins, cupy.ndarray):
-                    bin_type = cupy.result_type(bin_edges, x)
-                    if cupy.issubdtype(bin_type, cupy.integer):
-                        bin_type = cupy.result_type(bin_type, float)
-                    bin_edges = bin_edges.astype(bin_type, copy=False)
+                assert isinstance(bin_edges, cupy.ndarray)
+                if numpy.issubdtype(x.dtype, numpy.integer):
+                    bin_type = numpy.float
+                else:
+                    bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
+                    if (bin_type == numpy.float16 and
+                            not common._is_fp16_supported()):
+                        bin_type = numpy.float32
+                    x = x.astype(bin_type, copy=False)
+                acc_bin_edge = bin_edges.astype(bin_type, copy=True)
                 # CUB's upper bin boundary is exclusive for all bins, including
                 # the last bin, so we must shift it to comply with NumPy
                 if x.dtype.kind in 'ui':
-                    bin_edges[-1] += 1
+                    acc_bin_edge[-1] += 1
                 elif x.dtype.kind == 'f':
-                    old_edge = bin_edges[-1].copy()
-                    bin_edges[-1] = cupy.nextafter(bin_edges[-1],
-                                                   bin_edges[-1] + 1)
-                y = cub.device_histogram(x, bin_edges, y)
-                # shift the uppermost edge back
-                if x.dtype.kind in 'ui':
-                    bin_edges[-1] -= 1
-                elif x.dtype.kind == 'f':
-                    bin_edges[-1] = old_edge
-
-                # TODO(asi1024): Refactor temporary fix for dtype compatibility
-                if isinstance(bins, cupy.ndarray):
-                    bin_edges = bin_edges.astype(bins.dtype, copy=False)
+                    last = acc_bin_edge[-1]
+                    acc_bin_edge[-1] = cupy.nextafter(last, last + 1)
+                y = cub.device_histogram(x, acc_bin_edge, y)
                 break
         else:
             _histogram_kernel(x, bin_edges, bin_edges.size, y)
@@ -269,7 +267,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
 
     if density:
         db = cupy.array(cupy.diff(bin_edges), cupy.float64)
-        return y/db/y.sum(), bin_edges
+        return y / db / y.sum(), bin_edges
     return y, bin_edges
 
 

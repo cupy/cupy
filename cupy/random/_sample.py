@@ -1,7 +1,7 @@
 from cupy import core
 from cupy._creation import basic
-from cupy.random import distributions
-from cupy.random import generator
+from cupy.random import _distributions
+from cupy.random import _generator
 
 
 def rand(*size, **kwarg):
@@ -83,7 +83,7 @@ def randn(*size, **kwarg):
     if kwarg:
         raise TypeError('randn() got unexpected keyword arguments %s'
                         % ', '.join(kwarg.keys()))
-    return distributions.normal(size=size, dtype=dtype)
+    return _distributions.normal(size=size, dtype=dtype)
 
 
 def randint(low, high=None, size=None, dtype='l'):
@@ -108,7 +108,7 @@ def randint(low, high=None, size=None, dtype='l'):
         If size is integer, it is the 1D-array of length ``size`` element.
         Otherwise, it is the array whose shape specified by ``size``.
     """
-    rs = generator.get_random_state()
+    rs = _generator.get_random_state()
     return rs.randint(low, high, size, dtype)
 
 
@@ -155,7 +155,7 @@ def random_sample(size=None, dtype=float):
                  <numpy.random.mtrand.RandomState.random_sample>`
 
     """
-    rs = generator.get_random_state()
+    rs = _generator.get_random_state()
     return rs.random_sample(size=size, dtype=dtype)
 
 
@@ -190,7 +190,7 @@ def choice(a, size=None, replace=True, p=None):
                  <numpy.random.mtrand.RandomState.choice>`
 
     """
-    rs = generator.get_random_state()
+    rs = _generator.get_random_state()
     return rs.choice(a, size, replace, p)
 
 

@@ -5,7 +5,6 @@ from distutils import errors
 from distutils import msvccompiler
 from distutils import sysconfig
 from distutils import unixccompiler
-import glob
 import os
 from os import path
 import shutil
@@ -60,6 +59,7 @@ cuda_files = [
     'cupy.core._memory_range',
     'cupy.core._optimize_config',
     'cupy.core._reduction',
+    'cupy.core._routines_binary',
     'cupy.core._routines_indexing',
     'cupy.core._routines_logic',
     'cupy.core._routines_manipulation',
@@ -84,24 +84,30 @@ cuda_files = [
     'cupy.cuda.stream',
     'cupy.cuda.texture',
     'cupy.lib.polynomial',
-    'cupy.util'
+    'cupy._util'
 ]
 
 if use_hip:
+    # We handle nvtx (and likely any other future support) here, because
+    # the HIP stubs (cupy_hip.h/cupy_hip_common.h) would cause many symbols
+    # to leak into all these modules even if unused. It's easier for all of
+    # them to link to the same set of shared libraries.
     MODULES.append({
         'name': 'cuda',
-        'file': cuda_files,
+        'file': cuda_files + ['cupy.cuda.nvtx'],
         'include': [
             'hip/hip_runtime_api.h',
             'hip/hiprtc.h',
             'hipblas.h',
             'hiprand/hiprand.h',
+            'roctx.h',
         ],
         'libraries': [
             'hiprtc',
             'hip_hcc',
             'hipblas',
             'hiprand',
+            'roctx64',
         ],
     })
 else:
@@ -600,6 +606,9 @@ def parse_args():
              'the latter is the relative path within cupy wheel. '
              '(can be specified for multiple times)')
     parser.add_argument(
+        '--cupy-wheel-metadata', type=str, default=None,
+        help='wheel metadata (cupy/.data/_wheel.json)')
+    parser.add_argument(
         '--cupy-no-rpath', action='store_true', default=False,
         help='disable adding default library directories to RPATH')
     parser.add_argument(
@@ -622,6 +631,7 @@ def parse_args():
         'long_description': opts.cupy_long_description,
         'wheel_libs': opts.cupy_wheel_lib,  # list
         'wheel_includes': opts.cupy_wheel_include,  # list
+        'wheel_metadata': opts.cupy_wheel_metadata,
         'no_rpath': opts.cupy_no_rpath,
         'profile': opts.cupy_profile,
         'linetrace': opts.cupy_coverage,
@@ -653,64 +663,50 @@ def get_long_description():
 def prepare_wheel_libs():
     """Prepare shared libraries and include files for wheels.
 
-    On Windows, DLLs will be placed under `cupy/cuda`.
-    On other platforms, shared libraries are placed under `cupy/.data/lib` and
-    RUNPATH will be set to this directory later.
+    Shared libraries are placed under `cupy/.data/lib` and
+    RUNPATH will be set to this directory later (Linux only).
     Include files are placed under `cupy/.data/include`.
+
+    Returns the list of files (path relative to `cupy` module) to add to
+    the sdist/wheel distribution.
     """
-    data_dir = '.data'
+    data_dir = os.path.abspath(os.path.join('cupy', '.data'))
     if os.path.exists(data_dir):
         print('Removing directory: {}'.format(data_dir))
         shutil.rmtree(data_dir)
 
-    if PLATFORM_WIN32:
-        lib_dirname = 'cuda'
-        # Clean up existing libraries.
-        libfiles = glob.glob('cupy/{}/*.dll'.format(lib_dirname))
-        for libfile in libfiles:
-            print('Removing file: {}'.format(libfile))
-            os.remove(libfile)
-    else:
-        lib_dirname = os.path.join(data_dir, 'lib')
-
-    include_dirname = os.path.join(data_dir, 'include')
-
-    # Collect files to copy
+    # Generate list files to copy
+    # tuple of (src_path, dst_path)
     files_to_copy = []
 
     # Library files
-    lib_base_path = os.path.join('cupy', lib_dirname)
     for srcpath in cupy_setup_options['wheel_libs']:
         relpath = os.path.basename(srcpath)
-        dstpath = path.join(lib_base_path, relpath)
-        files_to_copy.append((
-            srcpath,
-            dstpath,
-            path.join(lib_dirname, relpath)))
+        dstpath = os.path.join(data_dir, 'lib', relpath)
+        files_to_copy.append((srcpath, dstpath))
 
     # Include files
-    include_base_path = os.path.join('cupy', include_dirname)
     for include_path_spec in cupy_setup_options['wheel_includes']:
-        # TODO(niboshi): Consider using platform-dependent path delimiter.
         srcpath, relpath = include_path_spec.rsplit(':', 1)
-        dstpath = os.path.join(include_base_path, relpath)
-        files_to_copy.append((
-            srcpath,
-            dstpath,
-            path.join(include_dirname, relpath)))
+        dstpath = os.path.join(data_dir, 'include', relpath)
+        files_to_copy.append((srcpath, dstpath))
+
+    # Wheel meta data
+    wheel_metadata = cupy_setup_options['wheel_metadata']
+    if wheel_metadata:
+        files_to_copy.append(
+            (wheel_metadata, os.path.join(data_dir, '_wheel.json')))
 
     # Copy
-    package_data = []
-    for srcpath, dstpath, package_path in files_to_copy:
+    for srcpath, dstpath in files_to_copy:
         # Note: symlink is resolved by shutil.copy2.
         print('Copying file for wheel: {}'.format(srcpath))
         dirpath = os.path.dirname(dstpath)
         if not os.path.isdir(dirpath):
             os.makedirs(dirpath)
         shutil.copy2(srcpath, dstpath)
-        package_data.append(package_path)
 
-    return package_data
+    return [os.path.relpath(x[1], 'cupy') for x in files_to_copy]
 
 
 try:
@@ -883,7 +879,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             base_opts = build.get_compiler_base_options()
             self.set_executable('compiler_so', rcom_path)
 
-            postargs = ['-O2', '-fPIC']
+            postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
             print('HIPCC options:', postargs)
 
             return unixccompiler.UnixCCompiler._compile(

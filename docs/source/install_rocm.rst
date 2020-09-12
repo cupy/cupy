@@ -28,7 +28,7 @@ And please install ROCm libraries.
 
 ::
 
-  $ sudo apt install hipblas hipsparse rocrand rocthrust
+  $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver
 
 
 Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::

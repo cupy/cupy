@@ -1,5 +1,6 @@
 import warnings
 
+import numpy
 import cupy
 
 from cupyx.scipy.ndimage import _util
@@ -44,7 +45,7 @@ def _check_size_footprint_structure(ndim, size, footprint, structure,
 def _convert_1d_args(ndim, weights, origin, axis):
     if weights.ndim != 1 or weights.size < 1:
         raise RuntimeError('incorrect filter size')
-    axis = cupy.util._normalize_axis_index(axis, ndim)
+    axis = cupy._util._normalize_axis_index(axis, ndim)
     w_shape = [1]*ndim
     w_shape[axis] = weights.size
     weights = weights.reshape(w_shape)
@@ -102,7 +103,7 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
 
 
 def _call_kernel(kernel, input, weights, output, structure=None,
-                 weights_dtype=cupy.float64, structure_dtype=cupy.float64):
+                 weights_dtype=numpy.float64, structure_dtype=numpy.float64):
     """
     Calls a constructed ElementwiseKernel. The kernel must take an input image,
     an optional array of weights, an optional array for the structure, and an

@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+import cupy._util
 from cupy.core import _accelerator
 from cupy import testing
 
@@ -199,7 +200,7 @@ class TestSumprod(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cub_enabled, 'The CUB routine is not enabled')
+@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubReduction(unittest.TestCase):
 
     def setUp(self):
@@ -711,3 +712,122 @@ class TestDiff(unittest.TestCase):
                 xp.diff(a, axis=3)
             with pytest.raises(numpy.AxisError):
                 xp.diff(a, axis=-4)
+
+
+# This class compares CUB results against NumPy's
+@testing.parameterize(*testing.product({
+    'shape': [(33,), (10, 20), (10, 20, 30)],
+    'spacing': ((), (1.2,), 'sequence of int', 'arrays', 'mixed'),
+    'edge_order': [1, 2],
+    'axis': [None, 0, -1, 'tuple'],
+}))
+@testing.gpu
+class TestGradient(unittest.TestCase):
+
+    def _gradient(self, xp, dtype, shape, spacing, axis, edge_order):
+        x = testing.shaped_random(shape, xp, dtype=dtype)
+        if axis == 'tuple':
+            if x.ndim == 1:
+                axis = (0,)
+            else:
+                axis = (0, -1)
+        normalized_axes = cupy._util._normalize_axis_indices(axis, x.ndim)
+        if spacing == 'sequence of int':
+            # one scalar per axis
+            spacing = tuple((ax + 1) / x.ndim for ax in normalized_axes)
+        elif spacing == 'arrays':
+            # one array per axis
+            spacing = tuple(
+                xp.arange(x.shape[ax]) * (ax + 0.5) for ax in normalized_axes
+            )
+            # make at one of the arrays have non-constant spacing
+            spacing[-1][5:] *= 2.0
+        elif spacing == 'mixed':
+            # mixture of arrays and scalars
+            spacing = [xp.arange(x.shape[normalized_axes[0]])]
+            spacing = spacing + [0.5] * (len(normalized_axes) - 1)
+        return xp.gradient(x, *spacing, axis=axis, edge_order=edge_order)
+
+    @testing.for_dtypes('fFdD')
+    @testing.numpy_cupy_allclose(atol=1e-6, rtol=1e-5)
+    def test_gradient_floating(self, xp, dtype):
+        return self._gradient(xp, dtype, self.shape, self.spacing, self.axis,
+                              self.edge_order)
+
+    # unsigned int behavior fixed in 1.18.1
+    # https://github.com/numpy/numpy/issues/15207
+    @testing.with_requires('numpy>=1.18.1')
+    @testing.for_int_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(atol=1e-6, rtol=1e-5)
+    def test_gradient_int(self, xp, dtype):
+        return self._gradient(xp, dtype, self.shape, self.spacing, self.axis,
+                              self.edge_order)
+
+    @testing.numpy_cupy_allclose(atol=2e-2, rtol=1e-3)
+    def test_gradient_float16(self, xp):
+        return self._gradient(xp, numpy.float16, self.shape, self.spacing,
+                              self.axis, self.edge_order)
+
+
+@testing.gpu
+class TestGradientErrors(unittest.TestCase):
+
+    def test_gradient_invalid_spacings1(self):
+        # more spacings than axes
+        spacing = (1.0, 2.0, 3.0)
+        for xp in [numpy, cupy]:
+            x = testing.shaped_random((32, 16), xp)
+            with pytest.raises(TypeError):
+                xp.gradient(x, *spacing)
+
+    def test_gradient_invalid_spacings2(self):
+        # wrong length array in spacing
+        shape = (32, 16)
+        spacing = (15, cupy.arange(shape[1] + 1))
+        for xp in [numpy, cupy]:
+            x = testing.shaped_random(shape, xp)
+            with pytest.raises(ValueError):
+                xp.gradient(x, *spacing)
+
+    def test_gradient_invalid_spacings3(self):
+        # spacing array with ndim != 1
+        shape = (32, 16)
+        spacing = (15, cupy.arange(shape[0]).reshape(4, -1))
+        for xp in [numpy, cupy]:
+            x = testing.shaped_random(shape, xp)
+            with pytest.raises(ValueError):
+                xp.gradient(x, *spacing)
+
+    def test_gradient_invalid_edge_order1(self):
+        # unsupported edge order
+        shape = (32, 16)
+        for xp in [numpy, cupy]:
+            x = testing.shaped_random(shape, xp)
+            with pytest.raises(ValueError):
+                xp.gradient(x, edge_order=3)
+
+    def test_gradient_invalid_edge_order2(self):
+        # shape cannot be < edge_order
+        shape = (1, 16)
+        for xp in [numpy, cupy]:
+            x = testing.shaped_random(shape, xp)
+            with pytest.raises(ValueError):
+                xp.gradient(x, axis=0, edge_order=2)
+
+    @testing.with_requires('numpy>=1.16')
+    def test_gradient_invalid_axis(self):
+        # axis out of range
+        shape = (4, 16)
+        for xp in [numpy, cupy]:
+            x = testing.shaped_random(shape, xp)
+            for axis in [-3, 2]:
+                with pytest.raises(numpy.AxisError):
+                    xp.gradient(x, axis=axis)
+
+    def test_gradient_bool_input(self):
+        # axis out of range
+        shape = (4, 16)
+        for xp in [numpy, cupy]:
+            x = testing.shaped_random(shape, xp, dtype=numpy.bool)
+            with pytest.raises(TypeError):
+                xp.gradient(x)
