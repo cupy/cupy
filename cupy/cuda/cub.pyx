@@ -74,6 +74,9 @@ cdef extern from 'cupy_cub.h' nogil:
 # Python interface
 ###############################################################################
 
+available = True
+
+
 def get_build_version():
     if CUPY_CUB_VERSION_CODE == -1:
         return '<unknown>'
@@ -92,7 +95,7 @@ cdef tuple _get_output_shape(ndarray arr, tuple out_axis, bint keepdims):
 
 
 cpdef Py_ssize_t _preprocess_array(tuple arr_shape, tuple reduce_axis,
-                                   tuple out_axis, str order):
+                                   tuple out_axis, str order) except -1:
     '''
     This function more or less follows the logic of _get_permuted_args() in
     reduction.pxi. The input array arr is C- or F- contiguous along axis.
@@ -180,7 +183,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
 def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
                             tuple out_axis, out=None, bint keepdims=False):
     # if import at the top level, a segfault would happen when import cupy!
-    from cupy.creation.ranges import arange
+    from cupy._creation.ranges import arange
 
     cdef ndarray y, offset
     cdef str order
@@ -395,12 +398,13 @@ cdef bint can_use_device_segmented_reduce(
         dtype=None, str order='C'):
     if not _cub_reduce_dtype_compatible(x.dtype, op, dtype):
         return False
+    if not _cub_device_segmented_reduce_axis_compatible(
+            reduce_axis, x.ndim, order):
+        return False
+    # until we resolve cupy/cupy#3309
     cdef Py_ssize_t contiguous_size = _preprocess_array(
         x.shape, reduce_axis, out_axis, order)
-    return (_cub_device_segmented_reduce_axis_compatible(
-        reduce_axis, x.ndim, order) and
-        # until we resolve cupy/cupy#3309
-        contiguous_size <= 0x7fffffff)
+    return contiguous_size <= 0x7fffffff
 
 
 cdef _cub_support_dtype(bint sum_mode, int dev_id):

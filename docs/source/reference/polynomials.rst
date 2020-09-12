@@ -26,6 +26,7 @@ Polyutils
 
    cupy.polynomial.polyutils.as_series
    cupy.polynomial.polyutils.trimseq
+   cupy.polynomial.polyutils.trimcoef
 
 
 Poly1d
@@ -39,3 +40,27 @@ Basics
    :nosignatures:
 
     cupy.poly1d
+    cupy.polyval
+    cupy.roots
+
+
+Fitting
+~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+    cupy.polyfit
+
+
+Arithmetic
+~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+    cupy.polyadd
+    cupy.polysub
+    cupy.polymul

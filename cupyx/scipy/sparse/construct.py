@@ -145,7 +145,7 @@ def hstack(blocks, format=None, dtype=None):
 
     Examples:
         >>> from cupy import array
-        >>> from cupy.sparse import csr_matrix, hstack
+        >>> from cupyx.scipy.sparse import csr_matrix, hstack
         >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
         >>> B = csr_matrix(array([[5.], [6.]]))
         >>> hstack([A, B]).toarray()
@@ -176,7 +176,7 @@ def vstack(blocks, format=None, dtype=None):
 
     Examples:
         >>> from cupy import array
-        >>> from cupy.sparse import csr_matrix, vstack
+        >>> from cupyx.scipy.sparse import csr_matrix, vstack
         >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
         >>> B = csr_matrix(array([[5., 6.]]))
         >>> vstack([A, B]).toarray()
@@ -208,7 +208,7 @@ def bmat(blocks, format=None, dtype=None):
 
     Examples:
         >>> from cupy import array
-        >>> from cupy.sparse import csr_matrix, bmat
+        >>> from cupyx.scipy.sparse import csr_matrix, bmat
         >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
         >>> B = csr_matrix(array([[5.], [6.]]))
         >>> C = csr_matrix(array([[7.]]))

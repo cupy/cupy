@@ -36,6 +36,7 @@ Searching
    cupy.flatnonzero
    cupy.where
    cupy.argwhere
+   cupy.searchsorted
 
 Counting
 --------

@@ -1,7 +1,7 @@
 import cupy
 from cupy import core
 from cupy.core import fusion
-from cupy import util
+from cupy import _util
 
 from cupy.core import _routines_indexing as _indexing
 from cupy.core import _routines_statistics as _statistics
@@ -140,7 +140,7 @@ def nonzero(a):
     .. seealso:: :func:`numpy.nonzero`
 
     """
-    util.check_array(a, arg_name='a')
+    _util.check_array(a, arg_name='a')
     return a.nonzero()
 
 
@@ -162,7 +162,7 @@ def flatnonzero(a):
 
     .. seealso:: :func:`numpy.flatnonzero`
     """
-    util.check_array(a, arg_name='a')
+    _util.check_array(a, arg_name='a')
     return a.ravel().nonzero()[0]
 
 
@@ -231,7 +231,7 @@ def argwhere(a):
     .. seealso:: :func:`numpy.argwhere`
 
     """
-    util.check_array(a, arg_name='a')
+    _util.check_array(a, arg_name='a')
     if a.ndim == 0:
         warnings.warn(
             'calling argwhere on 0d arrays is deprecated',

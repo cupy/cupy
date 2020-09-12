@@ -164,7 +164,7 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     return _filters_core._call_kernel(kernel, input, weights, output)
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_correlate_kernel(mode, w_shape, int_type, offsets, cval):
     return _filters_core._generate_nd_kernel(
         'correlate',
@@ -414,7 +414,7 @@ def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
 
 
 def _prewitt_or_sobel(input, axis, output, mode, cval, weights):
-    axis = cupy.util._normalize_axis_index(axis, input.ndim)
+    axis = cupy._util._normalize_axis_index(axis, input.ndim)
 
     def get(is_diff):
         return cupy.array([-1, 0, 1]) if is_diff else weights
@@ -781,7 +781,7 @@ def _min_or_max_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
                                       weights_dtype=bool)
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_min_or_max_kernel(mode, w_shape, func, offsets, cval, int_type,
                            has_weights=True, has_structure=False,
                            has_central_value=True):
@@ -963,27 +963,7 @@ __device__ void sort(X *array, int size) {{
 }}'''
 
 
-__SELECTION_SORT = '''
-__device__ void sort(X *array, int size) {
-    for (int i = 0; i < size-1; ++i) {
-        X min_val = array[i];
-        int min_idx = i;
-        for (int j = i+1; j < size; ++j) {
-            X val_j = array[j];
-            if (val_j < min_val) {
-                min_idx = j;
-                min_val = val_j;
-            }
-        }
-        if (i != min_idx) {
-            array[min_idx] = array[i];
-            array[i] = min_val;
-        }
-    }
-}'''
-
-
-@cupy.util.memoize()
+@cupy._util.memoize()
 def _get_shell_gap(filter_size):
     gap = 1
     while gap < filter_size:
@@ -991,19 +971,54 @@ def _get_shell_gap(filter_size):
     return gap
 
 
-@cupy.util.memoize(for_each_device=True)
+@cupy._util.memoize(for_each_device=True)
 def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
                      int_type):
-    # Below 225 (15x15 median filter) selection sort is 1.5-2.5x faster
-    # Above, shell sort does progressively better (by 3025 (55x55) it is 9x)
-    # Also tried insertion sort, which is always slower than either one
-    sorter = __SELECTION_SORT if filter_size <= 255 else \
-        __SHELL_SORT.format(gap=_get_shell_gap(filter_size))
+    s_rank = min(rank, filter_size - rank - 1)
+    if s_rank <= 80:
+        # When s_rank is small and register usage is low, this partial
+        # selection sort approach is faster than general sorting approach
+        # using shell sort.
+        if s_rank == rank:
+            comp_op = '<'
+        else:
+            comp_op = '>'
+        array_size = s_rank + 1
+        found_post = '''
+            if (iv > {rank} + 1) {{{{
+                int target_iv = 0;
+                X target_val = values[0];
+                for (int jv = 1; jv <= {rank} + 1; jv++) {{{{
+                    if (target_val {comp_op} values[jv]) {{{{
+                        target_val = values[jv];
+                        target_iv = jv;
+                    }}}}
+                }}}}
+                if (target_iv <= {rank}) {{{{
+                    values[target_iv] = values[{rank} + 1];
+                }}}}
+                iv = {rank} + 1;
+            }}}}'''.format(rank=s_rank, comp_op=comp_op)
+        post = '''
+            X target_val = values[0];
+            for (int jv = 1; jv <= {rank}; jv++) {{
+                if (target_val {comp_op} values[jv]) {{
+                    target_val = values[jv];
+                }}
+            }}
+            y=cast<Y>(target_val);'''.format(rank=s_rank, comp_op=comp_op)
+        sorter = ''
+    else:
+        array_size = filter_size
+        found_post = ''
+        post = 'sort(values,{});\ny=cast<Y>(values[{}]);'.format(
+            filter_size, rank)
+        sorter = __SHELL_SORT.format(gap=_get_shell_gap(filter_size))
+
     return _filters_core._generate_nd_kernel(
         'rank_{}_{}'.format(filter_size, rank),
-        'int iv = 0;\nX values[{}];'.format(filter_size),
-        'values[iv++] = {value};',
-        'sort(values,{});\ny=cast<Y>(values[{}]);'.format(filter_size, rank),
+        'int iv = 0;\nX values[{}];'.format(array_size),
+        'values[iv++] = {value};' + found_post, post,
         mode, w_shape, int_type, offsets, cval, preamble=sorter)
 
 
@@ -1121,7 +1136,7 @@ def generic_filter1d(input, function, filter_size, axis=-1, output=None,
         raise TypeError('bad function type')
     if filter_size < 1:
         raise RuntimeError('invalid filter size')
-    axis = cupy.util._normalize_axis_index(axis, input.ndim)
+    axis = cupy._util._normalize_axis_index(axis, input.ndim)
     origin = _util._check_origin(origin, filter_size)
     _util._check_mode(mode)
     output = _util._get_output(output, input)

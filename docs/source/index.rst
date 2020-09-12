@@ -10,6 +10,7 @@ This is the `CuPy <https://github.com/cupy/cupy>`_ documentation.
    :maxdepth: 2
 
    overview
+   install
    tutorial/index
    reference/index
 
@@ -24,7 +25,6 @@ This is the `CuPy <https://github.com/cupy/cupy>`_ documentation.
    :maxdepth: 2
    :caption: Misc Notes
 
-   install
    install_rocm
    upgrade
    license

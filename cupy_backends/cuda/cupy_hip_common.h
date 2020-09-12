@@ -19,7 +19,6 @@ typedef hipError_t CUresult;
 const CUresult CUDA_SUCCESS = static_cast<CUresult>(0);
 enum CUjit_option {};
 enum CUjitInputType {};
-enum CUfunction_attribute {};
 enum CUarray_format {};
 enum CUaddress_mode {};
 enum CUfilter_mode {};
@@ -32,6 +31,7 @@ struct CUlinkState_st;
 typedef hipCtx_t CUcontext;
 typedef hipEvent_t cudaEvent_t;
 typedef hipFunction_t CUfunction;
+typedef hipFunction_attribute CUfunction_attribute;
 typedef hipModule_t CUmodule;
 typedef hipStream_t cudaStream_t;
 typedef struct CUlinkState_st* CUlinkState;
@@ -89,6 +89,10 @@ typedef hipChannelFormatDesc cudaChannelFormatDesc;
 typedef hipResourceDesc cudaResourceDesc;
 typedef hipTextureDesc cudaTextureDesc;
 
+// IPC operations
+typedef hipIpcMemHandle_st cudaIpcMemHandle_t;
+typedef hipIpcEventHandle_st cudaIpcEventHandle_t;
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // blas
@@ -106,6 +110,9 @@ typedef enum {} cublasMath_t;
 typedef int cudaDataType_t;
 typedef hipblasStatus_t cublasStatus_t;
 
+// TODO(leofang): as of ROCm 3.5.0 this does not exist yet
+typedef enum {} cublasComputeType_t;
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // library_types.h
@@ -117,6 +124,14 @@ typedef enum libraryPropertyType_t {
     MINOR_VERSION,
     PATCH_LEVEL
 } libraryPropertyType;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// roctx
+///////////////////////////////////////////////////////////////////////////////
+
+// this is to ensure we use non-"Ex" APIs like roctxMarkA etc
+#define NVTX_VERSION (100 * ROCTX_VERSION_MAJOR + 10 * ROCTX_VERSION_MINOR)
 
 } // extern "C"
 

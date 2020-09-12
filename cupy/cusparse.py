@@ -7,7 +7,7 @@ import cupy
 from cupy_backends.cuda.libs import cusparse
 from cupy_backends.cuda.api import runtime
 from cupy.cuda import device
-from cupy import util
+from cupy import _util
 import cupyx.scipy.sparse
 
 
@@ -24,7 +24,7 @@ class MatDescriptor(object):
     def __reduce__(self):
         return self.create, ()
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.descriptor:
@@ -89,7 +89,7 @@ _available_cusparse_version = {
     'csrgeam2': (9020, None),
     'csrgemm': (8000, 11000),
     'csrgemm2': (8000, None),
-    'spmv': (10200, None),
+    'spmv': ({'Linux': 10200, 'Windows': 11000}, None),
     'spmm': (10301, None),  # accuracy bugs in cuSparse 10.3.0
     'csr2dense': (8000, None),
     'csc2dense': (8000, None),
@@ -119,10 +119,10 @@ def _get_version(x):
     return x
 
 
-@util.memoize()
+@_util.memoize()
 def check_availability(name):
     if name not in _available_cusparse_version:
-        msg = 'No available version information specified for {}'.name
+        msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
     version_added, version_removed = _available_cusparse_version[name]
     version_added = _get_version(version_added)
@@ -879,10 +879,14 @@ def coosort(x, sort_by='r'):
 def coo2csr(x):
     handle = device.get_cusparse_handle()
     m = x.shape[0]
-    indptr = cupy.empty(m + 1, 'i')
-    cusparse.xcoo2csr(
-        handle, x.row.data.ptr, x.nnz, m,
-        indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    nnz = x.nnz
+    if nnz == 0:
+        indptr = cupy.zeros(m + 1, 'i')
+    else:
+        indptr = cupy.empty(m + 1, 'i')
+        cusparse.xcoo2csr(
+            handle, x.row.data.ptr, nnz, m,
+            indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
     return cupyx.scipy.sparse.csr.csr_matrix(
         (x.data, x.col, indptr), shape=x.shape)
 
@@ -890,10 +894,14 @@ def coo2csr(x):
 def coo2csc(x):
     handle = device.get_cusparse_handle()
     n = x.shape[1]
-    indptr = cupy.empty(n + 1, 'i')
-    cusparse.xcoo2csr(
-        handle, x.col.data.ptr, x.nnz, n,
-        indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    nnz = x.nnz
+    if nnz == 0:
+        indptr = cupy.zeros(n + 1, 'i')
+    else:
+        indptr = cupy.empty(n + 1, 'i')
+        cusparse.xcoo2csr(
+            handle, x.col.data.ptr, nnz, n,
+            indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
     return cupyx.scipy.sparse.csc.csc_matrix(
         (x.data, x.row, indptr), shape=x.shape)
 
@@ -915,7 +923,7 @@ def csr2coo(x, data, indices):
 
     handle = device.get_cusparse_handle()
     m = x.shape[0]
-    nnz = len(x.data)
+    nnz = x.nnz
     row = cupy.empty(nnz, 'i')
     cusparse.xcsr2coo(
         handle, x.indptr.data.ptr, nnz, m, row.data.ptr,
@@ -933,16 +941,18 @@ def csr2csc(x):
     m, n = x.shape
     nnz = x.nnz
     data = cupy.empty(nnz, x.dtype)
-    indptr = cupy.empty(n + 1, 'i')
     indices = cupy.empty(nnz, 'i')
-
-    _call_cusparse(
-        'csr2csc', x.dtype,
-        handle, m, n, nnz, x.data.data.ptr,
-        x.indptr.data.ptr, x.indices.data.ptr,
-        data.data.ptr, indices.data.ptr, indptr.data.ptr,
-        cusparse.CUSPARSE_ACTION_NUMERIC,
-        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    if nnz == 0:
+        indptr = cupy.zeros(n + 1, 'i')
+    else:
+        indptr = cupy.empty(n + 1, 'i')
+        _call_cusparse(
+            'csr2csc', x.dtype,
+            handle, m, n, nnz, x.data.data.ptr,
+            x.indptr.data.ptr, x.indices.data.ptr,
+            data.data.ptr, indices.data.ptr, indptr.data.ptr,
+            cusparse.CUSPARSE_ACTION_NUMERIC,
+            cusparse.CUSPARSE_INDEX_BASE_ZERO)
     return cupyx.scipy.sparse.csc_matrix(
         (data, indices, indptr), shape=x.shape)
 
@@ -991,7 +1001,7 @@ def csc2coo(x, data, indices):
     """
     handle = device.get_cusparse_handle()
     n = x.shape[1]
-    nnz = len(x.data)
+    nnz = x.nnz
     col = cupy.empty(nnz, 'i')
     cusparse.xcsr2coo(
         handle, x.indptr.data.ptr, nnz, n, col.data.ptr,
@@ -1009,16 +1019,18 @@ def csc2csr(x):
     m, n = x.shape
     nnz = x.nnz
     data = cupy.empty(nnz, x.dtype)
-    indptr = cupy.empty(m + 1, 'i')
     indices = cupy.empty(nnz, 'i')
-
-    _call_cusparse(
-        'csr2csc', x.dtype,
-        handle, n, m, nnz, x.data.data.ptr,
-        x.indptr.data.ptr, x.indices.data.ptr,
-        data.data.ptr, indices.data.ptr, indptr.data.ptr,
-        cusparse.CUSPARSE_ACTION_NUMERIC,
-        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    if nnz == 0:
+        indptr = cupy.zeros(m + 1, 'i')
+    else:
+        indptr = cupy.empty(m + 1, 'i')
+        _call_cusparse(
+            'csr2csc', x.dtype,
+            handle, n, m, nnz, x.data.data.ptr,
+            x.indptr.data.ptr, x.indices.data.ptr,
+            data.data.ptr, indices.data.ptr, indptr.data.ptr,
+            cusparse.CUSPARSE_ACTION_NUMERIC,
+            cusparse.CUSPARSE_INDEX_BASE_ZERO)
     return cupyx.scipy.sparse.csr_matrix(
         (data, indices, indptr), shape=x.shape)
 
@@ -1183,7 +1195,7 @@ class BaseDescriptor(object):
         self.get = get
         self.destroy = destroyer
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.destroy is None:

@@ -193,7 +193,8 @@ def _contains_signed_and_unsigned(kw):
 
 
 def _make_decorator(check_func, name, type_check, contiguous_check,
-                    accept_error, sp_name=None, scipy_name=None):
+                    accept_error, sp_name=None, scipy_name=None,
+                    check_sparse_format=True):
     assert isinstance(name, str)
     assert sp_name is None or isinstance(sp_name, str)
     assert scipy_name is None or isinstance(scipy_name, str)
@@ -226,36 +227,47 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 
             assert len(cupy_result) == len(numpy_result)
 
+            # Check types
+            cupy_numpy_result_ndarrays = [
+                _convert_output_to_ndarray(
+                    cupy_r, numpy_r, sp_name, check_sparse_format)
+                for cupy_r, numpy_r in zip(cupy_result, numpy_result)]
+
+            # Check dtypes
             if type_check:
-                for cupy_r, numpy_r in zip(cupy_result, numpy_result):
+                for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
                     assert cupy_r.dtype == numpy_r.dtype
 
+            # Check contiguities
             if contiguous_check:
-                for c, n in zip(cupy_result, numpy_result):
-                    if isinstance(n, numpy.ndarray):
-                        if n.flags.c_contiguous and not c.flags.c_contiguous:
+                for cupy_r, numpy_r in zip(cupy_result, numpy_result):
+                    if isinstance(numpy_r, numpy.ndarray):
+                        if (numpy_r.flags.c_contiguous
+                                and not cupy_r.flags.c_contiguous):
                             raise AssertionError(
                                 'The state of c_contiguous flag is false. '
                                 '(cupy_result:{} numpy_result:{})'.format(
-                                    c.flags.c_contiguous,
-                                    n.flags.c_contiguous))
-                        if n.flags.f_contiguous and not c.flags.f_contiguous:
+                                    cupy_r.flags.c_contiguous,
+                                    numpy_r.flags.c_contiguous))
+                        if (numpy_r.flags.f_contiguous
+                                and not cupy_r.flags.f_contiguous):
                             raise AssertionError(
                                 'The state of f_contiguous flag is false. '
                                 '(cupy_result:{} numpy_result:{})'.format(
-                                    c.flags.f_contiguous,
-                                    n.flags.f_contiguous))
+                                    cupy_r.flags.f_contiguous,
+                                    numpy_r.flags.f_contiguous))
 
-            for cupy_r, numpy_r in zip(cupy_result, numpy_result):
+            # Check shapes
+            for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
                 assert cupy_r.shape == numpy_r.shape
 
+            # Check item values
+            for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
                 # Behavior of assigning a negative value to an unsigned integer
                 # variable is undefined.
                 # nVidia GPUs and Intel CPUs behave differently.
                 # To avoid this difference, we need to ignore dimensions whose
                 # values are negative.
-                cupy_r, numpy_r = _convert_output_to_ndarray(
-                    cupy_r, numpy_r, sp_name)
 
                 skip = False
                 if (_contains_signed_and_unsigned(kw)
@@ -274,22 +286,44 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
     return decorator
 
 
-def _convert_output_to_ndarray(c_out, n_out, sp_name):
-    if sp_name is not None:
+def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
+    """Checks type of cupy/numpy results and returns cupy/numpy ndarrays.
+
+    Args:
+        c_out (cupy.ndarray, cupyx.scipy.sparse matrix, cupy.poly1d or scalar):
+            cupy result
+        n_out (numpy.ndarray, scipy.sparse matrix, numpy.poly1d or scalar):
+            numpy result
+        sp_name(str or None): Argument name whose value is either
+            ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
+            argument is given for the modules.
+        check_sparse_format (bool): If ``True``, consistency of format of
+            sparse matrix is also checked. Default is ``True``.
+
+    Returns:
+        The tuple of cupy.ndarray and numpy.ndarray.
+    """
+    if sp_name is not None and cupyx.scipy.sparse.issparse(c_out):
+        # Sparse output case.
         import scipy.sparse
-        if cupyx.scipy.sparse.issparse(c_out):
-            # Sparse output case.
-            if scipy.sparse.issparse(n_out):
-                return c_out.A, n_out.A
-            if isinstance(n_out, numpy.generic):
-                return c_out.A, n_out
+        assert scipy.sparse.issparse(n_out)
+        if check_sparse_format:
+            assert c_out.format == n_out.format
+        return c_out.A, n_out.A
     if (isinstance(c_out, cupy.ndarray)
             and isinstance(n_out, (numpy.ndarray, numpy.generic))):
         # ndarray output case.
         return c_out, n_out
+    if isinstance(c_out, cupy.poly1d) and isinstance(n_out, numpy.poly1d):
+        # poly1d output case.
+        assert c_out.variable == n_out.variable
+        return c_out.coeffs, n_out.coeffs
     if isinstance(c_out, numpy.generic) and isinstance(n_out, numpy.generic):
-        # scalar output case.
+        # numpy scalar output case.
         return c_out, n_out
+    if numpy.isscalar(c_out) and numpy.isscalar(n_out):
+        # python scalar output case.
+        return cupy.array(c_out), numpy.array(n_out)
     raise AssertionError(
         'numpy and cupy returns different type of return value:\n'
         'cupy: {}\nnumpy: {}'.format(
@@ -298,7 +332,8 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name):
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                         name='xp', type_check=True, accept_error=False,
-                        sp_name=None, scipy_name=None, contiguous_check=True):
+                        sp_name=None, scipy_name=None, contiguous_check=True,
+                        *, _check_sparse_format=True):
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
@@ -349,7 +384,8 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     def check_func(c, n):
         array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
     return _make_decorator(check_func, name, type_check, contiguous_check,
-                           accept_error, sp_name, scipy_name)
+                           accept_error, sp_name, scipy_name,
+                           _check_sparse_format)
 
 
 def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
@@ -1210,6 +1246,35 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
         return xp.asarray(a * scale, dtype=dtype)
     else:
         return xp.asarray(numpy.random.rand(*shape) * scale, dtype=dtype)
+
+
+def shaped_sparse_random(
+        shape, sp=cupyx.scipy.sparse, dtype=numpy.float32,
+        density=0.01, format='coo', seed=0):
+    """Returns an array filled with random values.
+
+    Args:
+        shape (tuple): Shape of returned sparse matrix.
+        sp (scipy.sparse or cupyx.scipy.sparse): Sparce matrix module to use.
+        dtype (dtype): Dtype of returned sparse matrix.
+        density (float): Density of returned sparse matrix.
+        format (str): Format of returned sparse matrix.
+        seed (int): Random seed.
+
+    Returns:
+        The sparse matrix with given shape, array module,
+    """
+    import scipy.sparse
+    n_rows, n_cols = shape
+    numpy.random.seed(seed)
+    a = scipy.sparse.random(n_rows, n_cols, density).astype(dtype)
+
+    if sp is cupyx.scipy.sparse:
+        a = cupyx.scipy.sparse.coo_matrix(a)
+    elif sp is not scipy.sparse:
+        raise ValueError('Unknown module: {}'.format(sp))
+
+    return a.asformat(format)
 
 
 class NumpyError(object):
