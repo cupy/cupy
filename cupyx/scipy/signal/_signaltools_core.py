@@ -1,5 +1,3 @@
-import numbers
-
 import cupy
 from cupyx.scipy import fft
 from cupyx.scipy.ndimage import filters
@@ -105,15 +103,15 @@ def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
     s1, s2 = in1.shape, in2.shape
     axes = _init_nd_and_axes(in1, axes)
     # Length-1 axes can rely on broadcasting rules, no fft needed
-    axes = [a for a in axes if s1[a] != 1 and s2[a] != 1]
+    axes = [ax for ax in axes if s1[ax] != 1 and s2[ax] != 1]
     if sorted_axes:
         axes.sort()
 
     # Check that unused axes are either 1 (broadcast) or the same length
-    if not all(s1[a] == s2[a] or s1[a] == 1 or s2[a] == 1
-               for a in range(in1.ndim) if a not in axes):
-        raise ValueError('incompatible shapes for in1 and in2:'
-                         ' {} and {}'.format(s1, s2))
+    for ax, (dim1, dim2) in enumerate(zip(s1, s2)):
+        if ax not in axes and dim1 != dim2 and dim1 != 1 and dim2 != 1:
+            raise ValueError('incompatible shapes for in1 and in2:'
+                             ' {} and {}'.format(s1, s2))
 
     # Check that input sizes are compatible with 'valid' mode.
     if _inputs_swap_needed(mode, s1, s2, axes=axes):
@@ -126,24 +124,11 @@ def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
 def _init_nd_and_axes(x, axes):
     # See documentation in scipy.fft._helper._init_nd_shape_and_axes
     # except shape argument is always None and doesn't return new shape
-    if axes is None:
-        axes = range(x.ndim)
-    else:
-        # Get the list of axes
-        if isinstance(axes, numbers.Number):
-            axes = (axes,)
-        axes = [cupy.util._normalize_axis_index(a, x.ndim) for a in axes]
-
-        # Check the axes
-        if not len(axes):
-            raise ValueError('when provided, axes cannot be empty')
-        if len(set(axes)) != len(axes):
-            raise ValueError('all axes must be unique')
-
-    # Check the resulting shape
-    if any(x.shape[a] < 1 for a in axes):
+    axes = cupy.util._normalize_axis_indices(axes, x.ndim, sort_axes=False)
+    if not len(axes):
+        raise ValueError('when provided, axes cannot be empty')
+    if any(x.shape[ax] < 1 for ax in axes):
         raise ValueError('invalid number of data points specified')
-
     return axes
 
 

@@ -44,7 +44,7 @@ def _normalize_axis_index(axis, ndim):
     return axis
 
 
-def _normalize_axis_indices(axes, ndim):
+def _normalize_axis_indices(axes, ndim, sort_axes=True):
     """Normalize axis indices.
 
     Args:
@@ -53,6 +53,9 @@ def _normalize_axis_indices(axes, ndim):
         ndim (int):
             The number of dimensions of the array that ``axis`` should be
             normalized against
+        sort_axes (bool):
+            If provided as False will not sort the axes, default is to return
+            the sorted values.
 
     Returns:
         tuple of int:
@@ -70,7 +73,7 @@ def _normalize_axis_indices(axes, ndim):
             raise ValueError('Duplicate value in \'axis\'')
         res.append(axis)
 
-    return tuple(sorted(res))
+    return tuple(sorted(res) if sort_axes else res)
 
 
 def memoize(bint for_each_device=False):
