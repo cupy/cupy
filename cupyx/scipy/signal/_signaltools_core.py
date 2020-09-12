@@ -124,7 +124,7 @@ def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
 def _init_nd_and_axes(x, axes):
     # See documentation in scipy.fft._helper._init_nd_shape_and_axes
     # except shape argument is always None and doesn't return new shape
-    axes = cupy.util._normalize_axis_indices(axes, x.ndim, sort_axes=False)
+    axes = cupy._util._normalize_axis_indices(axes, x.ndim, sort_axes=False)
     if not len(axes):
         raise ValueError('when provided, axes cannot be empty')
     if any(x.shape[ax] < 1 for ax in axes):
