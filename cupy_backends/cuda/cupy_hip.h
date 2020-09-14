@@ -1435,6 +1435,86 @@ cusolverStatus_t cusolverDnZgetrs(cusolverDnHandle_t handle,
                             reinterpret_cast<rocblas_double_complex*>(B), ldb);
 }
 
+cublasStatus_t cublasSgetrsBatched(cublasHandle_t handle,
+                                   cublasOperation_t trans,
+                                   int n,
+                                   int nrhs,
+                                   const float *const Aarray[],
+                                   int lda,
+                                   const int *devIpiv,
+                                   float *const Barray[],
+                                   int ldb,
+                                   int *info,
+                                   int batchSize) {
+    return hipblasSgetrsBatched(handle,
+                                convert_hipblasOperation_t(trans),
+                                n, nrhs,
+                                const_cast<float* const*>(Aarray), lda,
+                                devIpiv,
+                                Barray, ldb,
+                                info, batchSize);
+}
+
+cublasStatus_t cublasDgetrsBatched(cublasHandle_t handle,
+                                   cublasOperation_t trans,
+                                   int n,
+                                   int nrhs,
+                                   const double *const Aarray[],
+                                   int lda,
+                                   const int *devIpiv,
+                                   double *const Barray[],
+                                   int ldb,
+                                   int *info,
+                                   int batchSize) {
+    return hipblasDgetrsBatched(handle,
+                                convert_hipblasOperation_t(trans),
+                                n, nrhs,
+                                const_cast<double* const*>(Aarray), lda,
+                                devIpiv,
+                                Barray, ldb,
+                                info, batchSize);
+}
+
+cublasStatus_t cublasCgetrsBatched(cublasHandle_t handle,
+                                   cublasOperation_t trans,
+                                   int n,
+                                   int nrhs,
+                                   const cuComplex *const Aarray[],
+                                   int lda,
+                                   const int *devIpiv,
+                                   cuComplex *const Barray[],
+                                   int ldb,
+                                   int *info,
+                                   int batchSize) {
+    return hipblasCgetrsBatched(handle,
+                                convert_hipblasOperation_t(trans),
+                                n, nrhs,
+                                reinterpret_cast<hipblasComplex* const*>(const_cast<cuComplex* const*>(Aarray)), lda,
+                                devIpiv,
+                                reinterpret_cast<hipblasComplex* const*>(Barray), ldb,
+                                info, batchSize);
+}
+
+cublasStatus_t cublasZgetrsBatched(cublasHandle_t handle,
+                                   cublasOperation_t trans,
+                                   int n,
+                                   int nrhs,
+                                   const cuDoubleComplex** Aarray,
+                                   int lda,
+                                   const int *devIpiv,
+                                   cuDoubleComplex** Barray,
+                                   int ldb,
+                                   int *info,
+                                   int batchSize) {
+    return hipblasZgetrsBatched(handle,
+                                convert_hipblasOperation_t(trans),
+                                n, nrhs,
+                                reinterpret_cast<hipblasDoubleComplex* const*>(const_cast<cuDoubleComplex* const*>(Aarray)), lda,
+                                devIpiv,
+                                reinterpret_cast<hipblasDoubleComplex* const*>(Barray), ldb,
+                                info, batchSize);
+}
+
 
 /* ---------- geqrf ---------- */
 cusolverStatus_t cusolverDnSgeqrf_bufferSize(cusolverDnHandle_t handle,
