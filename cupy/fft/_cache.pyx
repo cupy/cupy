@@ -200,6 +200,10 @@ cdef class PlanCache:
     # current amount of memory used by cached plans
     cdef Py_ssize_t curr_memsize
 
+    # for collecting statistics
+    cdef size_t hits
+    cdef size_t misses
+
     # whether the cache is enabled (True) or disabled (False)
     cdef bint is_enabled
 
@@ -242,8 +246,10 @@ cdef class PlanCache:
                 self._move_plan_to_end(key=None, node=node)
             else:
                 _remove_append_multi_gpu_plan(gpus, key)
+            self.hits += 1
             return node.plan
         else:
+            self.misses += 1
             raise KeyError('plan not found for key: {}'.format(key))
 
     def __setitem__(self, tuple key, plan):
@@ -281,7 +287,9 @@ cdef class PlanCache:
                 self._remove_plan(key=None, node=node)
             else:
                 _remove_multi_gpu_plan(gpus, key)
+            self.hits += 1
         else:
+            self.misses += 1
             raise KeyError('plan not found for key: {}'.format(key))
 
     def __repr__(self):
@@ -302,6 +310,8 @@ cdef class PlanCache:
         output += 'current / max memsize: {0} / {1} (bytes)\n'.format(
             self.curr_memsize,
             '(unlimited)' if self.memsize == -1 else self.memsize)
+        output += 'hits / misses: {0} / {1} (counts)\n'.format(
+            self.hits, self.misses)
         output += '\ncached plans (most recently used first):\n'
 
         cdef tuple key
@@ -329,6 +339,8 @@ cdef class PlanCache:
     cdef void _reset(self):
         self.curr_size = 0
         self.curr_memsize = 0
+        self.hits = 0
+        self.misses = 0
         self.cache = {}
         self.lru = _LinkedList()
 
