@@ -524,7 +524,7 @@ cudaError_t cudaDestroySurfaceObject(cudaSurfaceObject_t surfObject) {
 /* As of ROCm 3.5.0 (this may have started earlier) many rocSOLVER helper functions
  * are deprecated and using their counterparts from rocBLAS is recommended. In
  * particular, rocSOLVER simply uses rocBLAS's handle for its API calls. This means
- * they are much more integrated than cuBLAS and cuSOLVER do, so it is better to
+ * they are much more integrated than cuBLAS and cuSOLVER are, so it is better to
  * put all of the relevant function in one place.
  */
 
@@ -596,10 +596,12 @@ cublasStatus_t cublasDestroy(cublasHandle_t handle) {
     return hipblasDestroy(handle);
 }
 
-cublasStatus_t cublasGetVersion(...) {
-    // TODO(leofang): perhaps call rocblas_get_version_string?
-    // or use ROCBLAS_VERSION_MAJOR/HIPBLAS_VERSION_MAJOR etc?
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasGetVersion(cublasHandle_t handle, int *version) {
+    // We use the rocBLAS version here because 1. it is the underlying workhorse,
+    // and 2. we might get rid of the hipBLAS layer at some point (see TODO above).
+    // ex: the rocBLAS version string is 2.22.0.2367-b2cceba in ROCm 3.5.0
+    *version = 10000 * ROCBLAS_VERSION_MAJOR + 100 * ROCBLAS_VERSION_MINOR + ROCBLAS_VERSION_PATCH;
+    return HIPBLAS_STATUS_SUCCESS;
 }
 
 cublasStatus_t cublasSetPointerMode(cublasHandle_t handle, cublasPointerMode_t mode) {
@@ -1191,6 +1193,16 @@ cusolverStatus_t cusolverDnGetStream(cusolverDnHandle_t handle,
 cusolverStatus_t cusolverDnSetStream (cusolverDnHandle_t handle,
                                       cudaStream_t streamId) {
     return rocblas_set_stream(handle, streamId);
+}
+
+cusolverStatus_t cusolverGetProperty(libraryPropertyType type, int* val) {
+    switch(type) {
+        case MAJOR_VERSION: { *val = ROCSOLVER_VERSION_MAJOR; break; }
+        case MINOR_VERSION: { *val = ROCSOLVER_VERSION_MINOR; break; }
+        case PATCH_LEVEL:   { *val = ROCSOLVER_VERSION_PATCH; break; }
+        default: throw std::runtime_error("invalid type");
+    }
+    return rocblas_status_success;
 }
 
 
