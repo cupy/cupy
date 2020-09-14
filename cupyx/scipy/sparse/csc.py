@@ -305,7 +305,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         Returns:
             cupyx.scipy.sparse.csc_matrix: Sparse matrix with single row
         """
-        return self.tocsr()._major_slice(slice(i, i + 1), copy=True)
+        return self._minor_slice(slice(i, i + 1), copy=True).tocsr()
 
     def getcol(self, i):
         """Returns a copy of column i of the matrix, as a (m x 1)
