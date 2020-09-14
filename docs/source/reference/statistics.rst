@@ -15,6 +15,7 @@ Order statistics
    cupy.nanmin
    cupy.nanmax
    cupy.percentile
+   cupy.ptp
 
 
 Means and variances
@@ -41,7 +42,10 @@ Histograms
    :nosignatures:
 
    cupy.histogram
+   cupy.histogram2d
+   cupy.histogramdd
    cupy.bincount
+   cupy.digitize
 
 
 Correlations
