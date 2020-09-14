@@ -113,6 +113,13 @@ def _csr_row_index(rows, Ap, Aj, Ax):
     cupy.cumsum(row_nnz[rows], out=Bp[1:])
     nnz = int(Bp[-1])
 
+    out_rows = _csr_indptr_to_coo_rows(nnz, Bp)
+
+    Bj, Bx = _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp)
+    return Bp, Bj, Bx
+
+
+def _csr_indptr_to_coo_rows(nnz, Bp):
     out_rows = cupy.empty(nnz, dtype=numpy.int32)
 
     # Build a COO row array from output CSR indptr.
@@ -123,8 +130,7 @@ def _csr_row_index(rows, Ap, Aj, Ax):
         handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
-    Bj, Bx = _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp)
-    return Bp, Bj, Bx
+    return out_rows
 
 
 def _select_last_indices(i, j, x, idx_dtype):
@@ -264,73 +270,9 @@ _unique_mask_kern = core.ElementwiseKernel(
 )
 
 
-"""
-/*
- * Determine the data offset at specific locations
- *
- * Input Arguments:
- *   I  n_row         - number of rows in A
- *   I  n_col         - number of columns in A
- *   I  Ap[n_row+1]   - row pointer
- *   I  Aj[nnz(A)]    - column indices
- *   I  n_samples     - number of samples
- *   I  Bi[N]         - sample rows
- *   I  Bj[N]         - sample columns
- *
- * Output Arguments:
- *   I  Bp[N]         - offsets into Aj; -1 if non-existent
- *
- * Return value:
- *   1 if any sought entries are duplicated, in which case the
- *   function has exited early; 0 otherwise.
- *
- * Note:
- *   Output array Bp must be preallocated
- *
- *   Complexity: varies. See csr_sample_values
- *
- */
-"""
-_csr_sample_offsets_ker = core.ElementwiseKernel(
-    '''I n_row, I n_col, raw I Ap, raw I Aj, raw I Bi, raw I Bj''',
-    'raw I Bp', '''
-    const I j = Bi[i]; // sample row
-    const I k = Bj[i]; // sample column
-    const I row_start = Ap[j];
-    const I row_end   = Ap[j+1];
-    I offset = -1;
-    for(I jj = row_start; jj < row_end; jj++)
-    {
-        if (Aj[jj] == k) {
-            offset = jj;
-            break;
-        }
-    }
-    Bp[i] = offset;
-''', 'csr_sample_offsets_ker', no_return=True)
-
-
-def _csr_sample_offsets(n_row, n_col,
-                        Ap, Aj, n_samples,
-                        Bi, Bj):
-
-    Bi[Bi < 0] += n_row
-    Bj[Bj < 0] += n_col
-
-    offsets = cupy.zeros(n_samples, dtype=Aj.dtype)
-
-    # TODO(cjnolet): find a way to increase parallelism
-    _csr_sample_offsets_ker(n_row, n_col,
-                            Ap, Aj, Bi, Bj,
-                            offsets,
-                            size=n_samples)
-
-    return offsets
-
-
 def _csr_sample_values(n_row, n_col,
                        Ap, Aj, Ax,
-                       Bi, Bj):
+                       Bi, Bj, not_found_val=0):
     """Populate data array for a set of rows and columns
     Args
         n_row : total number of rows in input array
@@ -347,28 +289,31 @@ def _csr_sample_values(n_row, n_col,
     Bi[Bi < 0] += n_row
     Bj[Bj < 0] += n_col
 
-    Bx = cupy.empty(Bi.size, dtype=Ax.dtype)
-    _csr_sample_values_kern(n_row, n_col,
-                            Ap, Aj, Ax,
-                            Bi, Bj, Bx, size=Bi.size)
-
-    return Bx
+    return _csr_sample_values_kern(n_row, n_col,
+                                   Ap, Aj, Ax,
+                                   Bi, Bj,
+                                   not_found_val,
+                                   size=Bi.size)
 
 
 _csr_sample_values_kern = core.ElementwiseKernel(
-    '''I n_row, I n_col, raw I Ap, raw I Aj, raw T Ax, raw I Bi, raw I Bj''',
+    '''I n_row, I n_col, raw I Ap, raw I Aj, raw T Ax,
+    raw I Bi, raw I Bj, I not_found_val''',
     'raw T Bx', '''
     const I j = Bi[i]; // sample row
     const I k = Bj[i]; // sample column
     const I row_start = Ap[j];
     const I row_end   = Ap[j+1];
     T x = 0;
+    bool val_found = false;
     for(I jj = row_start; jj < row_end; jj++) {
-        if (Aj[jj] == k)
+        if (Aj[jj] == k) {
             x += Ax[jj];
+            val_found = true;
+        }
     }
-    Bx[i] = x;
-''', 'csr_sample_values_kern', no_return=True)
+    Bx[i] = val_found ? x : not_found_val;
+''', 'csr_sample_values_kern')
 
 
 class IndexMixin(object):

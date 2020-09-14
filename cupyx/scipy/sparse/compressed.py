@@ -504,7 +504,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             return self._get_submatrix(major, minor, copy=True)
         return self._major_slice(major)._minor_slice(minor)
 
-    def _get_arrayXarray(self, row, col):
+    def _get_arrayXarray(self, row, col, not_found_val=0):
         # inner indexing
         idx_dtype = self.indices.dtype
         M, N = self._swap(*self.shape)
@@ -514,7 +514,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         val = _index._csr_sample_values(
             M, N, self.indptr, self.indices, self.data,
-            major.ravel(), minor.ravel())
+            major.ravel(), minor.ravel(),
+            not_found_val)
 
         if major.ndim == 1:
             # Scipy returns `matrix` here
@@ -721,12 +722,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         i, j, M, N = self._prepare_indices(i, j)
         x = cupy.array(x, dtype=self.dtype, copy=True, ndmin=1).ravel()
-        n_samples = x.size
 
-        self.sum_duplicates()
-        offsets = _index._csr_sample_offsets(M, N, self.indptr,
-                                             self.indices,
-                                             n_samples, i, j)
+        new_sp = cupyx.scipy.sparse.csr_matrix(
+            (cupy.arange(self.nnz, dtype=cupy.float32),
+             self.indices, self.indptr), shape=(M, N))
+
+        offsets = new_sp._get_arrayXarray(
+            i, j, not_found_val=-1).astype(cupy.int32).ravel()
 
         if -1 not in offsets:
             # only affects existing non-zero cells
@@ -754,12 +756,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         i, j, M, N = self._prepare_indices(i, j)
 
-        n_samples = i.size
-        # rinse and repeat
-        self.sum_duplicates()
-        offsets = _index._csr_sample_offsets(M, N, self.indptr,
-                                             self.indices,
-                                             n_samples, i, j)
+        new_sp = cupyx.scipy.sparse.csr_matrix(
+            (cupy.arange(self.nnz, dtype=cupy.float32),
+             self.indices, self.indptr), shape=(M, N))
+
+        offsets = new_sp._get_arrayXarray(
+            i, j, not_found_val=-1).astype(cupy.int32).ravel()
 
         # only assign zeros to the existing sparsity structure
         self.data[offsets[offsets > -1]] = 0
@@ -939,7 +941,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         .. warning::
             Calling this function might synchronize the device.
-
         """
         # Taken from SciPy as is.
         A = self.copy()
