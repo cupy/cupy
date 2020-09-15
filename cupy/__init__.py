@@ -592,6 +592,7 @@ from cupy.math.sumprod import cumsum  # NOQA
 from cupy.math.sumprod import nansum  # NOQA
 from cupy.math.sumprod import nanprod  # NOQA
 from cupy.math.sumprod import diff  # NOQA
+from cupy.math.sumprod import gradient  # NOQA
 from cupy.math.window import bartlett  # NOQA
 from cupy.math.window import blackman  # NOQA
 from cupy.math.window import hamming  # NOQA
@@ -720,6 +721,8 @@ from cupy._statistics.meanvar import nanvar  # NOQA
 from cupy._statistics.histogram import bincount  # NOQA
 from cupy._statistics.histogram import digitize  # NOQA
 from cupy._statistics.histogram import histogram  # NOQA
+from cupy._statistics.histogram import histogram2d  # NOQA
+from cupy._statistics.histogram import histogramdd  # NOQA
 
 # -----------------------------------------------------------------------------
 # Undocumented functions
