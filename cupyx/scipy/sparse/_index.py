@@ -22,20 +22,20 @@ _int_scalar_types = (int, numpy.integer, numpy.int_)
 _bool_scalar_types = (bool, numpy.bool, numpy.bool_)
 
 
-def _get_csr_submatrix_major_axis(Ap, Aj, Ax, start, stop):
+def _get_csr_submatrix_major_axis(Ax, Aj, Ap, start, stop):
     """Return a submatrix of the input sparse matrix by slicing major axis.
 
     Args:
-        Ap (cupy.ndarray): indptr array from input sparse matrix
-        Aj (cupy.ndarray): indices array from input sparse matrix
         Ax (cupy.ndarray): data array from input sparse matrix
+        Aj (cupy.ndarray): indices array from input sparse matrix
+        Ap (cupy.ndarray): indptr array from input sparse matrix
         start (int): starting index of major axis
         stop (int): ending index of major axis
 
     Returns:
-        Bp (cupy.ndarray): indptr array of output sparse matrix
-        Bj (cupy.ndarray): indices array of output sparse matrix
         Bx (cupy.ndarray): data array of output sparse matrix
+        Bj (cupy.ndarray): indices array of output sparse matrix
+        Bp (cupy.ndarray): indptr array of output sparse matrix
 
     """
     Ap = Ap[start:stop + 1]
@@ -44,23 +44,23 @@ def _get_csr_submatrix_major_axis(Ap, Aj, Ax, start, stop):
     Bj = Aj[start_offset:stop_offset]
     Bx = Ax[start_offset:stop_offset]
 
-    return Bp, Bj, Bx
+    return Bx, Bj, Bp
 
 
-def _get_csr_submatrix_minor_axis(Ap, Aj, Ax, start, stop):
+def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
     """Return a submatrix of the input sparse matrix by slicing minor axis.
 
     Args:
-        Ap (cupy.ndarray): indptr array from input sparse matrix
-        Aj (cupy.ndarray): indices array from input sparse matrix
         Ax (cupy.ndarray): data array from input sparse matrix
+        Aj (cupy.ndarray): indices array from input sparse matrix
+        Ap (cupy.ndarray): indptr array from input sparse matrix
         start (int): starting index of minor axis
         stop (int): ending index of minor axis
 
     Returns:
-        Bp (cupy.ndarray): indptr array of output sparse matrix
-        Bj (cupy.ndarray): indices array of output sparse matrix
         Bx (cupy.ndarray): data array of output sparse matrix
+        Bj (cupy.ndarray): indices array of output sparse matrix
+        Bp (cupy.ndarray): indptr array of output sparse matrix
 
     """
     mask = (start <= Aj) & (Aj < stop)
@@ -72,7 +72,7 @@ def _get_csr_submatrix_minor_axis(Ap, Aj, Ax, start, stop):
     Bj = Aj[mask] - start
     Bx = Ax[mask]
 
-    return Bp, Bj, Bx
+    return Bx, Bj, Bp
 
 
 _csr_row_index_ker = core.ElementwiseKernel(
@@ -92,19 +92,19 @@ _csr_row_index_ker = core.ElementwiseKernel(
 ''', 'csr_row_index_ker')
 
 
-def _csr_row_index(rows, Ap, Aj, Ax):
+def _csr_row_index(Ax, Aj, Ap, rows):
     """Populate indices and data arrays from the given row index
 
     Args:
-        rows (cupy.ndarray): index array of rows to populate
-        Ap (cupy.ndarray): indptr array from input sparse matrix
-        Aj (cupy.ndarray): indices array from input sparse matrix
         Ax (cupy.ndarray): data array from input sparse matrix
+        Aj (cupy.ndarray): indices array from input sparse matrix
+        Ap (cupy.ndarray): indptr array from input sparse matrix
+        rows (cupy.ndarray): index array of rows to populate
 
     Returns:
-        Bp (cupy.ndarray): indptr array for output sparse matrix
-        Bj (cupy.ndarray): indices array of output sparse matrix
         Bx (cupy.ndarray): data array of output sparse matrix
+        Bj (cupy.ndarray): indices array of output sparse matrix
+        Bp (cupy.ndarray): indptr array for output sparse matrix
 
     """
     row_nnz = cupy.diff(Ap)
@@ -116,7 +116,7 @@ def _csr_row_index(rows, Ap, Aj, Ax):
     out_rows = _csr_indptr_to_coo_rows(nnz, Bp)
 
     Bj, Bx = _csr_row_index_ker(out_rows, rows, Ap, Aj, Ax, Bp)
-    return Bp, Bj, Bx
+    return Bx, Bj, Bp
 
 
 def _csr_indptr_to_coo_rows(nnz, Bp):
