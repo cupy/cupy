@@ -379,10 +379,10 @@ def compile_in_memory(in_memory):
 @testing.parameterize(
     {'backend': 'nvrtc', 'in_memory': False},
     # this run will read from in-memory cache
-    {'backend': 'nvrtc', 'in_memory': True},
-    # this run will force recompilation
-    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True},
-    {'backend': 'nvcc', 'in_memory': False},
+#    {'backend': 'nvrtc', 'in_memory': True},
+#    # this run will force recompilation
+#    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True},
+#    {'backend': 'nvcc', 'in_memory': False},
 )
 class TestRaw(unittest.TestCase):
 

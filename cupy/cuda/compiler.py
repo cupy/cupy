@@ -31,6 +31,7 @@ class HIPCCException(Exception):
 
 def _run_cc(cmd, cwd, backend, log_stream=None):
     # backend in ('nvcc', 'hipcc')
+    print("i get called")
     try:
         env = os.environ if backend == 'hipcc' else None
         log = subprocess.check_output(cmd, cwd=cwd, env=env,
@@ -363,7 +364,7 @@ def _compile_with_cache_cuda(
     env = (arch, options, _get_nvrtc_version(), backend)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
-        # This is checking of NVRTC compiler internal version
+        # This is for checking NVRTC/NVCC compiler internal version
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
@@ -537,6 +538,7 @@ def _get_hipcc_version():
     global _hipcc_version
     if _hipcc_version is None:
         cmd = ['hipcc', '--version']
+        print("am I here?")
         _hipcc_version = _run_cc(cmd, '.', 'hipcc')
     return _hipcc_version
 
@@ -578,6 +580,8 @@ def compile_using_hipcc(source, options, arch, log_stream=None):
             return f.read()
 
 
+# TODO(leofang): consider merge _preprocess_hipcc with _preprocess_hiprtc,
+# perhaps also with _preprocess?
 def _preprocess_hipcc(source, options):
     cmd = ['hipcc', '--preprocess'] + list(options)
     with tempfile.TemporaryDirectory() as root_dir:
@@ -588,9 +592,31 @@ def _preprocess_hipcc(source, options):
             cu_file.write(source)
 
         cmd.append(cu_path)
+        print("could it be here?")
         pp_src = _run_cc(cmd, root_dir, 'hipcc')
         assert isinstance(pp_src, str)
         return re.sub('(?m)^#.*$', '', pp_src)
+
+
+def _preprocess_hiprtc(source, options):
+    # source is ignored
+    print("i am called!!!!!!!!")
+    prog = _NVRTCProgram(
+        '''
+        // hiprtc segfaults if the input code is empty
+        #include <hip/hip_runtime.h>
+        __global__ void _cupy_preprocess_dummy_kernel_() { }
+        ''', '')
+    try:
+        result, _ = prog.compile(options)
+    except CompileException as e:
+        dump = _get_bool_env_variable(
+            'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+        if dump:
+            e.dump(sys.stderr)
+        raise
+    assert isinstance(result, bytes)
+    return result
 
 
 _hip_extra_source = None
@@ -651,11 +677,14 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         source = _convert_to_hip_source(source, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))
 
-    env = (arch, options, _get_hipcc_version())
+    env = (arch, options, _get_nvrtc_version(), backend)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
-        # This is checking of HIPCC compiler internal version
-        base = _preprocess_hipcc('', options)
+        # This is for checking HIPRTC/HIPCC compiler internal version
+        if backend == 'hiprtc':
+            base = _preprocess_hiprtc('', options)
+        else:
+            base = _preprocess_hipcc('', options)
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
