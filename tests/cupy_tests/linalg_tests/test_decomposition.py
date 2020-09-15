@@ -50,6 +50,10 @@ class TestCholeskyDecomposition(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-3)
     def check_L(self, array, xp):
         a = xp.asarray(array)
+        if (a.dtype in (numpy.complex64, numpy.complex128)
+                and cupy.cuda.runtime.is_hip):
+            raise unittest.SkipTest('ROCm does not yet support complex '
+                                    'Cholesky decomposition')
         return xp.linalg.cholesky(a)
 
     @testing.for_dtypes([

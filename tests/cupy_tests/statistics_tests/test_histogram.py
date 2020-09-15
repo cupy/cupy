@@ -483,3 +483,124 @@ class TestDigitizeInvalid(unittest.TestCase):
             bins = xp.array([[1], [2]])
             with pytest.raises(ValueError):
                 xp.digitize(x, bins)
+
+
+@testing.parameterize(
+    *testing.product(
+        {'weights': [None, 1, 2],
+         'weights_dtype': [numpy.int32, numpy.float64],
+         'density': [True, False],
+         'bins': [10, (8, 16, 12), (16, 8, 12), (16, 12, 8), (12, 8, 16),
+                  'array_list'],
+         'range': [None, ((20, 50), (10, 100), (0, 40))]}
+    )
+)
+@testing.gpu
+class TestHistogramdd(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-7, rtol=1e-7)
+    def test_histogramdd(self, xp, dtype):
+        x = testing.shaped_random((100, 3), xp, dtype, scale=100)
+        if self.bins == 'array_list':
+            bins = [xp.arange(0, 100, 4),
+                    xp.arange(0, 100, 10),
+                    xp.arange(25)]
+        else:
+            bins = self.bins
+        if self.weights is not None:
+            weights = xp.ones((x.shape[0],), dtype=self.weights_dtype)
+        else:
+            weights = None
+        y, bin_edges = xp.histogramdd(x, bins=bins, range=self.range,
+                                      weights=weights, density=self.density)
+        return [y, ] + [e for e in bin_edges]
+
+
+@testing.gpu
+class TestHistogramddErrors(unittest.TestCase):
+
+    def test_histogramdd_invalid_bins(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_random((16, 2), xp, scale=100)
+            bins = [xp.arange(0, 100, 10), ] * 3
+            with pytest.raises(ValueError):
+                y, bin_edges = xp.histogramdd(x, bins)
+
+    def test_histogramdd_invalid_bins2(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_random((16, 2), xp, scale=100)
+            with pytest.raises(ValueError):
+                y, bin_edges = xp.histogramdd(x, bins=0)
+
+    def test_histogramdd_invalid_bins3(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_random((16, 2), xp, scale=100)
+            bins = xp.arange(100)
+            bins[30] = 99  # non-ascending bins
+            with pytest.raises(ValueError):
+                y, bin_edges = xp.histogramdd(x, bins=bins)
+
+    def test_histogramdd_invalid_bins4(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_random((16, 2), xp, scale=100)
+            bins = xp.arange(64).reshape((8, 8))  # too many dimensions
+            with pytest.raises(ValueError):
+                y, bin_edges = xp.histogramdd(x, bins=bins)
+
+    def test_histogramdd_invalid_range(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_random((16, 2), xp, scale=100)
+            r = ((0, 100),) * 3
+            with pytest.raises(ValueError):
+                y, bin_edges = xp.histogramdd(x, range=r)
+
+    def test_histogramdd_disallow_arraylike_bins(self):
+        x = testing.shaped_random((16, 2), cupy, scale=100)
+        bins = [[0, 10, 20, 50, 90]] * 2  # too many dimensions
+        with pytest.raises(ValueError):
+            y, bin_edges = cupy.histogramdd(x, bins=bins)
+
+
+@testing.parameterize(
+    *testing.product(
+        {'weights': [None, 1, 2],
+         'weights_dtype': [numpy.int32, numpy.float64],
+         'density': [True, False],
+         'bins': [10, (8, 16), (16, 8), 'array_list', 'array'],
+         'range': [None, ((20, 50), (10, 100))]}
+    )
+)
+@testing.gpu
+class TestHistogram2d(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-7, rtol=1e-7)
+    def test_histogram2d(self, xp, dtype):
+        x = testing.shaped_random((100, ), xp, dtype, scale=100)
+        y = testing.shaped_random((100, ), xp, dtype, scale=100)
+        if self.bins == 'array_list':
+            bins = [xp.arange(0, 100, 4), xp.arange(0, 100, 10)]
+        elif self.bins == 'array':
+            bins = xp.arange(0, 100, 4)
+        else:
+            bins = self.bins
+        if self.weights is not None:
+            weights = xp.ones((x.shape[0],), dtype=self.weights_dtype)
+        else:
+            weights = None
+        y, edges0, edges1 = xp.histogram2d(x, y, bins=bins,
+                                           range=self.range, weights=weights,
+                                           density=self.density)
+        return y, edges0, edges1
+
+
+@testing.gpu
+class TestHistogram2dErrors(unittest.TestCase):
+
+    def test_histogram2d_disallow_arraylike_bins(self):
+        x = testing.shaped_random((16, ), cupy, scale=100)
+        y = testing.shaped_random((16, ), cupy, scale=100)
+        bins = [0, 10, 20, 50, 90]
+        with pytest.raises(ValueError):
+            y, bin_edges = cupy.histogram2d(x, y, bins=bins)
