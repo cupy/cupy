@@ -94,18 +94,15 @@ _csr_row_index_ker = core.ElementwiseKernel(
 
 def _csr_row_index(Ax, Aj, Ap, rows):
     """Populate indices and data arrays from the given row index
-
     Args:
         Ax (cupy.ndarray): data array from input sparse matrix
         Aj (cupy.ndarray): indices array from input sparse matrix
         Ap (cupy.ndarray): indptr array from input sparse matrix
         rows (cupy.ndarray): index array of rows to populate
-
     Returns:
         Bx (cupy.ndarray): data array of output sparse matrix
         Bj (cupy.ndarray): indices array of output sparse matrix
         Bp (cupy.ndarray): indptr array for output sparse matrix
-
     """
     row_nnz = cupy.diff(Ap)
     Bp = cupy.empty(rows.size + 1, dtype=Ap.dtype)
