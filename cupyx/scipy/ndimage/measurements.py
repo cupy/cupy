@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 from cupy import core
-from cupy import util
+from cupy import _util
 
 
 def label(input, structure=None, output=None):
@@ -319,7 +319,7 @@ def variance(input, labels=None, index=None):
             'Using the slower implmentation as '
             'cupyx.scipy.ndimage.sum supports int32, float16, '
             'float32, float64, uint32, uint64 as data types'
-            'for the fast implmentation', util.PerformanceWarning)
+            'for the fast implmentation', _util.PerformanceWarning)
         use_kern = True
 
     def calc_var_with_intermediate_float(input):
@@ -394,7 +394,7 @@ def sum(input, labels=None, index=None):
             'Using the slower implmentation as '
             'cupyx.scipy.ndimage.sum supports int32, float16, '
             'float32, float64, uint32, uint64 as data types'
-            'for the fast implmentation', util.PerformanceWarning)
+            'for the fast implmentation', _util.PerformanceWarning)
         use_kern = True
 
     if labels is None:
@@ -459,7 +459,7 @@ def mean(input, labels=None, index=None):
             'Using the slower implmentation as '
             'cupyx.scipy.ndimage.mean supports int32, float16, '
             'float32, float64, uint32, uint64 as data types '
-            'for the fast implmentation', util.PerformanceWarning)
+            'for the fast implmentation', _util.PerformanceWarning)
         use_kern = True
 
     def calc_mean_with_intermediate_float(input):

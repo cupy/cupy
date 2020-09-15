@@ -84,24 +84,36 @@ cuda_files = [
     'cupy.cuda.stream',
     'cupy.cuda.texture',
     'cupy.lib.polynomial',
-    'cupy.util'
+    'cupy._util'
 ]
 
 if use_hip:
+    # We handle nvtx (and likely any other future support) here, because
+    # the HIP stubs (cupy_hip.h/cupy_hip_common.h) would cause many symbols
+    # to leak into all these modules even if unused. It's easier for all of
+    # them to link to the same set of shared libraries.
     MODULES.append({
         'name': 'cuda',
-        'file': cuda_files,
+        'file': cuda_files + [
+            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.cusolver',
+        ],
         'include': [
             'hip/hip_runtime_api.h',
             'hip/hiprtc.h',
             'hipblas.h',
             'hiprand/hiprand.h',
+            'roctx.h',
+            'rocsolver.h',
         ],
         'libraries': [
             'hiprtc',
             'hip_hcc',
             'hipblas',
             'hiprand',
+            'roctx64',
+            'rocblas',
+            'rocsolver',
         ],
     })
 else:
@@ -131,16 +143,7 @@ else:
         'version_method': build.get_cuda_version,
     })
 
-if use_hip:
-    MODULES.append({
-        'name': 'cusolver',
-        'file': [
-            'cupy_backends.cuda.libs.cusolver',
-        ],
-        'include': [],
-        'libraries': [],
-    })
-else:
+if not use_hip:
     MODULES.append({
         'name': 'cusolver',
         'file': [

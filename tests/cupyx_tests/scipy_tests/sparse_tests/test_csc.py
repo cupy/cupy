@@ -522,7 +522,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.dot(numpy.dtype(self.dtype).type(2.0))
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_csr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype)
@@ -535,13 +535,13 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(ValueError):
                 m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocsc()
         return m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_sparse(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocoo()
@@ -699,19 +699,19 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m * numpy.dtype(self.dtype).type(2.0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_mul_csr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype)
         return m * x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_mul_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocsc()
         return m * x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_mul_sparse(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocoo()
@@ -759,13 +759,13 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return numpy.dtype(self.dtype).type(2.0) * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_csr(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype)
         return x * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_csc(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocsc()

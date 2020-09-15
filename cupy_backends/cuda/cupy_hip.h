@@ -6,6 +6,9 @@
 #include <hiprand/hiprand.h>
 #include "cupy_hip_common.h"
 #include "cupy_cuComplex.h"
+#ifndef CUPY_NO_NVTX
+#include <roctx.h>
+#endif // #ifndef CUPY_NO_NVTX
 
 extern "C" {
 
@@ -515,12 +518,74 @@ cudaError_t cudaDestroySurfaceObject(cudaSurfaceObject_t surfObject) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// blas
+// blas & lapack (hipBLAS/rocBLAS & rocSOLVER)
 ///////////////////////////////////////////////////////////////////////////////
 
-static hipblasOperation_t convert_hipblasOperation_t(hipblasOperation_t op) {
+/* As of ROCm 3.5.0 (this may have started earlier) many rocSOLVER helper functions
+ * are deprecated and using their counterparts from rocBLAS is recommended. In
+ * particular, rocSOLVER simply uses rocBLAS's handle for its API calls. This means
+ * they are much more integrated than cuBLAS and cuSOLVER do, so it is better to
+ * put all of the relevant function in one place.
+ */
+
+// TODO(leofang): investigate if we should just remove the hipBLAS layer and use
+// rocBLAS directly, since we need to expose its handle anyway
+
+
+/* ---------- helpers ---------- */
+static hipblasOperation_t convert_hipblasOperation_t(cublasOperation_t op) {
     return static_cast<hipblasOperation_t>(static_cast<int>(op) + 111);
 }
+
+static hipblasFillMode_t convert_hipblasFillMode_t(cublasFillMode_t mode) {
+    switch(static_cast<int>(mode)) {
+        case 0 /* CUBLAS_FILL_MODE_LOWER */: return HIPBLAS_FILL_MODE_LOWER;
+        case 1 /* CUBLAS_FILL_MODE_UPPER */: return HIPBLAS_FILL_MODE_UPPER;
+        default: throw std::runtime_error("unrecognized mode");
+    }
+}
+
+static hipblasDiagType_t convert_hipblasDiagType_t(cublasDiagType_t type) {
+    return static_cast<hipblasDiagType_t>(static_cast<int>(type) + 131);
+}
+
+static hipblasSideMode_t convert_hipblasSideMode_t(cublasSideMode_t mode) {
+    return static_cast<hipblasSideMode_t>(static_cast<int>(mode) + 141);
+}
+
+static hipblasDatatype_t convert_hipblasDatatype_t(cudaDataType_t type) {
+    switch(static_cast<int>(type)) {
+        case 0 /* CUDA_R_32F */: return HIPBLAS_R_32F;
+        case 1 /* CUDA_R_64F */: return HIPBLAS_R_64F;
+        case 2 /* CUDA_R_16F */: return HIPBLAS_R_16F;
+        case 3 /* CUDA_R_8I */ : return HIPBLAS_R_8I;
+        case 4 /* CUDA_C_32F */: return HIPBLAS_C_32F;
+        case 5 /* CUDA_C_64F */: return HIPBLAS_C_64F;
+        case 6 /* CUDA_C_16F */: return HIPBLAS_C_16F;
+        case 7 /* CUDA_C_8I */ : return HIPBLAS_C_8I;
+        case 8 /* CUDA_R_8U */ : return HIPBLAS_R_8U;
+        case 9 /* CUDA_C_8U */ : return HIPBLAS_C_8U;
+        default: throw std::runtime_error("unrecognized type");
+    }
+}
+
+// TODO(leofang): perhaps these should be merged with the support of hipBLAS?
+static rocblas_fill convert_rocblas_fill(cublasFillMode_t mode) {
+    switch(static_cast<int>(mode)) {
+        case 0 /* CUBLAS_FILL_MODE_LOWER */: return rocblas_fill_lower;
+        case 1 /* CUBLAS_FILL_MODE_UPPER */: return rocblas_fill_upper;
+        default: throw std::runtime_error("unrecognized mode");
+    }
+}
+
+static rocblas_operation convert_rocblas_operation(cublasOperation_t op) {
+    return static_cast<rocblas_operation>(static_cast<int>(op) + 111);
+}
+
+static rocblas_side convert_rocblas_side(cublasSideMode_t mode) {
+    return static_cast<rocblas_side>(static_cast<int>(mode) + 141);
+}
+
 
 // Context
 cublasStatus_t cublasCreate(cublasHandle_t* handle) {
@@ -568,96 +633,156 @@ cublasStatus_t cublasIsamax(cublasHandle_t handle, int n, const float *x, int in
     return hipblasIsamax(handle, n, x, incx, result);
 }
 
-cublasStatus_t cublasIsamin(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasIsamin(cublasHandle_t handle, int n, float* x, int incx, int* result) {
+    return hipblasIsamin(handle, n, x, incx, result);
 }
 
-cublasStatus_t cublasSasum(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSasum(cublasHandle_t handle, int n, float* x, int incx, float* result) {
+    return hipblasSasum(handle, n, x, incx, result);
 }
 
-cublasStatus_t cublasSaxpy(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSaxpy(cublasHandle_t handle, int n, float* alpha, float* x, int incx, float* y, int incy) {
+    return hipblasSaxpy(handle, n, alpha, x, incx, y, incy);
 }
 
-cublasStatus_t cublasDaxpy(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDaxpy(cublasHandle_t handle, int n, double* alpha, double* x, int incx, double* y, int incy) {
+    return hipblasDaxpy(handle, n, alpha, x, incx, y, incy);
 }
 
-cublasStatus_t cublasSdot(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSdot(cublasHandle_t handle, int n, float* x, int incx, float* y, int incy, float* result) {
+    return hipblasSdot(handle, n, x, incx, y, incy, result);
 }
 
-cublasStatus_t cublasDdot(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDdot(cublasHandle_t handle, int n, double* x, int incx, double* y, int incy, double* result) {
+    return hipblasDdot(handle, n, x, incx, y, incy, result);
 }
 
-cublasStatus_t cublasCdotu(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCdotu(cublasHandle_t handle, int n, cuComplex* x, int incx, cuComplex* y,
+                           int incy, cuComplex* result) {
+    return hipblasCdotu(handle, n,
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<const hipblasComplex*>(y), incy,
+                        reinterpret_cast<hipblasComplex*>(result));
 }
 
-cublasStatus_t cublasCdotc(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCdotc(cublasHandle_t handle, int n, cuComplex* x, int incx, cuComplex* y,
+                           int incy, cuComplex* result) {
+    return hipblasCdotc(handle, n,
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<const hipblasComplex*>(y), incy,
+                        reinterpret_cast<hipblasComplex*>(result));
 }
 
-cublasStatus_t cublasZdotc(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZdotu(cublasHandle_t handle, int n, cuDoubleComplex* x, int incx, cuDoubleComplex* y,
+                           int incy, cuDoubleComplex* result) {
+    return hipblasZdotu(handle, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<const hipblasDoubleComplex*>(y), incy,
+                        reinterpret_cast<hipblasDoubleComplex*>(result));
 }
 
-cublasStatus_t cublasZdotu(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZdotc(cublasHandle_t handle, int n, cuDoubleComplex* x, int incx, cuDoubleComplex* y,
+                           int incy, cuDoubleComplex* result) {
+    return hipblasZdotc(handle, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<const hipblasDoubleComplex*>(y), incy,
+                        reinterpret_cast<hipblasDoubleComplex*>(result));
 }
 
-cublasStatus_t cublasSnrm2(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSnrm2(cublasHandle_t handle, int n, float* x, int incx, float* result) {
+    return hipblasSnrm2(handle, n, x, incx, result);
 }
 
-cublasStatus_t cublasSscal(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSscal(cublasHandle_t handle, int n, float* alpha, float* x, int incx) {
+    return hipblasSscal(handle, n, alpha, x, incx);
 }
 
 
 // BLAS Level 2
-cublasStatus_t cublasSgemv(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSgemv(cublasHandle_t handle, cublasOperation_t trans, int m, int n, float* alpha,
+                           float* A, int lda, float* x, int incx, float* beta,
+                           float* y, int incy) {
+    return hipblasSgemv(handle, convert_hipblasOperation_t(trans), m, n,
+                        alpha, A, lda, x, incx, beta, y, incy);
 }
 
-cublasStatus_t cublasDgemv(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDgemv(cublasHandle_t handle, cublasOperation_t trans, int m, int n, double* alpha,
+                           double* A, int lda, double* x, int incx, double* beta,
+                           double* y, int incy) {
+    return hipblasDgemv(handle, convert_hipblasOperation_t(trans), m, n,
+                        alpha, A, lda, x, incx, beta, y, incy);
 }
 
-
-cublasStatus_t cublasCgemv(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCgemv(cublasHandle_t handle, cublasOperation_t trans, int m, int n, cuComplex* alpha,
+                           cuComplex* A, int lda, cuComplex* x, int incx, cuComplex* beta,
+                           cuComplex* y, int incy) {
+    return hipblasCgemv(handle, convert_hipblasOperation_t(trans), m, n,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<const hipblasComplex*>(A), lda,
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<const hipblasComplex*>(beta),
+                        reinterpret_cast<hipblasComplex*>(y), incy);
 }
 
-cublasStatus_t cublasZgemv(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZgemv(cublasHandle_t handle, cublasOperation_t trans, int m, int n, cuDoubleComplex* alpha,
+                           cuDoubleComplex* A, int lda, cuDoubleComplex* x, int incx,
+                           cuDoubleComplex* beta, cuDoubleComplex* y, int incy) {
+    return hipblasZgemv(handle, convert_hipblasOperation_t(trans), m, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<const hipblasDoubleComplex*>(A), lda,
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<const hipblasDoubleComplex*>(beta),
+                        reinterpret_cast<hipblasDoubleComplex*>(y), incy);
 }
 
-cublasStatus_t cublasSger(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSger(cublasHandle_t handle, int m, int n, float* alpha, float* x, int incx,
+                          float* y, int incy, float* A, int lda) {
+    return hipblasSger(handle, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
-cublasStatus_t cublasDger(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDger(cublasHandle_t handle, int m, int n, double* alpha, double* x,
+                          int incx, double* y, int incy, double* A, int lda) {
+    return hipblasDger(handle, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
-int cublasCgeru(...) {
-    return 0;
+cublasStatus_t cublasCgeru(cublasHandle_t handle, int m, int n, cuComplex* alpha, cuComplex* x,
+                          int incx, cuComplex* y, int incy, cuComplex* A, int lda) {
+    return hipblasCgeru(handle, m, n,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<const hipblasComplex*>(y), incy,
+                        reinterpret_cast<hipblasComplex*>(A), lda);
 }
 
-int cublasCgerc(...) {
-    return 0;
+cublasStatus_t cublasCgerc(cublasHandle_t handle, int m, int n, cuComplex* alpha, cuComplex* x,
+                          int incx, cuComplex* y, int incy, cuComplex* A, int lda) {
+    return hipblasCgerc(handle, m, n,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<const hipblasComplex*>(y), incy,
+                        reinterpret_cast<hipblasComplex*>(A), lda);
 }
 
-int cublasZgeru(...) {
-    return 0;
+cublasStatus_t cublasZgeru(cublasHandle_t handle, int m, int n, cuDoubleComplex* alpha,
+                           cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
+                           cuDoubleComplex* A, int lda) {
+    return hipblasZgeru(handle, m, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<const hipblasDoubleComplex*>(y), incy,
+                        reinterpret_cast<hipblasDoubleComplex*>(A), lda);
 }
 
-int cublasZgerc(...) {
-    return 0;
+cublasStatus_t cublasZgerc(cublasHandle_t handle, int m, int n, cuDoubleComplex* alpha,
+                           cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
+                           cuDoubleComplex* A, int lda) {
+    return hipblasZgerc(handle, m, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<const hipblasDoubleComplex*>(y), incy,
+                        reinterpret_cast<hipblasDoubleComplex*>(A), lda);
 }
+
 
 // BLAS Level 3
 cublasStatus_t cublasSgemm(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
@@ -789,28 +914,78 @@ cublasStatus_t cublasSgemmEx(
         static_cast<float*>(C), ldc);
 }
 
-cublasStatus_t cublasGemmEx(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasGemmEx(cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+                            int m, int n, int k, const void *alpha,
+                            const void *A, cudaDataType_t Atype, int lda,
+                            const void *B, cudaDataType_t Btype, int ldb,
+                            const void *beta,
+                            void *C, cudaDataType_t Ctype, int ldc,
+                            cudaDataType_t computetype, cublasGemmAlgo_t algo) {
+    if (algo != -1) { // must be CUBLAS_GEMM_DEFAULT
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasGemmEx(handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb),
+                         m, n, k, alpha,
+                         A, convert_hipblasDatatype_t(Atype), lda,
+                         B, convert_hipblasDatatype_t(Btype), ldb,
+                         beta,
+                         C, convert_hipblasDatatype_t(Ctype), ldc,
+                         convert_hipblasDatatype_t(computetype),
+                         static_cast<hipblasGemmAlgo_t>(160));  // HIPBLAS_GEMM_DEFAULT
 }
 
 cublasStatus_t cublasGemmEx_v11(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasStrsm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasStrsm(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                           cublasDiagType_t diag, int m, int n, const float* alpha,
+                           const float* A, int lda, float* B, int ldb) {
+    return hipblasStrsm(handle,
+                        convert_hipblasSideMode_t(size),
+                        convert_hipblasFillMode_t(uplo),
+                        convert_hipblasOperation_t(trans),
+                        convert_hipblasDiagType_t(diag),
+                        m, n, alpha, const_cast<float*>(A), lda, B, ldb);
 }
 
-cublasStatus_t cublasDtrsm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDtrsm(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                           cublasDiagType_t diag, int m, int n, const double* alpha,
+                           const double* A, int lda, double* B, int ldb) {
+    return hipblasDtrsm(handle,
+                        convert_hipblasSideMode_t(size),
+                        convert_hipblasFillMode_t(uplo),
+                        convert_hipblasOperation_t(trans),
+                        convert_hipblasDiagType_t(diag),
+                        m, n, alpha, const_cast<double*>(A), lda, B, ldb);
 }
 
-cublasStatus_t cublasCtrsm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCtrsm(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                           cublasDiagType_t diag, int m, int n, const cuComplex* alpha,
+                           const cuComplex* A, int lda, cuComplex* B, int ldb) {
+    return hipblasCtrsm(handle,
+                        convert_hipblasSideMode_t(size),
+                        convert_hipblasFillMode_t(uplo),
+                        convert_hipblasOperation_t(trans),
+                        convert_hipblasDiagType_t(diag),
+                        m, n,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<hipblasComplex*>(const_cast<cuComplex*>(A)), lda,
+                        reinterpret_cast<hipblasComplex*>(B), ldb);
 }
 
-cublasStatus_t cublasZtrsm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZtrsm(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                           cublasDiagType_t diag, int m, int n, const cuDoubleComplex* alpha,
+                           const cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb) {
+    return hipblasZtrsm(handle,
+                        convert_hipblasSideMode_t(size),
+                        convert_hipblasFillMode_t(uplo),
+                        convert_hipblasOperation_t(trans),
+                        convert_hipblasDiagType_t(diag),
+                        m, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<hipblasDoubleComplex*>(const_cast<cuDoubleComplex*>(A)), lda,
+                        reinterpret_cast<hipblasDoubleComplex*>(B), ldb);
 }
 
 
@@ -837,35 +1012,55 @@ cublasStatus_t cublasSdgmm(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasSgetrfBatched(...) {
+cublasStatus_t cublasSgetriBatched(cublasHandle_t handle,
+                                   int n,
+                                   const float *const A[],
+                                   int lda,
+                                   const int *P,
+                                   float *const C[],
+                                   int ldc,
+                                   int *info,
+                                   int batchSize) {
+    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasDgetrfBatched(...) {
+cublasStatus_t cublasDgetriBatched(cublasHandle_t handle,
+                                   int n,
+                                   const double *const A[],
+                                   int lda,
+                                   const int *P,
+                                   double *const C[],
+                                   int ldc,
+                                   int *info,
+                                   int batchSize) {
+    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasCgetrfBatched(...) {
+cublasStatus_t cublasCgetriBatched(cublasHandle_t handle,
+                                   int n,
+                                   const cuComplex *const A[],
+                                   int lda,
+                                   const int *P,
+                                   cuComplex *const C[],
+                                   int ldc,
+                                   int *info,
+                                   int batchSize) {
+    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
-cublasStatus_t cublasZgetrfBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasSgetriBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasDgetriBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasCgetriBatched(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
-}
-
-cublasStatus_t cublasZgetriBatched(...) {
+cublasStatus_t cublasZgetriBatched(cublasHandle_t handle,
+                                   int n,
+                                   const cuDoubleComplex *const A[],
+                                   int lda,
+                                   const int *P,
+                                   cuDoubleComplex *const C[],
+                                   int ldc,
+                                   int *info,
+                                   int batchSize) {
+    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
@@ -952,6 +1147,536 @@ cublasStatus_t cublasStpttr(...) {
 cublasStatus_t cublasDtpttr(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
+
+cublasStatus_t cublasSgetrfBatched(cublasHandle_t handle, int n, float **Aarray, int lda,
+                                   int *PivotArray, int *infoArray, int batchSize) {
+    return hipblasSgetrfBatched(handle, n, Aarray, lda, PivotArray, infoArray, batchSize);
+}
+
+cublasStatus_t cublasDgetrfBatched(cublasHandle_t handle, int n, double **Aarray, int lda,
+                                   int *PivotArray, int *infoArray, int batchSize) {
+    return hipblasDgetrfBatched(handle, n, Aarray, lda, PivotArray, infoArray, batchSize);
+}
+
+cublasStatus_t cublasCgetrfBatched(cublasHandle_t handle, int n, cuComplex **Aarray, int lda,
+                                   int *PivotArray, int *infoArray, int batchSize) {
+    return hipblasCgetrfBatched(handle, n,
+                                reinterpret_cast<hipblasComplex** const>(Aarray), lda,
+                                PivotArray, infoArray, batchSize);
+}
+
+cublasStatus_t cublasZgetrfBatched(cublasHandle_t handle, int n, cuDoubleComplex **Aarray, int lda,
+                                   int *PivotArray, int *infoArray, int batchSize) {
+    return hipblasZgetrfBatched(handle, n,
+                                reinterpret_cast<hipblasDoubleComplex** const>(Aarray), lda,
+                                PivotArray, infoArray, batchSize);
+}
+
+
+// rocSOLVER
+/* ---------- helpers ---------- */
+cusolverStatus_t cusolverDnCreate(cusolverDnHandle_t *handle) {
+    return rocblas_create_handle(handle);
+}
+
+cusolverStatus_t cusolverDnDestroy(cusolverDnHandle_t handle) {
+    return rocblas_destroy_handle(handle);
+}
+
+cusolverStatus_t cusolverDnGetStream(cusolverDnHandle_t handle,
+                                     cudaStream_t *streamId) {
+    return rocblas_get_stream(handle, streamId);
+}
+
+cusolverStatus_t cusolverDnSetStream (cusolverDnHandle_t handle,
+                                      cudaStream_t streamId) {
+    return rocblas_set_stream(handle, streamId);
+}
+
+
+/* ---------- potrf ---------- */
+cusolverStatus_t cusolverDnSpotrf_bufferSize(cusolverDnHandle_t handle,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             float *A,
+                                             int lda,
+                                             int *Lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnDpotrf_bufferSize(cusolverDnHandle_t handle,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             double *A,
+                                             int lda,
+                                             int *Lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnSpotrf(cusolverDnHandle_t handle,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  float *A,
+                                  int lda,
+                                  float *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    // ignore Workspace and Lwork as rocSOLVER does not need them
+    return rocsolver_spotrf(handle, convert_rocblas_fill(uplo),
+                            n, A, lda, devInfo);
+}
+
+cusolverStatus_t cusolverDnDpotrf(cusolverDnHandle_t handle,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  double *A,
+                                  int lda,
+                                  double *Workspace,
+                                  int Lwork,
+                                  int *devInfo ) {
+    // ignore Workspace and Lwork as rocSOLVER does not need them
+    return rocsolver_dpotrf(handle, convert_rocblas_fill(uplo),
+                            n, A, lda, devInfo);
+}
+
+cusolverStatus_t cusolverDnSpotrfBatched(cusolverDnHandle_t handle,
+                                         cublasFillMode_t uplo,
+                                         int n,
+                                         float *Aarray[],
+                                         int lda,
+                                         int *infoArray,
+                                         int batchSize) {
+    return rocsolver_spotrf_batched(handle, convert_rocblas_fill(uplo),
+                                    n, Aarray, lda, infoArray, batchSize);
+}
+
+cusolverStatus_t cusolverDnDpotrfBatched(cusolverDnHandle_t handle,
+                                         cublasFillMode_t uplo,
+                                         int n,
+                                         double *Aarray[],
+                                         int lda,
+                                         int *infoArray,
+                                         int batchSize) {
+    return rocsolver_dpotrf_batched(handle, convert_rocblas_fill(uplo),
+                                    n, Aarray, lda, infoArray, batchSize);
+}
+
+
+/* ---------- getrf ---------- */
+cusolverStatus_t cusolverDnSgetrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             float *A,
+                                             int lda,
+                                             int *Lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnDgetrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             double *A,
+                                             int lda,
+                                             int *Lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnCgetrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             cuComplex *A,
+                                             int lda,
+                                             int *Lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnZgetrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             cuDoubleComplex *A,
+                                             int lda,
+                                             int *Lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnSgetrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  float *A,
+                                  int lda,
+                                  float *Workspace,
+                                  int *devIpiv,
+                                  int *devInfo) {
+    // ignore Workspace as rocSOLVER does not need it
+    return rocsolver_sgetrf(handle, m, n, A, lda, devIpiv, devInfo);
+}
+
+cusolverStatus_t cusolverDnDgetrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  double *A,
+                                  int lda,
+                                  double *Workspace,
+                                  int *devIpiv,
+                                  int *devInfo) {
+    // ignore Workspace as rocSOLVER does not need it
+    return rocsolver_dgetrf(handle, m, n, A, lda, devIpiv, devInfo);
+}
+
+cusolverStatus_t cusolverDnCgetrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  cuComplex *A,
+                                  int lda,
+                                  cuComplex *Workspace,
+                                  int *devIpiv,
+                                  int *devInfo) {
+    // ignore Workspace as rocSOLVER does not need it
+    return rocsolver_cgetrf(handle, m, n,
+                            reinterpret_cast<rocblas_float_complex*>(A), lda,
+                            devIpiv, devInfo);
+}
+
+cusolverStatus_t cusolverDnZgetrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  cuDoubleComplex *A,
+                                  int lda,
+                                  cuDoubleComplex *Workspace,
+                                  int *devIpiv,
+                                  int *devInfo) {
+    // ignore Workspace as rocSOLVER does not need it
+    return rocsolver_zgetrf(handle, m, n,
+                            reinterpret_cast<rocblas_double_complex*>(A), lda,
+                            devIpiv, devInfo);
+}
+
+
+/* ---------- getrs ---------- */
+cusolverStatus_t cusolverDnSgetrs(cusolverDnHandle_t handle,
+                                  cublasOperation_t trans,
+                                  int n,
+                                  int nrhs,
+                                  const float *A,
+                                  int lda,
+                                  const int *devIpiv,
+                                  float *B,
+                                  int ldb,
+                                  int *devInfo) {
+    // ignore devInfo as rocSOLVER does not need it
+    return rocsolver_sgetrs(handle,
+                            convert_rocblas_operation(trans),
+                            n, nrhs, const_cast<float*>(A), lda, devIpiv, B, ldb);
+}
+
+cusolverStatus_t cusolverDnDgetrs(cusolverDnHandle_t handle,
+                                  cublasOperation_t trans,
+                                  int n,
+                                  int nrhs,
+                                  const double *A,
+                                  int lda,
+                                  const int *devIpiv,
+                                  double *B,
+                                  int ldb,
+                                  int *devInfo) {
+    // ignore devInfo as rocSOLVER does not need it
+    return rocsolver_dgetrs(handle,
+                            convert_rocblas_operation(trans),
+                            n, nrhs, const_cast<double*>(A), lda, devIpiv, B, ldb);
+}
+
+cusolverStatus_t cusolverDnCgetrs(cusolverDnHandle_t handle,
+                                  cublasOperation_t trans,
+                                  int n,
+                                  int nrhs,
+                                  const cuComplex *A,
+                                  int lda,
+                                  const int *devIpiv,
+                                  cuComplex *B,
+                                  int ldb,
+                                  int *devInfo) {
+    // ignore devInfo as rocSOLVER does not need it
+    return rocsolver_cgetrs(handle,
+                            convert_rocblas_operation(trans),
+                            n, nrhs,
+                            (rocblas_float_complex*)(A), lda,
+                            devIpiv,
+                            reinterpret_cast<rocblas_float_complex*>(B), ldb);
+}
+
+cusolverStatus_t cusolverDnZgetrs(cusolverDnHandle_t handle,
+                                  cublasOperation_t trans,
+                                  int n,
+                                  int nrhs,
+                                  const cuDoubleComplex *A,
+                                  int lda,
+                                  const int *devIpiv,
+                                  cuDoubleComplex *B,
+                                  int ldb,
+                                  int *devInfo) {
+    // ignore devInfo as rocSOLVER does not need it
+    return rocsolver_zgetrs(handle,
+                            convert_rocblas_operation(trans),
+                            n, nrhs,
+                            (rocblas_double_complex*)(A), lda,
+                            devIpiv,
+                            reinterpret_cast<rocblas_double_complex*>(B), ldb);
+}
+
+
+/* ---------- geqrf ---------- */
+cusolverStatus_t cusolverDnSgeqrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             float *A,
+                                             int lda,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnDgeqrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             double *A,
+                                             int lda,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnCgeqrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             cuComplex *A,
+                                             int lda,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnZgeqrf_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             cuDoubleComplex *A,
+                                             int lda,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnSgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  float *A,
+                                  int lda,
+                                  float *TAU,
+                                  float *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    // ignore Workspace, Lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_sgeqrf(handle, m, n, A, lda, TAU);
+}
+
+cusolverStatus_t cusolverDnDgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  double *A,
+                                  int lda,
+                                  double *TAU,
+                                  double *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    // ignore Workspace, Lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_dgeqrf(handle, m, n, A, lda, TAU);
+}
+
+cusolverStatus_t cusolverDnCgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  cuComplex *A,
+                                  int lda,
+                                  cuComplex *TAU,
+                                  cuComplex *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    // ignore Workspace, Lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_cgeqrf(handle, m, n,
+                            reinterpret_cast<rocblas_float_complex*>(A), lda,
+                            reinterpret_cast<rocblas_float_complex*>(TAU));
+}
+
+cusolverStatus_t cusolverDnZgeqrf(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  cuDoubleComplex *A,
+                                  int lda,
+                                  cuDoubleComplex *TAU,
+                                  cuDoubleComplex *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    // ignore Workspace, Lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_zgeqrf(handle, m, n,
+                            reinterpret_cast<rocblas_double_complex*>(A), lda,
+                            reinterpret_cast<rocblas_double_complex*>(TAU));
+}
+
+
+/* ---------- orgqr ---------- */
+cusolverStatus_t cusolverDnSorgqr_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const float *A,
+                                             int lda,
+                                             const float *tau,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnDorgqr_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const double *A,
+                                             int lda,
+                                             const double *tau,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnSorgqr(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  float *A,
+                                  int lda,
+                                  const float *tau,
+                                  float *work,
+                                  int lwork,
+                                  int *info) {
+    // ignore work, lwork and info as rocSOLVER does not need them
+    return rocsolver_sorgqr(handle, m, n, k, A, lda, const_cast<float*>(tau));
+}
+
+cusolverStatus_t cusolverDnDorgqr(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  double *A,
+                                  int lda,
+                                  const double *tau,
+                                  double *work,
+                                  int lwork,
+                                  int *info) {
+    // ignore work, lwork and info as rocSOLVER does not need them
+    return rocsolver_dorgqr(handle, m, n, k, A, lda, const_cast<double*>(tau));
+}
+
+
+/* ---------- ormqr ---------- */
+cusolverStatus_t cusolverDnSormqr_bufferSize(cusolverDnHandle_t handle,
+                                             cublasSideMode_t side,
+                                             cublasOperation_t trans,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const float *A,
+                                             int lda,
+                                             const float *tau,
+                                             const float *C,
+                                             int ldc,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnDormqr_bufferSize(cusolverDnHandle_t handle,
+                                             cublasSideMode_t side,
+                                             cublasOperation_t trans,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const double *A,
+                                             int lda,
+                                             const double *tau,
+                                             const double *C,
+                                             int ldc,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnSormqr(cusolverDnHandle_t handle,
+                                  cublasSideMode_t side,
+                                  cublasOperation_t trans,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  const float *A,
+                                  int lda,
+                                  const float *tau,
+                                  float *C,
+                                  int ldc,
+                                  float *work,
+                                  int lwork,
+                                  int *devInfo) {
+    // ignore work, lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_sormqr(handle,
+                            convert_rocblas_side(side),
+                            convert_rocblas_operation(trans),
+                            m, n, k,
+                            const_cast<float*>(A), lda,
+                            const_cast<float*>(tau),
+                            C, ldc);
+}
+
+cusolverStatus_t cusolverDnDormqr(cusolverDnHandle_t handle,
+                                  cublasSideMode_t side,
+                                  cublasOperation_t trans,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  const double *A,
+                                  int lda,
+                                  const double *tau,
+                                  double *C,
+                                  int ldc,
+                                  double *work,
+                                  int lwork,
+                                  int *devInfo) {
+    // ignore work, lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_dormqr(handle,
+                            convert_rocblas_side(side),
+                            convert_rocblas_operation(trans),
+                            m, n, k,
+                            const_cast<double*>(A), lda,
+                            const_cast<double*>(tau),
+                            C, ldc);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // rand
@@ -1066,6 +1791,23 @@ cudaError_t cudaProfilerStart() {
 
 cudaError_t cudaProfilerStop() {
   return hipProfilerStop();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// roctx
+///////////////////////////////////////////////////////////////////////////////
+
+void nvtxMarkA(const char* message) {
+    roctxMarkA(message);
+}
+
+int nvtxRangePushA(const char* message) {
+    return roctxRangePushA(message);
+}
+
+int nvtxRangePop() {
+    return roctxRangePop();
 }
 
 } // extern "C"
