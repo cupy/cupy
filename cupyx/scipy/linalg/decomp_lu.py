@@ -101,12 +101,12 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
     cupy_split_lu()(lu, m, n, k, L, U, size=size)
 
     if permute_l:
-        cupy_laswp()(m, k, k, piv, L, size=k)
+        cupy_laswp()(k, 0, k-1, piv, -1, L, size=k)
         return (L, U)
     else:
         r_dtype = numpy.float32 if lu.dtype.char in 'fF' else numpy.float64
         P = cupy.diag(cupy.ones((m,), dtype=r_dtype))
-        cupy_laswp()(m, m, k, piv, P, size=m)
+        cupy_laswp()(m, 0, k-1, piv, -1, P, size=m)
         return (P, L, U)
 
 
@@ -199,20 +199,32 @@ def cupy_split_lu():
 
 def cupy_laswp():
     return cupy.ElementwiseKernel(
-        'int32 M, int32 N, int32 K, raw I PIV',
+        'int32 N, int32 K1, int32 K2, raw I PIV, int32 INCX',
         'raw T A',
         '''
-        // PIV: shape: (K,), 0-based
-        // A: shape: (M, N), row major matrix
+        // PIV: 0-based pivot indices. shape: (K2+1,)
+        // A: row major matrix. shape: (*, N)
         T* ptr_A = &(A[0]);
+        if (K1 > K2) return;
+        int row_start, row_end, row_inc;
+        if (INCX > 0) {
+            row_start = K1; row_end = K2; row_inc = 1;
+        } else if (INCX < 0) {
+            row_start = K2; row_end = K1; row_inc = -1;
+        } else {
+            return;
+        }
         int col = i;
-        for (int row_k = 0; row_k < K; row_k++) {
-            int row_j = PIV[row_k];
-            if (row_j <= row_k) continue;
-            // swap elements in row_k and row_j
-            T tmp = ptr_A[col + row_k * N];
-            ptr_A[col + row_k * N] = ptr_A[col + row_j * N];
-            ptr_A[col + row_j * N] = tmp;
+        int row1 = row_start;
+        while (1) {
+            int row2 = PIV[row1];
+            if (row1 != row2) {
+                T tmp = ptr_A[col + row1 * N];
+                ptr_A[col + row1 * N] = ptr_A[col + row2 * N];
+                ptr_A[col + row2 * N] = tmp;
+            }
+            if (row1 == row_end) break;
+            row1 += row_inc;
         }
         ''',
         'cupy_laswp'
