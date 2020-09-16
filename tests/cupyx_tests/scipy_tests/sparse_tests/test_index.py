@@ -52,7 +52,8 @@ class TestSetitemIndexing(unittest.TestCase):
 
             maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
             min_h = min.get() if isinstance(min, cupy.ndarray) else min
-            data_h = data.get() if isinstance(data, cupy.ndarray) else data
+            data_h = data.get() if isinstance(data,
+                                              (cupy.ndarray, cupyx.scipy.sparse.spmatrix)) else data
 
             if min is not None:
                 actual = a
@@ -80,6 +81,33 @@ class TestSetitemIndexing(unittest.TestCase):
 
             cupy.testing.assert_array_equal(
                 actual.ravel(), cupy.array(expected).ravel())
+
+    def test_set_sparse(self):
+
+        x = cupyx.scipy.sparse.random(1, 5, format='csr', density=0.8)
+
+        # Test inner indexing with sparse data
+        for maj, min in zip(_get_index_combos([0, 1, 2, 3, 5]),
+            _get_index_combos([1, 2, 3, 4, 5])):
+            self._run(maj, min, data=x)
+        self._run([0, 1, 2, 3, 5], [1, 2, 3, 4, 5], data=x)
+
+        # Test 2d major indexing 1d minor indexing with sparse data
+        for maj, min in zip(_get_index_combos([[0], [1], [2], [3], [5]]),
+            _get_index_combos([1, 2, 3, 4, 5])):
+            self._run(maj, min, data=x)
+        self._run([[0], [1], [2], [3], [5]], [1, 2, 3, 4, 5], data=x)
+
+        # Test 1d major indexing 2d minor indexing with sparse data
+        for maj, min in zip(_get_index_combos([0, 1, 2, 3, 5]),
+                            _get_index_combos([[1], [2], [3], [4], [5]])):
+            self._run(maj, min, data=x)
+        self._run([0, 1, 2, 3, 5], [[1], [2], [3], [4], [5]], data=x)
+
+        # Test minor indexing numpy scalar / cupy 0-dim
+        for maj, min in zip(_get_index_combos([0, 2, 4, 5, 6]),
+                            _get_index_combos(1)):
+            self._run(maj, min, data=x)
 
     def test_major_slice(self):
         self._run(slice(5, 10000), data=5)
@@ -136,13 +164,6 @@ class TestSetitemIndexing(unittest.TestCase):
         self._run(slice(None), slice(None))
 
     def test_major_all_minor_fancy(self):
-
-        for maj, min in zip(_get_index_combos([1, 2, 3, 4, 1, 6, 1, 8, 9]),
-                            _get_index_combos([1, 5, 2, 3, 4, 5, 4, 1, 5])):
-            self._run(maj, min)
-
-        self._run([1, 2, 3, 4, 1, 6, 1, 8, 9], [1, 5, 2, 3, 4, 5, 4, 1, 5])
-
         for min in _get_index_combos(
                 [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5]):
             self._run(slice(None), min)
@@ -150,6 +171,13 @@ class TestSetitemIndexing(unittest.TestCase):
         self._run(slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5])
 
     def test_major_fancy_minor_fancy(self):
+
+        for maj, min in zip(_get_index_combos([1, 2, 3, 4, 1, 6, 1, 8, 9]),
+                            _get_index_combos([1, 5, 2, 3, 4, 5, 4, 1, 5])):
+            self._run(maj, min)
+
+        self._run([1, 2, 3, 4, 1, 6, 1, 8, 9], [1, 5, 2, 3, 4, 5, 4, 1, 5])
+
 
         for idx in _get_index_combos([1, 5, 4]):
             self._run(idx, idx)
@@ -238,8 +266,18 @@ class TestSetitemIndexing(unittest.TestCase):
         # Unfortunately, boolean setting is implemented slightly
         # differently between Scipy 1.4 and 1.5. Using the most
         # up-to-date version in CuPy.
+
+        for maj in _get_index_combos(
+                [[True], [False], [False], [True], [True], [True]]):
+            self._run(maj, data=5)
         self._run([[True], [False], [False], [True], [True], [True]], data=5)
+
+        for maj in _get_index_combos([True, False, False, True, True, True]):
+            self._run(maj, data=5)
         self._run([True, False, False, True, True, True], data=5)
+
+        for maj in _get_index_combos([[True], [False], [True]]):
+            self._run(maj, data=5)
         self._run([[True], [False], [True]], data=5)
 
     def test_fancy_setting(self):
