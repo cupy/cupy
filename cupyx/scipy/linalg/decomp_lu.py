@@ -95,9 +95,7 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
 
     m, n = lu.shape
     k = min(m, n)
-    L = cupy.empty((m, k), dtype=lu.dtype)
-    U = cupy.empty((k, n), dtype=lu.dtype)
-    cupy_split_lu(lu, L, U)
+    L, U = cupy_split_lu(lu)
 
     if permute_l:
         cupy_laswp(L, 0, k-1, piv, -1)
@@ -164,29 +162,45 @@ def _lu_factor(a, overwrite_a=False, check_finite=True):
     return (a, ipiv)
 
 
-def cupy_split_lu(LU, L, U):
+def cupy_split_lu(LU, order='C'):
+    assert LU._c_contiguous or LU._f_contiguous
     m, n = LU.shape
-    _m, k = L.shape
-    _k, _n = U.shape
-    assert(m == _m and n == _n and k == _k)
-    assert(LU._f_contiguous and L._c_contiguous and U._c_contiguous)
+    k = min(m, n)
+    order = 'F' if order == 'F' else 'C'
+    L = cupy.empty((m, k), order=order, dtype=LU.dtype)
+    U = cupy.empty((k, n), order=order, dtype=LU.dtype)
     size = m * n
-    _kernel_cupy_split_lu(LU, m, n, k, L, U, size=size)
+    _kernel_cupy_split_lu(LU, m, n, k, LU._c_contiguous, L._c_contiguous,
+                          L, U, size=size)
+    return (L, U)
 
 
 _kernel_cupy_split_lu = cupy.ElementwiseKernel(
-    'raw T LU, int32 M, int32 N, int32 K',
+    'raw T LU, int32 M, int32 N, int32 K,'
+    'bool IN_C_CONTIGUOUS, bool OUT_C_CONTIGUOUS',
     'raw T L, raw T U',
     '''
-    // LU: shape: (M, N), column major matrix (F-contiguous)
-    // L: shape: (M, K), row major matrix (C-contigous)
-    // U: shape: (K, N), row major matrix (C-contigous)
+    // LU: shape: (M, N)
+    // L: shape: (M, K)
+    // U: shape: (K, N)
     const T* ptr_LU = &(LU[0]);
     T* ptr_L = &(L[0]);
     T* ptr_U = &(U[0]);
-    int row = i / N;
-    int col = i % N;
-    T lu_val = ptr_LU[row + col * M];
+    int row, col;
+    if (OUT_C_CONTIGUOUS) {
+        row = i / N;
+        col = i % N;
+    } else {
+        row = i % M;
+        col = i / M;
+    }
+    int idx_lu;
+    if (IN_C_CONTIGUOUS) {
+        idx_lu = col + row * N;
+    } else {
+        idx_lu = row + col * M;
+    }
+    T lu_val = ptr_LU[idx_lu];
     T l_val, u_val;
     if (row > col) {
         l_val = lu_val;
@@ -198,8 +212,16 @@ _kernel_cupy_split_lu = cupy.ElementwiseKernel(
         l_val = static_cast<T>(0);
         u_val = lu_val;
     }
-    if (col < K) ptr_L[col + row * K] = l_val;
-    if (row < K) ptr_U[col + row * N] = u_val;
+    int idx_l, idx_u;
+    if (OUT_C_CONTIGUOUS) {
+        idx_l = col + row * K;
+        idx_u = col + row * N;
+    } else {
+        idx_l = row + col * M;
+        idx_u = row + col * K;
+    }
+    if (col < K) ptr_L[idx_l] = l_val;
+    if (row < K) ptr_U[idx_u] = u_val;
     ''',
     'cupy_split_lu'
 )
@@ -208,8 +230,8 @@ _kernel_cupy_split_lu = cupy.ElementwiseKernel(
 def cupy_laswp(A, k1, k2, ipiv, incx):
     m, n = A.shape
     k = ipiv.shape[0]
-    assert(k1 <= k2 and k2 < k)
-    assert(A._c_contiguous or A._f_contiguous)
+    assert k1 <= k2 and k2 < k
+    assert A._c_contiguous or A._f_contiguous
     _kernel_cupy_laswp(m, n, k1, k2, ipiv, incx, A._c_contiguous, A, size=n)
 
 
@@ -218,7 +240,7 @@ _kernel_cupy_laswp = cupy.ElementwiseKernel(
     'bool C_CONTIGUOUS',
     'raw T A',
     '''
-    // IPIV: 0-based pivot indices. shape: (K,)  (*) K >= K2+1
+    // IPIV: 0-based pivot indices. shape: (K,)  (*) K > K2
     // A: shape: (M, N)
     T* ptr_A = &(A[0]);
     if (K1 > K2) return;
