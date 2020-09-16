@@ -3,6 +3,7 @@
 import functools
 import os
 import pickle
+import math
 import re
 import sys
 import warnings
@@ -15,6 +16,7 @@ from cupy.core._kernel import create_ufunc
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._kernel import ufunc  # NOQA
 from cupy.core._reduction import ReductionKernel
+from cupy.core._scalar import get_typename
 from cupy.core._ufuncs import elementwise_copy
 from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
@@ -2420,10 +2422,28 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         shape.push_back(1)
         b = _manipulation._reshape(b, shape)
         b_ndim = 2
-
     a_axis = a_ndim - 1
     b_axis = b_ndim - 2
 
+    # Do this for integer matrices so we avoid type castings
+    cdef str dtype = a.dtype.char
+    if dtype != b.dtype.char:
+        dtype = numpy.promote_types(dtype, b.dtype).char
+
+    # We call a custom kernel to avoid calculations
+    # in floating point for integers
+    if dtype not in 'efdFD':
+        m, k = a.shape
+        k, n = b.shape
+        if not input_a_is_vec:
+            ret_shape.insert(
+                ret_shape.end(), a._shape.begin(), a._shape.end()-1)
+        if not input_b_is_vec:
+            ret_shape.insert(
+                ret_shape.end(), b._shape.begin() + 1, b._shape.end())
+        return integral_tensordot_core(a, b, out, m, n, k, dtype, ret_shape)
+
+    # These are mostly transformations intended for CUBLAS
     if a._shape[a_axis] != b._shape[b_axis]:
         raise ValueError('Axis dimension mismatch')
 
@@ -2446,13 +2466,14 @@ cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
         ret_shape.insert(ret_shape.end(), a._shape.begin() + 1, a._shape.end())
     if not input_b_is_vec:
         ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
+
     if out is not None:
         if k != 0 and out.size != n * m:
             raise ValueError('Output array has an invalid size')
         if not out._c_contiguous:
             raise ValueError('Output array must be C-contiguous')
 
-    return tensordot_core(a, b, out, n, m, k, ret_shape)
+    return tensordot_core(a, b, out, n, m, k, dtype, ret_shape)
 
 
 cdef _mat_ptrs_kernel = ElementwiseKernel(
@@ -2743,15 +2764,282 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
 
 cdef int _cuda_runtime_version = -1
+
+
+@cupy._util.memoize(for_each_device=True)
+def _tensordot_core_int_kernel(config, dtype):
+    # This code is based in the GEMM implementation from MAGMA
+    # (http://icl.cs.utk.edu/magma/)
+    code = '''
+#define fetch(arr, col, m, n, bound) arr[min(n*col + m, bound)]
+
+template<typename T>
+__global__ void _tensordot_core_int_kernel(
+        int M, int N, int K,
+        const T* A,
+        const T* B,
+        T * C)
+{
+    int idx = threadIdx.x;
+    int idy = threadIdx.y;
+
+    int idt = DIM_X * idy + idx;
+
+    int idxA = idt % DIM_XA;
+    int idyA = idt / DIM_XA;
+
+    int idxB = idt % DIM_XB;
+    int idyB = idt / DIM_XB;
+
+    int blx = blockIdx.x;
+    int bly = blockIdx.y;
+
+    __shared__ T sA[BLK_K][BLK_M + 1];
+    __shared__ T sB[BLK_N][BLK_K + 1];
+
+    // registers for the innermost loop
+    T rC[THR_N][THR_M];
+    T rA[THR_M];
+    T rB[THR_N];
+
+    T ra[BLK_K / DIM_YA][BLK_M / DIM_XA];
+    T rb[BLK_N / DIM_YB][BLK_K / DIM_XB];
+
+    const T* offs_dA = A + blx * BLK_M       + idyA * M + idxA;
+    int boundA = (M * (K - 1) + M) - (blx * BLK_M + idyA * M + idxA) - 1;
+    const T* offs_dB = B + bly * BLK_N * K + idyB * K + idxB;
+    int boundB = (K * (N - 1) + K) - (bly * BLK_N * K + idyB * K + idxB) - 1;
+
+    int m, n, k, kk;
+
+    #pragma unroll
+    for (n = 0; n < THR_N; n++) {
+        #pragma unroll
+        for (m = 0 ; m < THR_M; m++) {
+            rC[n][m] = 0;
+        }
+    }
+
+    // blockwise transpose to transpose load
+    #pragma unroll
+    for (n = 0; n < BLK_K; n += DIM_YA) {
+        #pragma unroll
+        for (m = 0; m < BLK_M; m += DIM_XA) {
+            sA[n + idyA][m + idxA] = fetch(offs_dA, M, m, n, boundA);
+        }
+    }
+    // blockwise transpose to transpose load
+    #pragma unroll
+    for (n = 0; n < BLK_N; n += DIM_YB) {
+        #pragma unroll
+        for (m = 0; m < BLK_K; m += DIM_XB) {
+            sB[n + idyB][m + idxB] = fetch(offs_dB, K, m, n, boundB);
+        }
+    }
+    __syncthreads();
+
+    for (kk = 0; kk < K - BLK_K; kk += BLK_K)
+    {
+        offs_dA += BLK_K * M;
+        boundA -= BLK_K * M;
+        offs_dB += BLK_K;
+        boundB -= BLK_K;
+
+        #pragma unroll
+        for (n = 0; n < BLK_K / DIM_YA; n++) {
+            #pragma unroll
+            for (m = 0; m < BLK_M / DIM_XA; m++) {
+                ra[n][m] = fetch(offs_dA, M, m * DIM_XA, n * DIM_YA, boundA);
+            }
+        }
+
+        #pragma unroll
+        for (n = 0; n < BLK_N / DIM_YB; n++) {
+            #pragma unroll
+            for (m = 0; m < BLK_K / DIM_XB; m++) {
+                rb[n][m] = fetch(offs_dB, K, m * DIM_XB, n * DIM_YB, boundB);
+            }
+        }
+
+        // multiply
+        #pragma unroll
+        for (k = 0; k < BLK_K; k++)
+        {
+            #pragma unroll
+            for (m = 0; m < THR_M; m++) {
+                rA[m] = sA[k][m * DIM_X + idx];
+            }
+
+            #pragma unroll
+            for (n = 0; n < THR_N; n++) {
+                rB[n] = sB[n * DIM_Y + idy][k];
+            }
+
+            #pragma unroll
+            for (n = 0; n < THR_N; n++) {
+                #pragma unroll
+                for (m = 0; m < THR_M; m++) {
+                    rC[n][m] += rA[m] * rB[n];
+                }
+            }
+        }
+        __syncthreads();
+
+        // store A regs->smem
+        #pragma unroll
+        for (n = 0; n < BLK_K / DIM_YA; n++)
+        {
+            #pragma unroll
+            for (m = 0; m < BLK_M / DIM_XA; m++)
+            {
+                sA[n * DIM_YA + idyA][m * DIM_XA + idxA] = ra[n][m];
+            }
+        }
+
+        #pragma unroll
+        for (n = 0; n < BLK_N / DIM_YB; n++)
+        {
+            #pragma unroll
+            for (m = 0; m < BLK_K / DIM_XB; m++)
+            {
+                sB[n * DIM_YB + idyB][m * DIM_XB + idxB] = rb[n][m];
+            }
+        }
+        __syncthreads();
+    }
+
+    // Multiply last full (BLK_K) or partial block of columns of A and
+    // rows of B.
+    // It's okay that m,n exceed matrix bounds as all work is in registers
+    // or shared memory, and out-of-bounds rC[n][m] will not be saved later.
+
+    kk = K - kk;
+    #pragma unroll
+    for (k = 0; k < kk; k++)
+    {
+        #pragma unroll
+        for (m = 0; m < THR_M; m++) {
+            rA[m] = sA[k][m * DIM_X + idx];
+        }
+
+        #pragma unroll
+        for (n = 0; n < THR_N; n++) {
+            rB[n] = sB[n * DIM_Y + idy][k];
+        }
+
+        #pragma unroll
+        for (n = 0; n < THR_N; n++) {
+            #pragma unroll
+            for (m = 0; m < THR_M; m++) {
+                rC[n][m] += rA[m] * rB[n];
+            }
+        }
+    }
+
+    #pragma unroll
+    for (n = 0; n < THR_N; n++) {
+        int coord_dCn = bly * BLK_N + n * DIM_Y + idy;
+        #pragma unroll
+        for (m = 0; m < THR_M; m++) {
+            int coord_dCm = blx * BLK_M + m * DIM_X + idx;
+            if (coord_dCm < M && coord_dCn < N) {
+                C[coord_dCn * M + coord_dCm] = rC[n][m];
+            }
+        }
+    }
+}
+'''
+    for k, v in config:
+        code = '#define ' + k + ' ' + str(v) + '\n' + code
+    name_expressions = ['_tensordot_core_int_kernel<bool>',
+                        '_tensordot_core_int_kernel<signed char>',
+                        '_tensordot_core_int_kernel<unsigned char>',
+                        '_tensordot_core_int_kernel<short>',
+                        '_tensordot_core_int_kernel<unsigned short>',
+                        '_tensordot_core_int_kernel<int>',
+                        '_tensordot_core_int_kernel<unsigned int>',
+                        '_tensordot_core_int_kernel<long>',
+                        '_tensordot_core_int_kernel<unsigned long>',
+                        '_tensordot_core_int_kernel<long long>',
+                        '_tensordot_core_int_kernel<unsigned long long>']
+    mod = cupy.RawModule(code=code, options=('--std=c++11',),
+                         name_expressions=name_expressions)
+    ker = mod.get_function(
+        '_tensordot_core_int_kernel<'+get_typename(dtype)+'>')
+    return ker
+
+
 cdef _tensordot_core_mul_sum = ReductionKernel(
     'S x, T y', 'U out',
     'static_cast<U>(x) * static_cast<U>(y)',
     'a + b', 'out = a', '0', '_tensordot_core_mul_sum')
 
+cdef ndarray integral_tensordot_core(
+        ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
+        Py_ssize_t k, str dtype, const shape_t& ret_shape):
+    if not a.size or not b.size:
+        if out is None:
+            out = _ndarray_init(ret_shape, dtype)
+        out.fill(0)
+        return out
+
+    # The kernel requires the output to be in F order
+    ret = cupy.empty(ret_shape, dtype=dtype, order='F')
+    if out is None:
+        out = _ndarray_init(ret_shape, dtype)
+    if m == 1 and n == 1:
+        _tensordot_single(a, b, ret)
+        elementwise_copy(ret, out)
+
+    a = a.astype(dtype, copy=False)
+    b = b.astype(dtype, copy=False)
+    m, k = a.shape
+    k, n = b.shape
+    dim_x=16
+    dim_y=16
+    blk_m=64
+    blk_n=64
+    blk_k=4
+    dim_xa=64
+    dim_ya=4
+    dim_xb=4
+    dim_yb=64
+    config = (('DIM_X', dim_x), ('DIM_Y', dim_y),
+              ('BLK_M', blk_m), ('BLK_N', blk_n), ('BLK_K', blk_k),
+              ('DIM_XA', dim_xa), ('DIM_YA', dim_ya),
+              ('DIM_XB', dim_xb), ('DIM_YB', dim_yb),
+              ('THR_M', blk_m // dim_x), ('THR_N', blk_n // dim_y))
+    # Inputs matrices need to be in Fortran order.
+    a = _internal_asfortranarray(a)
+    b = _internal_asfortranarray(b)
+    kern = _tensordot_core_int_kernel(config, dtype)
+    args = (m, n, k, a, b, ret)
+    grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), 1)
+    block = (dim_x, dim_y, 1)
+    shared_mem = blk_k * (blk_m + 1) * 4 + blk_n * (blk_k + 1) * 4
+    kern(grid, block, args=args, shared_mem=shared_mem)
+
+    elementwise_copy(ret, out)
+    return out
+
+
+cdef ndarray _tensordot_single(ndarray a, ndarray b, ndarray out):
+    for ace in _accelerator._routine_accelerators:
+        # fast path using CUB or cuTENSOR
+        if ace in (_accelerator.ACCELERATOR_CUB,
+                   _accelerator.ACCELERATOR_CUTENSOR):
+            out = (a.ravel() * b.ravel()).sum(
+                out=_manipulation._reshape(out, ()))
+            break
+    else:
+        _tensordot_core_mul_sum(
+            a.ravel(), b.ravel(),
+            out=_manipulation._reshape(out, ()))
+    return out
 
 cpdef ndarray tensordot_core(
         ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
-        Py_ssize_t k, const shape_t& ret_shape):
+        Py_ssize_t k, str dtype, const shape_t& ret_shape):
     cdef shape_t shape
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode
@@ -2759,48 +3047,23 @@ cpdef ndarray tensordot_core(
     cdef bint use_sgemmEx
     cdef float one_fp32, zero_fp32
     cdef str ret_dtype = a.dtype.char
-    if ret_dtype != b.dtype.char:
-        ret_dtype = numpy.promote_types(ret_dtype, b.dtype).char
-
     if not a.size or not b.size:
         if out is None:
-            out = _ndarray_init(ret_shape, ret_dtype)
+            out = _ndarray_init(ret_shape, dtype)
         out.fill(0)
         return out
 
-    if ret_dtype in 'efdFD':
-        dtype = ret_dtype
-    else:
-        dtype = numpy.promote_types(ret_dtype, 'f').char
-
     if out is None:
         out = _ndarray_init(ret_shape, dtype)
-        if dtype == ret_dtype:
-            ret = out
-        else:
-            ret = _ndarray_init(ret_shape, ret_dtype)
     else:
-        ret = out
         if out.dtype != dtype:
             out = _ndarray_init(ret_shape, dtype)
-
     cdef int ace
     if m == 1 and n == 1:
-        for ace in _accelerator._routine_accelerators:
-            # fast path using CUB or cuTENSOR
-            if ace in (_accelerator.ACCELERATOR_CUB,
-                       _accelerator.ACCELERATOR_CUTENSOR):
-                out = (a.ravel() * b.ravel()).sum(
-                    out=_manipulation._reshape(out, ()))
-                break
-        else:
-            _tensordot_core_mul_sum(
-                a.ravel(), b.ravel(),
-                out=_manipulation._reshape(out, ()))
-        if out is not ret:
-            elementwise_copy(out, ret)
-        return ret
+        return _tensordot_single(a, b, out)
 
+    a = a.astype(dtype, copy=False)
+    b = b.astype(dtype, copy=False)
     # It copies the operands if needed
     if a._shape.size() != 2 or a._shape[0] != k or a._shape[1] != n:
         shape.clear()
@@ -2816,10 +3079,6 @@ cpdef ndarray tensordot_core(
     if c._shape.size() != 2 or c._shape[0] != n or c._shape[1] != m:
         c = c.view()
         c.shape = (n, m)
-
-    a = a.astype(dtype, copy=False)
-    b = b.astype(dtype, copy=False)
-
     # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
     # Matrix-Matrix product A^T * B
     # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
@@ -2833,9 +3092,7 @@ cpdef ndarray tensordot_core(
 
     if _cuda_runtime_version >= 11000:
         tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
-        if out is not ret:
-            elementwise_copy(out, ret)
-        return ret
+        return out
 
     handle = device.get_cublas_handle()
     if dtype == 'e':
@@ -2881,9 +3138,7 @@ cpdef ndarray tensordot_core(
     else:
         raise ValueError('Invalid dtype: %s' % str(dtype))
 
-    if out is not ret:
-        elementwise_copy(out, ret)
-    return ret
+    return out
 
 
 cpdef ndarray tensordot_core_v11(
