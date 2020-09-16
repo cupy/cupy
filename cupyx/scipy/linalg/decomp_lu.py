@@ -97,16 +97,15 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
     k = min(m, n)
     L = cupy.empty((m, k), dtype=lu.dtype)
     U = cupy.empty((k, n), dtype=lu.dtype)
-    size = m * n
-    cupy_split_lu()(lu, m, n, k, L, U, size=size)
+    cupy_split_lu(lu, L, U)
 
     if permute_l:
-        cupy_laswp()(k, 0, k-1, piv, -1, L, size=k)
+        cupy_laswp(L, 0, k-1, piv, -1)
         return (L, U)
     else:
         r_dtype = numpy.float32 if lu.dtype.char in 'fF' else numpy.float64
         P = cupy.diag(cupy.ones((m,), dtype=r_dtype))
-        cupy_laswp()(m, 0, k-1, piv, -1, P, size=m)
+        cupy_laswp(P, 0, k-1, piv, -1)
         return (P, L, U)
 
 
@@ -165,70 +164,96 @@ def _lu_factor(a, overwrite_a=False, check_finite=True):
     return (a, ipiv)
 
 
-def cupy_split_lu():
-    return cupy.ElementwiseKernel(
-        'raw T LU, int32 M, int32 N, int32 K',
-        'raw T L, raw T U',
-        '''
-        // LU: shape: (M, N), column major matrix
-        // L: shape: (M, K), row major matrix
-        // U: shape: (K, N), row major matrix
-        const T* ptr_LU = &(LU[0]);
-        T* ptr_L = &(L[0]);
-        T* ptr_U = &(U[0]);
-        int row = i / N;
-        int col = i % N;
-        T lu_val = ptr_LU[row + col * M];
-        T l_val, u_val;
-        if (row > col) {
-            l_val = lu_val;
-            u_val = static_cast<T>(0);
-        } else if (row == col) {
-            l_val = static_cast<T>(1);
-            u_val = lu_val;
-        } else {
-            l_val = static_cast<T>(0);
-            u_val = lu_val;
-        }
-        if (col < K) ptr_L[col + row * K] = l_val;
-        if (row < K) ptr_U[col + row * N] = u_val;
-        ''',
-        'cupy_split_lu'
-    )
+def cupy_split_lu(LU, L, U):
+    m, n = LU.shape
+    _m, k = L.shape
+    _k, _n = U.shape
+    assert(m == _m and n == _n and k == _k)
+    assert(LU._f_contiguous and L._c_contiguous and U._c_contiguous)
+    size = m * n
+    _kernel_cupy_split_lu(LU, m, n, k, L, U, size=size)
 
 
-def cupy_laswp():
-    return cupy.ElementwiseKernel(
-        'int32 N, int32 K1, int32 K2, raw I PIV, int32 INCX',
-        'raw T A',
-        '''
-        // PIV: 0-based pivot indices. shape: (K2+1,)
-        // A: row major matrix. shape: (*, N)
-        T* ptr_A = &(A[0]);
-        if (K1 > K2) return;
-        int row_start, row_end, row_inc;
-        if (INCX > 0) {
-            row_start = K1; row_end = K2; row_inc = 1;
-        } else if (INCX < 0) {
-            row_start = K2; row_end = K1; row_inc = -1;
-        } else {
-            return;
-        }
-        int col = i;
-        int row1 = row_start;
-        while (1) {
-            int row2 = PIV[row1];
-            if (row1 != row2) {
-                T tmp = ptr_A[col + row1 * N];
-                ptr_A[col + row1 * N] = ptr_A[col + row2 * N];
-                ptr_A[col + row2 * N] = tmp;
+_kernel_cupy_split_lu = cupy.ElementwiseKernel(
+    'raw T LU, int32 M, int32 N, int32 K',
+    'raw T L, raw T U',
+    '''
+    // LU: shape: (M, N), column major matrix (F-contiguous)
+    // L: shape: (M, K), row major matrix (C-contigous)
+    // U: shape: (K, N), row major matrix (C-contigous)
+    const T* ptr_LU = &(LU[0]);
+    T* ptr_L = &(L[0]);
+    T* ptr_U = &(U[0]);
+    int row = i / N;
+    int col = i % N;
+    T lu_val = ptr_LU[row + col * M];
+    T l_val, u_val;
+    if (row > col) {
+        l_val = lu_val;
+        u_val = static_cast<T>(0);
+    } else if (row == col) {
+        l_val = static_cast<T>(1);
+        u_val = lu_val;
+    } else {
+        l_val = static_cast<T>(0);
+        u_val = lu_val;
+    }
+    if (col < K) ptr_L[col + row * K] = l_val;
+    if (row < K) ptr_U[col + row * N] = u_val;
+    ''',
+    'cupy_split_lu'
+)
+
+
+def cupy_laswp(A, k1, k2, ipiv, incx):
+    m, n = A.shape
+    k = ipiv.shape[0]
+    assert(k1 <= k2 and k2 < k)
+    assert(A._c_contiguous or A._f_contiguous)
+    _kernel_cupy_laswp(m, n, k1, k2, ipiv, incx, A._c_contiguous, A, size=n)
+
+
+_kernel_cupy_laswp = cupy.ElementwiseKernel(
+    'int32 M, int32 N, int32 K1, int32 K2, raw I IPIV, int32 INCX, '
+    'bool C_CONTIGUOUS',
+    'raw T A',
+    '''
+    // IPIV: 0-based pivot indices. shape: (K,)  (*) K >= K2+1
+    // A: shape: (M, N)
+    T* ptr_A = &(A[0]);
+    if (K1 > K2) return;
+    int row_start, row_end, row_inc;
+    if (INCX > 0) {
+        row_start = K1; row_end = K2; row_inc = 1;
+    } else if (INCX < 0) {
+        row_start = K2; row_end = K1; row_inc = -1;
+    } else {
+        return;
+    }
+    int col = i;
+    int row1 = row_start;
+    while (1) {
+        int row2 = IPIV[row1];
+        if (row1 != row2) {
+            int idx1, idx2;
+            if (C_CONTIGUOUS) {
+                idx1 = col + row1 * N;
+                idx2 = col + row2 * N;
             }
-            if (row1 == row_end) break;
-            row1 += row_inc;
+            else {
+                idx1 = row1 + col * M;
+                idx2 = row2 + col * M;
+            }
+            T tmp       = ptr_A[idx1];
+            ptr_A[idx1] = ptr_A[idx2];
+            ptr_A[idx2] = tmp;
         }
-        ''',
-        'cupy_laswp'
-    )
+        if (row1 == row_end) break;
+        row1 += row_inc;
+    }
+    ''',
+    'cupy_laswp'
+)
 
 
 def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
