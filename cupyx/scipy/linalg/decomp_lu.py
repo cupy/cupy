@@ -230,7 +230,7 @@ _kernel_cupy_split_lu = cupy.ElementwiseKernel(
 def cupy_laswp(A, k1, k2, ipiv, incx):
     m, n = A.shape
     k = ipiv.shape[0]
-    assert k1 <= k2 and k2 < k
+    assert 0 <= k1 and k1 <= k2 and k2 < k
     assert A._c_contiguous or A._f_contiguous
     _kernel_cupy_laswp(m, n, k1, k2, ipiv, incx, A._c_contiguous, A, size=n)
 
