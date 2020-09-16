@@ -375,7 +375,7 @@ class TestCubHistogram(unittest.TestCase):
             return xp.histogram(x, bins)[0]
 
         # xp is cupy, first ensure we really use CUB
-        cub_func = 'cupy.statistics.histogram.cub.device_histogram'
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
         with testing.AssertFunctionIsCalled(cub_func):
             xp.histogram(x, bins)
         # ...then perform the actual computation
@@ -392,7 +392,7 @@ class TestCubHistogram(unittest.TestCase):
             return xp.histogram(x, bins)[1]
 
         # xp is cupy, first ensure we really use CUB
-        cub_func = 'cupy.statistics.histogram.cub.device_histogram'
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
         with testing.AssertFunctionIsCalled(cub_func):
             xp.histogram(x, bins)
         # ...then perform the actual computation
