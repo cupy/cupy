@@ -16,14 +16,14 @@ if cupyx.scipy._scipy_available:
 @testing.with_requires('scipy')
 class TestLUFactor(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     def test_lu_factor(self, dtype):
         if self.shape[0] != self.shape[1]:
             # skip non-square tests since scipy.lu_factor requires square
             return unittest.SkipTest()
-        array = numpy.random.randn(*self.shape)
-        a_cpu = numpy.asarray(array, dtype=dtype)
-        a_gpu = cupy.asarray(array, dtype=dtype)
+        a = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        a_cpu = numpy.asarray(a)
+        a_gpu = cupy.asarray(a)
         result_cpu = scipy.linalg.lu_factor(a_cpu)
         result_gpu = cupyx.scipy.linalg.lu_factor(a_gpu)
         self.assertEqual(len(result_cpu), len(result_gpu))
@@ -32,10 +32,10 @@ class TestLUFactor(unittest.TestCase):
         cupy.testing.assert_allclose(result_cpu[0], result_gpu[0], atol=1e-5)
         cupy.testing.assert_array_equal(result_cpu[1], result_gpu[1])
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     def test_lu_factor_reconstruction(self, dtype):
         m, n = self.shape
-        A = cupy.random.randn(m, n, dtype=dtype)
+        A = testing.shaped_random(self.shape, numpy, dtype=dtype)
         lu, piv = cupyx.scipy.linalg.lu_factor(A)
         # extract ``L`` and ``U`` from ``lu``
         L = cupy.tril(lu, k=-1)
@@ -69,7 +69,7 @@ class TestLUFactor(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestLUSolve(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_lu_solve(self, xp, scp, dtype):
         a_shape, b_shape = self.shapes
