@@ -218,8 +218,10 @@ class BaseStream(object):
         if runtime._is_hip_environment and self.ptr == 0:
             raise RuntimeError('HIP does not allow adding callbacks to the '
                                'default (null) stream')
+
         def f(stream, status, dummy):
             callback(self, status, arg)
+
         runtime.streamAddCallback(self.ptr, f, 0)
 
     def record(self, event=None):
