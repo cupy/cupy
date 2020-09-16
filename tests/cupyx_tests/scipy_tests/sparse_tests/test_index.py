@@ -52,8 +52,9 @@ class TestSetitemIndexing(unittest.TestCase):
 
             maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
             min_h = min.get() if isinstance(min, cupy.ndarray) else min
-            data_h = data.get() if isinstance(data,
-                                              (cupy.ndarray, cupyx.scipy.sparse.spmatrix)) else data
+
+            data_is_cupy = isinstance(data, (cupy.ndarray, sparse.spmatrix))
+            data_h = data.get() if data_is_cupy else data
 
             if min is not None:
                 actual = a
@@ -88,13 +89,13 @@ class TestSetitemIndexing(unittest.TestCase):
 
         # Test inner indexing with sparse data
         for maj, min in zip(_get_index_combos([0, 1, 2, 3, 5]),
-            _get_index_combos([1, 2, 3, 4, 5])):
+                            _get_index_combos([1, 2, 3, 4, 5])):
             self._run(maj, min, data=x)
         self._run([0, 1, 2, 3, 5], [1, 2, 3, 4, 5], data=x)
 
         # Test 2d major indexing 1d minor indexing with sparse data
         for maj, min in zip(_get_index_combos([[0], [1], [2], [3], [5]]),
-            _get_index_combos([1, 2, 3, 4, 5])):
+                            _get_index_combos([1, 2, 3, 4, 5])):
             self._run(maj, min, data=x)
         self._run([[0], [1], [2], [3], [5]], [1, 2, 3, 4, 5], data=x)
 
@@ -177,7 +178,6 @@ class TestSetitemIndexing(unittest.TestCase):
             self._run(maj, min)
 
         self._run([1, 2, 3, 4, 1, 6, 1, 8, 9], [1, 5, 2, 3, 4, 5, 4, 1, 5])
-
 
         for idx in _get_index_combos([1, 5, 4]):
             self._run(idx, idx)
