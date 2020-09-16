@@ -59,7 +59,58 @@ dtype=cp.float32))
         (array([[ 0.,  1.],
                [nan, nan]], dtype=float32), array([0, 1], dtype=int32))
     """
+    return _lu_factor(a, overwrite_a, check_finite)
 
+
+def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
+    """LU decomposition.
+
+    Args:
+        a (cupy.ndarray): The input matrix with dimension ``(M, N)``
+        permute_l (bool): If ``True``, perform the multiplication ``P * L``.
+        overwrite_a (bool): Allow overwriting data in ``a`` (may enhance
+            performance)
+        check_finite (bool): Whether to check that the input matrices contain
+            only finite numbers. Disabling may give a performance gain, but may
+            result in problems (crashes, non-termination) if the inputs do
+            contain infinities or NaNs.
+        a (cupy.ndarray): Array to decompose
+
+    Returns:
+        **(If permute_l == False)**
+        p (cupy.ndarray): Permutation matrix with dimension ``(M, M)``
+        l (cupy.ndarray): Lower triangular or trapezoidal matrix with unit
+            diagonal with dimension ``(M, K)``. ``K = min(M, N)``.
+        u (cupy.ndarray): Upper triangular or trapezoidal matrix with dimension
+            ``(K, N)``. ``K = min(M, N)``.
+
+        **(If permute_l == True)**
+        pl (cupy.ndarray): Permuted ``L`` matrix. ``K = min(M, N)``.
+        u (cupy.ndarray): Upper triangular or trapezoidal matrix with dimension
+            ``(K, N)``. ``K = min(M, N)``.
+
+    .. seealso:: :func:`scipy.linalg.lu`
+    """
+    lu, piv = _lu_factor(a, overwrite_a, check_finite)
+
+    m, n = lu.shape
+    k = min(m, n)
+    L = cupy.empty((m, k), dtype=lu.dtype)
+    U = cupy.empty((k, n), dtype=lu.dtype)
+    size = m * n
+    cupy_split_lu()(lu, m, n, k, L, U, size=size)
+
+    if permute_l:
+        cupy_laswp()(m, k, k, piv, L, size=k)
+        return (L, U)
+    else:
+        r_dtype = numpy.float32 if lu.dtype.char in 'fF' else numpy.float64
+        P = cupy.diag(cupy.ones((m,), dtype=r_dtype))
+        cupy_laswp()(m, m, k, piv, P, size=m)
+        return (P, L, U)
+
+
+def _lu_factor(a, overwrite_a=False, check_finite=True):
     a = cupy.asarray(a)
     util._assert_rank2(a)
 
@@ -112,6 +163,60 @@ dtype=cp.float32))
     ipiv -= 1
 
     return (a, ipiv)
+
+
+def cupy_split_lu():
+    return cupy.ElementwiseKernel(
+        'raw T LU, int32 M, int32 N, int32 K',
+        'raw T L, raw T U',
+        '''
+        // LU: shape: (M, N), column major matrix
+        // L: shape: (M, K), row major matrix
+        // U: shape: (K, N), row major matrix
+        const T* ptr_LU = &(LU[0]);
+        T* ptr_L = &(L[0]);
+        T* ptr_U = &(U[0]);
+        int row = i / N;
+        int col = i % N;
+        T lu_val = ptr_LU[row + col * M];
+        T l_val, u_val;
+        if (row > col) {
+            l_val = lu_val;
+            u_val = static_cast<T>(0);
+        } else if (row == col) {
+            l_val = static_cast<T>(1);
+            u_val = lu_val;
+        } else {
+            l_val = static_cast<T>(0);
+            u_val = lu_val;
+        }
+        if (col < K) ptr_L[col + row * K] = l_val;
+        if (row < K) ptr_U[col + row * N] = u_val;
+        ''',
+        'cupy_split_lu'
+    )
+
+
+def cupy_laswp():
+    return cupy.ElementwiseKernel(
+        'int32 M, int32 N, int32 K, raw I PIV',
+        'raw T A',
+        '''
+        // PIV: shape: (K,), 0-based
+        // A: shape: (M, N), row major matrix
+        T* ptr_A = &(A[0]);
+        int col = i;
+        for (int row_k = 0; row_k < K; row_k++) {
+            int row_j = PIV[row_k];
+            if (row_j <= row_k) continue;
+            // swap elements in row_k and row_j
+            T tmp = ptr_A[col + row_k * N];
+            ptr_A[col + row_k * N] = ptr_A[col + row_j * N];
+            ptr_A[col + row_j * N] = tmp;
+        }
+        ''',
+        'cupy_laswp'
+    )
 
 
 def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
