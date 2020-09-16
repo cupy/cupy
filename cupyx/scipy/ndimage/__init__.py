@@ -39,6 +39,15 @@ from cupyx.scipy.ndimage.measurements import mean  # NOQA
 from cupyx.scipy.ndimage.measurements import variance  # NOQA
 from cupyx.scipy.ndimage.measurements import standard_deviation  # NOQA
 
+from cupyx.scipy.ndimage.morphology import generate_binary_structure  # NOQA
+from cupyx.scipy.ndimage.morphology import iterate_structure  # NOQA
+from cupyx.scipy.ndimage.morphology import binary_erosion  # NOQA
+from cupyx.scipy.ndimage.morphology import binary_dilation  # NOQA
+from cupyx.scipy.ndimage.morphology import binary_opening  # NOQA
+from cupyx.scipy.ndimage.morphology import binary_closing  # NOQA
+from cupyx.scipy.ndimage.morphology import binary_hit_or_miss  # NOQA
+from cupyx.scipy.ndimage.morphology import binary_fill_holes  # NOQA
+from cupyx.scipy.ndimage.morphology import binary_propagation  # NOQA
 from cupyx.scipy.ndimage.morphology import grey_erosion  # NOQA
 from cupyx.scipy.ndimage.morphology import grey_dilation  # NOQA
 from cupyx.scipy.ndimage.morphology import grey_closing  # NOQA
