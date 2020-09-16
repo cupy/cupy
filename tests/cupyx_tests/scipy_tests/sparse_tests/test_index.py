@@ -13,6 +13,13 @@ from cupy import testing
 from cupyx.scipy import sparse
 
 
+def _check_shares_memory(xp, sp, x, y):
+    if sp.issparse(x) and sp.issparse(y):
+        assert not xp.shares_memory(x.indptr, y.indptr)
+        assert not xp.shares_memory(x.indices, y.indices)
+        assert not xp.shares_memory(x.data, y.data)
+
+
 class IndexingTestBase(unittest.TestCase):
 
     def _make_matrix(self, sp, dtype):
@@ -84,7 +91,9 @@ class TestSliceIndexing(IndexingTestBase):
         sp_name='sp', type_check=False, accept_error=IndexError)
     def test_indexing(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
-        return a[self.indices]
+        res = a[self.indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
 
 @testing.parameterize(*testing.product({
@@ -134,7 +143,9 @@ class TestArrayIndexing(IndexingTestBase):
         sp_name='sp', type_check=False, accept_error=IndexError)
     def test_list_indexing(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
-        return a[self.indices]
+        res = a[self.indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
     @testing.for_dtypes('fdFD')
     @testing.for_dtypes('il', name='ind_dtype')
@@ -143,7 +154,9 @@ class TestArrayIndexing(IndexingTestBase):
     def test_numpy_ndarray_indexing(self, xp, sp, dtype, ind_dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(numpy, ind_dtype)
-        return a[indices]
+        res = a[indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
     @testing.for_dtypes('fdFD')
     @testing.for_dtypes('il', name='ind_dtype')
@@ -152,8 +165,9 @@ class TestArrayIndexing(IndexingTestBase):
     def test_cupy_ndarray_indexing(self, xp, sp, dtype, ind_dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp, ind_dtype)
-        print(indices)
-        return a[indices]
+        res = a[indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
 
 @testing.parameterize(*testing.product({
@@ -187,21 +201,27 @@ class TestBoolMaskIndexing(IndexingTestBase):
     @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_bool_mask(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
-        return a[self.indices]
+        res = a[self.indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_numpy_bool_mask(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(numpy)
-        return a[indices]
+        res = a[indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_cupy_bool_mask(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp)
-        return a[indices]
+        res = a[indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
 
 @testing.parameterize(*testing.product({
