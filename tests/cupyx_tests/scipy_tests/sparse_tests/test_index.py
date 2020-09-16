@@ -126,7 +126,6 @@ class TestSetitemIndexing(unittest.TestCase):
             self._run(slice(5, 10000), data=data)
             self._run([1, 5, 4, 5], data=data)
             self._run(0, 2, data=data)
-            self._run([False, True], data=data)
 
     def test_major_slice(self):
         self._run(slice(5, 10000), data=5)
