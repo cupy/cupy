@@ -9,8 +9,6 @@ from cupy import testing
 @testing.gpu
 class TestArrayFunction(unittest.TestCase):
 
-    # TODO(leofang): revisit this when rocSOLVER is supported
-    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'rocSOLVER is not yet supported')
     @testing.with_requires('numpy>=1.17.0')
     def test_array_function(self):
         a = numpy.random.randn(100, 100)
