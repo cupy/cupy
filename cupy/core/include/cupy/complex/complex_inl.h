@@ -34,7 +34,8 @@ inline __host__ __device__ complex<T>::complex(const T& re, const T& im) {
   imag(im);
 }
 
-#if __cplusplus < 201103L || ((defined(_MSC_VER) && _MSC_VER < 1900))
+#if ((!defined(_MSC_VER) && __cplusplus < 201103L) || \
+     (defined(_MSC_VER) && _MSC_VER < 1900))
 template <typename T>
 inline __host__ __device__ complex<T>::complex() {
   real(T());
