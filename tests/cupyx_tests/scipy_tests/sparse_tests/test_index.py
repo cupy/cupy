@@ -110,6 +110,14 @@ class TestSetitemIndexing(unittest.TestCase):
                             _get_index_combos(1)):
             self._run(maj, min, data=x)
 
+    @testing.with_requires('scipy>=1.5.0')
+    def test_set_zero_dim_bool_mask(self):
+
+        zero_dim_data = [numpy.array(5), cupy.array(5)]
+
+        for data in zero_dim_data:
+            self._run([False, True], data=data)
+
     def test_set_zero_dim_scalar(self):
 
         zero_dim_data = [numpy.array(5), cupy.array(5)]
