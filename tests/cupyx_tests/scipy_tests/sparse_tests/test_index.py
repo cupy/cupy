@@ -110,6 +110,16 @@ class TestSetitemIndexing(unittest.TestCase):
                             _get_index_combos(1)):
             self._run(maj, min, data=x)
 
+    def test_set_zero_dim_scalar(self):
+
+        zero_dim_data = [numpy.array(5), cupy.array(5)]
+
+        for data in zero_dim_data:
+            self._run(slice(5, 10000), data=data)
+            self._run([1, 5, 4, 5], data=data)
+            self._run(0, 2, data=data)
+            self._run([False, True], data=data)
+
     def test_major_slice(self):
         self._run(slice(5, 10000), data=5)
         self._run(slice(5, 4), data=5)
