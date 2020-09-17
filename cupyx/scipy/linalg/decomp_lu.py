@@ -95,15 +95,15 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
 
     m, n = lu.shape
     k = min(m, n)
-    L, U = cupy_split_lu(lu)
+    L, U = _cupy_split_lu(lu)
 
     if permute_l:
-        cupy_laswp(L, 0, k-1, piv, -1)
+        _cupy_laswp(L, 0, k-1, piv, -1)
         return (L, U)
     else:
         r_dtype = numpy.float32 if lu.dtype.char in 'fF' else numpy.float64
         P = cupy.diag(cupy.ones((m,), dtype=r_dtype))
-        cupy_laswp(P, 0, k-1, piv, -1)
+        _cupy_laswp(P, 0, k-1, piv, -1)
         return (P, L, U)
 
 
@@ -126,7 +126,8 @@ def _lu_factor(a, overwrite_a=False, check_finite=True):
         getrf = cusolver.zgetrf
         getrf_bufferSize = cusolver.zgetrf_bufferSize
     else:
-        raise ValueError('unsupported dtype (actual:{})'.format(dtype))
+        msg = 'Only float32, float64, complex64 and complex128 are supported.'
+        raise NotImplementedError(msg)
 
     a = a.astype(dtype, order='F', copy=(not overwrite_a))
 
@@ -162,16 +163,15 @@ def _lu_factor(a, overwrite_a=False, check_finite=True):
     return (a, ipiv)
 
 
-def cupy_split_lu(LU, order='C'):
-    assert LU._c_contiguous or LU._f_contiguous
+def _cupy_split_lu(LU, order='C'):
+    assert LU._f_contiguous
     m, n = LU.shape
     k = min(m, n)
     order = 'F' if order == 'F' else 'C'
     L = cupy.empty((m, k), order=order, dtype=LU.dtype)
     U = cupy.empty((k, n), order=order, dtype=LU.dtype)
     size = m * n
-    _kernel_cupy_split_lu(LU, m, n, k, LU._c_contiguous, L._c_contiguous,
-                          L, U, size=size)
+    _kernel_cupy_split_lu(LU, m, n, k, L._c_contiguous, L, U, size=size)
     return (L, U)
 
 
@@ -188,8 +188,7 @@ __device__ inline int get_index(int row, int col, int num_rows, int num_cols,
 '''
 
 _kernel_cupy_split_lu = cupy.ElementwiseKernel(
-    'raw T LU, int32 M, int32 N, int32 K,'
-    'bool IN_C_CONTIGUOUS, bool OUT_C_CONTIGUOUS',
+    'raw T LU, int32 M, int32 N, int32 K, bool C_CONTIGUOUS',
     'raw T L, raw T U',
     '''
     // LU: shape: (M, N)
@@ -199,14 +198,14 @@ _kernel_cupy_split_lu = cupy.ElementwiseKernel(
     T* ptr_L = &(L[0]);
     T* ptr_U = &(U[0]);
     int row, col;
-    if (OUT_C_CONTIGUOUS) {
+    if (C_CONTIGUOUS) {
         row = i / N;
         col = i % N;
     } else {
         row = i % M;
         col = i / M;
     }
-    T lu_val = ptr_LU[get_index(row, col, M, N, IN_C_CONTIGUOUS)];
+    T lu_val = ptr_LU[get_index(row, col, M, N, false)];
     T l_val, u_val;
     if (row > col) {
         l_val = lu_val;
@@ -219,17 +218,17 @@ _kernel_cupy_split_lu = cupy.ElementwiseKernel(
         u_val = lu_val;
     }
     if (col < K) {
-        ptr_L[get_index(row, col, M, K, OUT_C_CONTIGUOUS)] = l_val;
+        ptr_L[get_index(row, col, M, K, C_CONTIGUOUS)] = l_val;
     }
     if (row < K) {
-        ptr_U[get_index(row, col, K, N, OUT_C_CONTIGUOUS)] = u_val;
+        ptr_U[get_index(row, col, K, N, C_CONTIGUOUS)] = u_val;
     }
     ''',
     'cupy_split_lu', preamble=_device_get_index
 )
 
 
-def cupy_laswp(A, k1, k2, ipiv, incx):
+def _cupy_laswp(A, k1, k2, ipiv, incx):
     m, n = A.shape
     k = ipiv.shape[0]
     assert 0 <= k1 and k1 <= k2 and k2 < k
@@ -324,7 +323,8 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
     elif dtype.char == 'D':
         getrs = cusolver.zgetrs
     else:
-        raise ValueError('unsupported dtype (actual:{})'.format(lu.dtype))
+        msg = 'Only float32, float64, complex64 and complex128 are supported.'
+        raise NotImplementedError(msg)
 
     if trans == 0:
         trans = cublas.CUBLAS_OP_N
