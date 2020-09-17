@@ -22,6 +22,24 @@ _int_scalar_types = (int, numpy.integer, numpy.int_)
 _bool_scalar_types = (bool, numpy.bool, numpy.bool_)
 
 
+_compress_getitem_kern = core.ElementwiseKernel(
+    'T d, S ind, int32 minor', 'raw T answer',
+    'if (ind == minor) atomicAdd(&answer[0], d);',
+    'compress_getitem')
+
+
+_compress_getitem_complex_kern = core.ElementwiseKernel(
+    'T real, T imag, S ind, int32 minor',
+    'raw T answer_real, raw T answer_imag',
+    '''
+    if (ind == minor) {
+    atomicAdd(&answer_real[0], real);
+    atomicAdd(&answer_imag[0], imag);
+    }
+    ''',
+    'compress_getitem_complex')
+
+
 def _get_csr_submatrix_major_axis(Ax, Aj, Ap, start, stop):
     """Return a submatrix of the input sparse matrix by slicing major axis.
 
