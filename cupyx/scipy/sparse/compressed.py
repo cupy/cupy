@@ -20,22 +20,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                                 sparse_data._minmax_mixin,
                                 _index.IndexMixin):
 
-    _compress_getitem_kern = core.ElementwiseKernel(
-        'T d, S ind, int32 minor', 'raw T answer',
-        'if (ind == minor) atomicAdd(&answer[0], d);',
-        'compress_getitem')
-
-    _compress_getitem_complex_kern = core.ElementwiseKernel(
-        'T real, T imag, S ind, int32 minor',
-        'raw T answer_real, raw T answer_imag',
-        '''
-        if (ind == minor) {
-          atomicAdd(&answer_real[0], real);
-          atomicAdd(&answer_imag[0], imag);
-        }
-        ''',
-        'compress_getitem_complex')
-
     _max_reduction_kern = core.RawKernel(r'''
         extern "C" __global__
         void max_reduction(double* data, int* x, int* y, int length,
@@ -485,11 +469,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_intXint(self, row, col):
         major, minor = self._swap(row, col)
-        data, indices, indptr = _index._get_csr_submatrix_major_axis(
+        data, indices, _ = _index._get_csr_submatrix_major_axis(
             self.data, self.indices, self.indptr, major, major + 1)
-        data, _, _ = _index._get_csr_submatrix_minor_axis(
-            data, indices, indptr, minor, minor + 1)
-        return data.sum(dtype=self.dtype)
+        dtype = data.dtype
+        res = cupy.zeros((), dtype=dtype)
+        if dtype.kind == 'c':
+            _index._compress_getitem_complex_kern(
+                data.real, data.imag, indices, minor, res.real, res.imag)
+        else:
+            _index._compress_getitem_kern(data, indices, minor, res)
+        return res
 
     def _get_sliceXslice(self, row, col):
         major, minor = self._swap(row, col)
