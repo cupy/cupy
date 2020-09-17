@@ -21,9 +21,8 @@ class TestLUFactor(unittest.TestCase):
         if self.shape[0] != self.shape[1]:
             # skip non-square tests since scipy.lu_factor requires square
             return unittest.SkipTest()
-        a = testing.shaped_random(self.shape, numpy, dtype=dtype)
-        a_cpu = numpy.asarray(a)
-        a_gpu = cupy.asarray(a)
+        a_cpu = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        a_gpu = cupy.asarray(a_cpu)
         result_cpu = scipy.linalg.lu_factor(a_cpu)
         result_gpu = cupyx.scipy.linalg.lu_factor(a_gpu)
         self.assertEqual(len(result_cpu), len(result_gpu))
@@ -35,7 +34,7 @@ class TestLUFactor(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_lu_factor_reconstruction(self, dtype):
         m, n = self.shape
-        A = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        A = testing.shaped_random(self.shape, cupy, dtype=dtype)
         lu, piv = cupyx.scipy.linalg.lu_factor(A)
         # extract ``L`` and ``U`` from ``lu``
         L = cupy.tril(lu, k=-1)
