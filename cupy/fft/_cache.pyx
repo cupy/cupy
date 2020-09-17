@@ -1,5 +1,7 @@
 # distutils: language = c++
 
+import gc
+
 from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
@@ -113,12 +115,35 @@ cdef class _LinkedList:
         self.head.next = self.tail
         self.tail.prev = self.head
 
+    cdef void clear(self):
+        """ Delete all the nodes to ensure they are cleaned up.
+
+        This serves for the purpose of destructor but must be invoked manually,
+        as __del__ has no effect for cdef classes (cupy/cupy#3999).
+        """
+        cdef _Node curr = self.head
+
+        while curr.next is not self.tail:
+            self.remove_node(curr.next)
+        assert self.count == 0
+
+        # remove head and tail too
+        self.head.next = None
+        self.tail.prev = None
+        self.head = None
+        self.tail = None
+
+        # make the memory released asap
+        gc.collect()
+
     cdef void remove_node(self, _Node node):
         """ Remove the node from the linked list. """
         cdef _Node p = node.prev
         cdef _Node n = node.next
         p.next = n
         n.prev = p
+        node.prev = None
+        node.next = None
         self.count -= 1
 
     cdef void append_node(self, _Node node):
@@ -344,6 +369,14 @@ cdef class PlanCache:
         self.cache = {}
         self.lru = _LinkedList()
 
+    cdef void _cleanup(self):
+        cdef dict cache = self.cache
+        cdef _LinkedList lru = self.lru
+
+        # remove circular reference and kick off garbage collection
+        cache.clear()
+        lru.clear()
+
     cdef void _validate_size_memsize(
             self, Py_ssize_t size, Py_ssize_t memsize) except*:
         if size < -1 or memsize < -1:
@@ -463,6 +496,7 @@ cdef class PlanCache:
         return plan
 
     cpdef clear(self):
+        self._cleanup()
         self._reset()
 
     cpdef show_info(self):
