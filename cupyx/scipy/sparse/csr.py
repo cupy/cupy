@@ -68,10 +68,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             (data, indices, indptr), shape=self._shape)
 
     def _convert_dense(self, x):
-        if x.dtype.char in 'fdFD':
-            m = cusparse.dense2csr(x)
-        else:
-            m = dense2csr(x)
+        m = dense2csr(x)
         return m.data, m.indices, m.indptr
 
     def _swap(self, x, y):
@@ -116,8 +113,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             elif op_name == '_ge_':
                 opposite_op_name = '_lt_'
             res = binopt_csr(self, other, opposite_op_name)
-            all_true = cupy.ones(res.shape, dtype=numpy.bool)
-            out = all_true ^ res.toarray()
+            out = cupy.logical_not(res.toarray())
             return csr_matrix(out)
         raise NotImplementedError
 
@@ -1104,6 +1100,8 @@ def cupy_csr2dense():
 
 
 def dense2csr(a):
+    if a.dtype.char in 'fdFD':
+        return cusparse.dense2csr(a)
     m, n = a.shape
     a = cupy.ascontiguousarray(a)
     indptr = cupy.zeros(m + 1, dtype=numpy.int32)
@@ -1126,9 +1124,10 @@ def cupy_dense2csr_step1():
         '''
         int row = i / N;
         int col = i % N;
-        if (A == static_cast<T>(0)) return;
-        atomicAdd( &(INDPTR[row + 1]), 1 );
-        INFO[i + 1] = 1;
+        if (A != static_cast<T>(0)) {
+            atomicAdd( &(INDPTR[row + 1]), 1 );
+            INFO[i + 1] = 1;
+        }
         ''',
         'cupy_dense2csr_step1')
 
@@ -1141,9 +1140,10 @@ def cupy_dense2csr_step2():
         '''
         int row = i / N;
         int col = i % N;
-        if (A == static_cast<T>(0)) return;
-        int idx = INFO[i];
-        INDICES[idx] = col;
-        DATA[idx] = A;
+        if (A != static_cast<T>(0)) {
+            int idx = INFO[i];
+            INDICES[idx] = col;
+            DATA[idx] = A;
+        }
         ''',
         'cupy_dense2csr_step2')
