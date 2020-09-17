@@ -1,6 +1,7 @@
 # distutils: language = c++
 
 import gc
+import weakref
 
 from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport device
@@ -101,11 +102,39 @@ cdef class _Node:
         return output
 
 
+cpdef void _clear_LinkedList(_LinkedList ll):
+    """ Delete all the nodes to ensure they are cleaned up.
+
+    This serves for the purpose of destructor and is invoked by weakref's
+    finalizer, as __del__ has no effect for cdef classes (cupy/cupy#3999).
+    """
+    cdef _Node curr = ll.head
+
+    while curr.next is not ll.tail:
+        ll.remove_node(curr.next)
+    assert ll.count == 0
+
+    # remove head and tail too
+    ll.head.next = None
+    ll.tail.prev = None
+    ll.head = None
+    ll.tail = None
+
+    # make the memory released asap
+    gc.collect()
+
+
 cdef class _LinkedList:
     # link
     cdef _Node head
     cdef _Node tail
+
+    # bookkeeping
     cdef readonly size_t count
+
+    # for clean-up
+    cdef object __weakref__
+    cdef object _finalizer
 
     def __init__(self):
         """ A doubly linked list to be used as an LRU cache. """
@@ -115,26 +144,8 @@ cdef class _LinkedList:
         self.head.next = self.tail
         self.tail.prev = self.head
 
-    cdef void clear(self):
-        """ Delete all the nodes to ensure they are cleaned up.
-
-        This serves for the purpose of destructor but must be invoked manually,
-        as __del__ has no effect for cdef classes (cupy/cupy#3999).
-        """
-        cdef _Node curr = self.head
-
-        while curr.next is not self.tail:
-            self.remove_node(curr.next)
-        assert self.count == 0
-
-        # remove head and tail too
-        self.head.next = None
-        self.tail.prev = None
-        self.head = None
-        self.tail = None
-
-        # make the memory released asap
-        gc.collect()
+        # the finalizer is called when clearing the cache or at exit
+        self._finalizer = weakref.finalize(self, _clear_LinkedList, self)
 
     cdef void remove_node(self, _Node node):
         """ Remove the node from the linked list. """
@@ -370,12 +381,10 @@ cdef class PlanCache:
         self.lru = _LinkedList()
 
     cdef void _cleanup(self):
-        cdef dict cache = self.cache
-        cdef _LinkedList lru = self.lru
-
-        # remove circular reference and kick off garbage collection
-        cache.clear()
-        lru.clear()
+        # remove circular reference and kick off garbage collection by
+        # invoking the finalizer
+        self.cache.clear()
+        self.lru._finalizer()
 
     cdef void _validate_size_memsize(
             self, Py_ssize_t size, Py_ssize_t memsize) except*:
