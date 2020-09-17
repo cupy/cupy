@@ -459,3 +459,124 @@ class TestGreyClosingAndOpening(unittest.TestCase):
     def test_grey_closing_and_opening(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.x_dtype)
         return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*(
+    testing.product({
+        'x_dtype': [numpy.int32],
+        'origin': [-1, 0, 1],
+        'filter': ['morphological_gradient', 'morphological_laplace'],
+        'mode': ['reflect', 'constant'],
+        'output': [None],
+        'size': [(3, 3), (4, 3)],
+        'footprint': [None, 'random'],
+        'structure': [None, 'random']}
+    ) + testing.product({
+        'x_dtype': [numpy.int32, numpy.float64],
+        'origin': [0],
+        'filter': ['morphological_gradient', 'morphological_laplace'],
+        'mode': ['reflect', 'constant', 'nearest', 'mirror', 'wrap'],
+        'output': [None, numpy.float32, 'zeros'],
+        'size': [3],
+        'footprint': [None, 'random'],
+        'structure': [None, 'random']}
+    ))
+)
+@testing.gpu
+@testing.with_requires('scipy')
+class MorphologicalGradientAndLaplace(unittest.TestCase):
+
+    def _filter(self, xp, scp, x):
+        filter = getattr(scp.ndimage, self.filter)
+        if xp.isscalar(self.size):
+            shape = (self.size,) * x.ndim
+        else:
+            shape = tuple(self.size)
+        if self.footprint is None:
+            footprint = None
+        else:
+            r = testing.shaped_random(shape, xp, scale=1)
+            footprint = xp.where(r < .5, 1, 0)
+            if not footprint.any():
+                footprint = xp.ones(shape)
+        if self.structure is None:
+            structure = None
+        else:
+            structure = testing.shaped_random(shape, xp, dtype=xp.int32)
+        if self.output == 'zeros':
+            output = xp.zeros_like(x)
+        else:
+            output = self.output
+        return filter(x, self.size, footprint, structure,
+                      output=output, mode=self.mode, cval=0.0,
+                      origin=self.origin)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_morphological_gradient_and_laplace(self, xp, scp):
+        x = xp.zeros((7, 7), dtype=self.x_dtype)
+        x[2:5, 2:5] = 1
+        x[4, 4] = 2
+        x[2, 3] = 3
+        if self.x_dtype == self.output:
+            raise unittest.SkipTest('redundant')
+        return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*(
+    testing.product({
+        'x_dtype': [numpy.int32],
+        'shape': [(5, 7)],
+        'origin': [-1, 0, 1],
+        'filter': ['white_tophat', 'black_tophat'],
+        'mode': ['reflect', 'constant'],
+        'output': [None],
+        'size': [(3, 3), (4, 3)],
+        'footprint': [None, 'random'],
+        'structure': [None, 'random']}
+    ) + testing.product({
+        'x_dtype': [numpy.int32, numpy.float64],
+        'shape': [(6, 8)],
+        'origin': [0],
+        'filter': ['white_tophat', 'black_tophat'],
+        'mode': ['reflect', 'constant', 'nearest', 'mirror', 'wrap'],
+        'output': [None, numpy.float32, 'zeros'],
+        'size': [3],
+        'footprint': [None, 'random'],
+        'structure': [None, 'random']}
+    ))
+)
+@testing.gpu
+@testing.with_requires('scipy')
+class WhiteTophatAndBlackTopHat(unittest.TestCase):
+
+    def _filter(self, xp, scp, x):
+        filter = getattr(scp.ndimage, self.filter)
+        if xp.isscalar(self.size):
+            shape = (self.size,) * x.ndim
+        else:
+            shape = tuple(self.size)
+        if self.footprint is None:
+            footprint = None
+        else:
+            r = testing.shaped_random(shape, xp, scale=1)
+            footprint = xp.where(r < .5, 1, 0)
+            if not footprint.any():
+                footprint = xp.ones(shape)
+        if self.structure is None:
+            structure = None
+        else:
+            structure = testing.shaped_random(shape, xp, dtype=xp.int32)
+        if self.output == 'zeros':
+            output = xp.zeros_like(x)
+        else:
+            output = self.output
+        return filter(x, self.size, footprint, structure,
+                      output=output, mode=self.mode, cval=0.0,
+                      origin=self.origin)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_white_tophat_and_black_tophat(self, xp, scp):
+        x = testing.shaped_random(self.shape, xp, self.x_dtype)
+        if self.x_dtype == self.output:
+            raise unittest.SkipTest('redundant')
+        return self._filter(xp, scp, x)

@@ -52,3 +52,7 @@ from cupyx.scipy.ndimage.morphology import grey_erosion  # NOQA
 from cupyx.scipy.ndimage.morphology import grey_dilation  # NOQA
 from cupyx.scipy.ndimage.morphology import grey_closing  # NOQA
 from cupyx.scipy.ndimage.morphology import grey_opening  # NOQA
+from cupyx.scipy.ndimage.morphology import morphological_gradient  # NOQA
+from cupyx.scipy.ndimage.morphology import morphological_laplace  # NOQA
+from cupyx.scipy.ndimage.morphology import white_tophat  # NOQA
+from cupyx.scipy.ndimage.morphology import black_tophat  # NOQA
