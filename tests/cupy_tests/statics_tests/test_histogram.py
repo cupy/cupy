@@ -348,6 +348,40 @@ class TestCubHistogram(unittest.TestCase):
         assert int(h.sum()) == 10
         return h, b
 
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
+                                        no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_histogram_with_bins(self, xp, dtype_a, dtype_b):
+        x = testing.shaped_arange((10,), xp, dtype_a)
+        bins = testing.shaped_arange((4,), xp, dtype_b)
+
+        if xp is numpy:
+            return xp.histogram(x, bins)[0]
+
+        # xp is cupy, first ensure we really use CUB
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
+        with testing.AssertFunctionIsCalled(cub_func):
+            xp.histogram(x, bins)
+        # ...then perform the actual computation
+        return xp.histogram(x, bins)[0]
+
+    @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
+                                        no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_histogram_with_bins2(self, xp, dtype_a, dtype_b):
+        x = testing.shaped_arange((10,), xp, dtype_a)
+        bins = testing.shaped_arange((4,), xp, dtype_b)
+
+        if xp is numpy:
+            return xp.histogram(x, bins)[1]
+
+        # xp is cupy, first ensure we really use CUB
+        cub_func = 'cupy._statistics.histogram.cub.device_histogram'
+        with testing.AssertFunctionIsCalled(cub_func):
+            xp.histogram(x, bins)
+        # ...then perform the actual computation
+        return xp.histogram(x, bins)[1]
+
 
 @testing.gpu
 @testing.parameterize(*testing.product(
