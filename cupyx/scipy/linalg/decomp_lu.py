@@ -175,6 +175,18 @@ def cupy_split_lu(LU, order='C'):
     return (L, U)
 
 
+_device_get_index = '''
+__device__ inline int get_index(int row, int col, int num_rows, int num_cols,
+                                bool c_contiguous)
+{
+    if (c_contiguous) {
+        return col + num_cols * row;
+    } else {
+        return row + num_rows * col;
+    }
+}
+'''
+
 _kernel_cupy_split_lu = cupy.ElementwiseKernel(
     'raw T LU, int32 M, int32 N, int32 K,'
     'bool IN_C_CONTIGUOUS, bool OUT_C_CONTIGUOUS',
@@ -194,13 +206,7 @@ _kernel_cupy_split_lu = cupy.ElementwiseKernel(
         row = i % M;
         col = i / M;
     }
-    int idx_lu;
-    if (IN_C_CONTIGUOUS) {
-        idx_lu = col + row * N;
-    } else {
-        idx_lu = row + col * M;
-    }
-    T lu_val = ptr_LU[idx_lu];
+    T lu_val = ptr_LU[get_index(row, col, M, N, IN_C_CONTIGUOUS)];
     T l_val, u_val;
     if (row > col) {
         l_val = lu_val;
@@ -212,18 +218,14 @@ _kernel_cupy_split_lu = cupy.ElementwiseKernel(
         l_val = static_cast<T>(0);
         u_val = lu_val;
     }
-    int idx_l, idx_u;
-    if (OUT_C_CONTIGUOUS) {
-        idx_l = col + row * K;
-        idx_u = col + row * N;
-    } else {
-        idx_l = row + col * M;
-        idx_u = row + col * K;
+    if (col < K) {
+        ptr_L[get_index(row, col, M, K, OUT_C_CONTIGUOUS)] = l_val;
     }
-    if (col < K) ptr_L[idx_l] = l_val;
-    if (row < K) ptr_U[idx_u] = u_val;
+    if (row < K) {
+        ptr_U[get_index(row, col, K, N, OUT_C_CONTIGUOUS)] = u_val;
+    }
     ''',
-    'cupy_split_lu'
+    'cupy_split_lu', preamble=_device_get_index
 )
 
 
@@ -257,15 +259,8 @@ _kernel_cupy_laswp = cupy.ElementwiseKernel(
     while (1) {
         int row2 = IPIV[row1];
         if (row1 != row2) {
-            int idx1, idx2;
-            if (C_CONTIGUOUS) {
-                idx1 = col + row1 * N;
-                idx2 = col + row2 * N;
-            }
-            else {
-                idx1 = row1 + col * M;
-                idx2 = row2 + col * M;
-            }
+            int idx1 = get_index(row1, col, M, N, C_CONTIGUOUS);
+            int idx2 = get_index(row2, col, M, N, C_CONTIGUOUS);
             T tmp       = ptr_A[idx1];
             ptr_A[idx1] = ptr_A[idx2];
             ptr_A[idx2] = tmp;
@@ -274,7 +269,7 @@ _kernel_cupy_laswp = cupy.ElementwiseKernel(
         row1 += row_inc;
     }
     ''',
-    'cupy_laswp'
+    'cupy_laswp', preamble=_device_get_index
 )
 
 
