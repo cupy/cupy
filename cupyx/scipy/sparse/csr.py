@@ -279,6 +279,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             raise TypeError(msg)
 
     # TODO(unno): Implement prune
+
     # TODO(unno): Implement reshape
 
     def sort_indices(self):
