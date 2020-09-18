@@ -71,8 +71,15 @@ dtype=cp.float32))
     elif dtype.char == 'd':
         getrf = cusolver.dgetrf
         getrf_bufferSize = cusolver.dgetrf_bufferSize
+    elif dtype.char == 'F':
+        getrf = cusolver.cgetrf
+        getrf_bufferSize = cusolver.cgetrf_bufferSize
+    elif dtype.char == 'D':
+        getrf = cusolver.zgetrf
+        getrf_bufferSize = cusolver.zgetrf_bufferSize
     else:
-        raise NotImplementedError('Only float32 and float64 are supported.')
+        msg = 'Only float32, float64, complex64 and complex128 are supported.'
+        raise NotImplementedError(msg)
 
     a = a.astype(dtype, order='F', copy=(not overwrite_a))
 
@@ -154,8 +161,13 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
         getrs = cusolver.sgetrs
     elif dtype.char == 'd':
         getrs = cusolver.dgetrs
+    elif dtype.char == 'F':
+        getrs = cusolver.cgetrs
+    elif dtype.char == 'D':
+        getrs = cusolver.zgetrs
     else:
-        raise NotImplementedError('Only float32 and float64 are supported.')
+        msg = 'Only float32, float64, complex64 and complex128 are supported.'
+        raise NotImplementedError(msg)
 
     if trans == 0:
         trans = cublas.CUBLAS_OP_N

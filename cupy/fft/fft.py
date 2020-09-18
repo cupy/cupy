@@ -7,6 +7,7 @@ import numpy as np
 import cupy
 from cupy.cuda import cufft
 from cupy.fft import config
+from cupy.fft._cache import get_plan_cache
 
 
 _reduce = functools.reduce
@@ -118,6 +119,11 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
 
     batch = a.size // n
 
+    # plan search precedence:
+    # 1. plan passed in as an argument
+    # 2. plan as context manager
+    # 3. cached plan
+    # 4. create a new one
     curr_plan = cufft.get_current_plan()
     if curr_plan is not None:
         if plan is None:
@@ -125,9 +131,18 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         else:
             raise RuntimeError('Use the cuFFT plan either as a context manager'
                                ' or as an argument.')
+
     if plan is None:
         devices = None if not config.use_multi_gpus else config._devices
-        plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+        # TODO(leofang): do we need to add the current stream to keys?
+        keys = (out_size, fft_type, batch, devices)
+        cache = get_plan_cache()
+        cached_plan = cache.get(keys)
+        if cached_plan is not None:
+            plan = cached_plan
+        else:
+            plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+            cache[keys] = plan
     else:
         # check plan validity
         if not isinstance(plan, cufft.Plan1d):
@@ -262,7 +277,8 @@ def _nd_plan_is_possible(axes_sorted, ndim):
                 for n in range(len(axes_sorted) - 1)]))
 
 
-def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
+def _get_cufft_plan_nd(
+        shape, fft_type, axes=None, order='C', out_size=None, to_cache=True):
     """Generate a CUDA FFT plan for transforming up to three axes.
 
     Args:
@@ -278,6 +294,8 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
             Fortran ordered data layout.
         out_size (int): The output length along the last axis for R2C/C2R FFTs.
             For C2C FFT, this is ignored (and set to `None`).
+        to_cache (bool): Whether to cache the generated plan. Default is
+            ``True``.
 
     Returns:
         plan (cufft.PlanNd): A cuFFT Plan for the chosen `fft_type`.
@@ -396,18 +414,17 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
             raise ValueError(
                 'Invalid number of FFT data points specified.')
 
-    plan = cufft.PlanNd(shape=plan_dimensions,
-                        inembed=inembed,
-                        istride=istride,
-                        idist=idist,
-                        onembed=onembed,
-                        ostride=ostride,
-                        odist=odist,
-                        fft_type=fft_type,
-                        batch=nbatch,
-                        order=order,
-                        last_axis=fft_axes[-1],
-                        last_size=out_size)
+    keys = (plan_dimensions, inembed, istride,
+            idist, onembed, ostride, odist,
+            fft_type, nbatch, order, fft_axes[-1], out_size)
+    cache = get_plan_cache()
+    cached_plan = cache.get(keys)
+    if cached_plan is not None:
+        plan = cached_plan
+    else:
+        plan = cufft.PlanNd(*keys)
+        if to_cache:
+            cache[keys] = plan
     return plan
 
 
@@ -446,12 +463,17 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
         # hipFFT's C2R PlanNd is actually not in use so it's fine here
         a = a.copy()
 
+    # plan search precedence:
+    # 1. plan passed in as an argument
+    # 2. plan as context manager
+    # 3. cached plan
+    # 4. create a new one
     curr_plan = cufft.get_current_plan()
     if curr_plan is not None:
         plan = curr_plan
         # don't check repeated usage; it's done in _default_fft_func()
     if plan is None:
-        # generate a plan
+        # search from cache, and generate a plan if not found
         plan = _get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order,
                                   out_size=out_size)
     else:

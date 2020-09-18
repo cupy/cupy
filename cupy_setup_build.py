@@ -83,6 +83,7 @@ cuda_files = [
     'cupy.cuda.function',
     'cupy.cuda.stream',
     'cupy.cuda.texture',
+    'cupy.fft._cache',
     'cupy.lib.polynomial',
     'cupy._util'
 ]
@@ -94,7 +95,10 @@ if use_hip:
     # them to link to the same set of shared libraries.
     MODULES.append({
         'name': 'cuda',
-        'file': cuda_files + ['cupy.cuda.nvtx'],
+        'file': cuda_files + [
+            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.cusolver',
+        ],
         'include': [
             'hip/hip_runtime_api.h',
             'hip/hiprtc.h',
@@ -102,6 +106,7 @@ if use_hip:
             'hiprand/hiprand.h',
             'hipfft.h',
             'roctx.h',
+            'rocsolver.h',
         ],
         'libraries': [
             'hiprtc',
@@ -110,6 +115,8 @@ if use_hip:
             'hiprand',
             'rocfft',
             'roctx64',
+            'rocblas',
+            'rocsolver',
         ],
     })
 else:
@@ -139,16 +146,7 @@ else:
         'version_method': build.get_cuda_version,
     })
 
-if use_hip:
-    MODULES.append({
-        'name': 'cusolver',
-        'file': [
-            'cupy_backends.cuda.libs.cusolver',
-        ],
-        'include': [],
-        'libraries': [],
-    })
-else:
+if not use_hip:
     MODULES.append({
         'name': 'cusolver',
         'file': [
