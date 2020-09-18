@@ -83,7 +83,6 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
             diagonal with dimension ``(M, K)``. ``K = min(M, N)``.
         u (cupy.ndarray): Upper triangular or trapezoidal matrix with dimension
             ``(K, N)``. ``K = min(M, N)``.
-
         **(If permute_l == True)**
         pl (cupy.ndarray): Permuted ``L`` matrix. ``K = min(M, N)``.
         u (cupy.ndarray): Upper triangular or trapezoidal matrix with dimension
