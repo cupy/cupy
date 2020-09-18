@@ -77,16 +77,15 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
         a (cupy.ndarray): Array to decompose
 
     Returns:
-        **(If permute_l == False)**
-        p (cupy.ndarray): Permutation matrix with dimension ``(M, M)``
-        l (cupy.ndarray): Lower triangular or trapezoidal matrix with unit
-            diagonal with dimension ``(M, K)``. ``K = min(M, N)``.
-        u (cupy.ndarray): Upper triangular or trapezoidal matrix with dimension
-            ``(K, N)``. ``K = min(M, N)``.
-        **(If permute_l == True)**
-        pl (cupy.ndarray): Permuted ``L`` matrix. ``K = min(M, N)``.
-        u (cupy.ndarray): Upper triangular or trapezoidal matrix with dimension
-            ``(K, N)``. ``K = min(M, N)``.
+        tuple:
+            ``(p, l, u)`` if ``permute_l == False``, otherwise ``(pl, u)``.
+            ``p`` is a :class:`cupy.ndarray` storing permutation matrix with
+            dimension ``(M, M)``. ``l`` is a :class:`cupy.ndarray` storing
+            lower triangular or trapezoidal matrix with unit diagonal with
+            dimension ``(M, K)`` where ``K = min(M, N)``. ``u`` is a
+            :class:`cupy.ndarray` storing upper triangular or trapezoidal
+            matrix with dimension ``(K, N)``. ``pl`` is a :class:`cupy.ndarray`
+            storing permuted ``l`` matrix with dimension ``(M, K)``.
 
     .. seealso:: :func:`scipy.linalg.lu`
     """
