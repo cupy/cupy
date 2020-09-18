@@ -21,9 +21,8 @@ class TestLUFactor(unittest.TestCase):
         if self.shape[0] != self.shape[1]:
             # skip non-square tests since scipy.lu_factor requires square
             return unittest.SkipTest()
-        a = testing.shaped_random(self.shape, numpy, dtype=dtype)
-        a_cpu = numpy.asarray(a)
-        a_gpu = cupy.asarray(a)
+        a_cpu = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        a_gpu = cupy.asarray(a_cpu)
         result_cpu = scipy.linalg.lu_factor(a_cpu)
         result_gpu = cupyx.scipy.linalg.lu_factor(a_gpu)
         self.assertEqual(len(result_cpu), len(result_gpu))
