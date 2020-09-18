@@ -2,7 +2,6 @@ from numpy.lib import index_tricks
 
 import cupy
 from cupy import _util
-from cupy.core import _routines_manipulation
 
 
 def apply_along_axis(func1d, axis, arr, *args, **kwargs):
