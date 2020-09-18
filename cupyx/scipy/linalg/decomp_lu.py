@@ -65,27 +65,30 @@ dtype=cp.float32))
 def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
     """LU decomposition.
 
+    Decomposes a given two-dimensional matrix into ``P @ L @ U``, where ``P``
+    is a permutation matrix, ``L`` is a lower triangular or trapezoidal matrix
+    with unit diagonal, and ``U`` is a upper triangular or trapezoidal matrix.
+
     Args:
-        a (cupy.ndarray): The input matrix with dimension ``(M, N)``
-        permute_l (bool): If ``True``, perform the multiplication ``P * L``.
+        a (cupy.ndarray): The input matrix with dimension ``(M, N)``.
+        permute_l (bool): If ``True``, perform the multiplication ``P @ L``.
         overwrite_a (bool): Allow overwriting data in ``a`` (may enhance
             performance)
         check_finite (bool): Whether to check that the input matrices contain
             only finite numbers. Disabling may give a performance gain, but may
             result in problems (crashes, non-termination) if the inputs do
             contain infinities or NaNs.
-        a (cupy.ndarray): Array to decompose
 
     Returns:
         tuple:
-            ``(p, l, u)`` if ``permute_l == False``, otherwise ``(pl, u)``.
-            ``p`` is a :class:`cupy.ndarray` storing permutation matrix with
-            dimension ``(M, M)``. ``l`` is a :class:`cupy.ndarray` storing
+            ``(P, L, U)`` if ``permute_l == False``, otherwise ``(PL, U)``.
+            ``P`` is a :class:`cupy.ndarray` storing permutation matrix with
+            dimension ``(M, M)``. ``L`` is a :class:`cupy.ndarray` storing
             lower triangular or trapezoidal matrix with unit diagonal with
-            dimension ``(M, K)`` where ``K = min(M, N)``. ``u`` is a
+            dimension ``(M, K)`` where ``K = min(M, N)``. ``U`` is a
             :class:`cupy.ndarray` storing upper triangular or trapezoidal
-            matrix with dimension ``(K, N)``. ``pl`` is a :class:`cupy.ndarray`
-            storing permuted ``l`` matrix with dimension ``(M, K)``.
+            matrix with dimension ``(K, N)``. ``PL`` is a :class:`cupy.ndarray`
+            storing permuted ``L`` matrix with dimension ``(M, K)``.
 
     .. seealso:: :func:`scipy.linalg.lu`
     """
