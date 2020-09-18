@@ -2,6 +2,7 @@ from numpy.lib import index_tricks
 
 import cupy
 from cupy import _util
+from cupy.core import _routines_manipulation
 
 
 def apply_along_axis(func1d, axis, arr, *args, **kwargs):
@@ -13,7 +14,7 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
             axis. It must return a 1-D ``cupy.ndarray``.
         axis (integer): Axis along which ``arr`` is sliced.
         arr (cupy.ndarray (Ni..., M, Nk...)): Input array.
-        args: Additional arguments for `f`unc1d``.
+        args: Additional arguments for ``func1d``.
         kwargs: Additional keyword arguments for ``func1d``.
 
     Returns:
@@ -27,12 +28,7 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
     """
     ndim = arr.ndim
     axis = _util._normalize_axis_index(axis, ndim)
-
-    # arr, with the iteration axis at the end
-    in_dims = list(range(ndim))
-    inarr_view = cupy.transpose(
-        arr, in_dims[:axis] + in_dims[axis + 1:] + [axis]
-    )
+    inarr_view = cupy.moveaxis(arr, axis, -1)
 
     # compute indices for the iteration axes, and append a trailing ellipsis to
     # prevent 0d arrays decaying to scalars
