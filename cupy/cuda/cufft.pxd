@@ -37,13 +37,12 @@ cpdef get_current_plan()
 cdef class Plan1d:
     cdef:
         intptr_t handle
-        object work_area  # can be MemoryPointer or a list of it
+        readonly object work_area  # can be MemoryPointer or a list of it
         readonly int nx
         readonly int batch
         readonly Type fft_type
 
-        list gpus
-        readonly bint _use_multi_gpus
+        readonly list gpus
         list batch_share
         list gather_streams
         list gather_events
@@ -62,9 +61,12 @@ cdef class Plan1d:
 cdef class PlanNd:
     cdef:
         intptr_t handle
-        memory.MemoryPointer work_area
+        readonly memory.MemoryPointer work_area
         readonly tuple shape
         readonly Type fft_type
         readonly str order
         readonly int last_axis
         readonly object last_size
+
+        # TODO(leofang): support multi-GPU transforms
+        readonly list gpus

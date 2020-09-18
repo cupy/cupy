@@ -154,7 +154,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
                              out_size, plan.nx)
         if batch != plan.batch:
             raise ValueError('Batch size does not match the plan.')
-        if config.use_multi_gpus != plan._use_multi_gpus:
+        if config.use_multi_gpus != (plan.gpus is not None):
             raise ValueError('Unclear if multiple GPUs are to be used or not.')
 
     if overwrite_x and value_type == 'C2C':

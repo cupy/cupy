@@ -292,8 +292,6 @@ cdef class Plan1d:
         self.nx = nx
         self.fft_type = <Type>fft_type
         self.batch = batch
-
-        self._use_multi_gpus = use_multi_gpus
         self.batch_share = None
 
     cdef void _single_gpu_get_plan(self, Handle plan, int nx, int fft_type,
@@ -426,7 +424,7 @@ cdef class Plan1d:
         self.scatter_streams[curr_device] = scatter_streams
         self.scatter_events[curr_device] = scatter_events
 
-    def __del__(self):
+    def __dealloc__(self):
         cdef Handle plan = <Handle>self.handle
         cdef int dev = runtime.getDevice()
         cdef int result
@@ -455,7 +453,7 @@ cdef class Plan1d:
         _thread_local._current_plan = None
 
     def fft(self, a, out, direction):
-        if self._use_multi_gpus:
+        if self.gpus is not None:
             self._multi_gpu_fft(a, out, direction)
         else:
             self._single_gpu_fft(a, out, direction)
@@ -774,7 +772,7 @@ cdef class PlanNd:
         self.last_axis = last_axis  # ignored for C2C
         self.last_size = last_size  # = None (and ignored) for C2C
 
-    def __del__(self):
+    def __dealloc__(self):
         cdef Handle plan = <Handle>self.handle
         cdef int result
 
