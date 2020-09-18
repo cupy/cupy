@@ -3012,11 +3012,13 @@ cpdef ndarray tensordot_core(
     cdef int ace
     if m == 1 and n == 1:
         for ace in _accelerator._routine_accelerators:
+            ret = _ndarray_init(ret_shape, dtype)
             # fast path using CUB or cuTENSOR
             if ace in (_accelerator.ACCELERATOR_CUB,
                        _accelerator.ACCELERATOR_CUTENSOR):
-                out = (a.ravel() * b.ravel()).sum(
-                    out=_manipulation._reshape(out, ()))
+                ret = (a.ravel() * b.ravel()).sum(
+                    out=_manipulation._reshape(ret, ()))
+                elementwise_copy(ret, out)
                 break
         else:
             _tensordot_core_mul_sum(
