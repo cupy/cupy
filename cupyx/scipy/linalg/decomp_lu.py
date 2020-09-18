@@ -15,9 +15,6 @@ def lu_factor(a, overwrite_a=False, check_finite=True):
     Decompose a given two-dimensional square matrix into ``P * L * U``,
     where ``P`` is a permutation matrix,  ``L`` lower-triangular with
     unit diagonal elements, and ``U`` upper-triangular matrix.
-    Note that in the current implementation ``a`` must be
-    a real matrix, and only :class:`numpy.float32` and :class:`numpy.float64`
-    are supported.
 
     Args:
         a (cupy.ndarray): The input matrix with dimension ``(M, N)``
