@@ -20,6 +20,7 @@ Decompositions
    :toctree: generated/
    :nosignatures:
 
+    cupyx.scipy.linalg.lu
     cupyx.scipy.linalg.lu_factor
     cupyx.scipy.linalg.lu_solve
 
