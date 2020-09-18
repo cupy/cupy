@@ -1,16 +1,22 @@
 import numpy
+
 try:
     import scipy.sparse
     scipy_available = True
 except ImportError:
     scipy_available = False
 
+import warnings
+
 import cupy
+import cupyx
+
 from cupy import core
 from cupy._creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import data as sparse_data
+from cupyx.scipy.sparse import sputils
 from cupyx.scipy.sparse import _util
 
 from cupyx.scipy.sparse import _index
@@ -19,22 +25,6 @@ from cupyx.scipy.sparse import _index
 class _compressed_sparse_matrix(sparse_data._data_matrix,
                                 sparse_data._minmax_mixin,
                                 _index.IndexMixin):
-
-    _compress_getitem_kern = core.ElementwiseKernel(
-        'T d, S ind, int32 minor', 'raw T answer',
-        'if (ind == minor) atomicAdd(&answer[0], d);',
-        'compress_getitem')
-
-    _compress_getitem_complex_kern = core.ElementwiseKernel(
-        'T real, T imag, S ind, int32 minor',
-        'raw T answer_real, raw T answer_imag',
-        '''
-        if (ind == minor) {
-          atomicAdd(&answer_real[0], real);
-          atomicAdd(&answer_imag[0], imag);
-        }
-        ''',
-        'compress_getitem_complex')
 
     _max_reduction_kern = core.RawKernel(r'''
         extern "C" __global__
@@ -399,9 +389,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         else:
             dtype = numpy.dtype(dtype)
 
-        if dtype != 'f' and dtype != 'd' and dtype != 'F' and dtype != 'D':
+        if dtype.char not in '?fdFD':
             raise ValueError(
-                'Only float32, float64, complex64 and complex128 '
+                'Only bool, float32, float64, complex64 and complex128 '
                 'are supported')
 
         data = data.astype(dtype, copy=copy)
@@ -485,18 +475,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     def _get_intXint(self, row, col):
         major, minor = self._swap(row, col)
-        data, indices, indptr = _index._get_csr_submatrix_major_axis(
+        data, indices, _ = _index._get_csr_submatrix_major_axis(
             self.data, self.indices, self.indptr, major, major + 1)
-        data, _, _ = _index._get_csr_submatrix_minor_axis(
-            data, indices, indptr, minor, minor + 1)
-        return data.sum(dtype=self.dtype)
+        dtype = data.dtype
+        res = cupy.zeros((), dtype=dtype)
+        if dtype.kind == 'c':
+            _index._compress_getitem_complex_kern(
+                data.real, data.imag, indices, minor, res.real, res.imag)
+        else:
+            _index._compress_getitem_kern(data, indices, minor, res)
+        return res
 
     def _get_sliceXslice(self, row, col):
         major, minor = self._swap(row, col)
         copy = major.step in (1, None)
         return self._major_slice(major)._minor_slice(minor, copy=copy)
 
-    def _get_arrayXarray(self, row, col):
+    def _get_arrayXarray(self, row, col, not_found_val=0):
         # inner indexing
         idx_dtype = self.indices.dtype
         M, N = self._swap(*self.shape)
@@ -506,7 +501,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         val = _index._csr_sample_values(
             M, N, self.indptr, self.indices, self.data,
-            major.ravel(), minor.ravel())
+            major.ravel(), minor.ravel(),
+            not_found_val)
 
         if major.ndim == 1:
             # Scipy returns `matrix` here
@@ -589,6 +585,181 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 shape=new_shape, copy=False)
         cols = cupy.arange(start, stop, step, dtype=self.indices.dtype)
         return self._minor_index_fancy(cols)
+
+    def _set_intXint(self, row, col, x):
+        i, j = self._swap(row, col)
+        self._set_many(i, j, x)
+
+    def _set_arrayXarray(self, row, col, x):
+        i, j = self._swap(row, col)
+        self._set_many(i, j, x)
+
+    def _set_arrayXarray_sparse(self, row, col, x):
+        # clear entries that will be overwritten
+        self._zero_many(*self._swap(row, col))
+
+        M, N = row.shape  # matches col.shape
+        broadcast_row = M != 1 and x.shape[0] == 1
+        broadcast_col = N != 1 and x.shape[1] == 1
+        r, c = x.row, x.col
+        x = cupy.asarray(x.data, dtype=self.dtype)
+        if broadcast_row:
+            r = cupy.repeat(cupy.arange(M), r.size)
+            c = cupy.tile(c, M)
+            x = cupy.tile(x, M)
+        if broadcast_col:
+            r = cupy.repeat(r, N)
+            c = cupy.tile(cupy.arange(N), c.size)
+            x = cupy.repeat(x, N)
+        # only assign entries in the new sparsity structure
+        i, j = self._swap(row[r, c], col[r, c])
+        self._set_many(i, j, x)
+
+    def _prepare_indices(self, i, j):
+        M, N = self._swap(*self.shape)
+
+        def check_bounds(indices, bound):
+            idx = indices.max()
+            if idx >= bound:
+                raise IndexError('index (%d) out of range (>= %d)' %
+                                 (idx, bound))
+            idx = indices.min()
+            if idx < -bound:
+                raise IndexError('index (%d) out of range (< -%d)' %
+                                 (idx, bound))
+
+        i = cupy.array(i, dtype=self.indptr.dtype,
+                       copy=True, ndmin=1).ravel()
+        j = cupy.array(j, dtype=self.indices.dtype,
+                       copy=True, ndmin=1).ravel()
+        check_bounds(i, M)
+        check_bounds(j, N)
+        return i, j, M, N
+
+    def _set_many(self, i, j, x):
+        """Sets value at each (i, j) to x
+        Here (i,j) index major and minor respectively, and must not contain
+        duplicate entries.
+        """
+        i, j, M, N = self._prepare_indices(i, j)
+        x = cupy.array(x, dtype=self.dtype, copy=True, ndmin=1).ravel()
+
+        new_sp = cupyx.scipy.sparse.csr_matrix(
+            (cupy.arange(self.nnz, dtype=cupy.float32),
+             self.indices, self.indptr), shape=(M, N))
+
+        offsets = new_sp._get_arrayXarray(
+            i, j, not_found_val=-1).astype(cupy.int32).ravel()
+
+        if -1 not in offsets:
+            # only affects existing non-zero cells
+            self.data[offsets] = x
+            return
+
+        else:
+            warnings.warn('Changing the sparsity structure of a '
+                          '{}_matrix is expensive.'
+                          ' lil_matrix is more efficient.'.format(self.format))
+            # replace where possible
+            mask = offsets > -1
+            self.data[offsets[mask]] = x[mask]
+            # only insertions remain
+            mask = ~mask
+            i = i[mask]
+            i[i < 0] += M
+            j = j[mask]
+            j[j < 0] += N
+            self._insert_many(i, j, x[mask])
+
+    def _zero_many(self, i, j):
+        """Sets value at each (i, j) to zero, preserving sparsity structure.
+        Here (i,j) index major and minor respectively.
+        """
+        i, j, M, N = self._prepare_indices(i, j)
+
+        new_sp = cupyx.scipy.sparse.csr_matrix(
+            (cupy.arange(self.nnz, dtype=cupy.float32),
+             self.indices, self.indptr), shape=(M, N))
+
+        offsets = new_sp._get_arrayXarray(
+            i, j, not_found_val=-1).astype(cupy.int32).ravel()
+
+        # only assign zeros to the existing sparsity structure
+        self.data[offsets[offsets > -1]] = 0
+
+    def _perform_insert(self, indices_inserts, data_inserts,
+                        rows, row_counts, idx_dtype):
+        """Insert new elements into current sparse matrix in sorted order"""
+        indptr_diff = cupy.diff(self.indptr)
+        indptr_diff[rows] += row_counts
+
+        new_indptr = cupy.empty(self.indptr.shape, dtype=idx_dtype)
+        new_indptr[0] = idx_dtype(0)
+        new_indptr[1:] = indptr_diff
+
+        # Build output arrays
+        cupy.cumsum(new_indptr, out=new_indptr)
+        out_nnz = int(new_indptr[-1])
+
+        new_indices = cupy.empty(out_nnz, dtype=idx_dtype)
+        new_data = cupy.empty(out_nnz, dtype=self.data.dtype)
+
+        # Build an indexed indptr that contains the offsets for each
+        # row but only for in i, j, and x.
+        new_indptr_lookup = cupy.zeros(new_indptr.size, dtype=idx_dtype)
+        new_indptr_lookup[1:][rows] = row_counts
+        cupy.cumsum(new_indptr_lookup, out=new_indptr_lookup)
+
+        _index._insert_many_populate_arrays(
+            indices_inserts, data_inserts, new_indptr_lookup,
+            self.indptr, self.indices, self.data, new_indptr, new_indices,
+            new_data, size=self.indptr.size-1)
+
+        self.indptr = new_indptr
+        self.indices = new_indices
+        self.data = new_data
+
+    def _insert_many(self, i, j, x):
+        """Inserts new nonzero at each (i, j) with value x
+        Here (i,j) index major and minor respectively.
+        i, j and x must be non-empty, 1d arrays.
+        Inserts each major group (e.g. all entries per row) at a time.
+        Maintains has_sorted_indices property.
+        Modifies i, j, x in place.
+        """
+
+        order = cupy.argsort(i)  # stable for duplicates
+        i = i.take(order)
+        j = j.take(order)
+        x = x.take(order)
+
+        # Update index data type
+
+        idx_dtype = sputils.get_index_dtype(
+            (self.indices, self.indptr), maxval=(
+                self.nnz + x.size))
+
+        self.indptr = self.indptr.astype(idx_dtype)
+        self.indices = self.indices.astype(idx_dtype)
+        self.data = self.data.astype(self.dtype)
+
+        indptr_inserts, indices_inserts, data_inserts = \
+            _index._select_last_indices(i, j, x, idx_dtype)
+
+        rows, ui_indptr = cupy.unique(indptr_inserts, return_index=True)
+
+        to_add = cupy.empty(ui_indptr.size+1, ui_indptr.dtype)
+        to_add[-1] = j.size
+        to_add[:-1] = ui_indptr
+        ui_indptr = to_add
+
+        # Compute the counts for each row in the insertion array
+        row_counts = cupy.zeros(ui_indptr.size-1, dtype=idx_dtype)
+        cupyx.scatter_add(
+            row_counts, cupy.searchsorted(rows, indptr_inserts), 1)
+
+        self._perform_insert(indices_inserts, data_inserts,
+                             rows, row_counts, idx_dtype)
 
     def __get_has_canonical_format(self):
         """Determine whether the matrix has sorted indices and no duplicates.
@@ -691,7 +862,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         .. warning::
             Calling this function might synchronize the device.
-
         """
         # Taken from SciPy as is.
         A = self.copy()
@@ -715,7 +885,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         .. seealso::
            :meth:`scipy.sparse.csr_matrix.sum_duplicates`,
            :meth:`scipy.sparse.csc_matrix.sum_duplicates`
-
         """
         if self.has_canonical_format:
             return
