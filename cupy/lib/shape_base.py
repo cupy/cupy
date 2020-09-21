@@ -48,7 +48,7 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
     # remove the requested axis, and add the new ones on the end.
     # laid out so that each write is contiguous.
     # for a tuple index inds, buff[inds] = func1d(inarr_view[inds])
-    buff = cupy.zeros(inarr_view.shape[:-1] + res.shape, res.dtype)
+    buff = cupy.empty(inarr_view.shape[:-1] + res.shape, res.dtype)
 
     # permutation of axes such that out = buff.transpose(buff_permute)
     buff_dims = list(range(buff.ndim))
