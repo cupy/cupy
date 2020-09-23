@@ -114,7 +114,7 @@ class TestMatrixNorm(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'ord': [None, -numpy.Inf, -2, -1, 1, 2, numpy.Inf, 'fro'],
+    'ord': [None, -numpy.Inf, -2, -1, 0, 1, 2, numpy.Inf, 'fro'],
     'dtype': [
         numpy.float32,
         numpy.float64,
@@ -141,13 +141,5 @@ class TestVectorNorm(unittest.TestCase):
         if self.transpose:
             b = b.T
         return sp.linalg.norm(b, ord=self.ord, axis=self.axis)
-
-    # requires spmatrix.__ne__
-    def test_ord_zero(self):
-        a = cupy.arange(9, dtype=self.dtype) - 4
-        b = a.reshape((3, 3))
-        b = sparse.csr_matrix(b, dtype=self.dtype)
-        with self.assertRaises(NotImplementedError):
-            sparse.linalg.norm(b, ord=0, axis=self.axis)
 
 # TODO : TestVsNumpyNorm
