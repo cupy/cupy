@@ -11,7 +11,7 @@ def _sparse_frobenius_norm(x):
         sqnorm = abs(x).power(2).sum()
     else:
         sqnorm = x.power(2).sum()
-    return cupy.sqrt(sqnorm).item()
+    return cupy.sqrt(sqnorm)
 
 
 def norm(x, ord=None, axis=None):
@@ -73,13 +73,13 @@ def norm(x, ord=None, axis=None):
             raise NotImplementedError
             # return _multi_svd_norm(x, row_axis, col_axis, amin)
         elif ord == 1:
-            return abs(x).sum(axis=row_axis).max(axis=col_axis).item()
+            return abs(x).sum(axis=row_axis).max()
         elif ord == numpy.Inf:
-            return abs(x).sum(axis=col_axis).max(axis=row_axis).item()
+            return abs(x).sum(axis=col_axis).max()
         elif ord == -1:
-            return abs(x).sum(axis=row_axis).min(axis=col_axis).item()
+            return abs(x).sum(axis=row_axis).min()
         elif ord == -numpy.Inf:
-            return abs(x).sum(axis=col_axis).min(axis=row_axis).item()
+            return abs(x).sum(axis=col_axis).min()
         elif ord in (None, 'f', 'fro'):
             # The axis order does not matter for this norm.
             return _sparse_frobenius_norm(x)
@@ -91,23 +91,23 @@ def norm(x, ord=None, axis=None):
             raise ValueError('Invalid axis %r for an array with shape %r' %
                              (axis, x.shape))
         if ord == numpy.Inf:
-            M = abs(x).max(axis=a)
+            return abs(x).max(axis=a).A.ravel()
         elif ord == -numpy.Inf:
-            M = abs(x).min(axis=a)
+            return abs(x).min(axis=a).A.ravel()
         elif ord == 0:
             # Zero norm
-            M = (x != 0).sum(axis=a)
+            return (x != 0).astype(numpy.float32).sum(axis=a).ravel().astype(
+                numpy.int_)
         elif ord == 1:
             # special case for speedup
-            M = abs(x).sum(axis=a)
+            return abs(x).sum(axis=a).ravel()
         elif ord in (2, None):
-            M = cupy.sqrt(abs(x).power(2).sum(axis=a))
+            return cupy.sqrt(abs(x).power(2).sum(axis=a)).ravel()
         else:
             try:
                 ord + 1
             except TypeError:
                 raise ValueError('Invalid norm order for vectors.')
-            M = cupy.power(abs(x).power(ord).sum(axis=a), 1 / ord)
-        return M.ravel()
+            return cupy.power(abs(x).power(ord).sum(axis=a), 1 / ord).ravel()
     else:
         raise ValueError("Improper number of dimensions to norm.")
