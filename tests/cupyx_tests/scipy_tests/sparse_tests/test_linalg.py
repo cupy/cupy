@@ -80,7 +80,7 @@ class TestMatrixNorm(unittest.TestCase):
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
-        return xp.array(sp.linalg.norm(b, ord=self.ord))
+        return sp.linalg.norm(b, ord=self.ord)
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
                                  type_check=False,
@@ -90,7 +90,7 @@ class TestMatrixNorm(unittest.TestCase):
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
-        return xp.array(sp.linalg.norm(b, ord=self.ord, axis=None))
+        return sp.linalg.norm(b, ord=self.ord, axis=None)
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
                                  type_check=False,
@@ -100,7 +100,7 @@ class TestMatrixNorm(unittest.TestCase):
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
-        return xp.array(sp.linalg.norm(b, ord=self.ord, axis=(0, 1)))
+        return sp.linalg.norm(b, ord=self.ord, axis=(0, 1))
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
                                  type_check=False,
@@ -110,7 +110,7 @@ class TestMatrixNorm(unittest.TestCase):
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
-        return xp.array(sp.linalg.norm(b.T, ord=self.ord, axis=(1, 0)))
+        return sp.linalg.norm(b.T, ord=self.ord, axis=(1, 0))
 
 
 @testing.parameterize(*testing.product({
