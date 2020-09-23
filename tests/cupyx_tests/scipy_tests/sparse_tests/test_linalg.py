@@ -67,6 +67,7 @@ class TestLsqr(unittest.TestCase):
         numpy.complex64,
         numpy.complex128
     ],
+    'axis': [None, (0, 1), (1, -2)],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 @testing.gpu
@@ -80,37 +81,7 @@ class TestMatrixNorm(unittest.TestCase):
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
-        return sp.linalg.norm(b, ord=self.ord)
-
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
-                                 type_check=False,
-                                 accept_error=(ValueError,
-                                               NotImplementedError))
-    def test_matrix_norm_axis_1(self, xp, sp):
-        a = xp.arange(9, dtype=self.dtype) - 4
-        b = a.reshape((3, 3))
-        b = sp.csr_matrix(b, dtype=self.dtype)
-        return sp.linalg.norm(b, ord=self.ord, axis=None)
-
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
-                                 type_check=False,
-                                 accept_error=(ValueError,
-                                               NotImplementedError))
-    def test_matrix_norm_axis_2(self, xp, sp):
-        a = xp.arange(9, dtype=self.dtype) - 4
-        b = a.reshape((3, 3))
-        b = sp.csr_matrix(b, dtype=self.dtype)
-        return sp.linalg.norm(b, ord=self.ord, axis=(0, 1))
-
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
-                                 type_check=False,
-                                 accept_error=(ValueError,
-                                               NotImplementedError))
-    def test_matrix_norm_axis_3(self, xp, sp):
-        a = xp.arange(9, dtype=self.dtype) - 4
-        b = a.reshape((3, 3))
-        b = sp.csr_matrix(b, dtype=self.dtype)
-        return sp.linalg.norm(b.T, ord=self.ord, axis=(1, 0))
+        return sp.linalg.norm(b, ord=self.ord, axis=self.axis)
 
 
 @testing.parameterize(*testing.product({
@@ -122,9 +93,7 @@ class TestMatrixNorm(unittest.TestCase):
         numpy.complex128
     ],
     'transpose': [True, False],
-    'axis': [0, (0, ), 1, (1, )],
-    # _min_or_max() doesn't support axes for -1, (-1, ), -2, (-2, )
-    # TODO: Fix it after #3474 is resolved.
+    'axis': [0, (1,), (-2,), -1],
 })
 )
 @unittest.skipUnless(scipy_available, 'requires scipy')
