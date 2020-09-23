@@ -8,7 +8,7 @@ import cupy
 from cupy import core
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import data
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 
 
 class dia_matrix(data._data_matrix):
@@ -72,7 +72,7 @@ class dia_matrix(data._data_matrix):
 
         self.data = data
         self.offsets = offsets
-        if not util.isshape(shape):
+        if not _util.isshape(shape):
             raise ValueError('invalid shape (must be a 2-tuple of int)')
         self._shape = int(shape[0]), int(shape[1])
 
@@ -199,7 +199,7 @@ class dia_matrix(data._data_matrix):
         """
         rows, cols = self.shape
         if k <= -rows or k >= cols:
-            raise ValueError("k exceeds matrix dimensions")
+            return cupy.empty(0, dtype=self.data.dtype)
         idx, = cupy.nonzero(self.offsets == k)
         first_col, last_col = max(0, k), min(rows + k, cols)
         if idx.size == 0:

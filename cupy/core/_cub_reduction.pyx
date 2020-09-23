@@ -9,13 +9,14 @@ from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
-from cupy.cuda cimport runtime
+from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
 from cupy import _environment
 from cupy.core._kernel import _get_param_info
-from cupy import util
+from cupy.cuda import driver
+from cupy import _util
 
 
 cdef function.Function _create_cub_reduction_function(
@@ -23,6 +24,9 @@ cdef function.Function _create_cub_reduction_function(
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, preamble, options):
+    # A (incomplete) list of internal variables:
+    # _J            : the index of an element in the array
+
     # static_assert needs at least C++11 in NVRTC
     options += ('--std=c++11',)
 
@@ -193,7 +197,7 @@ __global__ void ${name}(${params}) {
     return module.get_function(name)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _SimpleCubReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
@@ -210,6 +214,7 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
+cdef str _nvcc_path = _environment.get_nvcc_path()
 cdef str _cub_header = None
 
 
@@ -229,39 +234,24 @@ cdef str _get_cub_header_include():
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
 '''
-    else:
-        _cub_header = '''
-#include \"${CUB}/cub/block/block_reduce.cuh\"
-#include \"${CUB}/cub/block/block_load.cuh\"
-'''
-        _cub_header = string.Template(_cub_header).substitute(CUB=_cub_path)
     return _cub_header
 
 
 # make it cpdef'd for unit tests
-cdef inline tuple _can_use_cub_block_reduction(
+cpdef inline tuple _can_use_cub_block_reduction(
         list in_args, list out_args, tuple reduce_axis, tuple out_axis):
     '''
     If CUB BlockReduce can be used, this function returns a tuple of the needed
     parameters, otherwise returns None.
     '''
-    from cupy import core
-
     cdef tuple axis_permutes_cub
     cdef ndarray in_arr, out_arr
     cdef Py_ssize_t contiguous_size = 1
 
-    # first check the flag settable at runtime from outside
-    if not core.cub_block_reduction_enabled:
-        return None
-
     # detect whether CUB headers exists somewhere:
     if _cub_path is None:
         import warnings
-        warnings.warn('cupy.core.cub_block_reduction_enabled is set to True, '
-                      'but the CUB headers are not found, please set the '
-                      'environment variable CUPY_CUB_PATH to the CUB '
-                      'location.', RuntimeWarning)
+        warnings.warn('CUB headers are not found.', RuntimeWarning)
         return None
 
     # we currently support only _SimpleReductionKernel
@@ -280,18 +270,6 @@ cdef inline tuple _can_use_cub_block_reduction(
         return None
     if axis_permutes_cub != tuple(range(in_arr.ndim)):
         return None
-
-    # To support generic reductions, note that some NumPy casting rules
-    # are not applicable in the C++ space (unless we tweak the type
-    # definitions). To circumvent this, we fall back to the old kernel.
-    # TODO(leofang): can we relax this?
-    if in_arr.dtype.kind != out_arr.dtype.kind:
-        # cannot cast complex to anything else
-        if in_arr.dtype.kind == 'c':
-            return None
-        # cannot cast float16 to complex
-        if in_arr.dtype.char == 'e' and out_arr.dtype.kind == 'c':
-            return None
 
     # full-reduction of N-D array: need to invoke the kernel twice
     cdef bint full_reduction = True if len(out_axis) == 0 else False
@@ -312,7 +290,7 @@ cdef inline tuple _can_use_cub_block_reduction(
             return None
 
     # rare event (mainly for conda-forge users): nvcc is not found!
-    if _environment.get_nvcc_path() is None:
+    if _nvcc_path is None:
         return None
 
     return (axis_permutes_cub, contiguous_size, full_reduction)
@@ -372,13 +350,13 @@ cdef _scalar.CScalar _cub_convert_to_c_scalar(
         return _scalar.CScalar.from_int32(value)
 
 
-cdef inline _cub_two_pass_launch(
+cdef inline void _cub_two_pass_launch(
         str name, Py_ssize_t block_size, Py_ssize_t segment_size,
         Py_ssize_t items_per_thread, str reduce_type, tuple params,
         list in_args, list out_args,
         str identity, str pre_map_expr, str reduce_expr, str post_map_expr,
         _kernel._TypeMap type_map, str input_expr, str output_expr,
-        str preamble, tuple options, stream):
+        str preamble, tuple options, stream) except *:
     '''
     Notes:
     1. Two-pass reduction: the first pass distributes an even share over
@@ -474,11 +452,11 @@ cdef inline _cub_two_pass_launch(
     func.linear_launch(gridx, inout_args, 0, blockx, stream)
 
 
-cdef inline _launch_cub(
+cdef inline void _launch_cub(
         self, out_block_num, block_size, block_stride,
         in_args, out_args, in_shape, out_shape, type_map,
         map_expr, reduce_expr, post_map_expr, reduce_type,
-        stream, params, cub_params):
+        stream, params, cub_params) except *:
     cdef bint full_reduction
     cdef Py_ssize_t contiguous_size, items_per_thread
     cdef function.Function func
@@ -539,7 +517,7 @@ def _get_cub_optimized_params(
             post_map_expr, reduce_type, stream, params, cub_params)
 
     def suggest_func(trial):
-        block_size_log = trial.suggest_int('block_size_log', 5, 9)
+        block_size_log = trial.suggest_int('block_size_log', 5, 10)
         block_size = 2 ** block_size_log
         items_per_thread = trial.suggest_int(
             'items_per_thread', 2, 32, step=2)
@@ -547,13 +525,14 @@ def _get_cub_optimized_params(
         trial.set_user_attr('block_size', block_size)
         return block_size, items_per_thread
 
+    # CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES is a possible error
     optimize_impl = optimize_config.optimize_impl
     best = optimize_impl(
         optimize_config, target_func, suggest_func,
         default_best={
             'block_size_log': default_block_size_log,
             'items_per_thread': default_items_per_thread,
-        })
+        }, ignore_error=(driver.CUDADriverError,))
 
     return best.params['items_per_thread'], best.user_attrs['block_size']
 
@@ -563,7 +542,7 @@ cdef bint _try_to_call_cub_reduction(
         stream, optimize_context, tuple key,
         map_expr, reduce_expr, post_map_expr, reduce_type, type_map,
         tuple reduce_axis, tuple out_axis, const shape_t& out_shape,
-        ndarray ret):
+        ndarray ret) except *:
     """Try to use cub.
 
     Updates `ret` and returns a boolean value whether cub is used.

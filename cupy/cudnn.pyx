@@ -11,13 +11,13 @@ from cupy.core._carray cimport shape_t
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport core
 from cupy.core cimport internal
-from cupy.cuda cimport cudnn
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
+from cupy_backends.cuda.libs cimport cudnn
 
 from cupy.core._ufuncs import elementwise_copy
-from cupy.cuda import cudnn as py_cudnn
-from cupy import util
+from cupy import _util
+from cupy_backends.cuda.libs import cudnn as py_cudnn
 
 cdef int _cudnn_version = cudnn.getVersion()
 cdef _thread_local = threading.local()
@@ -139,8 +139,8 @@ cpdef _create_tensor_nd_descriptor(
             next_stride = c_shape[i] * c_strides[i]
 
     cudnn.setTensorNdDescriptor(
-        desc, data_type, arr._shape.size(), <size_t>&c_shape[0],
-        <size_t>&c_strides[0])
+        desc, data_type, arr._shape.size(), <size_t>c_shape.data(),
+        <size_t>c_strides.data())
 
 
 cpdef _create_tensor_descriptor(size_t desc, core.ndarray arr,
@@ -191,7 +191,7 @@ cpdef _create_filter_descriptor(
         for s in arr._shape:
             c_shape.push_back(s)
         cudnn.setFilterNdDescriptor_v4(
-            desc, data_type, format, ndim, <size_t>&c_shape[0])
+            desc, data_type, format, ndim, <size_t>c_shape.data())
 
 
 cpdef _create_convolution_descriptor(
@@ -222,8 +222,8 @@ cpdef _create_convolution_descriptor(
                         raise ValueError(
                             'dilation must be one when cuDNN < 6.0')
         cudnn.setConvolutionNdDescriptor_v3(
-            desc, ndim, <size_t>&c_pad[0], <size_t>&c_stride[0],
-            <size_t>&c_dilation[0], mode, compute_type)
+            desc, ndim, <size_t>c_pad.data(), <size_t>c_stride.data(),
+            <size_t>c_dilation.data(), mode, compute_type)
     else:
         if dilation is None:
             d0 = d1 = 1
@@ -331,7 +331,8 @@ cdef _create_pooling_descriptor(
         c_stride = stride
         cudnn.setPoolingNdDescriptor_v4(
             desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ndim,
-            <size_t>&c_ksize[0], <size_t>&c_pad[0], <size_t>&c_stride[0])
+            <size_t>c_ksize.data(), <size_t>c_pad.data(),
+            <size_t>c_stride.data())
 
     return desc
 
@@ -879,7 +880,7 @@ cdef class _DescriptorArray:
 
     @property
     def data(self):
-        return <size_t>&self._value[0]
+        return <size_t>self._value.data()
 
 
 cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
@@ -910,7 +911,8 @@ cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
         desc = cudnn.createTensorDescriptor()
         descs.append(desc)
         cudnn.setTensorNdDescriptor(
-            desc, data_type, 3, <size_t>&c_shape[0], <size_t>&c_strides[0])
+            desc, data_type, 3,
+            <size_t>c_shape.data(), <size_t>c_strides.data())
 
     return descs
 
@@ -933,7 +935,8 @@ cdef _DescriptorArray _make_tensor_descriptor_array_for_padded(xs):
         desc = cudnn.createTensorDescriptor()
         descs.append(desc)
         cudnn.setTensorNdDescriptor(
-            desc, data_type, 3, <size_t>&c_shape[0], <size_t>&c_strides[0])
+            desc, data_type, 3,
+            <size_t>c_shape.data(), <size_t>c_strides.data())
 
     return descs
 
@@ -1337,7 +1340,7 @@ cpdef _warn_algorithm_fwd(
         'This might be due to lack of workspace memory. '
         'x.shape:{}, W.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(x.shape, W.shape, y.shape, conv_param[0], conv_param[1]),
-        util.PerformanceWarning)
+        _util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_fwd(
@@ -1380,7 +1383,7 @@ cpdef _Algorithm _get_algorithm_fwd(
         return algo
     cdef list ret
     cdef bint skip
-    if use_tensor_core and _cudnn_version >= 7000:
+    if (use_tensor_core and _cudnn_version >= 7000) or _cudnn_version >= 8000:
         ret = cudnn.getConvolutionForwardAlgorithm_v7(
             handle, x_desc, filter_desc, conv_desc, y_desc, 10)
         skip = False
@@ -1395,7 +1398,7 @@ cpdef _Algorithm _get_algorithm_fwd(
             warnings.warn(
                 'The best algo of conv fwd might not be selected due to '
                 'lack of workspace size ({})'.format(max_workspace_size),
-                util.PerformanceWarning)
+                _util.PerformanceWarning)
         algo = perf.algo
         workspace_size = perf.memory
         math_type = perf.mathType
@@ -1422,7 +1425,7 @@ cpdef _warn_algorithm_bwd_filter(
         'This might be due to lack of workspace memory. '
         'x.shape:{}, dy.shape:{}, dW.shape:{}, pad:{}, stride:{}'
         .format(x.shape, dy.shape, dW.shape, conv_param[0], conv_param[1]),
-        util.PerformanceWarning)
+        _util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_bwd_filter(
@@ -1500,7 +1503,7 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
             warnings.warn(
                 'The best algo of conv bwd filter might not not selected due '
                 'to lack of workspace size ({})'.format(max_workspace_size),
-                util.PerformanceWarning)
+                _util.PerformanceWarning)
         algo = perf.algo
         workspace_size = perf.memory
         math_type = perf.mathType
@@ -1527,7 +1530,7 @@ cpdef _warn_algorithm_bwd_data(
         'This might be due to lack of workspace memory. '
         'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(W.shape, x.shape, y.shape, conv_param[0], conv_param[1]),
-        util.PerformanceWarning)
+        _util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_bwd_data(
@@ -1603,7 +1606,7 @@ cpdef _Algorithm _get_algorithm_bwd_data(
             warnings.warn(
                 'The best algo of conv bwd data might not not selected due '
                 'to lack of workspace size ({})'.format(max_workspace_size),
-                util.PerformanceWarning)
+                _util.PerformanceWarning)
         algo = perf.algo
         workspace_size = perf.memory
         math_type = perf.mathType
@@ -2076,7 +2079,7 @@ def batch_normalization_forward_training(
             'Could be faster by calling '
             'batch_normalization_forward_training_ex() instead of '
             'batch_normalization_forward_training().',
-            util.PerformanceWarning)
+            _util.PerformanceWarning)
     if mean is None:
         return y, save_mean, save_inv_std
     else:

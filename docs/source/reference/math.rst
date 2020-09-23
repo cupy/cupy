@@ -70,6 +70,7 @@ Sums, products, differences
    cupy.nansum
    cupy.nanprod
    cupy.diff
+   cupy.gradient
 
 
 Exponents and logarithms
@@ -158,6 +159,7 @@ Miscellaneous
    :toctree: generated/
    :nosignatures:
 
+   cupy.convolve
    cupy.clip
    cupy.sqrt
    cupy.cbrt

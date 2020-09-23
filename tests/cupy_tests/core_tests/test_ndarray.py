@@ -90,9 +90,10 @@ class TestNdarrayInit(unittest.TestCase):
             (2, 3), numpy.float32, buf.data, strides=(8, 4), order='C')
         assert a.strides == (8, 4)
 
+    @testing.with_requires('numpy>=1.19')
     def test_strides_is_given_but_order_is_invalid(self):
         for xp in (numpy, cupy):
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 xp.ndarray((2, 3), numpy.float32, strides=(8, 4), order='!')
 
     def test_order(self):

@@ -1,10 +1,24 @@
 #!/usr/bin/env python
 
+import glob
 import os
 from setuptools import setup, find_packages
 import sys
 
 import cupy_setup_build
+
+
+if len(os.listdir('cupy/core/include/cupy/cub/')) == 0:
+    msg = '''
+    The folder cupy/core/include/cupy/cub/ is a git submodule but is
+    currently empty. Please use the command
+
+        git submodule update --init
+
+    to populate the folder before building from source.
+    '''
+    print(msg, file=sys.stderr)
+    sys.exit(1)
 
 
 if sys.version_info[:3] == (3, 5, 0):
@@ -28,15 +42,14 @@ requirements = {
         'fastrlock>=0.3',
     ],
     'stylecheck': [
-        'autopep8==1.3.5',
-        'flake8==3.5.0',
+        'autopep8==1.4.4',
+        'flake8==3.7.9',
         'pbr==4.0.4',
-        'pycodestyle==2.3.1',
+        'pycodestyle==2.5.0',
     ],
     'test': [
         'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.
         'attrs<19.2.0',  # pytest 4.1.1 does not run with attrs==19.2.0
-        'mock',
     ],
     'doctest': [
         'matplotlib',
@@ -88,36 +101,21 @@ setup_requires = requirements['setup']
 install_requires = requirements['install']
 tests_require = requirements['test']
 
+# List of files that needs to be in the distribution (sdist/wheel).
+# Notes:
+# - Files only needed in sdist should be added to `MANIFEST.in`.
+# - The following glob (`**`) ignores items starting with `.`.
+cupy_package_data = [
+    'cupy/cuda/cupy_thrust.cu',
+    'cupy/cuda/cupy_cub.cu',
+] + [
+    x for x in glob.glob('cupy/core/include/cupy/**', recursive=True)
+    if os.path.isfile(x)
+]
 
 package_data = {
     'cupy': [
-        'core/include/cupy/complex/arithmetic.h',
-        'core/include/cupy/complex/catrig.h',
-        'core/include/cupy/complex/catrigf.h',
-        'core/include/cupy/complex/ccosh.h',
-        'core/include/cupy/complex/ccoshf.h',
-        'core/include/cupy/complex/cexp.h',
-        'core/include/cupy/complex/cexpf.h',
-        'core/include/cupy/complex/clog.h',
-        'core/include/cupy/complex/clogf.h',
-        'core/include/cupy/complex/complex.h',
-        'core/include/cupy/complex/complex_inl.h',
-        'core/include/cupy/complex/cpow.h',
-        'core/include/cupy/complex/cproj.h',
-        'core/include/cupy/complex/csinh.h',
-        'core/include/cupy/complex/csinhf.h',
-        'core/include/cupy/complex/csqrt.h',
-        'core/include/cupy/complex/csqrtf.h',
-        'core/include/cupy/complex/ctanh.h',
-        'core/include/cupy/complex/ctanhf.h',
-        'core/include/cupy/complex/math_private.h',
-        'core/include/cupy/carray.cuh',
-        'core/include/cupy/complex.cuh',
-        'core/include/cupy/atomics.cuh',
-        'core/include/cupy/cuComplex_bridge.h',
-        'core/include/cupy/_cuda/cuda-*/*.h',
-        'core/include/cupy/_cuda/cuda-*/*.hpp',
-        'cuda/cupy_thrust.cu',
+        os.path.relpath(x, 'cupy') for x in cupy_package_data
     ],
 }
 
@@ -143,13 +141,13 @@ Programming Language :: Python :: 3
 Programming Language :: Python :: 3.5
 Programming Language :: Python :: 3.6
 Programming Language :: Python :: 3.7
+Programming Language :: Python :: 3.8
 Programming Language :: Python :: 3 :: Only
 Programming Language :: Cython
 Topic :: Software Development
 Topic :: Scientific/Engineering
-Operating System :: Microsoft :: Windows
 Operating System :: POSIX
-Operating System :: MacOS
+Operating System :: Microsoft :: Windows
 """
 
 
@@ -160,11 +158,11 @@ setup(
     long_description=long_description,
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
-    url='https://cupy.chainer.org/',
+    url='https://cupy.dev/',
     license='MIT License',
     project_urls={
         "Bug Tracker": "https://github.com/cupy/cupy/issues",
-        "Documentation": "https://docs-cupy.chainer.org/",
+        "Documentation": "https://docs.cupy.dev/",
         "Source Code": "https://github.com/cupy/cupy",
     },
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],

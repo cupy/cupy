@@ -127,3 +127,106 @@ class TestGesvda(unittest.TestCase):
         else:
             decimal = 10
         testing.assert_array_almost_equal(s, expect, decimal=decimal)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'order': ['C', 'F'],
+    'UPLO': ['L', 'U'],
+}))
+@attr.gpu
+class TestSyevj(unittest.TestCase):
+
+    def setUp(self):
+        if not cusolver.check_availability('syevj'):
+            pytest.skip('syevj is not available')
+        if self.dtype in (numpy.complex64, numpy.complex128):
+            self.a = numpy.array(
+                [[1, 2j, 3], [-2j, 5, 4j], [3, -4j, 9]], dtype=self.dtype)
+        else:
+            self.a = numpy.array(
+                [[1, 2, 3], [2, 5, 4], [3, 4, 9]], dtype=self.dtype)
+
+    def test_syevj(self):
+        a = cupy.array(self.a, order=self.order)
+        w, v = cusolver.syevj(a, UPLO=self.UPLO, with_eigen_vector=True)
+
+        # check eignvalue equation
+        testing.assert_allclose(self.a.dot(
+            v.get()), w * v, rtol=1e-3, atol=1e-4)
+
+    def test_syevjBatched(self):
+        lda, m = self.a.shape
+
+        na = numpy.stack([self.a, self.a + numpy.diag(numpy.ones(m))])
+        a = cupy.array(na, order=self.order)
+
+        w, v = cusolver.syevj(a, UPLO=self.UPLO, with_eigen_vector=True)
+
+        # check eignvalue equation
+        batch_size = a.shape[0]
+        for i in range(batch_size):
+            testing.assert_allclose(
+                na[i].dot(v[i].get()), w[i] * v[i], rtol=1e-3, atol=1e-4)
+
+        # check arbitrary batch dimension shape
+        na = numpy.stack([na, na, na])
+        a = cupy.array(na, order=self.order)
+
+        w, v = cusolver.syevj(a, UPLO=self.UPLO, with_eigen_vector=True)
+
+        self.assertEqual(v.shape, a.shape)
+        self.assertEqual(w.shape, a.shape[:-1])
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'n': [3],
+    'nrhs': [None, 1, 4],
+}))
+@attr.gpu
+class TestGesv(unittest.TestCase):
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_array(self, shape, alpha, beta):
+        a = testing.shaped_random(shape, cupy, dtype=self.r_dtype,
+                                  scale=alpha) + beta
+        return a
+
+    def _make_matrix(self, shape, alpha, beta):
+        a = self._make_array(shape, alpha, beta)
+        if self.dtype.char in 'FD':
+            a = a + 1j * self._make_array(shape, alpha, beta)
+        return a
+
+    def setUp(self):
+        self.dtype = numpy.dtype(self.dtype)
+        if self.dtype.char in 'fF':
+            self.r_dtype = numpy.float32
+        else:
+            self.r_dtype = numpy.float64
+        n = self.n
+        nrhs = 1 if self.nrhs is None else self.nrhs
+        # Diagonally dominant matrix is used as it is stable
+        alpha = 2.0 / n
+        a = self._make_matrix((n, n), alpha, -alpha / 2)
+        diag = cupy.diag(cupy.ones((n,), dtype=self.r_dtype))
+        a[diag > 0] = 0
+        a += diag
+        x = self._make_matrix((n, nrhs), 0.2, 0.9)
+        b = cupy.matmul(a, x)
+        b_shape = [n]
+        if self.nrhs is not None:
+            b_shape.append(nrhs)
+        self.a = a
+        self.b = b.reshape(b_shape)
+        self.x_ref = x.reshape(b_shape)
+        if self.r_dtype == numpy.float32:
+            self.tol = self._tol['f']
+        elif self.r_dtype == numpy.float64:
+            self.tol = self._tol['d']
+
+    def test_gesv(self):
+        x = cusolver.gesv(self.a, self.b)
+        cupy.testing.assert_allclose(x, self.x_ref,
+                                     rtol=self.tol, atol=self.tol)

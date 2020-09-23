@@ -1,8 +1,10 @@
-from cupy.cuda import runtime
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda cimport stream as stream_module
+
 import threading
 import weakref
 
-from cupy import util
+from cupy import _util
 
 
 cdef object _thread_local = threading.local()
@@ -22,11 +24,15 @@ cdef class _ThreadLocal:
         return <_ThreadLocal>tls
 
     cdef set_current_stream(self, stream):
-        self.current_stream = <void*><intptr_t>stream.ptr
+        cdef intptr_t ptr = <intptr_t>stream.ptr
+        stream_module.set_current_stream_ptr(ptr)
+        self.current_stream = <void*>ptr
         self.current_stream_ref = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
-        self.current_stream = <void*><intptr_t>stream_ref().ptr
+        cdef intptr_t ptr = <intptr_t>stream_ref().ptr
+        stream_module.set_current_stream_ptr(ptr)
+        self.current_stream = <void*>ptr
         self.current_stream_ref = stream_ref
 
     cdef get_current_stream(self):
@@ -97,7 +103,7 @@ class Event(object):
                 (interprocess and runtime.eventInterprocess))
         self.ptr = runtime.eventCreateWithFlags(flag)
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.ptr:
@@ -272,7 +278,7 @@ class Stream(BaseStream):
         else:
             self.ptr = runtime.streamCreate()
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         cdef intptr_t current_ptr
         if is_shutting_down():
             return

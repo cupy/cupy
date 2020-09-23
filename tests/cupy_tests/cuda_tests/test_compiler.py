@@ -1,7 +1,6 @@
 import pickle
 import unittest
-
-import mock
+from unittest import mock
 
 import cupy
 from cupy.cuda import compiler
@@ -15,20 +14,13 @@ def cuda_version():
 @testing.gpu
 class TestNvrtcArch(unittest.TestCase):
     def setUp(self):
-        cupy.util.clear_memo()  # _get_arch result is cached
+        cupy.clear_memo()  # _get_arch result is cached
 
     def _check_get_arch(self, device_cc, expected_arch):
         with mock.patch('cupy.cuda.device.Device') as device_class:
             device_class.return_value.compute_capability = device_cc
             assert compiler._get_arch() == expected_arch
-        cupy.util.clear_memo()  # _get_arch result is cached
-
-    @unittest.skipUnless(cuda_version() < 9000, 'Requires CUDA 8.x or earlier')
-    def test_get_arch_cuda8(self):
-        self._check_get_arch('37', '37')
-        self._check_get_arch('50', '50')
-        self._check_get_arch('52', '52')
-        self._check_get_arch('53', '53')  # Tegra
+        cupy.clear_memo()  # _get_arch result is cached
 
     @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.x or later')
     def test_get_arch_cuda9(self):
@@ -41,24 +33,13 @@ class TestNvrtcArch(unittest.TestCase):
     def test_get_arch_cuda101(self):
         self._check_get_arch('75', '75')
 
+    @unittest.skipUnless(11000 <= cuda_version(),
+                         'Requires CUDA 11.0 or later')
+    def test_get_arch_cuda11(self):
+        self._check_get_arch('80', '80')
+
     def _compile(self, arch):
         compiler.compile_using_nvrtc('', arch=arch)
-
-    @unittest.skipUnless(cuda_version() < 9000, 'Requires CUDA 8.x or earlier')
-    def test_compile_cuda8(self):
-        # This test is intended to detect specification change in NVRTC API.
-
-        # It should not fail.
-        # (Do not test `compute_53` as it is for Tegra.)
-        self._compile('52')
-
-        # It should fail.
-        # (`compute_60` and `compute_61` are not supported by NVRTC in CUDA 8
-        #  but it does not raise error when used.)
-        self.assertRaises(
-            compiler.CompileException, self._compile, '54')
-        self.assertRaises(
-            compiler.CompileException, self._compile, '70')
 
     @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.0 or later')
     def test_compile_cuda9(self):
@@ -84,6 +65,18 @@ class TestNvrtcArch(unittest.TestCase):
         # It should fail. (compute_80 is not supported until CUDA 11)
         self.assertRaises(
             compiler.CompileException, self._compile, '80')
+
+    @unittest.skipUnless(11000 <= cuda_version(),
+                         'Requires CUDA 11.0 or later')
+    def test_compile_cuda11(self):
+        # This test is intended to detect specification change in NVRTC API.
+
+        # It should not fail.
+        self._compile('80')
+
+        # It should fail.
+        self.assertRaises(
+            compiler.CompileException, self._compile, '83')
 
 
 @testing.gpu

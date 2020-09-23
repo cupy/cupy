@@ -3,6 +3,7 @@ from cpython cimport sequence
 from libcpp cimport vector
 
 from cupy.core cimport _carray
+from cupy.core cimport _accelerator
 from cupy.core._carray cimport shape_t
 from cupy.core cimport _cub_reduction
 from cupy.core._dtype cimport get_dtype
@@ -27,7 +28,8 @@ from cupy.core.core cimport ndarray
 from cupy.core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport function
-from cupy.cuda cimport runtime
+from cupy.cuda cimport memory
+from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
@@ -38,13 +40,19 @@ from cupy.core._kernel import _get_param_info
 from cupy.core._kernel import _decide_params_type
 from cupy.core._ufuncs import elementwise_copy
 from cupy.cuda import compiler
-from cupy import util
+from cupy import _util
 
 
 cpdef function.Function _create_reduction_function(
         name, block_size, reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
+    # A (incomplete) list of internal variables:
+    # _J            : the index of an element in the array
+    # _block_size   : the number of threads in a block; should be power of 2
+    # _block_stride : the number of elements being processed by a block; should
+    #                 be power of 2 and <= _block_size
+
     module_code = string.Template('''
 ${type_preamble}
 ${preamble}
@@ -269,6 +277,8 @@ cdef class _AbstractReductionKernel:
         self.in_params = in_params_
         self.out_params = out_params_
         self._params = params
+        # This is for profiling mechanisms to auto infer a name
+        self.__name__ = name
 
     cpdef ndarray _call(
             self,
@@ -330,13 +340,14 @@ cdef class _AbstractReductionKernel:
                    in_types, out_types, reduce_type, device_id)
 
         # Try to use CUB
-        if try_use_cub:
-            cub_success = _cub_reduction._try_to_call_cub_reduction(
-                self, in_args, out_args, a_shape, stream,
-                optimize_context, key, map_expr, reduce_expr, post_map_expr,
-                reduce_type, type_map, reduce_axis, out_axis, out_shape, ret)
-            if cub_success:
-                return ret
+        for accelerator in _accelerator._reduction_accelerators:
+            if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:
+                cub_success = _cub_reduction._try_to_call_cub_reduction(
+                    self, in_args, out_args, a_shape, stream, optimize_context,
+                    key, map_expr, reduce_expr, post_map_expr, reduce_type,
+                    type_map, reduce_axis, out_axis, out_shape, ret)
+                if cub_success:
+                    return ret
 
         axis_permutes = reduce_axis + out_axis
         in_shape = _set_permuted_args(
@@ -586,7 +597,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self._input_expr, self._output_expr, self._preamble, ())
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
@@ -749,7 +760,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self.preamble, self.options)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _ReductionKernel_get_cached_function(
         nin, nout, params, arginfos, _kernel._TypeMap type_map,
         name, block_size, reduce_type, identity, map_expr, reduce_expr,

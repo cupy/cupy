@@ -98,6 +98,16 @@ def _make_shape(xp, sp, dtype):
     return sp.coo_matrix((3, 4))
 
 
+def _make_sum_dup(xp, sp, dtype):
+    # 1 0 0
+    # 1 1 0
+    # 1 1 1
+    data = xp.array([1, 1, 1, 1, 1, 1], dtype)
+    row = xp.array([0, 1, 1, 2, 2, 2], 'i')
+    col = xp.array([0, 0, 1, 0, 1, 2], 'i')
+    return sp.coo_matrix((data, (row, col)), shape=(3, 3))
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
@@ -477,12 +487,12 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return n
 
     # dot
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.dot(2.0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_numpy_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.dot(numpy.dtype(self.dtype).type(2.0))
@@ -512,7 +522,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_zero_dim(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.array(2, dtype=self.dtype)
@@ -558,7 +568,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
                 m.dot(None)
 
     # __add__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_add_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m + 0
@@ -588,7 +598,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return m + n
 
     # __radd__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_radd_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return 0 + m
@@ -606,7 +616,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return n + m
 
     # __sub__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_sub_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m - 0
@@ -636,7 +646,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return m - n
 
     # __rsub__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rsub_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return 0 - m
@@ -654,12 +664,12 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return n - m
 
     # __mul__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_mul_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m * 2.0
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_mul_numpy_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m * numpy.dtype(self.dtype).type(2.0)
@@ -689,7 +699,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype).tocoo()
         return m * x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_mul_zero_dim(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.array(2, dtype=self.dtype)
@@ -735,12 +745,12 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
                 m * None
 
     # __rmul__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return 2.0 * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_numpy_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return numpy.dtype(self.dtype).type(2.0) * m
@@ -751,7 +761,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return x * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_csc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocsc()
@@ -763,7 +773,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype).tocoo()
         return x * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_zero_dim(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.array(2, dtype=self.dtype)
@@ -789,7 +799,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
                 None * m
 
     # __pow__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_pow_0(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
         return m ** 0
@@ -917,6 +927,28 @@ class TestCooMatrixSumDuplicates(unittest.TestCase):
         self.assertEqual(m.nnz, 0)
         return m
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates_incompatibility(self, xp, sp):
+        # See #3620 and #3624. CuPy's and SciPy's COO indices could mismatch
+        # due to the order of lexsort, but the matrix is correct.
+        m = _make_sum_dup(xp, sp, self.dtype)
+        if xp is cupy:
+            sorted_first = m.row.copy()
+        else:
+            sorted_first = m.col.copy()
+        assert not m.has_canonical_format
+        m.sum_duplicates()
+        assert m.has_canonical_format
+        # Here we ensure this sorting order is not altered by future PRs...
+        sorted_first.sort()
+        if xp is cupy:
+            assert (m.row == sorted_first).all()
+        else:
+            assert (m.col == sorted_first).all()
+        assert m.has_canonical_format
+        # ...and now we make sure the dense matrix is the same
+        return m
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
@@ -939,7 +971,7 @@ class TestUfunc(unittest.TestCase):
                 self.ufunc in complex_unsupported):
             with self.assertRaises(TypeError):
                 func()
-            return numpy.array(0)
+            return xp.array(0)
         else:
             return func()
 

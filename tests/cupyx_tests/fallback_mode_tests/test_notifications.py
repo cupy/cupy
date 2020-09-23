@@ -11,8 +11,17 @@ from cupyx import _ufunc_config
 from cupyx_tests.fallback_mode_tests import test_fallback as test_utils
 
 
+class NotificationTestBase(unittest.TestCase):
+
+    def setUp(self):
+        self.old_config = _ufunc_config._config
+
+    def tearDown(self):
+        _ufunc_config.config = self.old_config
+
+
 @testing.gpu
-class TestNotifications(unittest.TestCase):
+class TestNotifications(NotificationTestBase):
 
     def test_seterr_geterr(self):
 
@@ -41,11 +50,9 @@ class TestNotifications(unittest.TestCase):
 
 @testing.parameterize(
     {'func': fallback_mode.numpy.array_equiv, 'shape': (3, 4)},
-    {'func': fallback_mode.numpy.polyadd, 'shape': (2, 3)},
-    {'func': fallback_mode.numpy.convolve, 'shape': (5,)}
 )
 @testing.gpu
-class TestNotificationModes(unittest.TestCase):
+class TestNotificationModes(NotificationTestBase):
 
     def test_notification_ignore(self):
 
@@ -100,7 +107,7 @@ class TestNotificationModes(unittest.TestCase):
 
 
 @testing.gpu
-class TestNotificationVectorize(unittest.TestCase):
+class TestNotificationVectorize(NotificationTestBase):
 
     @test_utils.enable_slice_copy
     def test_custom_or_builtin_pyfunc(self):
