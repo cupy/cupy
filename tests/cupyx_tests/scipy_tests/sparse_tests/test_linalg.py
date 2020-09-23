@@ -74,7 +74,6 @@ class TestLsqr(unittest.TestCase):
 class TestMatrixNorm(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
-                                 type_check=False,
                                  accept_error=(ValueError,
                                                NotImplementedError))
     def test_matrix_norm(self, xp, sp):
@@ -100,9 +99,7 @@ class TestMatrixNorm(unittest.TestCase):
 @testing.gpu
 class TestVectorNorm(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
-                                 type_check=False,
-                                 accept_error=(ValueError,
-                                               NotImplementedError))
+                                 accept_error=(ValueError,))
     def test_vector_norm(self, xp, sp):
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
