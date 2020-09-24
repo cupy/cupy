@@ -250,10 +250,9 @@ class TestMeasurementsSelect(unittest.TestCase):
 
         if (self.op in ['minimum_position', 'maximum_position'] and
                 non_unique and self.index is not None):
-            raise unittest.SkipTest(
-                'Minimum/maximum position not guaranteed to be the same '
-                'when there are duplicate extrema and index is provided.'
-            )
+            # skip cases with non-unique min or max position
+            return xp.array([])
+
         if self.labels is None:
             labels = self.labels
         else:
