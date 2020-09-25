@@ -260,6 +260,16 @@ class TestCubReduction(unittest.TestCase):
         # ...then perform the actual computation
         return a.min(axis=axis)
 
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cub_min_empty_axis(self, xp, dtype, contiguous_check=False):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.min(axis=())
+
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1E-5)
@@ -283,3 +293,131 @@ class TestCubReduction(unittest.TestCase):
             a.max(axis=axis)
         # ...then perform the actual computation
         return a.max(axis=axis)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_cub_max_empty_axis(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.max(axis=())
+
+
+# This class compares CUB results against NumPy's
+@testing.parameterize(*testing.product({
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    'order': ('C', 'F'),
+}))
+@testing.gpu
+@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
+class TestCutensorReduction(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators(['cutensor'])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
+
+    @testing.for_contiguous_axes()
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cutensor_min(self, xp, dtype, axis):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.min(axis=axis)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_cutensor_min_empty_axis(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.min(axis=())
+
+    @testing.for_contiguous_axes()
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5)
+    def test_cutensor_max(self, xp, dtype, axis):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.max(axis=axis)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_cutensor_max_empty_axis(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.max(axis=())
+
+
+# This class compares CUB results against NumPy's
+@testing.parameterize(*testing.product({
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    'order': ('C', 'F'),
+}))
+@testing.gpu
+@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
+class TestUnacceleratedReduction(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators([])
+
+    def tearDown(self):
+        _accelerator.set_routine_accelerators(self.old_accelerators)
+
+    @testing.for_contiguous_axes()
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_unaccelerated_min(self, xp, dtype, axis):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.max(axis=axis)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_unaccelerated_min_empty_axis(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.min(axis=())
+
+    @testing.for_contiguous_axes()
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_unaccelerated_max(self, xp, dtype, axis):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.max(axis=axis)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_unaccelerated_max_empty_axis(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.max(axis=())
