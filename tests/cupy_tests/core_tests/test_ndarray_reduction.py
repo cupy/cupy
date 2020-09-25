@@ -261,7 +261,7 @@ class TestCubReduction(unittest.TestCase):
         return a.min(axis=axis)
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cub_min_empty_axis(self, xp, dtype, contiguous_check=False):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
@@ -323,7 +323,7 @@ class TestCutensorReduction(unittest.TestCase):
 
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cutensor_min(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
@@ -344,7 +344,7 @@ class TestCutensorReduction(unittest.TestCase):
 
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cutensor_max(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
