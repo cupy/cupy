@@ -311,7 +311,7 @@ class TestCubReduction(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
+@unittest.skipUnless(cupy.cuda.cutensor.available, 'The CUB routine is not enabled')
 class TestCutensorReduction(unittest.TestCase):
 
     def setUp(self):
@@ -370,7 +370,6 @@ class TestCutensorReduction(unittest.TestCase):
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestUnacceleratedReduction(unittest.TestCase):
 
     def setUp(self):
