@@ -104,6 +104,7 @@ if use_hip:
             'hip/hiprtc.h',
             'hipblas.h',
             'hiprand/hiprand.h',
+            'hipfft.h',
             'roctx.h',
             'rocsolver.h',
         ],
@@ -112,6 +113,7 @@ if use_hip:
             'hip_hcc',
             'hipblas',
             'hiprand',
+            'rocfft',
             'roctx64',
             'rocblas',
             'rocsolver',
@@ -728,6 +730,13 @@ def cythonize(extensions, arg_options):
     cythonize_option_keys = ('annotate',)
     cythonize_options = {key: arg_options[key]
                          for key in cythonize_option_keys}
+
+    # pass use_hip to Cython code
+    compile_time_env = cythonize_options.get('compile_time_env')
+    if compile_time_env is None:
+        compile_time_env = {}
+        cythonize_options['compile_time_env'] = compile_time_env
+    compile_time_env['use_hip'] = arg_options['use_hip']
 
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,
