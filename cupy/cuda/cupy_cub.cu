@@ -83,6 +83,25 @@ class numeric_limits<thrust::complex<double>> {
         return thrust::complex<double>(-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max());
     }
 };
+
+// Copied from https://github.com/ROCmSoftwarePlatform/hipCUB/blob/master-rocm-3.5/hipcub/include/hipcub/backend/rocprim/device/device_reduce.hpp
+// (For some reason the specialization for __half defined in the above file does not work, so we have to go
+// through the same route as we did above for complex numbers.)
+template <>
+class numeric_limits<__half> {
+  public:
+    static __host__ __device__ __half max() noexcept {
+        unsigned short max_half = 0x7bff;
+        __half max_value = *reinterpret_cast<__half*>(&max_half);
+        return max_value;
+    }
+
+    static __host__ __device__ __half lowest() noexcept {
+        unsigned short lowest_half = 0xfbff;
+        __half lowest_value = *reinterpret_cast<__half*>(&lowest_half);
+        return lowest_value;
+    }
+};
 }  // namespace std
 
 using namespace hipcub;
@@ -112,10 +131,10 @@ struct _multiply
    behaviors with which we must comply.
 */
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 __host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return __hisnan(x);
 #else
     // TODO: avoid cast to float
@@ -124,7 +143,7 @@ __host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
 }
 
 __host__ __device__ __forceinline__ bool half_less(const __half& l, const __half& r) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return l < r;
 #else
     // TODO: avoid cast to float
@@ -133,7 +152,7 @@ __host__ __device__ __forceinline__ bool half_less(const __half& l, const __half
 }
 
 __host__ __device__ __forceinline__ bool half_equal(const __half& l, const __half& r) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return l == r;
 #else
     // TODO: avoid cast to float
@@ -190,8 +209,8 @@ __host__ __device__ __forceinline__ complex<double> Max::operator()(const comple
     else {return a < b ? b : a;}
 }
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ __half Max::operator()(const __half &a, const __half &b) const
@@ -257,8 +276,8 @@ __host__ __device__ __forceinline__ complex<double> Min::operator()(const comple
     else {return a < b ? a : b;}
 }
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, const __half &b) const
@@ -338,8 +357,8 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMax::o
         return a;
 }
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()(
@@ -426,8 +445,8 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMin::o
         return a;
 }
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()(
