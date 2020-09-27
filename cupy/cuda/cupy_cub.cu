@@ -1,13 +1,22 @@
 #include "cupy_cub.h"  // need to make atomicAdd visible to CUB templates early
 #include <cupy/type_dispatcher.cuh>
+
+#ifndef CUPY_USE_HIP
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
 #include <cub/device/device_scan.cuh>
 #include <cub/device/device_histogram.cuh>
-
-
 using namespace cub;
+#else
+#include <hipcub/device/device_reduce.hpp>
+#include <hipcub/device/device_segmented_reduce.hpp>
+//#include <hipcub/device/device_spmv.hpp>  // doesn't exist
+#include <hipcub/device/device_scan.hpp>
+#include <hipcub/device/device_histogram.hpp>
+using namespace hipcub;
+#endif
+
 
 /* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
 // - This works only because all data fields in the *Traits struct are not

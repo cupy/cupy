@@ -16,7 +16,14 @@
 #endif
 
 #ifndef CUPY_NO_CUDA
-#include <cuda_runtime.h>  // for cudaStream_t
+
+// for cudaStream_t
+#ifndef CUPY_USE_HIP
+#include <cuda_runtime.h>
+#else
+#include <hip_runtime.h>
+#define cudaStream_t hipStream_t
+#endif
 
 void cub_device_reduce(void*, size_t&, void*, void*, int, cudaStream_t, int, int);
 void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, void*, void*, cudaStream_t, int, int);
@@ -30,12 +37,12 @@ size_t cub_device_scan_get_workspace_size(void*, void*, int, cudaStream_t, int, 
 size_t cub_device_histogram_range_get_workspace_size(void*, void*, int, void*, size_t, cudaStream_t, int);
 
 // This is for CUB's HistogramRange
-#ifdef __CUDA_ARCH__
+#if (defined(__CUDA_ARCH__) || defined (__HIP_DEVICE_COMPILE__))
 __device__ long long atomicAdd(long long *address, long long val) {
     return atomicAdd(reinterpret_cast<unsigned long long*>(address),
                      static_cast<unsigned long long>(val));
 }
-#endif // __CUDA_ARCH__
+#endif // __CUDA_ARCH__ || __HIP_DEVICE_COMPILE__
 
 #else // CUPY_NO_CUDA
 
