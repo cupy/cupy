@@ -1,10 +1,8 @@
-// This file is a stub header file of hip for Read the Docs.
-
-#ifndef INCLUDE_GUARD_CUPY_HIPRAND_H
-#define INCLUDE_GUARD_CUPY_HIPRAND_H
+#ifndef INCLUDE_GUARD_HIP_CUPY_HIPRAND_H
+#define INCLUDE_GUARD_HIP_CUPY_HIPRAND_H
 
 #include <hiprand/hiprand.h>
-#include "../cupy_hip_common.h"
+#include "cupy_common.h"
 
 extern "C" {
 
@@ -103,4 +101,4 @@ curandStatus_t curandGeneratePoisson(curandGenerator_t generator, unsigned int *
 
 } // extern "C"
 
-#endif // #ifndef INCLUDE_GUARD_CUPY_HIPRAND_H
+#endif // #ifndef INCLUDE_GUARD_HIP_CUPY_HIPRAND_H

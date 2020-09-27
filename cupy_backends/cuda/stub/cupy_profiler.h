@@ -1,17 +1,7 @@
 // This file is a stub header file of cuda for Read the Docs.
 
-#ifndef INCLUDE_GUARD_CUPY_PROFILER_H
-#define INCLUDE_GUARD_CUPY_PROFILER_H
-
-#if CUPY_USE_HIP
-
-#include "cupy_hipprofiler.h"
-
-#elif !defined(CUPY_NO_CUDA)
-
-#include <cuda_profiler_api.h>
-
-#else // #ifndef CUPY_NO_CUDA
+#ifndef INCLUDE_GUARD_STUB_CUPY_PROFILER_H
+#define INCLUDE_GUARD_STUB_CUPY_PROFILER_H
 
 #include "../cupy_cuda_common.h"
 
@@ -33,5 +23,4 @@ cudaError_t cudaProfilerStop() {
 
 } // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
-#endif // #ifndef INCLUDE_GUARD_CUPY_PROFILER_H
+#endif // #ifndef INCLUDE_GUARD_STUB_CUPY_PROFILER_H

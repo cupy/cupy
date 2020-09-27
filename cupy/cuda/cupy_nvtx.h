@@ -5,19 +5,40 @@
 
 #if CUPY_USE_HIP
 
-#include "../../cupy_backends/cuda/cupy_hip.h"
+#include "../../cupy_backends/cuda/hip/cupy_roctx.h"
 
 #elif !defined(CUPY_NO_CUDA)
 
 #include <nvToolsExt.h>
 
-#else // #ifndef CUPY_NO_CUDA
+#else  // defined(CUPY_NO_CUDA)
+
+#define NVTX_VERSION 1
+
+extern "C" {
+
+void nvtxMarkA(...) {
+}
+
+int nvtxRangePushA(...) {
+    return 0;
+}
+
+int nvtxRangePop() {
+    return 0;
+}
+
+} // extern "C"
+
+#endif  // defined(CUPY_NO_CUDA)
+
+
+#if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
 
 //#include "../../cupy_backends/cuda/cupy_cuda_common.h"
 
 extern "C" {
 
-#define NVTX_VERSION 1
 
 typedef enum nvtxColorType_t
 {
@@ -59,21 +80,10 @@ typedef struct nvtxEventAttributes_v1
 
 typedef nvtxEventAttributes_v1 nvtxEventAttributes_t;
 
-void nvtxMarkA(...) {
-}
-
 void nvtxMarkEx(...) {
 }
 
-int nvtxRangePushA(...) {
-    return 0;
-}
-
 int nvtxRangePushEx(...) {
-    return 0;
-}
-
-int nvtxRangePop() {
     return 0;
 }
 
@@ -86,5 +96,6 @@ void nvtxRangeEnd(...) {
 
 } // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
+#endif // #if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
+
 #endif // #ifndef INCLUDE_GUARD_CUPY_NVTX_H

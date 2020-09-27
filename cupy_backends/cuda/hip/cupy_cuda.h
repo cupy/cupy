@@ -1,10 +1,7 @@
-// This file is a stub header file of hip for Read the Docs.
-
-#ifndef INCLUDE_GUARD_CUPY_HIP_H
-#define INCLUDE_GUARD_CUPY_HIP_H
-
-#include <hip/hip_runtime_api.h>
-#include "../cupy_hip_common.h"
+#ifndef INCLUDE_GUARD_HIP_CUPY_CUDA_H
+#define INCLUDE_GUARD_HIP_CUPY_CUDA_H
+#include "cupy_common.h"
+#include "../cupy_cuComplex.h"
 
 extern "C" {
 
@@ -113,8 +110,8 @@ CUresult cuLaunchCooperativeKernel(...) {
 
 
 // Function attribute
-CUresult cuFuncGetAttribute(...) {
-    return hipErrorUnknown;
+CUresult cuFuncGetAttribute(int* pi, CUfunction_attribute attrib, CUfunction hfunc) {
+    return hipFuncGetAttribute(pi, attrib, hfunc);
 }
 
 CUresult cuFuncSetAttribute(...) {
@@ -170,6 +167,6 @@ CUresult cuOccupancyMaxPotentialBlockSize(...) {
     return hipErrorUnknown;
 }
 
-} // extern "C"
+} // extern "C" {
 
-#endif // #ifndef INCLUDE_GUARD_CUPY_HIP_H
+#endif // #ifndef INCLUDE_GUARD_HIP_CUPY_CUDA_H

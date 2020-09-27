@@ -19,7 +19,7 @@ cdef extern from '../cupy_cuComplex.h':
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from 'cupy_cublas.h' nogil:
+cdef extern from '../cupy_cublas.h' nogil:
     # Context
     int cublasCreate(Handle* handle)
     int cublasDestroy(Handle handle)

@@ -13,10 +13,10 @@ from cupy_backends.cuda.api.runtime cimport Array,\
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
 
 
-cdef extern from '../../cupy_backends/cuda/api/cupy_cuda.h':
+cdef extern from '../../cupy_backends/cuda/cupy_cuda.h':
     pass
 
-cdef extern from '../../cupy_backends/cuda/api/cupy_cuda_runtime.h':
+cdef extern from '../../cupy_backends/cuda/cupy_cuda_runtime.h':
     pass
 
 

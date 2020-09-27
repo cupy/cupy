@@ -1,7 +1,5 @@
-// This file is a stub header file of hip for Read the Docs.
-
-#ifndef INCLUDE_GUARD_CUPY_HIP_COMMON_H
-#define INCLUDE_GUARD_CUPY_HIP_COMMON_H
+#ifndef INCLUDE_GUARD_HIP_CUPY_COMMON_H
+#define INCLUDE_GUARD_HIP_CUPY_COMMON_H
 
 #include <hip/hip_runtime_api.h>
 #include <hipblas.h>
@@ -140,14 +138,6 @@ typedef enum libraryPropertyType_t {
     PATCH_LEVEL
 } libraryPropertyType;
 
-
-///////////////////////////////////////////////////////////////////////////////
-// roctx
-///////////////////////////////////////////////////////////////////////////////
-
-// this is to ensure we use non-"Ex" APIs like roctxMarkA etc
-#define NVTX_VERSION (100 * ROCTX_VERSION_MAJOR + 10 * ROCTX_VERSION_MINOR)
-
 } // extern "C"
 
-#endif // #ifndef INCLUDE_GUARD_CUPY_HIP_COMMON_H
+#endif // #ifndef INCLUDE_GUARD_HIP_CUPY_COMMON_H

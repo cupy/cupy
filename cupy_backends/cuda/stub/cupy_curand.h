@@ -1,17 +1,7 @@
 // This file is a stub header file of cuda for Read the Docs.
 
-#ifndef INCLUDE_GUARD_CUPY_CURAND_H
-#define INCLUDE_GUARD_CUPY_CURAND_H
-
-#if CUPY_USE_HIP
-
-#include "cupy_hiprand.h"
-
-#elif !defined(CUPY_NO_CUDA)
-
-#include <curand.h>
-
-#else // #ifndef CUPY_NO_CUDA
+#ifndef INCLUDE_GUARD_SUTB_CUPY_CURAND_H
+#define INCLUDE_GUARD_SUTB_CUPY_CURAND_H
 
 #include "../cupy_cuda_common.h"
 
@@ -101,5 +91,4 @@ curandStatus_t curandGeneratePoisson(...) {
 
 } // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
-#endif // #ifndef INCLUDE_GUARD_CUPY_CURAND_H
+#endif // #ifndef INCLUDE_GUARD_SUTB_CUPY_CURAND_H

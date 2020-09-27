@@ -1,9 +1,7 @@
-// This file is a stub header file of hip for Read the Docs.
+#ifndef INCLUDE_GUARD_HIP_CUPY_HIPBLAS_H
+#define INCLUDE_GUARD_HIP_CUPY_HIPBLAS_H
 
-#ifndef INCLUDE_GUARD_CUPY_HIPBLAS_H
-#define INCLUDE_GUARD_CUPY_HIPBLAS_H
-
-#include "../cupy_hip_common.h"
+#include "cupy_common.h"
 #include <hipblas.h>
 
 extern "C" {
@@ -665,8 +663,6 @@ cublasStatus_t cublasZgetrfBatched(cublasHandle_t handle, int n, cuDoubleComplex
                                 PivotArray, infoArray, batchSize);
 }
 
-
-
 } // extern "C"
 
-#endif // #ifndef INCLUDE_GUARD_CUPY_HIPBLAS_H
+#endif // #ifndef INCLUDE_GUARD_HIP_CUPY_HIPBLAS_H

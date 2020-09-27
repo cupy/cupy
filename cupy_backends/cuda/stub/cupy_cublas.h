@@ -1,17 +1,7 @@
 // This file is a stub header file of cuda for Read the Docs.
 
-#ifndef INCLUDE_GUARD_CUPY_CUBLAS_H
-#define INCLUDE_GUARD_CUPY_CUBLAS_H
-
-#if CUPY_USE_HIP
-
-#include "cupy_hipblas.h"
-
-#elif !defined(CUPY_NO_CUDA)
-
-#include <cublas_v2.h>
-
-#else // #ifndef CUPY_NO_CUDA
+#ifndef INCLUDE_GUARD_STUB_CUPY_CUBLAS_H
+#define INCLUDE_GUARD_STUB_CUPY_CUBLAS_H
 
 #include "../cupy_cuda_common.h"
 
@@ -226,6 +216,10 @@ cublasStatus_t cublasZtrsm(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+typedef enum{} cublasComputeType_t;
+cublasStatus_t cublasGemmEx_v11(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
 
 // BLAS extension
 cublasStatus_t cublasSgeam(...) {
@@ -290,5 +284,4 @@ cublasStatus_t cublasDtpttr(...) {
 
 } // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
-#endif // #ifndef INCLUDE_GUARD_CUPY_CUBLAS_H
+#endif // #ifndef INCLUDE_GUARD_STUB_CUPY_CUBLAS_H

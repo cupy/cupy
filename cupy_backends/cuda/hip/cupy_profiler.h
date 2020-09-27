@@ -1,10 +1,7 @@
-// This file is a stub header file of hip for Read the Docs.
+#ifndef INCLUDE_GUARD_HIP_CUPY_PROFILER_H
+#define INCLUDE_GUARD_HIP_CUPY_PROFILER_H
 
-#ifndef INCLUDE_GUARD_CUPY_HIPPROFILER_H
-#define INCLUDE_GUARD_CUPY_HIPPROFILER_H
-
-#include <hip/hip_runtime_api.h>
-#include "../cupy_hip_common.h"
+#include "cupy_common.h"
 
 extern "C" {
 
@@ -24,4 +21,4 @@ cudaError_t cudaProfilerStop() {
 
 } // extern "C"
 
-#endif // #ifndef INCLUDE_GUARD_CUPY_HIPPROFILER_H
+#endif // #ifndef INCLUDE_GUARD_HIP_CUPY_PROFILER_H

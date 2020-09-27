@@ -1,29 +1,11 @@
 // This file is a stub header file of cuda for Read the Docs.
 
-#ifndef INCLUDE_GUARD_CUPY_CUDA_RUNTIME_H
-#define INCLUDE_GUARD_CUPY_CUDA_RUNTIME_H
-
-#if CUPY_USE_HIP
-
-#include "cupy_hip_runtime.h"
-
-#elif !defined(CUPY_NO_CUDA)
-
-#include <cuda_runtime.h>
-
-extern "C" {
-
-bool hip_environment = false;
-
-} // extern "C"
-
-#else // #ifndef CUPY_NO_CUDA
+#ifndef INCLUDE_GUARD_STUB_CUPY_CUDA_RUNTIME_H
+#define INCLUDE_GUARD_STUB_CUPY_CUDA_RUNTIME_H
 
 #include "../cupy_cuda_common.h"
 
 extern "C" {
-
-bool hip_environment = false;
 
 // Error handling
 const char* cudaGetErrorName(...) {
@@ -94,6 +76,26 @@ cudaError_t cudaDeviceSetLimit(...) {
     return cudaSuccess;
 }
 
+// IPC operations
+cudaError_t cudaIpcCloseMemHandle(...){
+    return cudaSuccess;
+}
+
+cudaError_t cudaIpcGetEventHandle(...){
+    return cudaSuccess;
+}
+
+cudaError_t cudaIpcGetMemHandle(...){
+    return cudaSuccess;
+}
+
+cudaError_t cudaIpcOpenEventHandle(...){
+    return cudaSuccess;
+}
+
+cudaError_t cudaIpcOpenMemHandle(...){
+    return cudaSuccess;
+}
 
 // Memory management
 cudaError_t cudaMalloc(...) {
@@ -315,5 +317,4 @@ cudaError_t cudaDestroySurfaceObject(...) {
 
 } // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
-#endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_RUNTIME_H
+#endif // #ifndef INCLUDE_GUARD_STUB_CUPY_CUDA_RUNTIME_H
