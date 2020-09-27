@@ -7,25 +7,26 @@
 #include <cub/device/device_spmv.cuh>
 #include <cub/device/device_scan.cuh>
 #include <cub/device/device_histogram.cuh>
-using namespace cub;
 #else
+#include <limits>
 #include <hipcub/device/device_reduce.hpp>
 #include <hipcub/device/device_segmented_reduce.hpp>
 //#include <hipcub/device/device_spmv.hpp>  // doesn't exist
 #include <hipcub/device/device_scan.hpp>
 #include <hipcub/device/device_histogram.hpp>
-using namespace hipcub;
 #endif
 
 
-#ifndef CUPY_USE_HIP
 /* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
+#ifndef CUPY_USE_HIP
 // - This works only because all data fields in the *Traits struct are not
 //   used in <cub/device/device_reduce.cuh>.
 // - The Max() and Lowest() below are chosen to comply with NumPy's lexical
 //   ordering; note that std::numeric_limits<T> does not support complex
 //   numbers as in general the comparison is ill defined.
 // - DO NOT USE THIS STUB for supporting CUB sorting!!!!!!
+using namespace cub;
+
 template <>
 struct FpLimits<complex<float>>
 {
@@ -52,8 +53,42 @@ struct FpLimits<complex<double>>
 
 template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
 template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
+
+#else
+
+// hipCUB internally uses std::numeric_limits, so we should provide specializations for the complex numbers.
+// Note that there's std::complex, so to avoid name collision we must use the full decoration (thrust::complex)!
+
+namespace std {
+template <>
+class numeric_limits<thrust::complex<float>> {
+  public:
+    static __host__ __device__ thrust::complex<float> max() noexcept {
+        return thrust::complex<float>(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+    }
+
+    static __host__ __device__ thrust::complex<float> lowest() noexcept {
+        return thrust::complex<float>(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+    }
+};
+
+template <>
+class numeric_limits<thrust::complex<double>> {
+  public:
+    static __host__ __device__ thrust::complex<double> max() noexcept {
+        return thrust::complex<double>(std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
+    }
+
+    static __host__ __device__ thrust::complex<double> lowest() noexcept {
+        return thrust::complex<double>(-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max());
+    }
+};
+}  // namespace std
+
+using namespace hipcub;
+
+#endif  // ifndef CUPY_USE_HIP
 /* ------------------------------------ end of boilerplate ------------------------------------ */
-#endif
 
 
 /* ------------------------------------ "Patches" to CUB ------------------------------------
@@ -118,11 +153,7 @@ __host__ __device__ __forceinline__ float Max::operator()(const float &a, const 
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    #ifndef CUPY_USE_HIP
-    else {return CUB_MAX(a, b);}
-    #else
-    else {return max(a, b);}
-    #endif
+    else {return a < b ? b : a;}
 }
 
 // specialization for double for handling NaNs
@@ -132,11 +163,7 @@ __host__ __device__ __forceinline__ double Max::operator()(const double &a, cons
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    #ifndef CUPY_USE_HIP
-    else {return CUB_MAX(a, b);}
-    #else
-    else {return max(a, b);}
-    #endif
+    else {return a < b ? b : a;}
 }
 
 // specialization for complex<float> for handling NaNs
@@ -148,7 +175,7 @@ __host__ __device__ __forceinline__ complex<float> Max::operator()(const complex
     // - isnan() and max() are defined in cupy/complex.cuh
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return max(a, b);}
+    else {return a < b ? b : a;}
 }
 
 // specialization for complex<double> for handling NaNs
@@ -160,7 +187,7 @@ __host__ __device__ __forceinline__ complex<double> Max::operator()(const comple
     // - isnan() and max() are defined in cupy/complex.cuh
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return max(a, b);}
+    else {return a < b ? b : a;}
 }
 
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
@@ -172,8 +199,7 @@ __host__ __device__ __forceinline__ __half Max::operator()(const __half &a, cons
     // NumPy behavior: NaN is always chosen!
     if (half_isnan(a)) {return a;}
     else if (half_isnan(b)) {return b;}
-    else if (half_less(a, b)) {return b;}
-    else {return a;}
+    else { return half_less(a, b) ? b : a; }
 }
 #endif
 
@@ -188,11 +214,7 @@ __host__ __device__ __forceinline__ float Min::operator()(const float &a, const 
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    #ifndef CUPY_USE_HIP
-    else {return CUB_MIN(a, b);}
-    #else
-    else {return min(a, b);}
-    #endif
+    else {return a < b ? a : b;}
 }
 
 // specialization for double for handling NaNs
@@ -202,11 +224,7 @@ __host__ __device__ __forceinline__ double Min::operator()(const double &a, cons
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    #ifndef CUPY_USE_HIP
-    else {return CUB_MIN(a, b);}
-    #else
-    else {return min(a, b);}
-    #endif
+    else {return a < b ? a : b;}
 }
 
 // specialization for complex<float> for handling NaNs
@@ -218,7 +236,13 @@ __host__ __device__ __forceinline__ complex<float> Min::operator()(const complex
     // - isnan() and min() are defined in cupy/complex.cuh
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return min(a, b);}
+    else {return a < b ? a : b;}
+    //complex<float> ans;
+    //if (isnan(a)) {ans = a;}
+    //else if (isnan(b)) {ans = b;}
+    //else {ans = (a < b ? a : b);}
+    //printf("I got %f + I %f\n", ans.real(), ans.imag());
+    //return ans;
 }
 
 // specialization for complex<double> for handling NaNs
@@ -230,7 +254,7 @@ __host__ __device__ __forceinline__ complex<double> Min::operator()(const comple
     // - isnan() and min() are defined in cupy/complex.cuh
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return min(a, b);}
+    else {return a < b ? a : b;}
 }
 
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
@@ -242,8 +266,7 @@ __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, cons
     // NumPy behavior: NaN is always chosen!
     if (half_isnan(a)) {return a;}
     else if (half_isnan(b)) {return b;}
-    else if (half_less(a, b)) {return a;}
-    else {return b;}
+    else { return half_less(a, b) ? a : b; }
 }
 #endif
 
