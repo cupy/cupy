@@ -37,12 +37,12 @@ size_t cub_device_scan_get_workspace_size(void*, void*, int, cudaStream_t, int, 
 size_t cub_device_histogram_range_get_workspace_size(void*, void*, int, void*, size_t, cudaStream_t, int);
 
 // This is for CUB's HistogramRange
-#if (defined(__CUDA_ARCH__) || defined (__HIP_DEVICE_COMPILE__))
+#ifdef __CUDA_ARCH__
 __device__ long long atomicAdd(long long *address, long long val) {
     return atomicAdd(reinterpret_cast<unsigned long long*>(address),
                      static_cast<unsigned long long>(val));
 }
-#endif // __CUDA_ARCH__ || __HIP_DEVICE_COMPILE__
+#endif // __CUDA_ARCH__
 
 #else // CUPY_NO_CUDA
 

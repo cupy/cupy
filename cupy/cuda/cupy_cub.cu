@@ -18,6 +18,7 @@ using namespace hipcub;
 #endif
 
 
+#ifndef CUPY_USE_HIP
 /* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
 // - This works only because all data fields in the *Traits struct are not
 //   used in <cub/device/device_reduce.cuh>.
@@ -52,6 +53,7 @@ struct FpLimits<complex<double>>
 template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
 template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
 /* ------------------------------------ end of boilerplate ------------------------------------ */
+#endif
 
 
 /* ------------------------------------ "Patches" to CUB ------------------------------------
@@ -116,7 +118,11 @@ __host__ __device__ __forceinline__ float Max::operator()(const float &a, const 
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
+    #ifndef CUPY_USE_HIP
     else {return CUB_MAX(a, b);}
+    #else
+    else {return max(a, b);}
+    #endif
 }
 
 // specialization for double for handling NaNs
@@ -126,7 +132,11 @@ __host__ __device__ __forceinline__ double Max::operator()(const double &a, cons
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
+    #ifndef CUPY_USE_HIP
     else {return CUB_MAX(a, b);}
+    #else
+    else {return max(a, b);}
+    #endif
 }
 
 // specialization for complex<float> for handling NaNs
@@ -178,7 +188,11 @@ __host__ __device__ __forceinline__ float Min::operator()(const float &a, const 
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
+    #ifndef CUPY_USE_HIP
     else {return CUB_MIN(a, b);}
+    #else
+    else {return min(a, b);}
+    #endif
 }
 
 // specialization for double for handling NaNs
@@ -188,7 +202,11 @@ __host__ __device__ __forceinline__ double Min::operator()(const double &a, cons
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
+    #ifndef CUPY_USE_HIP
     else {return CUB_MIN(a, b);}
+    #else
+    else {return min(a, b);}
+    #endif
 }
 
 // specialization for complex<float> for handling NaNs
@@ -554,10 +572,12 @@ struct _cub_device_spmv {
         void* row_offsets, void* column_indices, void* x, void* y,
         int num_rows, int num_cols, int num_nonzeros, cudaStream_t stream)
     {
+        #ifndef CUPY_USE_HIP
         DeviceSpmv::CsrMV(workspace, workspace_size, static_cast<T*>(values),
             static_cast<int*>(row_offsets), static_cast<int*>(column_indices),
             static_cast<T*>(x), static_cast<T*>(y), num_rows, num_cols,
             num_nonzeros, stream);
+        #endif
     }
 };
 
@@ -600,12 +620,21 @@ struct _cub_histogram_range {
         // Ugly hack to avoid specializing complex types, which cub::DeviceHistogram does not support.
         // The If and Equals templates are from cub/util_type.cuh.
         // TODO(leofang): revisit this part when complex support is added to cupy.histogram()
+        #ifndef CUPY_USE_HIP
         typedef typename If<(Equals<sampleT, complex<float>>::VALUE || Equals<sampleT, complex<double>>::VALUE),
                             double,
                             sampleT>::Type h_sampleT;
         typedef typename If<(Equals<binT, complex<float>>::VALUE || Equals<binT, complex<double>>::VALUE),
                             double,
                             binT>::Type h_binT;
+        #else
+        typedef typename std::conditional<(std::is_same<sampleT, complex<float>>::value || std::is_same<sampleT, complex<double>>::value),
+                                          double,
+                                          sampleT>::type h_sampleT;
+        typedef typename std::conditional<(std::is_same<binT, complex<float>>::value || std::is_same<binT, complex<double>>::value),
+                                          double,
+                                          binT>::type h_binT;
+        #endif
 
         // TODO(leofang): CUB has a bug that when specializing n_samples with type size_t,
         // it would error out. Before the fix (thrust/cub#38) is merged we disable the code
@@ -614,7 +643,14 @@ struct _cub_histogram_range {
         // if (n_samples < (1ULL << 31)) {
             int num_samples = n_samples;
             DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
+                #ifndef CUPY_USE_HIP
                 static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s);
+                #else
+                // rocPRIM looks up atomic_add() from the namespace rocprim::detail; there's no way we can
+                // inject a "long long" version as we did for CUDA, so we must do it in "unsigned long long"
+                // and convert later...
+                static_cast<unsigned long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s);
+                #endif
         // } else {
         //     DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
         //         static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), n_samples, s);
@@ -704,10 +740,12 @@ void cub_device_spmv(void* workspace, size_t& workspace_size, void* values,
     int num_cols, int num_nonzeros, cudaStream_t stream,
     int dtype_id)
 {
+    #ifndef CUPY_USE_HIP
     return dtype_dispatcher(dtype_id, _cub_device_spmv(),
                             workspace, workspace_size, values, row_offsets,
                             column_indices, x, y, num_rows, num_cols,
                             num_nonzeros, stream);
+    #endif
 }
 
 size_t cub_device_spmv_get_workspace_size(void* values, void* row_offsets,
@@ -715,8 +753,10 @@ size_t cub_device_spmv_get_workspace_size(void* values, void* row_offsets,
     int num_nonzeros, cudaStream_t stream, int dtype_id)
 {
     size_t workspace_size = 0;
+    #ifndef CUPY_USE_HIP
     cub_device_spmv(NULL, workspace_size, values, row_offsets, column_indices,
                     x, y, num_rows, num_cols, num_nonzeros, stream, dtype_id);
+    #endif
     return workspace_size;
 }
 
