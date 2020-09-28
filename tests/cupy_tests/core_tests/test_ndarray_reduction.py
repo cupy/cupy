@@ -305,13 +305,14 @@ class TestCubReduction(unittest.TestCase):
         return a.max(axis=())
 
 
-# This class compares CUB results against NumPy's
+# This class compares cuTensor-based reduction results against NumPy's
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
     'order': ('C', 'F'),
 }))
 @testing.gpu
-@unittest.skipUnless(cupy.cuda.cutensor.available, 'The CUB routine is not enabled')
+@unittest.skipUnless(cupy.cuda.cutensor.available,
+                     'The cuTENSOR routine is not enabled')
 class TestCutensorReduction(unittest.TestCase):
 
     def setUp(self):
@@ -364,7 +365,7 @@ class TestCutensorReduction(unittest.TestCase):
         return a.max(axis=())
 
 
-# This class compares CUB results against NumPy's
+# This class compares unaccelerated reduction results against NumPy's
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
     'order': ('C', 'F'),
