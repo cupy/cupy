@@ -594,7 +594,7 @@ typedef enum {
 
 typedef void* cusparseHandle_t;
 typedef void* cusparseMatDescr_t;
-typedef void* csrsm2Info_t;
+typedef void* csrsv2Info_t;
 typedef void* csrsm2Info_t;
 typedef void* csric02Info_t;
 typedef void* bsric02Info_t;
@@ -603,6 +603,8 @@ typedef void* bsrilu02Info_t;
 typedef void* csrgemm2Info_t;
 
 typedef enum {} cusparseMatrixType_t;
+typedef enum {} cusparseFillMode_t;
+typedef enum {} cusparseDiagType_t;
 typedef enum {} cusparseOperation_t;
 typedef enum {} cusparsePointerMode_t;
 typedef enum {} cusparseAction_t;
