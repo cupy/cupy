@@ -8,10 +8,8 @@
 #include <cub/device/device_scan.cuh>
 #include <cub/device/device_histogram.cuh>
 #else
-#include <limits>
 #include <hipcub/device/device_reduce.hpp>
 #include <hipcub/device/device_segmented_reduce.hpp>
-//#include <hipcub/device/device_spmv.hpp>  // doesn't exist
 #include <hipcub/device/device_scan.hpp>
 #include <hipcub/device/device_histogram.hpp>
 #endif
@@ -58,6 +56,7 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
 
 // hipCUB internally uses std::numeric_limits, so we should provide specializations for the complex numbers.
 // Note that there's std::complex, so to avoid name collision we must use the full decoration (thrust::complex)!
+// TODO(leofang): wrap CuPy's thrust namespace with another one (say, cupy::thrust) for safer scope resolution?
 
 namespace std {
 template <>
@@ -256,12 +255,6 @@ __host__ __device__ __forceinline__ complex<float> Min::operator()(const complex
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
     else {return a < b ? a : b;}
-    //complex<float> ans;
-    //if (isnan(a)) {ans = a;}
-    //else if (isnan(b)) {ans = b;}
-    //else {ans = (a < b ? a : b);}
-    //printf("I got %f + I %f\n", ans.real(), ans.imag());
-    //return ans;
 }
 
 // specialization for complex<double> for handling NaNs
@@ -681,6 +674,7 @@ struct _cub_histogram_range {
         // TODO(leofang): CUB has a bug that when specializing n_samples with type size_t,
         // it would error out. Before the fix (thrust/cub#38) is merged we disable the code
         // path splitting for now. A type/range check must be done in the caller.
+        // TODO(leofang): check if hipCUB has the same bug or not
 
         // if (n_samples < (1ULL << 31)) {
             int num_samples = n_samples;

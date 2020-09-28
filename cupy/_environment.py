@@ -91,7 +91,7 @@ def get_rocm_path():
 
 
 def get_hipcc_path():
-    # Returns the path to the nvcc command or None if not found.
+    # Returns the path to the hipcc command or None if not found.
     global _hipcc_path
     if _hipcc_path == '':
         _hipcc_path = _get_hipcc_path()

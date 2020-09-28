@@ -149,7 +149,6 @@ def get_compiler_setting(use_hip):
         include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'rocrand'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'roctracer'))
-        #include_dirs.append(os.path.join(rocm_path, 'include', 'hipcub'))
         library_dirs.append(os.path.join(rocm_path, 'lib'))
 
     if use_hip:
@@ -472,24 +471,25 @@ def check_cub_version(compiler, settings):
     # - On CUDA, CUB < 1.9.9 does not provide version.cuh and would error out
     # - On ROCm, hipCUB has the same version as rocPRIM (as of ROCm 3.5.0)
     try:
-        out = build_and_run(compiler, '''
-        #ifndef CUPY_USE_HIP
-        #include <cub/version.cuh>
-        #else
-        #include <hipcub/hipcub_version.hpp>
-        #endif
-        #include <stdio.h>
+        out = build_and_run(compiler,
+                            '''
+                            #ifndef CUPY_USE_HIP
+                            #include <cub/version.cuh>
+                            #else
+                            #include <hipcub/hipcub_version.hpp>
+                            #endif
+                            #include <stdio.h>
 
-        int main() {
-          #ifndef CUPY_USE_HIP
-          printf("%d", CUB_VERSION);
-          #else
-          printf("%d", HIPCUB_VERSION);
-          #endif
-          return 0;
-        }''',
-        include_dirs=settings['include_dirs'],
-        define_macros=settings['define_macros'])
+                            int main() {
+                              #ifndef CUPY_USE_HIP
+                              printf("%d", CUB_VERSION);
+                              #else
+                              printf("%d", HIPCUB_VERSION);
+                              #endif
+                              return 0;
+                            }''',
+                            include_dirs=settings['include_dirs'],
+                            define_macros=settings['define_macros'])
     except Exception as e:
         # could be in a git submodule?
         try:
