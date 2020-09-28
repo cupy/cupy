@@ -305,66 +305,6 @@ class TestCubReduction(unittest.TestCase):
         return a.max(axis=())
 
 
-# This class compares cuTensor-based reduction results against NumPy's
-@testing.parameterize(*testing.product({
-    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
-    'order': ('C', 'F'),
-}))
-@testing.gpu
-@unittest.skipUnless(cupy.cuda.cutensor.available,
-                     'The cuTENSOR routine is not enabled')
-class TestCutensorReduction(unittest.TestCase):
-
-    def setUp(self):
-        self.old_accelerators = _accelerator.get_routine_accelerators()
-        _accelerator.set_routine_accelerators(['cutensor'])
-
-    def tearDown(self):
-        _accelerator.set_routine_accelerators(self.old_accelerators)
-
-    @testing.for_contiguous_axes()
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
-    def test_cutensor_min(self, xp, dtype, axis):
-        a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
-            a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
-            a = xp.asfortranarray(a)
-        return a.min(axis=axis)
-
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
-    def test_cutensor_min_empty_axis(self, xp, dtype):
-        a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
-            a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
-            a = xp.asfortranarray(a)
-        return a.min(axis=())
-
-    @testing.for_contiguous_axes()
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
-    def test_cutensor_max(self, xp, dtype, axis):
-        a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
-            a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
-            a = xp.asfortranarray(a)
-        return a.max(axis=axis)
-
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
-    def test_cutensor_max_empty_axis(self, xp, dtype):
-        a = testing.shaped_random(self.shape, xp, dtype)
-        if self.order in ('c', 'C'):
-            a = xp.ascontiguousarray(a)
-        elif self.order in ('f', 'F'):
-            a = xp.asfortranarray(a)
-        return a.max(axis=())
-
-
 # This class compares unaccelerated reduction results against NumPy's
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
