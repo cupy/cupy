@@ -556,105 +556,105 @@ from cupy.lib import roots  # NOQA
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
-from cupy.math.trigonometric import arccos  # NOQA
-from cupy.math.trigonometric import arcsin  # NOQA
-from cupy.math.trigonometric import arctan  # NOQA
-from cupy.math.trigonometric import arctan2  # NOQA
-from cupy.math.trigonometric import cos  # NOQA
-from cupy.math.trigonometric import deg2rad  # NOQA
-from cupy.math.trigonometric import degrees  # NOQA
-from cupy.math.trigonometric import hypot  # NOQA
-from cupy.math.trigonometric import rad2deg  # NOQA
-from cupy.math.trigonometric import radians  # NOQA
-from cupy.math.trigonometric import sin  # NOQA
-from cupy.math.trigonometric import tan  # NOQA
-from cupy.math.trigonometric import unwrap  # NOQA
+from cupy._math.trigonometric import arccos  # NOQA
+from cupy._math.trigonometric import arcsin  # NOQA
+from cupy._math.trigonometric import arctan  # NOQA
+from cupy._math.trigonometric import arctan2  # NOQA
+from cupy._math.trigonometric import cos  # NOQA
+from cupy._math.trigonometric import deg2rad  # NOQA
+from cupy._math.trigonometric import degrees  # NOQA
+from cupy._math.trigonometric import hypot  # NOQA
+from cupy._math.trigonometric import rad2deg  # NOQA
+from cupy._math.trigonometric import radians  # NOQA
+from cupy._math.trigonometric import sin  # NOQA
+from cupy._math.trigonometric import tan  # NOQA
+from cupy._math.trigonometric import unwrap  # NOQA
 
-from cupy.math.hyperbolic import arccosh  # NOQA
-from cupy.math.hyperbolic import arcsinh  # NOQA
-from cupy.math.hyperbolic import arctanh  # NOQA
-from cupy.math.hyperbolic import cosh  # NOQA
-from cupy.math.hyperbolic import sinh  # NOQA
-from cupy.math.hyperbolic import tanh  # NOQA
+from cupy._math.hyperbolic import arccosh  # NOQA
+from cupy._math.hyperbolic import arcsinh  # NOQA
+from cupy._math.hyperbolic import arctanh  # NOQA
+from cupy._math.hyperbolic import cosh  # NOQA
+from cupy._math.hyperbolic import sinh  # NOQA
+from cupy._math.hyperbolic import tanh  # NOQA
 
-from cupy.math.rounding import around  # NOQA
-from cupy.math.rounding import ceil  # NOQA
-from cupy.math.rounding import fix  # NOQA
-from cupy.math.rounding import floor  # NOQA
-from cupy.math.rounding import rint  # NOQA
-from cupy.math.rounding import round_  # NOQA
-from cupy.math.rounding import trunc  # NOQA
+from cupy._math.rounding import around  # NOQA
+from cupy._math.rounding import ceil  # NOQA
+from cupy._math.rounding import fix  # NOQA
+from cupy._math.rounding import floor  # NOQA
+from cupy._math.rounding import rint  # NOQA
+from cupy._math.rounding import round_  # NOQA
+from cupy._math.rounding import trunc  # NOQA
 
-from cupy.math.sumprod import prod  # NOQA
-from cupy.math.sumprod import sum  # NOQA
-from cupy.math.sumprod import cumprod  # NOQA
-from cupy.math.sumprod import cumsum  # NOQA
-from cupy.math.sumprod import nansum  # NOQA
-from cupy.math.sumprod import nanprod  # NOQA
-from cupy.math.sumprod import diff  # NOQA
-from cupy.math.sumprod import gradient  # NOQA
-from cupy.math.window import bartlett  # NOQA
-from cupy.math.window import blackman  # NOQA
-from cupy.math.window import hamming  # NOQA
-from cupy.math.window import hanning  # NOQA
-from cupy.math.window import kaiser  # NOQA
+from cupy._math.sumprod import prod  # NOQA
+from cupy._math.sumprod import sum  # NOQA
+from cupy._math.sumprod import cumprod  # NOQA
+from cupy._math.sumprod import cumsum  # NOQA
+from cupy._math.sumprod import nansum  # NOQA
+from cupy._math.sumprod import nanprod  # NOQA
+from cupy._math.sumprod import diff  # NOQA
+from cupy._math.sumprod import gradient  # NOQA
+from cupy._math.window import bartlett  # NOQA
+from cupy._math.window import blackman  # NOQA
+from cupy._math.window import hamming  # NOQA
+from cupy._math.window import hanning  # NOQA
+from cupy._math.window import kaiser  # NOQA
 
-from cupy.math.explog import exp  # NOQA
-from cupy.math.explog import exp2  # NOQA
-from cupy.math.explog import expm1  # NOQA
-from cupy.math.explog import log  # NOQA
-from cupy.math.explog import log10  # NOQA
-from cupy.math.explog import log1p  # NOQA
-from cupy.math.explog import log2  # NOQA
-from cupy.math.explog import logaddexp  # NOQA
-from cupy.math.explog import logaddexp2  # NOQA
+from cupy._math.explog import exp  # NOQA
+from cupy._math.explog import exp2  # NOQA
+from cupy._math.explog import expm1  # NOQA
+from cupy._math.explog import log  # NOQA
+from cupy._math.explog import log10  # NOQA
+from cupy._math.explog import log1p  # NOQA
+from cupy._math.explog import log2  # NOQA
+from cupy._math.explog import logaddexp  # NOQA
+from cupy._math.explog import logaddexp2  # NOQA
 
-from cupy.math.special import i0  # NOQA
-from cupy.math.special import sinc  # NOQA
+from cupy._math.special import i0  # NOQA
+from cupy._math.special import sinc  # NOQA
 
-from cupy.math.floating import copysign  # NOQA
-from cupy.math.floating import frexp  # NOQA
-from cupy.math.floating import ldexp  # NOQA
-from cupy.math.floating import nextafter  # NOQA
-from cupy.math.floating import signbit  # NOQA
+from cupy._math.floating import copysign  # NOQA
+from cupy._math.floating import frexp  # NOQA
+from cupy._math.floating import ldexp  # NOQA
+from cupy._math.floating import nextafter  # NOQA
+from cupy._math.floating import signbit  # NOQA
 
-from cupy.math.rational import gcd  # NOQA
-from cupy.math.rational import lcm  # NOQA
+from cupy._math.rational import gcd  # NOQA
+from cupy._math.rational import lcm  # NOQA
 
-from cupy.math.arithmetic import add  # NOQA
-from cupy.math.arithmetic import divide  # NOQA
-from cupy.math.arithmetic import divmod  # NOQA
-from cupy.math.arithmetic import floor_divide  # NOQA
-from cupy.math.arithmetic import fmod  # NOQA
-from cupy.math.arithmetic import modf  # NOQA
-from cupy.math.arithmetic import multiply  # NOQA
-from cupy.math.arithmetic import negative  # NOQA
-from cupy.math.arithmetic import power  # NOQA
-from cupy.math.arithmetic import reciprocal  # NOQA
-from cupy.math.arithmetic import remainder  # NOQA
-from cupy.math.arithmetic import remainder as mod  # NOQA
-from cupy.math.arithmetic import subtract  # NOQA
-from cupy.math.arithmetic import true_divide  # NOQA
+from cupy._math.arithmetic import add  # NOQA
+from cupy._math.arithmetic import divide  # NOQA
+from cupy._math.arithmetic import divmod  # NOQA
+from cupy._math.arithmetic import floor_divide  # NOQA
+from cupy._math.arithmetic import fmod  # NOQA
+from cupy._math.arithmetic import modf  # NOQA
+from cupy._math.arithmetic import multiply  # NOQA
+from cupy._math.arithmetic import negative  # NOQA
+from cupy._math.arithmetic import power  # NOQA
+from cupy._math.arithmetic import reciprocal  # NOQA
+from cupy._math.arithmetic import remainder  # NOQA
+from cupy._math.arithmetic import remainder as mod  # NOQA
+from cupy._math.arithmetic import subtract  # NOQA
+from cupy._math.arithmetic import true_divide  # NOQA
 
-from cupy.math.arithmetic import angle  # NOQA
-from cupy.math.arithmetic import conjugate as conj  # NOQA
-from cupy.math.arithmetic import conjugate  # NOQA
-from cupy.math.arithmetic import imag  # NOQA
-from cupy.math.arithmetic import real  # NOQA
+from cupy._math.arithmetic import angle  # NOQA
+from cupy._math.arithmetic import conjugate as conj  # NOQA
+from cupy._math.arithmetic import conjugate  # NOQA
+from cupy._math.arithmetic import imag  # NOQA
+from cupy._math.arithmetic import real  # NOQA
 
-from cupy.math.misc import absolute as abs  # NOQA
-from cupy.math.misc import absolute  # NOQA
-from cupy.math.misc import cbrt  # NOQA
-from cupy.math.misc import clip  # NOQA
-from cupy.math.misc import fmax  # NOQA
-from cupy.math.misc import fmin  # NOQA
-from cupy.math.misc import maximum  # NOQA
-from cupy.math.misc import minimum  # NOQA
-from cupy.math.misc import nan_to_num  # NOQA
-from cupy.math.misc import sign  # NOQA
-from cupy.math.misc import sqrt  # NOQA
-from cupy.math.misc import square  # NOQA
-from cupy.math.misc import convolve  # NOQA
+from cupy._math.misc import absolute as abs  # NOQA
+from cupy._math.misc import absolute  # NOQA
+from cupy._math.misc import cbrt  # NOQA
+from cupy._math.misc import clip  # NOQA
+from cupy._math.misc import fmax  # NOQA
+from cupy._math.misc import fmin  # NOQA
+from cupy._math.misc import maximum  # NOQA
+from cupy._math.misc import minimum  # NOQA
+from cupy._math.misc import nan_to_num  # NOQA
+from cupy._math.misc import sign  # NOQA
+from cupy._math.misc import sqrt  # NOQA
+from cupy._math.misc import square  # NOQA
+from cupy._math.misc import convolve  # NOQA
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines

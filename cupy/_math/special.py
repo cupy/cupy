@@ -1,5 +1,5 @@
 from cupy import core
-from cupy.math import ufunc
+from cupy._math import ufunc
 
 
 i0 = ufunc.create_math_ufunc(
