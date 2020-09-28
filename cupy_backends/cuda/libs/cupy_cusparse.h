@@ -642,6 +642,14 @@ cusparseStatus_t cusparseSetMatType(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseSetMatFillMode(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSetMatDiagType(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseSetPointerMode(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
