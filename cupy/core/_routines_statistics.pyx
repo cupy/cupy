@@ -35,6 +35,9 @@ cdef ndarray _ndarray_max(ndarray self, axis, out, dtype, keepdims):
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MAX, axis, dtype, out, keepdims)
         if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            if self.dtype.kind == 'c' or dtype in ('F', 'D'):
+                # Complex dtype is not supported
+                continue
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MAX, 1, 0)
         if result is not None:
@@ -50,6 +53,9 @@ cdef ndarray _ndarray_min(ndarray self, axis, out, dtype, keepdims):
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MIN, axis, out, dtype, keepdims)
         if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            if self.dtype.kind == 'c' or dtype in ('F', 'D'):
+                # Complex dtype is not supported
+                continue
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MIN, 1, 0)
         if result is not None:
@@ -68,6 +74,9 @@ cdef ndarray _ndarray_ptp(ndarray self, axis, out, keepdims):
                     self, cub.CUPY_CUB_MIN, axis, None, None, keepdims)
                 return result
         if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            if self.dtype.kind == 'c':
+                # Complex dtype is not supported
+                continue
             maxv = cutensor._try_reduction_routine(
                 self, axis, None, out, keepdims, cuda_cutensor.OP_MAX, 1, 0)
             if maxv is None:
