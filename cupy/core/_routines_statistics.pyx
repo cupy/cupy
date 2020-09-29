@@ -7,7 +7,6 @@ import cupy
 from cupy.core import _reduction
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
-from cupy import cutensor
 
 from cupy.core cimport _accelerator
 from cupy.core cimport _routines_math as _math
