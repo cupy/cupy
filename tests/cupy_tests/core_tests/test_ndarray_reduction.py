@@ -329,7 +329,7 @@ class TestUnacceleratedReduction(unittest.TestCase):
             a = xp.ascontiguousarray(a)
         elif self.order in ('f', 'F'):
             a = xp.asfortranarray(a)
-        return a.max(axis=axis)
+        return a.min(axis=axis)
 
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)

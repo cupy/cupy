@@ -7,6 +7,7 @@ from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
+from cupy.cuda cimport cub
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
 from cupy_backends.cuda.api cimport runtime
@@ -247,6 +248,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
     cdef tuple axis_permutes_cub
     cdef ndarray in_arr, out_arr
     cdef Py_ssize_t contiguous_size = 1
+    cdef str order
 
     # detect whether CUB headers exists somewhere:
     if _cub_path is None:
@@ -263,7 +265,9 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
     # check reduction axes, if not contiguous then fall back to old kernel
     if in_arr._f_contiguous:
-        if reduce_axis is () and not in_arr._c_contiguous:
+        order = 'f'
+        if not cub._cub_device_segmented_reduce_axis_compatible(
+                reduce_axis, in_arr.ndim, order):
             return None
         axis_permutes_cub = tuple(sorted(reduce_axis) + sorted(out_axis))
     elif in_arr._c_contiguous:
