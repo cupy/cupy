@@ -263,6 +263,8 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
     # check reduction axes, if not contiguous then fall back to old kernel
     if in_arr._f_contiguous:
+        if reduce_axis is () and not in_arr._c_contiguous:
+            return None
         axis_permutes_cub = tuple(sorted(reduce_axis) + sorted(out_axis))
     elif in_arr._c_contiguous:
         axis_permutes_cub = tuple(sorted(out_axis) + sorted(reduce_axis))
