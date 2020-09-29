@@ -499,25 +499,25 @@ from cupy.linalg.norms import trace  # NOQA
 # -----------------------------------------------------------------------------
 # Logic functions
 # -----------------------------------------------------------------------------
-from cupy.logic.comparison import allclose  # NOQA
-from cupy.logic.comparison import array_equal  # NOQA
-from cupy.logic.comparison import isclose  # NOQA
+from cupy._logic.comparison import allclose  # NOQA
+from cupy._logic.comparison import array_equal  # NOQA
+from cupy._logic.comparison import isclose  # NOQA
 
-from cupy.logic.content import isfinite  # NOQA
-from cupy.logic.content import isinf  # NOQA
-from cupy.logic.content import isnan  # NOQA
+from cupy._logic.content import isfinite  # NOQA
+from cupy._logic.content import isinf  # NOQA
+from cupy._logic.content import isnan  # NOQA
 
-from cupy.logic.truth import in1d  # NOQA
-from cupy.logic.truth import isin  # NOQA
+from cupy._logic.truth import in1d  # NOQA
+from cupy._logic.truth import isin  # NOQA
 
-from cupy.logic.type_test import iscomplex  # NOQA
-from cupy.logic.type_test import iscomplexobj  # NOQA
-from cupy.logic.type_test import isfortran  # NOQA
-from cupy.logic.type_test import isreal  # NOQA
-from cupy.logic.type_test import isrealobj  # NOQA
+from cupy._logic.type_test import iscomplex  # NOQA
+from cupy._logic.type_test import iscomplexobj  # NOQA
+from cupy._logic.type_test import isfortran  # NOQA
+from cupy._logic.type_test import isreal  # NOQA
+from cupy._logic.type_test import isrealobj  # NOQA
 
-from cupy.logic.truth import in1d  # NOQA
-from cupy.logic.truth import isin  # NOQA
+from cupy._logic.truth import in1d  # NOQA
+from cupy._logic.truth import isin  # NOQA
 
 
 def isscalar(element):
@@ -528,20 +528,20 @@ def isscalar(element):
     return _numpy.isscalar(element)
 
 
-from cupy.logic.ops import logical_and  # NOQA
-from cupy.logic.ops import logical_not  # NOQA
-from cupy.logic.ops import logical_or  # NOQA
-from cupy.logic.ops import logical_xor  # NOQA
+from cupy._logic.ops import logical_and  # NOQA
+from cupy._logic.ops import logical_not  # NOQA
+from cupy._logic.ops import logical_or  # NOQA
+from cupy._logic.ops import logical_xor  # NOQA
 
-from cupy.logic.comparison import equal  # NOQA
-from cupy.logic.comparison import greater  # NOQA
-from cupy.logic.comparison import greater_equal  # NOQA
-from cupy.logic.comparison import less  # NOQA
-from cupy.logic.comparison import less_equal  # NOQA
-from cupy.logic.comparison import not_equal  # NOQA
+from cupy._logic.comparison import equal  # NOQA
+from cupy._logic.comparison import greater  # NOQA
+from cupy._logic.comparison import greater_equal  # NOQA
+from cupy._logic.comparison import less  # NOQA
+from cupy._logic.comparison import less_equal  # NOQA
+from cupy._logic.comparison import not_equal  # NOQA
 
-from cupy.logic.truth import all  # NOQA
-from cupy.logic.truth import any  # NOQA
+from cupy._logic.truth import all  # NOQA
+from cupy._logic.truth import any  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions

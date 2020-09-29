@@ -4,7 +4,7 @@ import cupy
 from cupy import core
 from cupy.core import _routines_statistics as _statistics
 from cupy.core import _fusion_thread_local
-from cupy.logic import content
+from cupy._logic import content
 
 
 def amin(a, axis=None, out=None, keepdims=False):
