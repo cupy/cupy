@@ -737,7 +737,7 @@ def cythonize(extensions, arg_options):
         compile_time_env = {}
         cythonize_options['compile_time_env'] = compile_time_env
     compile_time_env['use_hip'] = arg_options['use_hip']
-    if arg_options['no_cuda']:
+    if use_hip or arg_options['no_cuda']:
         compile_time_env['CUDA_VERSION'] = 0
     else:
         compile_time_env['CUDA_VERSION'] = build.get_cuda_version()
