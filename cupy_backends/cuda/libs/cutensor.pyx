@@ -156,7 +156,7 @@ cdef class Handle:
     def __init__(self):
         self._ptr = PyMem_Malloc(sizeof(cutensorHandle_t))
 
-    def __del__(self):
+    def __dealloc__(self):
         PyMem_Free(self._ptr)
         self._ptr = NULL
 
@@ -170,7 +170,7 @@ cdef class TensorDescriptor:
     def __init__(self):
         self._ptr = PyMem_Malloc(sizeof(cutensorTensorDescriptor_t))
 
-    def __del__(self):
+    def __dealloc__(self):
         PyMem_Free(self._ptr)
         self._ptr = NULL
 
@@ -184,7 +184,7 @@ cdef class ContractionDescriptor:
     def __init__(self):
         self._ptr = PyMem_Malloc(sizeof(cutensorContractionDescriptor_t))
 
-    def __del__(self):
+    def __dealloc__(self):
         PyMem_Free(self._ptr)
         self._ptr = NULL
 
@@ -198,7 +198,7 @@ cdef class ContractionFind:
     def __init__(self):
         self._ptr = PyMem_Malloc(sizeof(cutensorContractionFind_t))
 
-    def __del__(self):
+    def __dealloc__(self):
         PyMem_Free(self._ptr)
         self._ptr = NULL
 
@@ -212,7 +212,7 @@ cdef class ContractionPlan:
     def __init__(self):
         self._ptr = PyMem_Malloc(sizeof(cutensorContractionPlan_t))
 
-    def __del__(self):
+    def __dealloc__(self):
         PyMem_Free(self._ptr)
         self._ptr = NULL
 
