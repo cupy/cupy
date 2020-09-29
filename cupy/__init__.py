@@ -1,8 +1,8 @@
-import functools
-import sys
-import warnings
+import functools as _functools
+import sys as _sys
+import warnings as _warnings
 
-import numpy
+import numpy as _numpy
 
 from cupy import _environment
 from cupy import _version
@@ -13,16 +13,17 @@ _environment._preload_libraries()  # NOQA
 
 
 try:
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', category=ImportWarning,
-                                message='can\'t resolve package from __spec__')
+    with _warnings.catch_warnings():
+        _warnings.filterwarnings(
+            'ignore', category=ImportWarning,
+            message='can\'t resolve package from __spec__')
         from cupy import core  # NOQA
 except ImportError as e:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
     # built.
-    exc_info = sys.exc_info()
-    msg = ('''\
+    _exc_info = _sys.exc_info()
+    _msg = ('''\
 CuPy is not correctly installed.
 
 If you are using wheel distribution (cupy-cudaXX), make sure that the version of CuPy you installed matches with the version of CUDA on your host.
@@ -35,9 +36,9 @@ If you are building CuPy from source, please check your environment, uninstall C
 Check the Installation Guide for details:
   https://docs.cupy.dev/en/latest/install.html
 
-original error: {}'''.format(exc_info[1]))  # NOQA
+original error: {}'''.format(_exc_info[1]))  # NOQA
 
-    raise ImportError(msg) from e
+    raise ImportError(_msg) from e
 
 
 from cupy import cuda
@@ -352,7 +353,7 @@ def binary_repr(num, width=None):
 
     .. seealso:: :func:`numpy.binary_repr`
     """
-    return numpy.binary_repr(num, width)
+    return _numpy.binary_repr(num, width)
 
 
 # -----------------------------------------------------------------------------
@@ -366,7 +367,7 @@ def can_cast(from_, to, casting='safe'):
     .. seealso:: :func:`numpy.can_cast`
     """
     from_ = from_.dtype if isinstance(from_, cupy.ndarray) else from_
-    return numpy.can_cast(from_, to, casting=casting)
+    return _numpy.can_cast(from_, to, casting=casting)
 
 
 def common_type(*arrays):
@@ -375,9 +376,9 @@ def common_type(*arrays):
     .. seealso:: :func:`numpy.common_type`
     """
     if len(arrays) == 0:
-        return numpy.float16
+        return _numpy.float16
 
-    default_float_dtype = numpy.dtype('float64')
+    default_float_dtype = _numpy.dtype('float64')
     dtypes = []
     for a in arrays:
         if a.dtype.kind == 'b':
@@ -387,7 +388,7 @@ def common_type(*arrays):
         else:
             dtypes.append(a.dtype)
 
-    return functools.reduce(numpy.promote_types, dtypes).type
+    return _functools.reduce(_numpy.promote_types, dtypes).type
 
 
 def result_type(*arrays_and_dtypes):
@@ -398,7 +399,7 @@ def result_type(*arrays_and_dtypes):
     """
     dtypes = [a.dtype if isinstance(a, cupy.ndarray)
               else a for a in arrays_and_dtypes]
-    return numpy.result_type(*dtypes)
+    return _numpy.result_type(*dtypes)
 
 
 from numpy import min_scalar_type  # NOQA
@@ -476,7 +477,7 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 
     .. seealso:: :func:`numpy.base_repr`
     """
-    return numpy.base_repr(number, base, padding)
+    return _numpy.base_repr(number, base, padding)
 
 
 # -----------------------------------------------------------------------------
@@ -524,7 +525,7 @@ def isscalar(element):
 
     .. seealso:: :func:`numpy.isscalar`
     """
-    return numpy.isscalar(element)
+    return _numpy.isscalar(element)
 
 
 from cupy.logic.ops import logical_and  # NOQA
@@ -740,7 +741,7 @@ def ndim(a):
     try:
         return a.ndim
     except AttributeError:
-        return numpy.ndim(a)
+        return _numpy.ndim(a)
 
 
 # -----------------------------------------------------------------------------
@@ -783,10 +784,10 @@ def asnumpy(a, stream=None, order='C'):
     elif hasattr(a, "__cuda_array_interface__"):
         return array(a).get(stream=stream, order=order)
     else:
-        return numpy.asarray(a, order=order)
+        return _numpy.asarray(a, order=order)
 
 
-_cupy = sys.modules[__name__]
+_cupy = _sys.modules[__name__]
 
 
 def get_array_module(*args):
@@ -817,7 +818,7 @@ def get_array_module(*args):
                             cupy.core.fusion._FusionVarArray,
                             cupy.core.new_fusion._ArrayProxy)):
             return _cupy
-    return numpy
+    return _numpy
 
 
 fuse = cupy.core.fusion.fuse
@@ -865,5 +866,5 @@ def get_default_pinned_memory_pool():
 
 def show_config():
     """Prints the current runtime configuration to standard output."""
-    sys.stdout.write(str(_cupyx.get_runtime_info()))
-    sys.stdout.flush()
+    _sys.stdout.write(str(_cupyx.get_runtime_info()))
+    _sys.stdout.flush()
