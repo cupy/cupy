@@ -5,6 +5,7 @@
 
 #include <hip/hip_runtime_api.h>
 #include <hipblas.h>
+#include <rocsolver.h>
 
 #define CUDA_VERSION 0
 
@@ -19,7 +20,6 @@ typedef hipError_t CUresult;
 const CUresult CUDA_SUCCESS = static_cast<CUresult>(0);
 enum CUjit_option {};
 enum CUjitInputType {};
-enum CUfunction_attribute {};
 enum CUarray_format {};
 enum CUaddress_mode {};
 enum CUfilter_mode {};
@@ -32,6 +32,7 @@ struct CUlinkState_st;
 typedef hipCtx_t CUcontext;
 typedef hipEvent_t cudaEvent_t;
 typedef hipFunction_t CUfunction;
+typedef hipFunction_attribute CUfunction_attribute;
 typedef hipModule_t CUmodule;
 typedef hipStream_t cudaStream_t;
 typedef struct CUlinkState_st* CUlinkState;
@@ -95,8 +96,19 @@ typedef hipIpcEventHandle_st cudaIpcEventHandle_t;
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// blas
+// blas & lapack (hipBLAS/rocBLAS & rocSOLVER)
 ///////////////////////////////////////////////////////////////////////////////
+
+/* As of ROCm 3.5.0 (this may have started earlier) many rocSOLVER helper functions
+ * are deprecated and using their counterparts from rocBLAS is recommended. In
+ * particular, rocSOLVER simply uses rocBLAS's handle for its API calls. This means
+ * they are much more integrated than cuBLAS and cuSOLVER do, so it is better to
+ * put all of the relevant function in one place.
+ */
+
+// TODO(leofang): investigate if we should just remove the hipBLAS layer and use
+// rocBLAS directly, since we need to expose its handle anyway
+
 
 typedef hipblasHandle_t cublasHandle_t;
 
@@ -113,6 +125,9 @@ typedef hipblasStatus_t cublasStatus_t;
 // TODO(leofang): as of ROCm 3.5.0 this does not exist yet
 typedef enum {} cublasComputeType_t;
 
+typedef rocblas_status cusolverStatus_t;
+typedef rocblas_handle cusolverDnHandle_t;
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // library_types.h
@@ -124,6 +139,14 @@ typedef enum libraryPropertyType_t {
     MINOR_VERSION,
     PATCH_LEVEL
 } libraryPropertyType;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// roctx
+///////////////////////////////////////////////////////////////////////////////
+
+// this is to ensure we use non-"Ex" APIs like roctxMarkA etc
+#define NVTX_VERSION (100 * ROCTX_VERSION_MAJOR + 10 * ROCTX_VERSION_MINOR)
 
 } // extern "C"
 

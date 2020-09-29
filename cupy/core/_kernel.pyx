@@ -3,7 +3,7 @@ import string
 import numpy
 
 from cupy.cuda import compiler
-from cupy import util
+from cupy import _util
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -426,14 +426,14 @@ cdef class ParameterInfo:
             ]))
 
 
-@util.memoize()
+@_util.memoize()
 def _get_param_info(str s, is_const):
     if len(s) == 0:
         return ()
     return tuple([ParameterInfo(i, is_const) for i in s.strip().split(',')])
 
 
-@util.memoize()
+@_util.memoize()
 def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return _decide_params_type_core(in_params, out_params, in_args_dtype,
                                     out_args_dtype)
@@ -620,7 +620,7 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_elementwise_kernel(
         tuple arginfos, _TypeMap type_map, tuple params, operation, name,
         preamble, **kwargs):

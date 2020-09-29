@@ -426,6 +426,9 @@ class TestCsrmv(unittest.TestCase):
 class TestCoosort(unittest.TestCase):
 
     def setUp(self):
+        if not cusparse.check_availability('coosort'):
+            pytest.skip('coosort is not available')
+
         self.a = scipy.sparse.random(
             100, 100, density=0.9, dtype=numpy.float32, format='coo')
         numpy.random.shuffle(self.a.row)
@@ -454,6 +457,9 @@ class TestCoosort(unittest.TestCase):
 class TestCsrsort(unittest.TestCase):
 
     def setUp(self):
+        if not cusparse.check_availability('csrsort'):
+            pytest.skip('csrsort is not available')
+
         self.a = scipy.sparse.random(
             1, 1000, density=0.9, dtype=numpy.float32, format='csr')
         numpy.random.shuffle(self.a.indices)
@@ -473,6 +479,9 @@ class TestCsrsort(unittest.TestCase):
 class TestCscsort(unittest.TestCase):
 
     def setUp(self):
+        if not cusparse.check_availability('cscsort'):
+            pytest.skip('cscsort is not available')
+
         self.a = scipy.sparse.random(
             1000, 1, density=0.9, dtype=numpy.float32, format='csc')
         numpy.random.shuffle(self.a.indices)

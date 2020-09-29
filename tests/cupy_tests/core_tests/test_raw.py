@@ -1,4 +1,5 @@
 import contextlib
+import io
 import os
 import sys
 import tempfile
@@ -9,7 +10,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy import util
+from cupy import _util
 from cupy.core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
@@ -21,6 +22,16 @@ void test_sum(const float* x1, const float* x2, float* y, unsigned int N) {
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
     if (tid < N)
         y[tid] = x1[tid] + x2[tid];
+}
+'''
+
+_test_compile_src = r'''
+extern "C" __global__
+void test_op(const float* x1, const float* x2, float* y, unsigned int N) {
+    int tid = blockDim.x * blockIdx.x + threadIdx.x;
+    int j;  // To generate a warning to appear in the log stream
+    if (tid < N)
+        y[tid] = x1[tid] OP x2[tid];
 }
 '''
 
@@ -377,7 +388,7 @@ class TestRaw(unittest.TestCase):
 
     def setUp(self):
         if hasattr(self, 'clean_up'):
-            util.clear_memo()
+            _util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
 
@@ -440,7 +451,9 @@ class TestRaw(unittest.TestCase):
                           'ptx_version',
                           'shared_size_bytes']:
             assert attribute in attrs
-        assert self.kern.num_regs > 0
+        # TODO(leofang): investigate why this fails on ROCm 3.5.0
+        if not cupy.cuda.runtime.is_hip:
+            assert self.kern.num_regs > 0
         assert self.kern.max_threads_per_block > 0
         assert self.kern.shared_size_bytes == 0
 
@@ -467,6 +480,9 @@ class TestRaw(unittest.TestCase):
         assert cupy.allclose(y, x1 * x2)
 
     def test_invalid_compiler_flag(self):
+        if cupy.cuda.runtime.is_hip and self.backend == 'nvrtc':
+            self.skipTest('hiprtc does not handle #error macro properly')
+
         with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
             mod = cupy.RawModule(code=_test_source3,
                                  options=('-DPRECISION=3',),
@@ -475,30 +491,44 @@ class TestRaw(unittest.TestCase):
         assert 'precision not supported' in str(ex.value)
 
     def _generate_file(self, ext: str):
-        # generate cubin/ptx by calling nvcc
+        # generate cubin/ptx by calling nvcc/hipcc
 
-        nvcc = cupy.cuda.get_nvcc_path()
+        if not cupy.cuda.runtime.is_hip:
+            cc = cupy.cuda.get_nvcc_path()
+            arch = '-gencode=arch=compute_{CC},code=sm_{CC}'.format(
+                CC=compiler._get_arch())
+            code = _test_source5
+        else:
+            # TODO(leofang): We currently instruct users to set up
+            # $ROCM_HOME, but perhaps it could be relaxed after we add
+            # get_hipcc_path().
+            cc = os.path.join(os.environ['ROCM_HOME'], 'bin/hipcc')
+            arch = '-v'  # dummy
+            code = compiler._convert_to_hip_source(_test_source5, None, False)
         # split() is needed because nvcc could come from the env var NVCC
-        cmd = nvcc.split()
-        arch = '-gencode=arch=compute_{cc},code=sm_{cc}'.format(
-            cc=compiler._get_arch())
+        cmd = cc.split()
         source = '{}/test_load_cubin.cu'.format(self.cache_dir)
         file_path = self.cache_dir + 'test_load_cubin'
         with open(source, 'w') as f:
-            f.write(_test_source5)
+            f.write(code)
         if ext == 'cubin':
             file_path += '.cubin'
             flag = '-cubin'
         elif ext == 'ptx':
             file_path += '.ptx'
             flag = '-ptx'
+        elif ext == 'hsaco':
+            file_path += '.hsaco'
+            flag = '--genco'
         else:
             raise ValueError
         cmd += [arch, flag, source, '-o', file_path]
-        compiler._run_nvcc(cmd, self.cache_dir)
+        cc = 'nvcc' if not cupy.cuda.runtime.is_hip else 'hipcc'
+        compiler._run_cc(cmd, self.cache_dir, cc)
 
         return file_path
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP uses hsaco, not cubin')
     def test_load_cubin(self):
         # generate cubin in the temp dir
         file_path = self._generate_file('cubin')
@@ -509,11 +539,24 @@ class TestRaw(unittest.TestCase):
         x1, x2, y = self._helper(ker, cupy.float32)
         assert cupy.allclose(y, x1 / (x2 + 1.0))
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP uses hsaco, not ptx')
     def test_load_ptx(self):
         # generate ptx in the temp dir
         file_path = self._generate_file('ptx')
 
         # load ptx and test the kernel
+        mod = cupy.RawModule(path=file_path, backend=self.backend)
+        ker = mod.get_function('test_div')
+        x1, x2, y = self._helper(ker, cupy.float32)
+        assert cupy.allclose(y, x1 / (x2 + 1.0))
+
+    @unittest.skipIf(not cupy.cuda.runtime.is_hip,
+                     'CUDA uses cubin/ptx, not hsaco')
+    def test_load_hsaco(self):
+        # generate hsaco in the temp dir
+        file_path = self._generate_file('hsaco')
+
+        # load cubin and test the kernel
         mod = cupy.RawModule(path=file_path, backend=self.backend)
         ker = mod.get_function('test_div')
         x1, x2, y = self._helper(ker, cupy.float32)
@@ -528,7 +571,8 @@ class TestRaw(unittest.TestCase):
                 path=os.path.expanduser('~/this_does_not_exist.cubin'),
                 backend=self.backend)
             mod.get_function('nonexisting_kernel')  # enforce loading
-        assert 'CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)
+        assert ('CUDA_ERROR_FILE_NOT_FOUND' in str(ex.value)  # CUDA
+                or 'hipErrorFileNotFound' in str(ex.value))  # HIP
 
     def test_module_neither_code_nor_path(self):
         with pytest.raises(TypeError):
@@ -546,8 +590,11 @@ class TestRaw(unittest.TestCase):
         # let us do it here
         with pytest.raises(cupy.cuda.driver.CUDADriverError) as ex:
             self.mod2.get_function('no_such_kernel')
-        assert 'CUDA_ERROR_NOT_FOUND' in str(ex.value)
+        assert ('CUDA_ERROR_NOT_FOUND' in str(ex.value)  # for CUDA
+                or 'hipErrorNotFound' in str(ex.value))  # for HIP
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip,
+                     'ROCm/HIP does not support dynamic parallelism')
     def test_dynamical_parallelism(self):
         ker = cupy.RawKernel(_test_source4, 'test_kernel', options=('-dc',),
                              backend=self.backend)
@@ -564,14 +611,16 @@ class TestRaw(unittest.TestCase):
         N = 10
         inner_chunk = 2
         x = cupy.zeros((N,), dtype=cupy.float32)
-        if self.backend == 'nvrtc':
+        if self.backend == 'nvrtc' and not cupy.cuda.runtime.is_hip:
             # raised when calling ls.complete()
-            with pytest.raises(cupy.cuda.driver.CUDADriverError):
-                ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
-        else:  # nvcc
-            with pytest.raises(cupy.cuda.compiler.CompileException):
-                ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
+            error = cupy.cuda.driver.CUDADriverError
+        else:  # nvcc, hipcc, hiprtc
+            error = cupy.cuda.compiler.CompileException
+        with pytest.raises(error):
+            ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip,
+                     'HIP code should not use cuFloatComplex')
     def test_cuFloatComplex(self):
         N = 100
         block = 32
@@ -634,6 +683,8 @@ class TestRaw(unittest.TestCase):
         ker((grid,), (block,), (a, b, out))
         assert (out == a + b).all()
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip,
+                     'HIP code should not use cuDoubleComplex')
     def test_cuDoubleComplex(self):
         N = 100
         block = 32
@@ -716,6 +767,12 @@ class TestRaw(unittest.TestCase):
         if self.backend == 'nvcc':
             self.skipTest('nvcc does not support template specialization')
 
+        # TODO(leofang): investigate why hiprtc generates a wrong source code
+        # when the same code is compiled and discarded. It seems hiprtc has
+        # an internal cache that conflicts with the 2nd compilation attempt.
+        if cupy.cuda.runtime.is_hip and hasattr(self, 'clean_up'):
+            self.skipTest('skip a potential hiprtc bug')
+
         # compile code
         name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
                             'my_sqrt<complex<double>>', 'my_func']
@@ -725,6 +782,12 @@ class TestRaw(unittest.TestCase):
         dtypes = (cupy.int32, cupy.float32, cupy.complex128, cupy.float64)
         for ker_T, dtype in zip(name_expressions, dtypes):
             # get specialized kernels
+            if cupy.cuda.runtime.is_hip:
+                # TODO(leofang): investigate why getLoweredName has no error
+                # but returns an empty string for my_sqrt<complex<double>>
+                mangled_name = mod.module.mapping.get(ker_T)
+                if mangled_name == '':
+                    continue
             ker = mod.get_function(ker_T)
 
             # prepare inputs & expected outputs
@@ -752,8 +815,9 @@ class TestRaw(unittest.TestCase):
         # 2. compile code without specializations
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',))
         # ...try to get a specialized kernel
-        with pytest.raises(cupy.cuda.driver.CUDADriverError,
-                           match='named symbol not found'):
+        match = ('named symbol not found' if not cupy.cuda.runtime.is_hip else
+                 'hipErrorNotFound')
+        with pytest.raises(cupy.cuda.driver.CUDADriverError, match=match):
             mod.get_function('my_sqrt<int>')
 
         # 3. compile code without specifying C++ standard
@@ -764,8 +828,11 @@ class TestRaw(unittest.TestCase):
         # 4. try to fetch something we didn't specialize for
         mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
                              name_expressions=name_expressions)
-        with pytest.raises(cupy.cuda.driver.CUDADriverError,
-                           match='named symbol not found'):
+        if cupy.cuda.runtime.is_hip:
+            msg = 'hipErrorNotFound'
+        else:
+            msg = 'named symbol not found'
+        with pytest.raises(cupy.cuda.driver.CUDADriverError, match=msg):
             mod.get_function('my_sqrt<double>')
 
     def test_raw_pointer(self):
@@ -921,25 +988,59 @@ class TestRaw(unittest.TestCase):
             # check results
             assert cupy.allclose(in_arr, out_arr)
 
+    @unittest.skipUnless(not cupy.cuda.runtime.is_hip,
+                         'only CUDA raises warning')
+    def test_compile_kernel(self):
+        kern = cupy.RawKernel(
+            _test_compile_src, 'test_op',
+            options=('-DOP=+',),
+            backend=self.backend)
+        log = io.StringIO()
+        with use_temporary_cache_dir():
+            kern.compile(log_stream=log)
+        assert 'warning' in log.getvalue()
+        x1, x2, y = self._helper(kern, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
+
+    @unittest.skipUnless(not cupy.cuda.runtime.is_hip,
+                         'only CUDA raises warning')
+    def test_compile_module(self):
+        module = cupy.RawModule(
+            code=_test_compile_src,
+            backend=self.backend,
+            options=('-DOP=+',))
+        log = io.StringIO()
+        with use_temporary_cache_dir():
+            module.compile(log_stream=log)
+        assert 'warning' in log.getvalue()
+        kern = module.get_function('test_op')
+        x1, x2, y = self._helper(kern, cupy.float32)
+        assert cupy.allclose(y, x1 + x2)
+
 
 _test_grid_sync = r'''
 #include <cooperative_groups.h>
 
 extern "C" __global__
-void test_grid_sync(const float* x1, const float* x2, float* y) {
+void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
     namespace cg = cooperative_groups;
     cg::grid_group grid = cg::this_grid();
     int size = gridDim.x * blockDim.x;
     int tid = blockDim.x * blockIdx.x + threadIdx.x;
-    y[tid] = x1[tid];
+    for (int i = tid; i < n; i += size) {
+        y[i] = x1[i];
+    }
     cg::sync(grid);
-    y[size - tid - 1] += x2[size - tid - 1];
+    for (int i = n - 1 - tid; i >= 0; i -= size) {
+        y[i] += x2[i];
+    }
 }
 '''
 
 
 @testing.parameterize(*testing.product({
-    'n': [10, 100, 256]
+    'n': [10, 100, 1000],
+    'block': [64, 256],
 }))
 @unittest.skipUnless(
     9000 <= cupy.cuda.runtime.runtimeGetVersion(),
@@ -958,7 +1059,9 @@ class TestRawGridSync(unittest.TestCase):
             x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
             x2 = cupy.ones((n, n), dtype='float32')
             y = cupy.zeros((n, n), dtype='float32')
-            kern_grid_sync((n,), (n,), (x1, x2, y, n ** 2))
+            block = self.block
+            grid = (n * n + block - 1) // block
+            kern_grid_sync((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)
 
     def test_grid_sync_rawmodule(self):
@@ -971,5 +1074,7 @@ class TestRawGridSync(unittest.TestCase):
             x2 = cupy.ones((n, n), dtype='float32')
             y = cupy.zeros((n, n), dtype='float32')
             kern = mod_grid_sync.get_function('test_grid_sync')
-            kern((n,), (n,), (x1, x2, y, n ** 2))
+            block = self.block
+            grid = (n * n + block - 1) // block
+            kern((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)

@@ -14,13 +14,13 @@ def cuda_version():
 @testing.gpu
 class TestNvrtcArch(unittest.TestCase):
     def setUp(self):
-        cupy.util.clear_memo()  # _get_arch result is cached
+        cupy.clear_memo()  # _get_arch result is cached
 
     def _check_get_arch(self, device_cc, expected_arch):
         with mock.patch('cupy.cuda.device.Device') as device_class:
             device_class.return_value.compute_capability = device_cc
             assert compiler._get_arch() == expected_arch
-        cupy.util.clear_memo()  # _get_arch result is cached
+        cupy.clear_memo()  # _get_arch result is cached
 
     @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.x or later')
     def test_get_arch_cuda9(self):

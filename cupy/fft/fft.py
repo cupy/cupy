@@ -7,13 +7,14 @@ import numpy as np
 import cupy
 from cupy.cuda import cufft
 from cupy.fft import config
+from cupy.fft._cache import get_plan_cache
 
 
 _reduce = functools.reduce
 _prod = cupy.core.internal.prod
 
 
-@cupy.util.memoize()
+@cupy._util.memoize()
 def _output_dtype(dtype, value_type):
     if value_type != 'R2C':
         if dtype in [np.float16, np.float32]:
@@ -86,17 +87,43 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
 
     if a.base is not None or not a.flags.c_contiguous:
         a = a.copy()
+    elif (value_type == 'C2R' and not overwrite_x and
+            10010 <= cupy.cuda.runtime.runtimeGetVersion()):
+        # The input array may be modified in CUDA 10.1 and above.
+        # See #3763 for the discussion.
+        a = a.copy()
+    elif cupy.cuda.runtime.is_hip and value_type != 'C2C':
+        # hipFFT's R2C would overwrite input
+        # hipFFT's C2R needs a workaround (see below)
+        a = a.copy()
 
     n = a.shape[-1]
     if n < 1:
         raise ValueError(
             'Invalid number of FFT data points (%d) specified.' % n)
 
+    # Workaround for hipFFT/rocFFT:
+    # Both cuFFT and hipFFT/rocFFT have this requirement that 0-th and
+    # N/2-th element must be real, but cuFFT internally simply ignores it
+    # while hipFFT handles it badly in both Plan1d and PlanNd, so we must
+    # do the correction ourselves to ensure the condition is met.
+    if cupy.cuda.runtime.is_hip and value_type == 'C2R':
+        a[..., 0] = a[..., 0].real + 0j
+        if out_size is None:
+            a[..., -1] = a[..., -1].real + 0j
+        elif out_size % 2 == 0:
+            a[..., out_size // 2] = a[...,  out_size // 2].real + 0j
+
     if out_size is None:
         out_size = n
 
     batch = a.size // n
 
+    # plan search precedence:
+    # 1. plan passed in as an argument
+    # 2. plan as context manager
+    # 3. cached plan
+    # 4. create a new one
     curr_plan = cufft.get_current_plan()
     if curr_plan is not None:
         if plan is None:
@@ -104,9 +131,18 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         else:
             raise RuntimeError('Use the cuFFT plan either as a context manager'
                                ' or as an argument.')
+
     if plan is None:
         devices = None if not config.use_multi_gpus else config._devices
-        plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+        # TODO(leofang): do we need to add the current stream to keys?
+        keys = (out_size, fft_type, batch, devices)
+        cache = get_plan_cache()
+        cached_plan = cache.get(keys)
+        if cached_plan is not None:
+            plan = cached_plan
+        else:
+            plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+            cache[keys] = plan
     else:
         # check plan validity
         if not isinstance(plan, cufft.Plan1d):
@@ -118,7 +154,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
                              out_size, plan.nx)
         if batch != plan.batch:
             raise ValueError('Batch size does not match the plan.')
-        if config.use_multi_gpus != plan._use_multi_gpus:
+        if config.use_multi_gpus != (plan.gpus is not None):
             raise ValueError('Unclear if multiple GPUs are to be used or not.')
 
     if overwrite_x and value_type == 'C2C':
@@ -155,6 +191,8 @@ def _fft_c2c(a, direction, norm, axes, overwrite_x, plan=None):
 
 def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
          plan=None):
+    if isinstance(a, np.ndarray):
+        raise TypeError('The input array a must be a cupy.ndarray')
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or "ortho".'
                          % norm)
@@ -239,7 +277,8 @@ def _nd_plan_is_possible(axes_sorted, ndim):
                 for n in range(len(axes_sorted) - 1)]))
 
 
-def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
+def _get_cufft_plan_nd(
+        shape, fft_type, axes=None, order='C', out_size=None, to_cache=True):
     """Generate a CUDA FFT plan for transforming up to three axes.
 
     Args:
@@ -255,6 +294,8 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
             Fortran ordered data layout.
         out_size (int): The output length along the last axis for R2C/C2R FFTs.
             For C2C FFT, this is ignored (and set to `None`).
+        to_cache (bool): Whether to cache the generated plan. Default is
+            ``True``.
 
     Returns:
         plan (cufft.PlanNd): A cuFFT Plan for the chosen `fft_type`.
@@ -373,18 +414,17 @@ def _get_cufft_plan_nd(shape, fft_type, axes=None, order='C', out_size=None):
             raise ValueError(
                 'Invalid number of FFT data points specified.')
 
-    plan = cufft.PlanNd(shape=plan_dimensions,
-                        inembed=inembed,
-                        istride=istride,
-                        idist=idist,
-                        onembed=onembed,
-                        ostride=ostride,
-                        odist=odist,
-                        fft_type=fft_type,
-                        batch=nbatch,
-                        order=order,
-                        last_axis=fft_axes[-1],
-                        last_size=out_size)
+    keys = (plan_dimensions, inembed, istride,
+            idist, onembed, ostride, odist,
+            fft_type, nbatch, order, fft_axes[-1], out_size)
+    cache = get_plan_cache()
+    cached_plan = cache.get(keys)
+    if cached_plan is not None:
+        plan = cached_plan
+    else:
+        plan = cufft.PlanNd(*keys)
+        if to_cache:
+            cache[keys] = plan
     return plan
 
 
@@ -413,12 +453,27 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     else:
         raise ValueError('a must be contiguous')
 
+    if (value_type == 'C2R' and not overwrite_x and
+            10010 <= cupy.cuda.runtime.runtimeGetVersion()):
+        # The input array may be modified in CUDA 10.1 and above.
+        # See #3763 for the discussion.
+        a = a.copy()
+    elif cupy.cuda.runtime.is_hip and value_type != 'C2C':
+        # hipFFT's R2C would overwrite input
+        # hipFFT's C2R PlanNd is actually not in use so it's fine here
+        a = a.copy()
+
+    # plan search precedence:
+    # 1. plan passed in as an argument
+    # 2. plan as context manager
+    # 3. cached plan
+    # 4. create a new one
     curr_plan = cufft.get_current_plan()
     if curr_plan is not None:
         plan = curr_plan
         # don't check repeated usage; it's done in _default_fft_func()
     if plan is None:
-        # generate a plan
+        # search from cache, and generate a plan if not found
         plan = _get_cufft_plan_nd(a.shape, fft_type, axes=axes, order=order,
                                   out_size=out_size)
     else:
@@ -475,6 +530,8 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
 
 def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
           overwrite_x=False, out=None):
+    if isinstance(a, np.ndarray):
+        raise TypeError('The input array a must be a cupy.ndarray')
     if norm not in (None, 'ortho'):
         raise ValueError('Invalid norm value %s, should be None or "ortho".'
                          % norm)
@@ -541,6 +598,17 @@ def _default_fft_func(a, s=None, axes=None, plan=None, value_type='C2C'):
 
     _, axes_sorted = _prep_fftn_axes(a.ndim, s, axes, value_type)
     if len(axes_sorted) > 1 and _nd_plan_is_possible(axes_sorted, a.ndim):
+        # circumvent two potential hipFFT/rocFFT bugs as of ROCm 3.5.0
+        # TODO(leofang): understand hipFFT better and test newer ROCm versions
+        if cupy.cuda.runtime.is_hip:
+            if (0 == axes_sorted[0] and len(axes_sorted) != a.ndim
+                    and a.flags.c_contiguous):
+                return _fft
+
+            # For C2R, we don't use PlanNd; see the workaround in _exec_fft()
+            if value_type == 'C2R':
+                return _fft
+
         # prefer Plan1D in the 1D case
         return _fftn
     return _fft
@@ -717,8 +785,6 @@ def irfft(a, n=None, axis=-1, norm=None):
             given, the length of the transformed axis is`2*(m-1)` where `m`
             is the length of the transformed axis of the input.
 
-    .. warning:: The input array may be modified in CUDA 10.1 and above.
-
     .. seealso:: :func:`numpy.fft.irfft`
     """
     return _fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R')
@@ -765,8 +831,6 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
             given, the length of final transformed axis of output will be
             `2*(m-1)` where `m` is the length of the final transformed axis of
             the input.
-
-    .. warning:: The input array may be modified in CUDA 10.1 and above.
 
     .. seealso:: :func:`numpy.fft.irfft2`
     """
@@ -824,8 +888,6 @@ def irfftn(a, s=None, axes=None, norm=None):
             given, the length of final transformed axis of output will be
             ``2*(m-1)`` where `m` is the length of the final transformed axis
             of the input.
-
-    .. warning:: The input array may be modified in CUDA 10.1 and above.
 
     .. seealso:: :func:`numpy.fft.irfftn`
     """
