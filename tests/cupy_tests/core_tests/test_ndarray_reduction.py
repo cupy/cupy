@@ -1,9 +1,10 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
-from cupy.core import _accelerator
+import cupy.core._accelerator as _acc
 from cupy import testing
 
 
@@ -61,6 +62,8 @@ class TestArrayReduction(unittest.TestCase):
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
     def test_max_nan(self, xp, dtype):
+        if _acc.ACCELERATOR_CUTENSOR in _acc.get_routine_accelerators():
+            pytest.skip()
         a = xp.array([float('nan'), 1, -1], dtype)
         return a.max()
 
@@ -127,6 +130,8 @@ class TestArrayReduction(unittest.TestCase):
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
     def test_min_nan(self, xp, dtype):
+        if _acc.ACCELERATOR_CUTENSOR in _acc.get_routine_accelerators():
+            pytest.skip()
         a = xp.array([float('nan'), 1, -1], dtype)
         return a.min()
 
@@ -197,6 +202,8 @@ class TestArrayReduction(unittest.TestCase):
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
     def test_ptp_nan(self, xp, dtype):
+        if _acc.ACCELERATOR_CUTENSOR in _acc.get_routine_accelerators():
+            pytest.skip()
         a = xp.array([float('nan'), 1, -1], dtype)
         return a.ptp()
 
@@ -223,11 +230,11 @@ class TestArrayReduction(unittest.TestCase):
 class TestCubReduction(unittest.TestCase):
 
     def setUp(self):
-        self.old_accelerators = _accelerator.get_routine_accelerators()
-        _accelerator.set_routine_accelerators(['cub'])
+        self.old_accelerators = _acc.get_routine_accelerators()
+        _acc.set_routine_accelerators(['cub'])
 
     def tearDown(self):
-        _accelerator.set_routine_accelerators(self.old_accelerators)
+        _acc.set_routine_accelerators(self.old_accelerators)
 
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
