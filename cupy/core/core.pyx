@@ -1903,7 +1903,14 @@ cpdef function.Module compile_with_cache(
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if _cuda_runtime_version >= 9000:
+    global _cuda_path
+    if _cuda_path == '':
+        if not _is_hip:
+            _cuda_path = cuda.get_cuda_path()
+        else:
+            _cuda_path = cuda.get_rocm_path()
+
+    if not _is_hip and _cuda_runtime_version >= 9000:
         if 9020 <= _cuda_runtime_version < 9030:
             bundled_include = 'cuda-9.2'
         elif 10000 <= _cuda_runtime_version < 10010:
@@ -1918,9 +1925,7 @@ cpdef function.Module compile_with_cache(
             # CUDA v9.0, v9.1 or versions not yet supported.
             bundled_include = None
 
-        cuda_path = cuda.get_cuda_path()
-
-        if bundled_include is None and cuda_path is None:
+        if bundled_include is None and _cuda_path is None:
             raise RuntimeError(
                 'Failed to auto-detect CUDA root directory. '
                 'Please specify `CUDA_PATH` environment variable if you '
@@ -1931,8 +1936,15 @@ cpdef function.Module compile_with_cache(
             options += ('-I ' + os.path.join(
                 _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
 
-        if cuda_path is not None:
-            options += ('-I ' + os.path.join(cuda_path, 'include'),)
+        if _cuda_path is not None:
+            options += ('-I ' + os.path.join(_cuda_path, 'include'),)
+    elif _is_hip:
+        if _cuda_path is not None:
+            options += ('-I ' + os.path.join(_cuda_path, 'include'),)
+        else:
+            raise RuntimeError(
+                'Failed to auto-detect ROCm root directory. '
+                'Please specify `ROCM_HOME` environment variable.')
 
     return cuda.compile_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
@@ -2742,7 +2754,10 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
         return ret
 
 
+cdef bint _is_hip = runtime._is_hip_environment
 cdef int _cuda_runtime_version = -1
+cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
+
 cdef _tensordot_core_mul_sum = ReductionKernel(
     'S x, T y', 'U out',
     'static_cast<U>(x) * static_cast<U>(y)',
