@@ -367,7 +367,7 @@ class TestCuTensorReduction(unittest.TestCase):
         if xp is numpy:
             return a.sum(axis=axis)
 
-        # xp is cupy, first ensure we really use CUB
+        # xp is cupy, first ensure we really use cuTENSOR
         ret = cupy.empty(())  # Cython checks return type, need to fool it
         func = 'cupy.cutensor._try_reduction_routine'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
