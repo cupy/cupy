@@ -88,12 +88,16 @@ cdef ndarray _ndarray_imag_setter(ndarray self, value):
 
 cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        result = None
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
-            if result is not None:
-                return result
+        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
+        if result is not None:
+            return result
     if dtype is None:
         return _prod_auto_dtype(self, axis, dtype, out, keepdims)
     else:

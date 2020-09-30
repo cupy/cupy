@@ -26,6 +26,10 @@ def amin(a, axis=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: The minimum of ``a``, along the axis if specified.
 
+    .. note::
+       When cuTENSOR accelerator is used, the output value might be collapsed
+       for reduction axes that have one or more NaN elements.
+
     .. seealso:: :func:`numpy.amin`
 
     """
@@ -58,6 +62,10 @@ def amax(a, axis=None, out=None, keepdims=False):
 
     Returns:
         cupy.ndarray: The maximum of ``a``, along the axis if specified.
+
+    .. note::
+       When cuTENSOR accelerator is used, the output value might be collapsed
+       for reduction axes that have one or more NaN elements.
 
     .. seealso:: :func:`numpy.amax`
 
@@ -155,6 +163,10 @@ def ptp(a, axis=None, out=None, keepdims=False):
 
     Returns:
         cupy.ndarray: The minimum of ``a``, along the axis if specified.
+
+    .. note::
+       When cuTENSOR accelerator is used, the output value might be collapsed
+       for reduction axes that have one or more NaN elements.
 
     .. seealso:: :func:`numpy.amin`
 

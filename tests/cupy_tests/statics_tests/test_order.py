@@ -5,6 +5,7 @@ import numpy
 import pytest
 
 import cupy
+import cupy.core._accelerator as _acc
 from cupy import testing
 
 
@@ -236,11 +237,15 @@ class TestOrder(unittest.TestCase):
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
     def test_ptp_nan(self, xp, dtype):
+        if _acc.ACCELERATOR_CUTENSOR in _acc.get_routine_accelerators():
+            pytest.skip()
         a = xp.array([float('nan'), 1, -1], dtype)
         return xp.ptp(a)
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
     def test_ptp_all_nan(self, xp, dtype):
+        if _acc.ACCELERATOR_CUTENSOR in _acc.get_routine_accelerators():
+            pytest.skip()
         a = xp.array([float('nan'), float('nan')], dtype)
         return xp.ptp(a)
