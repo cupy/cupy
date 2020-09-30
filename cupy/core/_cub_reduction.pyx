@@ -271,6 +271,10 @@ cpdef inline tuple _can_use_cub_block_reduction(
             return None
         axis_permutes_cub = tuple(sorted(reduce_axis) + sorted(out_axis))
     elif in_arr._c_contiguous:
+        order = 'c'
+        if not cub._cub_device_segmented_reduce_axis_compatible(
+                reduce_axis, in_arr.ndim, order):
+            return None
         axis_permutes_cub = tuple(sorted(out_axis) + sorted(reduce_axis))
     else:
         return None
