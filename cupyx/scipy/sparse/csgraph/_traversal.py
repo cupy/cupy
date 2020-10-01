@@ -64,7 +64,7 @@ def _connected_components(csgraph, directed, return_labels):
     else:
         _cupy_connect_undirected(csgraph.indices, csgraph.indptr, m, labels,
                                  size=csgraph.nnz)
-    _cupy_count_labels(labels, count, size=m)
+    _cupy_count_components(labels, count, size=m)
     n = int(count[0])
     if not return_labels:
         return n
@@ -91,8 +91,8 @@ __device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
 }
 '''
 
-_UPDATE_LABEL_ = '''
-__device__ inline void update_label(int i, int j, int *labels) {
+_CONNECT_NODES_ = '''
+__device__ inline void connect_nodes(int i, int j, int *labels) {
     while (true) {
         while (i != labels[i]) { i = labels[i]; }
         while (j != labels[j]) { j = labels[j]; }
@@ -110,7 +110,6 @@ __device__ inline void update_label(int i, int j, int *labels) {
 }
 '''
 
-
 _cupy_connect_directed = cupy.core.ElementwiseKernel(
     'raw I INDICES, raw I INDPTR, int32 M',
     'raw O LABELS',
@@ -127,7 +126,7 @@ _cupy_connect_directed = cupy.core.ElementwiseKernel(
         int p = (p_min + p_max) / 2;
         r = INDICES[p];
         if (r == row) {
-            update_label(row, col, &(LABELS[0]));
+            connect_nodes(row, col, &(LABELS[0]));
             break;
         }
         if (r < row) {
@@ -138,7 +137,7 @@ _cupy_connect_directed = cupy.core.ElementwiseKernel(
     }
     ''',
     '_cupy_connect_directed',
-    preamble=_GET_ROW_ID_ + _UPDATE_LABEL_
+    preamble=_GET_ROW_ID_ + _CONNECT_NODES_
 )
 
 _cupy_connect_undirected = cupy.core.ElementwiseKernel(
@@ -148,13 +147,13 @@ _cupy_connect_undirected = cupy.core.ElementwiseKernel(
     int row = get_row_id(i, 0, M - 1, &(INDPTR[0]));
     int col = INDICES[i];
     if (row == col) continue;
-    update_label(row, col, &(LABELS[0]));
+    connect_nodes(row, col, &(LABELS[0]));
     ''',
     '_cupy_connect_undirected',
-    preamble=_GET_ROW_ID_ + _UPDATE_LABEL_
+    preamble=_GET_ROW_ID_ + _CONNECT_NODES_
 )
 
-_cupy_count_labels = cupy.core.ElementwiseKernel(
+_cupy_count_components = cupy.core.ElementwiseKernel(
     '',
     'raw I LABELS, raw int32 count',
     '''
@@ -163,7 +162,7 @@ _cupy_count_labels = cupy.core.ElementwiseKernel(
     if (j != i) LABELS[i] = j;
     else atomicAdd(&count[0], 1);
     ''',
-    '_cupy_count_labels')
+    '_cupy_count_components')
 
 _cupy_get_root_labels = cupy.core.ElementwiseKernel(
     '',
