@@ -360,8 +360,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         elif isinstance(arg1, tuple) and len(arg1) == 2:
             # Note: This implementation is not efficeint, as it first
-            # constructs a sparse matrix matrix with coo format, then converts
-            # it to compressed format.
+            # constructs a sparse matrix with coo format, then converts it to
+            # compressed format.
             sp_coo = coo.coo_matrix(arg1, shape=shape, dtype=dtype, copy=copy)
             sp_compressed = getattr(sp_coo, 'to' + self.format)()
             data = sp_compressed.data
