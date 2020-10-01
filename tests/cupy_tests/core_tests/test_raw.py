@@ -1107,6 +1107,8 @@ assert ker.enable_cooperative_groups
     'compile': (False, True),
     'raw': ('ker', 'mod'),
 }))
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'HIP does not support enable_cooperative_groups')
 class TestRawPicklable(unittest.TestCase):
 
     def setUp(self):
