@@ -1105,7 +1105,7 @@ assert ker.enable_cooperative_groups
 # recompiling after unpickling it.
 @testing.parameterize(*testing.product({
     'compile': (False, True),
-    'raw': ('ker', 'mod'),
+    'raw': ('ker', 'mod', 'mod_ker'),
 }))
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'HIP does not support enable_cooperative_groups')
@@ -1145,15 +1145,23 @@ class TestRawPicklable(unittest.TestCase):
         if self.compile:
             self._helper()
 
-        # pickle a RawKernel/RawModule
+        if self.raw == 'ker':
+            # pickle the RawKernel
+            obj = self.ker
+        elif self.raw == 'mod':
+            # pickle the RawModule
+            obj = self.mod
+        elif self.raw == 'mod_ker':
+            # pickle the RawKernel fetched from the RawModule
+            obj = self.mod.get_function('test_sum')
         with open(self.temp_dir + '/TestRawPicklable', 'wb') as f:
-            pickle.dump(self.ker if self.raw == 'ker' else self.mod, f)
+            pickle.dump(obj, f)
 
         # dump test script to temp dir
-        if self.raw == 'ker':
-            fetch_ker = ''
-        else:
+        if self.raw == 'mod':
             fetch_ker = "ker = ker.get_function('test_sum')"
+        else:
+            fetch_ker = ''
         test_ker = string.Template(_test_script).substitute(
             temp_dir=self.temp_dir,
             fetch_ker=fetch_ker)
