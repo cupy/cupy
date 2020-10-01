@@ -30,7 +30,6 @@ def connected_components(csgraph, directed=True, connection='weak',
 
     .. seealso:: :func:`scipy.sparse.csgraph.connected_components`
     """
-    
     if connection.lower() not in ('weak', 'strong'):
         raise ValueError("connection must be 'weak' or 'strong'")
 
@@ -53,24 +52,25 @@ def _connected_components(csgraph, directed, return_labels):
         # memory to run.
         nnz = csgraph.nnz
         data = cupy.ones((nnz,), dtype=numpy.float32)
-        csgraph = cupyx.scaipy.sparse.csr_matrix((data, csgraph.indices,
-                                                  csgraph.indptr))
+        csgraph = cupyx.scipy.sparse.csr_matrix(
+            (data, csgraph.indices, csgraph.indptr), shape=csgraph.shape)
         csgraph += csgraph * csgraph
         while csgraph.nnz > nnz:
             nnz = csgraph.nnz
             csgraph.data[:] = 1
             csgraph += csgraph * csgraph
         _cupy_connect_directed(csgraph.indices, csgraph.indptr, m, labels,
-                               size=nnz)
+                               size=csgraph.nnz)
     else:
-        _cupy_connect_undirected(csgraph.indices, csgraph.indptr, m, labels)
+        _cupy_connect_undirected(csgraph.indices, csgraph.indptr, m, labels,
+                                 size=csgraph.nnz)
     _cupy_count_labels(labels, count, size=m)
     n = int(count[0])
     if not return_labels:
         return n
     root_labels = cupy.empty((n,), dtype=numpy.int32)
     _cupy_get_root_labels(labels, count, root_labels, size=labels.size)
-    _cupy_update_labels(n, cupy.sort(root_labels), labels)
+    _cupy_adjust_labels(n, cupy.sort(root_labels), labels)
     return n, labels
 
 
@@ -91,75 +91,67 @@ __device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
 }
 '''
 
+_UPDATE_LABEL_ = '''
+__device__ inline void update_label(int i, int j, int *labels) {
+    while (true) {
+        while (i != labels[i]) { i = labels[i]; }
+        while (j != labels[j]) { j = labels[j]; }
+        if (i == j) break;
+        if (i < j) {
+            int old = atomicCAS( &labels[j], j, i );
+            if (old == j) break;
+            j = old;
+        } else {
+            int old = atomicCAS( &labels[i], i, j );
+            if (old == i) break;
+            i = old;
+        }
+    }
+}
+'''
+
+
 _cupy_connect_directed = cupy.core.ElementwiseKernel(
     'raw I INDICES, raw I INDPTR, int32 M',
     'raw O LABELS',
     '''
     int row = get_row_id(i, 0, M - 1, &(INDPTR[0]));
     int col = INDICES[i];
-    if (row == col) continue;
+    if (row <= col) continue;
 
-    // check if there is a connection from "col" to "row".
+    // check if there is a connection from "col" to "row"
     int r = -1;
     int p_min = INDPTR[col];
     int p_max = INDPTR[col + 1] - 1;
-    while (p_min < p_max) {
+    while (p_min <= p_max) {
         int p = (p_min + p_max) / 2;
         r = INDICES[p];
-        if (r == row) break;
+        if (r == row) {
+            update_label(row, col, &(LABELS[0]));
+            break;
+        }
         if (r < row) {
             p_min = p + 1;
         } else {
             p_max = p - 1;
         }
     }
-    if (r != row) continue;
-
-    int j = row;
-    int k = col;
-    while (true) {
-        while (j != LABELS[j]) { j = LABELS[j]; }
-        while (k != LABELS[k]) { k = LABELS[k]; }
-        if (j == k) break;
-        if (j < k) {
-            int old = atomicCAS( &LABELS[k], k, j );
-            if (old == k) break;
-            k = old;
-        } else {
-            int old = atomicCAS( &LABELS[j], j, k );
-            if (old == j) break;
-            j = old;
-        }
-    }
     ''',
-    '_cupy_connect_directed', preamble=_GET_ROW_ID_
+    '_cupy_connect_directed',
+    preamble=_GET_ROW_ID_ + _UPDATE_LABEL_
 )
 
 _cupy_connect_undirected = cupy.core.ElementwiseKernel(
-    'I INDICES, raw I INDPTR, int32 M',
+    'raw I INDICES, raw I INDPTR, int32 M',
     'raw O LABELS',
     '''
     int row = get_row_id(i, 0, M - 1, &(INDPTR[0]));
-    int col = INDICES;
+    int col = INDICES[i];
     if (row == col) continue;
-    int j = row;
-    int k = col;
-    while (true) {
-        while (j != LABELS[j]) { j = LABELS[j]; }
-        while (k != LABELS[k]) { k = LABELS[k]; }
-        if (j == k) break;
-        if (j < k) {
-            int old = atomicCAS( &LABELS[k], k, j );
-            if (old == k) break;
-            k = old;
-        } else {
-            int old = atomicCAS( &LABELS[j], j, k );
-            if (old == j) break;
-            j = old;
-        }
-    }
+    update_label(row, col, &(LABELS[0]));
     ''',
-    '_cupy_connect_undirected', preamble=_GET_ROW_ID_
+    '_cupy_connect_undirected',
+    preamble=_GET_ROW_ID_ + _UPDATE_LABEL_
 )
 
 _cupy_count_labels = cupy.core.ElementwiseKernel(
@@ -184,7 +176,7 @@ _cupy_get_root_labels = cupy.core.ElementwiseKernel(
     ''',
     '_cupy_get_root_labels')
 
-_cupy_update_labels = cupy.core.ElementwiseKernel(
+_cupy_adjust_labels = cupy.core.ElementwiseKernel(
     'int32 N, raw I ROOT_LABELS',
     'I LABELS',
     '''
@@ -203,4 +195,4 @@ _cupy_update_labels = cupy.core.ElementwiseKernel(
     }
     LABELS = j;
     ''',
-    '_cupy_update_labels')
+    '_cupy_adjust_labels')
