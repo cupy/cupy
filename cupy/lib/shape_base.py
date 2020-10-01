@@ -50,18 +50,13 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
     # for a tuple index inds, buff[inds] = func1d(inarr_view[inds])
     buff = cupy.empty(inarr_view.shape[:-1] + res.shape, res.dtype)
 
-    # permutation of axes such that out = buff.transpose(buff_permute)
-    buff_dims = list(range(buff.ndim))
-    buff_permute = (
-        buff_dims[0:axis] +
-        buff_dims[buff.ndim - res.ndim:buff.ndim] +
-        buff_dims[axis:buff.ndim - res.ndim]
-    )
-
     # save the first result, then compute and save all remaining results
     buff[ind0] = res
     for ind in inds:
         buff[ind] = func1d(inarr_view[ind], *args, **kwargs)
 
-    # finally, rotate the inserted axes back to where they belong
-    return cupy.transpose(buff, buff_permute)
+    # restore the inserted axes back to where they belong
+    for i in range(res.ndim):
+        buff = cupy.moveaxis(buff, -1, axis)
+
+    return buff
