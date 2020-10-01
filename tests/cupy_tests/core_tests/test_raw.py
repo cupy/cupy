@@ -1083,7 +1083,7 @@ class TestRawGridSync(unittest.TestCase):
             assert cupy.allclose(y, x1 + x2)
 
 
-_test_ker = r'''
+_test_script = r'''
 import pickle
 import cupy as cp
 
@@ -1091,146 +1091,74 @@ N = 100
 a = cp.random.random(N, dtype=cp.float32)
 b = cp.random.random(N, dtype=cp.float32)
 c = cp.empty_like(a)
-with open('${temp_dir}' + '/TestRawPicklable_ker', 'rb') as f:
+with open('${temp_dir}' + '/TestRawPicklable', 'rb') as f:
     ker = pickle.load(f)
+${fetch_ker}
 ker((1,), (100,), (a, b, c, N))
-assert ker.enable_cooperative_groups
-'''
-
-_test_mod = r'''
-import pickle
-import cupy as cp
-
-N = 100
-a = cp.random.random(N, dtype=cp.float32)
-b = cp.random.random(N, dtype=cp.float32)
-c = cp.empty_like(a)
-with open('${temp_dir}' + '/TestRawPicklable_mod', 'rb') as f:
-    mod = pickle.load(f)
-ker = mod.get_function('test_multiply')
-ker((1,), (100,), (a, b, c, N))
+assert cp.allclose(a + b, c)
 assert ker.enable_cooperative_groups
 '''
 
 
+# Pickling/unpickling a RawModule should always success, whereas
+# pickling/unpickling a RawKernel would fail if we don't enforce
+# recompiling after unpickling it.
+@testing.parameterize(*testing.product({
+    'compile': (False, True),
+    'raw': ('ker', 'mod'),
+}))
 class TestRawPicklable(unittest.TestCase):
 
     def setUp(self):
         self.temporary_dir_context = use_temporary_cache_dir()
         self.temp_dir = self.temporary_dir_context.__enter__()
 
+        # test if kw-only arguments are properly handled or not
+        if self.raw == 'ker':
+            self.ker = cupy.RawKernel(_test_source1, 'test_sum',
+                                      backend='nvcc',
+                                      enable_cooperative_groups=True)
+        else:
+            self.mod = cupy.RawModule(code=_test_source1,
+                                      backend='nvcc',
+                                      enable_cooperative_groups=True)
+
     def tearDown(self):
         self.temporary_dir_context.__exit__(*sys.exc_info())
 
-    def test_raw_kernel_picklable1(self):
-        '''
-        Test pickling a RawKernel before it's called/compiled. This should
-        always success.
-        '''
+    def _helper(self):
+        N = 10
+        x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
+        x2 = cupy.ones((N, N), dtype=cupy.float32)
+        y = cupy.zeros((N, N), dtype=cupy.float32)
+        if self.raw == 'ker':
+            ker = self.ker
+        else:
+            ker = self.mod.get_function('test_sum')
+        ker((N,), (N,), (x1, x2, y, N**2))
+        assert cupy.allclose(x1 + x2, y)
 
-        # pickle a RawKernel (and test if kw-only arguments are
-        # properly handled)
-        ker = cupy.RawKernel(_test_source1, 'test_sum',
-                             backend='nvcc',
-                             enable_cooperative_groups=True)
-        with open(self.temp_dir + '/TestRawPicklable_ker', 'wb') as f:
-            pickle.dump(ker, f)
+    def test_raw_picklable(self):
+        # force compiling before pickling
+        if self.compile:
+            self._helper()
+
+        # pickle a RawKernel/RawModule
+        with open(self.temp_dir + '/TestRawPicklable', 'wb') as f:
+            pickle.dump(self.ker if self.raw == 'ker' else self.mod, f)
 
         # dump test script to temp dir
-        test_ker = string.Template(_test_ker).substitute(
-            temp_dir=self.temp_dir)
-        with open(self.temp_dir + '/TestRawPicklable_ker.py', 'w') as f:
+        if self.raw == 'ker':
+            fetch_ker = ''
+        else:
+            fetch_ker = "ker = ker.get_function('test_sum')"
+        test_ker = string.Template(_test_script).substitute(
+            temp_dir=self.temp_dir,
+            fetch_ker=fetch_ker)
+        with open(self.temp_dir + '/TestRawPicklable.py', 'w') as f:
             f.write(test_ker)
 
         # run another process to check the pickle
         s = subprocess.run([sys.executable,
-                            self.temp_dir + '/TestRawPicklable_ker.py'])
-        s.check_returncode()  # raise if unsuccess
-
-    def test_raw_kernel_picklable2(self):
-        '''
-        Test pickling a RawKernel after it's called/compiled. This would fail
-        if RawKernel does not support a proper __reduce__ that clears out the
-        cache before pickling.
-        '''
-
-        # run the kernel once
-        ker = cupy.RawKernel(_test_source1, 'test_sum',
-                             backend='nvcc',
-                             enable_cooperative_groups=True)
-        a = cupy.random.random(64, dtype=cupy.float32)
-        b = cupy.random.random(64, dtype=cupy.float32)
-        c = cupy.empty_like(a)
-        ker((1,), (64,), (a, b, c, 64))
-        assert cupy.allclose(c, a + b)
-
-        # pickle the RawKernel
-        with open(self.temp_dir + '/TestRawPicklable_ker', 'wb') as f:
-            pickle.dump(ker, f)
-
-        # dump test script to temp dir
-        test_ker = string.Template(_test_ker).substitute(
-            temp_dir=self.temp_dir)
-        with open(self.temp_dir + '/TestRawPicklable_ker.py', 'w') as f:
-            f.write(test_ker)
-
-        # run another process to check the pickle
-        s = subprocess.run([sys.executable,
-                            self.temp_dir + '/TestRawPicklable_ker.py'])
-        s.check_returncode()  # raise if unsuccess
-
-    def test_raw_module_picklable1(self):
-        '''
-        Test pickling a RawModule before it's compiled. This should
-        always success.
-        '''
-
-        # pickle a RawModule
-        mod = cupy.RawModule(code=_test_source2,
-                             backend='nvcc',
-                             enable_cooperative_groups=True)
-        with open(self.temp_dir + '/TestRawPicklable_mod', 'wb') as f:
-            pickle.dump(mod, f)
-
-        # dump test script to temp dir
-        test_mod = string.Template(_test_mod).substitute(
-            temp_dir=self.temp_dir)
-        with open(self.temp_dir + '/TestRawPicklable_mod.py', 'w') as f:
-            f.write(test_mod)
-
-        # run another process to check the pickle
-        s = subprocess.run([sys.executable,
-                            self.temp_dir + '/TestRawPicklable_mod.py'])
-        s.check_returncode()  # raise if unsuccess
-
-    def test_raw_module_picklable2(self):
-        '''
-        Test pickling a RawModule after it's compiled. This should
-        always success.
-        '''
-
-        # compile and run the kernel once
-        mod = cupy.RawModule(code=_test_source2,
-                             backend='nvcc',
-                             enable_cooperative_groups=True)
-        ker = mod.get_function('test_multiply')
-        a = cupy.random.random(64, dtype=cupy.float32)
-        b = cupy.random.random(64, dtype=cupy.float32)
-        c = cupy.empty_like(a)
-        ker((1,), (64,), (a, b, c, 64))
-        assert cupy.allclose(c, a * b)
-
-        # pickle the RawModule
-        with open(self.temp_dir + '/TestRawPicklable_mod', 'wb') as f:
-            pickle.dump(mod, f)
-
-        # dump test script to temp dir
-        test_mod = string.Template(_test_mod).substitute(
-            temp_dir=self.temp_dir)
-        with open(self.temp_dir + '/TestRawPicklable_mod.py', 'w') as f:
-            f.write(test_mod)
-
-        # run another process to check the pickle
-        s = subprocess.run([sys.executable,
-                            self.temp_dir + '/TestRawPicklable_mod.py'])
+                            self.temp_dir + '/TestRawPicklable.py'])
         s.check_returncode()  # raise if unsuccess
