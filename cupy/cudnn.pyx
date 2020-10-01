@@ -2246,13 +2246,13 @@ cdef _batch_normalization_forward_training(
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use
         # queryRuntimeError() to make sure whether the overflow actually
-        # occured or not during the batch normalization.
+        # occurred or not during the batch normalization.
         if debug and cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT:
             query_mode = cudnn.CUDNN_ERRQUERY_BLOCKING
             rstatus = cudnn.queryRuntimeError(handle, query_mode)
             if rstatus != cudnn.CUDNN_STATUS_SUCCESS:
                 _warnings.warn(
-                    'A numerical overflow might have happend in cuDNN'
+                    'A numerical overflow might have happened in cuDNN'
                     'batch normalization (status:{})'.format(rstatus))
     finally:
         cudnn.destroyTensorDescriptor(x_desc)
@@ -2407,13 +2407,13 @@ def batch_normalization_backward(
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use
         # queryRuntimeError() to make sure whether the overflow actually
-        # occured or not during the batch normalization.
+        # occurred or not during the batch normalization.
         if debug and cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT:
             query_mode = cudnn.CUDNN_ERRQUERY_BLOCKING
             rstatus = cudnn.queryRuntimeError(handle, query_mode)
             if rstatus != cudnn.CUDNN_STATUS_SUCCESS:
                 _warnings.warn(
-                    'A numerical overflow might have happend in cuDNN'
+                    'A numerical overflow might have happened in cuDNN'
                     'batch normalization (status:{})'.format(rstatus))
     finally:
         cudnn.destroyTensorDescriptor(x_desc)

@@ -197,7 +197,7 @@ class TestPlanCache(unittest.TestCase):
 
     @testing.multi_gpu(2)
     def test_LRU_cache6(self):
-        # test if each device has a seperate cache
+        # test if each device has a separate cache
         cache0 = self.caches[0]
         cache1 = self.caches[1]
 
