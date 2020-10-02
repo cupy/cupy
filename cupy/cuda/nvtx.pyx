@@ -96,7 +96,7 @@ cpdef MarkC(message, uint32_t color=0):
     """
     Marks an instantaneous event (marker) in the application.
 
-    Markes are used to describe events at a specific time during execution of
+    Markers are used to describe events at a specific time during execution of
     the application.
 
     Args:
@@ -124,7 +124,7 @@ cpdef Mark(message, int id_color=-1):
     """
     Marks an instantaneous event (marker) in the application.
 
-    Markes are used to describe events at a specific time during execution of
+    Markers are used to describe events at a specific time during execution of
     the application.
 
     Args:
