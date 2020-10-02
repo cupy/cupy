@@ -46,11 +46,10 @@ def connected_components(csgraph, directed=True, connection='weak',
 def _connected_components(csgraph, directed, return_labels):
     m = csgraph.shape[0]
     labels = cupy.arange(m, dtype=numpy.int32)
-    count = cupy.zeros((2,), dtype=numpy.int32)
+    nnz = csgraph.nnz
     if directed:
         # Note: The following implementation is naive and may require a lot of
         # memory to run.
-        nnz = csgraph.nnz
         data = cupy.ones((nnz,), dtype=numpy.float32)
         csgraph = cupyx.scipy.sparse.csr_matrix(
             (data, csgraph.indices, csgraph.indptr), shape=csgraph.shape)
@@ -60,17 +59,17 @@ def _connected_components(csgraph, directed, return_labels):
             csgraph.data[:] = 1
             csgraph += csgraph * csgraph
         _cupy_connect_directed(csgraph.indices, csgraph.indptr, m, labels,
-                               size=csgraph.nnz)
+                               size=nnz)
     else:
         _cupy_connect_undirected(csgraph.indices, csgraph.indptr, m, labels,
-                                 size=csgraph.nnz)
-    _cupy_count_components(labels, count, size=m)
+                                 size=nnz)
+    count = cupy.zeros((1,), dtype=numpy.int32)
+    root_labels = cupy.empty((m,), dtype=numpy.int32)
+    _cupy_count_components(labels, count, root_labels, size=m)
     n = int(count[0])
     if not return_labels:
         return n
-    root_labels = cupy.empty((n,), dtype=numpy.int32)
-    _cupy_get_root_labels(labels, count, root_labels, size=labels.size)
-    _cupy_adjust_labels(n, cupy.sort(root_labels), labels)
+    _cupy_adjust_labels(n, cupy.sort(root_labels[:n]), labels)
     return n, labels
 
 
@@ -155,25 +154,18 @@ _cupy_connect_undirected = cupy.core.ElementwiseKernel(
 
 _cupy_count_components = cupy.core.ElementwiseKernel(
     '',
-    'raw I LABELS, raw int32 count',
+    'raw I LABELS, raw int32 count, raw int32 ROOT_LABELS',
     '''
     int j = i;
     while (j != LABELS[j]) { j = LABELS[j]; }
-    if (j != i) LABELS[i] = j;
-    else atomicAdd(&count[0], 1);
-    ''',
-    '_cupy_count_components')
-
-_cupy_get_root_labels = cupy.core.ElementwiseKernel(
-    '',
-    'raw I LABELS, raw int32 count, raw int32 ROOT_LABELS',
-    '''
-    if (LABELS[i] == i) {
-        int j = atomicAdd(&count[1], 1);
-        ROOT_LABELS[j] = i;
+    if (j != i) {
+        LABELS[i] = j;
+    } else {
+        int k = atomicAdd(&count[0], 1);
+        ROOT_LABELS[k] = i;
     }
     ''',
-    '_cupy_get_root_labels')
+    '_cupy_count_components')
 
 _cupy_adjust_labels = cupy.core.ElementwiseKernel(
     'int32 N, raw I ROOT_LABELS',
