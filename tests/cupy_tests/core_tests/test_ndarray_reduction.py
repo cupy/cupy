@@ -317,9 +317,13 @@ class TestUnacceleratedReduction(unittest.TestCase):
     def setUp(self):
         self.old_accelerators = _acc.get_routine_accelerators()
         _acc.set_routine_accelerators([])
+        # also avoid fallback to CUB via the general reduction kernel
+        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+        _acc.set_reduction_accelerators([])
 
     def tearDown(self):
         _acc.set_routine_accelerators(self.old_accelerators)
+        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
 
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
