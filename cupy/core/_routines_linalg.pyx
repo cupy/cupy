@@ -4,6 +4,8 @@ import warnings
 import cython
 import numpy
 
+import cupy
+from cupy.core._kernel import ElementwiseKernel
 from cupy.core._reduction import ReductionKernel
 
 
@@ -14,6 +16,7 @@ from cupy.core._carray cimport shape_t
 from cupy.core._dtype cimport to_cuda_dtype
 from cupy.core._ufuncs import elementwise_copy
 from cupy.core.core cimport _ndarray_init
+from cupy.core.core cimport ascontiguousarray
 from cupy.core.core cimport ndarray
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _routines_math as _math
@@ -611,3 +614,290 @@ cpdef ndarray tensordot_core_v11(
         a.data.ptr, a_cuda_dtype, <int>lda, b.data.ptr, b_cuda_dtype, <int>ldb,
         zero_ptr, c.data.ptr, c_cuda_dtype, <int>ldc, cublas_compute_type,
         algo)
+
+
+cdef Py_ssize_t _get_stride_for_strided_batched_gemm(ndarray a) except? 0:
+    cdef int ndim = a._shape.size()
+    assert ndim > 2
+    return a._strides[ndim - 3] // <Py_ssize_t>a.itemsize
+
+
+cdef _mat_ptrs_kernel = ElementwiseKernel(
+    'T base, T stride', 'T out',
+    'out = base + _ind.get()[_ind.ndim - 1] * stride', 'mat_ptrs',
+    reduce_dims=False)
+
+
+cpdef ndarray _mat_ptrs(ndarray a):
+    """Creates an array of pointers to matrices
+    Args:
+        a: A batch of matrices on GPU.
+           shape: (A, B, C) -> A ptrs to mat o size (B, C)
+           shape: (A_1, ..., A_N, B, C) -> A_1*...*A_N ptrs to mat of
+                  size (B, C)
+    Returns:
+        GPU array of pointers to matrices.
+    """
+    cdef int ndim = a._shape.size()
+    assert ndim > 2
+    cdef Py_ssize_t sh_, st_
+    cdef ndarray idx
+    idx = _mat_ptrs_kernel(
+        a.data.ptr, a._strides[0],
+        ndarray((a._shape[0],), dtype=numpy.uintp))
+
+    for i in range(1, ndim - 2):
+        idx = _mat_ptrs_kernel(
+            idx[:, None], a._strides[i],
+            ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
+        idx = idx.ravel()
+    return idx
+
+
+cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
+    """ Returns the matrix product of two arrays and is the implementation of
+    the `@` operator introduced in Python 3.5 following PEP465.
+
+    The main difference against cupy.dot are the handling of arrays with more
+    than 2 dimensions. For more information see :func:`numpy.matmul`.
+
+    .. note::
+        The out array as input is currently not supported.
+
+    Args:
+        a (cupy.ndarray): The left argument.
+        b (cupy.ndarray): The right argument.
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: Output array.
+
+    .. seealso:: :func:`numpy.matmul`
+
+    """
+
+    if out is not None:
+        raise NotImplementedError('The out array as input is currently not '
+                                  'supported')
+
+    cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh
+    cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
+    cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
+    cdef ndarray ap, bp, outp, out_view
+    cdef bint use_broadcast
+
+    orig_a_ndim = a._shape.size()
+    orig_b_ndim = b._shape.size()
+    if orig_a_ndim == 0 or orig_b_ndim == 0:
+        raise ValueError('Scalar operands are not allowed, use \'*\' instead')
+
+    ndim = max(orig_a_ndim, orig_b_ndim)
+    if ndim <= 2:
+        return dot(a, b, out)
+
+    orig_a = a
+    orig_b = b
+    a_part_outshape = b_part_outshape = 0
+    if orig_a_ndim == 1:
+        a = _manipulation._reshape(a, (1, a.size))
+    else:
+        a = a.view()
+        a_part_outshape = a._shape[orig_a_ndim - 2]
+    if orig_b_ndim == 1:
+        b = _manipulation._reshape(b, (b.size, 1))
+        ldout = 1
+    else:
+        b = b.view()
+        b_part_outshape = ldout = b._shape[orig_b_ndim - 1]
+
+    # expand dims
+    a_ndim = a._shape.size()
+    b_ndim = b._shape.size()
+    if a_ndim < ndim:
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        a._set_shape_and_strides(
+            (1,) * (ndim - a_ndim) + a.shape,
+            (0,) * (ndim - a_ndim) + a.strides,
+            True, True)
+    if b_ndim < ndim:
+        # TODO(niboshi): Confirm update_x_contiguity flags
+        b._set_shape_and_strides(
+            (1,) * (ndim - b_ndim) + b.shape,
+            (0,) * (ndim - b_ndim) + b.strides,
+            True, True)
+
+    ret_dtype = numpy.promote_types(a.dtype, b.dtype)
+    dtype = numpy.promote_types(ret_dtype, 'f')
+
+    a = ascontiguousarray(a, dtype)
+    b = ascontiguousarray(b, dtype)
+
+    # broadcast
+    batchCount = 1  # batchCount = numpy.prod(out_shape[:-2])
+    out_shape = []
+    use_broadcast = False
+    for i in range(0, ndim - 2):
+        a_sh = a._shape[i]
+        b_sh = b._shape[i]
+        if a_sh != b_sh and a_sh != 1 and b_sh != 1:
+            raise ValueError(
+                'operands could not be broadcast together with '
+                'remapped shapes')
+
+        if a_sh == 0 or b_sh == 0:
+            c_sh = 0
+        else:
+            c_sh = max(a_sh, b_sh)
+        batchCount *= c_sh
+        out_shape.append(c_sh)
+        if a_sh == 1 and c_sh > 1:
+            a._strides[i] = 0
+            a._shape[i] = c_sh
+            a._c_contiguous = a._f_contiguous = False
+            use_broadcast = True
+
+        if b_sh == 1 and c_sh > 1:
+            b._strides[i] = 0
+            b._shape[i] = c_sh
+            b._c_contiguous = b._f_contiguous = False
+            use_broadcast = True
+
+    if orig_a_ndim != 1:
+        out_shape.append(a_part_outshape)
+    if orig_b_ndim != 1:
+        out_shape.append(b_part_outshape)
+
+    # (A B)^T = B^T A^T
+    a, b = b, a
+
+    ka = a._shape[ndim - 2]
+    lda = n = a._shape[ndim - 1]
+    m = b._shape[ndim - 2]
+    ldb = kb = b._shape[ndim - 1]
+
+    if ka != kb:
+        raise ValueError(
+            'shapes ({}) and ({}) not aligned'.format(
+                ','.join([str(_) for _ in orig_a.shape]),
+                ','.join([str(_) for _ in orig_b.shape])))
+
+    if a.size == 0 or b.size == 0:
+        return cupy.zeros(out_shape, ret_dtype)
+
+    out = ndarray(out_shape, dtype=dtype)
+
+    if orig_a_ndim == 1 or orig_b_ndim == 1:
+        out_view = out.view()
+        if orig_b_ndim == 1:
+            out_view._shape.push_back(1)
+            out_view._strides.push_back(0)
+        if orig_a_ndim == 1:
+            out_view._shape.insert(out_view._shape.end() - 1, 1)
+            out_view._strides.insert(out_view._strides.end() - 1, 0)
+        assert out_view._c_contiguous
+        out_view._update_f_contiguity()
+    else:
+        out_view = out
+
+    global _cuda_runtime_version
+    if _cuda_runtime_version < 0:
+        _cuda_runtime_version = runtime.runtimeGetVersion()
+
+    cdef intptr_t handle = device.get_cublas_handle()
+
+    # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
+    if not use_broadcast:
+        strideA = _get_stride_for_strided_batched_gemm(a)
+        strideB = _get_stride_for_strided_batched_gemm(b)
+        strideC = _get_stride_for_strided_batched_gemm(out_view)
+        if dtype == numpy.float32:
+            cublas.sgemmStridedBatched(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0.0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.float64:
+            cublas.dgemmStridedBatched(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0.0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.complex64:
+            cublas.cgemmStridedBatched(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        elif dtype == numpy.complex128:
+            cublas.zgemmStridedBatched(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                a.data.ptr, lda, strideA,
+                b.data.ptr, ldb, strideB,
+                0, out_view.data.ptr, ldout, strideC,
+                batchCount)
+        else:
+            raise TypeError(dtype, a.dtype, b.dtype)
+    else:
+        ap = _mat_ptrs(a)
+        bp = _mat_ptrs(b)
+        outp = _mat_ptrs(out_view)
+        if dtype == numpy.float32:
+            cublas.sgemmBatched(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0.0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.float64:
+            cublas.dgemmBatched(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1.0,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0.0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.complex64:
+            cublas.cgemmBatched(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0, outp.data.ptr, ldout, batchCount)
+        elif dtype == numpy.complex128:
+            cublas.zgemmBatched(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, 1,
+                ap.data.ptr, lda,
+                bp.data.ptr, ldb,
+                0, outp.data.ptr, ldout, batchCount)
+        else:
+            raise TypeError(dtype, a.dtype, b.dtype)
+
+    if dtype == ret_dtype:
+        return out
+    else:
+        ret = ndarray(out_shape, ret_dtype)
+        elementwise_copy(out, ret)
+        return ret
