@@ -196,7 +196,7 @@ __device__ bool nonzero(complex<T> x) { return x.real() || x.imag(); }
 def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                         offsets, cval, ctype='X', preamble='', options=(),
                         has_weights=True, has_structure=False, has_mask=False,
-                        binary_morphology=False):
+                        binary_morphology=False, all_weights_nonzero=False):
     # Currently this code uses CArray for weights but avoids using CArray for
     # the input data and instead does the indexing itself since it is faster.
     # If CArray becomes faster than follow the comments that start with
@@ -226,7 +226,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         if has_structure:
             ws_pre = 'S sval = s[iws];\n'
         if has_weights:
-            ws_pre += 'W wval = w[iws];\nif (nonzero(wval))'
+            ws_pre += 'W wval = w[iws];\n'
+            if not all_weights_nonzero:
+                ws_pre += 'if (nonzero(wval))'
         ws_post = 'iws++;'
 
     loops = []
@@ -284,6 +286,8 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
 
     name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
         name, ndim, mode, '_'.join(['{}'.format(x) for x in w_shape]))
+    if all_weights_nonzero:
+        name += '_all_nonzero'
     if int_type == 'ptrdiff_t':
         name += '_i64'
     if has_structure:
