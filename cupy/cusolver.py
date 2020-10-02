@@ -531,3 +531,133 @@ def gesv(a, b):
     cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         getrs, dinfo)
     return b
+
+
+def gels(a, b):
+    """Solves over/well/under-determined linear systems.
+
+    Computes least-square solution to equation ``ax = b` by QR factorization
+    using cusolverDn<t>geqrf().
+
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(M, N)``.
+        b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
+
+    Returns:
+        cupy.ndarray:
+            The matrix with dimension ``(M)`` or ``(M, K)``.
+    """
+    if a.ndim != 2:
+        raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
+    if b.ndim not in (1, 2):
+        raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
+    if a.shape[0] != b.shape[0]:
+        raise ValueError('shape mismatch (a: {}, b: {}).'.
+                         format(a.shape, b.shape))
+
+    dtype = numpy.promote_types(a.dtype.char, 'f')
+    if dtype == 'f':
+        t = 's'
+    elif dtype == 'd':
+        t = 'd'
+    elif dtype == 'F':
+        t = 'c'
+    elif dtype == 'D':
+        t = 'z'
+    else:
+        raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+    geqrf_helper = getattr(cusolver, t + 'geqrf_bufferSize')
+    ormqr_helper = getattr(cusolver, t + 'ormqr_bufferSize')
+    geqrf = getattr(cusolver, t + 'geqrf')
+    ormqr = getattr(cusolver, t + 'ormqr')
+    trsm = getattr(cublas, t + 'trsm')
+
+    no_trans = cublas.CUBLAS_OP_N
+    if dtype.char in 'fd':
+        trans = cublas.CUBLAS_OP_T
+    else:
+        trans = cublas.CUBLAS_OP_C
+
+    m, n = a.shape
+    mn_min = min(m, n)
+    nrhs = b.shape[1] if b.ndim == 2 else 1
+    dev_info = cupy.empty(1, dtype=numpy.int32)
+    tau = cupy.empty(mn_min, dtype=dtype)
+    cusolver_handle = device.get_cusolver_handle()
+    cublas_handle = device.get_cublas_handle()
+    a_data_ptr = a.data.ptr
+    b_data_ptr = b.data.ptr
+    a = cupy.asfortranarray(a, dtype=dtype)
+    b = cupy.asfortranarray(b, dtype=dtype)
+    if a.data.ptr == a_data_ptr:
+        a = a.copy()
+    if b.data.ptr == b_data_ptr:
+        b = b.copy()
+
+    if m >= n:  # over/well-determined systems
+        # geqrf (QR decomposition, A = Q * R)
+        ws_size = geqrf_helper(cusolver_handle, m, n, a.data.ptr, m)
+        workspace = cupy.empty(ws_size, dtype=dtype)
+        geqrf(cusolver_handle, m, n, a.data.ptr, m, tau.data.ptr,
+              workspace.data.ptr, ws_size, dev_info.data.ptr)
+        cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+            geqrf, dev_info)
+
+        # ormqr (Computes Q^T * B)
+        ws_size = ormqr_helper(
+            cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, nrhs, mn_min,
+            a.data.ptr, m, tau.data.ptr, b.data.ptr, m)
+        workspace = cupy.empty(ws_size, dtype=dtype)
+        ormqr(cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, nrhs, mn_min,
+              a.data.ptr, m, tau.data.ptr, b.data.ptr, m,
+              workspace.data.ptr, ws_size, dev_info.data.ptr)
+        cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+            ormqr, dev_info)
+
+        # trsm (Solves R * X = (Q^T * B))
+        trsm(cublas_handle, cublas.CUBLAS_SIDE_LEFT,
+             cublas.CUBLAS_FILL_MODE_UPPER, no_trans,
+             cublas.CUBLAS_DIAG_NON_UNIT, mn_min, nrhs, 1, a.data.ptr, m,
+             b.data.ptr, m)
+
+        if b.ndim == 1:
+            return b[:n]
+        else:
+            return b[:n, :]
+
+    else:  # under-determined systems
+        a = cupy.asfortranarray(a.T)
+        if b.ndim == 1:
+            bb = cupy.empty((n,), dtype=dtype, order='F')
+            bb[:m] = b
+        else:
+            bb = cupy.empty((n, nrhs), dtype=dtype, order='F')
+            bb[:m, :] = b
+        b = bb
+
+        # geqrf (QR decomposition, A^T = Q * R)
+        ws_size = geqrf_helper(cusolver_handle, n, m, a.data.ptr, n)
+        workspace = cupy.empty(ws_size, dtype=dtype)
+        geqrf(cusolver_handle, n, m, a.data.ptr, n, tau.data.ptr,
+              workspace.data.ptr, ws_size, dev_info.data.ptr)
+        cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+            geqrf, dev_info)
+
+        # trsm (Solves R^T * Z = B)
+        trsm(cublas_handle, cublas.CUBLAS_SIDE_LEFT,
+             cublas.CUBLAS_FILL_MODE_UPPER, trans,
+             cublas.CUBLAS_DIAG_NON_UNIT, m, nrhs, 1, a.data.ptr, n,
+             b.data.ptr, n)
+
+        # ormqr (Computes Q * Z)
+        ws_size = ormqr_helper(
+            cusolver_handle, cublas.CUBLAS_SIDE_LEFT, no_trans, n, nrhs,
+            mn_min, a.data.ptr, n, tau.data.ptr, b.data.ptr, n)
+        workspace = cupy.empty(ws_size, dtype=dtype)
+        ormqr(cusolver_handle, cublas.CUBLAS_SIDE_LEFT, no_trans, n, nrhs,
+              mn_min, a.data.ptr, n, tau.data.ptr, b.data.ptr, n,
+              workspace.data.ptr, ws_size, dev_info.data.ptr)
+        cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+            ormqr, dev_info)
+
+        return b
