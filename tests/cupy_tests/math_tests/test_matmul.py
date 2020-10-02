@@ -5,6 +5,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.core import _routines_linalg as _linalg
 from cupy import testing
 
 
@@ -160,8 +161,8 @@ class _TestMatmulComputeTypes(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'compute_type': [
-            cupy.core.core.COMPUTE_TYPE_DEFAULT,
-            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
         ],
         'shape_pair': [
             ((32, 64), (64, 96)),
@@ -187,9 +188,9 @@ class TestMatmulFp16ComputeTypes(_TestMatmulComputeTypes):
 @testing.parameterize(
     *testing.product({
         'compute_type': [
-            cupy.core.core.COMPUTE_TYPE_DEFAULT,
-            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
-            cupy.core.core.COMPUTE_TYPE_TF32,
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
+            _linalg.COMPUTE_TYPE_TF32,
         ],
         'shape_pair': [
             ((100, 200), (200, 300)),
@@ -222,8 +223,8 @@ class TestMatmulFp32ComputeTypes(_TestMatmulComputeTypes):
 @testing.parameterize(
     *testing.product({
         'compute_type': [
-            cupy.core.core.COMPUTE_TYPE_DEFAULT,
-            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
         ],
         'shape_pair': [
             ((100, 200), (200, 300)),
