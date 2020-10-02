@@ -2320,14 +2320,6 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
 cdef int _cuda_runtime_version = -1
 
 
-@cython.profile(False)
-cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
-    if a._strides[rundim] < 0:
-        return a.copy(), 1
-    else:
-        return a, a._strides[rundim] // a.itemsize
-
-
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef Py_ssize_t sh, st
     cdef object desc = a.__cuda_array_interface__
