@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy.core import internal
 from cupyx.scipy.ndimage import _util
 
 
@@ -55,7 +56,7 @@ def fourier_gaussian(input, sigma, n=-1, axis=-1, output=None):
     """
     ndim = input.ndim
     output = _get_output_fourier(output, input)
-    axis = cupy._util._normalize_axis_index(axis, ndim)
+    axis = internal._normalize_axis_index(axis, ndim)
     sigmas = _util._fix_sequence_arg(sigma, ndim, 'sigma')
 
     output[...] = input
@@ -107,7 +108,7 @@ def fourier_uniform(input, size, n=-1, axis=-1, output=None):
     """
     ndim = input.ndim
     output = _get_output_fourier(output, input)
-    axis = cupy._util._normalize_axis_index(axis, ndim)
+    axis = internal._normalize_axis_index(axis, ndim)
     sizes = _util._fix_sequence_arg(size, ndim, 'size')
 
     output[...] = input
@@ -158,7 +159,7 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
     """
     ndim = input.ndim
     output = _get_output_fourier(output, input, complex_only=True)
-    axis = cupy._util._normalize_axis_index(axis, ndim)
+    axis = internal._normalize_axis_index(axis, ndim)
     shifts = _util._fix_sequence_arg(shift, ndim, 'shift')
 
     output[...] = input
