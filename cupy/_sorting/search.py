@@ -220,7 +220,7 @@ def argwhere(a):
 
     Returns a (N, ndim) dimantional array containing the
     indices of the non-zero elements. Where `N` is number of
-    non-zero elements and `ndim` is dimention of the given array.
+    non-zero elements and `ndim` is dimension of the given array.
 
     Args:
         a (cupy.ndarray): array
