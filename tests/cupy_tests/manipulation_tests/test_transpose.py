@@ -53,6 +53,12 @@ class TestTranspose(unittest.TestCase):
             with pytest.raises(numpy.AxisError):
                 xp.moveaxis(a, [0, 1], [1, 3])
 
+    def test_moveaxis_invalid1_3(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.moveaxis(a, 0, 3)
+
     # dim is too small
     def test_moveaxis_invalid2_1(self):
         for xp in (numpy, cupy):
@@ -66,19 +72,37 @@ class TestTranspose(unittest.TestCase):
             with pytest.raises(numpy.AxisError):
                 xp.moveaxis(a, [0, -4], [1, 2])
 
+    def test_moveaxis_invalid2_3(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.moveaxis(a, -4, 0)
+
     # len(source) != len(destination)
-    def test_moveaxis_invalid3(self):
+    def test_moveaxis_invalid3_1(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
             with pytest.raises(ValueError):
                 xp.moveaxis(a, [0, 1, 2], [1, 2])
 
+    def test_moveaxis_invalid3_2(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(ValueError):
+                xp.moveaxis(a, 0, [1, 2])
+
     # len(source) != len(destination)
-    def test_moveaxis_invalid4(self):
+    def test_moveaxis_invalid4_1(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
             with pytest.raises(ValueError):
                 xp.moveaxis(a, [0, 1], [1, 2, 0])
+
+    def test_moveaxis_invalid4_2(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            with pytest.raises(ValueError):
+                xp.moveaxis(a, [0, 1], 1)
 
     # Use the same axis twice
     def test_moveaxis_invalid5_1(self):

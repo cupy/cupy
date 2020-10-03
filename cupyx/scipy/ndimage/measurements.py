@@ -382,7 +382,7 @@ def sum(input, labels=None, index=None):
         raise TypeError('input must be cupy.ndarray')
 
     if input.dtype in (cupy.complex64, cupy.complex128):
-        raise TypeError("cupyx.scipy.ndimage.sum doesnt support %{}".format(
+        raise TypeError("cupyx.scipy.ndimage.sum does not support %{}".format(
             input.dtype.type))
 
     use_kern = False
@@ -447,7 +447,7 @@ def mean(input, labels=None, index=None):
         raise TypeError('input must be cupy.ndarray')
 
     if input.dtype in (cupy.complex64, cupy.complex128):
-        raise TypeError("cupyx.scipy.ndimage.mean doesnt support %{}".format(
+        raise TypeError("cupyx.scipy.ndimage.mean does not support %{}".format(
             input.dtype.type))
 
     use_kern = False

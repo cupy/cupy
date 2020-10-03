@@ -76,7 +76,7 @@ main() {
       #echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
 
       apt update -qqy
-      apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver -qqy
+      apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft -qqy
       export HCC_AMDGPU_TARGET=gfx900
       export ROCM_HOME=/opt/rocm
       export CUPY_INSTALL_USE_HIP=1

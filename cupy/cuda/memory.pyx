@@ -175,6 +175,11 @@ cdef class ManagedMemory(BaseMemory):
         """
         runtime.memAdvise(self.ptr, self.size, advise, device.id)
 
+    def __dealloc__(self):
+        if self.ptr:
+            syncdetect._declare_synchronize()
+            runtime.free(self.ptr)
+
 
 cdef set _peer_access_checked = set()
 
@@ -1360,9 +1365,9 @@ ctypedef void*(*malloc_func_type)(void*, size_t, int)
 ctypedef void(*free_func_type)(void*, void*, int)
 
 
-cdef size_t _call_malloc(
+cdef intptr_t _call_malloc(
         intptr_t param, intptr_t malloc_func, Py_ssize_t size, int device_id):
-    return <size_t>(
+    return <intptr_t>(
         (<malloc_func_type>malloc_func)(<void*>param, size, device_id))
 
 

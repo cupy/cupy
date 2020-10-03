@@ -3,6 +3,7 @@
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
 ###############################################################################
@@ -683,12 +684,33 @@ cdef dict STATUS = {
     11: 'CUSOLVER_STATUS_INVALID_LICENSE',
 }
 
+# for rocBLAS and rocSOLVER
+cdef dict ROC_STATUS = {
+    0: 'rocblas_status_success',
+    1: 'rocblas_status_invalid_handle',
+    2: 'rocblas_status_not_implemented',
+    3: 'rocblas_status_invalid_pointer',
+    4: 'rocblas_status_invalid_size',
+    5: 'rocblas_status_memory_error',
+    6: 'rocblas_status_internal_error',
+    7: 'rocblas_status_perf_degraded',
+    8: 'rocblas_status_size_query_mismatch',
+    9: 'rocblas_status_size_increased',
+    10: 'rocblas_status_size_unchanged',
+    11: 'rocblas_status_invalid_value',
+    12: 'rocblas_status_continue',
+}
+
 
 class CUSOLVERError(RuntimeError):
 
     def __init__(self, status):
         self.status = status
-        super(CUSOLVERError, self).__init__(STATUS[status])
+        if runtime._is_hip_environment:
+            err = ROC_STATUS
+        else:
+            err = STATUS
+        super(CUSOLVERError, self).__init__(err[status])
 
     def __reduce__(self):
         return (type(self), (self.status,))
@@ -704,7 +726,7 @@ cpdef inline check_status(int status):
 # Library Attributes
 ###############################################################################
 
-cpdef int getProperty(int type):
+cpdef int getProperty(int type) except? -1:
     cdef int value
     with nogil:
         status = cusolverGetProperty(<LibraryPropertyType>type, &value)
