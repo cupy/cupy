@@ -490,7 +490,7 @@ def gesv(a, b):
         raise ValueError('shape mismatch (a: {}, b: {}).'.
                          format(a.shape, b.shape))
 
-    dtype = numpy.promote_types(a.dtype.char, 'f')
+    dtype = _numpy.promote_types(a.dtype.char, 'f')
     if dtype == 'f':
         t = 's'
     elif dtype == 'd':
@@ -501,34 +501,34 @@ def gesv(a, b):
         t = 'z'
     else:
         raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
-    helper = getattr(cusolver, t + 'getrf_bufferSize')
-    getrf = getattr(cusolver, t + 'getrf')
-    getrs = getattr(cusolver, t + 'getrs')
+    helper = getattr(_cusolver, t + 'getrf_bufferSize')
+    getrf = getattr(_cusolver, t + 'getrf')
+    getrs = getattr(_cusolver, t + 'getrs')
 
     n = b.shape[0]
     nrhs = b.shape[1] if b.ndim == 2 else 1
     a_data_ptr = a.data.ptr
     b_data_ptr = b.data.ptr
-    a = cupy.asfortranarray(a, dtype=dtype)
-    b = cupy.asfortranarray(b, dtype=dtype)
+    a = _cupy.asfortranarray(a, dtype=dtype)
+    b = _cupy.asfortranarray(b, dtype=dtype)
     if a.data.ptr == a_data_ptr:
         a = a.copy()
     if b.data.ptr == b_data_ptr:
         b = b.copy()
 
-    handle = device.get_cusolver_handle()
-    dipiv = cupy.empty(n, dtype=numpy.int32)
-    dinfo = cupy.empty(1, dtype=numpy.int32)
+    handle = _device.get_cusolver_handle()
+    dipiv = _cupy.empty(n, dtype=_numpy.int32)
+    dinfo = _cupy.empty(1, dtype=_numpy.int32)
     lwork = helper(handle, n, n, a.data.ptr, n)
-    dwork = cupy.empty(lwork, dtype=a.dtype)
+    dwork = _cupy.empty(lwork, dtype=a.dtype)
     # LU factrization (A = L * U)
     getrf(handle, n, n, a.data.ptr, n, dwork.data.ptr, dipiv.data.ptr,
           dinfo.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         getrf, dinfo)
     # Solves Ax = b
-    getrs(handle, cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
+    getrs(handle, _cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
           dipiv.data.ptr, b.data.ptr, n, dinfo.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         getrs, dinfo)
     return b
