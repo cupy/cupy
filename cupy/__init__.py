@@ -1,8 +1,8 @@
-import functools
-import sys
-import warnings
+import functools as _functools
+import sys as _sys
+import warnings as _warnings
 
-import numpy
+import numpy as _numpy
 
 from cupy import _environment
 from cupy import _version
@@ -13,16 +13,17 @@ _environment._preload_libraries()  # NOQA
 
 
 try:
-    with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', category=ImportWarning,
-                                message='can\'t resolve package from __spec__')
+    with _warnings.catch_warnings():
+        _warnings.filterwarnings(
+            'ignore', category=ImportWarning,
+            message='can\'t resolve package from __spec__')
         from cupy import core  # NOQA
 except ImportError as e:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
     # built.
-    exc_info = sys.exc_info()
-    msg = ('''\
+    _exc_info = _sys.exc_info()
+    _msg = ('''\
 CuPy is not correctly installed.
 
 If you are using wheel distribution (cupy-cudaXX), make sure that the version of CuPy you installed matches with the version of CUDA on your host.
@@ -35,9 +36,9 @@ If you are building CuPy from source, please check your environment, uninstall C
 Check the Installation Guide for details:
   https://docs.cupy.dev/en/latest/install.html
 
-original error: {}'''.format(exc_info[1]))  # NOQA
+original error: {}'''.format(_exc_info[1]))  # NOQA
 
-    raise ImportError(msg) from e
+    raise ImportError(_msg) from e
 
 
 from cupy import cuda
@@ -280,6 +281,7 @@ from cupy._creation.matrix import triu  # NOQA
 # Functional routines
 # -----------------------------------------------------------------------------
 from cupy._functional.piecewise import piecewise  # NOQA
+from cupy.lib.shape_base import apply_along_axis  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -352,7 +354,7 @@ def binary_repr(num, width=None):
 
     .. seealso:: :func:`numpy.binary_repr`
     """
-    return numpy.binary_repr(num, width)
+    return _numpy.binary_repr(num, width)
 
 
 # -----------------------------------------------------------------------------
@@ -366,7 +368,7 @@ def can_cast(from_, to, casting='safe'):
     .. seealso:: :func:`numpy.can_cast`
     """
     from_ = from_.dtype if isinstance(from_, cupy.ndarray) else from_
-    return numpy.can_cast(from_, to, casting=casting)
+    return _numpy.can_cast(from_, to, casting=casting)
 
 
 def common_type(*arrays):
@@ -375,9 +377,9 @@ def common_type(*arrays):
     .. seealso:: :func:`numpy.common_type`
     """
     if len(arrays) == 0:
-        return numpy.float16
+        return _numpy.float16
 
-    default_float_dtype = numpy.dtype('float64')
+    default_float_dtype = _numpy.dtype('float64')
     dtypes = []
     for a in arrays:
         if a.dtype.kind == 'b':
@@ -387,7 +389,7 @@ def common_type(*arrays):
         else:
             dtypes.append(a.dtype)
 
-    return functools.reduce(numpy.promote_types, dtypes).type
+    return _functools.reduce(_numpy.promote_types, dtypes).type
 
 
 def result_type(*arrays_and_dtypes):
@@ -398,7 +400,7 @@ def result_type(*arrays_and_dtypes):
     """
     dtypes = [a.dtype if isinstance(a, cupy.ndarray)
               else a for a in arrays_and_dtypes]
-    return numpy.result_type(*dtypes)
+    return _numpy.result_type(*dtypes)
 
 
 from numpy import min_scalar_type  # NOQA
@@ -476,7 +478,7 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 
     .. seealso:: :func:`numpy.base_repr`
     """
-    return numpy.base_repr(number, base, padding)
+    return _numpy.base_repr(number, base, padding)
 
 
 # -----------------------------------------------------------------------------
@@ -498,25 +500,25 @@ from cupy.linalg._norms import trace  # NOQA
 # -----------------------------------------------------------------------------
 # Logic functions
 # -----------------------------------------------------------------------------
-from cupy.logic.comparison import allclose  # NOQA
-from cupy.logic.comparison import array_equal  # NOQA
-from cupy.logic.comparison import isclose  # NOQA
+from cupy._logic.comparison import allclose  # NOQA
+from cupy._logic.comparison import array_equal  # NOQA
+from cupy._logic.comparison import isclose  # NOQA
 
-from cupy.logic.content import isfinite  # NOQA
-from cupy.logic.content import isinf  # NOQA
-from cupy.logic.content import isnan  # NOQA
+from cupy._logic.content import isfinite  # NOQA
+from cupy._logic.content import isinf  # NOQA
+from cupy._logic.content import isnan  # NOQA
 
-from cupy.logic.truth import in1d  # NOQA
-from cupy.logic.truth import isin  # NOQA
+from cupy._logic.truth import in1d  # NOQA
+from cupy._logic.truth import isin  # NOQA
 
-from cupy.logic.type_test import iscomplex  # NOQA
-from cupy.logic.type_test import iscomplexobj  # NOQA
-from cupy.logic.type_test import isfortran  # NOQA
-from cupy.logic.type_test import isreal  # NOQA
-from cupy.logic.type_test import isrealobj  # NOQA
+from cupy._logic.type_test import iscomplex  # NOQA
+from cupy._logic.type_test import iscomplexobj  # NOQA
+from cupy._logic.type_test import isfortran  # NOQA
+from cupy._logic.type_test import isreal  # NOQA
+from cupy._logic.type_test import isrealobj  # NOQA
 
-from cupy.logic.truth import in1d  # NOQA
-from cupy.logic.truth import isin  # NOQA
+from cupy._logic.truth import in1d  # NOQA
+from cupy._logic.truth import isin  # NOQA
 
 
 def isscalar(element):
@@ -524,23 +526,23 @@ def isscalar(element):
 
     .. seealso:: :func:`numpy.isscalar`
     """
-    return numpy.isscalar(element)
+    return _numpy.isscalar(element)
 
 
-from cupy.logic.ops import logical_and  # NOQA
-from cupy.logic.ops import logical_not  # NOQA
-from cupy.logic.ops import logical_or  # NOQA
-from cupy.logic.ops import logical_xor  # NOQA
+from cupy._logic.ops import logical_and  # NOQA
+from cupy._logic.ops import logical_not  # NOQA
+from cupy._logic.ops import logical_or  # NOQA
+from cupy._logic.ops import logical_xor  # NOQA
 
-from cupy.logic.comparison import equal  # NOQA
-from cupy.logic.comparison import greater  # NOQA
-from cupy.logic.comparison import greater_equal  # NOQA
-from cupy.logic.comparison import less  # NOQA
-from cupy.logic.comparison import less_equal  # NOQA
-from cupy.logic.comparison import not_equal  # NOQA
+from cupy._logic.comparison import equal  # NOQA
+from cupy._logic.comparison import greater  # NOQA
+from cupy._logic.comparison import greater_equal  # NOQA
+from cupy._logic.comparison import less  # NOQA
+from cupy._logic.comparison import less_equal  # NOQA
+from cupy._logic.comparison import not_equal  # NOQA
 
-from cupy.logic.truth import all  # NOQA
-from cupy.logic.truth import any  # NOQA
+from cupy._logic.truth import all  # NOQA
+from cupy._logic.truth import any  # NOQA
 
 # ------------------------------------------------------------------------------
 # Polynomial functions
@@ -556,105 +558,105 @@ from cupy.lib import roots  # NOQA
 # -----------------------------------------------------------------------------
 # Mathematical functions
 # -----------------------------------------------------------------------------
-from cupy.math.trigonometric import arccos  # NOQA
-from cupy.math.trigonometric import arcsin  # NOQA
-from cupy.math.trigonometric import arctan  # NOQA
-from cupy.math.trigonometric import arctan2  # NOQA
-from cupy.math.trigonometric import cos  # NOQA
-from cupy.math.trigonometric import deg2rad  # NOQA
-from cupy.math.trigonometric import degrees  # NOQA
-from cupy.math.trigonometric import hypot  # NOQA
-from cupy.math.trigonometric import rad2deg  # NOQA
-from cupy.math.trigonometric import radians  # NOQA
-from cupy.math.trigonometric import sin  # NOQA
-from cupy.math.trigonometric import tan  # NOQA
-from cupy.math.trigonometric import unwrap  # NOQA
+from cupy._math.trigonometric import arccos  # NOQA
+from cupy._math.trigonometric import arcsin  # NOQA
+from cupy._math.trigonometric import arctan  # NOQA
+from cupy._math.trigonometric import arctan2  # NOQA
+from cupy._math.trigonometric import cos  # NOQA
+from cupy._math.trigonometric import deg2rad  # NOQA
+from cupy._math.trigonometric import degrees  # NOQA
+from cupy._math.trigonometric import hypot  # NOQA
+from cupy._math.trigonometric import rad2deg  # NOQA
+from cupy._math.trigonometric import radians  # NOQA
+from cupy._math.trigonometric import sin  # NOQA
+from cupy._math.trigonometric import tan  # NOQA
+from cupy._math.trigonometric import unwrap  # NOQA
 
-from cupy.math.hyperbolic import arccosh  # NOQA
-from cupy.math.hyperbolic import arcsinh  # NOQA
-from cupy.math.hyperbolic import arctanh  # NOQA
-from cupy.math.hyperbolic import cosh  # NOQA
-from cupy.math.hyperbolic import sinh  # NOQA
-from cupy.math.hyperbolic import tanh  # NOQA
+from cupy._math.hyperbolic import arccosh  # NOQA
+from cupy._math.hyperbolic import arcsinh  # NOQA
+from cupy._math.hyperbolic import arctanh  # NOQA
+from cupy._math.hyperbolic import cosh  # NOQA
+from cupy._math.hyperbolic import sinh  # NOQA
+from cupy._math.hyperbolic import tanh  # NOQA
 
-from cupy.math.rounding import around  # NOQA
-from cupy.math.rounding import ceil  # NOQA
-from cupy.math.rounding import fix  # NOQA
-from cupy.math.rounding import floor  # NOQA
-from cupy.math.rounding import rint  # NOQA
-from cupy.math.rounding import round_  # NOQA
-from cupy.math.rounding import trunc  # NOQA
+from cupy._math.rounding import around  # NOQA
+from cupy._math.rounding import ceil  # NOQA
+from cupy._math.rounding import fix  # NOQA
+from cupy._math.rounding import floor  # NOQA
+from cupy._math.rounding import rint  # NOQA
+from cupy._math.rounding import round_  # NOQA
+from cupy._math.rounding import trunc  # NOQA
 
-from cupy.math.sumprod import prod  # NOQA
-from cupy.math.sumprod import sum  # NOQA
-from cupy.math.sumprod import cumprod  # NOQA
-from cupy.math.sumprod import cumsum  # NOQA
-from cupy.math.sumprod import nansum  # NOQA
-from cupy.math.sumprod import nanprod  # NOQA
-from cupy.math.sumprod import diff  # NOQA
-from cupy.math.sumprod import gradient  # NOQA
-from cupy.math.window import bartlett  # NOQA
-from cupy.math.window import blackman  # NOQA
-from cupy.math.window import hamming  # NOQA
-from cupy.math.window import hanning  # NOQA
-from cupy.math.window import kaiser  # NOQA
+from cupy._math.sumprod import prod  # NOQA
+from cupy._math.sumprod import sum  # NOQA
+from cupy._math.sumprod import cumprod  # NOQA
+from cupy._math.sumprod import cumsum  # NOQA
+from cupy._math.sumprod import nansum  # NOQA
+from cupy._math.sumprod import nanprod  # NOQA
+from cupy._math.sumprod import diff  # NOQA
+from cupy._math.sumprod import gradient  # NOQA
+from cupy._math.window import bartlett  # NOQA
+from cupy._math.window import blackman  # NOQA
+from cupy._math.window import hamming  # NOQA
+from cupy._math.window import hanning  # NOQA
+from cupy._math.window import kaiser  # NOQA
 
-from cupy.math.explog import exp  # NOQA
-from cupy.math.explog import exp2  # NOQA
-from cupy.math.explog import expm1  # NOQA
-from cupy.math.explog import log  # NOQA
-from cupy.math.explog import log10  # NOQA
-from cupy.math.explog import log1p  # NOQA
-from cupy.math.explog import log2  # NOQA
-from cupy.math.explog import logaddexp  # NOQA
-from cupy.math.explog import logaddexp2  # NOQA
+from cupy._math.explog import exp  # NOQA
+from cupy._math.explog import exp2  # NOQA
+from cupy._math.explog import expm1  # NOQA
+from cupy._math.explog import log  # NOQA
+from cupy._math.explog import log10  # NOQA
+from cupy._math.explog import log1p  # NOQA
+from cupy._math.explog import log2  # NOQA
+from cupy._math.explog import logaddexp  # NOQA
+from cupy._math.explog import logaddexp2  # NOQA
 
-from cupy.math.special import i0  # NOQA
-from cupy.math.special import sinc  # NOQA
+from cupy._math.special import i0  # NOQA
+from cupy._math.special import sinc  # NOQA
 
-from cupy.math.floating import copysign  # NOQA
-from cupy.math.floating import frexp  # NOQA
-from cupy.math.floating import ldexp  # NOQA
-from cupy.math.floating import nextafter  # NOQA
-from cupy.math.floating import signbit  # NOQA
+from cupy._math.floating import copysign  # NOQA
+from cupy._math.floating import frexp  # NOQA
+from cupy._math.floating import ldexp  # NOQA
+from cupy._math.floating import nextafter  # NOQA
+from cupy._math.floating import signbit  # NOQA
 
-from cupy.math.rational import gcd  # NOQA
-from cupy.math.rational import lcm  # NOQA
+from cupy._math.rational import gcd  # NOQA
+from cupy._math.rational import lcm  # NOQA
 
-from cupy.math.arithmetic import add  # NOQA
-from cupy.math.arithmetic import divide  # NOQA
-from cupy.math.arithmetic import divmod  # NOQA
-from cupy.math.arithmetic import floor_divide  # NOQA
-from cupy.math.arithmetic import fmod  # NOQA
-from cupy.math.arithmetic import modf  # NOQA
-from cupy.math.arithmetic import multiply  # NOQA
-from cupy.math.arithmetic import negative  # NOQA
-from cupy.math.arithmetic import power  # NOQA
-from cupy.math.arithmetic import reciprocal  # NOQA
-from cupy.math.arithmetic import remainder  # NOQA
-from cupy.math.arithmetic import remainder as mod  # NOQA
-from cupy.math.arithmetic import subtract  # NOQA
-from cupy.math.arithmetic import true_divide  # NOQA
+from cupy._math.arithmetic import add  # NOQA
+from cupy._math.arithmetic import divide  # NOQA
+from cupy._math.arithmetic import divmod  # NOQA
+from cupy._math.arithmetic import floor_divide  # NOQA
+from cupy._math.arithmetic import fmod  # NOQA
+from cupy._math.arithmetic import modf  # NOQA
+from cupy._math.arithmetic import multiply  # NOQA
+from cupy._math.arithmetic import negative  # NOQA
+from cupy._math.arithmetic import power  # NOQA
+from cupy._math.arithmetic import reciprocal  # NOQA
+from cupy._math.arithmetic import remainder  # NOQA
+from cupy._math.arithmetic import remainder as mod  # NOQA
+from cupy._math.arithmetic import subtract  # NOQA
+from cupy._math.arithmetic import true_divide  # NOQA
 
-from cupy.math.arithmetic import angle  # NOQA
-from cupy.math.arithmetic import conjugate as conj  # NOQA
-from cupy.math.arithmetic import conjugate  # NOQA
-from cupy.math.arithmetic import imag  # NOQA
-from cupy.math.arithmetic import real  # NOQA
+from cupy._math.arithmetic import angle  # NOQA
+from cupy._math.arithmetic import conjugate as conj  # NOQA
+from cupy._math.arithmetic import conjugate  # NOQA
+from cupy._math.arithmetic import imag  # NOQA
+from cupy._math.arithmetic import real  # NOQA
 
-from cupy.math.misc import absolute as abs  # NOQA
-from cupy.math.misc import absolute  # NOQA
-from cupy.math.misc import cbrt  # NOQA
-from cupy.math.misc import clip  # NOQA
-from cupy.math.misc import fmax  # NOQA
-from cupy.math.misc import fmin  # NOQA
-from cupy.math.misc import maximum  # NOQA
-from cupy.math.misc import minimum  # NOQA
-from cupy.math.misc import nan_to_num  # NOQA
-from cupy.math.misc import sign  # NOQA
-from cupy.math.misc import sqrt  # NOQA
-from cupy.math.misc import square  # NOQA
-from cupy.math.misc import convolve  # NOQA
+from cupy._math.misc import absolute as abs  # NOQA
+from cupy._math.misc import absolute  # NOQA
+from cupy._math.misc import cbrt  # NOQA
+from cupy._math.misc import clip  # NOQA
+from cupy._math.misc import fmax  # NOQA
+from cupy._math.misc import fmin  # NOQA
+from cupy._math.misc import maximum  # NOQA
+from cupy._math.misc import minimum  # NOQA
+from cupy._math.misc import nan_to_num  # NOQA
+from cupy._math.misc import sign  # NOQA
+from cupy._math.misc import sqrt  # NOQA
+from cupy._math.misc import square  # NOQA
+from cupy._math.misc import convolve  # NOQA
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
@@ -744,7 +746,7 @@ def ndim(a):
     try:
         return a.ndim
     except AttributeError:
-        return numpy.ndim(a)
+        return _numpy.ndim(a)
 
 
 # -----------------------------------------------------------------------------
@@ -787,10 +789,10 @@ def asnumpy(a, stream=None, order='C'):
     elif hasattr(a, "__cuda_array_interface__"):
         return array(a).get(stream=stream, order=order)
     else:
-        return numpy.asarray(a, order=order)
+        return _numpy.asarray(a, order=order)
 
 
-_cupy = sys.modules[__name__]
+_cupy = _sys.modules[__name__]
 
 
 def get_array_module(*args):
@@ -821,7 +823,7 @@ def get_array_module(*args):
                             cupy.core.fusion._FusionVarArray,
                             cupy.core.new_fusion._ArrayProxy)):
             return _cupy
-    return numpy
+    return _numpy
 
 
 fuse = cupy.core.fusion.fuse
@@ -869,5 +871,5 @@ def get_default_pinned_memory_pool():
 
 def show_config():
     """Prints the current runtime configuration to standard output."""
-    sys.stdout.write(str(_cupyx.get_runtime_info()))
-    sys.stdout.flush()
+    _sys.stdout.write(str(_cupyx.get_runtime_info()))
+    _sys.stdout.flush()

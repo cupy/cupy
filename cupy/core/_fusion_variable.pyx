@@ -157,7 +157,7 @@ class _TraceVariable:
     def __hash__(self):
         assert False, (
             '__hash__ is not defined. Use _VariableSet instead of '
-            'set/dict because they do not gurantee the order of contents.')
+            'set/dict because they do not guarantee the order of contents.')
 
 
 class _TraceScalar(_TraceVariable):

@@ -199,10 +199,6 @@ cusolverStatus_t cusolverSpSetStream(...) {
     return rocblas_status_not_implemented;
 }
 
-cusolverStatus_t cusolverGetProperty(...) {
-    return rocblas_status_not_implemented;
-}
-
 
 /* ---------- potrf ---------- */
 cusolverStatus_t cusolverDnCpotrf_bufferSize(...) {

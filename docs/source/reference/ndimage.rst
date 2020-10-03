@@ -9,6 +9,51 @@ It supports a subset of :mod:`scipy.ndimage` interface.
 
 .. https://docs.scipy.org/doc/scipy/reference/ndimage.html
 
+Filters
+-------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.ndimage.convolve
+   cupyx.scipy.ndimage.convolve1d
+   cupyx.scipy.ndimage.correlate
+   cupyx.scipy.ndimage.correlate1d
+   cupyx.scipy.ndimage.gaussian_filter
+   cupyx.scipy.ndimage.gaussian_filter1d
+   cupyx.scipy.ndimage.gaussian_gradient_magnitude
+   cupyx.scipy.ndimage.gaussian_laplace
+   cupyx.scipy.ndimage.generic_filter
+   cupyx.scipy.ndimage.generic_filter1d
+   cupyx.scipy.ndimage.generic_gradient_magnitude
+   cupyx.scipy.ndimage.generic_laplace
+   cupyx.scipy.ndimage.laplace
+   cupyx.scipy.ndimage.maximum_filter
+   cupyx.scipy.ndimage.maximum_filter1d
+   cupyx.scipy.ndimage.median_filter
+   cupyx.scipy.ndimage.minimum_filter
+   cupyx.scipy.ndimage.minimum_filter1d
+   cupyx.scipy.ndimage.percentile_filter
+   cupyx.scipy.ndimage.prewitt
+   cupyx.scipy.ndimage.rank_filter
+   cupyx.scipy.ndimage.sobel
+   cupyx.scipy.ndimage.uniform_filter
+   cupyx.scipy.ndimage.uniform_filter1d
+
+
+Fourier Filters
+---------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.ndimage.fourier_gaussian
+   cupyx.scipy.ndimage.fourier_shift
+   cupyx.scipy.ndimage.fourier_uniform
+
+
 Interpolation
 -------------
 
@@ -17,8 +62,6 @@ Interpolation
    :nosignatures:
 
    cupyx.scipy.ndimage.affine_transform
-   cupyx.scipy.ndimage.convolve
-   cupyx.scipy.ndimage.correlate
    cupyx.scipy.ndimage.map_coordinates
    cupyx.scipy.ndimage.rotate
    cupyx.scipy.ndimage.shift
@@ -37,6 +80,19 @@ Measurements
    cupyx.scipy.ndimage.standard_deviation
    cupyx.scipy.ndimage.sum
    cupyx.scipy.ndimage.variance
+
+
+Morphology
+----------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.ndimage.grey_closing
+   cupyx.scipy.ndimage.grey_dilation
+   cupyx.scipy.ndimage.grey_erosion
+   cupyx.scipy.ndimage.grey_opening
 
 
 OpenCV mode
