@@ -576,8 +576,9 @@ cdef bint _try_to_call_cub_reduction(
     in_shape = _reduction._set_permuted_args(
         in_args, axis_permutes, a_shape, self.in_params)
 
-    if in_args[0].flags.f_contiguous:
-        ret = out_args[0] = _internal_asfortranarray(ret)
+    if in_args[0]._f_contiguous:
+        ret._set_contiguous_strides(ret.dtype.itemsize, False)
+        out_args[0] = ret
 
     if not full_reduction:  # just need one pass
         out_block_num = 1  # = number of segments
