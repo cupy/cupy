@@ -285,7 +285,7 @@ cpdef getDeviceProperties(int device):
     cdef cudaDeviceProp props
     status = cudaGetDeviceProperties(&props, device)
     # Common properties to CUDA 9.0, 9.2, 10.x and 11.x
-    properties = {}
+    properties = {'name': 'UNAVAILABLE'}
     IF CUDA_VERSION >= 9020:
         properties = {
             'name': props.name,
@@ -350,11 +350,14 @@ cpdef getDeviceProperties(int device):
             'isMultiGpuBoard': props.isMultiGpuBoard,
             'multiGpuBoardGroupID': props.multiGpuBoardGroupID,
             'hostNativeAtomicSupported': props.hostNativeAtomicSupported,
-            'singleToDoublePrecisionPerfRatio': props.singleToDoublePrecisionPerfRatio,
+            'singleToDoublePrecisionPerfRatio':
+                props.singleToDoublePrecisionPerfRatio,
             'pageableMemoryAccess': props.pageableMemoryAccess,
             'concurrentManagedAccess': props.concurrentManagedAccess,
-            'computePreemptionSupported': props.computePreemptionSupported,
-            'canUseHostPointerForRegisteredMem': props.canUseHostPointerForRegisteredMem,
+            'computePreemptionSupported':
+                props.computePreemptionSupported,
+            'canUseHostPointerForRegisteredMem':
+                props.canUseHostPointerForRegisteredMem,
             'cooperativeLaunch': props.cooperativeLaunch,
             'cooperativeMultiDeviceLaunch': props.cooperativeMultiDeviceLaunch,
             'sharedMemPerBlockOptin': props.sharedMemPerBlockOptin,
@@ -363,13 +366,18 @@ cpdef getDeviceProperties(int device):
         properties['uuid'] = props.uuid.bytes
         properties['luid'] = props.luid
         properties['luidDeviceNodeMask'] = props.luidDeviceNodeMask
-        properties['pageableMemoryAccessUsesHostPageTables'] = props.pageableMemoryAccessUsesHostPageTables
-        properties['directManagedMemAccessFromHost'] = props.directManagedMemAccessFromHost
+        properties['pageableMemoryAccessUsesHostPageTables'] = (
+            props.pageableMemoryAccessUsesHostPageTables)
+        properties['directManagedMemAccessFromHost'] = (
+            props.directManagedMemAccessFromHost)
     IF CUDA_VERSION >= 11000:
         properties['persistingL2CacheMaxSize'] = props.persistingL2CacheMaxSize
-        properties['maxBlocksPerMultiProcessor'] = props.maxBlocksPerMultiProcessor
-        properties['accessPolicyMaxWindowSize'] = props.accessPolicyMaxWindowSize
-        properties['reservedSharedMemPerBlock'] = props.reservedSharedMemPerBlock
+        properties['maxBlocksPerMultiProcessor'] = (
+            props.maxBlocksPerMultiProcessor)
+        properties['accessPolicyMaxWindowSize'] = (
+            props.accessPolicyMaxWindowSize)
+        properties['reservedSharedMemPerBlock'] = (
+            props.reservedSharedMemPerBlock)
     check_status(status)
     return properties
 
