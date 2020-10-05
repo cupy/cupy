@@ -573,7 +573,7 @@ def irs_gels(a, b):
 
     m, n = a.shape
     if m < n:
-        raise ValueError('m must be equal to or smaller than n.')
+        raise ValueError('m must be equal to or greater than n.')
     max_mn = max(m, n)
     b_ndim = b.ndim
     nrhs = 1 if b_ndim == 1 else b.shape[1]
