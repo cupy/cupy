@@ -566,11 +566,16 @@ def gels(a, b):
         t = 'z'
     else:
         raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+
     geqrf_helper = getattr(cusolver, t + 'geqrf_bufferSize')
-    ormqr_helper = getattr(cusolver, t + 'ormqr_bufferSize')
     geqrf = getattr(cusolver, t + 'geqrf')
-    ormqr = getattr(cusolver, t + 'ormqr')
     trsm = getattr(cublas, t + 'trsm')
+    if t in 'sd':
+        ormqr_helper = getattr(cusolver, t + 'ormqr_bufferSize')
+        ormqr = getattr(cusolver, t + 'ormqr')
+    else:
+        ormqr_helper = getattr(cusolver, t + 'unmqr_bufferSize')
+        ormqr = getattr(cusolver, t + 'unmqr')
 
     no_trans = cublas.CUBLAS_OP_N
     if dtype.char in 'fd':
@@ -626,7 +631,7 @@ def gels(a, b):
             return b[:n, :]
 
     else:  # under-determined systems
-        a = cupy.asfortranarray(a.T)
+        a = cupy.asfortranarray(a.conj().T)
         if b.ndim == 1:
             bb = cupy.empty((n,), dtype=dtype, order='F')
             bb[:m] = b
