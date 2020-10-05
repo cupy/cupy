@@ -2,6 +2,10 @@ from cupy.core._carray cimport shape_t
 from cupy.core.core cimport ndarray
 
 
+cpdef compute_type_to_str(compute_type)
+
+cpdef get_compute_type(dtype)
+
 cpdef ndarray dot(ndarray a, ndarray b, ndarray out=*)
 
 cpdef ndarray tensordot_core(

@@ -469,7 +469,7 @@ cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype, compute_dtype):
         raise ValueError('FP16 dtype is only supported on GPU with compute '
                          'capability 7.0 or higher.')
     if compute_dtype is None:
-        compute_type = cupy.core.get_compute_type(out_dtype)
+        compute_type = _linalg.get_compute_type(out_dtype)
     else:
         compute_dtype = numpy.dtype(compute_dtype)
         if compute_dtype.char == 'e':
@@ -491,7 +491,7 @@ cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype, compute_dtype):
                   '({}, {}, {}) is not supported in cuTENSOR contraction on '
                   'GPU with compute capability ({}). Default compute type '
                   'will be used instead.'.
-                  format(cupy.core.compute_type_to_str(compute_type),
+                  format(_linalg.compute_type_to_str(compute_type),
                          a_dtype, b_dtype, out_dtype, compute_capability))
     return dict_contraction[key][_linalg.COMPUTE_TYPE_DEFAULT]
 
