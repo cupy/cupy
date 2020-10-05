@@ -228,6 +228,9 @@ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
     return hipPointerGetAttributes(attributes, ptr);
 }
 
+cudaError_t cudaGetDeviceProperties(cudaDeviceProp_t *prop, int device) {
+    return hipGetDeviceProperties(prop, device);
+}
 
 // Stream and Event
 cudaError_t cudaStreamCreate(cudaStream_t *stream) {
