@@ -5,6 +5,7 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
+from cupy.core import _routines_linalg as _linalg
 from cupy import _util
 
 _available_cuda_version = {
@@ -13,6 +14,11 @@ _available_cuda_version = {
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
     'syevj': (9000, None),
+    'irs_gels': (11000, None),
+}
+
+_available_compute_capability = {
+    'irs_gels': 70,
 }
 
 
@@ -27,6 +33,10 @@ def check_availability(name):
         return False
     if version_removed is not None and cuda_version >= version_removed:
         return False
+    if name in _available_compute_capability:
+        compute_capability = int(device.get_compute_capability())
+        if compute_capability < _available_compute_capability[name]:
+            return False
     return True
 
 
@@ -531,3 +541,98 @@ def gesv(a, b):
     cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         getrs, dinfo)
     return b
+
+
+def irs_gels(a, b):
+    """Compute least square solution using cusolverDn<t1><t2>gels().
+
+    Computes the least square solution to a system of ``ax = b``.
+
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(M, N)``.
+        b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
+
+    Returns:
+        cupy.ndarray:
+            The matrix with dimension ``(N)`` or ``(N, K)``.
+
+    """
+    if not check_availability('irs_gels'):
+        raise RuntimeError('irs_gels is not available.')
+
+    if a.ndim != 2:
+        raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))
+    if b.ndim not in (1, 2):
+        raise ValueError('b.ndim must be 1 or 2 (actual:{})'.format(b.ndim))
+    if a.shape[0] != b.shape[0]:
+        raise ValueError('shape mismatch (a:{}, b:{}).'.
+                         format(a.shape, b.shape))
+    if a.dtype != b.dtype:
+        raise ValueError('dtype mismatch (a:{}, b:{}).'.
+                         format(a.dtype, b.dtype))
+
+    m, n = a.shape
+    if m < n:
+        raise ValueError('m must be equal to or smaller than n.')
+    max_mn = max(m, n)
+    b_ndim = b.ndim
+    nrhs = 1 if b_ndim == 1 else b.shape[1]
+
+    compute_type = _linalg.get_compute_type(a.dtype)
+    if a.dtype.char in 'fd':
+        if a.dtype.char == 'f':
+            t1 = t2 = 's'
+        else:
+            t1 = t2 = 'd'
+        if compute_type == _linalg.COMPUTE_TYPE_FP16:
+            t2 = 'h'
+        elif compute_type == _linalg.COMPUTE_TYPE_TF32:
+            t2 = 'x'
+        elif compute_type == _linalg.COMPUTE_TYPE_FP32:
+            t2 = 's'
+    elif a.dtype.char in 'FD':
+        if a.dtype.char == 'F':
+            t1 = t2 = 'c'
+        else:
+            t1 = t2 = 'z'
+        if compute_type == _linalg.COMPUTE_TYPE_FP16:
+            t2 = 'k'
+        elif compute_type == _linalg.COMPUTE_TYPE_TF32:
+            t2 = 'y'
+        elif compute_type == _linalg.COMPUTE_TYPE_FP32:
+            t2 = 'c'
+    else:
+        raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+    solver_name = t1 + t2 + 'gels'
+    solver = getattr(cusolver, solver_name)
+    helper = getattr(cusolver, solver_name + '_bufferSize')
+
+    a = cupy.asfortranarray(a)
+    org_nrhs = nrhs
+    if m > n and nrhs == 1:
+        # Note: this is workaround as there is bug in cusolverDn<T1><T2>gels()
+        # of CUDA 11.0/11.1 and it returns CUSOLVER_STATUS_IRS_NOT_SUPPORTED
+        # when m > n and nrhs == 1.
+        nrhs = 2
+        bb = b.reshape(m, 1)
+        b = cupy.empty((max_mn, nrhs), dtype=a.dtype, order='F')
+        b[:m, :] = bb
+    else:
+        b = cupy.asfortranarray(b)
+    x = cupy.empty((max_mn, nrhs), dtype=a.dtype, order='F')
+    dinfo = cupy.empty(1, dtype=numpy.int32)
+    handle = device.get_cusolver_handle()
+    lwork = helper(handle, m, n, nrhs, a.data.ptr, m, b.data.ptr, m,
+                   x.data.ptr, max_mn, 0)
+    dwork = cupy.empty(lwork, dtype=numpy.int8)
+    niters = solver(handle, m, n, nrhs, a.data.ptr, m, b.data.ptr, m,
+                    x.data.ptr, max_mn, dwork.data.ptr, lwork, dinfo.data.ptr)
+    if niters < 0:
+        raise RuntimeError('gels has failed ({}).'.format(niters))
+    if org_nrhs != nrhs:
+        x = x[:n, :org_nrhs]
+    if b_ndim == 1:
+        x.reshape(max_mn)
+        return x[:n]
+    else:
+        return x[:n, :]
