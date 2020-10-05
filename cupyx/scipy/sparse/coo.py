@@ -19,7 +19,10 @@ class coo_matrix(sparse_data._data_matrix):
 
     """COOrdinate format sparse matrix.
 
-    Now it has only one initializer format below:
+    This can be instantiated in several ways.
+
+    ``coo_matrix(D)``
+        ``D`` is a rank-2 :class:`cupy.ndarray`.
 
     ``coo_matrix(S)``
         ``S`` is another sparse matrix. It is equivalent to ``S.tocoo()``.
@@ -117,6 +120,8 @@ class coo_matrix(sparse_data._data_matrix):
             self.has_canonical_format = False
 
         elif base.isdense(arg1):
+            if arg1.ndim > 2:
+                raise TypeError('expected dimension <= 2 array or matrix')
             dense = cupy.atleast_2d(arg1)
             row, col = dense.nonzero()
             data = dense[row, col]
