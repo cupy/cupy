@@ -18,19 +18,19 @@ from cupy.testing import attr
 class TestBatchedGesv(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
-    def _make_random_matrix(self, shape, xp):
+    def _make_random_matrices(self, shape, xp):
         a = testing.shaped_random(shape, xp, dtype=self.r_dtype, scale=1)
         if self.dtype.char in 'FD':
             a = a + 1j * testing.shaped_random(shape, xp, dtype=self.r_dtype,
                                                scale=1)
         return a
 
-    def _make_matrix(self, shape):
-        a = self._make_random_matrix(shape, numpy)
+    def _make_well_conditioned_matrices(self, shape):
+        a = self._make_random_matrices(shape, numpy)
         u, s, vh = numpy.linalg.svd(a)
         s = testing.shaped_random(s.shape, numpy, dtype=self.r_dtype,
                                   scale=1) + 1
-        a = numpy.einsum('...ik,...k,...kj', u, s, vh)
+        a = numpy.einsum('...ik,...k,...kj->...ij', u, s, vh)
         return cupy.array(a)
 
     def setUp(self):
@@ -42,8 +42,8 @@ class TestBatchedGesv(unittest.TestCase):
         n = self.n
         bs = 1 if self.bs is None else self.bs
         nrhs = 1 if self.nrhs is None else self.nrhs
-        a = self._make_matrix((bs, n, n))
-        x = self._make_random_matrix((bs, n, nrhs), cupy)
+        a = self._make_well_conditioned_matrices((bs, n, n))
+        x = self._make_random_matrices((bs, n, nrhs), cupy)
         b = cupy.matmul(a, x)
         a_shape = (n, n) if self.bs is None else (bs, n, n)
         b_shape = [n]
