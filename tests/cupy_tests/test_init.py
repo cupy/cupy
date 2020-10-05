@@ -54,6 +54,12 @@ except Exception as e:
         self.assertIn(stdoutdata, (b'', b'RuntimeError\n'))
 
 
+if not cupy.cuda.runtime.is_hip:
+    visible = 'CUDA_VISIBLE_DEVICES'
+else:
+    visible = 'HIP_VISIBLE_DEVICES'
+
+
 class TestAvailable(unittest.TestCase):
 
     @testing.gpu
@@ -65,21 +71,23 @@ class TestAvailable(unittest.TestCase):
 class TestNotAvailable(unittest.TestCase):
 
     def setUp(self):
-        self.old = os.environ.get('CUDA_VISIBLE_DEVICES')
+        self.old = os.environ.get(visible)
 
     def tearDown(self):
         if self.old is None:
-            os.environ.pop('CUDA_VISIBLE_DEVICES')
+            os.environ.pop(visible)
         else:
-            os.environ['CUDA_VISIBLE_DEVICES'] = self.old
+            os.environ[visible] = self.old
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip,
+                     'HIP handles empty HIP_VISIBLE_DEVICES differently')
     def test_no_device_1(self):
         os.environ['CUDA_VISIBLE_DEVICES'] = ' '
         available = _test_cupy_available(self)
         self.assertFalse(available)
 
     def test_no_device_2(self):
-        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+        os.environ[visible] = '-1'
         available = _test_cupy_available(self)
         self.assertFalse(available)
 
