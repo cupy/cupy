@@ -726,7 +726,7 @@ cpdef inline check_status(int status):
 # Library Attributes
 ###############################################################################
 
-cpdef int getProperty(int type):
+cpdef int getProperty(int type) except? -1:
     cdef int value
     with nogil:
         status = cusolverGetProperty(<LibraryPropertyType>type, &value)
