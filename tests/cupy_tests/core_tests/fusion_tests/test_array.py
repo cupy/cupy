@@ -29,7 +29,7 @@ class FusionArrayTestBase(unittest.TestCase):
 
 
 @testing.gpu
-@testing.parameterize(*testing.parameterized.product_dict(
+@testing.parameterize(*testing._parameterized.product_dict(
     [
         {'name': 'neg', 'func': lambda x, y: -x},
         {'name': 'add', 'func': lambda x, y: x + y},
