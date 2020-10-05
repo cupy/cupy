@@ -228,7 +228,7 @@ cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
     return block_size, block_stride, out_block_num
 
 
-def _sort_axis(tuple axis, tuple strides):
+cdef tuple _sort_axis(tuple axis, tuple strides):
     # Sorts axis in the decreasing order of absolute values of strides.
     return tuple(sorted(axis, key=lambda i: -abs(strides[i])))
 
