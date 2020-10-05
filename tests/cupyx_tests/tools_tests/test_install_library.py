@@ -25,7 +25,6 @@ class TestInstallLibrary(unittest.TestCase):
                         urllib.request.Request(url, method='HEAD')) as resp:
                     assert resp.getcode() == 200
 
-
     def test_main(self):
         install_library.main(
             ['--library', 'cudnn', '--action', 'dump', '--cuda', 'null'])
