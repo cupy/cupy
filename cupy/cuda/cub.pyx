@@ -375,7 +375,7 @@ def device_histogram(ndarray x, ndarray bins, ndarray y):
     return y
 
 
-cdef bint _cub_device_segmented_reduce_axis_compatible(
+cpdef bint _cub_device_segmented_reduce_axis_compatible(
         tuple cub_axis, Py_ssize_t ndim, str order):
     # This function checks if the reduced axes are C- or F- contiguous.
     if _contig_axes(cub_axis):
