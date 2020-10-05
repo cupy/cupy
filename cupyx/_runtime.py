@@ -175,7 +175,7 @@ class _RuntimeInfo(object):
 
     def __str__(self):
         records = [
-            ('OS',  platform.platform())
+            ('OS',  platform.platform()),
             ('CuPy Version', self.cupy_version),
             ('NumPy Version', self.numpy_version),
             ('SciPy Version', self.scipy_version),
