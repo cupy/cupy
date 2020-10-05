@@ -373,7 +373,8 @@ cpdef bint _contig_axes(tuple axes):
     return contig
 
 
-def _normalize_axis_index(axis, ndim):
+cpdef Py_ssize_t _normalize_axis_index(
+        Py_ssize_t axis, Py_ssize_t ndim) except -1:
     """
     Normalizes an axis index, ``axis``, such that is a valid positive index
     into the shape of array with ``ndim`` dimensions. Raises a ValueError
@@ -398,7 +399,7 @@ def _normalize_axis_index(axis, ndim):
     return axis
 
 
-def _normalize_axis_indices(axes, ndim):
+cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim):
     """Normalize axis indices.
 
     Args:
