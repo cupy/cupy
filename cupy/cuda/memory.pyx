@@ -10,7 +10,7 @@ import threading
 import warnings
 import weakref
 
-from cupy.cuda import runtime
+from cupy_backends.cuda.api import runtime
 from cupy.core import syncdetect
 
 from fastrlock cimport rlock
@@ -21,8 +21,8 @@ from libcpp cimport algorithm
 from cupy.cuda cimport device
 from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory_hook
-from cupy.cuda cimport runtime
 from cupy.cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport runtime
 
 
 cdef bint _exit_mode = False
@@ -174,6 +174,11 @@ cdef class ManagedMemory(BaseMemory):
 
         """
         runtime.memAdvise(self.ptr, self.size, advise, device.id)
+
+    def __dealloc__(self):
+        if self.ptr:
+            syncdetect._declare_synchronize()
+            runtime.free(self.ptr)
 
 
 cdef set _peer_access_checked = set()
@@ -501,7 +506,7 @@ cdef class MemoryPointer:
             runtime.deviceEnablePeerAccess(peer)
         # peer access could already be set by external libraries at this point
         except runtime.CUDARuntimeError as e:
-            if e.status != runtime.cudaErrorPeerAccessAlreadyEnabled:
+            if e.status != runtime.errorPeerAccessAlreadyEnabled:
                 raise
         finally:
             runtime.setDevice(current)
@@ -1177,20 +1182,20 @@ cdef class SingleDeviceMemoryPool:
         try:
             mem = self._alloc(size).mem
         except runtime.CUDARuntimeError as e:
-            if e.status != runtime.cudaErrorMemoryAllocation:
+            if e.status != runtime.errorMemoryAllocation:
                 raise
             self.free_all_blocks()
             try:
                 mem = self._alloc(size).mem
             except runtime.CUDARuntimeError as e:
-                if e.status != runtime.cudaErrorMemoryAllocation:
+                if e.status != runtime.errorMemoryAllocation:
                     raise
                 gc.collect()
                 self.free_all_blocks()
                 try:
                     mem = self._alloc(size).mem
                 except runtime.CUDARuntimeError as e:
-                    if e.status != runtime.cudaErrorMemoryAllocation:
+                    if e.status != runtime.errorMemoryAllocation:
                         raise
                     oom_error = True
         finally:
@@ -1360,9 +1365,9 @@ ctypedef void*(*malloc_func_type)(void*, size_t, int)
 ctypedef void(*free_func_type)(void*, void*, int)
 
 
-cdef size_t _call_malloc(
+cdef intptr_t _call_malloc(
         intptr_t param, intptr_t malloc_func, Py_ssize_t size, int device_id):
-    return <size_t>(
+    return <intptr_t>(
         (<malloc_func_type>malloc_func)(<void*>param, size, device_id))
 
 
@@ -1428,4 +1433,59 @@ cdef class CFunctionAllocator:
     cpdef MemoryPointer malloc(self, size_t size):
         mem = CFunctionAllocatorMemory(size, self._param, self._malloc_func,
                                        self._free_func, device.get_device_id())
+        return MemoryPointer(mem, 0)
+
+
+cdef class PythonFunctionAllocatorMemory(BaseMemory):
+
+    def __init__(self, size_t size, malloc_func, free_func,
+                 int device_id):
+        self._free_func = free_func
+        self.device_id = device_id
+        self.size = size
+        self.ptr = 0
+        if size > 0:
+            self.ptr = malloc_func(size, device_id)
+
+    def __dealloc__(self):
+        if self.ptr:
+            self._free_func(self.ptr, self.device_id)
+
+
+cdef class PythonFunctionAllocator:
+
+    """Allocator with python functions to perform memory allocation.
+
+    This allocator keeps functions corresponding to *malloc* and *free*,
+    delegating the actual allocation to external sources while only
+    handling the timing of the resource allocation and deallocation.
+
+    *malloc* should follow the signature ``malloc(int, int) -> int``
+    returning the pointer to the allocated memory given the *param* object,
+    the number of bytes to allocate and the device id on which the
+    allocation should take place.
+
+    Similarly, *free* should follow the signature
+    ``free(int, int)`` with no return, taking the pointer to the
+    allocated memory and the device id on which the memory was allocated.
+
+    If the external memory management supports asynchronous operations,
+    the current CuPy stream can be retrieved inside ``malloc_func`` and
+    ``free_func`` by calling :func:`cupy.cuda.get_current_stream()`. To
+    use external streams, wrap them with :func:`cupy.cuda.ExternalStream`.
+
+    Args:
+        malloc_func (function): *malloc* function to be called.
+        free_func (function): *free* function to be called.
+
+    """
+
+    def __init__(self, malloc_func, free_func):
+        self._malloc_func = malloc_func
+        self._free_func = free_func
+
+    cpdef MemoryPointer malloc(self, size_t size):
+        mem = PythonFunctionAllocatorMemory(
+            size, self._malloc_func,
+            self._free_func, device.get_device_id())
         return MemoryPointer(mem, 0)

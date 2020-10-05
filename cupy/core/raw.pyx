@@ -1,7 +1,7 @@
 import cupy
-from cupy import util
-from cupy.cuda cimport driver
-from cupy.cuda cimport runtime
+
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda.function cimport Function, Module
 
 
@@ -55,6 +55,9 @@ cdef class RawKernel:
         # per-device, per-instance cache, to be initialized on first call
         self._kernel_cache = []
 
+        # This is for profiling mechanisms to auto infer a name
+        self.__name__ = name
+
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
 
@@ -77,6 +80,9 @@ cdef class RawKernel:
 
     @property
     def kernel(self):
+        return self._kernel()
+
+    def _kernel(self, log_stream=None):
         # The kernel is cached, so on the device where this has been called,
         # we would just look up from the cache, and do recompiling only when
         # switching to a different device
@@ -94,7 +100,7 @@ cdef class RawKernel:
             mod = _get_raw_module(
                 self.code, self.file_path, self.options, self.backend,
                 self.translate_cucomplex, self.enable_cooperative_groups,
-                self.name_expressions)
+                self.name_expressions, log_stream)
             ker = mod.get_function(self.name)
             self._kernel_cache[dev] = ker
         return ker
@@ -217,6 +223,21 @@ cdef class RawKernel:
         attr = driver.CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT
         driver.funcSetAttribute(self.kernel.ptr, attr, fraction)
 
+    def compile(self, log_stream=None):
+        """Compile the current kernel.
+
+        In general, you don't have to call this method;
+        kernels are compiled implicitly on the first call.
+
+        Args:
+            log_stream (object): Pass either ``sys.stdout`` or a file object to
+                which the compiler output will be written.
+                Defaults to ``None``.
+        """
+        # Flush the cache when compilation is explicitly requested
+        self._kernel_cache = [None] * runtime.getDeviceCount()
+        self._kernel(log_stream=log_stream)
+
 
 cdef class RawModule:
     """User-defined custom module.
@@ -225,14 +246,13 @@ cdef class RawModule:
     modules (\\*.cubin, \\*.ptx). This class is useful when a number of CUDA
     kernels in the same source need to be retrieved.
 
-    For the former case, the CUDA source code is compiled when initializing a
-    new instance of this class, and the kernels can be retrieved by calling
+    For the former case, the CUDA source code is compiled when any method is
+    called. For the latter case, an existing CUDA binary (\\*.cubin) or a PTX
+    file can be loaded by providing its path.
+
+    CUDA kernels in a :class:`RawModule` can be retrieved by calling
     :meth:`get_function`, which will return an instance of :class:`RawKernel`.
     (Same as in :class:`RawKernel`, the generated binary is also cached.)
-
-    For the latter case, an existing CUDA binary (\\*.cubin) or a PTX file can
-    be loaded by providing its path, and kernels therein can be retrieved
-    similarly.
 
     Args:
         code (str): CUDA source code. Mutually exclusive with ``path``.
@@ -240,7 +260,7 @@ cdef class RawModule:
         options (tuple of str): Compiler options passed to the backend (NVRTC
             or NVCC). For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options or
-            https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description
+            https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#command-option-description.
         backend (str): Either `nvrtc` or `nvcc`. Defaults to `nvrtc`
         translate_cucomplex (bool): Whether the CUDA source includes the header
             `cuComplex.h` or not. If set to ``True``, any code that uses the
@@ -261,6 +281,12 @@ cdef class RawModule:
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
+
+    .. note::
+        Before CuPy v8.0.0, the compilation happens at initialization. Now, it
+        happens at the first time retrieving any object (kernels, pointers, or
+        texrefs) from the module.
+
     """
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
@@ -300,20 +326,39 @@ cdef class RawModule:
             self.backend = 'nvcc'
             self.translate_cucomplex = False
 
-        # trigger compiling or loading
-        cdef Module mod = self.module  # noqa
-
     @property
     def module(self):
+        return self._module()
+
+    def _module(self, log_stream=None):
         # The module is cached, so on the device where this has been called,
         # we would just look up from the cache, and do recompiling only when
         # switching to a different device
         cdef Module mod
+
         mod = _get_raw_module(
             self.code, self.file_path, self.options, self.backend,
             self.translate_cucomplex, self.enable_cooperative_groups,
-            self.name_expressions)
+            self.name_expressions, log_stream)
         return mod
+
+    def compile(self, log_stream=None):
+        """Compile the current module.
+
+        In general, you don't have to call this method;
+        kernels are compiled implicitly on the first call.
+
+        Args:
+            log_stream (object): Pass either ``sys.stdout`` or a file object to
+                which the compiler output will be written.
+                Defaults to ``None``.
+
+        .. note::
+            Calling :meth:`compile` will reset the internal state of
+            a :class:`RawKernel`.
+
+        """
+        self._module(log_stream)
 
     def get_function(self, str name):
         """Retrieve a CUDA kernel by its name from the module.
@@ -367,6 +412,7 @@ cdef class RawModule:
             self.code, name, self.options, self.backend,
             translate_cucomplex=self.translate_cucomplex,
             enable_cooperative_groups=self.enable_cooperative_groups)
+
         # for lookup in case we loaded from cubin/ptx
         ker.file_path = self.file_path
         # for lookup in case we specialize a template
@@ -413,24 +459,32 @@ cdef class RawModule:
         from cupy.cuda.memory import MemoryPointer, UnownedMemory
         cdef Module mod = self.module
         ptr = mod.get_global_var(name)
-        # unable to retrieve size, plus it's not used anywhere, so just put 0
-        mem = UnownedMemory(ptr, 0, mod)
+        # 1. unable to retrieve size, plus it's not used anywhere, so set to 0
+        # 2. it is safe to call getDevice() since self.module is cached on a
+        #    per-device basis
+        # 3. in CUDA, passing the device id saves us a look-up of the pointer
+        #    attributes; in ROCm, this is a must because there's a bug when
+        #    looking up a pointer to constant memory (hipErrorInvalidDevice)
+        cdef int dev = runtime.getDevice()
+        mem = UnownedMemory(ptr, 0, mod, dev)
         memptr = MemoryPointer(mem, 0)
         return memptr
 
 
-@cupy.util.memoize(for_each_device=True)
-def _get_raw_module(str code, str path, tuple options=(), str backend='nvrtc',
-                    bint translate_cucomplex=False,
-                    bint enable_cooperative_groups=False,
-                    tuple name_expressions=None):
+@cupy._util.memoize(for_each_device=True)
+def _get_raw_module(str code, str path, tuple options, str backend,
+                    bint translate_cucomplex,
+                    bint enable_cooperative_groups,
+                    tuple name_expressions,
+                    object log_stream):
     cdef Module mod
     if code is not None:
         mod = cupy.core.core.compile_with_cache(
             code, options, prepend_cupy_headers=False, backend=backend,
             translate_cucomplex=translate_cucomplex,
             enable_cooperative_groups=enable_cooperative_groups,
-            name_expressions=name_expressions)
+            name_expressions=name_expressions,
+            log_stream=log_stream)
     elif path is not None:
         mod = Module()
         mod.load_file(path)

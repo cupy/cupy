@@ -1,6 +1,7 @@
 # distutils: language = c++
 
 import numpy
+import warnings
 
 cimport cpython  # NOQA
 from libc.stdint cimport int8_t
@@ -13,10 +14,12 @@ from libcpp cimport vector
 
 from cupy.core cimport _carray
 from cupy.core cimport core
-from cupy.cuda cimport driver
-from cupy.cuda cimport runtime
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport stream as stream_module
+from cupy.cuda.memory cimport MemoryPointer
 from cupy.cuda.texture cimport TextureObject, SurfaceObject
+from cupy.cuda import device
 
 
 cdef class CPointer:
@@ -78,26 +81,33 @@ cdef class CUIntMax(CPointer):
         self.ptr = <void*>&self.val
 
 
+cdef class CIntptr(CPointer):
+    cdef:
+        intptr_t val
+
+    def __init__(self, intptr_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
 cdef set _pointer_numpy_types = {numpy.dtype(i).type
                                  for i in '?bhilqBHILQefdFD'}
 
 
 cdef inline CPointer _pointer(x):
     cdef Py_ssize_t itemsize
+
     if x is None:
         return CPointer()
     if isinstance(x, core.ndarray):
         return (<core.ndarray>x).get_pointer()
     if isinstance(x, _carray.Indexer):
         return (<_carray.Indexer>x).get_pointer()
-
+    if isinstance(x, MemoryPointer):
+        return CIntptr(x.ptr)
     if isinstance(x, CPointer):
         return x
-
-    if isinstance(x, TextureObject):
-        return CUIntMax(x.ptr)
-
-    if isinstance(x, SurfaceObject):
+    if isinstance(x, (TextureObject, SurfaceObject)):
         return CUIntMax(x.ptr)
 
     if type(x) not in _pointer_numpy_types:
@@ -143,19 +153,36 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
     kargs.reserve(len(args))
     for a in args:
         cp = _pointer(a)
-        pargs.append(cp)
+        pargs.append(cp)  # keep the CPointer objects alive
         kargs.push_back(cp.ptr)
 
     runtime._ensure_context()
 
+    cdef int dev_id
+    cdef int num_sm
+    cdef int max_grid_size
     if enable_cooperative_groups:
+        dev_id = device.get_device_id()
+        num_sm = device._get_attributes(dev_id)['MultiProcessorCount']
+        max_grid_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
+            func, block0 * block1 * block2, shared_mem) * num_sm
+        if grid0 * grid1 * grid2 > max_grid_size:
+            if grid1 == grid2 == 1:
+                warnings.warn('The grid size will be reduced from {} to {}, '
+                              'as the specified grid size exceeds the limit.'.
+                              format(grid0, max_grid_size))
+                grid0 = max_grid_size
+            else:
+                raise ValueError('The specified grid size ({} * {} * {}) '
+                                 'exceeds the limit ({}).'.
+                                 format(grid0, grid1, grid2, max_grid_size))
         driver.launchCooperativeKernel(
             func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-            <int>shared_mem, stream, <intptr_t>&(kargs[0]))
+            <int>shared_mem, stream, <intptr_t>kargs.data())
     else:
         driver.launchKernel(
             func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
-            <int>shared_mem, stream, <intptr_t>&(kargs[0]), <intptr_t>0)
+            <int>shared_mem, stream, <intptr_t>kargs.data(), <intptr_t>0)
 
 
 cdef class Function:
@@ -178,14 +205,18 @@ cdef class Function:
             args, shared_mem, s, enable_cooperative_groups)
 
     cpdef linear_launch(self, size_t size, args, size_t shared_mem=0,
-                        size_t block_max_size=128, stream=None):
+                        size_t block_max_size=128, stream=None,
+                        bint enable_cooperative_groups=False):
         # TODO(beam2d): Tune it
         cdef size_t gridx = min(
             0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
         cdef size_t blockx = min(block_max_size, size)
         s = _get_stream(stream)
-        _launch(self.ptr,
-                gridx, 1, 1, blockx, 1, 1, args, shared_mem, s)
+        _launch(
+            self.ptr,
+            gridx, 1, 1, blockx, 1, 1,
+            args,
+            shared_mem, s, enable_cooperative_groups)
 
 
 cdef class Module:
@@ -243,9 +274,8 @@ cdef class LinkState:
             driver.linkDestroy(self.ptr)
             self.ptr = 0
 
-    cpdef add_ptr_data(self, unicode data, unicode name):
-        cdef bytes data_byte = data.encode()
-        driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data_byte, name)
+    cpdef add_ptr_data(self, bytes data, unicode name):
+        driver.linkAddData(self.ptr, driver.CU_JIT_INPUT_PTX, data, name)
 
     cpdef add_ptr_file(self, unicode path):
         driver.linkAddFile(self.ptr, driver.CU_JIT_INPUT_LIBRARY, path)

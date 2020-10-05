@@ -15,6 +15,7 @@ from cupy.core cimport _routines_indexing as _indexing
 from cupy.core cimport core
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
+from cupy.cuda import device
 
 
 @cython.final
@@ -239,24 +240,55 @@ cpdef ndarray _expand_dims(ndarray a, tuple axis):
 
 cpdef ndarray moveaxis(ndarray a, source, destination):
     cdef shape_t src, dest
-    _normalize_axis_tuple(source, a.ndim, src)
-    _normalize_axis_tuple(destination, a.ndim, dest)
+    cdef Py_ssize_t ndim = a.ndim
+    _normalize_axis_tuple(source, ndim, src)
+    _normalize_axis_tuple(destination, ndim, dest)
 
     if src.size() != dest.size():
         raise ValueError('`source` and `destination` arguments must have '
                          'the same number of elements')
 
     cdef vector.vector[Py_ssize_t] order
-    cdef Py_ssize_t n = 0
-    for i in range(a.ndim):
-        n = <Py_ssize_t>i
-        if not _has_element(src, n):
-            order.push_back(n)
+    cdef Py_ssize_t i
+    for i in range(ndim):
+        if not _has_element(src, i):
+            order.push_back(i)
 
     cdef Py_ssize_t d, s
     for d, s in sorted(zip(dest, src)):
         order.insert(order.begin() + d, s)
 
+    return _transpose(a, order)
+
+
+cdef Py_ssize_t _normalize_axis_index(Py_ssize_t axis,
+                                      Py_ssize_t ndim) except -1:
+    if axis < 0:
+        axis += ndim
+    if not (0 <= axis < ndim):
+        raise numpy.AxisError(
+            'axis {} is out of bounds for array of dimension {}'.format(
+                axis, ndim))
+    return axis
+
+
+cpdef ndarray _move_single_axis(ndarray a, Py_ssize_t source,
+                                Py_ssize_t destination):
+    """Like moveaxis, but supporting only integer source and destination."""
+    cdef Py_ssize_t ndim = a.ndim
+    source = _normalize_axis_index(source, ndim)
+    destination = _normalize_axis_index(destination, ndim)
+
+    if source == destination:
+        return a
+
+    cdef vector.vector[Py_ssize_t] order
+    cdef Py_ssize_t i
+    for i in range(ndim):
+        if i != source:
+            order.push_back(i)
+
+    order.insert(order.begin() + destination, source)
     return _transpose(a, order)
 
 
@@ -734,12 +766,18 @@ cdef ndarray _concatenate_single_kernel(
     cdef Py_ssize_t[:] ptrs
     cdef Py_ssize_t[:] cum_sizes
     cdef Py_ssize_t[:, :] x_strides
+    cdef int device_id = device.get_device_id()
 
     assert out is not None
 
     ptrs = numpy.ndarray(len(arrays), numpy.int64)
     for i, a in enumerate(arrays):
         ptrs[i] = a.data.ptr
+        if a.data.device_id != device_id:
+            raise ValueError(
+                'Array device must be same as the current '
+                'device: array device = %d while current = %d'
+                % (a.data.device_id, device_id))
     x = core.array(ptrs)
 
     if same_shape_and_contiguous:

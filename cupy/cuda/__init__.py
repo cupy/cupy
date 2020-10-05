@@ -1,61 +1,85 @@
 import contextlib
-import os
+import warnings
 
 from cupy._environment import get_cuda_path, get_nvcc_path  # NOQA
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
-from cupy.cuda import driver  # NOQA
 from cupy.cuda import function  # NOQA
 from cupy.cuda import memory  # NOQA
 from cupy.cuda import memory_hook  # NOQA
 from cupy.cuda import memory_hooks  # NOQA
 from cupy.cuda import pinned_memory  # NOQA
-from cupy.cuda import profiler  # NOQA
-from cupy.cuda import runtime  # NOQA
 from cupy.cuda import stream  # NOQA
 from cupy.cuda import texture  # NOQA
+from cupy_backends.cuda.api import driver  # NOQA
+from cupy_backends.cuda.api import runtime  # NOQA
+from cupy_backends.cuda.libs import cublas  # NOQA
+from cupy_backends.cuda.libs import curand  # NOQA
+from cupy_backends.cuda.libs import cusolver  # NOQA
+from cupy_backends.cuda.libs import cusparse  # NOQA
+from cupy_backends.cuda.libs import nvrtc  # NOQA
+from cupy_backends.cuda.libs import profiler  # NOQA
 
 
 _available = None
-_cub_disabled = None
 
 
-from cupy.cuda import cusolver  # NOQA
-# This flag is kept for backward compatibility.
-# It is always True as cuSOLVER library is always available in CUDA 8.0+.
-cusolver_enabled = True
+class _UnavailableModule():
+    available = False
+
+    def __init__(self, name):
+        self.__name__ = name
+
+
+# TODO(leofang): always import cub (but not enable it) when hipCUB is supported
+if not runtime.is_hip:
+    from cupy.cuda import cub  # NOQA
+else:
+    cub = _UnavailableModule('cupy.cuda.cub')
 
 try:
     from cupy.cuda import nvtx  # NOQA
-    nvtx_enabled = True
 except ImportError:
-    nvtx_enabled = False
+    nvtx = _UnavailableModule('cupy.cuda.nvtx')
 
 try:
     from cupy.cuda import thrust  # NOQA
-    thrust_enabled = True
 except ImportError:
-    thrust_enabled = False
-
-cub_enabled = False
-if int(os.getenv('CUB_DISABLED', 0)) == 0:
-    try:
-        from cupy.cuda import cub  # NOQA
-        cub_enabled = True
-    except ImportError:
-        pass
+    thrust = _UnavailableModule('cupy.cuda.thrust')
 
 try:
     from cupy.cuda import nccl  # NOQA
-    nccl_enabled = True
 except ImportError:
-    nccl_enabled = False
+    nccl = _UnavailableModule('cupy.cuda.nccl')
 
 try:
-    from cupy.cuda import cutensor  # NOQA
-    cutensor_enabled = True
+    from cupy_backends.cuda.libs import cutensor
 except ImportError:
-    cutensor_enabled = False
+    cutensor = _UnavailableModule('cupy.cuda.cutensor')
+
+
+def __getattr__(key):
+    # `*_enabled` flags are kept for backward compatibility.
+    # Note: module-level getattr only runs on Python 3.7+.
+    if key == 'cusolver_enabled':
+        # cuSOLVER is always available in CUDA 8.0+.
+        warnings.warn('''
+cupy.cuda.cusolver_enabled has been deprecated in CuPy v8 and will be removed in the future release.
+This flag always returns True as cuSOLVER is always available in CUDA 8.0 or later.
+            ''', DeprecationWarning)  # NOQA
+        return True
+
+    for mod in [nvtx, nccl, thrust, cub, cutensor]:
+        flag = '{}_enabled'.format(mod.__name__.split('.')[-1])
+        if key == flag:
+            warnings.warn('''
+cupy.cuda.{} has been deprecated in CuPy v8 and will be removed in the future release.
+Use {}.available instead.
+                '''.format(flag, mod.__name__), DeprecationWarning)  # NOQA
+            return not isinstance(mod, _UnavailableModule)
+
+    raise AttributeError(
+        "module '{}' has no attribute '{}'".format(__name__, key))
 
 
 def is_available():
@@ -85,6 +109,7 @@ from cupy.cuda.memory import ManagedMemory  # NOQA
 from cupy.cuda.memory import Memory  # NOQA
 from cupy.cuda.memory import MemoryPointer  # NOQA
 from cupy.cuda.memory import MemoryPool  # NOQA
+from cupy.cuda.memory import PythonFunctionAllocator  # NOQA
 from cupy.cuda.memory import set_allocator  # NOQA
 from cupy.cuda.memory import get_allocator  # NOQA
 from cupy.cuda.memory import UnownedMemory  # NOQA

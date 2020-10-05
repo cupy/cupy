@@ -1,20 +1,25 @@
 import numpy
 
 import cupy
-from cupy.cuda import cusolver
-from cupy.cuda import runtime
+from cupy_backends.cuda.api import runtime
+from cupy_backends.cuda.libs import cublas
+from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
-
+from cupy import _util
 
 _available_cuda_version = {
     'gesvdj': (9000, None),
     'gesvda': (10010, None),
+    'potrfBatched': (9010, None),
+    'potrsBatched': (9010, None),
+    'syevj': (9000, None),
 }
 
 
+@_util.memoize()
 def check_availability(name):
     if name not in _available_cuda_version:
-        msg = 'No available version information specified for {}'.name
+        msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
     version_added, version_removed = _available_cuda_version[name]
     cuda_version = runtime.runtimeGetVersion()
@@ -250,3 +255,279 @@ def gesvda(a, compute_uv=True):
     u = u.reshape(a_shape[:-2] + (u.shape[-2:]))
     v = v.reshape(a_shape[:-2] + (v.shape[-2:]))
     return u, s, v
+
+
+def syevj(a, UPLO='L', with_eigen_vector=True):
+    """Eigenvalue decomposition of symmetric matrix using cusolverDn<t>syevj().
+
+    Computes eigenvalues ``w`` and (optionally) eigenvectors ``v`` of a complex
+    Hermitian or a real symmetric matrix.
+
+    Args:
+        a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
+            of symmetric 2-D square matrices ``(..., M, M)``.
+        UPLO (str): Select from ``'L'`` or ``'U'``. It specifies which
+            part of ``a`` is used. ``'L'`` uses the lower triangular part of
+            ``a``, and ``'U'`` uses the upper triangular part of ``a``.
+        with_eigen_vector (bool): Indicates whether or not eigenvectors
+            are computed.
+
+    Returns:
+        tuple of :class:`~cupy.ndarray`:
+            Returns a tuple ``(w, v)``. ``w`` contains eigenvalues and
+            ``v`` contains eigenvectors. ``v[:, i]`` is an eigenvector
+            corresponding to an eigenvalue ``w[i]``. For batch input,
+            ``v[k, :, i]`` is an eigenvector corresponding to an eigenvalue
+            ``w[k, i]`` of ``a[k]``.
+    """
+    if not check_availability('syevj'):
+        raise RuntimeError('syevj is not available.')
+
+    if UPLO not in ('L', 'U'):
+        raise ValueError('UPLO argument must be \'L\' or \'U\'')
+
+    if a.ndim > 2:
+        return _syevj_batched(a, UPLO, with_eigen_vector)
+
+    assert a.ndim == 2
+
+    if a.dtype == 'f' or a.dtype == 'e':
+        dtype = 'f'
+        inp_w_dtype = 'f'
+        inp_v_dtype = 'f'
+        ret_w_dtype = a.dtype
+        ret_v_dtype = a.dtype
+    elif a.dtype == 'd':
+        dtype = 'd'
+        inp_w_dtype = 'd'
+        inp_v_dtype = 'd'
+        ret_w_dtype = 'd'
+        ret_v_dtype = 'd'
+    elif a.dtype == 'F':
+        dtype = 'F'
+        inp_w_dtype = 'f'
+        inp_v_dtype = 'F'
+        ret_w_dtype = 'f'
+        ret_v_dtype = 'F'
+    elif a.dtype == 'D':
+        dtype = 'D'
+        inp_w_dtype = 'd'
+        inp_v_dtype = 'D'
+        ret_w_dtype = 'd'
+        ret_v_dtype = 'D'
+    else:
+        # NumPy uses float64 when an input is not floating point number.
+        dtype = 'd'
+        inp_w_dtype = 'd'
+        inp_v_dtype = 'd'
+        ret_w_dtype = 'd'
+        ret_v_dtype = 'd'
+
+    # Note that cuSolver assumes fortran array
+    v = a.astype(inp_v_dtype, order='F', copy=True)
+
+    m, lda = a.shape
+    w = cupy.empty(m, inp_w_dtype)
+    dev_info = cupy.empty((), numpy.int32)
+    handle = device.Device().cusolver_handle
+
+    if with_eigen_vector:
+        jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR
+    else:
+        jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+
+    if UPLO == 'L':
+        uplo = cublas.CUBLAS_FILL_MODE_LOWER
+    else:  # UPLO == 'U'
+        uplo = cublas.CUBLAS_FILL_MODE_UPPER
+
+    if dtype == 'f':
+        buffer_size = cusolver.ssyevj_bufferSize
+        syevj = cusolver.ssyevj
+    elif dtype == 'd':
+        buffer_size = cusolver.dsyevj_bufferSize
+        syevj = cusolver.dsyevj
+    elif dtype == 'F':
+        buffer_size = cusolver.cheevj_bufferSize
+        syevj = cusolver.cheevj
+    elif dtype == 'D':
+        buffer_size = cusolver.zheevj_bufferSize
+        syevj = cusolver.zheevj
+    else:
+        raise RuntimeError('Only float and double and cuComplex and '
+                           + 'cuDoubleComplex are supported')
+
+    params = cusolver.createSyevjInfo()
+    work_size = buffer_size(
+        handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr, params)
+    work = cupy.empty(work_size, inp_v_dtype)
+    syevj(
+        handle, jobz, uplo, m, v.data.ptr, lda,
+        w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        syevj, dev_info)
+
+    cusolver.destroySyevjInfo(params)
+
+    w = w.astype(ret_w_dtype, copy=False)
+    if not with_eigen_vector:
+        return w
+    v = v.astype(ret_v_dtype, copy=False)
+    return w, v
+
+
+def _syevj_batched(a, UPLO, with_eigen_vector):
+    if a.dtype == 'f' or a.dtype == 'e':
+        dtype = 'f'
+        inp_w_dtype = 'f'
+        inp_v_dtype = 'f'
+        ret_w_dtype = a.dtype
+        ret_v_dtype = a.dtype
+    elif a.dtype == 'd':
+        dtype = 'd'
+        inp_w_dtype = 'd'
+        inp_v_dtype = 'd'
+        ret_w_dtype = 'd'
+        ret_v_dtype = 'd'
+    elif a.dtype == 'F':
+        dtype = 'F'
+        inp_w_dtype = 'f'
+        inp_v_dtype = 'F'
+        ret_w_dtype = 'f'
+        ret_v_dtype = 'F'
+    elif a.dtype == 'D':
+        dtype = 'D'
+        inp_w_dtype = 'd'
+        inp_v_dtype = 'D'
+        ret_w_dtype = 'd'
+        ret_v_dtype = 'D'
+    else:
+        # NumPy uses float64 when an input is not floating point number.
+        dtype = 'd'
+        inp_w_dtype = 'd'
+        inp_v_dtype = 'd'
+        ret_w_dtype = 'd'
+        ret_v_dtype = 'd'
+
+    *batch_shape, m, lda = a.shape
+    batch_size = numpy.prod(batch_shape)
+    a = a.reshape(batch_size, m, lda)
+    v = cupy.array(a.swapaxes(-2, -1), order='C', copy=True, dtype=inp_v_dtype)
+
+    w = cupy.empty((batch_size, m), inp_w_dtype).swapaxes(-2, 1)
+    dev_info = cupy.empty((), numpy.int32)
+    handle = device.Device().cusolver_handle
+
+    if with_eigen_vector:
+        jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR
+    else:
+        jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+
+    if UPLO == 'L':
+        uplo = cublas.CUBLAS_FILL_MODE_LOWER
+    else:  # UPLO == 'U'
+        uplo = cublas.CUBLAS_FILL_MODE_UPPER
+
+    if dtype == 'f':
+        buffer_size = cusolver.ssyevjBatched_bufferSize
+        syevjBatched = cusolver.ssyevjBatched
+    elif dtype == 'd':
+        buffer_size = cusolver.dsyevjBatched_bufferSize
+        syevjBatched = cusolver.dsyevjBatched
+    elif dtype == 'F':
+        buffer_size = cusolver.cheevjBatched_bufferSize
+        syevjBatched = cusolver.cheevjBatched
+    elif dtype == 'D':
+        buffer_size = cusolver.zheevjBatched_bufferSize
+        syevjBatched = cusolver.zheevjBatched
+    else:
+        raise RuntimeError('Only float and double and cuComplex and '
+                           + 'cuDoubleComplex are supported')
+
+    params = cusolver.createSyevjInfo()
+    work_size = buffer_size(
+        handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr, params, batch_size)
+    work = cupy.empty(work_size, inp_v_dtype)
+    syevjBatched(
+        handle, jobz, uplo, m, v.data.ptr, lda,
+        w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params,
+        batch_size)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        syevjBatched, dev_info)
+
+    cusolver.destroySyevjInfo(params)
+
+    w = w.astype(ret_w_dtype, copy=False)
+    w = w.swapaxes(-2, -1).reshape(*batch_shape, m)
+    if not with_eigen_vector:
+        return w
+    v = v.astype(ret_v_dtype, copy=False)
+    v = v.swapaxes(-2, -1).reshape(*batch_shape, m, m)
+    return w, v
+
+
+def gesv(a, b):
+    """Solve a linear matrix equation using cusolverDn<t>getr[fs]().
+
+    Computes the solution to a system of linear equation ``ax = b``.
+
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(M, M)``.
+        b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
+
+    Returns:
+        cupy.ndarray:
+            The matrix with dimension ``(M)`` or ``(M, K)``.
+    """
+    if a.ndim != 2:
+        raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
+    if b.ndim not in (1, 2):
+        raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
+    if a.shape[0] != a.shape[1]:
+        raise ValueError('a must be a square matrix.')
+    if a.shape[0] != b.shape[0]:
+        raise ValueError('shape mismatch (a: {}, b: {}).'.
+                         format(a.shape, b.shape))
+
+    dtype = numpy.promote_types(a.dtype.char, 'f')
+    if dtype == 'f':
+        t = 's'
+    elif dtype == 'd':
+        t = 'd'
+    elif dtype == 'F':
+        t = 'c'
+    elif dtype == 'D':
+        t = 'z'
+    else:
+        raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+    helper = getattr(cusolver, t + 'getrf_bufferSize')
+    getrf = getattr(cusolver, t + 'getrf')
+    getrs = getattr(cusolver, t + 'getrs')
+
+    n = b.shape[0]
+    nrhs = b.shape[1] if b.ndim == 2 else 1
+    a_data_ptr = a.data.ptr
+    b_data_ptr = b.data.ptr
+    a = cupy.asfortranarray(a, dtype=dtype)
+    b = cupy.asfortranarray(b, dtype=dtype)
+    if a.data.ptr == a_data_ptr:
+        a = a.copy()
+    if b.data.ptr == b_data_ptr:
+        b = b.copy()
+
+    handle = device.get_cusolver_handle()
+    dipiv = cupy.empty(n, dtype=numpy.int32)
+    dinfo = cupy.empty(1, dtype=numpy.int32)
+    lwork = helper(handle, n, n, a.data.ptr, n)
+    dwork = cupy.empty(lwork, dtype=a.dtype)
+    # LU factrization (A = L * U)
+    getrf(handle, n, n, a.data.ptr, n, dwork.data.ptr, dipiv.data.ptr,
+          dinfo.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        getrf, dinfo)
+    # Solves Ax = b
+    getrs(handle, cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
+          dipiv.data.ptr, b.data.ptr, n, dinfo.data.ptr)
+    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        getrs, dinfo)
+    return b

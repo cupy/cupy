@@ -1,8 +1,8 @@
 .. _cupy_reference:
 
-****************
-Reference Manual
-****************
+*************
+API Reference
+*************
 
 This is the official reference of CuPy, a multi-dimensional array on CUDA with a subset of NumPy interface.
 
@@ -27,6 +27,7 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    cuda
    memoize
    kernel
+   optimize
    interoperability
    testing
    prof

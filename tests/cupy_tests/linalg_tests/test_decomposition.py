@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy import cusolver
 from cupy import testing
 from cupy.testing import condition
 import cupyx
@@ -50,6 +51,10 @@ class TestCholeskyDecomposition(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-3)
     def check_L(self, array, xp):
         a = xp.asarray(array)
+        if (a.dtype in (numpy.complex64, numpy.complex128)
+                and cupy.cuda.runtime.is_hip):
+            raise unittest.SkipTest('ROCm does not yet support complex '
+                                    'Cholesky decomposition')
         return xp.linalg.cholesky(a)
 
     @testing.for_dtypes([
@@ -61,6 +66,17 @@ class TestCholeskyDecomposition(unittest.TestCase):
         self.check_L(A)
         # np.linalg.cholesky only uses a lower triangle of an array
         self.check_L(numpy.array([[1, 2], [1, 9]], dtype))
+
+    @testing.for_dtypes([
+        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
+    def test_batched_decomposition(self, dtype):
+        if not cusolver.check_availability('potrfBatched'):
+            pytest.skip('potrfBatched is not available')
+        Ab1 = random_matrix((3, 5, 5), dtype, scale=(10, 10000), sym=True)
+        self.check_L(Ab1)
+        Ab2 = random_matrix((2, 2, 5, 5), dtype, scale=(10, 10000), sym=True)
+        self.check_L(Ab2)
 
 
 @testing.gpu

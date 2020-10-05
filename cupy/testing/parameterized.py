@@ -6,6 +6,8 @@ import typing as tp  # NOQA
 import unittest
 
 from cupy.testing import _bundle
+from cupy.cuda import cufft
+from cupy.cuda import driver
 
 
 def _param_to_str(obj):
@@ -89,7 +91,10 @@ def _parameterize_test_case(base, i, param):
                 s.write('Test parameters:\n')
                 for k, v in sorted(param.items()):
                     s.write('  {}: {}\n'.format(k, v))
-                raise e.__class__(s.getvalue()).with_traceback(e.__traceback__)
+                err_class = e.__class__
+                if isinstance(e, (driver.CUDADriverError, cufft.CuFFTError)):
+                    err_class, = err_class.__bases__
+                raise err_class(s.getvalue()).with_traceback(e.__traceback__)
         return new_method
 
     return (cls_name, mb, method_generator)

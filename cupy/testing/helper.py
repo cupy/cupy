@@ -5,6 +5,7 @@ import os
 import random
 import traceback
 import unittest
+from unittest import mock
 import warnings
 
 import numpy
@@ -191,8 +192,9 @@ def _contains_signed_and_unsigned(kw):
         any(d in vs for d in _float_dtypes + _signed_dtypes)
 
 
-def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
-                    scipy_name=None):
+def _make_decorator(check_func, name, type_check, contiguous_check,
+                    accept_error, sp_name=None, scipy_name=None,
+                    check_sparse_format=True):
     assert isinstance(name, str)
     assert sp_name is None or isinstance(sp_name, str)
     assert scipy_name is None or isinstance(scipy_name, str)
@@ -225,18 +227,48 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
 
             assert len(cupy_result) == len(numpy_result)
 
+            # Check types
+            cupy_numpy_result_ndarrays = [
+                _convert_output_to_ndarray(
+                    cupy_r, numpy_r, sp_name, check_sparse_format)
+                for cupy_r, numpy_r in zip(cupy_result, numpy_result)]
+
+            # Check dtypes
             if type_check:
-                for cupy_r, numpy_r in zip(cupy_result, numpy_result):
+                for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
                     assert cupy_r.dtype == numpy_r.dtype
 
-            for cupy_r, numpy_r in zip(cupy_result, numpy_result):
+            # Check contiguities
+            if contiguous_check:
+                for cupy_r, numpy_r in zip(cupy_result, numpy_result):
+                    if isinstance(numpy_r, numpy.ndarray):
+                        if (numpy_r.flags.c_contiguous
+                                and not cupy_r.flags.c_contiguous):
+                            raise AssertionError(
+                                'The state of c_contiguous flag is false. '
+                                '(cupy_result:{} numpy_result:{})'.format(
+                                    cupy_r.flags.c_contiguous,
+                                    numpy_r.flags.c_contiguous))
+                        if (numpy_r.flags.f_contiguous
+                                and not cupy_r.flags.f_contiguous):
+                            raise AssertionError(
+                                'The state of f_contiguous flag is false. '
+                                '(cupy_result:{} numpy_result:{})'.format(
+                                    cupy_r.flags.f_contiguous,
+                                    numpy_r.flags.f_contiguous))
+
+            # Check shapes
+            for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
                 assert cupy_r.shape == numpy_r.shape
 
+            # Check item values
+            for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
                 # Behavior of assigning a negative value to an unsigned integer
                 # variable is undefined.
                 # nVidia GPUs and Intel CPUs behave differently.
                 # To avoid this difference, we need to ignore dimensions whose
                 # values are negative.
+
                 skip = False
                 if (_contains_signed_and_unsigned(kw)
                         and cupy_r.dtype in _unsigned_dtypes):
@@ -245,8 +277,8 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
                     if cupy_r.shape == ():
                         skip = (mask == 0).all()
                     else:
-                        cupy_r = cupy.asnumpy(cupy_r[mask])
-                        numpy_r = cupy.asnumpy(numpy_r[mask])
+                        cupy_r = cupy_r[mask].get()
+                        numpy_r = numpy_r[mask]
 
                 if not skip:
                     check_func(cupy_r, numpy_r)
@@ -254,9 +286,54 @@ def _make_decorator(check_func, name, type_check, accept_error, sp_name=None,
     return decorator
 
 
+def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
+    """Checks type of cupy/numpy results and returns cupy/numpy ndarrays.
+
+    Args:
+        c_out (cupy.ndarray, cupyx.scipy.sparse matrix, cupy.poly1d or scalar):
+            cupy result
+        n_out (numpy.ndarray, scipy.sparse matrix, numpy.poly1d or scalar):
+            numpy result
+        sp_name(str or None): Argument name whose value is either
+            ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
+            argument is given for the modules.
+        check_sparse_format (bool): If ``True``, consistency of format of
+            sparse matrix is also checked. Default is ``True``.
+
+    Returns:
+        The tuple of cupy.ndarray and numpy.ndarray.
+    """
+    if sp_name is not None and cupyx.scipy.sparse.issparse(c_out):
+        # Sparse output case.
+        import scipy.sparse
+        assert scipy.sparse.issparse(n_out)
+        if check_sparse_format:
+            assert c_out.format == n_out.format
+        return c_out.A, n_out.A
+    if (isinstance(c_out, cupy.ndarray)
+            and isinstance(n_out, (numpy.ndarray, numpy.generic))):
+        # ndarray output case.
+        return c_out, n_out
+    if isinstance(c_out, cupy.poly1d) and isinstance(n_out, numpy.poly1d):
+        # poly1d output case.
+        assert c_out.variable == n_out.variable
+        return c_out.coeffs, n_out.coeffs
+    if isinstance(c_out, numpy.generic) and isinstance(n_out, numpy.generic):
+        # numpy scalar output case.
+        return c_out, n_out
+    if numpy.isscalar(c_out) and numpy.isscalar(n_out):
+        # python scalar output case.
+        return cupy.array(c_out), numpy.array(n_out)
+    raise AssertionError(
+        'numpy and cupy returns different type of return value:\n'
+        'cupy: {}\nnumpy: {}'.format(
+            type(c_out), type(n_out)))
+
+
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                         name='xp', type_check=True, accept_error=False,
-                        sp_name=None, scipy_name=None, contiguous_check=True):
+                        sp_name=None, scipy_name=None, contiguous_check=True,
+                        *, _check_sparse_format=True):
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
@@ -305,28 +382,10 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
     def check_func(c, n):
-        c_array = c
-        n_array = n
-        if sp_name is not None:
-            import scipy.sparse
-            if cupyx.scipy.sparse.issparse(c):
-                c_array = c.A
-            if scipy.sparse.issparse(n):
-                n_array = n.A
-        array.assert_allclose(c_array, n_array, rtol, atol, err_msg, verbose)
-        if contiguous_check and isinstance(n, numpy.ndarray):
-            if n.flags.c_contiguous and not c.flags.c_contiguous:
-                raise AssertionError(
-                    'The state of c_contiguous flag is false. '
-                    '(cupy_result:{} numpy_result:{})'.format(
-                        c.flags.c_contiguous, n.flags.c_contiguous))
-            if n.flags.f_contiguous and not c.flags.f_contiguous:
-                raise AssertionError(
-                    'The state of f_contiguous flag is false. '
-                    '(cupy_result:{} numpy_result:{})'.format(
-                        c.flags.f_contiguous, n.flags.f_contiguous))
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+        array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
+    return _make_decorator(check_func, name, type_check, contiguous_check,
+                           accept_error, sp_name, scipy_name,
+                           _check_sparse_format)
 
 
 def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
@@ -363,10 +422,9 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
     .. seealso:: :func:`cupy.testing.assert_array_almost_equal`
     """
     def check_func(x, y):
-        array.assert_array_almost_equal(
-            x, y, decimal, err_msg, verbose)
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+        array.assert_array_almost_equal(x, y, decimal, err_msg, verbose)
+    return _make_decorator(check_func, name, type_check, False,
+                           accept_error, sp_name, scipy_name)
 
 
 def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
@@ -400,8 +458,8 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     """  # NOQA
     def check_func(x, y):
         array.assert_array_almost_equal_nulp(x, y, nulp)
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name=None)
+    return _make_decorator(check_func, name, type_check, False,
+                           accept_error, sp_name, scipy_name=None)
 
 
 def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
@@ -439,8 +497,8 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
     """  # NOQA
     def check_func(x, y):
         array.assert_array_max_ulp(x, y, maxulp, dtype)
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+    return _make_decorator(check_func, name, type_check, False,
+                           accept_error, sp_name, scipy_name)
 
 
 def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
@@ -477,17 +535,9 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
-        if sp_name is not None:
-            import scipy.sparse
-            if cupyx.scipy.sparse.issparse(x):
-                x = x.A
-            if scipy.sparse.issparse(y):
-                y = y.A
-
         array.assert_array_equal(x, y, err_msg, verbose, strides_check)
-
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+    return _make_decorator(check_func, name, type_check, False,
+                           accept_error, sp_name, scipy_name)
 
 
 def numpy_cupy_array_list_equal(
@@ -512,9 +562,15 @@ def numpy_cupy_array_list_equal(
 
     .. seealso:: :func:`cupy.testing.assert_array_list_equal`
     """  # NOQA
+    warnings.warn(
+        'numpy_cupy_array_list_equal is deprecated.'
+        ' Use numpy_cupy_array_equal instead.',
+        DeprecationWarning)
+
     def check_func(x, y):
         array.assert_array_equal(x, y, err_msg, verbose)
-    return _make_decorator(check_func, name, False, False, sp_name, scipy_name)
+    return _make_decorator(check_func, name, False, False,
+                           False, sp_name, scipy_name)
 
 
 def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
@@ -549,8 +605,8 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
     """
     def check_func(x, y):
         array.assert_array_less(x, y, err_msg, verbose)
-    return _make_decorator(check_func, name, type_check, accept_error, sp_name,
-                           scipy_name)
+    return _make_decorator(check_func, name, type_check, False,
+                           accept_error, sp_name, scipy_name)
 
 
 def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
@@ -611,6 +667,10 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
     Decorated test fixture is required throw same errors
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
+    warnings.warn(
+        'cupy.testing.numpy_cupy_raises is deprecated.',
+        DeprecationWarning)
+
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -1013,6 +1073,44 @@ def for_CF_orders(name='order'):
     return for_orders([None, 'C', 'F', 'c', 'f'], name)
 
 
+def for_contiguous_axes(name='axis'):
+    '''Decorator for parametrizing tests with possible contiguous axes.
+
+    Args:
+        name(str): Argument name to which specified axis are passed.
+
+    .. note::
+        1. Adapted from tests/cupy_tests/fft_tests/test_fft.py.
+        2. Example: for ``shape = (1, 2, 3)``, the tested axes are
+            ``[(2,), (1, 2), (0, 1, 2)]`` for the C order, and
+            ``[(0,), (0, 1), (0, 1, 2)]`` for the F order.
+    '''
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            ndim = len(self.shape)
+            order = self.order
+            for i in range(ndim):
+                a = ()
+                if order in ('c', 'C'):
+                    for j in range(ndim-1, i-1, -1):
+                        a = (j,) + a
+                elif order in ('f', 'F'):
+                    for j in range(0, i+1):
+                        a = a + (j,)
+                else:
+                    raise ValueError('Please specify the array order.')
+                try:
+                    kw[name] = a
+                    impl(self, *args, **kw)
+                except Exception:
+                    print(name, 'is', a, ', ndim is', ndim, ', shape is',
+                          self.shape, ', order is', order)
+                    raise
+        return test_func
+    return decorator
+
+
 def with_requires(*requirements):
     """Run a test case only when given requirements are satisfied.
 
@@ -1150,8 +1248,33 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
         return xp.asarray(numpy.random.rand(*shape) * scale, dtype=dtype)
 
 
-def empty(xp=cupy, dtype=numpy.float32):
-    return xp.zeros((0,))
+def shaped_sparse_random(
+        shape, sp=cupyx.scipy.sparse, dtype=numpy.float32,
+        density=0.01, format='coo', seed=0):
+    """Returns an array filled with random values.
+
+    Args:
+        shape (tuple): Shape of returned sparse matrix.
+        sp (scipy.sparse or cupyx.scipy.sparse): Sparce matrix module to use.
+        dtype (dtype): Dtype of returned sparse matrix.
+        density (float): Density of returned sparse matrix.
+        format (str): Format of returned sparse matrix.
+        seed (int): Random seed.
+
+    Returns:
+        The sparse matrix with given shape, array module,
+    """
+    import scipy.sparse
+    n_rows, n_cols = shape
+    numpy.random.seed(seed)
+    a = scipy.sparse.random(n_rows, n_cols, density).astype(dtype)
+
+    if sp is cupyx.scipy.sparse:
+        a = cupyx.scipy.sparse.coo_matrix(a)
+    elif sp is not scipy.sparse:
+        raise ValueError('Unknown module: {}'.format(sp))
+
+    return a.asformat(format)
 
 
 class NumpyError(object):
@@ -1218,3 +1341,33 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 
     def test_values(self):
         assert self.cupy_func(*self.args) == self.numpy_func(*self.args)
+
+
+class AssertFunctionIsCalled:
+
+    def __init__(self, mock_mod, **kwargs):
+        """A handy wrapper for unittest.mock to check if a function is called.
+
+        This class should be used as a context manager.
+
+        Args:
+            mock_mod (str): the function to be mocked.
+            times_called (int): the number of times the function should be
+                called. Default is ``1``.
+
+        """
+
+        self.patch = mock.patch(mock_mod, **kwargs)
+
+        times_called = kwargs.get('times_called')
+        self.times_called = times_called if times_called is not None else 1
+
+    def __enter__(self):
+        self.handle = self.patch.__enter__()
+        assert self.handle.call_count == 0
+        return self.handle
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        assert self.handle.call_count == int(self.times_called)
+        del self.handle
+        return self.patch.__exit__(exc_type, exc_value, traceback)

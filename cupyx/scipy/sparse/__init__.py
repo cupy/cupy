@@ -25,7 +25,7 @@ from cupyx.scipy.sparse.construct import vstack  # NOQA
 # TODO(unno): implement dok_matrix
 # TODO(unno): implement lil_matrix
 
-# TODO(unno): implement kron
+from cupyx.scipy.sparse.construct import kron  # NOQA
 # TODO(unno): implement kronsum
 # TODO(unno): implement diags
 # TODO(unno): implement block_diag
@@ -40,5 +40,3 @@ from cupyx.scipy.sparse.construct import vstack  # NOQA
 # TODO(unno): implement isspmatrix_bsr(x)
 # TODO(unno): implement isspmatrix_lil(x)
 # TODO(unno): implement isspmatrix_dok(x)
-
-from cupyx.scipy.sparse import linalg  # NOQA

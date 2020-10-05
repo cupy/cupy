@@ -3,6 +3,8 @@
 #ifndef INCLUDE_GUARD_CUPY_NCCL_H
 #define INCLUDE_GUARD_CUPY_NCCL_H
 
+#define UNUSED(x) ((void)x)
+
 #ifndef CUPY_NO_CUDA
 
 #include <nccl.h>
@@ -116,6 +118,14 @@ ncclResult_t ncclAllGather(...) {
     return ncclSuccess;
 }
 
+ncclResult_t ncclSend(...) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclRecv(...) {
+    return ncclSuccess;
+}
+
 typedef struct CUstream_st *cudaStream_t;
 
 }  // extern "C"
@@ -166,6 +176,15 @@ ncclDataType_t _get_proper_datatype(ncclDataType_t datatype) {
     return TYPE2TYPE_V1[datatype];
 }
 
+#ifndef CUPY_NO_CUDA
+ncclResult_t ncclGroupStart() {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclGroupEnd() {
+    return ncclSuccess;
+}
+#endif // #ifndef CUPY_NO_CUDA
 #endif // #if (NCCL_VERSION_CODE < 2000)
 
 #if (NCCL_VERSION_CODE < 2200)
@@ -185,18 +204,6 @@ ncclResult_t ncclGetVersion(int *version) {
 }
 
 #endif // #if (NCCL_VERSION_CODE < 2304)
-
-#ifndef CUPY_NO_CUDA
-#if (NCCL_VERSION_CODE < 2000)
-ncclResult_t ncclGroupStart() {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclGroupEnd() {
-    return ncclSuccess;
-}
-#endif // #if (NCCL_VERSION_CODE < 2200)
-#endif // #ifndef CUPY_NO_CUDA
 
 ncclResult_t _ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
                             ncclDataType_t datatype, ncclRedOp_t op, ncclComm_t comm,
@@ -251,10 +258,26 @@ ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcou
 #if (NCCL_VERSION_CODE < 2400)
 // New functions in 2.4
 ncclResult_t ncclCommGetAsyncError(ncclComm_t comm, ncclResult_t *asyncError) {
+  UNUSED(comm);
+  UNUSED(asyncError);
   return ncclSuccess;
 }
 
 void ncclCommAbort(ncclComm_t comm) {
+  UNUSED(comm);
+}
+#endif
+
+#if (NCCL_VERSION_CODE < 2700)
+// New functions in 2.7
+ncclResult_t ncclSend(const void* sendbuff, size_t count, ncclDataType_t datatype,
+                      int peer, ncclComm_t comm, cudaStream_t stream) {
+    return ncclSuccess;
+}
+
+ncclResult_t ncclRecv(void* recvbuff, size_t count, ncclDataType_t datatype,
+                      int peer, ncclComm_t comm, cudaStream_t stream) {
+    return ncclSuccess;
 }
 #endif
 

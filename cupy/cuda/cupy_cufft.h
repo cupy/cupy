@@ -7,9 +7,139 @@
 #include <cufft.h>
 #include <cufftXt.h>
 
-#else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#elif defined(CUPY_USE_HIP)
+#include <hipfft.h>
 
-#include "cupy_cuda.h"
+extern "C" {
+
+typedef hipfftComplex cufftComplex;
+typedef hipfftDoubleComplex cufftDoubleComplex;
+typedef hipfftReal cufftReal;
+typedef hipfftDoubleReal cufftDoubleReal;
+
+typedef hipfftResult_t cufftResult_t;
+typedef hipfftHandle cufftHandle;
+//typedef struct hipfftHandle_t* cufftHandle;
+//typedef int cufftHandle;
+//typedef struct _hipfftHandle_t* cufftHandle;
+typedef hipfftType_t cufftType_t;
+typedef hipStream_t cudaStream_t;
+
+// cuFFT Helper Function
+cufftResult_t cufftCreate(cufftHandle* plan) {
+    return hipfftCreate(plan);
+}
+
+cufftResult_t cufftDestroy(cufftHandle plan) {
+    return hipfftDestroy(plan);
+}
+
+cufftResult_t cufftSetAutoAllocation(cufftHandle plan, int autoAllocate) {
+    return hipfftSetAutoAllocation(plan, autoAllocate);
+}
+
+cufftResult_t cufftSetWorkArea(cufftHandle plan, void *workArea) {
+    return hipfftSetWorkArea(plan, workArea);
+}
+
+// cuFFT Stream Function
+cufftResult_t cufftSetStream(cufftHandle plan, cudaStream_t stream) {
+    return hipfftSetStream(plan, stream);
+}
+
+// cuFFT Plan Functions
+cufftResult_t cufftMakePlan1d(cufftHandle plan,
+                              int nx,
+                              cufftType_t type,
+                              int batch,
+                              size_t *workSize) {
+    return hipfftMakePlan1d(plan, nx, type, batch, workSize);
+}
+
+cufftResult_t cufftMakePlanMany(cufftHandle plan,
+                                int rank,
+                                int *n,
+                                int *inembed, int istride, int idist,
+                                int *onembed, int ostride, int odist,
+                                cufftType_t type,
+                                int batch,
+                                size_t *workSize) {
+    return hipfftMakePlanMany(plan, rank, n,
+                              inembed, istride, idist,
+                              onembed, ostride, odist,
+                              type, batch, workSize);
+}
+
+// cuFFT Exec Function
+cufftResult_t cufftExecC2C(cufftHandle plan,
+                           cufftComplex *idata,
+                           cufftComplex *odata,
+                           int direction) {
+    return hipfftExecC2C(plan, idata, odata, direction);
+}
+
+cufftResult_t cufftExecR2C(cufftHandle plan,
+                           cufftReal *idata,
+                           cufftComplex *odata) {
+    return hipfftExecR2C(plan, idata, odata);
+}
+
+cufftResult_t cufftExecC2R(cufftHandle plan,
+                           cufftComplex *idata,
+                           cufftReal *odata) {
+    return hipfftExecC2R(plan, idata, odata);
+}
+
+cufftResult_t cufftExecZ2Z(cufftHandle plan,
+                           cufftDoubleComplex *idata,
+                           cufftDoubleComplex *odata,
+                           int direction) {
+    return hipfftExecZ2Z(plan, idata, odata, direction);
+}
+
+cufftResult_t cufftExecD2Z(cufftHandle plan,
+                           cufftDoubleReal *idata,
+                           cufftDoubleComplex *odata) {
+    return hipfftExecD2Z(plan, idata, odata);
+}
+
+cufftResult_t cufftExecZ2D(cufftHandle plan,
+                           cufftDoubleComplex *idata,
+                           cufftDoubleReal *odata) {
+    return hipfftExecZ2D(plan, idata, odata);
+}
+
+// cuFFT Version
+cufftResult_t cufftGetVersion(int *version) {
+    return hipfftGetVersion(version);
+}
+
+// cufftXt functions
+cufftResult_t cufftXtSetGPUs(...) {
+    return HIPFFT_NOT_IMPLEMENTED;
+}
+
+cufftResult_t cufftXtSetWorkArea(...) {
+    return HIPFFT_NOT_IMPLEMENTED;
+}
+
+cufftResult_t cufftXtMemcpy(...) {
+    return HIPFFT_NOT_IMPLEMENTED;
+}
+
+cufftResult_t cufftXtExecDescriptorC2C(...) {
+    return HIPFFT_NOT_IMPLEMENTED;
+}
+
+cufftResult_t cufftXtExecDescriptorZ2Z(...) {
+    return HIPFFT_NOT_IMPLEMENTED;
+}
+
+} // extern "C"
+
+#else  // defined(CUPY_NO_CUDA)
+
+#include "../../cupy_backends/cuda/cupy_cuda.h"
 
 extern "C" {
 
@@ -103,7 +233,36 @@ cufftResult_t cufftGetVersion(...) {
     return CUFFT_SUCCESS;
 }
 
-// cufftXt relavant data and functions
+// cufftXt functions
+cufftResult_t cufftXtSetGPUs(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftXtSetWorkArea(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftXtMemcpy(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftXtExecDescriptorC2C(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftXtExecDescriptorZ2Z(...) {
+    return CUFFT_SUCCESS;
+}
+
+}  // extern "C"
+
+#endif  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+
+#if defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP)
+// common stubs for both no-cuda and hip environments
+
+extern "C" {
+// cufftXt relavant data structs
 typedef struct cudaXtDesc_t {
    int version;
    int nGPUs;
@@ -137,28 +296,8 @@ typedef enum cufftXtCopyType_t {
     CUFFT_COPY_UNDEFINED = 0x03
 } cufftXtCopyType;
 
-cufftResult_t cufftXtSetGPUs(...) {
-    return CUFFT_SUCCESS;
-}
+} // extern "C"
 
-cufftResult_t cufftXtSetWorkArea(...) {
-    return CUFFT_SUCCESS;
-}
-
-cufftResult_t cufftXtMemcpy(...) {
-    return CUFFT_SUCCESS;
-}
-
-cufftResult_t cufftXtExecDescriptorC2C(...) {
-    return CUFFT_SUCCESS;
-}
-
-cufftResult_t cufftXtExecDescriptorZ2Z(...) {
-    return CUFFT_SUCCESS;
-}
-
-}  // extern "C"
-
-#endif  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#endif // #if defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP)
 
 #endif  // INCLUDE_GUARD_CUPY_CUFFT_H

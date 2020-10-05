@@ -3,7 +3,8 @@ import warnings
 import numpy
 
 import cupy
-from cupy import util
+from cupy import core
+from cupy import _util
 
 
 def label(input, structure=None, output=None):
@@ -110,13 +111,13 @@ def _label(x, structure, y):
 
 
 def _kernel_init():
-    return cupy.ElementwiseKernel(
+    return core.ElementwiseKernel(
         'X x', 'Y y', 'if (x == 0) { y = -1; } else { y = i; }',
         'cupyx_nd_label_init')
 
 
 def _kernel_connect():
-    return cupy.ElementwiseKernel(
+    return core.ElementwiseKernel(
         'raw int32 shape, raw int32 dirs, int32 ndirs, int32 ndim',
         'raw Y y',
         '''
@@ -159,7 +160,7 @@ def _kernel_connect():
 
 
 def _kernel_count():
-    return cupy.ElementwiseKernel(
+    return core.ElementwiseKernel(
         '', 'raw Y y, raw int32 count',
         '''
         if (y[i] < 0) continue;
@@ -172,7 +173,7 @@ def _kernel_count():
 
 
 def _kernel_labels():
-    return cupy.ElementwiseKernel(
+    return core.ElementwiseKernel(
         '', 'raw Y y, raw int32 count, raw int32 labels',
         '''
         if (y[i] != i) continue;
@@ -183,7 +184,7 @@ def _kernel_labels():
 
 
 def _kernel_finalize():
-    return cupy.ElementwiseKernel(
+    return core.ElementwiseKernel(
         'int32 maxlabel', 'raw int32 labels, raw Y y',
         '''
         if (y[i] < 0) {
@@ -205,7 +206,7 @@ def _kernel_finalize():
         'cupyx_nd_label_finalize')
 
 
-_ndimage_variance_kernel = cupy.ElementwiseKernel(
+_ndimage_variance_kernel = core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size, raw float64 mean',
     'raw float64 out',
     """
@@ -218,7 +219,7 @@ _ndimage_variance_kernel = cupy.ElementwiseKernel(
     """)
 
 
-_ndimage_sum_kernel = cupy.ElementwiseKernel(
+_ndimage_sum_kernel = core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size',
     'raw float64 out',
     """
@@ -241,7 +242,7 @@ def _ndimage_sum_kernel_2(input, labels, index, sum_val, batch_size=4):
     return sum_val
 
 
-_ndimage_mean_kernel = cupy.ElementwiseKernel(
+_ndimage_mean_kernel = core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size',
     'raw float64 out, raw uint64 count',
     """
@@ -305,7 +306,7 @@ def variance(input, labels=None, index=None):
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
 
-    if input.dtype.kind == 'c':
+    if input.dtype in (cupy.complex64, cupy.complex128):
         raise TypeError("cupyx.scipy.ndimage.variance doesn't support %{}"
                         "".format(input.dtype.type))
 
@@ -318,7 +319,7 @@ def variance(input, labels=None, index=None):
             'Using the slower implmentation as '
             'cupyx.scipy.ndimage.sum supports int32, float16, '
             'float32, float64, uint32, uint64 as data types'
-            'for the fast implmentation', util.PerformanceWarning)
+            'for the fast implmentation', _util.PerformanceWarning)
         use_kern = True
 
     def calc_var_with_intermediate_float(input):
@@ -380,8 +381,8 @@ def sum(input, labels=None, index=None):
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
 
-    if input.dtype.kind == 'c':
-        raise TypeError("cupyx.scipy.ndimage.sum doesnt support %{}".format(
+    if input.dtype in (cupy.complex64, cupy.complex128):
+        raise TypeError("cupyx.scipy.ndimage.sum does not support %{}".format(
             input.dtype.type))
 
     use_kern = False
@@ -393,7 +394,7 @@ def sum(input, labels=None, index=None):
             'Using the slower implmentation as '
             'cupyx.scipy.ndimage.sum supports int32, float16, '
             'float32, float64, uint32, uint64 as data types'
-            'for the fast implmentation', util.PerformanceWarning)
+            'for the fast implmentation', _util.PerformanceWarning)
         use_kern = True
 
     if labels is None:
@@ -445,8 +446,8 @@ def mean(input, labels=None, index=None):
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
 
-    if input.dtype.kind == 'c':
-        raise TypeError("cupyx.scipy.ndimage.mean doesnt support %{}".format(
+    if input.dtype in (cupy.complex64, cupy.complex128):
+        raise TypeError("cupyx.scipy.ndimage.mean does not support %{}".format(
             input.dtype.type))
 
     use_kern = False
@@ -458,7 +459,7 @@ def mean(input, labels=None, index=None):
             'Using the slower implmentation as '
             'cupyx.scipy.ndimage.mean supports int32, float16, '
             'float32, float64, uint32, uint64 as data types '
-            'for the fast implmentation', util.PerformanceWarning)
+            'for the fast implmentation', _util.PerformanceWarning)
         use_kern = True
 
     def calc_mean_with_intermediate_float(input):

@@ -1,13 +1,13 @@
-import functools
+import functools as _functools
 
-import numpy
-import platform
+import numpy as _numpy
+import platform as _platform
 
-import cupy
-from cupy.cuda import cusparse
-from cupy.cuda import runtime
-from cupy.cuda import device
-from cupy import util
+import cupy as _cupy
+from cupy_backends.cuda.libs import cusparse as _cusparse
+from cupy_backends.cuda.api import runtime as _runtime
+from cupy.cuda import device as _device
+from cupy import _util
 import cupyx.scipy.sparse
 
 
@@ -18,38 +18,38 @@ class MatDescriptor(object):
 
     @classmethod
     def create(cls):
-        descr = cusparse.createMatDescr()
+        descr = _cusparse.createMatDescr()
         return MatDescriptor(descr)
 
     def __reduce__(self):
         return self.create, ()
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.descriptor:
-            cusparse.destroyMatDescr(self.descriptor)
+            _cusparse.destroyMatDescr(self.descriptor)
             self.descriptor = None
 
     def set_mat_type(self, typ):
-        cusparse.setMatType(self.descriptor, typ)
+        _cusparse.setMatType(self.descriptor, typ)
 
     def set_mat_index_base(self, base):
-        cusparse.setMatIndexBase(self.descriptor, base)
+        _cusparse.setMatIndexBase(self.descriptor, base)
 
 
 def _cast_common_type(*xs):
     dtypes = [x.dtype for x in xs if x is not None]
-    dtype = functools.reduce(numpy.promote_types, dtypes)
+    dtype = _functools.reduce(_numpy.promote_types, dtypes)
     return [x.astype(dtype) if x is not None and x.dtype != dtype else x
             for x in xs]
 
 
 def _transpose_flag(trans):
     if trans:
-        return cusparse.CUSPARSE_OPERATION_TRANSPOSE
+        return _cusparse.CUSPARSE_OPERATION_TRANSPOSE
     else:
-        return cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+        return _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
 
 
 def _call_cusparse(name, dtype, *args):
@@ -63,59 +63,74 @@ def _call_cusparse(name, dtype, *args):
         prefix = 'z'
     else:
         raise TypeError
-    f = getattr(cusparse, prefix + name)
+    f = getattr(_cusparse, prefix + name)
     return f(*args)
 
 
 def _dtype_to_DataType(dtype):
     if dtype == 'f':
-        return runtime.CUDA_R_32F
+        return _runtime.CUDA_R_32F
     elif dtype == 'd':
-        return runtime.CUDA_R_64F
+        return _runtime.CUDA_R_64F
     elif dtype == 'F':
-        return runtime.CUDA_C_32F
+        return _runtime.CUDA_C_32F
     elif dtype == 'D':
-        return runtime.CUDA_C_64F
+        return _runtime.CUDA_C_64F
     else:
         raise TypeError
 
 
-_available_cuda_version = {
+_available_cusparse_version = {
     'csrmv': (8000, 11000),
-    'csrmvEx': (8000, None),
+    'csrmvEx': (8000, 11000),  # TODO(anaruse): failure in cuSparse 11.0
     'csrmm': (8000, 11000),
     'csrmm2': (8000, 11000),
     'csrgeam': (8000, 11000),
     'csrgeam2': (9020, None),
     'csrgemm': (8000, 11000),
     'csrgemm2': (8000, None),
-    # TODO(anaruse): check availability on Windows when CUDA 11 is relased
-    'spmv': ({'Linux': 10010, 'Windows': 11000}, None),
-    'spmm': ({'Linux': 10010, 'Windows': 11000}, None),
+    'spmv': ({'Linux': 10200, 'Windows': 11000}, None),
+    'spmm': (10301, None),  # accuracy bugs in cuSparse 10.3.0
+    'csr2dense': (8000, None),
+    'csc2dense': (8000, None),
+    'csrsort': (8000, None),
+    'cscsort': (8000, None),
+    'coosort': (8000, None),
+    'coo2csr': (8000, None),
+    'csr2coo': (8000, None),
+    'csr2csc': (8000, 11000),
+    'csc2csr': (8000, 11000),  # the entity is csr2csc
+    'csr2cscEx2': (10200, None),
+    'csc2csrEx2': (10200, None),  # the entity is csr2cscEx2
+    'dense2csc': (8000, None),
+    'dense2csr': (8000, None),
+    'csr2csr_compress': (8000, None),
 }
 
 
 def _get_version(x):
     if isinstance(x, dict):
-        os_name = platform.system()
+        os_name = _platform.system()
         if os_name not in x:
-            msg = 'No version information specified for the OS {}'.os_name
+            msg = 'No version information specified for the OS: {}'.format(
+                os_name)
             raise ValueError(msg)
         return x[os_name]
     return x
 
 
+@_util.memoize()
 def check_availability(name):
-    if name not in _available_cuda_version:
-        msg = 'No available version information specified for {}'.name
+    if name not in _available_cusparse_version:
+        msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
-    version_added, version_removed = _available_cuda_version[name]
+    version_added, version_removed = _available_cusparse_version[name]
     version_added = _get_version(version_added)
     version_removed = _get_version(version_removed)
-    cuda_version = runtime.runtimeGetVersion()
-    if version_added is not None and cuda_version < version_added:
+    cusparse_version = _cusparse.getVersion(_device.get_cusparse_handle())
+    if version_added is not None and cusparse_version < version_added:
         return False
-    if version_removed is not None and cuda_version >= version_removed:
+    if version_removed is not None and cusparse_version >= version_removed:
         return False
     return True
 
@@ -142,20 +157,23 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
         cupy.ndarray: Calculated ``y``.
 
     """
+    if not check_availability('csrmv'):
+        raise RuntimeError('csrmv is not available.')
+
     assert y is None or y.flags.f_contiguous
 
     a_shape = a.shape if not transa else a.shape[::-1]
     if a_shape[1] != len(x):
         raise ValueError('dimension mismatch')
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, n = a_shape
     a, x, y = _cast_common_type(a, x, y)
     dtype = a.dtype
     if y is None:
-        y = cupy.zeros(m, dtype)
-    alpha = numpy.array(alpha, dtype).ctypes
-    beta = numpy.array(beta, dtype).ctypes
+        y = _cupy.zeros(m, dtype)
+    alpha = _numpy.array(alpha, dtype).ctypes
+    beta = _numpy.array(beta, dtype).ctypes
 
     _call_cusparse(
         'csrmv', dtype,
@@ -218,30 +236,33 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
         cupy.ndarray: Calculated ``y``.
 
     """
+    if not check_availability('csrmvEx'):
+        raise RuntimeError('csrmvEx is not available.')
+
     assert y is None or y.flags.f_contiguous
 
     if a.shape[1] != len(x):
         raise ValueError('dimension mismatch')
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, n = a.shape
 
     a, x, y = _cast_common_type(a, x, y)
     dtype = a.dtype
     if y is None:
-        y = cupy.zeros(m, dtype)
+        y = _cupy.zeros(m, dtype)
 
     datatype = _dtype_to_DataType(dtype)
-    algmode = cusparse.CUSPARSE_ALG_MERGE_PATH if \
-        merge_path else cusparse.CUSPARSE_ALG_NAIVE
-    transa_flag = cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+    algmode = _cusparse.CUSPARSE_ALG_MERGE_PATH if \
+        merge_path else _cusparse.CUSPARSE_ALG_NAIVE
+    transa_flag = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
 
-    alpha = numpy.array(alpha, dtype).ctypes
-    beta = numpy.array(beta, dtype).ctypes
+    alpha = _numpy.array(alpha, dtype).ctypes
+    beta = _numpy.array(beta, dtype).ctypes
 
     assert csrmvExIsAligned(a, x, y)
 
-    bufferSize = cusparse.csrmvEx_bufferSize(
+    bufferSize = _cusparse.csrmvEx_bufferSize(
         handle, algmode, transa_flag,
         a.shape[0], a.shape[1], a.nnz, alpha.data, datatype,
         a._descr.descriptor, a.data.data.ptr, datatype,
@@ -249,10 +270,10 @@ def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
         x.data.ptr, datatype, beta.data, datatype,
         y.data.ptr, datatype, datatype)
 
-    buf = cupy.empty(bufferSize, 'b')
+    buf = _cupy.empty(bufferSize, 'b')
     assert buf.data.ptr % 128 == 0
 
-    cusparse.csrmvEx(
+    _cusparse.csrmvEx(
         handle, algmode, transa_flag,
         a.shape[0], a.shape[1], a.nnz, alpha.data, datatype,
         a._descr.descriptor, a.data.data.ptr, datatype,
@@ -284,6 +305,9 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
         cupy.ndarray: Calculated C.
 
     """
+    if not check_availability('csrmm'):
+        raise RuntimeError('csrmm is not available.')
+
     assert a.ndim == b.ndim == 2
     assert b.flags.f_contiguous
     assert c is None or c.flags.f_contiguous
@@ -292,19 +316,19 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
     if a_shape[1] != b.shape[0]:
         raise ValueError('dimension mismatch')
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, k = a_shape
     n = b.shape[1]
 
     a, b, c = _cast_common_type(a, b, c)
     if c is None:
-        c = cupy.zeros((m, n), a.dtype, 'F')
+        c = _cupy.zeros((m, n), a.dtype, 'F')
 
     ldb = k
     ldc = m
 
-    alpha = numpy.array(alpha, a.dtype).ctypes
-    beta = numpy.array(beta, a.dtype).ctypes
+    alpha = _numpy.array(alpha, a.dtype).ctypes
+    beta = _numpy.array(beta, a.dtype).ctypes
     _call_cusparse(
         'csrmm', a.dtype,
         handle, _transpose_flag(transa),
@@ -341,6 +365,9 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
         cupy.ndarray: Calculated C.
 
     """
+    if not check_availability('csrmm2'):
+        raise RuntimeError('csrmm2 is not available.')
+
     assert a.ndim == b.ndim == 2
     assert a.has_canonical_format
     assert b.flags.f_contiguous
@@ -352,20 +379,20 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     if a_shape[1] != b_shape[0]:
         raise ValueError('dimension mismatch')
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, k = a_shape
     n = b_shape[1]
 
     a, b, c = _cast_common_type(a, b, c)
     if c is None:
-        c = cupy.zeros((m, n), a.dtype, 'F')
+        c = _cupy.zeros((m, n), a.dtype, 'F')
 
     ldb = b.shape[0]
     ldc = c.shape[0]
     op_a = _transpose_flag(transa)
     op_b = _transpose_flag(transb)
-    alpha = numpy.array(alpha, a.dtype).ctypes
-    beta = numpy.array(beta, a.dtype).ctypes
+    alpha = _numpy.array(alpha, a.dtype).ctypes
+    beta = _numpy.array(beta, a.dtype).ctypes
     _call_cusparse(
         'csrmm2', a.dtype,
         handle, op_a, op_b, a.shape[0], n, a.shape[1], a.nnz,
@@ -403,26 +430,26 @@ def csrgeam(a, b, alpha=1, beta=1):
     if a.shape != b.shape:
         raise ValueError('inconsistent shapes')
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, n = a.shape
     a, b = _cast_common_type(a, b)
-    nnz = numpy.empty((), 'i')
-    cusparse.setPointerMode(
-        handle, cusparse.CUSPARSE_POINTER_MODE_HOST)
+    nnz = _numpy.empty((), 'i')
+    _cusparse.setPointerMode(
+        handle, _cusparse.CUSPARSE_POINTER_MODE_HOST)
 
     c_descr = MatDescriptor.create()
-    c_indptr = cupy.empty(m + 1, 'i')
+    c_indptr = _cupy.empty(m + 1, 'i')
 
-    cusparse.xcsrgeamNnz(
+    _cusparse.xcsrgeamNnz(
         handle, m, n,
         a._descr.descriptor, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
         b._descr.descriptor, b.nnz, b.indptr.data.ptr, b.indices.data.ptr,
         c_descr.descriptor, c_indptr.data.ptr, nnz.ctypes.data)
 
-    c_indices = cupy.empty(int(nnz), 'i')
-    c_data = cupy.empty(int(nnz), a.dtype)
-    alpha = numpy.array(alpha, a.dtype).ctypes
-    beta = numpy.array(beta, a.dtype).ctypes
+    c_indices = _cupy.empty(int(nnz), 'i')
+    c_data = _cupy.empty(int(nnz), a.dtype)
+    alpha = _numpy.array(alpha, a.dtype).ctypes
+    beta = _numpy.array(beta, a.dtype).ctypes
     _call_cusparse(
         'csrgeam', a.dtype,
         handle, m, n, alpha.data,
@@ -467,17 +494,17 @@ def csrgeam2(a, b, alpha=1, beta=1):
     if a.shape != b.shape:
         raise ValueError('inconsistent shapes')
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, n = a.shape
     a, b = _cast_common_type(a, b)
-    nnz = numpy.empty((), 'i')
-    cusparse.setPointerMode(
-        handle, cusparse.CUSPARSE_POINTER_MODE_HOST)
+    nnz = _numpy.empty((), 'i')
+    _cusparse.setPointerMode(
+        handle, _cusparse.CUSPARSE_POINTER_MODE_HOST)
 
-    alpha = numpy.array(alpha, a.dtype).ctypes
-    beta = numpy.array(beta, a.dtype).ctypes
+    alpha = _numpy.array(alpha, a.dtype).ctypes
+    beta = _numpy.array(beta, a.dtype).ctypes
     c_descr = MatDescriptor.create()
-    c_indptr = cupy.empty(m + 1, 'i')
+    c_indptr = _cupy.empty(m + 1, 'i')
 
     null_ptr = 0
     buff_size = _call_cusparse(
@@ -486,14 +513,14 @@ def csrgeam2(a, b, alpha=1, beta=1):
         a.indptr.data.ptr, a.indices.data.ptr, beta.data, b._descr.descriptor,
         b.nnz, b.data.data.ptr, b.indptr.data.ptr, b.indices.data.ptr,
         c_descr.descriptor, null_ptr, c_indptr.data.ptr, null_ptr)
-    buff = cupy.empty(buff_size, numpy.int8)
-    cusparse.xcsrgeam2Nnz(
+    buff = _cupy.empty(buff_size, _numpy.int8)
+    _cusparse.xcsrgeam2Nnz(
         handle, m, n, a._descr.descriptor, a.nnz, a.indptr.data.ptr,
         a.indices.data.ptr, b._descr.descriptor, b.nnz, b.indptr.data.ptr,
         b.indices.data.ptr, c_descr.descriptor, c_indptr.data.ptr,
         nnz.ctypes.data, buff.data.ptr)
-    c_indices = cupy.empty(int(nnz), 'i')
-    c_data = cupy.empty(int(nnz), a.dtype)
+    c_indices = _cupy.empty(int(nnz), 'i')
+    c_data = _cupy.empty(int(nnz), a.dtype)
     _call_cusparse(
         'csrgeam2', a.dtype,
         handle, m, n, alpha.data, a._descr.descriptor, a.nnz, a.data.data.ptr,
@@ -524,6 +551,9 @@ def csrgemm(a, b, transa=False, transb=False):
         cupyx.scipy.sparse.csr_matrix: Calculated C.
 
     """
+    if not check_availability('csrgemm'):
+        raise RuntimeError('csrgemm is not available.')
+
     assert a.ndim == b.ndim == 2
     assert a.has_canonical_format
     assert b.has_canonical_format
@@ -532,7 +562,7 @@ def csrgemm(a, b, transa=False, transb=False):
     if a_shape[1] != b_shape[0]:
         raise ValueError('dimension mismatch')
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, k = a_shape
     n = b_shape[1]
 
@@ -544,21 +574,21 @@ def csrgemm(a, b, transa=False, transb=False):
     op_a = _transpose_flag(transa)
     op_b = _transpose_flag(transb)
 
-    nnz = numpy.empty((), 'i')
-    cusparse.setPointerMode(
-        handle, cusparse.CUSPARSE_POINTER_MODE_HOST)
+    nnz = _numpy.empty((), 'i')
+    _cusparse.setPointerMode(
+        handle, _cusparse.CUSPARSE_POINTER_MODE_HOST)
 
     c_descr = MatDescriptor.create()
-    c_indptr = cupy.empty(m + 1, 'i')
+    c_indptr = _cupy.empty(m + 1, 'i')
 
-    cusparse.xcsrgemmNnz(
+    _cusparse.xcsrgemmNnz(
         handle, op_a, op_b, m, n, k, a._descr.descriptor, a.nnz,
         a.indptr.data.ptr, a.indices.data.ptr, b._descr.descriptor, b.nnz,
         b.indptr.data.ptr, b.indices.data.ptr, c_descr.descriptor,
         c_indptr.data.ptr, nnz.ctypes.data)
 
-    c_indices = cupy.empty(int(nnz), 'i')
-    c_data = cupy.empty(int(nnz), a.dtype)
+    c_indices = _cupy.empty(int(nnz), 'i')
+    c_data = _cupy.empty(int(nnz), a.dtype)
     _call_cusparse(
         'csrgemm', a.dtype,
         handle, op_a, op_b, m, n, k, a._descr.descriptor, a.nnz,
@@ -611,7 +641,7 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
         if a.shape[0] != d.shape[0] or b.shape[1] != d.shape[1]:
             raise ValueError('mismatched shape')
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, k = a.shape
     _, n = b.shape
 
@@ -620,8 +650,8 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
     else:
         a, b, d = _cast_common_type(a, b, d)
 
-    info = cusparse.createCsrgemm2Info()
-    alpha = numpy.array(alpha, a.dtype).ctypes
+    info = _cusparse.createCsrgemm2Info()
+    alpha = _numpy.array(alpha, a.dtype).ctypes
     null_ptr = 0
     if d is None:
         beta_data = null_ptr
@@ -631,7 +661,7 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
         d_indptr = null_ptr
         d_indices = null_ptr
     else:
-        beta = numpy.array(beta, a.dtype).ctypes
+        beta = _numpy.array(beta, a.dtype).ctypes
         beta_data = beta.data
         d_descr = d._descr
         d_nnz = d.nnz
@@ -645,22 +675,22 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
         a.indptr.data.ptr, a.indices.data.ptr, b._descr.descriptor, b.nnz,
         b.indptr.data.ptr, b.indices.data.ptr, beta_data, d_descr.descriptor,
         d_nnz, d_indptr, d_indices, info)
-    buff = cupy.empty(buff_size, numpy.int8)
+    buff = _cupy.empty(buff_size, _numpy.int8)
 
-    c_nnz = numpy.empty((), 'i')
-    cusparse.setPointerMode(handle, cusparse.CUSPARSE_POINTER_MODE_HOST)
+    c_nnz = _numpy.empty((), 'i')
+    _cusparse.setPointerMode(handle, _cusparse.CUSPARSE_POINTER_MODE_HOST)
 
     c_descr = MatDescriptor.create()
-    c_indptr = cupy.empty(m + 1, 'i')
-    cusparse.xcsrgemm2Nnz(
+    c_indptr = _cupy.empty(m + 1, 'i')
+    _cusparse.xcsrgemm2Nnz(
         handle, m, n, k, a._descr.descriptor, a.nnz, a.indptr.data.ptr,
         a.indices.data.ptr, b._descr.descriptor, b.nnz, b.indptr.data.ptr,
         b.indices.data.ptr, d_descr.descriptor, d_nnz, d_indptr, d_indices,
         c_descr.descriptor, c_indptr.data.ptr, c_nnz.ctypes.data, info,
         buff.data.ptr)
 
-    c_indices = cupy.empty(int(c_nnz), 'i')
-    c_data = cupy.empty(int(c_nnz), a.dtype)
+    c_indices = _cupy.empty(int(c_nnz), 'i')
+    c_data = _cupy.empty(int(c_nnz), a.dtype)
     _call_cusparse(
         'csrgemm2', a.dtype,
         handle, m, n, k, alpha.data, a._descr.descriptor, a.nnz,
@@ -673,7 +703,7 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
     c = cupyx.scipy.sparse.csr_matrix(
         (c_data, c_indices, c_indptr), shape=(m, n))
     c._has_canonical_format = True
-    cusparse.destroyCsrgemm2Info(info)
+    _cusparse.destroyCsrgemm2Info(info)
     return c
 
 
@@ -689,14 +719,17 @@ def csr2dense(x, out=None):
         cupy.ndarray: Converted result.
 
     """
+    if not check_availability('csr2dense'):
+        raise RuntimeError('csr2dense is not available.')
+
     dtype = x.dtype
     assert dtype.char in 'fdFD'
     if out is None:
-        out = cupy.empty(x.shape, dtype=dtype, order='F')
+        out = _cupy.empty(x.shape, dtype=dtype, order='F')
     else:
         assert out.flags.f_contiguous
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     _call_cusparse(
         'csr2dense', x.dtype,
         handle, x.shape[0], x.shape[1], x._descr.descriptor,
@@ -718,14 +751,17 @@ def csc2dense(x, out=None):
         cupy.ndarray: Converted result.
 
     """
+    if not check_availability('csc2dense'):
+        raise RuntimeError('csc2dense is not available.')
+
     dtype = x.dtype
     assert dtype.char in 'fdFD'
     if out is None:
-        out = cupy.empty(x.shape, dtype=dtype, order='F')
+        out = _cupy.empty(x.shape, dtype=dtype, order='F')
     else:
         assert out.flags.f_contiguous
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     _call_cusparse(
         'csc2dense', x.dtype,
         handle, x.shape[0], x.shape[1], x._descr.descriptor,
@@ -742,26 +778,29 @@ def csrsort(x):
         x (cupyx.scipy.sparse.csr_matrix): A sparse matrix to sort.
 
     """
+    if not check_availability('csrsort'):
+        raise RuntimeError('csrsort is not available.')
+
     nnz = x.nnz
     if nnz == 0:
         return
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, n = x.shape
 
-    buffer_size = cusparse.xcsrsort_bufferSizeExt(
+    buffer_size = _cusparse.xcsrsort_bufferSizeExt(
         handle, m, n, nnz, x.indptr.data.ptr,
         x.indices.data.ptr)
-    buf = cupy.empty(buffer_size, 'b')
-    P = cupy.empty(nnz, 'i')
+    buf = _cupy.empty(buffer_size, 'b')
+    P = _cupy.empty(nnz, 'i')
     data_orig = x.data.copy()
-    cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
-    cusparse.xcsrsort(
+    _cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
+    _cusparse.xcsrsort(
         handle, m, n, nnz, x._descr.descriptor, x.indptr.data.ptr,
         x.indices.data.ptr, P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
         handle, nnz, data_orig.data.ptr, x.data.data.ptr,
-        P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+        P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
 def cscsort(x):
@@ -771,65 +810,100 @@ def cscsort(x):
         x (cupyx.scipy.sparse.csc_matrix): A sparse matrix to sort.
 
     """
+    if not check_availability('cscsort'):
+        raise RuntimeError('cscsort is not available.')
+
     nnz = x.nnz
     if nnz == 0:
         return
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, n = x.shape
 
-    buffer_size = cusparse.xcscsort_bufferSizeExt(
+    buffer_size = _cusparse.xcscsort_bufferSizeExt(
         handle, m, n, nnz, x.indptr.data.ptr,
         x.indices.data.ptr)
-    buf = cupy.empty(buffer_size, 'b')
-    P = cupy.empty(nnz, 'i')
+    buf = _cupy.empty(buffer_size, 'b')
+    P = _cupy.empty(nnz, 'i')
     data_orig = x.data.copy()
-    cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
-    cusparse.xcscsort(
+    _cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
+    _cusparse.xcscsort(
         handle, m, n, nnz, x._descr.descriptor, x.indptr.data.ptr,
         x.indices.data.ptr, P.data.ptr, buf.data.ptr)
     _call_cusparse(
         'gthr', x.dtype,
         handle, nnz, data_orig.data.ptr, x.data.data.ptr,
-        P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+        P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
 
 
-def coosort(x):
+def coosort(x, sort_by='r'):
     """Sorts indices of COO-matrix in place.
 
     Args:
         x (cupyx.scipy.sparse.coo_matrix): A sparse matrix to sort.
+        sort_by (str): Sort the indices by row ('r', default) or column ('c').
 
     """
+    if not check_availability('coosort'):
+        raise RuntimeError('coosort is not available.')
+
     nnz = x.nnz
     if nnz == 0:
         return
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, n = x.shape
 
-    buffer_size = cusparse.xcoosort_bufferSizeExt(
+    buffer_size = _cusparse.xcoosort_bufferSizeExt(
         handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr)
-    buf = cupy.empty(buffer_size, 'b')
-    P = cupy.empty(nnz, 'i')
+    buf = _cupy.empty(buffer_size, 'b')
+    P = _cupy.empty(nnz, 'i')
     data_orig = x.data.copy()
-    cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
-    cusparse.xcoosortByRow(
-        handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
-        P.data.ptr, buf.data.ptr)
+    _cusparse.createIdentityPermutation(handle, nnz, P.data.ptr)
+    if sort_by == 'r':
+        _cusparse.xcoosortByRow(
+            handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
+            P.data.ptr, buf.data.ptr)
+    elif sort_by == 'c':
+        _cusparse.xcoosortByColumn(
+            handle, m, n, nnz, x.row.data.ptr, x.col.data.ptr,
+            P.data.ptr, buf.data.ptr)
+    else:
+        raise ValueError("sort_by must be either 'r' or 'c'")
     _call_cusparse(
         'gthr', x.dtype,
         handle, nnz, data_orig.data.ptr, x.data.data.ptr,
-        P.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+        P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    if sort_by == 'c':  # coo is sorted by row first
+        x._has_canonical_format = False
 
 
 def coo2csr(x):
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m = x.shape[0]
-    indptr = cupy.empty(m + 1, 'i')
-    cusparse.xcoo2csr(
-        handle, x.row.data.ptr, x.nnz, m,
-        indptr.data.ptr, cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    nnz = x.nnz
+    if nnz == 0:
+        indptr = _cupy.zeros(m + 1, 'i')
+    else:
+        indptr = _cupy.empty(m + 1, 'i')
+        _cusparse.xcoo2csr(
+            handle, x.row.data.ptr, nnz, m,
+            indptr.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
     return cupyx.scipy.sparse.csr.csr_matrix(
         (x.data, x.col, indptr), shape=x.shape)
+
+
+def coo2csc(x):
+    handle = _device.get_cusparse_handle()
+    n = x.shape[1]
+    nnz = x.nnz
+    if nnz == 0:
+        indptr = _cupy.zeros(n + 1, 'i')
+    else:
+        indptr = _cupy.empty(n + 1, 'i')
+        _cusparse.xcoo2csr(
+            handle, x.col.data.ptr, nnz, n,
+            indptr.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    return cupyx.scipy.sparse.csc.csc_matrix(
+        (x.data, x.row, indptr), shape=x.shape)
 
 
 def csr2coo(x, data, indices):
@@ -844,34 +918,150 @@ def csr2coo(x, data, indices):
         cupyx.scipy.sparse.coo_matrix: A converted matrix.
 
     """
-    handle = device.get_cusparse_handle()
+    if not check_availability('csr2coo'):
+        raise RuntimeError('csr2coo is not available.')
+
+    handle = _device.get_cusparse_handle()
     m = x.shape[0]
-    nnz = len(x.data)
-    row = cupy.empty(nnz, 'i')
-    cusparse.xcsr2coo(
+    nnz = x.nnz
+    row = _cupy.empty(nnz, 'i')
+    _cusparse.xcsr2coo(
         handle, x.indptr.data.ptr, nnz, m, row.data.ptr,
-        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+        _cusparse.CUSPARSE_INDEX_BASE_ZERO)
     # data and indices did not need to be copied already
     return cupyx.scipy.sparse.coo_matrix(
         (data, (row, indices)), shape=x.shape)
 
 
 def csr2csc(x):
-    handle = device.get_cusparse_handle()
+    if not check_availability('csr2csc'):
+        raise RuntimeError('csr2csc is not available.')
+
+    handle = _device.get_cusparse_handle()
     m, n = x.shape
     nnz = x.nnz
-    data = cupy.empty(nnz, x.dtype)
-    indptr = cupy.empty(n + 1, 'i')
-    indices = cupy.empty(nnz, 'i')
-
-    _call_cusparse(
-        'csr2csc', x.dtype,
-        handle, m, n, nnz, x.data.data.ptr,
-        x.indptr.data.ptr, x.indices.data.ptr,
-        data.data.ptr, indices.data.ptr, indptr.data.ptr,
-        cusparse.CUSPARSE_ACTION_NUMERIC,
-        cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    data = _cupy.empty(nnz, x.dtype)
+    indices = _cupy.empty(nnz, 'i')
+    if nnz == 0:
+        indptr = _cupy.zeros(n + 1, 'i')
+    else:
+        indptr = _cupy.empty(n + 1, 'i')
+        _call_cusparse(
+            'csr2csc', x.dtype,
+            handle, m, n, nnz, x.data.data.ptr,
+            x.indptr.data.ptr, x.indices.data.ptr,
+            data.data.ptr, indices.data.ptr, indptr.data.ptr,
+            _cusparse.CUSPARSE_ACTION_NUMERIC,
+            _cusparse.CUSPARSE_INDEX_BASE_ZERO)
     return cupyx.scipy.sparse.csc_matrix(
+        (data, indices, indptr), shape=x.shape)
+
+
+def csr2cscEx2(x):
+    if not check_availability('csr2cscEx2'):
+        raise RuntimeError('csr2cscEx2 is not available.')
+
+    handle = _device.get_cusparse_handle()
+    m, n = x.shape
+    nnz = x.nnz
+    data = _cupy.empty(nnz, x.dtype)
+    indices = _cupy.empty(nnz, 'i')
+    if nnz == 0:
+        indptr = _cupy.zeros(n + 1, 'i')
+    else:
+        indptr = _cupy.empty(n + 1, 'i')
+        x_dtype = _dtype_to_DataType(x.dtype)
+        action = _cusparse.CUSPARSE_ACTION_NUMERIC
+        ibase = _cusparse.CUSPARSE_INDEX_BASE_ZERO
+        algo = _cusparse.CUSPARSE_CSR2CSC_ALG1
+        buffer_size = _cusparse.csr2cscEx2_bufferSize(
+            handle, m, n, nnz, x.data.data.ptr, x.indptr.data.ptr,
+            x.indices.data.ptr, data.data.ptr, indptr.data.ptr,
+            indices.data.ptr, x_dtype, action, ibase, algo)
+        buffer = _cupy.empty(buffer_size, _numpy.int8)
+        _cusparse.csr2cscEx2(
+            handle, m, n, nnz, x.data.data.ptr, x.indptr.data.ptr,
+            x.indices.data.ptr, data.data.ptr, indptr.data.ptr,
+            indices.data.ptr, x_dtype, action, ibase, algo, buffer.data.ptr)
+    return cupyx.scipy.sparse.csc_matrix(
+        (data, indices, indptr), shape=x.shape)
+
+
+def csc2coo(x, data, indices):
+    """Converts a CSC-matrix to COO format.
+
+    Args:
+        x (cupyx.scipy.sparse.csc_matrix): A matrix to be converted.
+        data (cupy.ndarray): A data array for converted data.
+        indices (cupy.ndarray): An index array for converted data.
+
+    Returns:
+        cupyx.scipy.sparse.coo_matrix: A converted matrix.
+
+    """
+    handle = _device.get_cusparse_handle()
+    n = x.shape[1]
+    nnz = x.nnz
+    col = _cupy.empty(nnz, 'i')
+    _cusparse.xcsr2coo(
+        handle, x.indptr.data.ptr, nnz, n, col.data.ptr,
+        _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    # data and indices did not need to be copied already
+    return cupyx.scipy.sparse.coo_matrix(
+        (data, (indices, col)), shape=x.shape)
+
+
+def csc2csr(x):
+    if not check_availability('csc2csr'):
+        raise RuntimeError('csr2csc is not available.')
+
+    handle = _device.get_cusparse_handle()
+    m, n = x.shape
+    nnz = x.nnz
+    data = _cupy.empty(nnz, x.dtype)
+    indices = _cupy.empty(nnz, 'i')
+    if nnz == 0:
+        indptr = _cupy.zeros(m + 1, 'i')
+    else:
+        indptr = _cupy.empty(m + 1, 'i')
+        _call_cusparse(
+            'csr2csc', x.dtype,
+            handle, n, m, nnz, x.data.data.ptr,
+            x.indptr.data.ptr, x.indices.data.ptr,
+            data.data.ptr, indices.data.ptr, indptr.data.ptr,
+            _cusparse.CUSPARSE_ACTION_NUMERIC,
+            _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    return cupyx.scipy.sparse.csr_matrix(
+        (data, indices, indptr), shape=x.shape)
+
+
+def csc2csrEx2(x):
+    if not check_availability('csc2csrEx2'):
+        raise RuntimeError('csc2csrEx2 is not available.')
+
+    handle = _device.get_cusparse_handle()
+    m, n = x.shape
+    nnz = x.nnz
+    data = _cupy.empty(nnz, x.dtype)
+    indices = _cupy.empty(nnz, 'i')
+    if nnz == 0:
+        indptr = _cupy.zeros(m + 1, 'i')
+    else:
+        indptr = _cupy.empty(m + 1, 'i')
+        x_dtype = _dtype_to_DataType(x.dtype)
+        action = _cusparse.CUSPARSE_ACTION_NUMERIC
+        ibase = _cusparse.CUSPARSE_INDEX_BASE_ZERO
+        algo = _cusparse.CUSPARSE_CSR2CSC_ALG1
+        buffer_size = _cusparse.csr2cscEx2_bufferSize(
+            handle, n, m, nnz, x.data.data.ptr, x.indptr.data.ptr,
+            x.indices.data.ptr, data.data.ptr, indptr.data.ptr,
+            indices.data.ptr, x_dtype, action, ibase, algo)
+        buffer = _cupy.empty(buffer_size, _numpy.int8)
+        _cusparse.csr2cscEx2(
+            handle, n, m, nnz, x.data.data.ptr, x.indptr.data.ptr,
+            x.indices.data.ptr, data.data.ptr, indptr.data.ptr,
+            indices.data.ptr, x_dtype, action, ibase, algo, buffer.data.ptr)
+    return cupyx.scipy.sparse.csr_matrix(
         (data, indices, indptr), shape=x.shape)
 
 
@@ -885,23 +1075,26 @@ def dense2csc(x):
         cupyx.scipy.sparse.csc_matrix: A converted matrix.
 
     """
+    if not check_availability('dense2csc'):
+        raise RuntimeError('dense2csc is not available.')
+
     assert x.ndim == 2
-    x = cupy.asfortranarray(x)
-    nnz = numpy.empty((), dtype='i')
-    handle = device.get_cusparse_handle()
+    x = _cupy.asfortranarray(x)
+    nnz = _numpy.empty((), dtype='i')
+    handle = _device.get_cusparse_handle()
     m, n = x.shape
 
     descr = MatDescriptor.create()
-    nnz_per_col = cupy.empty(m, 'i')
+    nnz_per_col = _cupy.empty(m, 'i')
     _call_cusparse(
         'nnz', x.dtype,
-        handle, cusparse.CUSPARSE_DIRECTION_COLUMN, m, n, descr.descriptor,
+        handle, _cusparse.CUSPARSE_DIRECTION_COLUMN, m, n, descr.descriptor,
         x.data.ptr, m, nnz_per_col.data.ptr, nnz.ctypes.data)
 
     nnz = int(nnz)
-    data = cupy.empty(nnz, x.dtype)
-    indptr = cupy.empty(n + 1, 'i')
-    indices = cupy.empty(nnz, 'i')
+    data = _cupy.empty(nnz, x.dtype)
+    indptr = _cupy.empty(n + 1, 'i')
+    indices = _cupy.empty(nnz, 'i')
 
     _call_cusparse(
         'dense2csc', x.dtype,
@@ -924,23 +1117,26 @@ def dense2csr(x):
         cupyx.scipy.sparse.csr_matrix: A converted matrix.
 
     """
+    if not check_availability('dense2csr'):
+        raise RuntimeError('dense2csr is not available.')
+
     assert x.ndim == 2
-    x = cupy.asfortranarray(x)
-    nnz = numpy.empty((), dtype='i')
-    handle = device.get_cusparse_handle()
+    x = _cupy.asfortranarray(x)
+    nnz = _numpy.empty((), dtype='i')
+    handle = _device.get_cusparse_handle()
     m, n = x.shape
 
     descr = MatDescriptor.create()
-    nnz_per_row = cupy.empty(m, 'i')
+    nnz_per_row = _cupy.empty(m, 'i')
     _call_cusparse(
         'nnz', x.dtype,
-        handle, cusparse.CUSPARSE_DIRECTION_ROW, m, n, descr.descriptor,
+        handle, _cusparse.CUSPARSE_DIRECTION_ROW, m, n, descr.descriptor,
         x.data.ptr, m, nnz_per_row.data.ptr, nnz.ctypes.data)
 
     nnz = int(nnz)
-    data = cupy.empty(nnz, x.dtype)
-    indptr = cupy.empty(m + 1, 'i')
-    indices = cupy.empty(nnz, 'i')
+    data = _cupy.empty(nnz, x.dtype)
+    indptr = _cupy.empty(m + 1, 'i')
+    indices = _cupy.empty(nnz, 'i')
 
     _call_cusparse(
         'dense2csr', x.dtype,
@@ -954,19 +1150,22 @@ def dense2csr(x):
 
 
 def csr2csr_compress(x, tol):
+    if not check_availability('csr2csr_compress'):
+        raise RuntimeError('csr2csr_compress is not available.')
+
     assert x.dtype.char in 'fdFD'
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     m, n = x.shape
 
-    nnz_per_row = cupy.empty(m, 'i')
+    nnz_per_row = _cupy.empty(m, 'i')
     nnz = _call_cusparse(
         'nnz_compress', x.dtype,
         handle, m, x._descr.descriptor,
         x.data.data.ptr, x.indptr.data.ptr, nnz_per_row.data.ptr, tol)
-    data = cupy.zeros(nnz, x.dtype)
-    indptr = cupy.empty(m + 1, 'i')
-    indices = cupy.zeros(nnz, 'i')
+    data = _cupy.zeros(nnz, x.dtype)
+    indptr = _cupy.empty(m + 1, 'i')
+    indices = _cupy.zeros(nnz, 'i')
     _call_cusparse(
         'csr2csr_compress', x.dtype,
         handle, m, n, x._descr.descriptor,
@@ -980,11 +1179,11 @@ def csr2csr_compress(x, tol):
 
 def _dtype_to_IndexType(dtype):
     if dtype == 'uint16':
-        return cusparse.CUSPARSE_INDEX_16U
+        return _cusparse.CUSPARSE_INDEX_16U
     elif dtype == 'int32':
-        return cusparse.CUSPARSE_INDEX_32I
+        return _cusparse.CUSPARSE_INDEX_32I
     elif dtype == 'int64':
-        return cusparse.CUSPARSE_INDEX_64I
+        return _cusparse.CUSPARSE_INDEX_64I
     else:
         raise TypeError
 
@@ -996,7 +1195,7 @@ class BaseDescriptor(object):
         self.get = get
         self.destroy = destroyer
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.destroy is None:
@@ -1017,24 +1216,24 @@ class SpMatDescriptor(BaseDescriptor):
     def create(cls, a):
         assert cupyx.scipy.sparse.issparse(a)
         rows, cols = a.shape
-        idx_base = cusparse.CUSPARSE_INDEX_BASE_ZERO
+        idx_base = _cusparse.CUSPARSE_INDEX_BASE_ZERO
         cuda_dtype = _dtype_to_DataType(a.dtype)
         if a.format == 'csr':
-            desc = cusparse.createCsr(
+            desc = _cusparse.createCsr(
                 rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
                 a.data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
                 _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
-            get = cusparse.csrGet
+            get = _cusparse.csrGet
         elif a.format == 'coo':
-            desc = cusparse.createCoo(
+            desc = _cusparse.createCoo(
                 rows, cols, a.nnz, a.row.data.ptr, a.col.data.ptr,
                 a.data.data.ptr, _dtype_to_IndexType(a.row.dtype),
                 idx_base, cuda_dtype)
-            get = cusparse.cooGet
+            get = _cusparse.cooGet
         else:
             raise ValueError('csr and coo format are supported '
                              '(actual: {}).'.format(a.format))
-        destroy = cusparse.destroySpMat
+        destroy = _cusparse.destroySpMat
         return SpMatDescriptor(desc, get, destroy)
 
 
@@ -1043,9 +1242,9 @@ class DnVecDescriptor(BaseDescriptor):
     @classmethod
     def create(cls, x):
         cuda_dtype = _dtype_to_DataType(x.dtype)
-        desc = cusparse.createDnVec(x.size, x.data.ptr, cuda_dtype)
-        get = cusparse.dnVecGet
-        destroy = cusparse.destroyDnVec
+        desc = _cusparse.createDnVec(x.size, x.data.ptr, cuda_dtype)
+        get = _cusparse.dnVecGet
+        destroy = _cusparse.destroyDnVec
         return DnVecDescriptor(desc, get, destroy)
 
 
@@ -1058,10 +1257,10 @@ class DnMatDescriptor(BaseDescriptor):
         rows, cols = a.shape
         ld = rows
         cuda_dtype = _dtype_to_DataType(a.dtype)
-        desc = cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype,
-                                    cusparse.CUSPARSE_ORDER_COL)
-        get = cusparse.dnMatGet
-        destroy = cusparse.destroyDnMat
+        desc = _cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype,
+                                     _cusparse.CUSPARSE_ORDER_COL)
+        get = _cusparse.dnMatGet
+        destroy = _cusparse.destroyDnMat
         return DnMatDescriptor(desc, get, destroy)
 
 
@@ -1105,7 +1304,7 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     m, n = a_shape
     a, x, y = _cast_common_type(a, x, y)
     if y is None:
-        y = cupy.zeros(m, a.dtype)
+        y = _cupy.zeros(m, a.dtype)
     elif len(y) != m:
         raise ValueError('dimension mismatch')
     if a.nnz == 0:
@@ -1116,18 +1315,18 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     desc_x = DnVecDescriptor.create(x)
     desc_y = DnVecDescriptor.create(y)
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     op_a = _transpose_flag(transa)
-    alpha = numpy.array(alpha, a.dtype).ctypes
-    beta = numpy.array(beta, a.dtype).ctypes
+    alpha = _numpy.array(alpha, a.dtype).ctypes
+    beta = _numpy.array(beta, a.dtype).ctypes
     cuda_dtype = _dtype_to_DataType(a.dtype)
-    alg = cusparse.CUSPARSE_MV_ALG_DEFAULT
-    buff_size = cusparse.spMV_bufferSize(handle, op_a, alpha.data,
-                                         desc_a.desc, desc_x.desc, beta.data,
-                                         desc_y.desc, cuda_dtype, alg)
-    buff = cupy.empty(buff_size, cupy.int8)
-    cusparse.spMV(handle, op_a, alpha.data, desc_a.desc, desc_x.desc,
-                  beta.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
+    alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
+    buff_size = _cusparse.spMV_bufferSize(handle, op_a, alpha.data,
+                                          desc_a.desc, desc_x.desc, beta.data,
+                                          desc_y.desc, cuda_dtype, alg)
+    buff = _cupy.empty(buff_size, _cupy.int8)
+    _cusparse.spMV(handle, op_a, alpha.data, desc_a.desc, desc_x.desc,
+                   beta.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
 
     return y
 
@@ -1179,7 +1378,7 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     _, n = b_shape
     a, b, c = _cast_common_type(a, b, c)
     if c is None:
-        c = cupy.zeros((m, n), a.dtype, 'F')
+        c = _cupy.zeros((m, n), a.dtype, 'F')
     elif c.shape[0] != m or c.shape[1] != n:
         raise ValueError('dimension mismatch')
     if a.nnz == 0:
@@ -1190,19 +1389,19 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     desc_b = DnMatDescriptor.create(b)
     desc_c = DnMatDescriptor.create(c)
 
-    handle = device.get_cusparse_handle()
+    handle = _device.get_cusparse_handle()
     op_a = _transpose_flag(transa)
     op_b = _transpose_flag(transb)
-    alpha = numpy.array(alpha, a.dtype).ctypes
-    beta = numpy.array(beta, a.dtype).ctypes
+    alpha = _numpy.array(alpha, a.dtype).ctypes
+    beta = _numpy.array(beta, a.dtype).ctypes
     cuda_dtype = _dtype_to_DataType(a.dtype)
-    alg = cusparse.CUSPARSE_MM_ALG_DEFAULT
-    buff_size = cusparse.spMM_bufferSize(handle, op_a, op_b, alpha.data,
-                                         desc_a.desc, desc_b.desc, beta.data,
-                                         desc_c.desc, cuda_dtype, alg)
-    buff = cupy.empty(buff_size, cupy.int8)
-    buff_size = cusparse.spMM(handle, op_a, op_b, alpha.data, desc_a.desc,
-                              desc_b.desc, beta.data, desc_c.desc,
-                              cuda_dtype, alg, buff.data.ptr)
+    alg = _cusparse.CUSPARSE_MM_ALG_DEFAULT
+    buff_size = _cusparse.spMM_bufferSize(handle, op_a, op_b, alpha.data,
+                                          desc_a.desc, desc_b.desc, beta.data,
+                                          desc_c.desc, cuda_dtype, alg)
+    buff = _cupy.empty(buff_size, _cupy.int8)
+    buff_size = _cusparse.spMM(handle, op_a, op_b, alpha.data, desc_a.desc,
+                               desc_b.desc, beta.data, desc_c.desc,
+                               cuda_dtype, alg, buff.data.ptr)
 
     return c

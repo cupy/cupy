@@ -58,6 +58,7 @@ Building sparse matrices
    cupyx.scipy.sparse.eye
    cupyx.scipy.sparse.hstack
    cupyx.scipy.sparse.identity
+   cupyx.scipy.sparse.kron
    cupyx.scipy.sparse.spdiags
    cupyx.scipy.sparse.rand
    cupyx.scipy.sparse.random
@@ -89,3 +90,4 @@ Linear Algebra
    :nosignatures:
 
    cupyx.scipy.sparse.linalg.lsqr
+   cupyx.scipy.sparse.linalg.norm

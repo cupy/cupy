@@ -4,11 +4,17 @@ import string
 import warnings
 
 import cupy
-from cupy import util
+from cupy.core import _accelerator
+from cupy import _util
+from cupy.cuda import cutensor as cuda_cutensor
 from cupy.linalg.einsum_opt import _greedy_path
 from cupy.linalg.einsum_opt import _optimal_path
-if cupy.cuda.cutensor_enabled:
+
+
+if cuda_cutensor.available:
     from cupy import cutensor
+else:
+    cutensor = None
 
 
 options = {
@@ -52,7 +58,7 @@ def _parse_int_subscript(list_subscript):
         elif isinstance(s, int):
             str_subscript += einsum_symbols[s]
         else:
-            raise ValueError(
+            raise TypeError(
                 'each subscript must be either an integer or an ellipsis'
                 ' to provide subscripts strings as lists')
     return str_subscript
@@ -292,8 +298,6 @@ def _flatten_transpose(a, axeses):
 
 
 def _use_cutensor(dtype0, sub0, dtype1, sub1, batch_dims, contract_dims):
-    if not cupy.cuda.cutensor_enabled:
-        return False
     if dtype0 != dtype1:
         return False
     if dtype0 not in (cupy.float32, cupy.float64,
@@ -383,24 +387,28 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
         arr1 = _expand_dims_transpose(arr1, sub1, sub_out)
         return arr0 * arr1, sub_out
 
-    if _use_cutensor(arr0.dtype, sub0, arr1.dtype, sub1,
-                     batch_dims, contract_dims):
-        if len(sub_out) == len(sub_others):
-            # to assure final output of einsum is C-contiguous
-            sub_out = sub_others
-        out_shape = _get_out_shape(arr0.shape, sub0, arr1.shape, sub1, sub_out)
-        arr_out = cupy.empty(out_shape, arr0.dtype)
-        arr0 = cupy.ascontiguousarray(arr0)
-        arr1 = cupy.ascontiguousarray(arr1)
-        desc_0 = cutensor.create_tensor_descriptor(arr0)
-        desc_1 = cutensor.create_tensor_descriptor(arr1)
-        desc_out = cutensor.create_tensor_descriptor(arr_out)
-        arr_out = cutensor.contraction(1.0,
-                                       arr0, desc_0, sub0,
-                                       arr1, desc_1, sub1,
-                                       0.0,
-                                       arr_out, desc_out, sub_out)
-        return arr_out, sub_out
+    for accelerator in _accelerator.get_routine_accelerators():
+        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            if _use_cutensor(arr0.dtype, sub0, arr1.dtype, sub1,
+                             batch_dims, contract_dims):
+                if len(sub_out) == len(sub_others):
+                    # to assure final output of einsum is C-contiguous
+                    sub_out = sub_others
+                out_shape = _get_out_shape(
+                    arr0.shape, sub0, arr1.shape, sub1, sub_out)
+                arr_out = cupy.empty(out_shape, arr0.dtype)
+                arr0 = cupy.ascontiguousarray(arr0)
+                arr1 = cupy.ascontiguousarray(arr1)
+                desc_0 = cutensor.create_tensor_descriptor(arr0)
+                desc_1 = cutensor.create_tensor_descriptor(arr1)
+                desc_out = cutensor.create_tensor_descriptor(arr_out)
+                arr_out = cutensor.contraction(
+                    1.0,
+                    arr0, desc_0, sub0,
+                    arr1, desc_1, sub1,
+                    0.0,
+                    arr_out, desc_out, sub_out)
+                return arr_out, sub_out
 
     tmp0, shapes0 = _flatten_transpose(arr0, [bs0, ts0, cs0])
     tmp1, shapes1 = _flatten_transpose(arr1, [bs1, cs1, ts1])
@@ -625,7 +633,7 @@ def einsum(*operands, **kwargs):
         if any(len(indices) > 2 for indices in path):
             warnings.warn(
                 'memory efficient einsum is not supported yet',
-                util.PerformanceWarning)
+                _util.PerformanceWarning)
 
     for idx0, idx1 in _iter_path_pairs(path):
         # "reduced" binary einsum
