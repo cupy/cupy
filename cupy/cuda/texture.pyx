@@ -16,6 +16,9 @@ from cupy_backends.cuda.api.runtime import CUDARuntimeError
 cdef extern from '../../cupy_backends/cuda/cupy_cuda.h':
     pass
 
+cdef extern from '../../cupy_backends/cuda/cupy_cuda_runtime.h':
+    pass
+
 
 cdef class ChannelFormatDescriptor:
     '''A class that holds the channel format description. Equivalent to

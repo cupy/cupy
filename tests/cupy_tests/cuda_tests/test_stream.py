@@ -42,7 +42,12 @@ class TestStream(unittest.TestCase):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
 
-        stream = cuda.Stream.null
+        if not cuda.runtime.is_hip:
+            stream = cuda.Stream.null
+        else:
+            # adding callbacks to the null stream in HIP would segfault...
+            stream = cuda.Stream()
+
         out = []
         for i in range(N):
             numpy_array = cupy_arrays[i].get(stream=stream)
@@ -87,7 +92,12 @@ class TestExternalStream(unittest.TestCase):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
 
-        stream = self.stream
+        if not cuda.runtime.is_hip:
+            stream = cuda.Stream.null
+        else:
+            # adding callbacks to the null stream in HIP would segfault...
+            stream = cuda.Stream()
+
         out = []
         for i in range(N):
             numpy_array = cupy_arrays[i].get(stream=stream)

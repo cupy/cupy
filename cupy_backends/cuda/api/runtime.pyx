@@ -62,7 +62,7 @@ cdef extern from *:
     ctypedef StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
 
 
-cdef extern from '../cupy_cuda.h' nogil:
+cdef extern from '../cupy_cuda_runtime.h' nogil:
 
     # Types
     ctypedef struct _PointerAttributes 'cudaPointerAttributes':
@@ -286,8 +286,13 @@ cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
     cdef const char* c_pci_bus_id = byte_pci_bus_id
 
     cdef int device = -1
+    cdef int status
     status = cudaDeviceGetByPCIBusId(&device, c_pci_bus_id)
     check_status(status)
+    # on ROCm, it might fail silently, so we also need to check if the
+    # device is meaningful or not
+    if hip_environment and device == -1:
+        check_status(cudaErrorInvalidValue)
     return device
 
 cpdef str deviceGetPCIBusId(int device):
