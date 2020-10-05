@@ -1,3 +1,4 @@
+import math
 import os
 import warnings
 
@@ -7,6 +8,7 @@ import numpy
 import cupy
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._reduction import ReductionKernel
+from cupy.core._ufuncs import elementwise_copy
 
 
 from libc.stdint cimport intptr_t
@@ -14,7 +16,8 @@ from libc.stdint cimport intptr_t
 from cupy.core cimport _accelerator
 from cupy.core._carray cimport shape_t
 from cupy.core._dtype cimport to_cuda_dtype
-from cupy.core._ufuncs import elementwise_copy
+from cupy.core._scalar cimport get_typename
+from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport ascontiguousarray
 from cupy.core.core cimport ndarray
@@ -455,8 +458,8 @@ cpdef ndarray tensordot_core(
                 out=_manipulation._reshape(out, ()))
         return out
 
-    a = a.astype(dtype, copy=False)
-    b = b.astype(dtype, copy=False)
+    a = a.astype(dtype, order='K', casting=None, subok=None, copy=False)
+    b = b.astype(dtype, order='K', casting=None, subok=None, copy=False)
     # It copies the operands if needed
     if a._shape.size() != 2 or a._shape[0] != k or a._shape[1] != n:
         shape.clear()
