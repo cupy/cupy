@@ -7,7 +7,7 @@ from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
 from cupy.cuda import cufft
-from cupy.fft.fft import _output_dtype
+from cupy.fft._fft import _output_dtype
 from cupy.lib import stride_tricks
 
 

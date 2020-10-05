@@ -729,6 +729,8 @@ def _try_reduction_routine(
     if dtype != x.dtype:
         return None
 
+    if x.ndim == 0:
+        return None
     if x.size == 0:
         return None
     if not x._c_contiguous:
@@ -738,6 +740,8 @@ def _try_reduction_routine(
     in_arg = x
 
     reduce_axis, out_axis = _reduction._get_axis(axis, x.ndim)
+    if len(reduce_axis) == 0:
+        return None
     out_shape = _reduction._get_out_shape(
         x._shape, reduce_axis, out_axis, keepdims)
     if out is None:

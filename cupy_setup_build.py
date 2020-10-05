@@ -90,7 +90,7 @@ cuda_files = [
 
 if use_hip:
     # We handle nvtx (and likely any other future support) here, because
-    # the HIP stubs (cupy_hip.h/cupy_hip_common.h) would cause many symbols
+    # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
     MODULES.append({
@@ -731,12 +731,16 @@ def cythonize(extensions, arg_options):
     cythonize_options = {key: arg_options[key]
                          for key in cythonize_option_keys}
 
-    # pass use_hip to Cython code
+    # Compile-time constants to be used in Cython code
     compile_time_env = cythonize_options.get('compile_time_env')
     if compile_time_env is None:
         compile_time_env = {}
         cythonize_options['compile_time_env'] = compile_time_env
     compile_time_env['use_hip'] = arg_options['use_hip']
+    if use_hip or arg_options['no_cuda']:
+        compile_time_env['CUDA_VERSION'] = 0
+    else:
+        compile_time_env['CUDA_VERSION'] = build.get_cuda_version()
 
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,

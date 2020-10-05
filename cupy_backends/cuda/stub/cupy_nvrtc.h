@@ -1,17 +1,8 @@
 // This file is a stub header file of nvrtc for Read the Docs.
 
-#ifndef INCLUDE_GUARD_CUPY_NVRTC_H
-#define INCLUDE_GUARD_CUPY_NVRTC_H
+#ifndef INCLUDE_GUARD_STUB_CUPY_NVRTC_H
+#define INCLUDE_GUARD_STUB_CUPY_NVRTC_H
 
-#ifdef CUPY_USE_HIP
-
-#include "cupy_hiprtc.h"
-
-#elif !defined(CUPY_NO_CUDA)
-
-#include <nvrtc.h>
-
-#else
 
 extern "C" {
 
@@ -67,6 +58,4 @@ nvrtcResult nvrtcGetLoweredName(...) {
 
 }
 
-#endif
-
-#endif // #ifndef INCLUDE_GUARD_CUPY_NVRTC_H
+#endif // #ifndef INCLUDE_GUARD_STUB_CUPY_NVRTC_H

@@ -12,7 +12,7 @@ cdef extern from '../cupy_cuComplex.h':
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from 'cupy_cusparse.h' nogil:
+cdef extern from '../cupy_cusparse.h' nogil:
 
     # Version
     cusparseStatus_t cusparseGetVersion(cusparseHandle_t handle, int* version)
