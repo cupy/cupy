@@ -363,7 +363,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             # constructs a sparse matrix with coo format, then converts it to
             # compressed format.
             sp_coo = coo.coo_matrix(arg1, shape=shape, dtype=dtype, copy=copy)
-            sp_compressed = getattr(sp_coo, 'to' + self.format)()
+            sp_compressed = sp_coo.asformat(self.format)
             data = sp_compressed.data
             indices = sp_compressed.indices
             indptr = sp_compressed.indptr

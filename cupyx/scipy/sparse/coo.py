@@ -117,14 +117,9 @@ class coo_matrix(sparse_data._data_matrix):
             self.has_canonical_format = False
 
         elif base.isdense(arg1):
-            # Note: This implementation is not efficeint, as it first
-            # constructs a sparse matrix with csr fromat, then converts it to
-            # coo format.
-            sp_csr = csr.csr_matrix(arg1, shape=shape, dtype=dtype, copy=copy)
-            sp_coo = sp_csr.tocoo()
-            data = sp_coo.data
-            row = sp_coo.row
-            col = sp_coo.col
+            dense = cupy.atleast_2d(arg1)
+            row, col = dense.nonzero()
+            data = dense[row, col]
 
         else:
             raise TypeError('invalid input format')
