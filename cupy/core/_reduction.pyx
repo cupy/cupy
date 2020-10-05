@@ -339,6 +339,10 @@ cdef class _AbstractReductionKernel:
             key = (self.name, shape_and_strides,
                    in_types, out_types, reduce_type, device_id)
 
+        if try_use_cub and in_args[0]._f_contiguous and in_args[0].ndim > 2:
+            # TODO: fix CUB-based reduction on Fortran arrays with ndim > 2
+            try_use_cub = False
+
         # Try to use CUB
         for accelerator in _accelerator._reduction_accelerators:
             if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:

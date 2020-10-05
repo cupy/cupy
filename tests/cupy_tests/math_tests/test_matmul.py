@@ -129,6 +129,19 @@ class TestMatmulLarge(unittest.TestCase):
         return xp.matmul(x1, x2)
 
 
+class TestMatmulOverflow(unittest.TestCase):
+
+    @testing.for_int_dtypes(name='dtype')
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
+    def test_overflow(self, xp, dtype):
+        if dtype is numpy.bool_:
+            return xp.array([])
+        value = numpy.iinfo(dtype).max
+        a = xp.array([value - 10]).astype(dtype)
+        b = xp.array([value - 10]).astype(dtype)
+        return xp.matmul(a, b)
+
+
 class _TestMatmulComputeTypes(unittest.TestCase):
 
     def setUp(self):
