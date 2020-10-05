@@ -10,9 +10,21 @@ import cupyx
 from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
 
 
+@testing.parameterize(*testing.product({
+    'batched_gesv_limit': [None, 0],
+}))
 @testing.gpu
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
+
+    def setUp(self):
+        if self.batched_gesv_limit is not None:
+            self.old_limit = get_batched_gesv_limit()
+            set_batched_gesv_limit(self.batched_gesv_limit)
+
+    def tearDown(self):
+        if self.batched_gesv_limit is not None:
+            set_batched_gesv_limit(self.old_limit)
 
     @testing.for_dtypes('fdFD')
     # TODO(kataoka): Fix contiguity
@@ -34,13 +46,6 @@ class TestSolve(unittest.TestCase):
         self.check_x((2, 5, 5), (2, 5, 2))
         self.check_x((2, 3, 2, 2), (2, 3, 2,))
         self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
-        old_limit = get_batched_gesv_limit()
-        set_batched_gesv_limit(0)  # disable use of batched_gesv
-        self.check_x((2, 4, 4), (2, 4,))
-        self.check_x((2, 5, 5), (2, 5, 2))
-        self.check_x((2, 3, 2, 2), (2, 3, 2,))
-        self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
-        set_batched_gesv_limit(old_limit)
 
     def check_shape(self, a_shape, b_shape, error_type):
         for xp in (numpy, cupy):
