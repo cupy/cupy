@@ -4,7 +4,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy.core import _accelerator
 from cupy import testing
 
 
