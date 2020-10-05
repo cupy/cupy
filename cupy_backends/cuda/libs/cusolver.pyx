@@ -275,6 +275,163 @@ cdef extern from '../cupy_cusolver.h' nogil:
                          cuDoubleComplex* A, int lda, int* ipiv,
                          cuDoubleComplex* work, int lwork, int* devInfo)
 
+    # Compute least square solution to A * X = B using iterative refinement
+    int cusolverDnZZgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    cuDoubleComplex *dA, int ldda,
+                                    cuDoubleComplex *dB, int lddb,
+                                    cuDoubleComplex *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnZCgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    cuDoubleComplex *dA, int ldda,
+                                    cuDoubleComplex *dB, int lddb,
+                                    cuDoubleComplex *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnZYgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    cuDoubleComplex *dA, int ldda,
+                                    cuDoubleComplex *dB, int lddb,
+                                    cuDoubleComplex *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnZKgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    cuDoubleComplex *dA, int ldda,
+                                    cuDoubleComplex *dB, int lddb,
+                                    cuDoubleComplex *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnCCgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    cuComplex *dA, int ldda,
+                                    cuComplex *dB, int lddb,
+                                    cuComplex *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnCYgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    cuComplex *dA, int ldda,
+                                    cuComplex *dB, int lddb,
+                                    cuComplex *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnCKgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    cuComplex *dA, int ldda,
+                                    cuComplex *dB, int lddb,
+                                    cuComplex *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnDDgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    double *dA, int ldda,
+                                    double *dB, int lddb,
+                                    double *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnDSgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    double *dA, int ldda,
+                                    double *dB, int lddb,
+                                    double *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnDXgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    double *dA, int ldda,
+                                    double *dB, int lddb,
+                                    double *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnDHgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    double *dA, int ldda,
+                                    double *dB, int lddb,
+                                    double *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnSSgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    float *dA, int ldda,
+                                    float *dB, int lddb,
+                                    float *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnSXgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    float *dA, int ldda,
+                                    float *dB, int lddb,
+                                    float *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+    int cusolverDnSHgels_bufferSize(Handle handle, int m, int n, int nrhs,
+                                    float *dA, int ldda,
+                                    float *dB, int lddb,
+                                    float *dX, int lddx,
+                                    void *dWorkspace, size_t *lwork_bytes)
+
+    int cusolverDnZZgels(Handle handle, int m, int n, int nrhs,
+                         cuDoubleComplex *dA, int ldda,
+                         cuDoubleComplex *dB, int lddb,
+                         cuDoubleComplex *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnZCgels(Handle handle, int m, int n, int nrhs,
+                         cuDoubleComplex *dA, int ldda,
+                         cuDoubleComplex *dB, int lddb,
+                         cuDoubleComplex *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnZYgels(Handle handle, int m, int n, int nrhs,
+                         cuDoubleComplex *dA, int ldda,
+                         cuDoubleComplex *dB, int lddb,
+                         cuDoubleComplex *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnZKgels(Handle handle, int m, int n, int nrhs,
+                         cuDoubleComplex *dA, int ldda,
+                         cuDoubleComplex *dB, int lddb,
+                         cuDoubleComplex *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnCCgels(Handle handle, int m, int n, int nrhs,
+                         cuComplex *dA, int ldda,
+                         cuComplex *dB, int lddb,
+                         cuComplex *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnCYgels(Handle handle, int m, int n, int nrhs,
+                         cuComplex *dA, int ldda,
+                         cuComplex *dB, int lddb,
+                         cuComplex *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnCKgels(Handle handle, int m, int n, int nrhs,
+                         cuComplex *dA, int ldda,
+                         cuComplex *dB, int lddb,
+                         cuComplex *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnDDgels(Handle handle, int m, int n, int nrhs,
+                         double *dA, int ldda,
+                         double *dB, int lddb,
+                         double *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnDSgels(Handle handle, int m, int n, int nrhs,
+                         double *dA, int ldda,
+                         double *dB, int lddb,
+                         double *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnDXgels(Handle handle, int m, int n, int nrhs,
+                         double *dA, int ldda,
+                         double *dB, int lddb,
+                         double *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnDHgels(Handle handle, int m, int n, int nrhs,
+                         double *dA, int ldda,
+                         double *dB, int lddb,
+                         double *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnSSgels(Handle handle, int m, int n, int nrhs,
+                         float *dA, int ldda,
+                         float *dB, int lddb,
+                         float *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnSXgels(Handle handle, int m, int n, int nrhs,
+                         float *dA, int ldda,
+                         float *dB, int lddb,
+                         float *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+    int cusolverDnSHgels(Handle handle, int m, int n, int nrhs,
+                         float *dA, int ldda,
+                         float *dB, int lddb,
+                         float *dX, int lddx,
+                         void *dWorkspace, size_t lwork_bytes,
+                         int *iter, int *dInfo)
+
     ###########################################################################
     # Dense LAPACK Functions (Eigenvalue Solver)
     ###########################################################################
@@ -1508,6 +1665,359 @@ cpdef zsytrf(intptr_t handle, int uplo, int n, size_t A, int lda,
             <int*>ipiv, <cuDoubleComplex*>work, lwork, <int*>devInfo)
     check_status(status)
 
+cpdef size_t zzgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnZZgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda,
+            <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx,
+            <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t zcgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnZCgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda,
+            <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx,
+            <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t zygels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnZYgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda,
+            <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx,
+            <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t zkgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnZKgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda,
+            <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx,
+            <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t ccgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnCCgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <cuComplex*>dA, ldda,
+            <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t cygels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnCYgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <cuComplex*>dA, ldda,
+            <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t ckgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnCKgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <cuComplex*>dA, ldda,
+            <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t ddgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnDDgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <double*>dA, ldda,
+            <double*>dB, lddb, <double*>dX, lddx, <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t dsgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnDSgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <double*>dA, ldda,
+            <double*>dB, lddb, <double*>dX, lddx, <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t dxgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnDXgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <double*>dA, ldda,
+            <double*>dB, lddb, <double*>dX, lddx, <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t dhgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnDHgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <double*>dA, ldda,
+            <double*>dB, lddb, <double*>dX, lddx, <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t ssgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnSSgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <float*>dA, ldda,
+            <float*>dB, lddb, <float*>dX, lddx, <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t sxgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnSXgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <float*>dA, ldda,
+            <float*>dB, lddb, <float*>dX, lddx, <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef size_t shgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
+                               int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1:
+    cdef size_t lwork
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnSHgels_bufferSize(
+            <Handle>handle, m, n, nrhs, <float*>dA, ldda,
+            <float*>dB, lddb, <float*>dX, lddx, <void*>dwork, &lwork)
+    check_status(status)
+    return lwork
+
+cpdef int zzgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnZZgels(
+            <Handle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda,
+            <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int zcgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnZCgels(
+            <Handle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda,
+            <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int zygels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnZYgels(
+            <Handle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda,
+            <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int zkgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnZKgels(
+            <Handle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda,
+            <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int ccgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnCCgels(
+            <Handle>handle, m, n, nrhs, <cuComplex*>dA, ldda,
+            <cuComplex*>dB, lddb, <cuComplex*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int cygels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnCYgels(
+            <Handle>handle, m, n, nrhs, <cuComplex*>dA, ldda,
+            <cuComplex*>dB, lddb, <cuComplex*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int ckgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnCKgels(
+            <Handle>handle, m, n, nrhs, <cuComplex*>dA, ldda,
+            <cuComplex*>dB, lddb, <cuComplex*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int ddgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnDDgels(
+            <Handle>handle, m, n, nrhs, <double*>dA, ldda,
+            <double*>dB, lddb, <double*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int dsgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnDSgels(
+            <Handle>handle, m, n, nrhs, <double*>dA, ldda,
+            <double*>dB, lddb, <double*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int dxgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnDXgels(
+            <Handle>handle, m, n, nrhs, <double*>dA, ldda,
+            <double*>dB, lddb, <double*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int dhgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnDHgels(
+            <Handle>handle, m, n, nrhs, <double*>dA, ldda,
+            <double*>dB, lddb, <double*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int ssgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnSSgels(
+            <Handle>handle, m, n, nrhs, <float*>dA, ldda,
+            <float*>dB, lddb, <float*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int sxgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnSXgels(
+            <Handle>handle, m, n, nrhs, <float*>dA, ldda,
+            <float*>dB, lddb, <float*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
+
+cpdef int shgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork, size_t dInfo):
+    cdef int iter
+    _setStream(handle)
+    with nogil:
+        status = cusolverDnSHgels(
+            <Handle>handle, m, n, nrhs, <float*>dA, ldda,
+            <float*>dB, lddb, <float*>dX, lddx,
+            <void*>dwork, lwork, &iter, <int*>dInfo)
+    check_status(status)
+    return iter
 
 ###############################################################################
 # Dense LAPACK Functions (Eigenvalue Solver)
