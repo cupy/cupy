@@ -1,6 +1,7 @@
 import inspect
 import io
 import os
+import platform
 
 import cupy
 import numpy
@@ -174,6 +175,7 @@ class _RuntimeInfo(object):
 
     def __str__(self):
         records = [
+            ('OS',  platform.platform())
             ('CuPy Version', self.cupy_version),
             ('NumPy Version', self.numpy_version),
             ('SciPy Version', self.scipy_version),
@@ -203,6 +205,13 @@ class _RuntimeInfo(object):
             ('NCCL Runtime Version', self.nccl_runtime_version),
             ('cuTENSOR Version', self.cutensor_version),
         ]
+
+        for device_id in range(cupy.cuda.runtime.getDeviceCount()):
+            with cupy.cuda.Device(device_id) as device:
+                records += [
+                    ('Device Name', device.attributes),
+                    ('Compute Capability', device.compute_capability),
+                ]
 
         width = max([len(r[0]) for r in records]) + 2
         fmt = '{:' + str(width) + '}: {}\n'
