@@ -726,6 +726,16 @@ def cythonize(extensions, arg_options):
     cythonize_options = {key: arg_options[key]
                          for key in cythonize_option_keys}
 
+    # Compile-time constants to be used in Cython code
+    compile_time_env = cythonize_options.get('compile_time_env')
+    if compile_time_env is None:
+        compile_time_env = {}
+        cythonize_options['compile_time_env'] = compile_time_env
+    if use_hip or arg_options['no_cuda']:
+        compile_time_env['CUDA_VERSION'] = 0
+    else:
+        compile_time_env['CUDA_VERSION'] = build.get_cuda_version()
+
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,
         compiler_directives=directives, **cythonize_options)
