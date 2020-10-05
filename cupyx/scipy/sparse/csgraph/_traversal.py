@@ -73,7 +73,7 @@ def _connected_components(csgraph, directed, return_labels):
     return n, labels
 
 
-_GET_ROW_ID_ = '''
+_device_get_row_id = '''
 __device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
     int row = (min + max) / 2;
     while (min < max) {
@@ -90,7 +90,7 @@ __device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
 }
 '''
 
-_CONNECT_NODES_ = '''
+_device_connect_nodes = '''
 __device__ inline void connect_nodes(int i, int j, int *labels) {
     while (true) {
         while (i != labels[i]) { i = labels[i]; }
@@ -110,22 +110,22 @@ __device__ inline void connect_nodes(int i, int j, int *labels) {
 '''
 
 _cupy_connect_directed = cupy.core.ElementwiseKernel(
-    'raw I INDICES, raw I INDPTR, int32 M',
-    'raw O LABELS',
+    'raw I indices, raw I indptr, int32 n_rows',
+    'raw O labels',
     '''
-    int row = get_row_id(i, 0, M - 1, &(INDPTR[0]));
-    int col = INDICES[i];
+    int row = get_row_id(i, 0, n_rows - 1, &(indptr[0]));
+    int col = indices[i];
     if (row <= col) continue;
 
     // check if there is a connection from "col" to "row"
     int r = -1;
-    int p_min = INDPTR[col];
-    int p_max = INDPTR[col + 1] - 1;
+    int p_min = indptr[col];
+    int p_max = indptr[col + 1] - 1;
     while (p_min <= p_max) {
         int p = (p_min + p_max) / 2;
-        r = INDICES[p];
+        r = indices[p];
         if (r == row) {
-            connect_nodes(row, col, &(LABELS[0]));
+            connect_nodes(row, col, &(labels[0]));
             break;
         }
         if (r < row) {
@@ -136,54 +136,54 @@ _cupy_connect_directed = cupy.core.ElementwiseKernel(
     }
     ''',
     '_cupy_connect_directed',
-    preamble=_GET_ROW_ID_ + _CONNECT_NODES_
+    preamble=_device_get_row_id + _device_connect_nodes
 )
 
 _cupy_connect_undirected = cupy.core.ElementwiseKernel(
-    'raw I INDICES, raw I INDPTR, int32 M',
-    'raw O LABELS',
+    'raw I indices, raw I indptr, int32 n_rows',
+    'raw O labels',
     '''
-    int row = get_row_id(i, 0, M - 1, &(INDPTR[0]));
-    int col = INDICES[i];
+    int row = get_row_id(i, 0, n_rows - 1, &(indptr[0]));
+    int col = indices[i];
     if (row == col) continue;
-    connect_nodes(row, col, &(LABELS[0]));
+    connect_nodes(row, col, &(labels[0]));
     ''',
     '_cupy_connect_undirected',
-    preamble=_GET_ROW_ID_ + _CONNECT_NODES_
+    preamble=_device_get_row_id + _device_connect_nodes
 )
 
 _cupy_count_components = cupy.core.ElementwiseKernel(
     '',
-    'raw I LABELS, raw int32 count, raw int32 ROOT_LABELS',
+    'raw I labels, raw int32 count, raw int32 root_labels',
     '''
     int j = i;
-    while (j != LABELS[j]) { j = LABELS[j]; }
+    while (j != labels[j]) { j = labels[j]; }
     if (j != i) {
-        LABELS[i] = j;
+        labels[i] = j;
     } else {
         int k = atomicAdd(&count[0], 1);
-        ROOT_LABELS[k] = i;
+        root_labels[k] = i;
     }
     ''',
     '_cupy_count_components')
 
 _cupy_adjust_labels = cupy.core.ElementwiseKernel(
-    'int32 N, raw I ROOT_LABELS',
-    'I LABELS',
+    'int32 n_root_labels, raw I root_labels',
+    'I labels',
     '''
-    int cur_label = LABELS;
+    int cur_label = labels;
     int j_min = 0;
-    int j_max = N - 1;
+    int j_max = n_root_labels - 1;
     int j = (j_min + j_max) / 2;
     while (j_min < j_max) {
-        if (cur_label == ROOT_LABELS[j]) break;
-        if (cur_label < ROOT_LABELS[j]) {
+        if (cur_label == root_labels[j]) break;
+        if (cur_label < root_labels[j]) {
             j_max = j - 1;
         } else {
             j_min = j + 1;
         }
         j = (j_min + j_max) / 2;
     }
-    LABELS = j;
+    labels = j;
     ''',
     '_cupy_adjust_labels')
