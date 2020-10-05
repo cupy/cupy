@@ -1,7 +1,5 @@
-// This file is a stub header file of hiprtc for Read the Docs.
-
-#ifndef INCLUDE_GUARD_CUPY_HIPRTC_H
-#define INCLUDE_GUARD_CUPY_HIPRTC_H
+#ifndef INCLUDE_GUARD_HIP_CUPY_HIPRTC_H
+#define INCLUDE_GUARD_HIP_CUPY_HIPRTC_H
 
 #include <hip/hiprtc.h>
 
@@ -65,4 +63,4 @@ nvrtcResult nvrtcGetLoweredName(nvrtcProgram prog,
 
 }
 
-#endif // #ifndef INCLUDE_GUARD_CUPY_HIPRTC_H
+#endif // #ifndef INCLUDE_GUARD_HIP_CUPY_HIPRTC_H

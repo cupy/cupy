@@ -1,5 +1,3 @@
-// This file is a stub header file of cusparse for Read the Docs.
-
 #ifndef INCLUDE_GUARD_CUPY_CUSPARSE_H
 #define INCLUDE_GUARD_CUPY_CUSPARSE_H
 
@@ -528,9 +526,9 @@ cusparseStatus_t cusparseZcsr2csc(...) {
 #else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #ifdef CUPY_USE_HIP
-#include "../cupy_hip_common.h"
+#include "hip/cupy_common.h"
 #else // #ifdef CUPY_USE_HIP
-#include "../cupy_cuda_common.h"
+#include "cupy_cuda_common.h"
 #endif // #ifdef CUPY_USE_HIP
 
 extern "C" {
@@ -1552,50 +1550,11 @@ cusparseStatus_t cusparseCsr2cscEx2(...) {
 
 #endif  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
-
-///////////////////////////////////////////////////////////////////////////////
-// Definitions are for compatibility
-///////////////////////////////////////////////////////////////////////////////
-
-extern "C" {
-
 #if defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP)
 
-cusparseStatus_t cusparseSnnz_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDnnz_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseCnnz_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseZnnz_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseScsr2csr_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDcsr2csr_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseCcsr2csr_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseZcsr2csr_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
+#include "stub/cupy_cusparse.h"
 
 #endif  // #if defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP)
-
-}  // extern "C"
 
 
 #endif  // INCLUDE_GUARD_CUPY_CUSPARSE_H

@@ -9,7 +9,7 @@ from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 from cupy_backends.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
 
-cdef extern from 'cupy_cutensor.h' nogil:
+cdef extern from '../cupy_cutensor.h' nogil:
     ctypedef int Status 'cutensorStatus_t'
     ctypedef int Algo 'cutensorAlgo_t'
     ctypedef int Operator 'cutensorOperator_t'
