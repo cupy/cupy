@@ -61,6 +61,7 @@ cuda_files = [
     'cupy.core._reduction',
     'cupy.core._routines_binary',
     'cupy.core._routines_indexing',
+    'cupy.core._routines_linalg',
     'cupy.core._routines_logic',
     'cupy.core._routines_manipulation',
     'cupy.core._routines_math',
