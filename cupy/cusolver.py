@@ -545,7 +545,7 @@ def gels(a, b):
 
     Returns:
         cupy.ndarray:
-            The matrix with dimension ``(M)`` or ``(M, K)``.
+            The matrix with dimension ``(N)`` or ``(N, K)``.
     """
     if a.ndim != 2:
         raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
