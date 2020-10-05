@@ -18,16 +18,20 @@ from cupy.testing import attr
 class TestBatchedGesv(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
-    def _make_array(self, shape, alpha, beta):
-        a = testing.shaped_random(shape, cupy, dtype=self.r_dtype,
-                                  scale=alpha) + beta
+    def _make_random_matrix(self, shape, xp):
+        a = testing.shaped_random(shape, xp, dtype=self.r_dtype, scale=1)
+        if self.dtype.char in 'FD':
+            a = a + 1j * testing.shaped_random(shape, xp, dtype=self.r_dtype,
+                                               scale=1)
         return a
 
-    def _make_matrix(self, shape, alpha, beta):
-        a = self._make_array(shape, alpha, beta)
-        if self.dtype.char in 'FD':
-            a = a + 1j * self._make_array(shape, alpha, beta)
-        return a
+    def _make_matrix(self, shape):
+        a = self._make_random_matrix(shape, numpy)
+        u, s, vh = numpy.linalg.svd(a)
+        s = testing.shaped_random(s.shape, numpy, dtype=self.r_dtype,
+                                  scale=1) + 1
+        a = numpy.einsum('...ik,...k,...kj', u, s, vh)
+        return cupy.array(a)
 
     def setUp(self):
         self.dtype = numpy.dtype(self.dtype)
@@ -38,14 +42,8 @@ class TestBatchedGesv(unittest.TestCase):
         n = self.n
         bs = 1 if self.bs is None else self.bs
         nrhs = 1 if self.nrhs is None else self.nrhs
-        # Diagonally dominant matrix is used as it is stable
-        alpha = 2.0 / n
-        a = self._make_matrix((bs, n, n), alpha, -alpha / 2)
-        diag = cupy.diag(cupy.ones((n,), dtype=self.r_dtype))
-        for i in range(bs):
-            a[i][diag > 0] = 0
-            a[i] += diag
-        x = self._make_matrix((bs, n, nrhs), 0.2, 0.9)
+        a = self._make_matrix((bs, n, n))
+        x = self._make_random_matrix((bs, n, nrhs), cupy)
         b = cupy.matmul(a, x)
         a_shape = (n, n) if self.bs is None else (bs, n, n)
         b_shape = [n]
