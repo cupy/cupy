@@ -286,7 +286,7 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         self.assertIsNot(m.data, n.data)
         return n
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_transpose(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.transpose()

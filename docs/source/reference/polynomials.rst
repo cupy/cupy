@@ -44,6 +44,16 @@ Basics
     cupy.roots
 
 
+Fitting
+~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+    cupy.polyfit
+
+
 Arithmetic
 ~~~~~~~~~~
 

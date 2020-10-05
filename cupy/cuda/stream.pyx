@@ -4,7 +4,7 @@ from cupy_backends.cuda cimport stream as stream_module
 import threading
 import weakref
 
-from cupy import util
+from cupy import _util
 
 
 cdef object _thread_local = threading.local()
@@ -103,7 +103,7 @@ class Event(object):
                 (interprocess and runtime.eventInterprocess))
         self.ptr = runtime.eventCreateWithFlags(flag)
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.ptr:
@@ -215,8 +215,13 @@ class BaseStream(object):
             arg (object): Argument to the callback.
 
         """
+        if runtime._is_hip_environment and self.ptr == 0:
+            raise RuntimeError('HIP does not allow adding callbacks to the '
+                               'default (null) stream')
+
         def f(stream, status, dummy):
             callback(self, status, arg)
+
         runtime.streamAddCallback(self.ptr, f, 0)
 
     def record(self, event=None):
@@ -278,7 +283,7 @@ class Stream(BaseStream):
         else:
             self.ptr = runtime.streamCreate()
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         cdef intptr_t current_ptr
         if is_shutting_down():
             return

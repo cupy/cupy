@@ -45,7 +45,7 @@ def _check_size_footprint_structure(ndim, size, footprint, structure,
 def _convert_1d_args(ndim, weights, origin, axis):
     if weights.ndim != 1 or weights.size < 1:
         raise RuntimeError('incorrect filter size')
-    axis = cupy.util._normalize_axis_index(axis, ndim)
+    axis = cupy._util._normalize_axis_index(axis, ndim)
     w_shape = [1]*ndim
     w_shape[axis] = weights.size
     weights = weights.reshape(w_shape)
@@ -195,7 +195,8 @@ __device__ bool nonzero(complex<T> x) { return x.real() || x.imag(); }
 
 def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                         offsets, cval, ctype='X', preamble='', options=(),
-                        has_weights=True, has_structure=False):
+                        has_weights=True, has_structure=False, has_mask=False,
+                        binary_morphology=False):
     # Currently this code uses CArray for weights but avoids using CArray for
     # the input data and instead does the indexing itself since it is faster.
     # If CArray becomes faster than follow the comments that start with
@@ -207,6 +208,8 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         in_params += ', raw W w'
     if has_structure:
         in_params += ', raw S s'
+    if has_mask:
+        in_params += ', raw M mask'
     out_params = 'Y y'
 
     # CArray: remove xstride_{j}=... from string
@@ -248,9 +251,14 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     value = '(*(X*)&data[{expr}])'.format(expr=expr)
     if mode == 'constant':
         cond = ' || '.join(['(ix_{} < 0)'.format(j) for j in range(ndim)])
-        value = '(({cond}) ? cast<{ctype}>({cval}) : {value})'.format(
-            cond=cond, ctype=ctype, cval=cval, value=value)
-    found = found.format(value=value)
+
+    if binary_morphology:
+        found = found.format(cond=cond, value=value)
+    else:
+        if mode == 'constant':
+            value = '(({cond}) ? cast<{ctype}>({cval}) : {value})'.format(
+                cond=cond, ctype=ctype, cval=cval, value=value)
+        found = found.format(value=value)
 
     # CArray: replace comment and next line in string with
     #   {type} inds[{ndim}] = {{0}};
@@ -280,6 +288,8 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         name += '_i64'
     if has_structure:
         name += '_with_structure'
+    if has_mask:
+        name += '_with_mask'
     preamble = _CAST_FUNCTION + preamble
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,

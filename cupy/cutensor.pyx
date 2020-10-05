@@ -27,6 +27,50 @@ cdef dict _contraction_finds = {}
 cdef dict _contraction_plans = {}
 cdef dict _modes = {}
 cdef dict _scalars = {}
+cdef dict _dict_contraction = {
+    'eee': {core.COMPUTE_TYPE_DEFAULT: cutensor.R_MIN_32F,
+            core.COMPUTE_TYPE_FP32: cutensor.R_MIN_32F},
+    'fff': {core.COMPUTE_TYPE_DEFAULT: cutensor.R_MIN_32F,
+            core.COMPUTE_TYPE_FP32: cutensor.R_MIN_32F,
+            core.COMPUTE_TYPE_FP16: cutensor.R_MIN_16F},
+    'ddd': {core.COMPUTE_TYPE_DEFAULT: cutensor.R_MIN_64F,
+            core.COMPUTE_TYPE_FP64: cutensor.R_MIN_64F,
+            core.COMPUTE_TYPE_FP32: cutensor.R_MIN_32F},
+    'FFF': {core.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_32F,
+            core.COMPUTE_TYPE_FP32: cutensor.C_MIN_32F},
+    'DDD': {core.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_64F,
+            core.COMPUTE_TYPE_FP64: cutensor.C_MIN_64F,
+            core.COMPUTE_TYPE_FP32: cutensor.C_MIN_32F},
+    'dDD': {core.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_64F,
+            core.COMPUTE_TYPE_FP64: cutensor.C_MIN_64F},
+    'DdD': {core.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_64F,
+            core.COMPUTE_TYPE_FP64: cutensor.C_MIN_64F},
+}
+cdef dict _dict_contraction_v10200 = {
+    'eee': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_32F,
+            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F,
+            core.COMPUTE_TYPE_FP16: cutensor.COMPUTE_16F},
+    'fff': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_32F,
+            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F,
+            core.COMPUTE_TYPE_TF32: cutensor.COMPUTE_TF32,
+            core.COMPUTE_TYPE_FP16: cutensor.COMPUTE_16F},
+    'ddd': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
+            core.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
+            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
+    'FFF': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_32F,
+            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F,
+            core.COMPUTE_TYPE_TF32: cutensor.COMPUTE_TF32,
+            core.COMPUTE_TYPE_FP16: cutensor.COMPUTE_16F},
+    'DDD': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
+            core.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
+            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
+    'dDD': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
+            core.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
+            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
+    'DdD': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
+            core.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
+            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
+}
 
 
 cdef class Mode(object):
@@ -409,6 +453,55 @@ cdef inline ContractionPlan _create_contraction_plan(
     return plan
 
 
+cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype, compute_dtype):
+    key = a_dtype.char + b_dtype.char + out_dtype.char
+    if cutensor.get_version() >= 10200:
+        # version 1.2.0 or later
+        dict_contraction = _dict_contraction_v10200
+    else:
+        dict_contraction = _dict_contraction
+    if key not in dict_contraction:
+        raise ValueError('Un-supported dtype combinations: ({}, {}, {})'.
+                         format(a_dtype, b_dtype, out_dtype))
+    compute_capability = int(device.get_compute_capability())
+    if compute_capability < 70 and 'e' in key:
+        raise ValueError('FP16 dtype is only supported on GPU with compute '
+                         'capability 7.0 or higher.')
+    if compute_dtype is None:
+        compute_type = cupy.core.get_compute_type(out_dtype)
+    else:
+        compute_dtype = numpy.dtype(compute_dtype)
+        if compute_dtype.char == 'e':
+            compute_type = core.COMPUTE_TYPE_FP16
+        elif compute_dtype.char in 'fF':
+            compute_type = core.COMPUTE_TYPE_FP32
+        elif compute_dtype.char in 'dD':
+            compute_type = core.COMPUTE_TYPE_FP64
+        else:
+            raise ValueError('Un-supported dtype: {}'.format(compute_dtype))
+    if compute_type in dict_contraction[key]:
+        cutensor_compute_type = dict_contraction[key][compute_type]
+        if not (compute_capability < 70 and
+                cutensor_compute_type in (cutensor.R_MIN_16F,
+                                          cutensor.C_MIN_16F,
+                                          cutensor.COMPUTE_16F)):
+            return cutensor_compute_type
+    warnings.warn('Use of compute type ({}) for the dtype combination '
+                  '({}, {}, {}) is not supported in cuTENSOR contraction on '
+                  'GPU with compute capability ({}). Default compute type '
+                  'will be used instead.'.
+                  format(cupy.core.compute_type_to_str(compute_type),
+                         a_dtype, b_dtype, out_dtype, compute_capability))
+    return dict_contraction[key][core.COMPUTE_TYPE_DEFAULT]
+
+
+cdef _get_scalar_dtype(out_dtype):
+    if out_dtype == numpy.float16:
+        return numpy.float32
+    else:
+        return out_dtype
+
+
 def contraction(
         alpha, ndarray A, TensorDescriptor desc_A, mode_A,
         ndarray B, TensorDescriptor desc_B, mode_B,
@@ -455,22 +548,20 @@ def contraction(
     Examples:
         See examples/cutensor/contraction.py
     """
-    if not (A.dtype == B.dtype == C.dtype):
-        raise ValueError(
-            'dtype mismatch: ({}, {}, {})'.format(A.dtype, B.dtype, C.dtype))
     if not (A._c_contiguous and B._c_contiguous and C._c_contiguous):
         raise ValueError('The inputs should be contiguous arrays.')
-
-    compute_dtype = _set_compute_dtype(A.dtype, compute_dtype)
+    compute_type = _get_contraction_compute_type(A.dtype, B.dtype, C.dtype,
+                                                 compute_dtype)
+    scalar_dtype = _get_scalar_dtype(C.dtype)
 
     return _contraction_impl(
         _get_handle(),
-        _create_scalar(alpha, compute_dtype),
+        _create_scalar(alpha, scalar_dtype),
         A, desc_A, _auto_create_mode(A, mode_A),
         B, desc_B, _auto_create_mode(B, mode_B),
-        _create_scalar(beta, compute_dtype),
+        _create_scalar(beta, scalar_dtype),
         C, desc_C, _auto_create_mode(C, mode_C),
-        _get_cutensor_dtype(compute_dtype), algo, ws_pref)
+        compute_type, algo, ws_pref)
 
 
 cdef inline ndarray _contraction_impl(
@@ -638,6 +729,8 @@ def _try_reduction_routine(
     if dtype != x.dtype:
         return None
 
+    if x.ndim == 0:
+        return None
     if x.size == 0:
         return None
     if not x._c_contiguous:
@@ -647,6 +740,8 @@ def _try_reduction_routine(
     in_arg = x
 
     reduce_axis, out_axis = _reduction._get_axis(axis, x.ndim)
+    if len(reduce_axis) == 0:
+        return None
     out_shape = _reduction._get_out_shape(
         x._shape, reduce_axis, out_axis, keepdims)
     if out is None:

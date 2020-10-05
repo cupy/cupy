@@ -72,4 +72,5 @@ class TestCArray32BitBoundary(unittest.TestCase):
         a = cupy.full((1, self.size), 7, dtype=cupy.int8)
         # Reduction
         result = a.sum(axis=0, dtype=cupy.int8)
-        assert result.sum() == self.size * 7
+        # Explicitly specify the dtype to absorb Linux/Windows difference.
+        assert result.sum(dtype=cupy.int64) == self.size * 7

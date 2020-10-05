@@ -7,6 +7,7 @@ from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
+from cupy.cuda cimport cub
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
 from cupy_backends.cuda.api cimport runtime
@@ -16,7 +17,7 @@ import string
 from cupy import _environment
 from cupy.core._kernel import _get_param_info
 from cupy.cuda import driver
-from cupy import util
+from cupy import _util
 
 
 cdef function.Function _create_cub_reduction_function(
@@ -197,7 +198,7 @@ __global__ void ${name}(${params}) {
     return module.get_function(name)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _SimpleCubReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
@@ -247,6 +248,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
     cdef tuple axis_permutes_cub
     cdef ndarray in_arr, out_arr
     cdef Py_ssize_t contiguous_size = 1
+    cdef str order
 
     # detect whether CUB headers exists somewhere:
     if _cub_path is None:
@@ -263,8 +265,16 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
     # check reduction axes, if not contiguous then fall back to old kernel
     if in_arr._f_contiguous:
+        order = 'F'
+        if not cub._cub_device_segmented_reduce_axis_compatible(
+                reduce_axis, in_arr.ndim, order):
+            return None
         axis_permutes_cub = tuple(sorted(reduce_axis) + sorted(out_axis))
     elif in_arr._c_contiguous:
+        order = 'C'
+        if not cub._cub_device_segmented_reduce_axis_compatible(
+                reduce_axis, in_arr.ndim, order):
+            return None
         axis_permutes_cub = tuple(sorted(out_axis) + sorted(reduce_axis))
     else:
         return None

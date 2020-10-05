@@ -76,7 +76,7 @@ main() {
       #echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
 
       apt update -qqy
-      apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver -qqy
+      apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft -qqy
       export HCC_AMDGPU_TARGET=gfx900
       export ROCM_HOME=/opt/rocm
       export CUPY_INSTALL_USE_HIP=1
@@ -147,7 +147,7 @@ prepare_docker() {
 # base development branch.
 is_known_base_branch() {
   local branch="${1##refs/heads/}"
-  for BASE_BRANCH in master v7; do
+  for BASE_BRANCH in master v7 v8; do
     if [ "${branch}" = "${BASE_BRANCH}" ]; then
       return 0
     fi
@@ -157,7 +157,7 @@ is_known_base_branch() {
 
 # get_base_branch returns the base development branch for the current HEAD.
 get_base_branch() {
-  for BASE_BRANCH in master v7; do
+  for BASE_BRANCH in master v7 v8; do
     git merge-base --is-ancestor "origin/${BASE_BRANCH}" HEAD && echo "${BASE_BRANCH}" && return 0
   done
   echo "Base branch of HEAD is not valid." >&2

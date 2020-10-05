@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import glob
 import os
 from setuptools import setup, find_packages
 import sys
@@ -100,38 +101,21 @@ setup_requires = requirements['setup']
 install_requires = requirements['install']
 tests_require = requirements['test']
 
+# List of files that needs to be in the distribution (sdist/wheel).
+# Notes:
+# - Files only needed in sdist should be added to `MANIFEST.in`.
+# - The following glob (`**`) ignores items starting with `.`.
+cupy_package_data = [
+    'cupy/cuda/cupy_thrust.cu',
+    'cupy/cuda/cupy_cub.cu',
+] + [
+    x for x in glob.glob('cupy/core/include/cupy/**', recursive=True)
+    if os.path.isfile(x)
+]
 
 package_data = {
     'cupy': [
-        'core/include/cupy/complex/arithmetic.h',
-        'core/include/cupy/complex/catrig.h',
-        'core/include/cupy/complex/catrigf.h',
-        'core/include/cupy/complex/ccosh.h',
-        'core/include/cupy/complex/ccoshf.h',
-        'core/include/cupy/complex/cexp.h',
-        'core/include/cupy/complex/cexpf.h',
-        'core/include/cupy/complex/clog.h',
-        'core/include/cupy/complex/clogf.h',
-        'core/include/cupy/complex/complex.h',
-        'core/include/cupy/complex/complex_inl.h',
-        'core/include/cupy/complex/cpow.h',
-        'core/include/cupy/complex/cproj.h',
-        'core/include/cupy/complex/csinh.h',
-        'core/include/cupy/complex/csinhf.h',
-        'core/include/cupy/complex/csqrt.h',
-        'core/include/cupy/complex/csqrtf.h',
-        'core/include/cupy/complex/ctanh.h',
-        'core/include/cupy/complex/ctanhf.h',
-        'core/include/cupy/complex/math_private.h',
-        'core/include/cupy/carray.cuh',
-        'core/include/cupy/complex.cuh',
-        'core/include/cupy/atomics.cuh',
-        'core/include/cupy/type_dispatcher.cuh',
-        'core/include/cupy/cuComplex_bridge.h',
-        'core/include/cupy/_cuda/cuda-*/*.h',
-        'core/include/cupy/_cuda/cuda-*/*.hpp',
-        'cuda/cupy_thrust.cu',
-        'cuda/cupy_cub.cu',
+        os.path.relpath(x, 'cupy') for x in cupy_package_data
     ],
 }
 
@@ -170,7 +154,7 @@ Operating System :: Microsoft :: Windows
 setup(
     name=package_name,
     version=__version__,  # NOQA
-    description='CuPy: NumPy-like API accelerated with CUDA',
+    description='CuPy: A NumPy-compatible array library accelerated by CUDA',
     long_description=long_description,
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
