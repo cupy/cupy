@@ -60,6 +60,10 @@ cudaError_t cudaDeviceSynchronize() {
     return cudaSuccess;
 }
 
+cudaError_t cudaGetDeviceProperties(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaDeviceCanAccessPeer(...) {
     return cudaSuccess;
 }
