@@ -13,7 +13,7 @@ from cupy.core._fusion_variable import _TraceArray
 from cupy.core._fusion_variable import _VariableSet
 from cupy.core import _fusion_op
 from cupy.core import _fusion_optimization
-from cupy.core import internal
+from cupy.core cimport internal
 
 
 _thread_local = _fusion_thread_local.thread_local

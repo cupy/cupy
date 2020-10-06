@@ -7,7 +7,7 @@ from cupy.core._reduction import create_reduction_func
 from cupy.core._kernel import create_ufunc
 from cupy.core._scalar import get_typename
 from cupy.core._ufuncs import elementwise_copy
-from cupy.core import internal
+from cupy.core cimport internal
 from cupy import _util
 
 from cupy.core cimport _accelerator
