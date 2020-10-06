@@ -198,7 +198,7 @@ def nancumsum(a, axis=None, dtype=None, out=None):
 
 def nancumprod(a, axis=None, dtype=None, out=None):
     """Returns the cumulative product of an array along a given axis treating
-    Not a Numbers (NaNs) as zero.
+    Not a Numbers (NaNs) as one.
 
     Args:
         a (cupy.ndarray): Input array.
