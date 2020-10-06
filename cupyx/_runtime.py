@@ -208,9 +208,12 @@ class _RuntimeInfo(object):
 
         for device_id in range(cupy.cuda.runtime.getDeviceCount()):
             with cupy.cuda.Device(device_id) as device:
+                props = cupy.cuda.runtime.getDeviceProperties(device_id)
                 records += [
-                    ('Device Name', device.attributes),
-                    ('Compute Capability', device.compute_capability),
+                    ('Device {} Name'.format(device_id),
+                     props['name'].decode('utf-8')),
+                    ('Device {} Compute Capability'.format(device_id),
+                     device.compute_capability),
                 ]
 
         width = max([len(r[0]) for r in records]) + 2
