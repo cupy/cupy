@@ -15,7 +15,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
 
     """Compressed Sparse Column matrix.
 
-    Now it has only part of initializer formats:
+    This can be instantiated in several ways.
 
     ``csc_matrix(D)``
         ``D`` is a rank-2 :class:`cupy.ndarray`.
@@ -24,6 +24,9 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     ``csc_matrix((M, N), [dtype])``
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
         is float64.
+    ``csc_matrix((data, (row, col))``
+        All ``data``, ``row`` and ``col`` are one-dimenaional
+        :class:`cupy.ndarray`.
     ``csc_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.
