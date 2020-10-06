@@ -5,6 +5,7 @@ import pytest
 
 import cupy
 import cupy.core._accelerator as _acc
+
 from cupy import testing
 
 
@@ -237,7 +238,7 @@ class TestCubReduction(unittest.TestCase):
         _acc.set_routine_accelerators(self.old_accelerators)
 
     @testing.for_contiguous_axes()
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_min(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
@@ -260,8 +261,18 @@ class TestCubReduction(unittest.TestCase):
         # ...then perform the actual computation
         return a.min(axis=axis)
 
-    @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_cub_min_empty_axis(self, xp, dtype, contiguous_check=False):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.min(axis=())
+
+    @testing.for_contiguous_axes()
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_max(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
@@ -283,3 +294,75 @@ class TestCubReduction(unittest.TestCase):
             a.max(axis=axis)
         # ...then perform the actual computation
         return a.max(axis=axis)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_cub_max_empty_axis(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.max(axis=())
+
+
+# This class compares unaccelerated reduction results against NumPy's
+@testing.parameterize(*testing.product({
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    'order': ('C', 'F'),
+}))
+@testing.gpu
+class TestUnacceleratedReduction(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = _acc.get_routine_accelerators()
+        _acc.set_routine_accelerators([])
+        # also avoid fallback to CUB via the general reduction kernel
+        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+        _acc.set_reduction_accelerators([])
+
+    def tearDown(self):
+        _acc.set_routine_accelerators(self.old_accelerators)
+        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
+
+    @testing.for_contiguous_axes()
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_unaccelerated_min(self, xp, dtype, axis):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.min(axis=axis)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_unaccelerated_min_empty_axis(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.min(axis=())
+
+    @testing.for_contiguous_axes()
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_unaccelerated_max(self, xp, dtype, axis):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.max(axis=axis)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_unaccelerated_max_empty_axis(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.max(axis=())

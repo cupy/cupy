@@ -18,11 +18,7 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
 
-# TODO(leofang): always import cub when hipCUB is supported
-if not cupy.cuda.runtime.is_hip:
-    from cupy.cuda import cub
-else:
-    cub = None
+from cupy.cuda import cub
 
 if cupy.cuda.cutensor.available:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor

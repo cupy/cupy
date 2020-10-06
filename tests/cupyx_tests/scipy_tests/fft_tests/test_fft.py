@@ -10,7 +10,7 @@ import pytest
 
 import cupy as cp
 from cupy import testing
-from cupy.fft.fft import _default_fft_func, _fftn
+from cupy.fft._fft import _default_fft_func, _fftn
 import cupyx.scipy.fft as cp_fft
 from cupyx.scipy.fft import _scipy_150
 

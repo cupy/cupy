@@ -365,8 +365,9 @@ cdef _broadcast_core(list arrays, shape_t& shape):
 cpdef bint _contig_axes(tuple axes):
     # Indicate if the specified axes are in ascending order without gaps.
     cdef Py_ssize_t n
-    cdef bint contig = True
-    for n in range(1, len(axes)):
+    cdef int n_ax = len(axes)
+    cdef bint contig = n_ax > 0
+    for n in range(1, n_ax):
         contig = (axes[n] - axes[n - 1]) == 1
         if not contig:
             break

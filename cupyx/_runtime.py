@@ -1,6 +1,9 @@
 import inspect
 import io
 import os
+import platform
+
+import numpy
 
 import cupy
 
@@ -28,6 +31,11 @@ try:
     import cupy_backends.cuda.libs.cutensor as cutensor
 except ImportError:
     cutensor = None
+
+try:
+    import scipy
+except ImportError:
+    scipy = None
 
 
 def _eval_or_error(func, errors):
@@ -103,6 +111,9 @@ class _RuntimeInfo(object):
     cub_build_version = None
     cutensor_version = None
 
+    numpy_version = None
+    scipy_version = None
+
     def __init__(self):
         self.cupy_version = cupy.__version__
 
@@ -159,9 +170,16 @@ class _RuntimeInfo(object):
         if cutensor is not None:
             self.cutensor_version = cutensor.get_version()
 
+        self.numpy_version = numpy.version.full_version
+        if scipy is not None:
+            self.scipy_version = scipy.version.full_version
+
     def __str__(self):
         records = [
+            ('OS',  platform.platform()),
             ('CuPy Version', self.cupy_version),
+            ('NumPy Version', self.numpy_version),
+            ('SciPy Version', self.scipy_version),
             ('CUDA Root', self.cuda_path),
 
             ('CUDA Build Version', self.cuda_build_version),
@@ -188,6 +206,16 @@ class _RuntimeInfo(object):
             ('NCCL Runtime Version', self.nccl_runtime_version),
             ('cuTENSOR Version', self.cutensor_version),
         ]
+
+        for device_id in range(cupy.cuda.runtime.getDeviceCount()):
+            with cupy.cuda.Device(device_id) as device:
+                props = cupy.cuda.runtime.getDeviceProperties(device_id)
+                records += [
+                    ('Device {} Name'.format(device_id),
+                     props['name'].decode('utf-8')),
+                    ('Device {} Compute Capability'.format(device_id),
+                     device.compute_capability),
+                ]
 
         width = max([len(r[0]) for r in records]) + 2
         fmt = '{:' + str(width) + '}: {}\n'
