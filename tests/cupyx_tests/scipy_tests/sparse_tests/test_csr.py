@@ -899,6 +899,15 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(ValueError):
                 x @ m
 
+    def test_matmul_scalar_like_array(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            x = xp.array(2.0, self.dtype)
+            with pytest.raises(ValueError):
+                m @ x
+            with pytest.raises(ValueError):
+                x @ m
+
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_has_canonical_format(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
