@@ -16,7 +16,7 @@ from cupy.testing import attr
 }))
 @attr.gpu
 class TestBatchedGesv(unittest.TestCase):
-    _tol = {'f': 1e-5, 'd': 1e-12}
+    _tol = {'f': 5e-5, 'd': 1e-12}
 
     def _make_random_matrices(self, shape, xp):
         a = testing.shaped_random(shape, xp, dtype=self.r_dtype, scale=1)
