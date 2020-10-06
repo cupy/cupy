@@ -84,6 +84,7 @@ cdef extern from '../cupy_cuda.h' nogil:
     int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device)
     int cudaDeviceGetByPCIBusId(int* device, const char* pciBusId)
     int cudaDeviceGetPCIBusId(char* pciBusId, int len, int device)
+    int cudaGetDeviceProperties(cudaDeviceProp* prop, int device)
     int cudaGetDeviceCount(int* count)
     int cudaSetDevice(int device)
     int cudaDeviceSynchronize()
@@ -279,6 +280,106 @@ cpdef int deviceGetAttribute(int attrib, int device) except? -1:
     status = cudaDeviceGetAttribute(&ret, <DeviceAttr>attrib, device)
     check_status(status)
     return ret
+
+cpdef getDeviceProperties(int device):
+    cdef cudaDeviceProp props
+    status = cudaGetDeviceProperties(&props, device)
+    # Common properties to CUDA 9.0, 9.2, 10.x and 11.x
+    properties = {'name': 'UNAVAILABLE'}
+    IF CUDA_VERSION >= 9020:
+        properties = {
+            'name': props.name,
+            'totalGlobalMem': props.totalGlobalMem,
+            'sharedMemPerBlock': props.sharedMemPerBlock,
+            'regsPerBlock': props.regsPerBlock,
+            'warpSize': props.warpSize,
+            'maxThreadsPerBlock': props.maxThreadsPerBlock,
+            'maxThreadsDim': tuple(props.maxThreadsDim),
+            'maxGridSize': tuple(props.maxGridSize),
+            'clockRate': props.clockRate,
+            'totalConstMem': props.totalConstMem,
+            'major': props.major,
+            'minor': props.minor,
+            'textureAlignment': props.textureAlignment,
+            'texturePitchAlignment': props.texturePitchAlignment,
+            'deviceOverlap': props.deviceOverlap,
+            'multiProcessorCount': props.multiProcessorCount,
+            'kernelExecTimeoutEnabled': props.kernelExecTimeoutEnabled,
+            'integrated': props.integrated,
+            'canMapHostMemory': props.canMapHostMemory,
+            'computeMode': props.computeMode,
+            'maxTexture1D': props.maxTexture1D,
+            'maxTexture1DMipmap': props.maxTexture1DMipmap,
+            'maxTexture1DLinear': props.maxTexture1DLinear,
+            'maxTexture2D': tuple(props.maxTexture2D),
+            'maxTexture2DMipmap': tuple(props.maxTexture2DMipmap),
+            'maxTexture2DLinear': tuple(props.maxTexture2DLinear),
+            'maxTexture2DGather': tuple(props.maxTexture2DGather),
+            'maxTexture3D': tuple(props.maxTexture3D),
+            'maxTexture3DAlt': tuple(props.maxTexture3DAlt),
+            'maxTextureCubemap': props.maxTextureCubemap,
+            'maxTexture1DLayered': tuple(props.maxTexture1DLayered),
+            'maxTexture2DLayered': tuple(props.maxTexture2DLayered),
+            'maxTextureCubemapLayered': tuple(props.maxTextureCubemapLayered),
+            'maxSurface1D': props.maxSurface1D,
+            'maxSurface2D': tuple(props.maxSurface2D),
+            'maxSurface3D': tuple(props.maxSurface3D),
+            'maxSurface1DLayered': tuple(props.maxSurface1DLayered),
+            'maxSurface2DLayered': tuple(props.maxSurface2DLayered),
+            'maxSurfaceCubemap': props.maxSurfaceCubemap,
+            'maxSurfaceCubemapLayered': tuple(props.maxSurfaceCubemapLayered),
+            'surfaceAlignment': props.surfaceAlignment,
+            'concurrentKernels': props.concurrentKernels,
+            'ECCEnabled': props.ECCEnabled,
+            'pciBusID': props.pciBusID,
+            'pciDeviceID': props.pciDeviceID,
+            'pciDomainID': props.pciDomainID,
+            'tccDriver': props.tccDriver,
+            'asyncEngineCount': props.asyncEngineCount,
+            'unifiedAddressing': props.unifiedAddressing,
+            'memoryClockRate': props.memoryClockRate,
+            'memoryBusWidth': props.memoryBusWidth,
+            'l2CacheSize': props.l2CacheSize,
+            'maxThreadsPerMultiProcessor': props.maxThreadsPerMultiProcessor,
+            'streamPrioritiesSupported': props.streamPrioritiesSupported,
+            'globalL1CacheSupported': props.globalL1CacheSupported,
+            'localL1CacheSupported': props.localL1CacheSupported,
+            'sharedMemPerMultiprocessor': props.sharedMemPerMultiprocessor,
+            'regsPerMultiprocessor': props.regsPerMultiprocessor,
+            'managedMemory': props.managedMemory,
+            'isMultiGpuBoard': props.isMultiGpuBoard,
+            'multiGpuBoardGroupID': props.multiGpuBoardGroupID,
+            'hostNativeAtomicSupported': props.hostNativeAtomicSupported,
+            'singleToDoublePrecisionPerfRatio':
+                props.singleToDoublePrecisionPerfRatio,
+            'pageableMemoryAccess': props.pageableMemoryAccess,
+            'concurrentManagedAccess': props.concurrentManagedAccess,
+            'computePreemptionSupported':
+                props.computePreemptionSupported,
+            'canUseHostPointerForRegisteredMem':
+                props.canUseHostPointerForRegisteredMem,
+            'cooperativeLaunch': props.cooperativeLaunch,
+            'cooperativeMultiDeviceLaunch': props.cooperativeMultiDeviceLaunch,
+            'sharedMemPerBlockOptin': props.sharedMemPerBlockOptin,
+        }
+    IF CUDA_VERSION >= 9020:
+        properties['uuid'] = props.uuid.bytes
+        properties['luid'] = props.luid
+        properties['luidDeviceNodeMask'] = props.luidDeviceNodeMask
+        properties['pageableMemoryAccessUsesHostPageTables'] = (
+            props.pageableMemoryAccessUsesHostPageTables)
+        properties['directManagedMemAccessFromHost'] = (
+            props.directManagedMemAccessFromHost)
+    IF CUDA_VERSION >= 11000:
+        properties['persistingL2CacheMaxSize'] = props.persistingL2CacheMaxSize
+        properties['maxBlocksPerMultiProcessor'] = (
+            props.maxBlocksPerMultiProcessor)
+        properties['accessPolicyMaxWindowSize'] = (
+            props.accessPolicyMaxWindowSize)
+        properties['reservedSharedMemPerBlock'] = (
+            props.reservedSharedMemPerBlock)
+    check_status(status)
+    return properties
 
 cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
     # Encode the python string before passing to native code
