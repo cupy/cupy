@@ -62,7 +62,7 @@ class TestFusionArrayOperator(FusionArrayTestBase):
 
 
 @testing.gpu
-@testing.parameterize(*testing.parameterized.product_dict(
+@testing.parameterize(*testing._parameterized.product_dict(
     [
         {'name': 'lshift', 'func': lambda x, y: x << y},
         {'name': 'rshift', 'func': lambda x, y: x >> y},
@@ -120,7 +120,7 @@ class TestFusionArrayFloorDivide(FusionArrayTestBase):
 
 # TODO(imanishi): Fix TypeError in use of dtypes_combination test.
 @testing.gpu
-@testing.parameterize(*testing.parameterized.product_dict(
+@testing.parameterize(*testing._parameterized.product_dict(
     [
         {'left_value': 'array', 'right_value': 'array'},
         {'left_value': 'array', 'right_value': 'scalar'},

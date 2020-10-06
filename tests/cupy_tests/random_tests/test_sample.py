@@ -95,7 +95,7 @@ class TestRandint2(unittest.TestCase):
         vals = [random.randint(mx).get() for _ in range(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(trial) / mx] * mx)
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        self.assertTrue(_hypothesis.chi_square_test(counts, expected))
 
     @_condition.repeat(3, 10)
     def test_goodness_of_fit_2(self):
@@ -103,7 +103,7 @@ class TestRandint2(unittest.TestCase):
         vals = random.randint(mx, size=(5, 20)).get()
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(vals.size) / mx] * mx)
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        self.assertTrue(_hypothesis.chi_square_test(counts, expected))
 
 
 @testing.gpu
@@ -190,7 +190,7 @@ class TestRandomIntegers2(unittest.TestCase):
         vals = [random.randint(0, mx).get() for _ in range(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(trial) / mx] * mx)
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        self.assertTrue(_hypothesis.chi_square_test(counts, expected))
 
     @_condition.repeat(3, 10)
     def test_goodness_of_fit_2(self):
@@ -198,7 +198,7 @@ class TestRandomIntegers2(unittest.TestCase):
         vals = random.randint(0, mx, (5, 20)).get()
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(vals.size) / mx] * mx)
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        self.assertTrue(_hypothesis.chi_square_test(counts, expected))
 
 
 @testing.gpu
