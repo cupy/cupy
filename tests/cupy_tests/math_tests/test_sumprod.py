@@ -1,4 +1,5 @@
 import unittest
+import math
 
 import numpy
 import pytest
@@ -713,6 +714,45 @@ class TestCumprod(unittest.TestCase):
         a_numpy = numpy.arange(1, 6, dtype=dtype)
         with self.assertRaises(TypeError):
             return cupy.cumprod(a_numpy)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(20,), (7, 6), (3, 4, 5)],
+    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
+    'axis': [None, 0, 1, 2],
+    'func': ('nancumsum', 'nancumprod'),
+}))
+@testing.gpu
+class TestNanCumSumProd(unittest.TestCase):
+
+    density = 0.7
+
+    def _make_array(self):
+        dtype = numpy.dtype(self.dtype)
+        if dtype.char in 'fF':
+            r_dtype = numpy.float32
+        else:
+            r_dtype = numpy.float64
+        a = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
+                                  scale=1)
+        if dtype.char in 'FD':
+            ai = a
+            aj = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
+                                       scale=1)
+            ai[ai > math.sqrt(self.density)] = 0
+            aj[aj > math.sqrt(self.density)] = 0
+            a = ai + 1j * aj
+        else:
+            a[a > self.density] = 0
+        return a / a
+
+    @testing.numpy_cupy_allclose()
+    def test_nancumsumprod(self, xp):
+        if self.axis is not None and self.axis >= len(self.shape):
+            pytest.skip()
+        a = self._make_array()
+        out = getattr(xp, self.func)(xp.array(a), axis=self.axis)
+        return xp.ascontiguousarray(out)
 
 
 @testing.gpu
