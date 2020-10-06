@@ -3,8 +3,9 @@ import io
 import os
 import platform
 
-import cupy
 import numpy
+
+import cupy
 
 try:
     import cupy.cuda.thrust as thrust
