@@ -7,6 +7,7 @@ import cupy
 from cupy import cusolver
 from cupy import testing
 from cupy.testing import attr
+from cupy.core import _routines_linalg as _linalg
 
 
 @testing.parameterize(*testing.product({
@@ -181,12 +182,65 @@ class TestSyevj(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'n': [3],
+    'nrhs': [None, 1, 4],
+}))
+@attr.gpu
+class TestGesv(unittest.TestCase):
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_array(self, shape, alpha, beta):
+        a = testing.shaped_random(shape, cupy, dtype=self.r_dtype,
+                                  scale=alpha) + beta
+        return a
+
+    def _make_matrix(self, shape, alpha, beta):
+        a = self._make_array(shape, alpha, beta)
+        if self.dtype.char in 'FD':
+            a = a + 1j * self._make_array(shape, alpha, beta)
+        return a
+
+    def setUp(self):
+        self.dtype = numpy.dtype(self.dtype)
+        if self.dtype.char in 'fF':
+            self.r_dtype = numpy.float32
+        else:
+            self.r_dtype = numpy.float64
+        n = self.n
+        nrhs = 1 if self.nrhs is None else self.nrhs
+        # Diagonally dominant matrix is used as it is stable
+        alpha = 2.0 / n
+        a = self._make_matrix((n, n), alpha, -alpha / 2)
+        diag = cupy.diag(cupy.ones((n,), dtype=self.r_dtype))
+        a[diag > 0] = 0
+        a += diag
+        x = self._make_matrix((n, nrhs), 0.2, 0.9)
+        b = cupy.matmul(a, x)
+        b_shape = [n]
+        if self.nrhs is not None:
+            b_shape.append(nrhs)
+        self.a = a
+        self.b = b.reshape(b_shape)
+        self.x_ref = x.reshape(b_shape)
+        if self.r_dtype == numpy.float32:
+            self.tol = self._tol['f']
+        elif self.r_dtype == numpy.float64:
+            self.tol = self._tol['d']
+
+    def test_gesv(self):
+        x = cusolver.gesv(self.a, self.b)
+        cupy.testing.assert_allclose(x, self.x_ref,
+                                     rtol=self.tol, atol=self.tol)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'n': [10, 100],
     'nrhs': [None, 1, 10],
     'compute_type': [None,
-                     cupy.core.core.COMPUTE_TYPE_FP16,
-                     cupy.core.core.COMPUTE_TYPE_TF32,
-                     cupy.core.core.COMPUTE_TYPE_FP32],
+                     _linalg.COMPUTE_TYPE_FP16,
+                     _linalg.COMPUTE_TYPE_TF32,
+                     _linalg.COMPUTE_TYPE_FP32],
 }))
 @attr.gpu
 class TestIrsGesv(unittest.TestCase):
@@ -229,12 +283,12 @@ class TestIrsGesv(unittest.TestCase):
         self.a = cupy.array(a)
         self.b = cupy.array(b)
         if self.compute_type is not None:
-            self.old_compute_type = cupy.core.get_compute_type(self.dtype)
-            cupy.core.set_compute_type(self.dtype, self.compute_type)
+            self.old_compute_type = _linalg.get_compute_type(self.dtype)
+            _linalg.set_compute_type(self.dtype, self.compute_type)
 
     def tearDonw(self):
         if self.compute_type is not None:
-            cupy.core.set_compute_type(self.dtype, self.old_compute_type)
+            _linalg.set_compute_type(self.dtype, self.old_compute_type)
 
     def test_irs_gesv(self):
         x = cusolver.irs_gesv(self.a, self.b)

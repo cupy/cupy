@@ -61,6 +61,7 @@ cuda_files = [
     'cupy.core._reduction',
     'cupy.core._routines_binary',
     'cupy.core._routines_indexing',
+    'cupy.core._routines_linalg',
     'cupy.core._routines_logic',
     'cupy.core._routines_manipulation',
     'cupy.core._routines_math',
@@ -83,31 +84,40 @@ cuda_files = [
     'cupy.cuda.function',
     'cupy.cuda.stream',
     'cupy.cuda.texture',
+    'cupy.fft._cache',
     'cupy.lib.polynomial',
     'cupy._util'
 ]
 
 if use_hip:
     # We handle nvtx (and likely any other future support) here, because
-    # the HIP stubs (cupy_hip.h/cupy_hip_common.h) would cause many symbols
+    # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
     MODULES.append({
         'name': 'cuda',
-        'file': cuda_files + ['cupy.cuda.nvtx'],
+        'file': cuda_files + [
+            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.cusolver',
+        ],
         'include': [
             'hip/hip_runtime_api.h',
             'hip/hiprtc.h',
             'hipblas.h',
             'hiprand/hiprand.h',
+            'hipfft.h',
             'roctx.h',
+            'rocsolver.h',
         ],
         'libraries': [
             'hiprtc',
             'hip_hcc',
             'hipblas',
             'hiprand',
+            'rocfft',
             'roctx64',
+            'rocblas',
+            'rocsolver',
         ],
     })
 else:
@@ -137,16 +147,7 @@ else:
         'version_method': build.get_cuda_version,
     })
 
-if use_hip:
-    MODULES.append({
-        'name': 'cusolver',
-        'file': [
-            'cupy_backends.cuda.libs.cusolver',
-        ],
-        'include': [],
-        'libraries': [],
-    })
-else:
+if not use_hip:
     MODULES.append({
         'name': 'cusolver',
         'file': [
@@ -234,6 +235,22 @@ if not use_hip:
         ],
         'libraries': [
             'cudart',
+        ],
+        'check_method': build.check_cub_version,
+        'version_method': build.get_cub_version,
+    })
+else:
+    MODULES.append({
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'hipcub/hipcub_version.hpp',  # dummy
+        ],
+        'libraries': [
+            'hiprtc',
+            'hip_hcc',
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
@@ -730,6 +747,17 @@ def cythonize(extensions, arg_options):
     cythonize_option_keys = ('annotate',)
     cythonize_options = {key: arg_options[key]
                          for key in cythonize_option_keys}
+
+    # Compile-time constants to be used in Cython code
+    compile_time_env = cythonize_options.get('compile_time_env')
+    if compile_time_env is None:
+        compile_time_env = {}
+        cythonize_options['compile_time_env'] = compile_time_env
+    compile_time_env['use_hip'] = arg_options['use_hip']
+    if use_hip or arg_options['no_cuda']:
+        compile_time_env['CUDA_VERSION'] = 0
+    else:
+        compile_time_env['CUDA_VERSION'] = build.get_cuda_version()
 
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,

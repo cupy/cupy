@@ -2,12 +2,13 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy.core import core
+from cupy import core
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.linalg import decomposition
 from cupy.linalg import util
+from cupy.cublas import batched_gesv, get_batched_gesv_limit
 
 
 def solve(a, b):
@@ -34,10 +35,11 @@ def solve(a, b):
 
     .. seealso:: :func:`numpy.linalg.solve`
     """
-    # NOTE: Since cusolver in CUDA 8.0 does not support gesv,
-    #       we manually solve a linear system with QR decomposition.
-    #       For details, please see the following:
-    #       https://docs.nvidia.com/cuda/cusolver/index.html#qr_examples
+    if a.ndim > 2 and a.shape[-1] <= get_batched_gesv_limit():
+        # Note: There is a low performance issue in batched_gesv when matrix is
+        # large, so it is not used in such cases.
+        return batched_gesv(a, b)
+
     util._assert_cupy_array(a, b)
     util._assert_nd_squareness(a)
 
@@ -53,19 +55,16 @@ def solve(a, b):
     else:
         dtype = numpy.promote_types(a.dtype.char, 'f')
 
-    cublas_handle = device.get_cublas_handle()
-    cusolver_handle = device.get_cusolver_handle()
-
     a = a.astype(dtype)
     b = b.astype(dtype)
     if a.ndim == 2:
-        return _solve(a, b, cublas_handle, cusolver_handle)
+        return cupy.cusolver.gesv(a, b)
 
     x = cupy.empty_like(b)
     shape = a.shape[:-2]
     for i in range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
-        x[index] = _solve(a[index], b[index], cublas_handle, cusolver_handle)
+        x[index] = cupy.cusolver.gesv(a[index], b[index])
     return x
 
 

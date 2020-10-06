@@ -4,7 +4,7 @@ import pytest
 import cupy
 from cupy import testing
 import cupyx.scipy.fftpack  # NOQA
-from cupy.fft.fft import _default_fft_func, _fftn
+from cupy.fft._fft import _default_fft_func, _fftn
 
 if cupyx.scipy._scipy_available:
     import scipy.fftpack  # NOQA

@@ -58,6 +58,8 @@ Helper routines
    cupy.fft.fftshift
    cupy.fft.ifftshift
    cupy.fft.config.set_cufft_gpus
+   cupy.fft.config.get_plan_cache
+   cupy.fft.config.show_plan_cache_info
 
 
 Normalization
@@ -74,6 +76,8 @@ CuPy functions do not follow the behavior, they will return ``numpy.complex64`` 
 Internally, ``cupy.fft`` always generates a *cuFFT plan* (see the `cuFFT documentation`_ for detail) corresponding to the desired transform. When possible, an n-dimensional plan will be used, as opposed to applying separate 1D plans for each axis to be transformed. Using n-dimensional planning can provide better performance for multidimensional transforms, but requires more GPU memory than separable 1D planning. The user can disable n-dimensional planning by setting ``cupy.fft.config.enable_nd_planning = False``. This ability to adjust the planning type is a deviation from the NumPy API, which does not use precomputed FFT plans.
 
 Moreover, the automatic plan generation can be suppressed by using an existing plan returned by :func:`cupyx.scipy.fftpack.get_fft_plan` as a context manager. This is again a deviation from NumPy.
+
+Finally, when using the high-level NumPy-like FFT APIs as listed above, internally the cuFFT plans are cached for possible reuse. The plan cache can be retrieved by :func:`~cupy.fft.config.get_plan_cache`, and its current status can be queried by :func:`~cupy.fft.config.show_plan_cache_info`. For finer control of the plan cache, see :doc:`plan_cache`.
 
 
 Multi-GPU FFT

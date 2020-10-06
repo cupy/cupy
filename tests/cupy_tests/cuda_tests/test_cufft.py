@@ -6,7 +6,7 @@ import numpy
 from cupy import testing
 from cupy.cuda import cufft
 from cupy.fft import config
-from cupy.fft.fft import _convert_fft_type
+from cupy.fft._fft import _convert_fft_type
 
 from ..fft_tests.test_fft import (multi_gpu_config, _skip_multi_gpu_bug)
 
