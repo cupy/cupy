@@ -3,6 +3,7 @@ import unittest
 import numpy
 
 import cupy
+from cupy.core import _routines_linalg as _linalg
 from cupy import testing
 from cupy.cuda import device
 
@@ -280,17 +281,17 @@ class TestCuTensorContraction(unittest.TestCase):
         self.b_dtype = numpy.dtype(dtype_chars[1])
         self.c_dtype = numpy.dtype(dtype_chars[2])
         self.tol = self._tol[dtype_chars[2].lower()]
-        self.compute_type = cupy.core.core.COMPUTE_TYPE_DEFAULT
+        self.compute_type = _linalg.COMPUTE_TYPE_DEFAULT
         if self.compute_type_hint == 'down-convert':
             if self.c_dtype.char in 'fF':
-                self.compute_type = cupy.core.core.COMPUTE_TYPE_FP16
+                self.compute_type = _linalg.COMPUTE_TYPE_FP16
                 self.tol = self._tol['e']
             elif self.c_dtype.char in 'dD':
-                self.compute_type = cupy.core.core.COMPUTE_TYPE_FP32
+                self.compute_type = _linalg.COMPUTE_TYPE_FP32
                 self.tol = self._tol['f']
         elif self.compute_type_hint == 'TF32':
             if self.c_dtype.char in 'fF':
-                self.compute_type = cupy.core.core.COMPUTE_TYPE_TF32
+                self.compute_type = _linalg.COMPUTE_TYPE_TF32
                 self.tol = self._tol['e']
         m, n, k = self.shape
         self.a = self.make_matrix((m, k), self.a_dtype)

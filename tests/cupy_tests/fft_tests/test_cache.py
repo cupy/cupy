@@ -197,7 +197,7 @@ class TestPlanCache(unittest.TestCase):
 
     @testing.multi_gpu(2)
     def test_LRU_cache6(self):
-        # test if each device has a seperate cache
+        # test if each device has a separate cache
         cache0 = self.caches[0]
         cache1 = self.caches[1]
 
@@ -439,6 +439,7 @@ class TestPlanCache(unittest.TestCase):
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
         assert cache1.get_curr_size() == 0 <= cache1.get_size()
 
+    @unittest.skipIf(runtime.is_hip, "rocFFT has different plan sizes")
     def test_LRU_cache13(self):
         # test if plan insertion respect the memory size limit
         cache = config.get_plan_cache()

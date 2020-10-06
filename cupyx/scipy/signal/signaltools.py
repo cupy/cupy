@@ -139,7 +139,7 @@ def choose_conv_method(in1, in2, mode='full'):
     .. seealso:: :func:`scipy.signal.choose_conv_method`
 
     """
-    return cupy.math.misc._choose_conv_method(in1, in2, mode)
+    return cupy._math.misc._choose_conv_method(in1, in2, mode)
 
 
 def convolve2d(in1, in2, mode='full', boundary='fill', fillvalue=0):

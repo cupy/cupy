@@ -267,6 +267,17 @@ class TestCooMatrixInit(unittest.TestCase):
         self.assertIsNot(row, x.row)
         self.assertIsNot(col, x.col)
 
+    def test_init_dense(self):
+        m = cupy.array([[0, 1, 0, 2],
+                        [0, 0, 0, 0],
+                        [0, 0, 3, 0]], dtype=self.dtype)
+        n = sparse.coo_matrix(m)
+        self.assertEqual(n.nnz, 3)
+        self.assertEqual(n.shape, (3, 4))
+        cupy.testing.assert_array_equal(n.data, [1, 2, 3])
+        cupy.testing.assert_array_equal(n.row, [0, 0, 2])
+        cupy.testing.assert_array_equal(n.col, [1, 3, 2])
+
     def test_invalid_format(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             with pytest.raises(TypeError):

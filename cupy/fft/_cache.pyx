@@ -192,7 +192,8 @@ cdef class PlanCache:
 
         2. This class can be instantiated by users, but it is discouraged.
            Instead, we expect the following canonical usage pattern to
-           retrieve a handle to the cache through :func:`get_plan_cache`:
+           retrieve a handle to the cache through
+           :func:`~cupy.fft.config.get_plan_cache`:
 
            .. code-block:: python
 
@@ -204,8 +205,8 @@ cdef class PlanCache:
                    cache = get_plan_cache()
                    cache.set_size(0)  # disable the cache
 
-           In particular, the cache for device n should be manipulated under
-           the device n's context.
+           In particular, the cache for device ``n`` should be manipulated
+           under device ``n``'s context.
 
         3. This class is thread-safe since by default it is created on a
            per-thread basis. When starting a new thread, a new cache is not
@@ -583,7 +584,7 @@ cpdef inline PlanCache get_plan_cache():
     """Get the per-thread, per-device plan cache, or create one if not found.
 
     .. seealso::
-        :class:`~cupy.fft.cache.PlanCache`
+        :class:`~cupy.fft._cache.PlanCache`
 
     """
     cdef _ThreadLocal tls = _ThreadLocal.get()
@@ -635,7 +636,7 @@ cpdef show_plan_cache_info():
     """Show all of the plan caches' info on this thread.
 
     .. seealso::
-        :class:`~cupy.fft.cache.PlanCache`
+        :class:`~cupy.fft._cache.PlanCache`
 
     """
 

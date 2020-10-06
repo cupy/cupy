@@ -88,6 +88,18 @@ struct complex {
    */
   inline __host__ __device__ complex(const T& re, const T& im);
 
+#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1900)
+  /*! Default construct a complex number.
+   */
+  inline __host__ __device__ complex() = default;
+
+  /*! This copy constructor copies from a \p complex with a type that is
+   *  convertible to this \p complex's \c value_type.
+   *
+   *  \param z The \p complex to copy from.
+   */
+  inline __host__ __device__ complex(const complex<T>& z) = default;
+#else
   /*! Default construct a complex number.
    */
   inline __host__ __device__ complex();
@@ -98,6 +110,7 @@ struct complex {
    *  \param z The \p complex to copy from.
    */
   inline __host__ __device__ complex(const complex<T>& z);
+#endif // c++11
 
   /*! This copy constructor copies from a \p complex with a type that
    *  is convertible to this \p complex \c value_type.

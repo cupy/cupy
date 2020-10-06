@@ -232,6 +232,14 @@ class TestCsrMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indices, [0])
         cupy.testing.assert_array_equal(n.indptr, [0, 1])
 
+    def test_init_data_row_col(self):
+        o = self.m.tocoo()
+        n = sparse.csr_matrix((o.data, (o.row, o.col)))
+        cupy.testing.assert_array_equal(n.data, self.m.data)
+        cupy.testing.assert_array_equal(n.indices, self.m.indices)
+        cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
+        self.assertEqual(n.shape, self.m.shape)
+
     @testing.with_requires('scipy')
     def test_init_dense_invalid_ndim(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
@@ -1793,7 +1801,7 @@ class TestCsrMatrixMaximumMinimum(unittest.TestCase):
     'shape': [(6, 15), (15, 6)],
     'opt': ['_eq_', '_ne_', '_lt_', '_gt_', '_le_', '_ge_'],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.2')
 @testing.gpu
 class TestCsrMatrixComparison(unittest.TestCase):
     nz_rate = 0.3
