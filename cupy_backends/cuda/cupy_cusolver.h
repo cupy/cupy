@@ -178,36 +178,6 @@ cusolverStatus_t cusolverDnZgesvdaStridedBatched(...) {
 
 #if CUDA_VERSION < 11000
 // Functions added in CUDA 11.0
-cusolverStatus_t cusolverDnZZgels(...) {
-    return CUSOLVER_STATUS_SUCCESS;
-}
-cusolverStatus_t cusolverDnZCgels(...) {
-    return CUSOLVER_STATUS_SUCCESS;
-}
-cusolverStatus_t cusolverDnZKgels(...) {
-    return CUSOLVER_STATUS_SUCCESS;
-}
-cusolverStatus_t cusolverDnCCgels(...) {
-    return CUSOLVER_STATUS_SUCCESS;
-}
-cusolverStatus_t cusolverDnCKgels(...) {
-    return CUSOLVER_STATUS_SUCCESS;
-}
-cusolverStatus_t cusolverDnDDgels(...) {
-    return CUSOLVER_STATUS_SUCCESS;
-}
-cusolverStatus_t cusolverDnDSgels(...) {
-    return CUSOLVER_STATUS_SUCCESS;
-}
-cusolverStatus_t cusolverDnDHgels(...) {
-    return CUSOLVER_STATUS_SUCCESS;
-}
-cusolverStatus_t cusolverDnSSgels(...) {
-    return CUSOLVER_STATUS_SUCCESS;
-}
-cusolverStatus_t cusolverDnSHgels(...) {
-    return CUSOLVER_STATUS_SUCCESS;
-}
 cusolverStatus_t cusolverDnZZgels_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
@@ -236,6 +206,36 @@ cusolverStatus_t cusolverDnSSgels_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 cusolverStatus_t cusolverDnSHgels_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZZgels(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZCgels(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZKgels(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCCgels(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCKgels(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDDgels(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDSgels(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDHgels(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSSgels(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSHgels(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 #endif // #if CUDA_VERSION < 11000
