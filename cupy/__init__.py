@@ -591,6 +591,8 @@ from cupy._math.sumprod import prod  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
+from cupy._math.sumprod import nancumprod  # NOQA
+from cupy._math.sumprod import nancumsum  # NOQA
 from cupy._math.sumprod import nansum  # NOQA
 from cupy._math.sumprod import nanprod  # NOQA
 from cupy._math.sumprod import diff  # NOQA

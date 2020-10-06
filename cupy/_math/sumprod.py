@@ -176,6 +176,54 @@ def cumprod(a, axis=None, dtype=None, out=None):
     return _math.scan_core(a, axis, _math.scan_op.SCAN_PROD, dtype, out)
 
 
+def nancumsum(a, axis=None, dtype=None, out=None):
+    """Returns the cumulative sum of an array along a given axis treating Not a
+    Numbers (NaNs) as zero.
+
+    Args:
+        a (cupy.ndarray): Input array.
+        axis (int): Axis along which the cumulative sum is taken. If it is not
+            specified, the input is flattened.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.nancumsum`
+    """
+    a = _replace_nan(a, 0)
+    return cumsum(a, axis=axis, dtype=dtype, out=out)
+
+
+def nancumprod(a, axis=None, dtype=None, out=None):
+    """Returns the cumulative product of an array along a given axis treating
+    Not a Numbers (NaNs) as zero.
+
+    Args:
+        a (cupy.ndarray): Input array.
+        axis (int): Axis along which the cumulative product is taken. If it is
+            not specified, the input is flattened.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.nancumprod`
+    """
+    a = _replace_nan(a, 1)
+    return cumprod(a, axis=axis, dtype=dtype, out=out)
+
+
+def _replace_nan(a, val):
+    out = cupy.empty_like(a)
+    cupy.core._kernel.ElementwiseKernel(
+        'T a, T val', 'T out', 'if (a == a) {out = a;} else {out = val;}',
+        'cupy_replace_nan')(a, val, out)
+    return out
+
+
 def diff(a, n=1, axis=-1, prepend=None, append=None):
     """Calculate the n-th discrete difference along the given axis.
 
