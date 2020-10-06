@@ -502,10 +502,8 @@ class TestRaw(unittest.TestCase):
                 CC=compiler._get_arch())
             code = _test_source5
         else:
-            # TODO(leofang): We currently instruct users to set up
-            # $ROCM_HOME, but perhaps it could be relaxed after we add
-            # get_hipcc_path().
-            cc = os.path.join(os.environ['ROCM_HOME'], 'bin/hipcc')
+            # TODO(leofang): expose get_hipcc_path() to cupy.cuda?
+            cc = cupy._environment.get_hipcc_path()
             arch = '-v'  # dummy
             code = compiler._convert_to_hip_source(_test_source5, None, False)
         # split() is needed because nvcc could come from the env var NVCC

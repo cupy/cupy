@@ -15,7 +15,13 @@ The following ROCm libraries are required:
 
 ::
 
-  $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver
+  $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim
+
+
+Before installing CuPy, we recommend you to upgrade ``setuptools`` and ``pip``::
+
+  $ pip install -U setuptools pip
+
 
 .. _install_hip:
 

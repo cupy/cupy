@@ -356,7 +356,7 @@ class TestCubReduction(unittest.TestCase):
         _acc.set_reduction_accelerators(self.old_reduction_accelerators)
 
     @testing.for_contiguous_axes()
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_min(self, xp, dtype, axis):
         _skip_cuda90(dtype)
@@ -397,7 +397,7 @@ class TestCubReduction(unittest.TestCase):
         return a.min(axis=())
 
     @testing.for_contiguous_axes()
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_max(self, xp, dtype, axis):
         _skip_cuda90(dtype)
