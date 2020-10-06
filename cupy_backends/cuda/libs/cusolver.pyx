@@ -1678,8 +1678,8 @@ cpdef zsytrf(intptr_t handle, int uplo, int n, size_t A, int lda,
             <int*>ipiv, <cuDoubleComplex*>work, lwork, <int*>devInfo)
     check_status(status)
 
-cpdef size_t zzgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t zzgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1691,8 +1691,8 @@ cpdef size_t zzgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t zcgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t zcgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1704,8 +1704,8 @@ cpdef size_t zcgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t zygels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t zygels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1717,8 +1717,8 @@ cpdef size_t zygels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t zkgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t zkgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1730,8 +1730,8 @@ cpdef size_t zkgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t ccgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t ccgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1742,8 +1742,8 @@ cpdef size_t ccgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t cygels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t cygels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1754,8 +1754,8 @@ cpdef size_t cygels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t ckgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t ckgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1766,8 +1766,8 @@ cpdef size_t ckgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t ddgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t ddgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1778,8 +1778,8 @@ cpdef size_t ddgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t dsgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t dsgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1790,8 +1790,8 @@ cpdef size_t dsgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t dxgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t dxgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1802,8 +1802,8 @@ cpdef size_t dxgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t dhgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t dhgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1814,8 +1814,8 @@ cpdef size_t dhgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t ssgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t ssgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1826,8 +1826,8 @@ cpdef size_t ssgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t sxgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t sxgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
@@ -1838,8 +1838,8 @@ cpdef size_t sxgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t d
     check_status(status)
     return lwork
 
-cpdef size_t shgels_bufferSize(intptr_t handle, int m, int n, int nrhs, size_t dA,
-                               int ldda, size_t dB, int lddb,
+cpdef size_t shgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
                                size_t dX, int lddx, size_t dwork) except? -1:
     cdef size_t lwork
     _setStream(handle)
