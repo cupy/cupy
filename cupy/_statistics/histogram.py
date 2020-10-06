@@ -8,6 +8,8 @@ from cupy import core
 from cupy.core import _accelerator
 from cupy.cuda import cub
 from cupy.cuda import common
+from cupy.cuda import runtime
+
 
 # rename builtin range for use in functions that take a range argument
 _range = range
@@ -240,7 +242,11 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                 elif x.dtype.kind == 'f':
                     last = acc_bin_edge[-1]
                     acc_bin_edge[-1] = cupy.nextafter(last, last + 1)
+                if runtime.is_hip:
+                    y = y.astype(cupy.uint64, copy=False)
                 y = cub.device_histogram(x, acc_bin_edge, y)
+                if runtime.is_hip:
+                    y = y.astype(cupy.int64, copy=False)
                 break
         else:
             _histogram_kernel(x, bin_edges, bin_edges.size, y)
