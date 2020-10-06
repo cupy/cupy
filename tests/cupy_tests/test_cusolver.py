@@ -244,18 +244,22 @@ class TestGesv(unittest.TestCase):
 }))
 @attr.gpu
 class TestIrsGesv(unittest.TestCase):
-    _tol = {'f': 1e-6, 'd': 1e-12}
+    _tol = {'f': 1e-5, 'd': 1e-12}
 
-    def _make_array(self, shape, alpha, beta):
-        a = testing.shaped_random(shape, numpy, dtype=self.r_dtype,
-                                  scale=alpha) + beta
-        return a
-
-    def _make_matrix(self, shape, alpha, beta):
-        a = self._make_array(shape, alpha, beta)
+    def _make_random_matrix(self, shape, xp):
+        a = testing.shaped_random(shape, xp, dtype=self.r_dtype, scale=1)
         if self.dtype.char in 'FD':
-            a = a + 1j * self._make_array(shape, alpha, beta)
+            a = a + 1j * testing.shaped_random(shape, xp, dtype=self.r_dtype,
+                                               scale=1)
         return a
+
+    def _make_well_conditioned_matrix(self, shape):
+        a = self._make_random_matrix(shape, numpy)
+        u, s, vh = numpy.linalg.svd(a)
+        s = testing.shaped_random(s.shape, numpy, dtype=self.r_dtype,
+                                  scale=1) + 1
+        a = numpy.einsum('...ik,...k,...kj->...ij', u, s, vh)
+        return cupy.array(a)
 
     def setUp(self):
         if not cusolver.check_availability('irs_gesv'):
@@ -266,15 +270,12 @@ class TestIrsGesv(unittest.TestCase):
             self.r_dtype = numpy.float32
         else:
             self.r_dtype = numpy.float64
-        # Diagonally dominant matrix is used as it is stable
-        alpha = 2.0 / self.n
-        a = self._make_matrix((self.n, self.n), alpha, -alpha / 2)
-        a += numpy.diag(numpy.ones((self.n), dtype=self.r_dtype))
+        a = self._make_well_conditioned_matrix((self.n, self.n))
         if self.nrhs is None:
             x_shape = (self.n, )
         else:
             x_shape = (self.n, self.nrhs)
-        self.x_ref = self._make_matrix(x_shape, 0.9, 0.1)
+        self.x_ref = self._make_random_matrix(x_shape, cupy)
         b = numpy.dot(a, self.x_ref)
         if self.r_dtype == numpy.float32:
             self.tol = self._tol['f']
