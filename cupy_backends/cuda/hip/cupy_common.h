@@ -65,7 +65,7 @@ typedef hipDeviceAttribute_t cudaDeviceAttr;
 typedef hipLimit_t cudaLimit;
 enum cudaMemoryAdvise {};
 typedef hipMemcpyKind cudaMemcpyKind;
-typedef hipDeviceProp_t cudaDeviceProp_t;
+typedef hipDeviceProp_t cudaDeviceProp;
 
 
 typedef hipStreamCallback_t cudaStreamCallback_t;
