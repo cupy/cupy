@@ -192,7 +192,7 @@ def nancumsum(a, axis=None, dtype=None, out=None):
 
     .. seealso:: :func:`numpy.nancumsum`
     """
-    a = _replace_nan(a, 0)
+    a = _replace_nan(a, 0, out=out)
     return cumsum(a, axis=axis, dtype=dtype, out=out)
 
 
@@ -212,12 +212,13 @@ def nancumprod(a, axis=None, dtype=None, out=None):
 
     .. seealso:: :func:`numpy.nancumprod`
     """
-    a = _replace_nan(a, 1)
+    a = _replace_nan(a, 1, out=out)
     return cumprod(a, axis=axis, dtype=dtype, out=out)
 
 
-def _replace_nan(a, val):
-    out = cupy.empty_like(a)
+def _replace_nan(a, val, out=None):
+    if out is None or a.dtype != out.dtype:
+        out = cupy.empty_like(a)
     cupy.core._kernel.ElementwiseKernel(
         'T a, T val', 'T out', 'if (a == a) {out = a;} else {out = val;}',
         'cupy_replace_nan')(a, val, out)
