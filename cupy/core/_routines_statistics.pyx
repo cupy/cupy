@@ -7,6 +7,7 @@ import cupy
 from cupy.core import _reduction
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
+from cupy.core._kernel import ElementwiseKernel
 
 from cupy.core cimport _accelerator
 from cupy.core cimport _routines_math as _math
@@ -430,6 +431,85 @@ cpdef ndarray _median(
     if out_shape is not None:
         out = out.reshape(out_shape)
     return out
+
+
+cpdef ndarray _nanmedian(
+        ndarray a, axis, out, overwrite_input, keepdims):
+
+    if axis is None:
+        axis = tuple(range(a.ndim))
+    if not isinstance(axis, tuple):
+        axis = (axis,)
+
+    reduce_axis = []
+    reduce_shape = []
+    out_axis = []
+    out_shape = []
+    for i in range(a.ndim):
+        if axis is None or i in axis:
+            reduce_axis.append(i)
+            reduce_shape.append(a.shape[i])
+        else:
+            out_axis.append(i)
+            out_shape.append(a.shape[i])
+
+    a_data_ptr = a.data.ptr
+    a = a.transpose(out_axis + reduce_axis)
+    a = a.reshape(out_shape + [-1, ])
+    a = cupy.ascontiguousarray(a)
+
+    n_vals = numpy.prod(reduce_shape)
+    n_vals_valid = cupy.empty(out_shape, dtype='int32')
+    n_vals_valid[...] = n_vals
+    if a_data_ptr == a.data.ptr and overwrite_input is False:
+        a = a.copy()
+    _cupy_replace_nan(n_vals, cupy.nanmax(a), a, n_vals_valid)
+    a = cupy.sort(a, axis=-1)
+
+    if a.dtype.char not in 'efdFD':
+        b_dtype = numpy.float64
+    else:
+        b_dtype = a.dtype
+    b = cupy.empty(out_shape, dtype=b_dtype)
+    b[...] = cupy.nan
+    _cupy_pickup_median(n_vals, n_vals_valid, a, b)
+
+    if keepdims:
+        b = b.reshape(out_shape + [1, ] * len(reduce_axis))
+        axes = [-1, ] * b.ndim
+        for i, j in enumerate(out_axis + reduce_axis):
+            axes[j] = i
+        b = b.transpose(axes)
+
+    if out is None:
+        out = b
+    else:
+        out[...] = b
+    return out
+
+
+cdef _cupy_replace_nan = ElementwiseKernel(
+    'I n_vals, T a_max', 'T a, raw I n_vals_valid',
+    '''
+    if (a != a) {
+        a = a_max;
+        atomicAdd(&(n_vals_valid[i / n_vals]), -1);
+    }
+    ''',
+    'cupy_replace_nan'
+)
+
+cdef _cupy_pickup_median = ElementwiseKernel(
+    'I n_vals, I n_vals_valid, raw A a', 'B b',
+    '''
+    if (n_vals_valid > 0) {
+        int l = (n_vals_valid - 1) / 2;
+        int h = (n_vals_valid    ) / 2;
+        b = static_cast<B>(a[l + n_vals * i] + a[h + n_vals * i]) / 2;
+    }
+    ''',
+    'cupy_pickup_median'
+)
 
 
 cdef ndarray _mean(
