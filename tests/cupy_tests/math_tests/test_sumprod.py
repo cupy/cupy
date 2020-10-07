@@ -4,9 +4,9 @@ import numpy
 import pytest
 
 import cupy
-import cupy._util
 import cupy.core._accelerator as _acc
 from cupy.core import _cub_reduction
+from cupy.core import internal
 from cupy import testing
 
 
@@ -842,7 +842,7 @@ class TestGradient(unittest.TestCase):
                 axis = (0,)
             else:
                 axis = (0, -1)
-        normalized_axes = cupy._util._normalize_axis_indices(axis, x.ndim)
+        normalized_axes = internal._normalize_axis_indices(axis, x.ndim)
         if spacing == 'sequence of int':
             # one scalar per axis
             spacing = tuple((ax + 1) / x.ndim for ax in normalized_axes)

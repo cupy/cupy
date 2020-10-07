@@ -61,6 +61,7 @@ cuda_files = [
     'cupy.core._reduction',
     'cupy.core._routines_binary',
     'cupy.core._routines_indexing',
+    'cupy.core._routines_linalg',
     'cupy.core._routines_logic',
     'cupy.core._routines_manipulation',
     'cupy.core._routines_math',
@@ -234,6 +235,22 @@ if not use_hip:
         ],
         'libraries': [
             'cudart',
+        ],
+        'check_method': build.check_cub_version,
+        'version_method': build.get_cub_version,
+    })
+else:
+    MODULES.append({
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'hipcub/hipcub_version.hpp',  # dummy
+        ],
+        'libraries': [
+            'hiprtc',
+            'hip_hcc',
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,

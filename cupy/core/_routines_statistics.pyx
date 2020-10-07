@@ -12,11 +12,7 @@ from cupy.core cimport _accelerator
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
 
-# TODO(leofang): always import cub when hipCUB is supported
-if not cupy.cuda.runtime.is_hip:
-    from cupy.cuda import cub
-else:
-    cub = None
+from cupy.cuda import cub
 
 if cupy.cuda.cutensor.available:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor

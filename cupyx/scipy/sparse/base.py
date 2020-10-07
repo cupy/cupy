@@ -106,6 +106,19 @@ class spmatrix(object):
                 return NotImplemented
             return (self.T * tr).T
 
+    # matmul (@) operator
+    def __matmul__(self, other):
+        if _util.isscalarlike(other):
+            raise ValueError('Scalar operands are not allowed, '
+                             'use \'*\' instead')
+        return self.__mul__(other)
+
+    def __rmatmul__(self, other):
+        if _util.isscalarlike(other):
+            raise ValueError('Scalar operands are not allowed, '
+                             'use \'*\' instead')
+        return self.__rmul__(other)
+
     def __div__(self, other):
         return self.tocsr().__div__(other)
 

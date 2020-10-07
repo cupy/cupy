@@ -2,6 +2,7 @@ import numpy
 
 import cupy
 
+from cupy.core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters_core
 from cupyx.scipy.ndimage import _filters_generic
@@ -447,7 +448,7 @@ def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
 
 
 def _prewitt_or_sobel(input, axis, output, mode, cval, weights):
-    axis = cupy._util._normalize_axis_index(axis, input.ndim)
+    axis = internal._normalize_axis_index(axis, input.ndim)
 
     def get(is_diff):
         return cupy.array([-1, 0, 1]) if is_diff else weights
@@ -1211,7 +1212,7 @@ def generic_filter1d(input, function, filter_size, axis=-1, output=None,
         raise TypeError('bad function type')
     if filter_size < 1:
         raise RuntimeError('invalid filter size')
-    axis = cupy._util._normalize_axis_index(axis, input.ndim)
+    axis = internal._normalize_axis_index(axis, input.ndim)
     origin = _util._check_origin(origin, filter_size)
     _util._check_mode(mode)
     output = _util._get_output(output, input)

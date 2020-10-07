@@ -30,6 +30,11 @@ cdef function.Function _create_cub_reduction_function(
     # static_assert needs at least C++11 in NVRTC
     options += ('--std=c++11',)
 
+    # In ROCm, we need to set the include path. This does not work for hiprtc
+    # as of ROCm 3.5.0, so we must use hipcc.
+    if runtime._is_hip_environment:
+        options += ('-I' + _rocm_path + '/include',)
+
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
     # https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
@@ -47,6 +52,11 @@ static_assert(sizeof(_type_reduce) <= 32,
 // Compile-time constants for CUB template specializations
 #define ITEMS_PER_THREAD  ${items_per_thread}
 #define BLOCK_SIZE        ${block_size}
+
+// for hipCUB: use the hipcub namespace
+#ifdef __HIP_DEVICE_COMPILE__
+#define cub hipcub
+#endif
 
 #if defined FIRST_PASS
     typedef type_in0_raw  type_mid_in;
@@ -215,6 +225,8 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 cdef str _cub_path = _environment.get_cub_path()
 cdef str _nvcc_path = _environment.get_nvcc_path()
+cdef str _rocm_path = _environment.get_rocm_path()
+cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
 
 
@@ -224,6 +236,7 @@ cdef str _get_cub_header_include():
         return _cub_header
 
     assert _cub_path is not None
+    cdef str rocm_path = None
     if _cub_path == '<bundle>':
         _cub_header = '''
 #include <cupy/cub/cub/block/block_reduce.cuh>
@@ -233,6 +246,12 @@ cdef str _get_cub_header_include():
         _cub_header = '''
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
+'''
+    elif _cub_path == '<ROCm>':
+        # As of ROCm 3.5.0, the block headers cannot be included by themselves
+        # (many macros left undefined), so we must use the master header.
+        _cub_header = '''
+#include <hipcub/hipcub.hpp>
 '''
     return _cub_header
 
@@ -303,8 +322,12 @@ cpdef inline tuple _can_use_cub_block_reduction(
             return None
 
     # rare event (mainly for conda-forge users): nvcc is not found!
-    if _nvcc_path is None:
-        return None
+    if not runtime._is_hip_environment:
+        if _nvcc_path is None:
+            return None
+    else:
+        if _hipcc_path is None:
+            return None
 
     return (axis_permutes_cub, contiguous_size, full_reduction)
 

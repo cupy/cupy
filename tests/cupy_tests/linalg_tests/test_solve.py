@@ -7,11 +7,24 @@ import cupy
 from cupy import testing
 from cupy.testing import condition
 import cupyx
+from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
 
 
+@testing.parameterize(*testing.product({
+    'batched_gesv_limit': [None, 0],
+}))
 @testing.gpu
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
+
+    def setUp(self):
+        if self.batched_gesv_limit is not None:
+            self.old_limit = get_batched_gesv_limit()
+            set_batched_gesv_limit(self.batched_gesv_limit)
+
+    def tearDown(self):
+        if self.batched_gesv_limit is not None:
+            set_batched_gesv_limit(self.old_limit)
 
     @testing.for_dtypes('fdFD')
     # TODO(kataoka): Fix contiguity

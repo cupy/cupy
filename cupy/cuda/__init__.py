@@ -31,11 +31,7 @@ class _UnavailableModule():
         self.__name__ = name
 
 
-# TODO(leofang): always import cub (but not enable it) when hipCUB is supported
-if not runtime.is_hip:
-    from cupy.cuda import cub  # NOQA
-else:
-    cub = _UnavailableModule('cupy.cuda.cub')
+from cupy.cuda import cub  # NOQA
 
 try:
     from cupy.cuda import nvtx  # NOQA
