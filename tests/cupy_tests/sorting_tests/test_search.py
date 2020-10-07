@@ -5,6 +5,7 @@ import pytest
 
 import cupy
 import cupy.core._accelerator as _acc
+from cupy.core import _cub_reduction
 from cupy import testing
 
 
