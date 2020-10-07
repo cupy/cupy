@@ -8,6 +8,7 @@ import unittest
 from unittest import mock
 import warnings
 
+import _pytest
 import numpy
 
 import cupy
@@ -707,7 +708,7 @@ def for_dtypes(dtypes, name='dtype'):
                 try:
                     kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
-                except unittest.SkipTest as e:
+                except _pytest.outcomes.Skipped as e:
                     print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
                     print(name, 'is', dtype)
@@ -951,6 +952,9 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
                 try:
                     impl(self, *args, **kw_copy)
+                except _pytest.outcomes.Skipped as e:
+                    msg = ', '.join('{} = {}'.format(name, dtype) for name, dtype in dtypes.items())
+                    print('skipped: {} ({})'.format(msg, e))
                 except Exception:
                     print(dtypes)
                     raise
