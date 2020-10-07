@@ -761,8 +761,8 @@ class TestNanCumSumProd(unittest.TestCase):
         dtype = numpy.dtype(dtype)
         if self.axis is not None and self.axis >= len(self.shape):
             pytest.skip()
-        if len(self.shape) > 1 and dtype.char in 'd':
-            # Skip the cases as np.nancum{sum|prod} raises AssertionError.
+        if len(self.shape) > 1 and self.axis is None:
+            # Skip the cases where np.nancum{sum|prod} raise AssertionError.
             pytest.skip()
         a = self._make_array(dtype)
         out = xp.empty(self.shape, dtype=dtype)

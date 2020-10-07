@@ -216,12 +216,15 @@ def nancumprod(a, axis=None, dtype=None, out=None):
     return cumprod(a, axis=axis, dtype=dtype, out=out)
 
 
+_replace_nan_kernel = cupy.core._kernel.ElementwiseKernel(
+    'T a, T val', 'T out', 'if (a == a) {out = a;} else {out = val;}',
+    'cupy_replace_nan')
+
+
 def _replace_nan(a, val, out=None):
     if out is None or a.dtype != out.dtype:
         out = cupy.empty_like(a)
-    cupy.core._kernel.ElementwiseKernel(
-        'T a, T val', 'T out', 'if (a == a) {out = a;} else {out = val;}',
-        'cupy_replace_nan')(a, val, out)
+    _replace_nan_kernel(a, val, out)
     return out
 
 
