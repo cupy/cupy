@@ -3,7 +3,7 @@ import numpy
 import cupy
 from cupy.core import _routines_math as _math
 from cupy.core import _fusion_thread_local
-from cupy._util import _normalize_axis_index
+from cupy.core import internal
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -202,7 +202,7 @@ def diff(a, n=1, axis=-1, prepend=None, append=None):
 
     a = cupy.asanyarray(a)
     nd = a.ndim
-    axis = _normalize_axis_index(axis, nd)
+    axis = internal._normalize_axis_index(axis, nd)
 
     combined = []
 

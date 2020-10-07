@@ -13,7 +13,7 @@ from cupy.core._fusion_variable import _TraceArray
 from cupy.core._fusion_variable import _VariableSet
 from cupy.core import _fusion_op
 from cupy.core import _fusion_optimization
-from cupy import _util
+from cupy.core cimport internal
 
 
 _thread_local = _fusion_thread_local.thread_local
@@ -438,7 +438,7 @@ class TraceImpl:
             raise NotImplementedError(
                 'Reduction for scalar arguments is not supported.')
 
-        axes = _util._normalize_axis_indices(axis, in_param.ndim)
+        axes = internal._normalize_axis_indices(axis, in_param.ndim)
 
         if dtype is not None:
             dtype = numpy.dtype(dtype)
