@@ -129,6 +129,8 @@ cdef class UnownedMemory(BaseMemory):
             if ptr == 0:
                 raise RuntimeError('UnownedMemory requires explicit'
                                    ' device ID for a null pointer.')
+            # Initialize a context to workaround a bug in CUDA 10.2+. (#3991)
+            runtime._ensure_context()
             ptr_attrs = runtime.pointerGetAttributes(ptr)
             device_id = ptr_attrs.device
         self.size = size
