@@ -89,6 +89,9 @@ cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
+            if self._f_contiguous and self.dtype == numpy.bool_:
+                # temporary workaround
+                self = self.astype(numpy.int8)
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_ARGMAX, axis, dtype, out, keepdims)
             if result is not None:
