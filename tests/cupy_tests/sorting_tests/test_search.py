@@ -4,7 +4,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy.core import _accelerator
+import cupy.core._accelerator as _acc
 from cupy import testing
 
 
@@ -165,17 +165,25 @@ class TestSearch(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
     'order': ('C', 'F'),
+    'backend': ('device', 'block'),
 }))
 @testing.gpu
 @unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubReduction(unittest.TestCase):
 
     def setUp(self):
-        self.old_accelerators = _accelerator.get_routine_accelerators()
-        _accelerator.set_routine_accelerators(['cub'])
+        self.old_routine_accelerators = _acc.get_routine_accelerators()
+        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+        if self.backend == 'device':
+            _acc.set_routine_accelerators(['cub'])
+            _acc.set_reduction_accelerators([])
+        elif self.backend == 'block':
+            _acc.set_routine_accelerators([])
+            _acc.set_reduction_accelerators(['cub'])
 
     def tearDown(self):
-        _accelerator.set_routine_accelerators(self.old_accelerators)
+        _acc.set_routine_accelerators(self.old_routine_accelerators)
+        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
 
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
@@ -191,9 +199,20 @@ class TestCubReduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.core._routines_statistics.cub.device_reduce'
-        with testing.AssertFunctionIsCalled(func, return_value=ret):
-            a.argmin()
+        if self.backend == 'device':
+            func_name = 'cupy.core._routines_statistics.cub.'
+            func_name += 'device_reduce'
+            with testing.AssertFunctionIsCalled(func_name, return_value=ret):
+                a.argmin()
+        elif self.backend == 'black':
+            # this is the only function we can mock; the rest is cdef'd
+            func_name = 'cupy.core._cub_reduction.'
+            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+            times_called = 2  # two passes
+            with testing.AssertFunctionIsCalled(
+                    func_name, wraps=func, times_called=times_called):
+                a.argmin()
         # ...then perform the actual computation
         return a.argmin()
 
@@ -211,9 +230,20 @@ class TestCubReduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.core._routines_statistics.cub.device_reduce'
-        with testing.AssertFunctionIsCalled(func, return_value=ret):
-            a.argmax()
+        if self.backend == 'device':
+            func_name = 'cupy.core._routines_statistics.cub.'
+            func_name += 'device_reduce'
+            with testing.AssertFunctionIsCalled(func_name, return_value=ret):
+                a.argmax()
+        elif self.backend == 'black':
+            # this is the only function we can mock; the rest is cdef'd
+            func_name = 'cupy.core._cub_reduction.'
+            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+            times_called = 2  # two passes
+            with testing.AssertFunctionIsCalled(
+                    func_name, wraps=func, times_called=times_called):
+                a.argmax()
         # ...then perform the actual computation
         return a.argmax()
 
