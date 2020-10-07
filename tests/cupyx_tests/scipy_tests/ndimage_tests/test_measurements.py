@@ -105,7 +105,7 @@ class TestLabelSpecialCases(unittest.TestCase):
     'op': ['sum', 'mean', 'variance', 'standard_deviation'],
 }))
 @testing.with_requires('scipy')
-class TestNdimage(unittest.TestCase):
+class TestStats(unittest.TestCase):
 
     def _make_image(self, shape, xp, dtype):
         if dtype == xp.bool_:
@@ -114,88 +114,101 @@ class TestNdimage(unittest.TestCase):
             return testing.shaped_arange(shape, xp, dtype=dtype)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
-    def test_ndimage_single_dim(self, xp, scp, dtype):
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_single_dim(self, xp, scp, dtype):
         image = self._make_image((100,), xp, dtype)
-        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3)
-        index = xp.array([0, 1, 2])
-        return getattr(scp.ndimage, self.op)(image, label, index)
+        labels = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
+        index = xp.array([1, 2, 3])
+        op = getattr(scp.ndimage, self.op)
+        return op(image, labels, index)
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
-    def test_ndimage_multi_dim(self, xp, scp, dtype):
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_multi_dim(self, xp, scp, dtype):
         image = self._make_image((8, 8, 8), xp, dtype)
-        label = testing.shaped_random((8, 8, 8), xp, dtype=xp.int32, scale=3)
-        index = xp.array([0, 1, 2])
-        return getattr(scp.ndimage, self.op)(image, label, index)
+        labels = testing.shaped_random((8, 8, 8), xp, dtype=xp.int32, scale=4)
+        index = xp.array([1, 2, 3])
+        op = getattr(scp.ndimage, self.op)
+        return op(image, labels, index)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_zero_dim(self, xp, scp, dtype):
+        image = self._make_image((), xp, dtype)
+        labels = testing.shaped_random((), xp, dtype=xp.int32, scale=4)
+        index = xp.array([1, 2, 3])
+        op = getattr(scp.ndimage, self.op)
+        return op(image, labels, index)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_only_input(self, xp, scp, dtype):
+        image = self._make_image((100,), xp, dtype)
+        op = getattr(scp.ndimage, self.op)
+        return op(image)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_no_index(self, xp, scp, dtype):
+        image = self._make_image((100,), xp, dtype)
+        labels = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
+        op = getattr(scp.ndimage, self.op)
+        return op(image, labels)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_scalar_index(self, xp, scp, dtype):
+        image = self._make_image((100,), xp, dtype)
+        labels = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
+        op = getattr(scp.ndimage, self.op)
+        return op(image, labels, 1)
+
+    @testing.for_complex_dtypes()
+    def test_invalid_image_dtype(self, dtype):
+        image = self._make_image((100,), cupy, dtype)
+        labels = testing.shaped_random((100,), cupy, dtype=cupy.int32, scale=4)
+        index = cupy.array([1, 2, 3])
+        op = getattr(cupyx.scipy.ndimage, self.op)
+        with pytest.raises(TypeError):
+            op(image, labels, index)
+
+    def test_invalid_image_type(self):
+        image = list(range(100))
+        labels = testing.shaped_random((100,), cupy, dtype=cupy.int32, scale=4)
+        index = cupy.array([1, 2, 3])
+        op = getattr(cupyx.scipy.ndimage, self.op)
+        with pytest.raises(TypeError):
+            op(image, labels, index)
+
+    def test_invalid_labels_shape(self):
+        image = self._make_image((100,), cupy, cupy.int32)
+        labels = testing.shaped_random((50,), cupy, dtype=cupy.int32, scale=4)
+        index = cupy.array([1, 2, 3])
+        op = getattr(cupyx.scipy.ndimage, self.op)
+        with pytest.raises(ValueError):
+            op(image, labels, index)
+
+    def test_invalid_labels_type(self):
+        image = self._make_image((100,), cupy, cupy.int32)
+        labels = numpy.random.randint(0, 4, dtype=numpy.int32, size=100)
+        index = cupy.array([1, 2, 3])
+        op = getattr(cupyx.scipy.ndimage, self.op)
+        with pytest.raises(TypeError):
+            op(image, labels, index)
+
+    def test_invalid_index_type(self):
+        image = self._make_image((100,), cupy, cupy.int32)
+        labels = testing.shaped_random((100,), cupy, dtype=cupy.int32, scale=4)
+        index = [1, 2, 3]
+        op = getattr(cupyx.scipy.ndimage, self.op)
+        with pytest.raises(TypeError):
+            op(image, labels, index)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal(scipy_name='scp')
-    def test_ndimage_zero_dim(self, xp, scp, dtype):
-        image = self._make_image((), xp, dtype)
-        label = testing.shaped_random((), xp, dtype=xp.int32, scale=4)
-        index = xp.array([1, 2, 3])
-        return getattr(scp.ndimage, self.op)(image, label, index)
-
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_ndimage_only_input(self, xp, scp, dtype):
-        image = self._make_image((100,), xp, dtype)
-        return getattr(scp.ndimage, self.op)(image)
-
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_ndimage_no_index(self, xp, scp, dtype):
-        image = self._make_image((100,), xp, dtype)
-        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3)
-        return getattr(scp.ndimage, self.op)(image, label)
-
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(scipy_name='scp')
-    def test_ndimage_scalar_index(self, xp, scp, dtype):
-        image = self._make_image((100,), xp, dtype)
-        label = testing.shaped_random((100,), xp, dtype=xp.int32, scale=3)
-        return getattr(scp.ndimage, self.op)(image, label, 1)
-
-    @testing.for_dtypes([cupy.complex64, cupy.complex128])
-    def test_ndimage_wrong_dtype(self, dtype):
-        image = self._make_image((100,), cupy, dtype)
-        label = cupy.random.randint(1, 4, dtype=cupy.int32)
-        index = cupy.array([1, 2, 3])
-        with pytest.raises(TypeError):
-            getattr(cupyx.scipy.ndimage, self.op)(image, label, index)
-
-    def test_ndimage_wrong_label_shape(self):
-        image = self._make_image((100,), cupy, cupy.int32)
-        label = cupy.random.randint(1, 3, dtype=cupy.int32, size=50)
-        index = cupy.array([1, 2, 3])
-        with pytest.raises(ValueError):
-            getattr(cupyx.scipy.ndimage, self.op)(image, label, index)
-
-    def test_ndimage_wrong_image_type(self):
-        image = list(range(100))
-        label = cupy.random.randint(1, 3, dtype=cupy.int32, size=100)
-        index = cupy.array([1, 2, 3])
-        with pytest.raises(TypeError):
-            getattr(cupyx.scipy.ndimage, self.op)(image, label, index)
-
-    def test_ndimage_wrong_label_type(self):
-        image = self._make_image((100,), cupy, cupy.int32)
-        label = numpy.random.randint(1, 3, dtype=numpy.int32, size=100)
-        index = cupy.array([1, 2, 3])
-        with pytest.raises(TypeError):
-            getattr(cupyx.scipy.ndimage, self.op)(image, label, index)
-
-    def test_ndimage_wrong_index_type(self):
-        image = self._make_image((100,), cupy, cupy.int32)
-        label = cupy.random.randint(1, 3, dtype=cupy.int32, size=100)
-        index = [1, 2, 3]
-        with pytest.raises(TypeError):
-            getattr(cupyx.scipy.ndimage, self.op)(image, label, index)
-
-    @testing.numpy_cupy_array_almost_equal(scipy_name='scp')
-    def test_ndimage_zero_values(self, xp, scp):
-        image = xp.array([])
-        label = xp.array([])
+    def test_no_values(self, xp, scp, dtype):
+        image = xp.array([], dtype=dtype)
+        labels = xp.array([])
         index = xp.array([])
-        return getattr(scp.ndimage, self.op)(image, label, index)
+        op = getattr(scp.ndimage, self.op)
+        return op(image, labels, index)
