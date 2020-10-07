@@ -204,7 +204,7 @@ class TestCubReduction(unittest.TestCase):
             func_name += 'device_reduce'
             with testing.AssertFunctionIsCalled(func_name, return_value=ret):
                 a.argmin()
-        elif self.backend == 'black':
+        elif self.backend == 'block':
             # this is the only function we can mock; the rest is cdef'd
             func_name = 'cupy.core._cub_reduction.'
             func_name += '_SimpleCubReductionKernel_get_cached_function'
@@ -235,7 +235,7 @@ class TestCubReduction(unittest.TestCase):
             func_name += 'device_reduce'
             with testing.AssertFunctionIsCalled(func_name, return_value=ret):
                 a.argmax()
-        elif self.backend == 'black':
+        elif self.backend == 'block':
             # this is the only function we can mock; the rest is cdef'd
             func_name = 'cupy.core._cub_reduction.'
             func_name += '_SimpleCubReductionKernel_get_cached_function'
