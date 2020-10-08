@@ -750,7 +750,7 @@ class TestNanCumSumProd(unittest.TestCase):
     @testing.numpy_cupy_allclose()
     def test_nancumsumprod(self, xp, dtype):
         if self.axis is not None and self.axis >= len(self.shape):
-            pytest.skip()
+            raise unittest.SkipTest()
         a = self._make_array(dtype)
         out = getattr(xp, self.func)(xp.array(a), axis=self.axis)
         return xp.ascontiguousarray(out)
@@ -760,10 +760,10 @@ class TestNanCumSumProd(unittest.TestCase):
     def test_nancumsumprod_out(self, xp, dtype):
         dtype = numpy.dtype(dtype)
         if self.axis is not None and self.axis >= len(self.shape):
-            pytest.skip()
+            raise unittest.SkipTest()
         if len(self.shape) > 1 and self.axis is None:
             # Skip the cases where np.nancum{sum|prod} raise AssertionError.
-            pytest.skip()
+            raise unittest.SkipTest()
         a = self._make_array(dtype)
         out = xp.empty(self.shape, dtype=dtype)
         getattr(xp, self.func)(xp.array(a), axis=self.axis, out=out)
