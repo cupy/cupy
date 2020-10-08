@@ -458,17 +458,17 @@ cpdef ndarray _nanmedian(
     a = a.reshape(out_shape + [-1, ])
     a = cupy.ascontiguousarray(a)
 
-    n_vals = numpy.prod(reduce_shape)
-    n_vals_valid = cupy.empty(out_shape, dtype='int32')
-    n_vals_valid[...] = n_vals
+    n_reduce = numpy.prod(reduce_shape)
+    n_reduce_each = cupy.empty(out_shape, dtype='int32')
+    n_reduce_each[...] = n_reduce
     if a_data_ptr == a.data.ptr and overwrite_input is False:
         a = a.copy()
-    _cupy_replace_nan(n_vals, numpy.finfo(a.dtype).max, a, n_vals_valid)
+    _replace_nan_kernel(n_reduce, numpy.finfo(a.dtype).max, a, n_reduce_each)
     a = cupy.sort(a, axis=-1)
 
     b = cupy.empty(out_shape, dtype=a.dtype)
     b[...] = cupy.nan
-    _cupy_pickup_median(n_vals, n_vals_valid, a, b)
+    _pickup_median_kernel(n_reduce, n_reduce_each, a, b)
 
     if keepdims:
         b = b.reshape(out_shape + [1, ] * len(reduce_axis))
@@ -484,24 +484,29 @@ cpdef ndarray _nanmedian(
     return out
 
 
-cdef _cupy_replace_nan = ElementwiseKernel(
-    'I n_vals, T a_max', 'T a, raw I n_vals_valid',
+cdef _replace_nan_kernel = ElementwiseKernel(
+    'I n_reduce, T val', 'T a, raw I n_reduce_each',
     '''
     if (a != a) {
-        a = a_max;
-        atomicAdd(&(n_vals_valid[i / n_vals]), -1);
+        a = val;
+        atomicAdd(&(n_reduce_each[i / n_reduce]), -1);
     }
     ''',
     'cupy_replace_nan'
 )
 
-cdef _cupy_pickup_median = ElementwiseKernel(
-    'I n_vals, I n_vals_valid, raw T a', 'T b',
+cdef _pickup_median_kernel = ElementwiseKernel(
+    'I n_reduce, I n_reduce_each, raw T a', 'T b',
     '''
-    if (n_vals_valid > 0) {
-        int l = (n_vals_valid - 1) / 2;
-        int h = (n_vals_valid    ) / 2;
-        b = (a[l + n_vals * i] + a[h + n_vals * i]) / static_cast<T>(2.0);
+    if (n_reduce_each > 0) {
+        int l = (n_reduce_each - 1) / 2;
+        int h = (n_reduce_each    ) / 2;
+        if (l == h) {
+            b = a[l + n_reduce * i];
+        } else {
+            b = (a[l + n_reduce * i] + a[h + n_reduce * i])
+                / static_cast<T>(2.0);
+        }
     }
     ''',
     'cupy_pickup_median'
