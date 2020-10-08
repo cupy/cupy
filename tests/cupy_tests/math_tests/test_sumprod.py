@@ -724,7 +724,7 @@ class TestCumprod(unittest.TestCase):
 @testing.gpu
 class TestNanCumSumProd(unittest.TestCase):
 
-    density = 0.7
+    zero_density = 0.25
 
     def _make_array(self, dtype):
         dtype = numpy.dtype(dtype)
@@ -736,11 +736,11 @@ class TestNanCumSumProd(unittest.TestCase):
                 ai = a
                 aj = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
                                            scale=1)
-                ai[ai > math.sqrt(self.density)] = 0
-                aj[aj > math.sqrt(self.density)] = 0
+                ai[ai < math.sqrt(self.zero_density)] = 0
+                aj[aj < math.sqrt(self.zero_density)] = 0
                 a = ai + 1j * aj
             else:
-                a[a > self.density] = 0
+                a[a < self.zero_density] = 0
             a = a / a
         else:
             a = testing.shaped_random(self.shape, numpy, dtype=dtype)
@@ -751,8 +751,8 @@ class TestNanCumSumProd(unittest.TestCase):
     def test_nancumsumprod(self, xp, dtype):
         if self.axis is not None and self.axis >= len(self.shape):
             raise unittest.SkipTest()
-        a = self._make_array(dtype)
-        out = getattr(xp, self.func)(xp.array(a), axis=self.axis)
+        a = xp.array(self._make_array(dtype))
+        out = getattr(xp, self.func)(a, axis=self.axis)
         return xp.ascontiguousarray(out)
 
     @testing.for_all_dtypes()
@@ -764,9 +764,9 @@ class TestNanCumSumProd(unittest.TestCase):
         if len(self.shape) > 1 and self.axis is None:
             # Skip the cases where np.nancum{sum|prod} raise AssertionError.
             raise unittest.SkipTest()
-        a = self._make_array(dtype)
+        a = xp.array(self._make_array(dtype))
         out = xp.empty(self.shape, dtype=dtype)
-        getattr(xp, self.func)(xp.array(a), axis=self.axis, out=out)
+        getattr(xp, self.func)(a, axis=self.axis, out=out)
         return xp.ascontiguousarray(out)
 
 
