@@ -446,7 +446,7 @@ cpdef ndarray _nanmedian(
     out_axis = []
     out_shape = []
     for i in range(a.ndim):
-        if axis is None or i in axis:
+        if axis is None or i in axis or i - a.ndim in axis:
             reduce_axis.append(i)
             reduce_shape.append(a.shape[i])
         else:
@@ -463,14 +463,10 @@ cpdef ndarray _nanmedian(
     n_vals_valid[...] = n_vals
     if a_data_ptr == a.data.ptr and overwrite_input is False:
         a = a.copy()
-    _cupy_replace_nan(n_vals, cupy.nanmax(a), a, n_vals_valid)
+    _cupy_replace_nan(n_vals, numpy.finfo(a.dtype).max, a, n_vals_valid)
     a = cupy.sort(a, axis=-1)
 
-    if a.dtype.char not in 'efdFD':
-        b_dtype = numpy.float64
-    else:
-        b_dtype = a.dtype
-    b = cupy.empty(out_shape, dtype=b_dtype)
+    b = cupy.empty(out_shape, dtype=a.dtype)
     b[...] = cupy.nan
     _cupy_pickup_median(n_vals, n_vals_valid, a, b)
 
@@ -500,12 +496,12 @@ cdef _cupy_replace_nan = ElementwiseKernel(
 )
 
 cdef _cupy_pickup_median = ElementwiseKernel(
-    'I n_vals, I n_vals_valid, raw A a', 'B b',
+    'I n_vals, I n_vals_valid, raw T a', 'T b',
     '''
     if (n_vals_valid > 0) {
         int l = (n_vals_valid - 1) / 2;
         int h = (n_vals_valid    ) / 2;
-        b = static_cast<B>(a[l + n_vals * i] + a[h + n_vals * i]) / 2;
+        b = (a[l + n_vals * i] + a[h + n_vals * i]) / static_cast<T>(2.0);
     }
     ''',
     'cupy_pickup_median'

@@ -60,7 +60,11 @@ def nanmedian(a, axis=None, out=None, overwrite_input=False, keepdims=False):
     .. seealso:: :func:`numpy.nanmedian`
 
     """
-    return _statistics._nanmedian(a, axis, out, overwrite_input, keepdims)
+    if a.dtype.char in 'efdFD':
+        return _statistics._nanmedian(a, axis, out, overwrite_input, keepdims)
+    else:
+        return median(a, axis=axis, out=out, overwrite_input=overwrite_input,
+                      keepdims=keepdims)
 
 
 def average(a, axis=None, weights=None, returned=False):
