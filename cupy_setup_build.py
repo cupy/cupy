@@ -256,6 +256,21 @@ else:
         'version_method': build.get_cub_version,
     })
 
+    MODULES.append({
+        'name': 'nccl',
+        'file': [
+            'cupy.cuda.nccl',
+        ],
+        'include': [
+            'rccl.h',
+        ],
+        'libraries': [
+            'rccl',
+        ],
+        'check_method': build.check_nccl_version,
+        'version_method': build.get_nccl_version,
+    })
+
 if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     if use_hip:
         MODULES.append({
