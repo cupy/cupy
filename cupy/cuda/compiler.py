@@ -403,13 +403,15 @@ def _compile_with_cache_cuda(
         ptx, mapping = compile_using_nvrtc(
             source, options, arch, cu_name, name_expressions,
             log_stream, cache_in_memory)
-        ls = function.LinkState()
-        ls.add_ptr_data(ptx, 'cupy.ptx')
-        # for separate compilation
         if _is_cudadevrt_needed(options):
+            # for separate compilation
+            ls = function.LinkState()
+            ls.add_ptr_data(ptx, 'cupy.ptx')
             _cudadevrt = _get_cudadevrt_path()
             ls.add_ptr_file(_cudadevrt)
-        cubin = ls.complete()
+            cubin = ls.complete()
+        else:
+            cubin = ptx
         mod._set_mapping(mapping)
     elif backend == 'nvcc':
         rdc = _is_cudadevrt_needed(options)

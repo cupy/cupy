@@ -9,8 +9,311 @@ except ImportError:
     pass
 
 import cupy
+import cupyx
 from cupy import testing
 from cupyx.scipy import sparse
+
+
+def _get_index_combos(idx):
+    return [dict['arr_fn'](idx, dtype=dict['dtype'])
+            for dict in testing.product({
+                "arr_fn": [numpy.array, cupy.array],
+                "dtype": [numpy.int32, numpy.int64]
+            })]
+
+
+def _check_shares_memory(xp, sp, x, y):
+    if sp.issparse(x) and sp.issparse(y):
+        assert not xp.shares_memory(x.indptr, y.indptr)
+        assert not xp.shares_memory(x.indices, y.indices)
+        assert not xp.shares_memory(x.data, y.data)
+
+
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc'],
+    'density': [0.9],
+    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
+    'n_rows': [25, 150],
+    'n_cols': [25, 150]
+}))
+@testing.with_requires('scipy>=1.4.0')
+@testing.gpu
+class TestSetitemIndexing(unittest.TestCase):
+
+    def _run(self, maj, min=None, data=5):
+
+        import scipy.sparse
+        for i in range(2):
+            shape = self.n_rows, self.n_cols
+            a = testing.shaped_sparse_random(
+                shape, sparse, self.dtype, self.density, self.format)
+            expected = testing.shaped_sparse_random(
+                shape, scipy.sparse, self.dtype, self.density, self.format)
+
+            maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
+            min_h = min.get() if isinstance(min, cupy.ndarray) else min
+
+            data_is_cupy = isinstance(data, (cupy.ndarray, sparse.spmatrix))
+            data_h = data.get() if data_is_cupy else data
+
+            if min is not None:
+                actual = a
+                actual[maj, min] = data
+
+                expected[maj_h, min_h] = data_h
+            else:
+                actual = a
+                actual[maj] = data
+
+                expected[maj_h] = data_h
+
+        if cupyx.scipy.sparse.isspmatrix(actual):
+            actual.sort_indices()
+            expected.sort_indices()
+
+            cupy.testing.assert_array_equal(
+                actual.indptr, expected.indptr)
+            cupy.testing.assert_array_equal(
+                actual.indices, expected.indices)
+            cupy.testing.assert_array_equal(
+                actual.data, expected.data)
+
+        else:
+
+            cupy.testing.assert_array_equal(
+                actual.ravel(), cupy.array(expected).ravel())
+
+    def test_set_sparse(self):
+
+        x = cupyx.scipy.sparse.random(1, 5, format='csr', density=0.8)
+
+        # Test inner indexing with sparse data
+        for maj, min in zip(_get_index_combos([0, 1, 2, 3, 5]),
+                            _get_index_combos([1, 2, 3, 4, 5])):
+            self._run(maj, min, data=x)
+        self._run([0, 1, 2, 3, 5], [1, 2, 3, 4, 5], data=x)
+
+        # Test 2d major indexing 1d minor indexing with sparse data
+        for maj, min in zip(_get_index_combos([[0], [1], [2], [3], [5]]),
+                            _get_index_combos([1, 2, 3, 4, 5])):
+            self._run(maj, min, data=x)
+        self._run([[0], [1], [2], [3], [5]], [1, 2, 3, 4, 5], data=x)
+
+        # Test 1d major indexing 2d minor indexing with sparse data
+        for maj, min in zip(_get_index_combos([0, 1, 2, 3, 5]),
+                            _get_index_combos([[1], [2], [3], [4], [5]])):
+            self._run(maj, min, data=x)
+        self._run([0, 1, 2, 3, 5], [[1], [2], [3], [4], [5]], data=x)
+
+        # Test minor indexing numpy scalar / cupy 0-dim
+        for maj, min in zip(_get_index_combos([0, 2, 4, 5, 6]),
+                            _get_index_combos(1)):
+            self._run(maj, min, data=x)
+
+    @testing.with_requires('scipy>=1.5.0')
+    def test_set_zero_dim_bool_mask(self):
+
+        zero_dim_data = [numpy.array(5), cupy.array(5)]
+
+        for data in zero_dim_data:
+            self._run([False, True], data=data)
+
+    def test_set_zero_dim_scalar(self):
+
+        zero_dim_data = [numpy.array(5), cupy.array(5)]
+
+        for data in zero_dim_data:
+            self._run(slice(5, 10000), data=data)
+            self._run([1, 5, 4, 5], data=data)
+            self._run(0, 2, data=data)
+
+    def test_major_slice(self):
+        self._run(slice(5, 10000), data=5)
+        self._run(slice(5, 4), data=5)
+        self._run(slice(4, 5, 2), data=5)
+        self._run(slice(5, 4, -2), data=5)
+        self._run(slice(2, 4), slice(0, 2), [[4], [1]])
+        self._run(slice(2, 4), slice(0, 2), [[4, 5], [6, 7]])
+        self._run(slice(2, 4), 0, [[4], [6]])
+
+        self._run(slice(5, 9))
+        self._run(slice(9, 5))
+
+    def test_major_all(self):
+        self._run(slice(None))
+
+    def test_major_scalar(self):
+        self._run(10)
+
+    def test_major_fancy(self):
+        self._run([1, 5, 4])
+        self._run([10, 2])
+        self._run([2])
+
+    def test_major_slice_minor_slice(self):
+        self._run(slice(1, 5), slice(1, 5))
+
+    def test_major_slice_minor_all(self):
+        self._run(slice(1, 5), slice(None))
+        self._run(slice(5, 1), slice(None))
+
+    def test_major_slice_minor_scalar(self):
+        self._run(slice(1, 5), 5)
+        self._run(slice(5, 1), 5)
+        self._run(slice(5, 1, -1), 5)
+
+    def test_major_slice_minor_fancy(self):
+        self._run(slice(1, 10, 2), [1, 5, 4])
+
+    def test_major_scalar_minor_slice(self):
+        self._run(5, slice(1, 5))
+
+    def test_major_scalar_minor_all(self):
+        self._run(5, slice(None))
+
+    def test_major_scalar_minor_scalar(self):
+        self._run(5, 5)
+        self._run(10, 24, 5)
+
+    def test_major_scalar_minor_fancy(self):
+        self._run(5, [1, 5, 4])
+
+    def test_major_all_minor_all(self):
+        self._run(slice(None), slice(None))
+
+    def test_major_all_minor_fancy(self):
+        for min in _get_index_combos(
+                [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5]):
+            self._run(slice(None), min)
+
+        self._run(slice(None), [0, 3, 4, 1, 1, 5, 5, 2, 3, 4, 5, 4, 1, 5])
+
+    def test_major_fancy_minor_fancy(self):
+
+        for maj, min in zip(_get_index_combos([1, 2, 3, 4, 1, 6, 1, 8, 9]),
+                            _get_index_combos([1, 5, 2, 3, 4, 5, 4, 1, 5])):
+            self._run(maj, min)
+
+        self._run([1, 2, 3, 4, 1, 6, 1, 8, 9], [1, 5, 2, 3, 4, 5, 4, 1, 5])
+
+        for idx in _get_index_combos([1, 5, 4]):
+            self._run(idx, idx)
+        self._run([1, 5, 4], [1, 5, 4])
+
+        for maj, min in zip(_get_index_combos([2, 0, 10]),
+                            _get_index_combos([9, 2, 1])):
+            self._run(maj, min)
+        self._run([2, 0, 10], [9, 2, 1])
+
+        for maj, min in zip(_get_index_combos([2, 9]),
+                            _get_index_combos([2, 1])):
+            self._run(maj, min)
+        self._run([2, 0], [2, 1])
+
+    def test_major_fancy_minor_all(self):
+
+        for idx in _get_index_combos([1, 5, 4]):
+            self._run(idx, slice(None))
+        self._run([1, 5, 4], slice(None))
+
+    def test_major_fancy_minor_scalar(self):
+
+        for idx in _get_index_combos([1, 5, 4]):
+            self._run(idx, 5)
+        self._run([1, 5, 4], 5)
+
+    def test_major_fancy_minor_slice(self):
+
+        for idx in _get_index_combos([1, 5, 4]):
+            self._run(idx, slice(1, 5))
+            self._run(idx, slice(5, 1, -1))
+        self._run([1, 5, 4], slice(1, 5))
+        self._run([1, 5, 4], slice(5, 1, -1))
+
+    def test_major_bool_fancy(self):
+        rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
+        self._run(rand_bool)
+
+    def test_major_slice_with_step(self):
+
+        # positive step
+        self._run(slice(1, 10, 2))
+        self._run(slice(2, 10, 5))
+        self._run(slice(0, 10, 10))
+
+        self._run(slice(1, None, 2))
+        self._run(slice(2, None, 5))
+        self._run(slice(0, None,  10))
+
+        # negative step
+        self._run(slice(10, 1, -2))
+        self._run(slice(10, 2, -5))
+        self._run(slice(10, 0, -10))
+
+        self._run(slice(10, None, -2))
+        self._run(slice(10, None, -5))
+        self._run(slice(10, None, -10))
+
+    def test_major_slice_with_step_minor_slice_with_step(self):
+
+        # positive step
+        self._run(slice(1, 10, 2), slice(1, 10, 2))
+        self._run(slice(2, 10, 5), slice(2, 10, 5))
+        self._run(slice(0, 10, 10), slice(0, 10, 10))
+
+        # negative step
+        self._run(slice(10, 1, 2), slice(10, 1, 2))
+        self._run(slice(10, 2, 5), slice(10, 2, 5))
+        self._run(slice(10, 0, 10), slice(10, 0, 10))
+
+    def test_major_slice_with_step_minor_all(self):
+
+        # positive step
+        self._run(slice(1, 10, 2), slice(None))
+        self._run(slice(2, 10, 5), slice(None))
+        self._run(slice(0, 10, 10), slice(None))
+
+        # negative step
+        self._run(slice(10, 1, 2), slice(None))
+        self._run(slice(10, 2, 5), slice(None))
+        self._run(slice(10, 0, 10), slice(None))
+
+    @testing.with_requires('scipy>=1.5.0')
+    def test_fancy_setting_bool(self):
+        # Unfortunately, boolean setting is implemented slightly
+        # differently between Scipy 1.4 and 1.5. Using the most
+        # up-to-date version in CuPy.
+
+        for maj in _get_index_combos(
+                [[True], [False], [False], [True], [True], [True]]):
+            self._run(maj, data=5)
+        self._run([[True], [False], [False], [True], [True], [True]], data=5)
+
+        for maj in _get_index_combos([True, False, False, True, True, True]):
+            self._run(maj, data=5)
+        self._run([True, False, False, True, True, True], data=5)
+
+        for maj in _get_index_combos([[True], [False], [True]]):
+            self._run(maj, data=5)
+        self._run([[True], [False], [True]], data=5)
+
+    def test_fancy_setting(self):
+
+        for maj, data in zip(_get_index_combos([0, 5, 10, 2]),
+                             _get_index_combos([1, 2, 3, 2])):
+            self._run(maj, 0, data)
+        self._run([0, 5, 10, 2], 0, [1, 2, 3, 2])
+
+        # Indexes with duplicates should follow 'last-in-wins'
+        # But Cupy dense indexing doesn't support this yet:
+        # ref: https://github.com/cupy/cupy/issues/3836
+        # Starting with an empty array for now, since insertions
+        # use `last-in-wins`.
+        self.density = 0.0  # Zeroing out density to force only insertions
+        for maj, min, data in zip(_get_index_combos([0, 5, 10, 2, 0, 10]),
+                                  _get_index_combos([1, 2, 3, 4, 1, 3]),
+                                  _get_index_combos([1, 2, 3, 4, 5, 6])):
+            self._run(maj, min, data)
 
 
 class IndexingTestBase(unittest.TestCase):
@@ -84,7 +387,9 @@ class TestSliceIndexing(IndexingTestBase):
         sp_name='sp', type_check=False, accept_error=IndexError)
     def test_indexing(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
-        return a[self.indices]
+        res = a[self.indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
 
 @testing.parameterize(*testing.product({
@@ -134,7 +439,9 @@ class TestArrayIndexing(IndexingTestBase):
         sp_name='sp', type_check=False, accept_error=IndexError)
     def test_list_indexing(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
-        return a[self.indices]
+        res = a[self.indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
     @testing.for_dtypes('fdFD')
     @testing.for_dtypes('il', name='ind_dtype')
@@ -143,7 +450,9 @@ class TestArrayIndexing(IndexingTestBase):
     def test_numpy_ndarray_indexing(self, xp, sp, dtype, ind_dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(numpy, ind_dtype)
-        return a[indices]
+        res = a[indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
     @testing.for_dtypes('fdFD')
     @testing.for_dtypes('il', name='ind_dtype')
@@ -152,8 +461,9 @@ class TestArrayIndexing(IndexingTestBase):
     def test_cupy_ndarray_indexing(self, xp, sp, dtype, ind_dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp, ind_dtype)
-        print(indices)
-        return a[indices]
+        res = a[indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
 
 @testing.parameterize(*testing.product({
@@ -187,21 +497,27 @@ class TestBoolMaskIndexing(IndexingTestBase):
     @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_bool_mask(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
-        return a[self.indices]
+        res = a[self.indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_numpy_bool_mask(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(numpy)
-        return a[indices]
+        res = a[indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_cupy_bool_mask(self, xp, sp, dtype):
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp)
-        return a[indices]
+        res = a[indices]
+        _check_shares_memory(xp, sp, a, res)
+        return res
 
 
 @testing.parameterize(*testing.product({

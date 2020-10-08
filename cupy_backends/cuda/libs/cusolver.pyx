@@ -17,7 +17,7 @@ cdef extern from '../cupy_cuComplex.h':
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from 'cupy_cusolver.h' nogil:
+cdef extern from '../cupy_cusolver.h' nogil:
     # Context
     int cusolverDnCreate(Handle* handle)
     int cusolverSpCreate(SpHandle* handle)
@@ -726,7 +726,7 @@ cpdef inline check_status(int status):
 # Library Attributes
 ###############################################################################
 
-cpdef int getProperty(int type):
+cpdef int getProperty(int type) except? -1:
     cdef int value
     with nogil:
         status = cusolverGetProperty(<LibraryPropertyType>type, &value)

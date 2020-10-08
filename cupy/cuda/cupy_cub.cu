@@ -1,21 +1,30 @@
 #include "cupy_cub.h"  // need to make atomicAdd visible to CUB templates early
 #include <cupy/type_dispatcher.cuh>
+
+#ifndef CUPY_USE_HIP
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
 #include <cub/device/device_scan.cuh>
 #include <cub/device/device_histogram.cuh>
+#else
+#include <hipcub/device/device_reduce.hpp>
+#include <hipcub/device/device_segmented_reduce.hpp>
+#include <hipcub/device/device_scan.hpp>
+#include <hipcub/device/device_histogram.hpp>
+#endif
 
-
-using namespace cub;
 
 /* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
+#ifndef CUPY_USE_HIP
 // - This works only because all data fields in the *Traits struct are not
 //   used in <cub/device/device_reduce.cuh>.
 // - The Max() and Lowest() below are chosen to comply with NumPy's lexical
 //   ordering; note that std::numeric_limits<T> does not support complex
 //   numbers as in general the comparison is ill defined.
 // - DO NOT USE THIS STUB for supporting CUB sorting!!!!!!
+using namespace cub;
+
 template <>
 struct FpLimits<complex<float>>
 {
@@ -42,6 +51,61 @@ struct FpLimits<complex<double>>
 
 template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, false, unsigned int, complex<float>> {};
 template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, false, unsigned long long, complex<double>> {};
+
+#else
+
+// hipCUB internally uses std::numeric_limits, so we should provide specializations for the complex numbers.
+// Note that there's std::complex, so to avoid name collision we must use the full decoration (thrust::complex)!
+// TODO(leofang): wrap CuPy's thrust namespace with another one (say, cupy::thrust) for safer scope resolution?
+
+namespace std {
+template <>
+class numeric_limits<thrust::complex<float>> {
+  public:
+    static __host__ __device__ thrust::complex<float> max() noexcept {
+        return thrust::complex<float>(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+    }
+
+    static __host__ __device__ thrust::complex<float> lowest() noexcept {
+        return thrust::complex<float>(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+    }
+};
+
+template <>
+class numeric_limits<thrust::complex<double>> {
+  public:
+    static __host__ __device__ thrust::complex<double> max() noexcept {
+        return thrust::complex<double>(std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
+    }
+
+    static __host__ __device__ thrust::complex<double> lowest() noexcept {
+        return thrust::complex<double>(-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max());
+    }
+};
+
+// Copied from https://github.com/ROCmSoftwarePlatform/hipCUB/blob/master-rocm-3.5/hipcub/include/hipcub/backend/rocprim/device/device_reduce.hpp
+// (For some reason the specialization for __half defined in the above file does not work, so we have to go
+// through the same route as we did above for complex numbers.)
+template <>
+class numeric_limits<__half> {
+  public:
+    static __host__ __device__ __half max() noexcept {
+        unsigned short max_half = 0x7bff;
+        __half max_value = *reinterpret_cast<__half*>(&max_half);
+        return max_value;
+    }
+
+    static __host__ __device__ __half lowest() noexcept {
+        unsigned short lowest_half = 0xfbff;
+        __half lowest_value = *reinterpret_cast<__half*>(&lowest_half);
+        return lowest_value;
+    }
+};
+}  // namespace std
+
+using namespace hipcub;
+
+#endif  // ifndef CUPY_USE_HIP
 /* ------------------------------------ end of boilerplate ------------------------------------ */
 
 
@@ -66,10 +130,10 @@ struct _multiply
    behaviors with which we must comply.
 */
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 __host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return __hisnan(x);
 #else
     // TODO: avoid cast to float
@@ -78,7 +142,7 @@ __host__ __device__ __forceinline__ bool half_isnan(const __half& x) {
 }
 
 __host__ __device__ __forceinline__ bool half_less(const __half& l, const __half& r) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return l < r;
 #else
     // TODO: avoid cast to float
@@ -87,7 +151,7 @@ __host__ __device__ __forceinline__ bool half_less(const __half& l, const __half
 }
 
 __host__ __device__ __forceinline__ bool half_equal(const __half& l, const __half& r) {
-#ifdef __CUDA_ARCH__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
     return l == r;
 #else
     // TODO: avoid cast to float
@@ -107,7 +171,7 @@ __host__ __device__ __forceinline__ float Max::operator()(const float &a, const 
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return CUB_MAX(a, b);}
+    else {return a < b ? b : a;}
 }
 
 // specialization for double for handling NaNs
@@ -117,7 +181,7 @@ __host__ __device__ __forceinline__ double Max::operator()(const double &a, cons
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return CUB_MAX(a, b);}
+    else {return a < b ? b : a;}
 }
 
 // specialization for complex<float> for handling NaNs
@@ -129,7 +193,7 @@ __host__ __device__ __forceinline__ complex<float> Max::operator()(const complex
     // - isnan() and max() are defined in cupy/complex.cuh
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return max(a, b);}
+    else {return a < b ? b : a;}
 }
 
 // specialization for complex<double> for handling NaNs
@@ -141,11 +205,11 @@ __host__ __device__ __forceinline__ complex<double> Max::operator()(const comple
     // - isnan() and max() are defined in cupy/complex.cuh
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return max(a, b);}
+    else {return a < b ? b : a;}
 }
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ __half Max::operator()(const __half &a, const __half &b) const
@@ -153,8 +217,7 @@ __host__ __device__ __forceinline__ __half Max::operator()(const __half &a, cons
     // NumPy behavior: NaN is always chosen!
     if (half_isnan(a)) {return a;}
     else if (half_isnan(b)) {return b;}
-    else if (half_less(a, b)) {return b;}
-    else {return a;}
+    else { return half_less(a, b) ? b : a; }
 }
 #endif
 
@@ -169,7 +232,7 @@ __host__ __device__ __forceinline__ float Min::operator()(const float &a, const 
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return CUB_MIN(a, b);}
+    else {return a < b ? a : b;}
 }
 
 // specialization for double for handling NaNs
@@ -179,7 +242,7 @@ __host__ __device__ __forceinline__ double Min::operator()(const double &a, cons
     // NumPy behavior: NaN is always chosen!
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return CUB_MIN(a, b);}
+    else {return a < b ? a : b;}
 }
 
 // specialization for complex<float> for handling NaNs
@@ -191,7 +254,7 @@ __host__ __device__ __forceinline__ complex<float> Min::operator()(const complex
     // - isnan() and min() are defined in cupy/complex.cuh
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return min(a, b);}
+    else {return a < b ? a : b;}
 }
 
 // specialization for complex<double> for handling NaNs
@@ -203,11 +266,11 @@ __host__ __device__ __forceinline__ complex<double> Min::operator()(const comple
     // - isnan() and min() are defined in cupy/complex.cuh
     if (isnan(a)) {return a;}
     else if (isnan(b)) {return b;}
-    else {return min(a, b);}
+    else {return a < b ? a : b;}
 }
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, const __half &b) const
@@ -215,8 +278,7 @@ __host__ __device__ __forceinline__ __half Min::operator()(const __half &a, cons
     // NumPy behavior: NaN is always chosen!
     if (half_isnan(a)) {return a;}
     else if (half_isnan(b)) {return b;}
-    else if (half_less(a, b)) {return a;}
-    else {return b;}
+    else { return half_less(a, b) ? a : b; }
 }
 #endif
 
@@ -288,8 +350,8 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMax::o
         return a;
 }
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMax::operator()(
@@ -376,8 +438,8 @@ __host__ __device__ __forceinline__ KeyValuePair<int, complex<double>> ArgMin::o
         return a;
 }
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 // specialization for half for handling NaNs
 template <>
 __host__ __device__ __forceinline__ KeyValuePair<int, __half> ArgMin::operator()(
@@ -545,10 +607,12 @@ struct _cub_device_spmv {
         void* row_offsets, void* column_indices, void* x, void* y,
         int num_rows, int num_cols, int num_nonzeros, cudaStream_t stream)
     {
+        #ifndef CUPY_USE_HIP
         DeviceSpmv::CsrMV(workspace, workspace_size, static_cast<T*>(values),
             static_cast<int*>(row_offsets), static_cast<int*>(column_indices),
             static_cast<T*>(x), static_cast<T*>(y), num_rows, num_cols,
             num_nonzeros, stream);
+        #endif
     }
 };
 
@@ -591,21 +655,38 @@ struct _cub_histogram_range {
         // Ugly hack to avoid specializing complex types, which cub::DeviceHistogram does not support.
         // The If and Equals templates are from cub/util_type.cuh.
         // TODO(leofang): revisit this part when complex support is added to cupy.histogram()
+        #ifndef CUPY_USE_HIP
         typedef typename If<(Equals<sampleT, complex<float>>::VALUE || Equals<sampleT, complex<double>>::VALUE),
                             double,
                             sampleT>::Type h_sampleT;
         typedef typename If<(Equals<binT, complex<float>>::VALUE || Equals<binT, complex<double>>::VALUE),
                             double,
                             binT>::Type h_binT;
+        #else
+        typedef typename std::conditional<(std::is_same<sampleT, complex<float>>::value || std::is_same<sampleT, complex<double>>::value),
+                                          double,
+                                          sampleT>::type h_sampleT;
+        typedef typename std::conditional<(std::is_same<binT, complex<float>>::value || std::is_same<binT, complex<double>>::value),
+                                          double,
+                                          binT>::type h_binT;
+        #endif
 
         // TODO(leofang): CUB has a bug that when specializing n_samples with type size_t,
         // it would error out. Before the fix (thrust/cub#38) is merged we disable the code
         // path splitting for now. A type/range check must be done in the caller.
+        // TODO(leofang): check if hipCUB has the same bug or not
 
         // if (n_samples < (1ULL << 31)) {
             int num_samples = n_samples;
             DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
+                #ifndef CUPY_USE_HIP
                 static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s);
+                #else
+                // rocPRIM looks up atomic_add() from the namespace rocprim::detail; there's no way we can
+                // inject a "long long" version as we did for CUDA, so we must do it in "unsigned long long"
+                // and convert later...
+                static_cast<unsigned long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s);
+                #endif
         // } else {
         //     DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
         //         static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), n_samples, s);
@@ -695,10 +776,12 @@ void cub_device_spmv(void* workspace, size_t& workspace_size, void* values,
     int num_cols, int num_nonzeros, cudaStream_t stream,
     int dtype_id)
 {
+    #ifndef CUPY_USE_HIP
     return dtype_dispatcher(dtype_id, _cub_device_spmv(),
                             workspace, workspace_size, values, row_offsets,
                             column_indices, x, y, num_rows, num_cols,
                             num_nonzeros, stream);
+    #endif
 }
 
 size_t cub_device_spmv_get_workspace_size(void* values, void* row_offsets,
@@ -706,8 +789,10 @@ size_t cub_device_spmv_get_workspace_size(void* values, void* row_offsets,
     int num_nonzeros, cudaStream_t stream, int dtype_id)
 {
     size_t workspace_size = 0;
+    #ifndef CUPY_USE_HIP
     cub_device_spmv(NULL, workspace_size, values, row_offsets, column_indices,
                     x, y, num_rows, num_cols, num_nonzeros, stream, dtype_id);
+    #endif
     return workspace_size;
 }
 

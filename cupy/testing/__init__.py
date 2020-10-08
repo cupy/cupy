@@ -47,6 +47,7 @@ from cupy.testing.helper import AssertFunctionIsCalled  # NOQA
 from cupy.testing.helper import shaped_arange  # NOQA
 from cupy.testing.helper import shaped_sparse_random  # NOQA
 from cupy.testing.helper import shaped_random  # NOQA
+from cupy.testing.helper import generate_matrix  # NOQA
 from cupy.testing.helper import shaped_reverse_arange  # NOQA
 from cupy.testing.helper import with_requires  # NOQA
 from cupy.testing.parameterized import from_pytest_parameterize  # NOQA

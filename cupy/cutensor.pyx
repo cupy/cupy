@@ -14,6 +14,7 @@ from cupy_backends.cuda.libs.cutensor cimport ContractionFind
 from cupy_backends.cuda.libs.cutensor cimport ContractionPlan
 
 from cupy.core cimport core
+from cupy.core cimport _routines_linalg as _linalg
 from cupy.core cimport _reduction
 from cupy.cuda cimport device
 from cupy_backends.cuda.api cimport runtime
@@ -28,48 +29,48 @@ cdef dict _contraction_plans = {}
 cdef dict _modes = {}
 cdef dict _scalars = {}
 cdef dict _dict_contraction = {
-    'eee': {core.COMPUTE_TYPE_DEFAULT: cutensor.R_MIN_32F,
-            core.COMPUTE_TYPE_FP32: cutensor.R_MIN_32F},
-    'fff': {core.COMPUTE_TYPE_DEFAULT: cutensor.R_MIN_32F,
-            core.COMPUTE_TYPE_FP32: cutensor.R_MIN_32F,
-            core.COMPUTE_TYPE_FP16: cutensor.R_MIN_16F},
-    'ddd': {core.COMPUTE_TYPE_DEFAULT: cutensor.R_MIN_64F,
-            core.COMPUTE_TYPE_FP64: cutensor.R_MIN_64F,
-            core.COMPUTE_TYPE_FP32: cutensor.R_MIN_32F},
-    'FFF': {core.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_32F,
-            core.COMPUTE_TYPE_FP32: cutensor.C_MIN_32F},
-    'DDD': {core.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_64F,
-            core.COMPUTE_TYPE_FP64: cutensor.C_MIN_64F,
-            core.COMPUTE_TYPE_FP32: cutensor.C_MIN_32F},
-    'dDD': {core.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_64F,
-            core.COMPUTE_TYPE_FP64: cutensor.C_MIN_64F},
-    'DdD': {core.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_64F,
-            core.COMPUTE_TYPE_FP64: cutensor.C_MIN_64F},
+    'eee': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.R_MIN_32F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.R_MIN_32F},
+    'fff': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.R_MIN_32F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.R_MIN_32F,
+            _linalg.COMPUTE_TYPE_FP16: cutensor.R_MIN_16F},
+    'ddd': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.R_MIN_64F,
+            _linalg.COMPUTE_TYPE_FP64: cutensor.R_MIN_64F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.R_MIN_32F},
+    'FFF': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_32F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.C_MIN_32F},
+    'DDD': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_64F,
+            _linalg.COMPUTE_TYPE_FP64: cutensor.C_MIN_64F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.C_MIN_32F},
+    'dDD': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_64F,
+            _linalg.COMPUTE_TYPE_FP64: cutensor.C_MIN_64F},
+    'DdD': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.C_MIN_64F,
+            _linalg.COMPUTE_TYPE_FP64: cutensor.C_MIN_64F},
 }
 cdef dict _dict_contraction_v10200 = {
-    'eee': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_32F,
-            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F,
-            core.COMPUTE_TYPE_FP16: cutensor.COMPUTE_16F},
-    'fff': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_32F,
-            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F,
-            core.COMPUTE_TYPE_TF32: cutensor.COMPUTE_TF32,
-            core.COMPUTE_TYPE_FP16: cutensor.COMPUTE_16F},
-    'ddd': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
-            core.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
-            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
-    'FFF': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_32F,
-            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F,
-            core.COMPUTE_TYPE_TF32: cutensor.COMPUTE_TF32,
-            core.COMPUTE_TYPE_FP16: cutensor.COMPUTE_16F},
-    'DDD': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
-            core.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
-            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
-    'dDD': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
-            core.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
-            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
-    'DdD': {core.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
-            core.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
-            core.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
+    'eee': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_32F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F,
+            _linalg.COMPUTE_TYPE_FP16: cutensor.COMPUTE_16F},
+    'fff': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_32F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F,
+            _linalg.COMPUTE_TYPE_TF32: cutensor.COMPUTE_TF32,
+            _linalg.COMPUTE_TYPE_FP16: cutensor.COMPUTE_16F},
+    'ddd': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
+            _linalg.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
+    'FFF': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_32F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F,
+            _linalg.COMPUTE_TYPE_TF32: cutensor.COMPUTE_TF32,
+            _linalg.COMPUTE_TYPE_FP16: cutensor.COMPUTE_16F},
+    'DDD': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
+            _linalg.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
+    'dDD': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
+            _linalg.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
+    'DdD': {_linalg.COMPUTE_TYPE_DEFAULT: cutensor.COMPUTE_64F,
+            _linalg.COMPUTE_TYPE_FP64: cutensor.COMPUTE_64F,
+            _linalg.COMPUTE_TYPE_FP32: cutensor.COMPUTE_32F},
 }
 
 
@@ -468,15 +469,15 @@ cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype, compute_dtype):
         raise ValueError('FP16 dtype is only supported on GPU with compute '
                          'capability 7.0 or higher.')
     if compute_dtype is None:
-        compute_type = cupy.core.get_compute_type(out_dtype)
+        compute_type = _linalg.get_compute_type(out_dtype)
     else:
         compute_dtype = numpy.dtype(compute_dtype)
         if compute_dtype.char == 'e':
-            compute_type = core.COMPUTE_TYPE_FP16
+            compute_type = _linalg.COMPUTE_TYPE_FP16
         elif compute_dtype.char in 'fF':
-            compute_type = core.COMPUTE_TYPE_FP32
+            compute_type = _linalg.COMPUTE_TYPE_FP32
         elif compute_dtype.char in 'dD':
-            compute_type = core.COMPUTE_TYPE_FP64
+            compute_type = _linalg.COMPUTE_TYPE_FP64
         else:
             raise ValueError('Un-supported dtype: {}'.format(compute_dtype))
     if compute_type in dict_contraction[key]:
@@ -490,9 +491,9 @@ cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype, compute_dtype):
                   '({}, {}, {}) is not supported in cuTENSOR contraction on '
                   'GPU with compute capability ({}). Default compute type '
                   'will be used instead.'.
-                  format(cupy.core.compute_type_to_str(compute_type),
+                  format(_linalg.compute_type_to_str(compute_type),
                          a_dtype, b_dtype, out_dtype, compute_capability))
-    return dict_contraction[key][core.COMPUTE_TYPE_DEFAULT]
+    return dict_contraction[key][_linalg.COMPUTE_TYPE_DEFAULT]
 
 
 cdef _get_scalar_dtype(out_dtype):
@@ -729,6 +730,8 @@ def _try_reduction_routine(
     if dtype != x.dtype:
         return None
 
+    if x.ndim == 0:
+        return None
     if x.size == 0:
         return None
     if not x._c_contiguous:
@@ -738,6 +741,8 @@ def _try_reduction_routine(
     in_arg = x
 
     reduce_axis, out_axis = _reduction._get_axis(axis, x.ndim)
+    if len(reduce_axis) == 0:
+        return None
     out_shape = _reduction._get_out_shape(
         x._shape, reduce_axis, out_axis, keepdims)
     if out is None:

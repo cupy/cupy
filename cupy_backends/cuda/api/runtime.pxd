@@ -11,7 +11,6 @@ cdef class PointerAttributes:
         public intptr_t devicePointer
         public intptr_t hostPointer
 
-
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
     ctypedef int DataType 'cudaDataType'
@@ -100,6 +99,321 @@ cdef extern from *:
     ctypedef struct IpcEventHandle 'cudaIpcEventHandle_t':
         unsigned char[64] reserved
 
+    ctypedef struct cudaUUID 'cudaUUID_t':
+        char bytes[16]
+
+    IF CUDA_VERSION >= 11000:
+        # We can't use IF in the middle of structs declaration
+        # to add or ignore fields in compile time so we have to
+        # replicate the struct definition
+        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+            char         name[256]
+            cudaUUID     uuid
+            char         luid[8]
+            unsigned int luidDeviceNodeMask
+            size_t       totalGlobalMem
+            size_t       sharedMemPerBlock
+            int          regsPerBlock
+            int          warpSize
+            size_t       memPitch
+            int          maxThreadsPerBlock
+            int          maxThreadsDim[3]
+            int          maxGridSize[3]
+            int          clockRate
+            size_t       totalConstMem
+            int          major
+            int          minor
+            size_t       textureAlignment
+            size_t       texturePitchAlignment
+            int          deviceOverlap
+            int          multiProcessorCount
+            int          kernelExecTimeoutEnabled
+            int          integrated
+            int          canMapHostMemory
+            int          computeMode
+            int          maxTexture1D
+            int          maxTexture1DMipmap
+            int          maxTexture1DLinear
+            int          maxTexture2D[2]
+            int          maxTexture2DMipmap[2]
+            int          maxTexture2DLinear[3]
+            int          maxTexture2DGather[2]
+            int          maxTexture3D[3]
+            int          maxTexture3DAlt[3]
+            int          maxTextureCubemap
+            int          maxTexture1DLayered[2]
+            int          maxTexture2DLayered[3]
+            int          maxTextureCubemapLayered[2]
+            int          maxSurface1D
+            int          maxSurface2D[2]
+            int          maxSurface3D[3]
+            int          maxSurface1DLayered[2]
+            int          maxSurface2DLayered[3]
+            int          maxSurfaceCubemap
+            int          maxSurfaceCubemapLayered[2]
+            size_t       surfaceAlignment
+            int          concurrentKernels
+            int          ECCEnabled
+            int          pciBusID
+            int          pciDeviceID
+            int          pciDomainID
+            int          tccDriver
+            int          asyncEngineCount
+            int          unifiedAddressing
+            int          memoryClockRate
+            int          memoryBusWidth
+            int          l2CacheSize
+            int          persistingL2CacheMaxSize  # CUDA 11.0 field
+            int          maxThreadsPerMultiProcessor
+            int          streamPrioritiesSupported
+            int          globalL1CacheSupported
+            int          localL1CacheSupported
+            size_t       sharedMemPerMultiprocessor
+            int          regsPerMultiprocessor
+            int          managedMemory
+            int          isMultiGpuBoard
+            int          multiGpuBoardGroupID
+            int          hostNativeAtomicSupported
+            int          singleToDoublePrecisionPerfRatio
+            int          pageableMemoryAccess
+            int          concurrentManagedAccess
+            int          computePreemptionSupported
+            int          canUseHostPointerForRegisteredMem
+            int          cooperativeLaunch
+            int          cooperativeMultiDeviceLaunch
+            size_t       sharedMemPerBlockOptin
+            int          pageableMemoryAccessUsesHostPageTables
+            int          directManagedMemAccessFromHost
+            int          maxBlocksPerMultiProcessor  # CUDA 11.0 field
+            int          accessPolicyMaxWindowSize  # CUDA 11.0 field
+            size_t       reservedSharedMemPerBlock  # CUDA 11.0 field
+    ELIF CUDA_VERSION >= 10000:
+        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+            char         name[256]
+            cudaUUID     uuid
+            char         luid[8]
+            unsigned int luidDeviceNodeMask
+            size_t       totalGlobalMem
+            size_t       sharedMemPerBlock
+            int          regsPerBlock
+            int          warpSize
+            size_t       memPitch
+            int          maxThreadsPerBlock
+            int          maxThreadsDim[3]
+            int          maxGridSize[3]
+            int          clockRate
+            size_t       totalConstMem
+            int          major
+            int          minor
+            size_t       textureAlignment
+            size_t       texturePitchAlignment
+            int          deviceOverlap
+            int          multiProcessorCount
+            int          kernelExecTimeoutEnabled
+            int          integrated
+            int          canMapHostMemory
+            int          computeMode
+            int          maxTexture1D
+            int          maxTexture1DMipmap
+            int          maxTexture1DLinear
+            int          maxTexture2D[2]
+            int          maxTexture2DMipmap[2]
+            int          maxTexture2DLinear[3]
+            int          maxTexture2DGather[2]
+            int          maxTexture3D[3]
+            int          maxTexture3DAlt[3]
+            int          maxTextureCubemap
+            int          maxTexture1DLayered[2]
+            int          maxTexture2DLayered[3]
+            int          maxTextureCubemapLayered[2]
+            int          maxSurface1D
+            int          maxSurface2D[2]
+            int          maxSurface3D[3]
+            int          maxSurface1DLayered[2]
+            int          maxSurface2DLayered[3]
+            int          maxSurfaceCubemap
+            int          maxSurfaceCubemapLayered[2]
+            size_t       surfaceAlignment
+            int          concurrentKernels
+            int          ECCEnabled
+            int          pciBusID
+            int          pciDeviceID
+            int          pciDomainID
+            int          tccDriver
+            int          asyncEngineCount
+            int          unifiedAddressing
+            int          memoryClockRate
+            int          memoryBusWidth
+            int          l2CacheSize
+            int          maxThreadsPerMultiProcessor
+            int          streamPrioritiesSupported
+            int          globalL1CacheSupported
+            int          localL1CacheSupported
+            size_t       sharedMemPerMultiprocessor
+            int          regsPerMultiprocessor
+            int          managedMemory
+            int          isMultiGpuBoard
+            int          multiGpuBoardGroupID
+            int          hostNativeAtomicSupported
+            int          singleToDoublePrecisionPerfRatio
+            int          pageableMemoryAccess
+            int          concurrentManagedAccess
+            int          computePreemptionSupported
+            int          canUseHostPointerForRegisteredMem
+            int          cooperativeLaunch
+            int          cooperativeMultiDeviceLaunch
+            size_t       sharedMemPerBlockOptin
+            int          pageableMemoryAccessUsesHostPageTables
+            int          directManagedMemAccessFromHost
+    ELIF CUDA_VERSION == 9020:
+        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+            char         name[256]
+            size_t       totalGlobalMem
+            size_t       sharedMemPerBlock
+            int          regsPerBlock
+            int          warpSize
+            size_t       memPitch
+            int          maxThreadsPerBlock
+            int          maxThreadsDim[3]
+            int          maxGridSize[3]
+            int          clockRate
+            size_t       totalConstMem
+            int          major
+            int          minor
+            size_t       textureAlignment
+            size_t       texturePitchAlignment
+            int          deviceOverlap
+            int          multiProcessorCount
+            int          kernelExecTimeoutEnabled
+            int          integrated
+            int          canMapHostMemory
+            int          computeMode
+            int          maxTexture1D
+            int          maxTexture1DMipmap
+            int          maxTexture1DLinear
+            int          maxTexture2D[2]
+            int          maxTexture2DMipmap[2]
+            int          maxTexture2DLinear[3]
+            int          maxTexture2DGather[2]
+            int          maxTexture3D[3]
+            int          maxTexture3DAlt[3]
+            int          maxTextureCubemap
+            int          maxTexture1DLayered[2]
+            int          maxTexture2DLayered[3]
+            int          maxTextureCubemapLayered[2]
+            int          maxSurface1D
+            int          maxSurface2D[2]
+            int          maxSurface3D[3]
+            int          maxSurface1DLayered[2]
+            int          maxSurface2DLayered[3]
+            int          maxSurfaceCubemap
+            int          maxSurfaceCubemapLayered[2]
+            size_t       surfaceAlignment
+            int          concurrentKernels
+            int          ECCEnabled
+            int          pciBusID
+            int          pciDeviceID
+            int          pciDomainID
+            int          tccDriver
+            int          asyncEngineCount
+            int          unifiedAddressing
+            int          memoryClockRate
+            int          memoryBusWidth
+            int          l2CacheSize
+            int          maxThreadsPerMultiProcessor
+            int          streamPrioritiesSupported
+            int          globalL1CacheSupported
+            int          localL1CacheSupported
+            size_t       sharedMemPerMultiprocessor
+            int          regsPerMultiprocessor
+            int          managedMemory
+            int          isMultiGpuBoard
+            int          multiGpuBoardGroupID
+            int          hostNativeAtomicSupported
+            int          singleToDoublePrecisionPerfRatio
+            int          pageableMemoryAccess
+            int          concurrentManagedAccess
+            int          computePreemptionSupported
+            int          canUseHostPointerForRegisteredMem
+            int          cooperativeLaunch
+            int          cooperativeMultiDeviceLaunch
+            size_t       sharedMemPerBlockOptin
+            int          pageableMemoryAccessUsesHostPageTables
+            int          directManagedMemAccessFromHost
+    ELSE:
+        # CUDA 9.0
+        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+            char         name[256]
+            size_t       totalGlobalMem
+            size_t       sharedMemPerBlock
+            int          regsPerBlock
+            int          warpSize
+            size_t       memPitch
+            int          maxThreadsPerBlock
+            int          maxThreadsDim[3]
+            int          maxGridSize[3]
+            int          clockRate
+            size_t       totalConstMem
+            int          major
+            int          minor
+            size_t       textureAlignment
+            size_t       texturePitchAlignment
+            int          deviceOverlap
+            int          multiProcessorCount
+            int          kernelExecTimeoutEnabled
+            int          integrated
+            int          canMapHostMemory
+            int          computeMode
+            int          maxTexture1D
+            int          maxTexture1DMipmap
+            int          maxTexture1DLinear
+            int          maxTexture2D[2]
+            int          maxTexture2DMipmap[2]
+            int          maxTexture2DLinear[3]
+            int          maxTexture2DGather[2]
+            int          maxTexture3D[3]
+            int          maxTexture3DAlt[3]
+            int          maxTextureCubemap
+            int          maxTexture1DLayered[2]
+            int          maxTexture2DLayered[3]
+            int          maxTextureCubemapLayered[2]
+            int          maxSurface1D
+            int          maxSurface2D[2]
+            int          maxSurface3D[3]
+            int          maxSurface1DLayered[2]
+            int          maxSurface2DLayered[3]
+            int          maxSurfaceCubemap
+            int          maxSurfaceCubemapLayered[2]
+            size_t       surfaceAlignment
+            int          concurrentKernels
+            int          ECCEnabled
+            int          pciBusID
+            int          pciDeviceID
+            int          pciDomainID
+            int          tccDriver
+            int          asyncEngineCount
+            int          unifiedAddressing
+            int          memoryClockRate
+            int          memoryBusWidth
+            int          l2CacheSize
+            int          maxThreadsPerMultiProcessor
+            int          streamPrioritiesSupported
+            int          globalL1CacheSupported
+            int          localL1CacheSupported
+            size_t       sharedMemPerMultiprocessor
+            int          regsPerMultiprocessor
+            int          managedMemory
+            int          isMultiGpuBoard
+            int          multiGpuBoardGroupID
+            int          hostNativeAtomicSupported
+            int          singleToDoublePrecisionPerfRatio
+            int          pageableMemoryAccess
+            int          concurrentManagedAccess
+            int          computePreemptionSupported
+            int          canUseHostPointerForRegisteredMem
+            int          cooperativeLaunch
+            int          cooperativeMultiDeviceLaunch
+            size_t       sharedMemPerBlockOptin
 
 ###############################################################################
 # Enum
@@ -338,6 +652,7 @@ cpdef str deviceGetPCIBusId(int device)
 cpdef int getDeviceCount() except? -1
 cpdef setDevice(int device)
 cpdef deviceSynchronize()
+cpdef getDeviceProperties(int device)
 
 cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1
 cpdef deviceEnablePeerAccess(int peerDevice)

@@ -25,6 +25,8 @@ cdef ndarray _ndarray_repeat(ndarray self, repeats, axis)
 
 cpdef ndarray _expand_dims(ndarray a, tuple axis)
 cpdef ndarray moveaxis(ndarray a, source, destination)
+cpdef ndarray _move_single_axis(ndarray a, Py_ssize_t source,
+                                Py_ssize_t destination)
 cpdef ndarray rollaxis(ndarray a, Py_ssize_t axis, Py_ssize_t start=*)
 cpdef ndarray broadcast_to(ndarray array, shape)
 cpdef ndarray _reshape(ndarray self, const shape_t &shape_spec)

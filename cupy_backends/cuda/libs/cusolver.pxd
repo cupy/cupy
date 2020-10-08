@@ -42,7 +42,7 @@ cpdef enum:
 # Library Attributes
 ###############################################################################
 
-cpdef int getProperty(int type)
+cpdef int getProperty(int type) except? -1
 cpdef tuple _getVersion()
 
 ###############################################################################
@@ -319,6 +319,44 @@ cpdef cgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
 cpdef zgesvdj(intptr_t handle, int jobz, int econ, int m, int n, intptr_t A,
               int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
               intptr_t work, int lwork, intptr_t info, intptr_t params)
+
+cpdef int sgesvdjBatched_bufferSize(
+    intptr_t handle, int jobz, int m, int n,
+    intptr_t A, int lda, intptr_t S, intptr_t U,
+    int ldu, intptr_t V, int ldv, intptr_t params,
+    int batchSize) except? -1
+cpdef int dgesvdjBatched_bufferSize(
+    intptr_t handle, int jobz, int m, int n,
+    intptr_t A, int lda, intptr_t S, intptr_t U,
+    int ldu, intptr_t V, int ldv, intptr_t params,
+    int batchSize) except? -1
+cpdef int cgesvdjBatched_bufferSize(
+    intptr_t handle, int jobz, int m, int n,
+    intptr_t A, int lda, intptr_t S, intptr_t U,
+    int ldu, intptr_t V, int ldv, intptr_t params,
+    int batchSize) except? -1
+cpdef int zgesvdjBatched_bufferSize(
+    intptr_t handle, int jobz, int m, int n,
+    intptr_t A, int lda, intptr_t S, intptr_t U,
+    int ldu, intptr_t V, int ldv, intptr_t params,
+    int batchSize) except? -1
+
+cpdef sgesvdjBatched(
+    intptr_t handle, int jobz, int m, int n, intptr_t A,
+    int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+    intptr_t work, int lwork, intptr_t info, intptr_t params, int batchSize)
+cpdef dgesvdjBatched(
+    intptr_t handle, int jobz, int m, int n, intptr_t A,
+    int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+    intptr_t work, int lwork, intptr_t info, intptr_t params, int batchSize)
+cpdef cgesvdjBatched(
+    intptr_t handle, int jobz, int m, int n, intptr_t A,
+    int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+    intptr_t work, int lwork, intptr_t info, intptr_t params, int batchSize)
+cpdef zgesvdjBatched(
+    intptr_t handle, int jobz, int m, int n, intptr_t A,
+    int lda, intptr_t S, intptr_t U, int ldu, intptr_t V, int ldv,
+    intptr_t work, int lwork, intptr_t info, intptr_t params, int batchSize)
 
 # gesvda ... Approximate singular value decomposition
 cpdef int sgesvdaStridedBatched_bufferSize(
