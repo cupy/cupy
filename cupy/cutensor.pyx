@@ -151,7 +151,7 @@ cdef int _get_cutensor_compute_type(numpy_dtype) except -1:
         dict_compute_type = _dict_compute_type_v10200
     else:
         dict_compute_type = _dict_compute_type
-    key = numpy_dtype.char
+    key = numpy.dtype(numpy_dtype).char
     if key not in dict_compute_type:
         raise TypeError('Dtype {} is not supported'.format(numpy_dtype))
     return dict_compute_type[key]
