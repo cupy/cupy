@@ -114,14 +114,15 @@ cdef class RawKernel:
     # functions, which is in fact preferred over __reduce__.
 
     def __getstate__(self):
-        cdef dict args = {'code': self.code,
-                          'name': self.name,
-                          'options': self.options,
-                          'backend': self.backend,
-                          'translate_cucomplex': self.translate_cucomplex,
-                          'file_path': self.file_path,
-                          'name_expressions': self.name_expressions}
-        args['enable_cooperative_groups'] = self.enable_cooperative_groups
+        cdef dict args
+        args = {'code': self.code,
+                'name': self.name,
+                'options': self.options,
+                'backend': self.backend,
+                'translate_cucomplex': self.translate_cucomplex,
+                'file_path': self.file_path,
+                'name_expressions': self.name_expressions,
+                'enable_cooperative_groups': self.enable_cooperative_groups}
         return args
 
     def __setstate__(self, dict args):
