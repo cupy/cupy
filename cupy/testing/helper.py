@@ -953,7 +953,9 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
                 try:
                     impl(self, *args, **kw_copy)
                 except _pytest.outcomes.Skipped as e:
-                    msg = ', '.join('{} = {}'.format(name, dtype) for name, dtype in dtypes.items())
+                    msg = ', '.join(
+                        '{} = {}'.format(name, dtype)
+                        for name, dtype in dtypes.items())
                     print('skipped: {} ({})'.format(msg, e))
                 except Exception:
                     print(dtypes)
