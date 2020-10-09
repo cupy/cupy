@@ -1215,7 +1215,8 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
     return xp.array(a.astype(dtype).reshape(shape))
 
 
-def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
+def shaped_random(
+        shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0, order='C'):
     """Returns an array filled with random values.
 
     Args:
@@ -1240,12 +1241,13 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
     numpy.random.seed(seed)
     dtype = numpy.dtype(dtype)
     if dtype == '?':
-        return xp.asarray(numpy.random.randint(2, size=shape), dtype=dtype)
+        a = numpy.random.randint(2, size=shape)
     elif dtype.kind == 'c':
         a = numpy.random.rand(*shape) + 1j * numpy.random.rand(*shape)
-        return xp.asarray(a * scale, dtype=dtype)
+        a *= scale
     else:
-        return xp.asarray(numpy.random.rand(*shape) * scale, dtype=dtype)
+        a = numpy.random.rand(*shape) * scale
+    return xp.asarray(a, dtype=dtype, order=order)
 
 
 def shaped_sparse_random(
