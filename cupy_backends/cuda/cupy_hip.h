@@ -216,6 +216,10 @@ cudaError_t cudaDeviceGetAttribute(int* pi, cudaDeviceAttr attr,
     return hipDeviceGetAttribute(pi, attr, deviceId);
 }
 
+cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
+    return hipGetDeviceProperties(prop, device);
+}
+
 cudaError_t cudaDeviceGetByPCIBusId(int *device, const char *pciBusId) {
     return hipDeviceGetByPCIBusId(device, pciBusId);
 }
