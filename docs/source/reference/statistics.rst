@@ -25,10 +25,12 @@ Means and variances
    :toctree: generated/
    :nosignatures:
 
+   cupy.median
    cupy.average
    cupy.mean
    cupy.var
    cupy.std
+   cupy.nanmedian
    cupy.nanmean
    cupy.nanvar
    cupy.nanstd
