@@ -90,7 +90,9 @@ cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             if self._f_contiguous and self.dtype == numpy.bool_:
-                # temporary workaround
+                # temporary workaround casting the inputs to int8
+                # CUB argmax seems to return different values to
+                # NumPy for F-order bool array inputs
                 self = self.astype(numpy.int8)
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_ARGMAX, axis, dtype, out, keepdims)
