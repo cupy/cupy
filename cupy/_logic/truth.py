@@ -73,9 +73,7 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
         ar1 (cupy.ndarray): Input array.
         ar2 (cupy.ndarray): The values against which to test each value of
             ``ar1``.
-        assume_unique (bool, optional): If ``True``, the input arrays are both
-            assumed to be unique, which can speed up the calculation. Default
-            is ``False``.
+        assume_unique (bool, optional): Ignored
         invert (bool, optional): If ``True``, the values in the returned array
             are inverted (that is, ``False`` where an element of ``ar1`` is in
             ``ar2`` and ``True`` otherwise). Default is ``False``.
@@ -84,41 +82,20 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
         cupy.ndarray, bool: The values ``ar1[in1d]`` are in ``ar2``.
 
     """
+    # Ravel both arrays, behavior for the first array could be different
     ar1 = ar1.ravel()
     ar2 = ar2.ravel()
-
-    # Seems this conditions works nicely
-    if len(ar2) < 10 * len(ar1) ** 0.145:
+    if ar1.size == 0 or ar2.size == 0:
         if invert:
-            mask = cupy.ones(len(ar1), dtype=cupy.bool_)
-            for a in ar2:
-                mask &= (ar1 != a)
+            return cupy.ones(ar1.shape, dtype=cupy.bool_)
         else:
-            mask = cupy.zeros(len(ar1), dtype=cupy.bool_)
-            for a in ar2:
-                mask |= (ar1 == a)
-        return mask
-
-    # Otherwise use sorting
-    if not assume_unique:
-        ar1, rev_idx = cupy.unique(ar1, return_inverse=True)
-        ar2 = cupy.unique(ar2)
-
-    ar = cupy.concatenate((ar1, ar2))
-    order = ar.argsort()  # ok, cupy gives stable sort
-    sar = ar[order]
-    if invert:
-        bool_ar = (sar[1:] != sar[:-1])
-    else:
-        bool_ar = (sar[1:] == sar[:-1])
-    flag = cupy.concatenate((bool_ar, cupy.asarray([invert])))
-    ret = cupy.empty(ar.shape, dtype=cupy.bool_)
-    ret[order] = flag
-
-    if assume_unique:
-        return ret[:len(ar1)]
-    else:
-        return ret[rev_idx]
+            return cupy.zeros(ar1.shape, dtype=cupy.bool_)
+    # Use brilliant searchsorted trick
+    # https://github.com/cupy/cupy/pull/4018#discussion_r495790724
+    ar2 = cupy.sort(ar2)
+    v1 = cupy.searchsorted(ar2, ar1, 'left')
+    v2 = cupy.searchsorted(ar2, ar1, 'right')
+    return v1 == v2 if invert else v1 != v2
 
 
 def isin(element, test_elements, assume_unique=False, invert=False):
@@ -132,9 +109,7 @@ def isin(element, test_elements, assume_unique=False, invert=False):
         test_elements (cupy.ndarray): The values against which to test each
             value of ``element``. This argument is flattened if it is an
             array or array_like.
-        assume_unique (bool, optional): If ``True``, the input arrays are both
-            assumed to be unique, which can speed up the calculation. Default
-            is ``False``.
+        assume_unique (bool, optional): Ignored
         invert (bool, optional): If ``True``, the values in the returned array
             are inverted, as if calculating element not in ``test_elements``.
             Default is ``False``.
