@@ -76,7 +76,6 @@ cuda_files = [
     'cupy.core.new_fusion',
     'cupy.core.raw',
     'cupy.cuda.common',
-    'cupy.cuda.cufft',
     'cupy.cuda.device',
     'cupy.cuda.memory',
     'cupy.cuda.memory_hook',
@@ -129,7 +128,6 @@ else:
             'cuda.h',
             'cuda_profiler_api.h',
             'cuda_runtime.h',
-            'cufft.h',
             'curand.h',
             'cusparse.h',
             'nvrtc.h',
@@ -138,7 +136,6 @@ else:
             'cublas',
             'cuda',
             'cudart',
-            'cufft',
             'curand',
             'cusparse',
             'nvrtc',
@@ -238,6 +235,26 @@ if not use_hip:
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
+    })
+    MODULES.append({
+        'name': 'cufft',
+        'file': [
+            'cupy.cuda.cufft',
+        ],
+        'include': [
+            'cuda.h',
+            'cuda_runtime.h',
+            'cufft.h',
+            'cufftXt.h',
+        ],
+        'libraries': [
+            'cuda',
+            'cudart',
+            'cufft_static',
+            'culibos',
+        ],
+        'check_method': build.check_cuda_version,
+        'version_method': build.get_cuda_version,
     })
 else:
     MODULES.append({
