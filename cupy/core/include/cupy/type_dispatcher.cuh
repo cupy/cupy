@@ -6,6 +6,8 @@
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 #include <cuda_fp16.h>
+#elif (defined(__HIPCC__) || defined(CUPY_USE_HIP))
+#include <hip/hip_fp16.h>
 #endif
 
 
@@ -43,8 +45,8 @@ void dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args)
     case CUPY_TYPE_UINT16:     return f.template operator()<unsigned short>(std::forward<Ts>(args)...);
     case CUPY_TYPE_UINT32:     return f.template operator()<unsigned int>(std::forward<Ts>(args)...);
     case CUPY_TYPE_UINT64:     return f.template operator()<unsigned long>(std::forward<Ts>(args)...);
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
     case CUPY_TYPE_FLOAT16:    return f.template operator()<__half>(std::forward<Ts>(args)...);
 #endif
     case CUPY_TYPE_FLOAT32:    return f.template operator()<float>(std::forward<Ts>(args)...);

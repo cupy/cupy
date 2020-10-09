@@ -4,8 +4,7 @@ import numpy
 import pytest
 
 import cupy
-import cupy._util
-from cupy.core import _accelerator
+from cupy.core import internal
 from cupy import testing
 
 
@@ -125,6 +124,12 @@ class TestSumprod(unittest.TestCase):
         a = testing.shaped_arange((20, 30, 40, 50), xp, dtype)
         return a.sum(axis=(0, 2, 3))
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_sum_empty_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4, 5), xp, dtype)
+        return a.sum(axis=())
+
     @testing.for_all_dtypes_combination(names=['src_dtype', 'dst_dtype'])
     @testing.numpy_cupy_allclose()
     def test_sum_dtype(self, xp, src_dtype, dst_dtype):
@@ -204,11 +209,11 @@ class TestSumprod(unittest.TestCase):
 class TestCubReduction(unittest.TestCase):
 
     def setUp(self):
-        self.old_accelerators = _accelerator.get_routine_accelerators()
-        _accelerator.set_routine_accelerators(['cub'])
+        self.old_accelerators = cupy.core.get_routine_accelerators()
+        cupy.core.set_routine_accelerators(['cub'])
 
     def tearDown(self):
-        _accelerator.set_routine_accelerators(self.old_accelerators)
+        cupy.core.set_routine_accelerators(self.old_accelerators)
 
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
@@ -234,6 +239,17 @@ class TestCubReduction(unittest.TestCase):
             a.sum(axis=axis)
         # ...then perform the actual computation
         return a.sum(axis=axis)
+
+    # sum supports less dtypes; don't test float16 as it's not as accurate?
+    @testing.for_dtypes('lLfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_cub_sum_empty_axis(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.sum(axis=())
 
     @testing.for_contiguous_axes()
     # prod supports less dtypes; don't test float16 as it's not as accurate?
@@ -317,6 +333,57 @@ class TestCubReduction(unittest.TestCase):
             pos = xp.where(xp.isinf(result))
             result[pos] = xp.nan + 1j * xp.nan
         return result
+
+
+# This class compares cuTENSOR results against NumPy's
+@testing.parameterize(*testing.product({
+    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    'order': ('C', 'F'),
+}))
+@testing.gpu
+@unittest.skipUnless(cupy.cuda.cutensor.available,
+                     'The cuTENSOR routine is not enabled')
+class TestCuTensorReduction(unittest.TestCase):
+
+    def setUp(self):
+        self.old_accelerators = cupy.core.get_routine_accelerators()
+        cupy.core.set_routine_accelerators(['cutensor'])
+
+    def tearDown(self):
+        cupy.core.set_routine_accelerators(self.old_accelerators)
+
+    @testing.for_contiguous_axes()
+    # sum supports less dtypes; don't test float16 as it's not as accurate?
+    @testing.for_dtypes('lLfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_cutensor_sum(self, xp, dtype, axis):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+
+        if xp is numpy:
+            return a.sum(axis=axis)
+
+        # xp is cupy, first ensure we really use cuTENSOR
+        ret = cupy.empty(())  # Cython checks return type, need to fool it
+        func = 'cupy.cutensor._try_reduction_routine'
+        with testing.AssertFunctionIsCalled(func, return_value=ret):
+            a.sum(axis=axis)
+        # ...then perform the actual computation
+        return a.sum(axis=axis)
+
+    # sum supports less dtypes; don't test float16 as it's not as accurate?
+    @testing.for_dtypes('lLfdFD')
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
+    def test_cutensor_sum_empty_axis(self, xp, dtype):
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if self.order in ('c', 'C'):
+            a = xp.ascontiguousarray(a)
+        elif self.order in ('f', 'F'):
+            a = xp.asfortranarray(a)
+        return a.sum(axis=())
 
 
 @testing.parameterize(
@@ -731,7 +798,7 @@ class TestGradient(unittest.TestCase):
                 axis = (0,)
             else:
                 axis = (0, -1)
-        normalized_axes = cupy._util._normalize_axis_indices(axis, x.ndim)
+        normalized_axes = internal._normalize_axis_indices(axis, x.ndim)
         if spacing == 'sequence of int':
             # one scalar per axis
             spacing = tuple((ax + 1) / x.ndim for ax in normalized_axes)

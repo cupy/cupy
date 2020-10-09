@@ -7,6 +7,7 @@ from cupy.core._reduction import create_reduction_func
 from cupy.core._kernel import create_ufunc
 from cupy.core._scalar import get_typename
 from cupy.core._ufuncs import elementwise_copy
+from cupy.core cimport internal
 from cupy import _util
 
 from cupy.core cimport _accelerator
@@ -17,11 +18,7 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
 
-# TODO(leofang): always import cub when hipCUB is supported
-if not cupy.cuda.runtime.is_hip:
-    from cupy.cuda import cub
-else:
-    cub = None
+from cupy.cuda import cub
 
 if cupy.cuda.cutensor.available:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
@@ -536,7 +533,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
         else:
             scan(result, op, dtype, result)
     else:
-        axis = _util._normalize_axis_index(axis, a.ndim)
+        axis = internal._normalize_axis_index(axis, a.ndim)
         result = _proc_as_batch(result, axis, dtype, op)
     # This is for when the original out param was not contiguous
     if out is not None and out.data != result.data:

@@ -2,12 +2,13 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy.core import core
+from cupy import core
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.linalg import decomposition
 from cupy.linalg import util
+from cupy.cublas import batched_gesv, get_batched_gesv_limit
 
 
 def solve(a, b):
@@ -34,6 +35,11 @@ def solve(a, b):
 
     .. seealso:: :func:`numpy.linalg.solve`
     """
+    if a.ndim > 2 and a.shape[-1] <= get_batched_gesv_limit():
+        # Note: There is a low performance issue in batched_gesv when matrix is
+        # large, so it is not used in such cases.
+        return batched_gesv(a, b)
+
     util._assert_cupy_array(a, b)
     util._assert_nd_squareness(a)
 

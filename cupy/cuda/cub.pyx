@@ -5,6 +5,7 @@
 from cpython cimport sequence
 
 from cupy_backends.cuda.api.driver cimport Stream as Stream_t
+from cupy_backends.cuda.api cimport runtime
 from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.internal cimport _contig_axes
@@ -272,6 +273,8 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
         raise ValueError('array must be 1d')
     if x.size != n_cols:
         raise ValueError("size of array does not match the CSR matrix")
+    if runtime._is_hip_environment:
+        raise RuntimeError("hipCUB does not support SpMV")
 
     if values.dtype == x.dtype:
         dtype = values.dtype
@@ -375,7 +378,7 @@ def device_histogram(ndarray x, ndarray bins, ndarray y):
     return y
 
 
-cdef bint _cub_device_segmented_reduce_axis_compatible(
+cpdef bint _cub_device_segmented_reduce_axis_compatible(
         tuple cub_axis, Py_ssize_t ndim, str order):
     # This function checks if the reduced axes are C- or F- contiguous.
     if _contig_axes(cub_axis):

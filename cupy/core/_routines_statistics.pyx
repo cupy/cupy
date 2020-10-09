@@ -12,11 +12,7 @@ from cupy.core cimport _accelerator
 from cupy.core cimport _routines_math as _math
 from cupy.core.core cimport ndarray
 
-# TODO(leofang): always import cub when hipCUB is supported
-if not cupy.cuda.runtime.is_hip:
-    from cupy.cuda import cub
-else:
-    cub = None
+from cupy.cuda import cub
 
 if cupy.cuda.cutensor.available:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
@@ -287,7 +283,7 @@ cdef _amax = create_reduction_func(
 nanmin = create_reduction_func(
     'cupy_nanmin',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -296,7 +292,7 @@ nanmin = create_reduction_func(
 nanmax = create_reduction_func(
     'cupy_nanmax',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)

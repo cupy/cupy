@@ -46,6 +46,10 @@ class TestUnownedMemoryClass(unittest.TestCase):
 class TestUnownedMemory(unittest.TestCase):
 
     def check(self, device_id):
+        if (cupy.cuda.runtime.is_hip
+                and self.allocator is memory.malloc_managed):
+            raise unittest.SkipTest('HIP does not support managed memory')
+
         size = 24
         shape = (2, 3)
         dtype = cupy.float32
@@ -543,6 +547,9 @@ class TestMemoryPool(unittest.TestCase):
 
     def setUp(self):
         self.pool = memory.MemoryPool(self.allocator)
+        if (cupy.cuda.runtime.is_hip
+                and self.allocator is memory.malloc_managed):
+            raise unittest.SkipTest('HIP does not support managed memory')
 
     def test_zero_size_alloc(self):
         with cupy.cuda.Device(0):
