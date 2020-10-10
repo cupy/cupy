@@ -5,7 +5,7 @@ import pytest
 
 import cupy
 import cupy.core._accelerator as _acc
-
+from cupy.core import _cub_reduction
 from cupy import testing
 
 
@@ -328,17 +328,25 @@ class TestArrayReduction(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
     'order': ('C', 'F'),
+    'backend': ('device', 'block'),
 }))
 @testing.gpu
 @unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubReduction(unittest.TestCase):
 
     def setUp(self):
-        self.old_accelerators = _acc.get_routine_accelerators()
-        _acc.set_routine_accelerators(['cub'])
+        self.old_routine_accelerators = _acc.get_routine_accelerators()
+        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+        if self.backend == 'device':
+            _acc.set_routine_accelerators(['cub'])
+            _acc.set_reduction_accelerators([])
+        elif self.backend == 'block':
+            _acc.set_routine_accelerators([])
+            _acc.set_reduction_accelerators(['cub'])
 
     def tearDown(self):
-        _acc.set_routine_accelerators(self.old_accelerators)
+        _acc.set_routine_accelerators(self.old_routine_accelerators)
+        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
 
     @testing.for_contiguous_axes()
     @testing.for_all_dtypes(no_bool=True, no_float16=True)
@@ -351,12 +359,26 @@ class TestCubReduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        if len(axis) == len(self.shape):
-            func = 'cupy.core._routines_statistics.cub.device_reduce'
-        else:
-            func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
-        with testing.AssertFunctionIsCalled(func, return_value=ret):
-            a.min(axis=axis)
+        if self.backend == 'device':
+            func_name = 'cupy.core._routines_statistics.cub.'
+            if len(axis) == len(self.shape):
+                func_name += 'device_reduce'
+            else:
+                func_name += 'device_segmented_reduce'
+            with testing.AssertFunctionIsCalled(func_name, return_value=ret):
+                a.min(axis=axis)
+        elif self.backend == 'block':
+            # this is the only function we can mock; the rest is cdef'd
+            func_name = 'cupy.core._cub_reduction.'
+            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+            if len(axis) == len(self.shape):
+                times_called = 2  # two passes
+            else:
+                times_called = 1  # one pass
+            with testing.AssertFunctionIsCalled(
+                    func_name, wraps=func, times_called=times_called):
+                a.min(axis=axis)
         # ...then perform the actual computation
         return a.min(axis=axis)
 
@@ -377,12 +399,26 @@ class TestCubReduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        if len(axis) == len(self.shape):
-            func = 'cupy.core._routines_statistics.cub.device_reduce'
-        else:
-            func = 'cupy.core._routines_statistics.cub.device_segmented_reduce'
-        with testing.AssertFunctionIsCalled(func, return_value=ret):
-            a.max(axis=axis)
+        if self.backend == 'device':
+            func_name = 'cupy.core._routines_statistics.cub.'
+            if len(axis) == len(self.shape):
+                func_name += 'device_reduce'
+            else:
+                func_name += 'device_segmented_reduce'
+            with testing.AssertFunctionIsCalled(func_name, return_value=ret):
+                a.max(axis=axis)
+        elif self.backend == 'block':
+            # this is the only function we can mock; the rest is cdef'd
+            func_name = 'cupy.core._cub_reduction.'
+            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+            if len(axis) == len(self.shape):
+                times_called = 2  # two passes
+            else:
+                times_called = 1  # one pass
+            with testing.AssertFunctionIsCalled(
+                    func_name, wraps=func, times_called=times_called):
+                a.max(axis=axis)
         # ...then perform the actual computation
         return a.max(axis=axis)
 
