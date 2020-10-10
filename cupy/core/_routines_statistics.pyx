@@ -89,6 +89,11 @@ cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
+            if self._f_contiguous and self.dtype == numpy.bool_:
+                # temporary workaround casting the inputs to int8
+                # CUB argmax seems to return different values to
+                # NumPy for F-order bool array inputs
+                self = self.astype(numpy.int8)
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_ARGMAX, axis, dtype, out, keepdims)
             if result is not None:
@@ -309,7 +314,7 @@ cdef _argmin = create_reduction_func(
         ('D->q', (None, 'my_argmin_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
+    None, _min_max_preamble, sort_reduce_axis=False)
 
 
 cdef _argmax = create_reduction_func(
@@ -323,7 +328,7 @@ cdef _argmax = create_reduction_func(
         ('D->q', (None, 'my_argmax_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
+    None, _min_max_preamble, sort_reduce_axis=False)
 
 
 cpdef ndarray _nanargmax(ndarray a, axis, out, dtype, keepdims):
@@ -347,7 +352,7 @@ cdef _nanargmin_func = create_reduction_func(
      ('D->q', (None, 'my_argmin_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, isnan(in0) ? -1 : _J)',
      'my_argmin(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
+    None, _min_max_preamble, sort_reduce_axis=False)
 
 
 cdef _nanargmax_func = create_reduction_func(
@@ -361,7 +366,7 @@ cdef _nanargmax_func = create_reduction_func(
      ('D->q', (None, 'my_argmax_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, isnan(in0) ? -1 : _J)',
      'my_argmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
+    None, _min_max_preamble, sort_reduce_axis=False)
 
 
 cpdef ndarray _median(
