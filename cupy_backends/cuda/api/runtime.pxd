@@ -340,7 +340,7 @@ cdef extern from *:
             size_t       sharedMemPerBlockOptin
             int          pageableMemoryAccessUsesHostPageTables
             int          directManagedMemAccessFromHost
-    ELSE:
+    ELIF CUDA_VERSION == 9000:
         # CUDA 9.0
         ctypedef struct cudaDeviceProp 'cudaDeviceProp':
             char         name[256]
@@ -414,6 +414,59 @@ cdef extern from *:
             int          cooperativeLaunch
             int          cooperativeMultiDeviceLaunch
             size_t       sharedMemPerBlockOptin
+    ELIF use_hip:
+        ctypedef struct hipDeviceArch_t 'hipDeviceArch_t':
+            pass
+
+        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+            char name[256]
+            size_t totalGlobalMem
+            size_t sharedMemPerBlock
+            int regsPerBlock
+            int warpSize
+            int maxThreadsPerBlock
+            int maxThreadsDim[3]
+            int maxGridSize[3]
+            int clockRate
+            int memoryClockRate
+            int memoryBusWidth
+            size_t totalConstMem
+            int major
+            int minor
+            int multiProcessorCount
+            int l2CacheSize
+            int maxThreadsPerMultiProcessor
+            int computeMode
+            int clockInstructionRate
+            hipDeviceArch_t arch
+            int concurrentKernels
+            int pciDomainID
+            int pciBusID
+            int pciDeviceID
+            size_t maxSharedMemoryPerMultiProcessor
+            int isMultiGpuBoard
+            int canMapHostMemory
+            int gcnArch
+            int integrated
+            int cooperativeLaunch
+            int cooperativeMultiDeviceLaunch
+            int maxTexture1D
+            int maxTexture2D[2]
+            int maxTexture3D[3]
+            unsigned int* hdpMemFlushCntl
+            unsigned int* hdpRegFlushCntl
+            size_t memPitch
+            size_t textureAlignment
+            size_t texturePitchAlignment
+            int kernelExecTimeoutEnabled
+            int ECCEnabled
+            int tccDriver
+            int cooperativeMultiDeviceUnmatchedFunc
+            int cooperativeMultiDeviceUnmatchedGridDim
+            int cooperativeMultiDeviceUnmatchedBlockDim
+            int cooperativeMultiDeviceUnmatchedSharedMem
+            int isLargeBar
+
 
 ###############################################################################
 # Enum
