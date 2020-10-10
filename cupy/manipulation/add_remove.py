@@ -34,12 +34,20 @@ def append(arr, values, axis=None):
 
     .. seealso:: :func:`numpy.append`
     """
+    # TODO(asi1024): Implement fast path for scalar inputs.
     arr = cupy.asarray(arr)
     values = cupy.asarray(values)
     if axis is None:
         return core.concatenate_method(
             (arr.ravel(), values.ravel()), 0).ravel()
     return core.concatenate_method((arr, values), axis)
+
+
+_resize_kernel = core.ElementwiseKernel(
+    'raw T x, int64 size', 'T y',
+    'y = x[i % size]',
+    'resize',
+)
 
 
 def resize(a, new_shape):
@@ -64,13 +72,13 @@ def resize(a, new_shape):
     """
     if numpy.isscalar(a):
         return cupy.full(new_shape, a)
-    if a.shape == () or len(a) == 0:
-        # 0-dim or empty array
+    a = cupy.asarray(a)
+    if a.size == 0:
         return cupy.zeros(new_shape, dtype=a.dtype)
-    a = a.ravel()
-    reps, remainder = divmod(numpy.prod(new_shape), len(a))
-    return core.concatenate_method(
-        [a] * reps + [a[:remainder]], 0).reshape(new_shape)
+    out = cupy.empty(new_shape, a.dtype)
+    _resize_kernel(a, a.size, out)
+    return out
+
 
 
 # TODO(okuta): Implement trim_zeros
