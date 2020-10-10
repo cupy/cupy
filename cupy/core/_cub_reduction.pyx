@@ -3,7 +3,6 @@ from cupy.core cimport _kernel
 from cupy.core cimport _optimize_config
 from cupy.core cimport _reduction
 from cupy.core cimport _scalar
-from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
@@ -282,19 +281,23 @@ cpdef inline tuple _can_use_cub_block_reduction(
     in_arr = in_args[0]
     out_arr = out_args[0]
 
+    # the axes might not be sorted when we arrive here...
+    reduce_axis = tuple(sorted(reduce_axis))
+    out_axis = tuple(sorted(out_axis))
+
     # check reduction axes, if not contiguous then fall back to old kernel
     if in_arr._f_contiguous:
         order = 'F'
         if not cub._cub_device_segmented_reduce_axis_compatible(
                 reduce_axis, in_arr.ndim, order):
             return None
-        axis_permutes_cub = tuple(sorted(reduce_axis) + sorted(out_axis))
+        axis_permutes_cub = reduce_axis + out_axis
     elif in_arr._c_contiguous:
         order = 'C'
         if not cub._cub_device_segmented_reduce_axis_compatible(
                 reduce_axis, in_arr.ndim, order):
             return None
-        axis_permutes_cub = tuple(sorted(out_axis) + sorted(reduce_axis))
+        axis_permutes_cub = out_axis + reduce_axis
     else:
         return None
     if axis_permutes_cub != tuple(range(in_arr.ndim)):
@@ -599,8 +602,9 @@ cdef bint _try_to_call_cub_reduction(
     in_shape = _reduction._set_permuted_args(
         in_args, axis_permutes, a_shape, self.in_params)
 
-    if in_args[0].flags.f_contiguous:
-        ret = out_args[0] = _internal_asfortranarray(ret)
+    if in_args[0]._f_contiguous:
+        ret._set_contiguous_strides(ret.dtype.itemsize, False)
+        out_args[0] = ret
 
     if not full_reduction:  # just need one pass
         out_block_num = 1  # = number of segments

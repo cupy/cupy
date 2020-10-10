@@ -4,6 +4,8 @@ import numpy
 import pytest
 
 import cupy
+import cupy.core._accelerator as _acc
+from cupy.core import _cub_reduction
 from cupy.core import internal
 from cupy import testing
 
@@ -203,17 +205,25 @@ class TestSumprod(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
     'order': ('C', 'F'),
+    'backend': ('device', 'block'),
 }))
 @testing.gpu
 @unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubReduction(unittest.TestCase):
 
     def setUp(self):
-        self.old_accelerators = cupy.core.get_routine_accelerators()
-        cupy.core.set_routine_accelerators(['cub'])
+        self.old_routine_accelerators = _acc.get_routine_accelerators()
+        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+        if self.backend == 'device':
+            _acc.set_routine_accelerators(['cub'])
+            _acc.set_reduction_accelerators([])
+        elif self.backend == 'block':
+            _acc.set_routine_accelerators([])
+            _acc.set_reduction_accelerators(['cub'])
 
     def tearDown(self):
-        cupy.core.set_routine_accelerators(self.old_accelerators)
+        _acc.set_routine_accelerators(self.old_routine_accelerators)
+        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
 
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
@@ -231,12 +241,26 @@ class TestCubReduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        if len(axis) == len(self.shape):
-            func = 'cupy.core._routines_math.cub.device_reduce'
-        else:
-            func = 'cupy.core._routines_math.cub.device_segmented_reduce'
-        with testing.AssertFunctionIsCalled(func, return_value=ret):
-            a.sum(axis=axis)
+        if self.backend == 'device':
+            func_name = 'cupy.core._routines_math.cub.'
+            if len(axis) == len(self.shape):
+                func_name += 'device_reduce'
+            else:
+                func_name += 'device_segmented_reduce'
+            with testing.AssertFunctionIsCalled(func_name, return_value=ret):
+                a.sum(axis=axis)
+        elif self.backend == 'block':
+            # this is the only function we can mock; the rest is cdef'd
+            func_name = 'cupy.core._cub_reduction.'
+            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+            if len(axis) == len(self.shape):
+                times_called = 2  # two passes
+            else:
+                times_called = 1  # one pass
+            with testing.AssertFunctionIsCalled(
+                    func_name, wraps=func, times_called=times_called):
+                a.sum(axis=axis)
         # ...then perform the actual computation
         return a.sum(axis=axis)
 
@@ -267,12 +291,26 @@ class TestCubReduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        if len(axis) == len(self.shape):
-            func = 'cupy.core._routines_math.cub.device_reduce'
-        else:
-            func = 'cupy.core._routines_math.cub.device_segmented_reduce'
-        with testing.AssertFunctionIsCalled(func, return_value=ret):
-            a.prod(axis=axis)
+        if self.backend == 'device':
+            func_name = 'cupy.core._routines_math.cub.'
+            if len(axis) == len(self.shape):
+                func_name += 'device_reduce'
+            else:
+                func_name += 'device_segmented_reduce'
+            with testing.AssertFunctionIsCalled(func_name, return_value=ret):
+                a.prod(axis=axis)
+        elif self.backend == 'block':
+            # this is the only function we can mock; the rest is cdef'd
+            func_name = 'cupy.core._cub_reduction.'
+            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+            if len(axis) == len(self.shape):
+                times_called = 2  # two passes
+            else:
+                times_called = 1  # one pass
+            with testing.AssertFunctionIsCalled(
+                    func_name, wraps=func, times_called=times_called):
+                a.prod(axis=axis)
         # ...then perform the actual computation
         return a.prod(axis=axis)
 
@@ -281,6 +319,9 @@ class TestCubReduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILfdF')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumsum(self, xp, dtype):
+        if self.backend == 'block':
+            raise unittest.SkipTest('does not support')
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
@@ -303,6 +344,9 @@ class TestCubReduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILfdF')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumprod(self, xp, dtype):
+        if self.backend == 'block':
+            raise unittest.SkipTest('does not support')
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
