@@ -4,8 +4,10 @@ import warnings
 import cupy
 import numpy
 
+from cupy.core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _interp_kernels
+from cupyx.scipy.ndimage import _spline_prefilter_core
 
 _prod = cupy.core.internal.prod
 
@@ -30,6 +32,194 @@ def _check_parameter(func_name, order, mode):
     elif mode not in ('constant', 'nearest', 'mirror', 'opencv',
                       '_opencv_edge'):
         raise ValueError('boundary mode is not supported')
+
+
+def _get_spline_output(input, output, allow_float32=False):
+    min_float_dtype = cupy.float32 if allow_float32 else cupy.float64
+    if isinstance(output, cupy.ndarray):
+        output_dtype = cupy.promote_types(output.dtype, min_float_dtype)
+        output_dtype_requested = output.dtype
+        # For now, strided operation is not supported, so have to create a new
+        # temporary array, y, even when the user provides an output array.
+        y = _util._get_output(output_dtype, input)
+    else:
+        if output is None:
+            output = output_dtype_requested = input.dtype
+        else:
+            output_dtype_requested = cupy.dtype(output)
+        output = cupy.promote_types(output, min_float_dtype)
+        y = _util._get_output(output, input)
+    return y, output_dtype_requested
+
+
+def spline_filter1d(
+    input, order=3, axis=-1, output=cupy.float64, mode="mirror", *,
+    allow_float32=False,
+):
+    """
+    Calculate a 1-D spline filter along the given axis.
+
+    The lines of the array along the given axis are filtered by a
+    spline filter. The order of the spline must be >= 2 and <= 5.
+
+    Args:
+        input (cupy.ndarray): The input array.
+        order (int): The order of the spline interpolation. If it is not given,
+            order 1 is used. It is different from :mod:`scipy.ndimage` and can
+            change in the future. Currently it supports only order 0 and 1.
+        axis (int): The axis along which the spline filter is applied. Default
+            is the last axis.
+        output (cupy.ndarray or dtype, optional): The array in which to place
+            the output, or the dtype of the returned array. Default is
+            ``numpy.float64``.
+        mode (str): Points outside the boundaries of the input are filled
+            according to the given mode (``'constant'``, ``'nearest'``,
+            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+        allow_float32 (bool): If True, single-precision inputs will use
+            single precision computation. If False, double precision is used.
+            This option is not present in SciPy.
+
+    Returns:
+        cupy.ndarray: The result of prefiltering the input.
+
+    .. seealso:: :func:`scipy.spline_filter1d`
+
+    """
+    if order < 0 or order > 5:
+        raise RuntimeError("spline order not supported")
+    x = input
+    if cupy.iscomplexobj(x):
+        raise TypeError('Complex type not supported')
+    ndim = x.ndim
+    axis = internal._normalize_axis_index(axis, ndim)
+
+    # order 0, 1 don't require reshaping as no CUDA kernel will be called
+    # scalar or size 1 arrays also don't need to be filtered
+    run_kernel = not (order < 2 or x.ndim == 0 or x.shape[axis] == 1)
+    if run_kernel:
+        if axis != ndim - 1:
+            x = x.swapaxes(axis, -1)
+        x_shape = x.shape
+        x = x.reshape((-1, x.shape[-1]), order="C")
+        if not x.flags.c_contiguous:
+            x = cupy.ascontiguousarray(x)
+    else:
+        output = _util._get_output(output, input)
+        output[...] = x[...]
+        return output
+
+    y, output_dtype_requested = _get_spline_output(
+        input, output, allow_float32
+    )
+    if output_dtype_requested.kind != 'f':
+        # https://docs.cupy.dev/en/stable/reference/difference.html#cast-behavior-from-float-to-integer  # NOQA: E501
+        raise NotImplementedError("Only floating point output is supported")
+
+    # TODO: Consider adding a prefiltering kernel with strided access to
+    #       avoid the need for reshaping and allow in-place operation.
+    n_batch = x.shape[0]
+    out_len = x.shape[-1]
+    y = y.reshape((n_batch, out_len))
+
+    if allow_float32 and y.dtype == cupy.float32:
+        # data arrays and poles always stored in double precision
+        dtype_data = "float"
+        dtype_pole = "float"
+
+    else:
+        dtype_data = "double"
+        dtype_pole = "double"
+
+    # For the kernel, the input and output must have matching dtype
+    x = x.astype(y.dtype, copy=False)
+
+    module = cupy.RawModule(
+        code=_spline_prefilter_core.get_raw_spline1d_code(
+            mode,
+            order=order,
+            dtype_index=_util._get_inttype(input),
+            dtype_data=dtype_data,
+            dtype_pole=dtype_pole,
+        )
+    )
+    kern = module.get_function("batch_spline_prefilter")
+
+    # Due to recursive nature, a given line of data must be processed by a
+    # single thread. n_batch lines will be processed in total.
+    block = (min(max(1, n_batch//128), 32),)
+    grid = (int(math.ceil(n_batch / block[0])),)
+
+    # apply prefilter gain
+    poles = _spline_prefilter_core.get_poles(order=order)
+    y = x * _spline_prefilter_core.get_gain(poles)
+
+    # apply caual + anti-causal IIR spline filters
+    kern(grid, block, (y, out_len, n_batch))
+
+    y = y.reshape(x_shape, order="C")
+    if axis != ndim - 1:
+        y = y.swapaxes(axis, -1)
+
+    if isinstance(output, cupy.ndarray):
+        # copy result back to the user-provided output array
+        output[:] = y
+        return output
+    else:
+        y = y.astype(output_dtype_requested, copy=False)
+        # ensure C-contiguous output to match in SciPy
+        if not y.flags.c_contiguous:
+            y = cupy.ascontiguousarray(y)
+    return y
+
+
+def spline_filter(
+    input, order=3, output=numpy.float64, mode="mirror", *,
+    allow_float32=False
+):
+    """Multidimensional spline filter.
+
+    Args:
+        input (cupy.ndarray): The input array.
+        order (int): The order of the spline interpolation. If it is not given,
+            order 1 is used. It is different from :mod:`scipy.ndimage` and can
+            change in the future. Currently it supports only order 0 and 1.
+        output (cupy.ndarray or dtype, optional): The array in which to place
+            the output, or the dtype of the returned array. Default is
+            ``numpy.float64``.
+        mode (str): Points outside the boundaries of the input are filled
+            according to the given mode (``'constant'``, ``'nearest'``,
+            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+        allow_float32 (bool): If True, single-precision inputs will use
+            single precision computation. If False, double precision is used.
+            This option is not present in SciPy.
+
+    Returns:
+        cupy.ndarray: The result of prefiltering the input.
+
+    .. seealso:: :func:`scipy.spline_filter1d`
+
+    """
+    if order < 2 or order > 5:
+        raise RuntimeError("spline order not supported")
+
+    y, output_dtype_requested = _get_spline_output(
+        input, output, allow_float32
+    )
+
+    if order not in [0, 1] and input.ndim > 0:
+        for axis in range(input.ndim):
+            spline_filter1d(
+                input, order, axis, output=y, mode=mode,
+                allow_float32=allow_float32
+            )
+            input = y
+    if isinstance(output, cupy.ndarray):
+        output[...] = input[...]
+    else:
+        output = input
+    if output.dtype != output_dtype_requested:
+        output = output.astype(output_dtype_requested)
+    return output
 
 
 def map_coordinates(input, coordinates, output=None, order=None,
