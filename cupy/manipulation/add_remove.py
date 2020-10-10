@@ -15,22 +15,22 @@ def append(arr, values, axis=None):
     Append values to the end of an array.
 
     Args:
-        arr(array_like):
+        arr (array_like):
             Values are appended to a copy of this array.
-        values(array_like):
-            These values are appended to a copy of `arr`.  It must be of the
-            correct shape (the same shape as `arr`, excluding `axis`).  If
-            `axis` is not specified, `values` can be any shape and will be
+        values (array_like):
+            These values are appended to a copy of ``arr``.  It must be of the
+            correct shape (the same shape as ``arr``, excluding ``axis``).  If
+            ``axis`` is not specified, ``values`` can be any shape and will be
             flattened before use.
-        axis(int, optional):
-            The axis along which `values` are appended.  If `axis` is not
-            given, both `arr` and `values` are flattened before use.
+        axis (int or None):
+            The axis along which ``values`` are appended.  If ``axis`` is not
+            given, both ``arr`` and ``values`` are flattened before use.
 
     Returns:
-        ndarray
-            A copy of `arr` with `values` appended to `axis`.  Note that
-            `append` does not occur in-place: a new array is allocated and
-            filled.  If `axis` is None, `out` is a flattened array.
+        cupy.ndarray
+            A copy of ``arr`` with ``values`` appended to ``axis``.  Note that
+            ``append`` does not occur in-place: a new array is allocated and
+            filled.  If ``axis`` is None, ``out`` is a flattened array.
 
     .. seealso:: :func:`numpy.append`
     """
@@ -46,16 +46,16 @@ def resize(a, new_shape):
     """Return a new array with the specified shape.
 
     If the new array is larger than the original array, then the new
-    array is filled with repeated copies of `a`.  Note that this behavior
+    array is filled with repeated copies of ``a``.  Note that this behavior
     is different from a.resize(new_shape) which fills with zeros instead
-    of repeated copies of `a`.
+    of repeated copies of ``a``.
 
     Args:
-        a(array_like): Array to be resized.
-        new_shape(int or tuple of int): Shape of resized array.
+        a (array_like): Array to be resized.
+        new_shape (int or tuple of int): Shape of resized array.
 
     Returns:
-        ndarray:
+        cupy.ndarray:
             The new array is formed from the data in the old array, repeated
             if necessary to fill out the required number of elements.  The
             data are repeated in the order that they are stored in memory.
