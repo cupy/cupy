@@ -466,6 +466,9 @@ cdef extern from *:
             int cooperativeMultiDeviceUnmatchedBlockDim
             int cooperativeMultiDeviceUnmatchedSharedMem
             int isLargeBar
+    ELSE:  # for RTD
+        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+            char         name[256]
 
 
 ###############################################################################
