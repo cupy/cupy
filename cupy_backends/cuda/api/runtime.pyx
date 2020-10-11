@@ -286,8 +286,9 @@ cpdef getDeviceProperties(int device):
     cdef int status = cudaGetDeviceProperties(&props, device)
     check_status(status)
 
-    # Common properties to CUDA 9.0, 9.2, 10.x and 11.x
-    properties = {'name': 'UNAVAILABLE'}  # for RTD
+    cdef dict properties = {'name': 'UNAVAILABLE'}  # for RTD
+
+    # Common properties to CUDA 9.0, 9.2, 10.x, 11.x, and HIP
     IF CUDA_VERSION > 0 or use_hip:
         properties = {
             'name': props.name,
@@ -337,25 +338,30 @@ cpdef getDeviceProperties(int device):
         properties['maxTexture2DGather'] = tuple(props.maxTexture2DGather)
         properties['maxTexture3DAlt'] = tuple(props.maxTexture3DAlt)
         properties['maxTextureCubemap'] = props.maxTextureCubemap
-        properties['maxTextureCubemapLayered'] = tuple(props.maxTextureCubemapLayered)
+        properties['maxTextureCubemapLayered'] = tuple(
+            props.maxTextureCubemapLayered)
         properties['maxSurface1D'] = props.maxSurface1D
         properties['maxSurface1DLayered'] = tuple(props.maxSurface1DLayered)
         properties['maxSurface2D'] = tuple(props.maxSurface2D)
         properties['maxSurface2DLayered'] = tuple(props.maxSurface2DLayered)
         properties['maxSurface3D'] = tuple(props.maxSurface3D)
         properties['maxSurfaceCubemap'] = props.maxSurfaceCubemap
-        properties['maxSurfaceCubemapLayered'] = tuple(props.maxSurfaceCubemapLayered)
+        properties['maxSurfaceCubemapLayered'] = tuple(
+            props.maxSurfaceCubemapLayered)
         properties['surfaceAlignment'] = props.surfaceAlignment
         properties['asyncEngineCount'] = props.asyncEngineCount
         properties['unifiedAddressing'] = props.unifiedAddressing
-        properties['streamPrioritiesSupported'] = props.streamPrioritiesSupported
+        properties['streamPrioritiesSupported'] = (
+            props.streamPrioritiesSupported)
         properties['globalL1CacheSupported'] = props.globalL1CacheSupported
         properties['localL1CacheSupported'] = props.localL1CacheSupported
-        properties['sharedMemPerMultiprocessor'] = props.sharedMemPerMultiprocessor
+        properties['sharedMemPerMultiprocessor'] = (
+            props.sharedMemPerMultiprocessor)
         properties['regsPerMultiprocessor'] = props.regsPerMultiprocessor
         properties['managedMemory'] = props.managedMemory
         properties['multiGpuBoardGroupID'] = props.multiGpuBoardGroupID
-        properties['hostNativeAtomicSupported'] = props.hostNativeAtomicSupported
+        properties['hostNativeAtomicSupported'] = (
+            props.hostNativeAtomicSupported)
         properties['singleToDoublePrecisionPerfRatio'] = (
             props.singleToDoublePrecisionPerfRatio)
         properties['pageableMemoryAccess'] = props.pageableMemoryAccess
@@ -381,7 +387,6 @@ cpdef getDeviceProperties(int device):
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
     IF use_hip:
-        # TODO(leofang): support hipDeviceArch_t
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
             props.maxSharedMemoryPerMultiProcessor)
@@ -398,6 +403,28 @@ cpdef getDeviceProperties(int device):
         properties['cooperativeMultiDeviceUnmatchedSharedMem'] = (
             props.cooperativeMultiDeviceUnmatchedSharedMem)
         properties['isLargeBar'] = props.isLargeBar
+
+        # flatten "hipDeviceArch_t" into properties
+        # TODO(leofang): this might not be desired in some occasions?
+        properties['hasGlobalInt32Atomics'] = props.arch.hasGlobalInt32Atomics
+        properties['hasGlobalFloatAtomicExch'] = (
+            props.arch.hasGlobalFloatAtomicExch)
+        properties['hasSharedInt32Atomics'] = props.arch.hasSharedInt32Atomics
+        properties['hasSharedFloatAtomicExch'] = (
+            props.arch.hasSharedFloatAtomicExch)
+        properties['hasFloatAtomicAdd'] = props.arch.hasFloatAtomicAdd
+        properties['hasGlobalInt64Atomics'] = props.arch.hasGlobalInt64Atomics
+        properties['hasSharedInt64Atomics'] = props.arch.hasSharedInt64Atomics
+        properties['hasDoubles'] = props.arch.hasDoubles
+        properties['hasWarpVote'] = props.arch.hasWarpVote
+        properties['hasWarpBallot'] = props.arch.hasWarpBallot
+        properties['hasWarpShuffle'] = props.arch.hasWarpShuffle
+        properties['hasFunnelShift'] = props.arch.hasFunnelShift
+        properties['hasThreadFenceSystem'] = props.arch.hasThreadFenceSystem
+        properties['hasSyncThreadsExt'] = props.arch.hasSyncThreadsExt
+        properties['hasSurfaceFuncs'] = props.arch.hasSurfaceFuncs
+        properties['has3dGrid'] = props.arch.has3dGrid
+        properties['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
     return properties
 
 cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:

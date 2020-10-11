@@ -415,8 +415,29 @@ cdef extern from *:
             int          cooperativeMultiDeviceLaunch
             size_t       sharedMemPerBlockOptin
     ELIF use_hip:
-        ctypedef struct hipDeviceArch_t 'hipDeviceArch_t':
-            pass
+        ctypedef struct deviceArch 'hipDeviceArch_t':
+            unsigned hasGlobalInt32Atomics
+            unsigned hasGlobalFloatAtomicExch
+            unsigned hasSharedInt32Atomics
+            unsigned hasSharedFloatAtomicExch
+            unsigned hasFloatAtomicAdd
+
+            unsigned hasGlobalInt64Atomics
+            unsigned hasSharedInt64Atomics
+
+            unsigned hasDoubles
+
+            unsigned hasWarpVote
+            unsigned hasWarpBallot
+            unsigned hasWarpShuffle
+            unsigned hasFunnelShift
+
+            unsigned hasThreadFenceSystem
+            unsigned hasSyncThreadsExt
+
+            unsigned hasSurfaceFuncs
+            unsigned has3dGrid
+            unsigned hasDynamicParallelism
 
         ctypedef struct cudaDeviceProp 'cudaDeviceProp':
             char name[256]
@@ -438,7 +459,7 @@ cdef extern from *:
             int maxThreadsPerMultiProcessor
             int computeMode
             int clockInstructionRate
-            hipDeviceArch_t arch
+            deviceArch arch
             int concurrentKernels
             int pciDomainID
             int pciBusID
