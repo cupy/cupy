@@ -108,31 +108,31 @@ class TestOrder(unittest.TestCase):
             with pytest.raises(ValueError):
                 xp.percentile(a, q, axis=-1, interpolation='deadbeef')
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmax_all(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype)
         return xp.nanmax(a)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmax_axis_large(self, xp, dtype):
         a = testing.shaped_random((3, 1000), xp, dtype)
         return xp.nanmax(a, axis=0)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmax_axis0(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return xp.nanmax(a, axis=0)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmax_axis1(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return xp.nanmax(a, axis=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmax_axis2(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
@@ -156,31 +156,31 @@ class TestOrder(unittest.TestCase):
         self.assertIs(w[0].category, RuntimeWarning)
         return m
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmin_all(self, xp, dtype):
         a = testing.shaped_random((2, 3), xp, dtype)
         return xp.nanmin(a)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmin_axis_large(self, xp, dtype):
         a = testing.shaped_random((3, 1000), xp, dtype)
         return xp.nanmin(a, axis=0)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmin_axis0(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return xp.nanmin(a, axis=0)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmin_axis1(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return xp.nanmin(a, axis=1)
 
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_nanmin_axis2(self, xp, dtype):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
