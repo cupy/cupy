@@ -117,6 +117,8 @@ Adding and removing elements
    :toctree: generated/
    :nosignatures:
 
+   cupy.append
+   cupy.resize
    cupy.unique
    cupy.trim_zeros
 
