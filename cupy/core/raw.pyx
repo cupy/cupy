@@ -1,3 +1,5 @@
+import pickle
+
 import cupy
 
 from cupy_backends.cuda.api cimport driver
@@ -57,6 +59,11 @@ cdef class RawKernel:
 
         # This is for profiling mechanisms to auto infer a name
         self.__name__ = name
+
+        # this is only for pickling: if any change is made such that the old
+        # pickles cannot be reused, we bump this version number here as will
+        # as in __setstate__
+        self.raw_ver = 1
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -122,10 +129,18 @@ cdef class RawKernel:
                 'translate_cucomplex': self.translate_cucomplex,
                 'file_path': self.file_path,
                 'name_expressions': self.name_expressions,
-                'enable_cooperative_groups': self.enable_cooperative_groups}
+                'enable_cooperative_groups': self.enable_cooperative_groups,
+                'raw_ver': self.raw_ver}
         return args
 
     def __setstate__(self, dict args):
+        raw_ver = args.get('raw_ver')
+        if raw_ver != 1:
+            raise pickle.UnpicklingError(
+                'The pickled RawKernel object is not supported by the current '
+                'CuPy version. It should not be used. Please recompile.')
+        self.raw_ver = raw_ver
+
         self.code = args['code']
         self.name = self.__name__ = args['name']
         self.options = args['options']
