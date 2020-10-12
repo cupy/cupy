@@ -6,6 +6,7 @@ import platform
 import numpy
 
 import cupy
+import cupy_backends
 
 try:
     import cupy.cuda.thrust as thrust
@@ -36,6 +37,8 @@ try:
     import scipy
 except ImportError:
     scipy = None
+
+is_hip = cupy_backends.cuda.api.runtime.is_hip
 
 
 def _eval_or_error(func, errors):
@@ -117,7 +120,10 @@ class _RuntimeInfo(object):
     def __init__(self):
         self.cupy_version = cupy.__version__
 
-        self.cuda_path = cupy.cuda.get_cuda_path()
+        if not is_hip:
+            self.cuda_path = cupy.cuda.get_cuda_path()
+        else:
+            self.cuda_path = cupy._environment.get_rocm_path()
 
         self.cuda_build_version = cupy.cuda.driver.get_build_version()
         self.cuda_driver_version = _eval_or_error(
