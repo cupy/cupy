@@ -1,29 +1,28 @@
-============================================
-CuPy -- NumPy-like API accelerated with CUDA
-============================================
-
-This is the `CuPy <https://github.com/cupy/cupy>`_ documentation.
+============================================================
+CuPy -- A NumPy-compatible array library accelerated by CUDA
+============================================================
 
 .. module:: cupy
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    overview
+   install
    tutorial/index
    reference/index
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Development
 
    compatibility
    contribution
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Misc Notes
 
-   install
+   install_rocm
    upgrade
    license

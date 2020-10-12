@@ -55,14 +55,14 @@ namespace complex {
 using thrust::complex;
 
 /* round down to 18 = 54/3 bits */
-__device__ inline double trim(double x) {
+__host__ __device__ inline double trim(double x) {
   uint32_t hi;
   get_high_word(hi, x);
   insert_words(x, hi & 0xfffffff8, 0);
   return x;
 }
 
-__device__ inline complex<double> clog(const complex<double>& z) {
+__host__ __device__ inline complex<double> clog(const complex<double>& z) {
   // Adapted from FreeBSDs msun
   double x, y;
   double ax, ay;
@@ -184,17 +184,17 @@ __device__ inline complex<double> clog(const complex<double>& z) {
 }  // namespace detail
 
 template <typename ValueType>
-__device__ inline complex<ValueType> log(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> log(const complex<ValueType>& z) {
   return complex<ValueType>(::log(thrust::abs(z)), thrust::arg(z));
 }
 
 template <>
-__device__ inline complex<double> log(const complex<double>& z) {
+__host__ __device__ inline complex<double> log(const complex<double>& z) {
   return detail::complex::clog(z);
 }
 
 template <typename ValueType>
-__device__ inline complex<ValueType> log10(const complex<ValueType>& z) {
+__host__ __device__ inline complex<ValueType> log10(const complex<ValueType>& z) {
   // Using the explicit literal prevents compile time warnings in
   // devices that don't support doubles
   return thrust::log(z) / ValueType(2.30258509299404568402);

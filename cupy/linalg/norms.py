@@ -2,20 +2,36 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy import cuda
-from cupy.cuda import device
+from cupy import core
 from cupy.linalg import decomposition
 from cupy.linalg import util
 
+import functools
 
-if cuda.cusolver_enabled:
-    from cupy.cuda import cusolver
+
+def _multi_svd_norm(x, row_axis, col_axis, op):
+    y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
+    result = op(decomposition.svd(y, compute_uv=False), axis=-1)
+    return result
+
+
+_norm_ord2 = core.create_reduction_func(
+    '_norm_ord2',
+    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     'f->f', 'd->d'),
+    ('in0 * in0', 'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
+_norm_ord2_complex = core.create_reduction_func(
+    '_norm_ord2_complex',
+    ('F->F', 'D->D'),
+    ('in0.real() * in0.real() + in0.imag() * in0.imag()',
+     'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
 
 
 def norm(x, ord=None, axis=None, keepdims=False):
     """Returns one of matrix norms specified by ``ord`` parameter.
 
-    Complex valued matrices and vectors are not supported.
     See numpy.linalg.norm for more detail.
 
     Args:
@@ -39,12 +55,12 @@ def norm(x, ord=None, axis=None, keepdims=False):
         ndim = x.ndim
         if (ord is None or (ndim == 1 and ord == 2) or
                 (ndim == 2 and ord in ('f', 'fro'))):
-            if issubclass(x.dtype.type, numpy.complexfloating):
+            if x.dtype.kind == 'c':
                 s = abs(x.ravel())
                 s *= s
                 ret = cupy.sqrt(s.sum())
             else:
-                ret = cupy.sqrt((x.ravel() ** 2).sum())
+                ret = cupy.sqrt((x * x).sum())
             if keepdims:
                 ret = ret.reshape((1,) * ndim)
             return ret
@@ -76,8 +92,9 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
             # special case for speedup
-            s = (x.conj() * x).real
-            return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
+            if x.dtype.kind == 'c':
+                return _norm_ord2_complex(x, axis=axis, keepdims=keepdims)
+            return _norm_ord2(x, axis=axis, keepdims=keepdims)
         else:
             try:
                 float(ord)
@@ -100,7 +117,13 @@ def norm(x, ord=None, axis=None, keepdims=False):
                              (axis, x.shape))
         if row_axis == col_axis:
             raise ValueError('Duplicate axes given.')
-        if ord == 1:
+        if ord == 2:
+            op_max = functools.partial(cupy.take, indices=0)
+            ret = _multi_svd_norm(x, row_axis, col_axis, op_max)
+        elif ord == -2:
+            op_min = functools.partial(cupy.take, indices=-1)
+            ret = _multi_svd_norm(x, row_axis, col_axis, op_min)
+        elif ord == 1:
             if col_axis > row_axis:
                 col_axis -= 1
             ret = abs(x).sum(axis=row_axis).max(axis=col_axis)
@@ -117,12 +140,12 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 row_axis -= 1
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
         elif ord in [None, 'fro', 'f']:
-            if issubclass(x.dtype.type, numpy.complexfloating):
-                s = abs(x)
-                s *= s
-                ret = cupy.sqrt(s.sum(axis=axis))
+            if x.dtype.kind == 'c':
+                ret = _norm_ord2_complex(x, axis=axis)
             else:
-                ret = cupy.sqrt((x ** 2).sum(axis=axis))
+                ret = _norm_ord2(x, axis=axis)
+        elif ord == 'nuc':
+            ret = _multi_svd_norm(x, row_axis, col_axis, cupy.sum)
         else:
             raise ValueError('Invalid norm order for matrices.')
         if keepdims:
@@ -139,7 +162,7 @@ def norm(x, ord=None, axis=None, keepdims=False):
 
 
 def det(a):
-    """Retruns the deteminant of an array.
+    """Returns the determinant of an array.
 
     Args:
         a (cupy.ndarray): The input matrix with dimension ``(..., N, N)``.
@@ -198,67 +221,70 @@ def slogdet(a):
             The shapes of both ``sign`` and ``logdet`` are equal to
             ``a.shape[:-2]``.
 
+    .. warning::
+        This function calls one or more cuSOLVER routine(s) which may yield
+        invalid results if input conditions are not met.
+        To detect these invalid results, you can set the `linalg`
+        configuration to a value that is not `ignore` in
+        :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
+    .. warning::
+        To produce the same results as :func:`numpy.linalg.slogdet` for
+        singular inputs, set the `linalg` configuration to `raise`.
+
     .. seealso:: :func:`numpy.linalg.slogdet`
     """
-    if not cuda.cusolver_enabled:
-        raise RuntimeError('Current cupy only supports cusolver in CUDA 8.0')
-
     if a.ndim < 2:
         msg = ('%d-dimensional array given. '
                'Array must be at least two-dimensional' % a.ndim)
         raise linalg.LinAlgError(msg)
-
-    dtype = numpy.find_common_type((a.dtype.char, 'f'), ())
-    shape = a.shape[:-2]
-    sign = cupy.empty(shape, dtype)
-    logdet = cupy.empty(shape, dtype)
-
-    a = a.astype(dtype)
-    for index in numpy.ndindex(*shape):
-        s, logd = _slogdet_one(a[index])
-        sign[index] = s
-        logdet[index] = logd
-    return sign, logdet
-
-
-def _slogdet_one(a):
-    util._assert_rank2(a)
     util._assert_nd_squareness(a)
-    dtype = a.dtype
 
-    handle = device.get_cusolver_handle()
-    m = len(a)
-    ipiv = cupy.empty(m, 'i')
-    info = cupy.empty((), 'i')
+    dtype = numpy.promote_types(a.dtype.char, 'f')
+    real_dtype = numpy.dtype(dtype.char.lower())
 
-    # Need to make a copy because getrf works inplace
-    a_copy = a.copy(order='F')
+    if dtype not in (numpy.float32, numpy.float64,
+                     numpy.complex64, numpy.complex128):
+        msg = ('dtype must be float32, float64, complex64, or complex128'
+               ' (actual: {})'.format(a.dtype))
+        raise ValueError(msg)
 
-    if dtype == 'f':
-        getrf_bufferSize = cusolver.sgetrf_bufferSize
-        getrf = cusolver.sgetrf
-    else:
-        getrf_bufferSize = cusolver.dgetrf_bufferSize
-        getrf = cusolver.dgetrf
+    a_shape = a.shape
+    shape = a_shape[:-2]
+    n = a_shape[-2]
 
-    buffersize = getrf_bufferSize(handle, m, m, a_copy.data.ptr, m)
-    workspace = cupy.empty(buffersize, dtype=dtype)
-    getrf(handle, m, m, a_copy.data.ptr, m, workspace.data.ptr,
-          ipiv.data.ptr, info.data.ptr)
+    if a.size == 0:
+        # empty batch (result is empty, too) or empty matrices det([[]]) == 1
+        sign = cupy.ones(shape, dtype)
+        logdet = cupy.zeros(shape, real_dtype)
+        return sign, logdet
 
-    if info[()] == 0:
-        diag = cupy.diag(a_copy)
-        # ipiv is 1-origin
-        non_zero = (cupy.count_nonzero(ipiv != cupy.arange(1, m + 1)) +
-                    cupy.count_nonzero(diag < 0))
-        # Note: sign == -1 ** (non_zero % 2)
-        sign = (non_zero % 2) * -2 + 1
-        logdet = cupy.log(abs(diag)).sum()
-    else:
-        sign = cupy.array(0.0, dtype=dtype)
-        logdet = cupy.array(float('-inf'), dtype)
+    lu, ipiv, dev_info = decomposition._lu_factor(a, dtype)
 
-    return sign, logdet
+    # dev_info < 0 means illegal value (in dimensions, strides, and etc.) that
+    # should never happen even if the matrix contains nan or inf.
+    # TODO(kataoka): assert dev_info >= 0 if synchronization is allowed for
+    # debugging purposes.
+
+    diag = cupy.diagonal(lu, axis1=-2, axis2=-1)
+
+    logdet = cupy.log(cupy.abs(diag)).sum(axis=-1)
+
+    # ipiv is 1-origin
+    non_zero = cupy.count_nonzero(ipiv != cupy.arange(1, n + 1), axis=-1)
+    if dtype.kind == "f":
+        non_zero += cupy.count_nonzero(diag < 0, axis=-1)
+
+    # Note: sign == -1 ** (non_zero % 2)
+    sign = (non_zero % 2) * -2 + 1
+    if dtype.kind == "c":
+        sign = sign * cupy.prod(diag / cupy.abs(diag), axis=-1)
+
+    singular = dev_info > 0
+    return (
+        cupy.where(singular, dtype.type(0), sign.astype(dtype)).reshape(shape),
+        cupy.where(singular, real_dtype.type('-inf'), logdet).reshape(shape),
+    )
 
 
 def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):

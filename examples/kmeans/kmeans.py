@@ -5,7 +5,6 @@ import time
 import cupy
 import matplotlib.pyplot as plt
 import numpy
-import six
 
 
 @contextlib.contextmanager
@@ -50,10 +49,10 @@ def fit_xp(X, n_clusters, max_iter):
     pred = xp.zeros(n_samples)
 
     # Choose the initial centroid for each cluster.
-    initial_indexes = numpy.random.choice(n_samples, n_clusters, replace=False)
+    initial_indexes = xp.random.choice(n_samples, n_clusters, replace=False)
     centers = X[initial_indexes]
 
-    for _ in six.moves.range(max_iter):
+    for _ in range(max_iter):
         # Compute the new label for each sample.
         distances = xp.linalg.norm(X[:, None, :] - centers[None, :, :], axis=2)
         new_pred = xp.argmin(distances, axis=1)
@@ -68,7 +67,7 @@ def fit_xp(X, n_clusters, max_iter):
         i = xp.arange(n_clusters)
         mask = pred == i[:, None]
         sums = xp.where(mask[:, :, None], X, 0).sum(axis=1)
-        counts = xp.count_nonzero(mask, axis=1)
+        counts = xp.count_nonzero(mask, axis=1).reshape((n_clusters, 1))
         centers = sums / counts
 
     return centers, pred
@@ -81,10 +80,10 @@ def fit_custom(X, n_clusters, max_iter):
 
     pred = cupy.zeros(n_samples)
 
-    initial_indexes = numpy.random.choice(n_samples, n_clusters, replace=False)
+    initial_indexes = cupy.random.choice(n_samples, n_clusters, replace=False)
     centers = X[initial_indexes]
 
-    for _ in six.moves.range(max_iter):
+    for _ in range(max_iter):
         distances = var_kernel(X[:, None, 0], X[:, None, 1],
                                centers[None, :, 1], centers[None, :, 0])
         new_pred = cupy.argmin(distances, axis=1)
@@ -95,7 +94,7 @@ def fit_custom(X, n_clusters, max_iter):
         i = cupy.arange(n_clusters)
         mask = pred == i[:, None]
         sums = sum_kernel(X, mask[:, :, None], axis=1)
-        counts = count_kernel(mask, axis=1)
+        counts = count_kernel(mask, axis=1).reshape((n_clusters, 1))
         centers = sums / counts
 
     return centers, pred
@@ -103,7 +102,7 @@ def fit_custom(X, n_clusters, max_iter):
 
 def draw(X, n_clusters, centers, pred, output):
     # Plot the samples and centroids of the fitted clusters into an image file.
-    for i in six.moves.range(n_clusters):
+    for i in range(n_clusters):
         labels = X[pred == i]
         plt.scatter(labels[:, 0], labels[:, 1], c=numpy.random.rand(3))
     plt.scatter(

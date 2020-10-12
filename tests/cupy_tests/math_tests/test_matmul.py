@@ -1,9 +1,11 @@
 import operator
-import sys
 import unittest
 
 import numpy
+import pytest
 
+import cupy
+from cupy.core import _routines_linalg as _linalg
 from cupy import testing
 
 
@@ -56,9 +58,6 @@ from cupy import testing
 @testing.gpu
 class TestMatmul(unittest.TestCase):
 
-    @unittest.skipUnless(sys.version_info >= (3, 5),
-                         'Only for Python3.5 or higher')
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -67,7 +66,6 @@ class TestMatmul(unittest.TestCase):
         x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
         return operator.matmul(x1, x2)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -108,9 +106,6 @@ class TestMatmulLarge(unittest.TestCase):
         (numpy.uint16, numpy.uint16),
     }
 
-    @unittest.skipUnless(sys.version_info >= (3, 5),
-                         'Only for Python3.5 or higher')
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -118,11 +113,10 @@ class TestMatmulLarge(unittest.TestCase):
         if ((dtype1, dtype2) in self.skip_dtypes or
                 (dtype2, dtype1) in self.skip_dtypes):
             return xp.array([])
-        x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype1)
-        x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype2)
+        x1 = testing.shaped_random(self.shape_pair[0], xp, dtype1)
+        x2 = testing.shaped_random(self.shape_pair[1], xp, dtype2)
         return operator.matmul(x1, x2)
 
-    @testing.with_requires('numpy>=1.10')
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
@@ -131,8 +125,133 @@ class TestMatmulLarge(unittest.TestCase):
                 (dtype2, dtype1) in self.skip_dtypes):
             return xp.array([])
         shape1, shape2 = self.shape_pair
-        x1 = testing.shaped_arange(shape1, xp, dtype1)
-        x2 = testing.shaped_arange(shape2, xp, dtype2)
+        x1 = testing.shaped_random(shape1, xp, dtype1)
+        x2 = testing.shaped_random(shape2, xp, dtype2)
+        return xp.matmul(x1, x2)
+
+
+class TestMatmulOverflow(unittest.TestCase):
+
+    @testing.for_int_dtypes(name='dtype')
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
+    def test_overflow(self, xp, dtype):
+        if dtype is numpy.bool_:
+            return xp.array([])
+        value = numpy.iinfo(dtype).max
+        a = xp.array([value - 10]).astype(dtype)
+        b = xp.array([value - 10]).astype(dtype)
+        return xp.matmul(a, b)
+
+
+class _TestMatmulComputeTypes(unittest.TestCase):
+
+    def setUp(self):
+        self.old_compute_type = cupy.core.get_compute_type(self.dtype)
+        cupy.core.set_compute_type(self.dtype, self.compute_type)
+
+    def tearDown(self):
+        cupy.core.set_compute_type(self.dtype, self.old_compute_type)
+
+    def make_x1_x2(self, xp, shapes, dtypes):
+        x1 = testing.shaped_random(shapes[0], xp, dtypes[0])
+        x2 = testing.shaped_random(shapes[1], xp, dtypes[1])
+        return x1, x2
+
+
+@testing.parameterize(
+    *testing.product({
+        'compute_type': [
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
+        ],
+        'shape_pair': [
+            ((32, 64), (64, 96)),
+            ((64, 96), (96, 32)),
+            ((96, 32), (32, 64)),
+        ],
+    }))
+@testing.gpu
+class TestMatmulFp16ComputeTypes(_TestMatmulComputeTypes):
+    dtype = numpy.float16
+
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_operator_matmul(self, xp):
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, (self.dtype, self.dtype))
+        return operator.matmul(x1, x2)
+
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_cupy_matmul(self, xp):
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, (self.dtype, self.dtype))
+        return xp.matmul(x1, x2)
+
+
+@testing.parameterize(
+    *testing.product({
+        'compute_type': [
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
+            _linalg.COMPUTE_TYPE_TF32,
+        ],
+        'shape_pair': [
+            ((100, 200), (200, 300)),
+            ((200, 300), (300, 100)),
+            ((300, 100), (100, 200)),
+        ],
+        'dtype_pair': [
+            (numpy.float16, numpy.float32),
+            (numpy.float32, numpy.float32),
+            (numpy.float16, numpy.complex64),
+            (numpy.float32, numpy.complex64),
+            (numpy.complex64, numpy.complex64),
+        ],
+    }))
+@testing.gpu
+class TestMatmulFp32ComputeTypes(_TestMatmulComputeTypes):
+    dtype = numpy.float32
+
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_operator_matmul(self, xp):
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, self.dtype_pair)
+        return operator.matmul(x1, x2)
+
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_cupy_matmul(self, xp):
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, self.dtype_pair)
+        return xp.matmul(x1, x2)
+
+
+@testing.parameterize(
+    *testing.product({
+        'compute_type': [
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
+        ],
+        'shape_pair': [
+            ((100, 200), (200, 300)),
+            ((200, 300), (300, 100)),
+            ((300, 100), (100, 200)),
+        ],
+        'dtype_pair': [
+            (numpy.float32, numpy.float64),
+            (numpy.float64, numpy.float64),
+            (numpy.float32, numpy.complex128),
+            (numpy.float64, numpy.complex128),
+            (numpy.complex64, numpy.complex128),
+            (numpy.complex128, numpy.complex128),
+        ],
+    }))
+@testing.gpu
+class TestMatmulFp64ComputeTypes(_TestMatmulComputeTypes):
+    dtype = numpy.float64
+
+    @testing.numpy_cupy_allclose()
+    def test_operator_matmul(self, xp):
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, self.dtype_pair)
+        return operator.matmul(x1, x2)
+
+    @testing.numpy_cupy_allclose()
+    def test_cupy_matmul(self, xp):
+        x1, x2 = self.make_x1_x2(xp, self.shape_pair, self.dtype_pair)
         return xp.matmul(x1, x2)
 
 
@@ -152,10 +271,10 @@ class TestMatmulLarge(unittest.TestCase):
 @testing.gpu
 class TestMatmulInvalidShape(unittest.TestCase):
 
-    @testing.with_requires('numpy>=1.10')
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_invalid_shape(self, xp):
-        shape1, shape2 = self.shape_pair
-        x1 = testing.shaped_arange(shape1, xp, numpy.float32)
-        x2 = testing.shaped_arange(shape2, xp, numpy.float32)
-        xp.matmul(x1, x2)
+    def test_invalid_shape(self):
+        for xp in (numpy, cupy):
+            shape1, shape2 = self.shape_pair
+            x1 = testing.shaped_arange(shape1, xp, numpy.float32)
+            x2 = testing.shaped_arange(shape2, xp, numpy.float32)
+            with pytest.raises(ValueError):
+                xp.matmul(x1, x2)

@@ -1,4 +1,4 @@
-FROM nvidia/cuda:9.2-cudnn7-devel
+FROM nvidia/cuda:10.2-cudnn7-devel
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
@@ -8,4 +8,5 @@ RUN apt-get update -y && \
     python3-setuptools && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-RUN pip3 install --no-cache-dir cupy-cuda92==7.0.0b3
+RUN pip3 install --no-cache-dir -U install setuptools pip
+RUN pip3 install --no-cache-dir cupy-cuda102==8.0.0rc1 scipy optuna

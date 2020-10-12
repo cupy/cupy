@@ -1,10 +1,11 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
-from cupy import util
+from cupy import _util
 
 
 def astype_without_warning(x, dtype, *args, **kwargs):
@@ -39,17 +40,19 @@ class TestArrayCopyAndView(unittest.TestCase):
         return a.view(dtype=numpy.int32)
 
     @testing.for_dtypes([numpy.int16, numpy.int64])
-    @testing.numpy_cupy_raises()
-    def test_view_0d_raise(self, xp, dtype):
-        a = xp.array(3, dtype=numpy.int32)
-        a.view(dtype=dtype)
+    def test_view_0d_raise(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array(3, dtype=numpy.int32)
+            with pytest.raises(ValueError):
+                a.view(dtype=dtype)
 
     @testing.for_dtypes([numpy.int16, numpy.int64])
-    @testing.numpy_cupy_raises()
-    def test_view_non_contiguous_raise(self, xp, dtype):
-        a = testing.shaped_arange((2, 2, 2), xp, dtype=numpy.int32).transpose(
-            0, 2, 1)
-        a.view(dtype=dtype)
+    def test_view_non_contiguous_raise(self, dtype):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 2, 2), xp, dtype=numpy.int32)
+            a = a.transpose(0, 2, 1)
+            with pytest.raises(ValueError):
+                a.view(dtype=dtype)
 
     @testing.numpy_cupy_array_equal()
     def test_flatten(self, xp):
@@ -128,33 +131,29 @@ class TestArrayCopyAndView(unittest.TestCase):
         self.assertTrue(b is a)
 
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_equal()
     def test_astype_strides(self, xp, src_dtype, dst_dtype):
         src = xp.empty((1, 2, 3), dtype=src_dtype)
-        return numpy.array(
-            astype_without_warning(src, dst_dtype, order='K').strides)
+        return astype_without_warning(src, dst_dtype, order='K').strides
 
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_equal()
     def test_astype_strides_negative(self, xp, src_dtype, dst_dtype):
         src = xp.empty((2, 3), dtype=src_dtype)[::-1, :]
-        return numpy.array(
-            astype_without_warning(src, dst_dtype, order='K').strides)
+        return astype_without_warning(src, dst_dtype, order='K').strides
 
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_equal()
     def test_astype_strides_swapped(self, xp, src_dtype, dst_dtype):
         src = xp.swapaxes(xp.empty((2, 3, 4), dtype=src_dtype), 1, 0)
-        return numpy.array(
-            astype_without_warning(src, dst_dtype, order='K').strides)
+        return astype_without_warning(src, dst_dtype, order='K').strides
 
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
-    @testing.numpy_cupy_array_equal()
+    @testing.numpy_cupy_equal()
     def test_astype_strides_broadcast(self, xp, src_dtype, dst_dtype):
         src, _ = xp.broadcast_arrays(xp.empty((2,), dtype=src_dtype),
                                      xp.empty((2, 3, 2), dtype=src_dtype))
-        return numpy.array(
-            astype_without_warning(src, dst_dtype, order='K').strides)
+        return astype_without_warning(src, dst_dtype, order='K').strides
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -168,7 +167,7 @@ class TestArrayCopyAndView(unittest.TestCase):
         a = testing.shaped_arange((3, 4, 5), xp, dtype)
         return a.diagonal(-1, 2, 0)
 
-    @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
     @testing.for_orders('CF')
     @testing.for_dtypes([numpy.int16, numpy.int64,
                          numpy.float16, numpy.float64])
@@ -179,19 +178,34 @@ class TestArrayCopyAndView(unittest.TestCase):
         b[:] = a
         return b
 
-    @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_isinstance_numpy_copy_wrong_dtype(self, xp):
+    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    def test_isinstance_numpy_copy_wrong_dtype(self):
         a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
         b = cupy.empty(a.shape, dtype=numpy.int32)
-        b[:] = a
+        with pytest.raises(ValueError):
+            b[:] = a
 
-    @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_isinstance_numpy_copy_wrong_shape(self, xp):
-        a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
-        b = cupy.empty(100, dtype=a.dtype)
-        b[:] = a
+    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    def test_isinstance_numpy_copy_wrong_shape(self):
+        for xp in (numpy, cupy):
+            a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
+            b = cupy.empty(100, dtype=a.dtype)
+            with pytest.raises(ValueError):
+                b[:] = a
+
+    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    @testing.numpy_cupy_array_equal()
+    def test_isinstance_numpy_copy_not_slice(self, xp):
+        a = xp.arange(5, dtype=numpy.float64)
+        a[a < 3] = 0
+        return a
+
+    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    def test_copy_host_to_device_view(self):
+        dev = cupy.empty((10, 10), dtype=numpy.float32)[2:5, 1:8]
+        host = numpy.arange(3 * 7, dtype=numpy.float32).reshape(3, 7)
+        with pytest.raises(ValueError):
+            dev[:] = host
 
 
 @testing.parameterize(
@@ -200,7 +214,7 @@ class TestArrayCopyAndView(unittest.TestCase):
 )
 @testing.gpu
 class TestNumPyArrayCopyView(unittest.TestCase):
-    @unittest.skipUnless(util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
     @testing.for_orders('CF')
     @testing.for_dtypes([numpy.int16, numpy.int64,
                          numpy.float16, numpy.float64])

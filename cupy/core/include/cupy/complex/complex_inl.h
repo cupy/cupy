@@ -22,46 +22,89 @@
 namespace thrust {
 
 /* --- Constructors --- */
+template <typename T>
+inline __host__ __device__ complex<T>::complex(const T& re) {
+  real(re);
+  imag(T());
+}
 
 template <typename T>
-inline __device__ complex<T>::complex(const T& re, const T& im) {
+inline __host__ __device__ complex<T>::complex(const T& re, const T& im) {
   real(re);
   imag(im);
 }
 
+#if ((!defined(_MSC_VER) && __cplusplus < 201103L) || \
+     (defined(_MSC_VER) && _MSC_VER < 1900))
+template <typename T>
+inline __host__ __device__ complex<T>::complex() {
+  real(T());
+  imag(T());
+}
+
+template <typename T>
+inline __host__ __device__ complex<T>::complex(const complex<T>& z) {
+  real(z.real());
+  imag(z.imag());
+}
+#endif
+
 template <typename T>
 template <typename X>
-inline __device__ complex<T>::complex(const complex<X>& z) {
+inline __host__ __device__ complex<T>::complex(const complex<X>& z) {
   // The explicit T() is there no prevent Visual Studio from complaining
   // about potential loss of precision
   real(T(z.real()));
   imag(T(z.imag()));
 }
 
+/* --- Assignment Operators --- */
+
+template <typename T>
+inline __host__ __device__ complex<T>& complex<T>::operator=(const T& re) {
+  real(re);
+  imag(T());
+  return *this;
+}
+
+template <typename T>
+inline __host__ __device__ complex<T>& complex<T>::operator=(const complex<T>& z) {
+  real(z.real());
+  imag(z.imag());
+  return *this;
+}
+
+template <typename T>
+template <typename U>
+inline __host__ __device__ complex<T>& complex<T>::operator=(const complex<U>& z) {
+  real(T(z.real()));
+  imag(T(z.imag()));
+  return *this;
+}
+
 /* --- Compound Assignment Operators --- */
+// TODO(leofang): support operators with argument of type T, see upstream
 
 template <typename T>
-__device__ inline complex<T>& complex<T>::operator+=(const complex<T> z) {
-  real(real() + z.real());
-  imag(imag() + z.imag());
+__host__ __device__ inline complex<T>& complex<T>::operator+=(const complex<T> z) {
+  *this = *this + z;
   return *this;
 }
 
 template <typename T>
-__device__ inline complex<T>& complex<T>::operator-=(const complex<T> z) {
-  real(real() - z.real());
-  imag(imag() - z.imag());
+__host__ __device__ inline complex<T>& complex<T>::operator-=(const complex<T> z) {
+  *this = *this - z;
   return *this;
 }
 
 template <typename T>
-__device__ inline complex<T>& complex<T>::operator*=(const complex<T> z) {
+__host__ __device__ inline complex<T>& complex<T>::operator*=(const complex<T> z) {
   *this = *this * z;
   return *this;
 }
 
 template <typename T>
-__device__ inline complex<T>& complex<T>::operator/=(const complex<T> z) {
+__host__ __device__ inline complex<T>& complex<T>::operator/=(const complex<T> z) {
   *this = *this / z;
   return *this;
 }
@@ -69,43 +112,34 @@ __device__ inline complex<T>& complex<T>::operator/=(const complex<T> z) {
 /* --- Equality Operators --- */
 
 template <typename T>
-__device__ inline bool operator==(const complex<T>& lhs,
-                                  const complex<T>& rhs) {
-  if (lhs.real() == rhs.real() && lhs.imag() == rhs.imag()) {
-    return true;
-  }
-  return false;
+__host__ __device__ inline bool operator==(const complex<T>& lhs,
+                                           const complex<T>& rhs) {
+  return lhs.real() == rhs.real() && lhs.imag() == rhs.imag();
 }
 
 template <typename T>
-__device__ inline bool operator==(const T& lhs, const complex<T>& rhs) {
-  if (lhs == rhs.real() && rhs.imag() == 0) {
-    return true;
-  }
-  return false;
+__host__ __device__ inline bool operator==(const T& lhs, const complex<T>& rhs) {
+  return lhs == rhs.real() && rhs.imag() == 0;
 }
 
 template <typename T>
-__device__ inline bool operator==(const complex<T>& lhs, const T& rhs) {
-  if (lhs.real() == rhs && lhs.imag() == 0) {
-    return true;
-  }
-  return false;
+__host__ __device__ inline bool operator==(const complex<T>& lhs, const T& rhs) {
+  return lhs.real() == rhs && lhs.imag() == 0;
 }
 
 template <typename T>
-__device__ inline bool operator!=(const complex<T>& lhs,
-                                  const complex<T>& rhs) {
+__host__ __device__ inline bool operator!=(const complex<T>& lhs,
+                                           const complex<T>& rhs) {
   return !(lhs == rhs);
 }
 
 template <typename T>
-__device__ inline bool operator!=(const T& lhs, const complex<T>& rhs) {
+__host__ __device__ inline bool operator!=(const T& lhs, const complex<T>& rhs) {
   return !(lhs == rhs);
 }
 
 template <typename T>
-__device__ inline bool operator!=(const complex<T>& lhs, const T& rhs) {
+__host__ __device__ inline bool operator!=(const complex<T>& lhs, const T& rhs) {
   return !(lhs == rhs);
 }
 }

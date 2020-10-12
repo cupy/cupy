@@ -12,7 +12,10 @@ These functions cover a subset of
 .. toctree::
    :maxdepth: 2
 
+   scipy_fft
    fftpack
+   scipy_linalg
    ndimage
    sparse
    special
+   signal

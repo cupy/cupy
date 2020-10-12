@@ -1,7 +1,6 @@
 import ctypes
 import gc
 import pickle
-import sys
 import threading
 import unittest
 
@@ -47,6 +46,10 @@ class TestUnownedMemoryClass(unittest.TestCase):
 class TestUnownedMemory(unittest.TestCase):
 
     def check(self, device_id):
+        if (cupy.cuda.runtime.is_hip
+                and self.allocator is memory.malloc_managed):
+            raise unittest.SkipTest('HIP does not support managed memory')
+
         size = 24
         shape = (2, 3)
         dtype = cupy.float32
@@ -460,6 +463,9 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
 
         del p3
 
+        self.pool.free_all_blocks()
+        self.assertEqual(0, self.pool.total_bytes())
+
     def test_total_bytes_stream(self):
         p1 = self.pool.malloc(self.unit * 4)
         del p1
@@ -541,6 +547,9 @@ class TestMemoryPool(unittest.TestCase):
 
     def setUp(self):
         self.pool = memory.MemoryPool(self.allocator)
+        if (cupy.cuda.runtime.is_hip
+                and self.allocator is memory.malloc_managed):
+            raise unittest.SkipTest('HIP does not support managed memory')
 
     def test_zero_size_alloc(self):
         with cupy.cuda.Device(0):
@@ -612,12 +621,13 @@ class TestMemoryPool(unittest.TestCase):
 class TestAllocator(unittest.TestCase):
 
     def setUp(self):
+        self.old_pool = cupy.get_default_memory_pool()
         self.pool = memory.MemoryPool()
         memory.set_allocator(self.pool.malloc)
 
     def tearDown(self):
-        memory.set_allocator()
         self.pool.free_all_blocks()
+        memory.set_allocator(self.old_pool.malloc)
 
     def test_set_allocator(self):
         with cupy.cuda.Device(0):
@@ -626,8 +636,66 @@ class TestAllocator(unittest.TestCase):
             self.assertEqual(1024, arr.data.mem.size)
             self.assertEqual(1024, self.pool.used_bytes())
 
-    @unittest.skipUnless(sys.version_info[0] >= 3,
-                         'Only for Python3 or higher')
+    def test_get_allocator(self):
+        assert memory.get_allocator() == self.pool.malloc
+
+    def test_allocator_context_manager(self):
+        new_pool = memory.MemoryPool()
+        with cupy.cuda.using_allocator(new_pool.malloc):
+            assert memory.get_allocator() == new_pool.malloc
+        assert memory.get_allocator() == self.pool.malloc
+
+    def test_set_allocator_cm(self):
+        new_pool = memory.MemoryPool()
+        new_pool2 = memory.MemoryPool()
+        with cupy.cuda.using_allocator(new_pool.malloc):
+            with self.assertRaises(ValueError):
+                memory.set_allocator(new_pool2.malloc)
+
+    def test_allocator_nested_context_manager(self):
+        new_pool = memory.MemoryPool()
+        with cupy.cuda.using_allocator(new_pool.malloc):
+            new_pool2 = memory.MemoryPool()
+            assert memory.get_allocator() == new_pool.malloc
+            with cupy.cuda.using_allocator(new_pool2.malloc):
+                assert memory.get_allocator() == new_pool2.malloc
+            assert memory.get_allocator() == new_pool.malloc
+        assert memory.get_allocator() == self.pool.malloc
+
+    def test_allocator_thread_local(self):
+        def thread_body(self):
+            new_pool = memory.MemoryPool()
+            with cupy.cuda.using_allocator(new_pool.malloc):
+                assert memory.get_allocator() == new_pool.malloc
+                threading.Barrier(2)
+                arr = cupy.zeros(128, dtype=cupy.int64)
+                threading.Barrier(2)
+                self.assertEqual(arr.data.mem.size, new_pool.used_bytes())
+                threading.Barrier(2)
+            assert memory.get_allocator() == self.pool.malloc
+
+        with cupy.cuda.Device(0):
+            t = threading.Thread(target=thread_body, args=(self,))
+            t.daemon = True
+            t.start()
+            threading.Barrier(2)
+            assert memory.get_allocator() == self.pool.malloc
+            arr = cupy.ones(256, dtype=cupy.int64)
+            threading.Barrier(2)
+            self.assertEqual(arr.data.mem.size, self.pool.used_bytes())
+            threading.Barrier(2)
+            t.join()
+
+    def test_thread_local_valid(self):
+        new_pool = memory.MemoryPool()
+        arr = None
+        with cupy.cuda.using_allocator(new_pool.malloc):
+            arr = cupy.zeros(128, dtype=cupy.int64)
+            arr += 1
+        # Check that arr and the pool have not ben released
+        self.assertEqual(arr.data.mem.size, new_pool.used_bytes())
+        assert arr.sum() == 128
+
     def test_reuse_between_thread(self):
         def job(self):
             cupy.arange(16)
@@ -649,7 +717,7 @@ class TestAllocator(unittest.TestCase):
 
 
 @testing.gpu
-class TestAllocatorDefault(unittest.TestCase):
+class TestAllocatorDisabled(unittest.TestCase):
 
     def setUp(self):
         self.pool = cupy.get_default_memory_pool()
@@ -671,6 +739,38 @@ class TestAllocatorDefault(unittest.TestCase):
     def test_none(self):
         memory.set_allocator(None)
         self._check_pool_not_used()
+
+
+class PythonAllocator(object):
+    def __init__(self):
+        self.malloc_called = False
+        self.free_called = False
+
+    def malloc(self, size, device_id):
+        self.malloc_called = True
+        return cupy.cuda.runtime.malloc(size)
+
+    def free(self, size, device_id):
+        self.free_called = True
+        cupy.cuda.runtime.free(size)
+
+
+@testing.gpu
+class TestPythonFunctionAllocator(unittest.TestCase):
+    def setUp(self):
+        self.old_pool = cupy.get_default_memory_pool()
+        self.alloc = PythonAllocator()
+        python_alloc = memory.PythonFunctionAllocator(
+            self.alloc.malloc, self.alloc.free)
+        memory.set_allocator(python_alloc.malloc)
+
+    def tearDown(self):
+        memory.set_allocator(self.old_pool.malloc)
+
+    def test_allocator(self):
+        assert not self.alloc.malloc_called and not self.alloc.free_called
+        cupy.zeros(10)
+        assert self.alloc.malloc_called and self.alloc.free_called
 
 
 @testing.gpu

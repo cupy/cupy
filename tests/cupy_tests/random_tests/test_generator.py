@@ -4,12 +4,12 @@ import threading
 import unittest
 
 import numpy
-import six
+import pytest
 
 import cupy
 from cupy import core
 from cupy import cuda
-from cupy.random import generator
+from cupy.random import _generator
 from cupy import testing
 from cupy.testing import attr
 from cupy.testing import condition
@@ -84,7 +84,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
 
     def setUp(self):
         self.__seed = testing.generate_seed()
-        self.rs = generator.RandomState(seed=self.__seed)
+        self.rs = _generator.RandomState(seed=self.__seed)
 
     def _get_generator_func(self, *args, **kwargs):
         assert isinstance(self.target_method, str), (
@@ -184,7 +184,7 @@ def _xp_random(xp, method_name):
 class TestRandomState(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState(seed=testing.generate_seed())
+        self.rs = _generator.RandomState(seed=testing.generate_seed())
 
     def check_seed(self, seed):
         rs = self.rs
@@ -220,6 +220,20 @@ class TestRandomState(unittest.TestCase):
 
     def test_array_seed(self):
         self.check_seed(numpy.random.randint(0, 2**31, size=40))
+
+    def test_methods(self):
+        methods = [
+            cuda.curand.CURAND_RNG_PSEUDO_DEFAULT,
+            cuda.curand.CURAND_RNG_PSEUDO_MRG32K3A,
+            cupy.cuda.curand.CURAND_RNG_PSEUDO_MT19937,
+            cupy.cuda.curand.CURAND_RNG_PSEUDO_PHILOX4_32_10,
+            cupy.cuda.curand.CURAND_RNG_PSEUDO_MTGP32,
+            cupy.cuda.curand.CURAND_RNG_PSEUDO_XORWOW
+        ]
+
+        for method in methods:
+            rs = cupy.random.RandomState(method=method)
+            rs.normal()
 
 
 @testing.parameterize(
@@ -534,8 +548,6 @@ class TestLogseries(RandomGeneratorTestCase):
     {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (3, 3), 'tol': 1e-6},
     {'args': ([0., 0.], [[1., 0.], [0., 1.]]), 'size': (), 'tol': 1e-6},
 ])
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.fix_random()
 class TestMultivariateNormal(RandomGeneratorTestCase):
 
@@ -580,7 +592,6 @@ class TestNegativeBinomial(RandomGeneratorTestCase):
     {'df': 2.0, 'nonc': 0.0},
 )
 @testing.gpu
-@testing.with_requires('numpy>=1.11')
 @testing.fix_random()
 class TestNoncentralChisquare(RandomGeneratorTestCase):
 
@@ -726,7 +737,7 @@ class TestStandardT(RandomGeneratorTestCase):
 class TestRandomSample(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState(seed=testing.generate_seed())
+        self.rs = _generator.RandomState(seed=testing.generate_seed())
 
     def check_random_sample(self, dtype):
         vals = [self.rs.random_sample(self.size, dtype) for _ in range(10)]
@@ -761,7 +772,7 @@ class TestRandomSampleDistrib(unittest.TestCase):
 class TestRandAndRandN(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState(seed=testing.generate_seed())
+        self.rs = _generator.RandomState(seed=testing.generate_seed())
 
     def test_rand_invalid_argument(self):
         with self.assertRaises(TypeError):
@@ -865,7 +876,7 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate_many(0, shape, _count=10)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == shape
             assert (val == 0).all()
 
@@ -874,7 +885,7 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate_many(mx, None, _count=10)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == ()
             assert (0 <= val).all()
             assert (val <= mx).all()
@@ -886,7 +897,7 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate_many(mx, size, _count=10)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == (size,)
             assert (0 <= val).all()
             assert (val <= mx).all()
@@ -898,31 +909,17 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate_many(mx, shape, _count=10)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == shape
             assert (0 <= val).all()
             assert (val <= mx).all()
         # TODO(niboshi): Distribution test
 
-    def test_int32_range(self):
-        v = self.generate(0x00000000, 2)
-        assert v.dtype == numpy.int32
-
-        v = self.generate(0x7fffffff, 2)
-        assert v.dtype == numpy.int32
-
-    def test_uint32_range(self):
-        v = self.generate(0x80000000, 2)
-        assert v.dtype == numpy.uint32
-
-        v = self.generate(0xffffffff, 2)
-        assert v.dtype == numpy.uint32
-
     def test_bound_1(self):
         vals = self.generate_many(10, (2, 3), _count=10)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == (2, 3)
             assert (0 <= val).all()
             assert (val <= 10).all()
@@ -931,7 +928,7 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate_many(2, None, _count=20)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
-            assert val.dtype == numpy.int32
+            assert val.dtype.kind in 'iu'
             assert val.shape == ()
             assert (0 <= val).all()
             assert (val <= 2).all()
@@ -996,7 +993,7 @@ class TestChoice1(RandomGeneratorTestCase):
 
     def test_dtype_shape(self):
         v = self.generate(a=self.a, size=self.size, p=self.p)
-        if isinstance(self.size, six.integer_types):
+        if isinstance(self.size, int):
             expected_shape = (self.size,)
         else:
             expected_shape = self.size
@@ -1030,7 +1027,7 @@ class TestChoice2(RandomGeneratorTestCase):
 
     def test_dtype_shape(self):
         v = self.generate(a=self.a, size=self.size, p=self.p)
-        if isinstance(self.size, six.integer_types):
+        if isinstance(self.size, int):
             expected_shape = (self.size,)
         else:
             expected_shape = self.size
@@ -1107,7 +1104,7 @@ class TestChoiceMultinomial(unittest.TestCase):
 class TestChoiceFailure(unittest.TestCase):
 
     def setUp(self):
-        self.rs = generator.RandomState(seed=testing.generate_seed())
+        self.rs = _generator.RandomState(seed=testing.generate_seed())
 
     def test_choice_invalid_value(self):
         with self.assertRaises(ValueError):
@@ -1128,7 +1125,7 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
 
     def test_dtype_shape(self):
         v = self.generate(a=self.a, size=self.size, replace=False)
-        if isinstance(self.size, six.integer_types):
+        if isinstance(self.size, int):
             expected_shape = (self.size,)
         else:
             expected_shape = self.size
@@ -1190,8 +1187,23 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_2(self):
         self.generate(3, 4, size=(3, 2))
 
-    def test_randint_3(self):
+    def test_randint_empty1(self):
         self.generate(3, 10, size=0)
+
+    def test_randint_empty2(self):
+        self.generate(3, size=(4, 0, 5))
+
+    def test_randint_overflow(self):
+        self.generate(numpy.int8(-100), numpy.int8(100))
+
+    def test_randint_float1(self):
+        self.generate(-1.2, 3.4, 5)
+
+    def test_randint_float2(self):
+        self.generate(6.7, size=(2, 3))
+
+    def test_randint_int64_1(self):
+        self.generate(2**34, 2**40, 3)
 
 
 @testing.gpu
@@ -1306,18 +1318,19 @@ class TestZipf(RandomGeneratorTestCase):
 @testing.gpu
 class TestChoiceReplaceFalseFailure(unittest.TestCase):
 
-    @testing.numpy_cupy_raises(accept_error=ValueError)
-    def test_choice_invalid_value(self, xp):
-        rs = xp.random.RandomState(seed=testing.generate_seed())
-        rs.choice(a=self.a, size=self.size, replace=False)
+    def test_choice_invalid_value(self):
+        for xp in (numpy, cupy):
+            rs = xp.random.RandomState(seed=testing.generate_seed())
+            with pytest.raises(ValueError):
+                rs.choice(a=self.a, size=self.size, replace=False)
 
 
 class TestResetStates(unittest.TestCase):
 
     def test_reset_states(self):
-        generator._random_states = 'dummy'
-        generator.reset_states()
-        self.assertEqual({}, generator._random_states)
+        _generator._random_states = 'dummy'
+        _generator.reset_states()
+        self.assertEqual({}, _generator._random_states)
 
 
 @testing.gpu
@@ -1325,22 +1338,23 @@ class TestGetRandomState(unittest.TestCase):
 
     def setUp(self):
         self.device_id = cuda.Device().id
-        self.rs_tmp = generator._random_states
+        self.rs_tmp = _generator._random_states
 
     def tearDown(self, *args):
-        generator._random_states = self.rs_tmp
+        _generator._random_states = self.rs_tmp
 
     def test_get_random_state_initialize(self):
-        generator._random_states = {}
-        rs = generator.get_random_state()
-        self.assertEqual(generator._random_states[self.device_id], rs)
+        _generator._random_states = {}
+        rs = _generator.get_random_state()
+        self.assertEqual(_generator._random_states[self.device_id], rs)
 
     def test_get_random_state_memoized(self):
-        generator._random_states = {self.device_id: 'expected',
-                                    self.device_id + 1: 'dummy'}
-        rs = generator.get_random_state()
-        self.assertEqual('expected', generator._random_states[self.device_id])
-        self.assertEqual('dummy', generator._random_states[self.device_id + 1])
+        _generator._random_states = {self.device_id: 'expected',
+                                     self.device_id + 1: 'dummy'}
+        rs = _generator.get_random_state()
+        self.assertEqual('expected', _generator._random_states[self.device_id])
+        self.assertEqual(
+            'dummy', _generator._random_states[self.device_id + 1])
         self.assertEqual('expected', rs)
 
 
@@ -1348,21 +1362,21 @@ class TestGetRandomState(unittest.TestCase):
 class TestSetRandomState(unittest.TestCase):
 
     def setUp(self):
-        self.rs_tmp = generator._random_states
+        self.rs_tmp = _generator._random_states
 
     def tearDown(self, *args):
-        generator._random_states = self.rs_tmp
+        _generator._random_states = self.rs_tmp
 
     def test_set_random_state(self):
-        rs = generator.RandomState()
-        generator.set_random_state(rs)
-        assert generator.get_random_state() is rs
+        rs = _generator.RandomState()
+        _generator.set_random_state(rs)
+        assert _generator.get_random_state() is rs
 
     def test_set_random_state_call_multiple_times(self):
-        generator.set_random_state(generator.RandomState())
-        rs = generator.RandomState()
-        generator.set_random_state(rs)
-        assert generator.get_random_state() is rs
+        _generator.set_random_state(_generator.RandomState())
+        rs = _generator.RandomState()
+        _generator.set_random_state(rs)
+        assert _generator.get_random_state() is rs
 
 
 @testing.gpu
@@ -1448,53 +1462,28 @@ class TestRandomStateThreadSafe(unittest.TestCase):
 class TestGetRandomState2(unittest.TestCase):
 
     def setUp(self):
-        self.rs_dict = generator._random_states
-        generator._random_states = {}
+        self.rs_dict = _generator._random_states
+        _generator._random_states = {}
         self.cupy_seed = os.getenv('CUPY_SEED')
-        self.chainer_seed = os.getenv('CHAINER_SEED')
 
     def tearDown(self, *args):
-        generator._random_states = self.rs_dict
+        _generator._random_states = self.rs_dict
         if self.cupy_seed is None:
             os.environ.pop('CUPY_SEED', None)
         else:
             os.environ['CUPY_SEED'] = self.cupy_seed
-        if self.chainer_seed is None:
-            os.environ.pop('CHAINER_SEED', None)
-        else:
-            os.environ['CHAINER_SEED'] = self.chainer_seed
 
-    def test_get_random_state_no_cupy_no_chainer_seed(self):
+    def test_get_random_state_no_cupy(self):
         os.environ.pop('CUPY_SEED', None)
-        os.environ.pop('CHAINER_SEED', None)
         rvs0 = self._get_rvs_reset()
         rvs1 = self._get_rvs_reset()
 
         self._check_different(rvs0, rvs1)
 
-    def test_get_random_state_no_cupy_with_chainer_seed(self):
-        rvs0 = self._get_rvs(generator.RandomState(5))
-
-        os.environ.pop('CUPY_SEED', None)
-        os.environ['CHAINER_SEED'] = '5'
-        rvs1 = self._get_rvs_reset()
-
-        self._check_same(rvs0, rvs1)
-
-    def test_get_random_state_with_cupy_no_chainer_seed(self):
-        rvs0 = self._get_rvs(generator.RandomState(6))
+    def test_get_random_state_with_cupy(self):
+        rvs0 = self._get_rvs(_generator.RandomState(6))
 
         os.environ['CUPY_SEED'] = '6'
-        os.environ.pop('CHAINER_SEED', None)
-        rvs1 = self._get_rvs_reset()
-
-        self._check_same(rvs0, rvs1)
-
-    def test_get_random_state_with_cupy_with_chainer_seed(self):
-        rvs0 = self._get_rvs(generator.RandomState(7))
-
-        os.environ['CUPY_SEED'] = '7'
-        os.environ['CHAINER_SEED'] = '8'
         rvs1 = self._get_rvs_reset()
 
         self._check_same(rvs0, rvs1)
@@ -1505,8 +1494,8 @@ class TestGetRandomState2(unittest.TestCase):
         return rvu, rvn
 
     def _get_rvs_reset(self):
-        generator.reset_states()
-        return self._get_rvs(generator.get_random_state())
+        _generator.reset_states()
+        return self._get_rvs(_generator.get_random_state())
 
     def _check_same(self, rvs0, rvs1):
         for rv0, rv1 in zip(rvs0, rvs1):
@@ -1522,14 +1511,14 @@ class TestCheckAndGetDtype(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     def test_float32_64_type(self, dtype):
-        self.assertEqual(generator._check_and_get_dtype(dtype),
+        self.assertEqual(_generator._check_and_get_dtype(dtype),
                          numpy.dtype(dtype))
 
     def test_float16(self):
         with self.assertRaises(TypeError):
-            generator._check_and_get_dtype(numpy.float16)
+            _generator._check_and_get_dtype(numpy.float16)
 
     @testing.for_int_dtypes()
     def test_int_type(self, dtype):
         with self.assertRaises(TypeError):
-            generator._check_and_get_dtype(dtype)
+            _generator._check_and_get_dtype(dtype)

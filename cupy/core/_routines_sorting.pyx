@@ -3,15 +3,10 @@ import string
 import numpy
 
 import cupy
-from cupy.core import _errors
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core._ufuncs import elementwise_copy
-from cupy import util
-
-try:
-    from cupy.cuda import thrust
-except ImportError:
-    pass
+from cupy import _util
+from cupy.cuda import thrust
 
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core.core cimport compile_with_cache
@@ -22,14 +17,14 @@ cdef _ndarray_sort(ndarray self, int axis):
     cdef int ndim = self._shape.size()
     cdef ndarray data
 
-    if not cupy.cuda.thrust_enabled:
+    if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.sort. Please '
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')
 
     if ndim == 0:
-        raise ValueError('Sorting arrays with the rank of zero is not '
-                         'supported')  # as numpy.sort() raises
+        raise numpy.AxisError('Sorting arrays with the rank of zero is not '
+                              'supported')  # as numpy.sort() raises
 
     # TODO(takagi): Support sorting views
     if not self._c_contiguous:
@@ -39,7 +34,7 @@ cdef _ndarray_sort(ndarray self, int axis):
     if axis < 0:
         axis += ndim
     if not (0 <= axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     if axis == ndim - 1:
         data = self
@@ -61,17 +56,16 @@ cdef _ndarray_sort(ndarray self, int axis):
 
 
 cdef ndarray _ndarray_argsort(ndarray self, axis):
-    cdef int _axis, ndim = self._shape.size()
+    cdef int _axis, ndim
     cdef ndarray data
 
-    if not cupy.cuda.thrust_enabled:
+    if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')
 
-    if ndim == 0:
-        raise ValueError('Sorting arrays with the rank of zero is not '
-                         'supported')  # as numpy.argsort() raises
+    self = cupy.atleast_1d(self)
+    ndim = self._shape.size()
 
     if axis is None:
         data = self.ravel()
@@ -83,7 +77,7 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
     if _axis < 0:
         _axis += ndim
     if not (0 <= _axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     if _axis == ndim - 1:
         data = data.copy()
@@ -124,17 +118,13 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
 
     """
 
-    if self.dtype.kind == 'c':
-        raise NotImplementedError('Sorting arrays with dtype \'{}\' is '
-                                  'not supported'.format(self.dtype))
-
     cdef int ndim = self._shape.size()
     cdef Py_ssize_t k, max_k, length, s, sz, t
     cdef ndarray data
 
     if ndim == 0:
-        raise ValueError('Sorting arrays with the rank of zero is not '
-                         'supported')
+        raise numpy.AxisError('Sorting arrays with the rank of zero is not '
+                              'supported')
 
     if not self._c_contiguous:
         raise NotImplementedError('Sorting non-contiguous array is not '
@@ -143,7 +133,7 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
     if axis < 0:
         axis += ndim
     if not (0 <= axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     if axis == ndim - 1:
         data = self
@@ -240,7 +230,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
     if _axis < 0:
         _axis += ndim
     if not (0 <= _axis < ndim):
-        raise _errors._AxisError('Axis out of range')
+        raise numpy.AxisError('Axis out of range')
 
     length = data._shape[_axis]
     if isinstance(kth, int):
@@ -253,20 +243,20 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
 
     # TODO(takgi) For its implementation reason, cupy.ndarray.argsort
     # currently performs full argsort with Thrust's efficient radix sort
-    # algoritm.
+    # algorithm.
 
     # kth is ignored.
     return data.argsort(_axis)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _partition_kernel(dtype):
     name = 'partition_kernel'
     merge_kernel = 'partition_merge_kernel'
     dtype = _get_typename(dtype)
     source = string.Template('''
     template<typename T>
-    __device__ void bitonic_sort_step(CArray<T, 1> a,
+    __device__ void bitonic_sort_step(CArray<T, 1, true> a,
             ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
         for (ptrdiff_t j = i; j < (y - x) / 2; j += 32) {
             ptrdiff_t n = j + (j & -w);
@@ -281,10 +271,10 @@ def _partition_kernel(dtype):
     // Sort a[x:y].
     template<typename T>
     __device__ void bitonic_sort(
-            CArray<T, 1> a, ptrdiff_t x, ptrdiff_t y, int i) {
+            CArray<T, 1, true> a, ptrdiff_t x, ptrdiff_t y, int i) {
         for (ptrdiff_t s = 2; s <= y - x; s *= 2) {
             for (ptrdiff_t w = s / 2; w >= 1; w /= 2) {
-                bitonic_sort_step<T>(a, x, y, i, s, w);
+                bitonic_sort_step< T >(a, x, y, i, s, w);
             }
         }
     }
@@ -292,7 +282,8 @@ def _partition_kernel(dtype):
     // Merge first k elements and the next 32 times t elements.
     template<typename T>
     __device__ void merge(
-            CArray<T, 1> a, int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
+            CArray<T, 1, true> a,
+            int k, int i, ptrdiff_t x, ptrdiff_t z, int u) {
         for (int s = i; s < u; s += 32) {
             if (a[x + k - s - 1] > a[z + s]) {
                 T tmp = a[x + k - s - 1];
@@ -304,7 +295,7 @@ def _partition_kernel(dtype):
         // After merge step, the first k elements are already bitonic.
         // Therefore, we do not need to fully sort.
         for (int w = k / 2; w >= 1; w /= 2) {
-            bitonic_sort_step<T>(a, x, k + x, i, k, w);
+            bitonic_sort_step< T >(a, x, k + x, i, k, w);
         }
     }
 
@@ -313,7 +304,8 @@ def _partition_kernel(dtype):
     // the warp size. The first k elements are always sorted and the next 32
     // times t elements stored values that have possibilities to be selected.
     __global__ void ${name}(
-            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int t, ptrdiff_t sz) {
+            CArray<${dtype}, 1, true> a,
+            int k, ptrdiff_t n, int t, ptrdiff_t sz) {
 
         // This thread handles a[z:m].
         ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
@@ -323,7 +315,7 @@ def _partition_kernel(dtype):
         int id = i % 32;
         int x = 0;
 
-        bitonic_sort<${dtype}>(a, z, k + z, id);
+        bitonic_sort< ${dtype} >(a, z, k + z, id);
         ptrdiff_t j;
         for (j = k + id + z; j < m - (m - z) % 32; j += 32) {
             if (a[j] < a[k - 1 + z]) {
@@ -340,8 +332,8 @@ def _partition_kernel(dtype):
     #else
             if (__any(x >= t)) {
     #endif
-                bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
-                merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
+                bitonic_sort< ${dtype} >(a, k + z, 32 * t + k + z, id);
+                merge< ${dtype} >(a, k, id, z, k + z, min(k, 32 * t));
                 x = 0;
             }
         }
@@ -353,18 +345,18 @@ def _partition_kernel(dtype):
 
         // Finally, we merge the first k elements and the remainders to be
         // stored.
-        bitonic_sort<${dtype}>(a, k + z, 32 * t + k + z, id);
-        merge<${dtype}>(a, k, id, z, k + z, min(k, 32 * t));
+        bitonic_sort< ${dtype} >(a, k + z, 32 * t + k + z, id);
+        merge< ${dtype} >(a, k, id, z, k + z, min(k, 32 * t));
     }
 
     __global__ void ${merge_kernel}(
-            CArray<${dtype}, 1> a, int k, ptrdiff_t n, int sz, int s) {
+            CArray<${dtype}, 1, true> a, int k, ptrdiff_t n, int sz, int s) {
         ptrdiff_t i = static_cast<ptrdiff_t>(blockIdx.x) * blockDim.x
             + threadIdx.x;
         ptrdiff_t z = i / 32 * 2 * s * n / sz;
         ptrdiff_t m = (i / 32 * 2 + 1) * s * n / sz;
         int id = i % 32;
-        merge<${dtype}>(a, k, id, z, m, k);
+        merge< ${dtype} >(a, k, id, z, m, k);
     }
     }
     ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)

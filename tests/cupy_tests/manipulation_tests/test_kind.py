@@ -1,4 +1,5 @@
 import unittest
+import pytest
 
 import numpy
 
@@ -58,3 +59,44 @@ class TestKind(unittest.TestCase):
             self.assertTrue(ret.flags.f_contiguous)
             return ret.strides
         self.assertEqual(func(numpy), func(cupy))
+
+    @testing.for_all_dtypes()
+    def test_require_flag_check(self, dtype):
+        possible_flags = [['C_CONTIGUOUS'], ['F_CONTIGUOUS']]
+        x = cupy.zeros((2, 3, 4), dtype)
+        for flags in possible_flags:
+            arr = cupy.require(x, dtype, flags)
+            for parameter in flags:
+                assert arr.flags[parameter]
+                assert arr.dtype == dtype
+
+    @testing.for_all_dtypes()
+    def test_require_owndata(self, dtype):
+        x = cupy.zeros((2, 3, 4), dtype)
+        arr = x.view()
+        arr = cupy.require(arr, dtype, ['O'])
+        assert arr.flags['OWNDATA']
+
+    @testing.for_all_dtypes()
+    def test_require_C_and_F_flags(self, dtype):
+        x = cupy.zeros((2, 3, 4), dtype)
+        with pytest.raises(ValueError):
+            cupy.require(x, dtype, ['C', 'F'])
+
+    @testing.for_all_dtypes()
+    def test_require_incorrect_requirments(self, dtype):
+        x = cupy.zeros((2, 3, 4), dtype)
+        with pytest.raises(ValueError):
+            cupy.require(x, dtype, ['W'])
+
+    @testing.for_all_dtypes()
+    def test_require_incorrect_dtype(self, dtype):
+        x = cupy.zeros((2, 3, 4), dtype)
+        with pytest.raises(ValueError):
+            cupy.require(x, 'random', 'C')
+
+    @testing.for_all_dtypes()
+    def test_require_empty_requirements(self, dtype):
+        x = cupy.zeros((2, 3, 4), dtype)
+        x = cupy.require(x, dtype, [])
+        assert x.flags['C_CONTIGUOUS']

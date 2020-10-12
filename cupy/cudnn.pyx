@@ -1,25 +1,26 @@
 from libcpp cimport vector
 from libc.stdint cimport int64_t
 
-import atexit
-import threading
-import warnings
+import atexit as _atexit
+import threading as _threading
+import warnings as _warnings
 
-import numpy
+import numpy as _numpy
 
+from cupy.core._carray cimport shape_t
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport core
-from cupy.cuda cimport cudnn
-from cupy.cuda cimport device
 from cupy.core cimport internal
+from cupy.cuda cimport device
 from cupy.cuda cimport memory
+from cupy_backends.cuda.libs cimport cudnn
 
-from cupy.core._ufuncs import elementwise_copy
-from cupy.cuda import cudnn as py_cudnn
-from cupy import util
+from cupy.core._ufuncs import elementwise_copy as _elementwise_copy
+from cupy import _util
+from cupy_backends.cuda.libs import cudnn as _py_cudnn
 
 cdef int _cudnn_version = cudnn.getVersion()
-cdef _thread_local = threading.local()
+cdef _thread_local = _threading.local()
 
 cdef vector.vector[size_t] _handles
 
@@ -27,7 +28,7 @@ cdef vector.vector[size_t] _handles
 cpdef size_t get_handle() except? 0:
     cdef int dev
     dev = device.get_device_id()
-    if _handles.size() <= dev:
+    if <int>_handles.size() <= dev:
         _handles.resize(dev + 1, 0)
     ret = _handles[dev]
     if ret != 0:
@@ -37,7 +38,7 @@ cpdef size_t get_handle() except? 0:
     return ret
 
 
-@atexit.register
+@_atexit.register
 def reset_handles():
     for handle in _handles:
         if handle:
@@ -121,6 +122,7 @@ cpdef _create_tensor_nd_descriptor(
         size_t desc, core.ndarray arr, int data_type=-1):
     cdef vector.vector[int] c_shape, c_strides
     cdef Py_ssize_t itemsize, s
+    cdef int next_stride, i
     if data_type == -1:  # `-1` is used instead of `None`
         data_type = get_data_type(arr.dtype)
     itemsize = arr.itemsize
@@ -128,9 +130,17 @@ cpdef _create_tensor_nd_descriptor(
         c_strides.push_back(s // itemsize)
     for s in arr._shape:
         c_shape.push_back(s)
+    # Use "c-contiguous stride" with the next axis, if ambiguous
+    next_stride = 1
+    for i in reversed(range(c_shape.size())):
+        if c_shape[i] <= 1:
+            c_strides[i] = next_stride
+        else:
+            next_stride = c_shape[i] * c_strides[i]
+
     cudnn.setTensorNdDescriptor(
-        desc, data_type, arr._shape.size(), <size_t>&c_shape[0],
-        <size_t>&c_strides[0])
+        desc, data_type, arr._shape.size(), <size_t>c_shape.data(),
+        <size_t>c_strides.data())
 
 
 cpdef _create_tensor_descriptor(size_t desc, core.ndarray arr,
@@ -181,7 +191,7 @@ cpdef _create_filter_descriptor(
         for s in arr._shape:
             c_shape.push_back(s)
         cudnn.setFilterNdDescriptor_v4(
-            desc, data_type, format, ndim, <size_t>&c_shape[0])
+            desc, data_type, format, ndim, <size_t>c_shape.data())
 
 
 cpdef _create_convolution_descriptor(
@@ -212,8 +222,8 @@ cpdef _create_convolution_descriptor(
                         raise ValueError(
                             'dilation must be one when cuDNN < 6.0')
         cudnn.setConvolutionNdDescriptor_v3(
-            desc, ndim, <size_t>&c_pad[0], <size_t>&c_stride[0],
-            <size_t>&c_dilation[0], mode, compute_type)
+            desc, ndim, <size_t>c_pad.data(), <size_t>c_stride.data(),
+            <size_t>c_dilation.data(), mode, compute_type)
     else:
         if dilation is None:
             d0 = d1 = 1
@@ -243,13 +253,13 @@ cpdef core.ndarray _ascontiguousarray_normalized_strides(core.ndarray a):
         newarray._set_contiguous_strides(newarray.itemsize, True)
     else:
         newarray = core.ndarray(a.shape, a.dtype)
-        elementwise_copy(a, newarray)
+        _elementwise_copy(a, newarray)
     return newarray
 
 
 def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     desc = Descriptor(cudnn.createTensorDescriptor(),
-                      py_cudnn.destroyTensorDescriptor)
+                      _py_cudnn.destroyTensorDescriptor)
     _create_tensor_descriptor(desc.value, arr, format)
     return desc
 
@@ -261,7 +271,7 @@ def create_uninitialized_tensor_descriptor():
     This is used by the batch normalization functions.
     """
     return Descriptor(cudnn.createTensorDescriptor(),
-                      py_cudnn.destroyTensorDescriptor)
+                      _py_cudnn.destroyTensorDescriptor)
 
 
 def create_tensor_nd_descriptor(core.ndarray arr):
@@ -279,7 +289,7 @@ def create_tensor_nd_descriptor(core.ndarray arr):
     # numpy's stride is defined in bytes, but cudnn's stride is defined in
     # size of element
     desc = Descriptor(cudnn.createTensorDescriptor(),
-                      py_cudnn.destroyTensorDescriptor)
+                      _py_cudnn.destroyTensorDescriptor)
     _create_tensor_nd_descriptor(desc.value, arr, data_type)
     cache[key] = desc
     return desc
@@ -287,7 +297,7 @@ def create_tensor_nd_descriptor(core.ndarray arr):
 
 def create_filter_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     desc = Descriptor(cudnn.createFilterDescriptor(),
-                      py_cudnn.destroyFilterDescriptor)
+                      _py_cudnn.destroyFilterDescriptor)
     _create_filter_descriptor(desc.value, arr, format)
     return desc
 
@@ -298,7 +308,7 @@ def create_convolution_descriptor(pad, stride, dtype,
                                   use_tensor_core=False,
                                   groups=1):
     desc = Descriptor(cudnn.createConvolutionDescriptor(),
-                      py_cudnn.destroyConvolutionDescriptor)
+                      _py_cudnn.destroyConvolutionDescriptor)
     _create_convolution_descriptor(
         desc.value, pad, stride, dilation, groups,
         dtype, mode, use_tensor_core)
@@ -321,21 +331,22 @@ cdef _create_pooling_descriptor(
         c_stride = stride
         cudnn.setPoolingNdDescriptor_v4(
             desc, mode, cudnn.CUDNN_NOT_PROPAGATE_NAN, ndim,
-            <size_t>&c_ksize[0], <size_t>&c_pad[0], <size_t>&c_stride[0])
+            <size_t>c_ksize.data(), <size_t>c_pad.data(),
+            <size_t>c_stride.data())
 
     return desc
 
 
 def create_pooling_descriptor(ksize, stride, pad, int mode):
     desc = Descriptor(cudnn.createPoolingDescriptor(),
-                      py_cudnn.destroyPoolingDescriptor)
+                      _py_cudnn.destroyPoolingDescriptor)
     _create_pooling_descriptor(desc.value, ksize, stride, pad, mode)
     return desc
 
 
 cdef Descriptor _create_rnn_data_descriptor():
     return Descriptor(cudnn.createRNNDataDescriptor(),
-                      py_cudnn.destroyRNNDataDescriptor)
+                      _py_cudnn.destroyRNNDataDescriptor)
 
 
 cdef Descriptor _make_unpacked_rnn_data_descriptor(core.ndarray xs, lengths):
@@ -597,7 +608,7 @@ def rnn_backward_weights_ex(
 def create_activation_descriptor(mode, nan_prop_mode=cudnn.CUDNN_PROPAGATE_NAN,
                                  coef=0.0):
     desc = Descriptor(cudnn.createActivationDescriptor(),
-                      py_cudnn.destroyActivationDescriptor)
+                      _py_cudnn.destroyActivationDescriptor)
     cudnn.setActivationDescriptor(desc.value, mode, nan_prop_mode, coef)
     return desc
 
@@ -680,7 +691,7 @@ cdef int _create_tensor_descriptor_for_softmax(
         left *= arr._shape[i]
     center = arr._shape[axis]
     right = 1
-    for i in range(axis + 1, arr._shape.size()):
+    for i in range(axis + 1, <int>arr._shape.size()):
         right *= arr._shape[i]
     cudnn.setTensor4dDescriptor(desc, cudnn.CUDNN_TENSOR_NCHW, data_type,
                                 left, center, right, 1)
@@ -748,7 +759,7 @@ def softmax_backward(core.ndarray y, core.ndarray gy, int axis, int algorithm):
 def create_dropout_descriptor(
         handle, dropout, states, state_size_in_bytes, seed):
     desc = Descriptor(cudnn.createDropoutDescriptor(),
-                      py_cudnn.destroyDropoutDescriptor)
+                      _py_cudnn.destroyDropoutDescriptor)
     cudnn.setDropoutDescriptor(desc.value, handle, dropout,
                                states, state_size_in_bytes, seed)
     return desc
@@ -761,7 +772,7 @@ def set_dropout_descriptor(desc, handle, dropout):
 
 def _create_ctc_loss_descriptor(data_type):
     desc = Descriptor(cudnn.createCTCLossDescriptor(),
-                      py_cudnn.destroyCTCLossDescriptor)
+                      _py_cudnn.destroyCTCLossDescriptor)
     cudnn.setCTCLossDescriptor(desc.value, data_type)
     return desc
 
@@ -775,7 +786,7 @@ def ctc_loss(core.ndarray probs, labels,
     handle = get_handle()
     data_type = get_data_type(probs.dtype)
     ctc_desc = Descriptor(cudnn.createCTCLossDescriptor(),
-                          py_cudnn.destroyCTCLossDescriptor)
+                          _py_cudnn.destroyCTCLossDescriptor)
     cudnn.setCTCLossDescriptor(ctc_desc.value, data_type)
 
     gradients = core.ndarray(probs._shape, probs.dtype)
@@ -800,7 +811,7 @@ def ctc_loss(core.ndarray probs, labels,
 def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type, algo=None):
     desc = Descriptor(cudnn.createRNNDescriptor(),
-                      py_cudnn.destroyRNNDescriptor)
+                      _py_cudnn.destroyRNNDescriptor)
     if _cudnn_version >= 6000:
         _handle = get_handle()
         if algo is None:
@@ -828,7 +839,7 @@ def get_rnn_lin_layer_matrix_params(
         cudnn.destroyFilterDescriptor(mat_desc)
     byte_size = _get_byte_size(data_type)
     offset = (ptr - w.data.ptr) // byte_size
-    size = internal.prod(dim)
+    size = internal.prod_sequence(dim)
     mat = w[offset:offset + size]
     return mat
 
@@ -846,7 +857,7 @@ def get_rnn_lin_layer_bias_params(
         cudnn.destroyFilterDescriptor(bias_desc)
     byte_size = _get_byte_size(data_type)
     offset = (ptr - w.data.ptr) // byte_size
-    size = internal.prod(dim)
+    size = internal.prod_sequence(dim)
     bias = w[offset:offset + size]
     return bias
 
@@ -869,7 +880,7 @@ cdef class _DescriptorArray:
 
     @property
     def data(self):
-        return <size_t>&self._value[0]
+        return <size_t>self._value.data()
 
 
 cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
@@ -877,7 +888,7 @@ cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
 
     """
     cdef _DescriptorArray descs = _DescriptorArray(
-        py_cudnn.destroyTensorDescriptor)
+        _py_cudnn.destroyTensorDescriptor)
     cdef size_t desc
     cdef int data_type = get_data_type(xs.dtype)
     cdef vector.vector[int] c_shape, c_strides
@@ -900,7 +911,8 @@ cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
         desc = cudnn.createTensorDescriptor()
         descs.append(desc)
         cudnn.setTensorNdDescriptor(
-            desc, data_type, 3, <size_t>&c_shape[0], <size_t>&c_strides[0])
+            desc, data_type, 3,
+            <size_t>c_shape.data(), <size_t>c_strides.data())
 
     return descs
 
@@ -909,7 +921,7 @@ cdef _DescriptorArray _make_tensor_descriptor_array_for_padded(xs):
     assert xs.ndim == 3
 
     cdef _DescriptorArray descs = _DescriptorArray(
-        py_cudnn.destroyTensorDescriptor)
+        _py_cudnn.destroyTensorDescriptor)
     cdef size_t desc
     cdef int data_type = get_data_type(xs.dtype)
     cdef Py_ssize_t itemsize = xs.itemsize
@@ -923,7 +935,8 @@ cdef _DescriptorArray _make_tensor_descriptor_array_for_padded(xs):
         desc = cudnn.createTensorDescriptor()
         descs.append(desc)
         cudnn.setTensorNdDescriptor(
-            desc, data_type, 3, <size_t>&c_shape[0], <size_t>&c_strides[0])
+            desc, data_type, 3,
+            <size_t>c_shape.data(), <size_t>c_strides.data())
 
     return descs
 
@@ -1015,7 +1028,7 @@ def rnn_forward_training(
         DropoutStates states, int direction_mode, int rnn_mode,
         core.ndarray hx, core.ndarray cx, core.ndarray w, core.ndarray xs,
         lengths):
-    hx = _ascontiguousarray_normalized_strides(hx)
+    hx = core._internal_ascontiguousarray(hx)
     if cx is not None:
         cx = core._internal_ascontiguousarray(cx)
     w = core._internal_ascontiguousarray(w)
@@ -1166,16 +1179,16 @@ def rnn_backward_weights(
 
 
 def create_dropout_states(handle):
-    warnings.warn('create_dropout_states is deprecated.'
-                  'Please use DropoutStates class instead.',
-                  DeprecationWarning)
+    _warnings.warn('create_dropout_states is deprecated.'
+                   'Please use DropoutStates class instead.',
+                   DeprecationWarning)
     state_size = cudnn.dropoutGetStatesSize(handle)
     return core.ndarray((state_size,), 'b')
 
 
 def create_spatial_transformer_descriptor(sampler_type, dtype, nb_dims, dim_A):
     desc = Descriptor(cudnn.createSpatialTransformerDescriptor(),
-                      py_cudnn.destroySpatialTransformerDescriptor)
+                      _py_cudnn.destroySpatialTransformerDescriptor)
     data_type = get_data_type(dtype)
 
     cudnn.setSpatialTransformerDescriptor(
@@ -1191,7 +1204,7 @@ def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
 
 def create_op_tensor_descriptor(op_type, dtype):
     desc = Descriptor(cudnn.createOpTensorDescriptor(),
-                      py_cudnn.destroyOpTensorDescriptor)
+                      _py_cudnn.destroyOpTensorDescriptor)
     data_type = get_data_type(dtype)
 
     cudnn.setOpTensorDescriptor(desc.value, op_type, data_type,
@@ -1201,7 +1214,7 @@ def create_op_tensor_descriptor(op_type, dtype):
 
 def create_reduce_tensor_descriptor(reduce_type, dtype):
     desc = Descriptor(cudnn.createReduceTensorDescriptor(),
-                      py_cudnn.destroyReduceTensorDescriptor)
+                      _py_cudnn.destroyReduceTensorDescriptor)
     data_type = get_data_type(dtype)
     if reduce_type in (cudnn.CUDNN_REDUCE_TENSOR_MIN,
                        cudnn.CUDNN_REDUCE_TENSOR_MAX):
@@ -1321,13 +1334,13 @@ cdef dict _algorithm_bwd_data_cache = {}
 
 cpdef _warn_algorithm_fwd(
         core.ndarray x, core.ndarray W, core.ndarray y, tuple conv_param):
-    warnings.warn(
+    _warnings.warn(
         'Tensor Core mode is set but the selected convolution forward '
         'algorithm is not a Tensor Core enabled algorithm. '
         'This might be due to lack of workspace memory. '
         'x.shape:{}, W.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(x.shape, W.shape, y.shape, conv_param[0], conv_param[1]),
-        util.PerformanceWarning)
+        _util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_fwd(
@@ -1368,21 +1381,28 @@ cpdef _Algorithm _get_algorithm_fwd(
     algo = _get_algorithm_fwd_cache.get(key, None)
     if algo is not None:
         return algo
-    if use_tensor_core and _cudnn_version >= 7000:
+    cdef list ret
+    cdef bint skip
+    if (use_tensor_core and _cudnn_version >= 7000) or _cudnn_version >= 8000:
         ret = cudnn.getConvolutionForwardAlgorithm_v7(
             handle, x_desc, filter_desc, conv_desc, y_desc, 10)
-        for i, perf in enumerate(ret):
+        skip = False
+        for perf in ret:
             if perf.memory <= max_workspace_size:
                 break
+            skip = True
         else:
             raise RuntimeError('No conv fwd algo available with workspace size'
                                ' less equal {}'.format(max_workspace_size))
-        if i != 0:
-            warnings.warn(
+        if skip:
+            _warnings.warn(
                 'The best algo of conv fwd might not be selected due to '
                 'lack of workspace size ({})'.format(max_workspace_size),
-                util.PerformanceWarning)
-        if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
+                _util.PerformanceWarning)
+        algo = perf.algo
+        workspace_size = perf.memory
+        math_type = perf.mathType
+        if use_tensor_core and math_type != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_fwd(x, W, y, conv_param)
         algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
@@ -1399,20 +1419,22 @@ cpdef _Algorithm _get_algorithm_fwd(
 
 cpdef _warn_algorithm_bwd_filter(
         core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param):
-    warnings.warn(
+    _warnings.warn(
         'Tensor Core mode is set but the selected convolution backward '
         'filter algorithm is not a Tensor Core enabled algorithm. '
         'This might be due to lack of workspace memory. '
         'x.shape:{}, dy.shape:{}, dW.shape:{}, pad:{}, stride:{}'
         .format(x.shape, dy.shape, dW.shape, conv_param[0], conv_param[1]),
-        util.PerformanceWarning)
+        _util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_bwd_filter(
         core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param,
         size_t handle, size_t x_desc, size_t dy_desc, size_t conv_desc,
-        size_t filter_desc, size_t max_workspace_size, bint use_tensor_core):
+        size_t filter_desc, size_t max_workspace_size, bint use_tensor_core,
+        bint deterministic):
     cdef cudnn.CuDNNAlgoPerf perf
+    cdef _Algorithm algo
     key = (x.data.device.id, x.shape, dW.shape, dy.shape, conv_param,
            max_workspace_size)
     algo = _algorithm_bwd_filter_cache.get(key, None)
@@ -1420,9 +1442,23 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
         return algo
     workspace = memory.alloc(max_workspace_size)
     if _cudnn_version >= 7000:
-        perf = cudnn.findConvolutionBackwardFilterAlgorithmEx_v7(
-            handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
-            filter_desc, dW.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
+        if deterministic:
+            ret = cudnn.findConvolutionBackwardFilterAlgorithmEx_v7(
+                handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
+                filter_desc, dW.data.ptr, 10, workspace.ptr,
+                max_workspace_size)
+            for perf in ret:
+                if perf.determinism:
+                    break
+            else:
+                raise RuntimeError(
+                    'No conv bwd filter algo available with workspace size '
+                    'less equal {}'.format(max_workspace_size))
+        else:
+            perf = cudnn.findConvolutionBackwardFilterAlgorithmEx_v7(
+                handle, x_desc, x.data.ptr, dy_desc, dy.data.ptr, conv_desc,
+                filter_desc, dW.data.ptr, 1, workspace.ptr,
+                max_workspace_size)[0]
         if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_filter(x, dy, dW, conv_param)
     else:
@@ -1439,29 +1475,39 @@ cpdef _Algorithm _find_algorithm_bwd_filter(
 cpdef _Algorithm _get_algorithm_bwd_filter(
         core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param,
         size_t handle, size_t x_desc, size_t gy_desc, size_t conv_desc,
-        size_t filter_desc, size_t max_workspace_size, bint use_tensor_core):
+        size_t filter_desc, size_t max_workspace_size, bint use_tensor_core,
+        bint deterministic):
     cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, x.shape, dW.shape, dy.shape, conv_param,
            max_workspace_size)
     algo = _get_algorithm_bwd_filter_cache.get(key, None)
     if algo is not None:
         return algo
-    if use_tensor_core and _cudnn_version >= 7000:
+    cdef list ret
+    cdef bint skip
+    if _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardFilterAlgorithm_v7(
             handle, x_desc, gy_desc, conv_desc, filter_desc, 10)
-        for i, perf in enumerate(ret):
+        skip = False
+        for perf in ret:
+            if deterministic and not perf.determinism:
+                continue
             if perf.memory <= max_workspace_size:
                 break
+            skip = True
         else:
             raise RuntimeError(
                 'No conv bwd filter algo available with workspace size less '
                 'equal {}'.format(max_workspace_size))
-        if i != 0:
-            warnings.warn(
+        if use_tensor_core and skip:
+            _warnings.warn(
                 'The best algo of conv bwd filter might not not selected due '
                 'to lack of workspace size ({})'.format(max_workspace_size),
-                util.PerformanceWarning)
-        if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
+                _util.PerformanceWarning)
+        algo = perf.algo
+        workspace_size = perf.memory
+        math_type = perf.mathType
+        if use_tensor_core and math_type != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_filter(x, dy, dW, conv_param)
         algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
@@ -1478,19 +1524,21 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
 
 cpdef _warn_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param):
-    warnings.warn(
+    _warnings.warn(
         'Tensor Core mode is set but the selected convolution backward '
         'data algorithm is not a Tensor Core enabled algorithm. '
         'This might be due to lack of workspace memory. '
         'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(W.shape, x.shape, y.shape, conv_param[0], conv_param[1]),
-        util.PerformanceWarning)
+        _util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param,
         size_t handle, size_t filter_desc, size_t x_desc, size_t conv_desc,
-        size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
+        size_t y_desc, size_t max_workspace_size, bint use_tensor_core,
+        bint deterministic):
+    cdef _Algorithm algo
     cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, W.shape, x.shape, y.shape, conv_param,
            max_workspace_size)
@@ -1499,9 +1547,21 @@ cpdef _Algorithm _find_algorithm_bwd_data(
         return algo
     workspace = memory.alloc(max_workspace_size)
     if _cudnn_version >= 7000:
-        perf = cudnn.findConvolutionBackwardDataAlgorithmEx_v7(
-            handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
-            y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
+        if deterministic:
+            ret = cudnn.findConvolutionBackwardDataAlgorithmEx_v7(
+                handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
+                y_desc, y.data.ptr, 10, workspace.ptr, max_workspace_size)
+            for perf in ret:
+                if perf.determinism:
+                    break
+            else:
+                raise RuntimeError(
+                    'No conv bwd filter algo available with workspace size '
+                    'less equal {}'.format(max_workspace_size))
+        else:
+            perf = cudnn.findConvolutionBackwardDataAlgorithmEx_v7(
+                handle, filter_desc, W.data.ptr, x_desc, x.data.ptr, conv_desc,
+                y_desc, y.data.ptr, 1, workspace.ptr, max_workspace_size)[0]
         if use_tensor_core and perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_data(W, x, y, conv_param)
     else:
@@ -1518,29 +1578,39 @@ cpdef _Algorithm _find_algorithm_bwd_data(
 cpdef _Algorithm _get_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param,
         size_t handle, size_t filter_desc, size_t x_desc, size_t conv_desc,
-        size_t y_desc, size_t max_workspace_size, bint use_tensor_core):
+        size_t y_desc, size_t max_workspace_size, bint use_tensor_core,
+        bint deterministic):
     cdef cudnn.CuDNNAlgoPerf perf
     key = (x.data.device.id, W.shape, x.shape, y.shape, conv_param,
            max_workspace_size)
-    algo = _algorithm_bwd_data_cache.get(key, None)
+    algo = _get_algorithm_bwd_data_cache.get(key, None)
     if algo is not None:
         return algo
-    if use_tensor_core and _cudnn_version >= 7000:
+    cdef list ret
+    cdef bint skip
+    if _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardDataAlgorithm_v7(
             handle, filter_desc, x_desc, conv_desc, y_desc, 10)
-        for i, perf in enumerate(ret):
+        skip = False
+        for perf in ret:
+            if deterministic and not perf.determinism:
+                continue
             if perf.memory <= max_workspace_size:
                 break
+            skip = True
         else:
             raise RuntimeError(
                 'No conv bwd data algo available with workspace size less '
                 'equal {}'.format(max_workspace_size))
-        if i != 0:
-            warnings.warn(
+        if use_tensor_core and skip:
+            _warnings.warn(
                 'The best algo of conv bwd data might not not selected due '
                 'to lack of workspace size ({})'.format(max_workspace_size),
-                util.PerformanceWarning)
-        if perf.mathType != cudnn.CUDNN_TENSOR_OP_MATH:
+                _util.PerformanceWarning)
+        algo = perf.algo
+        workspace_size = perf.memory
+        math_type = perf.mathType
+        if use_tensor_core and math_type != cudnn.CUDNN_TENSOR_OP_MATH:
             _warn_algorithm_bwd_data(W, x, y, conv_param)
         algo = _Algorithm(perf.algo, perf.memory, perf.mathType)
     else:
@@ -1619,7 +1689,7 @@ def convolution_forward(
     cdef size_t conv_desc = cudnn.createConvolutionDescriptor()
 
     cdef size_t max_workspace_size = get_max_workspace_size()
-    cdef vector.vector[Py_ssize_t] b_shape
+    cdef shape_t b_shape
     cdef _Algorithm perf
     try:
         _create_tensor_descriptor(x_desc, x, format=d_layout)
@@ -1648,7 +1718,7 @@ def convolution_forward(
                 handle, one, x_desc, x.data.ptr, filter_desc, W.data.ptr,
                 conv_desc, perf.algo, workspace.ptr, perf.memory, zero, y_desc,
                 y.data.ptr)
-        except py_cudnn.CuDNNError as e:
+        except _py_cudnn.CuDNNError as e:
             infos = [
                 'func: cudnnConvolutionForward',
                 'x: {}'.format(_get_array_info(x)),
@@ -1707,7 +1777,8 @@ def convolution_backward_filter(
     # CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 does not use Tensor Core.
     cdef bint use_tensor_core = (
         not deterministic and _should_use_tensor_core(tensor_core, x.dtype))
-    cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
+    cdef tuple conv_param = (
+        pad, stride, x.dtype, use_tensor_core, deterministic)
 
     handle = get_handle()
     x = core._internal_ascontiguousarray(x)
@@ -1731,22 +1802,27 @@ def convolution_backward_filter(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        if deterministic:
+        if deterministic and _cudnn_version < 7000:
             # TODO(imanishi): Support Tensor Core in deterministic mode.
             algo = cudnn.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1
             workspace_size = cudnn.getConvolutionBackwardFilterWorkspaceSize(
                 handle, x_desc, gy_desc, conv_desc, filter_desc, algo)
             math_type = cudnn.CUDNN_DEFAULT_MATH
-            # TODO(okuta): check workspace size
+            if workspace_size > max_workspace_size:
+                raise RuntimeError(
+                    'No conv bwd filter algo available with workspace size '
+                    'less equal {}'.format(max_workspace_size))
         else:
-            if auto_tune:
+            if auto_tune and not deterministic:
                 perf = _find_algorithm_bwd_filter(
                     x, gy, gW, conv_param, handle, x_desc, gy_desc, conv_desc,
-                    filter_desc, max_workspace_size, use_tensor_core)
+                    filter_desc, max_workspace_size, use_tensor_core,
+                    deterministic)
             else:
                 perf = _get_algorithm_bwd_filter(
                     x, gy, gW, conv_param, handle, x_desc, gy_desc, conv_desc,
-                    filter_desc, max_workspace_size, use_tensor_core)
+                    filter_desc, max_workspace_size, use_tensor_core,
+                    deterministic)
             algo = perf.algo
             workspace_size = perf.memory
             math_type = perf.mathType
@@ -1791,7 +1867,8 @@ def convolution_backward_data(
     # CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 does not use Tensor Core.
     cdef bint use_tensor_core = (
         not deterministic and _should_use_tensor_core(tensor_core, x.dtype))
-    cdef tuple conv_param = (pad, stride, x.dtype, use_tensor_core)
+    cdef tuple conv_param = (
+        pad, stride, x.dtype, use_tensor_core, deterministic)
 
     # cuDNN 7 supports dilation only in *_FWD_ALGO_IMPLICIT_GEMM, but
     # it supports Tensor Cores only in *_FWD_ALGO_IMPLICIT_PRECOMP_GEMM.
@@ -1816,7 +1893,7 @@ def convolution_backward_data(
     cdef int algo
     cdef size_t max_workspace_size = get_max_workspace_size()
     cdef size_t workspace_size = 0
-    cdef vector.vector[Py_ssize_t] b_shape
+    cdef shape_t b_shape
     try:
         _create_tensor_descriptor(x_desc, x, format=d_layout)
         _create_tensor_descriptor(y_desc, y, format=d_layout)
@@ -1825,22 +1902,27 @@ def convolution_backward_data(
             conv_desc, pad, stride, dilation, groups, x.dtype,
             cudnn.CUDNN_CROSS_CORRELATION, use_tensor_core)
 
-        if deterministic:
+        if deterministic and _cudnn_version < 7000:
             # TODO(imanishi): Support Tensor Core in deterministic mode.
             algo = cudnn.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1
             workspace_size = cudnn.getConvolutionBackwardDataWorkspaceSize(
                 handle, filter_desc, x_desc, conv_desc, y_desc, algo)
             math_type = cudnn.CUDNN_DEFAULT_MATH
-            # TODO(okuta): check workspace size
+            if workspace_size > max_workspace_size:
+                raise RuntimeError(
+                    'No conv bwd data algo available with workspace size less '
+                    'equal {}'.format(max_workspace_size))
         else:
-            if auto_tune:
+            if auto_tune and not deterministic:
                 perf = _find_algorithm_bwd_data(
                     W, x, y, conv_param, handle, filter_desc, x_desc,
-                    conv_desc, y_desc, max_workspace_size, use_tensor_core)
+                    conv_desc, y_desc, max_workspace_size, use_tensor_core,
+                    deterministic)
             else:
                 perf = _get_algorithm_bwd_data(
                     W, x, y, conv_param, handle, filter_desc, x_desc,
-                    conv_desc, y_desc, max_workspace_size, use_tensor_core)
+                    conv_desc, y_desc, max_workspace_size, use_tensor_core,
+                    deterministic)
             algo = perf.algo
             workspace_size = perf.memory
             math_type = perf.mathType
@@ -1887,6 +1969,8 @@ def pooling_forward(
         zero = <size_t>&float_zero
         one = <size_t>&float_one
     x = core._internal_ascontiguousarray(x)
+    if not y._c_contiguous:
+        raise ValueError('pooling_forward supports c-contiguous y only')
     handle = get_handle()
     x_desc = cudnn.createTensorDescriptor()
     y_desc = cudnn.createTensorDescriptor()
@@ -1921,6 +2005,7 @@ def pooling_backward(
 
     gx = core.ndarray(x._shape, x.dtype)
     x = core._internal_ascontiguousarray(x)
+    y = core._internal_ascontiguousarray(y)
     gy = core._internal_ascontiguousarray(gy)
 
     handle = get_handle()
@@ -1963,11 +2048,11 @@ cdef _create_tensor_descriptor_for_bn(
 cdef _get_dtype_of_tensor_descriptor(size_t desc):
     cudnn_dtype, _, _, _, _, _, _, _, _ = cudnn.getTensor4dDescriptor(desc)
     if cudnn_dtype == cudnn.CUDNN_DATA_DOUBLE:
-        return numpy.dtype(numpy.float64)
+        return _numpy.dtype(_numpy.float64)
     elif cudnn_dtype == cudnn.CUDNN_DATA_FLOAT:
-        return numpy.dtype(numpy.float32)
+        return _numpy.dtype(_numpy.float32)
     elif cudnn_dtype == cudnn.CUDNN_DATA_HALF:
-        return numpy.dtype(numpy.float16)
+        return _numpy.dtype(_numpy.float16)
     else:
         raise RuntimeError('Unknown cudnn data type {} '.format(cudnn_dtype))
 
@@ -1978,6 +2063,62 @@ def batch_normalization_forward_training(
         mean, inv_std, double eps, double decay,
         bint is_for_conv2d, int cudnn_mode, bint debug,
         int d_layout=cudnn.CUDNN_TENSOR_NCHW):
+
+    reserve_space, y, save_mean, save_inv_std = (
+        _batch_normalization_forward_training(
+            x, gamma, beta,
+            running_mean, running_var,
+            mean, inv_std,
+            eps, decay,
+            is_for_conv2d,
+            cudnn_mode,
+            debug,
+            d_layout))
+    if reserve_space is not None:
+        _warnings.warn(
+            'Could be faster by calling '
+            'batch_normalization_forward_training_ex() instead of '
+            'batch_normalization_forward_training().',
+            _util.PerformanceWarning)
+    if mean is None:
+        return y, save_mean, save_inv_std
+    else:
+        return y
+
+
+def batch_normalization_forward_training_ex(
+        core.ndarray x, core.ndarray gamma, core.ndarray beta,
+        core.ndarray running_mean, core.ndarray running_var,
+        mean, inv_std, double eps, double decay,
+        bint is_for_conv2d, int cudnn_mode, bint debug,
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW):
+
+    reserve_space, y, save_mean, save_inv_std = (
+        _batch_normalization_forward_training(
+            x, gamma, beta,
+            running_mean, running_var,
+            mean, inv_std,
+            eps, decay,
+            is_for_conv2d,
+            cudnn_mode,
+            debug,
+            d_layout))
+    if mean is None:
+        return reserve_space, y, save_mean, save_inv_std
+    else:
+        return reserve_space, y
+
+
+cdef _batch_normalization_forward_training(
+        core.ndarray x, core.ndarray gamma, core.ndarray beta,
+        core.ndarray running_mean, core.ndarray running_var,
+        mean, inv_std, double eps, double decay,
+        bint is_for_conv2d, int cudnn_mode, bint debug,
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW):
+
+    cdef memory.MemoryPointer workspace = None
+    cdef memory.MemoryPointer reserve_space = None
+
     # Usually supply None to mean and inv_std, which are left for backward
     # compatibility. See cupy#2060 and cupy#2070.
     if (mean is None) != (inv_std is None):
@@ -2030,24 +2171,88 @@ def batch_normalization_forward_training(
         # (instead of variance) to resultSaveInvVariance argument. The
         # current implementation of our BN depends on this behavior so that
         # we can reduce the number of reduction kernels.
-        cudnn.batchNormalizationForwardTraining(
-            handle, cudnn_mode, one, zero,
-            x_desc, x.data.ptr, x_desc, y.data.ptr,
-            derivedBnDesc, gamma.data.ptr,
-            beta.data.ptr, factor, running_mean_tmp.data.ptr,
-            running_var_tmp.data.ptr, eps,
-            save_mean.data.ptr, save_inv_std.data.ptr)
+
+        if _cudnn_version >= 7401:
+
+            bn_ops = cudnn.CUDNN_BATCHNORM_OPS_BN
+
+            if (
+                    cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT
+                    and x.dtype == _numpy.float16
+                    and d_layout == cudnn.CUDNN_TENSOR_NHWC
+                    and x.shape[3] % 4 == 0  # C mod 4 == 0
+            ):
+
+                # Faster NHWC kernel can be triggered by allocating extra
+                # spaces.
+                # https://docs.nvidia.com/deeplearning/sdk/cudnn-archived/cudnn_741/cudnn-developer-guide/index.html#cudnnBatchNormalizationForwardTrainingEx  # NOQA
+                workspace_size = (
+                    cudnn.getBatchNormalizationForwardTrainingExWorkspaceSize(
+                        handle,
+                        cudnn_mode,
+                        bn_ops,
+                        x_desc,  # x
+                        x_desc,  # z
+                        x_desc,  # y
+                        derivedBnDesc,
+                        0,  # activation desc
+                    ))
+                workspace = memory.alloc(workspace_size)
+
+                reserve_space_size = (
+                    cudnn.getBatchNormalizationTrainingExReserveSpaceSize(
+                        handle,
+                        cudnn_mode,
+                        bn_ops,
+                        0,  # activation desc
+                        x_desc,
+                    ))
+                reserve_space = memory.alloc(reserve_space_size)
+
+            cudnn.batchNormalizationForwardTrainingEx(
+                handle,
+                cudnn_mode,
+                bn_ops,
+                one,  # alpha
+                zero,  # beta
+                x_desc, x.data.ptr,  # x
+                x_desc, 0,  # z
+                x_desc, y.data.ptr,  # y
+                derivedBnDesc,
+                gamma.data.ptr,
+                beta.data.ptr,
+                factor,
+                running_mean_tmp.data.ptr,
+                running_var_tmp.data.ptr,
+                eps,
+                save_mean.data.ptr,
+                save_inv_std.data.ptr,
+                0,  # activation
+                0 if workspace is None else workspace.ptr,
+                0 if workspace is None else workspace.mem.size,
+                0 if reserve_space is None else reserve_space.ptr,
+                0 if reserve_space is None else reserve_space.mem.size,
+            )
+
+        else:  # cuDNN < 7401
+            cudnn.batchNormalizationForwardTraining(
+                handle, cudnn_mode, one, zero,
+                x_desc, x.data.ptr, x_desc, y.data.ptr,
+                derivedBnDesc, gamma.data.ptr,
+                beta.data.ptr, factor, running_mean_tmp.data.ptr,
+                running_var_tmp.data.ptr, eps,
+                save_mean.data.ptr, save_inv_std.data.ptr)
 
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use
         # queryRuntimeError() to make sure whether the overflow actually
-        # occured or not during the batch normalization.
+        # occurred or not during the batch normalization.
         if debug and cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT:
             query_mode = cudnn.CUDNN_ERRQUERY_BLOCKING
             rstatus = cudnn.queryRuntimeError(handle, query_mode)
             if rstatus != cudnn.CUDNN_STATUS_SUCCESS:
-                warnings.warn(
-                    'A numerical overflow might have happend in cuDNN'
+                _warnings.warn(
+                    'A numerical overflow might have happened in cuDNN'
                     'batch normalization (status:{})'.format(rstatus))
     finally:
         cudnn.destroyTensorDescriptor(x_desc)
@@ -2055,10 +2260,7 @@ def batch_normalization_forward_training(
     if running_mean is not running_mean_tmp:
         running_mean[...] = running_mean_tmp
         running_var[...] = running_var_tmp
-    if mean is None:
-        return y, save_mean, save_inv_std
-    else:
-        return y
+    return reserve_space, y, save_mean, save_inv_std
 
 
 def batch_normalization_forward_inference(
@@ -2110,9 +2312,14 @@ def batch_normalization_backward(
         core.ndarray x, core.ndarray gamma, core.ndarray gy,
         core.ndarray mean, core.ndarray inv_std,
         double eps, bint is_for_conv2d, int cudnn_mode, bint debug,
-        int d_layout=cudnn.CUDNN_TENSOR_NCHW):
+        int d_layout=cudnn.CUDNN_TENSOR_NCHW,
+        *,
+        memory.MemoryPointer reserve_space=None,
+):
     cdef core.ndarray ggamma, gbeta
     cdef bint need_cast
+    cdef memory.MemoryPointer workspace = None
+
     x = core._internal_ascontiguousarray(x)
     gy = core._internal_ascontiguousarray(gy)
     dtype = x.dtype
@@ -2142,23 +2349,71 @@ def batch_normalization_backward(
         ggamma = core.ndarray(gamma._shape, dtype_param)
         gbeta = core.ndarray(gamma._shape, dtype_param)
 
-        cudnn.batchNormalizationBackward(
-            handle, cudnn_mode, one, zero, one, zero,
-            x_desc, x.data.ptr,
-            x_desc, gy.data.ptr, x_desc, gx.data.ptr,
-            derivedBnDesc, gamma.data.ptr, ggamma.data.ptr, gbeta.data.ptr,
-            eps, mean.data.ptr, inv_std.data.ptr)
+        if _cudnn_version >= 7401:
+            bn_ops = cudnn.CUDNN_BATCHNORM_OPS_BN
+
+            workspace_size = (
+                cudnn.getBatchNormalizationBackwardExWorkspaceSize(
+                    handle,
+                    cudnn_mode,
+                    bn_ops,
+                    x_desc,
+                    x_desc,  # y
+                    x_desc,  # dy
+                    x_desc,  # dz
+                    x_desc,  # dx
+                    derivedBnDesc,
+                    0,  # activation desc
+                ))
+            workspace = memory.alloc(workspace_size)
+
+            cudnn.batchNormalizationBackwardEx(
+                handle,
+                cudnn_mode,
+                bn_ops,
+                one, zero, one, zero,
+                x_desc, x.data.ptr,
+                x_desc, 0,  # y
+                x_desc, gy.data.ptr,
+                x_desc, 0,  # dz
+                x_desc, gx.data.ptr,
+                derivedBnDesc,
+                gamma.data.ptr,
+                0,  # beta
+                ggamma.data.ptr,
+                gbeta.data.ptr,
+                eps,
+                mean.data.ptr,
+                inv_std.data.ptr,
+                0,  # activation desc
+                workspace,
+                workspace_size,
+                0 if reserve_space is None else reserve_space.ptr,
+                0 if reserve_space is None else reserve_space.mem.size,
+            )
+
+        else:
+            # cuDNN < 7401
+            if reserve_space is not None:
+                raise ValueError(
+                    'reserve_space can only be passed in cuDNN >= 7401')
+            cudnn.batchNormalizationBackward(
+                handle, cudnn_mode, one, zero, one, zero,
+                x_desc, x.data.ptr,
+                x_desc, gy.data.ptr, x_desc, gx.data.ptr,
+                derivedBnDesc, gamma.data.ptr, ggamma.data.ptr, gbeta.data.ptr,
+                eps, mean.data.ptr, inv_std.data.ptr)
 
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use
         # queryRuntimeError() to make sure whether the overflow actually
-        # occured or not during the batch normalization.
+        # occurred or not during the batch normalization.
         if debug and cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT:
             query_mode = cudnn.CUDNN_ERRQUERY_BLOCKING
             rstatus = cudnn.queryRuntimeError(handle, query_mode)
             if rstatus != cudnn.CUDNN_STATUS_SUCCESS:
-                warnings.warn(
-                    'A numerical overflow might have happend in cuDNN'
+                _warnings.warn(
+                    'A numerical overflow might have happened in cuDNN'
                     'batch normalization (status:{})'.format(rstatus))
     finally:
         cudnn.destroyTensorDescriptor(x_desc)
@@ -2173,20 +2428,20 @@ def batch_normalization_backward(
 def create_activation_descriptor(mode, relu_nan_opt=cudnn.CUDNN_PROPAGATE_NAN,
                                  coef=0.0):
     desc = Descriptor(cudnn.createActivationDescriptor(),
-                      py_cudnn.destroyActivationDescriptor)
+                      _py_cudnn.destroyActivationDescriptor)
     cudnn.setActivationDescriptor(desc.value, mode, relu_nan_opt, coef)
     return desc
 
 
 def create_fused_ops_plan(ops):
     plan = Descriptor(cudnn.createFusedOpsPlan(ops),
-                      py_cudnn.destroyFusedOpsPlan)
+                      _py_cudnn.destroyFusedOpsPlan)
     return plan
 
 
 def create_fused_ops_const_param_pack(ops, list_attr_param):
     const_pack = Descriptor(cudnn.createFusedOpsConstParamPack(ops),
-                            py_cudnn.destroyFusedOpsConstParamPack)
+                            _py_cudnn.destroyFusedOpsConstParamPack)
     for attr, param in list_attr_param:
         set_fused_ops_const_param_pack_attribute(const_pack, attr, param)
     return const_pack
@@ -2199,7 +2454,7 @@ def make_fused_ops_plan(plan, const_pack):
 
 def create_fused_ops_variant_param_pack(ops, list_attr_param):
     var_pack = Descriptor(cudnn.createFusedOpsVariantParamPack(ops),
-                          py_cudnn.destroyFusedOpsVariantParamPack)
+                          _py_cudnn.destroyFusedOpsVariantParamPack)
     for attr, param in list_attr_param:
         set_fused_ops_variant_param_pack_attribute(var_pack, attr, param)
     return var_pack

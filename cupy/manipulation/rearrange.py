@@ -3,11 +3,11 @@ import itertools
 import numpy
 
 import cupy
-from cupy import core
-from cupy.core._kernel import _get_axis
+from cupy.core import _reduction
+from cupy.core import internal
 
 
-def flip(a, axis):
+def flip(a, axis=None):
     """Reverse the order of elements in an array along the given axis.
 
     Note that ``flip`` function has been introduced since NumPy v1.12.
@@ -15,7 +15,11 @@ def flip(a, axis):
 
     Args:
         a (~cupy.ndarray): Input array.
-        axis (int): Axis in array, which entries are reversed.
+        axis (int or tuple of int or None): Axis or axes along which to flip
+            over. The default, ``axis=None``, will flip over all of the axes of
+            the input array. If axis is negative it counts from the last to the
+            first axis. If axis is a tuple of ints, flipping is performed on
+            all of the axes specified in the tuple.
 
     Returns:
         ~cupy.ndarray: Output array.
@@ -25,14 +29,10 @@ def flip(a, axis):
     """
     a_ndim = a.ndim
     if a_ndim < 1:
-        raise core._AxisError('Input must be >= 1-d')
+        raise numpy.AxisError('Input must be >= 1-d')
 
-    axis = int(axis)
-    if not -a_ndim <= axis < a_ndim:
-        raise core._AxisError(
-            'axis must be >= %d and < %d' % (-a_ndim, a_ndim))
-
-    return _flip(a, axis)
+    axes = internal._normalize_axis_indices(axis, a_ndim)
+    return _flip(a, axes)
 
 
 def fliplr(a):
@@ -100,7 +100,7 @@ def roll(a, shift, axis=None):
     if axis is None:
         return roll(a.ravel(), shift, 0).reshape(a.shape)
     else:
-        axis = _get_axis(axis, a.ndim)[0]
+        axis = _reduction._get_axis(axis, a.ndim)[0]
 
         broadcasted = numpy.broadcast(shift, axis)
         if broadcasted.nd > 1:
@@ -161,20 +161,21 @@ def rot90(a, k=1, axes=(0, 1)):
     if k == 0:
         return a[:]
     if k == 2:
-        return _flip(_flip(a, axes[0]), axes[1])
+        return _flip(a, axes)
 
     axes_t = list(range(0, a_ndim))
     axes_t[axes[0]], axes_t[axes[1]] = axes_t[axes[1]], axes_t[axes[0]]
 
     if k == 1:
-        return cupy.transpose(_flip(a, axes[1]), axes_t)
+        return cupy.transpose(_flip(a, (axes[1],)), axes_t)
     else:
-        return _flip(cupy.transpose(a, axes_t), axes[1])
+        return _flip(cupy.transpose(a, axes_t), (axes[1],))
 
 
-def _flip(a, axis):
+def _flip(a, axes):
     # This function flips array without checking args.
     indexer = [slice(None)] * a.ndim
-    indexer[axis] = slice(None, None, -1)
+    for ax in axes:
+        indexer[ax] = slice(None, None, -1)
 
     return a[tuple(indexer)]

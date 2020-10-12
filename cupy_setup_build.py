@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import argparse
 import copy
 from distutils import ccompiler
@@ -7,7 +5,6 @@ from distutils import errors
 from distutils import msvccompiler
 from distutils import sysconfig
 from distutils import unixccompiler
-import glob
 import os
 from os import path
 import shutil
@@ -27,43 +24,106 @@ from install.build import PLATFORM_WIN32
 required_cython_version = pkg_resources.parse_version('0.28.0')
 ignore_cython_versions = [
 ]
+use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
-MODULES = [
-    {
+
+# The value of the key 'file' is a list that contains extension names
+# or tuples of an extension name and a list of other souces files
+# required to build the extension such as .cpp files and .cu files.
+#
+#   <extension name> | (<extension name>, a list of <other source>)
+#
+# The extension name is also interpreted as the name of the Cython
+# source file required to build the extension with appending '.pyx'
+# file extension.
+MODULES = []
+
+cuda_files = [
+    'cupy_backends.cuda.api.driver',
+    'cupy_backends.cuda.api.runtime',
+    'cupy_backends.cuda.libs.cublas',
+    'cupy_backends.cuda.libs.curand',
+    'cupy_backends.cuda.libs.cusparse',
+    'cupy_backends.cuda.libs.nvrtc',
+    'cupy_backends.cuda.libs.profiler',
+    'cupy_backends.cuda.stream',
+    'cupy.core._accelerator',
+    'cupy.core._carray',
+    'cupy.core._cub_reduction',
+    'cupy.core._dtype',
+    'cupy.core._fusion_kernel',
+    'cupy.core._fusion_thread_local',
+    'cupy.core._fusion_trace',
+    'cupy.core._fusion_variable',
+    'cupy.core._kernel',
+    'cupy.core._memory_range',
+    'cupy.core._optimize_config',
+    'cupy.core._reduction',
+    'cupy.core._routines_binary',
+    'cupy.core._routines_indexing',
+    'cupy.core._routines_linalg',
+    'cupy.core._routines_logic',
+    'cupy.core._routines_manipulation',
+    'cupy.core._routines_math',
+    'cupy.core._routines_sorting',
+    'cupy.core._routines_statistics',
+    'cupy.core._scalar',
+    'cupy.core.core',
+    'cupy.core.dlpack',
+    'cupy.core.flags',
+    'cupy.core.internal',
+    'cupy.core.fusion',
+    'cupy.core.new_fusion',
+    'cupy.core.raw',
+    'cupy.cuda.common',
+    'cupy.cuda.cufft',
+    'cupy.cuda.device',
+    'cupy.cuda.memory',
+    'cupy.cuda.memory_hook',
+    'cupy.cuda.pinned_memory',
+    'cupy.cuda.function',
+    'cupy.cuda.stream',
+    'cupy.cuda.texture',
+    'cupy.fft._cache',
+    'cupy.lib.polynomial',
+    'cupy._util'
+]
+
+if use_hip:
+    # We handle nvtx (and likely any other future support) here, because
+    # the HIP stubs (hip/cupy_*.h) would cause many symbols
+    # to leak into all these modules even if unused. It's easier for all of
+    # them to link to the same set of shared libraries.
+    MODULES.append({
         'name': 'cuda',
-        'file': [
-            'cupy.core._dtype',
-            'cupy.core._kernel',
-            'cupy.core._routines_indexing',
-            'cupy.core._routines_logic',
-            'cupy.core._routines_manipulation',
-            'cupy.core._routines_math',
-            'cupy.core._routines_sorting',
-            'cupy.core._routines_statistics',
-            'cupy.core._scalar',
-            'cupy.core.core',
-            'cupy.core.dlpack',
-            'cupy.core.flags',
-            'cupy.core.internal',
-            'cupy.core.fusion',
-            'cupy.core.raw',
-            'cupy.cuda.cublas',
-            'cupy.cuda.cufft',
-            'cupy.cuda.curand',
-            'cupy.cuda.cusparse',
-            'cupy.cuda.device',
-            'cupy.cuda.driver',
-            'cupy.cuda.memory',
-            'cupy.cuda.memory_hook',
-            'cupy.cuda.nvrtc',
-            'cupy.cuda.pinned_memory',
-            'cupy.cuda.profiler',
-            'cupy.cuda.function',
-            'cupy.cuda.stream',
-            'cupy.cuda.runtime',
-            'cupy.cuda.texture',
-            'cupy.util',
+        'file': cuda_files + [
+            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.cusolver',
         ],
+        'include': [
+            'hip/hip_runtime_api.h',
+            'hip/hiprtc.h',
+            'hipblas.h',
+            'hiprand/hiprand.h',
+            'hipfft.h',
+            'roctx.h',
+            'rocsolver.h',
+        ],
+        'libraries': [
+            'hiprtc',
+            'hip_hcc',
+            'hipblas',
+            'hiprand',
+            'rocfft',
+            'roctx64',
+            'rocblas',
+            'rocsolver',
+        ],
+    })
+else:
+    MODULES.append({
+        'name': 'cuda',
+        'file': cuda_files,
         'include': [
             'cublas_v2.h',
             'cuda.h',
@@ -85,11 +145,28 @@ MODULES = [
         ],
         'check_method': build.check_cuda_version,
         'version_method': build.get_cuda_version,
-    },
-    {
+    })
+
+if not use_hip:
+    MODULES.append({
+        'name': 'cusolver',
+        'file': [
+            'cupy_backends.cuda.libs.cusolver',
+        ],
+        'include': [
+            'cusolverDn.h',
+        ],
+        'libraries': [
+            'cusolver',
+        ],
+        'check_method': build.check_cuda_version,
+    })
+
+if not use_hip:
+    MODULES.append({
         'name': 'cudnn',
         'file': [
-            'cupy.cuda.cudnn',
+            'cupy_backends.cuda.libs.cudnn',
             'cupy.cudnn',
         ],
         'include': [
@@ -100,8 +177,9 @@ MODULES = [
         ],
         'check_method': build.check_cudnn_version,
         'version_method': build.get_cudnn_version,
-    },
-    {
+    })
+
+    MODULES.append({
         'name': 'nccl',
         'file': [
             'cupy.cuda.nccl',
@@ -114,21 +192,9 @@ MODULES = [
         ],
         'check_method': build.check_nccl_version,
         'version_method': build.get_nccl_version,
-    },
-    {
-        'name': 'cusolver',
-        'file': [
-            'cupy.cuda.cusolver',
-        ],
-        'include': [
-            'cusolverDn.h',
-        ],
-        'libraries': [
-            'cusolver',
-        ],
-        'check_method': build.check_cuda_version,
-    },
-    {
+    })
+
+    MODULES.append({
         'name': 'nvtx',
         'file': [
             'cupy.cuda.nvtx',
@@ -140,35 +206,13 @@ MODULES = [
             'nvToolsExt' if not PLATFORM_WIN32 else 'nvToolsExt64_1',
         ],
         'check_method': build.check_nvtx,
-    },
-    {
-        # The value of the key 'file' is a list that contains extension names
-        # or tuples of an extension name and a list of other souces files
-        # required to build the extension such as .cpp files and .cu files.
-        #
-        #   <extension name> | (<extension name>, a list of <other source>)
-        #
-        # The extension name is also interpreted as the name of the Cython
-        # source file required to build the extension with appending '.pyx'
-        # file extension.
-        'name': 'thrust',
-        'file': [
-            ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
-        ],
-        'include': [
-            'thrust/device_ptr.h',
-            'thrust/sequence.h',
-            'thrust/sort.h',
-        ],
-        'libraries': [
-            'cudart',
-        ],
-        'check_method': build.check_cuda_version,
-    },
-    {
+    })
+
+    MODULES.append({
         'name': 'cutensor',
         'file': [
-            'cupy.cuda.cutensor',
+            'cupy_backends.cuda.libs.cutensor',
+            'cupy.cutensor',
         ],
         'include': [
             'cutensor.h',
@@ -179,8 +223,71 @@ MODULES = [
         ],
         'check_method': build.check_cutensor_version,
         'version_method': build.get_cutensor_version,
-    },
-]
+    })
+
+    MODULES.append({
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'cub/util_namespace.cuh',  # dummy
+        ],
+        'libraries': [
+            'cudart',
+        ],
+        'check_method': build.check_cub_version,
+        'version_method': build.get_cub_version,
+    })
+else:
+    MODULES.append({
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'hipcub/hipcub_version.hpp',  # dummy
+        ],
+        'libraries': [
+            'hiprtc',
+            'hip_hcc',
+        ],
+        'check_method': build.check_cub_version,
+        'version_method': build.get_cub_version,
+    })
+
+if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
+    if use_hip:
+        MODULES.append({
+            'name': 'thrust',
+            'file': [
+                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+            ],
+            'include': [
+                'thrust/version.h',
+            ],
+            'libraries': [
+                'hiprtc',
+                'hip_hcc',
+            ],
+        })
+    else:
+        MODULES.append({
+            'name': 'thrust',
+            'file': [
+                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+            ],
+            'include': [
+                'thrust/device_ptr.h',
+                'thrust/sequence.h',
+                'thrust/sort.h',
+            ],
+            'libraries': [
+                'cudart',
+            ],
+            'check_method': build.check_thrust_version,
+            'version_method': build.get_thrust_version,
+        })
 
 
 def ensure_module_file(file):
@@ -225,17 +332,19 @@ def check_readthedocs_environment():
 
 
 def check_library(compiler, includes=(), libraries=(),
-                  include_dirs=(), library_dirs=(), define_macros=None):
+                  include_dirs=(), library_dirs=(), define_macros=None,
+                  extra_compile_args=()):
 
     source = ''.join(['#include <%s>\n' % header for header in includes])
-    source += 'int main(int argc, char* argv[]) {return 0;}'
+    source += 'int main() {return 0;}'
     try:
         # We need to try to build a shared library because distutils
         # uses different option to build an executable and a shared library.
         # Especially when a user build an executable, distutils does not use
         # LDFLAGS environment variable.
         build.build_shlib(compiler, source, libraries,
-                          include_dirs, library_dirs, define_macros)
+                          include_dirs, library_dirs, define_macros,
+                          extra_compile_args)
     except Exception as e:
         print(e)
         sys.stdout.flush()
@@ -268,7 +377,8 @@ def preconfigure_modules(compiler, settings):
     ]
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
-                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC']:
+                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC',
+                'ROCM_HOME']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
@@ -282,20 +392,36 @@ def preconfigure_modules(compiler, settings):
         status = 'No'
         errmsg = []
 
+        if module['name'] == 'cutensor':
+            cuda_version = build.get_cuda_version()
+            cuda_version = str(cuda_version // 1000) + '.' + \
+                str((cuda_version // 10) % 100)
+            cutensor_path = os.environ.get('CUTENSOR_PATH', '')
+            inc_path = os.path.join(cutensor_path, 'include')
+            if os.path.exists(inc_path):
+                settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cutensor_path, 'lib', cuda_version)
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
+
         print('')
         print('-------- Configuring Module: {} --------'.format(
             module['name']))
         sys.stdout.flush()
-        if not check_library(compiler,
-                             includes=module['include'],
-                             include_dirs=settings['include_dirs'],
-                             define_macros=settings['define_macros']):
+        if not check_library(
+                compiler,
+                includes=module['include'],
+                include_dirs=settings['include_dirs'],
+                define_macros=settings['define_macros'],
+                extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Include files not found: %s' % module['include'],
                       'Check your CFLAGS environment variable.']
-        elif not check_library(compiler,
-                               libraries=module['libraries'],
-                               library_dirs=settings['library_dirs'],
-                               define_macros=settings['define_macros']):
+        elif not check_library(
+                compiler,
+                libraries=module['libraries'],
+                library_dirs=settings['library_dirs'],
+                define_macros=settings['define_macros'],
+                extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
         elif ('check_method' in module and
@@ -303,7 +429,7 @@ def preconfigure_modules(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
-        elif module['name'] == 'thrust' and nvcc_path is None:
+        elif module['name'] in ('thrust', 'cub') and nvcc_path is None:
             installed = True
             errmsg = ['nvcc command could not be found in PATH.',
                       'Check your PATH environment variable.']
@@ -341,7 +467,7 @@ def preconfigure_modules(compiler, settings):
             '',
         ] + lines + [
             'Please refer to the Installation Guide for details:',
-            'https://docs-cupy.chainer.org/en/stable/install.html',
+            'https://docs.cupy.dev/en/stable/install.html',
             '',
         ]
 
@@ -351,7 +477,7 @@ def preconfigure_modules(compiler, settings):
     ]
 
     print('\n'.join(summary))
-    return ret
+    return ret, settings
 
 
 def _rpath_base():
@@ -367,7 +493,8 @@ def make_extensions(options, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
     no_cuda = options['no_cuda']
-    settings = build.get_compiler_setting()
+    use_hip = not no_cuda and options['use_hip']
+    settings = build.get_compiler_setting(use_hip)
 
     include_dirs = settings['include_dirs']
 
@@ -393,12 +520,15 @@ def make_extensions(options, compiler, use_cython):
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
+    if use_hip:
+        settings['define_macros'].append(('CUPY_USE_HIP', '1'))
+        settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
 
     available_modules = []
     if no_cuda:
         available_modules = [m['name'] for m in MODULES]
     else:
-        available_modules = preconfigure_modules(compiler, settings)
+        available_modules, settings = preconfigure_modules(compiler, settings)
         if 'cuda' not in available_modules:
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
@@ -419,7 +549,9 @@ def make_extensions(options, compiler, use_cython):
             compile_args = s.setdefault('extra_compile_args', [])
             link_args = s.setdefault('extra_link_args', [])
             # openmp is required for cusolver
-            if compiler.compiler_type == 'unix' and not PLATFORM_DARWIN:
+            if use_hip:
+                pass
+            elif compiler.compiler_type == 'unix' and not PLATFORM_DARWIN:
                 # In mac environment, openmp is not required.
                 compile_args.append('-fopenmp')
                 link_args.append('-fopenmp')
@@ -441,11 +573,12 @@ def make_extensions(options, compiler, use_cython):
                 # Add `cupy/.data/lib` (where shared libraries included in
                 # wheels reside) to RPATH.
                 # The path is resolved relative to the module, e.g., use
-                # `$ORIGIN/.data/lib` for `cupy/cudnn.so` and
-                # `$ORIGIN/../.data/lib` for `cupy/cuda/cudnn.so`.
-                depth = name.count('.') - 1
+                # `$ORIGIN/../cupy/.data/lib` for `cupy/cudnn.so` and
+                # `$ORIGIN/../../../cupy/.data/lib` for
+                # `cupy_backends/cuda/libs/cudnn.so`.
+                depth = name.count('.')
                 rpath.append(
-                    '{}{}/.data/lib'.format(_rpath_base(), '/..' * depth))
+                    '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))
 
             if not PLATFORM_WIN32 and not PLATFORM_LINUX:
                 s['runtime_library_dirs'] = rpath
@@ -457,7 +590,7 @@ def make_extensions(options, compiler, use_cython):
                 args = s.setdefault('extra_link_args', [])
                 args.append(ldflag)
                 if PLATFORM_DARWIN:
-                    # -rpath is only supported when targetting Mac OS X 10.5 or
+                    # -rpath is only supported when targeting Mac OS X 10.5 or
                     # later
                     args.append('-mmacosx-version-min=10.5')
 
@@ -468,6 +601,7 @@ def make_extensions(options, compiler, use_cython):
     return ret
 
 
+# TODO(oktua): use enviriment variable
 def parse_args():
     parser = argparse.ArgumentParser(add_help=False)
 
@@ -489,6 +623,9 @@ def parse_args():
              'the latter is the relative path within cupy wheel. '
              '(can be specified for multiple times)')
     parser.add_argument(
+        '--cupy-wheel-metadata', type=str, default=None,
+        help='wheel metadata (cupy/.data/_wheel.json)')
+    parser.add_argument(
         '--cupy-no-rpath', action='store_true', default=False,
         help='disable adding default library directories to RPATH')
     parser.add_argument(
@@ -500,6 +637,9 @@ def parse_args():
     parser.add_argument(
         '--cupy-no-cuda', action='store_true', default=False,
         help='build CuPy with stub header file')
+    # parser.add_argument(
+    #     '--cupy-use-hip', action='store_true', default=False,
+    #     help='build CuPy with HIP')
 
     opts, sys.argv = parser.parse_known_args(sys.argv)
 
@@ -508,11 +648,13 @@ def parse_args():
         'long_description': opts.cupy_long_description,
         'wheel_libs': opts.cupy_wheel_lib,  # list
         'wheel_includes': opts.cupy_wheel_include,  # list
+        'wheel_metadata': opts.cupy_wheel_metadata,
         'no_rpath': opts.cupy_no_rpath,
         'profile': opts.cupy_profile,
         'linetrace': opts.cupy_coverage,
         'annotate': opts.cupy_coverage,
         'no_cuda': opts.cupy_no_cuda,
+        'use_hip': use_hip  # opts.cupy_use_hip,
     }
     if check_readthedocs_environment():
         arg_options['no_cuda'] = True
@@ -538,64 +680,50 @@ def get_long_description():
 def prepare_wheel_libs():
     """Prepare shared libraries and include files for wheels.
 
-    On Windows, DLLs will be placed under `cupy/cuda`.
-    On other platforms, shared libraries are placed under `cupy/.data/lib` and
-    RUNPATH will be set to this directory later.
+    Shared libraries are placed under `cupy/.data/lib` and
+    RUNPATH will be set to this directory later (Linux only).
     Include files are placed under `cupy/.data/include`.
+
+    Returns the list of files (path relative to `cupy` module) to add to
+    the sdist/wheel distribution.
     """
-    data_dir = '.data'
+    data_dir = os.path.abspath(os.path.join('cupy', '.data'))
     if os.path.exists(data_dir):
         print('Removing directory: {}'.format(data_dir))
         shutil.rmtree(data_dir)
 
-    if PLATFORM_WIN32:
-        lib_dirname = 'cuda'
-        # Clean up existing libraries.
-        libfiles = glob.glob('cupy/{}/*.dll'.format(lib_dirname))
-        for libfile in libfiles:
-            print('Removing file: {}'.format(libfile))
-            os.remove(libfile)
-    else:
-        lib_dirname = os.path.join(data_dir, 'lib')
-
-    include_dirname = os.path.join(data_dir, 'include')
-
-    # Collect files to copy
+    # Generate list files to copy
+    # tuple of (src_path, dst_path)
     files_to_copy = []
 
     # Library files
-    lib_base_path = os.path.join('cupy', lib_dirname)
     for srcpath in cupy_setup_options['wheel_libs']:
         relpath = os.path.basename(srcpath)
-        dstpath = path.join(lib_base_path, relpath)
-        files_to_copy.append((
-            srcpath,
-            dstpath,
-            path.join(lib_dirname, relpath)))
+        dstpath = os.path.join(data_dir, 'lib', relpath)
+        files_to_copy.append((srcpath, dstpath))
 
     # Include files
-    include_base_path = os.path.join('cupy', include_dirname)
     for include_path_spec in cupy_setup_options['wheel_includes']:
-        # TODO(niboshi): Consider using platform-dependent path delimiter.
         srcpath, relpath = include_path_spec.rsplit(':', 1)
-        dstpath = os.path.join(include_base_path, relpath)
-        files_to_copy.append((
-            srcpath,
-            dstpath,
-            path.join(include_dirname, relpath)))
+        dstpath = os.path.join(data_dir, 'include', relpath)
+        files_to_copy.append((srcpath, dstpath))
+
+    # Wheel meta data
+    wheel_metadata = cupy_setup_options['wheel_metadata']
+    if wheel_metadata:
+        files_to_copy.append(
+            (wheel_metadata, os.path.join(data_dir, '_wheel.json')))
 
     # Copy
-    package_data = []
-    for srcpath, dstpath, package_path in files_to_copy:
+    for srcpath, dstpath in files_to_copy:
         # Note: symlink is resolved by shutil.copy2.
         print('Copying file for wheel: {}'.format(srcpath))
         dirpath = os.path.dirname(dstpath)
         if not os.path.isdir(dirpath):
             os.makedirs(dirpath)
         shutil.copy2(srcpath, dstpath)
-        package_data.append(package_path)
 
-    return package_data
+    return [os.path.relpath(x[1], 'cupy') for x in files_to_copy]
 
 
 try:
@@ -620,6 +748,17 @@ def cythonize(extensions, arg_options):
     cythonize_options = {key: arg_options[key]
                          for key in cythonize_option_keys}
 
+    # Compile-time constants to be used in Cython code
+    compile_time_env = cythonize_options.get('compile_time_env')
+    if compile_time_env is None:
+        compile_time_env = {}
+        cythonize_options['compile_time_env'] = compile_time_env
+    compile_time_env['use_hip'] = arg_options['use_hip']
+    if use_hip or arg_options['no_cuda']:
+        compile_time_env['CUDA_VERSION'] = 0
+    else:
+        compile_time_env['CUDA_VERSION'] = build.get_cuda_version()
+
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,
         compiler_directives=directives, **cythonize_options)
@@ -632,7 +771,7 @@ def check_extensions(extensions):
                 raise RuntimeError('''\
 Missing file: {}
 Please install Cython {} or later. Please also check the version of Cython.
-See https://docs-cupy.chainer.org/en/stable/install.html for details.
+See https://docs.cupy.dev/en/stable/install.html for details.
 '''.format(f, required_cython_version))
 
 
@@ -658,7 +797,8 @@ def _nvcc_gencode_options(cuda_version):
 
     envcfg = os.getenv('CUPY_NVCC_GENERATE_CODE', None)
     if envcfg:
-        return ['--generate-code={}'.format(envcfg)]
+        return ['--generate-code={}'.format(arch)
+                for arch in envcfg.split(';') if len(arch) > 0]
 
     # The arch_list specifies virtual architectures, such as 'compute_61', and
     # real architectures, such as 'sm_61', for which the CUDA input files are
@@ -687,24 +827,32 @@ def _nvcc_gencode_options(cuda_version):
     #
     #     arch_list = [('compute_61', 'sm_61')]
 
-    arch_list = ['compute_30',
-                 'compute_50']
-
-    if cuda_version >= 10000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      ('compute_70', 'sm_70'),
-                      ('compute_75', 'sm_75'),
-                      'compute_70']
+    if cuda_version >= 11000:
+        arch_list = ['compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     ('compute_70', 'sm_70'),
+                     ('compute_75', 'sm_75'),
+                     ('compute_80', 'sm_80'),
+                     'compute_80']
+    elif cuda_version >= 10000:
+        arch_list = ['compute_30',
+                     'compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     ('compute_70', 'sm_70'),
+                     ('compute_75', 'sm_75'),
+                     'compute_70']
     elif cuda_version >= 9000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      ('compute_70', 'sm_70'),
-                      'compute_70']
-    elif cuda_version >= 8000:
-        arch_list += [('compute_60', 'sm_60'),
-                      ('compute_61', 'sm_61'),
-                      'compute_60']
+        arch_list = ['compute_30',
+                     'compute_50',
+                     ('compute_60', 'sm_60'),
+                     ('compute_61', 'sm_61'),
+                     ('compute_70', 'sm_70'),
+                     'compute_70']
+    else:
+        # This should not happen.
+        assert False
 
     options = []
     for arch in arch_list:
@@ -729,6 +877,10 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             return unixccompiler.UnixCCompiler._compile(
                 self, obj, src, ext, cc_args, extra_postargs, pp_opts)
 
+        if use_hip:
+            return self._comiple_unix_hipcc(
+                obj, src, ext, cc_args, extra_postargs, pp_opts)
+
         # For CUDA C source files, compile them with NVCC.
         _compiler_so = self.compiler_so
         try:
@@ -738,13 +890,50 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
 
             cuda_version = build.get_cuda_version()
             postargs = _nvcc_gencode_options(cuda_version) + [
-                '-O2', '--compiler-options="-fPIC"']
+                '-O2', '--compiler-options="-fPIC"', '--std=c++11']
             print('NVCC options:', postargs)
 
             return unixccompiler.UnixCCompiler._compile(
                 self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
         finally:
             self.compiler_so = _compiler_so
+
+    def _comiple_unix_hipcc(self,
+                            obj, src, ext, cc_args, extra_postargs, pp_opts):
+        # For CUDA C source files, compile them with HIPCC.
+        _compiler_so = self.compiler_so
+        try:
+            rcom_path = build.get_hipcc_path()
+            base_opts = build.get_compiler_base_options()
+            self.set_executable('compiler_so', rcom_path)
+
+            postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
+            print('HIPCC options:', postargs)
+
+            return unixccompiler.UnixCCompiler._compile(
+                self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
+        finally:
+            self.compiler_so = _compiler_so
+
+    def link(self, target_desc, objects, output_filename, *args):
+        use_hipcc = False
+        if use_hip:
+            for i in objects:
+                if 'cupy_thrust.o' in i:
+                    use_hipcc = True
+        if use_hipcc:
+            _compiler_cxx = self.compiler_cxx
+            try:
+                rcom_path = build.get_hipcc_path()
+                self.set_executable('compiler_cxx', rcom_path)
+
+                return unixccompiler.UnixCCompiler.link(
+                    self, target_desc, objects, output_filename, *args)
+            finally:
+                self.compiler_cxx = _compiler_cxx
+        else:
+            return unixccompiler.UnixCCompiler.link(
+                self, target_desc, objects, output_filename, *args)
 
 
 class _MSVCCompiler(msvccompiler.MSVCCompiler):

@@ -67,6 +67,7 @@ Changing kind of array
    cupy.asanyarray
    cupy.asfortranarray
    cupy.ascontiguousarray
+   cupy.require
 
 
 Joining arrays
@@ -119,6 +120,7 @@ Adding and removing elements
    cupy.append
    cupy.resize
    cupy.unique
+   cupy.trim_zeros
 
 
 Rearranging elements

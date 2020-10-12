@@ -5,10 +5,11 @@ Wrapper for NCCL: Optimized primiteive for collective multi-GPU communication
 """
 cimport cython  # NOQA
 
+from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
-from cupy.cuda cimport driver
-from cupy.cuda cimport runtime
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 
 cdef extern from 'cupy_nccl.h':
     ctypedef struct ncclComm:
@@ -63,6 +64,12 @@ cdef extern from 'cupy_nccl.h':
     ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff,
                                 size_t count, ncclDataType_t datatype,
                                 ncclComm_t comm, driver.Stream stream) nogil
+    ncclResult_t ncclSend(const void* sendbuff, size_t count,
+                          ncclDataType_t datatype, int peer, ncclComm_t comm,
+                          driver.Stream stream) nogil
+    ncclResult_t ncclRecv(void* recvbuff, size_t count,
+                          ncclDataType_t datatype, int peer, ncclComm_t comm,
+                          driver.Stream stream) nogil
 
     # Build-time version
     int NCCL_VERSION_CODE
@@ -94,6 +101,9 @@ cdef dict ERROR2 = {
     4: 'NCCL_ERROR_INVALID_ARGUMENT',
     5: 'NCCL_ERROR_INVALID_USAGE',
 }
+
+
+available = True
 
 
 class NcclError(RuntimeError):
@@ -162,7 +172,7 @@ cpdef groupStart():
     """Start a group of NCCL calls. Must be paired with :func:`groupEnd()`.
 
     .. note::
-        This method is only useful when the ``NcclCommunicator`` instances are
+        This method is useful when the ``NcclCommunicator`` instances are
         created via :meth:`~.NcclCommunicator.initAll`. A typical usage pattern
         is like this:
 
@@ -175,11 +185,18 @@ cpdef groupStart():
                 # ... make some collective calls ...
             cupy.cuda.nccl.groupEnd()
 
-    .. seealso:: `ncclGroupStart`_
+        Other use cases include fusing several NCCL calls into one, and
+        point-to-point communications using :meth:`~.NcclCommunicator.send` and
+        :meth:`~.NcclCommunicator.recv` (with NCCL 2.7+).
+
+    .. seealso:: `ncclGroupStart`_, `Group Calls`_
 
     .. _ncclGroupStart:
-        https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/group.html#ncclgroupstart
-    """  # noqa
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/group.html#ncclgroupstart
+
+    .. _Group calls:
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/groups.html
+    """
     if NCCL_VERSION_CODE < 2000:
         raise RuntimeError('ncclGroupStart is not available in this version')
     with nogil:
@@ -191,7 +208,7 @@ cpdef groupEnd():
     """End a group of NCCL calls. Must be paired with :func:`groupStart()`.
 
     .. note::
-        This method is only useful when the ``NcclCommunicator`` instances are
+        This method is useful when the ``NcclCommunicator`` instances are
         created via :meth:`~.NcclCommunicator.initAll`. A typical usage pattern
         is like this:
 
@@ -204,11 +221,18 @@ cpdef groupEnd():
                 # ... make some collective calls ...
             cupy.cuda.nccl.groupEnd()
 
-    .. seealso:: `ncclGroupEnd`_
+        Other use cases include fusing several NCCL calls into one, and
+        point-to-point communications using :meth:`~.NcclCommunicator.send` and
+        :meth:`~.NcclCommunicator.recv` (with NCCL 2.7+).
+
+    .. seealso:: `ncclGroupEnd`_, `Group Calls`_
 
     .. _ncclGroupEnd:
-        https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/api/group.html#ncclgroupend
-    """  # noqa
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/group.html#ncclgroupend
+
+    .. _Group calls:
+        https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/groups.html
+    """
     if NCCL_VERSION_CODE < 2000:
         raise RuntimeError('ncclGroupEnd is not available in this version')
     with nogil:
@@ -366,8 +390,8 @@ cdef class NcclCommunicator:
         check_status(status)
         return ranks
 
-    def allReduce(self, size_t sendbuf, size_t recvbuf,
-                  size_t count, int datatype, int op, size_t stream):
+    def allReduce(self, intptr_t sendbuf, intptr_t recvbuf,
+                  size_t count, int datatype, int op, intptr_t stream):
         with nogil:
             status = _ncclAllReduce(<void*>sendbuf, <void*>recvbuf,
                                     count, <ncclDataType_t>datatype,
@@ -375,8 +399,8 @@ cdef class NcclCommunicator:
                                     <driver.Stream>stream)
         check_status(status)
 
-    def reduce(self, size_t sendbuf, size_t recvbuf,
-               size_t count, int datatype, int op, int root, size_t stream):
+    def reduce(self, intptr_t sendbuf, intptr_t recvbuf,
+               size_t count, int datatype, int op, int root, intptr_t stream):
         with nogil:
             status = _ncclReduce(<void*>sendbuf, <void*>recvbuf,
                                  count, <ncclDataType_t>datatype,
@@ -384,8 +408,8 @@ cdef class NcclCommunicator:
                                  <driver.Stream>stream)
         check_status(status)
 
-    def broadcast(self, size_t sendbuff, size_t recvbuff, int count,
-                  int datatype, int root, size_t stream):
+    def broadcast(self, intptr_t sendbuff, intptr_t recvbuff, int count,
+                  int datatype, int root, intptr_t stream):
         if NCCL_VERSION_CODE < 2200:
             # ncclBroadcast is not available in NCCL 2.1 or older.
             if self.rank_id() == root and sendbuff != recvbuff:
@@ -400,16 +424,16 @@ cdef class NcclCommunicator:
                                     self._comm, <driver.Stream>stream)
         check_status(status)
 
-    def bcast(self, size_t buff, int count, int datatype,
-              int root, size_t stream):
+    def bcast(self, intptr_t buff, int count, int datatype,
+              int root, intptr_t stream):
         with nogil:
             status = _ncclBcast(<void*>buff, count,
                                 <ncclDataType_t>datatype, root,
                                 self._comm, <driver.Stream>stream)
         check_status(status)
 
-    def reduceScatter(self, size_t sendbuf, size_t recvbuf,
-                      size_t recvcount, int datatype, int op, size_t stream):
+    def reduceScatter(self, intptr_t sendbuf, intptr_t recvbuf,
+                      size_t recvcount, int datatype, int op, intptr_t stream):
         with nogil:
             status = _ncclReduceScatter(<void*>sendbuf, <void*>recvbuf,
                                         recvcount, <ncclDataType_t>datatype,
@@ -417,12 +441,30 @@ cdef class NcclCommunicator:
                                         <driver.Stream>stream)
         check_status(status)
 
-    def allGather(self, size_t sendbuf, size_t recvbuf, size_t count,
-                  int datatype, size_t stream):
+    def allGather(self, intptr_t sendbuf, intptr_t recvbuf, size_t count,
+                  int datatype, intptr_t stream):
         with nogil:
             status = _ncclAllGather(<void*>sendbuf, <void*>recvbuf,
                                     count, <ncclDataType_t>datatype,
                                     self._comm, <driver.Stream>stream)
+        check_status(status)
+
+    def send(self, intptr_t sendbuf, size_t count, int datatype, int peer,
+             intptr_t stream):
+        if NCCL_VERSION_CODE < 2700:
+            raise RuntimeError('ncclSend is not available in this version')
+        with nogil:
+            status = ncclSend(<void*>sendbuf, count, <ncclDataType_t>datatype,
+                              peer, self._comm, <driver.Stream>stream)
+        check_status(status)
+
+    def recv(self, intptr_t recvbuf, size_t count, int datatype, int peer,
+             intptr_t stream):
+        if NCCL_VERSION_CODE < 2700:
+            raise RuntimeError('ncclRecv is not available in this version')
+        with nogil:
+            status = ncclRecv(<void*>recvbuf, count, <ncclDataType_t>datatype,
+                              peer, self._comm, <driver.Stream>stream)
         check_status(status)
 
     def check_async_error(self):

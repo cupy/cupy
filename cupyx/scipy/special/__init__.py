@@ -19,3 +19,9 @@ from cupyx.scipy.special.erf import erfc  # NOQA
 from cupyx.scipy.special.erf import erfcx  # NOQA
 from cupyx.scipy.special.erf import erfinv  # NOQA
 from cupyx.scipy.special.erf import erfcinv  # NOQA
+
+from cupyx.scipy.special.convex_analysis import entr  # NOQA
+from cupyx.scipy.special.convex_analysis import huber  # NOQA
+from cupyx.scipy.special.convex_analysis import kl_div  # NOQA
+from cupyx.scipy.special.convex_analysis import pseudo_huber  # NOQA
+from cupyx.scipy.special.convex_analysis import rel_entr  # NOQA

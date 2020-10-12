@@ -14,14 +14,17 @@ PLATFORM_DARWIN = sys.platform.startswith('darwin')
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 8000
-minimum_cudnn_version = 5000
-maximum_cudnn_version = 7999
+minimum_cuda_version = 9000
+minimum_cudnn_version = 7000
+maximum_cudnn_version = 8099
 
 _cuda_path = 'NOT_INITIALIZED'
+_rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
 
+# Using tempfile.TemporaryDirectory would cause an error during cleanup
+# due to a bug: https://bugs.python.org/issue26660
 @contextlib.contextmanager
 def _tempdir():
     temp_dir = tempfile.mkdtemp()
@@ -29,6 +32,18 @@ def _tempdir():
         yield temp_dir
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def get_rocm_path():
+    global _rocm_path
+
+    # Use a magic word to represent the cache not filled because None is a
+    # valid return value.
+    if _rocm_path != 'NOT_INITIALIZED':
+        return _rocm_path
+
+    _rocm_path = os.environ.get('ROCM_HOME', '')
+    return _rocm_path
 
 
 def get_cuda_path():
@@ -85,12 +100,40 @@ def get_nvcc_path():
         return None
 
 
-def get_compiler_setting():
-    cuda_path = get_cuda_path()
+def get_hipcc_path():
+    hipcc = os.environ.get('HIPCC', None)
+    if hipcc:
+        return distutils.util.split_quoted(hipcc)
+
+    rocm_path = get_rocm_path()
+    if rocm_path is None:
+        return None
+
+    if PLATFORM_WIN32:
+        hipcc_bin = 'bin/hipcc.exe'
+    else:
+        hipcc_bin = 'bin/hipcc'
+
+    hipcc_path = os.path.join(rocm_path, hipcc_bin)
+    if os.path.exists(hipcc_path):
+        return [hipcc_path]
+    else:
+        return None
+
+
+def get_compiler_setting(use_hip):
+    cuda_path = None
+    rocm_path = None
+
+    if use_hip:
+        rocm_path = get_rocm_path()
+    else:
+        cuda_path = get_cuda_path()
 
     include_dirs = []
     library_dirs = []
     define_macros = []
+    extra_compile_args = []
 
     if cuda_path:
         include_dirs.append(os.path.join(cuda_path, 'include'))
@@ -100,6 +143,17 @@ def get_compiler_setting():
         else:
             library_dirs.append(os.path.join(cuda_path, 'lib64'))
             library_dirs.append(os.path.join(cuda_path, 'lib'))
+
+    if rocm_path:
+        include_dirs.append(os.path.join(rocm_path, 'include'))
+        include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
+        include_dirs.append(os.path.join(rocm_path, 'include', 'rocrand'))
+        include_dirs.append(os.path.join(rocm_path, 'include', 'roctracer'))
+        library_dirs.append(os.path.join(rocm_path, 'lib'))
+
+    if use_hip:
+        extra_compile_args.append('-std=c++11')
+
     if PLATFORM_DARWIN:
         library_dirs.append('/usr/local/cuda/lib')
 
@@ -111,16 +165,41 @@ def get_compiler_setting():
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
-    cutensor_path = os.environ.get('CUTENSOR_PATH', '')
-    if os.path.exists(cutensor_path):
-        include_dirs.append(os.path.join(cutensor_path, 'include'))
-        library_dirs.append(os.path.join(cutensor_path, 'lib'))
+    # For CUB, we need the complex and CUB headers. The search precedence for
+    # the latter is:
+    #   1. built-in CUB (for CUDA 11+ and ROCm)
+    #   2. CuPy's CUB bundle
+    # Note that starting CuPy v8 we no longer use CUB_PATH
+
+    # for <cupy/complex.cuh>
+    cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                               '../cupy/core/include')
+    if cuda_path:
+        cuda_cub_path = os.path.join(cuda_path, 'include', 'cub')
+        if not os.path.exists(cuda_cub_path):
+            cuda_cub_path = None
+    elif rocm_path:
+        cuda_cub_path = os.path.join(rocm_path, 'include', 'hipcub')
+        if not os.path.exists(cuda_cub_path):
+            cuda_cub_path = None
+    else:
+        cuda_cub_path = None
+    global _cub_path
+    if cuda_cub_path:
+        _cub_path = cuda_cub_path
+    elif not use_hip:  # CuPy's bundle doesn't work for ROCm
+        _cub_path = os.path.join(cupy_header, 'cupy', 'cub')
+    else:
+        raise Exception('Please install hipCUB and retry')
+    include_dirs.insert(0, _cub_path)
+    include_dirs.insert(1, cupy_header)
 
     return {
         'include_dirs': include_dirs,
         'library_dirs': library_dirs,
         'define_macros': define_macros,
         'language': 'c++',
+        'extra_compile_args': extra_compile_args,
     }
 
 
@@ -196,8 +275,12 @@ def _get_compiler_base_options():
 
 
 _cuda_version = None
+_thrust_version = None
 _cudnn_version = None
 _nccl_version = None
+_cutensor_version = None
+_cub_path = None
+_cub_version = None
 
 
 def check_cuda_version(compiler, settings):
@@ -206,7 +289,7 @@ def check_cuda_version(compiler, settings):
         out = build_and_run(compiler, '''
         #include <cuda.h>
         #include <stdio.h>
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", CUDA_VERSION);
           return 0;
         }
@@ -221,7 +304,7 @@ def check_cuda_version(compiler, settings):
     if _cuda_version < minimum_cuda_version:
         utils.print_warning(
             'CUDA version is too old: %d' % _cuda_version,
-            'CUDA v7.0 or newer is required')
+            'CUDA 9.0 or newer is required')
         return False
 
     return True
@@ -242,13 +325,46 @@ def get_cuda_version(formatted=False):
     return _cuda_version
 
 
+def check_thrust_version(compiler, settings):
+    global _thrust_version
+
+    try:
+        out = build_and_run(compiler, '''
+        #include <thrust/version.h>
+        #include <stdio.h>
+
+        int main() {
+          printf("%d", THRUST_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+    except Exception as e:
+        utils.print_warning('Cannot check Thrust version\n{0}'.format(e))
+        return False
+
+    _thrust_version = int(out)
+
+    return True
+
+
+def get_thrust_version(formatted=False):
+    """Return Thrust version cached in check_thrust_version()."""
+    global _thrust_version
+    if _thrust_version is None:
+        msg = 'check_thrust_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        return str(_thrust_version)
+    return _thrust_version
+
+
 def check_cudnn_version(compiler, settings):
     global _cudnn_version
     try:
         out = build_and_run(compiler, '''
         #include <cudnn.h>
         #include <stdio.h>
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", CUDNN_VERSION);
           return 0;
         }
@@ -299,7 +415,7 @@ def check_nccl_version(compiler, settings):
         #else
         #  define NCCL_VERSION_CODE 0
         #endif
-        int main(int argc, char* argv[]) {
+        int main() {
           printf("%d", NCCL_VERSION_CODE);
           return 0;
         }
@@ -346,6 +462,84 @@ def check_nvtx(compiler, settings):
     return True
 
 
+def check_cub_version(compiler, settings):
+    global _cub_version
+    global _cub_path
+
+    # This is guaranteed to work for any CUB source because the search
+    # precedence follows that of include paths.
+    # - On CUDA, CUB < 1.9.9 does not provide version.cuh and would error out
+    # - On ROCm, hipCUB has the same version as rocPRIM (as of ROCm 3.5.0)
+    try:
+        out = build_and_run(compiler,
+                            '''
+                            #ifndef CUPY_USE_HIP
+                            #include <cub/version.cuh>
+                            #else
+                            #include <hipcub/hipcub_version.hpp>
+                            #endif
+                            #include <stdio.h>
+
+                            int main() {
+                              #ifndef CUPY_USE_HIP
+                              printf("%d", CUB_VERSION);
+                              #else
+                              printf("%d", HIPCUB_VERSION);
+                              #endif
+                              return 0;
+                            }''',
+                            include_dirs=settings['include_dirs'],
+                            define_macros=settings['define_macros'])
+    except Exception as e:
+        # could be in a git submodule?
+        try:
+            # CuPy's bundle
+            cupy_cub_include = _cub_path
+            a = subprocess.run(' '.join(['git', 'describe', '--tags']),
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               shell=True, cwd=cupy_cub_include)
+            if a.returncode == 0:
+                tag = a.stdout.decode()[:-1]
+
+                # CUB's tag convention changed after 1.8.0: "v1.9.0" -> "1.9.0"
+                # In any case, we normalize it to be in line with CUB_VERSION
+                if tag.startswith('v'):
+                    tag = tag[1:]
+                tag = tag.split('.')
+                out = int(tag[0]) * 100000 + int(tag[1]) * 100
+                try:
+                    out += int(tag[2])
+                except ValueError:
+                    # there're local commits so tag is like 1.8.0-1-gdcbb288f,
+                    # we add the number of commits to the version
+                    local_patch = tag[2].split('-')
+                    out += int(local_patch[0]) + int(local_patch[1])
+            else:
+                raise RuntimeError('Cannot determine CUB version from git tag'
+                                   '\n{0}'.format(e))
+        except Exception as e:
+            utils.print_warning('Cannot determine CUB version\n{0}'.format(e))
+            # 0: CUB is not built (makes no sense), -1: built with unknown ver
+            out = -1
+
+    _cub_version = int(out)
+    settings['define_macros'].append(('CUPY_CUB_VERSION_CODE', _cub_version))
+    return True  # we always build CUB
+
+
+def get_cub_version(formatted=False):
+    """Return CUB version cached in check_cub_version()."""
+    global _cub_version
+    if _cub_version is None:
+        msg = 'check_cub_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        if _cub_version == -1:
+            return '<unknown>'
+        return str(_cub_version)
+    return _cub_version
+
+
 def check_cutensor_version(compiler, settings):
     global _cutensor_version
     try:
@@ -372,6 +566,12 @@ def check_cutensor_version(compiler, settings):
 
     _cutensor_version = int(out)
 
+    if _cutensor_version < 1000:
+        utils.print_warning(
+            'Unsupported cuTENSOR version: {}'.format(_cutensor_version)
+        )
+        return False
+
     return True
 
 
@@ -385,14 +585,16 @@ def get_cutensor_version(formatted=False):
 
 
 def build_shlib(compiler, source, libraries=(),
-                include_dirs=(), library_dirs=(), define_macros=None):
+                include_dirs=(), library_dirs=(), define_macros=None,
+                extra_compile_args=()):
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
             f.write(source)
         objects = compiler.compile([fname], output_dir=temp_dir,
                                    include_dirs=include_dirs,
-                                   macros=define_macros)
+                                   macros=define_macros,
+                                   extra_postargs=list(extra_compile_args))
 
         try:
             postargs = ['/MANIFEST'] if PLATFORM_WIN32 else []
@@ -408,7 +610,8 @@ def build_shlib(compiler, source, libraries=(),
 
 
 def build_and_run(compiler, source, libraries=(),
-                  include_dirs=(), library_dirs=(), define_macros=None):
+                  include_dirs=(), library_dirs=(), define_macros=None,
+                  extra_compile_args=()):
     with _tempdir() as temp_dir:
         fname = os.path.join(temp_dir, 'a.cpp')
         with open(fname, 'w') as f:
@@ -416,7 +619,8 @@ def build_and_run(compiler, source, libraries=(),
 
         objects = compiler.compile([fname], output_dir=temp_dir,
                                    include_dirs=include_dirs,
-                                   macros=define_macros)
+                                   macros=define_macros,
+                                   extra_postargs=list(extra_compile_args))
 
         try:
             postargs = ['/MANIFEST'] if PLATFORM_WIN32 else []

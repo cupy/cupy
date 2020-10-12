@@ -1,22 +1,35 @@
 import collections
-from cpython cimport pythread
 import threading
 
-cdef thread_local = threading.local()
-cdef int _memory_hook_flag = pythread.PyThread_create_key()
+cdef object _thread_local = threading.local()
+
+
+cdef class _ThreadLocal:
+
+    cdef object memory_hooks
+
+    def __init__(self):
+        self.memory_hooks = None
+
+    @staticmethod
+    cdef _ThreadLocal get():
+        try:
+            tls = _thread_local.tls
+        except AttributeError:
+            tls = _thread_local.tls = _ThreadLocal()
+        return <_ThreadLocal>tls
 
 
 cpdef bint _has_memory_hooks():
-    return pythread.PyThread_get_key_value(_memory_hook_flag) != <void*>0
+    tls = _ThreadLocal.get()
+    return tls.memory_hooks is not None
 
 
 cpdef get_memory_hooks():
-    ret = getattr(thread_local, 'memory_hooks', None)
-    if ret is None:
-        pythread.PyThread_set_key_value(_memory_hook_flag, <void*>1)
-        ret = collections.OrderedDict()
-        thread_local.memory_hooks = ret
-    return ret
+    tls = _ThreadLocal.get()
+    if tls.memory_hooks is None:
+        tls.memory_hooks = collections.OrderedDict()
+    return tls.memory_hooks
 
 
 class MemoryHook(object):

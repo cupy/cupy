@@ -1,18 +1,30 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
-from cupy import cuda
 from cupy import testing
 from cupy.testing import condition
+import cupyx
+from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.parameterize(*testing.product({
+    'batched_gesv_limit': [None, 0],
+}))
 @testing.gpu
 @testing.fix_random()
 class TestSolve(unittest.TestCase):
+
+    def setUp(self):
+        if self.batched_gesv_limit is not None:
+            self.old_limit = get_batched_gesv_limit()
+            set_batched_gesv_limit(self.batched_gesv_limit)
+
+    def tearDown(self):
+        if self.batched_gesv_limit is not None:
+            set_batched_gesv_limit(self.old_limit)
 
     @testing.for_dtypes('fdFD')
     # TODO(kataoka): Fix contiguity
@@ -35,22 +47,19 @@ class TestSolve(unittest.TestCase):
         self.check_x((2, 3, 2, 2), (2, 3, 2,))
         self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
 
-    @testing.numpy_cupy_raises()
-    def check_shape(self, a_shape, b_shape, xp):
-        a = xp.random.rand(*a_shape)
-        b = xp.random.rand(*b_shape)
-        xp.linalg.solve(a, b)
+    def check_shape(self, a_shape, b_shape, error_type):
+        for xp in (numpy, cupy):
+            a = xp.random.rand(*a_shape)
+            b = xp.random.rand(*b_shape)
+            with pytest.raises(error_type):
+                xp.linalg.solve(a, b)
 
     def test_invalid_shape(self):
-        self.check_shape((2, 3), (4,))
-        self.check_shape((3, 3), (2,))
-        self.check_shape((3, 3), (2, 2))
-        self.check_shape((3, 3, 4), (3,))
-
-    @testing.with_requires('numpy>=1.10')
-    def test_invalid_shape2(self):
-        # numpy 1.9 does not raise an error for this type of inputs
-        self.check_shape((2, 3, 3), (3,))
+        self.check_shape((2, 3), (4,), numpy.linalg.LinAlgError)
+        self.check_shape((3, 3), (2,), ValueError)
+        self.check_shape((3, 3), (2, 2), ValueError)
+        self.check_shape((3, 3, 4), (3,), numpy.linalg.LinAlgError)
+        self.check_shape((2, 3, 3), (3,), ValueError)
 
 
 @testing.parameterize(*testing.product({
@@ -60,8 +69,6 @@ class TestSolve(unittest.TestCase):
 }))
 @testing.fix_random()
 @testing.gpu
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 class TestTensorSolve(unittest.TestCase):
 
     def setUp(self):
@@ -77,12 +84,10 @@ class TestTensorSolve(unittest.TestCase):
         return xp.linalg.tensorsolve(a, b, axes=self.axes)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestInv(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @condition.retry(10)
     def check_x(self, a_shape, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
@@ -114,16 +119,35 @@ class TestInv(unittest.TestCase):
         self.check_shape((2, 4, 3))
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
+@testing.gpu
+class TestInvInvalid(unittest.TestCase):
+
+    @testing.for_float_dtypes(no_float16=True)
+    def test_inv(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([[1, 2], [2, 4]]).astype(dtype)
+            with cupyx.errstate(linalg='raise'):
+                with pytest.raises(numpy.linalg.LinAlgError):
+                    xp.linalg.inv(a)
+
+    @testing.for_float_dtypes(no_float16=True)
+    def test_batched_inv(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([[[1, 2], [2, 4]]]).astype(dtype)
+            assert a.ndim >= 3  # CuPy internally uses a batched function.
+            with cupyx.errstate(linalg='raise'):
+                with pytest.raises(numpy.linalg.LinAlgError):
+                    xp.linalg.inv(a)
+
+
 @testing.gpu
 class TestPinv(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @condition.retry(10)
     def check_x(self, a_shape, rcond, dtype):
-        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
-        a_gpu = cupy.asarray(a_cpu)
+        a_gpu = testing.shaped_random(a_shape, dtype=dtype)
+        a_cpu = cupy.asnumpy(a_gpu)
         a_gpu_copy = a_gpu.copy()
         result_cpu = numpy.linalg.pinv(a_cpu, rcond=rcond)
         result_gpu = cupy.linalg.pinv(a_gpu, rcond=rcond)
@@ -153,8 +177,6 @@ class TestPinv(unittest.TestCase):
         self.check_shape((4, 3, 2, 1), rcond=0.1)
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestLstsq(unittest.TestCase):
 
@@ -227,8 +249,6 @@ class TestLstsq(unittest.TestCase):
         self.check_invalid_shapes((4, 3), (10, 3, 3))
 
 
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.gpu
 class TestTensorInv(unittest.TestCase):
 

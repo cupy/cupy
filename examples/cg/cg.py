@@ -3,7 +3,6 @@ import contextlib
 import time
 
 import numpy as np
-import six
 
 import cupy
 
@@ -25,7 +24,7 @@ def fit(A, b, tol, max_iter):
     x = xp.zeros_like(b, dtype=np.float64)
     r0 = b - xp.dot(A, x)
     p = r0
-    for i in six.moves.range(max_iter):
+    for i in range(max_iter):
         a = xp.inner(r0, r0) / xp.inner(p, xp.dot(A, p))
         x += a * p
         r1 = r0 - a * xp.dot(A, p)

@@ -4,8 +4,9 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
-import mock
+import numpy
 
 import cupy
 from cupy import testing
@@ -53,6 +54,12 @@ except Exception as e:
         self.assertIn(stdoutdata, (b'', b'RuntimeError\n'))
 
 
+if not cupy.cuda.runtime.is_hip:
+    visible = 'CUDA_VISIBLE_DEVICES'
+else:
+    visible = 'HIP_VISIBLE_DEVICES'
+
+
 class TestAvailable(unittest.TestCase):
 
     @testing.gpu
@@ -64,21 +71,23 @@ class TestAvailable(unittest.TestCase):
 class TestNotAvailable(unittest.TestCase):
 
     def setUp(self):
-        self.old = os.environ.get('CUDA_VISIBLE_DEVICES')
+        self.old = os.environ.get(visible)
 
     def tearDown(self):
         if self.old is None:
-            os.environ.pop('CUDA_VISIBLE_DEVICES')
+            os.environ.pop(visible)
         else:
-            os.environ['CUDA_VISIBLE_DEVICES'] = self.old
+            os.environ[visible] = self.old
 
+    @unittest.skipIf(cupy.cuda.runtime.is_hip,
+                     'HIP handles empty HIP_VISIBLE_DEVICES differently')
     def test_no_device_1(self):
         os.environ['CUDA_VISIBLE_DEVICES'] = ' '
         available = _test_cupy_available(self)
         self.assertFalse(available)
 
     def test_no_device_2(self):
-        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+        os.environ[visible] = '-1'
         available = _test_cupy_available(self)
         self.assertFalse(available)
 
@@ -100,6 +109,21 @@ class TestShowConfig(unittest.TestCase):
         with mock.patch('sys.stdout.write') as write_func:
             cupy.show_config()
         write_func.assert_called_once_with(str(cupyx.get_runtime_info()))
+
+
+class TestAliases(unittest.TestCase):
+
+    def test_abs_is_absolute(self):
+        for xp in (numpy, cupy):
+            assert xp.abs is xp.absolute
+
+    def test_conj_is_conjugate(self):
+        for xp in (numpy, cupy):
+            assert xp.conj is xp.conjugate
+
+    def test_bitwise_not_is_invert(self):
+        for xp in (numpy, cupy):
+            assert xp.bitwise_not is xp.invert
 
 
 # This is copied from chainer/testing/__init__.py, so should be replaced in

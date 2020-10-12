@@ -33,35 +33,27 @@ erfcx = core.create_ufunc(
 
 erfinv = core.create_ufunc(
     'cupyx_scipy_erfinv', ('f->f', 'd->d'),
-    '''
-    if (in0 < -1) {
-        out0 = -1.0 / 0.0;
-    } else if (in0 > 1) {
-        out0 = 1.0 / 0.0;
-    } else {
-        out0 = erfinv(in0);
-    }
-    ''',
+    'out0 = erfinv(in0);',
     doc='''Inverse function of error function.
 
     .. seealso:: :meth:`scipy.special.erfinv`
+
+    .. note::
+        The behavior close to (and outside) the domain follows that of
+        SciPy v1.4.0+.
 
     ''')
 
 
 erfcinv = core.create_ufunc(
     'cupyx_scipy_erfcinv', ('f->f', 'd->d'),
-    '''
-    if (in0 < 0) {
-        out0 = 1.0 / 0.0;
-    } else if (in0 > 2) {
-        out0 = -1.0 / 0.0;
-    } else {
-        out0 = erfcinv(in0);
-    }
-    ''',
+    'out0 = erfcinv(in0);',
     doc='''Inverse function of complementary error function.
 
     .. seealso:: :meth:`scipy.special.erfcinv`
+
+    .. note::
+        The behavior close to (and outside) the domain follows that of
+        SciPy v1.4.0+.
 
     ''')

@@ -38,7 +38,7 @@ While the major, minor, and revision numbers follow the rule of semantic version
 **Note that a major update basically does not contain compatibility-breaking changes from the last release candidate (RC).**
 This is not a strict rule, though; if there is a critical API bug that we have to fix for the major version, we may add breaking changes to the major version up.
 
-As for the backward compatibility, see :ref:`compatibility`.
+As for the backward compatibility, see :doc:`compatibility`.
 
 
 .. _contrib-release-cycle:
@@ -261,6 +261,15 @@ Please note the followings when writing the document.
   original one, users should explicitly describe only what is implemented in
   the document.
 
+For changes that modify or add new Cython files, please make sure the pointer types follow these guidelines (`#1913 <https://github.com/cupy/cupy/issues/1913>`_).
+
+* Pointers should be ``void*`` if only used within Cython, or ``intptr_t`` if exposed to the Python space.
+* Memory sizes should be ``size_t``.
+* Memory offsets should be ``ptrdiff_t``.
+
+.. note::
+
+     We are incrementally enforcing the above rules, so some existing code may not follow the above guidelines, but please ensure all new contributions do.
 
 .. _testing-guide:
 
@@ -286,19 +295,6 @@ In order to run unit tests at the repository root, you first have to build Cytho
   When you modify ``*.pxd`` files, before running ``pip install -e .``, you must clean ``*.cpp`` and ``*.so`` files once with the following command, because Cython does not automatically rebuild those files nicely::
 
     $ git clean -fdx
-
-.. note::
-
-  It's not officially supported, but you can use `ccache <https://ccache.samba.org/>`_ to reduce compilation time.
-  On Ubuntu 16.04, you can set up as follows::
-
-    $ sudo apt-get install ccache
-    $ export PATH=/usr/lib/ccache:$PATH
-
-  See `ccache <https://ccache.samba.org/>`_ for details.
-
-  If you want to use ccache for nvcc, please install ccache v3.3 or later.
-  You also need to set environment variable ``NVCC='ccache nvcc'``.
 
 Once Cython modules are built, you can run unit tests by running the following command at the repository root::
 
@@ -445,3 +441,36 @@ Open ``index.html`` with the browser and see if it is rendered as expected.
 
    Docstrings (documentation comments in the source code) are collected from the installed CuPy module.
    If you modified docstrings, make sure to install the module (e.g., using `pip install -e .`) before building the documentation.
+
+
+Tips for Developers
+-------------------
+
+Here are some tips for developers hacking CuPy source code.
+
+Install as Editable
+~~~~~~~~~~~~~~~~~~~
+
+During the development we recommend using ``pip`` with ``-e`` option to install as editable mode::
+
+  $ pip install -e .
+
+Please note that even with ``-e``, you will have to rerun ``pip install -e .`` to regenerate C++ sources using Cython if you modified Cython source files (e.g., ``*.pyx`` files).
+
+Use ccache
+~~~~~~~~~~
+
+``NVCC`` environment variable can be specified at the build time to use the custom command instead of ``nvcc`` .
+You can speed up the rebuild using `ccache <https://ccache.dev/>`_ (v3.4 or later) by::
+
+  $ export NVCC='ccache nvcc'
+
+Limit Architecture
+~~~~~~~~~~~~~~~~~~
+
+Use ``CUPY_NVCC_GENERATE_CODE`` environment variable to reduce the build time by limiting the target CUDA architectures.
+For example, if you only run your CuPy build with NVIDIA P100 and V100, you can use::
+
+  $ export CUPY_NVCC_GENERATE_CODE=arch=compute_60,code=sm_60;arch=compute_70,code=sm_70
+
+See :doc:`reference/environment` for the description.

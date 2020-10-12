@@ -1,9 +1,10 @@
+import re
 import threading
 import unittest
 
 import pytest
-import six
 
+import cupy
 from cupy import cuda
 from cupy import testing
 
@@ -68,8 +69,6 @@ class TestDeviceComparison(unittest.TestCase):
         with pytest.raises(TypeError):
             obj2 >= obj1
 
-    @unittest.skipIf(
-        six.PY2, 'Python 2 comparison result of objects is arbitrary')
     def test_comparison_other_type(self):
         self.check_comparison_other_type(cuda.Device(0), 0)
         self.check_comparison_other_type(cuda.Device(0), 1)
@@ -93,6 +92,32 @@ class TestDeviceAttributes(unittest.TestCase):
         with pytest.raises(cuda.runtime.CUDARuntimeError):
             # try to retrieve attributes from a non-existent device
             cuda.device.Device(cuda.runtime.getDeviceCount()).attributes
+
+
+@testing.gpu
+class TestDevicePCIBusId(unittest.TestCase):
+    def test_device_get_pci_bus_id(self):
+        d = cuda.Device()
+        pci_bus_id = d.pci_bus_id
+        assert re.match(
+            '^[a-fA-F0-9]{4}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}.[a-fA-F0-9]',
+            pci_bus_id
+        )
+
+    def test_device_by_pci_bus_id(self):
+        d1 = cuda.Device()
+        d2 = cuda.Device.from_pci_bus_id(d1.pci_bus_id)
+        assert d1 == d2
+        d3 = cuda.Device(d2)
+        assert d2 == d3
+
+        with pytest.raises(cuda.runtime.CUDARuntimeError) as excinfo:
+            cuda.Device.from_pci_bus_id('fake:id')
+            assert excinfo == 'cudaErrorInvalidValue: invalid argument'
+
+        with pytest.raises(cuda.runtime.CUDARuntimeError) as excinfo:
+            cuda.Device.from_pci_bus_id('FFFF:FF:FF.F')
+            assert excinfo == 'cudaErrorInvalidDevice: invalid device ordinal'
 
 
 @testing.gpu
@@ -122,3 +147,8 @@ class TestDeviceHandles(unittest.TestCase):
 
     def test_cusparse_handle(self):
         self._check_handle(cuda.device.get_cusparse_handle)
+
+
+class TestDeviceFromPointer(unittest.TestCase):
+    def test_from_pointer(self):
+        assert cuda.device.from_pointer(cupy.empty(1).data.ptr).id == 0

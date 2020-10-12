@@ -27,6 +27,8 @@ environment:
       PYTHON_VERSION: "3.6.x"
       PYTHON_ARCH: "64"
 
+  CUPY_CI: appveyor
+
 install:
   - ECHO "Filesystem root:"
   - ps: "ls \"C:/\""
@@ -59,6 +61,8 @@ install:
 
 
 build_script:
+  # for CUB submodule
+  - "git submodule update --init --recursive"
   # Build the compiled extension
   - "%CMD_IN_ENV% python setup.py build install -vvvv"
 

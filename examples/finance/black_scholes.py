@@ -5,7 +5,7 @@ import time
 import cupy
 import numpy
 
-# This sample computes call and put prices for Europian options with
+# This sample computes call and put prices for European options with
 # Black-Scholes equation. It was based on a sample of the financial package
 # in CUDA toolkit. For details, please see the corresponding whitepaper.
 #

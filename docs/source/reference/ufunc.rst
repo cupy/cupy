@@ -59,6 +59,8 @@ Math operations
    cupy.sqrt
    cupy.square
    cupy.reciprocal
+   cupy.gcd
+   cupy.lcm
 
 
 Trigonometric functions

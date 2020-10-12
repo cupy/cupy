@@ -9,6 +9,10 @@ class TestIsScalar(testing.NumpyAliasBasicTestBase):
 
     func = 'isscalar'
 
+    @testing.with_requires('numpy>=1.18')
+    def test_argspec(self):
+        super().test_argspec()
+
 
 @testing.parameterize(
     *testing.product({

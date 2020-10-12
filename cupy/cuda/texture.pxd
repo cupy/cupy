@@ -40,9 +40,15 @@ cdef class TextureObject:
         readonly TextureDescriptor TexDesc
 
 
+cdef class SurfaceObject:
+    cdef:
+        readonly uintmax_t ptr
+        readonly ResourceDescriptor ResDesc
+
+
 cdef class TextureReference:
     cdef:
-        readonly size_t texref
+        readonly intptr_t texref
         readonly ResourceDescriptor ResDesc
         readonly TextureDescriptor TexDesc
 

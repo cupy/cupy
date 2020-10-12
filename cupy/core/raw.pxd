@@ -2,16 +2,26 @@ cdef class RawKernel:
 
     cdef:
         readonly str code
+        readonly str file_path
         readonly str name
         readonly tuple options
-        object _kernel
+        readonly str backend
+        readonly bint enable_cooperative_groups
+        object log_stream
+        tuple name_expressions
+        bint translate_cucomplex
+        list _kernel_cache
+        readonly str __name__
 
 
 cdef class RawModule:
 
     cdef:
         readonly str code
-        readonly str cubin_path
+        readonly str file_path
         readonly tuple options
-        dict kernels
-        object module
+        readonly str backend
+        readonly bint enable_cooperative_groups
+        readonly tuple name_expressions
+        object log_stream
+        bint translate_cucomplex

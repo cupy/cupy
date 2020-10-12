@@ -18,16 +18,16 @@ class TestProd(unittest.TestCase):
         self.assertEqual(internal.prod([2, 3]), 6)
 
 
-class TestProdSsizeT(unittest.TestCase):
+class TestProdSequence(unittest.TestCase):
 
     def test_empty(self):
-        self.assertEqual(internal.prod([]), 1)
+        self.assertEqual(internal.prod_sequence(()), 1)
 
     def test_one(self):
-        self.assertEqual(internal.prod([2]), 2)
+        self.assertEqual(internal.prod_sequence((2,)), 2)
 
     def test_two(self):
-        self.assertEqual(internal.prod([2, 3]), 6)
+        self.assertEqual(internal.prod_sequence((2, 3)), 6)
 
 
 class TestGetSize(unittest.TestCase):
@@ -67,45 +67,37 @@ class TestVectorEqual(unittest.TestCase):
         self.assertEqual(internal.vector_equal([1, 2, 3], [1, 2]), False)
 
 
-class TestGetContiguousStrides(unittest.TestCase):
-
-    def test_zero(self):
-        self.assertEqual(internal.get_contiguous_strides((), 1, True), [])
-
-    def test_one(self):
-        self.assertEqual(internal.get_contiguous_strides((1,), 2, True), [2])
-
-    def test_two(self):
-        self.assertEqual(internal.get_contiguous_strides((1, 2), 3, True),
-                         [6, 3])
-
-    def test_three(self):
-        self.assertEqual(internal.get_contiguous_strides((1, 2, 3), 4, True),
-                         [24, 12, 4])
-
-    def test_zero_f(self):
-        self.assertEqual(internal.get_contiguous_strides((), 1, False), [])
-
-    def test_one_f(self):
-        self.assertEqual(internal.get_contiguous_strides((1,), 2, False), [2])
-
-    def test_two_f(self):
-        self.assertEqual(internal.get_contiguous_strides((1, 2), 3, False),
-                         [3, 3])
-
-    def test_three_f(self):
-        self.assertEqual(internal.get_contiguous_strides((1, 2, 3), 4, False),
-                         [4, 4, 8])
-
-
 class TestGetCContiguity(unittest.TestCase):
 
     def test_zero_in_shape(self):
         self.assertTrue(internal.get_c_contiguity((1, 0, 1), (1, 1, 1), 3))
 
-    def test_normal(self):
-        # TODO(unno): write test for normal case
-        pass
+    def test_all_one_shape(self):
+        self.assertTrue(internal.get_c_contiguity((1, 1, 1), (1, 1, 1), 3))
+
+    def test_normal1(self):
+        self.assertTrue(internal.get_c_contiguity((3, 4, 3), (24, 6, 2), 2))
+
+    def test_normal2(self):
+        self.assertTrue(internal.get_c_contiguity((3, 1, 3), (6, 100, 2), 2))
+
+    def test_normal3(self):
+        self.assertTrue(internal.get_c_contiguity((3,), (4, ), 4))
+
+    def test_normal4(self):
+        self.assertTrue(internal.get_c_contiguity((), (), 4))
+
+    def test_normal5(self):
+        self.assertTrue(internal.get_c_contiguity((3, 1), (4, 8), 4))
+
+    def test_no_contiguous1(self):
+        self.assertFalse(internal.get_c_contiguity((3, 4, 3), (30, 6, 2), 2))
+
+    def test_no_contiguous2(self):
+        self.assertFalse(internal.get_c_contiguity((3, 1, 3), (24, 6, 2), 2))
+
+    def test_no_contiguous3(self):
+        self.assertFalse(internal.get_c_contiguity((3, 1, 3), (6, 6, 4), 2))
 
 
 class TestInferUnknownDimension(unittest.TestCase):
@@ -173,7 +165,6 @@ class TestCompleteSlice(unittest.TestCase):
             slice(*self.expect))
 
 
-@testing.with_requires('numpy>=1.12')
 class TestCompleteSliceError(unittest.TestCase):
 
     def test_invalid_step_value(self):

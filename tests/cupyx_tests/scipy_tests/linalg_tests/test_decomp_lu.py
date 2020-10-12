@@ -2,7 +2,6 @@ import unittest
 
 import numpy
 import cupy
-from cupy import cuda
 from cupy import testing
 import cupyx.scipy.linalg
 if cupyx.scipy._scipy_available:
@@ -14,19 +13,16 @@ if cupyx.scipy._scipy_available:
     'shape': [(1, 1), (2, 2), (3, 3), (5, 5), (1, 5), (5, 1), (2, 5), (5, 2)],
 }))
 @testing.fix_random()
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.with_requires('scipy')
 class TestLUFactor(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     def test_lu_factor(self, dtype):
         if self.shape[0] != self.shape[1]:
             # skip non-square tests since scipy.lu_factor requires square
             return unittest.SkipTest()
-        array = numpy.random.randn(*self.shape)
-        a_cpu = numpy.asarray(array, dtype=dtype)
-        a_gpu = cupy.asarray(array, dtype=dtype)
+        a_cpu = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        a_gpu = cupy.asarray(a_cpu)
         result_cpu = scipy.linalg.lu_factor(a_cpu)
         result_gpu = cupyx.scipy.linalg.lu_factor(a_gpu)
         self.assertEqual(len(result_cpu), len(result_gpu))
@@ -35,10 +31,10 @@ class TestLUFactor(unittest.TestCase):
         cupy.testing.assert_allclose(result_cpu[0], result_gpu[0], atol=1e-5)
         cupy.testing.assert_array_equal(result_cpu[1], result_gpu[1])
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     def test_lu_factor_reconstruction(self, dtype):
         m, n = self.shape
-        A = cupy.random.randn(m, n, dtype=dtype)
+        A = testing.shaped_random(self.shape, cupy, dtype=dtype)
         lu, piv = cupyx.scipy.linalg.lu_factor(A)
         # extract ``L`` and ``U`` from ``lu``
         L = cupy.tril(lu, k=-1)
@@ -65,16 +61,54 @@ class TestLUFactor(unittest.TestCase):
 
 @testing.gpu
 @testing.parameterize(*testing.product({
+    'shape': [(1, 1), (2, 2), (3, 3), (5, 5), (1, 5), (5, 1), (2, 5), (5, 2)],
+    'permute_l': [False, True],
+}))
+@testing.fix_random()
+@testing.with_requires('scipy')
+class TestLU(unittest.TestCase):
+
+    @testing.for_dtypes('fdFD')
+    def test_lu(self, dtype):
+        a_cpu = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        a_gpu = cupy.asarray(a_cpu)
+        result_cpu = scipy.linalg.lu(a_cpu, permute_l=self.permute_l)
+        result_gpu = cupyx.scipy.linalg.lu(a_gpu, permute_l=self.permute_l)
+        self.assertEqual(len(result_cpu), len(result_gpu))
+        if not self.permute_l:
+            # check permutation matrix
+            result_cpu = list(result_cpu)
+            result_gpu = list(result_gpu)
+            P_cpu = result_cpu.pop(0)
+            P_gpu = result_gpu.pop(0)
+            cupy.testing.assert_array_equal(P_gpu, P_cpu)
+        cupy.testing.assert_allclose(result_gpu[0], result_cpu[0], atol=1e-5)
+        cupy.testing.assert_allclose(result_gpu[1], result_cpu[1], atol=1e-5)
+
+    @testing.for_dtypes('fdFD')
+    def test_lu_reconstruction(self, dtype):
+        m, n = self.shape
+        A = testing.shaped_random(self.shape, cupy, dtype=dtype)
+        if self.permute_l:
+            PL, U = cupyx.scipy.linalg.lu(A, permute_l=self.permute_l)
+            PLU = PL @ U
+        else:
+            P, L, U = cupyx.scipy.linalg.lu(A, permute_l=self.permute_l)
+            PLU = P @ L @ U
+        # check that reconstruction is close to original
+        cupy.testing.assert_allclose(PLU, A, atol=1e-5)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
     'trans': [0, 1, 2],
     'shapes': [((4, 4), (4,)), ((5, 5), (5, 2))],
 }))
 @testing.fix_random()
-@unittest.skipUnless(
-    cuda.cusolver_enabled, 'Only cusolver in CUDA 8.0 is supported')
 @testing.with_requires('scipy')
 class TestLUSolve(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_lu_solve(self, xp, scp, dtype):
         a_shape, b_shape = self.shapes

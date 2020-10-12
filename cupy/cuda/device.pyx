@@ -2,18 +2,18 @@
 
 import threading
 
-from cupy.cuda import cublas
-from cupy.cuda import cusparse
-from cupy.cuda cimport runtime
-from cupy.cuda import runtime as runtime_module
-from cupy import util
+from cupy.core import syncdetect
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.api import runtime as runtime_module
+from cupy_backends.cuda.libs import cublas
+from cupy_backends.cuda.libs import cusolver
+from cupy_backends.cuda.libs import cusparse
+from cupy import _util
 
-try:
-    from cupy.cuda import cusolver
-    cusolver_enabled = True
-except ImportError:
-    cusolver_enabled = False
 
+# This flag is kept for backward compatibility.
+# It is always True as cuSOLVER library is always available in CUDA 8.0+.
+cusolver_enabled = True
 
 cdef object _thread_local = threading.local()
 
@@ -43,19 +43,19 @@ cdef class Handle:
         self._destroy_func(self.handle)
 
 
-cpdef size_t get_cublas_handle() except? 0:
+cpdef intptr_t get_cublas_handle() except? 0:
     return _get_device().cublas_handle
 
 
-cpdef size_t get_cusolver_handle() except? 0:
+cpdef intptr_t get_cusolver_handle() except? 0:
     return _get_device().cusolver_handle
 
 
-cpdef get_cusolver_sp_handle():
+cpdef intptr_t get_cusolver_sp_handle() except? 0:
     return _get_device().cusolver_sp_handle
 
 
-cpdef size_t get_cusparse_handle() except? 0:
+cpdef intptr_t get_cusparse_handle() except? 0:
     return _get_device().cusparse_handle
 
 
@@ -67,17 +67,23 @@ cpdef str get_compute_capability():
     return Device().compute_capability
 
 
-@util.memoize()
+@_util.memoize()
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""
     d = {}
     for k, v in runtime_module.__dict__.items():
         if k.startswith('cudaDevAttr'):
+            if runtime._is_hip_environment:
+                # On ROCm 3.5.0 + gfx906, accessing these attributes leads to
+                # core dump (stack smashing detected)
+                if k in ('cudaDevAttrPciDeviceId',
+                         'cudaDevAttrTccDriver'):
+                    continue
             try:
                 name = k.replace('cudaDevAttr', '', 1)
                 d[name] = runtime.deviceGetAttribute(v, device_id)
             except runtime_module.CUDARuntimeError as e:
-                if e.status != runtime.cudaErrorInvalidValue:
+                if e.status != runtime.errorInvalidValue:
                     raise
     return d
 
@@ -116,6 +122,23 @@ cdef class Device:
 
         self._device_stack = []
 
+    @classmethod
+    def from_pci_bus_id(cls, pci_bus_id):
+        """Returns a new device instance based on a PCI Bus ID
+
+        Args:
+            pci_bus_id (str):
+                The string for a device in the following format
+                [domain]:[bus]:[device].[function] where domain, bus, device,
+                and function are all hexadecimal values.
+        Returns:
+            device (Device):
+                An instance of the Device class that has the PCI Bus ID as
+                given by the argument pci_bus_id.
+        """
+        device_id = runtime.deviceGetByPCIBusId(pci_bus_id)
+        return cls(device_id)
+
     def __int__(self):
         return self.id
 
@@ -142,6 +165,7 @@ cdef class Device:
 
     cpdef synchronize(self):
         """Synchronizes the current thread to the device."""
+        syncdetect._declare_synchronize()
         with self:
             runtime.deviceSynchronize()
 
@@ -157,8 +181,10 @@ cdef class Device:
         if self.id in _compute_capabilities:
             return _compute_capabilities[self.id]
         with self:
-            major = runtime.deviceGetAttribute(75, self.id)
-            minor = runtime.deviceGetAttribute(76, self.id)
+            major = runtime.deviceGetAttribute(
+                runtime.deviceAttributeComputeCapabilityMajor, self.id)
+            minor = runtime.deviceGetAttribute(
+                runtime.deviceAttributeComputeCapabilityMinor, self.id)
             cc = '%d%d' % (major, minor)
             _compute_capabilities[self.id] = cc
             return cc
@@ -245,6 +271,18 @@ cdef class Device:
         """
         return _get_attributes(self.id)
 
+    @property
+    def pci_bus_id(self):
+        """A string of the PCI Bus ID
+
+        Returns:
+            pci_bus_id (str):
+                Returned identifier string for the device in the following
+                format [domain]:[bus]:[device].[function] where domain, bus,
+                device, and function are all hexadecimal values.
+        """
+        return runtime.deviceGetPCIBusId(self.id)
+
     def __richcmp__(Device self, object other, int op):
         if op == 2:
             return isinstance(other, Device) and self.id == other.id
@@ -273,5 +311,7 @@ def from_pointer(ptr):
         Device: The device whose memory the pointer refers to.
 
     """
+    # Initialize a context to workaround a bug in CUDA 10.2+. (#3991)
+    runtime._ensure_context()
     attrs = runtime.pointerGetAttributes(ptr)
     return Device(attrs.device)

@@ -1,0 +1,7 @@
+# hint.pbtxt is a config file for xpytest.
+#
+# Proto type: xpytest.proto.HintFile
+# https://github.com/chainer/xpytest/blob/master/proto/test_case.proto
+
+# Slow tests take 60+ seconds.
+rules { name: "cupy_tests/sorting_tests/test_search.py" xdist: 2 deadline: 120 }

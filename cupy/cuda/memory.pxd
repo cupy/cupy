@@ -38,11 +38,15 @@ cdef class MemoryPointer:
     cpdef memset(self, int value, size_t size)
     cpdef memset_async(self, int value, size_t size, stream=?)
 
+    @staticmethod
+    cdef _set_peer_access(int device, int peer)
+
 
 cpdef MemoryPointer alloc(size)
 
 
 cpdef set_allocator(allocator=*)
+cpdef get_allocator()
 
 
 cdef class MemoryPool:
@@ -76,5 +80,20 @@ cdef class CFunctionAllocator:
         intptr_t _malloc_func
         intptr_t _free_func
         object _owner
+
+    cpdef MemoryPointer malloc(self, size_t size)
+
+
+cdef class PythonFunctionAllocatorMemory(BaseMemory):
+
+    cdef:
+        object _free_func
+
+
+cdef class PythonFunctionAllocator:
+
+    cdef:
+        object _malloc_func
+        object _free_func
 
     cpdef MemoryPointer malloc(self, size_t size)
