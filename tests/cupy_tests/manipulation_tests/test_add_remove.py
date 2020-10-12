@@ -18,28 +18,28 @@ class TestAppend(unittest.TestCase):
         names=['dtype1', 'dtype2'], no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_scalar_lhs(self, xp, dtype1, dtype2):
-        scalar = numpy.dtype(dtype1).type(10).item()
+        scalar = xp.dtype(dtype1).type(10).item()
         return xp.append(scalar, xp.arange(20, dtype=dtype2))
 
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'], no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_scalar_rhs(self, xp, dtype1, dtype2):
-        scalar = numpy.dtype(dtype2).type(10).item()
+        scalar = xp.dtype(dtype2).type(10).item()
         return xp.append(xp.arange(20, dtype=dtype1), scalar)
 
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'], no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_numpy_scalar_lhs(self, xp, dtype1, dtype2):
-        scalar = numpy.dtype(dtype1).type(10)
+        scalar = xp.dtype(dtype1).type(10)
         return xp.append(scalar, xp.arange(20, dtype=dtype2))
 
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'], no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_numpy_scalar_rhs(self, xp, dtype1, dtype2):
-        scalar = numpy.dtype(dtype2).type(10)
+        scalar = xp.dtype(dtype2).type(10)
         return xp.append(xp.arange(20, dtype=dtype1), scalar)
 
     @testing.numpy_cupy_array_equal()

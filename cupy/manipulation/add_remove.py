@@ -80,9 +80,7 @@ def resize(a, new_shape):
     return out
 
 
-
 # TODO(okuta): Implement trim_zeros
-
 
 def unique(ar, return_index=False, return_inverse=False,
            return_counts=False, axis=None):
