@@ -7,6 +7,7 @@ import cupy
 from cupy.core import _reduction
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
+from cupy.core._kernel import ElementwiseKernel
 
 from cupy.core cimport _accelerator
 from cupy.core cimport _routines_math as _math
@@ -435,6 +436,86 @@ cpdef ndarray _median(
     if out_shape is not None:
         out = out.reshape(out_shape)
     return out
+
+
+cpdef ndarray _nanmedian(
+        ndarray a, axis, out, overwrite_input, keepdims):
+
+    if axis is None:
+        axis = tuple(range(a.ndim))
+    if not isinstance(axis, tuple):
+        axis = (axis,)
+
+    reduce_axis = []
+    reduce_shape = []
+    out_axis = []
+    out_shape = []
+    for i in range(a.ndim):
+        if axis is None or i in axis or i - a.ndim in axis:
+            reduce_axis.append(i)
+            reduce_shape.append(a.shape[i])
+        else:
+            out_axis.append(i)
+            out_shape.append(a.shape[i])
+
+    a_data_ptr = a.data.ptr
+    a = a.transpose(out_axis + reduce_axis)
+    a = a.reshape(out_shape + [-1, ])
+    a = cupy.ascontiguousarray(a)
+
+    n_reduce = numpy.prod(reduce_shape)
+    n_reduce_each = cupy.empty(out_shape, dtype='int32')
+    n_reduce_each[...] = n_reduce
+    if a_data_ptr == a.data.ptr and overwrite_input is False:
+        a = a.copy()
+    _replace_nan_kernel(n_reduce, numpy.finfo(a.dtype).max, a, n_reduce_each)
+    a = cupy.sort(a, axis=-1)
+
+    b = cupy.empty(out_shape, dtype=a.dtype)
+    b[...] = cupy.nan
+    _pickup_median_kernel(n_reduce, n_reduce_each, a, b)
+
+    if keepdims:
+        b = b.reshape(out_shape + [1, ] * len(reduce_axis))
+        axes = [-1, ] * b.ndim
+        for i, j in enumerate(out_axis + reduce_axis):
+            axes[j] = i
+        b = b.transpose(axes)
+
+    if out is None:
+        out = b
+    else:
+        out[...] = b
+    return out
+
+
+cdef _replace_nan_kernel = ElementwiseKernel(
+    'I n_reduce, T val', 'T a, raw I n_reduce_each',
+    '''
+    if (a != a) {
+        a = val;
+        atomicAdd(&(n_reduce_each[i / n_reduce]), -1);
+    }
+    ''',
+    'cupy_replace_nan'
+)
+
+cdef _pickup_median_kernel = ElementwiseKernel(
+    'I n_reduce, I n_reduce_each, raw T a', 'T b',
+    '''
+    if (n_reduce_each > 0) {
+        int l = (n_reduce_each - 1) / 2;
+        int h = (n_reduce_each    ) / 2;
+        if (l == h) {
+            b = a[l + n_reduce * i];
+        } else {
+            b = (a[l + n_reduce * i] + a[h + n_reduce * i])
+                / static_cast<T>(2.0);
+        }
+    }
+    ''',
+    'cupy_pickup_median'
+)
 
 
 cdef ndarray _mean(

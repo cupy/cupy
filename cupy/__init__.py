@@ -718,6 +718,7 @@ from cupy._statistics.meanvar import average  # NOQA
 from cupy._statistics.meanvar import mean  # NOQA
 from cupy._statistics.meanvar import std  # NOQA
 from cupy._statistics.meanvar import var  # NOQA
+from cupy._statistics.meanvar import nanmedian  # NOQA
 from cupy._statistics.meanvar import nanmean  # NOQA
 from cupy._statistics.meanvar import nanstd  # NOQA
 from cupy._statistics.meanvar import nanvar  # NOQA
