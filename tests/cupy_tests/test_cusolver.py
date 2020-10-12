@@ -253,10 +253,7 @@ class TestGels(unittest.TestCase):
 
     def setUp(self):
         self.dtype = numpy.dtype(self.dtype)
-        if self.dtype.char in 'fF':
-            self.r_dtype = numpy.float32
-        else:
-            self.r_dtype = numpy.float64
+        self.r_dtype = self.dtype.char.lower()
         m, n = self.shape
         nrhs = 1 if self.nrhs is None else self.nrhs
         a = self._make_matrix((m, n))
@@ -267,10 +264,7 @@ class TestGels(unittest.TestCase):
             b_shape.append(nrhs)
         self.a = a
         self.b = b.reshape(b_shape)
-        if self.r_dtype == numpy.float32:
-            self.tol = self._tol['f']
-        elif self.r_dtype == numpy.float64:
-            self.tol = self._tol['d']
+        self.tol = self._tol[self.r_dtype]
 
     def test_gels(self):
         x = cusolver.gels(self.a, self.b)
