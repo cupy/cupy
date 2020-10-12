@@ -3,10 +3,10 @@ from cupy.core cimport _kernel
 from cupy.core cimport _optimize_config
 from cupy.core cimport _reduction
 from cupy.core cimport _scalar
-from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
+from cupy.cuda cimport cub
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
 from cupy_backends.cuda.api cimport runtime
@@ -30,6 +30,11 @@ cdef function.Function _create_cub_reduction_function(
     # static_assert needs at least C++11 in NVRTC
     options += ('--std=c++11',)
 
+    # In ROCm, we need to set the include path. This does not work for hiprtc
+    # as of ROCm 3.5.0, so we must use hipcc.
+    if runtime._is_hip_environment:
+        options += ('-I' + _rocm_path + '/include',)
+
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
     # https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
@@ -47,6 +52,11 @@ static_assert(sizeof(_type_reduce) <= 32,
 // Compile-time constants for CUB template specializations
 #define ITEMS_PER_THREAD  ${items_per_thread}
 #define BLOCK_SIZE        ${block_size}
+
+// for hipCUB: use the hipcub namespace
+#ifdef __HIP_DEVICE_COMPILE__
+#define cub hipcub
+#endif
 
 #if defined FIRST_PASS
     typedef type_in0_raw  type_mid_in;
@@ -215,6 +225,8 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 cdef str _cub_path = _environment.get_cub_path()
 cdef str _nvcc_path = _environment.get_nvcc_path()
+cdef str _rocm_path = _environment.get_rocm_path()
+cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
 
 
@@ -224,6 +236,7 @@ cdef str _get_cub_header_include():
         return _cub_header
 
     assert _cub_path is not None
+    cdef str rocm_path = None
     if _cub_path == '<bundle>':
         _cub_header = '''
 #include <cupy/cub/cub/block/block_reduce.cuh>
@@ -233,6 +246,12 @@ cdef str _get_cub_header_include():
         _cub_header = '''
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
+'''
+    elif _cub_path == '<ROCm>':
+        # As of ROCm 3.5.0, the block headers cannot be included by themselves
+        # (many macros left undefined), so we must use the master header.
+        _cub_header = '''
+#include <hipcub/hipcub.hpp>
 '''
     return _cub_header
 
@@ -247,6 +266,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
     cdef tuple axis_permutes_cub
     cdef ndarray in_arr, out_arr
     cdef Py_ssize_t contiguous_size = 1
+    cdef str order
 
     # detect whether CUB headers exists somewhere:
     if _cub_path is None:
@@ -261,11 +281,23 @@ cpdef inline tuple _can_use_cub_block_reduction(
     in_arr = in_args[0]
     out_arr = out_args[0]
 
+    # the axes might not be sorted when we arrive here...
+    reduce_axis = tuple(sorted(reduce_axis))
+    out_axis = tuple(sorted(out_axis))
+
     # check reduction axes, if not contiguous then fall back to old kernel
     if in_arr._f_contiguous:
-        axis_permutes_cub = tuple(sorted(reduce_axis) + sorted(out_axis))
+        order = 'F'
+        if not cub._cub_device_segmented_reduce_axis_compatible(
+                reduce_axis, in_arr.ndim, order):
+            return None
+        axis_permutes_cub = reduce_axis + out_axis
     elif in_arr._c_contiguous:
-        axis_permutes_cub = tuple(sorted(out_axis) + sorted(reduce_axis))
+        order = 'C'
+        if not cub._cub_device_segmented_reduce_axis_compatible(
+                reduce_axis, in_arr.ndim, order):
+            return None
+        axis_permutes_cub = out_axis + reduce_axis
     else:
         return None
     if axis_permutes_cub != tuple(range(in_arr.ndim)):
@@ -290,8 +322,12 @@ cpdef inline tuple _can_use_cub_block_reduction(
             return None
 
     # rare event (mainly for conda-forge users): nvcc is not found!
-    if _nvcc_path is None:
-        return None
+    if not runtime._is_hip_environment:
+        if _nvcc_path is None:
+            return None
+    else:
+        if _hipcc_path is None:
+            return None
 
     return (axis_permutes_cub, contiguous_size, full_reduction)
 
@@ -566,8 +602,9 @@ cdef bint _try_to_call_cub_reduction(
     in_shape = _reduction._set_permuted_args(
         in_args, axis_permutes, a_shape, self.in_params)
 
-    if in_args[0].flags.f_contiguous:
-        ret = out_args[0] = _internal_asfortranarray(ret)
+    if in_args[0]._f_contiguous:
+        ret._set_contiguous_strides(ret.dtype.itemsize, False)
+        out_args[0] = ret
 
     if not full_reduction:  # just need one pass
         out_block_num = 1  # = number of segments

@@ -34,6 +34,8 @@ inline __host__ __device__ complex<T>::complex(const T& re, const T& im) {
   imag(im);
 }
 
+#if ((!defined(_MSC_VER) && __cplusplus < 201103L) || \
+     (defined(_MSC_VER) && _MSC_VER < 1900))
 template <typename T>
 inline __host__ __device__ complex<T>::complex() {
   real(T());
@@ -45,6 +47,7 @@ inline __host__ __device__ complex<T>::complex(const complex<T>& z) {
   real(z.real());
   imag(z.imag());
 }
+#endif
 
 template <typename T>
 template <typename X>

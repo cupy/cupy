@@ -7,8 +7,8 @@ import numpy as np
 import cupy
 from cupy import testing
 from cupy.fft import config
-from cupy.fft.fft import (_default_fft_func, _fft, _fftn,
-                          _size_last_transform_axis)
+from cupy.fft._fft import (_default_fft_func, _fft, _fftn,
+                           _size_last_transform_axis)
 
 
 def nd_planning_states(states=[True, False], name='enable_nd'):

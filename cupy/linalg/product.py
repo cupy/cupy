@@ -5,9 +5,7 @@ import numpy
 import cupy
 from cupy import core
 from cupy.core import internal
-
 from cupy.linalg.solve import inv
-from cupy import _util
 
 matmul = core.matmul
 
@@ -102,8 +100,8 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     a = cupy.asarray(a)
     b = cupy.asarray(b)
     # Check axisa and axisb are within bounds
-    axisa = _util._normalize_axis_index(axisa, a.ndim)
-    axisb = _util._normalize_axis_index(axisb, b.ndim)
+    axisa = internal._normalize_axis_index(axisa, a.ndim)
+    axisb = internal._normalize_axis_index(axisb, b.ndim)
 
     # Move working axis to the end of the shape
     a = cupy.moveaxis(a, axisa, -1)
@@ -118,7 +116,7 @@ def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     if a.shape[-1] == 3 or b.shape[-1] == 3:
         shape += (3,)
         # Check axisc is within bounds
-        axisc = _util._normalize_axis_index(axisc, len(shape))
+        axisc = internal._normalize_axis_index(axisc, len(shape))
     dtype = cupy.promote_types(a.dtype, b.dtype)
     cp = cupy.empty(shape, dtype)
 
