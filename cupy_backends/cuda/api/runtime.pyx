@@ -283,10 +283,13 @@ cpdef int deviceGetAttribute(int attrib, int device) except? -1:
 
 cpdef getDeviceProperties(int device):
     cdef cudaDeviceProp props
-    status = cudaGetDeviceProperties(&props, device)
-    # Common properties to CUDA 9.0, 9.2, 10.x and 11.x
-    properties = {'name': 'UNAVAILABLE'}
-    IF CUDA_VERSION >= 9020:
+    cdef int status = cudaGetDeviceProperties(&props, device)
+    check_status(status)
+
+    cdef dict properties = {'name': 'UNAVAILABLE'}  # for RTD
+
+    # Common properties to CUDA 9.0, 9.2, 10.x, 11.x, and HIP
+    IF CUDA_VERSION > 0 or use_hip:
         properties = {
             'name': props.name,
             'totalGlobalMem': props.totalGlobalMem,
@@ -302,67 +305,72 @@ cpdef getDeviceProperties(int device):
             'minor': props.minor,
             'textureAlignment': props.textureAlignment,
             'texturePitchAlignment': props.texturePitchAlignment,
-            'deviceOverlap': props.deviceOverlap,
             'multiProcessorCount': props.multiProcessorCount,
             'kernelExecTimeoutEnabled': props.kernelExecTimeoutEnabled,
             'integrated': props.integrated,
             'canMapHostMemory': props.canMapHostMemory,
             'computeMode': props.computeMode,
             'maxTexture1D': props.maxTexture1D,
-            'maxTexture1DMipmap': props.maxTexture1DMipmap,
-            'maxTexture1DLinear': props.maxTexture1DLinear,
             'maxTexture2D': tuple(props.maxTexture2D),
-            'maxTexture2DMipmap': tuple(props.maxTexture2DMipmap),
-            'maxTexture2DLinear': tuple(props.maxTexture2DLinear),
-            'maxTexture2DGather': tuple(props.maxTexture2DGather),
             'maxTexture3D': tuple(props.maxTexture3D),
-            'maxTexture3DAlt': tuple(props.maxTexture3DAlt),
-            'maxTextureCubemap': props.maxTextureCubemap,
-            'maxTexture1DLayered': tuple(props.maxTexture1DLayered),
-            'maxTexture2DLayered': tuple(props.maxTexture2DLayered),
-            'maxTextureCubemapLayered': tuple(props.maxTextureCubemapLayered),
-            'maxSurface1D': props.maxSurface1D,
-            'maxSurface2D': tuple(props.maxSurface2D),
-            'maxSurface3D': tuple(props.maxSurface3D),
-            'maxSurface1DLayered': tuple(props.maxSurface1DLayered),
-            'maxSurface2DLayered': tuple(props.maxSurface2DLayered),
-            'maxSurfaceCubemap': props.maxSurfaceCubemap,
-            'maxSurfaceCubemapLayered': tuple(props.maxSurfaceCubemapLayered),
-            'surfaceAlignment': props.surfaceAlignment,
             'concurrentKernels': props.concurrentKernels,
             'ECCEnabled': props.ECCEnabled,
             'pciBusID': props.pciBusID,
             'pciDeviceID': props.pciDeviceID,
             'pciDomainID': props.pciDomainID,
             'tccDriver': props.tccDriver,
-            'asyncEngineCount': props.asyncEngineCount,
-            'unifiedAddressing': props.unifiedAddressing,
             'memoryClockRate': props.memoryClockRate,
             'memoryBusWidth': props.memoryBusWidth,
             'l2CacheSize': props.l2CacheSize,
             'maxThreadsPerMultiProcessor': props.maxThreadsPerMultiProcessor,
-            'streamPrioritiesSupported': props.streamPrioritiesSupported,
-            'globalL1CacheSupported': props.globalL1CacheSupported,
-            'localL1CacheSupported': props.localL1CacheSupported,
-            'sharedMemPerMultiprocessor': props.sharedMemPerMultiprocessor,
-            'regsPerMultiprocessor': props.regsPerMultiprocessor,
-            'managedMemory': props.managedMemory,
             'isMultiGpuBoard': props.isMultiGpuBoard,
-            'multiGpuBoardGroupID': props.multiGpuBoardGroupID,
-            'hostNativeAtomicSupported': props.hostNativeAtomicSupported,
-            'singleToDoublePrecisionPerfRatio':
-                props.singleToDoublePrecisionPerfRatio,
-            'pageableMemoryAccess': props.pageableMemoryAccess,
-            'concurrentManagedAccess': props.concurrentManagedAccess,
-            'computePreemptionSupported':
-                props.computePreemptionSupported,
-            'canUseHostPointerForRegisteredMem':
-                props.canUseHostPointerForRegisteredMem,
             'cooperativeLaunch': props.cooperativeLaunch,
             'cooperativeMultiDeviceLaunch': props.cooperativeMultiDeviceLaunch,
-            'sharedMemPerBlockOptin': props.sharedMemPerBlockOptin,
         }
     IF CUDA_VERSION >= 9020:
+        properties['deviceOverlap'] = props.deviceOverlap
+        properties['maxTexture1DMipmap'] = props.maxTexture1DMipmap
+        properties['maxTexture1DLinear'] = props.maxTexture1DLinear
+        properties['maxTexture1DLayered'] = tuple(props.maxTexture1DLayered)
+        properties['maxTexture2DMipmap'] = tuple(props.maxTexture2DMipmap)
+        properties['maxTexture2DLinear'] = tuple(props.maxTexture2DLinear)
+        properties['maxTexture2DLayered'] = tuple(props.maxTexture2DLayered)
+        properties['maxTexture2DGather'] = tuple(props.maxTexture2DGather)
+        properties['maxTexture3DAlt'] = tuple(props.maxTexture3DAlt)
+        properties['maxTextureCubemap'] = props.maxTextureCubemap
+        properties['maxTextureCubemapLayered'] = tuple(
+            props.maxTextureCubemapLayered)
+        properties['maxSurface1D'] = props.maxSurface1D
+        properties['maxSurface1DLayered'] = tuple(props.maxSurface1DLayered)
+        properties['maxSurface2D'] = tuple(props.maxSurface2D)
+        properties['maxSurface2DLayered'] = tuple(props.maxSurface2DLayered)
+        properties['maxSurface3D'] = tuple(props.maxSurface3D)
+        properties['maxSurfaceCubemap'] = props.maxSurfaceCubemap
+        properties['maxSurfaceCubemapLayered'] = tuple(
+            props.maxSurfaceCubemapLayered)
+        properties['surfaceAlignment'] = props.surfaceAlignment
+        properties['asyncEngineCount'] = props.asyncEngineCount
+        properties['unifiedAddressing'] = props.unifiedAddressing
+        properties['streamPrioritiesSupported'] = (
+            props.streamPrioritiesSupported)
+        properties['globalL1CacheSupported'] = props.globalL1CacheSupported
+        properties['localL1CacheSupported'] = props.localL1CacheSupported
+        properties['sharedMemPerMultiprocessor'] = (
+            props.sharedMemPerMultiprocessor)
+        properties['regsPerMultiprocessor'] = props.regsPerMultiprocessor
+        properties['managedMemory'] = props.managedMemory
+        properties['multiGpuBoardGroupID'] = props.multiGpuBoardGroupID
+        properties['hostNativeAtomicSupported'] = (
+            props.hostNativeAtomicSupported)
+        properties['singleToDoublePrecisionPerfRatio'] = (
+            props.singleToDoublePrecisionPerfRatio)
+        properties['pageableMemoryAccess'] = props.pageableMemoryAccess
+        properties['concurrentManagedAccess'] = props.concurrentManagedAccess
+        properties['computePreemptionSupported'] = (
+            props.computePreemptionSupported)
+        properties['canUseHostPointerForRegisteredMem'] = (
+            props.canUseHostPointerForRegisteredMem)
+        properties['sharedMemPerBlockOptin'] = props.sharedMemPerBlockOptin
         properties['uuid'] = props.uuid.bytes
         properties['luid'] = props.luid
         properties['luidDeviceNodeMask'] = props.luidDeviceNodeMask
@@ -378,7 +386,45 @@ cpdef getDeviceProperties(int device):
             props.accessPolicyMaxWindowSize)
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
-    check_status(status)
+    IF use_hip:
+        properties['clockInstructionRate'] = props.clockInstructionRate
+        properties['maxSharedMemoryPerMultiProcessor'] = (
+            props.maxSharedMemoryPerMultiProcessor)
+        properties['gcnArch'] = props.gcnArch
+        properties['hdpMemFlushCntl'] = <intptr_t>(props.hdpMemFlushCntl)
+        properties['hdpRegFlushCntl'] = <intptr_t>(props.hdpRegFlushCntl)
+        properties['memPitch'] = props.memPitch
+        properties['cooperativeMultiDeviceUnmatchedFunc'] = (
+            props.cooperativeMultiDeviceUnmatchedFunc)
+        properties['cooperativeMultiDeviceUnmatchedGridDim'] = (
+            props.cooperativeMultiDeviceUnmatchedGridDim)
+        properties['cooperativeMultiDeviceUnmatchedBlockDim'] = (
+            props.cooperativeMultiDeviceUnmatchedBlockDim)
+        properties['cooperativeMultiDeviceUnmatchedSharedMem'] = (
+            props.cooperativeMultiDeviceUnmatchedSharedMem)
+        properties['isLargeBar'] = props.isLargeBar
+
+        # flatten "hipDeviceArch_t" into properties
+        # TODO(leofang): this might not be desired in some occasions?
+        properties['hasGlobalInt32Atomics'] = props.arch.hasGlobalInt32Atomics
+        properties['hasGlobalFloatAtomicExch'] = (
+            props.arch.hasGlobalFloatAtomicExch)
+        properties['hasSharedInt32Atomics'] = props.arch.hasSharedInt32Atomics
+        properties['hasSharedFloatAtomicExch'] = (
+            props.arch.hasSharedFloatAtomicExch)
+        properties['hasFloatAtomicAdd'] = props.arch.hasFloatAtomicAdd
+        properties['hasGlobalInt64Atomics'] = props.arch.hasGlobalInt64Atomics
+        properties['hasSharedInt64Atomics'] = props.arch.hasSharedInt64Atomics
+        properties['hasDoubles'] = props.arch.hasDoubles
+        properties['hasWarpVote'] = props.arch.hasWarpVote
+        properties['hasWarpBallot'] = props.arch.hasWarpBallot
+        properties['hasWarpShuffle'] = props.arch.hasWarpShuffle
+        properties['hasFunnelShift'] = props.arch.hasFunnelShift
+        properties['hasThreadFenceSystem'] = props.arch.hasThreadFenceSystem
+        properties['hasSyncThreadsExt'] = props.arch.hasSyncThreadsExt
+        properties['hasSurfaceFuncs'] = props.arch.hasSurfaceFuncs
+        properties['has3dGrid'] = props.arch.has3dGrid
+        properties['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
     return properties
 
 cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
