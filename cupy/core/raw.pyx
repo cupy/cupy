@@ -38,6 +38,10 @@ cdef class RawKernel:
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
     """
+    def __cinit__(self):
+        # this is only for pickling: if any change is made such that the old
+        # pickles cannot be reused, we bump this version number
+        self.raw_ver = 1
 
     def __init__(self, str code, str name, tuple options=(),
                  str backend='nvrtc', *, bint translate_cucomplex=False,
@@ -59,11 +63,6 @@ cdef class RawKernel:
 
         # This is for profiling mechanisms to auto infer a name
         self.__name__ = name
-
-        # this is only for pickling: if any change is made such that the old
-        # pickles cannot be reused, we bump this version number here as will
-        # as in __setstate__
-        self.raw_ver = 1
 
     def __call__(self, grid, block, args, **kwargs):
         """__call__(self, grid, block, args, *, shared_mem=0)
@@ -134,12 +133,10 @@ cdef class RawKernel:
         return args
 
     def __setstate__(self, dict args):
-        raw_ver = args.get('raw_ver')
-        if raw_ver != 1:
+        if args.get('raw_ver') != self.raw_ver:
             raise pickle.UnpicklingError(
                 'The pickled RawKernel object is not supported by the current '
                 'CuPy version. It should not be used. Please recompile.')
-        self.raw_ver = raw_ver
 
         self.code = args['code']
         self.name = self.__name__ = args['name']
