@@ -1,6 +1,9 @@
 import contextlib
 import io
 import os
+import pickle
+import string
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -1076,3 +1079,94 @@ class TestRawGridSync(unittest.TestCase):
             grid = (n * n + block - 1) // block
             kern((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)
+
+
+_test_script = r'''
+import pickle
+import cupy as cp
+
+N = 100
+a = cp.random.random(N, dtype=cp.float32)
+b = cp.random.random(N, dtype=cp.float32)
+c = cp.empty_like(a)
+with open('${temp_dir}' + '/TestRawPicklable', 'rb') as f:
+    ker = pickle.load(f)
+${fetch_ker}
+ker((1,), (100,), (a, b, c, N))
+assert cp.allclose(a + b, c)
+assert ker.enable_cooperative_groups
+'''
+
+
+# Pickling/unpickling a RawModule should always success, whereas
+# pickling/unpickling a RawKernel would fail if we don't enforce
+# recompiling after unpickling it.
+@testing.parameterize(*testing.product({
+    'compile': (False, True),
+    'raw': ('ker', 'mod', 'mod_ker'),
+}))
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'HIP does not support enable_cooperative_groups')
+class TestRawPicklable(unittest.TestCase):
+
+    def setUp(self):
+        self.temporary_dir_context = use_temporary_cache_dir()
+        self.temp_dir = self.temporary_dir_context.__enter__()
+
+        # test if kw-only arguments are properly handled or not
+        if self.raw == 'ker':
+            self.ker = cupy.RawKernel(_test_source1, 'test_sum',
+                                      backend='nvcc',
+                                      enable_cooperative_groups=True)
+        else:
+            self.mod = cupy.RawModule(code=_test_source1,
+                                      backend='nvcc',
+                                      enable_cooperative_groups=True)
+
+    def tearDown(self):
+        self.temporary_dir_context.__exit__(*sys.exc_info())
+
+    def _helper(self):
+        N = 10
+        x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
+        x2 = cupy.ones((N, N), dtype=cupy.float32)
+        y = cupy.zeros((N, N), dtype=cupy.float32)
+        if self.raw == 'ker':
+            ker = self.ker
+        else:
+            ker = self.mod.get_function('test_sum')
+        ker((N,), (N,), (x1, x2, y, N**2))
+        assert cupy.allclose(x1 + x2, y)
+
+    def test_raw_picklable(self):
+        # force compiling before pickling
+        if self.compile:
+            self._helper()
+
+        if self.raw == 'ker':
+            # pickle the RawKernel
+            obj = self.ker
+        elif self.raw == 'mod':
+            # pickle the RawModule
+            obj = self.mod
+        elif self.raw == 'mod_ker':
+            # pickle the RawKernel fetched from the RawModule
+            obj = self.mod.get_function('test_sum')
+        with open(self.temp_dir + '/TestRawPicklable', 'wb') as f:
+            pickle.dump(obj, f)
+
+        # dump test script to temp dir
+        if self.raw == 'mod':
+            fetch_ker = "ker = ker.get_function('test_sum')"
+        else:
+            fetch_ker = ''
+        test_ker = string.Template(_test_script).substitute(
+            temp_dir=self.temp_dir,
+            fetch_ker=fetch_ker)
+        with open(self.temp_dir + '/TestRawPicklable.py', 'w') as f:
+            f.write(test_ker)
+
+        # run another process to check the pickle
+        s = subprocess.run([sys.executable,
+                            self.temp_dir + '/TestRawPicklable.py'])
+        s.check_returncode()  # raise if unsuccess
