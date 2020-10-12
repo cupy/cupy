@@ -5,48 +5,47 @@ import ast
 import inspect
 
 
-def transpile(*args, **kwargs):
-    codes = []
-    for func in args:
-        if not isinstance(func, _syntax.CudaFunction):
-            raise ValueError(
-                'The target function should be decorated with '
-                '`cupyx.jit.cuda_function`')
+def transpile(func, attributes, in_types, out_type):
+    attributes = ' '.join(attributes)
+    source = inspect.getsource(func)
 
-        attributes = ' '.join(func.attributes)
-        source = inspect.getsource(func.func)
+    # Fix indentation
+    lines = source.split('\n')
+    num_indent = len(lines[0]) - len(lines[0].lstrip())
+    source = '\n'.join([
+        line.replace(' ' * num_indent, '', 1) for line in lines])
 
-        # Fix indentation
-        lines = source.split('\n')
-        num_indent = len(lines[0]) - len(lines[0].lstrip())
-        source = '\n'.join([
-            line.replace(' ' * num_indent, '', 1) for line in lines])
-
-        global_mems = inspect.getclosurevars(func.func).globals
-        global_mems = dict([
-            (k, v) for k, v in global_mems.items() if inspect.ismodule(v)])
-        tree = ast.parse(source)
-        assert isinstance(tree, ast.Module)
-        assert len(tree.body) == 1
-        cuda_code = _transpile_function(tree.body[0], attributes, global_mems)
-        codes.append(cuda_code)
-
-    code = '\n'.join(codes)
-    # print(code)
-    return cupy.core.RawModule(code=code, **kwargs)
+    global_mems = inspect.getclosurevars(func).globals
+    global_mems = dict([
+        (k, v) for k, v in global_mems.items()])
+    tree = ast.parse(source)
+    assert isinstance(tree, ast.Module)
+    assert len(tree.body) == 1
+    print(global_mems)
+    return _transpile_function(
+        tree.body[0], attributes, global_mems, in_types, out_type)
 
 
 def _indent(lines, spaces='  '):
     return [spaces + line for line in lines]
 
 
+class Variable:
+
+    def __init__(self, cname, ctype):
+        self.cname = cname
+        self.ctype = ctype
+
+
 class Environment:
+
     def __init__(self, global_mems, types):
+        self.variable_list = []
         self.global_mems = global_mems
         self.types = types
 
 
-def _transpile_function(func, attributes, global_mems):
+def _transpile_function(func, attributes, global_mems, in_types, out_type):
     if not isinstance(func, ast.FunctionDef):
         # TODO(asi1024): Support for `ast.ClassDef`.
         raise NotImplementedError('Not supported: {}'.format(type(func)))
@@ -66,14 +65,14 @@ def _transpile_function(func, attributes, global_mems):
 
     args = arguments.args
     arg_names = [arg.arg for arg in args]
-    types = dict([(a, '_Type_{}'.format(a)) for a in arg_names])
-    type_params = 'template<{}>'.format(
-        ', '.join(['typename {}'.format(types[a]) for a in arg_names]))
-    params = ', '.join(['{} {}'.format(types[a], a) for a in arg_names])
-    function_decl = '{} void {}({})'.format(attributes, func.name, params)
+    assert len(arg_names) == len(in_types)
+    types = dict(zip(arg_names, in_types))
+    params = ', '.join(['{} {}'.format(types[a].ctype, a) for a in arg_names])
+    function_decl = '{} {} {}({})'.format(
+        attributes, out_type.ctype, func.name, params)
     env = Environment(global_mems, types)
     body = _transpile_stmts(func.body, env)
-    return '\n'.join([type_params, function_decl + ' {'] + body + ['}'])
+    return '\n'.join([function_decl + ' {'] + body + ['}'])
 
 
 _ops = {
@@ -212,7 +211,7 @@ def _transpile_name(expr, env):
                 return expr.id
             if expr.id in env.global_mems:
                 e = env.global_mems[expr.id]
-                return e.s if isinstance(e, _syntax.CudaObject) else e
+                return e._s if isinstance(e, _syntax.CudaObject) else e
             raise NameError(
                 'Unbound name: {} in L{}'.format(expr.id, expr.lineno))
         if isinstance(expr, ast.Attribute):
@@ -220,7 +219,7 @@ def _transpile_name(expr, env):
             if isinstance(value, str):
                 return value + '.' + expr.attr
             e = getattr(value, expr.attr)
-            return e.s if isinstance(e, _syntax.CudaObject) else e
+            return e._s if isinstance(e, _syntax.CudaObject) else e
         return _transpile_expr(expr, env)
     e = _parse_attribute(expr)
     if isinstance(e, str):
