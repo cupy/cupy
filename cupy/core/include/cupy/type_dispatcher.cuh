@@ -3,6 +3,7 @@
 
 #include <cupy/complex.cuh>
 #include <stdexcept>
+#include <cstdint>
 #if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
 #include <cuda_fp16.h>
