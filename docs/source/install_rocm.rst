@@ -15,7 +15,7 @@ The following ROCm libraries are required:
 
 ::
 
-  $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim
+  $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl
 
 .. _install_hip:
 
