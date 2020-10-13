@@ -67,7 +67,7 @@ main() {
       apt install python3.7-dev python3-apt python3-pip python3-setuptools -qqy
       python3.7 -m pip install cython numpy
 
-      wget -qO - http://repo.radeon.com/rocm/apt/debian/rocm.gpg.key | apt-key add -
+      wget -qO - http://repo.radeon.com/rocm/apt/debian/dists/xenial/Release.gpg | apt-key add -
       echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
 
       apt update -qqy
