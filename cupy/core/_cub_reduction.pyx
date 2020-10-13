@@ -5,6 +5,7 @@ from cupy.core cimport _reduction
 from cupy.core cimport _scalar
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
+from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core cimport internal
 from cupy.cuda cimport cub
 from cupy.cuda cimport function
@@ -106,8 +107,8 @@ __global__ void ${name}(${params}) {
   }
 
   // each block handles the reduction of 1 segment
-  size_t segment_id = blockIdx.x * _segment_size;
-  const type_mid_in* segment_head = _in0 + segment_id;
+  size_t segment_idx = blockIdx.x * _segment_size;
+  const type_mid_in* segment_head = _in0 + segment_idx;
   size_t i = 0;  // tile head within the segment
   int tile_size = (BLOCK_SIZE * ITEMS_PER_THREAD < _segment_size ?
                    BLOCK_SIZE * ITEMS_PER_THREAD :
@@ -116,8 +117,8 @@ __global__ void ${name}(${params}) {
   #if defined FIRST_PASS
   // for two-pass reduction only: "last segment" is special
   if (_array_size > 0) {
-      if (_array_size - segment_id <= _segment_size) {
-          _segment_size = _array_size - segment_id;
+      if (_array_size - segment_idx <= _segment_size) {
+          _segment_size = _array_size - segment_idx;
       }
   }
   #endif
@@ -145,9 +146,9 @@ __global__ void ${name}(${params}) {
 
           // some pre_map_expr uses _J internally...
           #if defined FIRST_PASS
-          int _J = (segment_id + i + e_idx);
+          int _J = (segment_idx + i + e_idx);
           #else  // only one pass
-          int _J = (segment_id + i + e_idx) % _segment_size;
+          int _J = (segment_idx + i + e_idx) % _segment_size;
           #endif
 
           if (e_idx < tile_size) {
@@ -383,10 +384,11 @@ cdef inline void _cub_two_pass_launch(
     cdef Py_ssize_t contiguous_size, out_block_num
     cdef function.Function func
     cdef memory.MemoryPointer memptr
-    cdef str post_map_expr1, post_map_expr2
+    cdef str post_map_expr1, post_map_expr2, f
     cdef list inout_args
     cdef tuple cub_params
     cdef size_t gridx, blockx
+    cdef ndarray in_arr
 
     # fair share
     contiguous_size = min(segment_size, block_size * items_per_thread)
@@ -405,10 +407,20 @@ cdef inline void _cub_two_pass_launch(
                   _cub_convert_to_c_scalar(segment_size, segment_size)]
     cub_params = (items_per_thread,)
 
-    # For mean()
     if 'mean' in name:
         post_map_expr1 = post_map_expr.replace('_in_ind.size()', '1.0')
         post_map_expr1 = post_map_expr1.replace('_out_ind.size()', '1.0')
+    elif any((f in name for f in ('argmax', 'argmin'))):
+        # Workaround: in NumPy the indices are always generated based on
+        # a C-order array (since PyArray_ContiguousFromAny was called).
+        # We have to do a conversion here (?) since we do not retain the
+        # info on strides.
+        # TODO(leofang): improve this workaround
+        in_arr = in_args[0]
+        if in_arr.ndim > 1 and in_arr._f_contiguous:
+            in_arr = _internal_ascontiguousarray(in_arr)
+            inout_args[0] = in_args[0] = in_arr
+        post_map_expr1 = post_map_expr
     else:
         post_map_expr1 = post_map_expr
 
