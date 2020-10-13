@@ -325,6 +325,8 @@ from cupy.manipulation.split import vsplit  # NOQA
 from cupy.manipulation.tiling import repeat  # NOQA
 from cupy.manipulation.tiling import tile  # NOQA
 
+from cupy.manipulation.add_remove import append  # NOQA
+from cupy.manipulation.add_remove import resize  # NOQA
 from cupy.manipulation.add_remove import unique  # NOQA
 from cupy.manipulation.add_remove import trim_zeros  # NOQA
 
@@ -716,6 +718,7 @@ from cupy._statistics.meanvar import average  # NOQA
 from cupy._statistics.meanvar import mean  # NOQA
 from cupy._statistics.meanvar import std  # NOQA
 from cupy._statistics.meanvar import var  # NOQA
+from cupy._statistics.meanvar import nanmedian  # NOQA
 from cupy._statistics.meanvar import nanmean  # NOQA
 from cupy._statistics.meanvar import nanstd  # NOQA
 from cupy._statistics.meanvar import nanvar  # NOQA

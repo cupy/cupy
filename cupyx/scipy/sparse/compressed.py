@@ -15,6 +15,7 @@ from cupy import core
 from cupy._creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
+from cupyx.scipy.sparse import coo
 from cupyx.scipy.sparse import data as sparse_data
 from cupyx.scipy.sparse import sputils
 from cupyx.scipy.sparse import _util
@@ -356,6 +357,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             if shape is None:
                 shape = arg1.shape
+
+        elif isinstance(arg1, tuple) and len(arg1) == 2:
+            # Note: This implementation is not efficeint, as it first
+            # constructs a sparse matrix with coo format, then converts it to
+            # compressed format.
+            sp_coo = coo.coo_matrix(arg1, shape=shape, dtype=dtype, copy=copy)
+            sp_compressed = sp_coo.asformat(self.format)
+            data = sp_compressed.data
+            indices = sp_compressed.indices
+            indptr = sp_compressed.indptr
 
         elif isinstance(arg1, tuple) and len(arg1) == 3:
             data, indices, indptr = arg1

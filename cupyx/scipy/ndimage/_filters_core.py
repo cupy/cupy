@@ -3,6 +3,7 @@ import warnings
 import numpy
 import cupy
 
+from cupy.core import internal
 from cupyx.scipy.ndimage import _util
 
 
@@ -45,7 +46,7 @@ def _check_size_footprint_structure(ndim, size, footprint, structure,
 def _convert_1d_args(ndim, weights, origin, axis):
     if weights.ndim != 1 or weights.size < 1:
         raise RuntimeError('incorrect filter size')
-    axis = cupy._util._normalize_axis_index(axis, ndim)
+    axis = internal._normalize_axis_index(axis, ndim)
     w_shape = [1]*ndim
     w_shape[axis] = weights.size
     weights = weights.reshape(w_shape)

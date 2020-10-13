@@ -129,7 +129,7 @@ def _potrf_batched(a):
         potrfBatched = cusolver.zpotrfBatched
 
     x = a.astype(dtype, order='C', copy=True)
-    xp = cupy.core.core._mat_ptrs(x)
+    xp = cupy.core._mat_ptrs(x)
     n = x.shape[-1]
     ldx = x.strides[-2] // x.dtype.itemsize
     handle = device.get_cusolver_handle()

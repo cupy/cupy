@@ -1,3 +1,4 @@
+import math
 import unittest
 import pytest
 
@@ -80,6 +81,48 @@ class TestMedianAxis(unittest.TestCase):
     def test_median_axis_sequence(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         return xp.median(a, self.axis, keepdims=self.keepdims)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape': [(3, 4, 5)],
+        'axis': [None, 0, 1, -1, (0, 1), (0, 2), (-1, -2)],
+        'keepdims': [True, False],
+        'overwrite_input': [True, False]
+    })
+)
+@testing.gpu
+class TestNanMedian(unittest.TestCase):
+
+    zero_density = 0.25
+
+    def _make_array(self, dtype):
+        dtype = numpy.dtype(dtype)
+        if dtype.char in 'efdFD':
+            r_dtype = dtype.char.lower()
+            a = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
+                                      scale=1)
+            if dtype.char in 'FD':
+                ai = a
+                aj = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
+                                           scale=1)
+                ai[ai < math.sqrt(self.zero_density)] = 0
+                aj[aj < math.sqrt(self.zero_density)] = 0
+                a = ai + 1j * aj
+            else:
+                a[a < self.zero_density] = 0
+            a = a / a
+        else:
+            a = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        return a
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanmedian(self, xp, dtype):
+        a = xp.array(self._make_array(dtype))
+        out = xp.nanmedian(a, self.axis, keepdims=self.keepdims,
+                           overwrite_input=self.overwrite_input)
+        return xp.ascontiguousarray(out)
 
 
 @testing.gpu

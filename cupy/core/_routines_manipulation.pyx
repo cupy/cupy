@@ -261,23 +261,12 @@ cpdef ndarray moveaxis(ndarray a, source, destination):
     return _transpose(a, order)
 
 
-cdef Py_ssize_t _normalize_axis_index(Py_ssize_t axis,
-                                      Py_ssize_t ndim) except -1:
-    if axis < 0:
-        axis += ndim
-    if not (0 <= axis < ndim):
-        raise numpy.AxisError(
-            'axis {} is out of bounds for array of dimension {}'.format(
-                axis, ndim))
-    return axis
-
-
 cpdef ndarray _move_single_axis(ndarray a, Py_ssize_t source,
                                 Py_ssize_t destination):
     """Like moveaxis, but supporting only integer source and destination."""
     cdef Py_ssize_t ndim = a.ndim
-    source = _normalize_axis_index(source, ndim)
-    destination = _normalize_axis_index(destination, ndim)
+    source = internal._normalize_axis_index(source, ndim)
+    destination = internal._normalize_axis_index(destination, ndim)
 
     if source == destination:
         return a
