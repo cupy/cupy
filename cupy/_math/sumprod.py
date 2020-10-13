@@ -3,7 +3,7 @@ import numpy
 import cupy
 from cupy.core import _routines_math as _math
 from cupy.core import _fusion_thread_local
-from cupy import _util
+from cupy.core import internal
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -202,7 +202,7 @@ def diff(a, n=1, axis=-1, prepend=None, append=None):
 
     a = cupy.asanyarray(a)
     nd = a.ndim
-    axis = _util._normalize_axis_index(axis, nd)
+    axis = internal._normalize_axis_index(axis, nd)
 
     combined = []
 
@@ -289,7 +289,7 @@ def gradient(f, *varargs, axis=None, edge_order=1):
     if axis is None:
         axes = tuple(range(ndim))
     else:
-        axes = _util._normalize_axis_indices(axis, ndim)
+        axes = internal._normalize_axis_indices(axis, ndim)
 
     len_axes = len(axes)
     n = len(varargs)

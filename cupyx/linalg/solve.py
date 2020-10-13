@@ -49,7 +49,7 @@ def _batched_invh(a):
         raise ValueError(msg)
 
     a = a.astype(dtype, order='C', copy=True)
-    ap = cupy.core.core._mat_ptrs(a)
+    ap = cupy.core._mat_ptrs(a)
     n = a.shape[-1]
     lda = a.strides[-2] // a.dtype.itemsize
     handle = device.get_cusolver_handle()
@@ -68,7 +68,7 @@ def _batched_invh(a):
     b[...] = identity_matrix
     nrhs = b.shape[-1]
     ldb = b.strides[-2] // a.dtype.itemsize
-    bp = cupy.core.core._mat_ptrs(b)
+    bp = cupy.core._mat_ptrs(b)
     dev_info = cupy.empty(1, dtype=numpy.int32)
 
     # NOTE: potrsBatched does not currently support nrhs > 1 (CUDA v10.2)

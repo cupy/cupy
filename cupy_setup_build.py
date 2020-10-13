@@ -61,6 +61,7 @@ cuda_files = [
     'cupy.core._reduction',
     'cupy.core._routines_binary',
     'cupy.core._routines_indexing',
+    'cupy.core._routines_linalg',
     'cupy.core._routines_logic',
     'cupy.core._routines_manipulation',
     'cupy.core._routines_math',
@@ -90,7 +91,7 @@ cuda_files = [
 
 if use_hip:
     # We handle nvtx (and likely any other future support) here, because
-    # the HIP stubs (cupy_hip.h/cupy_hip_common.h) would cause many symbols
+    # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
     MODULES.append({
@@ -234,6 +235,22 @@ if not use_hip:
         ],
         'libraries': [
             'cudart',
+        ],
+        'check_method': build.check_cub_version,
+        'version_method': build.get_cub_version,
+    })
+else:
+    MODULES.append({
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'hipcub/hipcub_version.hpp',  # dummy
+        ],
+        'libraries': [
+            'hiprtc',
+            'hip_hcc',
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,

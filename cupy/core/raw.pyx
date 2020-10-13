@@ -1,3 +1,5 @@
+import pickle
+
 import cupy
 
 from cupy_backends.cuda.api cimport driver
@@ -36,6 +38,10 @@ cdef class RawKernel:
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
     """
+    def __cinit__(self):
+        # this is only for pickling: if any change is made such that the old
+        # pickles cannot be reused, we bump this version number
+        self.raw_ver = 1
 
     def __init__(self, str code, str name, tuple options=(),
                  str backend='nvrtc', *, bint translate_cucomplex=False,
@@ -104,6 +110,43 @@ cdef class RawKernel:
             ker = mod.get_function(self.name)
             self._kernel_cache[dev] = ker
         return ker
+
+    # It is not possible to implement __reduce__ for a cdef class. The
+    # two-tuple return cannot handle the keyword-only arguments, and
+    # the three-tuple return (for updating the object's internal state)
+    # does not work either, because cdef classes by default does not have
+    # __dict__. Therefore, the only way to handle keyword-only arguments
+    # for picking a cdef class is to define the following two special
+    # functions, which is in fact preferred over __reduce__.
+
+    def __getstate__(self):
+        cdef dict args
+        args = {'code': self.code,
+                'name': self.name,
+                'options': self.options,
+                'backend': self.backend,
+                'translate_cucomplex': self.translate_cucomplex,
+                'file_path': self.file_path,
+                'name_expressions': self.name_expressions,
+                'enable_cooperative_groups': self.enable_cooperative_groups,
+                'raw_ver': self.raw_ver}
+        return args
+
+    def __setstate__(self, dict args):
+        if args.get('raw_ver') != self.raw_ver:
+            raise pickle.UnpicklingError(
+                'The pickled RawKernel object is not supported by the current '
+                'CuPy version. It should not be used. Please recompile.')
+
+        self.code = args['code']
+        self.name = self.__name__ = args['name']
+        self.options = args['options']
+        self.backend = args['backend']
+        self.translate_cucomplex = args['translate_cucomplex']
+        self.enable_cooperative_groups = args['enable_cooperative_groups']
+        self.file_path = args['file_path']
+        self.name_expressions = args['name_expressions']
+        self._kernel_cache = []  # to force recompiling
 
     @property
     def attributes(self):

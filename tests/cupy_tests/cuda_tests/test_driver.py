@@ -6,6 +6,7 @@ import cupy
 from cupy.cuda import driver
 
 
+@unittest.skipIf(cupy.cuda.runtime.is_hip, 'Context API is dperecated in HIP')
 class TestDriver(unittest.TestCase):
     def test_ctxGetCurrent(self):
         # Make sure to create context.
