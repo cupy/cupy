@@ -597,10 +597,11 @@ def gels(a, b):
     tau = _cupy.empty(mn_min, dtype=dtype)
     cusolver_handle = _device.get_cusolver_handle()
     cublas_handle = _device.get_cublas_handle()
-    a = a.copy(order='F')
-    b = b.copy(order='F')
 
     if m >= n:  # over/well-determined systems
+        a = a.copy(order='F')
+        b = b.copy(order='F')
+
         # geqrf (QR decomposition, A = Q * R)
         ws_size = geqrf_helper(cusolver_handle, m, n, a.data.ptr, m)
         workspace = _cupy.empty(ws_size, dtype=dtype)
@@ -629,14 +630,13 @@ def gels(a, b):
         return b[:n]
 
     else:  # under-determined systems
-        a = _cupy.asfortranarray(a.conj().T)
+        a = a.conj().T.copy(order='F')
+        bb = b
         if b.ndim == 1:
-            bb = _cupy.empty((n,), dtype=dtype, order='F')
-            bb[:m] = b
+            b = _cupy.empty((n,), dtype=dtype, order='F')
         else:
-            bb = _cupy.empty((n, nrhs), dtype=dtype, order='F')
-            bb[:m, :] = b
-        b = bb
+            b = _cupy.empty((n, nrhs), dtype=dtype, order='F')
+        b[:m] = bb
 
         # geqrf (QR decomposition, A^T = Q * R)
         ws_size = geqrf_helper(cusolver_handle, n, m, a.data.ptr, n)
