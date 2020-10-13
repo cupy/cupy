@@ -1,4 +1,5 @@
 import unittest
+import math
 
 import numpy
 import pytest
@@ -757,6 +758,60 @@ class TestCumprod(unittest.TestCase):
         a_numpy = numpy.arange(1, 6, dtype=dtype)
         with self.assertRaises(TypeError):
             return cupy.cumprod(a_numpy)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(20,), (7, 6), (3, 4, 5)],
+    'axis': [None, 0, 1, 2],
+    'func': ('nancumsum', 'nancumprod'),
+}))
+@testing.gpu
+class TestNanCumSumProd(unittest.TestCase):
+
+    zero_density = 0.25
+
+    def _make_array(self, dtype):
+        dtype = numpy.dtype(dtype)
+        if dtype.char in 'efdFD':
+            r_dtype = dtype.char.lower()
+            a = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
+                                      scale=1)
+            if dtype.char in 'FD':
+                ai = a
+                aj = testing.shaped_random(self.shape, numpy, dtype=r_dtype,
+                                           scale=1)
+                ai[ai < math.sqrt(self.zero_density)] = 0
+                aj[aj < math.sqrt(self.zero_density)] = 0
+                a = ai + 1j * aj
+            else:
+                a[a < self.zero_density] = 0
+            a = a / a
+        else:
+            a = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        return a
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nancumsumprod(self, xp, dtype):
+        if self.axis is not None and self.axis >= len(self.shape):
+            raise unittest.SkipTest()
+        a = xp.array(self._make_array(dtype))
+        out = getattr(xp, self.func)(a, axis=self.axis)
+        return xp.ascontiguousarray(out)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nancumsumprod_out(self, xp, dtype):
+        dtype = numpy.dtype(dtype)
+        if self.axis is not None and self.axis >= len(self.shape):
+            raise unittest.SkipTest()
+        if len(self.shape) > 1 and self.axis is None:
+            # Skip the cases where np.nancum{sum|prod} raise AssertionError.
+            raise unittest.SkipTest()
+        a = xp.array(self._make_array(dtype))
+        out = xp.empty(self.shape, dtype=dtype)
+        getattr(xp, self.func)(a, axis=self.axis, out=out)
+        return xp.ascontiguousarray(out)
 
 
 @testing.gpu
