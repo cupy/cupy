@@ -57,7 +57,6 @@ import cupy.core.fusion  # NOQA
 from cupy import fft  # NOQA
 from cupy import io  # NOQA
 from cupy import linalg  # NOQA
-from cupy import manipulation  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 # `cupy.sparse` is deprecated in v8
@@ -285,53 +284,53 @@ from cupy._functional.piecewise import piecewise  # NOQA
 # -----------------------------------------------------------------------------
 # Array manipulation routines
 # -----------------------------------------------------------------------------
-from cupy.manipulation.basic import copyto  # NOQA
+from cupy._manipulation.basic import copyto  # NOQA
 
-from cupy.manipulation.shape import shape  # NOQA
-from cupy.manipulation.shape import ravel  # NOQA
-from cupy.manipulation.shape import reshape  # NOQA
+from cupy._manipulation.shape import shape  # NOQA
+from cupy._manipulation.shape import ravel  # NOQA
+from cupy._manipulation.shape import reshape  # NOQA
 
-from cupy.manipulation.transpose import moveaxis  # NOQA
-from cupy.manipulation.transpose import rollaxis  # NOQA
-from cupy.manipulation.transpose import swapaxes  # NOQA
-from cupy.manipulation.transpose import transpose  # NOQA
+from cupy._manipulation.transpose import moveaxis  # NOQA
+from cupy._manipulation.transpose import rollaxis  # NOQA
+from cupy._manipulation.transpose import swapaxes  # NOQA
+from cupy._manipulation.transpose import transpose  # NOQA
 
-from cupy.manipulation.dims import atleast_1d  # NOQA
-from cupy.manipulation.dims import atleast_2d  # NOQA
-from cupy.manipulation.dims import atleast_3d  # NOQA
-from cupy.manipulation.dims import broadcast  # NOQA
-from cupy.manipulation.dims import broadcast_arrays  # NOQA
-from cupy.manipulation.dims import broadcast_to  # NOQA
-from cupy.manipulation.dims import expand_dims  # NOQA
-from cupy.manipulation.dims import squeeze  # NOQA
+from cupy._manipulation.dims import atleast_1d  # NOQA
+from cupy._manipulation.dims import atleast_2d  # NOQA
+from cupy._manipulation.dims import atleast_3d  # NOQA
+from cupy._manipulation.dims import broadcast  # NOQA
+from cupy._manipulation.dims import broadcast_arrays  # NOQA
+from cupy._manipulation.dims import broadcast_to  # NOQA
+from cupy._manipulation.dims import expand_dims  # NOQA
+from cupy._manipulation.dims import squeeze  # NOQA
 
-from cupy.manipulation.join import column_stack  # NOQA
-from cupy.manipulation.join import concatenate  # NOQA
-from cupy.manipulation.join import dstack  # NOQA
-from cupy.manipulation.join import hstack  # NOQA
-from cupy.manipulation.join import stack  # NOQA
-from cupy.manipulation.join import vstack  # NOQA
+from cupy._manipulation.join import column_stack  # NOQA
+from cupy._manipulation.join import concatenate  # NOQA
+from cupy._manipulation.join import dstack  # NOQA
+from cupy._manipulation.join import hstack  # NOQA
+from cupy._manipulation.join import stack  # NOQA
+from cupy._manipulation.join import vstack  # NOQA
 
-from cupy.manipulation.kind import asfortranarray  # NOQA
-from cupy.manipulation.kind import require  # NOQA
+from cupy._manipulation.kind import asfortranarray  # NOQA
+from cupy._manipulation.kind import require  # NOQA
 
-from cupy.manipulation.split import array_split  # NOQA
-from cupy.manipulation.split import dsplit  # NOQA
-from cupy.manipulation.split import hsplit  # NOQA
-from cupy.manipulation.split import split  # NOQA
-from cupy.manipulation.split import vsplit  # NOQA
+from cupy._manipulation.split import array_split  # NOQA
+from cupy._manipulation.split import dsplit  # NOQA
+from cupy._manipulation.split import hsplit  # NOQA
+from cupy._manipulation.split import split  # NOQA
+from cupy._manipulation.split import vsplit  # NOQA
 
-from cupy.manipulation.tiling import repeat  # NOQA
-from cupy.manipulation.tiling import tile  # NOQA
+from cupy._manipulation.tiling import repeat  # NOQA
+from cupy._manipulation.tiling import tile  # NOQA
 
-from cupy.manipulation.add_remove import unique  # NOQA
-from cupy.manipulation.add_remove import trim_zeros  # NOQA
+from cupy._manipulation.add_remove import unique  # NOQA
+from cupy._manipulation.add_remove import trim_zeros  # NOQA
 
-from cupy.manipulation.rearrange import flip  # NOQA
-from cupy.manipulation.rearrange import fliplr  # NOQA
-from cupy.manipulation.rearrange import flipud  # NOQA
-from cupy.manipulation.rearrange import roll  # NOQA
-from cupy.manipulation.rearrange import rot90  # NOQA
+from cupy._manipulation.rearrange import flip  # NOQA
+from cupy._manipulation.rearrange import fliplr  # NOQA
+from cupy._manipulation.rearrange import flipud  # NOQA
+from cupy._manipulation.rearrange import roll  # NOQA
+from cupy._manipulation.rearrange import rot90  # NOQA
 
 # -----------------------------------------------------------------------------
 # Binary operations
