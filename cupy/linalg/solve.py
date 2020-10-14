@@ -2,7 +2,7 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy.core import core
+from cupy import core
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
