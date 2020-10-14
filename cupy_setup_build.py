@@ -252,6 +252,7 @@ if not use_hip:
             'cudart',
             'cufft_static',
             'culibos',
+            #'cufft',
         ],
         'check_method': build.check_cuda_version,
         'version_method': build.get_cuda_version,

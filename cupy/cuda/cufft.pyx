@@ -67,6 +67,13 @@ cdef extern from 'cupy_cufft.h' nogil:
     Result cufftExecD2Z(Handle plan, Double *idata, DoubleComplex *odata)
     Result cufftExecZ2D(Handle plan, DoubleComplex *idata, Double *odata)
 
+    # cuFFT callback
+    ctypedef enum callbackType 'cufftXtCallbackType':
+        pass
+    Result cufftXtSetCallback(Handle plan, void**, int, void**)
+    Result cufftXtClearCallback(Handle plan, int)
+    Result cufftXtSetCallbackSharedSize(Handle plan, int, size_t)
+
     # Version
     Result cufftGetVersion(int* version)
 
@@ -939,4 +946,13 @@ cpdef multi_gpu_execZ2Z(intptr_t plan, intptr_t idata, intptr_t odata,
     with nogil:
         result = cufftXtExecDescriptorZ2Z(h, <XtArray*>idata,
                                           <XtArray*>odata, direction)
+    check_result(result)
+
+
+cpdef set_callback(intptr_t plan, intptr_t callback, int cb_type):
+    cdef Handle h = <Handle>plan
+    cdef int result
+
+    with nogil:
+        result = cufftXtSetCallback(h, <void**>callback, <callbackType>cb_type, NULL)
     check_result(result)
