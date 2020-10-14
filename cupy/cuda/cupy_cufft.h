@@ -6,6 +6,7 @@
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 #include <cufft.h>
 #include <cufftXt.h>
+cufftResult setCallback(cufftHandle plan, void **callbackRoutine, cufftXtCallbackType type, void **callerInfo);
 
 #elif defined(CUPY_USE_HIP)
 #include <hipfft.h>

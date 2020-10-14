@@ -239,7 +239,7 @@ if not use_hip:
     MODULES.append({
         'name': 'cufft',
         'file': [
-            'cupy.cuda.cufft',
+            ('cupy.cuda.cufft', ['cupy/cuda/cupy_cufft.cu']),
         ],
         'include': [
             'cuda.h',

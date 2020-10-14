@@ -70,9 +70,9 @@ cdef extern from 'cupy_cufft.h' nogil:
     # cuFFT callback
     ctypedef enum callbackType 'cufftXtCallbackType':
         pass
-    Result cufftXtSetCallback(Handle plan, void**, int, void**)
-    Result cufftXtClearCallback(Handle plan, int)
-    Result cufftXtSetCallbackSharedSize(Handle plan, int, size_t)
+    Result setCallback(Handle plan, void**, int, void**)
+    #Result cufftXtClearCallback(Handle plan, int)
+    #Result cufftXtSetCallbackSharedSize(Handle plan, int, size_t)
 
     # Version
     Result cufftGetVersion(int* version)
@@ -954,5 +954,5 @@ cpdef set_callback(intptr_t plan, intptr_t callback, int cb_type):
     cdef int result
 
     with nogil:
-        result = cufftXtSetCallback(h, <void**>callback, <callbackType>cb_type, NULL)
+        result = setCallback(h, <void**>callback, <callbackType>cb_type, NULL)
     check_result(result)
