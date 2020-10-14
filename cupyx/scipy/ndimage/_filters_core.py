@@ -143,6 +143,9 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     return output
 
 
+math_constants_preamble = "#include <math_constants.h>\n"
+
+
 _CAST_FUNCTION = """
 // Implements a casting function to make it compatible with scipy
 // Use like cast<to_type>(value)
@@ -249,6 +252,15 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     value = '(*(X*)&data[{expr}])'.format(expr=expr)
     if mode == 'constant':
         cond = ' || '.join(['(ix_{} < 0)'.format(j) for j in range(ndim)])
+
+    if cval is numpy.nan:
+        cval = 'CUDART_NAN'
+    elif cval == numpy.inf:
+        cval = 'CUDART_INF'
+    elif cval == -numpy.inf:
+        cval = '-CUDART_INF'
+
+    if mode == 'constant':
         value = '(({cond}) ? cast<{ctype}>({cval}) : {value})'.format(
             cond=cond, ctype=ctype, cval=cval, value=value)
     found = found.format(value=value)
@@ -281,7 +293,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         name += '_i64'
     if has_structure:
         name += '_with_structure'
-    preamble = _CAST_FUNCTION + preamble
+    preamble = math_constants_preamble + _CAST_FUNCTION + preamble
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
                                   options=('--std=c++11',) + options)
