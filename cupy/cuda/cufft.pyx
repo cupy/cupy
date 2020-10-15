@@ -949,6 +949,9 @@ cpdef multi_gpu_execZ2Z(intptr_t plan, intptr_t idata, intptr_t odata,
     check_result(result)
 
 
+cdef str _callback_dev_code = None
+
+
 class CallbackManager:
     def __init__(self, str cb_load='', str cb_store=''):
         import importlib
@@ -956,62 +959,76 @@ class CallbackManager:
         import shutil
         import string
         import subprocess
-        from sysconfig import get_paths
+        import sysconfig
         import tempfile
 
         from cupy._environment import get_nvcc_path
-    
+
+
+        if not cb_load and not cb_store:
+            raise ValueError('Need to specify either cb_load or cb_store, or both')
+        if cb_load and 'd_loadCallbackPtr' not in cb_load:
+            raise ValueError('Need to specify d_loadCallbackPtr in cb_load')
+        if cb_store and 'd_storeCallbackPtr' not in cb_store:
+            raise ValueError('Need to specify d_storeCallbackPtr in cb_store')
+
         cdef str support
-        with open('cupy/cuda/cufftx.pxi') as f:
-            support = f.read()
+        cdef str python_include = sysconfig.get_paths()['include']
+        cdef str nvcc = get_nvcc_path()
+
+        # Set up temp directory; its lifetime is tied with the present instance 
         self.dir_obj = tempfile.TemporaryDirectory()
         self.dir = self.dir_obj.name
         #self.dir_obj = None
         #self.dir = '/home/leofang/dev/cupy_cuda10.2/kkk'
         print("temp dir:", self.dir)
-        with open(self.dir+'/cupy_callback.pyx', 'w') as f:
-            f.write(support)
 
-        # Step 1: cythonize the code
+        # Cythonize the Cython code; an object file cupy_callback.o is produced
+        shutil.copyfile('cupy/cuda/cufftx.pxi', self.dir+'/cupy_callback.pyx')
         p = subprocess.run(['cython', '-3', '-E', 'use_hip=0', self.dir+'/cupy_callback.pyx'], env=os.environ)
         p.check_returncode()
 
-        # Step 2: compile the module
+        # Compile the Python module
+        self.obj_host = self.dir+'/cupy_callback.o'
         shutil.copyfile('cupy/cuda/cupy_cufftx.h', self.dir+'/cupy_cufftx.h')
-        cdef str python_include = get_paths()['include']
-        p = subprocess.run(['g++', '-I'+python_include, '-I./',
-                            '-c', self.dir+'/cupy_callback.c',
+        p = subprocess.run(['g++', '-I'+python_include,
                             '-fPIC', '-pthread', '-O2',
-                            '-o', self.dir+'/cupy_callback.o'],
+                            '-c', self.dir+'/cupy_callback.c',
+                            '-o', self.obj_host],
                            env=os.environ)
         p.check_returncode()
 
-        # compile device code
-        with open('cupy/cuda/cupy_cufftx.cu') as f:
-            support = f.read()
-        support = string.Template(support).substitute(
-            dev_load_callback_ker = cb_load,
-            dev_store_callback_ker = cb_store,
-        )
+        # Dump and compile device code using nvcc
+        global _callback_dev_code
+        if _callback_dev_code is None:
+            with open('cupy/cuda/cupy_cufftx.cu') as f:
+                support = _callback_dev_code = f.read()
+        else:
+            support = _callback_dev_code
         with open(self.dir+'/cupy_cufftx.cu', 'w') as f:
+            support = string.Template(support).substitute(
+                dev_load_callback_ker = cb_load,
+                dev_store_callback_ker = cb_store,
+            )
             f.write(support)
-        cdef str nvcc = get_nvcc_path()
-        self.dev_obj = self.dir + '/cupy_callback_dev.o'
+        self.obj_dev = self.dir + '/cupy_callback_dev.o'
         p = subprocess.run([nvcc, '-arch=sm_75', '-dc',
                             '-c', self.dir+'/cupy_cufftx.cu',
                             '-Xcompiler', '-fPIC',
-                            '-o', self.dev_obj], env=os.environ)#, shell=True)
+                            '-o', self.obj_dev], env=os.environ)
         p.check_returncode()
 
-        # Step 3: use nvcc to generate a shared library
-        self.obj = self.dir + '/cupy_callback.so'
-        p = subprocess.run([nvcc, '-shared', '-arch=sm_75', #'-Xcompiler', r'"-fPIC -pthread"',
-                            self.dev_obj, self.dir+'/cupy_callback.o', 
-                            '-lcufft_static', '-lculibos', '-o', self.obj], env=os.environ)#, shell=True)
+        # Use nvcc to link and generate a shared library
+        # WARNING: CANNOT use host compiler to link, or there'd be leakage of undefined symbols!
+        self.lib = self.dir + '/cupy_callback.so'
+        p = subprocess.run([nvcc, '-shared', '-arch=sm_75',
+                            self.obj_dev, self.obj_host, 
+                            '-lcufft_static', '-lculibos', '-o', self.lib],
+                           env=os.environ)
         p.check_returncode()
 
-        # Step 4: load it
-        spec = importlib.util.spec_from_file_location('cupy_callback', self.obj)
+        # Load the Python module
+        spec = importlib.util.spec_from_file_location('cupy_callback', self.lib)
         self.mod = module = importlib.util.module_from_spec(spec)
         sys.modules['cupy_callback'] = module
         spec.loader.exec_module(module)

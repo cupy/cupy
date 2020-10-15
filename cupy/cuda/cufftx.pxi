@@ -13,6 +13,7 @@ cdef extern from 'cufftXt.h' nogil:
     Result cufftXtSetCallback(Handle, void**, int, void**)
     ctypedef enum fft_type 'cufftType':
         pass
+    Result cufftPlan1d(Handle*, int, fft_type, int)
     Result cufftMakePlan1d(Handle, int, fft_type, int, size_t*)
     ctypedef struct Complex 'cufftComplex':
         float x, y
@@ -26,10 +27,6 @@ cdef extern from 'cufftXt.h' nogil:
     ctypedef Complex (*cufftCallbackLoadC)(void*, size_t, void*, void*)
 
 
-cdef extern from 'cuda_runtime_api.h' nogil:
-    int cudaMemcpyFromSymbol(void*, const void*, size_t)#, size_t, int)
-
-
 cdef extern from 'cupy_cufftx.h' nogil:
     Result set_callback(Handle plan, int cb_type, bint cb_load)
 
@@ -39,18 +36,12 @@ cpdef intptr_t setCallback(object plan, intptr_t callback, int cb_type):
     cdef str plan_type
     cdef tuple plan_args
     cdef int result
-    cdef size_t size
-    cdef cufftCallbackLoadC cb
-    print(callback)
 
     if isinstance(plan, tuple):
         plan_type, plan_args = plan
         if plan_type == 'Plan1d':
-            result = cufftCreate(&h)
+            result = cufftPlan1d(&h, plan_args[0], plan_args[1], plan_args[2])
             check_result(result)
-            result = cufftMakePlan1d(h, plan_args[0], plan_args[1], plan_args[2], &size)
-            check_result(result)
-            print(h)
         elif plan_type == 'PlanNd':
             pass
         #    pN = PlanNd(plan.shape,
@@ -60,15 +51,12 @@ cpdef intptr_t setCallback(object plan, intptr_t callback, int cb_type):
         #    h = pN.handle
         else:
             raise NotImplementedError
+    elif isinstance(plan, int):
+        h = <Handle>plan
     else:
         raise NotImplementedError
 
     print(h, callback, cb_type)
-
-    #with nogil:
-    #    result = cudaMemcpyFromSymbol(&cb, &callback, sizeof(cb))
-    #print('memcpy:', result)
-    #print("got symbol:", <intptr_t>cb)
 
     with nogil:
         result = set_callback(h, <callbackType>cb_type, True)
