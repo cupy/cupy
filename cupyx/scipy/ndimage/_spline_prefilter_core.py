@@ -5,6 +5,7 @@ https://github.com/scipy/scipy/blob/master/scipy/ndimage/src/ni_splines.c
 """
 import functools
 import operator
+import textwrap
 
 import cupy
 
@@ -49,11 +50,12 @@ def _causal_init_code(mode):
     if mode == "mirror":
         code += """
         z_i = z;
-        z_n_1 = pow(z, ({dtype_pole})(n - 1));
+        z_n_1 = pow(z, ({data_type})(n - 1));
 
-        c[0] = c[0] + z_n_1 * c[n - 1];
+        c[0] = c[0] + z_n_1 * c[(n - 1) * element_stride];
         for (i = 1; i < n - 1; ++i) {{
-            c[0] += z_i * (c[i] + z_n_1 * c[n - 1 - i]);
+            c[0] += z_i * (c[i * element_stride] +
+                           z_n_1 * c[(n - 1 - i) * element_stride]);
             z_i *= z;
         }}
         c[0] /= 1 - z_n_1 * z_n_1;"""
@@ -62,19 +64,20 @@ def _causal_init_code(mode):
         z_i = z;
 
         for (i = 1; i < n; ++i) {{
-            c[0] += z_i * c[n - i];
+            c[0] += z_i * c[(n - i) * element_stride];
             z_i *= z;
         }}
         c[0] /= 1 - z_i; /* z_i = pow(z, n) */"""
     elif mode == "reflect":
         code += """
         z_i = z;
-        z_n = pow(z, ({dtype_pole})n);
+        z_n = pow(z, ({data_type})n);
         c0 = c[0];
 
-        c[0] = c[0] + z_n * c[n - 1];
+        c[0] = c[0] + z_n * c[(n - 1) * element_stride];
         for (i = 1; i < n; ++i) {{
-            c[0] += z_i * (c[i] + z_n * c[n - 1 - i]);
+            c[0] += z_i * (c[i * element_stride] +
+                           z_n * c[(n - 1 - i) * element_stride]);
             z_i *= z;
         }}
         c[0] *= z / (1 - z_n * z_n);
@@ -97,55 +100,51 @@ def _anticausal_init_code(mode):
     )
     if mode == "mirror":
         code += """
-        c[n - 1] = (z * c[n - 2] + c[n - 1]) * z / (z * z - 1);"""
+        c[(n - 1) * element_stride] = (
+            z * c[(n - 2) * element_stride] +
+            c[(n - 1) * element_stride]) * z / (z * z - 1);"""
     elif mode == "wrap":
         code += """
         z_i = z;
 
         for (i = 0; i < n - 1; ++i) {{
-            c[n - 1] += z_i * c[i];
+            c[(n - 1) * element_stride] += z_i * c[i * element_stride];
             z_i *= z;
         }}
-        c[n - 1] *= z / (z_i - 1); /* z_i = pow(z, n) */"""
+        c[(n - 1) * element_stride] *= z / (z_i - 1); /* z_i = pow(z, n) */"""
     elif mode == "reflect":
         code += """
-        c[n - 1] *= z / (z - 1);"""
+        c[(n - 1) * element_stride] *= z / (z - 1);"""
     else:
         raise ValueError("invalid mode: {}".format(mode))
     return code
 
 
-def get_spline1d_code(mode, poles):
+def _get_spline1d_code(mode, poles, data_type):
     """Generates the code required for IIR filtering of a single 1d signal.
 
     Prefiltering is done by causal filtering followed by anti-causal filtering.
-
-    Currently this filtering can only be applied along the axis which is
-    contiguous in memory (e.g. the last axis for C-contiguous arrays). This
-    function will be applied in a batched fashion (see
-    ``batch_spline1d_template``).
+    Multiple boundary conditions have been implemented.
     """
     code = ["""
-    #include <cupy/complex.cuh>
-
     __device__ void spline_prefilter1d(
-        {dtype_data}* __restrict__ c, {dtype_index} signal_length)
+        T* __restrict__ c, idx_t signal_length, idx_t element_stride)
     {{"""]
 
     # variables common to all boundary modes
     code.append("""
-        {dtype_index} i, n = signal_length;
-        {dtype_pole} z, z_i;""")
+        idx_t i, n = signal_length;
+        {data_type} z, z_i;""")
 
     if mode in ["mirror", "constant", "nearest"]:
         # variables specific to these modes
         code.append("""
-        {dtype_pole} z_n_1;""")
+        {data_type} z_n_1;""")
     elif mode == "reflect":
         # variables specific to this modes
         code.append("""
-        {dtype_pole} z_n;
-        {dtype_data} c0;""")
+        {data_type} z_n;
+        T c0;""")
 
     for pole in poles:
 
@@ -158,7 +157,7 @@ def get_spline1d_code(mode, poles):
         code.append("""
         // apply the causal filter for the current pole
         for (i = 1; i < n; ++i) {{
-            c[i] += z * c[i - 1];
+            c[i * element_stride] += z * c[(i - 1) * element_stride];
         }}""")
 
         # initialize and apply the anti-causal filter
@@ -166,56 +165,67 @@ def get_spline1d_code(mode, poles):
         code.append("""
         // apply the anti-causal filter for the current pole
         for (i = n - 2; i >= 0; --i) {{
-            c[i] = z * (c[i + 1] - c[i]);
+            c[i * element_stride] = z * (c[(i + 1) * element_stride] -
+                                         c[i * element_stride]);
         }}""")
 
     code += ["""
     }}"""]
-    return "\n".join(code)
+    return textwrap.dedent("\n".join(code)).format(data_type=data_type)
 
 
-batch_spline1d_template = """
-
-    extern "C" {{
-    __global__ void batch_spline_prefilter(
-        {dtype_data}* __restrict__ x,
-        {dtype_index} len_x,
-        {dtype_index} n_batch)
-    {{
-        {dtype_index} unraveled_idx = blockDim.x * blockIdx.x + threadIdx.x;
-        {dtype_index} batch_idx = unraveled_idx;
-        if (batch_idx < n_batch)
-        {{
-            {dtype_index} offset_x = batch_idx * len_x;  // current line offset
-            spline_prefilter1d(&x[offset_x], len_x);
+_FILTER_GENERAL = '''
+#include "cupy/carray.cuh"
+#include "cupy/complex.cuh"
+typedef unsigned char byte;
+typedef {data_type} T;
+typedef {index_type} idx_t;
+template <typename T>
+__device__ T* row(T* ptr, idx_t i, idx_t axis, idx_t ndim, const idx_t* shape) {{
+    idx_t index = 0, stride = 1;
+    for (idx_t a = ndim - 1; a > 0; --a) {{
+        if (a != axis) {{
+            index += (i % shape[a]) * stride;
+            i /= shape[a];
         }}
+        stride *= shape[a];
     }}
+    return ptr + index + stride * i;
+}}
+'''
+
+
+_batch_spline1d_strided_template = """
+extern "C" __global__
+void cupyx_spline_filter(T* __restrict__ y, const idx_t* __restrict__ info) {{
+    const idx_t n_signals = info[0], n_samples = info[1],
+        * __restrict__ shape = info+2;
+    idx_t y_elem_stride = 1;
+    for (int a = {ndim} - 1; a > {axis}; --a) {{ y_elem_stride *= shape[a]; }}
+    idx_t unraveled_idx = blockDim.x * blockIdx.x + threadIdx.x;
+    idx_t batch_idx = unraveled_idx;
+    if (batch_idx < n_signals)
+    {{
+        T* __restrict__ y_i = row(y, batch_idx, {axis}, {ndim}, shape);
+        spline_prefilter1d(y_i, n_samples, y_elem_stride);
     }}
+}}
 """
 
 
 @cupy.memoize(for_each_device=True)
-def get_raw_spline1d_code(
-    mode, order=3, dtype_index="int", dtype_data="double", dtype_pole="double"
-):
-    """Get kernel code for a spline prefilter.
-
-    The kernels assume the data has been reshaped to shape (n_batch, size) and
-    filtering is to be performed along the last axis.
-
-    See cupyimg.scipy.ndimage.interpolation.spline_filter1d for how this can
-    be used to filter along any axis of an array via swapping axes and
-    reshaping. For n-dimensional filtering, the prefilter is seperable across
-    axes and thus a 1d filter is applied along each axis in turn.
-    """
+def get_raw_spline1d_kernel(axis, ndim, mode, order=3, index_type="int",
+                             data_type="double"):
+    """Generate a kernel for applying a spline prefilter along a given axis."""
     poles = get_poles(order)
 
+    # headers and general utility function for extracting rows of data
+    code = _FILTER_GENERAL.format(index_type=index_type,
+                                  data_type=data_type)
+
     # generate source for a 1d function for a given boundary mode and poles
-    code = get_spline1d_code(mode, poles)
+    code += _get_spline1d_code(mode, poles, data_type)
 
     # generate code handling batch operation of the 1d filter
-    code += batch_spline1d_template
-    code = code.format(
-        dtype_index=dtype_index, dtype_data=dtype_data, dtype_pole=dtype_pole
-    )
-    return code
+    code += _batch_spline1d_strided_template.format(ndim=ndim, axis=axis)
+    return cupy.RawKernel(code, "cupyx_spline_filter")

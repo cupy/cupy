@@ -35,21 +35,23 @@ def _check_parameter(func_name, order, mode):
 
 
 def _get_spline_output(input, output, allow_float32=False):
+    """Create workspace array, y, and the final dtype for the output."""
     min_float_dtype = cupy.float32 if allow_float32 else cupy.float64
     if isinstance(output, cupy.ndarray):
-        output_dtype = cupy.promote_types(output.dtype, min_float_dtype)
-        output_dtype_requested = output.dtype
-        # For now, strided operation is not supported, so have to create a new
-        # temporary array, y, even when the user provides an output array.
-        y = _util._get_output(output_dtype, input)
+        float_dtype = cupy.promote_types(output.dtype, min_float_dtype)
+        output_dtype = output.dtype
+        if output_dtype == float_dtype:
+            y = output
+        else:
+            y = _util._get_output(float_dtype, input)
     else:
         if output is None:
-            output = output_dtype_requested = input.dtype
+            output = output_dtype = input.dtype
         else:
-            output_dtype_requested = cupy.dtype(output)
-        output = cupy.promote_types(output, min_float_dtype)
-        y = _util._get_output(output, input)
-    return y, output_dtype_requested
+            output_dtype = cupy.dtype(output)
+        float_dtype = cupy.promote_types(output, min_float_dtype)
+        y = _util._get_output(float_dtype, input)
+    return y, output_dtype
 
 
 def spline_filter1d(
@@ -96,80 +98,56 @@ def spline_filter1d(
     # order 0, 1 don't require reshaping as no CUDA kernel will be called
     # scalar or size 1 arrays also don't need to be filtered
     run_kernel = not (order < 2 or x.ndim == 0 or x.shape[axis] == 1)
-    if run_kernel:
-        if axis != ndim - 1:
-            x = x.swapaxes(axis, -1)
-        x_shape = x.shape
-        x = x.reshape((-1, x.shape[-1]), order="C")
-        if not x.flags.c_contiguous:
-            x = cupy.ascontiguousarray(x)
-    else:
+    if not run_kernel:
         output = _util._get_output(output, input)
         output[...] = x[...]
         return output
 
-    y, output_dtype_requested = _get_spline_output(
+    y, output_dtype = _get_spline_output(
         input, output, allow_float32
     )
-    if output_dtype_requested.kind != 'f':
-        # https://docs.cupy.dev/en/stable/reference/difference.html#cast-behavior-from-float-to-integer  # NOQA: E501
-        raise NotImplementedError("Only floating point output is supported")
-
-    # TODO: Consider adding a prefiltering kernel with strided access to
-    #       avoid the need for reshaping and allow in-place operation.
-    n_batch = x.shape[0]
-    out_len = x.shape[-1]
-    y = y.reshape((n_batch, out_len))
 
     if allow_float32 and y.dtype == cupy.float32:
-        # data arrays and poles always stored in double precision
-        dtype_data = "float"
-        dtype_pole = "float"
-
+        data_type = cupy.core._scalar.get_typename(cupy.float32)
     else:
-        dtype_data = "double"
-        dtype_pole = "double"
+        data_type = cupy.core._scalar.get_typename(cupy.float64)
 
-    # For the kernel, the input and output must have matching dtype
-    x = x.astype(y.dtype, copy=False)
+    # indexing logic in the kernel assumes contiguous input
+    y = cupy.ascontiguousarray(x)
 
-    module = cupy.RawModule(
-        code=_spline_prefilter_core.get_raw_spline1d_code(
-            mode,
-            order=order,
-            dtype_index=_util._get_inttype(input),
-            dtype_data=dtype_data,
-            dtype_pole=dtype_pole,
-        )
+    index_type = _util._get_inttype(input)
+    index_dtype = cupy.int32 if index_type == 'int' else cupy.int64
+
+    kern =_spline_prefilter_core.get_raw_spline1d_kernel(
+        axis,
+        ndim,
+        mode,
+        order=order,
+        index_type=index_type,
+        data_type=data_type,
     )
-    kern = module.get_function("batch_spline_prefilter")
+
+    n_samples = x.shape[axis]
+    n_signals = x.size // n_samples
+    info = cupy.array((n_signals, n_samples) + x.shape, dtype=index_dtype)
 
     # Due to recursive nature, a given line of data must be processed by a
-    # single thread. n_batch lines will be processed in total.
-    block = (min(max(1, n_batch//128), 32),)
-    grid = (int(math.ceil(n_batch / block[0])),)
+    # single thread. n_signals lines will be processed in total.
+    block = 128,
+    grid = (n_signals + block[0] - 1) // block[0],
 
     # apply prefilter gain
     poles = _spline_prefilter_core.get_poles(order=order)
-    y = x * _spline_prefilter_core.get_gain(poles)
+    y = y * _spline_prefilter_core.get_gain(poles)
 
     # apply caual + anti-causal IIR spline filters
-    kern(grid, block, (y, out_len, n_batch))
+    kern(grid, block, (y, info))
 
-    y = y.reshape(x_shape, order="C")
-    if axis != ndim - 1:
-        y = y.swapaxes(axis, -1)
-
-    if isinstance(output, cupy.ndarray):
-        # copy result back to the user-provided output array
+    if isinstance(output, cupy.ndarray) and y is not output:
+        # copy kernel output into the user-provided output array
         output[:] = y
         return output
-    else:
-        y = y.astype(output_dtype_requested, copy=False)
-        # ensure C-contiguous output to match in SciPy
-        if not y.flags.c_contiguous:
-            y = cupy.ascontiguousarray(y)
-    return y
+    return y.astype(output_dtype, copy=False)
 
 
 def spline_filter(
