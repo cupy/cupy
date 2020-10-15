@@ -239,28 +239,28 @@ if not use_hip:
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
     })
-    MODULES.append({
-        'name': 'cufftx',
-        'file': [
-            #('cupy.cuda.cufft', ['cupy/cuda/cupy_cufft.cu']),
-            'cupy.cuda.cufftx',
-        ],
-        'include': [
-            'cuda.h',
-            'cuda_runtime.h',
-            'cufft.h',
-            'cufftXt.h',
-        ],
-        'libraries': [
-            'cuda',
-            'cudart',
-            #'cufft_static',
-            #'culibos',
-            'cufft',
-        ],
-        'check_method': build.check_cuda_version,
-        'version_method': build.get_cuda_version,
-    })
+#    MODULES.append({
+#        'name': 'cufftx',
+#        'file': [
+#            #('cupy.cuda.cufft', ['cupy/cuda/cupy_cufft.cu']),
+#            'cupy.cuda.cufftx',
+#        ],
+#        'include': [
+#            'cuda.h',
+#            'cuda_runtime.h',
+#            'cufft.h',
+#            'cufftXt.h',
+#        ],
+#        'libraries': [
+#            'cuda',
+#            'cudart',
+#            #'cufft_static',
+#            #'culibos',
+#            'cufft',
+#        ],
+#        'check_method': build.check_cuda_version,
+#        'version_method': build.get_cuda_version,
+#    })
 else:
     MODULES.append({
         'name': 'cub',
