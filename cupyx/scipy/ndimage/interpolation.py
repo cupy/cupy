@@ -35,23 +35,35 @@ def _check_parameter(func_name, order, mode):
 
 
 def _get_spline_output(input, output, allow_float32=False):
-    """Create workspace array, y, and the final dtype for the output."""
+    """Create workspace array, temp, and the final dtype for the output.
+
+    If allow_float32 is False, temp will always have float64 dtype.
+    If allow_float32 is True, temp will have float32 dtype when ``input`` or
+    ``output`` is single precision.
+    """
     min_float_dtype = cupy.float32 if allow_float32 else cupy.float64
     if isinstance(output, cupy.ndarray):
         float_dtype = cupy.promote_types(output.dtype, min_float_dtype)
         output_dtype = output.dtype
-        if output_dtype == float_dtype:
-            y = output
-        else:
-            y = _util._get_output(float_dtype, input)
     else:
         if output is None:
             output = output_dtype = input.dtype
         else:
             output_dtype = cupy.dtype(output)
         float_dtype = cupy.promote_types(output, min_float_dtype)
-        y = _util._get_output(float_dtype, input)
-    return y, output_dtype
+
+    if (isinstance(output, cupy.ndarray)
+            and output.dtype == float_dtype == output_dtype
+            and output.flags.c_contiguous):
+        if output is not input:
+            output[...] = input[...]
+        temp = output
+    else:
+        temp = input.astype(float_dtype, copy=False)
+        temp = cupy.ascontiguousarray(temp)
+        if cupy.shares_memory(temp, input, 'MAY_SHARE_BOUNDS'):
+            temp = temp.copy()
+    return temp, float_dtype, output_dtype
 
 
 def spline_filter1d(
@@ -103,17 +115,12 @@ def spline_filter1d(
         output[...] = x[...]
         return output
 
-    y, output_dtype = _get_spline_output(
-        input, output, allow_float32
-    )
+    temp, data_dtype, output_dtype = _get_spline_output(x, output, allow_float32)
 
-    if allow_float32 and y.dtype == cupy.float32:
+    if allow_float32 and data_dtype == cupy.float32:
         data_type = cupy.core._scalar.get_typename(cupy.float32)
     else:
         data_type = cupy.core._scalar.get_typename(cupy.float64)
-
-    # indexing logic in the kernel assumes contiguous input
-    y = cupy.ascontiguousarray(x)
 
     index_type = _util._get_inttype(input)
     index_dtype = cupy.int32 if index_type == 'int' else cupy.int64
@@ -138,16 +145,16 @@ def spline_filter1d(
 
     # apply prefilter gain
     poles = _spline_prefilter_core.get_poles(order=order)
-    y = y * _spline_prefilter_core.get_gain(poles)
+    temp *= _spline_prefilter_core.get_gain(poles)
 
     # apply caual + anti-causal IIR spline filters
-    kern(grid, block, (y, info))
+    kern(grid, block, (temp, info))
 
-    if isinstance(output, cupy.ndarray) and y is not output:
+    if isinstance(output, cupy.ndarray) and temp is not output:
         # copy kernel output into the user-provided output array
-        output[:] = y
+        output[...] = temp[...]
         return output
-    return y.astype(output_dtype, copy=False)
+    return temp.astype(output_dtype, copy=False)
 
 
 def spline_filter(
@@ -180,23 +187,22 @@ def spline_filter(
     if order < 2 or order > 5:
         raise RuntimeError("spline order not supported")
 
-    y, output_dtype_requested = _get_spline_output(
-        input, output, allow_float32
-    )
-
+    x = input
+    temp, data_dtype, output_dtype = _get_spline_output(x, output,
+                                                        allow_float32)
     if order not in [0, 1] and input.ndim > 0:
-        for axis in range(input.ndim):
+        for axis in range(x.ndim):
             spline_filter1d(
-                input, order, axis, output=y, mode=mode,
+                x, order, axis, output=temp, mode=mode,
                 allow_float32=allow_float32
             )
-            input = y
+            x = temp
     if isinstance(output, cupy.ndarray):
-        output[...] = input[...]
+        output[...] = temp[...]
     else:
-        output = input
-    if output.dtype != output_dtype_requested:
-        output = output.astype(output_dtype_requested)
+        output = temp
+    if output.dtype != output_dtype:
+        output = output.astype(output_dtype)
     return output
 
 
