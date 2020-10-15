@@ -53,6 +53,15 @@ class FilterTestCaseBase(unittest.TestCase):
         kwargs = {param: getattr(self, param)
                   for param in FilterTestCaseBase.KWARGS_PARAMS
                   if hasattr(self, param)}
+
+        if 'cval' in kwargs and kwargs['cval'] is cupy.nan:
+            # skip comparisons in cases where CuPy doesn't support NaN cval
+            if self.filter in ['minimum_filter', 'minimum_filter1d',
+                               'maximum_filter', 'maximum_filter1d',
+                               'median_filter', 'percentile_filter',
+                               'rank_filter']:
+                return xp.asarray([])
+
         is_1d = self.filter.endswith('1d')
         for param in FilterTestCaseBase.DIMS_PARAMS:
             if param in kwargs and isinstance(kwargs[param], tuple):
@@ -139,6 +148,10 @@ COMMON_PARAMS = {
     'dtype': [numpy.uint8, numpy.float64],
 }
 
+# Floating point dtypes only
+COMMON_FLOAT_PARAMS = dict(COMMON_PARAMS)
+COMMON_FLOAT_PARAMS['dtype'] = [numpy.float32, numpy.float64]
+
 
 # The bulk of the tests are done with this class
 @testing.parameterize(*(
@@ -164,6 +177,9 @@ COMMON_PARAMS = {
         }) + testing.product({
             **COMMON_PARAMS,
             'mode': ['constant'], 'cval': [-1.0, 0.0, 1.0],
+        }) + testing.product({
+            **COMMON_FLOAT_PARAMS,
+            'mode': ['constant'], 'cval': [numpy.nan, numpy.inf, -numpy.inf],
         }) + testing.product({
             **COMMON_PARAMS,
             'mode': ['nearest', 'wrap'],
