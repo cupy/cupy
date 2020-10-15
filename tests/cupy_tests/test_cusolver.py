@@ -233,7 +233,6 @@ class TestGesv(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(4, 4), (5, 4), (4, 5)],
     'nrhs': [None, 1, 4],
 }))
@@ -241,33 +240,14 @@ class TestGesv(unittest.TestCase):
 class TestGels(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
-    def _make_array(self, shape):
-        a = testing.shaped_random(shape, cupy, dtype=self.r_dtype, scale=1)
-        return a
-
-    def _make_matrix(self, shape):
-        a = self._make_array(shape)
-        if self.dtype.char in 'FD':
-            a = a + 1j * self._make_array(shape)
-        return a
-
-    def setUp(self):
-        self.dtype = numpy.dtype(self.dtype)
-        self.r_dtype = self.dtype.char.lower()
-        m, n = self.shape
-        nrhs = 1 if self.nrhs is None else self.nrhs
-        a = self._make_matrix((m, n))
-        x = self._make_matrix((n, nrhs))
-        b = cupy.matmul(a, x)
-        b_shape = [m]
+    @testing.for_dtypes('fdFD')
+    def test_gels(self, dtype):
+        b_shape = [self.shape[0]]
         if self.nrhs is not None:
-            b_shape.append(nrhs)
-        self.a = a
-        self.b = b.reshape(b_shape)
-        self.tol = self._tol[self.r_dtype]
-
-    def test_gels(self):
-        x = cusolver.gels(self.a, self.b)
-        b = cupy.matmul(self.a, x)
-        cupy.testing.assert_allclose(b, self.b,
-                                     rtol=self.tol, atol=self.tol)
+            b_shape.append(self.nrhs)
+        a = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        b = testing.shaped_random(b_shape, numpy, dtype=dtype)
+        tol = self._tol[numpy.dtype(dtype).char.lower()]
+        x_lstsq = numpy.linalg.lstsq(a, b)[0]
+        x_gels = cusolver.gels(cupy.array(a), cupy.array(b))
+        cupy.testing.assert_allclose(x_gels, x_lstsq, rtol=tol, atol=tol)
