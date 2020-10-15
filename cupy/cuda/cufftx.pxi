@@ -31,38 +31,39 @@ cdef extern from 'cupy_cufftx.h' nogil:
     Result set_callback(Handle plan, int cb_type, bint cb_load)
 
 
-cpdef intptr_t setCallback(object plan, intptr_t callback, int cb_type):
+cpdef intptr_t createPlan(object plan):
     cdef Handle h
     cdef str plan_type
     cdef tuple plan_args
     cdef int result
 
-    if isinstance(plan, tuple):
-        plan_type, plan_args = plan
-        if plan_type == 'Plan1d':
-            result = cufftPlan1d(&h, plan_args[0], plan_args[1], plan_args[2])
-            check_result(result)
-        elif plan_type == 'PlanNd':
-            pass
-        #    pN = PlanNd(plan.shape,
-        #                plan.inembed, plan.istride, plan.idist,
-        #                plan.onembed, plan.ostride, plan.odist,
-        #                plan.fft_type, plan.batch, plan.order, plan.last_axis, plan.last_size)
-        #    h = pN.handle
-        else:
-            raise NotImplementedError
-    elif isinstance(plan, int):
-        h = <Handle>plan
+    if not isinstance(plan, tuple):
+        raise NotImplementedError
+    plan_type, plan_args = plan
+    if plan_type == 'Plan1d':
+        result = cufftPlan1d(&h, plan_args[0], plan_args[1], plan_args[2])
+        check_result(result)
+    elif plan_type == 'PlanNd':
+        pass
+    #    result = cufftPlanMany(Handle plan, int rank, int *n, int *inembed,
+    #                     int istride, int idist, int *onembed, int ostride,
+    #                     int odist, Type type, int batch,
+    #                     size_t *workSize)
+    #    pN = PlanNd(plan.shape,
+    #                plan.inembed, plan.istride, plan.idist,
+    #                plan.onembed, plan.ostride, plan.odist,
+    #                plan.fft_type, plan.batch, plan.order, plan.last_axis, plan.last_size)
+    #    h = pN.handle
     else:
         raise NotImplementedError
-
-    print(h, callback, cb_type)
-
-    with nogil:
-        result = set_callback(h, <callbackType>cb_type, True)
-    check_result(result)
-
     return <intptr_t>h
+
+
+cpdef intptr_t setCallback(intptr_t plan, int cb_type, bint is_load):
+    cdef Handle h = <Handle>plan
+    with nogil:
+        result = set_callback(h, <callbackType>cb_type, is_load)
+    check_result(result)
 
 
 cpdef transform(intptr_t plan, intptr_t idata, intptr_t odata):

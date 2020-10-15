@@ -971,6 +971,8 @@ class CallbackManager:
             raise ValueError('Need to specify d_loadCallbackPtr in cb_load')
         if cb_store and 'd_storeCallbackPtr' not in cb_store:
             raise ValueError('Need to specify d_storeCallbackPtr in cb_store')
+        self.cb_load = cb_load
+        self.cb_store = cb_store
 
         cdef str support
         cdef str python_include = sysconfig.get_paths()['include']
@@ -1033,13 +1035,27 @@ class CallbackManager:
         sys.modules['cupy_callback'] = module
         spec.loader.exec_module(module)
 
-    def set_callback(self, object plan, intptr_t callback, int cb_type):
-        import cupy_callback  # make cython happy
-        return cupy_callback.setCallback(plan, callback, cb_type)
+        self.handle = None
+        self.plan = None
 
-    def transform(self, intptr_t plan, intptr_t in_arr, intptr_t out_arr):
-        import cupy_callback  # make cython happy
-        return cupy_callback.transform(plan, in_arr, out_arr)
+    def create_plan(self, object plan):
+        self.handle = self.mod.createPlan(plan)
+        self.plan = plan
+
+    def set_callback(self, int cb_load_type=-1, int cb_store_type=-1):
+        if self.handle is None or self.plan is None:
+            raise RuntimeError
+        if self.cb_load:
+            if cb_load_type == -1:
+                raise ValueError
+            self.mod.setCallback(self.handle, cb_load_type, True)
+        if self.cb_store:
+            if cb_store_type == -1:
+                raise ValueError
+            self.mod.setCallback(self.handle, cb_store_type, False)
+
+    def transform(self, intptr_t in_arr, intptr_t out_arr):
+        self.mod.transform(self.handle, in_arr, out_arr)
 
     def __del__(self):
         self.dir_obj.cleanup()
