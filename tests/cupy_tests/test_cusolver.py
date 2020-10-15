@@ -230,3 +230,24 @@ class TestGesv(unittest.TestCase):
         x = cusolver.gesv(self.a, self.b)
         cupy.testing.assert_allclose(x, self.x_ref,
                                      rtol=self.tol, atol=self.tol)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(4, 4), (5, 4), (4, 5)],
+    'nrhs': [None, 1, 4],
+}))
+@attr.gpu
+class TestGels(unittest.TestCase):
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    @testing.for_dtypes('fdFD')
+    def test_gels(self, dtype):
+        b_shape = [self.shape[0]]
+        if self.nrhs is not None:
+            b_shape.append(self.nrhs)
+        a = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        b = testing.shaped_random(b_shape, numpy, dtype=dtype)
+        tol = self._tol[numpy.dtype(dtype).char.lower()]
+        x_lstsq = numpy.linalg.lstsq(a, b)[0]
+        x_gels = cusolver.gels(cupy.array(a), cupy.array(b))
+        cupy.testing.assert_allclose(x_gels, x_lstsq, rtol=tol, atol=tol)
