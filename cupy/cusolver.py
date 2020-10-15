@@ -632,10 +632,8 @@ def gels(a, b):
     else:  # under-determined systems
         a = a.conj().T.copy(order='F')
         bb = b
-        if b.ndim == 1:
-            b = _cupy.empty((n,), dtype=dtype, order='F')
-        else:
-            b = _cupy.empty((n, nrhs), dtype=dtype, order='F')
+        out_shape = (n,) if b.ndim == 1 else (n, nrhs)
+        b = _cupy.zeros(out_shape, dtype=dtype, order='F')
         b[:m] = bb
 
         # geqrf (QR decomposition, A^T = Q * R)
