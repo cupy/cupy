@@ -955,17 +955,17 @@ def extrema(input, labels=None, index=None):
             If None (default), all values where non-zero `labels` are used.
 
     Returns:
-        A tuple that contains the following values.
+        A tuple that contains the following values:
 
-        minimums (cupy.ndarray): Values of minimums in each feature.
+        **minimums (cupy.ndarray)**: Values of minimums in each feature.
 
-        maximums (cupy.ndarray): Values of maximums in each feature.
+        **maximums (cupy.ndarray)**: Values of maximums in each feature.
 
-        min_positions (tuple or list of tuples):
-            Each tuple gives the N-D coordinates of the corresponding minimum.
+        **min_positions (tuple or list of tuples)**: Each tuple gives the N-D
+        coordinates of the corresponding minimum.
 
-        max_positions (tuple or list of tuples):
-            Each tuple gives the N-D coordinates of the corresponding maximum.
+        **max_positions (tuple or list of tuples)**: Each tuple gives the N-D
+        coordinates of the corresponding maximum.
 
     .. seealso:: :func:`scipy.ndimage.extrema`
     """
