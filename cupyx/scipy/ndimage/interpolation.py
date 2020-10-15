@@ -33,7 +33,6 @@ def _check_parameter(func_name, order, mode):
                       '_opencv_edge'):
         raise ValueError('boundary mode is not supported')
 
-
 def _get_spline_output(input, output, allow_float32=False):
     """Create workspace array, temp, and the final dtype for the output.
 
@@ -41,8 +40,16 @@ def _get_spline_output(input, output, allow_float32=False):
     If allow_float32 is True, temp will have float32 dtype when ``input`` or
     ``output`` is single precision.
     """
-    min_float_dtype = cupy.float32 if allow_float32 else cupy.float64
+    complex_data = input.dtype.kind == "c"
+    if complex_data:
+        min_float_dtype = cupy.complex64 if allow_float32 else cupy.complex128
+    else:
+        min_float_dtype = cupy.float32 if allow_float32 else cupy.float64
     if isinstance(output, cupy.ndarray):
+        if complex_data and output.dtype.kind != "c":
+            raise ValueError(
+                "output must have complex dtype for complex inputs"
+            )
         float_dtype = cupy.promote_types(output.dtype, min_float_dtype)
         output_dtype = output.dtype
     else:
@@ -102,8 +109,6 @@ def spline_filter1d(
     if order < 0 or order > 5:
         raise RuntimeError("spline order not supported")
     x = input
-    if cupy.iscomplexobj(x):
-        raise TypeError('Complex type not supported')
     ndim = x.ndim
     axis = internal._normalize_axis_index(axis, ndim)
 
@@ -116,11 +121,8 @@ def spline_filter1d(
         return output
 
     temp, data_dtype, output_dtype = _get_spline_output(x, output, allow_float32)
-
-    if allow_float32 and data_dtype == cupy.float32:
-        data_type = cupy.core._scalar.get_typename(cupy.float32)
-    else:
-        data_type = cupy.core._scalar.get_typename(cupy.float64)
+    data_type = cupy.core._scalar.get_typename(temp.dtype)
+    pole_type = cupy.core._scalar.get_typename(temp.real.dtype)
 
     index_type = _util._get_inttype(input)
     index_dtype = cupy.int32 if index_type == 'int' else cupy.int64
@@ -132,6 +134,7 @@ def spline_filter1d(
         order=order,
         index_type=index_type,
         data_type=data_type,
+        pole_type=pole_type,
     )
 
     n_samples = x.shape[axis]

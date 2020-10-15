@@ -50,7 +50,7 @@ def _causal_init_code(mode):
     if mode == "mirror":
         code += """
         z_i = z;
-        z_n_1 = pow(z, ({data_type})(n - 1));
+        z_n_1 = pow(z, ({pole_type})(n - 1));
 
         c[0] = c[0] + z_n_1 * c[(n - 1) * element_stride];
         for (i = 1; i < n - 1; ++i) {{
@@ -71,7 +71,7 @@ def _causal_init_code(mode):
     elif mode == "reflect":
         code += """
         z_i = z;
-        z_n = pow(z, ({data_type})n);
+        z_n = pow(z, ({pole_type})n);
         c0 = c[0];
 
         c[0] = c[0] + z_n * c[(n - 1) * element_stride];
@@ -120,7 +120,7 @@ def _anticausal_init_code(mode):
     return code
 
 
-def _get_spline1d_code(mode, poles, data_type):
+def _get_spline1d_code(mode, poles, pole_type):
     """Generates the code required for IIR filtering of a single 1d signal.
 
     Prefiltering is done by causal filtering followed by anti-causal filtering.
@@ -134,16 +134,16 @@ def _get_spline1d_code(mode, poles, data_type):
     # variables common to all boundary modes
     code.append("""
         idx_t i, n = signal_length;
-        {data_type} z, z_i;""")
+        {pole_type} z, z_i;""")
 
     if mode in ["mirror", "constant", "nearest"]:
         # variables specific to these modes
         code.append("""
-        {data_type} z_n_1;""")
+        {pole_type} z_n_1;""")
     elif mode == "reflect":
         # variables specific to this modes
         code.append("""
-        {data_type} z_n;
+        {pole_type} z_n;
         T c0;""")
 
     for pole in poles:
@@ -171,7 +171,7 @@ def _get_spline1d_code(mode, poles, data_type):
 
     code += ["""
     }}"""]
-    return textwrap.dedent("\n".join(code)).format(data_type=data_type)
+    return textwrap.dedent("\n".join(code)).format(pole_type=pole_type)
 
 
 _FILTER_GENERAL = '''
@@ -215,7 +215,7 @@ void cupyx_spline_filter(T* __restrict__ y, const idx_t* __restrict__ info) {{
 
 @cupy.memoize(for_each_device=True)
 def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type="int",
-                            data_type="double"):
+                            data_type="double", pole_type="double"):
     """Generate a kernel for applying a spline prefilter along a given axis."""
     poles = get_poles(order)
 
@@ -224,7 +224,7 @@ def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type="int",
                                   data_type=data_type)
 
     # generate source for a 1d function for a given boundary mode and poles
-    code += _get_spline1d_code(mode, poles, data_type)
+    code += _get_spline1d_code(mode, poles, pole_type)
 
     # generate code handling batch operation of the 1d filter
     code += _batch_spline1d_strided_template.format(ndim=ndim, axis=axis)
