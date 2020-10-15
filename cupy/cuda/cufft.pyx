@@ -950,7 +950,7 @@ cpdef multi_gpu_execZ2Z(intptr_t plan, intptr_t idata, intptr_t odata,
 
 
 class CallbackManager:
-    def __init__(self, intptr_t plan, intptr_t callback, int cb_type):
+    def __init__(self):
         import importlib
         import os, sys
         import string
@@ -963,8 +963,6 @@ class CallbackManager:
         cdef str support
         with open('cupy/cuda/cufftx.pxi') as f:
             support = f.read()
-        support = string.Template(support).substitute(
-            handle=plan, cb_ptr=callback, cb_type=cb_type)
         self.dir_obj = tempfile.TemporaryDirectory()
         self.dir = self.dir_obj.name
         #self.dir_obj = None
@@ -984,12 +982,6 @@ class CallbackManager:
         p.check_returncode()
 
         # Step 3: use nvcc to generate a shared library
-        p = subprocess.run(['ls', self.dir])
-        p.check_returncode()
-        print(p.stdout)
-        if not os.path.isfile(self.dir+'/cupy_callback.o'):
-            raise FileNotFoundError(self.dir+'/cupy_callback.o')
-
         self.obj = self.dir + '/cupy_callback.so'
         p = subprocess.run([get_nvcc_path(), '-shared', '-arch=sm_75', #'-Xcompiler', r'"-fPIC -pthread"',
                             self.dir+'/cupy_callback.o', '-lcufft_static', '-lculibos', '-o', self.obj], env=os.environ)#, shell=True)
@@ -1001,9 +993,9 @@ class CallbackManager:
         sys.modules['cupy_callback'] = module
         spec.loader.exec_module(module)
 
-    def set_callback(self):
+    def set_callback(self, object plan, intptr_t callback, int cb_type):
         import cupy_callback  # make cython happy
-        cupy_callback.setCallback()
+        cupy_callback.setCallback(plan, callback, cb_type)
 
     def __del__(self):
         self.dir_obj.cleanup()

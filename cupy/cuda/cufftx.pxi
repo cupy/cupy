@@ -16,18 +16,16 @@ cdef extern from 'cufftXt.h' nogil:
     Result cufftPlan1d(Handle*, int, fft_type, int)
 
 
-cpdef setCallback():
-    cdef Handle h = <Handle>${handle}
-    cdef intptr_t callback = ${cb_ptr}
+cpdef setCallback(object plan, intptr_t callback, int cb_type):
+    cdef Handle p
     cdef int result
     print(callback)
 
-    cdef Handle p
     with nogil:
         result = cufftPlan1d(&p, 128, <fft_type>0x29, 16)
     check_result(result)
     print("i am done")
 
     with nogil:
-        result = cufftXtSetCallback(p, <void**>(&callback), <callbackType>${cb_type}, NULL)
+        result = cufftXtSetCallback(p, <void**>(&callback), <callbackType>cb_type, NULL)
     check_result(result)
