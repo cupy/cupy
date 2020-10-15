@@ -839,9 +839,9 @@ def minimum_position(input, labels=None, index=None):
             minimal values of `input` over the region is computed.
         labels (cupy.ndarray, optional): An array of integers marking different
             regions over which the position of the minimum value of `input` is
-             to be computed. `labels` must have the same shape as `input`. If
-             `labels` is not specified, the location of the first minimum over
-             the whole array is returned.
+            to be computed. `labels` must have the same shape as `input`. If
+            `labels` is not specified, the location of the first minimum over
+            the whole array is returned.
 
             The `labels` argument only works when `index` is specified.
         index (array_like, optional): A list of region labels that are taken
@@ -897,9 +897,9 @@ def maximum_position(input, labels=None, index=None):
             maximal values of `input` over the region is computed.
         labels (cupy.ndarray, optional): An array of integers marking different
             regions over which the position of the maximum value of `input` is
-             to be computed. `labels` must have the same shape as `input`. If
-             `labels` is not specified, the location of the first maximum over
-             the whole array is returned.
+            to be computed. `labels` must have the same shape as `input`. If
+            `labels` is not specified, the location of the first maximum over
+            the whole array is returned.
 
             The `labels` argument only works when `index` is specified.
         index (array_like, optional): A list of region labels that are taken
@@ -948,19 +948,24 @@ def extrema(input, labels=None, index=None):
     along with their positions.
 
     Args:
-        input (cupy.ndarray) N-D image data to process.
+        input (cupy.ndarray): N-D image data to process.
         labels (cupy.ndarray, optional): Labels of features in input. If not
             None, must be same shape as `input`.
         index (int or sequence of ints, optional): Labels to include in output.
             If None (default), all values where non-zero `labels` are used.
 
     Returns:
+        A tuple that contains the following values.
+
         minimums (cupy.ndarray): Values of minimums in each feature.
+
         maximums (cupy.ndarray): Values of maximums in each feature.
-        min_positions (tuple or list of tuples): Each tuple gives the N-D
-            coordinates of the corresponding minimum.
-        max_positions (tuple or list of tuples): Each tuple gives the N-D
-            coordinates of the corresponding maximum.
+
+        min_positions (tuple or list of tuples):
+            Each tuple gives the N-D coordinates of the corresponding minimum.
+
+        max_positions (tuple or list of tuples):
+            Each tuple gives the N-D coordinates of the corresponding maximum.
 
     .. seealso:: :func:`scipy.ndimage.extrema`
     """
