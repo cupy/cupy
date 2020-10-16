@@ -17,12 +17,13 @@ def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
         which (str): 'LM' or 'LA'. 'LM': finds ``k`` largest (in magnitude)
             eigenvalues. 'LA': finds ``k`` largest (algebraic) eigenvalues.
         ncv (int): The number of Lanczos vectors generated. Must be
-            ``k + 1 < ncv < n``.
+            ``k + 1 < ncv < n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
-        tol (float): Tolerance for relative residuals ``||Ax - wx|| / ||wx||``.
-            If ``0``, default tolerence is used.
+            If ``None``, default value is used.
+        tol (float): Tolerance for residuals ``||Ax - wx||``. If ``0``, machine
+            precision is used.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
-            addition to eigenvalue.s
+            addition to eigenvalues.
 
     Returns:
         tuple:
@@ -37,44 +38,56 @@ def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
         (https://sdm.lbl.gov/~kewu/ps/trlan.html).
 
     """
-    m = a.shape[0]
+    n = a.shape[0]
+    if a.ndim != 2 or a.shape[0] != a.shape[1]:
+        raise ValueError('expected square matrix (shape: {})'.format(a.shape))
+    if a.dtype.char not in 'fdFD':
+        raise TypeError('unsupprted dtype (actual: {})'.format(a.dtype))
+    if k <= 0:
+        raise ValueError('k must be greater than 0 (actual: {})'.format(k))
+    if k >= n:
+        raise ValueError('k must be smaller than n (actual: {})'.format(k))
+    if which not in ('LM', 'LA'):
+        raise ValueError('which must be \'LM\' or \'LA\' (actual: {})'
+                         ''.format(which))
     if ncv is None:
-        ncv = min(max(8 * k, 16), m - 1)
+        ncv = min(max(8 * k, 16), n - 1)
+    else:
+        ncv = min(max(ncv, k + 2), n - 1)
     if maxiter is None:
-        maxiter = 10 * m
+        maxiter = 10 * n
     if tol == 0:
-        tol = numpy.finfo(a.dtype).eps * 64
+        tol = numpy.finfo(a.dtype).eps
 
-    alpha = numpy.zeros((ncv, ), dtype=a.dtype)
-    beta = numpy.zeros((ncv, ), dtype=a.dtype)
-    V = cupy.empty((ncv, m), dtype=a.dtype)
+    alpha = cupy.zeros((ncv, ), dtype=a.dtype)
+    beta = cupy.zeros((ncv, ), dtype=a.dtype)
+    V = cupy.empty((ncv, n), dtype=a.dtype)
 
     # Set initial vector
-    u = cupy.random.random((m, )).astype(a.dtype)
+    u = cupy.random.random((n, )).astype(a.dtype)
     v = u / cupy.linalg.norm(u)
     V[0] = v
 
     # Lanczos iteration
-    u = _eigsh_lanczos_update(a, V, v, alpha, beta, 0, ncv)
+    u = _eigsh_lanczos_update(a, V, alpha, beta, 0, ncv)
     iter = ncv
     w, s = _eigsh_solve_ritz(alpha, beta, None, k, which)
     x = V.T @ s
 
-    # Compute relative residual
-    r = a @ x - x @ cupy.diag(w)
-    res = cupy.linalg.norm(r) / cupy.linalg.norm(w)
+    # Compute residual
+    beta_k = beta[-1] * s[-1, :]
+    res = cupy.linalg.norm(beta_k)
+    print('# iter: {}, res: {}'.format(iter, res))
 
     while res > tol:
         # Setup for thick-restart
         beta[:k] = 0
-        alpha[:k] = cupy.asnumpy(w)
+        alpha[:k] = w
         V[:k] = x.T
 
         u = u - u.T @ V[:k].conj().T @ V[:k]
-        beta_last = cupy.linalg.norm(u)
-        v = u / beta_last
+        v = u / cupy.linalg.norm(u)
         V[k] = v
-        beta_k = beta_last * s[ncv-1, :]
 
         u = a @ v
         alpha[k] = v.conj().T @ u
@@ -86,14 +99,15 @@ def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
         V[k+1] = v
 
         # Lanczos iteration
-        u = _eigsh_lanczos_update(a, V, v, alpha, beta, k+1, ncv)
+        u = _eigsh_lanczos_update(a, V, alpha, beta, k+1, ncv)
         iter += ncv - k
         w, s = _eigsh_solve_ritz(alpha, beta, beta_k, k, which)
         x = V.T @ s
 
-        # Compute relative residual
-        r = a @ x - x @ cupy.diag(w)
-        res = cupy.linalg.norm(r) / cupy.linalg.norm(w)
+        # Compute residual
+        beta_k = beta[-1] * s[-1, :]
+        res = cupy.linalg.norm(beta_k)
+        print('# iter: {}, res: {}'.format(iter, res))
 
         if iter >= maxiter:
             break
@@ -107,19 +121,20 @@ def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
     return w, x
 
 
-def _eigsh_lanczos_update(A, V, v, alpha, beta, j_start, ncv):
-    for j in range(j_start, ncv):
+def _eigsh_lanczos_update(A, V, alpha, beta, i_start, i_end):
+    v = V[i_start]
+    for i in range(i_start, i_end):
         u = A @ v
-        alpha[j] = v.conj().T @ u
-        u = u - alpha[j] * v
-        if j > 0:
-            u = u - beta[j-1] * V[j-1]
-        if j >= ncv - 1:
+        alpha[i] = v.conj().T @ u
+        u = u - alpha[i] * v
+        if i > 0:
+            u = u - beta[i-1] * V[i-1]
+        u = u - u.T @ V[:i+1].conj().T @ V[:i+1]
+        beta[i] = cupy.linalg.norm(u)
+        if i >= i_end - 1:
             break
-        u = u - u.T @ V[:j+1].conj().T @ V[:j+1]
-        beta[j] = cupy.linalg.norm(u)
-        v = u / beta[j]
-        V[j+1] = v
+        v = u / beta[i]
+        V[i+1] = v
     return u
 
 
@@ -132,7 +147,7 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
         t[:k, k] = beta_k
     w, s = cupy.linalg.eigh(t)
 
-    # pick-up k ritz-values and ritz-vectors
+    # Pick-up k ritz-values and ritz-vectors
     if which == 'LA':
         wk = w[-k:]
         sk = s[:, -k:]
