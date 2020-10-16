@@ -1053,10 +1053,14 @@ class CallbackManager:
             )
             f.write(support)
         self.obj_dev = self.dir + '/cupy_callback_dev.o'
-        p = subprocess.run([nvcc, '-ccbin', 'g++', '-arch=sm_'+CC, '-dc',
-                            '-c', self.dir+'/cupy_cufftx.cu',
-                            '-Xcompiler', '-fPIC', '-O2', '-std=c++11',
-                            '-o', self.obj_dev], env=os.environ)
+        cdef list cmd = [nvcc, '-ccbin', 'g++', '-arch=sm_'+CC, '-dc',
+                         '-c', self.dir+'/cupy_cufftx.cu',
+                         '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
+        if self.cb_load:
+            cmd.append('-DHAS_LOAD_CALLBACK')
+        if self.cb_store:
+            cmd.append('-DHAS_STORE_CALLBACK')
+        p = subprocess.run(cmd + ['-o', self.obj_dev], env=os.environ)
         p.check_returncode()
 
         # Use nvcc to link and generate a shared library

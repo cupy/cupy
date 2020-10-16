@@ -8,8 +8,9 @@ ${dev_load_callback_ker}
 ${dev_store_callback_ker}
 
 cufftResult set_callback(cufftHandle plan, cufftXtCallbackType type, bool cb_load) {
-    if (cb_load) {  // for load callback
+    if (cb_load) {
         switch (type) {
+            #ifdef HAS_LOAD_CALLBACK
             case CUFFT_CB_LD_COMPLEX: {
                 cufftCallbackLoadC h_ptr;
                 cudaMemcpyFromSymbol(&h_ptr, d_loadCallbackPtr, sizeof(h_ptr));
@@ -30,12 +31,14 @@ cufftResult set_callback(cufftHandle plan, cufftXtCallbackType type, bool cb_loa
                 cudaMemcpyFromSymbol(&h_ptr, d_loadCallbackPtr, sizeof(h_ptr));
                 return cufftXtSetCallback(plan, (void**)&h_ptr, type, NULL);
             }
+            #endif  // HAS_LOAD_CALLBACK
             default: {
                 throw std::runtime_error("unrecognized callback");
             }
         }
-    } else {  // for store callback
+    } else {
         switch (type) {
+            #ifdef HAS_STORE_CALLBACK
             case CUFFT_CB_ST_COMPLEX: {
                 cufftCallbackStoreC h_ptr;
                 cudaMemcpyFromSymbol(&h_ptr, d_storeCallbackPtr, sizeof(h_ptr));
@@ -56,6 +59,7 @@ cufftResult set_callback(cufftHandle plan, cufftXtCallbackType type, bool cb_loa
                 cudaMemcpyFromSymbol(&h_ptr, d_storeCallbackPtr, sizeof(h_ptr));
                 return cufftXtSetCallback(plan, (void**)&h_ptr, type, NULL);
             }
+            #endif  // HAS_STORE_CALLBACK
             default: {
                 throw std::runtime_error("unrecognized callback");
             }
