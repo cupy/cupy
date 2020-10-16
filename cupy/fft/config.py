@@ -255,7 +255,7 @@ def set_callbacks(cb_load='', cb_store=''):
         _callback_store = ''
 
 
-def get_static_plan(plan_type, fft_type, keys):
+def _get_static_plan(plan_type, fft_type, keys):
     global _callback_load, _callback_store, _callback_mgr
 
     mgr = _CallbackManager(

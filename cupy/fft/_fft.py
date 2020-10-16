@@ -150,7 +150,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             cache[keys] = plan
         else:  # has_callback
             # TODO(leofang): support multi-GPU callback (devices is ignored)
-            plan = config.get_static_plan('Plan1d', fft_type, keys[:-3])
+            plan = config._get_static_plan('Plan1d', fft_type, keys[:-3])
             cache[keys] = plan
     else:
         # check plan validity
@@ -440,7 +440,7 @@ def _get_cufft_plan_nd(
         if to_cache:
             cache[keys] = plan
     else:  # has_callback
-        plan = config.get_static_plan('PlanNd', fft_type, keys[:-2])
+        plan = config._get_static_plan('PlanNd', fft_type, keys[:-2])
         if to_cache:
             cache[keys] = plan
 
