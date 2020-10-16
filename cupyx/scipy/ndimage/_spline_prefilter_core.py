@@ -197,6 +197,7 @@ __device__ T* row(T* ptr, idx_t i, idx_t axis, idx_t ndim, const idx_t* shape) {
 
 _batch_spline1d_strided_template = """
 extern "C" __global__
+__launch_bounds__({block_size})
 void cupyx_spline_filter(T* __restrict__ y, const idx_t* __restrict__ info) {{
     const idx_t n_signals = info[0], n_samples = info[1],
         * __restrict__ shape = info+2;
@@ -215,7 +216,8 @@ void cupyx_spline_filter(T* __restrict__ y, const idx_t* __restrict__ info) {{
 
 @cupy.memoize(for_each_device=True)
 def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type="int",
-                            data_type="double", pole_type="double"):
+                            data_type="double", pole_type="double",
+                            block_size=128):
     """Generate a kernel for applying a spline prefilter along a given axis."""
     poles = get_poles(order)
 
@@ -227,5 +229,6 @@ def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type="int",
     code += _get_spline1d_code(mode, poles, pole_type)
 
     # generate code handling batch operation of the 1d filter
-    code += _batch_spline1d_strided_template.format(ndim=ndim, axis=axis)
+    code += _batch_spline1d_strided_template.format(ndim=ndim, axis=axis,
+                                                    block_size=block_size)
     return cupy.RawKernel(code, "cupyx_spline_filter")
