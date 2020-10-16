@@ -6,7 +6,7 @@ import cupy
 from cupy import core
 from cupy.core import internal
 
-from cupy.linalg.solve import inv
+from cupy.linalg._solve import inv
 from cupy import _util
 
 matmul = core.matmul
