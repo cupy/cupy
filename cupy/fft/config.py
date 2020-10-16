@@ -1,7 +1,12 @@
 import contextlib
 
 from cupy import _util
-from cupy.cuda import cufft
+from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
+                             CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
+                             CUFFT_CB_LD_COMPLEX, CUFFT_CB_LD_COMPLEX_DOUBLE,
+                             CUFFT_CB_LD_REAL, CUFFT_CB_LD_REAL_DOUBLE,
+                             CUFFT_CB_ST_COMPLEX, CUFFT_CB_ST_COMPLEX_DOUBLE,
+                             CUFFT_CB_ST_REAL, CUFFT_CB_ST_REAL_DOUBLE,)
 from cupy.cuda.device import get_compute_capability
 from cupy_backends.cuda.api.driver import get_build_version
 
@@ -62,10 +67,11 @@ _callback_dev_code = None
 class _CallbackManager:
     def __init__(self, plan_args, cb_load='', cb_store=''):
         import importlib
-        import os, sys
+        import os
         import shutil
         import string
         import subprocess
+        import sys
         import sysconfig
         import tempfile
         from cupy._environment import get_nvcc_path
@@ -76,15 +82,19 @@ class _CallbackManager:
         #   - cuFFT version
         #   - plan_args
         #   - cb_load & cb_store
+
         # TODO(leofang): would it be more robust if we use distutils +
         # setuptools here? I'm worried that the number of lines of code
         # might inflate too much...
+
         # TODO(leofang): make sure Cython is installed at runtime
-        # TODO(leofang): make sure all needed source files are included in sdist/wheel
-        # TODO(leofang): remove cufftx.pxi
+
+        # TODO(leofang): make sure all needed source files are included
+        # in sdist/wheel
 
         if not cb_load and not cb_store:
-            raise ValueError('need to specify either cb_load or cb_store, or both')
+            raise ValueError('need to specify either cb_load or cb_store, '
+                             'or both')
         if cb_load and 'd_loadCallbackPtr' not in cb_load:
             raise ValueError('need to specify d_loadCallbackPtr in cb_load')
         if cb_store and 'd_storeCallbackPtr' not in cb_store:
@@ -102,9 +112,6 @@ class _CallbackManager:
         # Set up temp directory; its lifetime is tied with the present instance
         self.dir_obj = tempfile.TemporaryDirectory()
         self.dir = self.dir_obj.name
-        #self.dir_obj = None
-        #self.dir = '/home/leofang/dev/cupy_cuda10.2/kkk'
-        #print("temp dir:", self.dir)
 
         # Cythonize the Cython code; a c++ source cupy_callback.cpp is produced
         shutil.copyfile(source_dir+'/cupy_cufft.h', self.dir+'/cupy_cufft.h')
@@ -137,8 +144,8 @@ class _CallbackManager:
             support = _callback_dev_code
         with open(self.dir+'/cupy_cufftx.cu', 'w') as f:
             support = string.Template(support).substitute(
-                dev_load_callback_ker = cb_load,
-                dev_store_callback_ker = cb_store,
+                dev_load_callback_ker=cb_load,
+                dev_store_callback_ker=cb_store,
             )
             f.write(support)
         self.obj_dev = self.dir + '/cupy_callback_dev.o'
@@ -162,7 +169,8 @@ class _CallbackManager:
         p.check_returncode()
 
         # Load the Python module
-        spec = importlib.util.spec_from_file_location('cupy_callback', self.lib)
+        spec = importlib.util.spec_from_file_location(
+            'cupy_callback', self.lib)
         self.mod = module = importlib.util.module_from_spec(spec)
         sys.modules['cupy_callback'] = module
         spec.loader.exec_module(module)
@@ -187,13 +195,7 @@ class _CallbackManager:
             self.mod.setCallback(self.handle, cb_store_type, False)
         self.is_callback_set = True
 
-    def fft(self, a, out, direction):
-        self.plan.fft(a, out, direction)
-
     def __del__(self):
-        del self.plan
-        self.handle = None
-        del self.mod
         self.dir_obj.cleanup()
 
 
@@ -258,24 +260,24 @@ def get_static_plan(plan_type, fft_type, keys):
 
     mgr = _CallbackManager(
         (plan_type, keys), cb_load=_callback_load, cb_store=_callback_store)
-    if fft_type == cufft.CUFFT_C2C:
-        cb_load_type = cufft.CUFFT_CB_LD_COMPLEX if _callback_load else -1
-        cb_store_type = cufft.CUFFT_CB_ST_COMPLEX if _callback_store else -1
-    elif fft_type == cufft.CUFFT_R2C:
-        cb_load_type = cufft.CUFFT_CB_LD_REAL if _callback_load else -1
-        cb_store_type = cufft.CUFFT_CB_ST_COMPLEX if _callback_store else -1
-    elif fft_type == cufft.CUFFT_C2R:
-        cb_load_type = cufft.CUFFT_CB_LD_COMPLEX if _callback_load else -1
-        cb_store_type = cufft.CUFFT_CB_ST_REAL if _callback_store else -1
-    elif fft_type == cufft.CUFFT_Z2Z:
-        cb_load_type = cufft.CUFFT_CB_LD_COMPLEX_DOUBLE if _callback_load else -1
-        cb_store_type = cufft.CUFFT_CB_ST_COMPLEX_DOUBLE if _callback_store else -1
-    elif fft_type == cufft.CUFFT_D2Z:
-        cb_load_type = cufft.CUFFT_CB_LD_REAL_DOUBLE if _callback_load else -1
-        cb_store_type = cufft.CUFFT_CB_ST_COMPLEX_DOUBLE if _callback_store else -1
-    elif fft_type == cufft.CUFFT_Z2D:
-        cb_load_type = cufft.CUFFT_CB_LD_COMPLEX_DOUBLE if _callback_load else -1
-        cb_store_type = cufft.CUFFT_CB_ST_REAL_DOUBLE if _callback_store else -1
+    if fft_type == CUFFT_C2C:
+        cb_load_type = CUFFT_CB_LD_COMPLEX if _callback_load else -1
+        cb_store_type = CUFFT_CB_ST_COMPLEX if _callback_store else -1
+    elif fft_type == CUFFT_R2C:
+        cb_load_type = CUFFT_CB_LD_REAL if _callback_load else -1
+        cb_store_type = CUFFT_CB_ST_COMPLEX if _callback_store else -1
+    elif fft_type == CUFFT_C2R:
+        cb_load_type = CUFFT_CB_LD_COMPLEX if _callback_load else -1
+        cb_store_type = CUFFT_CB_ST_REAL if _callback_store else -1
+    elif fft_type == CUFFT_Z2Z:
+        cb_load_type = CUFFT_CB_LD_COMPLEX_DOUBLE if _callback_load else -1
+        cb_store_type = CUFFT_CB_ST_COMPLEX_DOUBLE if _callback_store else -1
+    elif fft_type == CUFFT_D2Z:
+        cb_load_type = CUFFT_CB_LD_REAL_DOUBLE if _callback_load else -1
+        cb_store_type = CUFFT_CB_ST_COMPLEX_DOUBLE if _callback_store else -1
+    elif fft_type == CUFFT_Z2D:
+        cb_load_type = CUFFT_CB_LD_COMPLEX_DOUBLE if _callback_load else -1
+        cb_store_type = CUFFT_CB_ST_REAL_DOUBLE if _callback_store else -1
     else:
         raise ValueError
     mgr.set_callbacks(cb_load_type, cb_store_type)
