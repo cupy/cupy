@@ -38,22 +38,22 @@ cufftResult set_callback(cufftHandle plan, cufftXtCallbackType type, bool cb_loa
         switch (type) {
             case CUFFT_CB_ST_COMPLEX: {
                 cufftCallbackStoreC h_ptr;
-                cudaMemcpyFromSymbol(&h_ptr, d_loadCallbackPtr, sizeof(h_ptr));
+                cudaMemcpyFromSymbol(&h_ptr, d_storeCallbackPtr, sizeof(h_ptr));
                 return cufftXtSetCallback(plan, (void**)&h_ptr, type, NULL);
             }
             case CUFFT_CB_ST_COMPLEX_DOUBLE: {
                 cufftCallbackStoreZ h_ptr;
-                cudaMemcpyFromSymbol(&h_ptr, d_loadCallbackPtr, sizeof(h_ptr));
+                cudaMemcpyFromSymbol(&h_ptr, d_storeCallbackPtr, sizeof(h_ptr));
                 return cufftXtSetCallback(plan, (void**)&h_ptr, type, NULL);
             }
             case CUFFT_CB_ST_REAL: {
                 cufftCallbackStoreR h_ptr;
-                cudaMemcpyFromSymbol(&h_ptr, d_loadCallbackPtr, sizeof(h_ptr));
+                cudaMemcpyFromSymbol(&h_ptr, d_storeCallbackPtr, sizeof(h_ptr));
                 return cufftXtSetCallback(plan, (void**)&h_ptr, type, NULL);
             }
             case CUFFT_CB_ST_REAL_DOUBLE: {
                 cufftCallbackStoreD h_ptr;
-                cudaMemcpyFromSymbol(&h_ptr, d_loadCallbackPtr, sizeof(h_ptr));
+                cudaMemcpyFromSymbol(&h_ptr, d_storeCallbackPtr, sizeof(h_ptr));
                 return cufftXtSetCallback(plan, (void**)&h_ptr, type, NULL);
             }
             default: {
