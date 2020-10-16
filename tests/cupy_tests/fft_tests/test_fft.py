@@ -1312,7 +1312,7 @@ class TestThreading(unittest.TestCase):
 
 
 _load_callback = r'''
-__device__ ${data_type} CB_ConvertInputC(
+__device__ ${data_type} CB_ConvertInput(
     void* dataIn, size_t offset, void* callerInfo, void* sharedPtr)
 {
     ${data_type} x = ((${data_type}*)dataIn)[offset];
@@ -1320,7 +1320,19 @@ __device__ ${data_type} CB_ConvertInputC(
     return x;
 }
 
-__device__ ${load_type} d_loadCallbackPtr = CB_ConvertInputC;
+__device__ ${load_type} d_loadCallbackPtr = CB_ConvertInput;
+'''
+
+_store_callback = r'''
+__device__ void CB_ConvertOutput(
+    void *dataOut, size_t offset, ${data_type} element, void *callerInfo, void *sharedPointer)
+{
+    ${data_type} x = element;
+    ${element} -= 3.8;
+    ((${data_type}*)dataOut)[offset] = x;
+}
+
+__device__ ${store_type} d_storeCallbackPtr = CB_ConvertOutput;
 '''
 
 
@@ -1330,6 +1342,7 @@ __device__ ${load_type} d_loadCallbackPtr = CB_ConvertInputC;
     'norm': [None, 'ortho'],
 }))
 @testing.gpu
+@testing.slow
 class Test1dCallbacks(unittest.TestCase):
 
     @testing.for_dtypes('FD')
@@ -1441,5 +1454,37 @@ class Test1dCallbacks(unittest.TestCase):
         else:
             with xp.fft.config.set_cufft_callbacks(cb_load=cb_load):
                 out = ifft(a, n=self.n, norm=self.norm)
+
+        return out
+
+    @testing.for_dtypes('FD')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    def test_fft_store(self, xp, dtype):
+        fft = xp.fft.fft
+        element = 'x.y'
+        if dtype == np.complex64:
+            data_type = 'cufftComplex'
+            callback_type = 'cufftCallbackStoreC'
+        else:
+            data_type = 'cufftDoubleComplex'
+            callback_type = 'cufftCallbackStoreZ'
+        cb_store = string.Template(_store_callback).substitute(
+            data_type=data_type,
+            store_type=callback_type,
+            element=element)
+
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp is np:
+            # handle the normalization factor later
+            out = fft(a, n=self.n, norm=None)
+            out.imag -= 3.8
+            if self.norm == 'ortho':
+                norm = self.shape[-1] if self.n is None else self.n
+                out /= np.sqrt(norm)
+            if dtype in (np.float32, np.complex64):
+                out = out.astype(np.complex64)
+        else:
+            with xp.fft.config.set_cufft_callbacks(cb_store=cb_store):
+                out = fft(a, n=self.n, norm=self.norm)
 
         return out
