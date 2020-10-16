@@ -2,6 +2,7 @@ cimport cython  # NOQA
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.string cimport memset as c_memset
 from libcpp cimport vector
+
 import numpy
 import threading
 
@@ -9,6 +10,7 @@ import cupy
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport stream as stream_module
+from cupy.cuda.device cimport get_compute_capability
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Event, Stream
 
@@ -970,17 +972,20 @@ class CallbackManager:
         cdef str support
         cdef str python_include = sysconfig.get_paths()['include']
         cdef str nvcc = get_nvcc_path()
+        cdef str CC = get_compute_capability()
 
         # Set up temp directory; its lifetime is tied with the present instance 
         self.dir_obj = tempfile.TemporaryDirectory()
         self.dir = self.dir_obj.name
         #self.dir_obj = None
         #self.dir = '/home/leofang/dev/cupy_cuda10.2/kkk'
-        print("temp dir:", self.dir)
+        #print("temp dir:", self.dir)
 
-        # Cythonize the Cython code; an object file cupy_callback.o is produced
+        # Cythonize the Cython code; a c++ source cupy_callback.cpp is produced
         shutil.copyfile('cupy/cuda/cufftx.pxi', self.dir+'/cupy_callback.pyx')
-        p = subprocess.run(['cython', '-3', '-E', 'use_hip=0', self.dir+'/cupy_callback.pyx'], env=os.environ)
+        p = subprocess.run(['cython', '-3', '--cplus', '-E', 'use_hip=0',
+                            self.dir+'/cupy_callback.pyx'],
+                           env=os.environ)
         p.check_returncode()
 
         # Compile the Python module
@@ -988,7 +993,7 @@ class CallbackManager:
         shutil.copyfile('cupy/cuda/cupy_cufftx.h', self.dir+'/cupy_cufftx.h')
         p = subprocess.run(['g++', '-I'+python_include,
                             '-fPIC', '-pthread', '-O2', '-std=c++11',
-                            '-c', self.dir+'/cupy_callback.c',
+                            '-c', self.dir+'/cupy_callback.cpp',
                             '-o', self.obj_host],
                            env=os.environ)
         p.check_returncode()
@@ -1007,7 +1012,7 @@ class CallbackManager:
             )
             f.write(support)
         self.obj_dev = self.dir + '/cupy_callback_dev.o'
-        p = subprocess.run([nvcc, '-arch=sm_75', '-dc',
+        p = subprocess.run([nvcc, '-ccbin', 'g++', '-arch=sm_'+CC, '-dc',
                             '-c', self.dir+'/cupy_cufftx.cu',
                             '-Xcompiler', '-fPIC', '-O2', '-std=c++11',
                             '-o', self.obj_dev], env=os.environ)
@@ -1016,7 +1021,7 @@ class CallbackManager:
         # Use nvcc to link and generate a shared library
         # WARNING: CANNOT use host compiler to link!
         self.lib = self.dir + '/cupy_callback.so'
-        p = subprocess.run([nvcc, '-shared', '-arch=sm_75',
+        p = subprocess.run([nvcc, '-ccbin', 'g++', '-shared', '-arch=sm_'+CC,
                             self.obj_dev, self.obj_host, 
                             '-lcufft_static', '-lculibos', '-o', self.lib],
                            env=os.environ)
