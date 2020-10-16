@@ -956,16 +956,25 @@ class CallbackManager:
         import subprocess
         import sysconfig
         import tempfile
-
         from cupy._environment import get_nvcc_path
 
+        # TODO(leofang): cache the generated .so file based on:
+        #   - Python version
+        #   - CuPy version
+        #   - cuFFT version
+        #   - plan_args
+        #   - cb_load & cb_store
+        # TODO(leofang): would it be more robust if we use distutils +
+        # setuptools here? I'm worried that the number of lines of code
+        # might inflate too much...
 
         if not cb_load and not cb_store:
-            raise ValueError('Need to specify either cb_load or cb_store, or both')
+            raise ValueError('need to specify either cb_load or cb_store, or both')
         if cb_load and 'd_loadCallbackPtr' not in cb_load:
-            raise ValueError('Need to specify d_loadCallbackPtr in cb_load')
+            raise ValueError('need to specify d_loadCallbackPtr in cb_load')
         if cb_store and 'd_storeCallbackPtr' not in cb_store:
-            raise ValueError('Need to specify d_storeCallbackPtr in cb_store')
+            raise ValueError('need to specify d_storeCallbackPtr in cb_store')
+        self.plan_args = plan_args[1]
         self.cb_load = cb_load
         self.cb_store = cb_store
 
@@ -1035,17 +1044,20 @@ class CallbackManager:
 
         # Create a cuFFT plan
         self.handle, self.fft_type = self.mod.createPlan(plan_args)
-        self.plan_args = plan_args[1]
+        self.is_callback_set = False
 
     def set_callback(self, int cb_load_type=-1, int cb_store_type=-1):
+        if self.is_callback_set:
+            raise RuntimeError('callback cannot be reset')
         if self.cb_load:
             if cb_load_type == -1:
-                raise ValueError
+                raise ValueError('cb_load_type needs to be speficied')
             self.mod.setCallback(self.handle, cb_load_type, True)
         if self.cb_store:
             if cb_store_type == -1:
-                raise ValueError
+                raise ValueError('cb_store_type needs to be speficied')
             self.mod.setCallback(self.handle, cb_store_type, False)
+        self.is_callback_set = True
 
     def fft(self, a, out, direction):
         cdef intptr_t plan = self.handle
