@@ -96,8 +96,8 @@ cdef class _Node:
             plan_type = 'PlanNd'
         elif 'cupy_callback' in plan_type:
             # <class 'cupy_callback.Plan1d'> or PlanNd
-            plan_type = plan_type.split(' ')[1]
-            plan_type = plan_type[:-1]
+            plan_type = plan_type.split('.')[1]
+            plan_type = plan_type[:6]
             plan_type += ' (static)'
         else:
             raise TypeError('unrecognized plan type: {}'.format(
