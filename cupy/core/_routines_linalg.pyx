@@ -428,6 +428,7 @@ cpdef ndarray tensordot_core(
     cdef bint use_sgemmEx
     cdef float one_fp32, zero_fp32
     cdef str dtype = a.dtype.char
+    cdef int compute_capability = int(device.get_compute_capability())
     if dtype != b.dtype.char:
         dtype = numpy.promote_types(dtype, b.dtype).char
     if not a.size or not b.size:
@@ -495,14 +496,14 @@ cpdef ndarray tensordot_core(
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if _cuda_runtime_version >= 11000:
+    if _cuda_runtime_version >= 11000 and compute_capability >= 50:
         tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
         return out
 
     handle = device.get_cublas_handle()
     if dtype == 'e':
         use_tensor_core = (_cuda_runtime_version >= 9000 and
-                           int(device.get_compute_capability()) >= 70)
+                           compute_capability >= 70)
         if use_tensor_core:
             one_fp32 = 1
             zero_fp32 = 0

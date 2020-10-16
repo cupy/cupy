@@ -1,10 +1,10 @@
-import numpy
+import numpy as _numpy
 
-import cupy
-from cupy_backends.cuda.api import runtime
-from cupy_backends.cuda.libs import cublas
-from cupy_backends.cuda.libs import cusolver
-from cupy.cuda import device
+import cupy as _cupy
+from cupy_backends.cuda.api import runtime as _runtime
+from cupy_backends.cuda.libs import cublas as _cublas
+from cupy_backends.cuda.libs import cusolver as _cusolver
+from cupy.cuda import device as _device
 from cupy.core import _routines_linalg as _linalg
 from cupy import _util
 
@@ -28,7 +28,7 @@ def check_availability(name):
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
     version_added, version_removed = _available_cuda_version[name]
-    cuda_version = runtime.runtimeGetVersion()
+    cuda_version = _runtime.runtimeGetVersion()
     if version_added is not None and cuda_version < version_added:
         return False
     if version_removed is not None and cuda_version >= version_removed:
@@ -68,57 +68,57 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
     assert a.ndim == 2
 
     if a.dtype == 'f':
-        helper = cusolver.sgesvdj_bufferSize
-        solver = cusolver.sgesvdj
+        helper = _cusolver.sgesvdj_bufferSize
+        solver = _cusolver.sgesvdj
         s_dtype = 'f'
     elif a.dtype == 'd':
-        helper = cusolver.dgesvdj_bufferSize
-        solver = cusolver.dgesvdj
+        helper = _cusolver.dgesvdj_bufferSize
+        solver = _cusolver.dgesvdj
         s_dtype = 'd'
     elif a.dtype == 'F':
-        helper = cusolver.cgesvdj_bufferSize
-        solver = cusolver.cgesvdj
+        helper = _cusolver.cgesvdj_bufferSize
+        solver = _cusolver.cgesvdj
         s_dtype = 'f'
     elif a.dtype == 'D':
-        helper = cusolver.zgesvdj_bufferSize
-        solver = cusolver.zgesvdj
+        helper = _cusolver.zgesvdj_bufferSize
+        solver = _cusolver.zgesvdj
         s_dtype = 'd'
     else:
         raise TypeError
 
-    handle = device.get_cusolver_handle()
+    handle = _device.get_cusolver_handle()
     m, n = a.shape
-    a = cupy.array(a, order='F', copy=not overwrite_a)
+    a = _cupy.array(a, order='F', copy=not overwrite_a)
     lda = m
     mn = min(m, n)
-    s = cupy.empty(mn, dtype=s_dtype)
+    s = _cupy.empty(mn, dtype=s_dtype)
     ldu = m
     ldv = n
     if compute_uv:
-        jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR
+        jobz = _cusolver.CUSOLVER_EIG_MODE_VECTOR
     else:
-        jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+        jobz = _cusolver.CUSOLVER_EIG_MODE_NOVECTOR
         full_matrices = False
     if full_matrices:
         econ = 0
-        u = cupy.empty((ldu, m), dtype=a.dtype, order='F')
-        v = cupy.empty((ldv, n), dtype=a.dtype, order='F')
+        u = _cupy.empty((ldu, m), dtype=a.dtype, order='F')
+        v = _cupy.empty((ldv, n), dtype=a.dtype, order='F')
     else:
         econ = 1
-        u = cupy.empty((ldu, mn), dtype=a.dtype, order='F')
-        v = cupy.empty((ldv, mn), dtype=a.dtype, order='F')
-    params = cusolver.createGesvdjInfo()
+        u = _cupy.empty((ldu, mn), dtype=a.dtype, order='F')
+        v = _cupy.empty((ldv, mn), dtype=a.dtype, order='F')
+    params = _cusolver.createGesvdjInfo()
     lwork = helper(handle, jobz, econ, m, n, a.data.ptr, lda, s.data.ptr,
                    u.data.ptr, ldu, v.data.ptr, ldv, params)
-    work = cupy.empty(lwork, dtype=a.dtype)
-    info = cupy.empty(1, dtype=numpy.int32)
+    work = _cupy.empty(lwork, dtype=a.dtype)
+    info = _cupy.empty(1, dtype=_numpy.int32)
     solver(handle, jobz, econ, m, n, a.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvdj, info)
 
-    cusolver.destroyGesvdjInfo(params)
+    _cusolver.destroyGesvdjInfo(params)
     if compute_uv:
         return u, s, v
     else:
@@ -127,52 +127,52 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
 
 def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     if a.dtype == 'f':
-        helper = cusolver.sgesvdjBatched_bufferSize
-        solver = cusolver.sgesvdjBatched
+        helper = _cusolver.sgesvdjBatched_bufferSize
+        solver = _cusolver.sgesvdjBatched
         s_dtype = 'f'
     elif a.dtype == 'd':
-        helper = cusolver.dgesvdjBatched_bufferSize
-        solver = cusolver.dgesvdjBatched
+        helper = _cusolver.dgesvdjBatched_bufferSize
+        solver = _cusolver.dgesvdjBatched
         s_dtype = 'd'
     elif a.dtype == 'F':
-        helper = cusolver.cgesvdjBatched_bufferSize
-        solver = cusolver.cgesvdjBatched
+        helper = _cusolver.cgesvdjBatched_bufferSize
+        solver = _cusolver.cgesvdjBatched
         s_dtype = 'f'
     elif a.dtype == 'D':
-        helper = cusolver.zgesvdjBatched_bufferSize
-        solver = cusolver.zgesvdjBatched
+        helper = _cusolver.zgesvdjBatched_bufferSize
+        solver = _cusolver.zgesvdjBatched
         s_dtype = 'd'
     else:
         raise TypeError
 
-    handle = device.get_cusolver_handle()
+    handle = _device.get_cusolver_handle()
     batch_size, m, n = a.shape
-    a = cupy.array(a.swapaxes(-2, -1), order='C', copy=not overwrite_a)
+    a = _cupy.array(a.swapaxes(-2, -1), order='C', copy=not overwrite_a)
     lda = m
     mn = min(m, n)
-    s = cupy.empty((batch_size, mn), dtype=s_dtype)
+    s = _cupy.empty((batch_size, mn), dtype=s_dtype)
     ldu = m
     ldv = n
     if compute_uv:
-        jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR
+        jobz = _cusolver.CUSOLVER_EIG_MODE_VECTOR
     else:
-        jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+        jobz = _cusolver.CUSOLVER_EIG_MODE_NOVECTOR
         # if not batched, `full_matrices = False` could speedup.
 
-    u = cupy.empty((batch_size, m, ldu), dtype=a.dtype).swapaxes(-2, -1)
-    v = cupy.empty((batch_size, n, ldv), dtype=a.dtype).swapaxes(-2, -1)
-    params = cusolver.createGesvdjInfo()
+    u = _cupy.empty((batch_size, m, ldu), dtype=a.dtype).swapaxes(-2, -1)
+    v = _cupy.empty((batch_size, n, ldv), dtype=a.dtype).swapaxes(-2, -1)
+    params = _cusolver.createGesvdjInfo()
     lwork = helper(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
                    u.data.ptr, ldu, v.data.ptr, ldv, params, batch_size)
-    work = cupy.empty(lwork, dtype=a.dtype)
-    info = cupy.empty(1, dtype=numpy.int32)
+    work = _cupy.empty(lwork, dtype=a.dtype)
+    info = _cupy.empty(1, dtype=_numpy.int32)
     solver(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params, batch_size)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvdj, info)
 
-    cusolver.destroyGesvdjInfo(params)
+    _cusolver.destroyGesvdjInfo(params)
     if not full_matrices:
         u = u[..., :mn]
         v = v[..., :mn]
@@ -206,52 +206,52 @@ def gesvda(a, compute_uv=True):
     assert m >= n
 
     if a.dtype == 'f':
-        helper = cusolver.sgesvdaStridedBatched_bufferSize
-        solver = cusolver.sgesvdaStridedBatched
+        helper = _cusolver.sgesvdaStridedBatched_bufferSize
+        solver = _cusolver.sgesvdaStridedBatched
         s_dtype = 'f'
     elif a.dtype == 'd':
-        helper = cusolver.dgesvdaStridedBatched_bufferSize
-        solver = cusolver.dgesvdaStridedBatched
+        helper = _cusolver.dgesvdaStridedBatched_bufferSize
+        solver = _cusolver.dgesvdaStridedBatched
         s_dtype = 'd'
     elif a.dtype == 'F':
-        helper = cusolver.cgesvdaStridedBatched_bufferSize
-        solver = cusolver.cgesvdaStridedBatched
+        helper = _cusolver.cgesvdaStridedBatched_bufferSize
+        solver = _cusolver.cgesvdaStridedBatched
         s_dtype = 'f'
     elif a.dtype == 'D':
-        helper = cusolver.zgesvdaStridedBatched_bufferSize
-        solver = cusolver.zgesvdaStridedBatched
+        helper = _cusolver.zgesvdaStridedBatched_bufferSize
+        solver = _cusolver.zgesvdaStridedBatched
         s_dtype = 'd'
     else:
         raise TypeError
 
-    handle = device.get_cusolver_handle()
+    handle = _device.get_cusolver_handle()
     if compute_uv:
-        jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR
+        jobz = _cusolver.CUSOLVER_EIG_MODE_VECTOR
     else:
-        jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+        jobz = _cusolver.CUSOLVER_EIG_MODE_NOVECTOR
     rank = min(m, n)
     if a_ndim == 2:
         batch_size = 1
     else:
-        batch_size = numpy.array(a_shape[:-2]).prod().item()
+        batch_size = _numpy.array(a_shape[:-2]).prod().item()
     a = a.reshape((batch_size, m, n))
-    a = cupy.ascontiguousarray(a.transpose(0, 2, 1))
+    a = _cupy.ascontiguousarray(a.transpose(0, 2, 1))
     lda = m
     stride_a = lda * n
-    s = cupy.empty((batch_size, rank), dtype=s_dtype)
+    s = _cupy.empty((batch_size, rank), dtype=s_dtype)
     stride_s = rank
     ldu = m
     ldv = n
-    u = cupy.empty((batch_size, rank, ldu), dtype=a.dtype, order='C')
-    v = cupy.empty((batch_size, rank, ldv), dtype=a.dtype, order='C')
+    u = _cupy.empty((batch_size, rank, ldu), dtype=a.dtype, order='C')
+    v = _cupy.empty((batch_size, rank, ldv), dtype=a.dtype, order='C')
     stride_u = rank * ldu
     stride_v = rank * ldv
     lwork = helper(handle, jobz, rank, m, n, a.data.ptr, lda, stride_a,
                    s.data.ptr, stride_s, u.data.ptr, ldu, stride_u,
                    v.data.ptr, ldv, stride_v, batch_size)
-    work = cupy.empty((lwork,), dtype=a.dtype)
-    info = cupy.empty((batch_size,), dtype=numpy.int32)
-    r_norm = numpy.empty((batch_size,), dtype=numpy.float64)
+    work = _cupy.empty((lwork,), dtype=a.dtype)
+    info = _cupy.empty((batch_size,), dtype=_numpy.int32)
+    r_norm = _numpy.empty((batch_size,), dtype=_numpy.float64)
     solver(handle, jobz, rank, m, n, a.data.ptr, lda, stride_a, s.data.ptr,
            stride_s, u.data.ptr, ldu, stride_u, v.data.ptr, ldv, stride_v,
            work.data.ptr, lwork, info.data.ptr, r_norm.ctypes.data, batch_size)
@@ -337,47 +337,47 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
     v = a.astype(inp_v_dtype, order='F', copy=True)
 
     m, lda = a.shape
-    w = cupy.empty(m, inp_w_dtype)
-    dev_info = cupy.empty((), numpy.int32)
-    handle = device.Device().cusolver_handle
+    w = _cupy.empty(m, inp_w_dtype)
+    dev_info = _cupy.empty((), _numpy.int32)
+    handle = _device.Device().cusolver_handle
 
     if with_eigen_vector:
-        jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR
+        jobz = _cusolver.CUSOLVER_EIG_MODE_VECTOR
     else:
-        jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+        jobz = _cusolver.CUSOLVER_EIG_MODE_NOVECTOR
 
     if UPLO == 'L':
-        uplo = cublas.CUBLAS_FILL_MODE_LOWER
+        uplo = _cublas.CUBLAS_FILL_MODE_LOWER
     else:  # UPLO == 'U'
-        uplo = cublas.CUBLAS_FILL_MODE_UPPER
+        uplo = _cublas.CUBLAS_FILL_MODE_UPPER
 
     if dtype == 'f':
-        buffer_size = cusolver.ssyevj_bufferSize
-        syevj = cusolver.ssyevj
+        buffer_size = _cusolver.ssyevj_bufferSize
+        syevj = _cusolver.ssyevj
     elif dtype == 'd':
-        buffer_size = cusolver.dsyevj_bufferSize
-        syevj = cusolver.dsyevj
+        buffer_size = _cusolver.dsyevj_bufferSize
+        syevj = _cusolver.dsyevj
     elif dtype == 'F':
-        buffer_size = cusolver.cheevj_bufferSize
-        syevj = cusolver.cheevj
+        buffer_size = _cusolver.cheevj_bufferSize
+        syevj = _cusolver.cheevj
     elif dtype == 'D':
-        buffer_size = cusolver.zheevj_bufferSize
-        syevj = cusolver.zheevj
+        buffer_size = _cusolver.zheevj_bufferSize
+        syevj = _cusolver.zheevj
     else:
         raise RuntimeError('Only float and double and cuComplex and '
                            + 'cuDoubleComplex are supported')
 
-    params = cusolver.createSyevjInfo()
+    params = _cusolver.createSyevjInfo()
     work_size = buffer_size(
         handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr, params)
-    work = cupy.empty(work_size, inp_v_dtype)
+    work = _cupy.empty(work_size, inp_v_dtype)
     syevj(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         syevj, dev_info)
 
-    cusolver.destroySyevjInfo(params)
+    _cusolver.destroySyevjInfo(params)
 
     w = w.astype(ret_w_dtype, copy=False)
     if not with_eigen_vector:
@@ -420,52 +420,53 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
         ret_v_dtype = 'd'
 
     *batch_shape, m, lda = a.shape
-    batch_size = numpy.prod(batch_shape)
+    batch_size = _numpy.prod(batch_shape)
     a = a.reshape(batch_size, m, lda)
-    v = cupy.array(a.swapaxes(-2, -1), order='C', copy=True, dtype=inp_v_dtype)
+    v = _cupy.array(
+        a.swapaxes(-2, -1), order='C', copy=True, dtype=inp_v_dtype)
 
-    w = cupy.empty((batch_size, m), inp_w_dtype).swapaxes(-2, 1)
-    dev_info = cupy.empty((), numpy.int32)
-    handle = device.Device().cusolver_handle
+    w = _cupy.empty((batch_size, m), inp_w_dtype).swapaxes(-2, 1)
+    dev_info = _cupy.empty((), _numpy.int32)
+    handle = _device.Device().cusolver_handle
 
     if with_eigen_vector:
-        jobz = cusolver.CUSOLVER_EIG_MODE_VECTOR
+        jobz = _cusolver.CUSOLVER_EIG_MODE_VECTOR
     else:
-        jobz = cusolver.CUSOLVER_EIG_MODE_NOVECTOR
+        jobz = _cusolver.CUSOLVER_EIG_MODE_NOVECTOR
 
     if UPLO == 'L':
-        uplo = cublas.CUBLAS_FILL_MODE_LOWER
+        uplo = _cublas.CUBLAS_FILL_MODE_LOWER
     else:  # UPLO == 'U'
-        uplo = cublas.CUBLAS_FILL_MODE_UPPER
+        uplo = _cublas.CUBLAS_FILL_MODE_UPPER
 
     if dtype == 'f':
-        buffer_size = cusolver.ssyevjBatched_bufferSize
-        syevjBatched = cusolver.ssyevjBatched
+        buffer_size = _cusolver.ssyevjBatched_bufferSize
+        syevjBatched = _cusolver.ssyevjBatched
     elif dtype == 'd':
-        buffer_size = cusolver.dsyevjBatched_bufferSize
-        syevjBatched = cusolver.dsyevjBatched
+        buffer_size = _cusolver.dsyevjBatched_bufferSize
+        syevjBatched = _cusolver.dsyevjBatched
     elif dtype == 'F':
-        buffer_size = cusolver.cheevjBatched_bufferSize
-        syevjBatched = cusolver.cheevjBatched
+        buffer_size = _cusolver.cheevjBatched_bufferSize
+        syevjBatched = _cusolver.cheevjBatched
     elif dtype == 'D':
-        buffer_size = cusolver.zheevjBatched_bufferSize
-        syevjBatched = cusolver.zheevjBatched
+        buffer_size = _cusolver.zheevjBatched_bufferSize
+        syevjBatched = _cusolver.zheevjBatched
     else:
         raise RuntimeError('Only float and double and cuComplex and '
                            + 'cuDoubleComplex are supported')
 
-    params = cusolver.createSyevjInfo()
+    params = _cusolver.createSyevjInfo()
     work_size = buffer_size(
         handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr, params, batch_size)
-    work = cupy.empty(work_size, inp_v_dtype)
+    work = _cupy.empty(work_size, inp_v_dtype)
     syevjBatched(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params,
         batch_size)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         syevjBatched, dev_info)
 
-    cusolver.destroySyevjInfo(params)
+    _cusolver.destroySyevjInfo(params)
 
     w = w.astype(ret_w_dtype, copy=False)
     w = w.swapaxes(-2, -1).reshape(*batch_shape, m)
@@ -499,7 +500,7 @@ def gesv(a, b):
         raise ValueError('shape mismatch (a: {}, b: {}).'.
                          format(a.shape, b.shape))
 
-    dtype = numpy.promote_types(a.dtype.char, 'f')
+    dtype = _numpy.promote_types(a.dtype.char, 'f')
     if dtype == 'f':
         t = 's'
     elif dtype == 'd':
@@ -510,37 +511,164 @@ def gesv(a, b):
         t = 'z'
     else:
         raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
-    helper = getattr(cusolver, t + 'getrf_bufferSize')
-    getrf = getattr(cusolver, t + 'getrf')
-    getrs = getattr(cusolver, t + 'getrs')
+    helper = getattr(_cusolver, t + 'getrf_bufferSize')
+    getrf = getattr(_cusolver, t + 'getrf')
+    getrs = getattr(_cusolver, t + 'getrs')
 
     n = b.shape[0]
     nrhs = b.shape[1] if b.ndim == 2 else 1
     a_data_ptr = a.data.ptr
     b_data_ptr = b.data.ptr
-    a = cupy.asfortranarray(a, dtype=dtype)
-    b = cupy.asfortranarray(b, dtype=dtype)
+    a = _cupy.asfortranarray(a, dtype=dtype)
+    b = _cupy.asfortranarray(b, dtype=dtype)
     if a.data.ptr == a_data_ptr:
         a = a.copy()
     if b.data.ptr == b_data_ptr:
         b = b.copy()
 
-    handle = device.get_cusolver_handle()
-    dipiv = cupy.empty(n, dtype=numpy.int32)
-    dinfo = cupy.empty(1, dtype=numpy.int32)
+    handle = _device.get_cusolver_handle()
+    dipiv = _cupy.empty(n, dtype=_numpy.int32)
+    dinfo = _cupy.empty(1, dtype=_numpy.int32)
     lwork = helper(handle, n, n, a.data.ptr, n)
-    dwork = cupy.empty(lwork, dtype=a.dtype)
+    dwork = _cupy.empty(lwork, dtype=a.dtype)
     # LU factrization (A = L * U)
     getrf(handle, n, n, a.data.ptr, n, dwork.data.ptr, dipiv.data.ptr,
           dinfo.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         getrf, dinfo)
     # Solves Ax = b
-    getrs(handle, cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
+    getrs(handle, _cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
           dipiv.data.ptr, b.data.ptr, n, dinfo.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
         getrs, dinfo)
     return b
+
+
+def gels(a, b):
+    """Solves over/well/under-determined linear systems.
+    Computes least-square solution to equation ``ax = b` by QR factorization
+    using cusolverDn<t>geqrf().
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(M, N)``.
+        b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
+    Returns:
+        cupy.ndarray:
+            The matrix with dimension ``(N)`` or ``(N, K)``.
+    """
+    if a.ndim != 2:
+        raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
+    if b.ndim == 1:
+        nrhs = 1
+    elif b.ndim == 2:
+        nrhs = b.shape[1]
+    else:
+        raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
+    if a.shape[0] != b.shape[0]:
+        raise ValueError('shape mismatch (a: {}, b: {}).'.
+                         format(a.shape, b.shape))
+    if a.dtype != b.dtype:
+        raise ValueError('dtype mismatch (a: {}, b: {}).'.
+                         format(a.dtype, b.dtype))
+
+    dtype = a.dtype
+    if dtype == 'f':
+        t = 's'
+    elif dtype == 'd':
+        t = 'd'
+    elif dtype == 'F':
+        t = 'c'
+    elif dtype == 'D':
+        t = 'z'
+    else:
+        raise ValueError('unsupported dtype (actual: {})'.format(dtype))
+
+    geqrf_helper = getattr(_cusolver, t + 'geqrf_bufferSize')
+    geqrf = getattr(_cusolver, t + 'geqrf')
+    trsm = getattr(_cublas, t + 'trsm')
+    if t in 'sd':
+        ormqr_helper = getattr(_cusolver, t + 'ormqr_bufferSize')
+        ormqr = getattr(_cusolver, t + 'ormqr')
+    else:
+        ormqr_helper = getattr(_cusolver, t + 'unmqr_bufferSize')
+        ormqr = getattr(_cusolver, t + 'unmqr')
+
+    no_trans = _cublas.CUBLAS_OP_N
+    if dtype.char in 'fd':
+        trans = _cublas.CUBLAS_OP_T
+    else:
+        trans = _cublas.CUBLAS_OP_C
+
+    m, n = a.shape
+    mn_min = min(m, n)
+    dev_info = _cupy.empty(1, dtype=_numpy.int32)
+    tau = _cupy.empty(mn_min, dtype=dtype)
+    cusolver_handle = _device.get_cusolver_handle()
+    cublas_handle = _device.get_cublas_handle()
+
+    if m >= n:  # over/well-determined systems
+        a = a.copy(order='F')
+        b = b.copy(order='F')
+
+        # geqrf (QR decomposition, A = Q * R)
+        ws_size = geqrf_helper(cusolver_handle, m, n, a.data.ptr, m)
+        workspace = _cupy.empty(ws_size, dtype=dtype)
+        geqrf(cusolver_handle, m, n, a.data.ptr, m, tau.data.ptr,
+              workspace.data.ptr, ws_size, dev_info.data.ptr)
+        _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+            geqrf, dev_info)
+
+        # ormqr (Computes Q^T * B)
+        ws_size = ormqr_helper(
+            cusolver_handle, _cublas.CUBLAS_SIDE_LEFT, trans, m, nrhs, mn_min,
+            a.data.ptr, m, tau.data.ptr, b.data.ptr, m)
+        workspace = _cupy.empty(ws_size, dtype=dtype)
+        ormqr(cusolver_handle, _cublas.CUBLAS_SIDE_LEFT, trans, m, nrhs,
+              mn_min, a.data.ptr, m, tau.data.ptr, b.data.ptr, m,
+              workspace.data.ptr, ws_size, dev_info.data.ptr)
+        _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+            ormqr, dev_info)
+
+        # trsm (Solves R * X = (Q^T * B))
+        trsm(cublas_handle, _cublas.CUBLAS_SIDE_LEFT,
+             _cublas.CUBLAS_FILL_MODE_UPPER, no_trans,
+             _cublas.CUBLAS_DIAG_NON_UNIT, mn_min, nrhs, 1, a.data.ptr, m,
+             b.data.ptr, m)
+
+        return b[:n]
+
+    else:  # under-determined systems
+        a = a.conj().T.copy(order='F')
+        bb = b
+        out_shape = (n,) if b.ndim == 1 else (n, nrhs)
+        b = _cupy.zeros(out_shape, dtype=dtype, order='F')
+        b[:m] = bb
+
+        # geqrf (QR decomposition, A^T = Q * R)
+        ws_size = geqrf_helper(cusolver_handle, n, m, a.data.ptr, n)
+        workspace = _cupy.empty(ws_size, dtype=dtype)
+        geqrf(cusolver_handle, n, m, a.data.ptr, n, tau.data.ptr,
+              workspace.data.ptr, ws_size, dev_info.data.ptr)
+        _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+            geqrf, dev_info)
+
+        # trsm (Solves R^T * Z = B)
+        trsm(cublas_handle, _cublas.CUBLAS_SIDE_LEFT,
+             _cublas.CUBLAS_FILL_MODE_UPPER, trans,
+             _cublas.CUBLAS_DIAG_NON_UNIT, m, nrhs, 1, a.data.ptr, n,
+             b.data.ptr, n)
+
+        # ormqr (Computes Q * Z)
+        ws_size = ormqr_helper(
+            cusolver_handle, _cublas.CUBLAS_SIDE_LEFT, no_trans, n, nrhs,
+            mn_min, a.data.ptr, n, tau.data.ptr, b.data.ptr, n)
+        workspace = _cupy.empty(ws_size, dtype=dtype)
+        ormqr(cusolver_handle, _cublas.CUBLAS_SIDE_LEFT, no_trans, n, nrhs,
+              mn_min, a.data.ptr, n, tau.data.ptr, b.data.ptr, n,
+              workspace.data.ptr, ws_size, dev_info.data.ptr)
+        _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+            ormqr, dev_info)
+
+        return b
 
 
 def irs_gels(a, b):

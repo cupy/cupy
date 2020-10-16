@@ -155,7 +155,10 @@ def get_compiler_setting(use_hip):
         extra_compile_args.append('-std=c++11')
 
     if PLATFORM_DARWIN:
-        library_dirs.append('/usr/local/cuda/lib')
+        if cuda_path:
+            library_dirs.append('/usr/local/cuda/lib')
+        elif rocm_path:
+            library_dirs.append('/opt/rocm/lib')
 
     if PLATFORM_WIN32:
         nvtoolsext_path = os.environ.get('NVTOOLSEXT_PATH', '')
@@ -167,20 +170,19 @@ def get_compiler_setting(use_hip):
 
     # For CUB, we need the complex and CUB headers. The search precedence for
     # the latter is:
-    #   1. built-in CUB (for CUDA 11+)
+    #   1. built-in CUB (for CUDA 11+ and ROCm)
     #   2. CuPy's CUB bundle
     # Note that starting CuPy v8 we no longer use CUB_PATH
 
     # for <cupy/complex.cuh>
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                '../cupy/core/include')
-    # TODO(leofang): remove this detection in CuPy v9
-    old_cub_path = os.environ.get('CUB_PATH', '')
-    if old_cub_path:
-        utils.print_warning('CUB_PATH is detected: ' + old_cub_path,
-                            'It is no longer used by CuPy and will be ignored')
     if cuda_path:
         cuda_cub_path = os.path.join(cuda_path, 'include', 'cub')
+        if not os.path.exists(cuda_cub_path):
+            cuda_cub_path = None
+    elif rocm_path:
+        cuda_cub_path = os.path.join(rocm_path, 'include', 'hipcub')
         if not os.path.exists(cuda_cub_path):
             cuda_cub_path = None
     else:
@@ -188,8 +190,10 @@ def get_compiler_setting(use_hip):
     global _cub_path
     if cuda_cub_path:
         _cub_path = cuda_cub_path
-    else:
+    elif not use_hip:  # CuPy's bundle doesn't work for ROCm
         _cub_path = os.path.join(cupy_header, 'cupy', 'cub')
+    else:
+        raise Exception('Please install hipCUB and retry')
     include_dirs.insert(0, _cub_path)
     include_dirs.insert(1, cupy_header)
 
@@ -403,22 +407,29 @@ def check_nccl_version(compiler, settings):
 
     # NCCL 1.x does not provide version information.
     try:
-        out = build_and_run(compiler, '''
-        #include <nccl.h>
-        #include <stdio.h>
-        #ifdef NCCL_MAJOR
-        #ifndef NCCL_VERSION_CODE
-        #  define NCCL_VERSION_CODE \
-                (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
-        #endif
-        #else
-        #  define NCCL_VERSION_CODE 0
-        #endif
-        int main() {
-          printf("%d", NCCL_VERSION_CODE);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
+        out = build_and_run(compiler,
+                            '''
+                            #ifndef CUPY_USE_HIP
+                            #include <nccl.h>
+                            #else
+                            #include <rccl.h>
+                            #endif
+                            #include <stdio.h>
+                            #ifdef NCCL_MAJOR
+                            #ifndef NCCL_VERSION_CODE
+                            #  define NCCL_VERSION_CODE \
+                            (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+                            #endif
+                            #else
+                            #  define NCCL_VERSION_CODE 0
+                            #endif
+                            int main() {
+                              printf("%d", NCCL_VERSION_CODE);
+                              return 0;
+                            }
+                            ''',
+                            include_dirs=settings['include_dirs'],
+                            define_macros=settings['define_macros'])
 
     except Exception as e:
         utils.print_warning('Cannot include NCCL\n{0}'.format(e))
@@ -467,17 +478,28 @@ def check_cub_version(compiler, settings):
 
     # This is guaranteed to work for any CUB source because the search
     # precedence follows that of include paths.
-    # CUB < 1.9.9 does not provide version.cuh and would error out
+    # - On CUDA, CUB < 1.9.9 does not provide version.cuh and would error out
+    # - On ROCm, hipCUB has the same version as rocPRIM (as of ROCm 3.5.0)
     try:
-        out = build_and_run(compiler, '''
-        #include <cub/version.cuh>
-        #include <stdio.h>
+        out = build_and_run(compiler,
+                            '''
+                            #ifndef CUPY_USE_HIP
+                            #include <cub/version.cuh>
+                            #else
+                            #include <hipcub/hipcub_version.hpp>
+                            #endif
+                            #include <stdio.h>
 
-        int main() {
-          printf("%d", CUB_VERSION);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
+                            int main() {
+                              #ifndef CUPY_USE_HIP
+                              printf("%d", CUB_VERSION);
+                              #else
+                              printf("%d", HIPCUB_VERSION);
+                              #endif
+                              return 0;
+                            }''',
+                            include_dirs=settings['include_dirs'],
+                            define_macros=settings['define_macros'])
     except Exception as e:
         # could be in a git submodule?
         try:

@@ -311,5 +311,7 @@ def from_pointer(ptr):
         Device: The device whose memory the pointer refers to.
 
     """
+    # Initialize a context to workaround a bug in CUDA 10.2+. (#3991)
+    runtime._ensure_context()
     attrs = runtime.pointerGetAttributes(ptr)
     return Device(attrs.device)
