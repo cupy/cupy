@@ -6,7 +6,7 @@ import warnings
 import cupy
 from cupy_backends.cuda.libs import cublas
 from cupy.cuda import device
-from cupy.linalg import util
+from cupy.linalg import _util
 
 _batched_gesv_limit = 256
 
@@ -35,8 +35,8 @@ def batched_gesv(a, b):
         cupy.ndarray:
             The matrix with dimension ``(..., M)`` or ``(..., M, K)``.
     """
-    util._assert_cupy_array(a, b)
-    util._assert_nd_squareness(a)
+    _util._assert_cupy_array(a, b)
+    _util._assert_nd_squareness(a)
 
     if not ((a.ndim == b.ndim or a.ndim == b.ndim + 1) and
             a.shape[:-1] == b.shape[:a.ndim - 1]):
@@ -91,7 +91,7 @@ def batched_gesv(a, b):
     info = numpy.empty((1,), dtype=numpy.int32)
     # LU factorization (A = L * U)
     getrf(handle, n, a_array.data.ptr, lda, pivot.data.ptr, dinfo.data.ptr, bs)
-    util._check_cublas_info_array_if_synchronization_allowed(getrf, dinfo)
+    _util._check_cublas_info_array_if_synchronization_allowed(getrf, dinfo)
     # Solves Ax = b
     getrs(handle, cublas.CUBLAS_OP_N, n, nrhs, a_array.data.ptr, lda,
           pivot.data.ptr, b_array.data.ptr, ldb, info.ctypes.data, bs)

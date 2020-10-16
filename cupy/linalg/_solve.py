@@ -6,8 +6,8 @@ from cupy import core
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
-from cupy.linalg import decomposition
-from cupy.linalg import util
+from cupy.linalg import _decomposition
+from cupy.linalg import _util
 from cupy.cublas import batched_gesv, get_batched_gesv_limit
 
 
@@ -40,8 +40,8 @@ def solve(a, b):
         # large, so it is not used in such cases.
         return batched_gesv(a, b)
 
-    util._assert_cupy_array(a, b)
-    util._assert_nd_squareness(a)
+    _util._assert_cupy_array(a, b)
+    _util._assert_nd_squareness(a)
 
     if not ((a.ndim == b.ndim or a.ndim == b.ndim + 1) and
             a.shape[:-1] == b.shape[:a.ndim - 1]):
@@ -113,7 +113,7 @@ def _solve(a, b, cublas_handle, cusolver_handle):
     geqrf(
         cusolver_handle, m, m, a.data.ptr, m, tau.data.ptr, workspace.data.ptr,
         buffersize, dev_info.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         geqrf, dev_info)
     # Explicitly free the space allocated by geqrf
     del workspace
@@ -126,7 +126,7 @@ def _solve(a, b, cublas_handle, cusolver_handle):
         cusolver_handle, cublas.CUBLAS_SIDE_LEFT, trans, m, k, m, a.data.ptr,
         m, tau.data.ptr, b.data.ptr, m, workspace.data.ptr, buffersize,
         dev_info.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         ormqr, dev_info)
 
     # Explicitly free the space allocated by ormqr
@@ -219,8 +219,8 @@ def lstsq(a, b, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
-    util._assert_cupy_array(a, b)
-    util._assert_rank2(a)
+    _util._assert_cupy_array(a, b)
+    _util._assert_rank2(a)
     if b.ndim > 2:
         raise linalg.LinAlgError('{}-dimensional array given. Array must be at'
                                  ' most two-dimensional'.format(b.ndim))
@@ -281,9 +281,9 @@ def inv(a):
     # to prevent `a` to be overwritten
     a = a.copy()
 
-    util._assert_cupy_array(a)
-    util._assert_rank2(a)
-    util._assert_nd_squareness(a)
+    _util._assert_cupy_array(a)
+    _util._assert_rank2(a)
+    _util._assert_nd_squareness(a)
 
     # support float32, float64, complex64, and complex128
     if a.dtype.char in 'fdFD':
@@ -326,7 +326,7 @@ def inv(a):
     getrf(
         cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr,
         ipiv.data.ptr, dev_info.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         getrf, dev_info)
 
     b = cupy.eye(m, dtype=dtype)
@@ -335,7 +335,7 @@ def inv(a):
     getrs(
         cusolver_handle, 0, m, m, a.data.ptr, m, ipiv.data.ptr, b.data.ptr, m,
         dev_info.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         getrs, dev_info)
 
     return b
@@ -344,8 +344,8 @@ def inv(a):
 def _batched_inv(a):
 
     assert(a.ndim >= 3)
-    util._assert_cupy_array(a)
-    util._assert_nd_squareness(a)
+    _util._assert_cupy_array(a)
+    _util._assert_nd_squareness(a)
 
     if a.dtype == cupy.float32:
         getrf = cupy.cuda.cublas.sgetrfBatched
@@ -384,7 +384,7 @@ def _batched_inv(a):
 
     getrf(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
           info_array.data.ptr, batch_size)
-    cupy.linalg.util._check_cublas_info_array_if_synchronization_allowed(
+    cupy.linalg._util._check_cublas_info_array_if_synchronization_allowed(
         getrf, info_array)
 
     c = cupy.empty_like(a)
@@ -396,7 +396,7 @@ def _batched_inv(a):
 
     getri(handle, n, a_array.data.ptr, lda, pivot_array.data.ptr,
           c_array.data.ptr, ldc, info_array.data.ptr, batch_size)
-    cupy.linalg.util._check_cublas_info_array_if_synchronization_allowed(
+    cupy.linalg._util._check_cublas_info_array_if_synchronization_allowed(
         getri, info_array)
 
     return c.reshape(a_shape)
@@ -427,7 +427,7 @@ def pinv(a, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.pinv`
     """
-    u, s, vt = decomposition.svd(a.conj(), full_matrices=False)
+    u, s, vt = _decompositionsvd(a.conj(), full_matrices=False)
     cutoff = rcond * s.max()
     s1 = 1 / s
     s1[s <= cutoff] = 0
@@ -461,7 +461,7 @@ def tensorinv(a, ind=2):
 
     .. seealso:: :func:`numpy.linalg.tensorinv`
     """
-    util._assert_cupy_array(a)
+    _util._assert_cupy_array(a)
 
     if ind <= 0:
         raise ValueError('Invalid ind argument')

@@ -3,15 +3,15 @@ from numpy import linalg
 
 import cupy
 from cupy import core
-from cupy.linalg import decomposition
-from cupy.linalg import util
+from cupy.linalg import _decomposition
+from cupy.linalg import _util
 
 import functools
 
 
 def _multi_svd_norm(x, row_axis, col_axis, op):
     y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
-    result = op(decomposition.svd(y, compute_uv=False), axis=-1)
+    result = op(_decomposition.svd(y, compute_uv=False), axis=-1)
     return result
 
 
@@ -195,7 +195,7 @@ def matrix_rank(M, tol=None):
     """
     if M.ndim < 2:
         return (M != 0).any().astype(int)
-    S = decomposition.svd(M, compute_uv=False)
+    S = _decomposition.svd(M, compute_uv=False)
     if tol is None:
         tol = (S.max(axis=-1, keepdims=True) * max(M.shape[-2:]) *
                numpy.finfo(S.dtype).eps)
@@ -238,7 +238,7 @@ def slogdet(a):
         msg = ('%d-dimensional array given. '
                'Array must be at least two-dimensional' % a.ndim)
         raise linalg.LinAlgError(msg)
-    util._assert_nd_squareness(a)
+    _util._assert_nd_squareness(a)
 
     dtype = numpy.promote_types(a.dtype.char, 'f')
     real_dtype = numpy.dtype(dtype.char.lower())
@@ -259,7 +259,7 @@ def slogdet(a):
         logdet = cupy.zeros(shape, real_dtype)
         return sign, logdet
 
-    lu, ipiv, dev_info = decomposition._lu_factor(a, dtype)
+    lu, ipiv, dev_info = _decomposition._lu_factor(a, dtype)
 
     # dev_info < 0 means illegal value (in dimensions, strides, and etc.) that
     # should never happen even if the matrix contains nan or inf.
