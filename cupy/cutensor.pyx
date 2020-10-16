@@ -470,7 +470,7 @@ cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype, compute_dtype):
     if compute_dtype is None:
         compute_type = cupy.core.get_compute_type(out_dtype)
     else:
-        compute_dtype = numpy.dtype(compute_dtype)
+        compute_dtype = _numpy.dtype(compute_dtype)
         if compute_dtype.char == 'e':
             compute_type = core.COMPUTE_TYPE_FP16
         elif compute_dtype.char in 'fF':
@@ -486,18 +486,18 @@ cdef _get_contraction_compute_type(a_dtype, b_dtype, out_dtype, compute_dtype):
                                           cutensor.C_MIN_16F,
                                           cutensor.COMPUTE_16F)):
             return cutensor_compute_type
-    warnings.warn('Use of compute type ({}) for the dtype combination '
-                  '({}, {}, {}) is not supported in cuTENSOR contraction on '
-                  'GPU with compute capability ({}). Default compute type '
-                  'will be used instead.'.
-                  format(cupy.core.compute_type_to_str(compute_type),
-                         a_dtype, b_dtype, out_dtype, compute_capability))
+    _warnings.warn('Use of compute type ({}) for the dtype combination '
+                   '({}, {}, {}) is not supported in cuTENSOR contraction on '
+                   'GPU with compute capability ({}). Default compute type '
+                   'will be used instead.'.
+                   format(cupy.core.compute_type_to_str(compute_type),
+                          a_dtype, b_dtype, out_dtype, compute_capability))
     return dict_contraction[key][core.COMPUTE_TYPE_DEFAULT]
 
 
 cdef _get_scalar_dtype(out_dtype):
-    if out_dtype == numpy.float16:
-        return numpy.float32
+    if out_dtype == _numpy.float16:
+        return _numpy.float32
     else:
         return out_dtype
 
