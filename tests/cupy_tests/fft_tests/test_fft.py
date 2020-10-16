@@ -1329,7 +1329,7 @@ __device__ void CB_ConvertOutput(
     void *callerInfo, void *sharedPointer)
 {
     ${data_type} x = element;
-    ${element} -= 3.8;
+    ${element} /= 3.8;
     ((${data_type}*)dataOut)[offset] = x;
 }
 
@@ -1478,16 +1478,96 @@ class Test1dCallbacks(unittest.TestCase):
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
-            # handle the normalization factor later
-            out = fft(a, n=self.n, norm=None)
-            out.imag -= 3.8
-            if self.norm == 'ortho':
-                norm = self.shape[-1] if self.n is None else self.n
-                out /= np.sqrt(norm)
+            out = fft(a, n=self.n, norm=self.norm)
+            out.imag /= 3.8
             if dtype in (np.float32, np.complex64):
                 out = out.astype(np.complex64)
         else:
             with xp.fft.config.set_cufft_callbacks(cb_store=cb_store):
                 out = fft(a, n=self.n, norm=self.norm)
+
+        return out
+
+    @testing.for_dtypes('fd')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    def test_rfft_store(self, xp, dtype):
+        fft = xp.fft.rfft
+        element = 'x.y'
+        if dtype == np.float32:
+            data_type = 'cufftComplex'
+            callback_type = 'cufftCallbackStoreC'
+        else:
+            data_type = 'cufftDoubleComplex'
+            callback_type = 'cufftCallbackStoreZ'
+        cb_store = string.Template(_store_callback).substitute(
+            data_type=data_type,
+            store_type=callback_type,
+            element=element)
+
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp is np:
+            out = fft(a, n=self.n, norm=self.norm)
+            out.imag /= 3.8
+            if dtype in (np.float32, np.complex64):
+                out = out.astype(np.complex64)
+        else:
+            with xp.fft.config.set_cufft_callbacks(cb_store=cb_store):
+                out = fft(a, n=self.n, norm=self.norm)
+
+        return out
+
+    @testing.for_dtypes('FD')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    def test_ifft_store(self, xp, dtype):
+        ifft = xp.fft.ifft
+        element = 'x.y'
+        if dtype == np.complex64:
+            data_type = 'cufftComplex'
+            callback_type = 'cufftCallbackStoreC'
+        else:
+            data_type = 'cufftDoubleComplex'
+            callback_type = 'cufftCallbackStoreZ'
+        cb_store = string.Template(_store_callback).substitute(
+            data_type=data_type,
+            store_type=callback_type,
+            element=element)
+
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp is np:
+            out = ifft(a, n=self.n, norm=self.norm)
+            out.imag /= 3.8
+            if dtype in (np.float32, np.complex64):
+                out = out.astype(np.complex64)
+        else:
+            with xp.fft.config.set_cufft_callbacks(cb_store=cb_store):
+                out = ifft(a, n=self.n, norm=self.norm)
+
+        return out
+
+    @testing.for_dtypes('fd')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, contiguous_check=False)
+    def test_irfft_store(self, xp, dtype):
+        ifft = xp.fft.irfft
+        element = 'x'
+        if dtype == np.float32:
+            data_type = 'cufftReal'
+            callback_type = 'cufftCallbackStoreR'
+        else:
+            data_type = 'cufftDoubleReal'
+            callback_type = 'cufftCallbackStoreD'
+        cb_store = string.Template(_store_callback).substitute(
+            data_type=data_type,
+            store_type=callback_type,
+            element=element)
+
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp is np:
+            out = ifft(a, n=self.n, norm=self.norm)
+            out /= 3.8
+            if dtype in (np.float32, np.complex64):
+                out = out.astype(np.float32)
+        else:
+            with xp.fft.config.set_cufft_callbacks(cb_store=cb_store):
+                out = ifft(a, n=self.n, norm=self.norm)
 
         return out
