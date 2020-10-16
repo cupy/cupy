@@ -67,13 +67,6 @@ cdef extern from 'cupy_cufft.h' nogil:
     Result cufftExecD2Z(Handle plan, Double *idata, DoubleComplex *odata)
     Result cufftExecZ2D(Handle plan, DoubleComplex *idata, Double *odata)
 
-    # cuFFT callback
-    ctypedef enum callbackType 'cufftXtCallbackType':
-        pass
-    #Result setCallback(Handle plan, void**, int, void**)
-    #Result cufftXtClearCallback(Handle plan, int)
-    #Result cufftXtSetCallbackSharedSize(Handle plan, int, size_t)
-
     # Version
     Result cufftGetVersion(int* version)
 
@@ -1037,9 +1030,10 @@ class CallbackManager:
 
         self.handle = None
         self.plan = None
+        self.fft_type = None
 
     def create_plan(self, object plan):
-        self.handle = self.mod.createPlan(plan)
+        self.handle, self.fft_type = self.mod.createPlan(plan)
         self.plan = plan
 
     def set_callback(self, int cb_load_type=-1, int cb_store_type=-1):
@@ -1054,8 +1048,29 @@ class CallbackManager:
                 raise ValueError
             self.mod.setCallback(self.handle, cb_store_type, False)
 
-    def transform(self, intptr_t in_arr, intptr_t out_arr):
-        self.mod.transform(self.handle, in_arr, out_arr)
+    def fft(self, a, out, direction):
+        cdef intptr_t plan = self.handle
+        cdef intptr_t stream = stream_module.get_current_stream_ptr()
+        self.mod.setStream(plan, stream)
+
+        if self.fft_type == CUFFT_C2C:
+            self.mod.execC2C(plan, a.data.ptr, out.data.ptr, direction)
+        elif self.fft_type == CUFFT_R2C:
+            self.mod.execR2C(plan, a.data.ptr, out.data.ptr)
+        elif self.fft_type == CUFFT_C2R:
+            self.mod.execC2R(plan, a.data.ptr, out.data.ptr)
+        elif self.fft_type == CUFFT_Z2Z:
+            self.mod.execZ2Z(plan, a.data.ptr, out.data.ptr, direction)
+        elif self.fft_type == CUFFT_D2Z:
+            self.mod.execD2Z(plan, a.data.ptr, out.data.ptr)
+        elif self.fft_type == CUFFT_Z2D:
+            self.mod.execZ2D(plan, a.data.ptr, out.data.ptr)
+        else:
+            raise ValueError
 
     def __del__(self):
+        if self.handle:
+            self.mod.destroyPlan(self.handle)
+            self.handle = None
+        del self.mod
         self.dir_obj.cleanup()

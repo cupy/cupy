@@ -33,7 +33,7 @@ mgr.create_plan(('Plan1d', (plan.nx, plan.fft_type, plan.batch)))
 mgr.set_callback(0)
 b = plan.get_output_array(a)
 print(a.dtype, a.shape, b.dtype, b.shape)
-mgr.transform(a.data.ptr, b.data.ptr)
+mgr.fft(a, b, cp.cuda.cufft.CUFFT_FORWARD)
 with plan:
     c = cp.fft.fft(cp.ones(shape=(64, 128), dtype=cp.complex64)) 
 assert cp.allclose(b, c)
