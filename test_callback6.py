@@ -25,15 +25,20 @@ __device__ cufftComplex CB_ConvertInputC(
 __device__ cufftCallbackLoadC d_loadCallbackPtr = CB_ConvertInputC;
 '''
 
-a = cp.random.random((64, 128)).astype(cp.complex64)
-plan = get_fft_plan(a, axes=(1,))
-mgr = cp.cuda.cufft.CallbackManager(('Plan1d', (plan.nx, plan.fft_type, plan.batch)), cb_load=code)
-print((plan.nx, plan.fft_type, plan.batch))
+#a = cp.random.random((64, 128)).astype(cp.complex64)
+#plan = get_fft_plan(a, axes=(1,))
+#mgr = cp.cuda.cufft.CallbackManager(('Plan1d', (plan.nx, plan.fft_type, plan.batch)), cb_load=code)
+#print((plan.nx, plan.fft_type, plan.batch))
+## keys = ((128, 128), (128, 128), 1, 16384, (128, 128), 1, 16384, 41, 64, 'C', 2, None)
+a = cp.random.random((64, 128, 128)).astype(cp.complex64)
+plan = get_fft_plan(a, axes=(1,2))
+mgr = cp.cuda.cufft.CallbackManager(('PlanNd', ((128, 128), (128, 128), 1, 16384, (128, 128), 1, 16384, 41, 64,)), cb_load=code)
 mgr.set_callback(cp.cuda.cufft.CUFFT_CB_LD_COMPLEX)
 b = plan.get_output_array(a)
 print(a.dtype, a.shape, b.dtype, b.shape)
 mgr.fft(a, b, cp.cuda.cufft.CUFFT_FORWARD)
 with plan:
-    c = cp.fft.fft(cp.ones(shape=(64, 128), dtype=cp.complex64)) 
+    #c = cp.fft.fft(cp.ones(shape=(64, 128), dtype=cp.complex64)) 
+    c = cp.fft.fftn(cp.ones(shape=a.shape, dtype=cp.complex64), axes=(1,2)) 
 assert cp.allclose(b, c)
 del mgr
