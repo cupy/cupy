@@ -547,13 +547,13 @@ from cupy._logic.truth import any  # NOQA
 # ------------------------------------------------------------------------------
 # Polynomial functions
 # ------------------------------------------------------------------------------
-from cupy._lib import poly1d  # NOQA
-from cupy._lib import polyadd  # NOQA
-from cupy._lib import polysub  # NOQA
-from cupy._lib import polymul  # NOQA
-from cupy._lib import polyfit  # NOQA
-from cupy._lib import polyval  # NOQA
-from cupy._lib import roots  # NOQA
+from cupy._lib.polynomial import poly1d  # NOQA
+from cupy._lib._routines_poly import polyadd  # NOQA
+from cupy._lib._routines_poly import polysub  # NOQA
+from cupy._lib._routines_poly import polymul  # NOQA
+from cupy._lib._routines_poly import polyfit  # NOQA
+from cupy._lib._routines_poly import polyval  # NOQA
+from cupy._lib._routines_poly import roots  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
