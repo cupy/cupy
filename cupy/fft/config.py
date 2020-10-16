@@ -1,3 +1,5 @@
+import contextlib
+
 from cupy import _util
 from cupy.cuda import cufft
 from cupy.cuda.device import get_compute_capability
@@ -172,7 +174,7 @@ class _CallbackManager:
         self.fft_type = self.plan.fft_type
         self.is_callback_set = False
 
-    def set_callback(self, cb_load_type=-1, cb_store_type=-1):
+    def set_callbacks(self, cb_load_type=-1, cb_store_type=-1):
         if self.is_callback_set:
             raise RuntimeError('callback cannot be reset')
         if self.cb_load:
@@ -195,9 +197,9 @@ class _CallbackManager:
         self.dir_obj.cleanup()
 
 
-# TODO(leofang): turn this into a context manager?
+@contextlib.contextmanager
 def set_callbacks(cb_load='', cb_store=''):
-    """Set load and/or store callbacks.
+    """A context manager for setting up load and/or store callbacks.
 
     Args:
         cb_load (str): A string contains the device kernel for the load
@@ -206,7 +208,8 @@ def set_callbacks(cb_load='', cb_store=''):
             callback. It must define ``d_storeCallbackPtr``.
 
     .. note::
-        An example for a load callback is shown below:
+        Any FFT calls living in this context will have callbacks set up. An
+        example for a load callback is shown below:
 
         .. code-block:: python
 
@@ -221,7 +224,9 @@ def set_callbacks(cb_load='', cb_store=''):
 
             __device__ cufftCallbackLoadC d_loadCallbackPtr = CB_ConvertInputC;
             '''
-            cp.fft.config.set_callbacks(cb_load=code)
+
+            with cp.fft.config.set_callbacks(cb_load=code):
+                out_arr = cp.fft.fft(in_arr, ...)
 
     .. warning::
         Using cuFFT callbacks requires compiling and loading an FFT module as
@@ -236,12 +241,16 @@ def set_callbacks(cb_load='', cb_store=''):
         callbacks for the next transform, call this function again.
 
     """
-    if cb_load:
-        global _callback_load
-        _callback_load = cb_load
-    if cb_store:
-        global _callback_store
-        _callback_store = cb_store
+    global _callback_load, _callback_store
+    try:
+        if cb_load:
+            _callback_load = cb_load
+        if cb_store:
+            _callback_store = cb_store
+        yield
+    finally:
+        _callback_load = ''
+        _callback_store = ''
 
 
 def get_static_plan(plan_type, fft_type, keys):
@@ -269,7 +278,7 @@ def get_static_plan(plan_type, fft_type, keys):
         cb_store_type = cufft.CUFFT_CB_ST_REAL_DOUBLE if _callback_store else -1
     else:
         raise ValueError
-    mgr.set_callback(cb_load_type, cb_store_type)
+    mgr.set_callbacks(cb_load_type, cb_store_type)
 
     _callback_load = ''
     _callback_store = ''
