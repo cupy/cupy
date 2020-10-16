@@ -90,15 +90,12 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
             return cupy.ones(ar1.shape, dtype=cupy.bool_)
         else:
             return cupy.zeros(ar1.shape, dtype=cupy.bool_)
-
-    shape = (ar1.size, ar2.size)
-    ar1_broadcast = cupy.broadcast_to(ar1[..., cupy.newaxis], shape)
-    ar2_broadcast = cupy.broadcast_to(ar2, shape)
-    count = (ar1_broadcast == ar2_broadcast).sum(axis=1)
-    if invert:
-        return count == 0
-    else:
-        return count > 0
+    # Use brilliant searchsorted trick
+    # https://github.com/cupy/cupy/pull/4018#discussion_r495790724
+    ar2 = cupy.sort(ar2)
+    v1 = cupy.searchsorted(ar2, ar1, 'left')
+    v2 = cupy.searchsorted(ar2, ar1, 'right')
+    return v1 == v2 if invert else v1 != v2
 
 
 def isin(element, test_elements, assume_unique=False, invert=False):

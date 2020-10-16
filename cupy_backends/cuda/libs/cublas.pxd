@@ -249,6 +249,19 @@ cpdef cgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
 cpdef zgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)
 
+cpdef int sgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize)
+cpdef int dgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize)
+cpdef int cgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize)
+cpdef int zgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize)
+
 cpdef sgetriBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t Carray, int ldc,
                     size_t infoArray, int batchSize)

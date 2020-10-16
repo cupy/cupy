@@ -5,7 +5,7 @@
 
 #define UNUSED(x) ((void)x)
 
-#ifndef CUPY_NO_CUDA
+#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #include <nccl.h>
 
@@ -14,6 +14,11 @@
 #define ncclHalf ((ncclDataType_t)2)
 #endif
 #endif
+
+#elif defined(CUPY_USE_HIP)
+
+#include <rccl.h>
+typedef hipStream_t cudaStream_t;
 
 #else // #ifndef CUPY_NO_CUDA
 

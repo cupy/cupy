@@ -12,7 +12,8 @@ from cupyx.scipy.ndimage import filters
 
 @cupy.memoize(for_each_device=True)
 def _get_binary_erosion_kernel(
-    w_shape, int_type, offsets, center_is_true, border_value, invert, masked
+    w_shape, int_type, offsets, center_is_true, border_value, invert, masked,
+    all_weights_nonzero
 ):
     if invert:
         border_value = int(not border_value)
@@ -71,12 +72,13 @@ def _get_binary_erosion_kernel(
         found,
         '',
         'constant', w_shape, int_type, offsets, 0, ctype='Y', has_weights=True,
-        has_structure=False, has_mask=masked, binary_morphology=True)
+        has_structure=False, has_mask=masked, binary_morphology=True,
+        all_weights_nonzero=all_weights_nonzero)
 
 
 def _center_is_true(structure, origin):
     coor = tuple([oo + ss // 2 for ss, oo in zip(structure.shape, origin)])
-    return bool(structure[coor])  # devie synchronization
+    return bool(structure[coor])  # device synchronization
 
 
 def iterate_structure(structure, iterations, origin=None):
@@ -154,19 +156,21 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
     except TypeError:
         raise TypeError('iterations parameter should be an integer')
 
-    if not input.flags.c_contiguous:
-        # TODO: grlee77: is C-contiguity required?
-        input = cupy.ascontiguousarray(input)
     if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported')
     if structure is None:
         structure = generate_binary_structure(input.ndim, 1)
+        all_weights_nonzero = input.ndim == 1
+        center_is_true = True
+        default_structure = True
     else:
         structure = structure.astype(dtype=bool, copy=False)
+        # transfer to CPU for use in determining if it is fully dense
+        # structure_cpu = cupy.asnumpy(structure)
+        default_structure = False
     if structure.ndim != input.ndim:
         raise RuntimeError('structure and input must have same dimensionality')
     if not structure.flags.c_contiguous:
-        # TODO: grlee77: is C-contiguity required?
         structure = cupy.ascontiguousarray(structure)
     if structure.size < 1:
         raise RuntimeError('structure must not be empty')
@@ -175,13 +179,12 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         if mask.shape != input.shape:
             raise RuntimeError('mask and input must have equal sizes')
         if not mask.flags.c_contiguous:
-            # TODO: grlee77: current indexing requires C contiguous arrays.
-            mask = cupy.asacontiguousarray(mask)
+            mask = cupy.ascontiguousarray(mask)
         masked = True
     else:
         masked = False
     origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
-    center_is_true = _center_is_true(structure, origin)  # synchronization
+
     if isinstance(output, cupy.ndarray) and output.dtype.kind == 'c':
         raise TypeError('Complex output type not supported')
     else:
@@ -202,9 +205,18 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
     origin = tuple(origin)
     int_type = _util._get_inttype(input)
     offsets = _filters_core._origins_to_offsets(origin, structure.shape)
+    if not default_structure:
+        # synchronize required to determine if all weights are non-zero
+        nnz = int(cupy.count_nonzero(structure))
+        all_weights_nonzero = nnz == structure.size
+        if all_weights_nonzero:
+            center_is_true = True
+        else:
+            center_is_true = _center_is_true(structure, origin)
+
     erode_kernel = _get_binary_erosion_kernel(
         structure.shape, int_type, offsets, center_is_true, border_value,
-        invert, masked,
+        invert, masked, all_weights_nonzero,
     )
 
     if iterations == 1:

@@ -1,8 +1,12 @@
 import inspect
 import io
 import os
+import platform
+
+import numpy
 
 import cupy
+import cupy_backends
 
 try:
     import cupy.cuda.thrust as thrust
@@ -28,6 +32,13 @@ try:
     import cupy_backends.cuda.libs.cutensor as cutensor
 except ImportError:
     cutensor = None
+
+try:
+    import scipy
+except ImportError:
+    scipy = None
+
+is_hip = cupy_backends.cuda.api.runtime.is_hip
 
 
 def _eval_or_error(func, errors):
@@ -103,10 +114,16 @@ class _RuntimeInfo(object):
     cub_build_version = None
     cutensor_version = None
 
+    numpy_version = None
+    scipy_version = None
+
     def __init__(self):
         self.cupy_version = cupy.__version__
 
-        self.cuda_path = cupy.cuda.get_cuda_path()
+        if not is_hip:
+            self.cuda_path = cupy.cuda.get_cuda_path()
+        else:
+            self.cuda_path = cupy._environment.get_rocm_path()
 
         self.cuda_build_version = cupy.cuda.driver.get_build_version()
         self.cuda_driver_version = _eval_or_error(
@@ -159,9 +176,16 @@ class _RuntimeInfo(object):
         if cutensor is not None:
             self.cutensor_version = cutensor.get_version()
 
+        self.numpy_version = numpy.version.full_version
+        if scipy is not None:
+            self.scipy_version = scipy.version.full_version
+
     def __str__(self):
         records = [
+            ('OS',  platform.platform()),
             ('CuPy Version', self.cupy_version),
+            ('NumPy Version', self.numpy_version),
+            ('SciPy Version', self.scipy_version),
             ('CUDA Root', self.cuda_path),
 
             ('CUDA Build Version', self.cuda_build_version),
@@ -188,6 +212,16 @@ class _RuntimeInfo(object):
             ('NCCL Runtime Version', self.nccl_runtime_version),
             ('cuTENSOR Version', self.cutensor_version),
         ]
+
+        for device_id in range(cupy.cuda.runtime.getDeviceCount()):
+            with cupy.cuda.Device(device_id) as device:
+                props = cupy.cuda.runtime.getDeviceProperties(device_id)
+                records += [
+                    ('Device {} Name'.format(device_id),
+                     props['name'].decode('utf-8')),
+                    ('Device {} Compute Capability'.format(device_id),
+                     device.compute_capability),
+                ]
 
         width = max([len(r[0]) for r in records]) + 2
         fmt = '{:' + str(width) + '}: {}\n'

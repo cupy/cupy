@@ -1,14 +1,7 @@
 // Stub header file of cuTENSOR
 
-#ifndef INCLUDE_GUARD_CUPY_CUTENSOR_H
-#define INCLUDE_GUARD_CUPY_CUTENSOR_H
-
-#ifndef CUPY_NO_CUDA
-
-#include <library_types.h>
-#include <cutensor.h>
-
-#else // #ifndef CUPY_NO_CUDA
+#ifndef INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H
+#define INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H
 
 #include "../cupy_cuda_common.h"
 
@@ -93,6 +86,4 @@ extern "C" {
 
 } // extern "C"
 
-#endif // #ifndef CUPY_NO_CUDA
-
-#endif // #ifndef INCLUDE_GUARD_CUPY_CUTENSOR_H
+#endif // #ifndef INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H

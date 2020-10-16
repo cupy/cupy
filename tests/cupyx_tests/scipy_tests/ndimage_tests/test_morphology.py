@@ -351,6 +351,37 @@ class BinaryErosionAndDilation(unittest.TestCase):
 
 @testing.parameterize(*(
     testing.product({
+        'x_dtype': [numpy.int8, numpy.float32],
+        'shape': [(16, 24)],
+        'filter': ['binary_erosion', 'binary_dilation'],
+        'iterations': [1, 2],
+        'contiguity': ['C', 'F', 'none']}
+    ))
+)
+@testing.gpu
+@testing.with_requires('scipy')
+class BinaryErosionAndDilationContiguity(unittest.TestCase):
+    def _filter(self, xp, scp, x):
+        filter = getattr(scp.ndimage, self.filter)
+        ndim = len(self.shape)
+        structure = scp.ndimage.generate_binary_structure(ndim, 1)
+        return filter(x, structure, iterations=self.iterations, mask=None,
+                      output=None, border_value=0, origin=0, brute_force=True)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_binary_erosion_and_dilation_input_contiguity(self, xp, scp):
+        rstate = numpy.random.RandomState(5)
+        x = rstate.randn(*self.shape) > 0.3
+        x = xp.asarray(x, dtype=self.x_dtype)
+        if self.contiguity == 'F':
+            x = xp.asfortranarray(x)
+        elif self.contiguity == 'none':
+            x = x[::2, ::3]
+        return self._filter(xp, scp, x)
+
+
+@testing.parameterize(*(
+    testing.product({
         'shape': [(3, 4), (2, 3, 4), (1, 2, 3, 4)],
         'size': [3, 4],
         'footprint': [None, 'random'],

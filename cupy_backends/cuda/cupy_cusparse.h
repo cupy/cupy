@@ -1,5 +1,3 @@
-// This file is a stub header file of cusparse for Read the Docs.
-
 #ifndef INCLUDE_GUARD_CUPY_CUSPARSE_H
 #define INCLUDE_GUARD_CUPY_CUSPARSE_H
 
@@ -117,6 +115,58 @@ cusparseStatus_t cusparseZgtsv2StridedBatch(...) {
 
 #if CUSPARSE_VERSION < 9020
 // Functions added in CUDA 9.2
+typedef void* csrsm2Info_t;
+
+cusparseStatus_t cusparseCreateCsrsm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDestroyCsrsm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseCcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseZcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseCcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseZcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseCcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseZcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrsm2_zeroPivot(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseSgtsvInterleavedBatch_bufferSizeExt(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -528,9 +578,9 @@ cusparseStatus_t cusparseZcsr2csc(...) {
 #else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #ifdef CUPY_USE_HIP
-#include "../cupy_hip_common.h"
+#include "hip/cupy_common.h"
 #else // #ifdef CUPY_USE_HIP
-#include "../cupy_cuda_common.h"
+#include "cupy_cuda_common.h"
 #endif // #ifdef CUPY_USE_HIP
 
 extern "C" {
@@ -542,6 +592,8 @@ typedef enum {
 
 typedef void* cusparseHandle_t;
 typedef void* cusparseMatDescr_t;
+typedef void* csrsv2Info_t;
+typedef void* csrsm2Info_t;
 typedef void* csric02Info_t;
 typedef void* bsric02Info_t;
 typedef void* csrilu02Info_t;
@@ -549,6 +601,8 @@ typedef void* bsrilu02Info_t;
 typedef void* csrgemm2Info_t;
 
 typedef enum {} cusparseMatrixType_t;
+typedef enum {} cusparseFillMode_t;
+typedef enum {} cusparseDiagType_t;
 typedef enum {} cusparseOperation_t;
 typedef enum {} cusparsePointerMode_t;
 typedef enum {} cusparseAction_t;
@@ -583,6 +637,14 @@ cusparseStatus_t cusparseSetMatIndexBase(...) {
 }
 
 cusparseStatus_t cusparseSetMatType(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSetMatFillMode(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSetMatDiagType(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
@@ -641,6 +703,56 @@ cusparseStatus_t cusparseCsrmvEx(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseCreateCsrsv2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDestroyCsrsv2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseCcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseZcsrsv2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseCcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseZcsrsv2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseCcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseZcsrsv2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrsv2_zeroPivot(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 // cuSPARSE Level3 Function
 cusparseStatus_t cusparseScsrmm(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -674,6 +786,55 @@ cusparseStatus_t cusparseZcsrmm2(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseCreateCsrsm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDestroyCsrsm2Info(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseCcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseZcsrsm2_bufferSizeExt(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseCcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseZcsrsm2_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseScsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseDcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseCcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+cusparseStatus_t cusparseZcsrsm2_solve(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseXcsrsm2_zeroPivot(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
 
 // cuSPARSE Extra Function
 cusparseStatus_t cusparseXcsrgeamNnz(...) {
@@ -1552,50 +1713,11 @@ cusparseStatus_t cusparseCsr2cscEx2(...) {
 
 #endif  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
-
-///////////////////////////////////////////////////////////////////////////////
-// Definitions are for compatibility
-///////////////////////////////////////////////////////////////////////////////
-
-extern "C" {
-
 #if defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP)
 
-cusparseStatus_t cusparseSnnz_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDnnz_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseCnnz_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseZnnz_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseScsr2csr_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseDcsr2csr_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseCcsr2csr_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseZcsr2csr_compress(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
+#include "stub/cupy_cusparse.h"
 
 #endif  // #if defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP)
-
-}  // extern "C"
 
 
 #endif  // INCLUDE_GUARD_CUPY_CUSPARSE_H
