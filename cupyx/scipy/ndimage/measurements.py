@@ -755,16 +755,16 @@ def minimum(input, labels=None, index=None):
             `labels` must have the same shape as `input`. If `labels` is not
             specified, the minimum over the whole array is returned.
         index (array_like, optional): A list of region labels that are taken
-            into account for computing the minima. If index is None, the
+            into account for computing the minima. If `index` is None, the
             minimum over all elements where `labels` is non-zero is returned.
 
     Returns:
-        minimum (cupy.ndarray): Array of minima of `input` over the regions
-            determined by `labels` and whose index is in `index`. If `index` or
-            `labels` are not specified, a 0-dimensional cupy.ndarray is
-            returned: the minimal value of `input` if `labels` is None,
-            and the minimal value of elements where `labels` is greater than
-            zero if `index` is None.
+        cupy.ndarray: Array of minima of `input` over the regions
+        determined by `labels` and whose index is in `index`. If `index` or
+        `labels` are not specified, a 0-dimensional cupy.ndarray is
+        returned: the minimal value of `input` if `labels` is None,
+        and the minimal value of elements where `labels` is greater than
+        zero if `index` is None.
 
     .. seealso:: :func:`scipy.ndimage.minimum`
     """
@@ -783,16 +783,16 @@ def maximum(input, labels=None, index=None):
             `labels` must have the same shape as `input`. If `labels` is not
             specified, the maximum over the whole array is returned.
         index (array_like, optional): A list of region labels that are taken
-            into account for computing the maxima. If index is None, the
+            into account for computing the maxima. If `index` is None, the
             maximum over all elements where `labels` is non-zero is returned.
 
     Returns:
-        maximum (cupy.ndarray): Array of maxima of `input` over the regions
-            determaxed by `labels` and whose index is in `index`. If `index` or
-            `labels` are not specified, a 0-dimensional cupy.ndarray is
-            returned: the maximal value of `input` if `labels` is None,
-            and the maximal value of elements where `labels` is greater than
-            zero if `index` is None.
+        cupy.ndarray: Array of maxima of `input` over the regions
+        determaxed by `labels` and whose index is in `index`. If `index` or
+        `labels` are not specified, a 0-dimensional cupy.ndarray is
+        returned: the maximal value of `input` if `labels` is None,
+        and the maximal value of elements where `labels` is greater than
+        zero if `index` is None.
 
     .. seealso:: :func:`scipy.ndimage.maximum`
     """
@@ -811,16 +811,16 @@ def median(input, labels=None, index=None):
             `labels` must have the same shape as `input`. If `labels` is not
             specified, the median over the whole array is returned.
         index (array_like, optional): A list of region labels that are taken
-            into account for computing the medians. If index is None, the
+            into account for computing the medians. If `index` is None, the
             median over all elements where `labels` is non-zero is returned.
 
     Returns:
-        median (cupy.ndarray): Array of medians of `input` over the regions
-            determined by `labels` and whose index is in `index`. If `index` or
-            `labels` are not specified, a 0-dimensional cupy.ndarray is
-            returned: the median value of `input` if `labels` is None,
-            and the median value of elements where `labels` is greater than
-            zero if `index` is None.
+        cupy.ndarray: Array of medians of `input` over the regions
+        determined by `labels` and whose index is in `index`. If `index` or
+        `labels` are not specified, a 0-dimensional cupy.ndarray is
+        returned: the median value of `input` if `labels` is None,
+        and the median value of elements where `labels` is greater than
+        zero if `index` is None.
 
     .. seealso:: :func:`scipy.ndimage.median`
     """
@@ -910,13 +910,13 @@ def maximum_position(input, labels=None, index=None):
             The `index` argument only works when `labels` is specified.
 
     Returns:
-        output (list of tuples of ints): Tuple of ints or list of tuples of
-            ints that specify the location of maxima of `input` over the
-            regions determaxed by `labels` and  whose index is in `index`.
+        list of tuples of ints: Tuple of ints or list of tuples of
+        ints that specify the location of maxima of `input` over the
+        regions determaxed by `labels` and  whose index is in `index`.
 
-            If `index` or `labels` are not specified, a tuple of ints is
-            returned specifying the location of the first maximal value of
-            `input`.
+        If `index` or `labels` are not specified, a tuple of ints is
+        returned specifying the location of the first maximal value of
+        `input`.
 
     .. note::
         When `input` has multiple identical maxima within a labeled region,
@@ -955,7 +955,7 @@ def extrema(input, labels=None, index=None):
             If None (default), all values where non-zero `labels` are used.
 
     Returns:
-        A tuple that contains the following values:
+        A tuple that contains the following values.
 
         **minimums (cupy.ndarray)**: Values of minimums in each feature.
 
