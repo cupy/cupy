@@ -1,6 +1,7 @@
 import functools
-import unittest
 import pytest
+import string
+import unittest
 
 import numpy as np
 
@@ -1308,3 +1309,65 @@ class TestThreading(unittest.TestCase):
 
         new_thread = threading.Thread(target=thread_do_fft)
         new_thread.start()
+
+
+_load_callback = r'''
+__device__ ${data_type} CB_ConvertInputC(
+    void* dataIn, size_t offset, void* callerInfo, void* sharedPtr)
+{
+    ${data_type} x = ((${data_type}*)dataIn)[offset];
+    ${element} *= 2.5;
+    return x;
+}
+
+__device__ ${load_type} d_loadCallbackPtr = CB_ConvertInputC;
+'''
+
+@testing.parameterize(*testing.product({
+    'n': [None, 5, 10, 15],
+    'shape': [(10, 7), (10,), (10, 10)],
+    'norm': [None, 'ortho'],
+}))
+@testing.gpu
+class TestCallbacks(unittest.TestCase):
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    def test_fft_load(self, xp, dtype):
+        if dtype == np.float32:
+            fft = xp.fft.rfft
+            data_type = 'cufftReal'
+            callback_type = 'cufftCallbackLoadR'
+            element = 'x'
+        elif dtype == np.float32:
+            fft = xp.fft.rfft
+            data_type = 'cufftDoubleReal'
+            callback_type = 'cufftCallbackLoadD'
+            element = 'x'
+        elif dtype == np.complex64:
+            fft = xp.fft.fft
+            data_type = 'cufftComplex'
+            callback_type = 'cufftCallbackLoadC'
+            element = 'x.x'
+        else:
+            fft = xp.fft.fft
+            data_type = 'cufftDoubleComplex'
+            callback_type = 'cufftCallbackLoadZ'
+            element = 'x.x'
+        cb_load = string.Template(_load_callback).substitute(
+            data_type=data_type,
+            load_type=callback_type,
+            element=element)
+
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp is np:
+            a.real *= 2.5
+            out = fft(a, n=self.n, norm=self.norm)
+            # np.fft.fft alway returns np.complex128
+            if dtype in (np.float32, np.complex64):
+                out = out.astype(np.complex64)
+        else:
+            with xp.fft.config.set_cufft_callbacks(cb_load=cb_load):
+                out = fft(a, n=self.n, norm=self.norm)
+
+        return out
