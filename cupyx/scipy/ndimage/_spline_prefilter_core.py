@@ -51,7 +51,7 @@ def _causal_init_code(mode):
     if mode == "mirror":
         code += """
         z_i = z;
-        z_n_1 = pow(z, ({pole_type})(n - 1));
+        z_n_1 = pow(z, (P)(n - 1));
 
         c[0] = c[0] + z_n_1 * c[(n - 1) * element_stride];
         for (i = 1; i < min(n - 1, {n_boundary}); ++i) {{
@@ -72,7 +72,7 @@ def _causal_init_code(mode):
     elif mode == "reflect":
         code += """
         z_i = z;
-        z_n = pow(z, ({pole_type})n);
+        z_n = pow(z, (P)n);
         c0 = c[0];
 
         c[0] = c[0] + z_n * c[(n - 1) * element_stride];
@@ -121,7 +121,7 @@ def _anticausal_init_code(mode):
     return code
 
 
-def _get_spline1d_code(mode, poles, pole_type, n_boundary):
+def _get_spline1d_code(mode, poles, n_boundary):
     """Generates the code required for IIR filtering of a single 1d signal.
 
     Prefiltering is done by causal filtering followed by anti-causal filtering.
@@ -135,16 +135,16 @@ def _get_spline1d_code(mode, poles, pole_type, n_boundary):
     # variables common to all boundary modes
     code.append("""
         idx_t i, n = signal_length;
-        {pole_type} z, z_i;""")
+        P z, z_i;""")
 
     if mode in ["mirror", "constant", "nearest"]:
         # variables specific to these modes
         code.append("""
-        {pole_type} z_n_1;""")
+        P z_n_1;""")
     elif mode == "reflect":
         # variables specific to this modes
         code.append("""
-        {pole_type} z_n;
+        P z_n;
         T c0;""")
 
     for pole in poles:
@@ -172,15 +172,14 @@ def _get_spline1d_code(mode, poles, pole_type, n_boundary):
 
     code += ["""
     }}"""]
-    return textwrap.dedent("\n".join(code)).format(pole_type=pole_type,
-                                                   n_boundary=n_boundary)
+    return textwrap.dedent("\n".join(code)).format(n_boundary=n_boundary)
 
 
 _FILTER_GENERAL = '''
 #include "cupy/carray.cuh"
 #include "cupy/complex.cuh"
-typedef unsigned char byte;
 typedef {data_type} T;
+typedef {pole_type} P;
 typedef {index_type} idx_t;
 template <typename T>
 __device__ T* row(T* ptr, idx_t i, idx_t axis, idx_t ndim, const idx_t* shape) {{
@@ -233,10 +232,11 @@ def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type="int",
 
     # headers and general utility function for extracting rows of data
     code = _FILTER_GENERAL.format(index_type=index_type,
-                                  data_type=data_type)
+                                  data_type=data_type,
+                                  pole_type=pole_type)
 
     # generate source for a 1d function for a given boundary mode and poles
-    code += _get_spline1d_code(mode, poles, pole_type, n_boundary)
+    code += _get_spline1d_code(mode, poles, n_boundary)
 
     # generate code handling batch operation of the 1d filter
     code += _batch_spline1d_strided_template.format(ndim=ndim, axis=axis,
