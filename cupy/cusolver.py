@@ -1,4 +1,5 @@
 import numpy as _numpy
+import warnings as _warnings
 
 import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
@@ -690,8 +691,12 @@ def irs_gels(a, b):
 
     if a.ndim != 2:
         raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))
-    if b.ndim not in (1, 2):
-        raise ValueError('b.ndim must be 1 or 2 (actual:{})'.format(b.ndim))
+    if b.ndim == 1:
+        nrhs = 1
+    elif b.ndim == 2:
+        nrhs = b.shape[1]
+    else:
+        raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
     if a.shape[0] != b.shape[0]:
         raise ValueError('shape mismatch (a:{}, b:{}).'.
                          format(a.shape, b.shape))
@@ -704,7 +709,6 @@ def irs_gels(a, b):
         raise ValueError('m must be equal to or greater than n.')
     max_mn = max(m, n)
     b_ndim = b.ndim
-    nrhs = 1 if b_ndim == 1 else b.shape[1]
 
     compute_type = _linalg.get_compute_type(a.dtype)
     if a.dtype.char in 'fd':
@@ -756,9 +760,13 @@ def irs_gels(a, b):
     niters = solver(handle, m, n, nrhs, a.data.ptr, m, b.data.ptr, m,
                     x.data.ptr, max_mn, dwork.data.ptr, lwork, dinfo.data.ptr)
     if niters < 0:
-        raise RuntimeError('gels has failed ({}).'.format(niters))
+        if niters <= -50:
+            _warnings.warn('irs_gels reached maximum allowed iterations.')
+        else:
+            raise RuntimeError('irs_gels has failed ({}).'.format(niters))
+    x = x[:n]
     if org_nrhs != nrhs:
-        x = x[:n, :org_nrhs]
+        x = x[:, :org_nrhs]
     if b_ndim == 1:
-        x.reshape(max_mn)
-    return x[:n]
+        x = x.reshape(n)
+    return x
