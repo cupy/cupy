@@ -136,12 +136,21 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         devices = None if not config.use_multi_gpus else config._devices
         # TODO(leofang): do we need to add the current stream to keys?
         keys = (out_size, fft_type, batch, devices)
+        if config._callback_load or config._callback_store:
+            keys += (config._callback_load, config._callback_store)
+            has_callback = True
+        else:
+            has_callback = False
         cache = get_plan_cache()
         cached_plan = cache.get(keys)
         if cached_plan is not None:
             plan = cached_plan
-        else:
+        elif not has_callback:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+            cache[keys] = plan
+        else:  # has_callback
+            # TODO(leofang): support multi-GPU callback (devices is ignored)
+            plan = config.get_static_plan('Plan1d', fft_type, keys[:-3])
             cache[keys] = plan
     else:
         # check plan validity
@@ -417,14 +426,24 @@ def _get_cufft_plan_nd(
     keys = (plan_dimensions, inembed, istride,
             idist, onembed, ostride, odist,
             fft_type, nbatch, order, fft_axes[-1], out_size)
+    if config._callback_load or config._callback_store:
+        keys += (config._callback_load, config._callback_store)
+        has_callback = True
+    else:
+        has_callback = False
     cache = get_plan_cache()
     cached_plan = cache.get(keys)
     if cached_plan is not None:
         plan = cached_plan
-    else:
+    elif not has_callback:
         plan = cufft.PlanNd(*keys)
         if to_cache:
             cache[keys] = plan
+    else:  # has_callback
+        plan = config.get_static_plan('PlanNd', fft_type, keys[:-2])
+        if to_cache:
+            cache[keys] = plan
+
     return plan
 
 
