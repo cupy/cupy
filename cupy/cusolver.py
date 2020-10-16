@@ -34,7 +34,7 @@ def check_availability(name):
     if version_removed is not None and cuda_version >= version_removed:
         return False
     if name in _available_compute_capability:
-        compute_capability = int(device.get_compute_capability())
+        compute_capability = int(_device.get_compute_capability())
         if compute_capability < _available_compute_capability[name]:
             return False
     return True
@@ -732,10 +732,10 @@ def irs_gels(a, b):
     else:
         raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
     solver_name = t1 + t2 + 'gels'
-    solver = getattr(cusolver, solver_name)
-    helper = getattr(cusolver, solver_name + '_bufferSize')
+    solver = getattr(_cusolver, solver_name)
+    helper = getattr(_cusolver, solver_name + '_bufferSize')
 
-    a = cupy.asfortranarray(a)
+    a = a.copy(order='F')
     org_nrhs = nrhs
     if m > n and nrhs == 1:
         # Note: this is workaround as there is bug in cusolverDn<T1><T2>gels()
@@ -743,16 +743,16 @@ def irs_gels(a, b):
         # when m > n and nrhs == 1.
         nrhs = 2
         bb = b.reshape(m, 1)
-        b = cupy.empty((max_mn, nrhs), dtype=a.dtype, order='F')
+        b = _cupy.empty((max_mn, nrhs), dtype=a.dtype, order='F')
         b[:m, :] = bb
     else:
-        b = cupy.asfortranarray(b)
-    x = cupy.empty((max_mn, nrhs), dtype=a.dtype, order='F')
-    dinfo = cupy.empty(1, dtype=numpy.int32)
-    handle = device.get_cusolver_handle()
+        b = b.copy(order='F')
+    x = _cupy.empty((max_mn, nrhs), dtype=a.dtype, order='F')
+    dinfo = _cupy.empty(1, dtype=_numpy.int32)
+    handle = _device.get_cusolver_handle()
     lwork = helper(handle, m, n, nrhs, a.data.ptr, m, b.data.ptr, m,
                    x.data.ptr, max_mn, 0)
-    dwork = cupy.empty(lwork, dtype=numpy.int8)
+    dwork = _cupy.empty(lwork, dtype=_numpy.int8)
     niters = solver(handle, m, n, nrhs, a.data.ptr, m, b.data.ptr, m,
                     x.data.ptr, max_mn, dwork.data.ptr, lwork, dinfo.data.ptr)
     if niters < 0:
@@ -761,6 +761,4 @@ def irs_gels(a, b):
         x = x[:n, :org_nrhs]
     if b_ndim == 1:
         x.reshape(max_mn)
-        return x[:n]
-    else:
-        return x[:n, :]
+    return x[:n]
