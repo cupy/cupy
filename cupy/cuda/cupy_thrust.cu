@@ -212,8 +212,8 @@ __host__ __device__ __forceinline__ bool less< tuple<size_t, double> >::operator
  * ********** real numbers (specializations for half precision) **********
  */
 
-#if (__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
-    && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))
+#if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
+     && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 
 // it seems Thrust doesn't care the code path on host, so we just need a wrapper for device
 __device__ __forceinline__ bool isnan(const __half& x) {

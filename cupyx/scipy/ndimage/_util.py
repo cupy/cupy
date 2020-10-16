@@ -1,6 +1,20 @@
 import cupy
 
 
+def _is_integer_output(output, input):
+    if output is None:
+        return input.dtype.kind in 'iu'
+    elif isinstance(output, cupy.ndarray):
+        return output.dtype.kind in 'iu'
+    return cupy.dtype(output).kind in 'iu'
+
+
+def _check_cval(mode, cval, integer_output):
+    if mode == 'constant' and integer_output and not cupy.isfinite(cval):
+        raise NotImplementedError("Non-finite cval is not supported for "
+                                  "outputs with integer dtype.")
+
+
 def _get_output(output, input, shape=None):
     if not isinstance(output, cupy.ndarray):
         return cupy.zeros_like(input, shape=shape, dtype=output, order='C')
