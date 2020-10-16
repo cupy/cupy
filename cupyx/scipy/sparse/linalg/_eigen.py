@@ -77,7 +77,6 @@ def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
     # Compute residual
     beta_k = beta[-1] * s[-1, :]
     res = cupy.linalg.norm(beta_k)
-    print('# iter: {}, res: {}'.format(iter, res))
 
     while res > tol:
         # Setup for thick-restart
@@ -107,7 +106,6 @@ def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
         # Compute residual
         beta_k = beta[-1] * s[-1, :]
         res = cupy.linalg.norm(beta_k)
-        print('# iter: {}, res: {}'.format(iter, res))
 
         if iter >= maxiter:
             break
