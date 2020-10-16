@@ -1325,6 +1325,12 @@ def generate_matrix(
     a = xp.random.randn(*shape)
     if dtype.kind == 'c':
         a = a + 1j * xp.random.randn(*shape)
+    if a.size == 0:
+        # TODO(kataoka): Remove this path after cupy requires numpy>=1.16.
+        # numpy.linalg.svd supports empty inputs since 1.16
+        if s.shape != shape[-2] + (min(m, n),):
+            raise ValueError('dimensions do not match')
+        return xp.empty(shape, dtype)
     u, s, vh = xp.linalg.svd(a, full_matrices=False)
     sv = xp.broadcast_to(singular_values, s.shape)
     a = xp.einsum('...ik,...k,...kj->...ij', u, sv, vh)
