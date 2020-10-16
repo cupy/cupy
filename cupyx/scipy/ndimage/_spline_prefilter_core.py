@@ -4,6 +4,7 @@ Spline poles and boundary handling implemented as in SciPy
 https://github.com/scipy/scipy/blob/master/scipy/ndimage/src/ni_splines.c
 """
 import functools
+import math
 import operator
 import textwrap
 
@@ -53,7 +54,7 @@ def _causal_init_code(mode):
         z_n_1 = pow(z, ({pole_type})(n - 1));
 
         c[0] = c[0] + z_n_1 * c[(n - 1) * element_stride];
-        for (i = 1; i < n - 1; ++i) {{
+        for (i = 1; i < min(n - 1, {n_boundary}); ++i) {{
             c[0] += z_i * (c[i * element_stride] +
                            z_n_1 * c[(n - 1 - i) * element_stride]);
             z_i *= z;
@@ -63,7 +64,7 @@ def _causal_init_code(mode):
         code += """
         z_i = z;
 
-        for (i = 1; i < n; ++i) {{
+        for (i = 1; i < min(n, {n_boundary}); ++i) {{
             c[0] += z_i * c[(n - i) * element_stride];
             z_i *= z;
         }}
@@ -75,7 +76,7 @@ def _causal_init_code(mode):
         c0 = c[0];
 
         c[0] = c[0] + z_n * c[(n - 1) * element_stride];
-        for (i = 1; i < n; ++i) {{
+        for (i = 1; i < min(n, {n_boundary}); ++i) {{
             c[0] += z_i * (c[i * element_stride] +
                            z_n * c[(n - 1 - i) * element_stride]);
             z_i *= z;
@@ -107,7 +108,7 @@ def _anticausal_init_code(mode):
         code += """
         z_i = z;
 
-        for (i = 0; i < n - 1; ++i) {{
+        for (i = 0; i < min(n - 1, {n_boundary}); ++i) {{
             c[(n - 1) * element_stride] += z_i * c[i * element_stride];
             z_i *= z;
         }}
@@ -120,7 +121,7 @@ def _anticausal_init_code(mode):
     return code
 
 
-def _get_spline1d_code(mode, poles, pole_type):
+def _get_spline1d_code(mode, poles, pole_type, n_boundary):
     """Generates the code required for IIR filtering of a single 1d signal.
 
     Prefiltering is done by causal filtering followed by anti-causal filtering.
@@ -171,7 +172,8 @@ def _get_spline1d_code(mode, poles, pole_type):
 
     code += ["""
     }}"""]
-    return textwrap.dedent("\n".join(code)).format(pole_type=pole_type)
+    return textwrap.dedent("\n".join(code)).format(pole_type=pole_type,
+                                                   n_boundary=n_boundary)
 
 
 _FILTER_GENERAL = '''
@@ -218,15 +220,23 @@ void cupyx_spline_filter(T* __restrict__ y, const idx_t* __restrict__ info) {{
 def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type="int",
                             data_type="double", pole_type="double",
                             block_size=128):
+
     """Generate a kernel for applying a spline prefilter along a given axis."""
     poles = get_poles(order)
+
+    # determine number of samples for the boundary approximation
+    # (SciPy uses n_boundary = n_samples but this is excessive)
+    largest_pole = max([abs(p) for p in poles])
+    # tol < 1e-7 fails test cases comparing to SciPy at atol = rtol = 1e-5
+    tol = 1e-10 if pole_type == "float" else 1e-18
+    n_boundary = math.ceil(math.log(tol, largest_pole))
 
     # headers and general utility function for extracting rows of data
     code = _FILTER_GENERAL.format(index_type=index_type,
                                   data_type=data_type)
 
     # generate source for a 1d function for a given boundary mode and poles
-    code += _get_spline1d_code(mode, poles, pole_type)
+    code += _get_spline1d_code(mode, poles, pole_type, n_boundary)
 
     # generate code handling batch operation of the 1d filter
     code += _batch_spline1d_strided_template.format(ndim=ndim, axis=axis,
