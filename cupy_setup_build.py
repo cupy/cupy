@@ -838,9 +838,15 @@ def _nvcc_gencode_options(cuda_version):
     # arch_list has an entry of ('compute_61', 'sm_61').
     #
     #     arch_list = [('compute_61', 'sm_61')]
+    #
+    # See the documentation of each CUDA version for the list of supported
+    # architectures:
+    #
+    #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
 
     if cuda_version >= 11000:
-        arch_list = ['compute_50',
+        arch_list = ['compute_35',
+                     'compute_50',
                      ('compute_60', 'sm_60'),
                      ('compute_61', 'sm_61'),
                      ('compute_70', 'sm_70'),
