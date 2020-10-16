@@ -27,9 +27,8 @@ __device__ cufftCallbackLoadC d_loadCallbackPtr = CB_ConvertInputC;
 
 a = cp.random.random((64, 128)).astype(cp.complex64)
 plan = get_fft_plan(a, axes=(1,))
-mgr = cp.cuda.cufft.CallbackManager(cb_load=code)
+mgr = cp.cuda.cufft.CallbackManager(('Plan1d', (plan.nx, plan.fft_type, plan.batch)), cb_load=code)
 print((plan.nx, plan.fft_type, plan.batch))
-mgr.create_plan(('Plan1d', (plan.nx, plan.fft_type, plan.batch)))
 mgr.set_callback(0)
 b = plan.get_output_array(a)
 print(a.dtype, a.shape, b.dtype, b.shape)

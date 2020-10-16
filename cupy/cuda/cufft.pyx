@@ -946,7 +946,7 @@ cdef str _callback_dev_code = None
 
 
 class CallbackManager:
-    def __init__(self, str cb_load='', str cb_store=''):
+    def __init__(self, tuple plan_args, str cb_load='', str cb_store=''):
         import importlib
         import os, sys
         import shutil
@@ -987,7 +987,7 @@ class CallbackManager:
         self.obj_host = self.dir+'/cupy_callback.o'
         shutil.copyfile('cupy/cuda/cupy_cufftx.h', self.dir+'/cupy_cufftx.h')
         p = subprocess.run(['g++', '-I'+python_include,
-                            '-fPIC', '-pthread', '-O2',
+                            '-fPIC', '-pthread', '-O2', '-std=c++11',
                             '-c', self.dir+'/cupy_callback.c',
                             '-o', self.obj_host],
                            env=os.environ)
@@ -1009,12 +1009,12 @@ class CallbackManager:
         self.obj_dev = self.dir + '/cupy_callback_dev.o'
         p = subprocess.run([nvcc, '-arch=sm_75', '-dc',
                             '-c', self.dir+'/cupy_cufftx.cu',
-                            '-Xcompiler', '-fPIC',
+                            '-Xcompiler', '-fPIC', '-O2', '-std=c++11',
                             '-o', self.obj_dev], env=os.environ)
         p.check_returncode()
 
         # Use nvcc to link and generate a shared library
-        # WARNING: CANNOT use host compiler to link, or there'd be leakage of undefined symbols!
+        # WARNING: CANNOT use host compiler to link!
         self.lib = self.dir + '/cupy_callback.so'
         p = subprocess.run([nvcc, '-shared', '-arch=sm_75',
                             self.obj_dev, self.obj_host, 
@@ -1028,17 +1028,11 @@ class CallbackManager:
         sys.modules['cupy_callback'] = module
         spec.loader.exec_module(module)
 
-        self.handle = None
-        self.plan = None
-        self.fft_type = None
-
-    def create_plan(self, object plan):
-        self.handle, self.fft_type = self.mod.createPlan(plan)
-        self.plan = plan
+        # Create a cuFFT plan
+        self.handle, self.fft_type = self.mod.createPlan(plan_args)
+        self.plan_args = plan_args[1]
 
     def set_callback(self, int cb_load_type=-1, int cb_store_type=-1):
-        if self.handle is None or self.plan is None:
-            raise RuntimeError
         if self.cb_load:
             if cb_load_type == -1:
                 raise ValueError
