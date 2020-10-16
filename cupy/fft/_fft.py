@@ -150,6 +150,9 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             cache[keys] = plan
         else:  # has_callback
             # TODO(leofang): support multi-GPU callback (devices is ignored)
+            if devices:
+                raise NotImplementedError('multi-GPU cuFFT callbacks are not '
+                                          'yet supported')
             plan = config._get_static_plan('Plan1d', fft_type, keys[:-3])
             cache[keys] = plan
     else:

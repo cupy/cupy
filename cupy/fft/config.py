@@ -200,7 +200,7 @@ class _CallbackManager:
 
 
 @contextlib.contextmanager
-def set_callbacks(cb_load='', cb_store=''):
+def set_cufft_callbacks(cb_load='', cb_store=''):
     """A context manager for setting up load and/or store callbacks.
 
     Args:
@@ -227,20 +227,16 @@ def set_callbacks(cb_load='', cb_store=''):
             __device__ cufftCallbackLoadC d_loadCallbackPtr = CB_ConvertInputC;
             '''
 
-            with cp.fft.config.set_callbacks(cb_load=code):
+            with cp.fft.config.set_cufft_callbacks(cb_load=code):
                 out_arr = cp.fft.fft(in_arr, ...)
 
     .. warning::
-        Using cuFFT callbacks requires compiling and loading an FFT module as
-        well as static linking for each distinct transform or callback, so the
-        first invocation would be slow. This is a limitation of cuFFT, so use
-        this feature only when the callback-enabled transform can be reused
+        Using cuFFT callbacks requires compiling and loading a Python module at
+        runtime as well as static linking for each distinct transform and
+        callback, so the first invocation for each combination will be very
+        slow. This is a limitation of cuFFT, so use this feature only when the
+        callback-enabled transform is known more performant and can be reused
         to amortize the cost.
-
-    .. warning::
-        When a statically-linked callback-enabled plan is generated (likely
-        cached), the callbacks set by this function will be reset. To enable
-        callbacks for the next transform, call this function again.
 
     """
     global _callback_load, _callback_store
