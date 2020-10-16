@@ -45,7 +45,7 @@ cpdef get_current_plan()
 
 cdef class Plan1d:
     cdef:
-        intptr_t handle
+        readonly intptr_t handle
         readonly object work_area  # can be MemoryPointer or a list of it
         readonly int nx
         readonly int batch
@@ -69,7 +69,7 @@ cdef class Plan1d:
 
 cdef class PlanNd:
     cdef:
-        intptr_t handle
+        readonly intptr_t handle
         readonly memory.MemoryPointer work_area
         readonly tuple shape
         readonly Type fft_type

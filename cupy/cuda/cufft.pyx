@@ -110,6 +110,14 @@ cdef extern from 'cupy_cufft.h' nogil:
                                     XtArray* odata, int direction)
 
 
+IF CUPY_CUFFT_STATIC:
+    # cuFFT callback
+    cdef extern from 'cupy_cufftx.h' nogil:
+        ctypedef enum callbackType 'cufftXtCallbackType':
+            pass
+        Result set_callback(Handle plan, callbackType cb_type, bint cb_load)
+
+
 cdef dict RESULT = {
     0: 'CUFFT_SUCCESS',
     1: 'CUFFT_INVALID_PLAN',
@@ -944,6 +952,19 @@ cpdef multi_gpu_execZ2Z(intptr_t plan, intptr_t idata, intptr_t odata,
     check_result(result)
 
 
+cpdef intptr_t setCallback(intptr_t plan, int cb_type, bint is_load):
+    cdef Handle h = <Handle>plan
+    cdef int result
+
+    IF CUPY_CUFFT_STATIC:
+        with nogil:
+            result = set_callback(h, <callbackType>cb_type, is_load)
+        check_result(result)
+    ELSE:
+        raise RuntimeError('cuFFT is dynamically linked and thus does not '
+                           'support callback')
+
+
 cdef str _callback_dev_code = None
 
 
@@ -967,6 +988,9 @@ class CallbackManager:
         # TODO(leofang): would it be more robust if we use distutils +
         # setuptools here? I'm worried that the number of lines of code
         # might inflate too much...
+        # TODO(leofang): make sure Cython is installed at runtime
+        # TODO(leofang): make sure all needed source files are included in sdist/wheel
+        # TODO(leofang): remove cufftx.pxi
 
         if not cb_load and not cb_store:
             raise ValueError('need to specify either cb_load or cb_store, or both')
@@ -982,6 +1006,8 @@ class CallbackManager:
         cdef str python_include = sysconfig.get_paths()['include']
         cdef str nvcc = get_nvcc_path()
         cdef str CC = get_compute_capability()
+        cdef int build_ver = cupy.cuda.driver.get_build_version()
+        cdef str source_dir = os.path.dirname(__file__)
 
         # Set up temp directory; its lifetime is tied with the present instance 
         self.dir_obj = tempfile.TemporaryDirectory()
@@ -991,15 +1017,21 @@ class CallbackManager:
         #print("temp dir:", self.dir)
 
         # Cythonize the Cython code; a c++ source cupy_callback.cpp is produced
-        shutil.copyfile('cupy/cuda/cufftx.pxi', self.dir+'/cupy_callback.pyx')
-        p = subprocess.run(['cython', '-3', '--cplus', '-E', 'use_hip=0',
+        #shutil.copyfile(source_dir+'/cufftx.pxi', self.dir+'/cupy_callback.pyx')
+        shutil.copyfile(source_dir+'/cupy_cufft.h', self.dir+'/cupy_cufft.h')
+        shutil.copyfile(source_dir+'/cufft.pxd', self.dir+'/cupy_callback.pxd')
+        shutil.copyfile(source_dir+'/cufft.pyx', self.dir+'/cupy_callback.pyx')
+        p = subprocess.run(['cython', '-3', '--cplus',
+                            '-E', 'use_hip=0',
+                            '-E', 'CUDA_VERSION='+str(build_ver),
+                            '-E', 'CUPY_CUFFT_STATIC=True',
                             self.dir+'/cupy_callback.pyx'],
                            env=os.environ)
         p.check_returncode()
 
         # Compile the Python module
         self.obj_host = self.dir+'/cupy_callback.o'
-        shutil.copyfile('cupy/cuda/cupy_cufftx.h', self.dir+'/cupy_cufftx.h')
+        shutil.copyfile(source_dir+'/cupy_cufftx.h', self.dir+'/cupy_cufftx.h')
         p = subprocess.run(['g++', '-I'+python_include,
                             '-fPIC', '-pthread', '-O2', '-std=c++11',
                             '-c', self.dir+'/cupy_callback.cpp',
@@ -1010,7 +1042,7 @@ class CallbackManager:
         # Dump and compile device code using nvcc
         global _callback_dev_code
         if _callback_dev_code is None:
-            with open('cupy/cuda/cupy_cufftx.cu') as f:
+            with open(source_dir+'/cupy_cufftx.cu') as f:
                 support = _callback_dev_code = f.read()
         else:
             support = _callback_dev_code
@@ -1043,7 +1075,10 @@ class CallbackManager:
         spec.loader.exec_module(module)
 
         # Create a cuFFT plan
-        self.handle, self.fft_type = self.mod.createPlan(plan_args)
+        plan = plan_args[0]
+        self.plan = getattr(self.mod, plan)(*plan_args[1])
+        self.handle = self.plan.handle
+        self.fft_type = self.plan.fft_type
         self.is_callback_set = False
 
     def set_callback(self, int cb_load_type=-1, int cb_store_type=-1):
@@ -1060,28 +1095,10 @@ class CallbackManager:
         self.is_callback_set = True
 
     def fft(self, a, out, direction):
-        cdef intptr_t plan = self.handle
-        cdef intptr_t stream = stream_module.get_current_stream_ptr()
-        self.mod.setStream(plan, stream)
-
-        if self.fft_type == CUFFT_C2C:
-            self.mod.execC2C(plan, a.data.ptr, out.data.ptr, direction)
-        elif self.fft_type == CUFFT_R2C:
-            self.mod.execR2C(plan, a.data.ptr, out.data.ptr)
-        elif self.fft_type == CUFFT_C2R:
-            self.mod.execC2R(plan, a.data.ptr, out.data.ptr)
-        elif self.fft_type == CUFFT_Z2Z:
-            self.mod.execZ2Z(plan, a.data.ptr, out.data.ptr, direction)
-        elif self.fft_type == CUFFT_D2Z:
-            self.mod.execD2Z(plan, a.data.ptr, out.data.ptr)
-        elif self.fft_type == CUFFT_Z2D:
-            self.mod.execZ2D(plan, a.data.ptr, out.data.ptr)
-        else:
-            raise ValueError
+        self.plan.fft(a, out, direction)
 
     def __del__(self):
-        if self.handle:
-            self.mod.destroyPlan(self.handle)
-            self.handle = None
+        del self.plan
+        self.handle = None
         del self.mod
         self.dir_obj.cleanup()
