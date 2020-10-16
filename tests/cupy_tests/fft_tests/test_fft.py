@@ -1325,7 +1325,8 @@ __device__ ${load_type} d_loadCallbackPtr = CB_ConvertInput;
 
 _store_callback = r'''
 __device__ void CB_ConvertOutput(
-    void *dataOut, size_t offset, ${data_type} element, void *callerInfo, void *sharedPointer)
+    void *dataOut, size_t offset, ${data_type} element,
+    void *callerInfo, void *sharedPointer)
 {
     ${data_type} x = element;
     ${element} -= 3.8;
@@ -1343,6 +1344,8 @@ __device__ ${store_type} d_storeCallbackPtr = CB_ConvertOutput;
 }))
 @testing.gpu
 @testing.slow
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'hipFFT does not support callbacks')
 class Test1dCallbacks(unittest.TestCase):
 
     @testing.for_dtypes('FD')
