@@ -109,3 +109,70 @@ class TestVectorNorm(unittest.TestCase):
         return sp.linalg.norm(b, ord=self.ord, axis=self.axis)
 
 # TODO : TestVsNumpyNorm
+
+
+@testing.parameterize(*testing.product({
+    'which': ['LM', 'LA'],
+    'k': [3, 6, 12],
+    'return_eigenvectors': [True, False],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestEigsh(unittest.TestCase):
+    n = 30
+    density = 0.33
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, dtype, xp):
+        shape = (self.n, self.n)
+        a = testing.shaped_random(shape, xp, dtype=dtype)
+        mask = testing.shaped_random(shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        a = a * a.conj().T
+        return a
+
+    def _test_eigsh(self, a, xp, sp):
+        ret = sp.linalg.eigsh(a, k=self.k, which=self.which,
+                              return_eigenvectors=self.return_eigenvectors)
+        if self.return_eigenvectors:
+            w, x = ret
+            # Check the residuals to see if eigenvectors are correct.
+            ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
+            res = xp.linalg.norm(ax_xw) / xp.linalg.norm(w)
+            tol = self._tol[numpy.dtype(a.dtype).char.lower()]
+            assert(res < tol)
+        else:
+            w = ret
+        return xp.sort(w)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_sparse(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        a = sp.csr_matrix(a)
+        return self._test_eigsh(a, xp, sp)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_dense(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        return self._test_eigsh(a, xp, sp)
+
+    def test_invalid(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            a = xp.diag(xp.ones((self.n, ), dtype='f'))
+            with pytest.raises(ValueError):
+                sp.linalg.eigsh(xp.ones((2, 1), dtype='f'))
+            with pytest.raises(ValueError):
+                sp.linalg.eigsh(a, k=0)
+        xp, sp = cupy, sparse
+        a = xp.diag(xp.ones((self.n, ), dtype='f'))
+        with pytest.raises(ValueError):
+            sp.linalg.eigsh(xp.ones((1,), dtype='f'))
+        with pytest.raises(TypeError):
+            sp.linalg.eigsh(xp.ones((2, 2), dtype='i'))
+        with pytest.raises(ValueError):
+            sp.linalg.eigsh(a, k=self.n)
+        with pytest.raises(ValueError):
+            sp.linalg.eigsh(a, k=self.k, which='SM')
+        with pytest.raises(ValueError):
+            sp.linalg.eigsh(a, k=self.k, which='SA')

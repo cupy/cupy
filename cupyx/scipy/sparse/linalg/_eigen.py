@@ -113,12 +113,13 @@ def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
             break
 
     idx = cupy.argsort(w)
-    if a.dtype.char in 'FD':
-        idx = idx[::-1]
     w = w[idx]
     x = x[:, idx]
 
-    return w, x
+    if return_eigenvectors:
+        return w, x
+    else:
+        return w
 
 
 def _eigsh_lanczos_update(A, V, alpha, beta, i_start, i_end):
