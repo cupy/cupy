@@ -170,8 +170,8 @@ class _CallbackManager:
 
             # Compile the Python module
             self.obj_host = self.dir + mod_name + '.o'
-            shutil.copyfile(source_dir + '/cupy_cufftx.h',
-                            self.dir + '/cupy_cufftx.h')
+            shutil.copyfile(source_dir + '/cupy_cufftXt.h',
+                            self.dir + '/cupy_cufftXt.h')
             p = subprocess.run(cc + [
                                '-I' + python_include,
                                '-fPIC', '-O2', '-std=c++11',
@@ -184,11 +184,11 @@ class _CallbackManager:
             # TODO(leofang): use the nvcc utilities from cupy/cuda/compiler.py
             global _callback_dev_code
             if _callback_dev_code is None:
-                with open(source_dir+'/cupy_cufftx.cu') as f:
+                with open(source_dir + '/cupy_cufftXt.cu') as f:
                     support = _callback_dev_code = f.read()
             else:
                 support = _callback_dev_code
-            with open(self.dir+'/cupy_cufftx.cu', 'w') as f:
+            with open(self.dir + '/cupy_cufftXt.cu', 'w') as f:
                 support = string.Template(support).substitute(
                     dev_load_callback_ker=cb_load,
                     dev_store_callback_ker=cb_store)
@@ -196,7 +196,7 @@ class _CallbackManager:
             self.obj_dev = self.dir + mod_name + '_dev.o'
             cmd = [nvcc, '-ccbin', cc[0],
                    '-arch=sm_'+arch, '-dc',
-                   '-c', self.dir+'/cupy_cufftx.cu',
+                   '-c', self.dir + '/cupy_cufftXt.cu',
                    '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
             if self.cb_load:
                 cmd.append('-DHAS_LOAD_CALLBACK')

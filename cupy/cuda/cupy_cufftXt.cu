@@ -1,4 +1,4 @@
-#include "cupy_cufftx.h"
+#include "cupy_cufftXt.h"
 
 
 // this must define d_loadCallbackPtr

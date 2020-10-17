@@ -111,7 +111,7 @@ cdef extern from 'cupy_cufft.h' nogil:
 
 IF CUPY_CUFFT_STATIC:
     # cuFFT callback
-    cdef extern from 'cupy_cufftx.h' nogil:
+    cdef extern from 'cupy_cufftXt.h' nogil:
         ctypedef enum callbackType 'cufftXtCallbackType':
             pass
         Result set_callback(Handle plan, callbackType cb_type, bint cb_load)
