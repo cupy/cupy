@@ -1348,7 +1348,7 @@ __device__ ${store_type} d_storeCallbackPtr = CB_ConvertOutput;
                  'hipFFT does not support callbacks')
 class Test1dCallbacks(unittest.TestCase):
 
-    @testing.for_dtypes('FD')
+    @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_load(self, xp, dtype):
         fft = xp.fft.fft
@@ -1376,7 +1376,7 @@ class Test1dCallbacks(unittest.TestCase):
 
         return out
 
-    @testing.for_dtypes('fd')
+    @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft_load(self, xp, dtype):
         fft = xp.fft.rfft
@@ -1404,7 +1404,7 @@ class Test1dCallbacks(unittest.TestCase):
 
         return out
 
-    @testing.for_dtypes('FD')
+    @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ifft_load(self, xp, dtype):
         ifft = xp.fft.ifft
@@ -1432,7 +1432,7 @@ class Test1dCallbacks(unittest.TestCase):
 
         return out
 
-    @testing.for_dtypes('fd')
+    @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, contiguous_check=False)
     def test_irfft_load(self, xp, dtype):
         ifft = xp.fft.irfft
@@ -1460,7 +1460,7 @@ class Test1dCallbacks(unittest.TestCase):
 
         return out
 
-    @testing.for_dtypes('FD')
+    @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_store(self, xp, dtype):
         fft = xp.fft.fft
@@ -1488,7 +1488,7 @@ class Test1dCallbacks(unittest.TestCase):
 
         return out
 
-    @testing.for_dtypes('fd')
+    @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft_store(self, xp, dtype):
         fft = xp.fft.rfft
@@ -1516,7 +1516,7 @@ class Test1dCallbacks(unittest.TestCase):
 
         return out
 
-    @testing.for_dtypes('FD')
+    @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ifft_store(self, xp, dtype):
         ifft = xp.fft.ifft
@@ -1544,7 +1544,7 @@ class Test1dCallbacks(unittest.TestCase):
 
         return out
 
-    @testing.for_dtypes('fd')
+    @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, contiguous_check=False)
     def test_irfft_store(self, xp, dtype):
         ifft = xp.fft.irfft
@@ -1569,5 +1569,85 @@ class Test1dCallbacks(unittest.TestCase):
         else:
             with xp.fft.config.set_cufft_callbacks(cb_store=cb_store):
                 out = ifft(a, n=self.n, norm=self.norm)
+
+        return out
+
+
+@testing.parameterize(
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
+    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
+    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
+)
+@testing.gpu
+@testing.slow
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'hipFFT does not support callbacks')
+class TestNdCallbacks(unittest.TestCase):
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_fftn_load(self, xp, dtype):
+        fft = xp.fft.fftn
+        element = 'x.x'
+        if dtype == np.complex64:
+            data_type = 'cufftComplex'
+            callback_type = 'cufftCallbackLoadC'
+        else:
+            data_type = 'cufftDoubleComplex'
+            callback_type = 'cufftCallbackLoadZ'
+        cb_load = string.Template(_load_callback).substitute(
+            data_type=data_type,
+            load_type=callback_type,
+            element=element)
+
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp is np:
+            a.real *= 2.5
+            out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
+            if dtype in (np.float32, np.complex64):
+                out = out.astype(np.complex64)
+        else:
+            with xp.fft.config.set_cufft_callbacks(cb_load=cb_load):
+                out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
+
+        return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_ifftn_load(self, xp, dtype):
+        ifft = xp.fft.ifftn
+        element = 'x.x'
+        if dtype == np.complex64:
+            data_type = 'cufftComplex'
+            callback_type = 'cufftCallbackLoadC'
+        else:
+            data_type = 'cufftDoubleComplex'
+            callback_type = 'cufftCallbackLoadZ'
+        cb_load = string.Template(_load_callback).substitute(
+            data_type=data_type,
+            load_type=callback_type,
+            element=element)
+
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp is np:
+            a.real *= 2.5
+            out = ifft(a, s=self.s, axes=self.axes, norm=self.norm)
+            if dtype in (np.float32, np.complex64):
+                out = out.astype(np.complex64)
+        else:
+            with xp.fft.config.set_cufft_callbacks(cb_load=cb_load):
+                out = ifft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
