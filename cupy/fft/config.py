@@ -85,8 +85,6 @@ def _get_cache_dir():
 # TODO(leofang): would it be more robust if we use distutils +
 # setuptools here? I'm worried that the number of lines of code
 # might inflate too much...
-# TODO(leofang): make sure all needed source files are included
-# in sdist/wheel
 # TODO(leofang): find a way to implement a lock-free method for
 # cached shared libraries like what's done in cupy/cuda/compiler.py
 # TODO(leofang): investigate if callerInfo can be supported. Looks
@@ -181,7 +179,6 @@ class _CallbackManager:
             p.check_returncode()
 
             # Dump and compile device code using nvcc
-            # TODO(leofang): use the nvcc utilities from cupy/cuda/compiler.py
             global _callback_dev_code
             if _callback_dev_code is None:
                 with open(source_dir + '/cupy_cufftXt.cu') as f:
