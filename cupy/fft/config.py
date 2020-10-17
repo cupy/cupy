@@ -85,7 +85,6 @@ def _get_cache_dir():
 # TODO(leofang): would it be more robust if we use distutils +
 # setuptools here? I'm worried that the number of lines of code
 # might inflate too much...
-# TODO(leofang): make sure Cython is installed at runtime
 # TODO(leofang): make sure all needed source files are included
 # in sdist/wheel
 # TODO(leofang): find a way to implement a lock-free method for
@@ -111,6 +110,12 @@ class _CallbackManager:
         nvcc = get_nvcc_path()
         if nvcc is None:
             raise RuntimeError('nvcc is required but not found')
+        try:
+            import cython
+        except ImportError:
+            raise RuntimeError('cython is required but not found')
+        else:
+            del cython
         self.plan_args = plan_args[1]
         self.cb_load = cb_load
         self.cb_store = cb_store
