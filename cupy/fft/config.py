@@ -11,7 +11,7 @@ import tempfile
 
 from cupy import __version__ as cupy_ver
 from cupy import _util
-from cupy._environment import get_nvcc_path
+from cupy._environment import get_nvcc_path, get_cuda_path
 from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
                              CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
                              CUFFT_CB_LD_COMPLEX, CUFFT_CB_LD_COMPLEX_DOUBLE,
@@ -121,6 +121,7 @@ class _CallbackManager:
         # Set up some variables...
         cc = sysconfig.get_config_var('CXX').split(' ')
         python_include = sysconfig.get_path('include')
+        cuda_include = get_cuda_path() + '/include/'
         arch = get_compute_capability()
         build_ver = get_build_version()
         cufft_ver = get_cufft_version()
@@ -172,6 +173,7 @@ class _CallbackManager:
                             self.dir + '/cupy_cufftXt.h')
             p = subprocess.run(cc + [
                                '-I' + python_include,
+                               '-I' + cuda_include,
                                '-fPIC', '-O2', '-std=c++11',
                                '-c', self.dir + mod_name + '.cpp',
                                '-o', self.obj_host],
