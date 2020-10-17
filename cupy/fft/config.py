@@ -9,7 +9,7 @@ import sys
 import sysconfig
 import tempfile
 
-from cupy import __version__
+from cupy import __version__ as cupy_ver
 from cupy import _util
 from cupy._environment import get_nvcc_path
 from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
@@ -21,6 +21,7 @@ from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
 from cupy.cuda.cufft import getVersion as get_cufft_version
 from cupy.cuda.device import get_compute_capability
 from cupy_backends.cuda.api.driver import get_build_version
+from cupy_backends.cuda.api.runtime import is_hip
 
 # expose cache handles to this module
 from cupy.fft._cache import get_plan_cache  # NOQA
@@ -94,6 +95,12 @@ def _get_cache_dir():
 class _CallbackManager:
     def __init__(self, plan_args, cb_load='', cb_store=''):
         # Sanity checks
+        if is_hip:
+            raise RuntimeError('hipFFT does not support callbacks')
+        if not sys.platform.startswith('linux'):
+            raise RuntimeError('cuFFT callbacks are only available on Linux')
+        if not (sys.maxsize > 2**32):
+            raise RuntimeError('cuFFT callbacks require 64 bit OS')
         if not cb_load and not cb_store:
             raise ValueError('need to specify either cb_load or cb_store, '
                              'or both')
@@ -101,36 +108,40 @@ class _CallbackManager:
             raise ValueError('need to specify d_loadCallbackPtr in cb_load')
         if cb_store and 'd_storeCallbackPtr' not in cb_store:
             raise ValueError('need to specify d_storeCallbackPtr in cb_store')
+        nvcc = get_nvcc_path()
+        if nvcc is None:
+            raise RuntimeError('nvcc is required but not found')
         self.plan_args = plan_args[1]
         self.cb_load = cb_load
         self.cb_store = cb_store
 
         # Set up some variables...
-        python_include = sysconfig.get_paths()['include']
-        nvcc = get_nvcc_path()
-        CC = get_compute_capability()
+        cc = sysconfig.get_config_var('CXX').split(' ')
+        python_include = sysconfig.get_path('include')
+        arch = get_compute_capability()
         build_ver = get_build_version()
+        cufft_ver = get_cufft_version()
         source_dir = os.path.dirname(__file__) + '/../cuda/'
-        sysinfo = sys.version_info
+        ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
+
+        # For hash; note this is independent of plan args
+        keys = (cc, arch, build_ver, cufft_ver, ext_suffix, cupy_ver,
+                cb_load, cb_store)
+        keys = '%s %s %s %s %s %s %s %s' % keys
 
         # Generate module filename: all modules with the identical callbacks
         # are considered identical regardless of which plan was actually
         # executed at the time of generation
-        mod_name = 'cupy_callback_' + __version__ + '_PY'
-        for i in range(3):
-            mod_name += str(sysinfo[i])
-        mod_name += '_cuFFT' + str(get_cufft_version())
-        if cb_load:
-            mod_name += '_' + hashlib.md5(cb_load.encode()).hexdigest()
-        if cb_store:
-            mod_name += '_' + hashlib.md5(cb_store.encode()).hexdigest()
+        mod_name = 'cupy_callback_'
+        mod_name += hashlib.md5(keys.encode()).hexdigest()
         mod_name = mod_name.replace('.', '')
+        mod_filename = mod_name + ext_suffix
 
-        # Check if the module is already cached on disk
+        # Check if the module is already cached on disk. If not, we compile.
         cache_dir = _get_cache_dir() + '/'
         if not os.path.isdir(cache_dir):
             os.makedirs(cache_dir, exist_ok=True)
-        path = os.path.join(cache_dir, mod_name + '.so')
+        path = os.path.join(cache_dir, mod_filename)
         if not os.path.isfile(path):
             # Set up temp directory
             self.dir_obj = tempfile.TemporaryDirectory()
@@ -138,7 +149,7 @@ class _CallbackManager:
 
             # Cythonize the Cython code to produce a c++ source file
             shutil.copyfile(source_dir + '/cupy_cufft.h',
-                            self.dir+'/cupy_cufft.h')
+                            self.dir + '/cupy_cufft.h')
             shutil.copyfile(source_dir + '/cufft.pxd',
                             self.dir + mod_name + '.pxd')
             shutil.copyfile(source_dir + '/cufft.pyx',
@@ -156,10 +167,11 @@ class _CallbackManager:
             self.obj_host = self.dir + mod_name + '.o'
             shutil.copyfile(source_dir + '/cupy_cufftx.h',
                             self.dir + '/cupy_cufftx.h')
-            p = subprocess.run(['g++', '-I'+python_include,
-                                '-fPIC', '-pthread', '-O2', '-std=c++11',
-                                '-c', self.dir + mod_name + '.cpp',
-                                '-o', self.obj_host],
+            p = subprocess.run(cc + [
+                               '-I' + python_include,
+                               '-fPIC', '-O2', '-std=c++11',
+                               '-c', self.dir + mod_name + '.cpp',
+                               '-o', self.obj_host],
                                env=os.environ)
             p.check_returncode()
 
@@ -174,11 +186,11 @@ class _CallbackManager:
             with open(self.dir+'/cupy_cufftx.cu', 'w') as f:
                 support = string.Template(support).substitute(
                     dev_load_callback_ker=cb_load,
-                    dev_store_callback_ker=cb_store,
-                )
+                    dev_store_callback_ker=cb_store)
                 f.write(support)
             self.obj_dev = self.dir + mod_name + '_dev.o'
-            cmd = [nvcc, '-ccbin', 'g++', '-arch=sm_'+CC, '-dc',
+            cmd = [nvcc, '-ccbin', cc[0],
+                   '-arch=sm_'+arch, '-dc',
                    '-c', self.dir+'/cupy_cufftx.cu',
                    '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
             if self.cb_load:
@@ -190,8 +202,8 @@ class _CallbackManager:
 
             # Use nvcc to link and generate a shared library
             # WARNING: CANNOT use host compiler to link!
-            p = subprocess.run([nvcc, '-ccbin', 'g++',
-                                '-shared', '-arch=sm_'+CC,
+            p = subprocess.run([nvcc, '-ccbin', cc[0],
+                                '-shared', '-arch=sm_'+arch,
                                 self.obj_dev, self.obj_host,
                                 '-lcufft_static', '-lculibos',
                                 '-o', path],
@@ -211,8 +223,8 @@ class _CallbackManager:
         spec.loader.exec_module(module)
 
         # Create a cuFFT plan
-        plan = plan_args[0]
-        self.plan = getattr(self.mod, plan)(*plan_args[1])
+        plan_type = plan_args[0]
+        self.plan = getattr(self.mod, plan_type)(*plan_args[1])
         self.handle = self.plan.handle
         self.fft_type = self.plan.fft_type
         self.is_callback_set = False
