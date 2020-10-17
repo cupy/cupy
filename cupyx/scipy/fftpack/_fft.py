@@ -54,6 +54,11 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         In the first case, no cuFFT plan will be generated automatically,
         even if ``cupy.fft.config.enable_nd_planning = True`` is set.
 
+    .. note::
+        If this function is called under the context of
+        :func:`~config.set_cufft_callbacks`, the generated plan has callbacks
+        enabled.
+
     .. warning::
         This API is a deviation from SciPy's, is currently experimental, and
         may be changed in the future version.
@@ -119,7 +124,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             raise RuntimeError("hipFFT's C2R PlanNd is buggy and unsupported")
         out_size = _get_fftn_out_size(
             shape, transformed_shape, axes[-1], value_type)
-        # _get_cufft_plan_nd handles the interaction with plan cache
+        # _get_cufft_plan_nd interacts with plan cache and callback
         plan = _get_cufft_plan_nd(
             shape, fft_type, axes=axes, order=order, out_size=out_size,
             to_cache=False)
@@ -134,12 +139,23 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         devices = None if not config.use_multi_gpus else config._devices
 
         keys = (out_size, fft_type, batch, devices)
+        if config._callback_load or config._callback_store:
+            keys += (config._callback_load, config._callback_store)
+            has_callback = True
+        else:
+            has_callback = False
         cache = get_plan_cache()
         cached_plan = cache.get(keys)
         if cached_plan is not None:
             plan = cached_plan
-        else:
+        elif not has_callback:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+        else:  # has_callback
+            # TODO(leofang): support multi-GPU callback (devices is ignored)
+            if devices:
+                raise NotImplementedError('multi-GPU cuFFT callbacks are not '
+                                          'yet supported')
+            plan = config._get_static_plan('Plan1d', fft_type, keys[:-3])
 
     return plan
 
