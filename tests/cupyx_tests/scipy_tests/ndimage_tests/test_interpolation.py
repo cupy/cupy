@@ -619,8 +619,8 @@ class TestSplineFilter(unittest.TestCase):
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
         if self.order < 2:
             with pytest.raises(RuntimeError):
-               scp.ndimage.spline_filter(x, order=self.order,
-                                         output=self.output, mode=self.mode)
+                scp.ndimage.spline_filter(x, order=self.order,
+                                          output=self.output, mode=self.mode)
             return xp.asarray([])
         return scp.ndimage.spline_filter(x, order=self.order,
                                          output=self.output, mode=self.mode)

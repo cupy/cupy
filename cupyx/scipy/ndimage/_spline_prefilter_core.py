@@ -182,7 +182,8 @@ typedef {data_type} T;
 typedef {pole_type} P;
 typedef {index_type} idx_t;
 template <typename T>
-__device__ T* row(T* ptr, idx_t i, idx_t axis, idx_t ndim, const idx_t* shape) {{
+__device__ T* row(
+        T* ptr, idx_t i, idx_t axis, idx_t ndim, const idx_t* shape) {{
     idx_t index = 0, stride = 1;
     for (idx_t a = ndim - 1; a > 0; --a) {{
         if (a != axis) {{

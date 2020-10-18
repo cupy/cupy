@@ -33,6 +33,7 @@ def _check_parameter(func_name, order, mode):
                       '_opencv_edge'):
         raise ValueError('boundary mode is not supported')
 
+
 def _get_spline_output(input, output, allow_float32=False):
     """Create workspace array, temp, and the final dtype for the output.
 
@@ -120,7 +121,8 @@ def spline_filter1d(
         output[...] = x[...]
         return output
 
-    temp, data_dtype, output_dtype = _get_spline_output(x, output, allow_float32)
+    temp, data_dtype, output_dtype = _get_spline_output(x, output,
+                                                        allow_float32)
     data_type = cupy.core._scalar.get_typename(temp.dtype)
     pole_type = cupy.core._scalar.get_typename(temp.real.dtype)
 
