@@ -124,10 +124,12 @@ class _CallbackManager:
         cc = sysconfig.get_config_var('CXX').split(' ')
         python_include = sysconfig.get_path('include')
         cuda_include = get_cuda_path() + '/include/'
+        cupy_root = os.path.join(os.path.dirname(__file__), '..')
+        cupy_include = cupy_root + '/core/include'
         arch = get_compute_capability()
         build_ver = get_build_version()
         cufft_ver = get_cufft_version()
-        source_dir = os.path.dirname(__file__) + '/../cuda/'
+        source_dir = cupy_root + '/cuda/'
         ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
         # For hash; note this is independent of the plan to be created
@@ -176,6 +178,7 @@ class _CallbackManager:
             p = subprocess.run(cc + [
                                '-I' + python_include,
                                '-I' + cuda_include,
+                               '-I' + cupy_include,
                                '-fPIC', '-O2', '-std=c++11',
                                '-c', self.dir + mod_name + '.cpp',
                                '-o', self.obj_host],
@@ -197,6 +200,7 @@ class _CallbackManager:
             self.obj_dev = self.dir + mod_name + '_dev.o'
             cmd = [nvcc, '-ccbin', cc[0],
                    '-arch=sm_'+arch, '-dc',
+                   '-I' + cupy_include,
                    '-c', self.dir + '/cupy_cufftXt.cu',
                    '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
             if self.cb_load:
