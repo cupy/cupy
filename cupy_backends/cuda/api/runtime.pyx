@@ -371,13 +371,14 @@ cpdef getDeviceProperties(int device):
         properties['canUseHostPointerForRegisteredMem'] = (
             props.canUseHostPointerForRegisteredMem)
         properties['sharedMemPerBlockOptin'] = props.sharedMemPerBlockOptin
-        properties['uuid'] = props.uuid.bytes
-        properties['luid'] = props.luid
-        properties['luidDeviceNodeMask'] = props.luidDeviceNodeMask
         properties['pageableMemoryAccessUsesHostPageTables'] = (
             props.pageableMemoryAccessUsesHostPageTables)
         properties['directManagedMemAccessFromHost'] = (
             props.directManagedMemAccessFromHost)
+    IF CUDA_VERSION >= 10000:
+        properties['uuid'] = props.uuid.bytes
+        properties['luid'] = props.luid
+        properties['luidDeviceNodeMask'] = props.luidDeviceNodeMask
     IF CUDA_VERSION >= 11000:
         properties['persistingL2CacheMaxSize'] = props.persistingL2CacheMaxSize
         properties['maxBlocksPerMultiProcessor'] = (
