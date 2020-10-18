@@ -12,7 +12,8 @@ import threading
 
 from cupy import __version__ as cupy_ver
 from cupy import _util
-from cupy._environment import get_nvcc_path, get_cuda_path
+from cupy._environment import (get_nvcc_path, get_cuda_path)
+from cupy.cuda.compiler import (_get_bool_env_variable, CompileException)
 from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
                              CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
                              CUFFT_CB_LD_COMPLEX, CUFFT_CB_LD_COMPLEX_DOUBLE,
@@ -207,8 +208,22 @@ class _CallbackManager:
                 cmd.append('-DHAS_LOAD_CALLBACK')
             if self.cb_store:
                 cmd.append('-DHAS_STORE_CALLBACK')
-            p = subprocess.run(cmd + ['-o', self.obj_dev], env=os.environ)
-            p.check_returncode()
+            p = subprocess.run(cmd + ['-o', self.obj_dev],
+                               env=os.environ,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+            try:
+                p.check_returncode()
+            except subprocess.CalledProcessError as e:
+                cex = CompileException(
+                    str(e) + '\nStderr: ' + e.stderr.decode(), support,
+                    self.dir + '/cupy_cufftXt.cu',
+                    cmd[1:], 'nvcc')
+                dump = _get_bool_env_variable(
+                    'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+                if dump:
+                    cex.dump(sys.stderr)
+                raise cex
 
             # Use nvcc to link and generate a shared library, and place it in
             # the disk cache
