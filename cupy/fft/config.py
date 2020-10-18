@@ -13,6 +13,7 @@ import threading
 from cupy import __version__ as cupy_ver
 from cupy import _util
 from cupy._environment import (get_nvcc_path, get_cuda_path)
+from cupy.core import ndarray
 from cupy.cuda.compiler import (_get_bool_env_variable, CompileException)
 from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
                              CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
@@ -91,10 +92,10 @@ def get_current_callback_manager():
 
 # TODO(leofang): find a way to implement a lock-free method for
 # cached shared libraries like what's done in cupy/cuda/compiler.py
-# TODO(leofang): investigate if callerInfo can be supported. Looks
-# like in that case we can't cache the Python modules?
 class _CallbackManager:
-    def __init__(self, cb_load='', cb_store=''):
+    def __init__(
+            self, cb_load='', cb_store='', cb_load_aux_arr=None,
+            cb_store_aux_arr=None):
         # Sanity checks
         if is_hip:
             raise RuntimeError('hipFFT does not support callbacks')
@@ -118,8 +119,21 @@ class _CallbackManager:
             raise RuntimeError('cython is required but not found')
         else:
             del cython
+        if cb_load_aux_arr is not None:
+            if not isinstance(cb_load_aux_arr, ndarray):
+                raise ValueError('cb_load_aux_arr must be a cupy.ndarray')
+            if not cb_load:
+                raise ValueError('load callback is not given')
+        if cb_store_aux_arr is not None:
+            if not isinstance(cb_store_aux_arr, ndarray):
+                raise ValueError('cb_store_aux_arr must be a cupy.ndarray')
+            if not cb_store:
+                raise ValueError('store callback is not given')
+
         self.cb_load = cb_load
         self.cb_store = cb_store
+        self.cb_load_aux_arr = cb_load_aux_arr
+        self.cb_store_aux_arr = cb_store_aux_arr
 
         # Set up some variables...
         cc = sysconfig.get_config_var('CXX').split(' ')
@@ -252,12 +266,19 @@ class _CallbackManager:
     def create_plan(self, plan_info):
         plan_type, plan_args = plan_info
         plan = getattr(self.mod, plan_type)(*plan_args)
+        self.plan = plan  # retain the most recently used plan
         return plan
 
-    def set_callbacks(self, plan):
-        # TODO(leofang): We don't merge create_plan with set_callbacks because
-        # when adding the support of callerInfo we might call set_callbacks
-        # multiple times with the same plan but different input arrays
+    def set_callbacks(
+            self, plan=None, cb_load_aux_arr=None, cb_store_aux_arr=None):
+        if plan is None:
+            # TODO(leofang): raise warning?
+            plan = self.plan
+        if cb_load_aux_arr is None:
+            cb_load_aux_arr = self.cb_load_aux_arr
+        if cb_store_aux_arr is None:
+            cb_store_aux_arr = self.cb_store_aux_arr
+
         fft_type = plan.fft_type
         if fft_type == CUFFT_C2C:
             cb_load_type = CUFFT_CB_LD_COMPLEX if self.cb_load else -1
@@ -281,13 +302,25 @@ class _CallbackManager:
             raise ValueError
 
         if self.cb_load:
-            self.mod.setCallback(plan.handle, cb_load_type, True)
+            if cb_load_aux_arr is not None:
+                cb_load_ptr = cb_load_aux_arr.data.ptr
+            else:
+                cb_load_ptr = 0
+            self.mod.setCallback(
+                plan.handle, cb_load_type, True, cb_load_ptr)
         if self.cb_store:
-            self.mod.setCallback(plan.handle, cb_store_type, False)
+            if cb_store_aux_arr is not None:
+                cb_store_ptr = cb_store_aux_arr.data.ptr
+            else:
+                cb_store_ptr = 0
+            self.mod.setCallback(
+                plan.handle, cb_store_type, False, cb_store_ptr)
 
 
 @contextlib.contextmanager
-def set_cufft_callbacks(cb_load='', cb_store=''):
+def set_cufft_callbacks(
+        cb_load='', cb_store='', *,
+        cb_load_aux_arr=None, cb_store_aux_arr=None):
     """A context manager for setting up load and/or store callbacks.
 
     Args:
@@ -295,9 +328,15 @@ def set_cufft_callbacks(cb_load='', cb_store=''):
             callback. It must define ``d_loadCallbackPtr``.
         cb_store (str): A string contains the device kernel for the store
             callback. It must define ``d_storeCallbackPtr``.
+        cb_load_aux_arr (:class:`cupy.ndarray`, optional): A CuPy array
+            containing data to be used in the load callback.
+        cb_store_aux_arr (:class:`cupy.ndarray`, optional): A CuPy array
+            containing data to be used in the store callback.
 
     Yields:
         :class:`_CallbackManager`: A manager object handling the callbacks.
+            This instance should not be used by users, except when the
+            auxiliary arrays need to be updated.
 
     .. note::
         Any FFT calls living in this context will have callbacks set up. An
@@ -338,7 +377,10 @@ def set_cufft_callbacks(cb_load='', cb_store=''):
     """
     try:
         mgr = _CallbackManager(
-            cb_load=cb_load, cb_store=cb_store)
+            cb_load=cb_load,
+            cb_store=cb_store,
+            cb_load_aux_arr=cb_load_aux_arr,
+            cb_store_aux_arr=cb_store_aux_arr)
         _callback_thread_local._current_cufft_callback = mgr
         _callback_mgr.append(mgr)  # keep the manager alive
         yield mgr

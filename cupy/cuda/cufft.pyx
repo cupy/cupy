@@ -114,7 +114,7 @@ IF CUPY_CUFFT_STATIC:
     cdef extern from 'cupy_cufftXt.h' nogil:
         ctypedef enum callbackType 'cufftXtCallbackType':
             pass
-        Result set_callback(Handle plan, callbackType cb_type, bint cb_load)
+        Result set_callback(Handle, callbackType, bint, void**)
 
 
 cdef dict RESULT = {
@@ -951,13 +951,20 @@ cpdef multi_gpu_execZ2Z(intptr_t plan, intptr_t idata, intptr_t odata,
     check_result(result)
 
 
-cpdef intptr_t setCallback(intptr_t plan, int cb_type, bint is_load):
+cpdef intptr_t setCallback(
+        intptr_t plan, int cb_type, bint is_load, intptr_t aux_arr=0):
     cdef Handle h = <Handle>plan
     cdef int result
+    cdef void** callerInfo
 
     IF CUPY_CUFFT_STATIC:
         with nogil:
-            result = set_callback(h, <callbackType>cb_type, is_load)
+            if aux_arr > 0:
+                callerInfo = (<void**>(&aux_arr))
+            else:
+                callerInfo = NULL
+            result = set_callback(
+                h, <callbackType>cb_type, is_load, callerInfo)
         check_result(result)
     ELSE:
         raise RuntimeError('cuFFT is dynamically linked and thus does not '
