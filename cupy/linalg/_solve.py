@@ -427,7 +427,7 @@ def pinv(a, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.pinv`
     """
-    u, s, vt = _decompositionsvd(a.conj(), full_matrices=False)
+    u, s, vt = _decomposition.svd(a.conj(), full_matrices=False)
     cutoff = rcond * s.max()
     s1 = 1 / s
     s1[s <= cutoff] = 0
