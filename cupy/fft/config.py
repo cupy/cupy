@@ -72,8 +72,6 @@ def set_cufft_gpus(gpus):
     _devices = tuple(devs)
 
 
-_callback_load = ''
-_callback_store = ''
 _callback_mgr = []
 _callback_dev_code = None
 _callback_thread_local = threading.local()
@@ -90,15 +88,12 @@ def get_current_callback_manager():
     return _callback_thread_local._current_cufft_callback
 
 
-# TODO(leofang): would it be more robust if we use distutils +
-# setuptools here? I'm worried that the number of lines of code
-# might inflate too much...
 # TODO(leofang): find a way to implement a lock-free method for
 # cached shared libraries like what's done in cupy/cuda/compiler.py
 # TODO(leofang): investigate if callerInfo can be supported. Looks
 # like in that case we can't cache the Python modules?
 class _CallbackManager:
-    def __init__(self, plan_args, cb_load='', cb_store=''):
+    def __init__(self, cb_load='', cb_store=''):
         # Sanity checks
         if is_hip:
             raise RuntimeError('hipFFT does not support callbacks')
@@ -122,7 +117,6 @@ class _CallbackManager:
             raise RuntimeError('cython is required but not found')
         else:
             del cython
-        self.plan_type, self.plan_args = plan_args
         self.cb_load = cb_load
         self.cb_store = cb_store
 
@@ -136,7 +130,7 @@ class _CallbackManager:
         source_dir = os.path.dirname(__file__) + '/../cuda/'
         ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
-        # For hash; note this is independent of plan_type or plan_args
+        # For hash; note this is independent of the plan to be created
         keys = (cc, arch, build_ver, cufft_ver, ext_suffix, cupy_ver,
                 cb_load, cb_store)
         keys = '%s %s %s %s %s %s %s %s' % keys
@@ -236,24 +230,40 @@ class _CallbackManager:
         sys.modules[mod_name] = module
         spec.loader.exec_module(module)
 
-    def create_plan(self):
-        self.plan = getattr(self.mod, self.plan_type)(*self.plan_args)
-        self.handle = self.plan.handle
-        self.fft_type = self.plan.fft_type
-        self.is_callback_set = False
+    def create_plan(self, plan_info):
+        plan_type, plan_args = plan_info
+        plan = getattr(self.mod, plan_type)(*plan_args)
+        return plan
 
-    def set_callbacks(self, cb_load_type=-1, cb_store_type=-1):
-        if self.is_callback_set:
-            raise RuntimeError('callback cannot be reset')
+    def set_callbacks(self, plan, fft_type):
+        # TODO(leofang): We don't merge create_plan with set_callbacks because
+        # when adding the support of callerInfo we might call set_callbacks
+        # multiple times with the same plan but different input arrays
+        if fft_type == CUFFT_C2C:
+            cb_load_type = CUFFT_CB_LD_COMPLEX if self.cb_load else -1
+            cb_store_type = CUFFT_CB_ST_COMPLEX if self.cb_store else -1
+        elif fft_type == CUFFT_R2C:
+            cb_load_type = CUFFT_CB_LD_REAL if self.cb_load else -1
+            cb_store_type = CUFFT_CB_ST_COMPLEX if self.cb_store else -1
+        elif fft_type == CUFFT_C2R:
+            cb_load_type = CUFFT_CB_LD_COMPLEX if self.cb_load else -1
+            cb_store_type = CUFFT_CB_ST_REAL if self.cb_store else -1
+        elif fft_type == CUFFT_Z2Z:
+            cb_load_type = CUFFT_CB_LD_COMPLEX_DOUBLE if self.cb_load else -1
+            cb_store_type = CUFFT_CB_ST_COMPLEX_DOUBLE if self.cb_store else -1
+        elif fft_type == CUFFT_D2Z:
+            cb_load_type = CUFFT_CB_LD_REAL_DOUBLE if self.cb_load else -1
+            cb_store_type = CUFFT_CB_ST_COMPLEX_DOUBLE if self.cb_store else -1
+        elif fft_type == CUFFT_Z2D:
+            cb_load_type = CUFFT_CB_LD_COMPLEX_DOUBLE if self.cb_load else -1
+            cb_store_type = CUFFT_CB_ST_REAL_DOUBLE if self.cb_store else -1
+        else:
+            raise ValueError
+
         if self.cb_load:
-            if cb_load_type == -1:
-                raise ValueError('cb_load_type needs to be speficied')
-            self.mod.setCallback(self.handle, cb_load_type, True)
+            self.mod.setCallback(plan.handle, cb_load_type, True)
         if self.cb_store:
-            if cb_store_type == -1:
-                raise ValueError('cb_store_type needs to be speficied')
-            self.mod.setCallback(self.handle, cb_store_type, False)
-        self.is_callback_set = True
+            self.mod.setCallback(plan.handle, cb_store_type, False)
 
 
 @contextlib.contextmanager
@@ -265,6 +275,9 @@ def set_cufft_callbacks(cb_load='', cb_store=''):
             callback. It must define ``d_loadCallbackPtr``.
         cb_store (str): A string contains the device kernel for the store
             callback. It must define ``d_storeCallbackPtr``.
+
+    Yields:
+        _CallbackManager: A manager object handling the callbacks.
 
     .. note::
         Any FFT calls living in this context will have callbacks set up. An
@@ -303,47 +316,13 @@ def set_cufft_callbacks(cb_load='', cb_store=''):
         ``CUPY_CACHE_DIR``.
 
     """
-    global _callback_load, _callback_store
     try:
-        if cb_load:
-            _callback_load = cb_load
-        if cb_store:
-            _callback_store = cb_store
-        yield
+        mgr = _CallbackManager(
+            cb_load=cb_load, cb_store=cb_store)
+        _callback_thread_local._current_cufft_callback = mgr
+        _callback_mgr.append(mgr)  # keep the manager alive
+        yield mgr
     finally:
-        _callback_load = ''
-        _callback_store = ''
-
-
-def _get_static_plan(plan_type, fft_type, keys):
-    global _callback_load, _callback_store, _callback_mgr
-
-    mgr = _CallbackManager(
-        (plan_type, keys), cb_load=_callback_load, cb_store=_callback_store)
-    if fft_type == CUFFT_C2C:
-        cb_load_type = CUFFT_CB_LD_COMPLEX if _callback_load else -1
-        cb_store_type = CUFFT_CB_ST_COMPLEX if _callback_store else -1
-    elif fft_type == CUFFT_R2C:
-        cb_load_type = CUFFT_CB_LD_REAL if _callback_load else -1
-        cb_store_type = CUFFT_CB_ST_COMPLEX if _callback_store else -1
-    elif fft_type == CUFFT_C2R:
-        cb_load_type = CUFFT_CB_LD_COMPLEX if _callback_load else -1
-        cb_store_type = CUFFT_CB_ST_REAL if _callback_store else -1
-    elif fft_type == CUFFT_Z2Z:
-        cb_load_type = CUFFT_CB_LD_COMPLEX_DOUBLE if _callback_load else -1
-        cb_store_type = CUFFT_CB_ST_COMPLEX_DOUBLE if _callback_store else -1
-    elif fft_type == CUFFT_D2Z:
-        cb_load_type = CUFFT_CB_LD_REAL_DOUBLE if _callback_load else -1
-        cb_store_type = CUFFT_CB_ST_COMPLEX_DOUBLE if _callback_store else -1
-    elif fft_type == CUFFT_Z2D:
-        cb_load_type = CUFFT_CB_LD_COMPLEX_DOUBLE if _callback_load else -1
-        cb_store_type = CUFFT_CB_ST_REAL_DOUBLE if _callback_store else -1
-    else:
-        raise ValueError
-    mgr.create_plan()
-    mgr.set_callbacks(cb_load_type, cb_store_type)
-
-    _callback_load = ''
-    _callback_store = ''
-    _callback_mgr.append(mgr)  # keep the manager alive
-    return mgr.plan
+        _callback_thread_local._current_cufft_callback = None
+        # do not remove mgr from _callback_mgr, as one might still wanna use
+        # it in the same Python session

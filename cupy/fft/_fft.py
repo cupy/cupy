@@ -136,24 +136,23 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         devices = None if not config.use_multi_gpus else config._devices
         # TODO(leofang): do we need to add the current stream to keys?
         keys = (out_size, fft_type, batch, devices)
-        if config._callback_load or config._callback_store:
-            keys += (config._callback_load, config._callback_store)
-            has_callback = True
-        else:
-            has_callback = False
+        mgr = config.get_current_callback_manager()
+        if mgr is not None:
+            keys += (mgr.cb_load, mgr.cb_store)
         cache = get_plan_cache()
         cached_plan = cache.get(keys)
         if cached_plan is not None:
             plan = cached_plan
-        elif not has_callback:
+        elif mgr is None:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
             cache[keys] = plan
-        else:  # has_callback
+        else:  # has callback
             # TODO(leofang): support multi-GPU callback (devices is ignored)
             if devices:
                 raise NotImplementedError('multi-GPU cuFFT callbacks are not '
                                           'yet supported')
-            plan = config._get_static_plan('Plan1d', fft_type, keys[:-3])
+            plan = mgr.create_plan(('Plan1d', keys[:-3]))
+            mgr.set_callbacks(plan, fft_type)
             cache[keys] = plan
     else:
         # check plan validity
@@ -429,21 +428,20 @@ def _get_cufft_plan_nd(
     keys = (plan_dimensions, inembed, istride,
             idist, onembed, ostride, odist,
             fft_type, nbatch, order, fft_axes[-1], out_size)
-    if config._callback_load or config._callback_store:
-        keys += (config._callback_load, config._callback_store)
-        has_callback = True
-    else:
-        has_callback = False
+    mgr = config.get_current_callback_manager()
+    if mgr is not None:
+        keys += (mgr.cb_load, mgr.cb_store)
     cache = get_plan_cache()
     cached_plan = cache.get(keys)
     if cached_plan is not None:
         plan = cached_plan
-    elif not has_callback:
+    elif mgr is None:
         plan = cufft.PlanNd(*keys)
         if to_cache:
             cache[keys] = plan
-    else:  # has_callback
-        plan = config._get_static_plan('PlanNd', fft_type, keys[:-2])
+    else:  # has callback
+        plan = mgr.create_plan(('PlanNd', keys[:-2]))
+        mgr.set_callbacks(plan, fft_type)
         if to_cache:
             cache[keys] = plan
 
