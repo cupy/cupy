@@ -8,6 +8,7 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
+import threading
 
 from cupy import __version__ as cupy_ver
 from cupy import _util
@@ -75,11 +76,18 @@ _callback_load = ''
 _callback_store = ''
 _callback_mgr = []
 _callback_dev_code = None
+_callback_thread_local = threading.local()
 _default_cache_dir = os.path.expanduser('~/.cupy/callback_cache')
 
 
 def _get_cache_dir():
     return os.environ.get('CUPY_CACHE_DIR', _default_cache_dir)
+
+
+def get_current_callback_manager():
+    if not hasattr(_callback_thread_local, '_current_cufft_callback'):
+        _callback_thread_local._current_cufft_callback = None
+    return _callback_thread_local._current_cufft_callback
 
 
 # TODO(leofang): would it be more robust if we use distutils +
@@ -114,7 +122,7 @@ class _CallbackManager:
             raise RuntimeError('cython is required but not found')
         else:
             del cython
-        self.plan_args = plan_args[1]
+        self.plan_type, self.plan_args = plan_args
         self.cb_load = cb_load
         self.cb_store = cb_store
 
@@ -128,7 +136,7 @@ class _CallbackManager:
         source_dir = os.path.dirname(__file__) + '/../cuda/'
         ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
-        # For hash; note this is independent of plan args
+        # For hash; note this is independent of plan_type or plan_args
         keys = (cc, arch, build_ver, cufft_ver, ext_suffix, cupy_ver,
                 cb_load, cb_store)
         keys = '%s %s %s %s %s %s %s %s' % keys
@@ -204,7 +212,8 @@ class _CallbackManager:
             p = subprocess.run(cmd + ['-o', self.obj_dev], env=os.environ)
             p.check_returncode()
 
-            # Use nvcc to link and generate a shared library
+            # Use nvcc to link and generate a shared library, and place it in
+            # the disk cache
             # WARNING: CANNOT use host compiler to link!
             p = subprocess.run([nvcc, '-ccbin', cc[0],
                                 '-shared', '-arch=sm_'+arch,
@@ -214,6 +223,7 @@ class _CallbackManager:
                                env=os.environ)
             p.check_returncode()
 
+            # Clean up build directory
             self.dir_obj.cleanup()
             del self.dir_obj
             del self.dir
@@ -226,9 +236,8 @@ class _CallbackManager:
         sys.modules[mod_name] = module
         spec.loader.exec_module(module)
 
-        # Create a cuFFT plan
-        plan_type = plan_args[0]
-        self.plan = getattr(self.mod, plan_type)(*plan_args[1])
+    def create_plan(self):
+        self.plan = getattr(self.mod, self.plan_type)(*self.plan_args)
         self.handle = self.plan.handle
         self.fft_type = self.plan.fft_type
         self.is_callback_set = False
@@ -331,6 +340,7 @@ def _get_static_plan(plan_type, fft_type, keys):
         cb_store_type = CUFFT_CB_ST_REAL_DOUBLE if _callback_store else -1
     else:
         raise ValueError
+    mgr.create_plan()
     mgr.set_callbacks(cb_load_type, cb_store_type)
 
     _callback_load = ''
