@@ -61,6 +61,7 @@ cuda_files = [
     'cupy.core._reduction',
     'cupy.core._routines_binary',
     'cupy.core._routines_indexing',
+    'cupy.core._routines_linalg',
     'cupy.core._routines_logic',
     'cupy.core._routines_manipulation',
     'cupy.core._routines_math',
@@ -83,25 +84,39 @@ cuda_files = [
     'cupy.cuda.function',
     'cupy.cuda.stream',
     'cupy.cuda.texture',
+    'cupy.fft._cache',
     'cupy.lib.polynomial',
-    'cupy.util'
+    'cupy._util'
 ]
 
 if use_hip:
+    # We handle nvtx (and likely any other future support) here, because
+    # the HIP stubs (hip/cupy_*.h) would cause many symbols
+    # to leak into all these modules even if unused. It's easier for all of
+    # them to link to the same set of shared libraries.
     MODULES.append({
         'name': 'cuda',
-        'file': cuda_files,
+        'file': cuda_files + [
+            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.cusolver',
+        ],
         'include': [
             'hip/hip_runtime_api.h',
             'hip/hiprtc.h',
             'hipblas.h',
             'hiprand/hiprand.h',
+            'hipfft.h',
+            'roctx.h',
+            'rocsolver.h',
         ],
         'libraries': [
-            'hiprtc',
-            'hip_hcc',
+            'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
             'hipblas',
             'hiprand',
+            'rocfft',
+            'roctx64',
+            'rocblas',
+            'rocsolver',
         ],
     })
 else:
@@ -131,16 +146,7 @@ else:
         'version_method': build.get_cuda_version,
     })
 
-if use_hip:
-    MODULES.append({
-        'name': 'cusolver',
-        'file': [
-            'cupy_backends.cuda.libs.cusolver',
-        ],
-        'include': [],
-        'libraries': [],
-    })
-else:
+if not use_hip:
     MODULES.append({
         'name': 'cusolver',
         'file': [
@@ -232,6 +238,36 @@ if not use_hip:
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
     })
+else:
+    MODULES.append({
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'hipcub/hipcub_version.hpp',  # dummy
+        ],
+        'libraries': [
+            'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
+        ],
+        'check_method': build.check_cub_version,
+        'version_method': build.get_cub_version,
+    })
+
+    MODULES.append({
+        'name': 'nccl',
+        'file': [
+            'cupy.cuda.nccl',
+        ],
+        'include': [
+            'rccl.h',
+        ],
+        'libraries': [
+            'rccl',
+        ],
+        'check_method': build.check_nccl_version,
+        'version_method': build.get_nccl_version,
+    })
 
 if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     if use_hip:
@@ -244,8 +280,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
                 'thrust/version.h',
             ],
             'libraries': [
-                'hiprtc',
-                'hip_hcc',
+                'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
             ],
         })
     else:
@@ -725,6 +760,17 @@ def cythonize(extensions, arg_options):
     cythonize_options = {key: arg_options[key]
                          for key in cythonize_option_keys}
 
+    # Compile-time constants to be used in Cython code
+    compile_time_env = cythonize_options.get('compile_time_env')
+    if compile_time_env is None:
+        compile_time_env = {}
+        cythonize_options['compile_time_env'] = compile_time_env
+    compile_time_env['use_hip'] = arg_options['use_hip']
+    if use_hip or arg_options['no_cuda']:
+        compile_time_env['CUDA_VERSION'] = 0
+    else:
+        compile_time_env['CUDA_VERSION'] = build.get_cuda_version()
+
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,
         compiler_directives=directives, **cythonize_options)
@@ -792,9 +838,15 @@ def _nvcc_gencode_options(cuda_version):
     # arch_list has an entry of ('compute_61', 'sm_61').
     #
     #     arch_list = [('compute_61', 'sm_61')]
+    #
+    # See the documentation of each CUDA version for the list of supported
+    # architectures:
+    #
+    #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
 
     if cuda_version >= 11000:
-        arch_list = ['compute_50',
+        arch_list = ['compute_35',
+                     'compute_50',
                      ('compute_60', 'sm_60'),
                      ('compute_61', 'sm_61'),
                      ('compute_70', 'sm_70'),

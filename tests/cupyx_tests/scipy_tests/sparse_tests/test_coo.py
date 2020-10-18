@@ -267,6 +267,17 @@ class TestCooMatrixInit(unittest.TestCase):
         self.assertIsNot(row, x.row)
         self.assertIsNot(col, x.col)
 
+    def test_init_dense(self):
+        m = cupy.array([[0, 1, 0, 2],
+                        [0, 0, 0, 0],
+                        [0, 0, 3, 0]], dtype=self.dtype)
+        n = sparse.coo_matrix(m)
+        self.assertEqual(n.nnz, 3)
+        self.assertEqual(n.shape, (3, 4))
+        cupy.testing.assert_array_equal(n.data, [1, 2, 3])
+        cupy.testing.assert_array_equal(n.row, [0, 0, 2])
+        cupy.testing.assert_array_equal(n.col, [1, 3, 2])
+
     def test_invalid_format(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             with pytest.raises(TypeError):
@@ -487,12 +498,12 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return n
 
     # dot
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.dot(2.0)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_numpy_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.dot(numpy.dtype(self.dtype).type(2.0))
@@ -522,7 +533,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_zero_dim(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.array(2, dtype=self.dtype)
@@ -568,7 +579,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
                 m.dot(None)
 
     # __add__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_add_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m + 0
@@ -598,7 +609,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return m + n
 
     # __radd__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_radd_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return 0 + m
@@ -616,7 +627,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return n + m
 
     # __sub__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_sub_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m - 0
@@ -646,7 +657,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return m - n
 
     # __rsub__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rsub_zero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return 0 - m
@@ -664,12 +675,12 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         return n - m
 
     # __mul__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_mul_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m * 2.0
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_mul_numpy_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m * numpy.dtype(self.dtype).type(2.0)
@@ -699,7 +710,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype).tocoo()
         return m * x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_mul_zero_dim(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.array(2, dtype=self.dtype)
@@ -745,12 +756,12 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
                 m * None
 
     # __rmul__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return 2.0 * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_numpy_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return numpy.dtype(self.dtype).type(2.0) * m
@@ -761,7 +772,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return x * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_csc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = _make3(xp, sp, self.dtype).tocsc()
@@ -773,7 +784,7 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype).tocoo()
         return x * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_zero_dim(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.array(2, dtype=self.dtype)
@@ -798,8 +809,37 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(TypeError):
                 None * m
 
+    # Note: '@' operator is almost equivalent to '*' operator. Only test the
+    # cases where '@' raises an exception and '*' does not.
+    def test_matmul_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            x = 2.0
+            with pytest.raises(ValueError):
+                m @ x
+            with pytest.raises(ValueError):
+                x @ m
+
+    def test_matmul_numpy_scalar(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            x = numpy.dtype(self.dtype).type(2.0)
+            with pytest.raises(ValueError):
+                m @ x
+            with pytest.raises(ValueError):
+                x @ m
+
+    def test_matmul_scalar_like_array(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            m = self.make(xp, sp, self.dtype)
+            x = xp.array(2.0, self.dtype)
+            with pytest.raises(ValueError):
+                m @ x
+            with pytest.raises(ValueError):
+                x @ m
+
     # __pow__
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_pow_0(self, xp, sp):
         m = _make_square(xp, sp, self.dtype)
         return m ** 0

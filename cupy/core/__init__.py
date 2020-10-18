@@ -21,6 +21,12 @@ from cupy.core._routines_binary import bitwise_xor  # NOQA
 from cupy.core._routines_binary import invert  # NOQA
 from cupy.core._routines_binary import left_shift  # NOQA
 from cupy.core._routines_binary import right_shift  # NOQA
+from cupy.core._routines_linalg import _mat_ptrs  # NOQA
+from cupy.core._routines_linalg import dot  # NOQA
+from cupy.core._routines_linalg import get_compute_type  # NOQA
+from cupy.core._routines_linalg import matmul  # NOQA
+from cupy.core._routines_linalg import set_compute_type  # NOQA
+from cupy.core._routines_linalg import tensordot_core  # NOQA
 from cupy.core._routines_logic import create_comparison  # NOQA
 from cupy.core._routines_logic import equal  # NOQA
 from cupy.core._routines_logic import greater  # NOQA
@@ -58,14 +64,9 @@ from cupy.core.core import array  # NOQA
 from cupy.core.core import ascontiguousarray  # NOQA
 from cupy.core.core import asfortranarray  # NOQA
 from cupy.core.core import divmod  # NOQA
-from cupy.core.core import dot  # NOQA
 from cupy.core.core import elementwise_copy  # NOQA
 from cupy.core.core import elementwise_copy_where  # NOQA
-from cupy.core.core import matmul  # NOQA
 from cupy.core.core import ndarray  # NOQA
-from cupy.core.core import tensordot_core  # NOQA
-from cupy.core.core import set_compute_type  # NOQA
-from cupy.core.core import get_compute_type  # NOQA
 from cupy.core.dlpack import fromDlpack  # NOQA
 from cupy.core.internal import complete_slice  # NOQA
 from cupy.core.internal import get_size  # NOQA

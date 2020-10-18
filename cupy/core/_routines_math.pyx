@@ -7,7 +7,8 @@ from cupy.core._reduction import create_reduction_func
 from cupy.core._kernel import create_ufunc
 from cupy.core._scalar import get_typename
 from cupy.core._ufuncs import elementwise_copy
-from cupy import util
+from cupy.core cimport internal
+from cupy import _util
 
 from cupy.core cimport _accelerator
 from cupy.core._dtype cimport get_dtype
@@ -17,11 +18,7 @@ from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
 
-# TODO(leofang): always import cub when hipCUB is supported
-if not cupy.cuda.runtime.is_hip:
-    from cupy.cuda import cub
-else:
-    cub = None
+from cupy.cuda import cub
 
 if cupy.cuda.cutensor.available:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
@@ -88,12 +85,16 @@ cdef ndarray _ndarray_imag_setter(ndarray self, value):
 
 cdef ndarray _ndarray_prod(ndarray self, axis, dtype, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        result = None
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
-            if result is not None:
-                return result
+        if accelerator == _accelerator.ACCELERATOR_CUTENSOR:
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
+        if result is not None:
+            return result
     if dtype is None:
         return _prod_auto_dtype(self, axis, dtype, out, keepdims)
     else:
@@ -147,7 +148,7 @@ cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
 # private/internal
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _inclusive_batch_scan_kernel(
         dtype, block_size, op, src_c_cont, out_c_cont):
     """return Prefix Sum(Scan) cuda kernel
@@ -261,7 +262,7 @@ def _inclusive_batch_scan_kernel(
     return module.get_function(name)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _inclusive_scan_kernel(src_dtype, dtype, block_size, op, src_c_cont,
                            out_c_cont):
     """return Prefix Sum(Scan) cuda kernel
@@ -340,7 +341,7 @@ def _inclusive_scan_kernel(src_dtype, dtype, block_size, op, src_c_cont,
     return module.get_function(name)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
@@ -376,7 +377,7 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     return module.get_function(name)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _add_scan_blocked_sum_kernel(dtype, op, c_cont):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
@@ -532,7 +533,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
         else:
             scan(result, op, dtype, result)
     else:
-        axis = cupy.util._normalize_axis_index(axis, a.ndim)
+        axis = internal._normalize_axis_index(axis, a.ndim)
         result = _proc_as_batch(result, axis, dtype, op)
     # This is for when the original out param was not contiguous
     if out is not None and out.data != result.data:

@@ -1,4 +1,13 @@
-from cupy import util
+from cupy import _util
+
+# expose cache handles to this module
+from cupy.fft._cache import get_plan_cache  # NOQA
+from cupy.fft._cache import clear_plan_cache  # NOQA
+from cupy.fft._cache import get_plan_cache_size  # NOQA
+from cupy.fft._cache import set_plan_cache_size  # NOQA
+from cupy.fft._cache import get_plan_cache_max_memsize  # NOQA
+from cupy.fft._cache import set_plan_cache_max_memsize  # NOQA
+from cupy.fft._cache import show_plan_cache_info  # NOQA
 
 
 enable_nd_planning = True
@@ -23,7 +32,7 @@ def set_cufft_gpus(gpus):
     .. _Multiple GPU cuFFT Transforms:
         https://docs.nvidia.com/cuda/cufft/index.html#multiple-GPU-cufft-transforms
     '''
-    util.experimental('cupy.fft.config.set_cufft_gpus')
+    _util.experimental('cupy.fft.config.set_cufft_gpus')
     global _devices
 
     if isinstance(gpus, int):
@@ -35,4 +44,5 @@ def set_cufft_gpus(gpus):
     if len(devs) <= 1:
         raise ValueError("Must use at least 2 GPUs.")
 
-    _devices = devs
+    # make it hashable
+    _devices = tuple(devs)

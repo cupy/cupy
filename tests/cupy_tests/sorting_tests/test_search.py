@@ -4,7 +4,8 @@ import numpy
 import pytest
 
 import cupy
-from cupy.core import _accelerator
+import cupy.core._accelerator as _acc
+from cupy.core import _cub_reduction
 from cupy import testing
 
 
@@ -164,21 +165,32 @@ class TestSearch(unittest.TestCase):
 # TODO(leofang): test axis after support is added
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
-    'order': ('C', 'F'),
+    'order_and_axis': (('C', -1), ('C', None), ('F', 0), ('F', None)),
+    'backend': ('device', 'block'),
 }))
 @testing.gpu
 @unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubReduction(unittest.TestCase):
 
     def setUp(self):
-        self.old_accelerators = _accelerator.get_routine_accelerators()
-        _accelerator.set_routine_accelerators(['cub'])
+        self.order, self.axis = self.order_and_axis
+        self.old_routine_accelerators = _acc.get_routine_accelerators()
+        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+        if self.backend == 'device':
+            if self.axis is not None:
+                raise unittest.SkipTest('does not support')
+            _acc.set_routine_accelerators(['cub'])
+            _acc.set_reduction_accelerators([])
+        elif self.backend == 'block':
+            _acc.set_routine_accelerators([])
+            _acc.set_reduction_accelerators(['cub'])
 
     def tearDown(self):
-        _accelerator.set_routine_accelerators(self.old_accelerators)
+        _acc.set_routine_accelerators(self.old_routine_accelerators)
+        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
 
     @testing.for_dtypes('bhilBHILefdFD')
-    @testing.numpy_cupy_allclose(rtol=1E-5)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cub_argmin(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order == 'C':
@@ -187,18 +199,32 @@ class TestCubReduction(unittest.TestCase):
             a = xp.asfortranarray(a)
 
         if xp is numpy:
-            return a.argmin()
+            return a.argmin(axis=self.axis)
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.core._routines_statistics.cub.device_reduce'
-        with testing.AssertFunctionIsCalled(func, return_value=ret):
-            a.argmin()
+        if self.backend == 'device':
+            func_name = 'cupy.core._routines_statistics.cub.'
+            func_name += 'device_reduce'
+            with testing.AssertFunctionIsCalled(func_name, return_value=ret):
+                a.argmin(axis=self.axis)
+        elif self.backend == 'block':
+            # this is the only function we can mock; the rest is cdef'd
+            func_name = 'cupy.core._cub_reduction.'
+            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+            if self.axis is not None and len(self.shape) > 1:
+                times_called = 1  # one pass
+            else:
+                times_called = 2  # two passes
+            with testing.AssertFunctionIsCalled(
+                    func_name, wraps=func, times_called=times_called):
+                a.argmin(axis=self.axis)
         # ...then perform the actual computation
-        return a.argmin()
+        return a.argmin(axis=self.axis)
 
     @testing.for_dtypes('bhilBHILefdFD')
-    @testing.numpy_cupy_allclose(rtol=1E-5)
+    @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cub_argmax(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order == 'C':
@@ -207,15 +233,29 @@ class TestCubReduction(unittest.TestCase):
             a = xp.asfortranarray(a)
 
         if xp is numpy:
-            return a.argmax()
+            return a.argmax(axis=self.axis)
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.core._routines_statistics.cub.device_reduce'
-        with testing.AssertFunctionIsCalled(func, return_value=ret):
-            a.argmax()
+        if self.backend == 'device':
+            func_name = 'cupy.core._routines_statistics.cub.'
+            func_name += 'device_reduce'
+            with testing.AssertFunctionIsCalled(func_name, return_value=ret):
+                a.argmax(axis=self.axis)
+        elif self.backend == 'block':
+            # this is the only function we can mock; the rest is cdef'd
+            func_name = 'cupy.core._cub_reduction.'
+            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+            if self.axis is not None and len(self.shape) > 1:
+                times_called = 1  # one pass
+            else:
+                times_called = 2  # two passes
+            with testing.AssertFunctionIsCalled(
+                    func_name, wraps=func, times_called=times_called):
+                a.argmax(axis=self.axis)
         # ...then perform the actual computation
-        return a.argmax()
+        return a.argmax(axis=self.axis)
 
 
 @testing.gpu

@@ -193,7 +193,8 @@ def _contains_signed_and_unsigned(kw):
 
 
 def _make_decorator(check_func, name, type_check, contiguous_check,
-                    accept_error, sp_name=None, scipy_name=None):
+                    accept_error, sp_name=None, scipy_name=None,
+                    check_sparse_format=True):
     assert isinstance(name, str)
     assert sp_name is None or isinstance(sp_name, str)
     assert scipy_name is None or isinstance(scipy_name, str)
@@ -228,7 +229,8 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 
             # Check types
             cupy_numpy_result_ndarrays = [
-                _convert_output_to_ndarray(cupy_r, numpy_r, sp_name)
+                _convert_output_to_ndarray(
+                    cupy_r, numpy_r, sp_name, check_sparse_format)
                 for cupy_r, numpy_r in zip(cupy_result, numpy_result)]
 
             # Check dtypes
@@ -284,7 +286,7 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
     return decorator
 
 
-def _convert_output_to_ndarray(c_out, n_out, sp_name):
+def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
     """Checks type of cupy/numpy results and returns cupy/numpy ndarrays.
 
     Args:
@@ -295,18 +297,19 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name):
         sp_name(str or None): Argument name whose value is either
             ``scipy.sparse`` or ``cupyx.scipy.sparse`` module. If ``None``, no
             argument is given for the modules.
+        check_sparse_format (bool): If ``True``, consistency of format of
+            sparse matrix is also checked. Default is ``True``.
 
     Returns:
         The tuple of cupy.ndarray and numpy.ndarray.
     """
-    if sp_name is not None:
+    if sp_name is not None and cupyx.scipy.sparse.issparse(c_out):
+        # Sparse output case.
         import scipy.sparse
-        if cupyx.scipy.sparse.issparse(c_out):
-            # Sparse output case.
-            if scipy.sparse.issparse(n_out):
-                return c_out.A, n_out.A
-            if isinstance(n_out, numpy.generic):
-                return c_out.A, n_out
+        assert scipy.sparse.issparse(n_out)
+        if check_sparse_format:
+            assert c_out.format == n_out.format
+        return c_out.A, n_out.A
     if (isinstance(c_out, cupy.ndarray)
             and isinstance(n_out, (numpy.ndarray, numpy.generic))):
         # ndarray output case.
@@ -329,7 +332,8 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name):
 
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                         name='xp', type_check=True, accept_error=False,
-                        sp_name=None, scipy_name=None, contiguous_check=True):
+                        sp_name=None, scipy_name=None, contiguous_check=True,
+                        *, _check_sparse_format=True):
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
@@ -380,7 +384,8 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     def check_func(c, n):
         array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
     return _make_decorator(check_func, name, type_check, contiguous_check,
-                           accept_error, sp_name, scipy_name)
+                           accept_error, sp_name, scipy_name,
+                           _check_sparse_format)
 
 
 def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
@@ -1210,7 +1215,8 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
     return xp.array(a.astype(dtype).reshape(shape))
 
 
-def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
+def shaped_random(
+        shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0, order='C'):
     """Returns an array filled with random values.
 
     Args:
@@ -1235,12 +1241,94 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
     numpy.random.seed(seed)
     dtype = numpy.dtype(dtype)
     if dtype == '?':
-        return xp.asarray(numpy.random.randint(2, size=shape), dtype=dtype)
+        a = numpy.random.randint(2, size=shape)
     elif dtype.kind == 'c':
         a = numpy.random.rand(*shape) + 1j * numpy.random.rand(*shape)
-        return xp.asarray(a * scale, dtype=dtype)
+        a *= scale
     else:
-        return xp.asarray(numpy.random.rand(*shape) * scale, dtype=dtype)
+        a = numpy.random.rand(*shape) * scale
+    return xp.asarray(a, dtype=dtype, order=order)
+
+
+def shaped_sparse_random(
+        shape, sp=cupyx.scipy.sparse, dtype=numpy.float32,
+        density=0.01, format='coo', seed=0):
+    """Returns an array filled with random values.
+
+    Args:
+        shape (tuple): Shape of returned sparse matrix.
+        sp (scipy.sparse or cupyx.scipy.sparse): Sparce matrix module to use.
+        dtype (dtype): Dtype of returned sparse matrix.
+        density (float): Density of returned sparse matrix.
+        format (str): Format of returned sparse matrix.
+        seed (int): Random seed.
+
+    Returns:
+        The sparse matrix with given shape, array module,
+    """
+    import scipy.sparse
+    n_rows, n_cols = shape
+    numpy.random.seed(seed)
+    a = scipy.sparse.random(n_rows, n_cols, density).astype(dtype)
+
+    if sp is cupyx.scipy.sparse:
+        a = cupyx.scipy.sparse.coo_matrix(a)
+    elif sp is not scipy.sparse:
+        raise ValueError('Unknown module: {}'.format(sp))
+
+    return a.asformat(format)
+
+
+def generate_matrix(
+        shape, xp=cupy, dtype=numpy.float32, *, singular_values=None):
+    r"""Returns a matrix with specified singular values.
+
+    Generates a random matrix with given singular values.
+    This function generates a random NumPy matrix  that
+    has specified singular values. It can be used to generate the inputs for a
+    test that can be instable when the input value behaves bad.
+    Notation: denote the shape of the generated array by :math:`(B..., M, N)`,
+    and :math:`K = min\{M, N\}`. :math:`B...` may be an empty sequence.
+    Args:
+        shape (tuple of int): Shape of the generated array, i.e.,
+            :math:`(B..., M, N)`.
+        xp(numpy or cupy): Array module to use.
+        dtype: Dtype of the generated array.
+        singular_values (array-like): Singular values of the generated
+            matrices. It must be broadcastable to shape :math:`(B..., K)`.
+    Returns:
+         numpy.ndarray or cupy.ndarray: A random matrix that has specifiec
+         singular values.
+    """
+
+    if len(shape) <= 1:
+        raise ValueError(
+            'shape {} is invalid for matrices: too few axes'.format(shape)
+        )
+
+    if singular_values is None:
+        raise TypeError('singular_values is not given')
+    singular_values = xp.asarray(singular_values)
+
+    dtype = numpy.dtype(dtype)
+    if dtype.kind not in 'fc':
+        raise TypeError('dtype {} is not supported'.format(dtype))
+
+    if not xp.isrealobj(singular_values):
+        raise TypeError('singular_values is not real')
+    if (singular_values < 0).any():
+        raise ValueError('negative singular value is given')
+
+    # Generate random matrices with given singular values. We simply generate
+    # orthogonal vectors using SVD on random matrices and then combine them
+    # with the given singular values.
+    a = xp.random.randn(*shape)
+    if dtype.kind == 'c':
+        a = a + 1j * xp.random.randn(*shape)
+    u, s, vh = xp.linalg.svd(a, full_matrices=False)
+    sv = xp.broadcast_to(singular_values, s.shape)
+    a = xp.einsum('...ik,...k,...kj->...ij', u, sv, vh)
+    return a.astype(dtype)
 
 
 class NumpyError(object):
