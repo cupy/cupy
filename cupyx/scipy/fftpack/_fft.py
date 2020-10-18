@@ -56,8 +56,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
 
     .. note::
         If this function is called under the context of
-        :func:`~config.set_cufft_callbacks`, the generated plan has callbacks
-        enabled.
+        :func:`~cupy.fft.config.set_cufft_callbacks`, the generated plan will
+        have callbacks enabled.
 
     .. warning::
         This API is a deviation from SciPy's, is currently experimental, and
@@ -139,23 +139,22 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         devices = None if not config.use_multi_gpus else config._devices
 
         keys = (out_size, fft_type, batch, devices)
-        if config._callback_load or config._callback_store:
-            keys += (config._callback_load, config._callback_store)
-            has_callback = True
-        else:
-            has_callback = False
+        mgr = config.get_current_callback_manager()
+        if mgr is not None:
+            keys += (mgr.cb_load, mgr.cb_store)
         cache = get_plan_cache()
         cached_plan = cache.get(keys)
         if cached_plan is not None:
             plan = cached_plan
-        elif not has_callback:
+        elif mgr is None:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
-        else:  # has_callback
+        else:  # has callback
             # TODO(leofang): support multi-GPU callback (devices is ignored)
             if devices:
                 raise NotImplementedError('multi-GPU cuFFT callbacks are not '
                                           'yet supported')
-            plan = config._get_static_plan('Plan1d', fft_type, keys[:-3])
+            plan = mgr.create_plan(('Plan1d', keys[:-3]))
+            mgr.set_callbacks(plan)
 
     return plan
 

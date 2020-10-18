@@ -235,10 +235,11 @@ class _CallbackManager:
         plan = getattr(self.mod, plan_type)(*plan_args)
         return plan
 
-    def set_callbacks(self, plan, fft_type):
+    def set_callbacks(self, plan):
         # TODO(leofang): We don't merge create_plan with set_callbacks because
         # when adding the support of callerInfo we might call set_callbacks
         # multiple times with the same plan but different input arrays
+        fft_type = plan.fft_type
         if fft_type == CUFFT_C2C:
             cb_load_type = CUFFT_CB_LD_COMPLEX if self.cb_load else -1
             cb_store_type = CUFFT_CB_ST_COMPLEX if self.cb_store else -1
@@ -277,7 +278,7 @@ def set_cufft_callbacks(cb_load='', cb_store=''):
             callback. It must define ``d_storeCallbackPtr``.
 
     Yields:
-        _CallbackManager: A manager object handling the callbacks.
+        :class:`_CallbackManager`: A manager object handling the callbacks.
 
     .. note::
         Any FFT calls living in this context will have callbacks set up. An
