@@ -1605,13 +1605,13 @@ class Test1dCallbacks(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_load_aux(self, xp, dtype):
         fft = xp.fft.fft
-        code = _load_callback_with_aux
+        c = _load_callback_with_aux
         if dtype == np.complex64:
             cb_load = self._set_load_cb(
-                code, 'x', 'cufftComplex', 'cufftCallbackLoadC', 'float')
+                c, 'x', 'cufftComplex', 'cufftCallbackLoadC', 'float')
         else:
             cb_load = self._set_load_cb(
-                code, 'x', 'cufftDoubleComplex', 'cufftCallbackLoadZ', 'double')
+                c, 'x', 'cufftDoubleComplex', 'cufftCallbackLoadZ', 'double')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         out_last = self.n if self.n is not None else self.shape[-1]
