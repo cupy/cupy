@@ -1615,15 +1615,18 @@ class Test1dCallbacks(unittest.TestCase):
 
         a = testing.shaped_random(self.shape, xp, dtype)
         shape = list(self.shape)
-        last = max(self.shape[-1], self.n if self.n is not None else shape[-1])
-        shape[-1] = last
+        last_min = min(shape[-1], self.n if self.n is not None else shape[-1])
+        shape[-1] = self.n if self.n is not None else self.shape[-1]
+        b = xp.arange(np.prod(shape), dtype=xp.dtype(dtype).char.lower())
+        b = b.reshape(shape)
         if xp is np:
-            a.real *= 2.5
-            out = fft(a, n=self.n, norm=self.norm)
+            x = np.zeros(shape, dtype=dtype)
+            x[..., 0:last_min] = a[..., 0:last_min]
+            x.real *= b
+            out = fft(x, n=self.n, norm=self.norm)
             if dtype in (np.float32, np.complex64):
                 out = out.astype(np.complex64)
         else:
-            b = 2.5 * xp.ones(shape, dtype=xp.dtype(dtype).char.lower())
             with xp.fft.config.set_cufft_callbacks(
                     cb_load=cb_load, cb_load_aux_arr=b):
                 out = fft(a, n=self.n, norm=self.norm)
