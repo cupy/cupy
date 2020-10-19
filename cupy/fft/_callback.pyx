@@ -50,7 +50,7 @@ cdef str _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 cdef str _callback_dev_code = None
 cdef str _callback_cache_dir = os.environ.get(
     'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/callback_cache')) + '/'
-cdef list _callback_mgr = []
+cdef dict _callback_mgr = {}  # keep the Python modules alive
 cdef object _callback_thread_local = threading.local()
 
 
@@ -416,16 +416,23 @@ def set_cufft_callbacks(
     """
     cdef _ThreadLocal tls = _ThreadLocal.get()
     cdef _CallbackManager mgr, mgr_prev
+    cdef tuple key = (cb_load, cb_store)
 
     try:
         mgr_prev = tls._current_cufft_callback
-        mgr = _CallbackManager(
-            cb_load=cb_load,
-            cb_store=cb_store,
-            cb_load_aux_arr=cb_load_aux_arr,
-            cb_store_aux_arr=cb_store_aux_arr)
+        mgr = _callback_mgr.get(key)
+        if mgr is None:
+            mgr = _CallbackManager(
+                cb_load=cb_load,
+                cb_store=cb_store,
+                cb_load_aux_arr=cb_load_aux_arr,
+                cb_store_aux_arr=cb_store_aux_arr)
+            _callback_mgr[key] = mgr  # keep the Python modules alive
+        else:
+            mgr.set_caller_infos(
+                cb_load_aux_arr=cb_load_aux_arr,
+                cb_store_aux_arr=cb_store_aux_arr)
         tls._current_cufft_callback = mgr
-        _callback_mgr.append(mgr)  # keep the manager alive
         yield mgr
     finally:
         tls._current_cufft_callback = mgr_prev
