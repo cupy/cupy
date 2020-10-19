@@ -33,7 +33,12 @@ from cupy.cuda.cufft import getVersion as get_cufft_version
 # information needed for building an external module
 cdef list _cc = sysconfig.get_config_var('CXX').split(' ')
 cdef str _python_include = sysconfig.get_path('include')
-cdef str _cuda_include = get_cuda_path() + '/include/'
+cdef str _cuda_path = get_cuda_path()
+cdef str _cuda_include
+if _cuda_path is not None:
+    _cuda_include = _cuda_path + '/include/'
+else:
+    _cuda_include = ''  # workaround for Read the Docs...
 cdef str _cupy_root = os.path.join(os.path.dirname(__file__), '..')
 cdef str _cupy_include = _cupy_root + '/core/include'
 cdef str _build_ver = str(get_build_version())
@@ -250,8 +255,8 @@ cdef class _CallbackManager:
         ``cufftXtSetCallback``.
 
         Args:
-            plan (:class:`cupy.cuda.cufft.Plan1d` or
-                :class:`cupy.cuda.cufft.PlanNd`, optional): A cuFFT plan
+            plan (:class:`~cupy.cuda.cufft.Plan1d` or
+                :class:`~cupy.cuda.cufft.PlanNd`, optional): A cuFFT plan
                 against which the load/store callbacks are set. If not given,
                 the most recently used plan within the context set up by
                 :func:`~cupy.fft.config.set_cufft_callbacks` is used.
@@ -420,7 +425,6 @@ def set_cufft_callbacks(
             cb_load_aux_arr=cb_load_aux_arr,
             cb_store_aux_arr=cb_store_aux_arr)
         tls._current_cufft_callback = mgr
-        global _callback_mgr
         _callback_mgr.append(mgr)  # keep the manager alive
         yield mgr
     finally:
