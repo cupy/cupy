@@ -1323,6 +1323,18 @@ __device__ ${data_type} CB_ConvertInput(
 __device__ ${load_type} d_loadCallbackPtr = CB_ConvertInput;
 '''
 
+_load_callback_with_aux = r'''
+__device__ ${data_type} CB_ConvertInput(
+    void* dataIn, size_t offset, void* callerInfo, void* sharedPtr)
+{
+    ${data_type} x = ((${data_type}*)dataIn)[offset];
+    ${element} *= ((${data_type}*)callerInfo)[offset].x;
+    return x;
+}
+
+__device__ ${load_type} d_loadCallbackPtr = CB_ConvertInput;
+'''
+
 _store_callback = r'''
 __device__ void CB_ConvertOutput(
     void *dataOut, size_t offset, ${data_type} element,
@@ -1348,21 +1360,31 @@ __device__ ${store_type} d_storeCallbackPtr = CB_ConvertOutput;
                  'hipFFT does not support callbacks')
 class Test1dCallbacks(unittest.TestCase):
 
+    def _set_load_cb(self, code, element, data_type, callback_type):
+        cb_load = string.Template(code).substitute(
+            data_type=data_type,
+            load_type=callback_type,
+            element=element)
+        return cb_load
+
+    def _set_store_cb(self, code, element, data_type, callback_type):
+        cb_store = string.Template(code).substitute(
+            data_type=data_type,
+            store_type=callback_type,
+            element=element)
+        return cb_store
+
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_load(self, xp, dtype):
         fft = xp.fft.fft
-        element = 'x.x'
+        code = _load_callback
         if dtype == np.complex64:
-            data_type = 'cufftComplex'
-            callback_type = 'cufftCallbackLoadC'
+            cb_load = self._set_load_cb(
+                code, 'x.x', 'cufftComplex', 'cufftCallbackLoadC')
         else:
-            data_type = 'cufftDoubleComplex'
-            callback_type = 'cufftCallbackLoadZ'
-        cb_load = string.Template(_load_callback).substitute(
-            data_type=data_type,
-            load_type=callback_type,
-            element=element)
+            cb_load = self._set_load_cb(
+                code, 'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -1380,17 +1402,13 @@ class Test1dCallbacks(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft_load(self, xp, dtype):
         fft = xp.fft.rfft
-        element = 'x'
+        code = _load_callback
         if dtype == np.float32:
-            data_type = 'cufftReal'
-            callback_type = 'cufftCallbackLoadR'
+            cb_load = self._set_load_cb(
+                code, 'x', 'cufftReal', 'cufftCallbackLoadR')
         else:
-            data_type = 'cufftDoubleReal'
-            callback_type = 'cufftCallbackLoadD'
-        cb_load = string.Template(_load_callback).substitute(
-            data_type=data_type,
-            load_type=callback_type,
-            element=element)
+            cb_load = self._set_load_cb(
+                code, 'x', 'cufftDoubleReal', 'cufftCallbackLoadD')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -1408,17 +1426,13 @@ class Test1dCallbacks(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ifft_load(self, xp, dtype):
         ifft = xp.fft.ifft
-        element = 'x.x'
+        code = _load_callback
         if dtype == np.complex64:
-            data_type = 'cufftComplex'
-            callback_type = 'cufftCallbackLoadC'
+            cb_load = self._set_load_cb(
+                code, 'x.x', 'cufftComplex', 'cufftCallbackLoadC')
         else:
-            data_type = 'cufftDoubleComplex'
-            callback_type = 'cufftCallbackLoadZ'
-        cb_load = string.Template(_load_callback).substitute(
-            data_type=data_type,
-            load_type=callback_type,
-            element=element)
+            cb_load = self._set_load_cb(
+                code, 'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -1436,17 +1450,13 @@ class Test1dCallbacks(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, contiguous_check=False)
     def test_irfft_load(self, xp, dtype):
         ifft = xp.fft.irfft
-        element = 'x.x'
+        code = _load_callback
         if dtype == np.float32:
-            data_type = 'cufftComplex'
-            callback_type = 'cufftCallbackLoadC'
+            cb_load = self._set_load_cb(
+                code, 'x.x', 'cufftComplex', 'cufftCallbackLoadC')
         else:
-            data_type = 'cufftDoubleComplex'
-            callback_type = 'cufftCallbackLoadZ'
-        cb_load = string.Template(_load_callback).substitute(
-            data_type=data_type,
-            load_type=callback_type,
-            element=element)
+            cb_load = self._set_load_cb(
+                code, 'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -1464,17 +1474,13 @@ class Test1dCallbacks(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_store(self, xp, dtype):
         fft = xp.fft.fft
-        element = 'x.y'
+        code = _store_callback
         if dtype == np.complex64:
-            data_type = 'cufftComplex'
-            callback_type = 'cufftCallbackStoreC'
+            cb_store = self._set_store_cb(
+                code, 'x.y', 'cufftComplex', 'cufftCallbackStoreC')
         else:
-            data_type = 'cufftDoubleComplex'
-            callback_type = 'cufftCallbackStoreZ'
-        cb_store = string.Template(_store_callback).substitute(
-            data_type=data_type,
-            store_type=callback_type,
-            element=element)
+            cb_store = self._set_store_cb(
+                code, 'x.y', 'cufftDoubleComplex', 'cufftCallbackStoreZ')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -1492,17 +1498,13 @@ class Test1dCallbacks(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft_store(self, xp, dtype):
         fft = xp.fft.rfft
-        element = 'x.y'
+        code = _store_callback
         if dtype == np.float32:
-            data_type = 'cufftComplex'
-            callback_type = 'cufftCallbackStoreC'
+            cb_store = self._set_store_cb(
+                code, 'x.y', 'cufftComplex', 'cufftCallbackStoreC')
         else:
-            data_type = 'cufftDoubleComplex'
-            callback_type = 'cufftCallbackStoreZ'
-        cb_store = string.Template(_store_callback).substitute(
-            data_type=data_type,
-            store_type=callback_type,
-            element=element)
+            cb_store = self._set_store_cb(
+                code, 'x.y', 'cufftDoubleComplex', 'cufftCallbackStoreZ')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -1520,17 +1522,13 @@ class Test1dCallbacks(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ifft_store(self, xp, dtype):
         ifft = xp.fft.ifft
-        element = 'x.y'
+        code = _store_callback
         if dtype == np.complex64:
-            data_type = 'cufftComplex'
-            callback_type = 'cufftCallbackStoreC'
+            cb_store = self._set_store_cb(
+                code, 'x.y', 'cufftComplex', 'cufftCallbackStoreC')
         else:
-            data_type = 'cufftDoubleComplex'
-            callback_type = 'cufftCallbackStoreZ'
-        cb_store = string.Template(_store_callback).substitute(
-            data_type=data_type,
-            store_type=callback_type,
-            element=element)
+            cb_store = self._set_store_cb(
+                code, 'x.y', 'cufftDoubleComplex', 'cufftCallbackStoreZ')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -1548,17 +1546,13 @@ class Test1dCallbacks(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, contiguous_check=False)
     def test_irfft_store(self, xp, dtype):
         ifft = xp.fft.irfft
-        element = 'x'
+        code = _store_callback
         if dtype == np.float32:
-            data_type = 'cufftReal'
-            callback_type = 'cufftCallbackStoreR'
+            cb_store = self._set_store_cb(
+                code, 'x', 'cufftReal', 'cufftCallbackStoreR')
         else:
-            data_type = 'cufftDoubleReal'
-            callback_type = 'cufftCallbackStoreD'
-        cb_store = string.Template(_store_callback).substitute(
-            data_type=data_type,
-            store_type=callback_type,
-            element=element)
+            cb_store = self._set_store_cb(
+                code, 'x', 'cufftDoubleReal', 'cufftCallbackStoreD')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
@@ -1571,6 +1565,68 @@ class Test1dCallbacks(unittest.TestCase):
                 out = ifft(a, n=self.n, norm=self.norm)
 
         return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    def test_fft_load_store(self, xp, dtype):
+        fft = xp.fft.fft
+        if dtype == np.complex64:
+            code = _load_callback
+            cb_load = self._set_load_cb(
+                code, 'x.x', 'cufftComplex', 'cufftCallbackLoadC')
+            code = _store_callback
+            cb_store = self._set_store_cb(
+                code, 'x.y', 'cufftComplex', 'cufftCallbackStoreC')
+        else:
+            code = _load_callback
+            cb_load = self._set_load_cb(
+                code, 'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ')
+            code = _store_callback
+            cb_store = self._set_store_cb(
+                code, 'x.y', 'cufftDoubleComplex', 'cufftCallbackStoreZ')
+
+        a = testing.shaped_random(self.shape, xp, dtype)
+        if xp is np:
+            a.real *= 2.5
+            out = fft(a, n=self.n, norm=self.norm)
+            out.imag /= 3.8
+            if dtype in (np.float32, np.complex64):
+                out = out.astype(np.complex64)
+        else:
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_store=cb_store):
+                out = fft(a, n=self.n, norm=self.norm)
+
+        return out
+
+#    @testing.for_complex_dtypes()
+#    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+#    def test_fft_load_aux(self, xp, dtype):
+#        fft = xp.fft.fft
+#        code = _load_callback_with_aux
+#        if dtype == np.complex64:
+#            cb_load = self._set_load_cb(
+#                code, 'x.x', 'cufftComplex', 'cufftCallbackLoadC')
+#        else:
+#            cb_load = self._set_load_cb(
+#                code, 'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ')
+#
+#        a = testing.shaped_random(self.shape, xp, dtype)
+#        shape = list(self.shape)
+#        if self.n is not None:
+#            shape[-1] = self.n
+#        b = 2.5 * xp.ones(shape, dtype=dtype)
+#        if xp is np:
+#            a.real *= b.real
+#            out = fft(a, n=self.n, norm=self.norm)
+#            if dtype in (np.float32, np.complex64):
+#                out = out.astype(np.complex64)
+#        else:
+#            with xp.fft.config.set_cufft_callbacks(
+#                    cb_load=cb_load, cb_load_aux_arr=b):
+#                out = fft(a, n=self.n, norm=self.norm)
+#
+#        return out
 
 
 @testing.parameterize(
