@@ -41,6 +41,7 @@ cpdef enum:
 
 
 cpdef get_current_plan()
+cpdef int getVersion() except? -1
 
 
 cdef class Plan1d:

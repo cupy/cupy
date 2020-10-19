@@ -154,7 +154,7 @@ cpdef inline void check_result(int result) except *:
         raise CuFFTError(result)
 
 
-cpdef size_t getVersion() except? -1:
+cpdef int getVersion() except? -1:
     cdef int version, result
     result = cufftGetVersion(&version)
     check_result(result)
