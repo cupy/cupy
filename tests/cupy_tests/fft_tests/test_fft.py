@@ -1614,13 +1614,14 @@ class Test1dCallbacks(unittest.TestCase):
                 code, 'x', 'cufftDoubleComplex', 'cufftCallbackLoadZ', 'double')
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        shape = list(self.shape)
-        last_min = min(shape[-1], self.n if self.n is not None else shape[-1])
-        shape[-1] = self.n if self.n is not None else self.shape[-1]
-        b = xp.arange(np.prod(shape), dtype=xp.dtype(dtype).char.lower())
-        b = b.reshape(shape)
+        out_last = self.n if self.n is not None else self.shape[-1]
+        out_shape = list(self.shape)
+        out_shape[-1] = out_last
+        last_min = min(self.shape[-1], out_last)
+        b = xp.arange(np.prod(out_shape), dtype=xp.dtype(dtype).char.lower())
+        b = b.reshape(out_shape)
         if xp is np:
-            x = np.zeros(shape, dtype=dtype)
+            x = np.zeros(out_shape, dtype=dtype)
             x[..., 0:last_min] = a[..., 0:last_min]
             x.real *= b
             out = fft(x, n=self.n, norm=self.norm)
