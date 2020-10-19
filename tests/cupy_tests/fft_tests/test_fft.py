@@ -1328,7 +1328,9 @@ __device__ ${data_type} CB_ConvertInput(
     void* dataIn, size_t offset, void* callerInfo, void* sharedPtr)
 {
     ${data_type} x = ((${data_type}*)dataIn)[offset];
-    ${element} *= ((${data_type}*)callerInfo)[offset].x;
+    ${aux_type} c = *((${aux_type}*)callerInfo);
+    ${element}.x *= c;
+    ${element}.y *= c;
     return x;
 }
 
@@ -1360,9 +1362,15 @@ __device__ ${store_type} d_storeCallbackPtr = CB_ConvertOutput;
                  'hipFFT does not support callbacks')
 class Test1dCallbacks(unittest.TestCase):
 
-    def _set_load_cb(self, code, element, data_type, callback_type):
+    def tearDown(self):
+        cache = cupy.fft.config.get_plan_cache()
+        print(cache)
+
+    def _set_load_cb(
+            self, code, element, data_type, callback_type, aux_type=None):
         cb_load = string.Template(code).substitute(
             data_type=data_type,
+            aux_type=aux_type,
             load_type=callback_type,
             element=element)
         return cb_load
@@ -1599,34 +1607,35 @@ class Test1dCallbacks(unittest.TestCase):
 
         return out
 
-#    @testing.for_complex_dtypes()
-#    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
-#    def test_fft_load_aux(self, xp, dtype):
-#        fft = xp.fft.fft
-#        code = _load_callback_with_aux
-#        if dtype == np.complex64:
-#            cb_load = self._set_load_cb(
-#                code, 'x.x', 'cufftComplex', 'cufftCallbackLoadC')
-#        else:
-#            cb_load = self._set_load_cb(
-#                code, 'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ')
-#
-#        a = testing.shaped_random(self.shape, xp, dtype)
-#        shape = list(self.shape)
-#        if self.n is not None:
-#            shape[-1] = self.n
-#        b = 2.5 * xp.ones(shape, dtype=dtype)
-#        if xp is np:
-#            a.real *= b.real
-#            out = fft(a, n=self.n, norm=self.norm)
-#            if dtype in (np.float32, np.complex64):
-#                out = out.astype(np.complex64)
-#        else:
-#            with xp.fft.config.set_cufft_callbacks(
-#                    cb_load=cb_load, cb_load_aux_arr=b):
-#                out = fft(a, n=self.n, norm=self.norm)
-#
-#        return out
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    def test_fft_load_aux(self, xp, dtype):
+        # Without turning off the cache, it segfaults -- why?
+        cache = cupy.fft.config.get_plan_cache()
+        cache.set_size(0)
+
+        fft = xp.fft.fft
+        code = _load_callback_with_aux
+        if dtype == np.complex64:
+            cb_load = self._set_load_cb(
+                code, 'x', 'cufftComplex', 'cufftCallbackLoadC', 'float')
+        else:
+            cb_load = self._set_load_cb(
+                code, 'x', 'cufftDoubleComplex', 'cufftCallbackLoadZ', 'double')
+
+        a = testing.shaped_random(self.shape, xp, dtype)
+        b = xp.asarray([2.5], dtype=xp.dtype(dtype).char.lower())
+        if xp is np:
+            a *= b
+            out = fft(a, n=self.n, norm=self.norm)
+            if dtype in (np.float32, np.complex64):
+                out = out.astype(np.complex64)
+        else:
+            with xp.fft.config.set_cufft_callbacks(
+                    cb_load=cb_load, cb_load_aux_arr=b):
+                out = fft(a, n=self.n, norm=self.norm)
+
+        return out
 
 
 @testing.parameterize(

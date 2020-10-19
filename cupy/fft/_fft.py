@@ -136,13 +136,16 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         devices = None if not config.use_multi_gpus else config._devices
         # TODO(leofang): do we need to add the current stream to keys?
         keys = (out_size, fft_type, batch, devices)
+        cache = get_plan_cache()
         mgr = config.get_current_callback_manager()
         if mgr is not None:
             keys += (mgr.cb_load, mgr.cb_store)
-        cache = get_plan_cache()
         cached_plan = cache.get(keys)
         if cached_plan is not None:
             plan = cached_plan
+            # we could have the callbacks changed after the plan is cached
+            if mgr is not None:
+                mgr.set_callbacks(plan)
         elif mgr is None:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
             cache[keys] = plan
@@ -428,13 +431,16 @@ def _get_cufft_plan_nd(
     keys = (plan_dimensions, inembed, istride,
             idist, onembed, ostride, odist,
             fft_type, nbatch, order, fft_axes[-1], out_size)
+    cache = get_plan_cache()
     mgr = config.get_current_callback_manager()
     if mgr is not None:
         keys += (mgr.cb_load, mgr.cb_store)
-    cache = get_plan_cache()
     cached_plan = cache.get(keys)
     if cached_plan is not None:
         plan = cached_plan
+        # we could have the callbacks changed after the plan is cached
+        if mgr is not None:
+            mgr.set_callbacks(plan)
     elif mgr is None:
         plan = cufft.PlanNd(*keys)
         if to_cache:
