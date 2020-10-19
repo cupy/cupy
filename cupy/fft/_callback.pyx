@@ -30,6 +30,12 @@ from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
 from cupy.cuda.cufft import getVersion as get_cufft_version
 
 
+cdef inline str _get_cupy_root_path():
+    # Cython cannot use __file__ in global scope
+    cdef str _cupy_root = os.path.join(os.path.dirname(__file__), '..')
+    return _cupy_root
+
+
 # information needed for building an external module
 cdef list _cc = sysconfig.get_config_var('CXX').split(' ')
 cdef str _python_include = sysconfig.get_path('include')
@@ -39,7 +45,7 @@ if _cuda_path is not None:
     _cuda_include = _cuda_path + '/include/'
 else:
     _cuda_include = ''  # workaround for Read the Docs...
-cdef str _cupy_root = os.path.join(os.path.dirname(__file__), '..')
+cdef str _cupy_root = _get_cupy_root_path()
 cdef str _cupy_include = _cupy_root + '/core/include'
 cdef str _build_ver = str(get_build_version())
 cdef int _cufft_ver = get_cufft_version()
