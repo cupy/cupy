@@ -245,19 +245,29 @@ cdef class _CallbackManager:
         self.plan = plan  # retain the most recently used plan
         return plan
 
-    cpdef set_callbacks(self,
-                        plan=None,
-                        ndarray cb_load_aux_arr=None,
-                        ndarray cb_store_aux_arr=None):
+    cpdef set_callbacks(self, plan=None):
+        '''Set the load/store callbacks by making calls to
+        ``cufftXtSetCallback``.
+
+        Args:
+            plan (:class:`cupy.cuda.cufft.Plan1d` or
+                :class:`cupy.cuda.cufft.PlanNd`, optional): A cuFFT plan
+                against which the load/store callbacks are set. If not given,
+                the most recently used plan within the context set up by
+                :func:`~cupy.fft.config.set_cufft_callbacks` is used.
+
+        .. note::
+            If :meth:`set_caller_infos` is called by users, a call to this
+            method must follow.
+
+        '''
         cdef intptr_t cb_load_ptr, cb_store_ptr
 
         if plan is None:
             # TODO(leofang): raise warning?
             plan = self.plan
-        if cb_load_aux_arr is None:
-            cb_load_aux_arr = self.cb_load_aux_arr
-        if cb_store_aux_arr is None:
-            cb_store_aux_arr = self.cb_store_aux_arr
+        cdef ndarray cb_load_aux_arr = self.cb_load_aux_arr
+        cdef ndarray cb_store_aux_arr = self.cb_store_aux_arr
 
         fft_type = plan.fft_type
         if fft_type == CUFFT_C2C:
@@ -296,6 +306,33 @@ cdef class _CallbackManager:
             self.mod.setCallback(
                 plan.handle, cb_store_type, False, cb_store_ptr)
 
+    cpdef set_caller_infos(self,
+                           ndarray cb_load_aux_arr=None,
+                           ndarray cb_store_aux_arr=None):
+        '''Set the auxilliary arrays to be used by the load/store callbacks.
+        Corresponding to the ``callerInfo`` field in cuFFT's callback API.
+
+        Args:
+            cb_load_aux_arr (:class:`cupy.ndarray`, optional): A CuPy array
+                containing data to be used in the load callback.
+            cb_store_aux_arr (:class:`cupy.ndarray`, optional): A CuPy array
+                containing data to be used in the store callback.
+
+        .. note::
+            If this method is called by users, it must be followed by a call to
+            :meth:`set_callbacks`.
+
+        .. note::
+            If the auxilliary arrays are already set when entering the callback
+            context set up by :func:`~cupy.fft.config.set_cufft_callbacks`, by
+            calling this method the previous arrays will be overridden by the
+            new ones. If this method is called by users, it must be followed by
+            a call to :meth:`set_callbacks`.
+
+        '''
+        self.cb_load_aux_arr = cb_load_aux_arr
+        self.cb_store_aux_arr = cb_store_aux_arr
+
 
 @contextlib.contextmanager
 def set_cufft_callbacks(
@@ -316,7 +353,8 @@ def set_cufft_callbacks(
     Yields:
         :class:`_CallbackManager`: A manager object handling the callbacks.
             This instance should not be used by users, except when the
-            auxiliary arrays need to be updated.
+            auxiliary arrays need to be updated. In such an event, call
+            :meth:`~_CallbackManager.set_caller_infos`.
 
     .. note::
         Any FFT calls living in this context will have callbacks set up. An
@@ -336,8 +374,18 @@ def set_cufft_callbacks(
             __device__ cufftCallbackLoadC d_loadCallbackPtr = CB_ConvertInputC;
             '''
 
-            with cp.fft.config.set_cufft_callbacks(cb_load=code):
+            with cp.fft.config.set_cufft_callbacks(cb_load=code) as mgr:
                 out_arr = cp.fft.fft(in_arr, ...)
+
+    .. note::
+        Below are the *runtime* requirements for using this feature:
+
+            * Cython
+            * A host compiler that supports C++11 and above; might need to set
+              up the ``CXX`` environment variable.
+            * ``nvcc`` and the full CUDA Toolkit. Note that the ``cudatoolkit``
+              package from Conda-Forge is not enough, as it does not contain
+              static libraries.
 
     .. warning::
         Using cuFFT callbacks requires compiling and loading a Python module at
@@ -353,6 +401,12 @@ def set_cufft_callbacks(
         load/store callbacks). Due to static linking, however, the file sizes
         can be excessive! The cache position can be changed via setting
         ``CUPY_CACHE_DIR``.
+
+    .. warning::
+        This feature may not be thread- or process-safe. In a concurrent
+        environment, it is advised to first let the main thread/process do the
+        warm-up (compiling), and then unblock all threads/processes to load the
+        compiled module from cache.
 
     """
     cdef _ThreadLocal tls = _ThreadLocal.get()
