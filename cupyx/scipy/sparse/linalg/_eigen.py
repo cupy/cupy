@@ -2,7 +2,7 @@ import numpy
 import cupy
 
 
-def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
+def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
           return_eigenvectors=True):
     """Finds ``k`` eigenvalues and eigenvectors of the real symmetric matrix.
 
@@ -34,7 +34,7 @@ def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
     .. seealso:: :func:`scipy.sparse.linalg.eigsh`
 
     .. note::
-        This function uses the thick-restart Lanczos methos
+        This function uses the thick-restart Lanczos methods
         (https://sdm.lbl.gov/~kewu/ps/trlan.html).
 
     """
@@ -51,7 +51,7 @@ def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
         raise ValueError('which must be \'LM\' or \'LA\' (actual: {})'
                          ''.format(which))
     if ncv is None:
-        ncv = min(max(8 * k, 16), n - 1)
+        ncv = min(max(8 * k, 20), n - 1)
     else:
         ncv = min(max(ncv, k + 2), n - 1)
     if maxiter is None:
@@ -84,15 +84,15 @@ def eigsh(a, k=6, which='LM', ncv=None, maxiter=None, tol=0,
         alpha[:k] = w
         V[:k] = x.T
 
-        u = u - u.T @ V[:k].conj().T @ V[:k]
+        u -= u.T @ V[:k].conj().T @ V[:k]
         v = u / cupy.linalg.norm(u)
         V[k] = v
 
         u = a @ v
         alpha[k] = v.conj().T @ u
-        u = u - alpha[k] * v
-        u = u - V[:k].T @ beta_k
-        u = u - u.T @ V[:k+1].conj().T @ V[:k+1]
+        u -= alpha[k] * v
+        u -= V[:k].T @ beta_k
+        u -= u.T @ V[:k+1].conj().T @ V[:k+1]
         beta[k] = cupy.linalg.norm(u)
         v = u / beta[k]
         V[k+1] = v
@@ -125,10 +125,10 @@ def _eigsh_lanczos_update(A, V, alpha, beta, i_start, i_end):
     for i in range(i_start, i_end):
         u = A @ v
         alpha[i] = v.conj().T @ u
-        u = u - alpha[i] * v
+        u -= alpha[i] * v
         if i > 0:
-            u = u - beta[i-1] * V[i-1]
-        u = u - u.T @ V[:i+1].conj().T @ V[:i+1]
+            u -= beta[i-1] * V[i-1]
+        u -= u.T @ V[:i+1].conj().T @ V[:i+1]
         beta[i] = cupy.linalg.norm(u)
         if i >= i_end - 1:
             break
