@@ -421,10 +421,6 @@ cdef class set_cufft_callbacks:
     # contextmanager that yields...
 
     cdef:
-        str cb_load
-        str cb_store
-        ndarray cb_load_aux_arr
-        ndarray cb_store_aux_arr
         _CallbackManager mgr
         _CallbackManager mgr_prev
 
@@ -434,11 +430,6 @@ cdef class set_cufft_callbacks:
                  *,
                  ndarray cb_load_aux_arr=None,
                  ndarray cb_store_aux_arr=None):
-        self.cb_load = cb_load
-        self.cb_store = cb_store
-        self.cb_load_aux_arr = cb_load_aux_arr
-        self.cb_store_aux_arr = cb_store_aux_arr
-
         cdef tuple key = (cb_load, cb_store)
         cdef _CallbackManager mgr = _callback_mgr.get(key)
         if mgr is None:
