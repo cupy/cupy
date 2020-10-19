@@ -17,7 +17,7 @@ import sysconfig
 import tempfile
 import threading
 
-from cupy import __version__ as cupy_ver
+from cupy import __version__ as _cupy_ver
 from cupy._environment import (get_nvcc_path, get_cuda_path)
 from cupy.cuda.compiler import (_get_bool_env_variable, CompileException)
 # for some reason we can't cimport stuff from cupy.cuda.cufft...
@@ -30,7 +30,18 @@ from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
 from cupy.cuda.cufft import getVersion as get_cufft_version
 
 
+# information needed for building an external module
+cdef list _cc = sysconfig.get_config_var('CXX').split(' ')
 cdef str _python_include = sysconfig.get_path('include')
+cdef str _cuda_include = get_cuda_path() + '/include/'
+cdef str _cupy_root = os.path.join(os.path.dirname(__file__), '..')
+cdef str _cupy_include = _cupy_root + '/core/include'
+cdef str _build_ver = str(get_build_version())
+cdef int _cufft_ver = get_cufft_version()
+cdef str _source_dir = _cupy_root + '/cuda/'
+cdef str _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
+
+# callback related stuff
 cdef str _callback_dev_code = None
 cdef str _callback_cache_dir = os.environ.get(
     'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/callback_cache')) + '/'
@@ -106,15 +117,7 @@ cdef class _CallbackManager:
         self.cb_store_aux_arr = cb_store_aux_arr
 
         # Set up some variables...
-        cdef list cc = sysconfig.get_config_var('CXX').split(' ')
-        cdef str cuda_include = get_cuda_path() + '/include/'
-        cdef str cupy_root = os.path.join(os.path.dirname(__file__), '..')
-        cdef str cupy_include = cupy_root + '/core/include'
         cdef str arch = get_compute_capability()
-        cdef str build_ver = str(get_build_version())
-        cdef int cufft_ver = get_cufft_version()
-        cdef str source_dir = cupy_root + '/cuda/'
-        cdef str ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
         cdef str tempdir
         cdef str obj_host
         cdef str obj_dev
@@ -122,7 +125,7 @@ cdef class _CallbackManager:
         cdef list cmd
 
         # For hash; note this is independent of the plan to be created
-        keys = (cc, arch, build_ver, cufft_ver, ext_suffix, cupy_ver,
+        keys = (_cc, arch, _build_ver, _cufft_ver, _ext_suffix, _cupy_ver,
                 cb_load, cb_store)
         keys = '%s %s %s %s %s %s %s %s' % keys
 
@@ -132,7 +135,7 @@ cdef class _CallbackManager:
         cdef str mod_name = 'cupy_callback_'
         mod_name += hashlib.md5(keys.encode()).hexdigest()
         mod_name = mod_name.replace('.', '')
-        cdef str mod_filename = mod_name + ext_suffix
+        cdef str mod_filename = mod_name + _ext_suffix
 
         # Check if the module is already cached on disk. If not, we compile.
         cdef str cache_dir = _callback_cache_dir
@@ -145,15 +148,15 @@ cdef class _CallbackManager:
             tempdir = tempdir_obj.name + '/'
 
             # Cythonize the Cython code to produce a c++ source file
-            shutil.copyfile(source_dir + '/cupy_cufft.h',
+            shutil.copyfile(_source_dir + '/cupy_cufft.h',
                             tempdir + '/cupy_cufft.h')
-            shutil.copyfile(source_dir + '/cufft.pxd',
+            shutil.copyfile(_source_dir + '/cufft.pxd',
                             tempdir + mod_name + '.pxd')
-            shutil.copyfile(source_dir + '/cufft.pyx',
+            shutil.copyfile(_source_dir + '/cufft.pyx',
                             tempdir + mod_name + '.pyx')
             p = subprocess.run(['cython', '-3', '--cplus',
                                 '-E', 'use_hip=0',
-                                '-E', 'CUDA_VERSION=' + build_ver,
+                                '-E', 'CUDA_VERSION=' + _build_ver,
                                 '-E', 'CUPY_CUFFT_STATIC=True',
                                 tempdir + mod_name + '.pyx',
                                 '-o', tempdir + mod_name + '.cpp'],
@@ -162,12 +165,12 @@ cdef class _CallbackManager:
 
             # Compile the Python module
             obj_host = tempdir + mod_name + '.o'
-            shutil.copyfile(source_dir + '/cupy_cufftXt.h',
+            shutil.copyfile(_source_dir + '/cupy_cufftXt.h',
                             tempdir + '/cupy_cufftXt.h')
-            p = subprocess.run(cc + [
+            p = subprocess.run(_cc + [
                                '-I' + _python_include,
-                               '-I' + cuda_include,
-                               '-I' + cupy_include,
+                               '-I' + _cuda_include,
+                               '-I' + _cupy_include,
                                '-fPIC', '-O2', '-std=c++11',
                                '-c', tempdir + mod_name + '.cpp',
                                '-o', obj_host],
@@ -177,7 +180,7 @@ cdef class _CallbackManager:
             # Dump and compile device code using nvcc
             global _callback_dev_code
             if _callback_dev_code is None:
-                with open(source_dir + '/cupy_cufftXt.cu') as f:
+                with open(_source_dir + '/cupy_cufftXt.cu') as f:
                     support = _callback_dev_code = f.read()
             else:
                 support = _callback_dev_code
@@ -187,9 +190,9 @@ cdef class _CallbackManager:
                     dev_store_callback_ker=cb_store)
                 f.write(support)
             obj_dev = tempdir + mod_name + '_dev.o'
-            cmd = [nvcc, '-ccbin', cc[0],
+            cmd = [nvcc, '-ccbin', _cc[0],
                    '-arch=sm_'+arch, '-dc',
-                   '-I' + cupy_include,
+                   '-I' + _cupy_include,
                    '-c', tempdir + '/cupy_cufftXt.cu',
                    '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
             if self.cb_load:
@@ -216,7 +219,7 @@ cdef class _CallbackManager:
             # Use nvcc to link and generate a shared library, and place it in
             # the disk cache
             # WARNING: CANNOT use host compiler to link!
-            p = subprocess.run([nvcc, '-ccbin', cc[0],
+            p = subprocess.run([nvcc, '-ccbin', _cc[0],
                                 '-shared', '-arch=sm_'+arch,
                                 obj_dev, obj_host,
                                 '-lcufft_static', '-lculibos',
