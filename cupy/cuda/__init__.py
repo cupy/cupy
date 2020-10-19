@@ -159,6 +159,10 @@ def profile():
     ...    # do something you want to measure
     ...    pass
 
+    .. note::
+        When starting ``nvprof`` from the command line, manually setting
+        ``--profile-from-start off`` may be required for the desired behavior.
+
     """
     profiler.start()
     try:
