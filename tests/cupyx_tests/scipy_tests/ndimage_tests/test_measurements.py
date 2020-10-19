@@ -134,6 +134,25 @@ class TestStats(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_broadcast_labels(self, xp, scp, dtype):
+        # 1d label will be broadcast to 2d
+        image = self._make_image((16, 6), xp, dtype)
+        labels = xp.asarray([1, 0, 2, 2, 2, 0], dtype=xp.int32)
+        op = getattr(scp.ndimage, self.op)
+        return op(image, labels)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_broadcast_labels2(self, xp, scp, dtype):
+        # 1d label will be broadcast to 2d
+        image = self._make_image((16, 6), xp, dtype)
+        labels = xp.asarray([1, 0, 2, 2, 2, 0], dtype=xp.int32)
+        index = 2
+        op = getattr(scp.ndimage, self.op)
+        return op(image, labels, index)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_zero_dim(self, xp, scp, dtype):
         image = self._make_image((), xp, dtype)
         labels = testing.shaped_random((), xp, dtype=xp.int32, scale=4)
