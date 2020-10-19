@@ -141,7 +141,14 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         keys = (out_size, fft_type, batch, devices)
         mgr = config.get_current_callback_manager()
         if mgr is not None:
-            keys += (mgr.cb_load, mgr.cb_store)
+            # to avoid a weird segfault, we generate and cache distinct plans
+            # for every possible (load_aux, store_aux) pairs; the plans are
+            # still generated from the same external Python module
+            load_aux = mgr.cb_load_aux_arr
+            store_aux = mgr.cb_store_aux_arr
+            keys += (mgr.cb_load, mgr.cb_store,
+                     0 if load_aux is None else load_aux.data.ptr,
+                     0 if store_aux is None else store_aux.data.ptr)
         cache = get_plan_cache()
         cached_plan = cache.get(keys)
         if cached_plan is not None:

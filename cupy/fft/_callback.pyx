@@ -93,7 +93,6 @@ cdef class _CallbackManager:
         readonly ndarray cb_load_aux_arr
         readonly ndarray cb_store_aux_arr
         object mod
-        object last_plan
 
     def __init__(self,
                  str cb_load='',
@@ -255,32 +254,25 @@ cdef class _CallbackManager:
 
         plan_type, plan_args = plan_info
         plan = getattr(self.mod, plan_type)(*plan_args)
-        self.last_plan = plan  # retain the most recently used plan
         return plan
 
-    cpdef set_callbacks(self, plan=None):
+    cpdef set_callbacks(self, plan):
         '''Set the load/store callbacks by making calls to
         ``cufftXtSetCallback``.
 
         Args:
             plan (:class:`~cupy.cuda.cufft.Plan1d` or
                 :class:`~cupy.cuda.cufft.PlanNd`, optional): A cuFFT plan
-                against which the load/store callbacks are set. If not given,
-                the most recently used plan within the context set up by
-                :func:`~cupy.fft.config.set_cufft_callbacks` is used.
+                against which the load/store callbacks are set.
 
         .. note::
-            If :meth:`set_caller_infos` is called by users, a call to this
-            method must follow.
+            If :meth:`set_caller_infos` is called, a call to this method must
+            follow.
 
         '''
         cdef ndarray cb_load_aux_arr = self.cb_load_aux_arr
         cdef ndarray cb_store_aux_arr = self.cb_store_aux_arr
         cdef intptr_t cb_load_ptr=0, cb_store_ptr=0
-
-        if plan is None:
-            # TODO(leofang): raise warning?
-            plan = self.last_plan
 
         fft_type = plan.fft_type
         if fft_type == CUFFT_C2C:
@@ -315,9 +307,9 @@ cdef class _CallbackManager:
             self.mod.setCallback(
                 plan.handle, cb_store_type, False, cb_store_ptr)
 
-    cpdef set_caller_infos(self,
-                           ndarray cb_load_aux_arr=None,
-                           ndarray cb_store_aux_arr=None):
+    cdef set_caller_infos(self,
+                          ndarray cb_load_aux_arr=None,
+                          ndarray cb_store_aux_arr=None):
         '''Set the auxilliary arrays to be used by the load/store callbacks.
         Corresponding to the ``callerInfo`` field in cuFFT's callback API.
 
@@ -328,15 +320,8 @@ cdef class _CallbackManager:
                 containing data to be used in the store callback.
 
         .. note::
-            If this method is called by users, it must be followed by a call to
-            :meth:`set_callbacks`.
-
-        .. note::
-            If the auxilliary arrays are already set when entering the callback
-            context set up by :func:`~cupy.fft.config.set_cufft_callbacks`, by
-            calling this method the previous arrays will be overridden by the
-            new ones. If this method is called by users, it must be followed by
-            a call to :meth:`set_callbacks`.
+            After this method is called, a call to :meth:`set_callbacks` must
+            follow. This is for internal use.
 
         '''
         self.cb_load_aux_arr = cb_load_aux_arr
@@ -358,9 +343,7 @@ cdef class set_cufft_callbacks:
 
     Yields:
         A manager object handling the callbacks. This instance should not be
-        used by users, except when the auxiliary arrays need to be updated.
-        In such an event, use its :meth:`~_CallbackManager.set_caller_infos`
-        method.
+        used by users.
 
     .. note::
         Any FFT calls living in this context will have callbacks set up. An
