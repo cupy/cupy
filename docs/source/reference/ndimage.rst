@@ -75,8 +75,14 @@ Measurements
    :toctree: generated/
    :nosignatures:
 
+   cupyx.scipy.ndimage.extrema
    cupyx.scipy.ndimage.label
+   cupyx.scipy.ndimage.maximum
+   cupyx.scipy.ndimage.maximum_position
    cupyx.scipy.ndimage.mean
+   cupyx.scipy.ndimage.median
+   cupyx.scipy.ndimage.minimum
+   cupyx.scipy.ndimage.minimum_position
    cupyx.scipy.ndimage.standard_deviation
    cupyx.scipy.ndimage.sum
    cupyx.scipy.ndimage.variance
