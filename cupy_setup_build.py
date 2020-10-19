@@ -100,8 +100,7 @@ if use_hip:
             'hiprand/hiprand.h',
         ],
         'libraries': [
-            'hiprtc',
-            'hip_hcc',
+            'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
             'hipblas',
             'hiprand',
         ],
@@ -246,8 +245,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
                 'thrust/version.h',
             ],
             'libraries': [
-                'hiprtc',
-                'hip_hcc',
+                'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
             ],
         })
     else:
