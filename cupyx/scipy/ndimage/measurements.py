@@ -852,13 +852,12 @@ def minimum_position(input, labels=None, index=None):
             The `index` argument only works when `labels` is specified.
 
     Returns:
-        output (list of tuples of ints): Tuple of ints or list of tuples of
-            ints that specify the location of minima of `input` over the
-            regions determined by `labels` and  whose index is in `index`.
+        Tuple of ints or list of tuples of ints that specify the location of
+        minima of `input` over the regions determined by `labels` and  whose
+        index is in `index`.
 
-            If `index` or `labels` are not specified, a tuple of ints is
-            returned specifying the location of the first minimal value of
-            `input`.
+        If `index` or `labels` are not specified, a tuple of ints is returned
+        specifying the location of the first minimal value of `input`.
 
     .. note::
         When `input` has multiple identical minima within a labeled region,
@@ -910,13 +909,12 @@ def maximum_position(input, labels=None, index=None):
             The `index` argument only works when `labels` is specified.
 
     Returns:
-        list of tuples of ints: Tuple of ints or list of tuples of
-        ints that specify the location of maxima of `input` over the
-        regions determaxed by `labels` and  whose index is in `index`.
+        Tuple of ints or list of tuples of ints that specify the location of
+        maxima of `input` over the regions determaxed by `labels` and  whose
+        index is in `index`.
 
-        If `index` or `labels` are not specified, a tuple of ints is
-        returned specifying the location of the first maximal value of
-        `input`.
+        If `index` or `labels` are not specified, a tuple of ints is returned
+        specifying the location of the first maximal value of `input`.
 
     .. note::
         When `input` has multiple identical maxima within a labeled region,
