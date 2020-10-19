@@ -1610,10 +1610,6 @@ class Test1dCallbacks(unittest.TestCase):
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_fft_load_aux(self, xp, dtype):
-        # Without turning off the cache, it segfaults -- why?
-        cache = cupy.fft.config.get_plan_cache()
-        cache.set_size(0)
-
         fft = xp.fft.fft
         code = _load_callback_with_aux
         if dtype == np.complex64:

@@ -139,13 +139,17 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         cache = get_plan_cache()
         mgr = config.get_current_callback_manager()
         if mgr is not None:
-            keys += (mgr.cb_load, mgr.cb_store)
+            # to avoid a weird segfault, we generate and cache distinct plans
+            # for every possible (load_aux, store_aux) pairs; the plans are
+            # still generated from the same external Python module
+            load_aux = mgr.cb_load_aux_arr
+            store_aux = mgr.cb_store_aux_arr
+            keys += (mgr.cb_load, mgr.cb_store,
+                     0 if load_aux is None else load_aux.data.ptr,
+                     0 if store_aux is None else store_aux.data.ptr)
         cached_plan = cache.get(keys)
         if cached_plan is not None:
             plan = cached_plan
-            # we could have the callbacks changed after the plan is cached
-            if mgr is not None:
-                mgr.set_callbacks(plan)
         elif mgr is None:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
             cache[keys] = plan
@@ -154,7 +158,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             if devices:
                 raise NotImplementedError('multi-GPU cuFFT callbacks are not '
                                           'yet supported')
-            plan = mgr.create_plan(('Plan1d', keys[:-3]))
+            plan = mgr.create_plan(('Plan1d', keys[:-5]))
             mgr.set_callbacks(plan)
             cache[keys] = plan
     else:
@@ -434,19 +438,23 @@ def _get_cufft_plan_nd(
     cache = get_plan_cache()
     mgr = config.get_current_callback_manager()
     if mgr is not None:
-        keys += (mgr.cb_load, mgr.cb_store)
+        # to avoid a weird segfault, we generate and cache distinct plans
+        # for every possible (load_aux, store_aux) pairs; the plans are
+        # still generated from the same external Python module
+        load_aux = mgr.cb_load_aux_arr
+        store_aux = mgr.cb_store_aux_arr
+        keys += (mgr.cb_load, mgr.cb_store,
+                 0 if load_aux is None else load_aux.data.ptr,
+                 0 if store_aux is None else store_aux.data.ptr)
     cached_plan = cache.get(keys)
     if cached_plan is not None:
         plan = cached_plan
-        # we could have the callbacks changed after the plan is cached
-        if mgr is not None:
-            mgr.set_callbacks(plan)
     elif mgr is None:
         plan = cufft.PlanNd(*keys)
         if to_cache:
             cache[keys] = plan
     else:  # has callback
-        plan = mgr.create_plan(('PlanNd', keys[:-2]))
+        plan = mgr.create_plan(('PlanNd', keys[:-4]))
         mgr.set_callbacks(plan)
         if to_cache:
             cache[keys] = plan

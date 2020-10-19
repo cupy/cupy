@@ -235,7 +235,7 @@ cdef class _CallbackManager:
             p = subprocess.run([_nvcc, '-ccbin', _cc[0],
                                 '-shared', '-arch=sm_'+arch,
                                 obj_dev, obj_host,
-                                '-lcufft_static', '-lculibos',
+                                '-lcufft_static', '-lculibos', '-lpthread',
                                 '-o', path],
                                env=os.environ)
             p.check_returncode()
@@ -274,13 +274,13 @@ cdef class _CallbackManager:
             method must follow.
 
         '''
+        cdef ndarray cb_load_aux_arr = self.cb_load_aux_arr
+        cdef ndarray cb_store_aux_arr = self.cb_store_aux_arr
         cdef intptr_t cb_load_ptr=0, cb_store_ptr=0
 
         if plan is None:
             # TODO(leofang): raise warning?
             plan = self.last_plan
-        cdef ndarray cb_load_aux_arr = self.cb_load_aux_arr
-        cdef ndarray cb_store_aux_arr = self.cb_store_aux_arr
 
         fft_type = plan.fft_type
         if fft_type == CUFFT_C2C:
@@ -357,10 +357,10 @@ cdef class set_cufft_callbacks:
             containing data to be used in the store callback.
 
     Yields:
-        :class:`_CallbackManager`: A manager object handling the callbacks.
-            This instance should not be used by users, except when the
-            auxiliary arrays need to be updated. In such an event, call
-            :meth:`~_CallbackManager.set_caller_infos`.
+        A manager object handling the callbacks. This instance should not be
+        used by users, except when the auxiliary arrays need to be updated.
+        In such an event, use its :meth:`~_CallbackManager.set_caller_infos`
+        method.
 
     .. note::
         Any FFT calls living in this context will have callbacks set up. An
