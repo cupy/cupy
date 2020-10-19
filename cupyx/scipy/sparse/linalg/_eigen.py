@@ -78,7 +78,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     beta_k = beta[-1] * s[-1, :]
     res = cupy.linalg.norm(beta_k)
 
-    while res > tol:
+    while res > tol and iter < maxiter:
         # Setup for thick-restart
         beta[:k] = 0
         alpha[:k] = w
@@ -107,17 +107,11 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         beta_k = beta[-1] * s[-1, :]
         res = cupy.linalg.norm(beta_k)
 
-        if iter >= maxiter:
-            break
-
-    idx = cupy.argsort(w)
-    w = w[idx]
-    x = x[:, idx]
-
     if return_eigenvectors:
-        return w, x
+        idx = cupy.argsort(w)
+        return w[idx], x[:, idx]
     else:
-        return w
+        return cupy.sort(w)
 
 
 def _eigsh_lanczos_update(A, V, alpha, beta, i_start, i_end):
@@ -148,11 +142,9 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
 
     # Pick-up k ritz-values and ritz-vectors
     if which == 'LA':
-        wk = w[-k:]
-        sk = s[:, -k:]
+        idx = cupy.argsort(w)
     elif which == 'LM':
         idx = cupy.argsort(cupy.absolute(w))
-        wk = w[idx[-k:]]
-        sk = s[:, idx[-k:]]
-
+    wk = w[idx[-k:]]
+    sk = s[:, idx[-k:]]
     return wk, sk
