@@ -14,10 +14,10 @@ from cupyx_tests.fallback_mode_tests import test_fallback as test_utils
 class NotificationTestBase(unittest.TestCase):
 
     def setUp(self):
-        self.old_config = _ufunc_config._config
+        self.old_config = _ufunc_config.geterr()
 
     def tearDown(self):
-        _ufunc_config.config = self.old_config
+        _ufunc_config.seterr(**self.old_config)
 
 
 @testing.gpu
@@ -26,12 +26,12 @@ class TestNotifications(NotificationTestBase):
     def test_seterr_geterr(self):
 
         default = _ufunc_config.geterr()
-        assert default['fallback_mode'] == 'warn'
+        assert default['fallback_mode'] == 'ignore'
 
-        old = _ufunc_config.seterr(fallback_mode='ignore')
+        old = _ufunc_config.seterr(fallback_mode='warn')
         current = _ufunc_config.geterr()
-        assert old['fallback_mode'] == 'warn'
-        assert current['fallback_mode'] == 'ignore'
+        assert old['fallback_mode'] == 'ignore'
+        assert current['fallback_mode'] == 'warn'
         _ufunc_config.seterr(**old)
 
     def test_errstate(self):
