@@ -30,26 +30,28 @@ from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
 from cupy.cuda.cufft import getVersion as get_cufft_version
 
 
-cdef inline str _get_cupy_root_path():
-    # Cython cannot use __file__ in global scope
-    cdef str _cupy_root = os.path.join(os.path.dirname(__file__), '..')
-    return _cupy_root
+cdef inline _set_cupy_paths():
+    # Workaround: older Cython cannot use __file__ in global scope
+    global _cupy_root, _cupy_include, _source_dir
+    if _cupy_root is None:
+        _cupy_root = os.path.join(os.path.dirname(__file__), '..')
+        _cupy_include = _cupy_root + '/core/include'
+        _source_dir = _cupy_root + '/cuda/'
 
 
 # information needed for building an external module
 cdef list _cc = sysconfig.get_config_var('CXX').split(' ')
 cdef str _python_include = sysconfig.get_path('include')
+cdef str _nvcc = get_nvcc_path()
 cdef str _cuda_path = get_cuda_path()
-cdef str _cuda_include
+cdef str _cuda_include = None  # workaround for Read the Docs...
 if _cuda_path is not None:
     _cuda_include = _cuda_path + '/include/'
-else:
-    _cuda_include = ''  # workaround for Read the Docs...
-cdef str _cupy_root = _get_cupy_root_path()
-cdef str _cupy_include = _cupy_root + '/core/include'
 cdef str _build_ver = str(get_build_version())
 cdef int _cufft_ver = get_cufft_version()
-cdef str _source_dir = _cupy_root + '/cuda/'
+cdef str _cupy_root = None
+cdef str _cupy_include = None
+cdef str _source_dir = None
 cdef str _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
 # callback related stuff
@@ -91,7 +93,7 @@ cdef class _CallbackManager:
         readonly ndarray cb_load_aux_arr
         readonly ndarray cb_store_aux_arr
         object mod
-        object plan
+        object last_plan
 
     def __init__(self,
                  str cb_load='',
@@ -112,8 +114,7 @@ cdef class _CallbackManager:
             raise ValueError('need to specify d_loadCallbackPtr in cb_load')
         if cb_store and 'd_storeCallbackPtr' not in cb_store:
             raise ValueError('need to specify d_storeCallbackPtr in cb_store')
-        cdef str nvcc = get_nvcc_path()
-        if nvcc is None:
+        if _nvcc is None:
             raise RuntimeError('nvcc is required but not found')
         if cb_load_aux_arr is not None:
             if not cb_load:
@@ -134,6 +135,7 @@ cdef class _CallbackManager:
         cdef str obj_dev
         cdef str support
         cdef list cmd
+        _set_cupy_paths()
 
         # For hash; note this is independent of the plan to be created
         keys = (_cc, arch, _build_ver, _cufft_ver, _ext_suffix, _cupy_ver,
@@ -201,7 +203,7 @@ cdef class _CallbackManager:
                     dev_store_callback_ker=cb_store)
                 f.write(support)
             obj_dev = tempdir + mod_name + '_dev.o'
-            cmd = [nvcc, '-ccbin', _cc[0],
+            cmd = [_nvcc, '-ccbin', _cc[0],
                    '-arch=sm_'+arch, '-dc',
                    '-I' + _cupy_include,
                    '-c', tempdir + '/cupy_cufftXt.cu',
@@ -230,7 +232,7 @@ cdef class _CallbackManager:
             # Use nvcc to link and generate a shared library, and place it in
             # the disk cache
             # WARNING: CANNOT use host compiler to link!
-            p = subprocess.run([nvcc, '-ccbin', _cc[0],
+            p = subprocess.run([_nvcc, '-ccbin', _cc[0],
                                 '-shared', '-arch=sm_'+arch,
                                 obj_dev, obj_host,
                                 '-lcufft_static', '-lculibos',
@@ -253,7 +255,7 @@ cdef class _CallbackManager:
 
         plan_type, plan_args = plan_info
         plan = getattr(self.mod, plan_type)(*plan_args)
-        self.plan = plan  # retain the most recently used plan
+        self.last_plan = plan  # retain the most recently used plan
         return plan
 
     cpdef set_callbacks(self, plan=None):
@@ -272,11 +274,11 @@ cdef class _CallbackManager:
             method must follow.
 
         '''
-        cdef intptr_t cb_load_ptr, cb_store_ptr
+        cdef intptr_t cb_load_ptr=0, cb_store_ptr=0
 
         if plan is None:
             # TODO(leofang): raise warning?
-            plan = self.plan
+            plan = self.last_plan
         cdef ndarray cb_load_aux_arr = self.cb_load_aux_arr
         cdef ndarray cb_store_aux_arr = self.cb_store_aux_arr
 
@@ -305,15 +307,11 @@ cdef class _CallbackManager:
         if self.cb_load:
             if cb_load_aux_arr is not None:
                 cb_load_ptr = cb_load_aux_arr.data.ptr
-            else:
-                cb_load_ptr = 0
             self.mod.setCallback(
                 plan.handle, cb_load_type, True, cb_load_ptr)
         if self.cb_store:
             if cb_store_aux_arr is not None:
                 cb_store_ptr = cb_store_aux_arr.data.ptr
-            else:
-                cb_store_ptr = 0
             self.mod.setCallback(
                 plan.handle, cb_store_type, False, cb_store_ptr)
 
