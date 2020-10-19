@@ -547,11 +547,14 @@ def gesv(a, b):
 
 def gels(a, b):
     """Solves over/well/under-determined linear systems.
+
     Computes least-square solution to equation ``ax = b` by QR factorization
     using cusolverDn<t>geqrf().
+
     Args:
         a (cupy.ndarray): The matrix with dimension ``(M, N)``.
         b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
+
     Returns:
         cupy.ndarray:
             The matrix with dimension ``(N)`` or ``(N, K)``.
