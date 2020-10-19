@@ -1328,9 +1328,7 @@ __device__ ${data_type} CB_ConvertInput(
     void* dataIn, size_t offset, void* callerInfo, void* sharedPtr)
 {
     ${data_type} x = ((${data_type}*)dataIn)[offset];
-    ${aux_type} c = *((${aux_type}*)callerInfo);
-    ${element}.x *= c;
-    ${element}.y *= c;
+    ${element}.x *= ((${aux_type}*)callerInfo)[offset];
     return x;
 }
 
@@ -1361,10 +1359,6 @@ __device__ ${store_type} d_storeCallbackPtr = CB_ConvertOutput;
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'hipFFT does not support callbacks')
 class Test1dCallbacks(unittest.TestCase):
-
-    def tearDown(self):
-        cache = cupy.fft.config.get_plan_cache()
-        print(cache)
 
     def _set_load_cb(
             self, code, element, data_type, callback_type, aux_type=None):
@@ -1620,13 +1614,16 @@ class Test1dCallbacks(unittest.TestCase):
                 code, 'x', 'cufftDoubleComplex', 'cufftCallbackLoadZ', 'double')
 
         a = testing.shaped_random(self.shape, xp, dtype)
-        b = xp.asarray([2.5], dtype=xp.dtype(dtype).char.lower())
+        shape = list(self.shape)
+        last = max(self.shape[-1], self.n if self.n is not None else shape[-1])
+        shape[-1] = last
         if xp is np:
-            a *= b
+            a.real *= 2.5
             out = fft(a, n=self.n, norm=self.norm)
             if dtype in (np.float32, np.complex64):
                 out = out.astype(np.complex64)
         else:
+            b = 2.5 * xp.ones(shape, dtype=xp.dtype(dtype).char.lower())
             with xp.fft.config.set_cufft_callbacks(
                     cb_load=cb_load, cb_load_aux_arr=b):
                 out = fft(a, n=self.n, norm=self.norm)
