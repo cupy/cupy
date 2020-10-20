@@ -672,50 +672,55 @@ class RandomState(object):
                 'mx must be non-negative (actual: {})'.format(mx))
         elif mx <= _UINT32_MAX:
             dtype = numpy.uint32
+            upper_limit = _UINT32_MAX - (1 << 32) % mx
+            generate = curand.generate
         elif mx <= _UINT64_MAX:
             dtype = numpy.uint64
+            upper_limit = _UINT64_MAX - (1 << 64) % mx
+            generate = curand.generateLongLong
         else:
             raise ValueError(
                 'mx must be within uint64 range (actual: {})'.format(mx))
 
-        mask = (1 << mx.bit_length()) - 1
-        mask = cupy.array(mask, dtype=dtype)
-
         n = functools.reduce(operator.mul, size, 1)
-
         if n == 0:
             return cupy.empty(size, dtype=dtype)
 
-        sample = cupy.empty((n,), dtype=dtype)
-        size32 = sample.view(dtype=numpy.uint32).size
-        n_rem = n  # The number of remaining elements to sample
-        ret = None
-        while n_rem > 0:
-            # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
-            curand.generate(
-                self._generator, sample.data.ptr, size32)
-            # Drop the samples that exceed the upper limit
-            sample &= mask
-            success = sample <= mx
+        ret = cupy.empty((n,), dtype=dtype)
+        generate(self._generator, ret.data.ptr, n)
 
-            if ret is None:
-                # If the sampling has finished in the first iteration,
-                # just return the sample.
-                if success.all():
-                    n_rem = 0
-                    ret = sample
-                    break
+        # Mark the points where the upper limit is exceeded
+        ng = cupy.zeros(ret.shape, dtype=numpy.bool)
+        n_ng = cupy.zeros((1, ), dtype=numpy.uint64)
+        self._mark_ng_points(ret, upper_limit, ng, n_ng)
+        n_ng = int(n_ng[0])
 
-                # Allocate the return array.
-                ret = cupy.empty((n,), dtype=dtype)
+        n2 = max(n_ng * 2, 128)
+        while n2 > 0:
+            ret2 = cupy.empty((n2,), dtype=dtype)
+            generate(self._generator, ret2.data.ptr, n2)
 
-            n_succ = min(n_rem, int(success.sum()))
-            ret[n - n_rem:n - n_rem + n_succ] = sample[success][:n_succ]
-            n_rem -= n_succ
+            # Mark the points that are within the upper limit
+            ok = cupy.zeros(ret2.shape, dtype=numpy.bool)
+            n_ok = cupy.zeros((1, ), dtype=numpy.uint64)
+            self._mark_ng_points(ret2, upper_limit, ok, n_ok)
+            ok = cupy.logical_not(ok)
+            n_ok = n2 - int(n_ok[0])
+            if n_ok >= n_ng:
+                break
+            n2 += n_ng
 
-        assert n_rem == 0
+        # Replace the points where the upper limit is exceeded
+        if n_ng > 0:
+            ret[ng] = ret2[ok][:n_ng]
+        ret %= mx
 
         return ret.reshape(size)
+
+    _mark_ng_points = core.ElementwiseKernel(
+        'I x, I upper_limit', 'O flag, raw U count',
+        'if (x > upper_limit) {flag = 1; atomicAdd(&(count[0]), 1);}',
+        'cupy_interval_kernel_1')
 
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
