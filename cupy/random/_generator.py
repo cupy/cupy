@@ -889,6 +889,16 @@ class RandomState(object):
         'x = T(low) + x * T(high - low)',
         'cupy_scale')
 
+    _scale_kernel_float32 = core.ElementwiseKernel(
+        'T low, T high', 'T x',
+        'x = __fadd_rd(low, __fmul_rd(x, __fsub_rd(high, low)))',
+        'cupy_scale_float32')
+
+    _scale_kernel_float64 = core.ElementwiseKernel(
+        'T low, T high', 'T x',
+        'x = __dadd_rd(low, __dmul_rd(x, __dsub_rd(high, low)))',
+        'cupy_scale_float64')
+
     def uniform(self, low=0.0, high=1.0, size=None, dtype=float):
         """Returns an array of uniformly-distributed samples over an interval.
 
@@ -904,7 +914,14 @@ class RandomState(object):
             low = cupy.asarray(low, dtype)
         if not numpy.isscalar(high):
             high = cupy.asarray(high, dtype)
-        return RandomState._scale_kernel(low, high, rand)
+        if low > high:
+            low, high = high, low
+        if dtype.char == 'f':
+            return RandomState._scale_kernel_float32(low, high, rand)
+        elif dtype.char == 'd':
+            return RandomState._scale_kernel_float64(low, high, rand)
+        else:
+            return RandomState._scale_kernel(low, high, rand)
 
     def vonmises(self, mu, kappa, size=None, dtype=float):
         """Returns an array of samples drawn from the von Mises distribution.
