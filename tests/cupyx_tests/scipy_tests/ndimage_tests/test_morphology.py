@@ -71,7 +71,7 @@ class TestIterateStructure(unittest.TestCase):
         'origin': [-1, 0, 1],
         'data': [[], [1, 1, 0, 1, 1]],
         'filter': ['binary_erosion', 'binary_dilation'],
-        'output': [None, numpy.float32, numpy.int8]}
+        'output': [None, numpy.float32, numpy.int8, 'array']}
     ))
 )
 @testing.gpu
@@ -82,6 +82,12 @@ class BinaryErosionAndDilation1d(unittest.TestCase):
         structure = self.structure
         if structure is not None:
             structure = xp.asarray(structure)
+        if self.output == 'array':
+            output = xp.zeros_like(x)
+            filter(x, structure, iterations=1, mask=None,
+                   output=output, border_value=self.border_value,
+                   origin=self.origin, brute_force=True)
+            return output
         return filter(x, structure, iterations=1, mask=None,
                       output=self.output, border_value=self.border_value,
                       origin=self.origin, brute_force=True)
@@ -92,6 +98,7 @@ class BinaryErosionAndDilation1d(unittest.TestCase):
             raise unittest.SkipTest('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
+
 
 
 @testing.parameterize(*(
@@ -324,7 +331,7 @@ class BinaryPropagation(unittest.TestCase):
         'density': [0.1, 0.5, 0.9],
         'filter': ['binary_erosion', 'binary_dilation'],
         'iterations': [1, 2, 0],
-        'output': [None, numpy.float32]}
+        'output': [None, numpy.float32, 'array']}
     ))
 )
 @testing.gpu
@@ -335,6 +342,12 @@ class BinaryErosionAndDilation(unittest.TestCase):
         ndim = len(self.shape)
         structure = scp.ndimage.generate_binary_structure(ndim,
                                                           self.connectivity)
+        if self.output == 'array':
+            output = xp.zeros_like(x)
+            filter(x, structure, iterations=self.iterations, mask=None,
+                   output=output, border_value=self.border_value,
+                   origin=self.origin, brute_force=True)
+            return output
         return filter(x, structure, iterations=self.iterations, mask=None,
                       output=self.output, border_value=self.border_value,
                       origin=self.origin, brute_force=True)

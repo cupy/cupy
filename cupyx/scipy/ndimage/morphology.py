@@ -185,8 +185,9 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         masked = False
     origin = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
 
-    if isinstance(output, cupy.ndarray) and output.dtype.kind == 'c':
-        raise TypeError('Complex output type not supported')
+    if isinstance(output, cupy.ndarray):
+        if output.dtype.kind == 'c':
+            raise TypeError('Complex output type not supported')
     else:
         output = bool
     output = _util._get_output(output, input)
