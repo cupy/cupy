@@ -329,6 +329,23 @@ class TestSkip(unittest.TestCase):
         raise unittest.SkipTest('Test for skip with @numpy_cupy_equal')
         assert False
 
+    @testing.for_all_dtypes()
+    def test_dtypes(self, dtype):
+        if dtype is cupy.float32:
+            pytest.skip('Test for skipping a dtype in @for_all_dtypes')
+            assert False
+        else:
+            assert True
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_allclose_dtypes(self, xp, dtype):
+        if dtype is xp.float32:
+            pytest.skip('Test for skipping a dtype in @for_all_dtypes')
+            assert False
+        else:
+            return xp.array(True)
+
 
 class TestSkipFail(unittest.TestCase):
 
@@ -355,3 +372,15 @@ class TestSkipFail(unittest.TestCase):
             return xp.array(True)
         else:
             raise unittest.SkipTest('skip')
+
+    @pytest.mark.xfail(strict=True)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_only_cupy_dtype(self, xp, dtype):
+        if dtype is not xp.float32:
+            return xp.array(True)
+
+        if xp is numpy:
+            return xp.array(True)
+        else:
+            pytest.skip('skip')
