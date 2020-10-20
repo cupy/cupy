@@ -1373,6 +1373,7 @@ __device__ void CB_ConvertOutput(
 __device__ ${store_type} d_storeCallbackPtr = CB_ConvertOutput;
 '''
 
+
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10, 7), (10,), (10, 10)],

@@ -376,6 +376,10 @@ cdef class set_cufft_callbacks:
               package from Conda-Forge is not enough, as it does not contain
               static libraries.
 
+    .. note::
+        Callbacks only work for transforms over contiguous axes; the behavior
+        for non-contiguous transforms is in general undefined.
+
     .. warning::
         Using cuFFT callbacks requires compiling and loading a Python module at
         runtime as well as static linking for each distinct transform and
@@ -396,6 +400,11 @@ cdef class set_cufft_callbacks:
         environment, it is advised to first let the main thread/process do the
         warm-up (compiling), and then unblock all threads/processes to load the
         compiled module from cache.
+
+    .. seealso:: `cuFFT Callback Routines`_
+
+    .. _cuFFT Callback Routines:
+        https://docs.nvidia.com/cuda/cufft/index.html#callback-routines
 
     """
     # this class should have been a simple function decorated by @contextlib.
