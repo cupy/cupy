@@ -227,20 +227,20 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
     else:
         u = x
         v = aH @ u / s[:n_large]
-    if n_large < k:
-        u = _augmented_orthnormal_cols(u, k - n_large)
-        v = _augmented_orthnormal_cols(v, k - n_large)
+    u = _augmented_orthnormal_cols(u, k - n_large)
+    v = _augmented_orthnormal_cols(v, k - n_large)
 
     return u, s, v.conj().T
 
 
 def _augmented_orthnormal_cols(x, n_aug):
+    if n_aug <= 0:
+        return x
     m, n = x.shape
     y = cupy.empty((m, n + n_aug), dtype=x.dtype)
     y[:, :n] = x
     for i in range(n, n + n_aug):
         v = cupy.random.random((m, )).astype(x.dtype)
         v -= v @ y[:, :i].conj() @ y[:, :i].T
-        v = v / cupy.linalg.norm(v)
-        y[:, i] = v
+        y[:, i] = v / cupy.linalg.norm(v)
     return y
