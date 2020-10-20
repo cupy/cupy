@@ -363,7 +363,7 @@ cdef class set_cufft_callbacks:
             __device__ cufftCallbackLoadC d_loadCallbackPtr = CB_ConvertInputC;
             '''
 
-            with cp.fft.config.set_cufft_callbacks(cb_load=code) as mgr:
+            with cp.fft.config.set_cufft_callbacks(cb_load=code):
                 out_arr = cp.fft.fft(in_arr, ...)
 
     .. note::
