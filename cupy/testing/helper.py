@@ -236,7 +236,11 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
             # Check dtypes
             if type_check:
                 for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
-                    assert cupy_r.dtype == numpy_r.dtype
+                    if cupy_r.dtype != numpy_r.dtype:
+                        raise AssertionError(
+                            '''ndarrays of different dtypes are returned.
+cupy: {}
+numpy: {}'''.format(cupy_r.dtype, numpy_r.dtype))
 
             # Check contiguities
             if contiguous_check:
