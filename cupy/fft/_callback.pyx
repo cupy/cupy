@@ -336,14 +336,10 @@ cdef class set_cufft_callbacks:
             callback. It must define ``d_loadCallbackPtr``.
         cb_store (str): A string contains the device kernel for the store
             callback. It must define ``d_storeCallbackPtr``.
-        cb_load_aux_arr (:class:`cupy.ndarray`, optional): A CuPy array
-            containing data to be used in the load callback.
-        cb_store_aux_arr (:class:`cupy.ndarray`, optional): A CuPy array
-            containing data to be used in the store callback.
-
-    Yields:
-        A manager object handling the callbacks. This instance should not be
-        used by users.
+        cb_load_aux_arr (cupy.ndarray, optional): A CuPy array containing
+            data to be used in the load callback.
+        cb_store_aux_arr (cupy.ndarray, optional): A CuPy array containing
+            data to be used in the store callback.
 
     .. note::
         Any FFT calls living in this context will have callbacks set up. An
@@ -420,6 +416,8 @@ cdef class set_cufft_callbacks:
                  *,
                  ndarray cb_load_aux_arr=None,
                  ndarray cb_store_aux_arr=None):
+        # For every distinct pair of load & store callbacks, we compile an
+        # external Python module and cache it.
         cdef tuple key = (cb_load, cb_store)
         cdef _CallbackManager mgr = _callback_mgr.get(key)
         if mgr is None:
@@ -428,7 +426,7 @@ cdef class set_cufft_callbacks:
                 cb_store=cb_store,
                 cb_load_aux_arr=cb_load_aux_arr,
                 cb_store_aux_arr=cb_store_aux_arr)
-            _callback_mgr[key] = mgr  # keep the Python modules alive
+            _callback_mgr[key] = mgr  # keep the Python module alive
         else:
             mgr.set_caller_infos(
                 cb_load_aux_arr=cb_load_aux_arr,
