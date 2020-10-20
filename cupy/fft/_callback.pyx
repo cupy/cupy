@@ -134,6 +134,10 @@ cdef class _CallbackManager:
         cdef str obj_dev
         cdef str support
         cdef list cmd
+        cdef str mod_name
+        cdef str mod_filename
+        cdef str cache_dir
+        cdef str path
         _set_cupy_paths()
 
         # For hash; note this is independent of the plan to be created
@@ -144,16 +148,16 @@ cdef class _CallbackManager:
         # Generate module filename: all modules with the identical callbacks
         # are considered identical regardless of which plan was actually
         # executed at the time of generation
-        cdef str mod_name = 'cupy_callback_'
+        mod_name = 'cupy_callback_'
         mod_name += hashlib.md5(keys.encode()).hexdigest()
         mod_name = mod_name.replace('.', '')
-        cdef str mod_filename = mod_name + _ext_suffix
+        mod_filename = mod_name + _ext_suffix
 
         # Check if the module is already cached on disk. If not, we compile.
-        cdef str cache_dir = _callback_cache_dir
+        cache_dir = _callback_cache_dir
         if not os.path.isdir(cache_dir):
             os.makedirs(cache_dir, exist_ok=True)
-        cdef str path = os.path.join(cache_dir, mod_filename)
+        path = os.path.join(cache_dir, mod_filename)
         if not os.path.isfile(path):
             # Set up temp directory
             tempdir_obj = tempfile.TemporaryDirectory()
