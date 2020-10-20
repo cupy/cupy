@@ -209,7 +209,7 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
                   return_eigenvectors=False)
 
     w = cupy.maximum(w, 0)
-    t = x.dtype.char.lower()
+    t = w.dtype.char.lower()
     factor = {'f': 1e3, 'd': 1e6}
     cond = factor[t] * numpy.finfo(t).eps
     cutoff = cond * cupy.max(w)

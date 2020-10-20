@@ -176,3 +176,72 @@ class TestEigsh(unittest.TestCase):
             sp.linalg.eigsh(a, k=self.k, which='SM')
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.k, which='SA')
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(30, 29), (29, 29), (29, 30)],
+    'k': [3, 6, 12],
+    'return_vectors': [True, False],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestSvds(unittest.TestCase):
+    density = 0.33
+
+    def _make_matrix(self, dtype, xp):
+        a = testing.shaped_random(self.shape, xp, dtype=dtype)
+        mask = testing.shaped_random(self.shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        return a
+
+    def _test_svds(self, a, xp, sp):
+        ret = sp.linalg.svds(a, k=self.k,
+                             return_singular_vectors=self.return_vectors)
+        if self.return_vectors:
+            u, s, vt = ret
+            # Check the results with u @ s @ vt, as singular vectors don't
+            # necessarily match.
+            return u @ xp.diag(s) @ vt
+        else:
+            return xp.sort(ret)
+
+    @testing.for_dtypes('fF')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-4, sp_name='sp')
+    def test_sparse_f(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        a = sp.csr_matrix(a)
+        return self._test_svds(a, xp, sp)
+
+    @testing.for_dtypes('fF')
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-4, sp_name='sp')
+    def test_dense_f(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        return self._test_svds(a, xp, sp)
+
+    @testing.for_dtypes('dD')
+    @testing.numpy_cupy_allclose(rtol=1e-12, atol=1e-12, sp_name='sp')
+    def test_sparse_d(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        a = sp.csr_matrix(a)
+        return self._test_svds(a, xp, sp)
+
+    @testing.for_dtypes('dD')
+    @testing.numpy_cupy_allclose(rtol=1e-12, atol=1e-12, sp_name='sp')
+    def test_dense_d(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        return self._test_svds(a, xp, sp)
+
+    def test_invalid(self):
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            a = xp.diag(xp.ones(self.shape, dtype='f'))
+            with pytest.raises(ValueError):
+                sp.linalg.svds(a, k=0)
+        xp, sp = cupy, sparse
+        a = xp.diag(xp.ones(self.shape, dtype='f'))
+        with pytest.raises(ValueError):
+            sp.linalg.svds(xp.ones((1,), dtype='f'))
+        with pytest.raises(TypeError):
+            sp.linalg.svds(xp.ones((2, 2), dtype='i'))
+        with pytest.raises(ValueError):
+            sp.linalg.svds(a, k=min(self.shape))
+        with pytest.raises(ValueError):
+            sp.linalg.svds(a, k=self.k, which='SM')
