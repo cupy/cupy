@@ -1478,42 +1478,80 @@ class Test1dCallbacks(unittest.TestCase):
         return self._test_store_helper(xp, dtype, 'rfft')
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_irfft_store(self, xp, dtype):
         return self._test_store_helper(xp, dtype, 'irfft')
 
-    @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
-    def test_fft_load_store(self, xp, dtype):
-        fft = xp.fft.fft
-        if dtype == np.complex64:
-            code = _load_callback
-            cb_load = self._set_load_cb(
-                code, 'x.x', 'cufftComplex', 'cufftCallbackLoadC')
-            code = _store_callback
-            cb_store = self._set_store_cb(
-                code, 'x.y', 'cufftComplex', 'cufftCallbackStoreC')
-        else:
-            code = _load_callback
-            cb_load = self._set_load_cb(
-                code, 'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ')
-            code = _store_callback
-            cb_store = self._set_store_cb(
-                code, 'x.y', 'cufftDoubleComplex', 'cufftCallbackStoreZ')
+    def _test_load_store_helper(self, xp, dtype, fft_func):
+        fft = getattr(xp.fft, fft_func)
+        load_code = _load_callback
+        store_code = _store_callback
+        if fft_func in ('fft', 'ifft'):
+            if dtype == np.complex64:
+                load_types = ('x.x', 'cufftComplex', 'cufftCallbackLoadC')
+                store_types = ('x.y', 'cufftComplex', 'cufftCallbackStoreC')
+            else:
+                load_types = (
+                    'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ')
+                store_types = (
+                    'x.y', 'cufftDoubleComplex', 'cufftCallbackStoreZ')
+        elif fft_func == 'rfft':
+            if dtype == np.float32:
+                load_types = ('x', 'cufftReal', 'cufftCallbackLoadR')
+                store_types = ('x.y', 'cufftComplex', 'cufftCallbackStoreC')
+            else:
+                load_types = ('x', 'cufftDoubleReal', 'cufftCallbackLoadD')
+                store_types = (
+                    'x.y', 'cufftDoubleComplex', 'cufftCallbackStoreZ')
+        else:  # irfft
+            if dtype == np.complex64:
+                load_types = ('x.x', 'cufftComplex', 'cufftCallbackLoadC')
+                store_types = ('x', 'cufftReal', 'cufftCallbackStoreR')
+            else:
+                load_types = (
+                    'x.x', 'cufftDoubleComplex', 'cufftCallbackLoadZ')
+                store_types = ('x', 'cufftDoubleReal', 'cufftCallbackStoreD')
+        cb_load = self._set_load_cb(load_code, *load_types)
+        cb_store = self._set_store_cb(store_code, *store_types)
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is np:
             a.real *= 2.5
             out = fft(a, n=self.n, norm=self.norm)
-            out.imag /= 3.8
-            if dtype in (np.float32, np.complex64):
-                out = out.astype(np.complex64)
+            if fft_func != 'irfft':
+                out.imag /= 3.8
+                if dtype in (np.float32, np.complex64):
+                    out = out.astype(np.complex64)
+            else:
+                out /= 3.8
+                if dtype in (np.float32, np.complex64):
+                    out = out.astype(np.float32)
         else:
             with xp.fft.config.set_cufft_callbacks(
                     cb_load=cb_load, cb_store=cb_store):
                 out = fft(a, n=self.n, norm=self.norm)
 
         return out
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    def test_fft_load_store(self, xp, dtype):
+        return self._test_load_store_helper(xp, dtype, 'fft')
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    def test_ifft_load_store(self, xp, dtype):
+        return self._test_load_store_helper(xp, dtype, 'ifft')
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    def test_rfft_load_store(self, xp, dtype):
+        return self._test_load_store_helper(xp, dtype, 'rfft')
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    def test_irfft_load_store(self, xp, dtype):
+        return self._test_load_store_helper(xp, dtype, 'irfft')
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
