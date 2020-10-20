@@ -148,3 +148,99 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
     wk = w[idx[-k:]]
     sk = s[:, idx[-k:]]
     return wk, sk
+
+
+def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
+         return_singular_vectors=True):
+    """Finds the largest ``k`` singular values/vectors for a sparse matrix.
+
+    Args:
+        a (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): A real or complex
+            array with dimension ``(m, n)``
+        k (int): The number of singular values/vectors to compute. Must be
+            ``1 <= k < min(m, n)``.
+        ncv (int): The number of Lanczos vectors generated. Must be
+            ``k + 1 < ncv < min(m, n)``. If ``None``, default value is used.
+        tol (float): Tolerance for singular values. If ``0``, machine precision
+            is used.
+        which (str): Only 'LM' is supported. 'LM': finds ``k`` largest singular
+            values.
+        maxiter (int): Maximum number of Lanczos update iterations.
+            If ``None``, default value is used.
+        return_singular_vectors (bool): If ``True``, returns singular vectors
+            in addition to singular values.
+
+    Returns:
+        tuple:
+            If ``return_singular_vectors is True``, it returns ``u``, ``s`` and
+            ``vt`` where ``u`` is left singular vectors, ``s`` is singular
+            values and ``vt`` is right singular vectors. Otherwise, it returns
+            only ``s``.
+
+    .. seealso:: :func:`scipy.sparse.linalg.svds`
+
+    .. note::
+        This is a naive implementation using cupyx.scipy.sparse.linalg.eigsh as
+        an eigensolver on ``a.H @ a`` or ``a @ a.H``.
+
+    """
+    if a.ndim != 2:
+        raise ValueError('expected 2D (shape: {})'.format(a.shape))
+    if a.dtype.char not in 'fdFD':
+        raise TypeError('unsupprted dtype (actual: {})'.format(a.dtype))
+    m, n = a.shape
+    if k <= 0:
+        raise ValueError('k must be greater than 0 (actual: {})'.format(k))
+    if k >= min(m, n):
+        raise ValueError('k must be smaller than min(m, n) (actual: {})'
+                         ''.format(k))
+
+    aH = a.conj().T
+    if m >= n:
+        aa = aH @ a
+    else:
+        aa = a @ aH
+
+    if return_singular_vectors:
+        w, x = eigsh(aa, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
+                     return_eigenvectors=True)
+    else:
+        w = eigsh(aa, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
+                  return_eigenvectors=False)
+
+    w = cupy.maximum(w, 0)
+    t = x.dtype.char.lower()
+    factor = {'f': 1e3, 'd': 1e6}
+    cond = factor[t] * numpy.finfo(t).eps
+    cutoff = cond * cupy.max(w)
+    above_cutoff = (w > cutoff)
+    n_large = above_cutoff.sum()
+    s = cupy.zeros_like(w)
+    s[:n_large] = cupy.sqrt(w[above_cutoff])
+    if not return_singular_vectors:
+        return s
+
+    x = x[:, above_cutoff]
+    if m >= n:
+        v = x
+        u = a @ v / s[:n_large]
+    else:
+        u = x
+        v = aH @ u / s[:n_large]
+    if n_large < k:
+        u = _augmented_orthnormal_cols(u, k - n_large)
+        v = _augmented_orthnormal_cols(v, k - n_large)
+
+    return u, s, v.conj().T
+
+
+def _augmented_orthnormal_cols(x, n_aug):
+    m, n = x.shape
+    y = cupy.empty((m, n + n_aug), dtype=x.dtype)
+    y[:, :n] = x
+    for i in range(n, n + n_aug):
+        v = cupy.random.random((m, )).astype(x.dtype)
+        v -= v @ y[:, :i].conj() @ y[:, :i].T
+        v = v / cupy.linalg.norm(v)
+        y[:, i] = v
+    return y
