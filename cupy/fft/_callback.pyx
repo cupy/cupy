@@ -369,7 +369,7 @@ cdef class set_cufft_callbacks:
     .. note::
         Below are the *runtime* requirements for using this feature:
 
-            * Cython
+            * cython >= 0.29.0
             * A host compiler that supports C++11 and above; might need to set
               up the ``CXX`` environment variable.
             * ``nvcc`` and the full CUDA Toolkit. Note that the ``cudatoolkit``

@@ -1395,7 +1395,7 @@ def _set_store_cb(code, element, data_type, callback_type, aux_type=None):
     'shape': [(10, 7), (10,), (10, 10)],
     'norm': [None, 'ortho'],
 }))
-@testing.with_requires('cython')
+@testing.with_requires('cython>=0.29.0')
 @testing.gpu
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'hipFFT does not support callbacks')
@@ -1707,7 +1707,7 @@ class Test1dCallbacks(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
 )
-@testing.with_requires('cython')
+@testing.with_requires('cython>=0.29.0')
 @testing.gpu
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'hipFFT does not support callbacks')
