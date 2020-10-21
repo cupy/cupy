@@ -683,10 +683,6 @@ class RandomState(object):
         n_sample = functools.reduce(operator.mul, size, 1)
         if n_sample == 0:
             return cupy.empty(size, dtype=dtype)
-        elif n_sample - 1 <= _UINT32_MAX:
-            idx_dtype = numpy.uint32
-        else:
-            idx_dtype = numpy.uint64
 
         sample = cupy.empty((n_sample,), dtype=dtype)
         # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
@@ -694,17 +690,10 @@ class RandomState(object):
         curand.generate(self._generator, sample.data.ptr, size32)
 
         mx1 = mx + 1
-        if mx1 == (1 << (mx1.bit_length() - 1)):
-            mask = (1 << mx.bit_length()) - 1
-            sample &= mask
-        else:
+        if mx1 != (1 << (mx1.bit_length() - 1)):
             # Get index of samples that exceed the upper limit
-            ng_indices = cupy.empty((n_sample,), dtype=idx_dtype)
-            count = cupy.zeros((1, ), dtype=idx_dtype)
-            self._get_indices(sample, upper_limit, False, n_sample,
-                              ng_indices, count)
-            n_ng = int(count[0])
-            ng_indices = ng_indices[:n_ng]
+            ng_indices = self._get_indices(sample, upper_limit, False)
+            n_ng = ng_indices.size
 
             while n_ng > 0:
                 n_supplement = max(n_ng * 2, 1024)
@@ -715,38 +704,42 @@ class RandomState(object):
                                 n_supplement)
 
                 # Get index of supplements that are within the upper limit
-                ok_indices = cupy.empty((n_ng,), dtype=idx_dtype)
-                count = cupy.zeros((1, ), dtype=idx_dtype)
-                self._get_indices(supplement, upper_limit, True, n_ng,
-                                  ok_indices, count)
-                n_ok = int(count[0])
+                ok_indices = self._get_indices(supplement, upper_limit, True)
+                n_ok = ok_indices.size
 
                 # Replace the values that exceed the upper limit
                 if n_ok >= n_ng:
-                    sample[ng_indices] = supplement[ok_indices]
+                    sample[ng_indices] = supplement[ok_indices[:n_ng]]
                     n_ng = 0
                 else:
-                    sample[ng_indices[:n_ok]] = supplement[ok_indices[:n_ok]]
+                    sample[ng_indices[:n_ok]] = supplement[ok_indices]
                     ng_indices = ng_indices[n_ok:]
                     n_ng -= n_ok
-
             sample %= mx1
+        else:
+            mask = (1 << mx.bit_length()) - 1
+            sample &= mask
 
         return sample.reshape(size)
 
-    _get_indices = core.ElementwiseKernel(
-        'I sample, I upper_limit, bool target_condition, int64 n_indices',
-        'raw U indices, raw U count',
+    def _get_indices(self, sample, upper_limit, cond):
+        dtype = numpy.uint32 if sample.size < 2**32 else numpy.uint64
+        flags = (sample <= upper_limit) if cond else (sample > upper_limit)
+        csum = cupy.cumsum(flags, dtype=dtype)
+        size = int(csum[-1])
+        del flags
+        indices = cupy.empty((size,), dtype=dtype)
+        self._kernel_get_indices(csum, indices, size=size)
+        return indices
+
+    _kernel_get_indices = core.ElementwiseKernel(
+        'raw U csum', 'raw U indices',
         '''
-        bool condition = (sample <= upper_limit);
-        if (condition == target_condition) {
-            long j = atomicAdd(&(count[0]), 1);
-            if (j < n_indices) {
-                indices[j] = i;
-            }
-        }
+        int j = 0;
+        if (i > 0) { j = csum[i-1]; }
+        if (csum[i] > j) { indices[j] = i; }
         ''',
-        'cupy_mark_ng_points')
+        'cupy_get_indices_2nd')
 
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
