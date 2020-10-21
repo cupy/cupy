@@ -335,13 +335,13 @@ def variance(input, labels=None, index=None):
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
 
+    input, labels = cupy.broadcast_arrays(input, labels)
+
     if index is None:
         return calc_var_with_intermediate_float(input[labels > 0])
 
     if cupy.isscalar(index):
         return calc_var_with_intermediate_float(input[labels == index])
-
-    input, labels = cupy.broadcast_arrays(input, labels)
 
     if not isinstance(index, cupy.ndarray):
         if not isinstance(index, int):
@@ -403,10 +403,10 @@ def sum(input, labels=None, index=None):
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
 
+    input, labels = cupy.broadcast_arrays(input, labels)
+
     if index is None:
         return input[labels != 0].sum()
-
-    input, labels = cupy.broadcast_arrays(input, labels)
 
     if not isinstance(index, cupy.ndarray):
         if not isinstance(index, int):
@@ -475,13 +475,13 @@ def mean(input, labels=None, index=None):
     if not isinstance(labels, cupy.ndarray):
         raise TypeError('label must be cupy.ndarray')
 
+    input, labels = cupy.broadcast_arrays(input, labels)
+
     if index is None:
         return calc_mean_with_intermediate_float(input[labels > 0])
 
     if cupy.isscalar(index):
         return calc_mean_with_intermediate_float(input[labels == index])
-
-    input, labels = cupy.broadcast_arrays(input, labels)
 
     if not isinstance(index, cupy.ndarray):
         if not isinstance(index, int):
