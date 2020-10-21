@@ -718,10 +718,11 @@ def for_dtypes(dtypes, name='dtype'):
     by passing the each element of ``dtypes`` to the named
     argument.
     """
+    check_available()
+
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
-            check_available()
             for dtype in dtypes:
                 try:
                     kw[name] = numpy.dtype(dtype).type
@@ -937,6 +938,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     If the value is set to ``'1'``, it behaves as if ``full=True``, and
     otherwise ``full=False``.
     """
+    check_available()
 
     types = list(types)
 
@@ -964,7 +966,6 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
-            check_available()
             for dtypes in combination:
                 kw_copy = kw.copy()
                 kw_copy.update(dtypes)
