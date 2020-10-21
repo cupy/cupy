@@ -727,6 +727,8 @@ def for_dtypes(dtypes, name='dtype'):
                 try:
                     kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
+                except unittest.SkipTest as e:
+                    print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except _pytest.outcomes.Skipped as e:
                     print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
@@ -912,6 +914,12 @@ def for_complex_dtypes(name='dtype'):
     return for_dtypes(_complex_dtypes, name=name)
 
 
+def _print_skipped_combination(dtypes, e):
+    msg = ', '.join(
+        '{} = {}'.format(name, dtype) for name, dtype in dtypes.items())
+    print('skipped: {} ({})'.format(msg, e))
+
+
 def for_dtypes_combination(types, names=('dtype',), full=None):
     """Decorator that checks the fixture with a product set of dtypes.
 
@@ -972,11 +980,10 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
                 try:
                     impl(self, *args, **kw_copy)
+                except unittest.SkipTest as e:
+                    _print_skipped_combination(dtypes, e)
                 except _pytest.outcomes.Skipped as e:
-                    msg = ', '.join(
-                        '{} = {}'.format(name, dtype)
-                        for name, dtype in dtypes.items())
-                    print('skipped: {} ({})'.format(msg, e))
+                    _print_skipped_combination(dtypes, e)
                 except Exception:
                     print(dtypes)
                     raise
