@@ -511,6 +511,9 @@ class TestPolyArithmeticDiffTypes(unittest.TestCase):
     'rcond': [None, 0.5, 1e-15],
     'weighted': [True, False]
 }))
+@pytest.mark.skipif(
+    cupy.cuda.runtime.runtimeGetVersion() < 10000,
+    reason='polyfit has issues with CUDA 9.x')
 class TestPolyfitParametersCombinations(unittest.TestCase):
 
     def _full_fit(self, xp, dtype):
