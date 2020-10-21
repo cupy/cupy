@@ -386,7 +386,7 @@ cdef bint can_use_device_reduce(ndarray x, int op, tuple out_axis, dtype=None):
         and x.size <= 0x7fffffff)  # until we resolve cupy/cupy#3309
 
 
-cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(
+cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(  # noqa: E211
         ndarray x, int op, tuple reduce_axis, tuple out_axis,
         dtype=None, str order='C'):
     if not _cub_reduce_dtype_compatible(x.dtype, op, dtype):
