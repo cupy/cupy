@@ -100,7 +100,6 @@ class BinaryErosionAndDilation1d(unittest.TestCase):
         return self._filter(xp, scp, x)
 
 
-
 @testing.parameterize(*(
     testing.product({
         'x_dtype': [numpy.bool, numpy.float64],
