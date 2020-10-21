@@ -8,7 +8,12 @@ import unittest
 from unittest import mock
 import warnings
 
-import _pytest
+try:
+    import _pytest.outcomes
+    _error = None
+except ImportError as e:
+    _error = e
+
 import numpy
 
 import cupy
@@ -17,6 +22,18 @@ from cupy.testing import array
 from cupy.testing import parameterized
 import cupyx
 import cupyx.scipy.sparse
+
+
+def is_available():
+    return _error is None
+
+
+def check_available():
+    if _error is not None:
+        raise RuntimeError('''\
+{} is not available.
+
+Reason: {}: {}'''.format(__name__, type(_error).__name__, _error))
 
 
 def _call_func(self, impl, args, kw):
@@ -704,6 +721,7 @@ def for_dtypes(dtypes, name='dtype'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
+            check_available()
             for dtype in dtypes:
                 try:
                     kw[name] = numpy.dtype(dtype).type
@@ -946,6 +964,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
+            check_available()
             for dtypes in combination:
                 kw_copy = kw.copy()
                 kw_copy.update(dtypes)
