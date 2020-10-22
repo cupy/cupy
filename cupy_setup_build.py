@@ -90,7 +90,6 @@ cuda_files = [
 ]
 
 if use_hip:
-    # We handle nvtx (and likely any other future support) here, because
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
@@ -322,6 +321,20 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
             'check_method': build.check_thrust_version,
             'version_method': build.get_thrust_version,
         })
+
+
+MODULES.append({
+    'name': 'random',
+    'file': [
+        ('cupy.random._bit_generators', ['cupy/random/cupy_distributions.cu']),
+    ],
+    'include': [
+    ],
+    'libraries': [
+        'cudart',
+        'curand',
+    ],
+})
 
 
 def ensure_module_file(file):
