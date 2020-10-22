@@ -413,8 +413,7 @@ class TestArgwhereZeroDimension(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_argwhere(self, xp, dtype):
         array = xp.array(self.value, dtype=dtype)
-        with testing.assert_warns(DeprecationWarning):
-            return xp.argwhere(array)
+        return xp.argwhere(array)
 
 
 @testing.gpu

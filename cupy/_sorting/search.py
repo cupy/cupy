@@ -118,8 +118,6 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
 
     return _statistics._nanargmin(a, axis, dtype, out, keepdims)
 
-# TODO(okuta): Implement argwhere
-
 
 def nonzero(a):
     """Return the indices of the elements that are non-zero.
@@ -232,10 +230,6 @@ def argwhere(a):
 
     """
     _util.check_array(a, arg_name='a')
-    if a.ndim == 0:
-        warnings.warn(
-            'calling argwhere on 0d arrays is deprecated',
-            DeprecationWarning)
     return _indexing._ndarray_argwhere(a)
 
 
