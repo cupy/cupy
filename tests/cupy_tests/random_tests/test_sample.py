@@ -47,7 +47,7 @@ class TestRandint2(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_bound_1(self):
-        vals = [random.randint(0, 10, (2, 3)).get() for _ in range(10)]
+        vals = [random.randint(0, 10, (2, 3)).get() for _ in range(20)]
         for val in vals:
             self.assertEqual(val.shape, (2, 3))
         self.assertEqual(min(_.min() for _ in vals), 0)
