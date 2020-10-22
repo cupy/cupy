@@ -12,6 +12,7 @@ cdef class RawKernel:
         bint translate_cucomplex
         list _kernel_cache
         readonly str __name__
+        int raw_ver
 
 
 cdef class RawModule:
