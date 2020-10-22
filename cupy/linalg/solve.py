@@ -471,3 +471,65 @@ def tensorinv(a, ind=2):
     a = a.reshape(prod, -1)
     a_inv = inv(a)
     return a_inv.reshape(*invshape)
+
+
+def cho_solve(c, b):
+    """Solve the linear equations A x = b, given the Cholesky factorization of A.
+
+    Args:
+        c (cupy.ndarray):
+            The matrix with dimension (M, M)
+            Cholesky factorization of a, as given by cupy.linalg.cholesky
+        b (cupy.ndarray):
+            The matrix with dimension (M, N) or (M)
+            Right-hand side
+
+    Returns:
+        cupy.ndarray:
+            The matrix with dimension (M, N) or (M)
+
+    """
+    util._assert_cupy_array(c)
+    util._assert_cupy_array(b)
+
+    if c.ndim != 2:
+        raise ValueError(
+            'c must have two dims')
+
+    m, n = c.shape
+    if m != n:
+        raise ValueError(
+            'c must have (M, M) shape')
+
+    if b.ndim > 2 or b.shape[0] != m:
+        raise ValueError(
+            'b must have (M, N) or (M) shape')
+
+    dtype = numpy.promote_types(c.dtype.char, 'f')
+
+    if dtype == 'f':
+        t = 's'
+    elif dtype == 'd':
+        t = 'd'
+    elif dtype == 'F':
+        t = 'c'
+    elif dtype == 'D':
+        t = 'z'
+    else:
+        raise ValueError('unsupported dtype (actual: {})'.format(dtype))
+
+    if c.flags.f_contiguous:
+        c = c.astype(dtype, order='C')
+
+    x = b.astype(dtype, order='F', copy=True)
+    b_shape = (b.shape[0], 1) if b.ndim == 1 else b.shape
+
+    uplo = cublas.CUBLAS_FILL_MODE_UPPER
+    handle = device.get_cusolver_handle()
+    func = getattr(cusolver, t + 'potrs')
+
+    dev_info = cupy.empty(1, dtype=numpy.int32)
+    func(handle, uplo, n, b_shape[1], c.data.ptr, n,
+         x.data.ptr, n, dev_info.data.ptr)
+
+    return x

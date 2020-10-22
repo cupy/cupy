@@ -36,3 +36,4 @@ from cupy.linalg.solve import lstsq  # NOQA
 from cupy.linalg.solve import inv  # NOQA
 from cupy.linalg.solve import pinv  # NOQA
 from cupy.linalg.solve import tensorinv  # NOQA
+from cupy.linalg.solve import cho_solve # NOQA
