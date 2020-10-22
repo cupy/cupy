@@ -683,11 +683,7 @@ class RandomState(object):
         n_sample = functools.reduce(operator.mul, size, 1)
         if n_sample == 0:
             return cupy.empty(size, dtype=dtype)
-
-        sample = cupy.empty((n_sample,), dtype=dtype)
-        # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
-        size32 = sample.view(dtype=numpy.uint32).size
-        curand.generate(self._generator, sample.data.ptr, size32)
+        sample = self._curand_generage(n_sample, dtype)
 
         mx1 = mx + 1
         if mx1 != (1 << (mx1.bit_length() - 1)):
@@ -697,11 +693,7 @@ class RandomState(object):
 
             while n_ng > 0:
                 n_supplement = max(n_ng * 2, 1024)
-                supplement = cupy.empty((n_supplement,), dtype=dtype)
-                # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
-                size32 = supplement.view(dtype=numpy.uint32).size
-                curand.generate(self._generator, supplement.data.ptr,
-                                n_supplement)
+                supplement = self._curand_generage(n_supplement, dtype)
 
                 # Get index of supplements that are within the upper limit
                 ok_indices = self._get_indices(supplement, upper_limit, True)
@@ -722,14 +714,20 @@ class RandomState(object):
 
         return sample.reshape(size)
 
+    def _curand_generage(self, num, dtype):
+        sample = cupy.empty((num,), dtype=dtype)
+        # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
+        size32 = sample.view(dtype=numpy.uint32).size
+        curand.generate(self._generator, sample.data.ptr, size32)
+        return sample
+
     def _get_indices(self, sample, upper_limit, cond):
         dtype = numpy.uint32 if sample.size < 2**32 else numpy.uint64
         flags = (sample <= upper_limit) if cond else (sample > upper_limit)
         csum = cupy.cumsum(flags, dtype=dtype)
-        size = int(csum[-1])
         del flags
-        indices = cupy.empty((size,), dtype=dtype)
-        self._kernel_get_indices(csum, indices, size=size)
+        indices = cupy.empty((int(csum[-1]),), dtype=dtype)
+        self._kernel_get_indices(csum, indices, size=csum.size)
         return indices
 
     _kernel_get_indices = core.ElementwiseKernel(
@@ -739,7 +737,7 @@ class RandomState(object):
         if (i > 0) { j = csum[i-1]; }
         if (csum[i] > j) { indices[j] = i; }
         ''',
-        'cupy_get_indices_2nd')
+        'cupy_get_indices')
 
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
