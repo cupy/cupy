@@ -44,7 +44,7 @@ class TestPolynomial(unittest.TestCase):
                 xp.polynomial.polynomial.polyvander(a, 2.6)
 
     @testing.with_requires('numpy>=1.17')
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyvander_integral_float_degree(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
