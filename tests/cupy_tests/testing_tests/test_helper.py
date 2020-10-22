@@ -297,7 +297,7 @@ class TestSkip(unittest.TestCase):
 
     def _skip(self, reason):
         if self.framework == 'unittest':
-            raise unittest.SkipTest(reason)
+            self.skipTest(reason)
         else:
             pytest.skip(reason)
 
