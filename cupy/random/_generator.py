@@ -683,7 +683,7 @@ class RandomState(object):
         n_sample = functools.reduce(operator.mul, size, 1)
         if n_sample == 0:
             return cupy.empty(size, dtype=dtype)
-        sample = self._curand_generage(n_sample, dtype)
+        sample = self._curand_generate(n_sample, dtype)
 
         mx1 = mx + 1
         if mx1 != (1 << (mx1.bit_length() - 1)):
@@ -693,7 +693,7 @@ class RandomState(object):
 
             while n_ng > 0:
                 n_supplement = max(n_ng * 2, 1024)
-                supplement = self._curand_generage(n_supplement, dtype)
+                supplement = self._curand_generate(n_supplement, dtype)
 
                 # Get index of supplements that are within the upper limit
                 ok_indices = self._get_indices(supplement, upper_limit, True)
@@ -714,7 +714,7 @@ class RandomState(object):
 
         return sample.reshape(size)
 
-    def _curand_generage(self, num, dtype):
+    def _curand_generate(self, num, dtype):
         sample = cupy.empty((num,), dtype=dtype)
         # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
         size32 = sample.view(dtype=numpy.uint32).size
