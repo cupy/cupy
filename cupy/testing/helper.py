@@ -8,13 +8,6 @@ import unittest
 from unittest import mock
 import warnings
 
-_skip_classes = unittest.SkipTest,
-try:
-    import _pytest.outcomes
-    _skip_classes += _pytest.outcomes.Skipped,
-except ImportError as e:
-    pass
-
 import numpy
 
 import cupy
@@ -23,6 +16,13 @@ from cupy.testing import array
 from cupy.testing import parameterized
 import cupyx
 import cupyx.scipy.sparse
+
+_skip_classes = unittest.SkipTest,
+try:
+    import _pytest.outcomes
+    _skip_classes += _pytest.outcomes.Skipped,
+except ImportError:
+    pass
 
 
 def _call_func(self, impl, args, kw):
