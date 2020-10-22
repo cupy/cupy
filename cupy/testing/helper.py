@@ -8,11 +8,12 @@ import unittest
 from unittest import mock
 import warnings
 
+_skip_classes = unittest.SkipTest,
 try:
     import _pytest.outcomes
-    _error = None
+    _skip_classes += _pytest.outcomes.Skipped,
 except ImportError as e:
-    _error = e
+    pass
 
 import numpy
 
@@ -22,18 +23,6 @@ from cupy.testing import array
 from cupy.testing import parameterized
 import cupyx
 import cupyx.scipy.sparse
-
-
-def is_available():
-    return _error is None
-
-
-def check_available():
-    if _error is not None:
-        raise RuntimeError('''\
-{} is not available.
-
-Reason: {}: {}'''.format(__name__, type(_error).__name__, _error))
 
 
 def _call_func(self, impl, args, kw):
@@ -718,8 +707,6 @@ def for_dtypes(dtypes, name='dtype'):
     by passing the each element of ``dtypes`` to the named
     argument.
     """
-    check_available()
-
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
@@ -727,9 +714,7 @@ def for_dtypes(dtypes, name='dtype'):
                 try:
                     kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
-                except unittest.SkipTest as e:
-                    print('skipped: {} = {} ({})'.format(name, dtype, e))
-                except _pytest.outcomes.Skipped as e:
+                except _skip_classes as e:
                     print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
                     print(name, 'is', dtype)
@@ -914,12 +899,6 @@ def for_complex_dtypes(name='dtype'):
     return for_dtypes(_complex_dtypes, name=name)
 
 
-def _print_skipped_combination(dtypes, e):
-    msg = ', '.join(
-        '{} = {}'.format(name, dtype) for name, dtype in dtypes.items())
-    print('skipped: {} ({})'.format(msg, e))
-
-
 def for_dtypes_combination(types, names=('dtype',), full=None):
     """Decorator that checks the fixture with a product set of dtypes.
 
@@ -946,8 +925,6 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     If the value is set to ``'1'``, it behaves as if ``full=True``, and
     otherwise ``full=False``.
     """
-    check_available()
-
     types = list(types)
 
     if len(types) == 1:
@@ -980,10 +957,11 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
                 try:
                     impl(self, *args, **kw_copy)
-                except unittest.SkipTest as e:
-                    _print_skipped_combination(dtypes, e)
-                except _pytest.outcomes.Skipped as e:
-                    _print_skipped_combination(dtypes, e)
+                except _skip_classes as e:
+                    msg = ', '.join(
+                        '{} = {}'.format(name, dtype)
+                        for name, dtype in dtypes.items())
+                    print('skipped: {} ({})'.format(msg, e))
                 except Exception:
                     print(dtypes)
                     raise
