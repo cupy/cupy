@@ -198,7 +198,7 @@ class _RuntimeInfo(object):
             ('NumPy Version', self.numpy_version),
             ('SciPy Version', self.scipy_version),
             ('Cython Build Version', self.cython_build_version),
-            ('Cython Version', self.cython_version),
+            ('Cython Runtime Version', self.cython_version),
             ('CUDA Root', self.cuda_path),
 
             ('CUDA Build Version', self.cuda_build_version),
