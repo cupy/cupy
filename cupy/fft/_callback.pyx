@@ -140,10 +140,12 @@ cdef class _CallbackManager:
         cdef str path
         _set_cupy_paths()
 
-        # For hash; note this is independent of the plan to be created
-        keys = (_cc, arch, _build_ver, _cufft_ver, _ext_suffix, _cupy_ver,
-                cb_load, cb_store)
-        keys = '%s %s %s %s %s %s %s %s' % keys
+        # For hash; note this is independent of the plan to be created, and
+        # only depends on the given load/store callbacks and the runtime
+        # environment
+        keys = (_cc, _nvcc, arch, _build_ver, _cufft_ver, _cupy_ver,
+                _python_include, cb_load, cb_store)
+        keys = '%s %s %s %s %s %s %s %s %s' % keys
 
         # Generate module filename: all modules with the identical callbacks
         # are considered identical regardless of which plan was actually
