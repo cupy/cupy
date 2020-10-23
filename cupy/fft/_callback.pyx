@@ -39,10 +39,22 @@ cdef inline _set_cupy_paths():
         _source_dir = _cupy_root + '/cuda/'
 
 
+cdef inline _set_nvcc_path():
+    # get_nvcc_path() could be a long string like "ccache nvcc ..."
+    cdef str nvcc = None
+    global _nvcc
+    if _nvcc == []:
+        nvcc = get_nvcc_path()
+        if nvcc is not None:
+            _nvcc = nvcc.split(' ')
+        else:
+            _nvcc = None
+
+
 # information needed for building an external module
 cdef list _cc = sysconfig.get_config_var('CXX').split(' ')
 cdef str _python_include = sysconfig.get_path('include')
-cdef str _nvcc = get_nvcc_path()
+cdef list _nvcc = []
 cdef str _cuda_path = get_cuda_path()
 cdef str _cuda_include = None  # workaround for Read the Docs...
 if _cuda_path is not None:
@@ -113,6 +125,7 @@ cdef class _CallbackManager:
             raise ValueError('need to specify d_loadCallbackPtr in cb_load')
         if cb_store and 'd_storeCallbackPtr' not in cb_store:
             raise ValueError('need to specify d_storeCallbackPtr in cb_store')
+        _set_nvcc_path()
         if _nvcc is None:
             raise RuntimeError('nvcc is required but not found')
         if cb_load_aux_arr is not None:
@@ -208,11 +221,11 @@ cdef class _CallbackManager:
                     dev_store_callback_ker=cb_store)
                 f.write(support)
             obj_dev = tempdir + mod_name + '_dev.o'
-            cmd = [_nvcc, '-ccbin', _cc[0],
-                   '-arch=sm_'+arch, '-dc',
-                   '-I' + _cupy_include,
-                   '-c', tempdir + '/cupy_cufftXt.cu',
-                   '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
+            cmd = _nvcc + ['-ccbin', _cc[0],
+                           '-arch=sm_'+arch, '-dc',
+                           '-I' + _cupy_include,
+                           '-c', tempdir + '/cupy_cufftXt.cu',
+                           '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
             if self.cb_load:
                 cmd.append('-DHAS_LOAD_CALLBACK')
             if self.cb_store:
@@ -237,11 +250,11 @@ cdef class _CallbackManager:
             # Use nvcc to link and generate a shared library, and place it in
             # the disk cache
             # WARNING: CANNOT use host compiler to link!
-            p = subprocess.run([_nvcc, '-ccbin', _cc[0],
-                                '-shared', '-arch=sm_'+arch,
-                                obj_dev, obj_host,
-                                '-lcufft_static', '-lculibos', '-lpthread',
-                                '-o', path],
+            p = subprocess.run(_nvcc + ['-ccbin', _cc[0],
+                                        '-shared', '-arch=sm_'+arch,
+                                        obj_dev, obj_host,
+                                        '-lcufft_static', '-lculibos',
+                                        '-lpthread', '-o', path],
                                env=os.environ)
             p.check_returncode()
 
