@@ -18,19 +18,26 @@ import cupyx
 import cupyx.scipy.sparse
 
 _skip_classes = unittest.SkipTest,
+_is_pytest_available = False
 try:
     import _pytest.outcomes
     _skip_classes += _pytest.outcomes.Skipped,
+    _is_pytest_available = True
 except ImportError:
     pass
 
 
 def _call_func(self, impl, args, kw):
+    # Note that `_pytest.outcomes.Skipped` is derived from BaseException.
+    exceptions = Exception,
+    if _is_pytest_available:
+        exceptions += _pytest.outcomes.Skipped,
+
     try:
         result = impl(self, *args, **kw)
         error = None
         tb = None
-    except Exception as e:
+    except exceptions as e:
         tb = e.__traceback__
         if tb.tb_next is None:
             # failed before impl is called, e.g. invalid kw
@@ -127,8 +134,12 @@ def _fail_test_with_unexpected_errors(
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
                             numpy_tb, accept_error=False):
     # Skip the test if both raised SkipTest.
-    if (isinstance(cupy_error, unittest.SkipTest)
-            and isinstance(numpy_error, unittest.SkipTest)):
+    if (isinstance(cupy_error, _skip_classes)
+            and isinstance(numpy_error, _skip_classes)):
+        if cupy_error.__class__ is not numpy_error.__class__:
+            raise AssertionError(
+                'Both numpy and cupy were skipped but with different '
+                'exceptions.')
         if cupy_error.args != numpy_error.args:
             raise AssertionError(
                 'Both numpy and cupy were skipped but with different causes.')
