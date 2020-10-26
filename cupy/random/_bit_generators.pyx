@@ -2,7 +2,7 @@ import threading
 
 import numpy
 
-from libc.stdint cimport intptr_t, uint64_t
+from libc.stdint cimport intptr_t, uint64_t, uint32_t
 
 import cupy
 from cupy.cuda import curand
@@ -10,7 +10,10 @@ from cupy.core.core cimport ndarray
 
 
 cdef extern from 'cupy_distributions.h' nogil:
-    void standard_exponential(intptr_t handle, uint64_t seed, void* out, ssize_t size);
+    void interval_32(intptr_t param, int mx, int mask, void* out, ssize_t size);
+    void interval_64(intptr_t param, uint64_t mx, uint64_t mask, void* out, ssize_t size);
+    void beta(intptr_t param, double a, double b, void* out, ssize_t size);
+    void standard_exponential(intptr_t seed, void* out, ssize_t size);
 
 
 class BitGenerator:
@@ -53,8 +56,6 @@ class MT19937(BitGenerator):
        raise RuntimeError(
            'MT19937 does not currently support offsetting the generator')
     
-    def _device_generator_handle(self):
-        return 0
 
 class XORWOW(BitGenerator):
     def __init__(self, seed=None):
@@ -64,12 +65,43 @@ class XORWOW(BitGenerator):
     def random_raw(self, size=None, out=False):
         pass
 
-    def _device_generator_handle(self):
-        return 0
+
+_UINT32_MAX = 0xffffffff
+_UINT64_MAX = 0xffffffffffffffff
+
 
 class Generator:
     def __init__(self, bit_generator):
         self._bit_generator = bit_generator 
+
+    def integers(self, low, high, size, dtype=numpy.int32, endpoint=False):
+        cdef ndarray y
+        cdef uint64_t param = <uint64_t>self._bit_generator._seed
+        cdef void* y_ptr
+
+        diff = high-low
+        if not endpoint:
+           diff -= 1
+
+        cdef uint64_t mask = (1 << diff.bit_length()) - 1
+        # TODO adjust dtype
+        if diff <= _UINT32_MAX:
+            dtype = numpy.uint32
+        elif diff <= _UINT64_MAX:
+            dtype = numpy.uint64
+        else:
+            raise ValueError(
+                'high - low must be within uint64 range (actual: {})'.format(diff))
+
+        y = ndarray(size if size is not None else (), dtype)
+        y_ptr = <void *>y.data.ptr
+        if dtype is numpy.uint32:
+            # We know that the mask fits
+            interval_32(<intptr_t>param, diff, <uint32_t>mask, y_ptr, y.size)        
+        else:
+            # we will only try and check the upper part
+            interval_64(<intptr_t>param, diff, mask, y_ptr, y.size)        
+        return low + y
 
     def beta(self, a, b, size=None, dtype=float):
         """Returns an array of samples drawn from the beta distribution.
@@ -80,15 +112,17 @@ class Generator:
             <numpy.random.mtrand.RandomState.beta>`
         """
         cdef ndarray y
+        cdef uint64_t param = <uint64_t>self._bit_generator._seed
         cdef void* y_ptr
 
         y = ndarray(size if size is not None else (), dtype)
         y_ptr = <void *>y.data.ptr
-        # standard_exponential(self._bit_generator._device_generator_handle(), self._bit_generator._seed, y_ptr, y.size)        
+        beta(<intptr_t>param, a, b, y_ptr, y.size)        
         return y
 
     def standard_exponential(self, size=None, dtype=numpy.float64, method='inv', out=None):
         cdef ndarray y
+        cdef uint64_t param = <uint64_t>self._bit_generator._seed
         cdef void* y_ptr
 
         if method == 'zig':
@@ -96,7 +130,8 @@ class Generator:
                  
         y = ndarray(size if size is not None else (), dtype)
         y_ptr = <void *>y.data.ptr
-        standard_exponential(self._bit_generator._device_generator_handle(), self._bit_generator._seed, y_ptr, y.size)        
+
+        standard_exponential(<intptr_t>param, y_ptr, y.size)        
         if out is not None:
             out[...] = y
             y = out

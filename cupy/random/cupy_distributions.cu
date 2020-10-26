@@ -7,6 +7,7 @@
 
 struct rk_state {
     __device__ virtual void init_state(int id, intptr_t param);
+    __device__ virtual uint32_t rk_int();
     __device__ virtual double rk_double();
     __device__ virtual double rk_normal();
 };
@@ -17,6 +18,9 @@ struct curand_pseudorand_state: rk_state {
     __device__ virtual void init_state(int id, intptr_t param) {
         // TOOD(ecastill) enable reuse
         curand_init(static_cast<uint64_t>(param) + id, 0, 0, &state);
+    }
+    __device__ virtual uint32_t rk_int() {
+        return  curand(&state);
     }
     __device__ virtual double rk_double() {
         return  curand_uniform(&state);
@@ -33,6 +37,9 @@ struct curand_mtgp32_state: rk_state {
     __device__ virtual void init_state(int id, intptr_t param) {
         state = reinterpret_cast<curandStateMtgp32_t*>(param);
     }
+    __device__ virtual uint32_t rk_int() {
+        return  curand(state);
+    }
     __device__ virtual double rk_double() {
         return  curand_uniform(state);
     }
@@ -40,7 +47,6 @@ struct curand_mtgp32_state: rk_state {
         return  curand_normal(state);
     }
 };
-
 
 __device__ double rk_standard_exponential(rk_state *state) {
     /* We use -log(1-U) since U is [0, 1) */
@@ -85,7 +91,6 @@ __device__ double rk_standard_gamma(rk_state *state, double shape) {
     }
 }
 
-
 __device__ double rk_beta(rk_state *state, double a, double b) {
     double Ga, Gb;
     if ((a <= 1.0) && (b <= 1.0)) {
@@ -117,6 +122,76 @@ __device__ double rk_beta(rk_state *state, double a, double b) {
 }
 
 
+__device__ int rk_interval_32(rk_state* state, int mx, int mask) {
+     int32_t sampled = state->rk_int() & mask;
+     while(sampled > mx)  {
+         sampled = state->rk_int() & mask;
+     }
+     return sampled;
+}
+
+__device__ uint32_t rk_interval_64(rk_state* state, uint64_t  mx, uint64_t mask) {
+     int32_t hi= state->rk_int();
+     int32_t lo= state->rk_int();
+     uint64_t sampled = (static_cast<uint64_t>(hi) << 32 | lo)  & mask;
+     while(sampled > mx)  {
+         hi= state->rk_int();
+         lo= state->rk_int();
+         sampled = (static_cast<uint64_t>(hi) << 32 | lo) & mask;
+     }
+     return sampled;
+}
+
+template<typename T>
+__global__ void interval_32_kernel(intptr_t param, int mx, int mask, void* out, ssize_t size) {
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    if (id < size) {
+        T random;
+        random.init_state(id, param);
+        ((int*) out)[id] = rk_interval_32(&random, mx, mask);
+    }
+    return;
+}
+
+void interval_32(intptr_t param, int mx, int mask, void* out, ssize_t size) {
+    int tpb = 256;
+    int bpg =  (size + tpb - 1) / tpb;
+    interval_32_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, mx, mask, out, size);
+}
+
+template<typename T>
+__global__ void interval_64_kernel(intptr_t param, uint64_t mx, uint64_t mask, void* out, ssize_t size) {
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    if (id < size) {
+        T random;
+        random.init_state(id, param);
+        ((int64_t*) out)[id] = rk_interval_64(&random, mx, mask);
+    }
+    return;
+}
+
+void interval_64(intptr_t param, uint64_t mx, uint64_t mask, void* out, ssize_t size) {
+    int tpb = 256;
+    int bpg =  (size + tpb - 1) / tpb;
+    interval_64_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, mx, mask, out, size);
+}
+
+template<typename T>
+__global__ void beta_kernel(intptr_t param, double a, double b, void* out, ssize_t size) {
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    if (id < size) {
+        T random;
+        random.init_state(id, param);
+        ((double*) out)[id] = rk_beta(&random, a, b);
+    }
+    return;
+}
+
+void beta(intptr_t  param, double a, double b, void* out, ssize_t size) {
+    int tpb = 256;
+    int bpg =  (size + tpb - 1) / tpb;
+    beta_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, a, b, out, size);
+}
 
 template<typename T>
 __global__ void standard_exponential_kernel(intptr_t param, void* out, ssize_t size) {
@@ -129,11 +204,8 @@ __global__ void standard_exponential_kernel(intptr_t param, void* out, ssize_t s
     return;
 }
 
-
-
-void standard_exponential(intptr_t handle, intptr_t  param, void* out, ssize_t size) {
+void standard_exponential(intptr_t  param, void* out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    curand_pseudorand_state x;
     standard_exponential_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, out, size);
 }
