@@ -195,6 +195,7 @@ numpy
 def _signed_counterpart(dtype):
     return numpy.dtype(numpy.dtype(dtype).char.lower()).type
 
+
 def _make_positive_mask(self, impl, args, kw, name, sp_name, scipy_name):
     # Returns a mask of output arrays that indicates valid elements for
     # comparison. See the comment at the caller.
