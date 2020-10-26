@@ -379,7 +379,8 @@ cpdef bint _cub_device_segmented_reduce_axis_compatible(
     return False
 
 
-cdef bint can_use_device_reduce(ndarray x, int op, tuple out_axis, dtype=None):
+cdef bint can_use_device_reduce(
+        ndarray x, int op, tuple out_axis, dtype=None) except*:
     return (
         out_axis is ()
         and _cub_reduce_dtype_compatible(x.dtype, op, dtype)
@@ -388,7 +389,7 @@ cdef bint can_use_device_reduce(ndarray x, int op, tuple out_axis, dtype=None):
 
 cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(  # noqa: E211
         ndarray x, int op, tuple reduce_axis, tuple out_axis,
-        dtype=None, str order='C'):
+        dtype=None, str order='C') except*:
     if not _cub_reduce_dtype_compatible(x.dtype, op, dtype):
         return (False, 0)
     if not _cub_device_segmented_reduce_axis_compatible(
@@ -397,7 +398,7 @@ cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(  # noqa: E211
     # until we resolve cupy/cupy#3309
     cdef Py_ssize_t contiguous_size = _preprocess_array(
         x.shape, reduce_axis, out_axis, order)
-    return contiguous_size <= 0x7fffffff, contiguous_size
+    return (contiguous_size <= 0x7fffffff, contiguous_size)
 
 
 cdef _cub_support_dtype(bint sum_mode, int dev_id):
