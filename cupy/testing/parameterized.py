@@ -74,8 +74,8 @@ def _parameterize_test_case(base, i, param):
         else:
             mb[k] = v
 
+    # Wrap test methods to generate useful error message
     def method_generator(base_method):
-        # Generates a wrapped test method
 
         @functools.wraps(base_method)
         def new_method(self, *args, **kwargs):
@@ -101,7 +101,7 @@ def _parameterize_test_case(base, i, param):
 
 
 def parameterize(*params):
-    # TODO(niboshi): Add documentation
+    # TODO(kataoka): Add documentation
     return _bundle.make_decorator(
         lambda base: _parameterize_test_case_generator(base, params))
 

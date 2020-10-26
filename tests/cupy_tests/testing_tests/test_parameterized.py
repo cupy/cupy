@@ -62,25 +62,3 @@ class TestParameterize(unittest.TestCase):
     def test_skip(self):
         # Skipping the test case should not report error.
         self.skipTest('skip')
-
-
-@testing.parameterize(
-    {'param1': 1},
-    {'param1': 2})
-@testing.parameterize(
-    {'param2': 3},
-    {'param2': 4})
-class TestParameterizeTwice(unittest.TestCase):
-    # This test only checks if each of the parameterized combinations is a
-    # member of the expected combinations. This test does not check if each
-    # of the expected combinations is actually visited by the parameterization,
-    # as there are no way to test that in a robust manner.
-
-    def test_twice(self):
-        assert hasattr(self, 'param1')
-        assert hasattr(self, 'param2')
-        assert (self.param1, self.param2) in (
-            (1, 3),
-            (1, 4),
-            (2, 3),
-            (2, 4))
