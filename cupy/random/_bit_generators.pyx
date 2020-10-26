@@ -71,6 +71,22 @@ class Generator:
     def __init__(self, bit_generator):
         self._bit_generator = bit_generator 
 
+    def beta(self, a, b, size=None, dtype=float):
+        """Returns an array of samples drawn from the beta distribution.
+
+        .. seealso::
+            :func:`cupy.random.beta` for full documentation,
+            :meth:`numpy.random.RandomState.beta
+            <numpy.random.mtrand.RandomState.beta>`
+        """
+        cdef ndarray y
+        cdef void* y_ptr
+
+        y = ndarray(size if size is not None else (), dtype)
+        y_ptr = <void *>y.data.ptr
+        # standard_exponential(self._bit_generator._device_generator_handle(), self._bit_generator._seed, y_ptr, y.size)        
+        return y
+
     def standard_exponential(self, size=None, dtype=numpy.float64, method='inv', out=None):
         cdef ndarray y
         cdef void* y_ptr
