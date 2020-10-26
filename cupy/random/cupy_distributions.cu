@@ -134,5 +134,6 @@ __global__ void standard_exponential_kernel(intptr_t param, void* out, ssize_t s
 void standard_exponential(intptr_t handle, intptr_t  param, void* out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
+    curand_pseudorand_state x;
     standard_exponential_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, out, size);
 }
