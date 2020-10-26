@@ -192,6 +192,12 @@ def _contains_signed_and_unsigned(kw):
         any(d in vs for d in _float_dtypes + _signed_dtypes)
 
 
+class SameErrorsRaised:
+
+    def __init__(self):
+        pass
+
+
 def _make_decorator(check_func, name, type_check, contiguous_check,
                     accept_error, sp_name=None, scipy_name=None,
                     check_sparse_format=True):
@@ -216,7 +222,7 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
                 _check_cupy_numpy_error(self, cupy_error, cupy_tb,
                                         numpy_error, numpy_tb,
                                         accept_error=accept_error)
-                return
+                return SameErrorsRaised()
 
             # Check returned arrays
 
@@ -282,6 +288,8 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 
                 if not skip:
                     check_func(cupy_r, numpy_r)
+
+            return None
         return test_func
     return decorator
 
@@ -703,16 +711,23 @@ def for_dtypes(dtypes, name='dtype'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
+            same_errors_raised_in_all_cases = True
             for dtype in dtypes:
                 try:
                     kw[name] = numpy.dtype(dtype).type
-                    impl(self, *args, **kw)
+                    ret = impl(self, *args, **kw)
+                    if not isinstance(ret, SameErrorsRaised):
+                        same_errors_raised_in_all_cases = False
                 except unittest.SkipTest as e:
                     print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
                     print(name, 'is', dtype)
                     raise
 
+            if same_errors_raised_in_all_cases:
+                raise AssertionError(
+                    'An accepted error was raised in all dtypes. '
+                    'Use `pytest.raises` instead of `accept_error` option.')
         return test_func
     return decorator
 
@@ -945,16 +960,23 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
+            same_errors_raised_in_all_cases = True
             for dtypes in combination:
                 kw_copy = kw.copy()
                 kw_copy.update(dtypes)
 
                 try:
-                    impl(self, *args, **kw_copy)
+                    ret = impl(self, *args, **kw_copy)
+                    if not isinstance(ret, SameErrorsRaised):
+                        same_errors_raised_in_all_cases = False
                 except Exception:
                     print(dtypes)
                     raise
 
+            if same_errors_raised_in_all_cases:
+                raise AssertionError(
+                    'An accepted error was raised in all dtype combinations. '
+                    'Use `pytest.raises` instead of `accept_error` option.')
         return test_func
     return decorator
 
@@ -1049,14 +1071,21 @@ def for_orders(orders, name='order'):
     def decorator(impl):
         @functools.wraps(impl)
         def test_func(self, *args, **kw):
+            same_errors_raised_in_all_cases = True
             for order in orders:
                 try:
                     kw[name] = order
-                    impl(self, *args, **kw)
+                    ret = impl(self, *args, **kw)
+                    if not isinstance(ret, SameErrorsRaised):
+                        same_errors_raised_in_all_cases = False
                 except Exception:
                     print(name, 'is', order)
                     raise
 
+            if same_errors_raised_in_all_cases:
+                raise AssertionError(
+                    'An accepted error was raised in all orders. '
+                    'Use `pytest.raises` instead of `accept_error` option.')
         return test_func
     return decorator
 
