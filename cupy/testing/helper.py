@@ -192,12 +192,15 @@ numpy
             cupy_error, cupy_tb, numpy_error, numpy_tb)
 
 
+def _signed_counterpart(dtype):
+    return numpy.dtype(numpy.dtype(dtype).char.lower()).type
+
 def _make_positive_mask(self, impl, args, kw, name, sp_name, scipy_name):
     # Returns a mask of output arrays that indicates valid elements for
     # comparison. See the comment at the caller.
     ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
     for k in ks:
-        kw[k] = numpy.intp
+        kw[k] = _signed_counterpart(kw[k])
     result, error, tb = _call_func_cupy(
         self, impl, args, kw, name, sp_name, scipy_name)
     assert error is None
