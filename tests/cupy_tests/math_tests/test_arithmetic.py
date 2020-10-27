@@ -1,5 +1,4 @@
 import itertools
-import unittest
 
 import numpy
 import pytest
@@ -32,7 +31,7 @@ no_complex_types = [numpy.bool] + float_types + int_types
             'floor_divide', 'fmod', 'remainder'],
     })
 ))
-class TestArithmeticRaisesWithNumpyInput(unittest.TestCase):
+class TestArithmeticRaisesWithNumpyInput:
 
     def test_raises_with_numpy_input(self):
         nargs = self.nargs
@@ -68,7 +67,7 @@ class TestArithmeticRaisesWithNumpyInput(unittest.TestCase):
         'name': ['reciprocal'],
     })
 ))
-class TestArithmeticUnary(unittest.TestCase):
+class TestArithmeticUnary:
 
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_unary(self, xp):
@@ -99,7 +98,7 @@ class TestArithmeticUnary(unittest.TestCase):
     'shape': [(3, 2), (), (3, 0, 2)],
 }))
 @testing.gpu
-class TestComplex(unittest.TestCase):
+class TestComplex:
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -266,7 +265,7 @@ class ArithmeticBinaryBase:
         'name': ['divide', 'true_divide', 'subtract'],
     })
 ))
-class TestArithmeticBinary(ArithmeticBinaryBase, unittest.TestCase):
+class TestArithmeticBinary(ArithmeticBinaryBase):
 
     def test_binary(self):
         self.use_dtype = False
@@ -315,13 +314,13 @@ class TestArithmeticBinary(ArithmeticBinaryBase, unittest.TestCase):
         'use_dtype': [True, False],
     })
 ))
-class TestArithmeticBinary2(ArithmeticBinaryBase, unittest.TestCase):
+class TestArithmeticBinary2(ArithmeticBinaryBase):
 
     def test_binary(self):
         self.check_binary()
 
 
-class TestArithmeticModf(unittest.TestCase):
+class TestArithmeticModf:
 
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
@@ -339,7 +338,7 @@ class TestArithmeticModf(unittest.TestCase):
     'shape': [(3, 2), (), (3, 0, 2)]
 }))
 @testing.gpu
-class TestBoolSubtract(unittest.TestCase):
+class TestBoolSubtract:
 
     def test_bool_subtract(self):
         xp = self.xp
