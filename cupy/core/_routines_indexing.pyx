@@ -1,5 +1,6 @@
 # distutils: language = c++
 import sys
+import warnings
 
 import numpy
 
@@ -58,9 +59,14 @@ cdef tuple _ndarray_nonzero(ndarray self):
     if ndim >= 1:
         return tuple([dst[:, i] for i in range(ndim)])
     else:
-        return ndarray((0,), dtype=numpy.int64),
+        warnings.warn(
+            'calling nonzero on 0d arrays is deprecated',
+            DeprecationWarning)
+        return cupy.zeros(dst.shape[0], numpy.int64),
 
 
+# TODO(kataoka): Rename the function because `ndarray` does not have
+# `argwhere` method
 cpdef ndarray _ndarray_argwhere(ndarray self):
     cdef Py_ssize_t count_nonzero
     cdef int ndim
@@ -84,18 +90,17 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
         scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM,
                                 dtype=scan_dtype)
         count_nonzero = int(scan_index[-1])  # synchronize!
-    ndim = max(<int>self._shape.size(), 1)
-    if count_nonzero == 0:
-        return ndarray((0, ndim), dtype=numpy_int64)
+    ndim = self._shape.size()
+    dst = ndarray((count_nonzero, ndim), dtype=numpy_int64)
+    if dst.size == 0:
+        return dst
 
-    if ndim <= 1:
-        dst = ndarray((count_nonzero, 1), dtype=numpy_int64)
+    if ndim == 1:
         _nonzero_kernel_1d(nonzero, scan_index, dst)
         return dst
     else:
         nonzero.shape = self.shape
         scan_index.shape = self.shape
-        dst = ndarray((count_nonzero, ndim), dtype=numpy_int64)
         _nonzero_kernel(nonzero, scan_index, dst)
         return dst
 
