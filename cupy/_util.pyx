@@ -12,6 +12,10 @@ import cupy
 from cupy.cuda cimport device
 
 
+DEF CYTHON_BUILD_VER = cython_version
+cython_build_ver = CYTHON_BUILD_VER
+
+
 ENABLE_SLICE_COPY = bool(
     int(os.environ.get('CUPY_EXPERIMENTAL_SLICE_COPY', 0)))
 
