@@ -10,11 +10,13 @@ from cupy.core.core cimport ndarray
 
 
 cdef extern from 'cupy_distributions.h' nogil:
+    void beta(intptr_t param, double a, double b, void* out, ssize_t size);
     void interval_32(intptr_t param, int mx, int mask, void* out, ssize_t size);
     void interval_64(intptr_t param, uint64_t mx, uint64_t mask, void* out, ssize_t size);
-    void beta(intptr_t param, double a, double b, void* out, ssize_t size);
     void standard_exponential(intptr_t seed, void* out, ssize_t size);
 
+_UINT32_MAX = 0xffffffff
+_UINT64_MAX = 0xffffffffffffffff
 
 class BitGenerator:
     def __init__(self, seed=None):
@@ -30,33 +32,6 @@ class BitGenerator:
             'Subclasses of `BitGenerator` must override `random_raw`')
 
 
-class MT19937(BitGenerator):
-    # Note that this can't be used to generate distributions inside the device
-    # as there is no support for curand device api
-    def __init__(self, seed=None):
-        super().__init__(seed)
-        method = curand.CURAND_RNG_PSEUDO_MT19937
-        self._generator = curand.createGenerator(method)
-        self._seed = self._seed_seq.generate_state(1, numpy.uint64)[0]
-        curand.setPseudoRandomGeneratorSeed(self._generator, self._seed)
-
-    def random_raw(self, size=None, out=False):
-        if size is None:
-            size = ()
-        sample = cupy.empty(size, dtype=cupy.uint32)
-        # cupy.random only uses int32 random generator
-        size_in_int = sample.dtype.itemsize // 4
-        curand.generate(
-            self._generator, sample.data.ptr, sample.size * size_in_int)
-        return sample.astype(cupy.uint64)
-
-    def jumped(self, jumps=1):
-       # advances the state as-if 2^{128} random numbers have been generated
-       # curand cant offset the mt19937 sequence.
-       raise RuntimeError(
-           'MT19937 does not currently support offsetting the generator')
-    
-
 class XORWOW(BitGenerator):
     def __init__(self, seed=None):
         super().__init__(seed)
@@ -64,11 +39,6 @@ class XORWOW(BitGenerator):
 
     def random_raw(self, size=None, out=False):
         pass
-
-
-_UINT32_MAX = 0xffffffff
-_UINT64_MAX = 0xffffffffffffffff
-
 
 class Generator:
     def __init__(self, bit_generator):

@@ -6,14 +6,7 @@
 // that can be used to abstract both curand
 // and custom generators
 
-struct rk_state {
-    __device__ virtual void init_state(int id, intptr_t param);
-    __device__ virtual uint32_t rk_int();
-    __device__ virtual double rk_double();
-    __device__ virtual double rk_normal();
-};
-
-struct curand_pseudorand_state: rk_state {
+struct curand_xor_state: rk_state {
     // Valid for  XORWOW and MRG32k3a
     curandState_t state;
     __device__ virtual void init_state(int id, intptr_t param) {
@@ -31,23 +24,6 @@ struct curand_pseudorand_state: rk_state {
     }
 };
 
-struct curand_mtgp32_state: rk_state {
-    // This is initialized from the host and given as a pointer
-    // to the device
-    curandStateMtgp32_t* state;
-    __device__ virtual void init_state(int id, intptr_t param) {
-        state = reinterpret_cast<curandStateMtgp32_t*>(param);
-    }
-    __device__ virtual uint32_t rk_int() {
-        return  curand(state);
-    }
-    __device__ virtual double rk_double() {
-        return  curand_uniform(state);
-    }
-    __device__ virtual double rk_normal() {
-        return  curand_normal(state);
-    }
-};
 
 __device__ double rk_standard_exponential(rk_state* state) {
     /* We use -log(1-U) since U is [0, 1) */
@@ -188,24 +164,23 @@ __global__ void execute_dist(intptr_t param, void* out, ssize_t size, Args... ar
 void interval_32(intptr_t param, int mx, int mask, void* out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<interval_32_functor, curand_pseudorand_state, int32_t><<<bpg, tpb>>>(param, out, size, mx, mask);
+    execute_dist<interval_32_functor, curand_xor_state, int32_t><<<bpg, tpb>>>(param, out, size, mx, mask);
 }
 
 void interval_64(intptr_t param, uint64_t mx, uint64_t mask, void* out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<interval_64_functor, curand_pseudorand_state, int64_t><<<bpg, tpb>>>(param, out, size, mx, mask);
+    execute_dist<interval_64_functor, curand_xor_state, int64_t><<<bpg, tpb>>>(param, out, size, mx, mask);
 }
 
 void beta(intptr_t  param, double a, double b, void* out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<beta_functor, curand_pseudorand_state, double><<<bpg, tpb>>>(param, out, size, a, b);
+    execute_dist<beta_functor, curand_xor_state, double><<<bpg, tpb>>>(param, out, size, a, b);
 }
 
 void standard_exponential(intptr_t  param, void* out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    // standard_exponential_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, out, size);
-    execute_dist<exponential_functor, curand_pseudorand_state, double><<<bpg, tpb>>>(param, out, size);
+    execute_dist<exponential_functor, curand_xor_state, double><<<bpg, tpb>>>(param, out, size);
 }
