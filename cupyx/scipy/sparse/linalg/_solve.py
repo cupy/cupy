@@ -3,7 +3,7 @@ import numpy
 import cupy
 from cupy.cuda import cusolver
 from cupy.cuda import device
-from cupy.linalg import util
+from cupy.linalg import _util
 import cupyx.scipy.sparse
 
 
@@ -33,8 +33,8 @@ def lsqr(A, b):
 
     if not cupyx.scipy.sparse.isspmatrix_csr(A):
         A = cupyx.scipy.sparse.csr_matrix(A)
-    util._assert_nd_squareness(A)
-    util._assert_cupy_array(b)
+    _util._assert_nd_squareness(A)
+    _util._assert_cupy_array(b)
     m = A.shape[0]
     if b.ndim != 1 or len(b) != m:
         raise ValueError('b must be 1-d array whose size is same as A')

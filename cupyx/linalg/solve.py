@@ -5,7 +5,7 @@ from cupy.cuda import cublas
 from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.cusolver import check_availability
-from cupy.linalg import util
+from cupy.linalg import _util
 
 
 def _batched_invh(a):
@@ -60,7 +60,7 @@ def _batched_invh(a):
     # Cholesky factorization
     potrfBatched(handle, uplo, n, ap.data.ptr, lda, dev_info.data.ptr,
                  batch_size)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         potrfBatched, dev_info)
 
     identity_matrix = cupy.eye(n, dtype=dtype)
@@ -75,7 +75,7 @@ def _batched_invh(a):
     # Solve: A[i] * X[i] = B[i]
     potrsBatched(handle, uplo, n, nrhs, ap.data.ptr, lda, bp.data.ptr, ldb,
                  dev_info.data.ptr, batch_size)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         potrfBatched, dev_info)
 
     return b
@@ -95,11 +95,11 @@ def invh(a):
         cupy.ndarray: The inverse of matrix ``a``.
     """
 
-    util._assert_cupy_array(a)
-    util._assert_nd_squareness(a)
+    _util._assert_cupy_array(a)
+    _util._assert_nd_squareness(a)
 
     # TODO: Remove this assert once cusolver supports nrhs > 1 for potrsBatched
-    util._assert_rank2(a)
+    _util._assert_rank2(a)
     if a.ndim > 2:
         return _batched_invh(a)
 
