@@ -45,7 +45,7 @@ class TestArithmeticRaisesWithNumpyInput(unittest.TestCase):
                 # We don't test all-cupy-array inputs here
                 continue
             arys = [xp.array([2, -3]) for xp in input_xp_list]
-            with self.assertRaises(TypeError):
+            with pytest.raises(TypeError):
                 func(*arys)
 
 
@@ -318,9 +318,6 @@ class TestArithmeticBinary(ArithmeticBinaryBase, unittest.TestCase):
 class TestArithmeticBinary2(ArithmeticBinaryBase, unittest.TestCase):
 
     def test_binary(self):
-        if (self.use_dtype and
-                numpy.lib.NumpyVersion(numpy.__version__) < '1.10.0'):
-            raise unittest.SkipTest('Test for numpy>=1.10')
         self.check_binary()
 
 
@@ -346,8 +343,6 @@ class TestBoolSubtract(unittest.TestCase):
 
     def test_bool_subtract(self):
         xp = self.xp
-        if xp is numpy and not testing.numpy_satisfies('>=1.14.0'):
-            raise unittest.SkipTest('NumPy<1.14.0')
         shape = self.shape
         x = testing.shaped_random(shape, xp, dtype=numpy.bool_)
         y = testing.shaped_random(shape, xp, dtype=numpy.bool_)
