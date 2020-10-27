@@ -484,18 +484,18 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 # -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
-from cupy.linalg.einsum import einsum  # NOQA
+from cupy.linalg._einsum import einsum  # NOQA
 
-from cupy.linalg.product import cross  # NOQA
-from cupy.linalg.product import dot  # NOQA
-from cupy.linalg.product import inner  # NOQA
-from cupy.linalg.product import kron  # NOQA
-from cupy.linalg.product import matmul  # NOQA
-from cupy.linalg.product import outer  # NOQA
-from cupy.linalg.product import tensordot  # NOQA
-from cupy.linalg.product import vdot  # NOQA
+from cupy.linalg._product import cross  # NOQA
+from cupy.linalg._product import dot  # NOQA
+from cupy.linalg._product import inner  # NOQA
+from cupy.linalg._product import kron  # NOQA
+from cupy.linalg._product import matmul  # NOQA
+from cupy.linalg._product import outer  # NOQA
+from cupy.linalg._product import tensordot  # NOQA
+from cupy.linalg._product import vdot  # NOQA
 
-from cupy.linalg.norms import trace  # NOQA
+from cupy.linalg._norms import trace  # NOQA
 
 # -----------------------------------------------------------------------------
 # Logic functions

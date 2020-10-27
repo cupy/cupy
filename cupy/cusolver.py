@@ -105,7 +105,7 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
     solver(handle, jobz, econ, m, n, a.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvdj, info)
 
     _cusolver.destroyGesvdjInfo(params)
@@ -159,7 +159,7 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     solver(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params, batch_size)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvdj, info)
 
     _cusolver.destroyGesvdjInfo(params)
@@ -364,7 +364,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
     syevj(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         syevj, dev_info)
 
     _cusolver.destroySyevjInfo(params)
@@ -453,7 +453,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params,
         batch_size)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         syevjBatched, dev_info)
 
     _cusolver.destroySyevjInfo(params)
@@ -524,12 +524,12 @@ def gesv(a, b):
     # LU factrization (A = L * U)
     getrf(handle, n, n, a.data.ptr, n, dwork.data.ptr, dipiv.data.ptr,
           dinfo.data.ptr)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         getrf, dinfo)
     # Solves Ax = b
     getrs(handle, _cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
           dipiv.data.ptr, b.data.ptr, n, dinfo.data.ptr)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         getrs, dinfo)
     return b
 
@@ -607,7 +607,7 @@ def gels(a, b):
         workspace = _cupy.empty(ws_size, dtype=dtype)
         geqrf(cusolver_handle, m, n, a.data.ptr, m, tau.data.ptr,
               workspace.data.ptr, ws_size, dev_info.data.ptr)
-        _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
             geqrf, dev_info)
 
         # ormqr (Computes Q^T * B)
@@ -618,7 +618,7 @@ def gels(a, b):
         ormqr(cusolver_handle, _cublas.CUBLAS_SIDE_LEFT, trans, m, nrhs,
               mn_min, a.data.ptr, m, tau.data.ptr, b.data.ptr, m,
               workspace.data.ptr, ws_size, dev_info.data.ptr)
-        _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
             ormqr, dev_info)
 
         # trsm (Solves R * X = (Q^T * B))
@@ -641,7 +641,7 @@ def gels(a, b):
         workspace = _cupy.empty(ws_size, dtype=dtype)
         geqrf(cusolver_handle, n, m, a.data.ptr, n, tau.data.ptr,
               workspace.data.ptr, ws_size, dev_info.data.ptr)
-        _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
             geqrf, dev_info)
 
         # trsm (Solves R^T * Z = B)
@@ -658,7 +658,7 @@ def gels(a, b):
         ormqr(cusolver_handle, _cublas.CUBLAS_SIDE_LEFT, no_trans, n, nrhs,
               mn_min, a.data.ptr, n, tau.data.ptr, b.data.ptr, n,
               workspace.data.ptr, ws_size, dev_info.data.ptr)
-        _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
             ormqr, dev_info)
 
         return b
