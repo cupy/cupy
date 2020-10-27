@@ -1,5 +1,6 @@
 #include <curand_kernel.h>
 #include "cupy_distributions.h"
+#include <utility>
 
 // Add a state of the generator function
 // that can be used to abstract both curand
@@ -48,12 +49,12 @@ struct curand_mtgp32_state: rk_state {
     }
 };
 
-__device__ double rk_standard_exponential(rk_state *state) {
+__device__ double rk_standard_exponential(rk_state* state) {
     /* We use -log(1-U) since U is [0, 1) */
     return -log(1.0 - state->rk_double());
 }
 
-__device__ double rk_standard_gamma(rk_state *state, double shape) {
+__device__ double rk_standard_gamma(rk_state* state, double shape) {
     double b, c;
     double U, V, X, Y;
     if (shape == 1.0) {
@@ -91,7 +92,7 @@ __device__ double rk_standard_gamma(rk_state *state, double shape) {
     }
 }
 
-__device__ double rk_beta(rk_state *state, double a, double b) {
+__device__ double rk_beta(rk_state* state, double a, double b) {
     double Ga, Gb;
     if ((a <= 1.0) && (b <= 1.0)) {
         double U, V, X, Y;
@@ -122,33 +123,64 @@ __device__ double rk_beta(rk_state *state, double a, double b) {
 }
 
 
-__device__ int rk_interval_32(rk_state* state, int mx, int mask) {
-     int32_t sampled = state->rk_int() & mask;
-     while(sampled > mx)  {
-         sampled = state->rk_int() & mask;
-     }
-     return sampled;
+__device__ uint32_t rk_interval_32(rk_state* state, int mx, int mask) {
+    uint32_t sampled = state->rk_int() & mask;
+    while(sampled > mx)  {
+        sampled = state->rk_int() & mask;
+    }
+    return sampled;
 }
 
-__device__ uint32_t rk_interval_64(rk_state* state, uint64_t  mx, uint64_t mask) {
-     int32_t hi= state->rk_int();
-     int32_t lo= state->rk_int();
-     uint64_t sampled = (static_cast<uint64_t>(hi) << 32 | lo)  & mask;
-     while(sampled > mx)  {
-         hi= state->rk_int();
-         lo= state->rk_int();
-         sampled = (static_cast<uint64_t>(hi) << 32 | lo) & mask;
-     }
-     return sampled;
+__device__ uint64_t rk_interval_64(rk_state* state, uint64_t  mx, uint64_t mask) {
+    uint32_t hi= state->rk_int();
+    uint32_t lo= state->rk_int();
+    uint64_t sampled = (static_cast<uint64_t>(hi) << 32 | lo)  & mask;
+    while(sampled > mx)  {
+        hi= state->rk_int();
+        lo= state->rk_int();
+        sampled = (static_cast<uint64_t>(hi) << 32 | lo) & mask;
+    }
+    return sampled;
 }
 
-template<typename T>
-__global__ void interval_32_kernel(intptr_t param, int mx, int mask, void* out, ssize_t size) {
+
+struct interval_32_functor {
+    template<typename... Args>
+    __device__ uint32_t operator () (Args&&... args) {
+        return rk_interval_32(args...);
+    }
+};
+
+struct interval_64_functor {
+    template<typename... Args>
+    __device__ uint64_t operator () (Args&&... args) {
+        return rk_interval_64(args...);
+    }
+};
+
+struct beta_functor {
+    template<typename... Args>
+    __device__ double operator () (Args&&... args) {
+        return rk_beta(args...);
+    }
+};
+
+// There are several errors when trying to do this a full template
+struct exponential_functor {
+    template<typename... Args>
+    __device__ double operator () (Args&&... args) {
+        return rk_standard_exponential(args...);
+    }
+};
+
+template<typename F, typename T, typename R, typename... Args>
+__global__ void execute_dist(intptr_t param, void* out, ssize_t size, Args... args) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
     if (id < size) {
         T random;
+        F func;
         random.init_state(id, param);
-        ((int*) out)[id] = rk_interval_32(&random, mx, mask);
+        ((R*) out)[id] = func(&random, args...);
     }
     return;
 }
@@ -156,56 +188,24 @@ __global__ void interval_32_kernel(intptr_t param, int mx, int mask, void* out, 
 void interval_32(intptr_t param, int mx, int mask, void* out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    interval_32_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, mx, mask, out, size);
-}
-
-template<typename T>
-__global__ void interval_64_kernel(intptr_t param, uint64_t mx, uint64_t mask, void* out, ssize_t size) {
-    int id = threadIdx.x + blockIdx.x * blockDim.x;
-    if (id < size) {
-        T random;
-        random.init_state(id, param);
-        ((int64_t*) out)[id] = rk_interval_64(&random, mx, mask);
-    }
-    return;
+    execute_dist<interval_32_functor, curand_pseudorand_state, int32_t><<<bpg, tpb>>>(param, out, size, mx, mask);
 }
 
 void interval_64(intptr_t param, uint64_t mx, uint64_t mask, void* out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    interval_64_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, mx, mask, out, size);
-}
-
-template<typename T>
-__global__ void beta_kernel(intptr_t param, double a, double b, void* out, ssize_t size) {
-    int id = threadIdx.x + blockIdx.x * blockDim.x;
-    if (id < size) {
-        T random;
-        random.init_state(id, param);
-        ((double*) out)[id] = rk_beta(&random, a, b);
-    }
-    return;
+    execute_dist<interval_64_functor, curand_pseudorand_state, int64_t><<<bpg, tpb>>>(param, out, size, mx, mask);
 }
 
 void beta(intptr_t  param, double a, double b, void* out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    beta_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, a, b, out, size);
-}
-
-template<typename T>
-__global__ void standard_exponential_kernel(intptr_t param, void* out, ssize_t size) {
-    int id = threadIdx.x + blockIdx.x * blockDim.x;
-    if (id < size) {
-        T random;
-        random.init_state(id, param);
-        ((double*) out)[id] = rk_standard_exponential(&random);
-    }
-    return;
+    execute_dist<beta_functor, curand_pseudorand_state, double><<<bpg, tpb>>>(param, out, size, a, b);
 }
 
 void standard_exponential(intptr_t  param, void* out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    standard_exponential_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, out, size);
+    // standard_exponential_kernel<curand_pseudorand_state><<<bpg, tpb>>>(param, out, size);
+    execute_dist<exponential_functor, curand_pseudorand_state, double><<<bpg, tpb>>>(param, out, size);
 }
