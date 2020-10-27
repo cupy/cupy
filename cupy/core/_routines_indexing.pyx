@@ -1,5 +1,6 @@
 # distutils: language = c++
 import sys
+import warnings
 
 import numpy
 
@@ -58,7 +59,10 @@ cdef tuple _ndarray_nonzero(ndarray self):
     if ndim >= 1:
         return tuple([dst[:, i] for i in range(ndim)])
     else:
-        return ndarray((0,), dtype=numpy.int64),
+        warnings.warn(
+            'calling nonzero on 0d arrays is deprecated',
+            DeprecationWarning)
+        return cupy.zeros(dst.shape[0], numpy.int64),
 
 
 # TODO(kataoka): Rename the function because `ndarray` does not have
