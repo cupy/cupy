@@ -13,10 +13,9 @@ class TestErrState(unittest.TestCase):
         orig = cupyx.geterr()
         with cupyx.errstate(divide=self.divide):
             state = cupyx.geterr()
-            assert state['divide'] == self.divide
-            for key in state:
-                if key != 'divide':
-                    assert state[key] == orig[key]
+            assert state.pop('divide') == self.divide
+            orig.pop('divide')
+            assert state == orig
 
     def test_seterr(self):
         pass
