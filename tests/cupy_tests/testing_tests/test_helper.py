@@ -217,61 +217,95 @@ class TestShapedRandomBool(unittest.TestCase):
         self.assertTrue(4000 < self.xp.sum(a) < 6000)
 
 
+@testing.parameterize(*testing.product({
+    'framework': ['unittest', 'pytest']
+}))
 class TestSkip(unittest.TestCase):
+
+    def _skip(self, reason):
+        if self.framework == 'unittest':
+            self.skipTest(reason)
+        else:
+            pytest.skip(reason)
 
     @testing.numpy_cupy_allclose()
     def test_allclose(self, xp):
-        raise unittest.SkipTest('Test for skip with @numpy_cupy_allclose')
+        self._skip('Test for skip with @numpy_cupy_allclose')
         assert False
 
     @testing.numpy_cupy_array_almost_equal()
     def test_array_almost_equal(self, xp):
-        raise unittest.SkipTest(
-            'Test for skip with @numpy_cupy_array_almost_equal')
+        raise self._skip('Test for skip with @numpy_cupy_array_almost_equal')
         assert False
 
     @testing.numpy_cupy_array_almost_equal_nulp()
     def test_array_almost_equal_nulp(self, xp):
-        raise unittest.SkipTest(
+        raise self._skip(
             'Test for skip with @numpy_cupy_array_almost_equal_nulp')
         assert False
 
     @testing.numpy_cupy_array_max_ulp()
     def test_array_max_ulp(self, xp):
-        raise unittest.SkipTest('Test for skip with @numpy_cupy_array_max_ulp')
+        raise self._skip('Test for skip with @numpy_cupy_array_max_ulp')
         assert False
 
     @testing.numpy_cupy_array_equal()
     def test_array_equal(self, xp):
-        raise unittest.SkipTest('Test for skip with @numpy_cupy_array_equal')
+        raise self._skip('Test for skip with @numpy_cupy_array_equal')
         assert False
 
     @testing.numpy_cupy_array_less()
     def test_less(self, xp):
-        raise unittest.SkipTest('Test for skip with @numpy_cupy_array_less')
+        raise self._skip('Test for skip with @numpy_cupy_array_less')
         assert False
 
     @testing.numpy_cupy_equal()
     def test_equal(self, xp):
-        raise unittest.SkipTest('Test for skip with @numpy_cupy_equal')
+        raise self._skip('Test for skip with @numpy_cupy_equal')
         assert False
 
+    @testing.for_all_dtypes()
+    def test_dtypes(self, dtype):
+        if dtype is cupy.float32:
+            raise self._skip('Test for skipping a dtype in @for_all_dtypes')
+            assert False
+        else:
+            assert True
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_dtypes_allclose(self, xp, dtype):
+        if dtype is xp.float32:
+            raise self._skip('Test for skipping a dtype in @for_all_dtypes')
+            assert False
+        else:
+            return xp.array(True)
+
+
+@testing.parameterize(*testing.product({
+    'framework': ['unittest', 'pytest']
+}))
 class TestSkipFail(unittest.TestCase):
+
+    def _skip(self, reason):
+        if self.framework == 'unittest':
+            raise unittest.SkipTest(reason)
+        else:
+            pytest.skip(reason)
 
     @pytest.mark.xfail(strict=True)
     @testing.numpy_cupy_allclose()
     def test_different_reason(self, xp):
         if xp is numpy:
-            raise unittest.SkipTest('skip1')
+            self._skip('skip1')
         else:
-            raise unittest.SkipTest('skip2')
+            self._skip('skip2')
 
     @pytest.mark.xfail(strict=True)
     @testing.numpy_cupy_allclose()
     def test_only_numpy(self, xp):
         if xp is numpy:
-            raise unittest.SkipTest('skip')
+            self._skip('skip')
         else:
             return xp.array(True)
 
@@ -281,4 +315,16 @@ class TestSkipFail(unittest.TestCase):
         if xp is numpy:
             return xp.array(True)
         else:
-            raise unittest.SkipTest('skip')
+            self._skip('skip')
+
+    @pytest.mark.xfail(strict=True)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_dtype_only_cupy(self, xp, dtype):
+        if dtype is not xp.float32:
+            return xp.array(True)
+
+        if xp is numpy:
+            return xp.array(True)
+        else:
+            self._skip('skip')
