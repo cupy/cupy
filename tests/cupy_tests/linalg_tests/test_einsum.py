@@ -341,9 +341,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary_dtype(self, xp, dtype_a, dtype_out):
         if not numpy.can_cast(dtype_a, dtype_out):
-            # skip this combination
-            return xp.array([])
-
+            pytest.skip()
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
         return xp.einsum(self.subscripts, a, dtype=dtype_out)
 

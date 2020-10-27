@@ -80,6 +80,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
 
     ret = _util._get_output(output, input, coordinates.shape[1:])
     integer_output = ret.dtype.kind in 'iu'
+    _util._check_cval(mode, cval, integer_output)
 
     if input.dtype.kind in 'iu':
         input = input.astype(cupy.float32)
@@ -175,6 +176,17 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     if output_shape is None:
         output_shape = input.shape
 
+    if mode == 'opencv' or mode == '_opencv_edge':
+        if matrix.ndim == 1:
+            matrix = cupy.diag(matrix)
+        coordinates = cupy.indices(output_shape, dtype=cupy.float64)
+        coordinates = cupy.dot(matrix, coordinates.reshape((input.ndim, -1)))
+        coordinates += cupy.expand_dims(cupy.asarray(offset), -1)
+        ret = _util._get_output(output, input, shape=output_shape)
+        ret[:] = map_coordinates(input, coordinates, ret.dtype, order, mode,
+                                 cval, prefilter).reshape(output_shape)
+        return ret
+
     matrix = matrix.astype(cupy.float64, copy=False)
     if order is None:
         order = 1
@@ -184,6 +196,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
         input = input.astype(cupy.float32)
 
     integer_output = output.dtype.kind in 'iu'
+    _util._check_cval(mode, cval, integer_output)
     large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
     if matrix.ndim == 1:
         offset = cupy.asarray(offset, dtype=cupy.float64)
@@ -371,6 +384,7 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
         if input.dtype.kind in 'iu':
             input = input.astype(cupy.float32)
         integer_output = output.dtype.kind in 'iu'
+        _util._check_cval(mode, cval, integer_output)
         large_int = _prod(input.shape) > 1 << 31
         kern = _interp_kernels._get_shift_kernel(
             input.ndim, large_int, input.shape, mode, cval=cval, order=order,
@@ -459,6 +473,7 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
         if input.dtype.kind in 'iu':
             input = input.astype(cupy.float32)
         integer_output = output.dtype.kind in 'iu'
+        _util._check_cval(mode, cval, integer_output)
         large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
         kern = _interp_kernels._get_zoom_kernel(
             input.ndim, large_int, output_shape, mode, order=order,

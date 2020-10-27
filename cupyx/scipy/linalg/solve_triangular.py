@@ -3,7 +3,7 @@ import numpy
 import cupy
 from cupy.cuda import cublas
 from cupy.cuda import device
-from cupy.linalg import util
+from cupy.linalg import _util
 
 
 def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
@@ -38,7 +38,7 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
     .. seealso:: :func:`scipy.linalg.solve_triangular`
     """
 
-    util._assert_cupy_array(a, b)
+    _util._assert_cupy_array(a, b)
 
     if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
         raise ValueError('expected square matrix')

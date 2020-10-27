@@ -535,7 +535,7 @@ class TestPolyfitParametersCombinations(unittest.TestCase):
 
         testing.assert_allclose(cp_c, np_c, atol=1e-9)
         testing.assert_allclose(cp_resids, np_resids, atol=1e-9)
-        testing.assert_allclose(cp_s, np_s)
+        testing.assert_allclose(cp_s, np_s, atol=1e-9)
         assert cp_rank == np_rank
         if self.rcond is not None:
             assert cp_rcond == np_rcond

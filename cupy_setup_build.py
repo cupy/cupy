@@ -111,8 +111,7 @@ if use_hip:
             'rocsolver.h',
         ],
         'libraries': [
-            'hiprtc',
-            'hip_hcc',
+            'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
             'hipblas',
             'hiprand',
             'rocfft',
@@ -250,11 +249,25 @@ else:
             'hipcub/hipcub_version.hpp',  # dummy
         ],
         'libraries': [
-            'hiprtc',
-            'hip_hcc',
+            'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
+    })
+
+    MODULES.append({
+        'name': 'nccl',
+        'file': [
+            'cupy.cuda.nccl',
+        ],
+        'include': [
+            'rccl.h',
+        ],
+        'libraries': [
+            'rccl',
+        ],
+        'check_method': build.check_nccl_version,
+        'version_method': build.get_nccl_version,
     })
 
 if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
@@ -268,8 +281,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
                 'thrust/version.h',
             ],
             'libraries': [
-                'hiprtc',
-                'hip_hcc',
+                'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
             ],
         })
     else:
@@ -756,6 +768,7 @@ def cythonize(extensions, arg_options):
         cythonize_options['compile_time_env'] = compile_time_env
     compile_time_env['use_hip'] = arg_options['use_hip']
     compile_time_env['CUPY_CUFFT_STATIC'] = False
+    compile_time_env['cython_version'] = str(cython_version)
     if use_hip or arg_options['no_cuda']:
         compile_time_env['CUDA_VERSION'] = 0
     else:
@@ -828,9 +841,15 @@ def _nvcc_gencode_options(cuda_version):
     # arch_list has an entry of ('compute_61', 'sm_61').
     #
     #     arch_list = [('compute_61', 'sm_61')]
+    #
+    # See the documentation of each CUDA version for the list of supported
+    # architectures:
+    #
+    #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
 
     if cuda_version >= 11000:
-        arch_list = ['compute_50',
+        arch_list = ['compute_35',
+                     'compute_50',
                      ('compute_60', 'sm_60'),
                      ('compute_61', 'sm_61'),
                      ('compute_70', 'sm_70'),

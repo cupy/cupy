@@ -6,8 +6,6 @@ from cupy import _util
 from cupy.core import _routines_indexing as _indexing
 from cupy.core import _routines_statistics as _statistics
 
-import warnings
-
 
 def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the indices of the maximum along an axis.
@@ -117,8 +115,6 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
         return argmin(a, axis=axis)
 
     return _statistics._nanargmin(a, axis, dtype, out, keepdims)
-
-# TODO(okuta): Implement argwhere
 
 
 def nonzero(a):
@@ -232,10 +228,6 @@ def argwhere(a):
 
     """
     _util.check_array(a, arg_name='a')
-    if a.ndim == 0:
-        warnings.warn(
-            'calling argwhere on 0d arrays is deprecated',
-            DeprecationWarning)
     return _indexing._ndarray_argwhere(a)
 
 

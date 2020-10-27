@@ -7,8 +7,8 @@ import cupy
 from cupy.core import _accelerator
 from cupy import _util
 from cupy.cuda import cutensor as cuda_cutensor
-from cupy.linalg.einsum_opt import _greedy_path
-from cupy.linalg.einsum_opt import _optimal_path
+from cupy.linalg._einsum_opt import _greedy_path
+from cupy.linalg._einsum_opt import _optimal_path
 
 
 if cuda_cutensor.available:

@@ -17,13 +17,27 @@ from cupy.testing import parameterized
 import cupyx
 import cupyx.scipy.sparse
 
+_skip_classes = unittest.SkipTest,
+_is_pytest_available = False
+try:
+    import _pytest.outcomes
+    _skip_classes += _pytest.outcomes.Skipped,
+    _is_pytest_available = True
+except ImportError:
+    pass
+
 
 def _call_func(self, impl, args, kw):
+    # Note that `_pytest.outcomes.Skipped` is derived from BaseException.
+    exceptions = Exception,
+    if _is_pytest_available:
+        exceptions += _pytest.outcomes.Skipped,
+
     try:
         result = impl(self, *args, **kw)
         error = None
         tb = None
-    except Exception as e:
+    except exceptions as e:
         tb = e.__traceback__
         if tb.tb_next is None:
             # failed before impl is called, e.g. invalid kw
@@ -120,8 +134,12 @@ def _fail_test_with_unexpected_errors(
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
                             numpy_tb, accept_error=False):
     # Skip the test if both raised SkipTest.
-    if (isinstance(cupy_error, unittest.SkipTest)
-            and isinstance(numpy_error, unittest.SkipTest)):
+    if (isinstance(cupy_error, _skip_classes)
+            and isinstance(numpy_error, _skip_classes)):
+        if cupy_error.__class__ is not numpy_error.__class__:
+            raise AssertionError(
+                'Both numpy and cupy were skipped but with different '
+                'exceptions.')
         if cupy_error.args != numpy_error.args:
             raise AssertionError(
                 'Both numpy and cupy were skipped but with different causes.')
@@ -174,12 +192,16 @@ numpy
             cupy_error, cupy_tb, numpy_error, numpy_tb)
 
 
+def _signed_counterpart(dtype):
+    return numpy.dtype(numpy.dtype(dtype).char.lower()).type
+
+
 def _make_positive_mask(self, impl, args, kw, name, sp_name, scipy_name):
     # Returns a mask of output arrays that indicates valid elements for
     # comparison. See the comment at the caller.
     ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
     for k in ks:
-        kw[k] = numpy.intp
+        kw[k] = _signed_counterpart(kw[k])
     result, error, tb = _call_func_cupy(
         self, impl, args, kw, name, sp_name, scipy_name)
     assert error is None
@@ -707,7 +729,7 @@ def for_dtypes(dtypes, name='dtype'):
                 try:
                     kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
-                except unittest.SkipTest as e:
+                except _skip_classes as e:
                     print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
                     print(name, 'is', dtype)
@@ -918,7 +940,6 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     If the value is set to ``'1'``, it behaves as if ``full=True``, and
     otherwise ``full=False``.
     """
-
     types = list(types)
 
     if len(types) == 1:
@@ -951,6 +972,11 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
                 try:
                     impl(self, *args, **kw_copy)
+                except _skip_classes as e:
+                    msg = ', '.join(
+                        '{} = {}'.format(name, dtype)
+                        for name, dtype in dtypes.items())
+                    print('skipped: {} ({})'.format(msg, e))
                 except Exception:
                     print(dtypes)
                     raise
@@ -1215,7 +1241,8 @@ def shaped_reverse_arange(shape, xp=cupy, dtype=numpy.float32):
     return xp.array(a.astype(dtype).reshape(shape))
 
 
-def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
+def shaped_random(
+        shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0, order='C'):
     """Returns an array filled with random values.
 
     Args:
@@ -1240,12 +1267,13 @@ def shaped_random(shape, xp=cupy, dtype=numpy.float32, scale=10, seed=0):
     numpy.random.seed(seed)
     dtype = numpy.dtype(dtype)
     if dtype == '?':
-        return xp.asarray(numpy.random.randint(2, size=shape), dtype=dtype)
+        a = numpy.random.randint(2, size=shape)
     elif dtype.kind == 'c':
         a = numpy.random.rand(*shape) + 1j * numpy.random.rand(*shape)
-        return xp.asarray(a * scale, dtype=dtype)
+        a *= scale
     else:
-        return xp.asarray(numpy.random.rand(*shape) * scale, dtype=dtype)
+        a = numpy.random.rand(*shape) * scale
+    return xp.asarray(a, dtype=dtype, order=order)
 
 
 def shaped_sparse_random(
