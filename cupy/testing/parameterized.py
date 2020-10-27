@@ -6,6 +6,7 @@ import typing as tp  # NOQA
 import unittest
 
 from cupy.testing import _bundle
+from cupy.testing import _pytest_impl
 from cupy.cuda import cufft
 from cupy.cuda import driver
 
@@ -102,8 +103,15 @@ def _parameterize_test_case(base, i, param):
 
 def parameterize(*params):
     # TODO(niboshi): Add documentation
-    return _bundle.make_decorator(
-        lambda base: _parameterize_test_case_generator(base, params))
+    def f(cls):
+        if (isinstance(cls, _bundle._ParameterizedTestCaseBundle)
+                or issubclass(cls, unittest.TestCase)):
+            deco = _bundle.make_decorator(
+                lambda base: _parameterize_test_case_generator(base, params))
+        else:
+            deco = _pytest_impl.parameterize(*params)
+        return deco(cls)
+    return f
 
 
 def _values_to_dicts(names, values):
