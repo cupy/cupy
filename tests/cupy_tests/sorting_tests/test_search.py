@@ -358,11 +358,11 @@ class TestNonzero(unittest.TestCase):
 class TestNonzeroZeroDimension(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    def test_nonzero(self, dtype):
-        for xp in (numpy, cupy):
-            array = xp.array(self.array, dtype=dtype)
-            with pytest.raises(DeprecationWarning):
-                xp.nonzero(array)
+    @testing.numpy_cupy_array_equal()
+    def test_nonzero(self, xp, dtype):
+        array = xp.array(self.array, dtype=dtype)
+        with testing.assert_warns(DeprecationWarning):
+            return xp.nonzero(array)
 
 
 @testing.parameterize(
