@@ -105,7 +105,7 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
     solver(handle, jobz, econ, m, n, a.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvdj, info)
 
     _cusolver.destroyGesvdjInfo(params)
@@ -159,7 +159,7 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     solver(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params, batch_size)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvdj, info)
 
     _cusolver.destroyGesvdjInfo(params)
@@ -364,7 +364,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
     syevj(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         syevj, dev_info)
 
     _cusolver.destroySyevjInfo(params)
@@ -453,7 +453,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params,
         batch_size)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         syevjBatched, dev_info)
 
     _cusolver.destroySyevjInfo(params)

@@ -4,35 +4,35 @@
 # -----------------------------------------------------------------------------
 # Matrix and vector products
 # -----------------------------------------------------------------------------
-from cupy.linalg.product import matrix_power  # NOQA
+from cupy.linalg._product import matrix_power  # NOQA
 
 # -----------------------------------------------------------------------------
 # Decompositions
 # -----------------------------------------------------------------------------
-from cupy.linalg.decomposition import cholesky  # NOQA
-from cupy.linalg.decomposition import qr  # NOQA
-from cupy.linalg.decomposition import svd  # NOQA
+from cupy.linalg._decomposition import cholesky  # NOQA
+from cupy.linalg._decomposition import qr  # NOQA
+from cupy.linalg._decomposition import svd  # NOQA
 
 # -----------------------------------------------------------------------------
 # Matrix eigenvalues
 # -----------------------------------------------------------------------------
-from cupy.linalg.eigenvalue import eigh  # NOQA
-from cupy.linalg.eigenvalue import eigvalsh  # NOQA
+from cupy.linalg._eigenvalue import eigh  # NOQA
+from cupy.linalg._eigenvalue import eigvalsh  # NOQA
 
 # -----------------------------------------------------------------------------
 # Norms and other numbers
 # -----------------------------------------------------------------------------
-from cupy.linalg.norms import norm  # NOQA
-from cupy.linalg.norms import det  # NOQA
-from cupy.linalg.norms import matrix_rank  # NOQA
-from cupy.linalg.norms import slogdet  # NOQA
+from cupy.linalg._norms import norm  # NOQA
+from cupy.linalg._norms import det  # NOQA
+from cupy.linalg._norms import matrix_rank  # NOQA
+from cupy.linalg._norms import slogdet  # NOQA
 
 # -----------------------------------------------------------------------------
 # Solving equations and inverting matrices
 # -----------------------------------------------------------------------------
-from cupy.linalg.solve import solve  # NOQA
-from cupy.linalg.solve import tensorsolve  # NOQA
-from cupy.linalg.solve import lstsq  # NOQA
-from cupy.linalg.solve import inv  # NOQA
-from cupy.linalg.solve import pinv  # NOQA
-from cupy.linalg.solve import tensorinv  # NOQA
+from cupy.linalg._solve import solve  # NOQA
+from cupy.linalg._solve import tensorsolve  # NOQA
+from cupy.linalg._solve import lstsq  # NOQA
+from cupy.linalg._solve import inv  # NOQA
+from cupy.linalg._solve import pinv  # NOQA
+from cupy.linalg._solve import tensorinv  # NOQA
