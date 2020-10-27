@@ -91,12 +91,6 @@ class TestParameterizeTwice(unittest.TestCase):
             (2, 4))
 
 
-# ##### Test _pytest_impl ##### #
-
-# enable `testdir` fixture
-pytest_plugins = "pytester",
-
-
 @pytest.mark.parametrize(("src", "outcomes"), [
     (  # simple
         textwrap.dedent("""\
@@ -200,7 +194,7 @@ pytest_plugins = "pytester",
         ]
     ),
 ])
-def test_parameterize(testdir, src, outcomes):
+def test_parameterize_pytest_impl(testdir, src, outcomes):
     testdir.makepyfile("from cupy import testing\n" + src)
     result = testdir.runpytest('-v', '--tb=no')
     expected_lines = [
