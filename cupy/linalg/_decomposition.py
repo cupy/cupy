@@ -5,7 +5,7 @@ from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.cusolver import check_availability
-from cupy.linalg import util
+from cupy.linalg import _util
 
 
 def _lu_factor(a_t, dtype):
@@ -139,7 +139,7 @@ def _potrf_batched(a):
     potrfBatched(
         handle, cublas.CUBLAS_FILL_MODE_UPPER, n, xp.data.ptr, ldx,
         dev_info.data.ptr, batch_size)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         potrfBatched, dev_info)
 
     return cupy.tril(x)
@@ -167,8 +167,8 @@ def cholesky(a):
 
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
-    util._assert_cupy_array(a)
-    util._assert_nd_squareness(a)
+    _util._assert_cupy_array(a)
+    _util._assert_nd_squareness(a)
 
     if a.ndim > 2:
         return _potrf_batched(a)
@@ -202,10 +202,10 @@ def cholesky(a):
     potrf(
         handle, cublas.CUBLAS_FILL_MODE_UPPER, n, x.data.ptr, n,
         workspace.data.ptr, buffersize, dev_info.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         potrf, dev_info)
 
-    util._tril(x, k=0)
+    _util._tril(x, k=0)
     return x
 
 
@@ -239,8 +239,8 @@ def qr(a, mode='reduced'):
     .. seealso:: :func:`numpy.linalg.qr`
     """
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
-    util._assert_cupy_array(a)
-    util._assert_rank2(a)
+    _util._assert_cupy_array(a)
+    _util._assert_rank2(a)
 
     if mode not in ('reduced', 'complete', 'r', 'raw'):
         if mode in ('f', 'full', 'e', 'economic'):
@@ -296,12 +296,12 @@ def qr(a, mode='reduced'):
     tau = cupy.empty(mn, dtype=dtype)
     geqrf(handle, m, n, x.data.ptr, m,
           tau.data.ptr, workspace.data.ptr, buffersize, dev_info.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         geqrf, dev_info)
 
     if mode == 'r':
         r = x[:, :mn].transpose()
-        return util._triu(r)
+        return _util._triu(r)
 
     if mode == 'raw':
         if a.dtype.char == 'f':
@@ -343,12 +343,12 @@ def qr(a, mode='reduced'):
     orgqr(
         handle, m, mc, mn, q.data.ptr, m, tau.data.ptr, workspace.data.ptr,
         buffersize, dev_info.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         orgqr, dev_info)
 
     q = q[:mc].transpose()
     r = x[:, :mc].transpose()
-    return q, util._triu(r)
+    return q, _util._triu(r)
 
 
 def svd(a, full_matrices=True, compute_uv=True):
@@ -380,8 +380,8 @@ def svd(a, full_matrices=True, compute_uv=True):
     .. seealso:: :func:`numpy.linalg.svd`
     """
     # TODO(Saito): Current implementation only accepts two-dimensional arrays
-    util._assert_cupy_array(a)
-    util._assert_rank2(a)
+    _util._assert_cupy_array(a)
+    _util._assert_rank2(a)
 
     # Cast to float32 or float64
     a_dtype = numpy.promote_types(a.dtype.char, 'f').char
@@ -462,7 +462,7 @@ def svd(a, full_matrices=True, compute_uv=True):
     gesvd(
         handle, job_u, job_vt, m, n, x.data.ptr, m, s.data.ptr, u_ptr, m,
         vt_ptr, n, workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
-    cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvd, dev_info)
 
     # Note that the returned array may need to be transposed
