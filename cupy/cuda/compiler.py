@@ -85,7 +85,7 @@ def _get_arch():
         # CUDA 10.1 / 10.2
         _nvrtc_max_compute_capability = '75'
     else:
-        # CUDA 11.0
+        # CUDA 11.0 / 11.1
         _nvrtc_max_compute_capability = '80'
 
     arch = device.Device().compute_capability
