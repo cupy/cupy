@@ -38,6 +38,12 @@ cdef extern from '../cupy_cublas.h' nogil:
     # BLAS Level 1
     int cublasIsamax(Handle handle, int n, float* x, int incx,
                      int* result)
+    int cublasIdamax(Handle handle, int n, double* x, int incx,
+                     int* result)
+    int cublasIcamax(Handle handle, int n, cuComplex* x, int incx,
+                     int* result)
+    int cublasIzamax(Handle handle, int n, cuDoubleComplex* x, int incx,
+                     int* result)
     int cublasIsamin(Handle handle, int n, float* x, int incx,
                      int* result)
     int cublasSasum(Handle handle, int n, float* x, int incx,
@@ -449,6 +455,33 @@ cpdef int isamax(intptr_t handle, int n, size_t x, int incx) except? 0:
     with nogil:
         status = cublasIsamax(
             <Handle>handle, n, <float*>x, incx, &result)
+    check_status(status)
+    return result
+
+cpdef int idamax(intptr_t handle, int n, size_t x, int incx) except? 0:
+    cdef int result
+    _setStream(handle)
+    with nogil:
+        status = cublasIdamax(
+            <Handle>handle, n, <double*>x, incx, &result)
+    check_status(status)
+    return result
+
+cpdef int icamax(intptr_t handle, int n, size_t x, int incx) except? 0:
+    cdef int result
+    _setStream(handle)
+    with nogil:
+        status = cublasIcamax(
+            <Handle>handle, n, <cuComplex*>x, incx, &result)
+    check_status(status)
+    return result
+
+cpdef int izamax(intptr_t handle, int n, size_t x, int incx) except? 0:
+    cdef int result
+    _setStream(handle)
+    with nogil:
+        status = cublasIzamax(
+            <Handle>handle, n, <cuDoubleComplex*>x, incx, &result)
     check_status(status)
     return result
 

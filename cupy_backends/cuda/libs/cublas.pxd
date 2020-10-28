@@ -101,6 +101,9 @@ cpdef int getMathMode(intptr_t handle) except? -1
 ###############################################################################
 
 cpdef int isamax(intptr_t handle, int n, size_t x, int incx) except? 0
+cpdef int idamax(intptr_t handle, int n, size_t x, int incx) except? 0
+cpdef int icamax(intptr_t handle, int n, size_t x, int incx) except? 0
+cpdef int izamax(intptr_t handle, int n, size_t x, int incx) except? 0
 cpdef int isamin(intptr_t handle, int n, size_t x, int incx) except? 0
 cpdef float sasum(intptr_t handle, int n, size_t x, int incx) except? 0
 cpdef saxpy(intptr_t handle, int n, float alpha, size_t x, int incx, size_t y,
