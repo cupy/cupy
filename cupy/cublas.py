@@ -104,6 +104,58 @@ def batched_gesv(a, b):
     return b.transpose(0, 2, 1).reshape(b_shape)
 
 
+def _setup_result_array(handle, out, result_dtype):
+    mode = cublas.getPointerMode(handle)
+    if out is None or isinstance(out, cupy.ndarray):
+        if out is None or out.dtype != result_dtype:
+            result = cupy.empty((1,), dtype=result_dtype)
+        else:
+            result = out
+        result_ptr = result.data.ptr
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_DEVICE)
+    elif isinstance(out, numpy.ndarray):
+        if out.dtype != result_dtype:
+            result = numpy.empty((1,), dtype=result_dtype)
+        else:
+            result = out
+        result_ptr = result.ctypes.data
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
+    else:
+        raise TypeError('out must be either cupy or numpy ndarray')
+    return result, result_ptr, mode
+
+
+def iamax(a, out=None):
+    # Note that result index is 1-based index (not 0-based index)
+    if a.ndim != 1:
+        raise ValueError('a must be a 1D array (actual: {})'.format(a.ndim))
+
+    dtype = a.dtype.char
+    if dtype == 'f':
+        func = cublas.isamax
+    elif dtype == 'd':
+        func = cublas.idamax
+    elif dtype == 'F':
+        func = cublas.icamax
+    elif dtype == 'D':
+        func = cublas.izamax
+    else:
+        raise TypeError('invalid dtype')
+
+    handle = device.get_cublas_handle()
+    result_dtype = 'i'
+    result, result_ptr, mode = _setup_result_array(handle, out, result_dtype)
+    func(handle, a.size, a.data.ptr, 1, result_ptr)
+    cublas.setPointerMode(handle, mode)
+
+    if out is None:
+        out = result
+    elif out.dtype != result_dtype:
+        out[...] = result
+
+    return out
+
+
 def asum(a, out=None):
     if a.ndim != 1:
         raise ValueError('a must be a 1D array (actual: {})'.format(a.ndim))
@@ -120,29 +172,11 @@ def asum(a, out=None):
     else:
         raise TypeError('invalid dtype')
 
-    result_dtype = dtype.lower()
-    if out is None or isinstance(out, cupy.ndarray):
-        if out is None or out.dtype != result_dtype:
-            result = cupy.empty((1,), dtype=result_dtype)
-        else:
-            result = out
-        result_ptr = result.data.ptr
-        mode = cublas.CUBLAS_POINTER_MODE_DEVICE
-    elif isinstance(out, numpy.ndarray):
-        if result.dtype != result_dtype:
-            result = numpy.empty((1,), dtype=result_dtype)
-        else:
-            result = out
-        result_ptr = result.ctypes.data
-        mode = cublas.CUBLAS_POINTER_MODE_HOST
-    else:
-        raise TypeError('out must be either cupy or numpy ndarray')
-
     handle = device.get_cublas_handle()
-    orig_mode = cublas.getPointerMode(handle)
-    cublas.setPointerMode(handle, mode)
+    result_dtype = dtype.lower()
+    result, result_ptr, mode = _setup_result_array(handle, out, result_dtype)
     func(handle, a.size, a.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    cublas.setPointerMode(handle, mode)
 
     if out is None:
         out = result
