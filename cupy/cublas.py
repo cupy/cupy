@@ -143,27 +143,6 @@ def _iamaxmin(a, out, name):
     return out
 
 
-def _setup_result_ptr(handle, out, result_dtype):
-    mode = cublas.getPointerMode(handle)
-    if out is None or isinstance(out, cupy.ndarray):
-        if out is None or out.dtype != result_dtype:
-            result = cupy.empty([], dtype=result_dtype)
-        else:
-            result = out
-        result_ptr = result.data.ptr
-        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_DEVICE)
-    elif isinstance(out, numpy.ndarray):
-        if out.dtype != result_dtype:
-            result = numpy.empty([], dtype=result_dtype)
-        else:
-            result = out
-        result_ptr = result.ctypes.data
-        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
-    else:
-        raise TypeError('out must be either cupy or numpy ndarray')
-    return result_ptr, result, mode
-
-
 def asum(a, out=None):
     if a.ndim != 1:
         raise ValueError('a must be a 1D array (actual: {})'.format(a.ndim))
@@ -195,16 +174,7 @@ def asum(a, out=None):
 
 def axpy(a, x, y):
     # Computes y += a * x. Note that y will be updated.
-    if x.ndim != 1:
-        raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
-    if y.ndim != 1:
-        raise ValueError('y must be a 1D array (actual: {})'.format(y.ndim))
-    if x.size != y.size:
-        raise TypeError('x and y must be the same size (actual: {} and {})'
-                        ''.format(x.size, y.size))
-    if x.dtype != y.dtype:
-        raise TypeError('x and y must be the same dtype (actual: {} and {})'
-                        ''.format(x.dtype, y.dtype))
+    _check_two_vectors(x, y)
 
     dtype = x.dtype.char
     if dtype == 'f':
@@ -224,6 +194,118 @@ def axpy(a, x, y):
     cublas.setPointerMode(handle, mode)
 
     return y
+
+
+def dot(x, y, out=None):
+    # Computes dot product of x and y
+    dtype = x.dtype.char
+    if dtype == 'f':
+        func = cublas.sdot
+    elif dtype == 'd':
+        func = cublas.ddot
+    elif dtype == 'FD':
+        raise TypeError('Use dotu() or dotc() for complex dtype')
+    else:
+        raise TypeError('invalid dtype')
+    _check_two_vectors(x, y)
+
+    handle = device.get_cublas_handle()
+    result_dtype = dtype
+    result_ptr, result, mode = _setup_result_ptr(handle, out, result_dtype)
+    func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
+    cublas.setPointerMode(handle, mode)
+
+    if out is None:
+        out = result
+    elif out.dtype != result_dtype:
+        out[...] = result
+    return out
+
+
+def dotu(x, y, out=None):
+    # Computes dot product of x and y
+    dtype = x.dtype.char
+    if dtype == 'fd':
+        return dot(x, y, out=out)
+    elif dtype == 'F':
+        func = cublas.cdotu
+    elif dtype == 'D':
+        func = cublas.zdotu
+    else:
+        raise TypeError('invalid dtype')
+    _check_two_vectors(x, y)
+
+    handle = device.get_cublas_handle()
+    result_dtype = dtype
+    result_ptr, result, mode = _setup_result_ptr(handle, out, result_dtype)
+    func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
+    cublas.setPointerMode(handle, mode)
+
+    if out is None:
+        out = result
+    elif out.dtype != result_dtype:
+        out[...] = result
+    return out
+
+
+def dotc(x, y, out=None):
+    # Computes dot product of x.conj() and y
+    dtype = x.dtype.char
+    if dtype == 'fd':
+        return dot(x, y, out=out)
+    elif dtype == 'F':
+        func = cublas.cdotc
+    elif dtype == 'D':
+        func = cublas.zdotc
+    else:
+        raise TypeError('invalid dtype')
+    _check_two_vectors(x, y)
+
+    handle = device.get_cublas_handle()
+    result_dtype = dtype
+    result_ptr, result, mode = _setup_result_ptr(handle, out, result_dtype)
+    func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
+    cublas.setPointerMode(handle, mode)
+
+    if out is None:
+        out = result
+    elif out.dtype != result_dtype:
+        out[...] = result
+    return out
+
+
+def _check_two_vectors(x, y):
+    if x.ndim != 1:
+        raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
+    if y.ndim != 1:
+        raise ValueError('y must be a 1D array (actual: {})'.format(y.ndim))
+    if x.size != y.size:
+        raise TypeError('x and y must be the same size (actual: {} and {})'
+                        ''.format(x.size, y.size))
+    if x.dtype != y.dtype:
+        raise TypeError('x and y must be the same dtype (actual: {} and {})'
+                        ''.format(x.dtype, y.dtype))
+
+
+def _setup_result_ptr(handle, out, result_dtype):
+    mode = cublas.getPointerMode(handle)
+    if out is None or isinstance(out, cupy.ndarray):
+        if out is None or out.dtype != result_dtype:
+            result = cupy.empty([], dtype=result_dtype)
+        else:
+            result = out
+        result_ptr = result.data.ptr
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_DEVICE)
+    elif isinstance(out, numpy.ndarray):
+        if out.dtype != result_dtype:
+            result = numpy.empty([], dtype=result_dtype)
+        else:
+            result = out
+        result_ptr = result.ctypes.data
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
+    else:
+        raise TypeError('out must be either cupy or numpy ndarray')
+    return result_ptr, result, mode
 
 
 def _setup_scalar_ptr(handle, a, dtype):
