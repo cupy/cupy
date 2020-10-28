@@ -108,7 +108,10 @@ cpdef int isamin(intptr_t handle, int n, size_t x, int incx) except? 0
 cpdef int idamin(intptr_t handle, int n, size_t x, int incx) except? 0
 cpdef int icamin(intptr_t handle, int n, size_t x, int incx) except? 0
 cpdef int izamin(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef float sasum(intptr_t handle, int n, size_t x, int incx) except? 0
+cpdef sasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef scasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dzasum(intptr_t handle, int n, size_t x, int incx, size_t result)
 cpdef saxpy(intptr_t handle, int n, float alpha, size_t x, int incx, size_t y,
             int incy)
 cpdef daxpy(intptr_t handle, int n, double alpha, size_t x, int incx, size_t y,

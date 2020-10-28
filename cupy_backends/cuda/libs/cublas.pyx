@@ -54,6 +54,12 @@ cdef extern from '../cupy_cublas.h' nogil:
                      int* result)
     int cublasSasum(Handle handle, int n, float* x, int incx,
                     float* result)
+    int cublasDasum(Handle handle, int n, double* x, int incx,
+                    double* result)
+    int cublasScasum(Handle handle, int n, cuComplex* x, int incx,
+                     float* result)
+    int cublasDzasum(Handle handle, int n, cuDoubleComplex* x, int incx,
+                     double* result)
     int cublasSaxpy(Handle handle, int n, float* alpha, float* x,
                     int incx, float* y, int incy)
     int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
@@ -529,14 +535,33 @@ cpdef int izamin(intptr_t handle, int n, size_t x, int incx) except? 0:
     return result
 
 
-cpdef float sasum(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef float result
+cpdef sasum(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasSasum(
-            <Handle>handle, n, <float*>x, incx, &result)
+            <Handle>handle, n, <float*>x, incx, <float*>result)
     check_status(status)
-    return result
+
+cpdef dasum(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasDasum(
+            <Handle>handle, n, <double*>x, incx, <double*>result)
+    check_status(status)
+
+cpdef scasum(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasScasum(
+            <Handle>handle, n, <cuComplex*>x, incx, <float*>result)
+    check_status(status)
+
+cpdef dzasum(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasDzasum(
+            <Handle>handle, n, <cuDoubleComplex*>x, incx, <double*>result)
+    check_status(status)
 
 
 cpdef saxpy(intptr_t handle, int n, float alpha, size_t x, int incx, size_t y,
