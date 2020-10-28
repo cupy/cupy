@@ -132,7 +132,7 @@ def _iamaxmin(a, out, name):
 
     handle = device.get_cublas_handle()
     result_dtype = 'i'
-    result, result_ptr, mode = _setup_result_array(handle, out, result_dtype)
+    result_ptr, result, mode = _setup_result_ptr(handle, out, result_dtype)
     func(handle, a.size, a.data.ptr, 1, result_ptr)
     cublas.setPointerMode(handle, mode)
 
@@ -140,11 +140,10 @@ def _iamaxmin(a, out, name):
         out = result
     elif out.dtype != result_dtype:
         out[...] = result
-
     return out
 
 
-def _setup_result_array(handle, out, result_dtype):
+def _setup_result_ptr(handle, out, result_dtype):
     mode = cublas.getPointerMode(handle)
     if out is None or isinstance(out, cupy.ndarray):
         if out is None or out.dtype != result_dtype:
@@ -162,7 +161,7 @@ def _setup_result_array(handle, out, result_dtype):
         cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
     else:
         raise TypeError('out must be either cupy or numpy ndarray')
-    return result, result_ptr, mode
+    return result_ptr, result, mode
 
 
 def asum(a, out=None):
@@ -183,7 +182,7 @@ def asum(a, out=None):
 
     handle = device.get_cublas_handle()
     result_dtype = dtype.lower()
-    result, result_ptr, mode = _setup_result_array(handle, out, result_dtype)
+    result_ptr, result, mode = _setup_result_ptr(handle, out, result_dtype)
     func(handle, a.size, a.data.ptr, 1, result_ptr)
     cublas.setPointerMode(handle, mode)
 
@@ -191,5 +190,59 @@ def asum(a, out=None):
         out = result
     elif out.dtype != result_dtype:
         out[...] = result
-
     return out
+
+
+def axpy(a, x, y):
+    # Computes y += a * x. Note that y will be updated.
+    if x.ndim != 1:
+        raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
+    if y.ndim != 1:
+        raise ValueError('y must be a 1D array (actual: {})'.format(y.ndim))
+    if x.size != y.size:
+        raise TypeError('x and y must be the same size (actual: {} and {})'
+                        ''.format(x.size, y.size))
+    if x.dtype != y.dtype:
+        raise TypeError('x and y must be the same dtype (actual: {} and {})'
+                        ''.format(x.dtype, y.dtype))
+
+    dtype = x.dtype.char
+    if dtype == 'f':
+        func = cublas.saxpy
+    elif dtype == 'd':
+        func = cublas.daxpy
+    elif dtype == 'F':
+        func = cublas.caxpy
+    elif dtype == 'D':
+        func = cublas.zaxpy
+    else:
+        raise TypeError('invalid dtype')
+
+    handle = device.get_cublas_handle()
+    a_ptr, mode = _setup_scalar_ptr(handle, a, dtype)
+    func(handle, x.size, a_ptr, x.data.ptr, 1, y.data.ptr, 1)
+    cublas.setPointerMode(handle, mode)
+
+    return y
+
+
+def _setup_scalar_ptr(handle, a, dtype):
+    mode = cublas.getPointerMode(handle)
+    if isinstance(a, cupy.ndarray):
+        if a.dtype != dtype:
+            b = cupy.empty([], dtype=dtype)
+        else:
+            b = a
+        b_ptr = b.data.ptr
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_DEVICE)
+    else:
+        if isinstance(a, numpy.ndarray):
+            if a.dtype != dtype:
+                b = numpy.empty([], dtype=dtype)
+            else:
+                b = a
+        else:
+            b = numpy.array(a, dtype=dtype)
+        b_ptr = b.ctypes.data
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
+    return b_ptr, mode
