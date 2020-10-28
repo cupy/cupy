@@ -46,6 +46,12 @@ cdef extern from '../cupy_cublas.h' nogil:
                      int* result)
     int cublasIsamin(Handle handle, int n, float* x, int incx,
                      int* result)
+    int cublasIdamin(Handle handle, int n, double* x, int incx,
+                     int* result)
+    int cublasIcamin(Handle handle, int n, cuComplex* x, int incx,
+                     int* result)
+    int cublasIzamin(Handle handle, int n, cuDoubleComplex* x, int incx,
+                     int* result)
     int cublasSasum(Handle handle, int n, float* x, int incx,
                     float* result)
     int cublasSaxpy(Handle handle, int n, float* alpha, float* x,
@@ -492,6 +498,33 @@ cpdef int isamin(intptr_t handle, int n, size_t x, int incx) except? 0:
     with nogil:
         status = cublasIsamin(
             <Handle>handle, n, <float*>x, incx, &result)
+    check_status(status)
+    return result
+
+cpdef int idamin(intptr_t handle, int n, size_t x, int incx) except? 0:
+    cdef int result
+    _setStream(handle)
+    with nogil:
+        status = cublasIdamin(
+            <Handle>handle, n, <double*>x, incx, &result)
+    check_status(status)
+    return result
+
+cpdef int icamin(intptr_t handle, int n, size_t x, int incx) except? 0:
+    cdef int result
+    _setStream(handle)
+    with nogil:
+        status = cublasIcamin(
+            <Handle>handle, n, <cuComplex*>x, incx, &result)
+    check_status(status)
+    return result
+
+cpdef int izamin(intptr_t handle, int n, size_t x, int incx) except? 0:
+    cdef int result
+    _setStream(handle)
+    with nogil:
+        status = cublasIzamin(
+            <Handle>handle, n, <cuDoubleComplex*>x, incx, &result)
     check_status(status)
     return result
 
