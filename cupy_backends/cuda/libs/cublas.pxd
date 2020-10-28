@@ -136,7 +136,12 @@ cpdef snrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
 cpdef dnrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
 cpdef scnrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
 cpdef dznrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
-cpdef sscal(intptr_t handle, int n, float alpha, size_t x, int incx)
+cpdef sscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef dscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef cscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef csscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef zscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef zdscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
 
 
 ###############################################################################

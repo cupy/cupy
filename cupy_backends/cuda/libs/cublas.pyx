@@ -88,8 +88,16 @@ cdef extern from '../cupy_cublas.h' nogil:
                      float* result)
     int cublasDznrm2(Handle handle, int n, cuDoubleComplex* x, int incx,
                     double* result)
-    int cublasSscal(Handle handle, int n, float* alpha, float* x,
-                    int incx)
+    int cublasSscal(Handle handle, int n, float* alpha, float* x, int incx)
+    int cublasDscal(Handle handle, int n, double* alpha, double* x, int incx)
+    int cublasCscal(Handle handle, int n, cuComplex* alpha,
+                    cuComplex* x, int incx)
+    int cublasCsscal(Handle handle, int n, float* alpha,
+                     cuComplex* x, int incx)
+    int cublasZscal(Handle handle, int n, cuDoubleComplex* alpha,
+                    cuDoubleComplex* x, int incx)
+    int cublasZdscal(Handle handle, int n, double* alpha,
+                     cuDoubleComplex* x, int incx)
 
     # BLAS Level 2
     int cublasSgemv(
@@ -690,10 +698,46 @@ cpdef dznrm2(intptr_t handle, int n, size_t x, int incx, size_t result):
     check_status(status)
 
 
-cpdef sscal(intptr_t handle, int n, float alpha, size_t x, int incx):
+cpdef sscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
     _setStream(handle)
     with nogil:
-        status = cublasSscal(<Handle>handle, n, &alpha, <float*>x, incx)
+        status = cublasSscal(<Handle>handle, n, <float*>alpha,
+                             <float*>x, incx)
+    check_status(status)
+
+cpdef dscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasDscal(<Handle>handle, n, <double*>alpha,
+                             <double*>x, incx)
+    check_status(status)
+
+cpdef cscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasCscal(<Handle>handle, n, <cuComplex*>alpha,
+                             <cuComplex*>x, incx)
+    check_status(status)
+
+cpdef csscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasCsscal(<Handle>handle, n, <float*>alpha,
+                              <cuComplex*>x, incx)
+    check_status(status)
+
+cpdef zscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasZscal(<Handle>handle, n, <cuDoubleComplex*>alpha,
+                             <cuDoubleComplex*>x, incx)
+    check_status(status)
+
+cpdef zdscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasZdscal(<Handle>handle, n, <double*>alpha,
+                              <cuDoubleComplex*>x, incx)
     check_status(status)
 
 
