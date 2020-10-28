@@ -102,3 +102,51 @@ def batched_gesv(a, b):
         raise linalg.LinAlgError(msg)
 
     return b.transpose(0, 2, 1).reshape(b_shape)
+
+
+def asum(a, out=None):
+    if a.ndim != 1:
+        raise ValueError('a must be a 1D array (actual: {})'.format(a.ndim))
+
+    dtype = a.dtype.char
+    if dtype == 'f':
+        func = cublas.sasum
+    elif dtype == 'd':
+        func = cublas.dasum
+    elif dtype == 'F':
+        func = cublas.scasum
+    elif dtype == 'D':
+        func = cublas.dzasum
+    else:
+        raise TypeError('invalid dtype')
+
+    result_dtype = dtype.lower()
+    if out is None or isinstance(out, cupy.ndarray):
+        if out is None or out.dtype != result_dtype:
+            result = cupy.empty((1,), dtype=result_dtype)
+        else:
+            result = out
+        result_ptr = result.data.ptr
+        mode = cublas.CUBLAS_POINTER_MODE_DEVICE
+    elif isinstance(out, numpy.ndarray):
+        if result.dtype != result_dtype:
+            result = numpy.empty((1,), dtype=result_dtype)
+        else:
+            result = out
+        result_ptr = result.ctypes.data
+        mode = cublas.CUBLAS_POINTER_MODE_HOST
+    else:
+        raise TypeError('out must be either cupy or numpy ndarray')
+
+    handle = device.get_cublas_handle()
+    orig_mode = cublas.getPointerMode(handle)
+    cublas.setPointerMode(handle, mode)
+    func(handle, a.size, a.data.ptr, 1, result_ptr)
+    cublas.setPointerMode(handle, orig_mode)
+
+    if out is None:
+        out = result
+    elif out.dtype != result_dtype:
+        out[...] = result
+
+    return out
