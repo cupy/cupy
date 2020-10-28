@@ -274,6 +274,35 @@ def dotc(x, y, out=None):
     return out
 
 
+def nrm2(a, out=None):
+    if a.ndim != 1:
+        raise ValueError('a must be a 1D array (actual: {})'.format(a.ndim))
+
+    dtype = a.dtype.char
+    if dtype == 'f':
+        func = cublas.snrm2
+    elif dtype == 'd':
+        func = cublas.dnrm2
+    elif dtype == 'F':
+        func = cublas.scnrm2
+    elif dtype == 'D':
+        func = cublas.dznrm2
+    else:
+        raise TypeError('invalid dtype')
+
+    handle = device.get_cublas_handle()
+    result_dtype = dtype.lower()
+    result_ptr, result, mode = _setup_result_ptr(handle, out, result_dtype)
+    func(handle, a.size, a.data.ptr, 1, result_ptr)
+    cublas.setPointerMode(handle, mode)
+
+    if out is None:
+        out = result
+    elif out.dtype != result_dtype:
+        out[...] = result
+    return out
+
+
 def _check_two_vectors(x, y):
     if x.ndim != 1:
         raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
