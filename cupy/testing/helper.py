@@ -214,16 +214,17 @@ def _contains_signed_and_unsigned(kw):
         any(d in vs for d in _float_dtypes + _signed_dtypes)
 
 
-def _wraps_partial(wrapped, kw):
+def _wraps_partial(wrapped, *names):
     def decorator(impl):
         impl = functools.wraps(wrapped)(impl)
-        # Tell pytest that kw is consumed
+        # Tell pytest that names are consumed
         msg = (
             "Unused value!! True `__wrapped__` function is inside `partial`, "
             "which can be accessed by `.func`. The decorated function does "
             "not receive this argument, but the original function should do."
         )
-        impl.__wrapped__ = functools.partial(wrapped, **{kw: msg})
+        impl.__wrapped__ = functools.partial(
+            wrapped, **{name: msg for name in names})
         return impl
     return decorator
 
@@ -982,7 +983,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
         combination = [dict(assoc_list) for assoc_list in set(combination)]
 
     def decorator(impl):
-        @_wraps_partial(impl, name)
+        @_wraps_partial(impl, *names)
         def test_func(self, *args, **kw):
             for dtypes in combination:
                 kw_copy = kw.copy()
