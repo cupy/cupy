@@ -64,6 +64,10 @@ cdef extern from '../cupy_cublas.h' nogil:
                     int incx, float* y, int incy)
     int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
                     int incx, double* y, int incy)
+    int cublasCaxpy(Handle handle, int n, cuComplex* alpha, cuComplex* x,
+                    int incx, cuComplex* y, int incy)
+    int cublasZaxpy(Handle handle, int n, cuDoubleComplex* alpha,
+                    cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy)
     int cublasSdot(Handle handle, int n, float* x, int incx,
                    float* y, int incy, float* result)
     int cublasDdot(Handle handle, int n, double* x, int incx,
@@ -564,21 +568,38 @@ cpdef dzasum(intptr_t handle, int n, size_t x, int incx, size_t result):
     check_status(status)
 
 
-cpdef saxpy(intptr_t handle, int n, float alpha, size_t x, int incx, size_t y,
+cpdef saxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
             int incy):
     _setStream(handle)
     with nogil:
         status = cublasSaxpy(
-            <Handle>handle, n, &alpha, <float*>x, incx, <float*>y, incy)
+            <Handle>handle, n, <float*>alpha, <float*>x, incx, <float*>y, incy)
     check_status(status)
 
-
-cpdef daxpy(intptr_t handle, int n, double alpha, size_t x, int incx, size_t y,
+cpdef daxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
             int incy):
     _setStream(handle)
     with nogil:
         status = cublasDaxpy(
-            <Handle>handle, n, &alpha, <double*>x, incx, <double*>y, incy)
+            <Handle>handle, n, <double*>alpha, <double*>x, incx, <double*>y, incy)
+    check_status(status)
+
+cpdef caxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
+            int incy):
+    _setStream(handle)
+    with nogil:
+        status = cublasCaxpy(
+            <Handle>handle, n, <cuComplex*>alpha, <cuComplex*>x, incx,
+            <cuComplex*>y, incy)
+    check_status(status)
+
+cpdef zaxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
+            int incy):
+    _setStream(handle)
+    with nogil:
+        status = cublasZaxpy(
+            <Handle>handle, n, <cuDoubleComplex*>alpha, <cuDoubleComplex*>x,
+            incx, <cuDoubleComplex*>y, incy)
     check_status(status)
 
 
