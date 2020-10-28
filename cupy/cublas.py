@@ -105,14 +105,18 @@ def batched_gesv(a, b):
 
 
 def iamax(x, out=None):
-    # Finds the (smallest) index of the element of the maximum magnitude
-    # (*) result index is 1-based index (not 0-based index)
+    """Finds the (smallest) index of the element of the maximum magnitude.
+
+    (*) The result index is 1-based index (not 0-based index).
+    """
     return _iamaxmin(x, out, 'amax')
 
 
 def iamin(x, out=None):
-    # Finds the (smallest) index of the element of the minimum magnitude
-    # (*) result index is 1-based index (not 0-based index)
+    """Finds the (smallest) index of the element of the minimum magnitude.
+
+    (*) The result index is 1-based index (not 0-based index).
+    """
     return _iamaxmin(x, out, 'amin')
 
 
@@ -147,7 +151,7 @@ def _iamaxmin(x, out, name):
 
 
 def asum(x, out=None):
-    # Computes the sum of the absolute of x
+    """Computes the sum of the absolute of x."""
     if x.ndim != 1:
         raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
 
@@ -177,7 +181,10 @@ def asum(x, out=None):
 
 
 def axpy(a, x, y):
-    # Computes y += a * x.  (*) y will be updated.
+    """Computes y += a * x.
+
+    (*) y will be updated.
+    """
     _check_two_vectors(x, y)
 
     dtype = x.dtype.char
@@ -200,7 +207,7 @@ def axpy(a, x, y):
 
 
 def dot(x, y, out=None):
-    # Computes the dot product of x and y
+    """Computes the dot product of x and y."""
     dtype = x.dtype.char
     if dtype == 'f':
         func = cublas.sdot
@@ -226,7 +233,7 @@ def dot(x, y, out=None):
 
 
 def dotu(x, y, out=None):
-    # Computes the dot product of x and y
+    """Computes the dot product of x and y."""
     dtype = x.dtype.char
     if dtype == 'fd':
         return dot(x, y, out=out)
@@ -252,7 +259,7 @@ def dotu(x, y, out=None):
 
 
 def dotc(x, y, out=None):
-    # Computes the dot product of x.conj() and y
+    """Computes the dot product of x.conj() and y."""
     dtype = x.dtype.char
     if dtype == 'fd':
         return dot(x, y, out=out)
@@ -278,7 +285,7 @@ def dotc(x, y, out=None):
 
 
 def nrm2(x, out=None):
-    # Computes the Eudlidean norm of vector x
+    """Computes the Euclidean norm of vector x."""
     if x.ndim != 1:
         raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
 
@@ -308,7 +315,10 @@ def nrm2(x, out=None):
 
 
 def scal(a, x):
-    # Computes x *= a.  (*) x will be updated.
+    """Computes x *= a.
+
+    (*) x will be updated.
+    """
     if x.ndim != 1:
         raise ValueError('x must be a 1D array (actual: {})'.format(x.ndim))
 
@@ -369,19 +379,12 @@ def _setup_scalar_ptr(handle, a, dtype):
     mode = cublas.getPointerMode(handle)
     if isinstance(a, cupy.ndarray):
         if a.dtype != dtype:
-            b = cupy.empty([], dtype=dtype)
-        else:
-            b = a
-        b_ptr = b.data.ptr
+            a = cupy.array(a, dtype=dtype)
+        a_ptr = a.data.ptr
         cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_DEVICE)
     else:
-        if isinstance(a, numpy.ndarray):
-            if a.dtype != dtype:
-                b = numpy.empty([], dtype=dtype)
-            else:
-                b = a
-        else:
-            b = numpy.array(a, dtype=dtype)
-        b_ptr = b.ctypes.data
+        if not (isinstance(a, numpy.ndarray) and a.dtype == dtype):
+            a = numpy.array(a, dtype=dtype)
+        a_ptr = a.ctypes.data
         cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
-    return b_ptr, mode
+    return a_ptr, mode
