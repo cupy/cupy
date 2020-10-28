@@ -132,7 +132,10 @@ cpdef zdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
 cpdef zdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
-cpdef float snrm2(intptr_t handle, int n, size_t x, int incx) except? 0
+cpdef snrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dnrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef scnrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dznrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
 cpdef sscal(intptr_t handle, int n, float alpha, size_t x, int incx)
 
 

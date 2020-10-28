@@ -82,8 +82,12 @@ cdef extern from '../cupy_cublas.h' nogil:
     int cublasZdotc(Handle handle, int n, cuDoubleComplex* x, int incx,
                     cuDoubleComplex* y, int incy,
                     cuDoubleComplex* result)
-    int cublasSnrm2(Handle handle, int n, float* x, int incx,
-                    float* result)
+    int cublasSnrm2(Handle handle, int n, float* x, int incx, float* result)
+    int cublasDnrm2(Handle handle, int n, double* x, int incx, double* result)
+    int cublasScnrm2(Handle handle, int n, cuComplex* x, int incx,
+                     float* result)
+    int cublasDznrm2(Handle handle, int n, cuDoubleComplex* x, int incx,
+                    double* result)
     int cublasSscal(Handle handle, int n, float* alpha, float* x,
                     int incx)
 
@@ -612,7 +616,6 @@ cpdef sdot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <float*>result)
     check_status(status)
 
-
 cpdef ddot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result):
     _setStream(handle)
@@ -621,7 +624,6 @@ cpdef ddot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <Handle>handle, n, <double*>x, incx, <double*>y, incy,
             <double*>result)
     check_status(status)
-
 
 cpdef cdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
@@ -632,7 +634,6 @@ cpdef cdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <cuComplex*>result)
     check_status(status)
 
-
 cpdef cdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     _setStream(handle)
@@ -641,7 +642,6 @@ cpdef cdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <Handle>handle, n, <cuComplex*>x, incx, <cuComplex*>y, incy,
             <cuComplex*>result)
     check_status(status)
-
 
 cpdef zdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
@@ -652,7 +652,6 @@ cpdef zdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <cuDoubleComplex*>y, incy, <cuDoubleComplex*>result)
     check_status(status)
 
-
 cpdef zdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     with nogil:
@@ -662,13 +661,33 @@ cpdef zdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef float snrm2(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef float result
+cpdef snrm2(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
-        status = cublasSnrm2(<Handle>handle, n, <float*>x, incx, &result)
+        status = cublasSnrm2(<Handle>handle, n, <float*>x, incx,
+                             <float*>result)
     check_status(status)
-    return result
+
+cpdef dnrm2(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasDnrm2(<Handle>handle, n, <double*>x, incx,
+                             <double*>result)
+    check_status(status)
+
+cpdef scnrm2(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasScnrm2(<Handle>handle, n, <cuComplex*>x, incx,
+                              <float*>result)
+    check_status(status)
+
+cpdef dznrm2(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasDznrm2(<Handle>handle, n, <cuDoubleComplex*>x, incx,
+                              <double*>result)
+    check_status(status)
 
 
 cpdef sscal(intptr_t handle, int n, float alpha, size_t x, int incx):
