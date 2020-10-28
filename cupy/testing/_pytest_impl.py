@@ -21,12 +21,14 @@ def check_available():
 Reason: {}: {}'''.format(__name__, type(_error).__name__, _error))
 
 
-class _TestingParameterizeMixin:
+if is_available():
 
-    @pytest.fixture(autouse=True)
-    def _cupy_testing_parameterize(self, _cupy_testing_param):
-        assert not self.__dict__
-        self.__dict__ = _cupy_testing_param
+    class _TestingParameterizeMixin:
+
+        @pytest.fixture(autouse=True)
+        def _cupy_testing_parameterize(self, _cupy_testing_param):
+            assert not self.__dict__
+            self.__dict__ = _cupy_testing_param
 
 
 def parameterize(*params):
