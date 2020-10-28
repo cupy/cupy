@@ -55,12 +55,10 @@ from cupy_backends.cuda.libs cimport cublas
 
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    xp = getattr(x, '__array_priority__', 0)
-    yp = getattr(y, '__array_priority__', 0)
-    return xp < yp and not isinstance(y, ndarray)
+    return hasattr(y, '__array_ufunc__') and not isinstance(y, _KNOWN_TYPES)
 
 
-cdef tuple _HANDLED_TYPES
+cdef tuple _HANDLED_TYPES, _KNOWN_TYPES
 
 
 cdef class ndarray:
@@ -1727,6 +1725,7 @@ cpdef strides_t _get_strides_for_order_K(ndarray x, dtype, shape=None):
 
 
 _HANDLED_TYPES = (ndarray, numpy.ndarray)
+_KNOWN_TYPES = (ndarray, numpy.generic, bool, int, float, complex)
 
 
 # =============================================================================
