@@ -994,92 +994,92 @@ cdef class ndarray:
 
     def __add__(x, y):
         if _should_use_rop(x, y):
-            return y.__radd__(x)
+            return NotImplemented
         else:
             return _math._add(x, y)
 
     def __sub__(x, y):
         if _should_use_rop(x, y):
-            return y.__rsub__(x)
+            return NotImplemented
         else:
             return _math._subtract(x, y)
 
     def __mul__(x, y):
         if _should_use_rop(x, y):
-            return y.__rmul__(x)
+            return NotImplemented
         else:
             return _math._multiply(x, y)
 
     def __matmul__(x, y):
         if _should_use_rop(x, y):
-            return y.__rmatmul__(x)
+            return NotImplemented
         else:
             return _linalg.matmul(x, y)
 
     def __div__(x, y):
         if _should_use_rop(x, y):
-            return y.__rdiv__(x)
+            return NotImplemented
         else:
             return _math._divide(x, y)
 
     def __truediv__(x, y):
         if _should_use_rop(x, y):
-            return y.__rtruediv__(x)
+            return NotImplemented
         else:
             return _math._true_divide(x, y)
 
     def __floordiv__(x, y):
         if _should_use_rop(x, y):
-            return y.__rfloordiv__(x)
+            return NotImplemented
         else:
             return _math._floor_divide(x, y)
 
     def __mod__(x, y):
         if _should_use_rop(x, y):
-            return y.__rmod__(x)
+            return NotImplemented
         else:
             return _math._remainder(x, y)
 
     def __divmod__(x, y):
         if _should_use_rop(x, y):
-            return y.__rdivmod__(x)
+            return NotImplemented
         else:
             return divmod(x, y)
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
         if _should_use_rop(x, y):
-            return y.__rpow__(x)
+            return NotImplemented
         else:
             return _math._power(x, y)
 
     def __lshift__(x, y):
         if _should_use_rop(x, y):
-            return y.__rlshift__(x)
+            return NotImplemented
         else:
             return _binary._left_shift(x, y)
 
     def __rshift__(x, y):
         if _should_use_rop(x, y):
-            return y.__rrshift__(x)
+            return NotImplemented
         else:
             return _binary._right_shift(x, y)
 
     def __and__(x, y):
         if _should_use_rop(x, y):
-            return y.__rand__(x)
+            return NotImplemented
         else:
             return _binary._bitwise_and(x, y)
 
     def __or__(x, y):
         if _should_use_rop(x, y):
-            return y.__ror__(x)
+            return NotImplemented
         else:
             return _binary._bitwise_or(x, y)
 
     def __xor__(x, y):
         if _should_use_rop(x, y):
-            return y.__rxor__(x)
+            return NotImplemented
         else:
             return _binary._bitwise_xor(x, y)
 
