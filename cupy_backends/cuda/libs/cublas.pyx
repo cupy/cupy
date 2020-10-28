@@ -477,78 +477,63 @@ cpdef int getMathMode(intptr_t handle) except? -1:
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef int result
+cpdef isamax(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasIsamax(
-            <Handle>handle, n, <float*>x, incx, &result)
+            <Handle>handle, n, <float*>x, incx, <int*>result)
     check_status(status)
-    return result
 
-cpdef int idamax(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef int result
+cpdef idamax(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasIdamax(
-            <Handle>handle, n, <double*>x, incx, &result)
+            <Handle>handle, n, <double*>x, incx, <int*>result)
     check_status(status)
-    return result
 
-cpdef int icamax(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef int result
+cpdef icamax(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasIcamax(
-            <Handle>handle, n, <cuComplex*>x, incx, &result)
+            <Handle>handle, n, <cuComplex*>x, incx, <int*>result)
     check_status(status)
-    return result
 
-cpdef int izamax(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef int result
+cpdef izamax(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasIzamax(
-            <Handle>handle, n, <cuDoubleComplex*>x, incx, &result)
+            <Handle>handle, n, <cuDoubleComplex*>x, incx, <int*>result)
     check_status(status)
-    return result
 
 
-cpdef int isamin(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef int result
+cpdef isamin(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasIsamin(
-            <Handle>handle, n, <float*>x, incx, &result)
+            <Handle>handle, n, <float*>x, incx, <int*>result)
     check_status(status)
-    return result
 
-cpdef int idamin(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef int result
+cpdef idamin(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasIdamin(
-            <Handle>handle, n, <double*>x, incx, &result)
+            <Handle>handle, n, <double*>x, incx, <int*>result)
     check_status(status)
-    return result
 
-cpdef int icamin(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef int result
+cpdef icamin(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasIcamin(
-            <Handle>handle, n, <cuComplex*>x, incx, &result)
+            <Handle>handle, n, <cuComplex*>x, incx, <int*>result)
     check_status(status)
     return result
 
-cpdef int izamin(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef int result
+cpdef izamin(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasIzamin(
-            <Handle>handle, n, <cuDoubleComplex*>x, incx, &result)
+            <Handle>handle, n, <cuDoubleComplex*>x, incx, <int*>result)
     check_status(status)
-    return result
 
 
 cpdef sasum(intptr_t handle, int n, size_t x, int incx, size_t result):

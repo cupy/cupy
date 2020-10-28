@@ -100,14 +100,14 @@ cpdef int getMathMode(intptr_t handle) except? -1
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef int idamax(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef int icamax(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef int izamax(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef int isamin(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef int idamin(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef int icamin(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef int izamin(intptr_t handle, int n, size_t x, int incx) except? 0
+cpdef isamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef idamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef icamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef izamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef isamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef idamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef icamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef izamin(intptr_t handle, int n, size_t x, int incx, size_t result)
 cpdef sasum(intptr_t handle, int n, size_t x, int incx, size_t result)
 cpdef dasum(intptr_t handle, int n, size_t x, int incx, size_t result)
 cpdef scasum(intptr_t handle, int n, size_t x, int incx, size_t result)
