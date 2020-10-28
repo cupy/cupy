@@ -68,5 +68,4 @@ from cupy.random._sample import random_sample as ranf  # NOQA
 from cupy.random._sample import random_sample as sample  # NOQA
 from cupy.random._bit_generators import BitGenerator  # NOQA
 from cupy.random._bit_generators import Generator  # NOQA
-from cupy.random._bit_generators import MT19937  # NOQA
 from cupy.random._bit_generators import XORWOW  # NOQA

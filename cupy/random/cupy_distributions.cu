@@ -1,29 +1,64 @@
 #include <curand_kernel.h>
-#include "cupy_distributions.h"
+#include "cupy_distributions.cuh"
 #include <utility>
+#include <stdio.h>
 
 // Add a state of the generator function
 // that can be used to abstract both curand
 // and custom generators
 
-struct curand_xor_state: rk_state {
-    // Valid for  XORWOW and MRG32k3a
-    curandState_t state;
-    __device__ virtual void init_state(int id, intptr_t param) {
-        // TOOD(ecastill) enable reuse
-        curand_init(static_cast<uint64_t>(param) + id, 0, 0, &state);
-    }
+
+struct rk_state {
+
     __device__ virtual uint32_t rk_int() {
-        return  curand(&state);
+        return  0;
     }
     __device__ virtual double rk_double() {
-        return  curand_uniform(&state);
+        return  0.0;
     }
     __device__ virtual double rk_normal() {
-        return  curand_normal(&state);
+        return  0.0;
     }
 };
 
+
+struct curand_xor_state: rk_state {
+    // Valid for  XORWOW and MRG32k3a
+    curandState* _state;
+    int _id;
+
+    __device__ curand_xor_state(int id, intptr_t state) {
+        _state = reinterpret_cast<curandState*>(state) + id;
+        _id = id;
+    }
+    __device__ virtual uint32_t rk_int() {
+        return curand(_state);
+    }
+    __device__ virtual double rk_double() {
+        return curand_uniform(_state);
+    }
+    __device__ virtual double rk_normal() {
+        return curand_normal(_state);
+    }
+};
+
+
+__global__ void init_xor(intptr_t state, uint64_t seed, ssize_t size) {
+    curandState* state_ptr = reinterpret_cast<curandState*>(state);
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    /* Each thread gets same seed, a different sequence
+       number, no offset */
+    if (id < size) {
+        curand_init(seed, id, 0, &state_ptr[id]);    
+    }
+}
+
+void init_xor_generator(intptr_t state_ptr, uint64_t seed, ssize_t size) {
+    // state_ptr is a device ptr
+    int tpb = 256;
+    int bpg =  (size + tpb - 1) / tpb;
+    init_xor<<<bpg, tpb>>>(state_ptr, seed, size);
+}
 
 __device__ double rk_standard_exponential(rk_state* state) {
     /* We use -log(1-U) since U is [0, 1) */
@@ -123,21 +158,21 @@ __device__ uint64_t rk_interval_64(rk_state* state, uint64_t  mx, uint64_t mask)
 struct interval_32_functor {
     template<typename... Args>
     __device__ uint32_t operator () (Args&&... args) {
-        return rk_interval_32(args...);
+        return rk_interval_32(std::forward<Args>(args)...);
     }
 };
 
 struct interval_64_functor {
     template<typename... Args>
     __device__ uint64_t operator () (Args&&... args) {
-        return rk_interval_64(args...);
+        return rk_interval_64(std::forward<Args>(args)...);
     }
 };
 
 struct beta_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
-        return rk_beta(args...);
+        return rk_beta(std::forward<Args>(args)...);
     }
 };
 
@@ -145,42 +180,42 @@ struct beta_functor {
 struct exponential_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
-        return rk_standard_exponential(args...);
+        return rk_standard_exponential(std::forward<Args>(args)...);
     }
 };
 
 template<typename F, typename T, typename R, typename... Args>
-__global__ void execute_dist(intptr_t param, void* out, ssize_t size, Args... args) {
+__global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
+    R* out_ptr = reinterpret_cast<R*>(out);
     if (id < size) {
-        T random;
+        T random(id, state);
         F func;
-        random.init_state(id, param);
-        ((R*) out)[id] = func(&random, args...);
+        out_ptr[id] = func(&random, std::forward<Args>(args)...);
     }
     return;
 }
 
-void interval_32(intptr_t param, int mx, int mask, void* out, ssize_t size) {
+void interval_32(intptr_t state, int mx, int mask, intptr_t out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<interval_32_functor, curand_xor_state, int32_t><<<bpg, tpb>>>(param, out, size, mx, mask);
+    execute_dist<interval_32_functor, curand_xor_state, int32_t><<<bpg, tpb>>>(state, out, size, mx, mask);
 }
 
-void interval_64(intptr_t param, uint64_t mx, uint64_t mask, void* out, ssize_t size) {
+void interval_64(intptr_t state, uint64_t mx, uint64_t mask, intptr_t out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<interval_64_functor, curand_xor_state, int64_t><<<bpg, tpb>>>(param, out, size, mx, mask);
+    execute_dist<interval_64_functor, curand_xor_state, int64_t><<<bpg, tpb>>>(state, out, size, mx, mask);
 }
 
-void beta(intptr_t  param, double a, double b, void* out, ssize_t size) {
+void beta(intptr_t state, double a, double b, intptr_t out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<beta_functor, curand_xor_state, double><<<bpg, tpb>>>(param, out, size, a, b);
+    execute_dist<beta_functor, curand_xor_state, double><<<bpg, tpb>>>(state, out, size, a, b);
 }
 
-void standard_exponential(intptr_t  param, void* out, ssize_t size) {
+void standard_exponential(intptr_t state, intptr_t out, ssize_t size) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<exponential_functor, curand_xor_state, double><<<bpg, tpb>>>(param, out, size);
+    execute_dist<exponential_functor, curand_xor_state, double><<<bpg, tpb>>>(state, out, size);
 }
