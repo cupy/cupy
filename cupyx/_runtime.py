@@ -38,11 +38,6 @@ try:
 except ImportError:
     scipy = None
 
-try:
-    import Cython
-except ImportError:
-    Cython = None
-
 is_hip = cupy_backends.cuda.api.runtime.is_hip
 
 
@@ -119,7 +114,6 @@ class _RuntimeInfo(object):
     cub_build_version = None
     cutensor_version = None
     cython_build_version = None
-    cython_version = None
 
     numpy_version = None
     scipy_version = None
@@ -184,8 +178,6 @@ class _RuntimeInfo(object):
             self.cutensor_version = cutensor.get_version()
 
         self.cython_build_version = cupy._util.cython_build_ver
-        if Cython is not None:
-            self.cython_version = Cython.__version__
 
         self.numpy_version = numpy.version.full_version
         if scipy is not None:
@@ -198,7 +190,6 @@ class _RuntimeInfo(object):
             ('NumPy Version', self.numpy_version),
             ('SciPy Version', self.scipy_version),
             ('Cython Build Version', self.cython_build_version),
-            ('Cython Runtime Version', self.cython_version),
             ('CUDA Root', self.cuda_path),
 
             ('CUDA Build Version', self.cuda_build_version),
