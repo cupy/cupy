@@ -18,7 +18,7 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void interval_32(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int mx, int mask);
     void interval_64(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask);
     void beta(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b);
-    void standard_exponential(intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
+    void exponential(intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
@@ -115,7 +115,7 @@ class Generator:
             raise NotImplementedError('Ziggurat method is not supported')
                  
         y = ndarray(size if size is not None else (), dtype)
-        self._launch_distribution_kernel(standard_exponential, y)
+        self._launch_distribution_kernel(exponential, y)
         if out is not None:
             out[...] = y
             y = out

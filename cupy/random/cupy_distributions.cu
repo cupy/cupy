@@ -43,6 +43,16 @@ struct curand_xor_state: rk_state {
 };
 
 
+// This design is the same as the dtypes one
+template <typename F, typename... Ts>
+void generator_dispatcher(int generator_id, F f, int bpg, int tpb, cudaStream_t stream, Ts&&... args) {
+   switch(generator_id) {
+       case CURAND_XOR_WOW: return f.template operator()<curand_xor_state>(bpg, tpb, stream, std::forward<Ts>(args)...);
+   }
+}
+
+
+
 __global__ void init_xor(intptr_t state, uint64_t seed, ssize_t size) {
     curandState* state_ptr = reinterpret_cast<curandState*>(state);
     int id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -197,30 +207,46 @@ __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args...
     return;
 }
 
+template <typename F, typename R>
+struct kernel_launcher {
+    template<typename T, typename... Args>
+    void operator()(int bpg, int tpb, cudaStream_t stream, Args&&... args) { 
+        execute_dist<F, T, R><<<bpg, tpb, 0, stream>>>(std::forward<Args>(args)...);
+    }
+};
+
+//These functions will take the generator_id as a parameter
 void interval_32(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int mx, int mask) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
     cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-    execute_dist<interval_32_functor, curand_xor_state, int32_t><<<bpg, tpb, 0, stream_>>>(state, out, size, mx, mask);
+    kernel_launcher<interval_32_functor, int32_t> launcher;
+    generator_dispatcher(RandGenerators::CURAND_XOR_WOW, launcher, bpg, tpb, stream_, state, out, size, mx, mask);
 }
 
 void interval_64(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
     cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-    execute_dist<interval_64_functor, curand_xor_state, int64_t><<<bpg, tpb, 0, stream_>>>(state, out, size, mx, mask);
+    kernel_launcher<interval_64_functor, int64_t> launcher;
+    generator_dispatcher(RandGenerators::CURAND_XOR_WOW, launcher, bpg, tpb, stream_, state, out, size, mx, mask);
 }
 
 void beta(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
     cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-    execute_dist<beta_functor, curand_xor_state, double><<<bpg, tpb, 0, stream_>>>(state, out, size, a, b);
+
+    kernel_launcher<beta_functor, double> launcher;
+    generator_dispatcher(RandGenerators::CURAND_XOR_WOW, launcher, bpg, tpb, stream_, state, out, size, a, b);
 }
 
-void standard_exponential(intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+void exponential(intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
     cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-    execute_dist<exponential_functor, curand_xor_state, double><<<bpg, tpb, 0, stream_>>>(state, out, size);
+
+    kernel_launcher<exponential_functor, double> launcher;
+    generator_dispatcher(RandGenerators::CURAND_XOR_WOW, launcher, bpg, tpb, stream_, state, out, size);
 }
+
