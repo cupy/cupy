@@ -1,6 +1,8 @@
 import numpy
 import cupy
 
+from cupy import cublas
+
 
 def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
           return_eigenvectors=True):
@@ -65,8 +67,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
 
     # Set initial vector
     u = cupy.random.random((n, )).astype(a.dtype)
-    v = u / cupy.linalg.norm(u)
-    V[0] = v
+    V[0] = u / cublas.nrm2(u)
 
     # Lanczos iteration
     u = _eigsh_lanczos_update(a, V, alpha, beta, 0, ncv)
@@ -76,7 +77,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
 
     # Compute residual
     beta_k = beta[-1] * s[-1, :]
-    res = cupy.linalg.norm(beta_k)
+    res = cublas.nrm2(beta_k)
 
     while res > tol and iter < maxiter:
         # Setup for thick-restart
@@ -85,17 +86,14 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         V[:k] = x.T
 
         u -= u.T @ V[:k].conj().T @ V[:k]
-        v = u / cupy.linalg.norm(u)
-        V[k] = v
+        V[k] = u / cublas.nrm2(u)
 
-        u = a @ v
-        alpha[k] = v.conj().T @ u
-        u -= alpha[k] * v
+        u = a @ V[k]
+        cublas.dotc(V[k], u, out=alpha[k])
+        u -= alpha[k] * V[k]
         u -= V[:k].T @ beta_k
-        u -= u.T @ V[:k+1].conj().T @ V[:k+1]
-        beta[k] = cupy.linalg.norm(u)
-        v = u / beta[k]
-        V[k+1] = v
+        cublas.nrm2(u, out=beta[k])
+        V[k+1] = u / beta[k]
 
         # Lanczos iteration
         u = _eigsh_lanczos_update(a, V, alpha, beta, k+1, ncv)
@@ -105,7 +103,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
 
         # Compute residual
         beta_k = beta[-1] * s[-1, :]
-        res = cupy.linalg.norm(beta_k)
+        res = cublas.nrm2(beta_k)
 
     if return_eigenvectors:
         idx = cupy.argsort(w)
@@ -115,19 +113,14 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
 
 
 def _eigsh_lanczos_update(A, V, alpha, beta, i_start, i_end):
-    v = V[i_start]
     for i in range(i_start, i_end):
-        u = A @ v
-        alpha[i] = v.conj().T @ u
-        u -= alpha[i] * v
-        if i > 0:
-            u -= beta[i-1] * V[i-1]
+        u = A @ V[i]
+        cublas.dotc(V[i], u, out=alpha[i])
         u -= u.T @ V[:i+1].conj().T @ V[:i+1]
-        beta[i] = cupy.linalg.norm(u)
+        cublas.nrm2(u, out=beta[i])
         if i >= i_end - 1:
             break
-        v = u / beta[i]
-        V[i+1] = v
+        V[i+1] = u / beta[i]
     return u
 
 
