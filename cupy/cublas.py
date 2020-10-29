@@ -105,17 +105,17 @@ def batched_gesv(a, b):
 
 
 def iamax(x, out=None):
-    """Finds the (smallest) index of the element of the maximum magnitude.
+    """Finds the (smallest) index of the element with the maximum magnitude.
 
-    (*) The result index is 1-based index (not 0-based index).
+    Note: The result index is 1-based index (not 0-based index).
     """
     return _iamaxmin(x, out, 'amax')
 
 
 def iamin(x, out=None):
-    """Finds the (smallest) index of the element of the minimum magnitude.
+    """Finds the (smallest) index of the element with the minimum magnitude.
 
-    (*) The result index is 1-based index (not 0-based index).
+    Note: The result index is 1-based index (not 0-based index).
     """
     return _iamaxmin(x, out, 'amin')
 
@@ -213,7 +213,7 @@ def dot(x, y, out=None):
         func = cublas.sdot
     elif dtype == 'd':
         func = cublas.ddot
-    elif dtype == 'FD':
+    elif dtype in 'FD':
         raise TypeError('Use dotu() or dotc() for complex dtype')
     else:
         raise TypeError('invalid dtype')
@@ -235,7 +235,7 @@ def dot(x, y, out=None):
 def dotu(x, y, out=None):
     """Computes the dot product of x and y."""
     dtype = x.dtype.char
-    if dtype == 'fd':
+    if dtype in 'fd':
         return dot(x, y, out=out)
     elif dtype == 'F':
         func = cublas.cdotu
@@ -261,7 +261,7 @@ def dotu(x, y, out=None):
 def dotc(x, y, out=None):
     """Computes the dot product of x.conj() and y."""
     dtype = x.dtype.char
-    if dtype == 'fd':
+    if dtype in 'fd':
         return dot(x, y, out=out)
     elif dtype == 'F':
         func = cublas.cdotc
@@ -354,18 +354,18 @@ def _check_two_vectors(x, y):
                         ''.format(x.dtype, y.dtype))
 
 
-def _setup_result_ptr(handle, out, result_dtype):
+def _setup_result_ptr(handle, out, dtype):
     mode = cublas.getPointerMode(handle)
     if out is None or isinstance(out, cupy.ndarray):
-        if out is None or out.dtype != result_dtype:
-            result = cupy.empty([], dtype=result_dtype)
+        if out is None or out.dtype != dtype:
+            result = cupy.empty([], dtype=dtype)
         else:
             result = out
         result_ptr = result.data.ptr
         cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_DEVICE)
     elif isinstance(out, numpy.ndarray):
-        if out.dtype != result_dtype:
-            result = numpy.empty([], dtype=result_dtype)
+        if out.dtype != dtype:
+            result = numpy.empty([], dtype=dtype)
         else:
             result = out
         result_ptr = result.ctypes.data
