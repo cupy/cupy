@@ -87,7 +87,7 @@ cdef extern from '../cupy_cublas.h' nogil:
     int cublasScnrm2(Handle handle, int n, cuComplex* x, int incx,
                      float* result)
     int cublasDznrm2(Handle handle, int n, cuDoubleComplex* x, int incx,
-                    double* result)
+                     double* result)
     int cublasSscal(Handle handle, int n, float* alpha, float* x, int incx)
     int cublasDscal(Handle handle, int n, double* alpha, double* x, int incx)
     int cublasCscal(Handle handle, int n, cuComplex* alpha,
@@ -578,7 +578,8 @@ cpdef daxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
     _setStream(handle)
     with nogil:
         status = cublasDaxpy(
-            <Handle>handle, n, <double*>alpha, <double*>x, incx, <double*>y, incy)
+            <Handle>handle, n, <double*>alpha, <double*>x, incx, <double*>y,
+            incy)
     check_status(status)
 
 cpdef caxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
