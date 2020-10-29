@@ -1,3 +1,21 @@
+try:
+    import scipy.sparse as _sparse
+    SparseWarning = _sparse.SparseWarning
+    SparseFormatWarning = _sparse.SparseFormatWarning
+    SparseEfficiencyWarning = _sparse.SparseEfficiencyWarning
+except ImportError:
+    class SparseWarning(Warning):
+        pass
+
+
+    class SparseFormatWarning(SparseWarning):
+        pass
+
+
+    class SparseEfficiencyWarning(SparseWarning):
+        pass
+
+
 from cupyx.scipy.sparse.base import issparse  # NOQA
 from cupyx.scipy.sparse.base import isspmatrix  # NOQA
 from cupyx.scipy.sparse.base import spmatrix  # NOQA

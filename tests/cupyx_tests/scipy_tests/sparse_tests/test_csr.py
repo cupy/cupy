@@ -1,3 +1,4 @@
+import contextlib
 import pickle
 import unittest
 
@@ -1882,11 +1883,20 @@ class TestCsrMatrixComparison(unittest.TestCase):
         elif self.opt == '_ge_':
             return a >= b
 
+    @contextlib.contextmanager
+    def _assert_warn_efficiency(self, sp):
+        if self.opt in ('_eq_', '_le_', '_ge_'):
+            with testing.assert_warns(sp.SparseEfficiencyWarning):
+                yield
+        else:
+            yield
+
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_sparse(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         b = self._make_sp_matrix(self.b_dtype, xp, sp)
-        return self._compare(a, b)
+        with self._assert_warn_efficiency(sp):
+            return self._compare(a, b)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_sparse_row(self, xp, sp):
