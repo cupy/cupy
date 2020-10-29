@@ -34,26 +34,33 @@ class BitGenerator:
         raise NotImplementedError(
             'Subclasses of `BitGenerator` must override `random_raw`')
 
+    def state_size(self):
+        """Maximum number of samples that can be generated at once
+        """
+        return 0
 
 class XORWOW(BitGenerator):
     # Size is the number of threads that will be initialized
     def __init__(self, seed=None, size=1024*100):
         super().__init__(seed)
         self._seed = self._seed_seq.generate_state(1, numpy.uint64)[0]
-        cdef ssize_t _size = sizeof(curandState) * size
-        self._state = cupy.zeros(_size, dtype=numpy.int8)
+        self._size = size
+        cdef ssize_t b_size = sizeof(curandState) * size
+        self._state = cupy.zeros(b_size, dtype=numpy.int8)
         ptr = self._state.data.ptr
         cdef intptr_t state_ptr = <intptr_t>ptr
         cdef uint64_t c_seed = <uint64_t>self._seed
         # Initialize the state
         init_xor_generator(state_ptr, self._seed, size)
-        print('state is',self._state)
 
     def random_raw(self, size=None, out=False):
         pass
 
     def state(self):
         return self._state.data.ptr
+
+    def state_size(self):
+        return self._size
 
 class Generator:
     def __init__(self, bit_generator):
@@ -84,12 +91,25 @@ class Generator:
         state_ptr = self._bit_generator.state()
         state = <intptr_t>state_ptr
 
+        bsize = self._bit_generator.state_size()
+
         if dtype is numpy.uint32:
             # We know that the mask fits
-            interval_32(state, diff, <uint32_t>mask, y_ptr, y.size)        
+            if bsize == 0:
+                interval_32(state, diff, <uint32_t>mask, y_ptr, y.size)        
+            else:
+                chunks = (y.size + bsize - 1) // bsize
+                for i in range(chunks):
+                    y_ptr = <intptr_t>y[i*bsize:].data.ptr
+                    interval_32(state, diff, <uint32_t>mask, y_ptr, bsize)        
         else:
-            # we will only try and check the upper part
-            interval_64(state, diff, mask, y_ptr, y.size)        
+            if bsize == 0:
+                interval_64(state, diff, mask, y_ptr, y.size)        
+            else:
+                chunks = (y.size + bsize - 1) // bsize
+                for i in range(chunks):
+                    y_ptr = <intptr_t>y[i*bsize:].data.ptr
+                    interval_64(state, diff, mask, y_ptr, bsize)        
         return low + y
 
     def beta(self, a, b, size=None, dtype=float):
@@ -110,7 +130,14 @@ class Generator:
 
         y = ndarray(size if size is not None else (), dtype)
         y_ptr = <intptr_t>y.data.ptr
-        beta(state, a, b, y_ptr, y.size)        
+        bsize = self._bit_generator.state_size()
+        if bsize == 0:
+            beta(state, a, b, y_ptr, y.size)        
+        else:
+            chunks = (y.size + bsize - 1) // bsize
+            for i in range(chunks):
+                y_ptr = <intptr_t>y[i*bsize:].data.ptr
+                beta(state, a, b, y_ptr, bsize)        
         return y
 
     def standard_exponential(self, size=None, dtype=numpy.float64, method='inv', out=None):
@@ -123,11 +150,16 @@ class Generator:
                  
         state_ptr = self._bit_generator.state()
         state = <intptr_t>state_ptr
-
         y = ndarray(size if size is not None else (), dtype)
         y_ptr = <intptr_t>y.data.ptr
-        print(state_ptr)
-        standard_exponential(state, y_ptr, y.size)
+        bsize = self._bit_generator.state_size()
+        if bsize == 0:
+            standard_exponential(state, y_ptr, y.size)
+        else:
+            chunks = (y.size + bsize - 1) // bsize
+            for i in range(chunks):
+                y_ptr = <intptr_t>y[i*bsize:].data.ptr
+                standard_exponential(state, y_ptr, bsize)
         if out is not None:
             out[...] = y
             y = out
