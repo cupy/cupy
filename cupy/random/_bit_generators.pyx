@@ -6,17 +6,19 @@ from libc.stdint cimport intptr_t, uint64_t, uint32_t
 
 import cupy
 from cupy.cuda import curand
+from cupy.cuda cimport stream
 from cupy.core.core cimport ndarray
 
 
 cdef extern from 'cupy_distributions.cuh' nogil:
     cppclass curandState:
         pass
-    void init_xor_generator(intptr_t state_ptr, uint64_t seed, ssize_t size);
-    void interval_32(intptr_t state, int mx, int mask, intptr_t out, ssize_t size);
-    void interval_64(intptr_t state, uint64_t mx, uint64_t mask, intptr_t out, ssize_t size);
-    void beta(intptr_t state, double a, double b, intptr_t out, ssize_t size);
-    void standard_exponential(intptr_t state, intptr_t out, ssize_t size);
+
+    void init_xor_generator(intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream);
+    void interval_32(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int mx, int mask);
+    void interval_64(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask);
+    void beta(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b);
+    void standard_exponential(intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
@@ -50,8 +52,9 @@ class XORWOW(BitGenerator):
         ptr = self._state.data.ptr
         cdef intptr_t state_ptr = <intptr_t>ptr
         cdef uint64_t c_seed = <uint64_t>self._seed
+        cdef intptr_t _strm = stream.get_current_stream_ptr()
         # Initialize the state
-        init_xor_generator(state_ptr, self._seed, size)
+        init_xor_generator(state_ptr, self._seed, size, _strm)
 
     def random_raw(self, size=None, out=False):
         pass
@@ -70,6 +73,7 @@ class Generator:
         cdef ndarray y
         cdef intptr_t state
         cdef intptr_t y_ptr
+        cdef intptr_t _strm = stream.get_current_stream_ptr()
 
         diff = high-low
         if not endpoint:
@@ -96,20 +100,20 @@ class Generator:
         if dtype is numpy.uint32:
             # We know that the mask fits
             if bsize == 0:
-                interval_32(state, diff, <uint32_t>mask, y_ptr, y.size)        
+                interval_32(state, y_ptr, y.size, _strm, diff, <uint32_t>mask)
             else:
                 chunks = (y.size + bsize - 1) // bsize
                 for i in range(chunks):
                     y_ptr = <intptr_t>y[i*bsize:].data.ptr
-                    interval_32(state, diff, <uint32_t>mask, y_ptr, bsize)        
+                    interval_32(state, y_ptr, y.size, _strm, diff, <uint32_t>mask)
         else:
             if bsize == 0:
-                interval_64(state, diff, mask, y_ptr, y.size)        
+                interval_64(state, y_ptr, y.size, _strm, diff, mask)
             else:
                 chunks = (y.size + bsize - 1) // bsize
                 for i in range(chunks):
                     y_ptr = <intptr_t>y[i*bsize:].data.ptr
-                    interval_64(state, diff, mask, y_ptr, bsize)        
+                    interval_64(state, y_ptr, bsize, _strm, diff, mask)
         return low + y
 
     def beta(self, a, b, size=None, dtype=float):
@@ -124,6 +128,7 @@ class Generator:
         # cdef uint64_t state = <uint64_t>self._bit_generator.state()
         cdef intptr_t state
         cdef intptr_t y_ptr
+        cdef intptr_t _strm = stream.get_current_stream_ptr()
 
         state_ptr = self._bit_generator.state()
         state = <intptr_t>state_ptr
@@ -132,18 +137,19 @@ class Generator:
         y_ptr = <intptr_t>y.data.ptr
         bsize = self._bit_generator.state_size()
         if bsize == 0:
-            beta(state, a, b, y_ptr, y.size)        
+            beta(state, y_ptr, y.size, _strm, a, b)
         else:
             chunks = (y.size + bsize - 1) // bsize
             for i in range(chunks):
                 y_ptr = <intptr_t>y[i*bsize:].data.ptr
-                beta(state, a, b, y_ptr, bsize)        
+                beta(state, y_ptr, bsize, _strm, a, b)        
         return y
 
     def standard_exponential(self, size=None, dtype=numpy.float64, method='inv', out=None):
         cdef ndarray y
         cdef intptr_t state
         cdef intptr_t y_ptr
+        cdef intptr_t _strm = stream.get_current_stream_ptr()
 
         if method == 'zig':
             raise NotImplementedError('Ziggurat method is not supported')
@@ -154,12 +160,12 @@ class Generator:
         y_ptr = <intptr_t>y.data.ptr
         bsize = self._bit_generator.state_size()
         if bsize == 0:
-            standard_exponential(state, y_ptr, y.size)
+            standard_exponential(state, y_ptr, y.size, _strm)
         else:
             chunks = (y.size + bsize - 1) // bsize
             for i in range(chunks):
                 y_ptr = <intptr_t>y[i*bsize:].data.ptr
-                standard_exponential(state, y_ptr, bsize)
+                standard_exponential(state, y_ptr, bsize, _strm)
         if out is not None:
             out[...] = y
             y = out

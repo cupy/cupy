@@ -53,11 +53,12 @@ __global__ void init_xor(intptr_t state, uint64_t seed, ssize_t size) {
     }
 }
 
-void init_xor_generator(intptr_t state_ptr, uint64_t seed, ssize_t size) {
+void init_xor_generator(intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {
     // state_ptr is a device ptr
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    init_xor<<<bpg, tpb>>>(state_ptr, seed, size);
+    cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
+    init_xor<<<bpg, tpb, 0, stream_>>>(state_ptr, seed, size);
 }
 
 __device__ double rk_standard_exponential(rk_state* state) {
@@ -196,26 +197,30 @@ __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args...
     return;
 }
 
-void interval_32(intptr_t state, int mx, int mask, intptr_t out, ssize_t size) {
+void interval_32(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int mx, int mask) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<interval_32_functor, curand_xor_state, int32_t><<<bpg, tpb>>>(state, out, size, mx, mask);
+    cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
+    execute_dist<interval_32_functor, curand_xor_state, int32_t><<<bpg, tpb, 0, stream_>>>(state, out, size, mx, mask);
 }
 
-void interval_64(intptr_t state, uint64_t mx, uint64_t mask, intptr_t out, ssize_t size) {
+void interval_64(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<interval_64_functor, curand_xor_state, int64_t><<<bpg, tpb>>>(state, out, size, mx, mask);
+    cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
+    execute_dist<interval_64_functor, curand_xor_state, int64_t><<<bpg, tpb, 0, stream_>>>(state, out, size, mx, mask);
 }
 
-void beta(intptr_t state, double a, double b, intptr_t out, ssize_t size) {
+void beta(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<beta_functor, curand_xor_state, double><<<bpg, tpb>>>(state, out, size, a, b);
+    cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
+    execute_dist<beta_functor, curand_xor_state, double><<<bpg, tpb, 0, stream_>>>(state, out, size, a, b);
 }
 
-void standard_exponential(intptr_t state, intptr_t out, ssize_t size) {
+void standard_exponential(intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
-    execute_dist<exponential_functor, curand_xor_state, double><<<bpg, tpb>>>(state, out, size);
+    cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
+    execute_dist<exponential_functor, curand_xor_state, double><<<bpg, tpb, 0, stream_>>>(state, out, size);
 }
