@@ -71,9 +71,6 @@ class Generator:
 
     def integers(self, low, high, size, dtype=numpy.int32, endpoint=False):
         cdef ndarray y
-        cdef intptr_t state
-        cdef intptr_t y_ptr
-        cdef intptr_t _strm = stream.get_current_stream_ptr()
 
         diff = high-low
         if not endpoint:
@@ -90,30 +87,11 @@ class Generator:
                 'high - low must be within uint64 range (actual: {})'.format(diff))
 
         y = ndarray(size if size is not None else (), dtype)
-        y_ptr = <intptr_t>y.data.ptr
-
-        state_ptr = self._bit_generator.state()
-        state = <intptr_t>state_ptr
-
-        bsize = self._bit_generator.state_size()
 
         if dtype is numpy.uint32:
-            # We know that the mask fits
-            if bsize == 0:
-                interval_32(state, y_ptr, y.size, _strm, diff, <uint32_t>mask)
-            else:
-                chunks = (y.size + bsize - 1) // bsize
-                for i in range(chunks):
-                    y_ptr = <intptr_t>y[i*bsize:].data.ptr
-                    interval_32(state, y_ptr, y.size, _strm, diff, <uint32_t>mask)
+           self._launch_distribution_kernel(interval_32, y, diff, mask)
         else:
-            if bsize == 0:
-                interval_64(state, y_ptr, y.size, _strm, diff, mask)
-            else:
-                chunks = (y.size + bsize - 1) // bsize
-                for i in range(chunks):
-                    y_ptr = <intptr_t>y[i*bsize:].data.ptr
-                    interval_64(state, y_ptr, bsize, _strm, diff, mask)
+           self._launch_distribution_kernel(interval_64, y, diff, mask)
         return low + y
 
     def beta(self, a, b, size=None, dtype=float):
@@ -126,48 +104,38 @@ class Generator:
         """
         cdef ndarray y
         # cdef uint64_t state = <uint64_t>self._bit_generator.state()
-        cdef intptr_t state
-        cdef intptr_t y_ptr
-        cdef intptr_t _strm = stream.get_current_stream_ptr()
-
-        state_ptr = self._bit_generator.state()
-        state = <intptr_t>state_ptr
-
         y = ndarray(size if size is not None else (), dtype)
-        y_ptr = <intptr_t>y.data.ptr
-        bsize = self._bit_generator.state_size()
-        if bsize == 0:
-            beta(state, y_ptr, y.size, _strm, a, b)
-        else:
-            chunks = (y.size + bsize - 1) // bsize
-            for i in range(chunks):
-                y_ptr = <intptr_t>y[i*bsize:].data.ptr
-                beta(state, y_ptr, bsize, _strm, a, b)        
+        self._launch_distribution_kernel(beta, y, a, b)
         return y
 
     def standard_exponential(self, size=None, dtype=numpy.float64, method='inv', out=None):
         cdef ndarray y
-        cdef intptr_t state
-        cdef intptr_t y_ptr
-        cdef intptr_t _strm = stream.get_current_stream_ptr()
 
         if method == 'zig':
             raise NotImplementedError('Ziggurat method is not supported')
                  
-        state_ptr = self._bit_generator.state()
-        state = <intptr_t>state_ptr
         y = ndarray(size if size is not None else (), dtype)
-        y_ptr = <intptr_t>y.data.ptr
-        bsize = self._bit_generator.state_size()
-        if bsize == 0:
-            standard_exponential(state, y_ptr, y.size, _strm)
-        else:
-            chunks = (y.size + bsize - 1) // bsize
-            for i in range(chunks):
-                y_ptr = <intptr_t>y[i*bsize:].data.ptr
-                standard_exponential(state, y_ptr, bsize, _strm)
+        self._launch_distribution_kernel(standard_exponential, y)
         if out is not None:
             out[...] = y
             y = out
         return y
 
+    def _launch_distribution_kernel(self, func, out, *args):
+        # The generator might only have state for a few number of threads,
+        # what we do is to split the array filling in several chunks that are
+        # generated sequentially using the same state
+        cdef intptr_t strm = stream.get_current_stream_ptr()
+        state_ptr = self._bit_generator.state()
+        cdef state = <intptr_t>state_ptr
+        cdef y_ptr = <intptr_t>out.data.ptr
+        cdef ssize_t size = out.size
+        cdef bsize = self._bit_generator.state_size()
+        if bsize == 0:
+            func(state, y_ptr, out.size, strm, *args)
+        else:
+            chunks = (out.size + bsize - 1) // bsize
+            for i in range(chunks):
+                y_ptr = <intptr_t>out[i*bsize:].data.ptr
+                func(state, y_ptr, bsize, strm, *args)
+        
