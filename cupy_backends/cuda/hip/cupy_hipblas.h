@@ -58,23 +58,6 @@ static hipblasDatatype_t convert_hipblasDatatype_t(cudaDataType_t type) {
     }
 }
 
-// TODO(leofang): perhaps these should be merged with the support of hipBLAS?
-static rocblas_fill convert_rocblas_fill(cublasFillMode_t mode) {
-    switch(static_cast<int>(mode)) {
-        case 0 /* CUBLAS_FILL_MODE_LOWER */: return rocblas_fill_lower;
-        case 1 /* CUBLAS_FILL_MODE_UPPER */: return rocblas_fill_upper;
-        default: throw std::runtime_error("unrecognized mode");
-    }
-}
-
-static rocblas_operation convert_rocblas_operation(cublasOperation_t op) {
-    return static_cast<rocblas_operation>(static_cast<int>(op) + 111);
-}
-
-static rocblas_side convert_rocblas_side(cublasSideMode_t mode) {
-    return static_cast<rocblas_side>(static_cast<int>(mode) + 141);
-}
-
 
 // Context
 cublasStatus_t cublasCreate(cublasHandle_t* handle) {
