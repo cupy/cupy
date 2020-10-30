@@ -99,7 +99,7 @@ class TestLevel1Functions(unittest.TestCase):
 
     def test_iamax(self):
         x = self._make_random_vector()
-        ref = cupy.argsort(cupy.absolute(x.real) + cupy.absolute(x.imag))[-1]
+        ref = cupy.argmax(cupy.absolute(x.real) + cupy.absolute(x.imag))
         out = self._make_out('i')
         res = cublas.iamax(x, out=out)
         self._check_pointer(res, out)
@@ -108,7 +108,7 @@ class TestLevel1Functions(unittest.TestCase):
 
     def test_iamin(self):
         x = self._make_random_vector()
-        ref = cupy.argsort(cupy.absolute(x.real) + cupy.absolute(x.imag))[0]
+        ref = cupy.argmin(cupy.absolute(x.real) + cupy.absolute(x.imag))
         out = self._make_out('i')
         res = cublas.iamin(x, out=out)
         self._check_pointer(res, out)
