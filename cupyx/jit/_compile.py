@@ -37,7 +37,6 @@ def transpile(func, attributes, mode, in_types, ret_type):
     cuda_code, env = _transpile_function(
         tree.body[0], attributes, mode, global_mems, in_types, ret_type)
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
-    print(cuda_code)
     return cuda_code, env.ret_type
 
 
