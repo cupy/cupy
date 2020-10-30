@@ -18,16 +18,16 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     cppclass curandStatePhilox4_32_10_t:
         pass
 
-    cdef enum _RandGenerators '::RandGenerators':
+    cdef enum _RandGenerators 'RandGenerators':
         CURAND_XOR_WOW
         CURAND_MRG32k3a
         CURAND_PHILOX_4x32_10
 
-    void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream);
-    void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int mx, int mask);
-    void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask);
-    void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b);
-    void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
+    void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream)
+    void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask)
+    void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask)
+    void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b)
+    void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream)
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
@@ -171,14 +171,16 @@ class Generator:
         cdef state = <intptr_t>state_ptr
         cdef y_ptr = <intptr_t>out.data.ptr
         cdef ssize_t size = out.size
+        cdef ndarray chunk
         cdef int generator = self._bit_generator.generator
 
         cdef bsize = self._bit_generator.state_size()
         if bsize == 0:
-            func(state, y_ptr, out.size, strm, *args)
+            func(generator, state, y_ptr, out.size, strm, *args)
         else:
             chunks = (out.size + bsize - 1) // bsize
             for i in range(chunks):
-                y_ptr = <intptr_t>out[i*bsize:].data.ptr
-                func(generator, state, y_ptr, bsize, strm, *args)
+                chunk = out[i*bsize:]
+                y_ptr = <intptr_t>chunk.data.ptr
+                func(generator, state, y_ptr, chunk.size, strm, *args)
         

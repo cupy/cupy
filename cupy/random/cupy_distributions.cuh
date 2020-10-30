@@ -17,7 +17,7 @@ enum RandGenerators{
 #include <curand_kernel.h>
 
 void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream);
-void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int mx, int mask);
+void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask);
 void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask);
 void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b);
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);

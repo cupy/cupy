@@ -44,11 +44,11 @@ struct curand_pseudo_state: rk_state {
 
 // This design is the same as the dtypes one
 template <typename F, typename... Ts>
-void generator_dispatcher(int generator_id, F f, int bpg, int tpb, cudaStream_t stream, Ts&&... args) {
+void generator_dispatcher(int generator_id, F f, Ts&&... args) {
    switch(generator_id) {
-       case CURAND_XOR_WOW: return f.template operator()<curand_pseudo_state<curandState>>(bpg, tpb, stream, std::forward<Ts>(args)...);
-       case CURAND_MRG32k3a: return f.template operator()<curand_pseudo_state<curandStateMRG32k3a>>(bpg, tpb, stream, std::forward<Ts>(args)...);
-       case CURAND_PHILOX_4x32_10: return f.template operator()<curand_pseudo_state<curandStatePhilox4_32_10_t>>(bpg, tpb, stream, std::forward<Ts>(args)...);
+       case CURAND_XOR_WOW: return f.template operator()<curand_pseudo_state<curandState>>(std::forward<Ts>(args)...);
+       case CURAND_MRG32k3a: return f.template operator()<curand_pseudo_state<curandStateMRG32k3a>>(std::forward<Ts>(args)...);
+       case CURAND_PHILOX_4x32_10: return f.template operator()<curand_pseudo_state<curandStatePhilox4_32_10_t>>(std::forward<Ts>(args)...);
        default: throw std::runtime_error("Unknown random generator");
    }
 }
@@ -66,20 +66,22 @@ __global__ void init_curand(intptr_t state, uint64_t seed, ssize_t size) {
 }
 
 struct initialize_launcher {
-    template<typename T, typename... Args>
-    void operator()(int bpg, int tpb, cudaStream_t stream, Args&&... args) { 
-        init_curand<T><<<bpg, tpb, 0, stream>>>(std::forward<Args>(args)...);
+    initialize_launcher(ssize_t size, cudaStream_t stream) : _size(size), _stream(stream) {
     }
+    template<typename T, typename... Args>
+    void operator()(Args&&... args) { 
+        int tpb = 256;
+        int bpg =  (_size + tpb - 1) / tpb;
+        init_curand<T><<<bpg, tpb, 0, _stream>>>(std::forward<Args>(args)...);
+    }
+    ssize_t _size;
+    cudaStream_t _stream;
 };
 
 void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {
     // state_ptr is a device ptr
-    int tpb = 256;
-    int bpg =  (size + tpb - 1) / tpb;
-    cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-    // init_curand<<<bpg, tpb, 0, stream_>>>(state_ptr, seed, size);
-    initialize_launcher launcher;
-    generator_dispatcher(generator, launcher, bpg, tpb, stream_, state_ptr, seed, size);
+    initialize_launcher launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state_ptr, seed, size);
 }
 
 __device__ double rk_standard_exponential(rk_state* state) {
@@ -156,7 +158,7 @@ __device__ double rk_beta(rk_state* state, double a, double b) {
 }
 
 
-__device__ uint32_t rk_interval_32(rk_state* state, int mx, int mask) {
+__device__ uint32_t rk_interval_32(rk_state* state, uint32_t mx, uint32_t mask) {
     uint32_t sampled = state->rk_int() & mask;
     while(sampled > mx)  {
         sampled = state->rk_int() & mask;
@@ -220,42 +222,36 @@ __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args...
 
 template <typename F, typename R>
 struct kernel_launcher {
-    template<typename T, typename... Args>
-    void operator()(int bpg, int tpb, cudaStream_t stream, Args&&... args) { 
-        execute_dist<F, T, R><<<bpg, tpb, 0, stream>>>(std::forward<Args>(args)...);
+    kernel_launcher(ssize_t size, cudaStream_t stream) : _size(size), _stream(stream) {
     }
+    template<typename T, typename... Args>
+    void operator()(Args&&... args) { 
+        int tpb = 256;
+        int bpg =  (_size + tpb - 1) / tpb;
+        execute_dist<F, T, R><<<bpg, tpb, 0, _stream>>>(std::forward<Args>(args)...);
+    }
+    ssize_t _size;
+    cudaStream_t _stream;
 };
 
 //These functions will take the generator_id as a parameter
-void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int mx, int mask) {
-    int tpb = 256;
-    int bpg =  (size + tpb - 1) / tpb;
-    cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-    kernel_launcher<interval_32_functor, int32_t> launcher;
-    generator_dispatcher(generator, launcher, bpg, tpb, stream_, state, out, size, mx, mask);
+void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask) {
+    kernel_launcher<interval_32_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, mx, mask);
 }
 
 void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {
-    int tpb = 256;
-    int bpg =  (size + tpb - 1) / tpb;
-    cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-    kernel_launcher<interval_64_functor, int64_t> launcher;
-    generator_dispatcher(generator, launcher, bpg, tpb, stream_, state, out, size, mx, mask);
+    kernel_launcher<interval_64_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, mx, mask);
 }
 
 void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {
-    int tpb = 256;
-    int bpg =  (size + tpb - 1) / tpb;
-    cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-    kernel_launcher<beta_functor, double> launcher;
-    generator_dispatcher(generator, launcher, bpg, tpb, stream_, state, out, size, a, b);
+    kernel_launcher<beta_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, a, b);
 }
 
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
-    int tpb = 256;
-    int bpg =  (size + tpb - 1) / tpb;
-    cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-    kernel_launcher<exponential_functor, double> launcher;
-    generator_dispatcher(generator, launcher, bpg, tpb, stream_, state, out, size);
+    kernel_launcher<exponential_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size);
 }
 
