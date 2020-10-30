@@ -53,7 +53,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         raise ValueError('which must be \'LM\' or \'LA\' (actual: {})'
                          ''.format(which))
     if ncv is None:
-        ncv = min(max(8 * k, 20), n - 1)
+        ncv = min(max(2 * k, k + 32), n - 1)
     else:
         ncv = min(max(ncv, k + 2), n - 1)
     if maxiter is None:
