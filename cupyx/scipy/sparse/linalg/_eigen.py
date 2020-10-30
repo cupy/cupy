@@ -2,6 +2,11 @@ import numpy
 import cupy
 
 from cupy import cublas
+from cupy import cusparse
+from cupy.cuda import device
+from cupy_backends.cuda.libs import cublas as _cublas
+from cupy_backends.cuda.libs import cusparse as _cusparse
+from cupyx.scipy.sparse import csr
 
 
 def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
@@ -62,15 +67,16 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         tol = numpy.finfo(a.dtype).eps
 
     alpha = cupy.zeros((ncv, ), dtype=a.dtype)
-    beta = cupy.zeros((ncv, ), dtype=a.dtype)
+    beta = cupy.zeros((ncv, ), dtype=a.dtype.char.lower())
     V = cupy.empty((ncv, n), dtype=a.dtype)
+    eigsh_lanczos = _eigsh_lanczos(a, V, alpha, beta, update_impl='fast')
 
     # Set initial vector
     u = cupy.random.random((n, )).astype(a.dtype)
     V[0] = u / cublas.nrm2(u)
 
     # Lanczos iteration
-    u = _eigsh_lanczos_update(a, V, alpha, beta, 0, ncv)
+    u = eigsh_lanczos.update(0, ncv)
     iter = ncv
     w, s = _eigsh_solve_ritz(alpha, beta, None, k, which)
     x = V.T @ s
@@ -96,7 +102,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         V[k+1] = u / beta[k]
 
         # Lanczos iteration
-        u = _eigsh_lanczos_update(a, V, alpha, beta, k+1, ncv)
+        u = eigsh_lanczos.update(k+1, ncv)
         iter += ncv - k
         w, s = _eigsh_solve_ritz(alpha, beta, beta_k, k, which)
         x = V.T @ s
@@ -112,16 +118,136 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         return cupy.sort(w)
 
 
-def _eigsh_lanczos_update(A, V, alpha, beta, i_start, i_end):
-    for i in range(i_start, i_end):
-        u = A @ V[i]
-        cublas.dotc(V[i], u, out=alpha[i])
-        u -= u.T @ V[:i+1].conj().T @ V[:i+1]
-        cublas.nrm2(u, out=beta[i])
-        if i >= i_end - 1:
-            break
-        V[i+1] = u / beta[i]
-    return u
+class _eigsh_lanczos():
+
+    def __init__(self, A, V, alpha, beta, update_impl='fast'):
+        assert A.ndim == V.ndim == 2
+        assert alpha.ndim == beta.ndim == 1
+        assert A.dtype == V.dtype == alpha.dtype
+        assert A.dtype.char.lower() == beta.dtype.char
+        assert A.shape[0] == A.shape[1] == V.shape[1]
+        assert V.shape[0] == alpha.shape[0] == beta.shape[0]
+
+        self.A = A
+        self.V = V
+        self.alpha = alpha
+        self.beta = beta
+        self.n = V.shape[1]
+        self.ncv = V.shape[0]
+        self.update_impl = update_impl
+        if self.update_impl != 'fast':
+            return
+
+        self.cublas_handle = device.get_cublas_handle()
+        self.cublas_pointer_mode = _cublas.getPointerMode(self.cublas_handle)
+        if A.dtype.char == 'f':
+            self.dotc = _cublas.sdot
+            self.nrm2 = _cublas.snrm2
+            self.gemm = _cublas.sgemm
+        elif A.dtype.char == 'd':
+            self.dotc = _cublas.ddot
+            self.nrm2 = _cublas.dnrm2
+            self.gemm = _cublas.dgemm
+        elif A.dtype.char == 'F':
+            self.dotc = _cublas.cdotc
+            self.nrm2 = _cublas.scnrm2
+            self.gemm = _cublas.cgemm
+        elif A.dtype.char == 'D':
+            self.dotc = _cublas.zdotc
+            self.nrm2 = _cublas.dznrm2
+            self.gemm = _cublas.zgemm
+        else:
+            raise TypeError('invalid dtype ({})'.format(A.dtype))
+        if csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
+            self.cusparse_handle = device.get_cusparse_handle()
+            self.spmv_op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+            self.spmv_alpha = numpy.array(1.0, A.dtype)
+            self.spmv_beta = numpy.array(0.0, A.dtype)
+            self.spmv_cuda_dtype = cusparse._dtype_to_DataType(A.dtype)
+            self.spmv_alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
+        else:
+            self.cusparse_handle = None
+        self.v = cupy.empty((self.n,), dtype=A.dtype)
+        self.u = cupy.empty((self.n,), dtype=A.dtype)
+        self.uu = cupy.empty((self.ncv,), dtype=A.dtype)
+
+    def update(self, i_start, i_end):
+        assert 0 <= i_start and i_end <= self.ncv
+        if self.update_impl == 'fast':
+            return self.update_fast(i_start, i_end)
+        else:
+            return self.update_asis(i_start, i_end)
+
+    def update_asis(self, i_start, i_end):
+        for i in range(i_start, i_end):
+            u = self.A @ self.V[i]
+            cublas.dotc(self.V[i], u, out=self.alpha[i])
+            u -= u.T @ self.V[:i+1].conj().T @ self.V[:i+1]
+            cublas.nrm2(u, out=self.beta[i])
+            if i >= i_end - 1:
+                break
+            self.V[i+1] = u / self.beta[i]
+        return u
+
+    def update_fast(self, i_start, i_end):
+        for i in range(i_start, i_end):
+            self._spmv(i)
+            self._dotc(i)
+            self._orthogonalize(i)
+            self._norm(i)
+            if i >= i_end - 1:
+                break
+            self.V[i+1] = self.u / self.beta[i]
+        return self.u.copy()
+
+    def _spmv(self, i):
+        self.v[...] = self.V[i]
+        if self.cusparse_handle is None:
+            self.u[...] = self.A @ self.v
+        else:
+            # Note: I would like to reuse descriptors and working buffer, but
+            # I gave it up because it sometimes caused illegal memory access
+            # error.
+            desc_A = cusparse.SpMatDescriptor.create(self.A)
+            desc_v = cusparse.DnVecDescriptor.create(self.v)
+            desc_u = cusparse.DnVecDescriptor.create(self.u)
+            buff_size = _cusparse.spMV_bufferSize(
+                self.cusparse_handle, self.spmv_op_a,
+                self.spmv_alpha.ctypes.data, desc_A.desc, desc_v.desc,
+                self.spmv_beta.ctypes.data, desc_u.desc, self.spmv_cuda_dtype,
+                self.spmv_alg)
+            buff = cupy.empty(buff_size, cupy.int8)
+            _cusparse.spMV(
+                self.cusparse_handle, self.spmv_op_a,
+                self.spmv_alpha.ctypes.data, desc_A.desc, desc_v.desc,
+                self.spmv_beta.ctypes.data, desc_u.desc, self.spmv_cuda_dtype,
+                self.spmv_alg, buff.data.ptr)
+
+    def _dotc(self, i):
+        _cublas.setPointerMode(self.cublas_handle,
+                               _cublas.CUBLAS_POINTER_MODE_DEVICE)
+        self.dotc(self.cublas_handle, self.n, self.v.data.ptr, 1,
+                  self.u.data.ptr, 1, self.alpha[i].data.ptr)
+        _cublas.setPointerMode(self.cublas_handle, self.cublas_pointer_mode)
+
+    def _orthogonalize(self, i):
+        self.gemm(self.cublas_handle,
+                  _cublas.CUBLAS_OP_C, _cublas.CUBLAS_OP_N,
+                  1, i+1, self.n,
+                  1.0, self.u.data.ptr, self.n, self.V.data.ptr, self.n,
+                  0.0, self.uu.data.ptr, 1)
+        self.gemm(self.cublas_handle,
+                  _cublas.CUBLAS_OP_N, _cublas.CUBLAS_OP_C,
+                  self.n, 1, i+1,
+                  -1.0, self.V.data.ptr, self.n, self.uu.data.ptr, 1,
+                  1.0, self.u.data.ptr, self.n)
+
+    def _norm(self, i):
+        _cublas.setPointerMode(self.cublas_handle,
+                               _cublas.CUBLAS_POINTER_MODE_DEVICE)
+        self.nrm2(self.cublas_handle, self.n, self.u.data.ptr, 1,
+                  self.beta[i].data.ptr)
+        _cublas.setPointerMode(self.cublas_handle, self.cublas_pointer_mode)
 
 
 def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
