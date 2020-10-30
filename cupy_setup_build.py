@@ -124,7 +124,10 @@ if use_hip:
 else:
     MODULES.append({
         'name': 'cuda',
-        'file': cuda_files,
+        'file': cuda_files + [
+             ('cupy.random._bit_generator',
+              ['cupy/random/cupy_distributions.cu']),
+         ],
         'include': [
             'cublas_v2.h',
             'cuda.h',

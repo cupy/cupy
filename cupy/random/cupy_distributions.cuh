@@ -1,7 +1,7 @@
 #ifndef _CUPY_TEST_H
 #define _CUPY_TEST_H
 #include <cstdint>
-#include <curand_kernel.h>
+
 
 // This enum holds the generators, we can't fully templatize the generators
 // because the dynamic design of BitGenerators in the python side does not allow us
@@ -12,10 +12,27 @@ enum RandGenerators{
    CURAND_PHILOX_4x32_10
 };
 
+
+#ifndef CUPY_NO_CUDA
+#include <curand_kernel.h>
+
 void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream);
 void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int mx, int mask);
 void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask);
 void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b);
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 
+# else 
+
+typedef void* curandState;
+typedef void* curandStateMRG32k3a;
+typedef void* curandStatePhilox4_32_10_t;
+
+void init_curand_generator(...) {}
+void interval_32(...) {}
+void interval_64(...) {}
+void beta(...) {}
+void exponential(...) {}
+
+#endif
 #endif
