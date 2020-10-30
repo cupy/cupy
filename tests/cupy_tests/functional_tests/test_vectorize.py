@@ -254,3 +254,20 @@ class TestVectorizeInstructions(unittest.TestCase):
         f = xp.vectorize(my_augassign)
         x = testing.shaped_random((20, 30), xp, dtype, seed=1)
         return f(x)
+
+
+class TestVectorize(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_vectorize_arithmetic_ops(self, xp, dtype):
+        def my_func(x1, x2, x3):
+            y = x1 + x2 * x3 ** x1
+            x2 = y + x3 * x1
+            return x1 + x2 + x3
+
+        f = xp.vectorize(my_func)
+        x1 = testing.shaped_random((20, 30), xp, dtype, seed=1)
+        x2 = testing.shaped_random((20, 30), xp, dtype, seed=2)
+        x3 = testing.shaped_random((20, 30), xp, dtype, seed=3)
+        return f(x1, x2, x3)
