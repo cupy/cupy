@@ -1,6 +1,7 @@
 # distutils: language = c++
 
 import functools
+import numbers
 import os
 import pickle
 import re
@@ -55,7 +56,7 @@ from cupy_backends.cuda.libs cimport cublas
 
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    return hasattr(y, '__array_ufunc__') and not isinstance(y, _KNOWN_TYPES)
+    return not isinstance(y, _KNOWN_TYPES) and hasattr(y, '__array_ufunc__')
 
 
 cdef tuple _HANDLED_TYPES, _KNOWN_TYPES
@@ -1725,7 +1726,7 @@ cpdef strides_t _get_strides_for_order_K(ndarray x, dtype, shape=None):
 
 
 _HANDLED_TYPES = (ndarray, numpy.ndarray)
-_KNOWN_TYPES = (ndarray, numpy.generic, bool, int, float, complex)
+_KNOWN_TYPES = (ndarray, numbers.Number)
 
 
 # =============================================================================
