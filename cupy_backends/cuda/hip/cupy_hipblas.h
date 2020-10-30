@@ -124,12 +124,48 @@ cublasStatus_t cublasIsamax(cublasHandle_t handle, int n, const float *x, int in
     return hipblasIsamax(handle, n, x, incx, result);
 }
 
+cublasStatus_t cublasIdamax(cublasHandle_t handle, int n, const double *x, int incx, int *result) {
+    return hipblasIdamax(handle, n, x, incx, result);
+}
+
+cublasStatus_t cublasIcamax(cublasHandle_t handle, int n, const cuComplex *x, int incx, int *result) {
+    return hipblasIcamax(handle, n, reinterpret_cast<const hipblasComplex*>(x), incx, result);
+}
+
+cublasStatus_t cublasIzamax(cublasHandle_t handle, int n, const cuDoubleComplex *x, int incx, int *result) {
+    return hipblasIzamax(handle, n, reinterpret_cast<const hipblasDoubleComplex*>(x), incx, result);
+}
+
 cublasStatus_t cublasIsamin(cublasHandle_t handle, int n, float* x, int incx, int* result) {
     return hipblasIsamin(handle, n, x, incx, result);
 }
 
+cublasStatus_t cublasIdamin(cublasHandle_t handle, int n, const double *x, int incx, int *result) {
+    return hipblasIdamin(handle, n, x, incx, result);
+}
+
+cublasStatus_t cublasIcamin(cublasHandle_t handle, int n, const cuComplex *x, int incx, int *result) {
+    return hipblasIcamin(handle, n, reinterpret_cast<const hipblasComplex*>(x), incx, result);
+}
+
+cublasStatus_t cublasIzamin(cublasHandle_t handle, int n, const cuDoubleComplex *x, int incx, int *result) {
+    return hipblasIzamin(handle, n, reinterpret_cast<const hipblasDoubleComplex*>(x), incx, result);
+}
+
 cublasStatus_t cublasSasum(cublasHandle_t handle, int n, float* x, int incx, float* result) {
     return hipblasSasum(handle, n, x, incx, result);
+}
+
+cublasStatus_t cublasDasum(cublasHandle_t handle, int n, double* x, int incx, double* result) {
+    return hipblasDasum(handle, n, x, incx, result);
+}
+
+cublasStatus_t cublasScasum(cublasHandle_t handle, int n, cuComplex* x, int incx, float* result) {
+    return hipblasScasum(handle, n, reinterpret_cast<const hipblasComplex*>(x), incx, result);
+}
+
+cublasStatus_t cublasDzasum(cublasHandle_t handle, int n, cuDoubleComplex* x, int incx, double* result) {
+    return hipblasDzasum(handle, n, reinterpret_cast<const hipblasDoubleComplex*>(x), incx, result);
 }
 
 cublasStatus_t cublasSaxpy(cublasHandle_t handle, int n, float* alpha, float* x, int incx, float* y, int incy) {
@@ -138,6 +174,20 @@ cublasStatus_t cublasSaxpy(cublasHandle_t handle, int n, float* alpha, float* x,
 
 cublasStatus_t cublasDaxpy(cublasHandle_t handle, int n, double* alpha, double* x, int incx, double* y, int incy) {
     return hipblasDaxpy(handle, n, alpha, x, incx, y, incy);
+}
+
+cublasStatus_t cublasCaxpy(cublasHandle_t handle, int n, cuComplex* alpha, cuComplex* x, int incx, cuComplex* y, int incy) {
+    return hipblasCaxpy(handle, n,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<hipblasComplex*>(y), incy);
+}
+
+cublasStatus_t cublasZaxpy(cublasHandle_t handle, int n, cuDoubleComplex* alpha, cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy) {
+    return hipblasZaxpy(handle, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<hipblasDoubleComplex*>(y), incy);
 }
 
 cublasStatus_t cublasSdot(cublasHandle_t handle, int n, float* x, int incx, float* y, int incy, float* result) {
@@ -184,8 +234,40 @@ cublasStatus_t cublasSnrm2(cublasHandle_t handle, int n, float* x, int incx, flo
     return hipblasSnrm2(handle, n, x, incx, result);
 }
 
+cublasStatus_t cublasDnrm2(cublasHandle_t handle, int n, double* x, int incx, double* result) {
+    return hipblasDnrm2(handle, n, x, incx, result);
+}
+
+cublasStatus_t cublasScnrm2(cublasHandle_t handle, int n, cuComplex* x, int incx, float* result) {
+    return hipblasScnrm2(handle, n, reinterpret_cast<const hipblasComplex*>(x), incx, result);
+}
+
+cublasStatus_t cublasDznrm2(cublasHandle_t handle, int n, cuDoubleComplex* x, int incx, double* result) {
+    return hipblasDznrm2(handle, n, reinterpret_cast<const hipblasDoubleComplex*>(x), incx, result);
+}
+
 cublasStatus_t cublasSscal(cublasHandle_t handle, int n, float* alpha, float* x, int incx) {
     return hipblasSscal(handle, n, alpha, x, incx);
+}
+
+cublasStatus_t cublasDscal(cublasHandle_t handle, int n, double* alpha, double* x, int incx) {
+    return hipblasDscal(handle, n, alpha, x, incx);
+}
+
+cublasStatus_t cublasCscal(cublasHandle_t handle, int n, cuComplex* alpha, cuComplex* x, int incx) {
+    return hipblasCscal(handle, n, reinterpret_cast<const hipblasComplex*>(alpha), reinterpret_cast<hipblasComplex*>(x), incx);
+}
+
+cublasStatus_t cublasCsscal(cublasHandle_t handle, int n, float* alpha, cuComplex* x, int incx) {
+    return hipblasCsscal(handle, n, alpha, reinterpret_cast<hipblasComplex*>(x), incx);
+}
+
+cublasStatus_t cublasZscal(cublasHandle_t handle, int n, cuDoubleComplex* alpha, cuDoubleComplex* x, int incx) {
+    return hipblasZscal(handle, n, reinterpret_cast<const hipblasDoubleComplex*>(alpha), reinterpret_cast<hipblasDoubleComplex*>(x), incx);
+}
+
+cublasStatus_t cublasZdscal(cublasHandle_t handle, int n, double* alpha, cuDoubleComplex* x, int incx) {
+    return hipblasZdscal(handle, n, alpha, reinterpret_cast<hipblasDoubleComplex*>(x), incx);
 }
 
 
