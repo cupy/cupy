@@ -1,11 +1,10 @@
-#include <curand_kernel.h>
-#include "cupy_distributions.cuh"
-#include <utility>
 #include <stdio.h>
+#include <stdexcept>
+#include <utility>
 
-// Add a state of the generator function
-// that can be used to abstract both curand
-// and custom generators
+#include <curand_kernel.h>
+
+#include "cupy_distributions.cuh"
 
 
 struct rk_state {
@@ -21,14 +20,14 @@ struct rk_state {
     }
 };
 
-
-struct curand_xor_state: rk_state {
+template<typename CURAND_TYPE>
+struct curand_pseudo_state: rk_state {
     // Valid for  XORWOW and MRG32k3a
-    curandState* _state;
+    CURAND_TYPE* _state;
     int _id;
 
-    __device__ curand_xor_state(int id, intptr_t state) {
-        _state = reinterpret_cast<curandState*>(state) + id;
+    __device__ curand_pseudo_state(int id, intptr_t state) {
+        _state = reinterpret_cast<CURAND_TYPE*>(state) + id;
         _id = id;
     }
     __device__ virtual uint32_t rk_int() {
@@ -47,28 +46,40 @@ struct curand_xor_state: rk_state {
 template <typename F, typename... Ts>
 void generator_dispatcher(int generator_id, F f, int bpg, int tpb, cudaStream_t stream, Ts&&... args) {
    switch(generator_id) {
-       case CURAND_XOR_WOW: return f.template operator()<curand_xor_state>(bpg, tpb, stream, std::forward<Ts>(args)...);
+       case CURAND_XOR_WOW: return f.template operator()<curand_pseudo_state<curandState>>(bpg, tpb, stream, std::forward<Ts>(args)...);
+       case CURAND_MRG32k3a: return f.template operator()<curand_pseudo_state<curandStateMRG32k3a>>(bpg, tpb, stream, std::forward<Ts>(args)...);
+       case CURAND_PHILOX_4x32_10: return f.template operator()<curand_pseudo_state<curandStatePhilox4_32_10_t>>(bpg, tpb, stream, std::forward<Ts>(args)...);
+       default: throw std::runtime_error("Unknown random generator");
    }
 }
 
 
-
-__global__ void init_xor(intptr_t state, uint64_t seed, ssize_t size) {
-    curandState* state_ptr = reinterpret_cast<curandState*>(state);
+template<typename T>
+__global__ void init_curand(intptr_t state, uint64_t seed, ssize_t size) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
     /* Each thread gets same seed, a different sequence
        number, no offset */
+    T curand_state(id, state);
     if (id < size) {
-        curand_init(seed, id, 0, &state_ptr[id]);    
+        curand_init(seed, id, 0, curand_state._state);    
     }
 }
 
-void init_xor_generator(intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {
+struct initialize_launcher {
+    template<typename T, typename... Args>
+    void operator()(int bpg, int tpb, cudaStream_t stream, Args&&... args) { 
+        init_curand<T><<<bpg, tpb, 0, stream>>>(std::forward<Args>(args)...);
+    }
+};
+
+void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {
     // state_ptr is a device ptr
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
     cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-    init_xor<<<bpg, tpb, 0, stream_>>>(state_ptr, seed, size);
+    // init_curand<<<bpg, tpb, 0, stream_>>>(state_ptr, seed, size);
+    initialize_launcher launcher;
+    generator_dispatcher(generator, launcher, bpg, tpb, stream_, state_ptr, seed, size);
 }
 
 __device__ double rk_standard_exponential(rk_state* state) {
@@ -216,37 +227,35 @@ struct kernel_launcher {
 };
 
 //These functions will take the generator_id as a parameter
-void interval_32(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int mx, int mask) {
+void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int mx, int mask) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
     cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
     kernel_launcher<interval_32_functor, int32_t> launcher;
-    generator_dispatcher(RandGenerators::CURAND_XOR_WOW, launcher, bpg, tpb, stream_, state, out, size, mx, mask);
+    generator_dispatcher(generator, launcher, bpg, tpb, stream_, state, out, size, mx, mask);
 }
 
-void interval_64(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {
+void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
     cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
     kernel_launcher<interval_64_functor, int64_t> launcher;
-    generator_dispatcher(RandGenerators::CURAND_XOR_WOW, launcher, bpg, tpb, stream_, state, out, size, mx, mask);
+    generator_dispatcher(generator, launcher, bpg, tpb, stream_, state, out, size, mx, mask);
 }
 
-void beta(intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {
+void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
     cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-
     kernel_launcher<beta_functor, double> launcher;
-    generator_dispatcher(RandGenerators::CURAND_XOR_WOW, launcher, bpg, tpb, stream_, state, out, size, a, b);
+    generator_dispatcher(generator, launcher, bpg, tpb, stream_, state, out, size, a, b);
 }
 
-void exponential(intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
     int tpb = 256;
     int bpg =  (size + tpb - 1) / tpb;
     cudaStream_t stream_ = reinterpret_cast<cudaStream_t>(stream);
-
     kernel_launcher<exponential_functor, double> launcher;
-    generator_dispatcher(RandGenerators::CURAND_XOR_WOW, launcher, bpg, tpb, stream_, state, out, size);
+    generator_dispatcher(generator, launcher, bpg, tpb, stream_, state, out, size);
 }
 
