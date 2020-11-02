@@ -23,15 +23,15 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 
 # else 
 
-typedef void* curandState;
-typedef void* curandStateMRG32k3a;
-typedef void* curandStatePhilox4_32_10_t;
+typedef struct {} curandState;
+typedef struct {} curandStateMRG32k3a;
+typedef struct {} curandStatePhilox4_32_10_t;
 
-void init_curand_generator(...) {}
-void interval_32(...) {}
-void interval_64(...) {}
-void beta(...) {}
-void exponential(...) {}
+void init_curand_generator(int generator, ...) {}
+void interval_32(int generator, ...) {}
+void interval_64(int generator, ...) {}
+void beta(int generator, ...) {}
+void exponential(int generator, ...) {}
 
 #endif
 #endif
