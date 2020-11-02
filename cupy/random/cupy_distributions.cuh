@@ -1,6 +1,5 @@
 #ifndef _CUPY_TEST_H
 #define _CUPY_TEST_H
-#include <cstdint>
 
 
 // This enum holds the generators, we can't fully templatize the generators
