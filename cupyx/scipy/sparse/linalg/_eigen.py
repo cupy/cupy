@@ -242,7 +242,8 @@ class _eigsh_lanczos():
         _cublas.setPointerMode(self.cublas_handle,
                                _cublas.CUBLAS_POINTER_MODE_DEVICE)
         self.dotc(self.cublas_handle, self.n, self.v.data.ptr, 1,
-                  self.u.data.ptr, 1, self.alpha[i].data.ptr)
+                  self.u.data.ptr, 1,
+                  self.alpha.data.ptr + i * self.alpha.itemsize)
         _cublas.setPointerMode(self.cublas_handle, self.cublas_pointer_mode)
 
     def _orthogonalize(self, i):
@@ -261,7 +262,7 @@ class _eigsh_lanczos():
         _cublas.setPointerMode(self.cublas_handle,
                                _cublas.CUBLAS_POINTER_MODE_DEVICE)
         self.nrm2(self.cublas_handle, self.n, self.u.data.ptr, 1,
-                  self.beta[i].data.ptr)
+                  self.beta.data.ptr + i * self.beta.itemsize)
         _cublas.setPointerMode(self.cublas_handle, self.cublas_pointer_mode)
 
     def _normalize(self, i):
