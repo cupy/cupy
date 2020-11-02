@@ -101,7 +101,20 @@ def _parameterize_test_case(base, i, param):
 
 
 def parameterize(*params):
-    # TODO(kataoka): Add documentation
+    """Generates test classes with given sets of additional attributes
+
+    >>> @parameterize({"a": 1}, {"b": 2, "c": 3})
+    ... class TestX(unittest.TestCase):
+    ...     def test_y(self):
+    ...         pass
+
+    generates two classes `TestX_param_0_...`, `TestX_param_1_...` and
+    removes the original class `TestX`.
+
+    The specification is subject to change, which applies to all the non-NumPy
+    `testing` features.
+
+    """
     return _bundle.make_decorator(
         lambda base: _parameterize_test_case_generator(base, params))
 
