@@ -190,6 +190,8 @@ class _eigsh_lanczos():
         return u
 
     def _update_fast(self, i_start, i_end):
+        self._spmv_init()
+        self.v[...] = self.V[i_start]
         for i in range(i_start, i_end):
             self._spmv(i)
             self._dotc(i)
@@ -197,31 +199,44 @@ class _eigsh_lanczos():
             self._norm(i)
             if i >= i_end - 1:
                 break
-            self.V[i+1] = self.u / self.beta[i]
+            self._normalize(i)
+        self._spmv_fin()
         return self.u.copy()
 
     def _spmv(self, i):
-        self.v[...] = self.V[i]
         if self.cusparse_handle is None:
             self.u[...] = self.A @ self.v
         else:
-            # Note: I would like to reuse descriptors and working buffer, but
-            # I gave it up because it sometimes caused illegal memory access
-            # error.
-            desc_A = cusparse.SpMatDescriptor.create(self.A)
-            desc_v = cusparse.DnVecDescriptor.create(self.v)
-            desc_u = cusparse.DnVecDescriptor.create(self.u)
-            buff_size = _cusparse.spMV_bufferSize(
-                self.cusparse_handle, self.spmv_op_a,
-                self.spmv_alpha.ctypes.data, desc_A.desc, desc_v.desc,
-                self.spmv_beta.ctypes.data, desc_u.desc, self.spmv_cuda_dtype,
-                self.spmv_alg)
-            buff = cupy.empty(buff_size, cupy.int8)
             _cusparse.spMV(
                 self.cusparse_handle, self.spmv_op_a,
-                self.spmv_alpha.ctypes.data, desc_A.desc, desc_v.desc,
-                self.spmv_beta.ctypes.data, desc_u.desc, self.spmv_cuda_dtype,
-                self.spmv_alg, buff.data.ptr)
+                self.spmv_alpha.ctypes.data, self.spmv_desc_A.desc,
+                self.spmv_desc_v.desc, self.spmv_beta.ctypes.data,
+                self.spmv_desc_u.desc, self.spmv_cuda_dtype,
+                self.spmv_alg, self.spmv_buff.data.ptr)
+
+    def _spmv_init(self):
+        if self.cusparse_handle is None:
+            return
+        self.spmv_desc_A = cusparse.SpMatDescriptor.create(self.A)
+        self.spmv_desc_v = cusparse.DnVecDescriptor.create(self.v)
+        self.spmv_desc_u = cusparse.DnVecDescriptor.create(self.u)
+        buff_size = _cusparse.spMV_bufferSize(
+            self.cusparse_handle, self.spmv_op_a,
+            self.spmv_alpha.ctypes.data, self.spmv_desc_A.desc,
+            self.spmv_desc_v.desc, self.spmv_beta.ctypes.data,
+            self.spmv_desc_u.desc, self.spmv_cuda_dtype, self.spmv_alg)
+        self.spmv_buff = cupy.empty(buff_size, cupy.int8)
+
+    def _spmv_fin(self):
+        if self.cusparse_handle is None:
+            return
+        # Note: I would like to reuse descriptors and working buffer on the
+        # next update, but I gave it up because it sometimes caused illegal
+        # memory access error.
+        del self.spmv_desc_A
+        del self.spmv_desc_v
+        del self.spmv_desc_u
+        del self.spmv_buff
 
     def _dotc(self, i):
         _cublas.setPointerMode(self.cublas_handle,
@@ -248,6 +263,15 @@ class _eigsh_lanczos():
         self.nrm2(self.cublas_handle, self.n, self.u.data.ptr, 1,
                   self.beta[i].data.ptr)
         _cublas.setPointerMode(self.cublas_handle, self.cublas_pointer_mode)
+
+    def _normalize(self, i):
+        _kernel_normalize(self.u, self.beta, i, self.n, self.v, self.V)
+
+
+_kernel_normalize = cupy.ElementwiseKernel(
+    'T u, raw S beta, int32 j, int32 n', 'T v, raw T V',
+    'v = u / beta[j]; V[i + (j+1) * n] = v;', 'cupy_normalize'
+)
 
 
 def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
