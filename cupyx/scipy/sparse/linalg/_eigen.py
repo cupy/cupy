@@ -69,14 +69,14 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     alpha = cupy.zeros((ncv, ), dtype=a.dtype)
     beta = cupy.zeros((ncv, ), dtype=a.dtype.char.lower())
     V = cupy.empty((ncv, n), dtype=a.dtype)
-    eigsh_lanczos = _eigsh_lanczos(a, V, alpha, beta, update_impl='fast')
+    lanczos = _eigsh_lanczos(a, V, alpha, beta, update_impl='fast')
 
     # Set initial vector
     u = cupy.random.random((n, )).astype(a.dtype)
     V[0] = u / cublas.nrm2(u)
 
     # Lanczos iteration
-    u = eigsh_lanczos.update(0, ncv)
+    u = lanczos.update(0, ncv)
     iter = ncv
     w, s = _eigsh_solve_ritz(alpha, beta, None, k, which)
     x = V.T @ s
@@ -102,7 +102,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         V[k+1] = u / beta[k]
 
         # Lanczos iteration
-        u = eigsh_lanczos.update(k+1, ncv)
+        u = lanczos.update(k+1, ncv)
         iter += ncv - k
         w, s = _eigsh_solve_ritz(alpha, beta, beta_k, k, which)
         x = V.T @ s
@@ -174,11 +174,11 @@ class _eigsh_lanczos():
     def update(self, i_start, i_end):
         assert 0 <= i_start and i_end <= self.ncv
         if self.update_impl == 'fast':
-            return self.update_fast(i_start, i_end)
+            return self._update_fast(i_start, i_end)
         else:
-            return self.update_asis(i_start, i_end)
+            return self._update_asis(i_start, i_end)
 
-    def update_asis(self, i_start, i_end):
+    def _update_asis(self, i_start, i_end):
         for i in range(i_start, i_end):
             u = self.A @ self.V[i]
             cublas.dotc(self.V[i], u, out=self.alpha[i])
@@ -189,7 +189,7 @@ class _eigsh_lanczos():
             self.V[i+1] = u / self.beta[i]
         return u
 
-    def update_fast(self, i_start, i_end):
+    def _update_fast(self, i_start, i_end):
         for i in range(i_start, i_end):
             self._spmv(i)
             self._dotc(i)
