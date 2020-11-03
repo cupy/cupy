@@ -176,3 +176,93 @@ class TestEigsh(unittest.TestCase):
             sp.linalg.eigsh(a, k=self.k, which='SM')
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.k, which='SA')
+
+
+@testing.parameterize(*testing.product({
+    'x0': [None, 'ones'],
+    'M': [None, 'jacobi'],
+    'b_ndim': [1, 2],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.gpu
+class TestCg(unittest.TestCase):
+    n = 30
+    density = 0.33
+    atol = 1e-5
+
+    def _make_matrix(self, dtype, xp):
+        dtype = numpy.dtype(dtype)
+        shape = (self.n, 10)
+        a = testing.shaped_random(shape, xp, dtype=dtype.char.lower(), scale=1)
+        if dtype.char in 'FD':
+            a = a + 1j * testing.shaped_random(
+                shape, xp, dtype=dtype.char.lower(), scale=1)
+        mask = testing.shaped_random(shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        a = a @ a.conj().T
+        a = a + xp.diag(xp.ones((self.n,), dtype=dtype.char.lower()))
+        M = None
+        if self.M == 'jacobi':
+            M = xp.diag(1.0 / xp.diag(a))
+        return a, M
+
+    def _make_normalized_vector(self, dtype, xp):
+        b = testing.shaped_random((self.n,), xp, dtype=dtype)
+        return b / xp.linalg.norm(b)
+
+    def _test_cg(self, dtype, xp, sp, a, M):
+        b = self._make_normalized_vector(dtype, xp)
+        if self.b_ndim == 2:
+            b = b.reshape(self.n, 1)
+        x0 = None
+        if self.x0 == 'ones':
+            x0 = xp.ones((self.n,), dtype=dtype)
+        print('# M: {}'.format(M))
+        x, info = sp.linalg.cg(a, b, x0=x0, M=M, atol=self.atol)
+        return x
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_sparse(self, dtype, xp, sp):
+        a, M = self._make_matrix(dtype, xp)
+        a = sp.csr_matrix(a)
+        return self._test_cg(dtype, xp, sp, a, M)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_dense(self, dtype, xp, sp):
+        a, M = self._make_matrix(dtype, xp)
+        return self._test_cg(dtype, xp, sp, a, M)
+
+    def test_invalid(self):
+        if self.x0 is not None or self.M is not None or self.b_ndim != 1:
+            raise unittest.SkipTest
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            a, M = self._make_matrix('f', xp)
+            b = self._make_normalized_vector('f', xp)
+            ng_a = xp.ones((self.n, ), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.cg(ng_a, b, atol=self.atol)
+            ng_a = xp.ones((self.n, self.n + 1), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.cg(ng_a, b, atol=self.atol)
+            ng_a = xp.ones((self.n, self.n, 1), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.cg(ng_a, b, atol=self.atol)
+            ng_b = xp.ones((self.n + 1,), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.cg(a, ng_b, atol=self.atol)
+            ng_b = xp.ones((self.n, 2), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.cg(a, ng_b, atol=self.atol)
+            ng_x0 = xp.ones((self.n + 1,), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.cg(a, b, x0=ng_x0, atol=self.atol)
+            ng_M = xp.diag(xp.ones((self.n + 1,), dtype='f'))
+            with pytest.raises(ValueError):
+                sp.linalg.cg(a, b, M=ng_M, atol=self.atol)
+        xp, sp = cupy, sparse
+        b = self._make_normalized_vector('f', xp)
+        ng_a = xp.ones((self.n, self.n), dtype='i')
+        with pytest.raises(TypeError):
+            sp.linalg.cg(ng_a, b, atol=self.atol)
