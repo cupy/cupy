@@ -400,8 +400,8 @@ def _get_scalar_ptr(a, dtype):
 def gemv(transa, alpha, a, x, beta, y):
     """Computes y = alpha * op(a) @ x + beta * y
 
-    op(a) = a if transa is 0 or 'N', op(a) = a.T if transa is 1 or 'T',
-    op(a) = a.T.conj() if transa is 2 or 'C'.
+    op(a) = a if transa is 'N', op(a) = a.T if transa is 'T',
+    op(a) = a.T.conj() if transa is 'H'.
 
     Note: ''y'' will be updated.
     """
@@ -420,13 +420,13 @@ def gemv(transa, alpha, a, x, beta, y):
     assert x.ndim == y.ndim == 1
     assert a.dtype == x.dtype == y.dtype
     m, n = a.shape
-    if transa == 'N' or transa == 0:
+    if transa == 'N':
         transa = cublas.CUBLAS_OP_N
         xlen, ylen = n, m
-    elif transa == 'T' or transa == 1:
+    elif transa == 'T':
         transa = cublas.CUBLAS_OP_T
         xlen, ylen = m, n
-    elif transa == 'C' or transa == 2:
+    elif transa == 'H':
         transa = cublas.CUBLAS_OP_C
         xlen, ylen = m, n
     else:
