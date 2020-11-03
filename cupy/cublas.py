@@ -400,27 +400,11 @@ def _get_scalar_ptr(a, dtype):
 def gemv(transa, alpha, a, x, beta, y):
     """Computes y = alpha * op(a) @ x + beta * y
 
-    ``op(a)`` = ``a`` if ``transa`` is ``0`` or ``'N'``, ``a.T`` if ``transa``
-    is ``1`` or ``'T'``, ``a.T.conj()`` if ``transa`` is ``2`` or ``'C'``.
+    op(a) = a if transa is 0 or 'N', op(a) = a.T if transa is 1 or 'T',
+    op(a) = a.T.conj() if transa is 2 or 'C'.
 
-    Note: ``y`` will be overwritten.
+    Note: ''y'' will be updated.
     """
-    assert a.ndim == 2
-    assert x.ndim == y.ndim == 1
-    assert a.dtype == x.dtype == y.dtype
-    m, n = a.shape
-    if transa == 'N':
-        transa = cublas.CUBLAS_OP_N
-        xlen, ylen = n, m
-    elif transa == 'T':
-        transa = cublas.CUBLAS_OP_T
-        xlen, ylen = m, n
-    elif transa == 'C':
-        transa = cublas.CUBLAS_OP_C
-        xlen, ylen = m, n
-    assert x.shape[0] == xlen
-    assert y.shape[0] == ylen
-
     dtype = a.dtype.char
     if dtype == 'f':
         func = cublas.sgemv
@@ -432,12 +416,27 @@ def gemv(transa, alpha, a, x, beta, y):
         func = cublas.zgemv
     else:
         raise TypeError('invalid dtype')
+    assert a.ndim == 2
+    assert x.ndim == y.ndim == 1
+    assert a.dtype == x.dtype == y.dtype
+    m, n = a.shape
+    if transa == 'N' or transa == 0:
+        transa = cublas.CUBLAS_OP_N
+        xlen, ylen = n, m
+    elif transa == 'T' or transa == 1:
+        transa = cublas.CUBLAS_OP_T
+        xlen, ylen = m, n
+    elif transa == 'C' or transa == 2:
+        transa = cublas.CUBLAS_OP_C
+        xlen, ylen = m, n
+    else:
+        raise TypeError('invalid transa (actual: {})'.fromat(transa))
+    assert x.shape[0] == xlen
+    assert y.shape[0] == ylen
 
-    a = cupy.asfortranarray(a)
     alpha, alpha_ptr = _get_scalar_ptr(alpha, a.dtype)
     beta, beta_ptr = _get_scalar_ptr(beta, a.dtype)
     handle = device.get_cublas_handle()
-
     orig_mode = cublas.getPointerMode(handle)
     if isinstance(alpha, cupy.ndarray) or isinstance(beta, cupy.ndarray):
         if not isinstance(alpha, cupy.ndarray):
@@ -450,8 +449,122 @@ def gemv(transa, alpha, a, x, beta, y):
     else:
         cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
 
-    func(handle, transa, m, n, alpha_ptr, a.data.ptr, m, x.data.ptr, 1,
-         beta_ptr, y.data.ptr, 1)
+    if a._f_contiguous:
+        func(handle, transa, m, n, alpha_ptr, a.data.ptr, m, x.data.ptr, 1,
+             beta_ptr, y.data.ptr, 1)
+    elif a._c_contiguous and transa != cublas.CUBLAS_OP_C:
+        if transa == cublas.CUBLAS_OP_N:
+            transa = cublas.CUBLAS_OP_T
+        else:
+            transa = cublas.CUBLAS_OP_N
+        func(handle, transa, n, m, alpha_ptr, a.data.ptr, n, x.data.ptr, 1,
+             beta_ptr, y.data.ptr, 1)
+    else:
+        a = a.copy(order='F')
+        func(handle, transa, m, n, alpha_ptr, a.data.ptr, m, x.data.ptr, 1,
+             beta_ptr, y.data.ptr, 1)
     cublas.setPointerMode(handle, orig_mode)
 
-    return y
+
+def ger(alpha, x, y, a):
+    """Computes a += alpha * x @ y.T
+
+    Note: ''a'' will be updated.
+    """
+    dtype = a.dtype.char
+    if dtype == 'f':
+        func = cublas.sger
+    elif dtype == 'd':
+        func = cublas.dger
+    elif dtype in 'FD':
+        raise TypeError('Use geru or gerc for complex dtypes')
+    else:
+        raise TypeError('invalid dtype')
+
+    assert a.ndim == 2
+    assert x.ndim == y.ndim == 1
+    assert a.dtype == x.dtype == y.dtype
+    m, n = a.shape
+    assert x.shape[0] == m
+    assert y.shape[0] == n
+
+    handle = device.get_cublas_handle()
+    alpha, alpha_ptr, orig_mode = _setup_scalar_ptr(handle, alpha, dtype)
+    x_ptr, y_ptr = x.data.ptr, y.data.ptr
+    if a._f_contiguous:
+        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, a.data.ptr, m)
+    elif a._c_contiguous:
+        func(handle, n, m, alpha_ptr, y_ptr, 1, x_ptr, 1, a.data.ptr, n)
+    else:
+        aa = a.copy(order='F')
+        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
+        a[...] = aa
+    cublas.setPointerMode(handle, orig_mode)
+
+
+def geru(alpha, x, y, a):
+    """Computes a += alpha * x @ y.T
+
+    Note: ''a'' will be updated.
+    """
+    dtype = a.dtype.char
+    if dtype in 'fd':
+        return ger(alpha, x, y, a)
+    elif dtype == 'F':
+        func = cublas.cgeru
+    elif dtype == 'D':
+        func = cublas.zgeru
+    else:
+        raise TypeError('invalid dtype')
+    assert a.ndim == 2
+    assert x.ndim == y.ndim == 1
+    assert a.dtype == x.dtype == y.dtype
+    m, n = a.shape
+    assert x.shape[0] == m
+    assert y.shape[0] == n
+
+    handle = device.get_cublas_handle()
+    alpha, alpha_ptr, orig_mode = _setup_scalar_ptr(handle, alpha, dtype)
+    x_ptr, y_ptr = x.data.ptr, y.data.ptr
+    if a._f_contiguous:
+        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, a.data.ptr, m)
+    elif a._c_contiguous:
+        func(handle, n, m, alpha_ptr, y_ptr, 1, x_ptr, 1, a.data.ptr, n)
+    else:
+        aa = a.copy(order='F')
+        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
+        a[...] = aa
+    cublas.setPointerMode(handle, orig_mode)
+
+
+def gerc(alpha, x, y, a):
+    """Computes a += alpha * x @ y.T.conj()
+
+    Note: ''a'' will be updated.
+    """
+    dtype = a.dtype.char
+    if dtype in 'fd':
+        return ger(alpha, x, y, a)
+    elif dtype == 'F':
+        func = cublas.cgerc
+    elif dtype == 'D':
+        func = cublas.zgerc
+    else:
+        raise TypeError('invalid dtype')
+    assert a.ndim == 2
+    assert x.ndim == y.ndim == 1
+    assert a.dtype == x.dtype == y.dtype
+    m, n = a.shape
+    assert x.shape[0] == m
+    assert y.shape[0] == n
+
+    handle = device.get_cublas_handle()
+    alpha, alpha_ptr, orig_mode = _setup_scalar_ptr(handle, alpha, dtype)
+    x_ptr, y_ptr = x.data.ptr, y.data.ptr
+    if a._f_contiguous:
+        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, a.data.ptr, m)
+    else:
+        aa = a.copy(order='F')
+        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
+        a[...] = aa
+    cublas.setPointerMode(handle, orig_mode)
