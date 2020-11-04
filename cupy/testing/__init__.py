@@ -42,7 +42,6 @@ from cupy.testing.helper import numpy_cupy_raises  # NOQA
 from cupy.testing.helper import numpy_satisfies  # NOQA
 from cupy.testing.helper import NumpyAliasBasicTestBase  # NOQA
 from cupy.testing.helper import NumpyAliasValuesTestBase  # NOQA
-from cupy.testing.helper import NumpyError  # NOQA
 from cupy.testing.helper import AssertFunctionIsCalled  # NOQA
 from cupy.testing.helper import shaped_arange  # NOQA
 from cupy.testing.helper import shaped_sparse_random  # NOQA
