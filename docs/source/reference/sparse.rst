@@ -91,3 +91,4 @@ Linear Algebra
 
    cupyx.scipy.sparse.linalg.lsqr
    cupyx.scipy.sparse.linalg.norm
+   cupyx.scipy.sparse.linalg.cg

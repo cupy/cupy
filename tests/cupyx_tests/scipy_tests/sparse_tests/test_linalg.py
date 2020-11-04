@@ -181,6 +181,7 @@ class TestEigsh(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'x0': [None, 'ones'],
     'M': [None, 'jacobi'],
+    'atol': [None, 'select-by-dtype'],
     'b_ndim': [1, 2],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
@@ -188,7 +189,7 @@ class TestEigsh(unittest.TestCase):
 class TestCg(unittest.TestCase):
     n = 30
     density = 0.33
-    atol = 1e-5
+    _atol = {'f': 1e-5, 'd': 1e-12}
 
     def _make_matrix(self, dtype, xp):
         dtype = numpy.dtype(dtype)
@@ -211,15 +212,23 @@ class TestCg(unittest.TestCase):
         return b / xp.linalg.norm(b)
 
     def _test_cg(self, dtype, xp, sp, a, M):
+        dtype = numpy.dtype(dtype)
         b = self._make_normalized_vector(dtype, xp)
         if self.b_ndim == 2:
             b = b.reshape(self.n, 1)
         x0 = None
         if self.x0 == 'ones':
             x0 = xp.ones((self.n,), dtype=dtype)
-        print('# M: {}'.format(M))
-        x, info = sp.linalg.cg(a, b, x0=x0, M=M, atol=self.atol)
-        return x
+        atol = None
+        if self.atol == 'select-by-dtype':
+            atol = self._atol[dtype.char.lower()]
+        if atol is None and xp == numpy:
+            # Note: If atol is None or not specified, Scipy (at least 1.5.3)
+            # raises DeprecationWarning
+            with pytest.deprecated_call():
+                return sp.linalg.cg(a, b, x0=x0, M=M, atol=atol)
+        else:
+            return sp.linalg.cg(a, b, x0=x0, M=M, atol=atol)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
@@ -234,8 +243,35 @@ class TestCg(unittest.TestCase):
         a, M = self._make_matrix(dtype, xp)
         return self._test_cg(dtype, xp, sp, a, M)
 
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_empty(self, dtype, xp, sp):
+        if self.x0 is not None or self.M is not None or self.atol is not None:
+            raise unittest.SkipTest
+        a = xp.empty((0, 0), dtype=dtype)
+        b = xp.empty((0,), dtype=dtype)
+        if self.atol is None and xp == numpy:
+            # Note: If atol is None or not specified, Scipy (at least 1.5.3)
+            # raises DeprecationWarning
+            with pytest.deprecated_call():
+                return sp.linalg.cg(a, b)
+        else:
+            return sp.linalg.cg(a, b)
+
+    @testing.for_dtypes('fdFD')
+    def test_callback(self, dtype):
+        if self.x0 is not None or self.M is not None or self.atol is not None:
+            raise unittest.SkipTest
+        xp, sp = cupy, sparse
+        a, M = self._make_matrix(dtype, xp)
+        b = self._make_normalized_vector(dtype, xp)
+
+        def callback(x):
+            print(xp.linalg.norm(b - a @ x))
+        return sp.linalg.cg(a, b, callback=callback)
+
     def test_invalid(self):
-        if self.x0 is not None or self.M is not None or self.b_ndim != 1:
+        if self.x0 is not None or self.M is not None or self.atol is not None:
             raise unittest.SkipTest
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a, M = self._make_matrix('f', xp)

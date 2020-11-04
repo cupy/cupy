@@ -1,7 +1,8 @@
 import cupy
 
 
-def cg(A, b, *, x0=None, tol=1e-5, maxiter=None, M=None, atol=None):
+def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
+       atol=None):
     """Uses Conjugate Gradient iteration to solve ``Ax = b``.
 
     Args:
@@ -10,11 +11,14 @@ def cg(A, b, *, x0=None, tol=1e-5, maxiter=None, M=None, atol=None):
             be a hermitian, positive definitive matrix.
         b (cupy.ndarray): Right hand side of the linear system with shape
             ``(n,)`` or ``(n, 1)``.
-        x0 (cupy.ndarray): Stargint guess for the solution.
+        x0 (cupy.ndarray): Starting guess for the solution.
         tol (float): Tolerance for convergence.
         maxiter (int): Maximum number of iterations.
         M (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): Preconditioner for
             ``A``. The preconditioner should approximate the inverse of ``A``.
+        callback (function): User-specified function to call after each
+            iteration. It is called as ``callback(xk)``, where ``xk`` is the
+            current solution vector.
         atol (float): Tolerance for convergence.
 
     Returns:
@@ -33,6 +37,8 @@ def cg(A, b, *, x0=None, tol=1e-5, maxiter=None, M=None, atol=None):
     if not (b.shape == (n,) or b.shape == (n, 1)):
         raise ValueError('b has incompatible dimensins')
     b = b.astype(A.dtype).ravel()
+    if n == 0:
+        return cupy.empty_like(b), 0
     b_norm = cupy.linalg.norm(b)
     if atol is None:
         if b_norm == 0:
@@ -75,8 +81,10 @@ def cg(A, b, *, x0=None, tol=1e-5, maxiter=None, M=None, atol=None):
         alpha = rho / cupy.dot(p.conj(), q)
         x = x + alpha * p
         r = r - alpha * q
-        resid = cupy.linalg.norm(r)
         iters += 1
+        if callback is not None:
+            callback(x)
+        resid = cupy.linalg.norm(r)
         if resid <= atol:
             break
 
