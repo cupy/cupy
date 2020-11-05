@@ -1,6 +1,6 @@
 # distutils: language = c++
 
-"""Wrapper of Jitify utilitis for CuPy API."""
+"""Wrapper of Jitify utilities for CuPy API."""
 
 from libcpp.map cimport map as cpp_map 
 from libcpp.string cimport string as cpp_str
