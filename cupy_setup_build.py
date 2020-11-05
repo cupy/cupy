@@ -87,7 +87,6 @@ cuda_files = [
     'cupy.fft._cache',
     'cupy.lib.polynomial',
     'cupy._util',
-    'cupy.cuda.jitify',
 ]
 
 if use_hip:
@@ -238,6 +237,25 @@ if not use_hip:
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
+    })
+
+    MODULES.append({
+        'name': 'jitify',
+        'file': [
+            'cupy.cuda.jitify',
+        ],
+        'include': [
+            'cuda.h',
+            'cuda_runtime.h',
+            'nvrtc.h',
+        ],
+        'libraries': [
+            'cuda',
+            'cudart',
+            'nvrtc',
+        ],
+        #'check_method': build.check_cuda_version,
+        #'version_method': build.get_cuda_version,
     })
 else:
     MODULES.append({

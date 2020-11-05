@@ -168,6 +168,8 @@ def get_compiler_setting(use_hip):
         else:
             define_macros.append(('CUPY_NO_NVTX', '1'))
 
+    #define_macros.append(('JITIFY_PRINT_HEADER_PATHS', '1'))
+
     # For CUB, we need the complex and CUB headers. The search precedence for
     # the latter is:
     #   1. built-in CUB (for CUDA 11+ and ROCm)
