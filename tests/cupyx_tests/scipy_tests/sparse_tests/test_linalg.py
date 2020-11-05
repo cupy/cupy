@@ -117,6 +117,9 @@ class TestVectorNorm(unittest.TestCase):
     'return_eigenvectors': [True, False],
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
+@unittest.skipUnless(
+    cupy.cuda.runtime.runtimeGetVersion() > 9200, 'requires CUDA > 9.2'
+)
 class TestEigsh(unittest.TestCase):
     n = 30
     density = 0.33
