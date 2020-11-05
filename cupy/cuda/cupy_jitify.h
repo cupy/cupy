@@ -10,15 +10,15 @@
 namespace jitify {
 namespace detail {
 
-std::map[std::string, std::string]& get_jitsafe_headers_map()
+std::map<std::string, std::string>& get_jitsafe_headers_map()
 const int preinclude_jitsafe_headers_count
 const char* preinclude_jitsafe_header_names[]
 void load_program(std::string&,
-                  std::vector[std::string]&,
+                  std::vector<std::string>&,
                   void*,
-                  std::vector[std::string]*,
-                  std::map[std::string, std::string]*,
-                  std::vector[std::string]*,
+                  std::vector<std::string>*,
+                  std::map<std::string, std::string>*,
+                  std::vector<std::string>*,
                   std::string*)
 
 }  // namespace detail
