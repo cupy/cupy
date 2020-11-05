@@ -292,7 +292,7 @@ def _transpile_expr(expr, env):
         return _emit_cuda_object_from_constants(expr.value, env)
     if isinstance(expr, ast.Num):
         # Deprecated since py3.8
-        return _emit_cuda_object_from_constants(expr.n)
+        return _emit_cuda_object_from_constants(expr.n, env)
     if isinstance(expr, ast.Subscript):
         # # TODO(asi1024): Fix.
         # value = _transpile_expr(expr.value, env)
