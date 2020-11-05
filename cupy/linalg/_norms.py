@@ -24,7 +24,7 @@ _norm_ord2 = core.create_reduction_func(
     ('in0 * in0', 'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
 _norm_ord2_complex = core.create_reduction_func(
     '_norm_ord2_complex',
-    ('F->F', 'D->D'),
+    ('F->f', 'D->d'),
     ('in0.real() * in0.real() + in0.imag() * in0.imag()',
      'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
 
