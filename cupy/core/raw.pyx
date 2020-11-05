@@ -369,6 +369,11 @@ cdef class RawModule:
             self.name_expressions = tuple(name_expressions)  # make it hashable
         else:
             self.name_expressions = None
+        if jitify:
+            if code is None:
+                raise ValueError('Jitify does not support precompiled objects')
+            if backend != 'nvrtc':  # TODO(leofang): how about hiprtc?
+                raise ValueError('Jitify only supports NVRTC')
 
         self.code = code
         self.file_path = path
