@@ -29,6 +29,10 @@ class HIPCCException(Exception):
     pass
 
 
+class JitifyException(Exception):
+    pass
+
+
 def _run_cc(cmd, cwd, backend, log_stream=None):
     # backend in ('nvcc', 'hipcc')
     try:
@@ -142,16 +146,53 @@ def _get_bool_env_variable(name, default):
         return False
 
 
+def _jitify_prep(source, options, cu_path):
+    # TODO(leofang): import by default?
+    from cupy.cuda.jitify import jitify
+
+    # jitify requires the 1st line to be the program name
+    source = cu_path + '\n' + source
+
+    # TODO(leofang): cache hdr_map?
+    try:
+        name, options, hdr_map = jitify(source, options, {})
+    except Exception as e:  # C++ could throw all kinds of errors
+        raise JitifyException(str(e))
+    print(name, cu_path)
+    assert name == cu_path
+
+    # TODO(leofang): move this part to jitify()?
+    headers = []
+    include_names = []
+    cu_path = cu_path.encode()
+    for k, v in hdr_map.items():
+        if k == cu_path:
+            continue
+        headers.append(v)
+        include_names.append(k)
+    return options, headers, include_names
+
+
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
-                        cache_in_memory=False):
+                        cache_in_memory=False, jitify=False):
     if not arch:
         arch = _get_arch()
 
     options += ('-arch=compute_{}'.format(arch),)
 
-    def _compile(source, options, cu_path, name_expressions, log_stream):
-        prog = _NVRTCProgram(source, cu_path,
+    def _compile(
+            source, options, cu_path, name_expressions, log_stream, jitify):
+        print("\n\n\n*******", jitify, "******\n\n\n")
+        if jitify:
+            options, headers, include_names = _jitify_prep(
+                source, options, cu_path)
+            print(options)
+            print(include_names)
+        else:
+            headers = include_names = ()
+
+        prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions)
         try:
             ptx, mapping = prog.compile(options, log_stream)
@@ -171,9 +212,11 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                 cu_file.write(source)
 
             return _compile(source, options, cu_path,
-                            name_expressions, log_stream)
+                            name_expressions, log_stream, jitify)
     else:
-        return _compile(source, options, '', name_expressions, log_stream)
+        cu_path = '' if not jitify else filename
+        return _compile(source, options, cu_path, name_expressions,
+                        log_stream, jitify)
 
 
 def compile_using_nvcc(source, options=(), arch=None,
@@ -307,7 +350,7 @@ _empty_file_preprocess_cache = {}
 def compile_with_cache(
         source, options=(), arch=None, cache_dir=None, extra_source=None,
         backend='nvrtc', *, enable_cooperative_groups=False,
-        name_expressions=None, log_stream=None):
+        name_expressions=None, log_stream=None, jitify=False):
 
     if enable_cooperative_groups:
         if backend != 'nvcc':
@@ -335,13 +378,13 @@ def compile_with_cache(
         return _compile_with_cache_cuda(
             source, options, arch, cache_dir, extra_source, backend,
             enable_cooperative_groups, name_expressions, log_stream,
-            cache_in_memory)
+            cache_in_memory, jitify)
 
 
 def _compile_with_cache_cuda(
         source, options, arch, cache_dir, extra_source=None, backend='nvrtc',
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None, cache_in_memory=False):
+        log_stream=None, cache_in_memory=False, jitify=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
     if cache_dir is None:
@@ -359,6 +402,17 @@ def _compile_with_cache_cuda(
 
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
+
+    if jitify and '-DCUPY_USE_JITIFY' not in options:
+        # jitify is set in RawKernel/RawModule, translate it to an option
+        # that is useless to the compiler, but can be used as part of the
+        # hash key
+        options += ('-DCUPY_USE_JITIFY',)
+    elif '-DCUPY_USE_JITIFY' in options and not jitify:
+        # jitify is requested internally, set the flag
+        jitify = True
+    if jitify and backend != 'nvrtc':
+        raise ValueError('jitify only works with NVRTC')
 
     env = (arch, options, _get_nvrtc_version(), backend)
     base = _empty_file_preprocess_cache.get(env, None)
@@ -401,7 +455,7 @@ def _compile_with_cache_cuda(
         cu_name = '' if cache_in_memory else name + '.cu'
         ptx, mapping = compile_using_nvrtc(
             source, options, arch, cu_name, name_expressions,
-            log_stream, cache_in_memory)
+            log_stream, cache_in_memory, jitify)
         if _is_cudadevrt_needed(options):
             # for separate compilation
             ls = function.LinkState()

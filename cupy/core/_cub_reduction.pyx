@@ -27,14 +27,20 @@ cdef function.Function _create_cub_reduction_function(
         _kernel._TypeMap type_map, preamble, options):
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
+    cdef str backend
 
     # static_assert needs at least C++11 in NVRTC
     options += ('--std=c++11',)
 
-    # In ROCm, we need to set the include path. This does not work for hiprtc
-    # as of ROCm 3.5.0, so we must use hipcc.
     if runtime._is_hip_environment:
-        options += ('-I' + _rocm_path + '/include',)
+        # In ROCm, we need to set the include path. This does not work for
+        # hiprtc as of ROCm 3.5.0, so we must use hipcc.
+        options += ('-I' + _rocm_path + '/include', '-O2')
+        backend = 'nvcc'
+    else:
+        # use jitify + nvrtc
+        options += ('-DCUPY_USE_JITIFY',)
+        backend = 'nvrtc'
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -204,7 +210,7 @@ __global__ void ${name}(${params}) {
     # TODO(leofang): investigate Jitify for using NVRTC (also NVlabs/cub#171)
     module = compile_with_cache(
         module_code, options, arch=None, cachd_dir=None,
-        prepend_cupy_headers=True, backend='nvcc')
+        prepend_cupy_headers=True)#, backend='nvcc')
     return module.get_function(name)
 
 
