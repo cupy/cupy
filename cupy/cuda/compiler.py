@@ -13,6 +13,9 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
+if not runtime.is_hip:
+    from cupy.cuda.jitify import jitify
+
 
 _nvrtc_version = None
 _win32 = sys.platform.startswith('win32')
@@ -147,27 +150,20 @@ def _get_bool_env_variable(name, default):
 
 
 def _jitify_prep(source, options, cu_path):
-    # TODO(leofang): import by default?
-    from cupy.cuda.jitify import jitify
-
     # jitify requires the 1st line to be the program name
     source = cu_path + '\n' + source
 
-    # TODO(leofang): cache hdr_map?
+    # TODO(leofang): cache hdr_map if Jitify can fix it?
     try:
-        name, options, hdr_map = jitify(source, options, {})
+        name, options, hdr_map = jitify(source, options)
     except Exception as e:  # C++ could throw all kinds of errors
         raise JitifyException(str(e))
-    print(name, cu_path)
     assert name == cu_path
 
     # TODO(leofang): move this part to jitify()?
     headers = []
     include_names = []
-    cu_path = cu_path.encode()
-    for k, v in hdr_map.items():
-        if k == cu_path:
-            continue
+    for k, v in hdr_map.items():  # k, v are bytes
         headers.append(v)
         include_names.append(k)
     return options, headers, include_names
@@ -183,12 +179,9 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
-        print("\n\n\n*******", jitify, "******\n\n\n")
         if jitify:
             options, headers, include_names = _jitify_prep(
                 source, options, cu_path)
-            print(options)
-            print(include_names)
         else:
             headers = include_names = ()
 

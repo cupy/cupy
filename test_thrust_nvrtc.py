@@ -55,8 +55,8 @@ with open("/home/leofang/.cupy/kernel_cache_cuda10.2/3240783440133f52312c6a239d7
 #code2, opt2, dict2 = jitify.jitify(code, ('-arch=compute_75', '--include-path=/usr/local/cuda-10.2/include'), {})
 #code2, opt2, dict2 = jitify.jitify(code, ('-arch=compute_75', '--include-path=/usr/local/cuda-10.2/include'), dict2)
 
-code2, opt2, dict2 = jitify.jitify(code, ('-arch=compute_75', '-I/home/leofang/dev/cupy_cuda10.2/cupy/core/include/'), {})
-#code2, opt2, dict2 = jitify.jitify(code, ('-arch=compute_75', '-I/home/leofang/dev/cupy_cuda10.2/cupy/core/include/'), dict2)
+code2, opt2, dict2 = jitify.jitify(code, ('-arch=compute_75', '-I/home/leofang/dev/cupy_cuda10.2/cupy/core/include/'))
+#code2, opt2, dict2 = jitify.jitify(code, ('-arch=compute_75', '-I/home/leofang/dev/cupy_cuda10.2/cupy/core/include/'))
 print(code2)
 print(opt2)
 print(len(dict2))

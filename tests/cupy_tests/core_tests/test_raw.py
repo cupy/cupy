@@ -304,8 +304,9 @@ __global__ void test_addf_scalar(cuComplex* arr, cuComplex scalar,
 '''
 
 test_const_mem = r'''
-extern "C"{
 __constant__ float some_array[100];
+
+extern "C"{
 
 __global__ void multiply_by_const(float* x, int N) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -380,11 +381,20 @@ def compile_in_memory(in_memory):
 
 
 @testing.parameterize(
+    # First test NVRTC
     {'backend': 'nvrtc', 'in_memory': False},
     # this run will read from in-memory cache
     {'backend': 'nvrtc', 'in_memory': True},
     # this run will force recompilation
     {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True},
+    # Below is the same set of NVRTC tests, with Jitify turned on. For tests
+    # that can already pass, it shouldn't matter whether Jitify is on or not,
+    # and the only side effect is to add overhead. It doesn't make sense to
+    # test NVCC + Jitify.
+    {'backend': 'nvrtc', 'in_memory': False, 'jitify': True},
+    {'backend': 'nvrtc', 'in_memory': True, 'jitify': True},
+    {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True, 'jitify': True},
+    # Finally, we test NVCC
     {'backend': 'nvcc', 'in_memory': False},
 )
 class TestRaw(unittest.TestCase):
@@ -394,6 +404,10 @@ class TestRaw(unittest.TestCase):
             _util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
+        if not hasattr(self, 'jitify'):
+            self.jitify = False
+        if cupy.cuda.runtime.is_hip and self.jitify:
+            self.skipTest('Jitify does not support ROCm/HIP')
 
         self.temporary_cache_dir_context = use_temporary_cache_dir()
         self.in_memory_context = compile_in_memory(self.in_memory)
@@ -402,14 +416,14 @@ class TestRaw(unittest.TestCase):
 
         self.kern = cupy.RawKernel(
             _test_source1, 'test_sum',
-            backend=self.backend)
+            backend=self.backend, jitify=self.jitify)
         self.mod2 = cupy.RawModule(
             code=_test_source2,
-            backend=self.backend)
+            backend=self.backend, jitify=self.jitify)
         self.mod3 = cupy.RawModule(
             code=_test_source3,
             options=('-DPRECISION=2',),
-            backend=self.backend)
+            backend=self.backend, jitify=self.jitify)
 
     def tearDown(self):
         if (self.in_memory
@@ -489,7 +503,8 @@ class TestRaw(unittest.TestCase):
         with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
             mod = cupy.RawModule(code=_test_source3,
                                  options=('-DPRECISION=3',),
-                                 backend=self.backend)
+                                 backend=self.backend,
+                                 jitify=self.jitify)
             mod.get_function('test_sum')  # enforce compilation
         assert 'precision not supported' in str(ex.value)
 
@@ -598,7 +613,7 @@ class TestRaw(unittest.TestCase):
                      'ROCm/HIP does not support dynamic parallelism')
     def test_dynamical_parallelism(self):
         ker = cupy.RawKernel(_test_source4, 'test_kernel', options=('-dc',),
-                             backend=self.backend)
+                             backend=self.backend, jitify=self.jitify)
         N = 169
         inner_chunk = 13
         x = cupy.zeros((N,), dtype=cupy.float32)
@@ -608,7 +623,7 @@ class TestRaw(unittest.TestCase):
     def test_dynamical_parallelism_compile_failure(self):
         # no option for separate compilation is given should cause an error
         ker = cupy.RawKernel(_test_source4, 'test_kernel',
-                             backend=self.backend)
+                             backend=self.backend, jitify=self.jitify)
         N = 10
         inner_chunk = 2
         x = cupy.zeros((N,), dtype=cupy.float32)
@@ -630,7 +645,8 @@ class TestRaw(unittest.TestCase):
 
         mod = cupy.RawModule(
             code=_test_cuComplex,
-            translate_cucomplex=True)
+            translate_cucomplex=True,
+            jitify=self.jitify)
         a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
         a = a.astype(dtype)
         b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
@@ -694,7 +710,8 @@ class TestRaw(unittest.TestCase):
 
         mod = cupy.RawModule(
             code=_test_cuComplex,
-            translate_cucomplex=True)
+            translate_cucomplex=True,
+            jitify=self.jitify)
         a = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
         a = a.astype(dtype)
         b = cupy.random.random((N,)) + 1j*cupy.random.random((N,))
@@ -754,6 +771,9 @@ class TestRaw(unittest.TestCase):
         assert (out == a + b).all()
 
     def test_const_memory(self):
+        # TODO(leofang): it seems Jitify has a bad interplay with constant
+        # memory? if jitify=True is set, this test wouldn't pass! (output_arr
+        # is all zeros.)
         mod = cupy.RawModule(code=test_const_mem, backend=self.backend)
         ker = mod.get_function('multiply_by_const')
         mem_ptr = mod.get_global('some_array')
@@ -777,8 +797,10 @@ class TestRaw(unittest.TestCase):
         # compile code
         name_expressions = ['my_sqrt<int>', 'my_sqrt<float>',
                             'my_sqrt<complex<double>>', 'my_func']
-        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
-                             name_expressions=name_expressions)
+        mod = cupy.RawModule(code=test_cxx_template,
+                             options=('--std=c++11',),
+                             name_expressions=name_expressions,
+                             jitify=self.jitify)
 
         dtypes = (cupy.int32, cupy.float32, cupy.complex128, cupy.float64)
         for ker_T, dtype in zip(name_expressions, dtypes):
@@ -814,7 +836,9 @@ class TestRaw(unittest.TestCase):
             return  # the rest of tests do not apply to nvcc
 
         # 2. compile code without specializations
-        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',))
+        mod = cupy.RawModule(code=test_cxx_template,
+                             options=('--std=c++11',),
+                             jitify=self.jitify)
         # ...try to get a specialized kernel
         match = ('named symbol not found' if not cupy.cuda.runtime.is_hip else
                  'hipErrorNotFound')
@@ -824,11 +848,14 @@ class TestRaw(unittest.TestCase):
         # 3. compile code without specifying C++ standard
         with pytest.raises(ValueError):
             cupy.RawModule(code=test_cxx_template,
-                           name_expressions=name_expressions)
+                           name_expressions=name_expressions,
+                           jitify=self.jitify)
 
         # 4. try to fetch something we didn't specialize for
-        mod = cupy.RawModule(code=test_cxx_template, options=('--std=c++11',),
-                             name_expressions=name_expressions)
+        mod = cupy.RawModule(code=test_cxx_template,
+                             options=('--std=c++11',),
+                             name_expressions=name_expressions,
+                             jitify=self.jitify)
         if cupy.cuda.runtime.is_hip:
             msg = 'hipErrorNotFound'
         else:
@@ -837,7 +864,9 @@ class TestRaw(unittest.TestCase):
             mod.get_function('my_sqrt<double>')
 
     def test_raw_pointer(self):
-        mod = cupy.RawModule(code=test_cast, backend=self.backend)
+        mod = cupy.RawModule(code=test_cast,
+                             backend=self.backend,
+                             jitify=self.jitify)
         ker = mod.get_function('my_func')
 
         a = cupy.ones((100,), dtype=cupy.float64)
@@ -939,7 +968,8 @@ class TestRaw(unittest.TestCase):
         with cupy.cuda.Device(0):
             mod = cupy.RawModule(code=test_cxx_template,
                                  options=('--std=c++11',),
-                                 name_expressions=name_expressions)
+                                 name_expressions=name_expressions,
+                                 jitify=self.jitify)
 
             # get specialized kernels
             mod.get_function(name)
@@ -972,7 +1002,8 @@ class TestRaw(unittest.TestCase):
         with cupy.cuda.Device(0):
             mod = cupy.RawModule(code=test_cxx_template,
                                  options=('--std=c++11',),
-                                 name_expressions=name_expressions)
+                                 name_expressions=name_expressions,
+                                 jitify=self.jitify)
 
             # get specialized kernels
             ker = mod.get_function(name)
@@ -995,7 +1026,8 @@ class TestRaw(unittest.TestCase):
         kern = cupy.RawKernel(
             _test_compile_src, 'test_op',
             options=('-DOP=+',),
-            backend=self.backend)
+            backend=self.backend,
+            jitify=self.jitify)
         log = io.StringIO()
         with use_temporary_cache_dir():
             kern.compile(log_stream=log)
@@ -1009,7 +1041,8 @@ class TestRaw(unittest.TestCase):
         module = cupy.RawModule(
             code=_test_compile_src,
             backend=self.backend,
-            options=('-DOP=+',))
+            options=('-DOP=+',),
+            jitify=self.jitify)
         log = io.StringIO()
         with use_temporary_cache_dir():
             module.compile(log_stream=log)

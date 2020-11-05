@@ -2,6 +2,8 @@
 
 """Wrapper of Jitify utilities for CuPy API."""
 
+from cython.operator cimport dereference as deref
+from libcpp cimport nullptr
 from libcpp.map cimport map as cpp_map 
 from libcpp.string cimport string as cpp_str
 from libcpp.vector cimport vector
@@ -28,62 +30,66 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
 # API
 ###############################################################################
 
+cdef vector[cpp_str] jitsafe_headers = vector[cpp_str](0)
+
+
 # Use Jitify's mechanism to fix all header includes, and return the modified
 # options and the header mapping. This roughly follows the constructor of
-# jitify::Program.
+# jitify::Program().
 cpdef jitify(str code, tuple opt, dict cached_sources=None):
-    """ 
-
-    .. note::
-        cached_sources is a map from raw input codes to the transformed codes
-
-    """
 
     # input
     cdef cpp_str cuda_source
-    cdef vector[cpp_str] headers, include_paths
+    cdef vector[cpp_str]* headers = &jitsafe_headers
 
     # output
+    cdef vector[cpp_str] include_paths
     cdef cpp_map[cpp_str, cpp_str] _sources
-    cdef vector[cpp_str] _options
+    cdef vector[cpp_str] _options  # the input gets modified
     cdef cpp_str _name
     cdef list new_opt = []
 
     # dummy
     cdef cpp_str hdr_name, hdr_source, h
-    cdef str s, k, v
+    cdef str s
+    cdef bytes k, v
     cdef int i
 
-    # Populate the C++ map using Python map
-    # TODO: I think _sources should always have a fresh start!
+    # Unfortunately, Jitify does not allow us to reuse an existing header
+    # mapping. The reason is when Jitify looks up the program name, it expects
+    # the map only has 1 element, but if we pre-populate the map with the
+    # cached elements, it would fail to identify the name (_name).
+    # TODO(leofang): do we really need to know the correct name?
     if cached_sources is not None:
-        for k, v in cached_sources.items():
-            _sources[k.encode()] = v.encode()
+        raise ValueError('cached_sources should not be set')
 
     cuda_source = code.encode()
     _options = [s.encode() for s in opt]
 
     # Add pre-include built-in JIT-safe headers
-    for i in range(preinclude_jitsafe_headers_count):
-        hdr_name = preinclude_jitsafe_header_names[i]
-        hdr_source = get_jitsafe_headers_map().at(hdr_name)
-        hdr_name += <cpp_str>(b"\n") + hdr_source
-        #print(s)
-        headers.push_back(hdr_name)
+    if headers.size() == 0:
+        for i in range(preinclude_jitsafe_headers_count):
+            hdr_name = preinclude_jitsafe_header_names[i]
+            hdr_source = get_jitsafe_headers_map().at(hdr_name)
+            hdr_name += <cpp_str>(b"\n") + hdr_source
+            headers.push_back(hdr_name)
 
-    # call add_options_from_env()?
-    
+    # Where the real magic happens
     with nogil:
-        load_program(cuda_source, headers, NULL, &include_paths,
+        load_program(cuda_source, deref(headers), nullptr, &include_paths,
                      &_sources, &_options, &_name)
 
-    # Update the Python map using C++ map
-    # TODO: just store them as two lists?
-    if cached_sources is not None:
-        for kv in _sources:  # kv is std::pair<string, string>
-            cached_sources[kv.first] = kv.second  # store as bytes
+    # Update the Python dict using C++ map
+    if cached_sources is None:
+        cached_sources = {}
+    for k, v in _sources:  # (k, v) is std::pair<std::string, std::string>
+        h = <cpp_str>(k)
+        if h == _name:
+            continue
+        cached_sources[k] = v  # store as bytes
 
-    # see jitify::detail::compile_kernel()
+    # Get updated options. The two additions are from
+    # jitify::detail::compile_kernel()
     _options.push_back(b'--device-as-default-execution-space')
     _options.push_back(b'--pre-include=jitify_preinclude.h')
     for h in _options:
