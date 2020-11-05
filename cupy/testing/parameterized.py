@@ -75,8 +75,8 @@ def _parameterize_test_case(base, i, param):
         else:
             mb[k] = v
 
+    # Wrap test methods to generate useful error message
     def method_generator(base_method):
-        # Generates a wrapped test method
 
         @functools.wraps(base_method)
         def new_method(self, *args, **kwargs):
@@ -102,7 +102,20 @@ def _parameterize_test_case(base, i, param):
 
 
 def parameterize(*params):
-    # TODO(niboshi): Add documentation
+    """Generates test classes with given sets of additional attributes
+
+    >>> @parameterize({"a": 1}, {"b": 2, "c": 3})
+    ... class TestX(unittest.TestCase):
+    ...     def test_y(self):
+    ...         pass
+
+    generates two classes `TestX_param_0_...`, `TestX_param_1_...` and
+    removes the original class `TestX`.
+
+    The specification is subject to change, which applies to all the non-NumPy
+    `testing` features.
+
+    """
     def f(cls):
         if (isinstance(cls, _bundle._ParameterizedTestCaseBundle)
                 or issubclass(cls, unittest.TestCase)):
@@ -114,56 +127,17 @@ def parameterize(*params):
     return f
 
 
-def _values_to_dicts(names, values):
-    assert isinstance(names, str)
-    assert isinstance(values, (tuple, list))
-
-    def safe_zip(ns, vs):
-        if len(ns) == 1:
-            return [(ns[0], vs)]
-        assert isinstance(vs, (tuple, list)) and len(ns) == len(vs)
-        return zip(ns, vs)
-
-    names = names.split(',')
-    params = [dict(safe_zip(names, value_list)) for value_list in values]
-    return params
-
-
-def from_pytest_parameterize(names, values):
-    # Pytest-style parameterization.
-    # TODO(niboshi): Add documentation
-    return _values_to_dicts(names, values)
-
-
-def parameterize_pytest(names, values):
-    # Pytest-style parameterization.
-    # TODO(niboshi): Add documentation
-    return parameterize(*from_pytest_parameterize(names, values))
-
-
 def product(parameter):
-    # TODO(niboshi): Add documentation
-    if isinstance(parameter, dict):
-        return product_dict(*[
-            _values_to_dicts(names, values)
-            for names, values in sorted(parameter.items())])
-
-    elif isinstance(parameter, list):
-        # list of lists of dicts
-        if not all(isinstance(_, list) for _ in parameter):
-            raise TypeError('parameter must be list of lists of dicts')
-        if not all(isinstance(_, dict) for l in parameter for _ in l):
-            raise TypeError('parameter must be list of lists of dicts')
-        return product_dict(*parameter)
-
-    else:
-        raise TypeError(
-            'parameter must be either dict or list. Actual: {}'.format(
-                type(parameter)))
+    # TODO(kataoka): Add documentation
+    assert isinstance(parameter, dict)
+    keys = sorted(parameter)
+    values = [parameter[key] for key in keys]
+    values_product = itertools.product(*values)
+    return [dict(zip(keys, vals)) for vals in values_product]
 
 
 def product_dict(*parameters):
-    # TODO(niboshi): Add documentation
+    # TODO(kataoka): Add documentation
     return [
         {k: v for dic in dicts for k, v in dic.items()}
         for dicts in itertools.product(*parameters)]

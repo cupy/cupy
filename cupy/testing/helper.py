@@ -1371,19 +1371,6 @@ def generate_matrix(
     return a.astype(dtype)
 
 
-class NumpyError(object):
-
-    def __init__(self, **kw):
-        self.kw = kw
-
-    def __enter__(self):
-        self.err = numpy.geterr()
-        numpy.seterr(**self.kw)
-
-    def __exit__(self, *_):
-        numpy.seterr(**self.err)
-
-
 @contextlib.contextmanager
 def assert_warns(expected):
     with warnings.catch_warnings(record=True) as w:
