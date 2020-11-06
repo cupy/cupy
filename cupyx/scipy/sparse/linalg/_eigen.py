@@ -178,8 +178,8 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
 
     Returns:
         tuple:
-            If ``return_singular_vectors is True``, it returns ``u``, ``s`` and
-            ``vt`` where ``u`` is left singular vectors, ``s`` is singular
+            If ``return_singular_vectors`` is ``True``, it returns ``u``, ``s``
+            and ``vt`` where ``u`` is left singular vectors, ``s`` is singular
             values and ``vt`` is right singular vectors. Otherwise, it returns
             only ``s``.
 
