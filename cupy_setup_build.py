@@ -122,10 +122,7 @@ if use_hip:
 else:
     MODULES.append({
         'name': 'cuda',
-        'file': cuda_files + [
-            # It has no device code, so we just use host compiler
-            'cupy.cuda.jitify',
-        ],
+        'file': cuda_files,
         'include': [
             'cublas_v2.h',
             'cuda.h',
@@ -240,6 +237,23 @@ if not use_hip:
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
+    })
+
+    MODULES.append({
+        'name': 'jitify',
+        'file': [
+            'cupy.cuda.jitify',
+        ],
+        'include': [
+            'cuda.h',
+            'cuda_runtime.h',
+            'nvrtc.h',
+        ],
+        'libraries': [
+            'cuda',
+            'cudart',
+            'nvrtc',
+        ],
     })
 else:
     MODULES.append({
@@ -561,8 +575,6 @@ def make_extensions(options, compiler, use_cython):
         link_args = s.setdefault('extra_link_args', [])
 
         if module['name'] == 'cusolver':
-            compile_args = s.setdefault('extra_compile_args', [])
-            link_args = s.setdefault('extra_link_args', [])
             # openmp is required for cusolver
             if use_hip:
                 pass
@@ -572,6 +584,10 @@ def make_extensions(options, compiler, use_cython):
                 link_args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
+
+        # this fixes RTD (no_cuda) builds...
+        if module['name'] == 'jitify':
+            compile_args.append('--std=c++11')
 
         original_s = s
         for f in module['file']:
