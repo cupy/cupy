@@ -1267,7 +1267,7 @@ class TestRawJitify(unittest.TestCase):
         ker((1,), (N,), (a, N))
         assert cupy.allclose(a, b+100)
 
-    def test_jitify(self):
+    def test_jitify1(self):
         if self.jitify:
             # Jitify will make it work
             self._helper()
@@ -1284,7 +1284,7 @@ class TestRawJitify(unittest.TestCase):
             self._helper2('int')
         else:
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper()
+                self._helper2('int')
             assert 'cannot open source file' in str(ex.value)
 
     def test_jitify3(self):
