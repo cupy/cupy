@@ -132,19 +132,25 @@ def _eigsh_lanczos_update(A, V, alpha, beta, i_start, i_end):
 
 
 def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
-    t = cupy.diag(alpha)
-    t = t + cupy.diag(beta[:-1], k=1)
-    t = t + cupy.diag(beta[:-1], k=-1)
+    # Note: This is done on the CPU, because there is an issue in
+    # cupy.linalg.eigh with CUDA 9.2, which can return NaNs. It will has little
+    # impact on performance, since the matrix size processed here is not large.
+    alpha = cupy.asnumpy(alpha)
+    beta = cupy.asnumpy(beta)
+    t = numpy.diag(alpha)
+    t = t + numpy.diag(beta[:-1], k=1)
+    t = t + numpy.diag(beta[:-1], k=-1)
     if beta_k is not None:
+        beta_k = cupy.asnumpy(beta_k)
         t[k, :k] = beta_k
         t[:k, k] = beta_k
-    w, s = cupy.linalg.eigh(t)
+    w, s = numpy.linalg.eigh(t)
 
     # Pick-up k ritz-values and ritz-vectors
     if which == 'LA':
-        idx = cupy.argsort(w)
+        idx = numpy.argsort(w)
     elif which == 'LM':
-        idx = cupy.argsort(cupy.absolute(w))
+        idx = numpy.argsort(numpy.absolute(w))
     wk = w[idx[-k:]]
     sk = s[:, idx[-k:]]
-    return wk, sk
+    return cupy.array(wk), cupy.array(sk)
