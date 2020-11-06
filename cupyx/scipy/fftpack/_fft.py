@@ -6,6 +6,7 @@ from cupy.fft import config
 from cupy.fft.fft import (_convert_fft_type, _default_fft_func, _fft,
                           _get_cufft_plan_nd, _get_fftn_out_size,
                           _output_dtype)
+from cupy.fft._cache import get_plan_cache
 
 
 def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
@@ -112,12 +113,18 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         raise ValueError('C2R/R2C PlanNd for F-order arrays is not supported')
 
     # generate plan
+    # (load from cache if it exists, otherwise create one but don't cache it)
     if n > 1:  # ND transform
+        if cupy.cuda.runtime.is_hip and value_type == 'C2R':
+            raise RuntimeError("hipFFT's C2R PlanNd is buggy and unsupported")
         out_size = _get_fftn_out_size(
             shape, transformed_shape, axes[-1], value_type)
+        # _get_cufft_plan_nd handles the interaction with plan cache
         plan = _get_cufft_plan_nd(
-            shape, fft_type, axes=axes, order=order, out_size=out_size)
+            shape, fft_type, axes=axes, order=order, out_size=out_size,
+            to_cache=False)
     else:  # 1D transform
+        # prepare plan arguments
         if value_type != 'C2R':
             out_size = shape[axis1D]
         else:
@@ -125,7 +132,14 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
                 shape, transformed_shape, axis1D, value_type)
         batch = prod(shape) // shape[axis1D]
         devices = None if not config.use_multi_gpus else config._devices
-        plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+
+        keys = (out_size, fft_type, batch, devices)
+        cache = get_plan_cache()
+        cached_plan = cache.get(keys)
+        if cached_plan is not None:
+            plan = cached_plan
+        else:
+            plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
 
     return plan
 
