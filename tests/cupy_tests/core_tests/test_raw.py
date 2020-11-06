@@ -1248,3 +1248,18 @@ class TestRawJitify(unittest.TestCase):
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
                 self._helper()
             assert 'cannot open source file' in str(ex.value)
+
+    def test_jitify2(self):
+        # ensure JitifyException is raised with a broken code
+        code = r'''
+        __global__ void i_am_broken() {
+        '''
+
+        if self.jitify:
+            ex_type = cupy.cuda.compiler.JitifyException
+        else:
+            ex_type = cupy.cuda.compiler.CompileException
+
+        with pytest.raises(ex_type) as ex:
+            mod = cupy.RawModule(code=code, jitify=self.jitify)
+            ker = mod.get_function('i_am_broken')
