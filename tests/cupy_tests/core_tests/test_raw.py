@@ -1259,6 +1259,6 @@ class TestRawJitify(unittest.TestCase):
         else:
             ex_type = cupy.cuda.compiler.CompileException
 
-        with pytest.raises(ex_type) as ex:
+        with pytest.raises(ex_type) as ex:  # noqa
             mod = cupy.RawModule(code=code, jitify=self.jitify)
-            ker = mod.get_function('i_am_broken')
+            ker = mod.get_function('i_am_broken')  # noqa
