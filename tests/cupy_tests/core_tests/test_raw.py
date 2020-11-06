@@ -1211,8 +1211,7 @@ class TestRawPicklable(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    #'jitify': (False, True),
-    'jitify': (True,),
+    'jitify': (False, True),
 }))
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'Jitify does not support ROCm/HIP')
