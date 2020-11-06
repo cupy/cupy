@@ -9,11 +9,12 @@ import tempfile
 
 from cupy.cuda import device
 from cupy.cuda import function
+from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
-if not runtime.is_hip:
+if not runtime.is_hip and driver.get_build_version() > 0:
     from cupy.cuda.jitify import jitify
 
 

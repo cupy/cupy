@@ -123,6 +123,7 @@ else:
     MODULES.append({
         'name': 'cuda',
         'file': cuda_files + [
+            # It has no device code, so we just use host compiler
             'cupy.cuda.jitify',
         ],
         'include': [
