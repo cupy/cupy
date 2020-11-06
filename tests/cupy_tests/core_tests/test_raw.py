@@ -1210,6 +1210,21 @@ class TestRawPicklable(unittest.TestCase):
         s.check_returncode()  # raise if unsuccess
 
 
+# a slightly more realistic kernel involving std utilities
+std_code = r'''
+#include <type_traits>
+
+template<typename T,
+         typename = typename std::enable_if<std::is_integral<T>::value>::type>
+__global__ void shift (T* a, int N) {
+    unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid < N) {
+        a[tid] += 100;
+    }
+}
+'''
+
+
 @testing.parameterize(*testing.product({
     'jitify': (False, True),
 }))
@@ -1221,10 +1236,12 @@ class TestRawJitify(unittest.TestCase):
         self.temporary_dir_context = use_temporary_cache_dir()
         self.temp_dir = self.temporary_dir_context.__enter__()
 
-        code = '#include <cupy/cub/cub/block/block_reduce.cuh>' + _test_source1
-        self.mod = cupy.RawModule(code=code,
-                                  backend='nvrtc',
-                                  jitify=self.jitify)
+        # simply prepend an unused header
+        code1 = '#include <cupy/cub/cub/block/block_reduce.cuh>'
+        code1 += _test_source1
+        self.mod1 = cupy.RawModule(code=code1,
+                                   backend='nvrtc',
+                                   jitify=self.jitify)
 
     def tearDown(self):
         self.temporary_dir_context.__exit__(*sys.exc_info())
@@ -1234,9 +1251,21 @@ class TestRawJitify(unittest.TestCase):
         x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
         x2 = cupy.ones((N, N), dtype=cupy.float32)
         y = cupy.zeros((N, N), dtype=cupy.float32)
-        ker = self.mod.get_function('test_sum')
+        ker = self.mod1.get_function('test_sum')
         ker((N,), (N,), (x1, x2, y, N**2))
         assert cupy.allclose(x1 + x2, y)
+
+    def _helper2(self, type_str):
+        mod2 = cupy.RawModule(code=std_code,
+                              jitify=self.jitify,
+                              name_expressions=['shift<%s>' % type_str, ],
+                              options=('--std=c++11',))
+        ker = mod2.get_function('shift<%s>' % type_str)
+        N = 256
+        a = cupy.random.random_integers(0, 7, N).astype(cupy.int32)
+        b = a.copy()
+        ker((1,), (N,), (a, N))
+        assert cupy.allclose(a, b+100)
 
     def test_jitify(self):
         if self.jitify:
@@ -1249,6 +1278,29 @@ class TestRawJitify(unittest.TestCase):
             assert 'cannot open source file' in str(ex.value)
 
     def test_jitify2(self):
+        # NVRTC cannot compile any code involving std
+        if self.jitify:
+            # Jitify will make it work
+            self._helper2('int')
+        else:
+            with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
+                self._helper()
+            assert 'cannot open source file' in str(ex.value)
+
+    def test_jitify3(self):
+        # We supply a type impossible to specialize. Jitify is still able to
+        # locate the headers, but when it comes to the actual compilation,
+        # NVRTC fails (raising the same exception) with different error
+        # messages.
+        ex_type = cupy.cuda.compiler.CompileException
+        with pytest.raises(ex_type) as ex:
+            self._helper2('float')
+        if self.jitify:
+            assert 'Error in parsing name expression' in str(ex.value)
+        else:
+            assert 'cannot open source file' in str(ex.value)
+
+    def test_jitify4(self):
         # ensure JitifyException is raised with a broken code
         code = r'''
         __global__ void i_am_broken() {

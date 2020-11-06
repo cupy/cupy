@@ -4,7 +4,7 @@
 
 from cython.operator cimport dereference as deref
 from libcpp cimport nullptr
-from libcpp.map cimport map as cpp_map 
+from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_str
 from libcpp.vector cimport vector
 
