@@ -1414,6 +1414,15 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
         assert self.cupy_func(*self.args) == self.numpy_func(*self.args)
 
 
+@contextlib.contextmanager
+def _assert_function_is_called(*args, times_called=1, **kwargs):
+    with mock.patch(*args, **kwargs) as handle:
+        assert handle.call_count == 0
+        yield handle
+        assert handle.call_count == int(times_called)
+        del handle
+
+
 class AssertFunctionIsCalled:
 
     def __init__(self, mock_mod, **kwargs):
@@ -1427,18 +1436,10 @@ class AssertFunctionIsCalled:
                 called. Default is ``1``.
 
         """
-
-        self.patch = mock.patch(mock_mod, **kwargs)
-
-        times_called = kwargs.get('times_called')
-        self.times_called = times_called if times_called is not None else 1
+        self._ctx = _assert_function_is_called(mock_mod, **kwargs)
 
     def __enter__(self):
-        self.handle = self.patch.__enter__()
-        assert self.handle.call_count == 0
-        return self.handle
+        return self._ctx.__enter__()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        assert self.handle.call_count == int(self.times_called)
-        del self.handle
-        return self.patch.__exit__(exc_type, exc_value, traceback)
+        return self._ctx.__exit__(exc_type, exc_value, traceback)
