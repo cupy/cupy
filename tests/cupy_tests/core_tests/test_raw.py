@@ -304,9 +304,8 @@ __global__ void test_addf_scalar(cuComplex* arr, cuComplex scalar,
 '''
 
 test_const_mem = r'''
-__constant__ float some_array[100];
-
 extern "C"{
+__constant__ float some_array[100];
 
 __global__ void multiply_by_const(float* x, int N) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -500,13 +499,20 @@ class TestRaw(unittest.TestCase):
         if cupy.cuda.runtime.is_hip and self.backend == 'nvrtc':
             self.skipTest('hiprtc does not handle #error macro properly')
 
-        with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
+        if self.jitify:
+            ex_type = cupy.cuda.compiler.JitifyException
+        else:
+            ex_type = cupy.cuda.compiler.CompileException
+
+        with pytest.raises(ex_type) as ex:
             mod = cupy.RawModule(code=_test_source3,
                                  options=('-DPRECISION=3',),
                                  backend=self.backend,
                                  jitify=self.jitify)
             mod.get_function('test_sum')  # enforce compilation
-        assert 'precision not supported' in str(ex.value)
+
+        if not self.jitify:
+            assert 'precision not supported' in str(ex.value)
 
     def _generate_file(self, ext: str):
         # generate cubin/ptx by calling nvcc/hipcc
@@ -771,10 +777,9 @@ class TestRaw(unittest.TestCase):
         assert (out == a + b).all()
 
     def test_const_memory(self):
-        # TODO(leofang): it seems Jitify has a bad interplay with constant
-        # memory? if jitify=True is set, this test wouldn't pass! (output_arr
-        # is all zeros.)
-        mod = cupy.RawModule(code=test_const_mem, backend=self.backend)
+        mod = cupy.RawModule(code=test_const_mem,
+                             backend=self.backend,
+                             jitify=self.jitify)
         ker = mod.get_function('multiply_by_const')
         mem_ptr = mod.get_global('some_array')
         const_arr = cupy.ndarray((100,), cupy.float32, mem_ptr)
@@ -1203,3 +1208,43 @@ class TestRawPicklable(unittest.TestCase):
         s = subprocess.run([sys.executable,
                             self.temp_dir + '/TestRawPicklable.py'])
         s.check_returncode()  # raise if unsuccess
+
+
+@testing.parameterize(*testing.product({
+    #'jitify': (False, True),
+    'jitify': (True,),
+}))
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'Jitify does not support ROCm/HIP')
+class TestRawJitify(unittest.TestCase):
+
+    def setUp(self):
+        self.temporary_dir_context = use_temporary_cache_dir()
+        self.temp_dir = self.temporary_dir_context.__enter__()
+
+        code = '#include <cupy/cub/cub/block/block_reduce.cuh>' + _test_source1
+        self.mod = cupy.RawModule(code=code,
+                                  backend='nvrtc',
+                                  jitify=self.jitify)
+
+    def tearDown(self):
+        self.temporary_dir_context.__exit__(*sys.exc_info())
+
+    def _helper(self):
+        N = 10
+        x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
+        x2 = cupy.ones((N, N), dtype=cupy.float32)
+        y = cupy.zeros((N, N), dtype=cupy.float32)
+        ker = self.mod.get_function('test_sum')
+        ker((N,), (N,), (x1, x2, y, N**2))
+        assert cupy.allclose(x1 + x2, y)
+
+    def test_jitify(self):
+        if self.jitify:
+            # Jitify will make it work
+            self._helper()
+        else:
+            # NVRTC cannot find C++ std headers without Jitify
+            with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
+                self._helper()
+            assert 'cannot open source file' in str(ex.value)

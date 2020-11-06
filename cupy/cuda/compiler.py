@@ -153,8 +153,16 @@ def _jitify_prep(source, options, cu_path):
     # jitify requires the 1st line to be the program name
     source = cu_path + '\n' + source
 
-    # TODO(leofang): cache hdr_map if Jitify can fix it?
+    # In addition to throw an error upon failure, jitify also prints the log
+    # to stdout. In principle we could intercept that by hijacking stdout's
+    # file descriptor (tested locally), but the problem is pytest also does
+    # the same thing internally, causing strange errors when running the tests.
+    # As a result, we currently maintain jitify's default behavior for easy
+    # debugging, and wait for the upstream to address this issue
+    # (NVIDIA/jitify#79).
+
     try:
+        # TODO(leofang): cache hdr_map if Jitify can fix it?
         name, options, hdr_map = jitify(source, options)
     except Exception as e:  # C++ could throw all kinds of errors
         raise JitifyException(str(e))
@@ -396,13 +404,14 @@ def _compile_with_cache_cuda(
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
 
-    if jitify and '-DCUPY_USE_JITIFY' not in options:
+    is_jitify_requested = ('-DCUPY_USE_JITIFY' in options)
+    if jitify and not is_jitify_requested:
         # jitify is set in RawKernel/RawModule, translate it to an option
         # that is useless to the compiler, but can be used as part of the
         # hash key
         options += ('-DCUPY_USE_JITIFY',)
-    elif '-DCUPY_USE_JITIFY' in options and not jitify:
-        # jitify is requested internally, set the flag
+    elif is_jitify_requested and not jitify:
+        # jitify is requested internally, just set the flag
         jitify = True
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')

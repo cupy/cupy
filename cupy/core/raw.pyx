@@ -474,7 +474,8 @@ cdef class RawModule:
         ker = RawKernel(
             self.code, name, self.options, self.backend,
             translate_cucomplex=self.translate_cucomplex,
-            enable_cooperative_groups=self.enable_cooperative_groups)
+            enable_cooperative_groups=self.enable_cooperative_groups,
+            jitify=self.jitify)
 
         # for lookup in case we loaded from cubin/ptx
         ker.file_path = self.file_path
