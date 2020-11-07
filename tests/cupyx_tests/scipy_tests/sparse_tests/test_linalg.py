@@ -16,8 +16,6 @@ from cupy.testing import condition
 from cupyx.scipy import sparse
 import cupyx.scipy.sparse.linalg  # NOQA
 
-is_called = False
-
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
@@ -356,12 +354,11 @@ class TestCg(unittest.TestCase):
         xp, sp = cupy, sparse
         a, M = self._make_matrix(dtype, xp)
         b = self._make_normalized_vector(dtype, xp)
-        global is_called
         is_called = False
 
         def callback(x):
             print(xp.linalg.norm(b - a @ x))
-            global is_called
+            nonlocal is_called
             is_called = True
         sp.linalg.cg(a, b, callback=callback)
         assert is_called
