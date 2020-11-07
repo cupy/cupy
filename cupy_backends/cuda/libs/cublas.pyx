@@ -526,7 +526,6 @@ cpdef icamin(intptr_t handle, int n, size_t x, int incx, size_t result):
         status = cublasIcamin(
             <Handle>handle, n, <cuComplex*>x, incx, <int*>result)
     check_status(status)
-    return result
 
 cpdef izamin(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)

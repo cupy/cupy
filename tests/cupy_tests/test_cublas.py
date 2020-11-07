@@ -132,9 +132,8 @@ class TestLevel1Functions(unittest.TestCase):
         ref = a * x + y
         if self.mode is not None:
             a = self.mode.array(a, dtype=self.dtype)
-        res = cublas.axpy(a, x, y)
-        self._check_pointer(res, y)
-        cupy.testing.assert_allclose(res, ref, rtol=self.tol, atol=self.tol)
+        cublas.axpy(a, x, y)
+        cupy.testing.assert_allclose(y, ref, rtol=self.tol, atol=self.tol)
 
     def test_dot(self):
         x = self._make_random_vector()
@@ -183,9 +182,8 @@ class TestLevel1Functions(unittest.TestCase):
         ref = a * x
         if self.mode is not None:
             a = self.mode.array(a, dtype=self.dtype)
-        res = cublas.scal(a, x)
-        self._check_pointer(res, x)
-        cupy.testing.assert_allclose(res, ref, rtol=self.tol, atol=self.tol)
+        cublas.scal(a, x)
+        cupy.testing.assert_allclose(x, ref, rtol=self.tol, atol=self.tol)
 
 
 @testing.parameterize(*testing.product({
