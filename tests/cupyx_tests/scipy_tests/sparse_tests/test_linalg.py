@@ -16,6 +16,8 @@ from cupy.testing import condition
 from cupyx.scipy import sparse
 import cupyx.scipy.sparse.linalg  # NOQA
 
+is_called = False
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
@@ -302,15 +304,35 @@ class TestCg(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_sparse(self, dtype, xp, sp):
+    def test_dense(self, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
         return self._test_cg(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_dense(self, dtype, xp, sp):
+    def test_csr(self, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
+        a = sp.csr_matrix(a)
+        if M is not None:
+            M = sp.csr_matrix(M)
+        return self._test_cg(dtype, xp, sp, a, M)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_csc(self, dtype, xp, sp):
+        a, M = self._make_matrix(dtype, xp)
+        a = sp.csc_matrix(a)
+        if M is not None:
+            M = sp.csc_matrix(M)
+        return self._test_cg(dtype, xp, sp, a, M)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_coo(self, dtype, xp, sp):
+        a, M = self._make_matrix(dtype, xp)
+        a = sp.coo_matrix(a)
+        if M is not None:
+            M = sp.coo_matrix(M)
         return self._test_cg(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
@@ -335,10 +357,15 @@ class TestCg(unittest.TestCase):
         xp, sp = cupy, sparse
         a, M = self._make_matrix(dtype, xp)
         b = self._make_normalized_vector(dtype, xp)
+        global is_called
+        is_called = False
 
         def callback(x):
             print(xp.linalg.norm(b - a @ x))
-        return sp.linalg.cg(a, b, callback=callback)
+            global is_called
+            is_called = True
+        sp.linalg.cg(a, b, callback=callback)
+        assert is_called
 
     def test_invalid(self):
         if self.x0 is not None or self.M is not None or self.atol is not None:

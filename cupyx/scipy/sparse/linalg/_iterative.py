@@ -6,7 +6,7 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
     """Uses Conjugate Gradient iteration to solve ``Ax = b``.
 
     Args:
-        A (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): The real or complex
+        A (cupy.ndarray or cupyx.scipy.sparse.spmatrix): The real or complex
             matrix of the linear system with shape ``(n, n)``. ``A`` must
             be a hermitian, positive definitive matrix.
         b (cupy.ndarray): Right hand side of the linear system with shape
@@ -14,7 +14,7 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         x0 (cupy.ndarray): Starting guess for the solution.
         tol (float): Tolerance for convergence.
         maxiter (int): Maximum number of iterations.
-        M (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): Preconditioner for
+        M (cupy.ndarray or cupyx.scipy.sparse.spmatrix): Preconditioner for
             ``A``. The preconditioner should approximate the inverse of ``A``.
         callback (function): User-specified function to call after each
             iteration. It is called as ``callback(xk)``, where ``xk`` is the
