@@ -1236,22 +1236,22 @@ class TestRawJitify(unittest.TestCase):
         self.temporary_dir_context = use_temporary_cache_dir()
         self.temp_dir = self.temporary_dir_context.__enter__()
 
-        # simply prepend an unused header
-        code1 = '#include <cupy/cub/cub/block/block_reduce.cuh>'
-        code1 += _test_source1
-        self.mod1 = cupy.RawModule(code=code1,
-                                   backend='nvrtc',
-                                   jitify=self.jitify)
-
     def tearDown(self):
         self.temporary_dir_context.__exit__(*sys.exc_info())
 
-    def _helper(self):
+    def _helper(self, header, options=()):
+        code = header
+        code += _test_source1
+        mod1 = cupy.RawModule(code=code,
+                              backend='nvrtc',
+                              options=options,
+                              jitify=self.jitify)
+
         N = 10
         x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
         x2 = cupy.ones((N, N), dtype=cupy.float32)
         y = cupy.zeros((N, N), dtype=cupy.float32)
-        ker = self.mod1.get_function('test_sum')
+        ker = mod1.get_function('test_sum')
         ker((N,), (N,), (x1, x2, y, N**2))
         assert cupy.allclose(x1 + x2, y)
 
@@ -1268,13 +1268,16 @@ class TestRawJitify(unittest.TestCase):
         assert cupy.allclose(a, b+100)
 
     def test_jitify1(self):
+        # simply prepend an unused header
+        hdr = '#include <cupy/cub/cub/block/block_reduce.cuh>\n'
+
         if self.jitify:
             # Jitify will make it work
-            self._helper()
+            self._helper(hdr)
         else:
             # NVRTC cannot find C++ std headers without Jitify
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper()
+                self._helper(hdr)
             assert 'cannot open source file' in str(ex.value)
 
     def test_jitify2(self):
@@ -1311,6 +1314,28 @@ class TestRawJitify(unittest.TestCase):
         else:
             ex_type = cupy.cuda.compiler.CompileException
 
-        with pytest.raises(ex_type) as ex:  # noqa
+        with pytest.raises(ex_type):
             mod = cupy.RawModule(code=code, jitify=self.jitify)
             ker = mod.get_function('i_am_broken')  # noqa
+        # if Jitify could redirect its output, we would be able to check
+        # the error log here as well (NVIDIA/jitify#79)
+
+    def test_jitify5(self):
+        # If including a header that does not exist, Jitify would attempt to
+        # comment it out and proceed. If this header is actually unused, then
+        # everything would run just fine.
+
+        hdr = 'I_INCLUDE_SOMETHING.h'
+        with open(self.temp_dir + '/' + hdr, 'w') as f:
+            dummy = '#include <cupy/I_DO_NOT_EXIST_WAH_HA_HA.h>\n'
+            f.write(dummy)
+        hdr = '#include "' + hdr + '"\n'
+
+        if self.jitify:
+            # Jitify would print a warning "[jitify] File not found" to stdout,
+            # but as mentioned above and elsewhere, we can't capture it.
+            self._helper(hdr, options=('-I'+self.temp_dir,))
+        else:
+            with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
+                self._helper(hdr, options=('-I'+self.temp_dir,))
+            assert 'cannot open source file' in str(ex.value)
