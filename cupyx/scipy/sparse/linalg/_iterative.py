@@ -129,6 +129,10 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
             the converged solution and ``info`` provides convergence
             information.
 
+    Reference:
+        M. Wang, H. Klie, M. Parashar and H. Sudan, "Solving Sparse Linear
+        Systems on NVIDIA Tesla GPUs", ICCS 2009 (2009).
+
     .. seealso:: :func:`scipy.sparse.linalg.gmres`
     """
     if A.ndim != 2 or A.shape[0] != A.shape[1]:
@@ -157,7 +161,7 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
     if maxiter is None:
         maxiter = n * 10
     if restart is None:
-        restart = 32
+        restart = 20
     restart = min(restart, n)
 
     if callback_type is None:
