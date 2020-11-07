@@ -1853,11 +1853,11 @@ cpdef function.Module compile_with_cache(
                 'CuPy.')
 
         if bundled_include is not None:
-            options += ('-I ' + os.path.join(
+            options += ('-I' + os.path.join(
                 _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
 
         if cuda_path is not None:
-            options += ('-I ' + os.path.join(cuda_path, 'include'),)
+            options += ('-I' + os.path.join(cuda_path, 'include'),)
 
     return cuda.compile_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,

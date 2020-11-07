@@ -154,11 +154,11 @@ def _jitify_prep(source, options, cu_path):
     # jitify requires the 1st line to be the program name
     source = cu_path + '\n' + source
 
-    # In addition to throw an error upon failure, jitify also prints the log
+    # Upon failure, in addition to throw an error Jitify also prints the log
     # to stdout. In principle we could intercept that by hijacking stdout's
     # file descriptor (tested locally), but the problem is pytest also does
     # the same thing internally, causing strange errors when running the tests.
-    # As a result, we currently maintain jitify's default behavior for easy
+    # As a result, we currently maintain Jitify's default behavior for easy
     # debugging, and wait for the upstream to address this issue
     # (NVIDIA/jitify#79).
 
