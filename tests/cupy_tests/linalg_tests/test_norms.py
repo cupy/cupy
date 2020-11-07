@@ -49,14 +49,17 @@ class TestTrace(unittest.TestCase):
 @testing.gpu
 class TestNorm(unittest.TestCase):
 
-    # TODO(kmaehashi) Currently dtypes returned from CuPy is not compatible
-    # with NumPy. We should remove `type_check=False` once NumPy is fixed.
-    # See https://github.com/cupy/cupy/pull/875 for details.
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, type_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4)
     def test_norm(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
-        return xp.linalg.norm(a, self.ord, self.axis, self.keepdims)
+        res = xp.linalg.norm(a, self.ord, self.axis, self.keepdims)
+        if xp == numpy and not isinstance(res, numpy.ndarray):
+            real_dtype = a.real.dtype
+            if issubclass(real_dtype.type, numpy.inexact):
+                # Avoid numpy bug. See numpy/numpy#10667
+                res = res.astype(a.real.dtype)
+        return res
 
 
 @testing.parameterize(*testing.product({
