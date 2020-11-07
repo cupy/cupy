@@ -3,7 +3,7 @@
 
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
-#include "../core/include/cupy/jitify/jitify.hpp"
+#include <cupy/jitify/jitify.hpp>
 
 #else
 
