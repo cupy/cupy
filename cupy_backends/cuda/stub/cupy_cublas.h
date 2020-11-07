@@ -51,11 +51,47 @@ cublasStatus_t cublasIsamax(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasIdamax(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasIcamax(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasIzamax(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasIsamin(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasIdamin(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasIcamin(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasIzamin(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSasum(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDasum(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasScasum(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDzasum(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
@@ -64,6 +100,14 @@ cublasStatus_t cublasSaxpy(...) {
 }
 
 cublasStatus_t cublasDaxpy(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasCaxpy(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZaxpy(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
@@ -95,10 +139,41 @@ cublasStatus_t cublasSnrm2(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasDnrm2(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasScnrm2(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasDznrm2(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
 cublasStatus_t cublasSscal(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
+cublasStatus_t cublasDscal(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasCscal(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasCsscal(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZscal(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
+
+cublasStatus_t cublasZdscal(...) {
+    return CUBLAS_STATUS_SUCCESS;
+}
 
 // BLAS Level 2
 cublasStatus_t cublasSgemv(...) {
