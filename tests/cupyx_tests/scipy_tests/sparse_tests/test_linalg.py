@@ -250,7 +250,6 @@ class TestSvds(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(30, 29), (29, 29), (29, 30)],
     'x0': [None, 'ones'],
     'M': [None, 'jacobi'],
     'atol': [None, 'select-by-dtype'],
