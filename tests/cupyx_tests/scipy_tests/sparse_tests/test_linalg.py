@@ -246,6 +246,7 @@ class TestSvds(unittest.TestCase):
         with pytest.raises(ValueError):
             sp.linalg.svds(a, k=self.k, which='SM')
 
+
 @testing.parameterize(*testing.product({
     'shape': [(30, 29), (29, 29), (29, 30)],
     'x0': [None, 'ones'],
