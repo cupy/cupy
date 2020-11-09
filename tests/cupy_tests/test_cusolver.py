@@ -196,8 +196,8 @@ class TestGesv(unittest.TestCase):
     def _make_random_matrix(self, shape, xp):
         a = testing.shaped_random(shape, xp, dtype=self.r_dtype, scale=1)
         if self.dtype.char in 'FD':
-            a = a + 1j * testing.shaped_random(shape, xp, dtype=self.r_dtype,
-                                               scale=1)
+            a = a + 1j * testing.shaped_random(
+                shape, xp, dtype=self.r_dtype, scale=1)
         return a
 
     def _make_well_conditioned_matrix(self, shape):
@@ -211,12 +211,8 @@ class TestGesv(unittest.TestCase):
     def setUp(self):
         if not cusolver.check_availability('gesv'):
             pytest.skip('gesv is not available')
-
         self.dtype = numpy.dtype(self.dtype)
-        if self.dtype.char in 'fF':
-            self.r_dtype = numpy.float32
-        else:
-            self.r_dtype = numpy.float64
+        self.r_dtype = self.dtype.char.lower()
         a = self._make_well_conditioned_matrix((self.n, self.n))
         if self.nrhs is None:
             x_shape = (self.n, )
@@ -224,10 +220,7 @@ class TestGesv(unittest.TestCase):
             x_shape = (self.n, self.nrhs)
         self.x_ref = self._make_random_matrix(x_shape, cupy)
         b = numpy.dot(a, self.x_ref)
-        if self.r_dtype == numpy.float32:
-            self.tol = self._tol['f']
-        elif self.r_dtype == numpy.float64:
-            self.tol = self._tol['d']
+        self.tol = self._tol[self.r_dtype]
         self.a = cupy.array(a)
         self.b = cupy.array(b)
         if self.compute_type is not None:
