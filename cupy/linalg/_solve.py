@@ -9,6 +9,7 @@ from cupy.cuda import device
 from cupy.linalg import _decomposition
 from cupy.linalg import _util
 from cupy.cublas import batched_gesv, get_batched_gesv_limit
+import cupyx
 
 
 def solve(a, b):
@@ -58,13 +59,13 @@ def solve(a, b):
     a = a.astype(dtype)
     b = b.astype(dtype)
     if a.ndim == 2:
-        return cupy.cusolver.gesv(a, b)
+        return cupyx.lapack.gesv(a, b)
 
     x = cupy.empty_like(b)
     shape = a.shape[:-2]
     for i in range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
-        x[index] = cupy.cusolver.gesv(a[index], b[index])
+        x[index] = cupyx.lapack.gesv(a[index], b[index])
     return x
 
 
