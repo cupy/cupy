@@ -1223,7 +1223,7 @@ cdef class _Ops:
         raise TypeError('Wrong type (%s) of arguments for %s' %
                         (dtype, name))
 
-    cdef _Op _guess_routine_from_in_types(self, tuple in_types):
+    cpdef _Op _guess_routine_from_in_types(self, tuple in_types):
         cdef _Op op
         cdef tuple op_types
         cdef Py_ssize_t n = len(in_types)
@@ -1243,7 +1243,7 @@ cdef class _Ops:
                 return op
         return None
 
-    cdef _Op _guess_routine_from_dtype(self, object dtype):
+    cpdef _Op _guess_routine_from_dtype(self, object dtype):
         cdef _Op op
         cdef tuple op_types
         for op in self.ops:
