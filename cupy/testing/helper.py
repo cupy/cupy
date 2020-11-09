@@ -1417,10 +1417,8 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 @contextlib.contextmanager
 def _assert_function_is_called(*args, times_called=1, **kwargs):
     with mock.patch(*args, **kwargs) as handle:
-        assert handle.call_count == 0
-        yield handle
-        assert handle.call_count == int(times_called)
-        del handle
+        yield
+        assert handle.call_count == times_called
 
 
 class AssertFunctionIsCalled:
