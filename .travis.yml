@@ -5,7 +5,7 @@ cache:
   - ccache
 
 python:
-  - "3.5"
+  - "3.6"
 
 env:
   - CUPY_CI=travis

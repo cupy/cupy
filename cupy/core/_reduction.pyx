@@ -228,7 +228,7 @@ cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
     return block_size, block_stride, out_block_num
 
 
-def _sort_axis(tuple axis, tuple strides):
+cdef tuple _sort_axis(tuple axis, tuple strides):
     # Sorts axis in the decreasing order of absolute values of strides.
     return tuple(sorted(axis, key=lambda i: -abs(strides[i])))
 
@@ -285,7 +285,7 @@ cdef class _AbstractReductionKernel:
             list in_args, list out_args,
             const shape_t& a_shape, axis, dtype,
             bint keepdims, bint reduce_dims, int device_id,
-            stream, bint try_use_cub=False):
+            stream, bint try_use_cub=False, bint sort_reduce_axis=True):
         cdef tuple reduce_axis, out_axis, axis_permutes
         cdef tuple params, opt_params
         cdef tuple shape_and_strides
@@ -314,7 +314,8 @@ cdef class _AbstractReductionKernel:
                 and len(out_axis) <= 1
                 and not in_args[0]._c_contiguous):
             strides = in_args[0].strides
-            reduce_axis = _sort_axis(reduce_axis, strides)
+            if sort_reduce_axis:
+                reduce_axis = _sort_axis(reduce_axis, strides)
             out_axis = _sort_axis(out_axis, strides)
 
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
@@ -338,10 +339,6 @@ cdef class _AbstractReductionKernel:
             shape_and_strides = _get_shape_and_strides(in_args, out_args)
             key = (self.name, shape_and_strides,
                    in_types, out_types, reduce_type, device_id)
-
-        if try_use_cub and in_args[0]._f_contiguous and in_args[0].ndim > 2:
-            # TODO: fix CUB-based reduction on Fortran arrays with ndim > 2
-            try_use_cub = False
 
         # Try to use CUB
         for accelerator in _accelerator._reduction_accelerators:
@@ -498,9 +495,11 @@ cdef class _AbstractReductionKernel:
 # -----------------------------------------------------------------------------
 
 cpdef _SimpleReductionKernel create_reduction_func(
-        name, ops, routine=None, identity=None, preamble=''):
+        name, ops, routine=None, identity=None, preamble='',
+        sort_reduce_axis=True):
     ops = _kernel._Ops.from_tuples(ops, routine)
-    return _SimpleReductionKernel(name, ops, identity, preamble)
+    return _SimpleReductionKernel(
+        name, ops, identity, preamble, sort_reduce_axis)
 
 
 cdef class _SimpleReductionKernel(_AbstractReductionKernel):
@@ -513,8 +512,11 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         readonly str _input_expr
         readonly str _output_expr
         readonly dict _routine_cache
+        readonly bint _sort_reduce_axis
 
-    def __init__(self, name, _kernel._Ops ops, identity, preamble):
+    def __init__(
+            self, name, _kernel._Ops ops, identity, preamble,
+            sort_reduce_axis=True):
         super().__init__(
             name,
             '' if identity is None else str(identity),
@@ -528,6 +530,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
+        self._sort_reduce_axis = sort_reduce_axis
 
     def __call__(self, object a, axis=None, dtype=None, ndarray out=None,
                  bint keepdims=False):
@@ -556,7 +559,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         reduce_dims = True
         return self._call(
             in_args, out_args,
-            arr._shape, axis, dtype, keepdims, reduce_dims, dev_id, None, True)
+            arr._shape, axis, dtype, keepdims, reduce_dims, dev_id,
+            None, True, self._sort_reduce_axis)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
@@ -728,7 +732,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         return self._call(
             in_args, out_args,
             broad_shape, axis, None,
-            keepdims, self.reduce_dims, dev_id, stream, False)
+            keepdims, self.reduce_dims, dev_id, stream, False, True)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):

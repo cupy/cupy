@@ -3,9 +3,9 @@ from cupy.core cimport _kernel
 from cupy.core cimport _optimize_config
 from cupy.core cimport _reduction
 from cupy.core cimport _scalar
-from cupy.core.core cimport _internal_asfortranarray
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
+from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core cimport internal
 from cupy.cuda cimport cub
 from cupy.cuda cimport function
@@ -117,8 +117,8 @@ __global__ void ${name}(${params}) {
   }
 
   // each block handles the reduction of 1 segment
-  size_t segment_id = blockIdx.x * _segment_size;
-  const type_mid_in* segment_head = _in0 + segment_id;
+  size_t segment_idx = blockIdx.x * _segment_size;
+  const type_mid_in* segment_head = _in0 + segment_idx;
   size_t i = 0;  // tile head within the segment
   int tile_size = (BLOCK_SIZE * ITEMS_PER_THREAD < _segment_size ?
                    BLOCK_SIZE * ITEMS_PER_THREAD :
@@ -127,8 +127,8 @@ __global__ void ${name}(${params}) {
   #if defined FIRST_PASS
   // for two-pass reduction only: "last segment" is special
   if (_array_size > 0) {
-      if (_array_size - segment_id <= _segment_size) {
-          _segment_size = _array_size - segment_id;
+      if (_array_size - segment_idx <= _segment_size) {
+          _segment_size = _array_size - segment_idx;
       }
   }
   #endif
@@ -156,9 +156,9 @@ __global__ void ${name}(${params}) {
 
           // some pre_map_expr uses _J internally...
           #if defined FIRST_PASS
-          int _J = (segment_id + i + e_idx);
+          int _J = (segment_idx + i + e_idx);
           #else  // only one pass
-          int _J = (segment_id + i + e_idx) % _segment_size;
+          int _J = (segment_idx + i + e_idx) % _segment_size;
           #endif
 
           if (e_idx < tile_size) {
@@ -282,19 +282,23 @@ cpdef inline tuple _can_use_cub_block_reduction(
     in_arr = in_args[0]
     out_arr = out_args[0]
 
+    # the axes might not be sorted when we arrive here...
+    reduce_axis = tuple(sorted(reduce_axis))
+    out_axis = tuple(sorted(out_axis))
+
     # check reduction axes, if not contiguous then fall back to old kernel
     if in_arr._f_contiguous:
         order = 'F'
         if not cub._cub_device_segmented_reduce_axis_compatible(
                 reduce_axis, in_arr.ndim, order):
             return None
-        axis_permutes_cub = tuple(sorted(reduce_axis) + sorted(out_axis))
+        axis_permutes_cub = reduce_axis + out_axis
     elif in_arr._c_contiguous:
         order = 'C'
         if not cub._cub_device_segmented_reduce_axis_compatible(
                 reduce_axis, in_arr.ndim, order):
             return None
-        axis_permutes_cub = tuple(sorted(out_axis) + sorted(reduce_axis))
+        axis_permutes_cub = out_axis + reduce_axis
     else:
         return None
     if axis_permutes_cub != tuple(range(in_arr.ndim)):
@@ -403,10 +407,11 @@ cdef inline void _cub_two_pass_launch(
     cdef Py_ssize_t contiguous_size, out_block_num
     cdef function.Function func
     cdef memory.MemoryPointer memptr
-    cdef str post_map_expr1, post_map_expr2
+    cdef str post_map_expr1, post_map_expr2, f
     cdef list inout_args
     cdef tuple cub_params
     cdef size_t gridx, blockx
+    cdef ndarray in_arr
 
     # fair share
     contiguous_size = min(segment_size, block_size * items_per_thread)
@@ -425,10 +430,20 @@ cdef inline void _cub_two_pass_launch(
                   _cub_convert_to_c_scalar(segment_size, segment_size)]
     cub_params = (items_per_thread,)
 
-    # For mean()
     if 'mean' in name:
         post_map_expr1 = post_map_expr.replace('_in_ind.size()', '1.0')
         post_map_expr1 = post_map_expr1.replace('_out_ind.size()', '1.0')
+    elif any((f in name for f in ('argmax', 'argmin'))):
+        # Workaround: in NumPy the indices are always generated based on
+        # a C-order array (since PyArray_ContiguousFromAny was called).
+        # We have to do a conversion here (?) since we do not retain the
+        # info on strides.
+        # TODO(leofang): improve this workaround
+        in_arr = in_args[0]
+        if in_arr.ndim > 1 and in_arr._f_contiguous:
+            in_arr = _internal_ascontiguousarray(in_arr)
+            inout_args[0] = in_args[0] = in_arr
+        post_map_expr1 = post_map_expr
     else:
         post_map_expr1 = post_map_expr
 
@@ -599,8 +614,9 @@ cdef bint _try_to_call_cub_reduction(
     in_shape = _reduction._set_permuted_args(
         in_args, axis_permutes, a_shape, self.in_params)
 
-    if in_args[0].flags.f_contiguous:
-        ret = out_args[0] = _internal_asfortranarray(ret)
+    if in_args[0]._f_contiguous:
+        ret._set_contiguous_strides(ret.dtype.itemsize, False)
+        out_args[0] = ret
 
     if not full_reduction:  # just need one pass
         out_block_num = 1  # = number of segments

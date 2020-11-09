@@ -14,11 +14,11 @@ _available_cuda_version = {
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
     'syevj': (9000, None),
-    'irs_gesv': (10020, None),
+    'gesv': (10020, None),
 }
 
 _available_compute_capability = {
-    'irs_gesv': 70,
+    'gesv': 70,
 }
 
 
@@ -115,7 +115,7 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
     solver(handle, jobz, econ, m, n, a.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvdj, info)
 
     _cusolver.destroyGesvdjInfo(params)
@@ -169,7 +169,7 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     solver(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params, batch_size)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvdj, info)
 
     _cusolver.destroyGesvdjInfo(params)
@@ -374,7 +374,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
     syevj(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         syevj, dev_info)
 
     _cusolver.destroySyevjInfo(params)
@@ -463,7 +463,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params,
         batch_size)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         syevjBatched, dev_info)
 
     _cusolver.destroySyevjInfo(params)
@@ -478,70 +478,6 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
 
 
 def gesv(a, b):
-    """Solve a linear matrix equation using cusolverDn<t>getr[fs]().
-    Computes the solution to a system of linear equation ``ax = b``.
-    Args:
-        a (cupy.ndarray): The matrix with dimension ``(M, M)``.
-        b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
-    Returns:
-        cupy.ndarray:
-            The matrix with dimension ``(M)`` or ``(M, K)``.
-    """
-    if a.ndim != 2:
-        raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
-    if b.ndim not in (1, 2):
-        raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
-    if a.shape[0] != a.shape[1]:
-        raise ValueError('a must be a square matrix.')
-    if a.shape[0] != b.shape[0]:
-        raise ValueError('shape mismatch (a: {}, b: {}).'.
-                         format(a.shape, b.shape))
-
-    dtype = _numpy.promote_types(a.dtype.char, 'f')
-    if dtype == 'f':
-        t = 's'
-    elif dtype == 'd':
-        t = 'd'
-    elif dtype == 'F':
-        t = 'c'
-    elif dtype == 'D':
-        t = 'z'
-    else:
-        raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
-    helper = getattr(_cusolver, t + 'getrf_bufferSize')
-    getrf = getattr(_cusolver, t + 'getrf')
-    getrs = getattr(_cusolver, t + 'getrs')
-
-    n = b.shape[0]
-    nrhs = b.shape[1] if b.ndim == 2 else 1
-    a_data_ptr = a.data.ptr
-    b_data_ptr = b.data.ptr
-    a = _cupy.asfortranarray(a, dtype=dtype)
-    b = _cupy.asfortranarray(b, dtype=dtype)
-    if a.data.ptr == a_data_ptr:
-        a = a.copy()
-    if b.data.ptr == b_data_ptr:
-        b = b.copy()
-
-    handle = _device.get_cusolver_handle()
-    dipiv = _cupy.empty(n, dtype=_numpy.int32)
-    dinfo = _cupy.empty(1, dtype=_numpy.int32)
-    lwork = helper(handle, n, n, a.data.ptr, n)
-    dwork = _cupy.empty(lwork, dtype=a.dtype)
-    # LU factrization (A = L * U)
-    getrf(handle, n, n, a.data.ptr, n, dwork.data.ptr, dipiv.data.ptr,
-          dinfo.data.ptr)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrf, dinfo)
-    # Solves Ax = b
-    getrs(handle, _cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
-          dipiv.data.ptr, b.data.ptr, n, dinfo.data.ptr)
-    _cupy.linalg.util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrs, dinfo)
-    return b
-
-
-def irs_gesv(a, b):
     """Solve a linear matrix equation using cusolverDn<t1><t2>gesv().
     Computes the solution to a system of linear equation ``ax = b``.
     Args:
@@ -551,8 +487,8 @@ def irs_gesv(a, b):
         cupy.ndarray:
             The matrix with dimension ``(M)`` or ``(M, K)``.
     """
-    if not check_availability('irs_gesv'):
-        raise RuntimeError('irs_gesv is not available.')
+    if not check_availability('gesv'):
+        raise RuntimeError('gesv is not available.')
 
     if a.ndim != 2:
         raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))

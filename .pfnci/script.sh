@@ -67,16 +67,11 @@ main() {
       apt install python3.7-dev python3-apt python3-pip python3-setuptools -qqy
       python3.7 -m pip install cython numpy
 
-      # We lock to ROCm v3.5.0 to focus on improving CuPy's support, because many
-      # symlinks (such as libhiprtc.so) are missing in newer versions...
-      wget -qO - http://repo.radeon.com/rocm/apt/3.5/rocm.gpg.key | apt-key add -
-      echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/3.5/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
-      # TODO(leofang): revisit this when supporting newer ROCm
-      #wget -qO - http://repo.radeon.com/rocm/apt/debian/rocm.gpg.key | apt-key add -
-      #echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
+      wget -qO - http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
+      echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
 
       apt update -qqy
-      apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim -qqy
+      apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl -qqy
       export HCC_AMDGPU_TARGET=gfx900
       export ROCM_HOME=/opt/rocm
       export CUPY_INSTALL_USE_HIP=1

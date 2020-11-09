@@ -3,7 +3,7 @@ import numpy
 import cupy
 from cupy.core import _routines_math as _math
 from cupy.core import _fusion_thread_local
-from cupy import _util
+from cupy.core import internal
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -176,6 +176,58 @@ def cumprod(a, axis=None, dtype=None, out=None):
     return _math.scan_core(a, axis, _math.scan_op.SCAN_PROD, dtype, out)
 
 
+def nancumsum(a, axis=None, dtype=None, out=None):
+    """Returns the cumulative sum of an array along a given axis treating Not a
+    Numbers (NaNs) as zero.
+
+    Args:
+        a (cupy.ndarray): Input array.
+        axis (int): Axis along which the cumulative sum is taken. If it is not
+            specified, the input is flattened.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.nancumsum`
+    """
+    a = _replace_nan(a, 0, out=out)
+    return cumsum(a, axis=axis, dtype=dtype, out=out)
+
+
+def nancumprod(a, axis=None, dtype=None, out=None):
+    """Returns the cumulative product of an array along a given axis treating
+    Not a Numbers (NaNs) as one.
+
+    Args:
+        a (cupy.ndarray): Input array.
+        axis (int): Axis along which the cumulative product is taken. If it is
+            not specified, the input is flattened.
+        dtype: Data type specifier.
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: The result array.
+
+    .. seealso:: :func:`numpy.nancumprod`
+    """
+    a = _replace_nan(a, 1, out=out)
+    return cumprod(a, axis=axis, dtype=dtype, out=out)
+
+
+_replace_nan_kernel = cupy.core._kernel.ElementwiseKernel(
+    'T a, T val', 'T out', 'if (a == a) {out = a;} else {out = val;}',
+    'cupy_replace_nan')
+
+
+def _replace_nan(a, val, out=None):
+    if out is None or a.dtype != out.dtype:
+        out = cupy.empty_like(a)
+    _replace_nan_kernel(a, val, out)
+    return out
+
+
 def diff(a, n=1, axis=-1, prepend=None, append=None):
     """Calculate the n-th discrete difference along the given axis.
 
@@ -202,7 +254,7 @@ def diff(a, n=1, axis=-1, prepend=None, append=None):
 
     a = cupy.asanyarray(a)
     nd = a.ndim
-    axis = _util._normalize_axis_index(axis, nd)
+    axis = internal._normalize_axis_index(axis, nd)
 
     combined = []
 
@@ -289,7 +341,7 @@ def gradient(f, *varargs, axis=None, edge_order=1):
     if axis is None:
         axes = tuple(range(ndim))
     else:
-        axes = _util._normalize_axis_indices(axis, ndim)
+        axes = internal._normalize_axis_indices(axis, ndim)
 
     len_axes = len(axes)
     n = len(varargs)

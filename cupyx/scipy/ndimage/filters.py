@@ -2,6 +2,7 @@ import numpy
 
 import cupy
 
+from cupy.core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters_core
 from cupyx.scipy.ndimage import _filters_generic
@@ -157,6 +158,9 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
                                                      mode, origin)
     if weights.size == 0:
         return cupy.zeros_like(input)
+
+    _util._check_cval(mode, cval, _util._is_integer_output(output, input))
+
     if convolution:
         weights = weights[tuple([slice(None, None, -1)] * weights.ndim)]
         origins = list(origins)
@@ -168,7 +172,8 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     offsets = _filters_core._origins_to_offsets(origins, weights.shape)
     kernel = _get_correlate_kernel(mode, weights.shape, int_type,
                                    offsets, cval)
-    return _filters_core._call_kernel(kernel, input, weights, output)
+    output = _filters_core._call_kernel(kernel, input, weights, output)
+    return output
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -447,7 +452,7 @@ def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
 
 
 def _prewitt_or_sobel(input, axis, output, mode, cval, weights):
-    axis = cupy._util._normalize_axis_index(axis, input.ndim)
+    axis = internal._normalize_axis_index(axis, input.ndim)
 
     def get(is_diff):
         return cupy.array([-1, 0, 1]) if is_diff else weights
@@ -753,6 +758,8 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
 
     sizes, ftprnt, structure = _filters_core._check_size_footprint_structure(
         input.ndim, size, ftprnt, structure)
+    if cval is cupy.nan:
+        raise NotImplementedError("NaN cval is unsupported")
 
     if sizes is not None:
         # Seperable filter, run as a series of 1D filters
@@ -997,6 +1004,8 @@ def _rank_filter(input, get_rank, size=None, footprint=None, output=None,
                  mode="reflect", cval=0.0, origin=0):
     _, footprint, _ = _filters_core._check_size_footprint_structure(
         input.ndim, size, footprint, None, force_footprint=True)
+    if cval is cupy.nan:
+        raise NotImplementedError("NaN cval is unsupported")
     origins, int_type = _filters_core._check_nd_args(input, footprint,
                                                      mode, origin, 'footprint')
     if footprint.size == 0:
@@ -1211,7 +1220,7 @@ def generic_filter1d(input, function, filter_size, axis=-1, output=None,
         raise TypeError('bad function type')
     if filter_size < 1:
         raise RuntimeError('invalid filter size')
-    axis = cupy._util._normalize_axis_index(axis, input.ndim)
+    axis = internal._normalize_axis_index(axis, input.ndim)
     origin = _util._check_origin(origin, filter_size)
     _util._check_mode(mode)
     output = _util._get_output(output, input)

@@ -6,7 +6,7 @@ import cupy
 from cupy.cuda import cublas
 from cupy.cuda import cusolver
 from cupy.cuda import device
-from cupy.linalg import util
+from cupy.linalg import _util
 
 
 def lu_factor(a, overwrite_a=False, check_finite=True):
@@ -107,7 +107,7 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
 
 def _lu_factor(a, overwrite_a=False, check_finite=True):
     a = cupy.asarray(a)
-    util._assert_rank2(a)
+    _util._assert_rank2(a)
 
     dtype = a.dtype
 
@@ -303,9 +303,9 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
 
     (lu, ipiv) = lu_and_piv
 
-    util._assert_cupy_array(lu)
-    util._assert_rank2(lu)
-    util._assert_nd_squareness(lu)
+    _util._assert_cupy_array(lu)
+    _util._assert_rank2(lu)
+    _util._assert_nd_squareness(lu)
 
     m = lu.shape[0]
     if m != b.shape[0]:

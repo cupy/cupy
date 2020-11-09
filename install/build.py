@@ -155,7 +155,10 @@ def get_compiler_setting(use_hip):
         extra_compile_args.append('-std=c++11')
 
     if PLATFORM_DARWIN:
-        library_dirs.append('/usr/local/cuda/lib')
+        if cuda_path:
+            library_dirs.append('/usr/local/cuda/lib')
+        elif rocm_path:
+            library_dirs.append('/opt/rocm/lib')
 
     if PLATFORM_WIN32:
         nvtoolsext_path = os.environ.get('NVTOOLSEXT_PATH', '')
@@ -404,22 +407,29 @@ def check_nccl_version(compiler, settings):
 
     # NCCL 1.x does not provide version information.
     try:
-        out = build_and_run(compiler, '''
-        #include <nccl.h>
-        #include <stdio.h>
-        #ifdef NCCL_MAJOR
-        #ifndef NCCL_VERSION_CODE
-        #  define NCCL_VERSION_CODE \
-                (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
-        #endif
-        #else
-        #  define NCCL_VERSION_CODE 0
-        #endif
-        int main() {
-          printf("%d", NCCL_VERSION_CODE);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
+        out = build_and_run(compiler,
+                            '''
+                            #ifndef CUPY_USE_HIP
+                            #include <nccl.h>
+                            #else
+                            #include <rccl.h>
+                            #endif
+                            #include <stdio.h>
+                            #ifdef NCCL_MAJOR
+                            #ifndef NCCL_VERSION_CODE
+                            #  define NCCL_VERSION_CODE \
+                            (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+                            #endif
+                            #else
+                            #  define NCCL_VERSION_CODE 0
+                            #endif
+                            int main() {
+                              printf("%d", NCCL_VERSION_CODE);
+                              return 0;
+                            }
+                            ''',
+                            include_dirs=settings['include_dirs'],
+                            define_macros=settings['define_macros'])
 
     except Exception as e:
         utils.print_warning('Cannot include NCCL\n{0}'.format(e))

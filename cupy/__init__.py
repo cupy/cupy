@@ -55,9 +55,7 @@ __version__ = _version.__version__
 
 import cupy.core.fusion  # NOQA
 from cupy import fft  # NOQA
-from cupy import io  # NOQA
 from cupy import linalg  # NOQA
-from cupy import manipulation  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
 # `cupy.sparse` is deprecated in v8
@@ -281,58 +279,61 @@ from cupy._creation.matrix import triu  # NOQA
 # Functional routines
 # -----------------------------------------------------------------------------
 from cupy._functional.piecewise import piecewise  # NOQA
+from cupy._functional.vectorize import vectorize  # NOQA
 from cupy.lib.shape_base import apply_along_axis  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
 # -----------------------------------------------------------------------------
-from cupy.manipulation.basic import copyto  # NOQA
+from cupy._manipulation.basic import copyto  # NOQA
 
-from cupy.manipulation.shape import shape  # NOQA
-from cupy.manipulation.shape import ravel  # NOQA
-from cupy.manipulation.shape import reshape  # NOQA
+from cupy._manipulation.shape import shape  # NOQA
+from cupy._manipulation.shape import ravel  # NOQA
+from cupy._manipulation.shape import reshape  # NOQA
 
-from cupy.manipulation.transpose import moveaxis  # NOQA
-from cupy.manipulation.transpose import rollaxis  # NOQA
-from cupy.manipulation.transpose import swapaxes  # NOQA
-from cupy.manipulation.transpose import transpose  # NOQA
+from cupy._manipulation.transpose import moveaxis  # NOQA
+from cupy._manipulation.transpose import rollaxis  # NOQA
+from cupy._manipulation.transpose import swapaxes  # NOQA
+from cupy._manipulation.transpose import transpose  # NOQA
 
-from cupy.manipulation.dims import atleast_1d  # NOQA
-from cupy.manipulation.dims import atleast_2d  # NOQA
-from cupy.manipulation.dims import atleast_3d  # NOQA
-from cupy.manipulation.dims import broadcast  # NOQA
-from cupy.manipulation.dims import broadcast_arrays  # NOQA
-from cupy.manipulation.dims import broadcast_to  # NOQA
-from cupy.manipulation.dims import expand_dims  # NOQA
-from cupy.manipulation.dims import squeeze  # NOQA
+from cupy._manipulation.dims import atleast_1d  # NOQA
+from cupy._manipulation.dims import atleast_2d  # NOQA
+from cupy._manipulation.dims import atleast_3d  # NOQA
+from cupy._manipulation.dims import broadcast  # NOQA
+from cupy._manipulation.dims import broadcast_arrays  # NOQA
+from cupy._manipulation.dims import broadcast_to  # NOQA
+from cupy._manipulation.dims import expand_dims  # NOQA
+from cupy._manipulation.dims import squeeze  # NOQA
 
-from cupy.manipulation.join import column_stack  # NOQA
-from cupy.manipulation.join import concatenate  # NOQA
-from cupy.manipulation.join import dstack  # NOQA
-from cupy.manipulation.join import hstack  # NOQA
-from cupy.manipulation.join import stack  # NOQA
-from cupy.manipulation.join import vstack  # NOQA
+from cupy._manipulation.join import column_stack  # NOQA
+from cupy._manipulation.join import concatenate  # NOQA
+from cupy._manipulation.join import dstack  # NOQA
+from cupy._manipulation.join import hstack  # NOQA
+from cupy._manipulation.join import stack  # NOQA
+from cupy._manipulation.join import vstack  # NOQA
 
-from cupy.manipulation.kind import asfortranarray  # NOQA
-from cupy.manipulation.kind import require  # NOQA
+from cupy._manipulation.kind import asfortranarray  # NOQA
+from cupy._manipulation.kind import require  # NOQA
 
-from cupy.manipulation.split import array_split  # NOQA
-from cupy.manipulation.split import dsplit  # NOQA
-from cupy.manipulation.split import hsplit  # NOQA
-from cupy.manipulation.split import split  # NOQA
-from cupy.manipulation.split import vsplit  # NOQA
+from cupy._manipulation.split import array_split  # NOQA
+from cupy._manipulation.split import dsplit  # NOQA
+from cupy._manipulation.split import hsplit  # NOQA
+from cupy._manipulation.split import split  # NOQA
+from cupy._manipulation.split import vsplit  # NOQA
 
-from cupy.manipulation.tiling import repeat  # NOQA
-from cupy.manipulation.tiling import tile  # NOQA
+from cupy._manipulation.tiling import repeat  # NOQA
+from cupy._manipulation.tiling import tile  # NOQA
 
-from cupy.manipulation.add_remove import unique  # NOQA
-from cupy.manipulation.add_remove import trim_zeros  # NOQA
+from cupy._manipulation.add_remove import append  # NOQA
+from cupy._manipulation.add_remove import resize  # NOQA
+from cupy._manipulation.add_remove import unique  # NOQA
+from cupy._manipulation.add_remove import trim_zeros  # NOQA
 
-from cupy.manipulation.rearrange import flip  # NOQA
-from cupy.manipulation.rearrange import fliplr  # NOQA
-from cupy.manipulation.rearrange import flipud  # NOQA
-from cupy.manipulation.rearrange import roll  # NOQA
-from cupy.manipulation.rearrange import rot90  # NOQA
+from cupy._manipulation.rearrange import flip  # NOQA
+from cupy._manipulation.rearrange import fliplr  # NOQA
+from cupy._manipulation.rearrange import flipud  # NOQA
+from cupy._manipulation.rearrange import roll  # NOQA
+from cupy._manipulation.rearrange import rot90  # NOQA
 
 # -----------------------------------------------------------------------------
 # Binary operations
@@ -464,13 +465,13 @@ from cupy._indexing.iterate import flatiter  # NOQA
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
-from cupy.io.npz import load  # NOQA
-from cupy.io.npz import save  # NOQA
-from cupy.io.npz import savez  # NOQA
-from cupy.io.npz import savez_compressed  # NOQA
+from cupy._io.npz import load  # NOQA
+from cupy._io.npz import save  # NOQA
+from cupy._io.npz import savez  # NOQA
+from cupy._io.npz import savez_compressed  # NOQA
 
-from cupy.io.formatting import array_repr  # NOQA
-from cupy.io.formatting import array_str  # NOQA
+from cupy._io.formatting import array_repr  # NOQA
+from cupy._io.formatting import array_str  # NOQA
 
 
 def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)
@@ -484,18 +485,18 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 # -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
-from cupy.linalg.einsum import einsum  # NOQA
+from cupy.linalg._einsum import einsum  # NOQA
 
-from cupy.linalg.product import cross  # NOQA
-from cupy.linalg.product import dot  # NOQA
-from cupy.linalg.product import inner  # NOQA
-from cupy.linalg.product import kron  # NOQA
-from cupy.linalg.product import matmul  # NOQA
-from cupy.linalg.product import outer  # NOQA
-from cupy.linalg.product import tensordot  # NOQA
-from cupy.linalg.product import vdot  # NOQA
+from cupy.linalg._product import cross  # NOQA
+from cupy.linalg._product import dot  # NOQA
+from cupy.linalg._product import inner  # NOQA
+from cupy.linalg._product import kron  # NOQA
+from cupy.linalg._product import matmul  # NOQA
+from cupy.linalg._product import outer  # NOQA
+from cupy.linalg._product import tensordot  # NOQA
+from cupy.linalg._product import vdot  # NOQA
 
-from cupy.linalg.norms import trace  # NOQA
+from cupy.linalg._norms import trace  # NOQA
 
 # -----------------------------------------------------------------------------
 # Logic functions
@@ -591,6 +592,8 @@ from cupy._math.sumprod import prod  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
+from cupy._math.sumprod import nancumprod  # NOQA
+from cupy._math.sumprod import nancumsum  # NOQA
 from cupy._math.sumprod import nansum  # NOQA
 from cupy._math.sumprod import nanprod  # NOQA
 from cupy._math.sumprod import diff  # NOQA
@@ -716,6 +719,7 @@ from cupy._statistics.meanvar import average  # NOQA
 from cupy._statistics.meanvar import mean  # NOQA
 from cupy._statistics.meanvar import std  # NOQA
 from cupy._statistics.meanvar import var  # NOQA
+from cupy._statistics.meanvar import nanmedian  # NOQA
 from cupy._statistics.meanvar import nanmean  # NOQA
 from cupy._statistics.meanvar import nanstd  # NOQA
 from cupy._statistics.meanvar import nanvar  # NOQA

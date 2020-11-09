@@ -7,6 +7,7 @@ import cupy
 from cupy.core import _reduction
 from cupy.core._reduction import create_reduction_func
 from cupy.core._reduction import ReductionKernel
+from cupy.core._kernel import ElementwiseKernel
 
 from cupy.core cimport _accelerator
 from cupy.core cimport _routines_math as _math
@@ -89,6 +90,11 @@ cdef ndarray _ndarray_argmax(ndarray self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
+            if self._f_contiguous and self.dtype == numpy.bool_:
+                # temporary workaround casting the inputs to int8
+                # CUB argmax seems to return different values to
+                # NumPy for F-order bool array inputs
+                self = self.astype(numpy.int8)
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_ARGMAX, axis, dtype, out, keepdims)
             if result is not None:
@@ -283,7 +289,7 @@ cdef _amax = create_reduction_func(
 nanmin = create_reduction_func(
     'cupy_nanmin',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -292,7 +298,7 @@ nanmin = create_reduction_func(
 nanmax = create_reduction_func(
     'cupy_nanmax',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d'),
+     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -309,7 +315,7 @@ cdef _argmin = create_reduction_func(
         ('D->q', (None, 'my_argmin_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmin(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
+    None, _min_max_preamble, sort_reduce_axis=False)
 
 
 cdef _argmax = create_reduction_func(
@@ -323,7 +329,7 @@ cdef _argmax = create_reduction_func(
         ('D->q', (None, 'my_argmax_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, _J)', 'my_argmax(a, b)', 'out0 = a.index',
      'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
+    None, _min_max_preamble, sort_reduce_axis=False)
 
 
 cpdef ndarray _nanargmax(ndarray a, axis, out, dtype, keepdims):
@@ -347,7 +353,7 @@ cdef _nanargmin_func = create_reduction_func(
      ('D->q', (None, 'my_argmin_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, isnan(in0) ? -1 : _J)',
      'my_argmin(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
+    None, _min_max_preamble, sort_reduce_axis=False)
 
 
 cdef _nanargmax_func = create_reduction_func(
@@ -361,7 +367,7 @@ cdef _nanargmax_func = create_reduction_func(
      ('D->q', (None, 'my_argmax_float(a, b)', None, None))),
     ('min_max_st<type_in0_raw>(in0, isnan(in0) ? -1 : _J)',
      'my_argmax(a, b)', 'out0 = a.index', 'min_max_st<type_in0_raw>'),
-    None, _min_max_preamble)
+    None, _min_max_preamble, sort_reduce_axis=False)
 
 
 cpdef ndarray _median(
@@ -430,6 +436,86 @@ cpdef ndarray _median(
     if out_shape is not None:
         out = out.reshape(out_shape)
     return out
+
+
+cpdef ndarray _nanmedian(
+        ndarray a, axis, out, overwrite_input, keepdims):
+
+    if axis is None:
+        axis = tuple(range(a.ndim))
+    if not isinstance(axis, tuple):
+        axis = (axis,)
+
+    reduce_axis = []
+    reduce_shape = []
+    out_axis = []
+    out_shape = []
+    for i in range(a.ndim):
+        if axis is None or i in axis or i - a.ndim in axis:
+            reduce_axis.append(i)
+            reduce_shape.append(a.shape[i])
+        else:
+            out_axis.append(i)
+            out_shape.append(a.shape[i])
+
+    a_data_ptr = a.data.ptr
+    a = a.transpose(out_axis + reduce_axis)
+    a = a.reshape(out_shape + [-1, ])
+    a = cupy.ascontiguousarray(a)
+
+    n_reduce = numpy.prod(reduce_shape)
+    n_reduce_each = cupy.empty(out_shape, dtype='int32')
+    n_reduce_each[...] = n_reduce
+    if a_data_ptr == a.data.ptr and overwrite_input is False:
+        a = a.copy()
+    _replace_nan_kernel(n_reduce, numpy.finfo(a.dtype).max, a, n_reduce_each)
+    a = cupy.sort(a, axis=-1)
+
+    b = cupy.empty(out_shape, dtype=a.dtype)
+    b[...] = cupy.nan
+    _pickup_median_kernel(n_reduce, n_reduce_each, a, b)
+
+    if keepdims:
+        b = b.reshape(out_shape + [1, ] * len(reduce_axis))
+        axes = [-1, ] * b.ndim
+        for i, j in enumerate(out_axis + reduce_axis):
+            axes[j] = i
+        b = b.transpose(axes)
+
+    if out is None:
+        out = b
+    else:
+        out[...] = b
+    return out
+
+
+cdef _replace_nan_kernel = ElementwiseKernel(
+    'I n_reduce, T val', 'T a, raw I n_reduce_each',
+    '''
+    if (a != a) {
+        a = val;
+        atomicAdd(&(n_reduce_each[i / n_reduce]), -1);
+    }
+    ''',
+    'cupy_replace_nan'
+)
+
+cdef _pickup_median_kernel = ElementwiseKernel(
+    'I n_reduce, I n_reduce_each, raw T a', 'T b',
+    '''
+    if (n_reduce_each > 0) {
+        int l = (n_reduce_each - 1) / 2;
+        int h = (n_reduce_each    ) / 2;
+        if (l == h) {
+            b = a[l + n_reduce * i];
+        } else {
+            b = (a[l + n_reduce * i] + a[h + n_reduce * i])
+                / static_cast<T>(2.0);
+        }
+    }
+    ''',
+    'cupy_pickup_median'
+)
 
 
 cdef ndarray _mean(

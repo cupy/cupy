@@ -129,6 +129,8 @@ cdef class UnownedMemory(BaseMemory):
             if ptr == 0:
                 raise RuntimeError('UnownedMemory requires explicit'
                                    ' device ID for a null pointer.')
+            # Initialize a context to workaround a bug in CUDA 10.2+. (#3991)
+            runtime._ensure_context()
             ptr_attrs = runtime.pointerGetAttributes(ptr)
             device_id = ptr_attrs.device
         self.size = size
@@ -1275,6 +1277,11 @@ cdef class MemoryPool(object):
             stream (cupy.cuda.Stream): Release free blocks in the arena
                 of the given stream. The default releases blocks in all
                 arenas.
+
+        .. note::
+            A memory pool may split a free block for space efficiency. A split
+            block is not released until all its parts are merged back into one
+            even if :meth:`free_all_blocks` is called.
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         mp.free_all_blocks(stream=stream)
