@@ -25,6 +25,12 @@ if is_available():
 
     class _TestingParameterizeMixin:
 
+        def __repr__(self):
+            return "<{}  parameter: {}>".format(
+                super().__repr__(),
+                self.__dict__,
+            )
+
         @pytest.fixture(autouse=True)
         def _cupy_testing_parameterize(self, _cupy_testing_param):
             assert not self.__dict__
