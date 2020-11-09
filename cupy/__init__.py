@@ -55,7 +55,6 @@ __version__ = _version.__version__
 
 import cupy.core.fusion  # NOQA
 from cupy import fft  # NOQA
-from cupy import io  # NOQA
 from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
@@ -280,6 +279,7 @@ from cupy._creation.matrix import triu  # NOQA
 # Functional routines
 # -----------------------------------------------------------------------------
 from cupy._functional.piecewise import piecewise  # NOQA
+from cupy._functional.vectorize import vectorize  # NOQA
 from cupy.lib.shape_base import apply_along_axis  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -465,13 +465,13 @@ from cupy._indexing.iterate import flatiter  # NOQA
 # -----------------------------------------------------------------------------
 # Input and output
 # -----------------------------------------------------------------------------
-from cupy.io.npz import load  # NOQA
-from cupy.io.npz import save  # NOQA
-from cupy.io.npz import savez  # NOQA
-from cupy.io.npz import savez_compressed  # NOQA
+from cupy._io.npz import load  # NOQA
+from cupy._io.npz import save  # NOQA
+from cupy._io.npz import savez  # NOQA
+from cupy._io.npz import savez_compressed  # NOQA
 
-from cupy.io.formatting import array_repr  # NOQA
-from cupy.io.formatting import array_str  # NOQA
+from cupy._io.formatting import array_repr  # NOQA
+from cupy._io.formatting import array_str  # NOQA
 
 
 def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition of `number`)
@@ -485,18 +485,18 @@ def base_repr(number, base=2, padding=0):  # NOQA (needed to avoid redefinition 
 # -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
-from cupy.linalg.einsum import einsum  # NOQA
+from cupy.linalg._einsum import einsum  # NOQA
 
-from cupy.linalg.product import cross  # NOQA
-from cupy.linalg.product import dot  # NOQA
-from cupy.linalg.product import inner  # NOQA
-from cupy.linalg.product import kron  # NOQA
-from cupy.linalg.product import matmul  # NOQA
-from cupy.linalg.product import outer  # NOQA
-from cupy.linalg.product import tensordot  # NOQA
-from cupy.linalg.product import vdot  # NOQA
+from cupy.linalg._product import cross  # NOQA
+from cupy.linalg._product import dot  # NOQA
+from cupy.linalg._product import inner  # NOQA
+from cupy.linalg._product import kron  # NOQA
+from cupy.linalg._product import matmul  # NOQA
+from cupy.linalg._product import outer  # NOQA
+from cupy.linalg._product import tensordot  # NOQA
+from cupy.linalg._product import vdot  # NOQA
 
-from cupy.linalg.norms import trace  # NOQA
+from cupy.linalg._norms import trace  # NOQA
 
 # -----------------------------------------------------------------------------
 # Logic functions

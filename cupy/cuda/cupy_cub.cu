@@ -7,11 +7,15 @@
 #include <cub/device/device_spmv.cuh>
 #include <cub/device/device_scan.cuh>
 #include <cub/device/device_histogram.cuh>
+#include <cub/iterator/counting_input_iterator.cuh>
+#include <cub/iterator/transform_input_iterator.cuh>
 #else
 #include <hipcub/device/device_reduce.hpp>
 #include <hipcub/device/device_segmented_reduce.hpp>
 #include <hipcub/device/device_scan.hpp>
 #include <hipcub/device/device_histogram.hpp>
+#include <rocprim/iterator/counting_iterator.hpp>
+#include <hipcub/iterator/transform_input_iterator.hpp>
 #endif
 
 
@@ -124,6 +128,27 @@ struct _multiply
         return a * b;
     }
 };
+
+//
+// arange functor: arange(0, n+1) -> arange(0, n+1, step_size)
+//
+struct _arange
+{
+    private:
+        int step_size;
+
+    public:
+    __host__ __device__ __forceinline__ _arange(int i): step_size(i) {}
+    __host__ __device__ __forceinline__ int operator()(const int &in) const {
+        return step_size * in;
+    }
+};
+
+#ifndef CUPY_USE_HIP
+typedef TransformInputIterator<int, _arange, CountingInputIterator<int>> seg_offset_itr;
+#else
+typedef TransformInputIterator<int, _arange, rocprim::counting_iterator<int>> seg_offset_itr;
+#endif
 
 /*
    These stubs are needed because CUB does not handle NaNs properly, while NumPy has certain
@@ -477,12 +502,11 @@ struct _cub_reduce_sum {
 struct _cub_segmented_reduce_sum {
     template <typename T>
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
-        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+        int num_segments, seg_offset_itr offset_start, cudaStream_t s)
     {
         DeviceSegmentedReduce::Sum(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            static_cast<int*>(offset_start),
-            static_cast<int*>(offset_end), s);
+            offset_start, offset_start+1, s);
     }
 };
 
@@ -505,15 +529,14 @@ struct _cub_reduce_prod {
 struct _cub_segmented_reduce_prod {
     template <typename T>
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
-        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+        int num_segments, seg_offset_itr offset_start, cudaStream_t s)
     {
         _multiply product_op;
         // the init value is cast from 1.0f because on host __half can only be
         // initialized by float or double; static_cast<__half>(1) = 0 on host.
         DeviceSegmentedReduce::Reduce(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            static_cast<int*>(offset_start),
-            static_cast<int*>(offset_end),
+            offset_start, offset_start+1,
             product_op, static_cast<T>(1.0f), s);
     }
 };
@@ -534,12 +557,11 @@ struct _cub_reduce_min {
 struct _cub_segmented_reduce_min {
     template <typename T>
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
-        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+        int num_segments, seg_offset_itr offset_start, cudaStream_t s)
     {
         DeviceSegmentedReduce::Min(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            static_cast<int*>(offset_start),
-            static_cast<int*>(offset_end), s);
+            offset_start, offset_start+1, s);
     }
 };
 
@@ -559,12 +581,11 @@ struct _cub_reduce_max {
 struct _cub_segmented_reduce_max {
     template <typename T>
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
-        int num_segments, void* offset_start, void* offset_end, cudaStream_t s)
+        int num_segments, seg_offset_itr offset_start, cudaStream_t s)
     {
         DeviceSegmentedReduce::Max(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            static_cast<int*>(offset_start),
-            static_cast<int*>(offset_end), s);
+            offset_start, offset_start+1, s);
     }
 };
 
@@ -733,38 +754,44 @@ size_t cub_device_reduce_get_workspace_size(void* x, void* y, int num_items,
 /* -------- device segmented reduce -------- */
 
 void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
-    void* x, void* y, int num_segments, void* offset_start, void* offset_end,
+    void* x, void* y, int num_segments, int segment_size,
     cudaStream_t stream, int op, int dtype_id)
 {
+    // CUB internally use int for offset...
+    // This iterates over [0, segment_size, 2*segment_size, 3*segment_size, ...]
+    #ifndef CUPY_USE_HIP
+    CountingInputIterator<int> count_itr(0);
+    #else
+    rocprim::counting_iterator<int> count_itr(0);
+    #endif
+    _arange scaling(segment_size);
+    seg_offset_itr itr(count_itr, scaling);
+
     switch(op) {
     case CUPY_CUB_SUM:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_sum(),
-                   workspace, workspace_size, x, y, num_segments, offset_start,
-                   offset_end, stream);
+                   workspace, workspace_size, x, y, num_segments, itr, stream);
     case CUPY_CUB_MIN:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_min(),
-                   workspace, workspace_size, x, y, num_segments, offset_start,
-                   offset_end, stream);
+                   workspace, workspace_size, x, y, num_segments, itr, stream);
     case CUPY_CUB_MAX:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_max(),
-                   workspace, workspace_size, x, y, num_segments, offset_start,
-                   offset_end, stream);
+                   workspace, workspace_size, x, y, num_segments, itr, stream);
     case CUPY_CUB_PROD:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_prod(),
-                   workspace, workspace_size, x, y, num_segments, offset_start,
-                   offset_end, stream);
+                   workspace, workspace_size, x, y, num_segments, itr, stream);
     default:
         throw std::runtime_error("Unsupported operation");
     }
 }
 
 size_t cub_device_segmented_reduce_get_workspace_size(void* x, void* y,
-    int num_segments, void* offset_start, void* offset_end,
+    int num_segments, int segment_size,
     cudaStream_t stream, int op, int dtype_id)
 {
     size_t workspace_size = 0;
-    cub_device_segmented_reduce(NULL, workspace_size, x, y, num_segments,
-                                offset_start, offset_end, stream,
+    cub_device_segmented_reduce(NULL, workspace_size, x, y,
+                                num_segments, segment_size, stream,
                                 op, dtype_id);
     return workspace_size;
 }

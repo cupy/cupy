@@ -358,11 +358,11 @@ class TestNonzero(unittest.TestCase):
 class TestNonzeroZeroDimension(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    def test_nonzero(self, dtype):
-        for xp in (numpy, cupy):
-            array = xp.array(self.array, dtype=dtype)
-            with pytest.raises(DeprecationWarning):
-                xp.nonzero(array)
+    @testing.numpy_cupy_array_equal()
+    def test_nonzero(self, xp, dtype):
+        array = xp.array(self.array, dtype=dtype)
+        with testing.assert_warns(DeprecationWarning):
+            return xp.nonzero(array)
 
 
 @testing.parameterize(
@@ -402,14 +402,18 @@ class TestArgwhere(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'array': cupy.array(1)},
+    {'value': 0},
+    {'value': 3},
 )
 @testing.gpu
+@testing.with_requires('numpy>=1.18')
 class TestArgwhereZeroDimension(unittest.TestCase):
 
-    def test_argwhere(self):
-        with testing.assert_warns(DeprecationWarning):
-            return cupy.nonzero(self.array)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_argwhere(self, xp, dtype):
+        array = xp.array(self.value, dtype=dtype)
+        return xp.argwhere(array)
 
 
 @testing.gpu

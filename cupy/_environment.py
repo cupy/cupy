@@ -10,8 +10,6 @@ import shutil
 import sys
 import warnings
 
-from cupy_backends.cuda.api import runtime
-
 
 # '' for uninitialized, None for non-existing
 _cuda_path = ''
@@ -169,6 +167,7 @@ def _get_hipcc_path():
 
 def _get_cub_path():
     # runtime discovery of CUB headers
+    from cupy_backends.cuda.api import runtime
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     if not runtime.is_hip:

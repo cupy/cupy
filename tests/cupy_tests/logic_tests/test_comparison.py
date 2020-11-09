@@ -97,6 +97,27 @@ class TestArrayEqual(unittest.TestCase):
         b = xp.array([1, 2, 3], dtype=dtype)
         return xp.array_equal(a, b)
 
+    @testing.with_requires('numpy>=1.19')
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equal_infinite_equal_nan(self, xp, dtype):
+        nan = float('nan')
+        inf = float('inf')
+        ninf = float('-inf')
+        a = xp.array([0, nan, inf, ninf], dtype=dtype)
+        b = xp.array([0, nan, inf, ninf], dtype=dtype)
+        return xp.array_equal(a, b, equal_nan=True)
+
+    @testing.with_requires('numpy>=1.19')
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equal_complex_equal_nan(self, xp, dtype):
+        a = xp.array([1+2j], dtype=dtype)
+        b = a.copy()
+        b.imag = xp.nan
+        a.real = xp.nan
+        return xp.array_equal(a, b, equal_nan=True)
+
     @testing.numpy_cupy_equal()
     def test_array_equal_diff_dtypes_not_equal(self, xp):
         a = xp.array([0.9e-5, 1.1e-5, 100.5, 10.5])
