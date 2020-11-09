@@ -346,7 +346,8 @@ class TestArrayInvalidValueAdvGetitem(unittest.TestCase):
         for xp in (numpy, cupy):
             a = testing.shaped_arange(self.shape, xp)
             with pytest.raises(IndexError):
-                a[self.indexes]
+                with testing.assert_warns(FutureWarning):
+                    a[self.indexes]
 
 
 @testing.parameterize(
