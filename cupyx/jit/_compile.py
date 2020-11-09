@@ -53,6 +53,15 @@ class CudaObject:
         return f'<CudaObject code = "{self.code}", type = {self.ctype}>'
 
 
+class Constant:
+    def __init__(self, obj):
+        self.obj = obj
+
+
+def is_constants(values):
+    return all(isinstance(x, Constant) for x in values)
+
+
 class Environment:
     """Environment of the scope
 
@@ -139,6 +148,11 @@ def _transpile_function(
 
 
 def _eval_operand(op, args, env, dtype=None):
+    if is_constants(args):
+        pyfunc = _typerules.get_pyfunc(type(op))
+        return Constant(pyfunc(*[x.obj for x in args]))
+
+    args = [_to_cuda_object(x, env) for x in args]
     ufunc = _typerules.get_ufunc(env.mode, type(op))
     assert ufunc.nin == len(args)
     assert ufunc.nout == 1
@@ -187,6 +201,7 @@ def _transpile_stmt(stmt, env):
             'Nested functions are not supported currently.')
     if isinstance(stmt, ast.Return):
         value = _transpile_expr(stmt.value, env)
+        value = _to_cuda_object(value, env)
         t = value.ctype
         if env.ret_type is None:
             env.ret_type = t
@@ -202,6 +217,7 @@ def _transpile_stmt(stmt, env):
         target = stmt.targets[0]
         name = target.id
         value = _transpile_expr(stmt.value, env)
+        value = _to_cuda_object(value, env)
         if isinstance(target, ast.Name):
             if env[name] is None:
                 env[name] = CudaObject(target.id, value.ctype)
@@ -212,6 +228,8 @@ def _transpile_stmt(stmt, env):
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
         target = _transpile_expr(stmt.target, env)
+        assert isinstance(target, CudaObject)
+        value = _to_cuda_object(value, env)
         result = _eval_operand(stmt.op, (target, value), env)
         if not numpy.can_cast(
                 result.ctype.dtype, target.ctype.dtype, 'same_kind'):
@@ -230,13 +248,19 @@ def _transpile_stmt(stmt, env):
     if isinstance(stmt, (ast.Raise, ast.Try)):
         raise ValueError('throw/catch are not allowed.')
     if isinstance(stmt, ast.Assert):
-        return 'assert(' + _transpile_expr(stmt.test, env) + ')'
+        value = _transpile_expr(stmt.test, env)
+        if is_constants([value]):
+            assert value.obj
+            return ';'
+        else:
+            return 'assert(' + value + ');'
     if isinstance(stmt, (ast.Import, ast.ImportFrom)):
         raise ValueError('Cannot import modules from the target functions.')
     if isinstance(stmt, (ast.Global, ast.Nonlocal)):
         raise ValueError('Cannot use global/nonlocal in the target functions.')
     if isinstance(stmt, ast.Expr):
-        return _transpile_expr(stmt.value, env)
+        value = _transpile_expr(stmt.value, env)
+        return ';' if is_constants([value]) else value
     if isinstance(stmt, ast.Pass):
         return ';'
     if isinstance(stmt, ast.Break):
@@ -278,8 +302,13 @@ def _transpile_expr(expr, env):
         cond = _transpile_expr(expr.test, env)
         x = _transpile_expr(expr.body, env)
         y = _transpile_expr(expr.orelse, env)
+
+        if isinstance(expr, Constant):
+            return x if expr.obj else y
         if cond.ctype.dtype.kind == 'c':
             raise NotImplementedError('')
+        x = _to_cuda_object(x, env)
+        y = _to_cuda_object(y, env)
         if x.ctype.dtype != y.ctype.dtype:
             raise TypeError(
                 f'Type mismatch in conditional expression.: '
@@ -289,10 +318,10 @@ def _transpile_expr(expr, env):
     if isinstance(expr, ast.Call):
         raise NotImplementedError('Not implemented.')
     if isinstance(expr, ast.Constant):
-        return _emit_cuda_object_from_constants(expr.value, env)
+        return Constant(expr.value)
     if isinstance(expr, ast.Num):
         # Deprecated since py3.8
-        return _emit_cuda_object_from_constants(expr.n, env)
+        return Constant(expr.n)
     if isinstance(expr, ast.Subscript):
         # # TODO(asi1024): Fix.
         # value = _transpile_expr(expr.value, env)
@@ -317,6 +346,10 @@ def astype_scalar(x, ctype):
     return CudaObject(f'({ctype})({x.code})', ctype)
 
 
-def _emit_cuda_object_from_constants(x, env):
-    ctype = _typerules.get_ctype_from_scalar(env.mode, x)
-    return CudaObject(str(x), ctype)
+def _to_cuda_object(x, env):
+    if isinstance(x, CudaObject):
+        return x
+    if isinstance(x, Constant):
+        ctype = _typerules.get_ctype_from_scalar(env.mode, x.obj)
+        return CudaObject(str(x.obj).lower(), ctype)
+    assert False
