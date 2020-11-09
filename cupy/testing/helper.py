@@ -1415,29 +1415,20 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
 
 
 @contextlib.contextmanager
-def _assert_function_is_called(*args, times_called=1, **kwargs):
+def assert_function_is_called(*args, times_called=1, **kwargs):
+    """A handy wrapper for unittest.mock to check if a function is called.
+
+    Args:
+        *args: Arguments of `mock.patch`.
+        times_called (int): The number of times the function should be
+            called. Default is ``1``.
+        **kwargs: Keyword arguments of `mock.patch`.
+
+    """
     with mock.patch(*args, **kwargs) as handle:
         yield
         assert handle.call_count == times_called
 
 
-class AssertFunctionIsCalled:
-
-    def __init__(self, mock_mod, **kwargs):
-        """A handy wrapper for unittest.mock to check if a function is called.
-
-        This class should be used as a context manager.
-
-        Args:
-            mock_mod (str): the function to be mocked.
-            times_called (int): the number of times the function should be
-                called. Default is ``1``.
-
-        """
-        self._ctx = _assert_function_is_called(mock_mod, **kwargs)
-
-    def __enter__(self):
-        return self._ctx.__enter__()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        return self._ctx.__exit__(exc_type, exc_value, traceback)
+# TODO(kataoka): remove this alias
+AssertFunctionIsCalled = assert_function_is_called
