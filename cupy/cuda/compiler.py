@@ -150,7 +150,16 @@ def _get_bool_env_variable(name, default):
         return False
 
 
+_jitify_header_source_map = None
+
+
 def _jitify_prep(source, options, cu_path):
+    # TODO(leofang): refactor this?
+    global _jitify_header_source_map
+    if _jitify_header_source_map is None:
+        from cupy.core import core
+        _jitify_header_source_map = core._get_header_source_map()
+
     # jitify requires the 1st line to be the program name
     source = cu_path + '\n' + source
 
@@ -163,18 +172,13 @@ def _jitify_prep(source, options, cu_path):
     # (NVIDIA/jitify#79).
 
     try:
-        # TODO(leofang): cache hdr_map if Jitify can fix it?
-        name, options, hdr_map = jitify(source, options)
+        name, options, headers, include_names, hdr_map = jitify(
+            source, options, _jitify_header_source_map)
     except Exception as e:  # C++ could throw all kinds of errors
         raise JitifyException(str(e))
     assert name == cu_path
+    _jitify_header_source_map = hdr_map
 
-    # TODO(leofang): move this part to jitify()?
-    headers = []
-    include_names = []
-    for k, v in hdr_map.items():  # k, v are bytes
-        headers.append(v)
-        include_names.append(k)
     return options, headers, include_names
 
 
