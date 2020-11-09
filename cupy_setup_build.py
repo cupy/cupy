@@ -1,5 +1,6 @@
 import argparse
 import copy
+import multiprocessing
 from distutils import ccompiler
 from distutils import errors
 from distutils import msvccompiler
@@ -1049,3 +1050,9 @@ class custom_build_ext(build_ext.build_ext):
             cythonize(ext_modules, cupy_setup_options)
         check_extensions(self.extensions)
         build_ext.build_ext.run(self)
+
+    def build_extensions(self):
+        self.check_extensions_list(self.extensions)
+        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
+        with multiprocessing.Pool(num_jobs) as pool:
+            pool.map(self.build_extension, self.extensions)
