@@ -521,15 +521,15 @@ cpdef ndarray tensordot_core(
             cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
         else:
             cublas.sgemmEx(
-                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
-                b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
-                a.data.ptr, runtime.CUDA_R_16F, <int>lda, 0,
+                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
+                <size_t>&one_fp32, b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
+                a.data.ptr, runtime.CUDA_R_16F, <int>lda, <size_t>&zero_fp32,
                 c.data.ptr, runtime.CUDA_R_16F, <int>m)
     elif dtype == 'f':
         cublas.sgemmEx(
-            handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
-            b.data.ptr, runtime.CUDA_R_32F, <int>ldb,
-            a.data.ptr, runtime.CUDA_R_32F, <int>lda, 0,
+            handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
+            one.ctypes.data, b.data.ptr, runtime.CUDA_R_32F, <int>ldb,
+            a.data.ptr, runtime.CUDA_R_32F, <int>lda, zero.ctypes.data,
             c.data.ptr, runtime.CUDA_R_32F, <int>m)
     elif dtype == 'd':
         cublas.dgemm(

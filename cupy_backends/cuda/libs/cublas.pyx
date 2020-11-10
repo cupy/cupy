@@ -234,9 +234,28 @@ cdef extern from '../cupy_cublas.h' nogil:
         const double* alpha, const double* A, int lda,
         const double* beta, const double* B, int ldb,
         double* C, int ldc)
+    int cublasCgeam(
+        Handle handle, Operation transa, Operation transb, int m, int n,
+        const cuComplex* alpha, const cuComplex* A, int lda,
+        const cuComplex* beta, const cuComplex* B, int ldb,
+        cuComplex* C, int ldc)
+    int cublasZgeam(
+        Handle handle, Operation transa, Operation transb, int m, int n,
+        const cuDoubleComplex* alpha, const cuDoubleComplex* A, int lda,
+        const cuDoubleComplex* beta, const cuDoubleComplex* B, int ldb,
+        cuDoubleComplex* C, int ldc)
     int cublasSdgmm(
         Handle handle, SideMode mode, int m, int n, float* A, int lda,
         float* x, int incx, float* C, int ldc)
+    int cublasDdgmm(
+        Handle handle, SideMode mode, int m, int n, double* A, int lda,
+        double* x, int incx, double* C, int ldc)
+    int cublasCdgmm(
+        Handle handle, SideMode mode, int m, int n, cuComplex* A, int lda,
+        cuComplex* x, int incx, cuComplex* C, int ldc)
+    int cublasZdgmm(
+        Handle handle, SideMode mode, int m, int n, cuDoubleComplex* A,
+        int lda, cuDoubleComplex* x, int incx, cuDoubleComplex* C, int ldc)
     int cublasSgemmEx(
         Handle handle, Operation transa,
         Operation transb, int m, int n, int k,
@@ -1067,26 +1086,49 @@ cpdef ztrsm(
 ###############################################################################
 
 cpdef sgeam(intptr_t handle, int transa, int transb, int m, int n,
-            float alpha, size_t A, int lda, float beta, size_t B, int ldb,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
             size_t C, int ldc):
     _setStream(handle)
     with nogil:
         status = cublasSgeam(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n,
-            &alpha, <const float*>A, lda, &beta, <const float*>B, ldb,
-            <float*>C, ldc)
+            <const float*>alpha, <const float*>A, lda, <const float*>beta,
+            <const float*>B, ldb, <float*>C, ldc)
     check_status(status)
 
-
 cpdef dgeam(intptr_t handle, int transa, int transb, int m, int n,
-            double alpha, size_t A, int lda, double beta, size_t B, int ldb,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
             size_t C, int ldc):
     _setStream(handle)
     with nogil:
         status = cublasDgeam(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n,
-            &alpha, <const double*>A, lda, &beta, <const double*>B, ldb,
-            <double*>C, ldc)
+            <const double*>alpha, <const double*>A, lda, <const double*>beta,
+            <const double*>B, ldb, <double*>C, ldc)
+    check_status(status)
+
+cpdef cgeam(intptr_t handle, int transa, int transb, int m, int n,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
+            size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasCgeam(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n,
+            <const cuComplex*>alpha, <const cuComplex*>A, lda,
+            <const cuComplex*>beta,  <const cuComplex*>B, ldb,
+            <cuComplex*>C, ldc)
+    check_status(status)
+
+cpdef zgeam(intptr_t handle, int transa, int transb, int m, int n,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
+            size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasZgeam(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n,
+            <const cuDoubleComplex*>alpha, <const cuDoubleComplex*>A, lda,
+            <const cuDoubleComplex*>beta,  <const cuDoubleComplex*>B, ldb,
+            <cuDoubleComplex*>C, ldc)
     check_status(status)
 
 
@@ -1095,21 +1137,48 @@ cpdef sdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
     _setStream(handle)
     with nogil:
         status = cublasSdgmm(
-            <Handle>handle, <SideMode>mode, m, n, <float*>A, lda, <float*>x,
-            incx, <float*>C, ldc)
+            <Handle>handle, <SideMode>mode, m, n, <float*>A, lda,
+            <float*>x, incx, <float*>C, ldc)
+    check_status(status)
+
+cpdef ddgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasDdgmm(
+            <Handle>handle, <SideMode>mode, m, n, <double*>A, lda,
+            <double*>x, incx, <double*>C, ldc)
+    check_status(status)
+
+cpdef cdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasCdgmm(
+            <Handle>handle, <SideMode>mode, m, n, <cuComplex*>A, lda,
+            <cuComplex*>x, incx, <cuComplex*>C, ldc)
+    check_status(status)
+
+cpdef zdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasZdgmm(
+            <Handle>handle, <SideMode>mode, m, n, <cuDoubleComplex*>A, lda,
+            <cuDoubleComplex*>x, incx, <cuDoubleComplex*>C, ldc)
     check_status(status)
 
 
 cpdef sgemmEx(
         intptr_t handle, int transa, int transb, int m, int n, int k,
-        float alpha, size_t A, int Atype, int lda, size_t B,
+        size_t alpha, size_t A, int Atype, int lda, size_t B,
         int Btype, int ldb, float beta, size_t C, int Ctype,
         int ldc):
     _setStream(handle)
     with nogil:
         status = cublasSgemmEx(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha, <const void*>A, <runtime.DataType>Atype, lda,
+            <const float*>alpha, <const void*>A, <runtime.DataType>Atype, lda,
             <const void*>B, <runtime.DataType>Btype, ldb, &beta, <void*>C,
             <runtime.DataType>Ctype, ldc)
     check_status(status)
