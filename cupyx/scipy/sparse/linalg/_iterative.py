@@ -5,6 +5,7 @@ from cupy import cublas
 from cupy import cusparse
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cusparse as _cusparse
+from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import csr
 
 import scipy
@@ -160,7 +161,6 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
     if restart is None:
         restart = 20
     restart = min(restart, n)
-
     if callback_type is None:
         callback_type = 'pr_norm'
     if callback_type not in ('x', 'pr_norm'):
@@ -168,42 +168,37 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
     if callback is None:
         callback_type = None
 
-    def matvec(x): return A @ x
-
-    if M is None:
-        def psolve(x): return x
-    else:
-        def psolve(x): return M @ x
-        if A.shape != M.shape:
-            raise ValueError('matrix and preconditioner have different shapes')
-
     V = cupy.empty((n, restart), dtype=A.dtype, order='F')
     H = cupy.zeros((restart+1, restart), dtype=A.dtype, order='F')
     e = numpy.zeros((restart+1,), dtype=A.dtype)
+
+    matvec, psolve = _make_funcs(A, M)
+    compute_hu = _make_compute_hu(V)
 
     iters = 0
     while True:
         mx = psolve(x)
         r = b - matvec(mx)
-        r_norm = cupy.linalg.norm(r)
+        r_norm = cublas.nrm2(r)
         if callback_type == 'x':
             callback(mx)
         elif callback_type == 'pr_norm' and iters > 0:
             callback(r_norm / b_norm)
         if r_norm <= atol or iters >= maxiter:
             break
-        V[:, 0] = r / r_norm
+        v = r / r_norm
+        V[:, 0] = v
         e[0] = r_norm
 
         # Arnoldi iteration
         for j in range(restart):
-            z = psolve(V[:, j])
+            z = psolve(v)
             u = matvec(z)
-            H[:j+1, j] = V[:, :j+1].conj().T @ u
-            u -= V[:, :j+1] @ H[:j+1, j]
-            H[j+1, j] = cupy.linalg.norm(u)
+            H[:j+1, j], u = compute_hu(u, j)
+            cublas.nrm2(u, out=H[j+1, j])
             if j+1 < restart:
-                V[:, j+1] = u / H[j+1, j]
+                v = u / H[j+1, j]
+                V[:, j+1] = v
 
         # Note: The least-square solution to equation Hy = e is computed on CPU
         # because it is faster if tha matrix size is small.
@@ -259,3 +254,27 @@ def _make_matvec(A):
     else:
         def matvec(x): return A @ x
     return matvec
+
+
+def _make_compute_hu(V):
+    handle = device.get_cublas_handle()
+    if V.dtype.char == 'f':
+        gemv = _cublas.sgemv
+    elif V.dtype.char == 'd':
+        gemv = _cublas.dgemv
+    elif V.dtype.char == 'F':
+        gemv = _cublas.cgemv
+    elif V.dtype.char == 'D':
+        gemv = _cublas.zgemv
+    n = V.shape[0]
+
+    def compute_hu(u, j):
+        # h = V[:, :j+1].conj().T @ u
+        # u -= V[:, :j+1] @ h
+        h = cupy.empty((j+1,), dtype=V.dtype)
+        gemv(handle, _cublas.CUBLAS_OP_C,
+             n, j+1, 1.0, V.data.ptr, n, u.data.ptr, 1, 0.0, h.data.ptr, 1)
+        gemv(handle, _cublas.CUBLAS_OP_N,
+             n, j+1, -1.0, V.data.ptr, n, h.data.ptr, 1, 1.0, u.data.ptr, 1)
+        return h, u
+    return compute_hu
