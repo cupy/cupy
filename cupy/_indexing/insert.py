@@ -196,8 +196,8 @@ def diag_indices(n, ndim=2):
     --------
     Create a set of indices to access the diagonal of a (4, 4) array:
 
-    >>> dig = cupy.diag_indices(4)
-    >>> dig
+    >>> di = cupy.diag_indices(4)
+    >>> di
     (array([0, 1, 2, 3]), array([0, 1, 2, 3]))
     >>> a = cupy.arange(16).reshape(4, 4)
     >>> a
@@ -225,6 +225,7 @@ def diag_indices(n, ndim=2):
     >>> a
     array([[[1, 0],
             [0, 0]],
+    <BLANKLINE>
            [[0, 0],
             [0, 1]]])
 
