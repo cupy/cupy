@@ -464,6 +464,8 @@ def preconfigure_modules(compiler, settings):
             # Skip checking other modules when CUDA is unavailable.
             if module['name'] == 'cuda':
                 break
+    # Get a list of the CC of the devices connected to this node
+    build.check_compute_capabilities(compiler, settings)
 
     if len(ret) != len(MODULES):
         if 'cuda' in ret:
@@ -809,69 +811,74 @@ def _nvcc_gencode_options(cuda_version):
         return []
 
     envcfg = os.getenv('CUPY_NVCC_GENERATE_CODE', None)
-    if envcfg:
+    if envcfg is not None and envcfg != 'current':
         return ['--generate-code={}'.format(arch)
                 for arch in envcfg.split(';') if len(arch) > 0]
-
-    # The arch_list specifies virtual architectures, such as 'compute_61', and
-    # real architectures, such as 'sm_61', for which the CUDA input files are
-    # to be compiled.
-    #
-    # The syntax of an entry of the list is
-    #
-    #     entry ::= virtual_arch | (virtual_arch, real_arch)
-    #
-    # where virtual_arch is a string which means a virtual architecture and
-    # real_arch is a string which means a real architecture.
-    #
-    # If a virtual architecture is supplied, NVCC generates a PTX code for the
-    # virtual architecture. If a pair of a virtual architecture and a real
-    # architecture is supplied, NVCC generates a PTX code for the virtual
-    # architecture as well as a cubin code for the real architecture.
-    #
-    # For example, making NVCC generate a PTX code for 'compute_60' virtual
-    # architecture, the arch_list has an entry of 'compute_60'.
-    #
-    #     arch_list = ['compute_60']
-    #
-    # For another, making NVCC generate a PTX code for 'compute_61' virtual
-    # architecture and a cubin code for 'sm_61' real architecture, the
-    # arch_list has an entry of ('compute_61', 'sm_61').
-    #
-    #     arch_list = [('compute_61', 'sm_61')]
-    #
-    # See the documentation of each CUDA version for the list of supported
-    # architectures:
-    #
-    #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
-
-    if cuda_version >= 11000:
-        arch_list = ['compute_35',
-                     'compute_50',
-                     ('compute_60', 'sm_60'),
-                     ('compute_61', 'sm_61'),
-                     ('compute_70', 'sm_70'),
-                     ('compute_75', 'sm_75'),
-                     ('compute_80', 'sm_80'),
-                     'compute_80']
-    elif cuda_version >= 10000:
-        arch_list = ['compute_30',
-                     'compute_50',
-                     ('compute_60', 'sm_60'),
-                     ('compute_61', 'sm_61'),
-                     ('compute_70', 'sm_70'),
-                     ('compute_75', 'sm_75'),
-                     'compute_70']
-    elif cuda_version >= 9000:
-        arch_list = ['compute_30',
-                     'compute_50',
-                     ('compute_60', 'sm_60'),
-                     ('compute_61', 'sm_61'),
-                     ('compute_70', 'sm_70'),
-                     'compute_70']
+    if envcfg == 'current' and build.get_compute_capabilities() is not None:
+        ccs = build.get_compute_capabilities()
+        arch_list = [
+            f'compute_{cc}' if cc < 60 else (f'compute_{cc}', f'sm_{cc}')
+            for cc in ccs]
     else:
-        # This should not happen.
-        assert False
+        # The arch_list specifies virtual architectures, such as 'compute_61',
+        # and real architectures, such as 'sm_61', for which the CUDA
+        # input files are to be compiled.
+        #
+        # The syntax of an entry of the list is
+        #
+        #     entry ::= virtual_arch | (virtual_arch, real_arch)
+        #
+        # where virtual_arch is a string which means a virtual architecture and
+        # real_arch is a string which means a real architecture.
+        #
+        # If a virtual architecture is supplied, NVCC generates a PTX code
+        # the virtual architecture. If a pair of a virtual architecture and a
+        # real architecture is supplied, NVCC generates a PTX code for the
+        # virtual architecture as well as a cubin code for the real one.
+        #
+        # For example, making NVCC generate a PTX code for 'compute_60' virtual
+        # architecture, the arch_list has an entry of 'compute_60'.
+        #
+        #     arch_list = ['compute_60']
+        #
+        # For another, making NVCC generate a PTX code for 'compute_61' virtual
+        # architecture and a cubin code for 'sm_61' real architecture, the
+        # arch_list has an entry of ('compute_61', 'sm_61').
+        #
+        #     arch_list = [('compute_61', 'sm_61')]
+        #
+        # See the documentation of each CUDA version for the list of supported
+        # architectures:
+        #
+        #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
+
+        if cuda_version >= 11000:
+            arch_list = ['compute_35',
+                         'compute_50',
+                         ('compute_60', 'sm_60'),
+                         ('compute_61', 'sm_61'),
+                         ('compute_70', 'sm_70'),
+                         ('compute_75', 'sm_75'),
+                         ('compute_80', 'sm_80'),
+                         'compute_80']
+        elif cuda_version >= 10000:
+            arch_list = ['compute_30',
+                         'compute_50',
+                         ('compute_60', 'sm_60'),
+                         ('compute_61', 'sm_61'),
+                         ('compute_70', 'sm_70'),
+                         ('compute_75', 'sm_75'),
+                         'compute_70']
+        elif cuda_version >= 9000:
+            arch_list = ['compute_30',
+                         'compute_50',
+                         ('compute_60', 'sm_60'),
+                         ('compute_61', 'sm_61'),
+                         ('compute_70', 'sm_70'),
+                         'compute_70']
+        else:
+            # This should not happen.
+            assert False
 
     options = []
     for arch in arch_list:
@@ -1049,3 +1056,8 @@ class custom_build_ext(build_ext.build_ext):
             cythonize(ext_modules, cupy_setup_options)
         check_extensions(self.extensions)
         build_ext.build_ext.run(self)
+
+    def build_extensions(self):
+        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
+        self.parallel = num_jobs
+        super().build_extensions()
