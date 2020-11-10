@@ -511,22 +511,20 @@ class TestGmres(unittest.TestCase):
         xp, sp = cupy, sparse
         a, M = self._make_matrix(dtype, xp)
         b = self._make_normalized_vector(dtype, xp)
-        global is_called
+        is_called = False
 
         def callback1(x):
             print(xp.linalg.norm(b - a @ x))
-            global is_called
+            nonlocal is_called
             is_called = True
-
-        def callback2(pr_norm):
-            print(pr_norm)
-            global is_called
-            is_called = True
-
-        is_called = False
         sp.linalg.gmres(a, b, callback=callback1, callback_type='x')
         assert is_called
         is_called = False
+
+        def callback2(pr_norm):
+            print(pr_norm)
+            nonlocal is_called
+            is_called = True
         sp.linalg.gmres(a, b, callback=callback2, callback_type='pr_norm')
         assert is_called
 
