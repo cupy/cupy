@@ -82,23 +82,29 @@ For installation
 
 These environment variables are used during installation (building CuPy from source).
 
-+-----------------------------+----------------------------------------------------------------+
-| ``CUDA_PATH``               | See the description above.                                     |
-+-----------------------------+----------------------------------------------------------------+
-| ``CUTENSOR_PATH``           | Path to the cuTENSOR root directory that contains ``lib`` and  |
-|                             | ``include`` directories. (experimental)                        |
-+-----------------------------+----------------------------------------------------------------+
-| ``NVCC``                    | Define the compiler to use when compiling CUDA files.          |
-+-----------------------------+----------------------------------------------------------------+
-| ``CUPY_PYTHON_350_FORCE``   | Enforce CuPy to be installed against Python 3.5.0 (not         |
-|                             | recommended).                                                  |
-+-----------------------------+----------------------------------------------------------------+
-| ``CUPY_INSTALL_USE_HIP``    | For building the ROCm support, see :ref:`install_hip` for      |
-|                             | further detail.                                                |
-+-----------------------------+----------------------------------------------------------------+
-| ``CUPY_NVCC_GENERATE_CODE`` | To build CuPy for a particular CUDA architecture. For example, |
-|                             | ``CUPY_NVCC_GENERATE_CODE="arch=compute_60,code=sm_60"``. For  |
-|                             | specifying multiple archs, concatenate the ``arch=...`` strings|
-|                             | with semicolons (``;``). When this is not set, the default is  |
-|                             | to support all architectures.                                  |
-+-----------------------------+----------------------------------------------------------------+
++------------------------------+----------------------------------------------------------------+
+| ``CUDA_PATH``                | See the description above.                                     |
++------------------------------+----------------------------------------------------------------+
+| ``CUTENSOR_PATH``            | Path to the cuTENSOR root directory that contains ``lib`` and  |
+|                              | ``include`` directories. (experimental)                        |
++------------------------------+----------------------------------------------------------------+
+| ``NVCC``                     | Define the compiler to use when compiling CUDA files.          |
++------------------------------+----------------------------------------------------------------+
+| ``CUPY_PYTHON_350_FORCE``    | Enforce CuPy to be installed against Python 3.5.0 (not         |
+|                              | recommended).                                                  |
++------------------------------+----------------------------------------------------------------+
+| ``CUPY_INSTALL_USE_HIP``     | For building the ROCm support, see :ref:`install_hip` for      |
+|                              | further detail.                                                |
++------------------------------+----------------------------------------------------------------+
+| ``CUPY_NVCC_GENERATE_CODE``  | To build CuPy for a particular CUDA architecture. For example, |
+|                              | ``CUPY_NVCC_GENERATE_CODE="arch=compute_60,code=sm_60"``. For  |
+|                              | specifying multiple archs, concatenate the ``arch=...`` strings|
+|                              | with semicolons (``;``). If ``current`` is specified, then     |
+|                              | it will automatically detect the currently installed GPU       |
+|                              | architectures in build time. When this is not set,             |
+|                              | the default is to support all architectures.                   |
++------------------------------+----------------------------------------------------------------+
+| ``CUPY_CUPY_NUM_BUILD_JOBS`` | To enable or disable parallel build, sets the number of        |
+|                              | processes used to build the extensions in parallel. Defaults   |
+|                              | to ``4``
++------------------------------+----------------------------------------------------------------+
