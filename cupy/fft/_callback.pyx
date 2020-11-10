@@ -66,6 +66,7 @@ cdef str _cupy_include = None
 cdef str _source_dir = None
 cdef str _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
+
 # callback related stuff
 cdef str _callback_dev_code = None
 cdef str _callback_cache_dir = os.environ.get(
@@ -83,11 +84,112 @@ cdef class _ThreadLocal:
     @staticmethod
     cdef _ThreadLocal get():
         cdef _ThreadLocal tls
-        tls = getattr(_callback_thread_local, 'tls', None)
-        if tls is None:
-            tls = _ThreadLocal()
-            setattr(_callback_thread_local, 'tls', tls)
+        try:
+            tls = _callback_thread_local.tls
+        except AttributeError:
+            tls = _callback_thread_local.tls = _ThreadLocal()
         return tls
+
+
+cdef inline void _sanity_checks(
+        str cb_load, str cb_store,
+        ndarray cb_load_aux_arr, ndarray cb_store_aux_arr) except*:
+    if _is_hip_environment:
+        raise RuntimeError('hipFFT does not support callbacks')
+    if not sys.platform.startswith('linux'):
+        raise RuntimeError('cuFFT callbacks are only available on Linux')
+    if not (sys.maxsize > 2**32):
+        raise RuntimeError('cuFFT callbacks require 64 bit OS')
+    if not cb_load and not cb_store:
+        raise ValueError('need to specify either cb_load or cb_store, '
+                         'or both')
+    if cb_load and 'd_loadCallbackPtr' not in cb_load:
+        raise ValueError('need to specify d_loadCallbackPtr in cb_load')
+    if cb_store and 'd_storeCallbackPtr' not in cb_store:
+        raise ValueError('need to specify d_storeCallbackPtr in cb_store')
+    if _nvcc is None:
+        raise RuntimeError('nvcc is required but not found')
+    if cb_load_aux_arr is not None:
+        if not cb_load:
+            raise ValueError('load callback is not given')
+    if cb_store_aux_arr is not None:
+        if not cb_store:
+            raise ValueError('store callback is not given')
+
+
+cdef inline void _cythonize(str tempdir, str mod_name) except*:
+    shutil.copyfile(os.path.join(_source_dir, 'cupy_cufft.h'),
+                    os.path.join(tempdir, 'cupy_cufft.h'))
+    shutil.copyfile(os.path.join(_source_dir, 'cufft.pxd'),
+                    os.path.join(tempdir, mod_name + '.pxd'))
+    shutil.copyfile(os.path.join(_source_dir, 'cufft.pyx'),
+                    os.path.join(tempdir, mod_name + '.pyx'))
+    p = subprocess.run(['cython', '-3', '--cplus',
+                        '-E', 'use_hip=0',
+                        '-E', 'CUDA_VERSION=' + _build_ver,
+                        '-E', 'CUPY_CUFFT_STATIC=True',
+                        os.path.join(tempdir, mod_name + '.pyx'),
+                        '-o', os.path.join(tempdir, mod_name + '.cpp')],
+                       env=os.environ)
+    p.check_returncode()
+
+
+cdef inline void _mod_compile(str tempdir, str mod_name, str obj_host) except*:
+    shutil.copyfile(os.path.join(_source_dir, 'cupy_cufftXt.h'),
+                    os.path.join(tempdir, 'cupy_cufftXt.h'))
+    p = subprocess.run(_cc + [
+                       '-I' + _python_include,
+                       '-I' + _cuda_include,
+                       '-I' + _cupy_include,
+                       '-fPIC', '-O2', '-std=c++11',
+                       '-c', os.path.join(tempdir, mod_name + '.cpp'),
+                       '-o', obj_host],
+                       env=os.environ)
+    p.check_returncode()
+
+
+cdef inline void _nvcc_compile(
+        str tempdir, str mod_name, str cb_load, str cb_store,
+        str obj_dev, str arch) except*:
+    cdef str support
+    cdef list cmd
+    global _callback_dev_code
+
+    if _callback_dev_code is None:
+        with open(os.path.join(_source_dir, 'cupy_cufftXt.cu')) as f:
+            support = _callback_dev_code = f.read()
+    else:
+        support = _callback_dev_code
+    with open(os.path.join(tempdir, 'cupy_cufftXt.cu'), 'w') as f:
+        support = string.Template(support).substitute(
+            dev_load_callback_ker=cb_load,
+            dev_store_callback_ker=cb_store)
+        f.write(support)
+    cmd = _nvcc + ['-ccbin', _cc[0],
+                   '-arch=sm_'+arch, '-dc',
+                   '-I' + _cupy_include,
+                   '-c', os.path.join(tempdir, 'cupy_cufftXt.cu'),
+                   '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
+    if cb_load:
+        cmd.append('-DHAS_LOAD_CALLBACK')
+    if cb_store:
+        cmd.append('-DHAS_STORE_CALLBACK')
+    p = subprocess.run(cmd + ['-o', obj_dev],
+                       env=os.environ,
+                       stdout=subprocess.PIPE,
+                       stderr=subprocess.PIPE)
+    try:
+        p.check_returncode()
+    except subprocess.CalledProcessError as e:
+        cex = CompileException(
+            str(e) + '\nStderr: ' + e.stderr.decode(), support,
+            os.path.join(tempdir, 'cupy_cufftXt.cu'),
+            cmd[1:], 'nvcc')
+        dump = _get_bool_env_variable(
+            'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+        if dump:
+            cex.dump(sys.stderr)
+        raise cex
 
 
 cpdef get_current_callback_manager():
@@ -112,28 +214,9 @@ cdef class _CallbackManager:
                  ndarray cb_load_aux_arr=None,
                  ndarray cb_store_aux_arr=None):
         # Sanity checks
-        if _is_hip_environment:
-            raise RuntimeError('hipFFT does not support callbacks')
-        if not sys.platform.startswith('linux'):
-            raise RuntimeError('cuFFT callbacks are only available on Linux')
-        if not (sys.maxsize > 2**32):
-            raise RuntimeError('cuFFT callbacks require 64 bit OS')
-        if not cb_load and not cb_store:
-            raise ValueError('need to specify either cb_load or cb_store, '
-                             'or both')
-        if cb_load and 'd_loadCallbackPtr' not in cb_load:
-            raise ValueError('need to specify d_loadCallbackPtr in cb_load')
-        if cb_store and 'd_storeCallbackPtr' not in cb_store:
-            raise ValueError('need to specify d_storeCallbackPtr in cb_store')
         _set_nvcc_path()
-        if _nvcc is None:
-            raise RuntimeError('nvcc is required but not found')
-        if cb_load_aux_arr is not None:
-            if not cb_load:
-                raise ValueError('load callback is not given')
-        if cb_store_aux_arr is not None:
-            if not cb_store:
-                raise ValueError('store callback is not given')
+        _sanity_checks(cb_load, cb_store,
+                       cb_load_aux_arr, cb_store_aux_arr)
 
         self.cb_load = cb_load
         self.cb_store = cb_store
@@ -145,8 +228,6 @@ cdef class _CallbackManager:
         cdef str tempdir
         cdef str obj_host
         cdef str obj_dev
-        cdef str support
-        cdef list cmd
         cdef str mod_name
         cdef str mod_filename
         cdef str cache_dir
@@ -176,76 +257,18 @@ cdef class _CallbackManager:
         if not os.path.isfile(path):
             # Set up temp directory
             tempdir_obj = tempfile.TemporaryDirectory()
-            tempdir = tempdir_obj.name + '/'
+            tempdir = tempdir_obj.name
 
             # Cythonize the Cython code to produce a c++ source file
-            shutil.copyfile(_source_dir + '/cupy_cufft.h',
-                            tempdir + '/cupy_cufft.h')
-            shutil.copyfile(_source_dir + '/cufft.pxd',
-                            tempdir + mod_name + '.pxd')
-            shutil.copyfile(_source_dir + '/cufft.pyx',
-                            tempdir + mod_name + '.pyx')
-            p = subprocess.run(['cython', '-3', '--cplus',
-                                '-E', 'use_hip=0',
-                                '-E', 'CUDA_VERSION=' + _build_ver,
-                                '-E', 'CUPY_CUFFT_STATIC=True',
-                                tempdir + mod_name + '.pyx',
-                                '-o', tempdir + mod_name + '.cpp'],
-                               env=os.environ)
-            p.check_returncode()
+            _cythonize(tempdir, mod_name)
 
             # Compile the Python module
-            obj_host = tempdir + mod_name + '.o'
-            shutil.copyfile(_source_dir + '/cupy_cufftXt.h',
-                            tempdir + '/cupy_cufftXt.h')
-            p = subprocess.run(_cc + [
-                               '-I' + _python_include,
-                               '-I' + _cuda_include,
-                               '-I' + _cupy_include,
-                               '-fPIC', '-O2', '-std=c++11',
-                               '-c', tempdir + mod_name + '.cpp',
-                               '-o', obj_host],
-                               env=os.environ)
-            p.check_returncode()
+            obj_host = os.path.join(tempdir, mod_name + '.o')
+            _mod_compile(tempdir, mod_name, obj_host)
 
             # Dump and compile device code using nvcc
-            global _callback_dev_code
-            if _callback_dev_code is None:
-                with open(_source_dir + '/cupy_cufftXt.cu') as f:
-                    support = _callback_dev_code = f.read()
-            else:
-                support = _callback_dev_code
-            with open(tempdir + '/cupy_cufftXt.cu', 'w') as f:
-                support = string.Template(support).substitute(
-                    dev_load_callback_ker=cb_load,
-                    dev_store_callback_ker=cb_store)
-                f.write(support)
-            obj_dev = tempdir + mod_name + '_dev.o'
-            cmd = _nvcc + ['-ccbin', _cc[0],
-                           '-arch=sm_'+arch, '-dc',
-                           '-I' + _cupy_include,
-                           '-c', tempdir + '/cupy_cufftXt.cu',
-                           '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
-            if self.cb_load:
-                cmd.append('-DHAS_LOAD_CALLBACK')
-            if self.cb_store:
-                cmd.append('-DHAS_STORE_CALLBACK')
-            p = subprocess.run(cmd + ['-o', obj_dev],
-                               env=os.environ,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-            try:
-                p.check_returncode()
-            except subprocess.CalledProcessError as e:
-                cex = CompileException(
-                    str(e) + '\nStderr: ' + e.stderr.decode(), support,
-                    tempdir + '/cupy_cufftXt.cu',
-                    cmd[1:], 'nvcc')
-                dump = _get_bool_env_variable(
-                    'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
-                if dump:
-                    cex.dump(sys.stderr)
-                raise cex
+            obj_dev = os.path.join(tempdir, mod_name + '_dev.o')
+            _nvcc_compile(tempdir, mod_name, cb_load, cb_store, obj_dev, arch)
 
             # Use nvcc to link and generate a shared library, and place it in
             # the disk cache
