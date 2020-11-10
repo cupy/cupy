@@ -113,6 +113,7 @@ class _RuntimeInfo(object):
     nccl_runtime_version = None
     cub_build_version = None
     cutensor_version = None
+    cython_build_version = None
 
     numpy_version = None
     scipy_version = None
@@ -176,6 +177,8 @@ class _RuntimeInfo(object):
         if cutensor is not None:
             self.cutensor_version = cutensor.get_version()
 
+        self.cython_build_version = cupy._util.cython_build_ver
+
         self.numpy_version = numpy.version.full_version
         if scipy is not None:
             self.scipy_version = scipy.version.full_version
@@ -186,6 +189,7 @@ class _RuntimeInfo(object):
             ('CuPy Version', self.cupy_version),
             ('NumPy Version', self.numpy_version),
             ('SciPy Version', self.scipy_version),
+            ('Cython Build Version', self.cython_build_version),
             ('CUDA Root', self.cuda_path),
 
             ('CUDA Build Version', self.cuda_build_version),
