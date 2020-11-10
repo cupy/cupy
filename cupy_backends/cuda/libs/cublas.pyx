@@ -927,8 +927,9 @@ cpdef dgemmBatched(
     with nogil:
         status = cublasDgemmBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            <double*>alpha, <const double**>Aarray, lda, <const double**>Barray,
-            ldb, <double*>beta, <double**>Carray, ldc, batchCount)
+            <double*>alpha, <const double**>Aarray, lda,
+            <const double**>Barray, ldb, <double*>beta,
+            <double**>Carray, ldc, batchCount)
     check_status(status)
 
 
@@ -1115,7 +1116,7 @@ cpdef cgeam(intptr_t handle, int transa, int transb, int m, int n,
         status = cublasCgeam(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n,
             <const cuComplex*>alpha, <const cuComplex*>A, lda,
-            <const cuComplex*>beta,  <const cuComplex*>B, ldb,
+            <const cuComplex*>beta, <const cuComplex*>B, ldb,
             <cuComplex*>C, ldc)
     check_status(status)
 
@@ -1127,7 +1128,7 @@ cpdef zgeam(intptr_t handle, int transa, int transb, int m, int n,
         status = cublasZgeam(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n,
             <const cuDoubleComplex*>alpha, <const cuDoubleComplex*>A, lda,
-            <const cuDoubleComplex*>beta,  <const cuDoubleComplex*>B, ldb,
+            <const cuDoubleComplex*>beta, <const cuDoubleComplex*>B, ldb,
             <cuDoubleComplex*>C, ldc)
     check_status(status)
 
