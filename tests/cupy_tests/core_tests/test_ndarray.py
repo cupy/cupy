@@ -490,19 +490,23 @@ class TestPythonInterface(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_bytes_tobytes_empty(self, xp, dtype):
-        x = xp.empty((3, 4, 5), dtype)
+        x = xp.empty((0,), dtype)
         return bytes(x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_bytes_tobytes_empty2(self, xp, dtype):
-        x = xp.empty((), dtype)
+        x = xp.empty((3, 0, 4), dtype)
         return bytes(x)
 
-    @testing.for_all_dtypes()
+    # The result of bytes(numpy.array(scalar)) is the same as bytes(scalar)
+    # if scalar is of an integer dtype including bool_. It's spec is
+    # bytes(int): bytes object of size given by the parameter initialized with
+    # null bytes.
+    @testing.for_float_dtypes()
     @testing.numpy_cupy_equal()
-    def test_bytes_tobytes_scalar(self, xp, dtype):
-        x = xp.array([3], dtype).item()
+    def test_bytes_tobytes_scalar_array(self, xp, dtype):
+        x = xp.array(3, dtype)
         return bytes(x)
 
 
