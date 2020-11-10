@@ -500,6 +500,8 @@ cpdef ndarray tensordot_core(
         tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
         return out
 
+    one = numpy.array(1, dtype=dtype)
+    zero = numpy.array(1, dtype=dtype)
     handle = device.get_cublas_handle()
     if dtype == 'e':
         use_tensor_core = (_cuda_runtime_version >= 9000 and
@@ -531,16 +533,19 @@ cpdef ndarray tensordot_core(
             c.data.ptr, runtime.CUDA_R_32F, <int>m)
     elif dtype == 'd':
         cublas.dgemm(
-            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
-            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
+            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
+            one.ctypes.data, b.data.ptr, <int>ldb, a.data.ptr, <int>lda,
+            zero.ctypes.data, c.data.ptr, <int>m)
     elif dtype == 'F':
         cublas.cgemm(
-            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
-            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
+            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
+            one.ctypes.data, b.data.ptr, <int>ldb, a.data.ptr, <int>lda,
+            zero.ctypes.data, c.data.ptr, <int>m)
     elif dtype == 'D':
         cublas.zgemm(
-            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
-            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
+            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
+            one.ctypes.data, b.data.ptr, <int>ldb, a.data.ptr, <int>lda,
+            zero.ctypes.data, c.data.ptr, <int>m)
     else:
         raise ValueError('Invalid dtype: %s' % str(dtype))
 
@@ -809,6 +814,8 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
 
     cdef intptr_t handle = device.get_cublas_handle()
 
+    one = numpy.array(1, dtype=dtype)
+    zero = numpy.array(0, dtype=dtype)
     # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
     if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
@@ -819,40 +826,40 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 handle,
                 0,  # transa
                 0,  # transb
-                n, m, ka, 1.0,
+                n, m, ka, one.ctypes.data,
                 a.data.ptr, lda, strideA,
                 b.data.ptr, ldb, strideB,
-                0.0, out_view.data.ptr, ldout, strideC,
+                zero.ctypes.data, out_view.data.ptr, ldout, strideC,
                 batchCount)
         elif dtype == numpy.float64:
             cublas.dgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
-                n, m, ka, 1.0,
+                n, m, ka, one.ctypes.data,
                 a.data.ptr, lda, strideA,
                 b.data.ptr, ldb, strideB,
-                0.0, out_view.data.ptr, ldout, strideC,
+                zero.ctypes.data, out_view.data.ptr, ldout, strideC,
                 batchCount)
         elif dtype == numpy.complex64:
             cublas.cgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
-                n, m, ka, 1,
+                n, m, ka, one.ctypes.data,
                 a.data.ptr, lda, strideA,
                 b.data.ptr, ldb, strideB,
-                0, out_view.data.ptr, ldout, strideC,
+                zero.ctypes.data, out_view.data.ptr, ldout, strideC,
                 batchCount)
         elif dtype == numpy.complex128:
             cublas.zgemmStridedBatched(
                 handle,
                 0,  # transa
                 0,  # transb
-                n, m, ka, 1,
+                n, m, ka, one.ctypes.data,
                 a.data.ptr, lda, strideA,
                 b.data.ptr, ldb, strideB,
-                0, out_view.data.ptr, ldout, strideC,
+                zero.ctypes.data, out_view.data.ptr, ldout, strideC,
                 batchCount)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
@@ -865,37 +872,37 @@ cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
                 handle,
                 0,  # transa
                 0,  # transb
-                n, m, ka, 1.0,
+                n, m, ka, one.ctypes.data,
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
-                0.0, outp.data.ptr, ldout, batchCount)
+                zero.ctypes.data, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.float64:
             cublas.dgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
-                n, m, ka, 1.0,
+                n, m, ka, one.ctypes.data,
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
-                0.0, outp.data.ptr, ldout, batchCount)
+                zero.ctypes.data, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex64:
             cublas.cgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
-                n, m, ka, 1,
+                n, m, ka, one.ctypes.data,
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
-                0, outp.data.ptr, ldout, batchCount)
+                zero.ctypes.data, outp.data.ptr, ldout, batchCount)
         elif dtype == numpy.complex128:
             cublas.zgemmBatched(
                 handle,
                 0,  # transa
                 0,  # transb
-                n, m, ka, 1,
+                n, m, ka, one.ctypes.data,
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
-                0, outp.data.ptr, ldout, batchCount)
+                zero.ctypes.data, outp.data.ptr, ldout, batchCount)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
 
