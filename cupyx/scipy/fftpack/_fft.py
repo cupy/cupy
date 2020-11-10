@@ -406,15 +406,15 @@ def rfft(x, n=None, axis=-1, overwrite_x=False, plan=None):
 
     slice_z[axis] = slice(1)
     slice_f[axis] = slice(1)
-    z[slice_z] = f[slice_f].real
+    z[tuple(slice_z)] = f[tuple(slice_f)].real
 
     slice_z[axis] = slice(1, None, 2)
     slice_f[axis] = slice(1, None)
-    z[slice_z] = f[slice_f].real
+    z[tuple(slice_z)] = f[tuple(slice_f)].real
 
     slice_z[axis] = slice(2, None, 2)
     slice_f[axis] = slice(1, n - f.shape[axis] + 1)
-    z[slice_z] = f[slice_f].imag
+    z[tuple(slice_z)] = f[tuple(slice_f)].imag
 
     return z
 
@@ -457,15 +457,15 @@ def irfft(x, n=None, axis=-1, overwrite_x=False):
 
     slice_x[axis] = slice(1)
     slice_z[axis] = slice(1)
-    z[slice_z].real = x[slice_x]
+    z[tuple(slice_z)].real = x[tuple(slice_x)]
 
     slice_x[axis] = slice(1, m, 2)
     slice_z[axis] = slice(1, m // 2 + 1)
-    z[slice_z].real = x[slice_x]
+    z[tuple(slice_z)].real = x[tuple(slice_x)]
 
     slice_x[axis] = slice(2, m, 2)
     slice_z[axis] = slice(1, (m + 1) // 2)
-    z[slice_z].imag = x[slice_x]
+    z[tuple(slice_z)].imag = x[tuple(slice_x)]
 
     return _fft(z, (n,), (axis,), None, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x)

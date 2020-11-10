@@ -50,13 +50,13 @@ def _cook_shape(a, s, axes, value_type, order='C'):
             if shape[axis] > sz:
                 index = [slice(None)] * a.ndim
                 index[axis] = slice(0, sz)
-                a = a[index]
+                a = a[tuple(index)]
             else:
                 index = [slice(None)] * a.ndim
                 index[axis] = slice(0, shape[axis])
                 shape[axis] = sz
                 z = cupy.zeros(shape, a.dtype.char, order=order)
-                z[index] = a
+                z[tuple(index)] = a
                 a = z
     return a
 
