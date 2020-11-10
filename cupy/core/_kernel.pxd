@@ -134,9 +134,9 @@ cdef class _Ops:
     cpdef _Op guess_routine(
         self, str name, dict cache, list in_args, dtype, _Ops out_ops)
 
-    cdef _Op _guess_routine_from_in_types(self, tuple in_types)
+    cpdef _Op _guess_routine_from_in_types(self, tuple in_types)
 
-    cdef _Op _guess_routine_from_dtype(self, object dtype)
+    cpdef _Op _guess_routine_from_dtype(self, object dtype)
 
 
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,

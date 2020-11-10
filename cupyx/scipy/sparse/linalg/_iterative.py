@@ -1,5 +1,11 @@
 import numpy
+
 import cupy
+from cupy import cublas
+from cupy import cusparse
+from cupy.cuda import device
+from cupy_backends.cuda.libs import cusparse as _cusparse
+from cupyx.scipy.sparse import csr
 
 import scipy
 import scipy.linalg
@@ -44,11 +50,10 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
     if n == 0:
         return cupy.empty_like(b), 0
     b_norm = cupy.linalg.norm(b)
+    if b_norm == 0:
+        return b, 0
     if atol is None:
-        if b_norm == 0:
-            atol = tol
-        else:
-            atol = tol * float(b_norm)
+        atol = tol * float(b_norm)
     else:
         atol = max(float(atol), tol * float(b_norm))
     if x0 is None:
@@ -59,15 +64,7 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         x = x0.astype(A.dtype).ravel()
     if maxiter is None:
         maxiter = n * 10
-
-    def matvec(x): return A @ x
-
-    if M is None:
-        def psolve(x): return x
-    else:
-        def psolve(x): return M @ x
-        if A.shape != M.shape:
-            raise ValueError('matrix and preconditioner have different shapes')
+    matvec, psolve = _make_funcs(A, M)
 
     r = b - matvec(x)
     iters = 0
@@ -75,20 +72,20 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
     while iters < maxiter:
         z = psolve(r)
         rho1 = rho
-        rho = cupy.dot(r.conj(), z)
+        rho = cublas.dotc(r, z)
         if iters == 0:
             p = z
         else:
             beta = rho / rho1
             p = z + beta * p
         q = matvec(p)
-        alpha = rho / cupy.dot(p.conj(), q)
+        alpha = rho / cublas.dotc(p, q)
         x = x + alpha * p
         r = r - alpha * q
         iters += 1
         if callback is not None:
             callback(x)
-        resid = cupy.linalg.norm(r)
+        resid = cublas.nrm2(r)
         if resid <= atol:
             break
 
@@ -219,3 +216,46 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
     if iters == maxiter and not (r_norm <= atol):
         info = iters
     return mx, info
+
+
+def _make_funcs(A, M):
+    matvec = _make_matvec(A)
+    if M is None:
+        def psolve(x): return x
+    else:
+        psolve = _make_matvec(M)
+        if A.shape != M.shape:
+            raise ValueError('matrix and preconditioner have different shapes')
+    return matvec, psolve
+
+
+def _make_matvec(A):
+    if csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
+        handle = device.get_cusparse_handle()
+        op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+        alpha = numpy.array(1.0, A.dtype)
+        beta = numpy.array(0.0, A.dtype)
+        cuda_dtype = cusparse._dtype_to_DataType(A.dtype)
+        alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
+        x = cupy.empty((A.shape[0],), dtype=A.dtype)
+        y = cupy.empty((A.shape[0],), dtype=A.dtype)
+        desc_A = cusparse.SpMatDescriptor.create(A)
+        desc_x = cusparse.DnVecDescriptor.create(x)
+        desc_y = cusparse.DnVecDescriptor.create(y)
+        buff_size = _cusparse.spMV_bufferSize(
+            handle, op_a, alpha.ctypes.data, desc_A.desc, desc_x.desc,
+            beta.ctypes.data, desc_y.desc, cuda_dtype, alg)
+        buff = cupy.empty(buff_size, cupy.int8)
+        del x, desc_x, y, desc_y
+
+        def matvec(x):
+            y = cupy.empty_like(x)
+            desc_x = cusparse.DnVecDescriptor.create(x)
+            desc_y = cusparse.DnVecDescriptor.create(y)
+            _cusparse.spMV(
+                handle, op_a, alpha.ctypes.data, desc_A.desc, desc_x.desc,
+                beta.ctypes.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
+            return y
+    else:
+        def matvec(x): return A @ x
+    return matvec
