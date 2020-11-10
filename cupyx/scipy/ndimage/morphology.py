@@ -268,6 +268,7 @@ def binary_erosion(input, structure=None, iterations=1, mask=None, output=None,
 
     Binary erosion is a mathematical morphology operation used for image
     processing.
+
     Args:
         input(cupy.ndarray): The input binary array_like to be eroded.
             Non-zero (True) elements form the subset to be eroded.
