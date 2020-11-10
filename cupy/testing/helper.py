@@ -706,6 +706,14 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
                            accept_error, sp_name, scipy_name)
 
 
+def _has_ndarray(x):
+    if isinstance(x, (numpy.ndarray, cupy.ndarray)):
+        return True
+    if isinstance(x, (tuple, list)):
+        return any([_has_ndarray(elem) for elem in x])
+    return False
+
+
 def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
     """Decorator that checks NumPy results are equal to CuPy ones.
 
@@ -737,6 +745,11 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
                     cupy_error, numpy_error,
                     accept_error=False)
                 return
+
+            if _has_ndarray(cupy_result) or _has_ndarray(numpy_result):
+                raise AssertionError(
+                    'ndarrays are not allowed as return values. '
+                    'Please use `testing.numpy_cupy_array_equal` instead.')
 
             if cupy_result != numpy_result:
                 message = '''Results are not equal:
