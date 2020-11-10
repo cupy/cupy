@@ -127,7 +127,7 @@ def isshape(x, nonneg=False):
     """
     try:
         # assume dimensions are (M,N)
-        (M,N) = x
+        (M, N) = x
     except Exception:
         return False
     else:
@@ -136,6 +136,7 @@ def isshape(x, nonneg=False):
                 if not nonneg or (M >= 0 and N >= 0):
                     return True
         return False
+
 
 def isintlike(x):
     """Is x appropriate as an index into a sparse matrix? Returns True
@@ -157,4 +158,3 @@ def isintlike(x):
                           DeprecationWarning)
         return loose_int
     return True
-

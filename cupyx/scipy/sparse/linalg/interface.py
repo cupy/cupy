@@ -182,7 +182,7 @@ class LinearOperator(object):
         define matrix multiplication (though in a very suboptimal way).
         """
 
-        return cp.hstack([self.matvec(col.reshape(-1,1)) for col in X.T])
+        return cp.hstack([self.matvec(col.reshape(-1, 1)) for col in X.T])
 
     def _matvec(self, x):
         """Default matrix-vector multiplication handler.
@@ -222,9 +222,9 @@ class LinearOperator(object):
 
         x = cp.asanyarray(x)
 
-        M,N = self.shape
+        M, N = self.shape
 
-        if x.shape != (N,) and x.shape != (N,1):
+        if x.shape != (N,) and x.shape != (N, 1):
             raise ValueError('dimension mismatch')
 
         y = self._matvec(x)
@@ -234,7 +234,7 @@ class LinearOperator(object):
         if x.ndim == 1:
             y = y.reshape(M)
         elif x.ndim == 2:
-            y = y.reshape(M,1)
+            y = y.reshape(M, 1)
         else:
             raise ValueError('invalid shape returned by user-defined matvec()')
 
@@ -266,9 +266,9 @@ class LinearOperator(object):
 
         x = cp.asanyarray(x)
 
-        M,N = self.shape
+        M, N = self.shape
 
-        if x.shape != (M,) and x.shape != (M,1):
+        if x.shape != (M,) and x.shape != (M, 1):
             raise ValueError('dimension mismatch')
 
         y = self._rmatvec(x)
@@ -278,9 +278,10 @@ class LinearOperator(object):
         if x.ndim == 1:
             y = y.reshape(N)
         elif x.ndim == 2:
-            y = y.reshape(N,1)
+            y = y.reshape(N, 1)
         else:
-            raise ValueError('invalid shape returned by user-defined rmatvec()')
+            raise ValueError(
+                'invalid shape returned by user-defined rmatvec()')
 
         return y
 
@@ -446,7 +447,7 @@ class LinearOperator(object):
         return self.__add__(-x)
 
     def __repr__(self):
-        M,N = self.shape
+        M, N = self.shape
         if self.dtype is None:
             dt = 'unspecified dtype'
         else:
@@ -539,9 +540,11 @@ class _CustomLinearOperator(LinearOperator):
 
 class _AdjointLinearOperator(LinearOperator):
     """Adjoint of arbitrary Linear Operator"""
+
     def __init__(self, A):
         shape = (A.shape[1], A.shape[0])
-        super(_AdjointLinearOperator, self).__init__(dtype=A.dtype, shape=shape)
+        super(_AdjointLinearOperator, self).__init__(
+            dtype=A.dtype, shape=shape)
         self.A = A
         self.args = (A,)
 
@@ -560,9 +563,11 @@ class _AdjointLinearOperator(LinearOperator):
 
 class _TransposedLinearOperator(LinearOperator):
     """Transposition of arbitrary Linear Operator"""
+
     def __init__(self, A):
         shape = (A.shape[1], A.shape[0])
-        super(_TransposedLinearOperator, self).__init__(dtype=A.dtype, shape=shape)
+        super(_TransposedLinearOperator, self).__init__(
+            dtype=A.dtype, shape=shape)
         self.A = A
         self.args = (A,)
 
@@ -723,6 +728,7 @@ class MatrixLinearOperator(LinearOperator):
         if self.__adj is None:
             self.__adj = _AdjointMatrixOperator(self)
         return self.__adj
+
 
 class _AdjointMatrixOperator(MatrixLinearOperator):
     def __init__(self, adjoint):
