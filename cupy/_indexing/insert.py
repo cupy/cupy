@@ -195,6 +195,7 @@ def diag_indices(n, ndim=2):
     Examples
     --------
     Create a set of indices to access the diagonal of a (4, 4) array:
+
     >>> dig = cupy.diag_indices(4)
     >>> dig
     (array([0, 1, 2, 3]), array([0, 1, 2, 3]))
@@ -212,10 +213,13 @@ def diag_indices(n, ndim=2):
            [ 12,  13,  14, 100]])
 
     Create indices to manipulate a 3-D array:
+
     >>> d3 = cupy.diag_indices(2, 3)
     >>> d3
     (array([0, 1]), array([0, 1]), array([0, 1]))
+
     And use it to set the diagonal of an array of zeros to 1:
+
     >>> a = cupy.zeros((2, 2, 2), dtype=int)
     >>> a[d3] = 1
     >>> a
