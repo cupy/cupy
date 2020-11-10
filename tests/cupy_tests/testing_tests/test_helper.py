@@ -217,6 +217,54 @@ class TestShapedRandomBool(unittest.TestCase):
         self.assertTrue(4000 < self.xp.sum(a) < 6000)
 
 
+class TestAssertFunctionIsCalled(unittest.TestCase):
+
+    def test_patch_ndarray(self):
+        orig = cupy.ndarray
+        with testing.AssertFunctionIsCalled('cupy.ndarray'):
+            a = cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+        assert not isinstance(a, cupy.ndarray)
+
+    def test_spy_ndarray(self):
+        orig = cupy.ndarray
+        with testing.AssertFunctionIsCalled(
+                'cupy.ndarray', wraps=cupy.ndarray):
+            a = cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+        assert isinstance(a, cupy.ndarray)
+
+    def test_fail_not_called(self):
+        orig = cupy.ndarray
+        with pytest.raises(AssertionError):
+            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+                pass
+        assert cupy.ndarray is orig
+
+    def test_fail_called_twice(self):
+        orig = cupy.ndarray
+        with pytest.raises(AssertionError):
+            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+                cupy.ndarray((2, 3), numpy.float32)
+                cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+
+    def test_times_called(self):
+        orig = cupy.ndarray
+        with testing.AssertFunctionIsCalled('cupy.ndarray', times_called=2):
+            cupy.ndarray((2, 3), numpy.float32)
+            cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+
+    def test_inner_error(self):
+        orig = cupy.ndarray
+        with pytest.raises(numpy.AxisError):
+            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+                cupy.ndarray((2, 3), numpy.float32)
+                raise numpy.AxisError('foo')
+        assert cupy.ndarray is orig
+
+
 @testing.parameterize(*testing.product({
     'framework': ['unittest', 'pytest']
 }))
