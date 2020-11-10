@@ -1414,31 +1414,21 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
         assert self.cupy_func(*self.args) == self.numpy_func(*self.args)
 
 
-class AssertFunctionIsCalled:
+@contextlib.contextmanager
+def assert_function_is_called(*args, times_called=1, **kwargs):
+    """A handy wrapper for unittest.mock to check if a function is called.
 
-    def __init__(self, mock_mod, **kwargs):
-        """A handy wrapper for unittest.mock to check if a function is called.
+    Args:
+        *args: Arguments of `mock.patch`.
+        times_called (int): The number of times the function should be
+            called. Default is ``1``.
+        **kwargs: Keyword arguments of `mock.patch`.
 
-        This class should be used as a context manager.
+    """
+    with mock.patch(*args, **kwargs) as handle:
+        yield
+        assert handle.call_count == times_called
 
-        Args:
-            mock_mod (str): the function to be mocked.
-            times_called (int): the number of times the function should be
-                called. Default is ``1``.
 
-        """
-
-        self.patch = mock.patch(mock_mod, **kwargs)
-
-        times_called = kwargs.get('times_called')
-        self.times_called = times_called if times_called is not None else 1
-
-    def __enter__(self):
-        self.handle = self.patch.__enter__()
-        assert self.handle.call_count == 0
-        return self.handle
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        assert self.handle.call_count == int(self.times_called)
-        del self.handle
-        return self.patch.__exit__(exc_type, exc_value, traceback)
+# TODO(kataoka): remove this alias
+AssertFunctionIsCalled = assert_function_is_called
