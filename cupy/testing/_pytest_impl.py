@@ -33,8 +33,9 @@ if is_available():
 
         @pytest.fixture(autouse=True)
         def _cupy_testing_parameterize(self, _cupy_testing_param):
-            assert not self.__dict__
-            self.__dict__ = _cupy_testing_param
+            assert not self.__dict__, \
+                "There should not be another hack with instance attribute."
+            self.__dict__.update(_cupy_testing_param)
 
 
 def parameterize(*params):
@@ -53,11 +54,7 @@ def parameterize(*params):
         assert not issubclass(cls, unittest.TestCase)
         if issubclass(cls, _TestingParameterizeMixin):
             raise RuntimeError("do not `@testing.parameterize` twice")
-        cls = type(
-            cls.__name__, (_TestingParameterizeMixin, cls),
-            # `_TestingParameterizeMixin` will replace this empty dict
-            {},
-        )
+        cls = type(cls.__name__, (_TestingParameterizeMixin, cls), {})
         cls = pytest.mark.parametrize("_cupy_testing_param", params)(cls)
         return cls
     return f

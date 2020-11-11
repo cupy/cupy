@@ -122,6 +122,24 @@ class TestParameterizePytestImpl:
             ("::TestA::test_a[_param_1_{b=2}]", "PASSED"),
         ]
     ),
+    (  # do not copy each value but do not share the param dict
+        textwrap.dedent("""\
+        import numpy
+        @testing.parameterize({'a': numpy.array(1)}, {'a': 1})
+        class TestA:
+            def test_first(self):
+                assert self.a == 1
+                self.a += 2
+            def test_second(self):
+                assert self.a == 1
+                self.a += 2
+        """), [
+            ("::TestA::test_first[_param_0_{a=array(1)}]", "PASSED"),
+            ("::TestA::test_first[_param_1_{a=1}]", "PASSED"),
+            ("::TestA::test_second[_param_0_{a=array(1)}]", "FAILED"),
+            ("::TestA::test_second[_param_1_{a=1}]", "PASSED"),
+        ]
+    ),
     (  # multiple params and class attr
         textwrap.dedent("""\
         @testing.parameterize({'a': 1, 'b': 4}, {'a': 2, 'b': 3})
