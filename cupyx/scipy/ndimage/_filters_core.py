@@ -143,7 +143,35 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     return output
 
 
-math_constants_preamble = '#include <math_constants.h>\n'
+includes = r'''
+#include <math_constants.h>
+#include <type_traits.h>  // let Jitify handle this
+'''
+
+_CAST_FUNCTION = """
+// Implements a casting function to make it compatible with scipy
+// Use like cast<to_type>(value)
+template<> struct std::is_floating_point<float16> : std::true_type {};
+template<> struct std::is_signed<float16> : std::true_type {};
+template<class T>
+struct std::is_signed<complex<T>> : std::is_signed<T> {};
+
+template <class B, class A>
+__device__ __forceinline__
+typename std::enable_if<(!std::is_floating_point<A>::value
+                         || std::is_signed<B>::value), B>::type
+cast(A a) { return (B)a; }
+
+template <class B, class A>
+__device__ __forceinline__
+typename std::enable_if<(std::is_floating_point<A>::value
+                         && (!is_signed<B>::value)), B>::type
+cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
+
+template <class T>
+__device__ __forceinline__ bool nonzero(T x) { return x!=0; }
+
+"""
 
 
 def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
@@ -254,7 +282,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         name += '_with_structure'
     if has_mask:
         name += '_with_mask'
-    preamble = math_constants_preamble + '#include <type_traits>\n' + preamble
+    preamble = includes + _CAST_FUNCTION + preamble
     options += ('--std=c++11', '-DCUPY_USE_JITIFY')
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
