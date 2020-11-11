@@ -1,4 +1,4 @@
-import cupy as cp
+import cupy
 
 import operator
 import warnings
@@ -132,7 +132,7 @@ def isshape(x, nonneg=False):
         return False
     else:
         if isintlike(M) and isintlike(N):
-            if cp.ndim(M) == 0 and cp.ndim(N) == 0:
+            if cupy.ndim(M) == 0 and cupy.ndim(N) == 0:
                 if not nonneg or (M >= 0 and N >= 0):
                     return True
         return False
@@ -144,7 +144,7 @@ def isintlike(x):
     """
     # Fast-path check to eliminate non-scalar values. operator.index would
     # catch this case too, but the exception catching is slow.
-    if cp.ndim(x) != 0:
+    if cupy.ndim(x) != 0:
         return False
     try:
         operator.index(x)

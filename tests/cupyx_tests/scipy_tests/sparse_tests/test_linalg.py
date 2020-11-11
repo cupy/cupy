@@ -555,7 +555,8 @@ class TestLinearOperator(unittest.TestCase):
         return a
 
     @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp', contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
     def test_sparse(self, dtype, xp, sp):
         a = self._make_matrix(dtype, xp)
         a = sp.csr_matrix(a)
