@@ -348,3 +348,92 @@ class TestGemmAndGeam(unittest.TestCase):
             beta = self.mode.array(beta)
         cublas.geam(self.transa, self.transb, alpha, a, beta, b, c)
         cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(9, 10), (10, 9)],
+    'side': ['L', 'R'],
+    'ordera': ['C', 'F'],
+    'orderc': ['C', 'F'],
+}))
+@attr.gpu
+class TestGdmm(unittest.TestCase):
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _setup(self, dtype, xdim=1):
+        self.dtype = numpy.dtype(dtype)
+        self.tol = self._tol[self.dtype.char.lower()]
+        self.a = testing.shaped_random(self.shape, cupy, dtype=dtype,
+                                       order=self.ordera, scale=1.0)
+        if self.side == 'L':
+            xlen = self.shape[0]
+        elif self.side == 'R':
+            xlen = self.shape[1]
+        if xdim == 0:
+            self.x = cupy.array(1.1, dtype=dtype)
+        elif xdim == 1:
+            self.x = testing.shaped_random(
+                (xlen,), cupy, dtype=dtype, scale=1.0)
+        elif xdim == 2:
+            self.x = testing.shaped_random(
+                (xlen, xlen), cupy, dtype=dtype, scale=1.0)
+
+    @testing.for_dtypes('fdFD')
+    def test_gdmm(self, dtype):
+        self._setup(dtype)
+        if self.side == 'L':
+            ref = cupy.diag(self.x) @ self.a
+        elif self.side == 'R':
+            ref = self.a @ cupy.diag(self.x)
+        c = cublas.dgmm(self.side, self.a, self.x)
+        cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_gdmm_out(self, dtype):
+        self._setup(dtype)
+        if self.side == 'L':
+            ref = cupy.diag(self.x) @ self.a
+        elif self.side == 'R':
+            ref = self.a @ cupy.diag(self.x)
+        c = cupy.empty(self.shape, order=self.orderc, dtype=dtype)
+        cublas.dgmm(self.side, self.a, self.x, out=c)
+        cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_gdmm_inplace(self, dtype):
+        self._setup(dtype)
+        if self.side == 'L':
+            ref = cupy.diag(self.x) @ self.a
+        elif self.side == 'R':
+            ref = self.a @ cupy.diag(self.x)
+        cublas.dgmm(self.side, self.a, self.x, out=self.a)
+        cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_gdmm_incx_minus_one(self, dtype):
+        self._setup(dtype)
+        if self.side == 'L':
+            ref = cupy.diag(self.x[::-1]) @ self.a
+        elif self.side == 'R':
+            ref = self.a @ cupy.diag(self.x[::-1])
+        c = cublas.dgmm(self.side, self.a, self.x, incx=-1)
+        cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_gdmm_x_scalar(self, dtype):
+        self._setup(dtype, xdim=0)
+        ref = self.x * self.a
+        c = cublas.dgmm(self.side, self.a, self.x, incx=0)
+        cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_gdmm_x_matrix(self, dtype):
+        self._setup(dtype, xdim=2)
+        if self.side == 'L':
+            ref = cupy.diag(cupy.diag(self.x)) @ self.a
+            incx = self.shape[0] + 1
+        elif self.side == 'R':
+            ref = self.a @ cupy.diag(cupy.diag(self.x))
+            incx = self.shape[1] + 1
+        c = cublas.dgmm(self.side, self.a, self.x, incx=incx)
+        cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)

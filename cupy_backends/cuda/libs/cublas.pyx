@@ -245,17 +245,18 @@ cdef extern from '../cupy_cublas.h' nogil:
         const cuDoubleComplex* beta, const cuDoubleComplex* B, int ldb,
         cuDoubleComplex* C, int ldc)
     int cublasSdgmm(
-        Handle handle, SideMode mode, int m, int n, float* A, int lda,
-        float* x, int incx, float* C, int ldc)
+        Handle handle, SideMode mode, int m, int n, const float* A, int lda,
+        const float* x, int incx, float* C, int ldc)
     int cublasDdgmm(
-        Handle handle, SideMode mode, int m, int n, double* A, int lda,
-        double* x, int incx, double* C, int ldc)
+        Handle handle, SideMode mode, int m, int n, const double* A, int lda,
+        const double* x, int incx, double* C, int ldc)
     int cublasCdgmm(
-        Handle handle, SideMode mode, int m, int n, cuComplex* A, int lda,
-        cuComplex* x, int incx, cuComplex* C, int ldc)
+        Handle handle, SideMode mode, int m, int n, const cuComplex* A,
+        int lda, const cuComplex* x, int incx, cuComplex* C, int ldc)
     int cublasZdgmm(
-        Handle handle, SideMode mode, int m, int n, cuDoubleComplex* A,
-        int lda, cuDoubleComplex* x, int incx, cuDoubleComplex* C, int ldc)
+        Handle handle, SideMode mode, int m, int n, const cuDoubleComplex* A,
+        int lda, const cuDoubleComplex* x, int incx, cuDoubleComplex* C,
+        int ldc)
     int cublasSgemmEx(
         Handle handle, Operation transa,
         Operation transb, int m, int n, int k,
@@ -1138,8 +1139,8 @@ cpdef sdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
     _setStream(handle)
     with nogil:
         status = cublasSdgmm(
-            <Handle>handle, <SideMode>mode, m, n, <float*>A, lda,
-            <float*>x, incx, <float*>C, ldc)
+            <Handle>handle, <SideMode>mode, m, n, <const float*>A, lda,
+            <const float*>x, incx, <float*>C, ldc)
     check_status(status)
 
 cpdef ddgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
@@ -1147,8 +1148,8 @@ cpdef ddgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
     _setStream(handle)
     with nogil:
         status = cublasDdgmm(
-            <Handle>handle, <SideMode>mode, m, n, <double*>A, lda,
-            <double*>x, incx, <double*>C, ldc)
+            <Handle>handle, <SideMode>mode, m, n, <const double*>A, lda,
+            <const double*>x, incx, <double*>C, ldc)
     check_status(status)
 
 cpdef cdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
@@ -1156,8 +1157,8 @@ cpdef cdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
     _setStream(handle)
     with nogil:
         status = cublasCdgmm(
-            <Handle>handle, <SideMode>mode, m, n, <cuComplex*>A, lda,
-            <cuComplex*>x, incx, <cuComplex*>C, ldc)
+            <Handle>handle, <SideMode>mode, m, n, <const cuComplex*>A, lda,
+            <const cuComplex*>x, incx, <cuComplex*>C, ldc)
     check_status(status)
 
 cpdef zdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
@@ -1165,8 +1166,8 @@ cpdef zdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
     _setStream(handle)
     with nogil:
         status = cublasZdgmm(
-            <Handle>handle, <SideMode>mode, m, n, <cuDoubleComplex*>A, lda,
-            <cuDoubleComplex*>x, incx, <cuDoubleComplex*>C, ldc)
+            <Handle>handle, <SideMode>mode, m, n, <const cuDoubleComplex*>A,
+            lda, <const cuDoubleComplex*>x, incx, <cuDoubleComplex*>C, ldc)
     check_status(status)
 
 
