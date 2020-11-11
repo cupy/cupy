@@ -624,9 +624,9 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((10,), xp, dtype, 100)
         kth = 2
         idx = self.argpartition(a, kth)
-        self.assertTrue((a[idx[:kth]] < a[idx[kth]]).all())
-        self.assertTrue((a[idx[kth]] < a[idx[kth + 1:]]).all())
-        return idx[kth]
+        self.assertTrue((a[idx[:kth]] <= a[idx[kth]]).all())
+        self.assertTrue((a[idx[kth]] <= a[idx[kth + 1:]]).all())
+        return a[idx[kth]]
 
     # TODO(leofang): test all dtypes -- this workaround needs to be kept,
     # likely due to #3287? Need investigation.
