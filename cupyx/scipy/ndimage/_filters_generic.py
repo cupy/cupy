@@ -247,10 +247,9 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
     name = 'generic1d_{}_{}_{}'.format(length, filter_size, rk.name)
     code = '''#include "cupy/carray.cuh"
 #include "cupy/complex.cuh"
+#include <type_traits>
 
 namespace raw_kernel {{\n{rk_code}\n}}
-
-{CAST}
 
 typedef unsigned char byte;
 typedef {in_ctype} X;
@@ -301,6 +300,6 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
 }}'''.format(n_lines=n_lines, length=length, in_length=in_length, start=start,
              in_ctype=in_ctype, out_ctype=out_ctype, int_type=int_type,
              boundary_early=boundary_early, boundary=boundary,
-             name=name, rk_name=rk.name, rk_code=rk.code,
-             CAST=_filters_core._CAST_FUNCTION)
-    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options)
+             name=name, rk_name=rk.name, rk_code=rk.code,)
+    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options,
+                          jitify=True)
