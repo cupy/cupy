@@ -117,8 +117,7 @@ def parameterize(*params):
 
     """
     def f(cls):
-        if (isinstance(cls, _bundle._ParameterizedTestCaseBundle)
-                or issubclass(cls, unittest.TestCase)):
+        if issubclass(cls, unittest.TestCase):
             deco = _bundle.make_decorator(
                 lambda base: _parameterize_test_case_generator(base, params))
         else:
