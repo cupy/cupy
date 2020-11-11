@@ -144,8 +144,8 @@ def _call_kernel(kernel, input, weights, output, structure=None,
 
 
 includes = r'''
+#include <type_traits>  // let Jitify handle this
 #include <math_constants.h>
-#include <type_traits.h>  // let Jitify handle this
 '''
 
 _CAST_FUNCTION = """
@@ -165,7 +165,7 @@ cast(A a) { return (B)a; }
 template <class B, class A>
 __device__ __forceinline__
 typename std::enable_if<(std::is_floating_point<A>::value
-                         && (!is_signed<B>::value)), B>::type
+                         && (!std::is_signed<B>::value)), B>::type
 cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
 
 template <class T>
