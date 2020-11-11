@@ -597,7 +597,7 @@ def _decide_ld_and_trans(a, trans):
     return ld, trans
 
 
-def _change_order(a, lda):
+def _change_order_if_necessary(a, lda):
     if lda is None:
         lda = a.shape[0]
         if not a._f_contiguous:
@@ -674,13 +674,90 @@ def gemm(transa, transb, alpha, a, b, beta, c):
                  b.data.ptr, ldb, a.data.ptr, lda, beta_ptr, c.data.ptr, n)
             cublas.setPointerMode(handle, orig_mode)
             return
-    a, lda = _change_order(a, lda)
-    b, ldb = _change_order(b, ldb)
+    a, lda = _change_order_if_necessary(a, lda)
+    b, ldb = _change_order_if_necessary(b, ldb)
     cc = c
     if not c._f_contiguous:
         cc = c.copy(order='F')
     func(handle, transa, transb, m, n, k, alpha_ptr, a.data.ptr, lda,
          b.data.ptr, ldb, beta_ptr, cc.data.ptr, m)
+    cublas.setPointerMode(handle, orig_mode)
+    if not c._f_contiguous:
+        c[...] = cc
+
+
+def geam(transa, transb, alpha, a, beta, b, c):
+    """Computes c = alpha * op(a) + beta * op(b)
+
+    op(a) = a if transa is 'N', op(a) = a.T if transa is 'T',
+    op(a) = a.T.conj() if transa is 'H'.
+    op(b) = b if transb is 'N', op(b) = b.T if transb is 'T',
+    op(b) = b.T.conj() if transb is 'H'.
+
+    Note: c will be updated.
+    """
+    assert a.ndim == b.ndim == c.ndim == 2
+    assert a.dtype == b.dtype == c.dtype
+    dtype = a.dtype.char
+    if dtype == 'f':
+        func = cublas.sgeam
+    elif dtype == 'd':
+        func = cublas.dgeam
+    elif dtype == 'F':
+        func = cublas.cgeam
+    elif dtype == 'D':
+        func = cublas.zgeam
+    else:
+        raise TypeError('invalid dtype')
+
+    transa = _trans_to_cublas_op(transa)
+    transb = _trans_to_cublas_op(transb)
+    m, n = c.shape
+    if transa == cublas.CUBLAS_OP_N:
+        assert a.shape == (m, n)
+    else:
+        assert a.shape == (n, m)
+    if transb == cublas.CUBLAS_OP_N:
+        assert b.shape == (m, n)
+    else:
+        assert b.shape == (n, m)
+
+    alpha, alpha_ptr = _get_scalar_ptr(alpha, a.dtype)
+    beta, beta_ptr = _get_scalar_ptr(beta, a.dtype)
+    handle = device.get_cublas_handle()
+    orig_mode = cublas.getPointerMode(handle)
+    if isinstance(alpha, cupy.ndarray) or isinstance(beta, cupy.ndarray):
+        if not isinstance(alpha, cupy.ndarray):
+            alpha = cupy.array(alpha)
+            alpha_ptr = alpha.data.ptr
+        if not isinstance(beta, cupy.ndarray):
+            beta = cupy.array(beta)
+            beta_ptr = beta.data.ptr
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_DEVICE)
+    else:
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
+
+    lda, transa = _decide_ld_and_trans(a, transa)
+    ldb, transb = _decide_ld_and_trans(b, transb)
+    if not (lda is None or ldb is None):
+        if c._f_contiguous:
+            func(handle, transa, transb, m, n, alpha_ptr,
+                 a.data.ptr, lda, beta_ptr, b.data.ptr, ldb, c.data.ptr, m)
+            cublas.setPointerMode(handle, orig_mode)
+            return
+        elif c._c_contiguous:
+            # Computes c.T = alpha * a.T + beta * b.T
+            func(handle, 1 - transa, 1 - transb, n, m, alpha_ptr,
+                 a.data.ptr, lda, beta_ptr, b.data.ptr, ldb, c.data.ptr, n)
+            cublas.setPointerMode(handle, orig_mode)
+            return
+    a, lda = _change_order_if_necessary(a, lda)
+    b, ldb = _change_order_if_necessary(b, ldb)
+    cc = c
+    if not c._f_contiguous:
+        cc = c.copy(order='F')
+    func(handle, transa, transb, m, n, alpha_ptr, a.data.ptr, lda,
+         beta_ptr, b.data.ptr, ldb, cc.data.ptr, m)
     cublas.setPointerMode(handle, orig_mode)
     if not c._f_contiguous:
         c[...] = cc

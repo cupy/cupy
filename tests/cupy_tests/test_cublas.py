@@ -287,7 +287,7 @@ class TestGer(unittest.TestCase):
     'mode': [None, numpy, cupy],
 }))
 @attr.gpu
-class TestGemm(unittest.TestCase):
+class TestGemmAndGeam(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
     def _make_matrix(self, m, n, trans, order, dtype):
@@ -325,4 +325,26 @@ class TestGemm(unittest.TestCase):
             alpha = self.mode.array(alpha)
             beta = self.mode.array(beta)
         cublas.gemm(self.transa, self.transb, alpha, a, b, beta, c)
+        cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_geam(self, dtype):
+        dtype = numpy.dtype(dtype)
+        tol = self._tol[dtype.char.lower()]
+        m, n, _ = self.mnk
+        a = self._make_matrix(m, n, self.transa, self.ordera, dtype)
+        b = self._make_matrix(m, n, self.transb, self.orderb, dtype)
+        c = self._make_matrix(m, n, 'N', self.orderc, dtype)
+        alpha = 0.9
+        beta = 0.8
+        if dtype.char in 'FD':
+            alpha = alpha - 1j * 0.7
+            beta = beta - 1j * 0.6
+        aa = self._trans_matrix(a, self.transa)
+        bb = self._trans_matrix(b, self.transb)
+        ref = alpha * aa + beta * bb
+        if self.mode is not None:
+            alpha = self.mode.array(alpha)
+            beta = self.mode.array(beta)
+        cublas.geam(self.transa, self.transb, alpha, a, beta, b, c)
         cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
