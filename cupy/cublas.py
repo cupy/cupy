@@ -572,3 +572,115 @@ def gerc(alpha, x, y, a):
         func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
         a[...] = aa
     cublas.setPointerMode(handle, orig_mode)
+
+
+def _trans_to_cublas_op(trans):
+    if trans == 'N' or trans == cublas.CUBLAS_OP_N:
+        trans = cublas.CUBLAS_OP_N
+    elif trans == 'T' or trans == cublas.CUBLAS_OP_T:
+        trans = cublas.CUBLAS_OP_T
+    elif trans == 'H' or trans == cublas.CUBLAS_OP_C:
+        trans = cublas.CUBLAS_OP_C
+    else:
+        raise TypeError('invalid trans (actual: {})'.fromat(trans))
+    return trans
+
+
+def _decide_ld_and_trans(a, trans):
+    ld = None
+    if trans in (cublas.CUBLAS_OP_N, cublas.CUBLAS_OP_T):
+        if a._f_contiguous:
+            ld = a.shape[0]
+        elif a._c_contiguous:
+            ld = a.shape[1]
+            trans = 1 - trans
+    return ld, trans
+
+
+def _change_order(a, lda):
+    if lda is None:
+        lda = a.shape[0]
+        if not a._f_contiguous:
+            a = a.copy(order='F')
+    return a, lda
+
+
+def gemm(transa, transb, alpha, a, b, beta, c):
+    """Computes c = alpha * op(a) @ op(b) + beta * c
+
+    op(a) = a if transa is 'N', op(a) = a.T if transa is 'T',
+    op(a) = a.T.conj() if transa is 'H'.
+    op(b) = b if transb is 'N', op(b) = b.T if transb is 'T',
+    op(b) = b.T.conj() if transb is 'H'.
+
+    Note: c will be updated.
+    """
+    assert a.ndim == b.ndim == c.ndim == 2
+    assert a.dtype == b.dtype == c.dtype
+    dtype = a.dtype.char
+    if dtype == 'f':
+        func = cublas.sgemm
+    elif dtype == 'd':
+        func = cublas.dgemm
+    elif dtype == 'F':
+        func = cublas.cgemm
+    elif dtype == 'D':
+        func = cublas.zgemm
+    else:
+        raise TypeError('invalid dtype')
+
+    transa = _trans_to_cublas_op(transa)
+    transb = _trans_to_cublas_op(transb)
+    m, n = c.shape
+    if transa == cublas.CUBLAS_OP_N:
+        assert a.shape[0] == m
+        k = a.shape[1]
+    else:
+        assert a.shape[1] == m
+        k = a.shape[0]
+    if transb == cublas.CUBLAS_OP_N:
+        assert b.shape[1] == n
+        assert b.shape[0] == k
+    else:
+        assert b.shape[0] == n
+        assert b.shape[1] == k
+
+    alpha, alpha_ptr = _get_scalar_ptr(alpha, a.dtype)
+    beta, beta_ptr = _get_scalar_ptr(beta, a.dtype)
+    handle = device.get_cublas_handle()
+    orig_mode = cublas.getPointerMode(handle)
+    if isinstance(alpha, cupy.ndarray) or isinstance(beta, cupy.ndarray):
+        if not isinstance(alpha, cupy.ndarray):
+            alpha = cupy.array(alpha)
+            alpha_ptr = alpha.data.ptr
+        if not isinstance(beta, cupy.ndarray):
+            beta = cupy.array(beta)
+            beta_ptr = beta.data.ptr
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_DEVICE)
+    else:
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
+
+    lda, transa = _decide_ld_and_trans(a, transa)
+    ldb, transb = _decide_ld_and_trans(b, transb)
+    if not (lda is None or ldb is None):
+        if c._f_contiguous:
+            func(handle, transa, transb, m, n, k, alpha_ptr,
+                 a.data.ptr, lda, b.data.ptr, ldb, beta_ptr, c.data.ptr, m)
+            cublas.setPointerMode(handle, orig_mode)
+            return
+        elif c._c_contiguous:
+            # Computes c.T = alpha * b.T @ a.T + beta * c.T
+            func(handle, 1 - transb, 1 - transa, n, m, k, alpha_ptr,
+                 b.data.ptr, ldb, a.data.ptr, lda, beta_ptr, c.data.ptr, n)
+            cublas.setPointerMode(handle, orig_mode)
+            return
+    a, lda = _change_order(a, lda)
+    b, ldb = _change_order(b, ldb)
+    cc = c
+    if not c._f_contiguous:
+        cc = c.copy(order='F')
+    func(handle, transa, transb, m, n, k, alpha_ptr, a.data.ptr, lda,
+         b.data.ptr, ldb, beta_ptr, cc.data.ptr, m)
+    cublas.setPointerMode(handle, orig_mode)
+    if not c._f_contiguous:
+        c[...] = cc

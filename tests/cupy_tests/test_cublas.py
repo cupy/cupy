@@ -275,3 +275,54 @@ class TestGer(unittest.TestCase):
             self.alpha = self.mode.array(self.alpha)
         cublas.gerc(self.alpha, self.x, self.y, self.a)
         cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
+
+
+@testing.parameterize(*testing.product({
+    'mnk': [(8, 9, 10), (10, 9, 8)],
+    'transa': ['N', 'T', 'H'],
+    'transb': ['N', 'T', 'H'],
+    'ordera': ['C', 'F'],
+    'orderb': ['C', 'F'],
+    'orderc': ['C', 'F'],
+    'mode': [None, numpy, cupy],
+}))
+@attr.gpu
+class TestGemm(unittest.TestCase):
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, m, n, trans, order, dtype):
+        if trans == 'N':
+            shape = (m, n)
+        else:
+            shape = (n, m)
+        return testing.shaped_random(shape, cupy, dtype=dtype, order=order,
+                                     scale=1.0)
+
+    def _trans_matrix(self, a, trans):
+        if trans == 'T':
+            a = a.T
+        elif trans == 'H':
+            a = a.T.conj()
+        return a
+
+    @testing.for_dtypes('fdFD')
+    def test_gemm(self, dtype):
+        dtype = numpy.dtype(dtype)
+        tol = self._tol[dtype.char.lower()]
+        m, n, k = self.mnk
+        a = self._make_matrix(m, k, self.transa, self.ordera, dtype)
+        b = self._make_matrix(k, n, self.transb, self.orderb, dtype)
+        c = self._make_matrix(m, n, 'N', self.orderc, dtype)
+        alpha = 0.9
+        beta = 0.8
+        if dtype.char in 'FD':
+            alpha = alpha - 1j * 0.7
+            beta = beta - 1j * 0.6
+        aa = self._trans_matrix(a, self.transa)
+        bb = self._trans_matrix(b, self.transb)
+        ref = alpha * aa.dot(bb) + beta * c
+        if self.mode is not None:
+            alpha = self.mode.array(alpha)
+            beta = self.mode.array(beta)
+        cublas.gemm(self.transa, self.transb, alpha, a, b, beta, c)
+        cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
