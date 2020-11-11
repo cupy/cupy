@@ -69,6 +69,23 @@ class TestParameterize(unittest.TestCase):
         self.skipTest('skip')
 
 
+@testing.parameterize(
+    {'callable': f},
+    {'callable': lambda x: x},
+    {'callable': C()},
+    {'callable': C().method}
+)
+class TestParameterizePytestImpl:
+
+    def test_callable(self):
+        y = self.callable(1)
+        assert y == 1
+
+    def test_skip(self):
+        # Skipping the test case should not report error.
+        pytest.skip('skip')
+
+
 @pytest.mark.parametrize(("src", "outcomes"), [
     (  # simple
         textwrap.dedent("""\
