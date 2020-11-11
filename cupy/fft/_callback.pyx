@@ -16,6 +16,7 @@ import sys
 import sysconfig
 import tempfile
 import threading
+import warnings
 
 from cupy import __version__ as _cupy_ver
 from cupy._environment import (get_nvcc_path, get_cuda_path)
@@ -114,7 +115,7 @@ cdef inline void _sanity_checks(
     if _nvcc is None:
         raise RuntimeError('nvcc is required but not found')
     if _nvprune is None:
-        raise RuntimeError('nvprune is required but not found')  # TODO(leofang): warn instead
+        warnings.warn('nvprune is not found', RuntimeWarning)
     if cb_load_aux_arr is not None:
         if not cb_load:
             raise ValueError('load callback is not given')
