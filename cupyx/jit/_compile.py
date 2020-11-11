@@ -31,11 +31,13 @@ def transpile(func, attributes, mode, in_types, ret_type):
         line.replace(' ' * num_indent, '', 1) for line in lines])
 
     global_mems = dict(inspect.getclosurevars(func).globals)
+    nonlocals = dict(inspect.getclosurevars(func).nonlocals)
+    consts = dict(**global_mems, **nonlocals)
     tree = ast.parse(source)
     assert isinstance(tree, ast.Module)
     assert len(tree.body) == 1
     cuda_code, env = _transpile_function(
-        tree.body[0], attributes, mode, global_mems, in_types, ret_type)
+        tree.body[0], attributes, mode, consts, in_types, ret_type)
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
     return cuda_code, env.ret_type
 
@@ -67,7 +69,7 @@ class Environment:
 
     Attributes:
         mode ('numpy' or 'cuda'): The rule for typecast.
-        global_mems (dict): The dictionary with keys as the variable names and
+        consts (dict): The dictionary with keys as the variable names and
             the values as the data stored at the global scopes.
         params (dict): The dictionary of function arguments with keys as
             the variable names and the values as the CudaObject.
@@ -78,9 +80,9 @@ class Environment:
             inferred until the end of transpilation of the function.
     """
 
-    def __init__(self, mode, global_mems, params, ret_type):
+    def __init__(self, mode, consts, params, ret_type):
         self.mode = mode
-        self.global_mems = global_mems
+        self.consts = consts
         self.params = params
         self.values = {}
         self.ret_type = ret_type
@@ -91,8 +93,8 @@ class Environment:
             return self.values[key]
         if key in self.params:
             return self.params[key]
-        if key in self.global_mems:
-            return self.global_mems[key]
+        if key in self.consts:
+            return self.consts[key]
         return None
 
     def __setitem__(self, key, value):
@@ -100,13 +102,13 @@ class Environment:
 
 
 def _transpile_function(
-        func, attributes, mode, global_mems, in_types, ret_type):
+        func, attributes, mode, consts, in_types, ret_type):
     """Transpile the function
     Args:
         func (ast.FunctionDef): Target function.
         attributes (str): The attributes of target function.
         mode ('numpy' or 'cuda'): The rule for typecast.
-        global_mems (dict): The dictionary with keys as variable names and
+        consts (dict): The dictionary with keys as variable names and
             values as concrete data object.
         in_types (list of _types.TypeBase): The types of arguments.
         ret_type (_types.TypeBase): The type of return value.
@@ -137,7 +139,8 @@ def _transpile_function(
             f'{func.name}() takes {len(args)} positional arguments '
             'but {len(in_types)} were given.')
     env = Environment(
-        mode, global_mems,
+        mode,
+        dict([(k, Constant(v)) for k, v, in consts.items()]),
         dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)]),
         ret_type)
     params = ', '.join([f'{env[a].ctype} {a}' for a in args])
@@ -336,7 +339,10 @@ def _transpile_expr(expr, env):
                 'Unbound name: {} in L{}'.format(expr.id, expr.lineno))
         return env[expr.id]
     if isinstance(expr, ast.Attribute):
-        raise NotImplementedError('Not implemented')
+        value = _transpile_expr(expr.value, env)
+        if is_constants([value]):
+            return Constant(getattr(value.obj, expr.attr))
+        raise NotImplementedError('Not implemented: __getattr__')
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
