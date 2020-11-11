@@ -69,7 +69,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     alpha = cupy.zeros((ncv, ), dtype=a.dtype)
     beta = cupy.zeros((ncv, ), dtype=a.dtype.char.lower())
     V = cupy.empty((ncv, n), dtype=a.dtype)
-    lanczos = _eigsh_lanczos(a, V, alpha, beta, update_impl='fast')
+    lanczos = _EigshLanczos(a, V, alpha, beta, update_impl='fast')
 
     # Set initial vector
     u = cupy.random.random((n, )).astype(a.dtype)
@@ -118,7 +118,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         return cupy.sort(w)
 
 
-class _eigsh_lanczos():
+class _EigshLanczos():
 
     def __init__(self, A, V, alpha, beta, update_impl='fast'):
         assert A.ndim == V.ndim == 2
@@ -241,10 +241,13 @@ class _eigsh_lanczos():
     def _dotc(self, i):
         _cublas.setPointerMode(self.cublas_handle,
                                _cublas.CUBLAS_POINTER_MODE_DEVICE)
-        self.dotc(self.cublas_handle, self.n, self.v.data.ptr, 1,
-                  self.u.data.ptr, 1,
-                  self.alpha.data.ptr + i * self.alpha.itemsize)
-        _cublas.setPointerMode(self.cublas_handle, self.cublas_pointer_mode)
+        try:
+            self.dotc(self.cublas_handle, self.n, self.v.data.ptr, 1,
+                      self.u.data.ptr, 1,
+                      self.alpha.data.ptr + i * self.alpha.itemsize)
+        finally:
+            _cublas.setPointerMode(self.cublas_handle,
+                                   self.cublas_pointer_mode)
 
     def _orthogonalize(self, i):
         self.gemm(self.cublas_handle,
@@ -261,9 +264,12 @@ class _eigsh_lanczos():
     def _norm(self, i):
         _cublas.setPointerMode(self.cublas_handle,
                                _cublas.CUBLAS_POINTER_MODE_DEVICE)
-        self.nrm2(self.cublas_handle, self.n, self.u.data.ptr, 1,
-                  self.beta.data.ptr + i * self.beta.itemsize)
-        _cublas.setPointerMode(self.cublas_handle, self.cublas_pointer_mode)
+        try:
+            self.nrm2(self.cublas_handle, self.n, self.u.data.ptr, 1,
+                      self.beta.data.ptr + i * self.beta.itemsize)
+        finally:
+            _cublas.setPointerMode(self.cublas_handle,
+                                   self.cublas_pointer_mode)
 
     def _normalize(self, i):
         _kernel_normalize(self.u, self.beta, i, self.n, self.v, self.V)
@@ -271,7 +277,7 @@ class _eigsh_lanczos():
 
 _kernel_normalize = cupy.ElementwiseKernel(
     'T u, raw S beta, int32 j, int32 n', 'T v, raw T V',
-    'v = u / beta[j]; V[i + (j+1) * n] = v;', 'cupy_normalize'
+    'v = u / beta[j]; V[i + (j+1) * n] = v;', 'cupy_eigsh_normalize'
 )
 
 
