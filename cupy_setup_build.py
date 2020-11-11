@@ -85,6 +85,7 @@ cuda_files = [
     'cupy.cuda.stream',
     'cupy.cuda.texture',
     'cupy.fft._cache',
+    'cupy.fft._callback',
     'cupy.lib.polynomial',
     'cupy._util'
 ]
@@ -787,6 +788,7 @@ def cythonize(extensions, arg_options):
         compile_time_env = {}
         cythonize_options['compile_time_env'] = compile_time_env
     compile_time_env['use_hip'] = arg_options['use_hip']
+    compile_time_env['CUPY_CUFFT_STATIC'] = False
     compile_time_env['cython_version'] = str(cython_version)
     if use_hip or arg_options['no_cuda']:
         compile_time_env['CUDA_VERSION'] = 0
@@ -925,7 +927,12 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         if use_hip:
             return self._comiple_unix_hipcc(
                 obj, src, ext, cc_args, extra_postargs, pp_opts)
+        else:
+            return self._comiple_unix_nvcc(
+                obj, src, ext, cc_args, extra_postargs, pp_opts)
 
+    def _comiple_unix_nvcc(self,
+                           obj, src, ext, cc_args, extra_postargs, pp_opts):
         # For CUDA C source files, compile them with NVCC.
         _compiler_so = self.compiler_so
         try:
@@ -948,9 +955,9 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         # For CUDA C source files, compile them with HIPCC.
         _compiler_so = self.compiler_so
         try:
-            rcom_path = build.get_hipcc_path()
+            rocm_path = build.get_hipcc_path()
             base_opts = build.get_compiler_base_options()
-            self.set_executable('compiler_so', rcom_path)
+            self.set_executable('compiler_so', rocm_path)
 
             postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
             print('HIPCC options:', postargs)
@@ -964,13 +971,13 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         use_hipcc = False
         if use_hip:
             for i in objects:
-                if 'cupy_thrust.o' in i:
+                if any([obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')]):
                     use_hipcc = True
         if use_hipcc:
             _compiler_cxx = self.compiler_cxx
             try:
-                rcom_path = build.get_hipcc_path()
-                self.set_executable('compiler_cxx', rcom_path)
+                rocm_path = build.get_hipcc_path()
+                self.set_executable('compiler_cxx', rocm_path)
 
                 return unixccompiler.UnixCCompiler.link(
                     self, target_desc, objects, output_filename, *args)
