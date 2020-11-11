@@ -217,7 +217,7 @@ class ArithmeticBinaryBase:
             return xp.array(True)
 
         func = getattr(xp, self.name)
-        with testing.NumpyError(divide='ignore'):
+        with numpy.errstate(divide='ignore'):
             with numpy.warnings.catch_warnings():
                 numpy.warnings.filterwarnings('ignore')
                 if self.use_dtype:

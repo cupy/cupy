@@ -100,12 +100,25 @@ cpdef int getMathMode(intptr_t handle) except? -1
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef int isamin(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef float sasum(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef saxpy(intptr_t handle, int n, float alpha, size_t x, int incx, size_t y,
+cpdef isamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef idamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef icamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef izamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef isamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef idamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef icamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef izamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef sasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef scasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dzasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef saxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
             int incy)
-cpdef daxpy(intptr_t handle, int n, double alpha, size_t x, int incx, size_t y,
+cpdef daxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
+            int incy)
+cpdef caxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
+            int incy)
+cpdef zaxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
             int incy)
 cpdef sdot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
@@ -119,8 +132,16 @@ cpdef zdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
 cpdef zdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
-cpdef float snrm2(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef sscal(intptr_t handle, int n, float alpha, size_t x, int incx)
+cpdef snrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dnrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef scnrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dznrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef sscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef dscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef cscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef csscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef zscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef zdscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
 
 
 ###############################################################################
