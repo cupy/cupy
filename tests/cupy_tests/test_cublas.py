@@ -329,6 +329,29 @@ class TestGemmAndGeam(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_geam(self, dtype):
+        if self.orderc != 'F':
+            raise unittest.SkipTest()
+        dtype = numpy.dtype(dtype)
+        tol = self._tol[dtype.char.lower()]
+        m, n, _ = self.mnk
+        a = self._make_matrix(m, n, self.transa, self.ordera, dtype)
+        b = self._make_matrix(m, n, self.transb, self.orderb, dtype)
+        alpha = 0.9
+        beta = 0.8
+        if dtype.char in 'FD':
+            alpha = alpha - 1j * 0.7
+            beta = beta - 1j * 0.6
+        aa = self._trans_matrix(a, self.transa)
+        bb = self._trans_matrix(b, self.transb)
+        ref = alpha * aa + beta * bb
+        if self.mode is not None:
+            alpha = self.mode.array(alpha)
+            beta = self.mode.array(beta)
+        c = cublas.geam(self.transa, self.transb, alpha, a, beta, b)
+        cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_geam_out(self, dtype):
         dtype = numpy.dtype(dtype)
         tol = self._tol[dtype.char.lower()]
         m, n, _ = self.mnk
@@ -346,7 +369,7 @@ class TestGemmAndGeam(unittest.TestCase):
         if self.mode is not None:
             alpha = self.mode.array(alpha)
             beta = self.mode.array(beta)
-        cublas.geam(self.transa, self.transb, alpha, a, beta, b, c)
+        cublas.geam(self.transa, self.transb, alpha, a, beta, b, out=c)
         cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
 
 
@@ -380,6 +403,8 @@ class TestGdmm(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_gdmm(self, dtype):
+        if self.orderc != 'F':
+            raise unittest.SkipTest()
         self._setup(dtype)
         if self.side == 'L':
             ref = cupy.diag(self.x) @ self.a
@@ -401,6 +426,8 @@ class TestGdmm(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_gdmm_inplace(self, dtype):
+        if self.orderc != 'F':
+            raise unittest.SkipTest()
         self._setup(dtype)
         if self.side == 'L':
             ref = cupy.diag(self.x) @ self.a
@@ -411,6 +438,8 @@ class TestGdmm(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_gdmm_incx_minus_one(self, dtype):
+        if self.orderc != 'F':
+            raise unittest.SkipTest()
         self._setup(dtype)
         if self.side == 'L':
             ref = cupy.diag(self.x[::-1]) @ self.a
@@ -421,6 +450,8 @@ class TestGdmm(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_gdmm_x_scalar(self, dtype):
+        if self.orderc != 'F':
+            raise unittest.SkipTest()
         self._setup(dtype, xdim=0)
         ref = self.x * self.a
         c = cublas.dgmm(self.side, self.a, self.x, incx=0)
@@ -428,6 +459,8 @@ class TestGdmm(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_gdmm_x_matrix(self, dtype):
+        if self.orderc != 'F':
+            raise unittest.SkipTest()
         self._setup(dtype, xdim=2)
         if self.side == 'L':
             ref = cupy.diag(cupy.diag(self.x)) @ self.a
