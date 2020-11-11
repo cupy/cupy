@@ -37,15 +37,21 @@ cdef class RawKernel:
             ``cuLaunchCooperativeKernel`` so that cooperative groups can be
             used from the CUDA source.
             This feature is only supported in CUDA 9 or later.
+        jitify (bool): Whether or not to use `Jitify`_ to assist NVRTC to
+            compile C++ kernels. Defaults to ``False``.
+
+    .. _Jitify:
+        https://github.com/NVIDIA/jitify
+
     """
     def __cinit__(self):
         # this is only for pickling: if any change is made such that the old
         # pickles cannot be reused, we bump this version number
-        self.raw_ver = 1
+        self.raw_ver = 2
 
     def __init__(self, str code, str name, tuple options=(),
                  str backend='nvrtc', *, bint translate_cucomplex=False,
-                 bint enable_cooperative_groups=False):
+                 bint enable_cooperative_groups=False, bint jitify=False):
 
         self.code = code
         self.name = name
@@ -53,6 +59,7 @@ cdef class RawKernel:
         self.backend = backend
         self.translate_cucomplex = translate_cucomplex
         self.enable_cooperative_groups = enable_cooperative_groups
+        self.jitify = jitify
 
         # only used when RawKernels are produced from RawModule
         self.file_path = None  # for cubin/ptx
@@ -106,7 +113,7 @@ cdef class RawKernel:
             mod = _get_raw_module(
                 self.code, self.file_path, self.options, self.backend,
                 self.translate_cucomplex, self.enable_cooperative_groups,
-                self.name_expressions, log_stream)
+                self.jitify, self.name_expressions, log_stream)
             ker = mod.get_function(self.name)
             self._kernel_cache[dev] = ker
         return ker
@@ -129,6 +136,7 @@ cdef class RawKernel:
                 'file_path': self.file_path,
                 'name_expressions': self.name_expressions,
                 'enable_cooperative_groups': self.enable_cooperative_groups,
+                'jitify': self.jitify,
                 'raw_ver': self.raw_ver}
         return args
 
@@ -146,6 +154,7 @@ cdef class RawKernel:
         self.enable_cooperative_groups = args['enable_cooperative_groups']
         self.file_path = args['file_path']
         self.name_expressions = args['name_expressions']
+        self.jitify = args['jitify']
         self._kernel_cache = []  # to force recompiling
 
     @property
@@ -321,6 +330,8 @@ cdef class RawModule:
             the template kernel ``func1<T>`` and non-template kernel ``func2``.
             Strings in this tuple must then be passed, one at a time, to
             :meth:`get_function` to retrieve the corresponding kernel.
+        jitify (bool): Whether or not to use `Jitify`_ to assist NVRTC to
+            compile C++ kernels. Defaults to ``False``.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
@@ -330,11 +341,14 @@ cdef class RawModule:
         happens at the first time retrieving any object (kernels, pointers, or
         texrefs) from the module.
 
+    .. _Jitify:
+        https://github.com/NVIDIA/jitify
+
     """
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
                  bint enable_cooperative_groups=False,
-                 name_expressions=None):
+                 name_expressions=None, bint jitify=False):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
@@ -355,10 +369,16 @@ cdef class RawModule:
             self.name_expressions = tuple(name_expressions)  # make it hashable
         else:
             self.name_expressions = None
+        if jitify:
+            if code is None:
+                raise ValueError('Jitify does not support precompiled objects')
+            if backend != 'nvrtc':  # TODO(leofang): how about hiprtc?
+                raise ValueError('Jitify only supports NVRTC')
 
         self.code = code
         self.file_path = path
         self.enable_cooperative_groups = enable_cooperative_groups
+        self.jitify = jitify
 
         if self.code is not None:
             self.options = options
@@ -382,7 +402,7 @@ cdef class RawModule:
         mod = _get_raw_module(
             self.code, self.file_path, self.options, self.backend,
             self.translate_cucomplex, self.enable_cooperative_groups,
-            self.name_expressions, log_stream)
+            self.jitify, self.name_expressions, log_stream)
         return mod
 
     def compile(self, log_stream=None):
@@ -454,7 +474,8 @@ cdef class RawModule:
         ker = RawKernel(
             self.code, name, self.options, self.backend,
             translate_cucomplex=self.translate_cucomplex,
-            enable_cooperative_groups=self.enable_cooperative_groups)
+            enable_cooperative_groups=self.enable_cooperative_groups,
+            jitify=self.jitify)
 
         # for lookup in case we loaded from cubin/ptx
         ker.file_path = self.file_path
@@ -518,6 +539,7 @@ cdef class RawModule:
 def _get_raw_module(str code, str path, tuple options, str backend,
                     bint translate_cucomplex,
                     bint enable_cooperative_groups,
+                    bint jitify,
                     tuple name_expressions,
                     object log_stream):
     cdef Module mod
@@ -527,7 +549,7 @@ def _get_raw_module(str code, str path, tuple options, str backend,
             translate_cucomplex=translate_cucomplex,
             enable_cooperative_groups=enable_cooperative_groups,
             name_expressions=name_expressions,
-            log_stream=log_stream)
+            log_stream=log_stream, jitify=jitify)
     elif path is not None:
         mod = Module()
         mod.load_file(path)
