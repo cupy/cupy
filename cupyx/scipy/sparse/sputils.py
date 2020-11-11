@@ -154,7 +154,7 @@ def isintlike(x):
         except (TypeError, ValueError):
             return False
         if loose_int:
-            warnings.warn("Inexact indices into sparse matrices are deprecated",
-                          DeprecationWarning)
+            warnings.warn("Inexact indices into sparse matrices are\
+                           deprecated", DeprecationWarning)
         return loose_int
     return True
