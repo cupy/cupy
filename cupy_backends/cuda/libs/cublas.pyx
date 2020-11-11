@@ -1174,15 +1174,15 @@ cpdef zdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
 cpdef sgemmEx(
         intptr_t handle, int transa, int transb, int m, int n, int k,
         size_t alpha, size_t A, int Atype, int lda, size_t B,
-        int Btype, int ldb, float beta, size_t C, int Ctype,
+        int Btype, int ldb, size_t beta, size_t C, int Ctype,
         int ldc):
     _setStream(handle)
     with nogil:
         status = cublasSgemmEx(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
             <const float*>alpha, <const void*>A, <runtime.DataType>Atype, lda,
-            <const void*>B, <runtime.DataType>Btype, ldb, &beta, <void*>C,
-            <runtime.DataType>Ctype, ldc)
+            <const void*>B, <runtime.DataType>Btype, ldb, <const float*>beta,
+            <void*>C, <runtime.DataType>Ctype, ldc)
     check_status(status)
 
 

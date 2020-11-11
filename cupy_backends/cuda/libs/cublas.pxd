@@ -261,7 +261,7 @@ cpdef zdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
             size_t x, int incx, size_t C, int ldc)
 cpdef sgemmEx(intptr_t handle, int transa, int transb, int m, int n, int k,
               size_t alpha, size_t A, int Atype, int lda, size_t B,
-              int Btype, int ldb, float beta, size_t C, int Ctype,
+              int Btype, int ldb, size_t beta, size_t C, int Ctype,
               int ldc)
 cpdef sgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)
