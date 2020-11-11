@@ -279,6 +279,7 @@ from cupy._creation.matrix import triu  # NOQA
 # Functional routines
 # -----------------------------------------------------------------------------
 from cupy._functional.piecewise import piecewise  # NOQA
+from cupy._functional.vectorize import vectorize  # NOQA
 from cupy.lib.shape_base import apply_along_axis  # NOQA
 
 # -----------------------------------------------------------------------------

@@ -1,14 +1,10 @@
-import functools
 import itertools
-import io
 import types
 import typing as tp  # NOQA
 import unittest
 
 from cupy.testing import _bundle
 from cupy.testing import _pytest_impl
-from cupy.cuda import cufft
-from cupy.cuda import driver
 
 
 def _param_to_str(obj):
@@ -56,11 +52,11 @@ def _parameterize_test_case_generator(base, params):
 def _parameterize_test_case(base, i, param):
     cls_name = _make_class_name(base.__name__, i, param)
 
-    def __str__(self):
-        name = base.__str__(self)
-        return '%s  parameter: %s' % (name, param)
+    def __repr__(self):
+        name = base.__repr__(self)
+        return '<%s  parameter: %s>' % (name, param)
 
-    mb = {'__str__': __str__}
+    mb = {'__repr__': __repr__}
     for k, v in sorted(param.items()):
         if isinstance(v, types.FunctionType):
 
@@ -75,30 +71,7 @@ def _parameterize_test_case(base, i, param):
         else:
             mb[k] = v
 
-    # Wrap test methods to generate useful error message
-    def method_generator(base_method):
-
-        @functools.wraps(base_method)
-        def new_method(self, *args, **kwargs):
-            try:
-                return base_method(self, *args, **kwargs)
-            except unittest.SkipTest:
-                raise
-            except Exception as e:
-                s = io.StringIO()
-                s.write('Parameterized test failed.\n\n')
-                s.write('Base test method: {}.{}\n'.format(
-                    base.__name__, base_method.__name__))
-                s.write('Test parameters:\n')
-                for k, v in sorted(param.items()):
-                    s.write('  {}: {}\n'.format(k, v))
-                err_class = e.__class__
-                if isinstance(e, (driver.CUDADriverError, cufft.CuFFTError)):
-                    err_class, = err_class.__bases__
-                raise err_class(s.getvalue()).with_traceback(e.__traceback__)
-        return new_method
-
-    return (cls_name, mb, method_generator)
+    return (cls_name, mb, lambda method: method)
 
 
 def parameterize(*params):
