@@ -88,14 +88,20 @@ cdef inline void _set_nvcc_path() except*:
     # get_nvcc_path() could be a long string like "ccache nvcc ..." from NVCC
     cdef str nvcc = None
     cdef str f
+    cdef int i
 
     global _nvcc
     if _nvcc == []:
         nvcc = get_nvcc_path()
         if nvcc is not None:
             _nvcc = nvcc.split(' ')
-            # if the host compiler is set in NVCC, we should honor it
-            if not any((f in _nvcc for f in ('-ccbin', '--compiler-bindir'))):
+            # if the host compiler is set in NVCC, we force it to align with
+            # the one reported by sysconfig
+            for i, f in enumerate(_nvcc):
+                if f in ('-ccbin', '--compiler-bindir'):
+                    _nvcc[i+1] = _cc[0]
+                    break
+            else:
                 _nvcc += ['-ccbin', _cc[0]]
         else:
             _nvcc = None
