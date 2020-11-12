@@ -31,27 +31,6 @@ from cupy.cuda.cufft import (CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
 from cupy.cuda.cufft import getVersion as get_cufft_version
 
 
-cdef inline _set_cupy_paths():
-    # Workaround: older Cython cannot use __file__ in global scope
-    global _cupy_root, _cupy_include, _source_dir
-    if _cupy_root is None:
-        _cupy_root = os.path.join(os.path.dirname(__file__), '..')
-        _cupy_include = _cupy_root + '/core/include'
-        _source_dir = _cupy_root + '/cuda/'
-
-
-cdef inline _set_nvcc_path():
-    # get_nvcc_path() could be a long string like "ccache nvcc ..."
-    cdef str nvcc = None
-    global _nvcc
-    if _nvcc == []:
-        nvcc = get_nvcc_path()
-        if nvcc is not None:
-            _nvcc = nvcc.split(' ')
-        else:
-            _nvcc = None
-
-
 # information needed for building an external module
 cdef list _cc = sysconfig.get_config_var('CXX').split(' ')
 cdef str _python_include = sysconfig.get_path('include')
@@ -94,6 +73,32 @@ cdef class _ThreadLocal:
         except AttributeError:
             tls = _callback_thread_local.tls = _ThreadLocal()
         return tls
+
+
+cdef inline void _set_cupy_paths() except*:
+    # Workaround: older Cython cannot use __file__ in global scope
+    global _cupy_root, _cupy_include, _source_dir
+    if _cupy_root is None:
+        _cupy_root = os.path.join(os.path.dirname(__file__), '..')
+        _cupy_include = os.path.join(_cupy_root, 'core/include')
+        _source_dir = os.path.join(_cupy_root, 'cuda')
+
+
+cdef inline void _set_nvcc_path() except*:
+    # get_nvcc_path() could be a long string like "ccache nvcc ..." from NVCC
+    cdef str nvcc = None
+    cdef str f
+
+    global _nvcc
+    if _nvcc == []:
+        nvcc = get_nvcc_path()
+        if nvcc is not None:
+            _nvcc = nvcc.split(' ')
+            # if the host compiler is set in NVCC, we should honor it
+            if not any((f in _nvcc for f in ('-ccbin', '--compiler-bindir'))):
+                _nvcc += ['-ccbin', _cc[0]]
+        else:
+            _nvcc = None
 
 
 cdef inline void _sanity_checks(
@@ -191,8 +196,7 @@ cdef inline void _nvcc_compile(
             dev_load_callback_ker=cb_load,
             dev_store_callback_ker=cb_store)
         f.write(support)
-    cmd = _nvcc + ['-ccbin', _cc[0],
-                   '-arch=sm_'+arch, '-dc',
+    cmd = _nvcc + ['-arch=sm_'+arch, '-dc',
                    '-I' + _cupy_include,
                    '-c', os.path.join(tempdir, 'cupy_cufftXt.cu'),
                    '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
@@ -224,8 +228,7 @@ cdef inline void _nvcc_link(
     # WARNING: CANNOT use host compiler to link!
     cdef list cmd
 
-    cmd = _nvcc + ['-ccbin', _cc[0], '-shared', '-arch=sm_'+arch,
-                   obj_dev, obj_host]
+    cmd = _nvcc + ['-shared', '-arch=sm_'+arch, obj_dev, obj_host]
     if cufft_lib_pruned:
         cmd += ['-L'+cache_dir, '-l'+cufft_lib_pruned]
     else:
@@ -259,6 +262,7 @@ cdef class _CallbackManager:
                  ndarray cb_store_aux_arr=None):
         # Sanity checks
         _set_nvcc_path()
+        _set_cupy_paths()
         _sanity_checks(cb_load, cb_store,
                        cb_load_aux_arr, cb_store_aux_arr)
 
@@ -277,7 +281,6 @@ cdef class _CallbackManager:
         cdef str cache_dir
         cdef str path
         cdef str cufft_lib_pruned
-        _set_cupy_paths()
 
         # For hash; note this is independent of the plan to be created, and
         # only depends on the given load/store callbacks and the runtime
