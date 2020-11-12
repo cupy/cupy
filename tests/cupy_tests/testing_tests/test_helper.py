@@ -145,6 +145,27 @@ class TestNumPyCuPyLess(unittest.TestCase, NumPyCuPyDecoratorBase,
         return make_result(foo, numpy.array(2), cupy.array(1))
 
 
+class TestNumPyCuPyAllCloseTolPerDtype(unittest.TestCase):
+
+    @helper.for_float_dtypes()
+    @helper.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-6})
+    def test_rtol_per_dtype(self, xp, dtype):
+        if xp is numpy:
+            return numpy.array(1, dtype=dtype)
+        else:
+            finfo = numpy.finfo(dtype)
+            return cupy.array(1 + finfo.eps, dtype=dtype)
+
+    @helper.for_float_dtypes()
+    @helper.numpy_cupy_allclose(atol={numpy.float16: 1e-3, 'default': 1e-6})
+    def test_atol_per_dtype(self, xp, dtype):
+        if xp is numpy:
+            return numpy.array(0, dtype=dtype)
+        else:
+            finfo = numpy.finfo(dtype)
+            return cupy.array(finfo.eps, dtype=dtype)
+
+
 class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
 
     @helper.numpy_cupy_allclose()
