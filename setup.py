@@ -23,18 +23,6 @@ for submodule in ('cupy/core/include/cupy/cub/',
         sys.exit(1)
 
 
-if sys.version_info[:3] == (3, 5, 0):
-    if not int(os.getenv('CUPY_PYTHON_350_FORCE', '0')):
-        msg = """
-CuPy does not work with Python 3.5.0.
-
-We strongly recommend to use another version of Python.
-If you want to use CuPy with Python 3.5.0 at your own risk,
-set 1 to CUPY_PYTHON_350_FORCE environment variable."""
-        print(msg)
-        sys.exit(1)
-
-
 requirements = {
     'setup': [
         'fastrlock>=0.3',
@@ -176,7 +164,7 @@ setup(
     packages=find_packages(exclude=['install', 'tests']),
     package_data=package_data,
     zip_safe=False,
-    python_requires='>=3.5.0',
+    python_requires='>=3.6.0',
     setup_requires=setup_requires,
     install_requires=install_requires,
     tests_require=tests_require,
