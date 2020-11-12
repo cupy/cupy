@@ -386,8 +386,13 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
-         rtol(float): Relative tolerance.
-         atol(float): Absolute tolerance.
+         rtol(float or dict): Relative tolerance. Besides a float value, a
+             dictionary that maps a dtypes to a float value can be supplied to
+             adjust tolerance per dtype. If the dictionary has ``'default'``
+             string as its key, its value is used as the default tolerance in
+             case any dtype keys do not match.
+         atol(float or dict): Absolute tolerance. Besides a float value, a
+             dictionary can be supplied as ``rtol``.
          err_msg(str): The error message to be printed in case of failure.
          verbose(bool): If ``True``, the conflicting values are
              appended to the error message.
