@@ -1016,6 +1016,7 @@ class custom_build_ext(build_ext.build_ext):
         build_ext.build_ext.run(self)
 
     def build_extensions(self):
-        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
-        self.parallel = num_jobs
+        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '1'))
+        if num_jobs > 1:
+            self.parallel = num_jobs
         super().build_extensions()
