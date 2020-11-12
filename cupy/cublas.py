@@ -141,8 +141,10 @@ def _iamaxmin(x, out, name):
     result_dtype = 'i'
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -172,8 +174,10 @@ def asum(x, out=None):
     result_dtype = dtype.lower()
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -203,8 +207,10 @@ def axpy(a, x, y):
 
     handle = device.get_cublas_handle()
     a, a_ptr, orig_mode = _setup_scalar_ptr(handle, a, dtype)
-    func(handle, x.size, a_ptr, x.data.ptr, 1, y.data.ptr, 1)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, a_ptr, x.data.ptr, 1, y.data.ptr, 1)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
 
 def dot(x, y, out=None):
@@ -224,8 +230,10 @@ def dot(x, y, out=None):
     result_dtype = dtype
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -251,8 +259,10 @@ def dotu(x, y, out=None):
     result_dtype = dtype
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -278,8 +288,10 @@ def dotc(x, y, out=None):
     result_dtype = dtype
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -309,8 +321,10 @@ def nrm2(x, out=None):
     result_dtype = dtype.lower()
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -341,8 +355,10 @@ def scal(a, x):
 
     handle = device.get_cublas_handle()
     a, a_ptr, orig_mode = _setup_scalar_ptr(handle, a, dtype)
-    func(handle, x.size, a_ptr, x.data.ptr, 1)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, a_ptr, x.data.ptr, 1)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
 
 def _check_two_vectors(x, y):
