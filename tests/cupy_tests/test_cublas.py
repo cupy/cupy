@@ -204,7 +204,7 @@ class TestGemv(unittest.TestCase):
     def test_gemv(self):
         a = testing.shaped_random(self.shape, cupy, dtype=self.dtype,
                                   order=self.order)
-        if self.trans == 'N' or self.trans == 0:
+        if self.trans == 'N':
             ylen, xlen = self.shape
         else:
             xlen, ylen = self.shape
