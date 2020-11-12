@@ -143,7 +143,7 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     return output
 
 
-math_constants_preamble = "#include <math_constants.h>\n"
+math_constants_preamble = "#include <cupy/math_constants.h>\n"
 
 
 _CAST_FUNCTION = """
