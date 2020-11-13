@@ -501,7 +501,7 @@ cpdef ndarray tensordot_core(
         return out
 
     one = numpy.array(1, dtype=dtype)
-    zero = numpy.array(1, dtype=dtype)
+    zero = numpy.array(0, dtype=dtype)
     handle = device.get_cublas_handle()
     if dtype == 'e':
         use_tensor_core = (_cuda_runtime_version >= 9000 and
