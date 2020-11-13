@@ -127,6 +127,25 @@ def _get_indx(_lambda, num, largest):
 
     return ii
 
+def _genEigh(A, B):
+    """
+    Helper function for converting a generalized eigenvalue problem
+    AX = lambdaBX to standard using cholesky.
+    This is because cupy does not have a functional api to solve
+    generalized eigenvalue problem as of now.
+    Factorizing B = R^TR. Let F = (R^T)^-1 A R^-1
+    Equivalent Standard form: Fy = lambda(y), where our required
+    eigvec x = R^-1 y
+    """
+    # we transpose lower triangular matrix to get upper triangular matrix
+    R = cp.transpose(cholesky(B))
+    RTi = inv(cp.transpose(R))
+    Ri = inv(R)
+    F = cp.matmul(RTi, cp.matmul(A, Ri))
+    vals, vecs = eigh(F)
+    eigVec = cp.matmul(Ri, vecs)
+    return vals, eigVec
+
 
 def lobpcg(A, X,
            B=None, M=None, Y=None,
@@ -348,8 +367,7 @@ def lobpcg(A, X,
         A_dense = A(cp.eye(n, dtype=A.dtype))
         B_dense = None if B is None else B(cp.eye(n, dtype=B.dtype))
 
-        vals, vecs = eigh(A_dense, B_dense, eigvals=eigvals,
-                          check_finite=False)
+        vals, vecs = _genEigh(A_dense, B_dense)
         if largest:
             # Reverse order to be compatible with eigs() in 'LM' mode.
             vals = vals[::-1]
@@ -389,7 +407,7 @@ def lobpcg(A, X,
     blockVectorAX = A(blockVectorX)
     gramXAX = cp.dot(blockVectorX.T.conj(), blockVectorAX)
 
-    _lambda, eigBlockVector = eigh(gramXAX, check_finite=False)
+    _lambda, eigBlockVector = eigh(gramXAX)
     ii = _get_indx(_lambda, sizeX, largest)
     _lambda = _lambda[ii]
 
@@ -582,8 +600,7 @@ def lobpcg(A, X,
             _handle_gramA_gramB_verbosity(gramA, gramB)
 
             try:
-                _lambda, eigBlockVector = eigh(gramA, gramB,
-                                               check_finite=False)
+                _lambda, eigBlockVector = _genEigh(gramA, gramB)
             except Exception as e:
                 print("{} occured".format(e))
                 # try again after dropping the direction vectors P from RR
@@ -598,8 +615,7 @@ def lobpcg(A, X,
             _handle_gramA_gramB_verbosity(gramA, gramB)
 
             try:
-                _lambda, eigBlockVector = eigh(gramA, gramB,
-                                               check_finite=False)
+                _lambda, eigBlockVector = _genEigh(gramA, gramB)
             except Exception as e:
                 print("{} occured".format(e))
                 raise ValueError('eigh has failed in lobpcg iterations')
