@@ -95,11 +95,12 @@ cdef inline void _set_nvcc_path() except*:
         nvcc = get_nvcc_path()
         if nvcc is not None:
             _nvcc = nvcc.split(' ')
-            # if the host compiler is set in NVCC, we force it to align with
+            # if the host compiler is set in NVCC, we use it to compile the
+            # Python module; if the host compiler is not set, then we use
             # the one reported by sysconfig
             for i, f in enumerate(_nvcc):
                 if f in ('-ccbin', '--compiler-bindir'):
-                    _nvcc[i+1] = _cc[0]
+                    _cc[0] = _nvcc[i+1]
                     break
             else:
                 _nvcc += ['-ccbin', _cc[0]]
