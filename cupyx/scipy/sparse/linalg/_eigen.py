@@ -77,7 +77,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     # Choose Lanczos implementation, unconditionally use 'fast' for now
     upadte_impl = 'fast'
     if upadte_impl == 'fast':
-        lanczos = _lanczos_fast(a, n, ncv)
+        lanczos = _lanczos_fast(a, u, n, ncv)
     else:
         lanczos = _lanczos_asis
 
@@ -137,7 +137,7 @@ def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
         V[i+1] = u / beta[i]
 
 
-def _lanczos_fast(A, n, ncv):
+def _lanczos_fast(A, u, n, ncv):
     cublas_handle = device.get_cublas_handle()
     cublas_pointer_mode = _cublas.getPointerMode(cublas_handle)
     if A.dtype.char == 'f':
@@ -159,6 +159,9 @@ def _lanczos_fast(A, n, ncv):
     else:
         raise TypeError('invalid dtype ({})'.format(A.dtype))
 
+    v = cupy.empty((n,), dtype=A.dtype)
+    uu = cupy.empty((ncv,), dtype=A.dtype)
+
     cusparse_handle = None
     if csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
         cusparse_handle = device.get_cusparse_handle()
@@ -168,20 +171,21 @@ def _lanczos_fast(A, n, ncv):
         spmv_cuda_dtype = cusparse._dtype_to_DataType(A.dtype)
         spmv_alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
 
-    v = cupy.empty((n,), dtype=A.dtype)
-    uu = cupy.empty((ncv,), dtype=A.dtype)
+        spmv_desc_A = cusparse.SpMatDescriptor.create(A)
+        spmv_desc_v = cusparse.DnVecDescriptor.create(v)
+        spmv_desc_u = cusparse.DnVecDescriptor.create(u)
+        buff_size = _cusparse.spMV_bufferSize(
+            cusparse_handle, spmv_op_a, spmv_alpha.ctypes.data,
+            spmv_desc_A.desc, spmv_desc_v.desc, spmv_beta.ctypes.data,
+            spmv_desc_u.desc, spmv_cuda_dtype, spmv_alg)
+        spmv_buff = cupy.empty(buff_size, cupy.int8)
+
+    outer_A = A
+    outer_u = u
 
     def aux(A, V, u, alpha, beta, i_start, i_end):
-        # Get ready for spmv if enabled
-        if cusparse_handle is not None:
-            spmv_desc_A = cusparse.SpMatDescriptor.create(A)
-            spmv_desc_v = cusparse.DnVecDescriptor.create(v)
-            spmv_desc_u = cusparse.DnVecDescriptor.create(u)
-            buff_size = _cusparse.spMV_bufferSize(
-                cusparse_handle, spmv_op_a, spmv_alpha.ctypes.data,
-                spmv_desc_A.desc, spmv_desc_v.desc, spmv_beta.ctypes.data,
-                spmv_desc_u.desc, spmv_cuda_dtype, spmv_alg)
-            spmv_buff = cupy.empty(buff_size, cupy.int8)
+        assert outer_A is A
+        assert outer_u is u
 
         v[...] = V[i_start]
         for i in range(i_start, i_end):
@@ -229,16 +233,6 @@ def _lanczos_fast(A, n, ncv):
 
             # Normalize
             _kernel_normalize(u, beta, i, n, v, V)
-
-        # Release spmv resources
-        if cusparse_handle is not None:
-            # Note: I would like to reuse descriptors and working buffer
-            # on the next update, but I gave it up because it sometimes
-            # caused illegal memory access error.
-            del spmv_desc_A
-            del spmv_desc_v
-            del spmv_desc_u
-            del spmv_buff
 
     return aux
 
