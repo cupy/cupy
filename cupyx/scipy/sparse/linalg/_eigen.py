@@ -174,6 +174,9 @@ def _lanczos_fast(A, n, ncv):
     def aux(A, V, u, alpha, beta, i_start, i_end):
         # Get ready for spmv if enabled
         if cusparse_handle is not None:
+            # Note: I would like to reuse descriptors and working buffer
+            # on the next update, but I gave it up because it sometimes
+            # caused illegal memory access error.
             spmv_desc_A = cusparse.SpMatDescriptor.create(A)
             spmv_desc_v = cusparse.DnVecDescriptor.create(v)
             spmv_desc_u = cusparse.DnVecDescriptor.create(u)
@@ -229,16 +232,6 @@ def _lanczos_fast(A, n, ncv):
 
             # Normalize
             _kernel_normalize(u, beta, i, n, v, V)
-
-        # Release spmv resources
-        if cusparse_handle is not None:
-            # Note: I would like to reuse descriptors and working buffer
-            # on the next update, but I gave it up because it sometimes
-            # caused illegal memory access error.
-            del spmv_desc_A
-            del spmv_desc_v
-            del spmv_desc_u
-            del spmv_buff
 
     return aux
 
