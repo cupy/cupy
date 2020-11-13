@@ -8,17 +8,19 @@ import sys
 import cupy_setup_build
 
 
-if len(os.listdir('cupy/core/include/cupy/cub/')) == 0:
-    msg = '''
-    The folder cupy/core/include/cupy/cub/ is a git submodule but is
-    currently empty. Please use the command
+for submodule in ('cupy/core/include/cupy/cub/',
+                  'cupy/core/include/cupy/jitify'):
+    if len(os.listdir(submodule)) == 0:
+        msg = '''
+        The folder %s is a git submodule but is
+        currently empty. Please use the command
 
-        git submodule update --init
+            git submodule update --init
 
-    to populate the folder before building from source.
-    '''
-    print(msg, file=sys.stderr)
-    sys.exit(1)
+        to populate the folder before building from source.
+        ''' % submodule
+        print(msg, file=sys.stderr)
+        sys.exit(1)
 
 
 if sys.version_info[:3] == (3, 5, 0):
@@ -108,6 +110,11 @@ tests_require = requirements['test']
 cupy_package_data = [
     'cupy/cuda/cupy_thrust.cu',
     'cupy/cuda/cupy_cub.cu',
+    'cupy/cuda/cupy_cufftXt.cu',  # for cuFFT callback
+    'cupy/cuda/cupy_cufftXt.h',  # for cuFFT callback
+    'cupy/cuda/cupy_cufft.h',  # for cuFFT callback
+    'cupy/cuda/cufft.pxd',  # for cuFFT callback
+    'cupy/cuda/cufft.pyx',  # for cuFFT callback
 ] + [
     x for x in glob.glob('cupy/core/include/cupy/**', recursive=True)
     if os.path.isfile(x)
