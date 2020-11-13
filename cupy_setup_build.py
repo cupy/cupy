@@ -1014,3 +1014,9 @@ class custom_build_ext(build_ext.build_ext):
             cythonize(ext_modules, cupy_setup_options)
         check_extensions(self.extensions)
         build_ext.build_ext.run(self)
+
+    def build_extensions(self):
+        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '1'))
+        if num_jobs > 1:
+            self.parallel = num_jobs
+        super().build_extensions()
