@@ -506,11 +506,9 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     cdef:
         readonly _kernel._Ops _ops
-        readonly _preamble
+        readonly str preamble
         readonly int nin
         readonly int nout
-        readonly str _input_expr
-        readonly str _output_expr
         readonly dict _routine_cache
         readonly bint _sort_reduce_axis
 
@@ -524,11 +522,9 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             'T out0',
         )
         self._ops = ops
-        self._preamble = preamble
+        self.preamble = preamble
         self.nin = 1
         self.nout = 1
-        self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
-        self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
         self._sort_reduce_axis = sort_reduce_axis
 
@@ -598,23 +594,26 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
             Py_ssize_t block_size):
+        cdef str input_expr, output_expr
+        input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
+        output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble, ())
+            input_expr, output_expr, self.preamble, ())
 
 
 @_util.memoize(for_each_device=True)
 def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
-        name, block_size, identity, input_expr, output_expr, _preamble,
+        name, block_size, identity, input_expr, output_expr, preamble,
         options):
     return _create_reduction_function(
         name, block_size, reduce_type, params, arginfos, identity,
         map_expr, reduce_expr, post_map_expr,
-        type_map, input_expr, output_expr, _preamble, options)
+        type_map, input_expr, output_expr, preamble, options)
 
 
 # -----------------------------------------------------------------------------
@@ -692,10 +691,14 @@ cdef class ReductionKernel(_AbstractReductionKernel):
 
         Args:
             args: Arguments of the kernel.
+            out (cupy.ndarray): The output array. This can only be specified if
+                ``args`` does not contain the output array.
             axis (int or tuple of ints): Axis or axes along which the
                 reduction is performed.
             keepdims (bool): If ``True``, the specified axes are remained as
                 axes of length one.
+            stream (cupy.cuda.Stream, optional): The CUDA stream to launch the
+                kernel on. If not given, the current stream will be used.
 
         Returns:
             Arrays are returned according to the ``out_params`` argument of the
@@ -732,7 +735,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         return self._call(
             in_args, out_args,
             broad_shape, axis, None,
-            keepdims, self.reduce_dims, dev_id, stream, False, True)
+            keepdims, self.reduce_dims, dev_id, stream, True, True)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):

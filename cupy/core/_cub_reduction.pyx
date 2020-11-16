@@ -41,8 +41,10 @@ cdef function.Function _create_cub_reduction_function(
         # use jitify + nvrtc
         # TODO(leofang): how about simply specifying jitify=True when calling
         # compile_with_cache()?
-        options += ('-DCUPY_USE_JITIFY',)
-        backend = 'nvrtc'
+        #options += ('-DCUPY_USE_JITIFY',)
+        #backend = 'nvrtc'
+        options += ('-O2',)
+        backend = 'nvcc'
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -219,7 +221,7 @@ __global__ void ${name}(${params}) {
 def _SimpleCubReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
-        name, block_size, identity, input_expr, output_expr, _preamble,
+        name, block_size, identity, preamble,
         options, cub_params):
     items_per_thread = cub_params[0]
     name = name.replace('cupy_', 'cupy_cub_')
@@ -228,7 +230,7 @@ def _SimpleCubReductionKernel_get_cached_function(
         name, block_size, items_per_thread,
         reduce_type, params, arginfos, identity,
         map_expr, reduce_expr, post_map_expr,
-        type_map, _preamble, options)
+        type_map, preamble, options)
 
 
 cdef str _cub_path = _environment.get_cub_path()
@@ -282,7 +284,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
         warnings.warn('CUB headers are not found.', RuntimeWarning)
         return None
 
-    # we currently support only _SimpleReductionKernel
+    # we currently support reductions with 1 input and 1 output
     if len(in_args) != 1 or len(out_args) != 1:
         return None
 
@@ -399,15 +401,13 @@ cdef inline void _cub_two_pass_launch(
         Py_ssize_t items_per_thread, str reduce_type, tuple params,
         list in_args, list out_args,
         str identity, str pre_map_expr, str reduce_expr, str post_map_expr,
-        _kernel._TypeMap type_map, str input_expr, str output_expr,
-        str preamble, tuple options, stream) except *:
+        _kernel._TypeMap type_map, str preamble,
+        tuple options, stream) except*:
     '''
     Notes:
     1. Two-pass reduction: the first pass distributes an even share over
        a number of blocks (with block_size threads), and the second pass
        does reduction over 1 block of threads
-    2. input_expr & output_expr are used only as part of the cache key;
-       the actual kernel does not use them
     '''
 
     cdef list out_args_2nd_pass = [out_args[0]]
@@ -460,8 +460,7 @@ cdef inline void _cub_two_pass_launch(
         params,
         _kernel._get_arginfos(inout_args),
         type_map,
-        name, block_size, identity,
-        input_expr, output_expr, preamble,
+        name, block_size, identity, preamble,
         ('-DFIRST_PASS=1',), cub_params)
 
     # Kernel arguments passed to the __global__ function.
@@ -495,8 +494,7 @@ cdef inline void _cub_two_pass_launch(
         params,
         _kernel._get_arginfos(inout_args),
         type_map,
-        name, block_size, identity,
-        input_expr, output_expr, preamble,
+        name, block_size, identity, preamble,
         ('-DSECOND_PASS=1',), cub_params)
 
     # Kernel arguments passed to the __global__ function.
@@ -526,8 +524,7 @@ cdef inline void _launch_cub(
             self.name, block_size, contiguous_size, items_per_thread,
             reduce_type, params, in_args, out_args, self.identity,
             map_expr, reduce_expr, post_map_expr,
-            type_map, self._input_expr, self._output_expr,
-            self._preamble, (), stream)
+            type_map, self.preamble, (), stream)
         return
     else:
         inout_args = (
@@ -540,8 +537,7 @@ cdef inline void _launch_cub(
         func = _SimpleCubReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
-            self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble,
+            self.name, block_size, self.identity, self.preamble,
             (), cub_params)
 
         func.linear_launch(
@@ -601,6 +597,8 @@ cdef bint _try_to_call_cub_reduction(
     """Try to use cub.
 
     Updates `ret` and returns a boolean value whether cub is used.
+
+    Note: input_expr and output_expr are not used in CUB kernels.
     """
     cdef tuple axis_permutes
     cdef tuple params, opt_params
