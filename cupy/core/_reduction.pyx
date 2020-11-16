@@ -507,6 +507,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
     cdef:
         readonly _kernel._Ops _ops
         readonly str preamble
+        readonly str _preamble
         readonly int nin
         readonly int nout
         readonly str _input_expr
@@ -524,7 +525,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             'T out0',
         )
         self._ops = ops
-        self.preamble = preamble
+        self.preamble = self._preamble = preamble
         self.nin = 1
         self.nout = 1
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
