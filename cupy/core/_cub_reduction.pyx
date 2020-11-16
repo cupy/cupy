@@ -25,6 +25,7 @@ cdef function.Function _create_cub_reduction_function(
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, preamble, options):
+    print(type_map)
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
 
@@ -591,7 +592,8 @@ def _get_cub_optimized_params(
 cdef bint _try_to_call_cub_reduction(
         self, list in_args, list out_args, const shape_t& a_shape,
         stream, optimize_context, tuple key,
-        map_expr, reduce_expr, post_map_expr, reduce_type, type_map,
+        map_expr, reduce_expr, post_map_expr,
+        reduce_type, _kernel._TypeMap type_map,
         tuple reduce_axis, tuple out_axis, const shape_t& out_shape,
         ndarray ret) except *:
     """Try to use cub.
@@ -618,6 +620,11 @@ cdef bint _try_to_call_cub_reduction(
 
     in_shape = _reduction._set_permuted_args(
         in_args, axis_permutes, a_shape, self.in_params)
+
+    # When coming from ReductionKernel, type_map does not contain the expected
+    # names (type_in0_raw and type_out0_raw), so we must append them
+    type_map._pairs += (('type_in0_raw', in_args[0].dtype.type),
+                        ('type_out0_raw', out_args[0].dtype.type),)
 
     if in_args[0]._f_contiguous:
         ret._set_contiguous_strides(ret.dtype.itemsize, False)
