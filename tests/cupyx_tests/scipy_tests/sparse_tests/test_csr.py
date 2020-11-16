@@ -1793,7 +1793,7 @@ class TestCsrMatrixMaximumMinimum(unittest.TestCase):
     'shape': [(6, 15), (15, 6)],
     'opt': ['_eq_', '_ne_', '_lt_', '_gt_', '_le_', '_ge_'],
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.2')
 @testing.gpu
 class TestCsrMatrixComparison(unittest.TestCase):
     nz_rate = 0.3

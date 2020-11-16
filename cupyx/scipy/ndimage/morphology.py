@@ -228,7 +228,7 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
         else:
             tmp_out = erode_kernel(input, structure, tmp_out)
         # TODO: kernel doesn't return the changed status, so determine it here
-        changed = not (tmp_in == tmp_out).all()  # synchronize!
+        changed = not (input == tmp_out).all()  # synchronize!
         ii = 1
         while ii < iterations or ((iterations < 1) and changed):
             tmp_in, tmp_out = tmp_out, tmp_in

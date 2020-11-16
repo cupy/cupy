@@ -7,4 +7,5 @@ Functional programming
    :toctree: generated/
    :nosignatures:
 
+   cupy.apply_along_axis
    cupy.piecewise

@@ -729,6 +729,8 @@ def _try_reduction_routine(
     if dtype != x.dtype:
         return None
 
+    if x.ndim == 0:
+        return None
     if x.size == 0:
         return None
     if not x._c_contiguous:
