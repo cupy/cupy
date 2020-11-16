@@ -25,24 +25,8 @@ cdef function.Function _create_cub_reduction_function(
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, preamble, options):
-    print(params)
-    print(type_map)
-    print(arginfos)
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
-
-#    # TODO(leofang): handle _raw_in0 and _raw_out0 better when we support
-#    # multiple inputs/outputs from ReductionKernel
-#    cdef _kernel._ArgInfo arginfo
-#    cdef str in_var, out_var
-#    if params[0].name == 'in0' and params[1].name == 'out0':
-#        # from create_reduction_func
-#        in_var = '_raw_' + params[0].name
-#        out_var = '_raw_' + params[1].name
-#    else:
-#        # from ReductionKernel (names supplied by the user)
-#        in_var = params[0].name
-#        out_var = params[1].name
 
     # static_assert needs at least C++11 in NVRTC
     options += ('--std=c++11',)
@@ -57,10 +41,8 @@ cdef function.Function _create_cub_reduction_function(
         # use jitify + nvrtc
         # TODO(leofang): how about simply specifying jitify=True when calling
         # compile_with_cache()?
-        #options += ('-DCUPY_USE_JITIFY',)
-        #backend = 'nvrtc'
-        options += ('-O2',)
-        backend = 'nvcc'
+        options += ('-DCUPY_USE_JITIFY',)
+        backend = 'nvrtc'
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -131,8 +113,7 @@ __global__ void ${name}(${params}) {
   // Declare reduction operation
   _reduction_op op;
 
-  // input & output raw pointers; they might not be called as "_raw_in0" or
-  // "_raw_out0" if ReductionKernel is in use
+  // input & output raw pointers
   const type_mid_in* _in0 = static_cast<const type_mid_in*>(_raw_in0);
   type_mid_out* _out0 = static_cast<type_mid_out*>(_raw_out0);
 
@@ -218,8 +199,6 @@ __global__ void ${name}(${params}) {
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
         params=_get_cub_kernel_params(params, arginfos),
-#        _raw_in0=in_var,
-#        _raw_out0=out_var,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
@@ -370,20 +349,10 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
     cdef int i
     assert len(params) == len(arginfos)
 
-    # For params coming from ReductionKernel, we rename the variable
-    # names to make it work with the CUB kernel
     for i, (p, arginfo) in enumerate(zip(params, arginfos)):
         c_name = arginfo.get_c_var_name(p)
-        if i == 0:
-            c_type = 'const void*'
-            if p.name != 'in0':
-                p.name = 'in0'
-                c_name = '_raw_in0'
-        elif i == 1:
-            c_type = 'void*'
-            if p.name != 'out0':
-                p.name = 'out0'
-                c_name = '_raw_out0'
+        if i < len(params) - 2:
+            c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
             c_type = arginfo.get_param_c_type(p)
@@ -643,7 +612,6 @@ cdef bint _try_to_call_cub_reduction(
     if can_use_cub is None:
         return False
 
-    print("\n\n\npreparing CUB...\n\n\n")
     axis_permutes, contiguous_size, full_reduction = can_use_cub
 
     in_shape = _reduction._set_permuted_args(
@@ -680,16 +648,16 @@ cdef bint _try_to_call_cub_reduction(
     #    type_out0_raw)
     cdef str old_in0 = params[0].name, old_out0 = params[1].name
     if old_in0 != 'in0' or old_out0 != 'out0':
-        type_map._pairs += (('type_in0_raw', in_args[0].dtype.type),
-                            ('type_out0_raw', out_args[0].dtype.type),)
-        print("old:", old_in0, old_out0)
-        map_expr = map_expr.replace(old_in0, 'in0')
-        post_map_expr = post_map_expr.replace(old_out0, 'out0')
-        print(map_expr, '\n', post_map_expr)
         # avoid overwriting self's attributes
         params = (_get_param_info('T in0', True)
                   + _get_param_info('T out0', False)
                   + params[2:])
+        map_expr = map_expr.replace(old_in0, 'in0')
+        post_map_expr = post_map_expr.replace(old_out0, 'out0')
+        type_map = _kernel._TypeMap(type_map._pairs + (
+            ('type_in0_raw', in_args[0].dtype.type),
+            ('type_out0_raw', out_args[0].dtype.type),
+        ))
 
     # Calculate the reduction block dimensions.
     optimize_context = _optimize_config.get_current_context()
