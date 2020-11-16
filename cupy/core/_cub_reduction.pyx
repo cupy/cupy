@@ -43,12 +43,6 @@ cdef function.Function _create_cub_reduction_function(
 #        # from ReductionKernel (names supplied by the user)
 #        in_var = params[0].name
 #        out_var = params[1].name
-    cdef str old_in0 = params[0].name, old_out0 = params[1].name
-    cdef str args = _get_cub_kernel_params(params, arginfos)
-    print("old:", old_in0, old_out0)
-    pre_map_expr = pre_map_expr.replace(old_in0, 'in0')
-    post_map_expr = post_map_expr.replace(old_out0, 'out0')
-    print(pre_map_expr, '\n', post_map_expr)
 
     # static_assert needs at least C++11 in NVRTC
     options += ('--std=c++11',)
@@ -223,7 +217,7 @@ __global__ void ${name}(${params}) {
         block_size=block_size,
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
-        params=args,
+        params=_get_cub_kernel_params(params, arginfos),
 #        _raw_in0=in_var,
 #        _raw_out0=out_var,
         identity=identity,
@@ -649,15 +643,11 @@ cdef bint _try_to_call_cub_reduction(
     if can_use_cub is None:
         return False
 
+    print("\n\n\npreparing CUB...\n\n\n")
     axis_permutes, contiguous_size, full_reduction = can_use_cub
 
     in_shape = _reduction._set_permuted_args(
         in_args, axis_permutes, a_shape, self.in_params)
-
-    # When coming from ReductionKernel, type_map does not contain the expected
-    # names (type_in0_raw and type_out0_raw), so we must append them
-    type_map._pairs += (('type_in0_raw', in_args[0].dtype.type),
-                        ('type_out0_raw', out_args[0].dtype.type),)
 
     if in_args[0]._f_contiguous:
         ret._set_contiguous_strides(ret.dtype.itemsize, False)
@@ -682,6 +672,24 @@ cdef bint _try_to_call_cub_reduction(
               + _get_param_info(
                   size_type + '_segment_size', not full_reduction)
               + _get_param_info(size_type + '_array_size', True))
+
+    # HACK for ReductionKernel:
+    # 1. input/output arguments might not be named as in0/out0
+    # 2. pre-/post- maps might not contain in0/out0
+    # 3. type_map does not contain the expected names (type_in0_raw and
+    #    type_out0_raw)
+    cdef str old_in0 = params[0].name, old_out0 = params[1].name
+    if old_in0 != 'in0' or old_out0 != 'out0':
+        type_map._pairs += (('type_in0_raw', in_args[0].dtype.type),
+                            ('type_out0_raw', out_args[0].dtype.type),)
+        print("old:", old_in0, old_out0)
+        map_expr = map_expr.replace(old_in0, 'in0')
+        post_map_expr = post_map_expr.replace(old_out0, 'out0')
+        print(map_expr, '\n', post_map_expr)
+        # avoid overwriting self's attributes
+        params = (_get_param_info('T in0', True)
+                  + _get_param_info('T out0', False)
+                  + params[2:])
 
     # Calculate the reduction block dimensions.
     optimize_context = _optimize_config.get_current_context()
