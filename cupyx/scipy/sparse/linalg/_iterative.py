@@ -267,14 +267,17 @@ def _make_compute_hu(V):
     elif V.dtype.char == 'D':
         gemv = _cublas.zgemv
     n = V.shape[0]
+    one = numpy.array(1.0, V.dtype)
+    zero = numpy.array(0.0, V.dtype)
+    mone = numpy.array(-1.0, V.dtype)
 
     def compute_hu(u, j):
         # h = V[:, :j+1].conj().T @ u
         # u -= V[:, :j+1] @ h
         h = cupy.empty((j+1,), dtype=V.dtype)
-        gemv(handle, _cublas.CUBLAS_OP_C,
-             n, j+1, 1.0, V.data.ptr, n, u.data.ptr, 1, 0.0, h.data.ptr, 1)
-        gemv(handle, _cublas.CUBLAS_OP_N,
-             n, j+1, -1.0, V.data.ptr, n, h.data.ptr, 1, 1.0, u.data.ptr, 1)
+        gemv(handle, _cublas.CUBLAS_OP_C, n, j+1, one.ctypes.data, V.data.ptr,
+             n, u.data.ptr, 1, zero.ctypes.data, h.data.ptr, 1)
+        gemv(handle, _cublas.CUBLAS_OP_N, n, j+1, mone.ctypes.data, V.data.ptr,
+             n, h.data.ptr, 1, one.ctypes.data, u.data.ptr, 1)
         return h, u
     return compute_hu
