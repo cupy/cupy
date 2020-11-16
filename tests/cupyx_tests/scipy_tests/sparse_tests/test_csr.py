@@ -1957,3 +1957,29 @@ class TestCsrMatrixComparison(unittest.TestCase):
             b = self._make_sp_matrix_shape(shape, self.b_dtype, xp, sp)
             with self.assertRaises(ValueError):
                 self._compare(a, b)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(8, 5), (5, 5), (5, 8)],
+}))
+@testing.with_requires('scipy>1.0')
+@testing.gpu
+class TestCsrMatrixDiagonal(unittest.TestCase):
+    density = 0.5
+
+    def _make_matrix(self, dtype):
+        a = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        mask = testing.shaped_random(self.shape, numpy, dtype='f', scale=1.0)
+        a[mask > self.density] = 0
+        return a
+
+    @testing.for_dtypes('fdFD')
+    def test_diagonal(self, dtype):
+        a = self._make_matrix(dtype)
+        scipy_a = scipy.sparse.csr_matrix(a)
+        cupyx_a = sparse.csr_matrix(cupy.array(a))
+        m, n = self.shape
+        for k in range(-m, n+1):
+            scipy_diag = scipy_a.diagonal(k=k)
+            cupyx_diag = cupyx_a.diagonal(k=k)
+            testing.assert_allclose(scipy_diag, cupyx_diag)

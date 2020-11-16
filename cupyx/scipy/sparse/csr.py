@@ -252,6 +252,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         ylen = min(rows + min(k, 0), cols - max(k, 0))
         if ylen <= 0:
             return cupy.empty(0, dtype=self.dtype)
+        self.sum_duplicates()
         y = cupy.empty(ylen, dtype=self.dtype)
         cupy_csr_diagonal()(k, rows, cols, self.data, self.indptr,
                             self.indices, y)
@@ -1134,7 +1135,7 @@ def cupy_csr_diagonal():
     return cupy.ElementwiseKernel(
         'int32 k, int32 rows, int32 cols, '
         'raw T data, raw I indptr, raw I indices',
-        'T Y',
+        'T y',
         '''
         int row = i;
         int col = i;
@@ -1144,9 +1145,9 @@ def cupy_csr_diagonal():
         int j = find_index_holding_col_in_row(row, col,
             &(indptr[0]), &(indices[0]));
         if (j >= 0) {
-            Y = data[j];
+            y = data[j];
         } else {
-            Y = static_cast<T>(0);
+            y = static_cast<T>(0);
         }
         ''',
         '_cupy_csr_diagonal',
