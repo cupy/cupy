@@ -437,7 +437,7 @@ class spmatrix(object):
             k (int, optional): Which diagonal to set, corresponding to elements
                 a[i, i+k]. Default: 0 (the main diagonal).
         """
-        return self.tocsr().setdiag(values, k=k)
+        raise NotImplementedError
 
     def sum(self, axis=None, dtype=None, out=None):
         """Sums the matrix elements over a given axis.
