@@ -440,17 +440,11 @@ def gemv(transa, alpha, a, x, beta, y):
     assert x.ndim == y.ndim == 1
     assert a.dtype == x.dtype == y.dtype
     m, n = a.shape
-    if transa == 'N':
-        transa = cublas.CUBLAS_OP_N
+    transa = _trans_to_cublas_op(transa)
+    if transa == cublas.CUBLAS_OP_N:
         xlen, ylen = n, m
-    elif transa == 'T':
-        transa = cublas.CUBLAS_OP_T
-        xlen, ylen = m, n
-    elif transa == 'H':
-        transa = cublas.CUBLAS_OP_C
-        xlen, ylen = m, n
     else:
-        raise TypeError('invalid transa (actual: {})'.fromat(transa))
+        xlen, ylen = m, n
     assert x.shape[0] == xlen
     assert y.shape[0] == ylen
 
