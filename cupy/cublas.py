@@ -141,8 +141,10 @@ def _iamaxmin(x, out, name):
     result_dtype = 'i'
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -172,8 +174,10 @@ def asum(x, out=None):
     result_dtype = dtype.lower()
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -203,8 +207,10 @@ def axpy(a, x, y):
 
     handle = device.get_cublas_handle()
     a, a_ptr, orig_mode = _setup_scalar_ptr(handle, a, dtype)
-    func(handle, x.size, a_ptr, x.data.ptr, 1, y.data.ptr, 1)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, a_ptr, x.data.ptr, 1, y.data.ptr, 1)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
 
 def dot(x, y, out=None):
@@ -224,8 +230,10 @@ def dot(x, y, out=None):
     result_dtype = dtype
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -251,8 +259,10 @@ def dotu(x, y, out=None):
     result_dtype = dtype
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -278,8 +288,10 @@ def dotc(x, y, out=None):
     result_dtype = dtype
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, y.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -309,8 +321,10 @@ def nrm2(x, out=None):
     result_dtype = dtype.lower()
     result_ptr, result, orig_mode = _setup_result_ptr(
         handle, out, result_dtype)
-    func(handle, x.size, x.data.ptr, 1, result_ptr)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, x.data.ptr, 1, result_ptr)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
     if out is None:
         out = result
@@ -341,8 +355,10 @@ def scal(a, x):
 
     handle = device.get_cublas_handle()
     a, a_ptr, orig_mode = _setup_scalar_ptr(handle, a, dtype)
-    func(handle, x.size, a_ptr, x.data.ptr, 1)
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        func(handle, x.size, a_ptr, x.data.ptr, 1)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
 
 def _check_two_vectors(x, y):
@@ -453,21 +469,23 @@ def gemv(transa, alpha, a, x, beta, y):
     else:
         cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_HOST)
 
-    if a._f_contiguous:
-        func(handle, transa, m, n, alpha_ptr, a.data.ptr, m, x.data.ptr, 1,
-             beta_ptr, y.data.ptr, 1)
-    elif a._c_contiguous and transa != cublas.CUBLAS_OP_C:
-        if transa == cublas.CUBLAS_OP_N:
-            transa = cublas.CUBLAS_OP_T
+    try:
+        if a._f_contiguous:
+            func(handle, transa, m, n, alpha_ptr, a.data.ptr, m, x.data.ptr, 1,
+                 beta_ptr, y.data.ptr, 1)
+        elif a._c_contiguous and transa != cublas.CUBLAS_OP_C:
+            if transa == cublas.CUBLAS_OP_N:
+                transa = cublas.CUBLAS_OP_T
+            else:
+                transa = cublas.CUBLAS_OP_N
+            func(handle, transa, n, m, alpha_ptr, a.data.ptr, n, x.data.ptr, 1,
+                 beta_ptr, y.data.ptr, 1)
         else:
-            transa = cublas.CUBLAS_OP_N
-        func(handle, transa, n, m, alpha_ptr, a.data.ptr, n, x.data.ptr, 1,
-             beta_ptr, y.data.ptr, 1)
-    else:
-        a = a.copy(order='F')
-        func(handle, transa, m, n, alpha_ptr, a.data.ptr, m, x.data.ptr, 1,
-             beta_ptr, y.data.ptr, 1)
-    cublas.setPointerMode(handle, orig_mode)
+            a = a.copy(order='F')
+            func(handle, transa, m, n, alpha_ptr, a.data.ptr, m, x.data.ptr, 1,
+                 beta_ptr, y.data.ptr, 1)
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
 
 def ger(alpha, x, y, a):
@@ -495,15 +513,17 @@ def ger(alpha, x, y, a):
     handle = device.get_cublas_handle()
     alpha, alpha_ptr, orig_mode = _setup_scalar_ptr(handle, alpha, dtype)
     x_ptr, y_ptr = x.data.ptr, y.data.ptr
-    if a._f_contiguous:
-        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, a.data.ptr, m)
-    elif a._c_contiguous:
-        func(handle, n, m, alpha_ptr, y_ptr, 1, x_ptr, 1, a.data.ptr, n)
-    else:
-        aa = a.copy(order='F')
-        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
-        a[...] = aa
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        if a._f_contiguous:
+            func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, a.data.ptr, m)
+        elif a._c_contiguous:
+            func(handle, n, m, alpha_ptr, y_ptr, 1, x_ptr, 1, a.data.ptr, n)
+        else:
+            aa = a.copy(order='F')
+            func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
+            a[...] = aa
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
 
 def geru(alpha, x, y, a):
@@ -530,15 +550,17 @@ def geru(alpha, x, y, a):
     handle = device.get_cublas_handle()
     alpha, alpha_ptr, orig_mode = _setup_scalar_ptr(handle, alpha, dtype)
     x_ptr, y_ptr = x.data.ptr, y.data.ptr
-    if a._f_contiguous:
-        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, a.data.ptr, m)
-    elif a._c_contiguous:
-        func(handle, n, m, alpha_ptr, y_ptr, 1, x_ptr, 1, a.data.ptr, n)
-    else:
-        aa = a.copy(order='F')
-        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
-        a[...] = aa
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        if a._f_contiguous:
+            func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, a.data.ptr, m)
+        elif a._c_contiguous:
+            func(handle, n, m, alpha_ptr, y_ptr, 1, x_ptr, 1, a.data.ptr, n)
+        else:
+            aa = a.copy(order='F')
+            func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
+            a[...] = aa
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
 
 def gerc(alpha, x, y, a):
@@ -565,13 +587,15 @@ def gerc(alpha, x, y, a):
     handle = device.get_cublas_handle()
     alpha, alpha_ptr, orig_mode = _setup_scalar_ptr(handle, alpha, dtype)
     x_ptr, y_ptr = x.data.ptr, y.data.ptr
-    if a._f_contiguous:
-        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, a.data.ptr, m)
-    else:
-        aa = a.copy(order='F')
-        func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
-        a[...] = aa
-    cublas.setPointerMode(handle, orig_mode)
+    try:
+        if a._f_contiguous:
+            func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, a.data.ptr, m)
+        else:
+            aa = a.copy(order='F')
+            func(handle, m, n, alpha_ptr, x_ptr, 1, y_ptr, 1, aa.data.ptr, m)
+            a[...] = aa
+    finally:
+        cublas.setPointerMode(handle, orig_mode)
 
 
 def _trans_to_cublas_op(trans):

@@ -284,6 +284,7 @@ _nccl_version = None
 _cutensor_version = None
 _cub_path = None
 _cub_version = None
+_compute_capabilities = None
 
 
 def check_cuda_version(compiler, settings):
@@ -326,6 +327,41 @@ def get_cuda_version(formatted=False):
     if formatted:
         return _format_cuda_version(_cuda_version)
     return _cuda_version
+
+
+def check_compute_capabilities(compiler, settings):
+    """Return compute capabilities of the installed devices."""
+    global _compute_capabilities
+    try:
+        src = '''#include <cuda_runtime_api.h>
+        #include <stdio.h>
+        int main() {
+          cudaDeviceProp prop;
+          int device_count;
+          int i;
+          cudaGetDeviceCount(&device_count);
+          for(i=0; i < device_count; i++) {
+              cudaGetDeviceProperties(&prop, i);
+              printf("%d%d ", prop.major,prop.minor);
+          }
+          return 0;
+        }
+        '''
+        out = build_and_run(
+            compiler, src,
+            include_dirs=settings['include_dirs'],
+            libraries=('cudart',),
+            library_dirs=settings['library_dirs'])
+        _compute_capabilities = set([int(o) for o in out.split()])
+    except Exception as e:
+        utils.print_warning('Cannot check cuDNN version\n{0}'.format(e))
+        return False
+
+    return True
+
+
+def get_compute_capabilities(formatted=False):
+    return _compute_capabilities
 
 
 def check_thrust_version(compiler, settings):
