@@ -171,7 +171,11 @@ def _lanczos_fast(A, n, ncv):
     v = cupy.empty((n,), dtype=A.dtype)
     uu = cupy.empty((ncv,), dtype=A.dtype)
 
+    outer_A = A
+
     def aux(A, V, u, alpha, beta, i_start, i_end):
+        assert A is outer_A
+
         # Get ready for spmv if enabled
         if cusparse_handle is not None:
             # Note: I would like to reuse descriptors and working buffer
