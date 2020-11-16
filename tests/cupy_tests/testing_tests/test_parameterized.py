@@ -86,44 +86,44 @@ class TestParameterizePytestImpl:
         pytest.skip('skip')
 
 
-@pytest.mark.parametrize(("src", "outcomes"), [
+@pytest.mark.parametrize(('src', 'outcomes'), [
     (  # simple
-        textwrap.dedent("""\
+        textwrap.dedent('''\
         @testing.parameterize({'a': 1}, {'a': 2})
         class TestA:
             def test_a(self):
                 assert self.a > 0
-        """), [
-            ("::TestA::test_a[_param_0_{a=1}]", "PASSED"),
-            ("::TestA::test_a[_param_1_{a=2}]", "PASSED"),
+        '''), [
+            ("::TestA::test_a[_param_0_{a=1}]", 'PASSED'),
+            ("::TestA::test_a[_param_1_{a=2}]", 'PASSED'),
         ]
     ),
     (  # simple fail
-        textwrap.dedent("""\
+        textwrap.dedent('''\
         @testing.parameterize({'a': 1}, {'a': 2})
         class TestA:
             def test_a(self):
                 assert self.a == 1
-        """), [
-            ("::TestA::test_a[_param_0_{a=1}]", "PASSED"),
-            ("::TestA::test_a[_param_1_{a=2}]", "FAILED"),
+        '''), [
+            ("::TestA::test_a[_param_0_{a=1}]", 'PASSED'),
+            ("::TestA::test_a[_param_1_{a=2}]", 'FAILED'),
         ]
     ),
     (  # set of params can be different
-        textwrap.dedent("""\
+        textwrap.dedent('''\
         @testing.parameterize({'a': 1}, {'b': 2})
         class TestA:
             def test_a(self):
                 a = getattr(self, 'a', 3)
                 b = getattr(self, 'b', 4)
                 assert (a, b) in [(1, 4), (3, 2)]
-        """), [
-            ("::TestA::test_a[_param_0_{a=1}]", "PASSED"),
-            ("::TestA::test_a[_param_1_{b=2}]", "PASSED"),
+        '''), [
+            ("::TestA::test_a[_param_0_{a=1}]", 'PASSED'),
+            ("::TestA::test_a[_param_1_{b=2}]", 'PASSED'),
         ]
     ),
     (  # do not copy each value but do not share the param dict
-        textwrap.dedent("""\
+        textwrap.dedent('''\
         import numpy
         @testing.parameterize({'a': numpy.array(1)}, {'a': 1})
         class TestA:
@@ -133,27 +133,27 @@ class TestParameterizePytestImpl:
             def test_second(self):
                 assert self.a == 1
                 self.a += 2
-        """), [
-            ("::TestA::test_first[_param_0_{a=array(1)}]", "PASSED"),
-            ("::TestA::test_first[_param_1_{a=1}]", "PASSED"),
-            ("::TestA::test_second[_param_0_{a=array(1)}]", "FAILED"),
-            ("::TestA::test_second[_param_1_{a=1}]", "PASSED"),
+        '''), [
+            ("::TestA::test_first[_param_0_{a=array(1)}]", 'PASSED'),
+            ("::TestA::test_first[_param_1_{a=1}]", 'PASSED'),
+            ("::TestA::test_second[_param_0_{a=array(1)}]", 'FAILED'),
+            ("::TestA::test_second[_param_1_{a=1}]", 'PASSED'),
         ]
     ),
     (  # multiple params and class attr
-        textwrap.dedent("""\
+        textwrap.dedent('''\
         @testing.parameterize({'a': 1, 'b': 4}, {'a': 2, 'b': 3})
         class TestA:
             c = 5
             def test_a(self):
                 assert self.a + self.b == self.c
-        """), [
-            ("::TestA::test_a[_param_0_{a=1, b=4}]", "PASSED"),
-            ("::TestA::test_a[_param_1_{a=2, b=3}]", "PASSED"),
+        '''), [
+            ("::TestA::test_a[_param_0_{a=1, b=4}]", 'PASSED'),
+            ("::TestA::test_a[_param_1_{a=2, b=3}]", 'PASSED'),
         ]
     ),
     (  # combine pytest.mark.parameterize
-        textwrap.dedent("""\
+        textwrap.dedent('''\
         import pytest
         @pytest.mark.parametrize("outer", ["E", "e"])
         @testing.parameterize({"x": "D"}, {"x": "d"})
@@ -171,47 +171,47 @@ class TestParameterizePytestImpl:
                 assert sum(
                     c.isupper() for c in [fn, inner, self.x, outer]
                 ) != 2
-        """), [
-            ("::TestA::test_a[A-b-c-_param_0_{x='D'}-E]", "PASSED"),
-            ("::TestA::test_a[A-b-c-_param_0_{x='D'}-e]", "PASSED"),
-            ("::TestA::test_a[A-b-c-_param_1_{x='d'}-E]", "PASSED"),
-            ("::TestA::test_a[A-b-c-_param_1_{x='d'}-e]", "PASSED"),
-            ("::TestA::test_a[A-b-C-_param_0_{x='D'}-E]", "PASSED"),
-            ("::TestA::test_a[A-b-C-_param_0_{x='D'}-e]", "PASSED"),
-            ("::TestA::test_a[A-b-C-_param_1_{x='d'}-E]", "PASSED"),
-            ("::TestA::test_a[A-b-C-_param_1_{x='d'}-e]", "PASSED"),
-            ("::TestA::test_a[a-B-c-_param_0_{x='D'}-E]", "PASSED"),
-            ("::TestA::test_a[a-B-c-_param_0_{x='D'}-e]", "PASSED"),
-            ("::TestA::test_a[a-B-c-_param_1_{x='d'}-E]", "PASSED"),
-            ("::TestA::test_a[a-B-c-_param_1_{x='d'}-e]", "PASSED"),
-            ("::TestA::test_a[a-B-C-_param_0_{x='D'}-E]", "PASSED"),
-            ("::TestA::test_a[a-B-C-_param_0_{x='D'}-e]", "PASSED"),
-            ("::TestA::test_a[a-B-C-_param_1_{x='d'}-E]", "PASSED"),
-            ("::TestA::test_a[a-B-C-_param_1_{x='d'}-e]", "PASSED"),
-            ("::TestA::test_b[A-c-_param_0_{x='D'}-E]", "PASSED"),
-            ("::TestA::test_b[A-c-_param_0_{x='D'}-e]", "FAILED"),
-            ("::TestA::test_b[A-c-_param_1_{x='d'}-E]", "FAILED"),
-            ("::TestA::test_b[A-c-_param_1_{x='d'}-e]", "PASSED"),
-            ("::TestA::test_b[A-C-_param_0_{x='D'}-E]", "PASSED"),
-            ("::TestA::test_b[A-C-_param_0_{x='D'}-e]", "PASSED"),
-            ("::TestA::test_b[A-C-_param_1_{x='d'}-E]", "PASSED"),
-            ("::TestA::test_b[A-C-_param_1_{x='d'}-e]", "FAILED"),
-            ("::TestA::test_b[a-c-_param_0_{x='D'}-E]", "FAILED"),
-            ("::TestA::test_b[a-c-_param_0_{x='D'}-e]", "PASSED"),
-            ("::TestA::test_b[a-c-_param_1_{x='d'}-E]", "PASSED"),
-            ("::TestA::test_b[a-c-_param_1_{x='d'}-e]", "PASSED"),
-            ("::TestA::test_b[a-C-_param_0_{x='D'}-E]", "PASSED"),
-            ("::TestA::test_b[a-C-_param_0_{x='D'}-e]", "FAILED"),
-            ("::TestA::test_b[a-C-_param_1_{x='d'}-E]", "FAILED"),
-            ("::TestA::test_b[a-C-_param_1_{x='d'}-e]", "PASSED"),
+        '''), [
+            ("::TestA::test_a[A-b-c-_param_0_{x='D'}-E]", 'PASSED'),
+            ("::TestA::test_a[A-b-c-_param_0_{x='D'}-e]", 'PASSED'),
+            ("::TestA::test_a[A-b-c-_param_1_{x='d'}-E]", 'PASSED'),
+            ("::TestA::test_a[A-b-c-_param_1_{x='d'}-e]", 'PASSED'),
+            ("::TestA::test_a[A-b-C-_param_0_{x='D'}-E]", 'PASSED'),
+            ("::TestA::test_a[A-b-C-_param_0_{x='D'}-e]", 'PASSED'),
+            ("::TestA::test_a[A-b-C-_param_1_{x='d'}-E]", 'PASSED'),
+            ("::TestA::test_a[A-b-C-_param_1_{x='d'}-e]", 'PASSED'),
+            ("::TestA::test_a[a-B-c-_param_0_{x='D'}-E]", 'PASSED'),
+            ("::TestA::test_a[a-B-c-_param_0_{x='D'}-e]", 'PASSED'),
+            ("::TestA::test_a[a-B-c-_param_1_{x='d'}-E]", 'PASSED'),
+            ("::TestA::test_a[a-B-c-_param_1_{x='d'}-e]", 'PASSED'),
+            ("::TestA::test_a[a-B-C-_param_0_{x='D'}-E]", 'PASSED'),
+            ("::TestA::test_a[a-B-C-_param_0_{x='D'}-e]", 'PASSED'),
+            ("::TestA::test_a[a-B-C-_param_1_{x='d'}-E]", 'PASSED'),
+            ("::TestA::test_a[a-B-C-_param_1_{x='d'}-e]", 'PASSED'),
+            ("::TestA::test_b[A-c-_param_0_{x='D'}-E]", 'PASSED'),
+            ("::TestA::test_b[A-c-_param_0_{x='D'}-e]", 'FAILED'),
+            ("::TestA::test_b[A-c-_param_1_{x='d'}-E]", 'FAILED'),
+            ("::TestA::test_b[A-c-_param_1_{x='d'}-e]", 'PASSED'),
+            ("::TestA::test_b[A-C-_param_0_{x='D'}-E]", 'PASSED'),
+            ("::TestA::test_b[A-C-_param_0_{x='D'}-e]", 'PASSED'),
+            ("::TestA::test_b[A-C-_param_1_{x='d'}-E]", 'PASSED'),
+            ("::TestA::test_b[A-C-_param_1_{x='d'}-e]", 'FAILED'),
+            ("::TestA::test_b[a-c-_param_0_{x='D'}-E]", 'FAILED'),
+            ("::TestA::test_b[a-c-_param_0_{x='D'}-e]", 'PASSED'),
+            ("::TestA::test_b[a-c-_param_1_{x='d'}-E]", 'PASSED'),
+            ("::TestA::test_b[a-c-_param_1_{x='d'}-e]", 'PASSED'),
+            ("::TestA::test_b[a-C-_param_0_{x='D'}-E]", 'PASSED'),
+            ("::TestA::test_b[a-C-_param_0_{x='D'}-e]", 'FAILED'),
+            ("::TestA::test_b[a-C-_param_1_{x='d'}-E]", 'FAILED'),
+            ("::TestA::test_b[a-C-_param_1_{x='d'}-e]", 'PASSED'),
         ]
     ),
 ])
 def test_parameterize_pytest_impl(testdir, src, outcomes):
-    testdir.makepyfile("from cupy import testing\n" + src)
+    testdir.makepyfile('from cupy import testing\n' + src)
     result = testdir.runpytest('-v', '--tb=no')
     expected_lines = [
-        ".*{} {}.*".format(re.escape(name), res)
+        '.*{} {}.*'.format(re.escape(name), res)
         for name, res in outcomes
     ]
     result.stdout.re_match_lines(expected_lines)

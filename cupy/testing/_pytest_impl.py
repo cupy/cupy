@@ -26,7 +26,7 @@ if is_available():
     class _TestingParameterizeMixin:
 
         def __repr__(self):
-            return "<{}  parameter: {}>".format(
+            return '<{}  parameter: {}>'.format(
                 super().__repr__(),
                 self.__dict__,
             )
@@ -34,7 +34,7 @@ if is_available():
         @pytest.fixture(autouse=True)
         def _cupy_testing_parameterize(self, _cupy_testing_param):
             assert not self.__dict__, \
-                "There should not be another hack with instance attribute."
+                'There should not be another hack with instance attribute.'
             self.__dict__.update(_cupy_testing_param)
 
 
@@ -46,15 +46,15 @@ def parameterize(*params):
     # a generated name is `TestFoo::test_bar[_param_0_{...}]`, whereas
     # a legacy name is `TestFoo_param_0_{...}::test_bar
     params = [
-        pytest.param(param, id=param_name("", i, param))
+        pytest.param(param, id=param_name('', i, param))
         for i, param in enumerate(params)
     ]
 
     def f(cls):
         assert not issubclass(cls, unittest.TestCase)
         if issubclass(cls, _TestingParameterizeMixin):
-            raise RuntimeError("do not `@testing.parameterize` twice")
+            raise RuntimeError('do not `@testing.parameterize` twice')
         cls = type(cls.__name__, (_TestingParameterizeMixin, cls), {})
-        cls = pytest.mark.parametrize("_cupy_testing_param", params)(cls)
+        cls = pytest.mark.parametrize('_cupy_testing_param', params)(cls)
         return cls
     return f
