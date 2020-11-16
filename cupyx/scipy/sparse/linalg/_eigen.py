@@ -158,6 +158,9 @@ class _EigshLanczos():
             self.gemm = _cublas.zgemm
         else:
             raise TypeError('invalid dtype ({})'.format(A.dtype))
+        self.one = numpy.array(1.0, A.dtype)
+        self.zero = numpy.array(0.0, A.dtype)
+        self.mone = numpy.array(-1.0, A.dtype)
         if csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
             self.cusparse_handle = device.get_cusparse_handle()
             self.spmv_op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
@@ -252,14 +255,14 @@ class _EigshLanczos():
     def _orthogonalize(self, i):
         self.gemm(self.cublas_handle,
                   _cublas.CUBLAS_OP_C, _cublas.CUBLAS_OP_N,
-                  1, i+1, self.n,
-                  1.0, self.u.data.ptr, self.n, self.V.data.ptr, self.n,
-                  0.0, self.uu.data.ptr, 1)
+                  1, i+1, self.n, self.one.ctypes.data,
+                  self.u.data.ptr, self.n, self.V.data.ptr, self.n,
+                  self.zero.ctypes.data, self.uu.data.ptr, 1)
         self.gemm(self.cublas_handle,
                   _cublas.CUBLAS_OP_N, _cublas.CUBLAS_OP_C,
-                  self.n, 1, i+1,
-                  -1.0, self.V.data.ptr, self.n, self.uu.data.ptr, 1,
-                  1.0, self.u.data.ptr, self.n)
+                  self.n, 1, i+1, self.mone.ctypes.data,
+                  self.V.data.ptr, self.n, self.uu.data.ptr, 1,
+                  self.one.ctypes.data, self.u.data.ptr, self.n)
 
     def _norm(self, i):
         _cublas.setPointerMode(self.cublas_handle,
