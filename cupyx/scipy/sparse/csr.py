@@ -596,7 +596,7 @@ __device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
 
 _FIND_INDEX_HOLDING_COL_IN_ROW_ = '''
 __device__ inline int find_index_holding_col_in_row(
-    int row, int col, const int *indptr, const int *indices) {
+        int row, int col, const int *indptr, const int *indices) {
     int j_min = indptr[row];
     int j_max = indptr[row+1] - 1;
     while (j_min <= j_max) {
@@ -730,22 +730,8 @@ def cupy_multiply_by_csr_step1():
         if (C_N > B_N && B_N == 1) {
             n_b = 0;
         }
-        int i_b = -1;
-        int j_min = B_INDPTR[m_b];
-        int j_max = B_INDPTR[m_b+1] - 1;
-        while (j_min <= j_max) {
-            int j = (j_min + j_max) / 2;
-            if (n_b < B_INDICES[j]) {
-                j_max = j - 1;
-            }
-            else if (n_b > B_INDICES[j]) {
-                j_min = j + 1;
-            }
-            else {
-                i_b = j;
-                break;
-            }
-        }
+        int i_b = find_index_holding_col_in_row(m_b, n_b,
+            &(B_INDPTR[0]), &(B_INDICES[0]));
         if (i_b >= 0) {
             atomicAdd(&(NNZ_EACH_ROW[m_c+1]), 1);
             FLAGS[i+1] = 1;
@@ -754,7 +740,7 @@ def cupy_multiply_by_csr_step1():
         }
         ''',
         'cupy_multiply_by_csr_step1',
-        preamble=_GET_ROW_ID_
+        preamble=_GET_ROW_ID_ + _FIND_INDEX_HOLDING_COL_IN_ROW_
     )
 
 
