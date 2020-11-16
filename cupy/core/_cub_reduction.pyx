@@ -31,10 +31,18 @@ cdef function.Function _create_cub_reduction_function(
     # static_assert needs at least C++11 in NVRTC
     options += ('--std=c++11',)
 
-    # In ROCm, we need to set the include path. This does not work for hiprtc
-    # as of ROCm 3.5.0, so we must use hipcc.
+    cdef str backend
     if runtime._is_hip_environment:
-        options += ('-I' + _rocm_path + '/include',)
+        # In ROCm, we need to set the include path. This does not work for
+        # hiprtc as of ROCm 3.5.0, so we must use hipcc.
+        options += ('-I' + _rocm_path + '/include', '-O2')
+        backend = 'nvcc'  # this is confusing...
+    else:
+        # use jitify + nvrtc
+        # TODO(leofang): how about simply specifying jitify=True when calling
+        # compile_with_cache()?
+        options += ('-DCUPY_USE_JITIFY',)
+        backend = 'nvrtc'
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -198,13 +206,12 @@ __global__ void ${name}(${params}) {
         type_preamble=type_map.get_typedef_code(),
         preamble=preamble)
 
-    # CUB is not natively supported by NVRTC (NVlabs/cub#131), so use nvcc
-    # instead. For this, we have to explicitly spell out the default values for
-    # arch, cachd, and prepend_cupy_headers to bypass cdef/cpdef limitation...
-    # TODO(leofang): investigate Jitify for using NVRTC (also NVlabs/cub#171)
+    # To specify the backend, we have to explicitly spell out the default
+    # values for arch, cachd, and prepend_cupy_headers to bypass cdef/cpdef
+    # limitation...
     module = compile_with_cache(
         module_code, options, arch=None, cachd_dir=None,
-        prepend_cupy_headers=True, backend='nvcc')
+        prepend_cupy_headers=True, backend=backend)
     return module.get_function(name)
 
 
