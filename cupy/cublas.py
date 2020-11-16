@@ -629,8 +629,8 @@ def _change_order_if_necessary(a, lda):
     return a, lda
 
 
-def gemm(transa, transb, alpha, a, b, beta, c):
-    """Computes c = alpha * op(a) @ op(b) + beta * c
+def gemm(transa, transb, a, b, out=None, alpha=1.0, beta=0.0):
+    """Computes out = alpha * op(a) @ op(b) + beta * out
 
     op(a) = a if transa is 'N', op(a) = a.T if transa is 'T',
     op(a) = a.T.conj() if transa is 'H'.
@@ -639,8 +639,8 @@ def gemm(transa, transb, alpha, a, b, beta, c):
 
     Note: c will be updated.
     """
-    assert a.ndim == b.ndim == c.ndim == 2
-    assert a.dtype == b.dtype == c.dtype
+    assert a.ndim == b.ndim == 2
+    assert a.dtype == b.dtype
     dtype = a.dtype.char
     if dtype == 'f':
         func = cublas.sgemm
@@ -655,17 +655,23 @@ def gemm(transa, transb, alpha, a, b, beta, c):
 
     transa = _trans_to_cublas_op(transa)
     transb = _trans_to_cublas_op(transb)
-    m, n = c.shape
     if transa == cublas.CUBLAS_OP_N:
-        assert a.shape[0] == m
-        k = a.shape[1]
+        m, k = a.shape
     else:
-        assert a.shape[1] == m
-        k = a.shape[0]
+        k, m = a.shape
     if transb == cublas.CUBLAS_OP_N:
-        assert b.shape == (k, n)
+        n = b.shape[1]
+        assert b.shape[0] == k
     else:
-        assert b.shape == (n, k)
+        n = b.shape[0]
+        assert b.shape[1] == k
+    if out is None:
+        out = cupy.empty((m, n), dtype=dtype, order='F')
+        beta = 0.0
+    else:
+        assert out.ndim == 2
+        assert out.shape == (m, n)
+        assert out.dtype == dtype
 
     alpha, alpha_ptr = _get_scalar_ptr(alpha, a.dtype)
     beta, beta_ptr = _get_scalar_ptr(beta, a.dtype)
@@ -685,34 +691,37 @@ def gemm(transa, transb, alpha, a, b, beta, c):
     lda, transa = _decide_ld_and_trans(a, transa)
     ldb, transb = _decide_ld_and_trans(b, transb)
     if not (lda is None or ldb is None):
-        if c._f_contiguous:
+        if out._f_contiguous:
             try:
                 func(handle, transa, transb, m, n, k, alpha_ptr,
-                     a.data.ptr, lda, b.data.ptr, ldb, beta_ptr, c.data.ptr, m)
+                     a.data.ptr, lda, b.data.ptr, ldb, beta_ptr, out.data.ptr,
+                     m)
             finally:
                 cublas.setPointerMode(handle, orig_mode)
-            return
-        elif c._c_contiguous:
-            # Computes c.T = alpha * b.T @ a.T + beta * c.T
+            return out
+        elif out._c_contiguous:
+            # Computes out.T = alpha * b.T @ a.T + beta * out.T
             try:
                 func(handle, 1 - transb, 1 - transa, n, m, k, alpha_ptr,
-                     b.data.ptr, ldb, a.data.ptr, lda, beta_ptr, c.data.ptr, n)
+                     b.data.ptr, ldb, a.data.ptr, lda, beta_ptr, out.data.ptr,
+                     n)
             finally:
                 cublas.setPointerMode(handle, orig_mode)
-            return
+            return out
 
     a, lda = _change_order_if_necessary(a, lda)
     b, ldb = _change_order_if_necessary(b, ldb)
-    cc = c
-    if not c._f_contiguous:
-        cc = c.copy(order='F')
+    c = out
+    if not out._f_contiguous:
+        c = out.copy(order='F')
     try:
         func(handle, transa, transb, m, n, k, alpha_ptr, a.data.ptr, lda,
-             b.data.ptr, ldb, beta_ptr, cc.data.ptr, m)
+             b.data.ptr, ldb, beta_ptr, c.data.ptr, m)
     finally:
         cublas.setPointerMode(handle, orig_mode)
-    if not c._f_contiguous:
-        c[...] = cc
+    if not out._f_contiguous:
+        out[...] = c
+    return out
 
 
 def geam(transa, transb, alpha, a, beta, b, out=None):

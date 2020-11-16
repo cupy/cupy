@@ -307,6 +307,21 @@ class TestGemmAndGeam(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_gemm(self, dtype):
+        if not (self.mode is None and self.orderc == 'C'):
+            raise unittest.SkipTest()
+        dtype = numpy.dtype(dtype)
+        tol = self._tol[dtype.char.lower()]
+        m, n, k = self.mnk
+        a = self._make_matrix(m, k, self.transa, self.ordera, dtype)
+        b = self._make_matrix(k, n, self.transb, self.orderb, dtype)
+        aa = self._trans_matrix(a, self.transa)
+        bb = self._trans_matrix(b, self.transb)
+        ref = aa.dot(bb)
+        c = cublas.gemm(self.transa, self.transb, a, b)
+        cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_gemm_out(self, dtype):
         dtype = numpy.dtype(dtype)
         tol = self._tol[dtype.char.lower()]
         m, n, k = self.mnk
@@ -324,7 +339,8 @@ class TestGemmAndGeam(unittest.TestCase):
         if self.mode is not None:
             alpha = self.mode.array(alpha)
             beta = self.mode.array(beta)
-        cublas.gemm(self.transa, self.transb, alpha, a, b, beta, c)
+        cublas.gemm(self.transa, self.transb, a, b, out=c,
+                    alpha=alpha, beta=beta)
         cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
 
     @testing.for_dtypes('fdFD')
