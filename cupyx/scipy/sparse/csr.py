@@ -324,6 +324,31 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     # TODO(unno): Implement reshape
 
+    def setdiag(self, values, k=0):
+        """Set diagonal or off-diagonal elements of the array."""
+        rows, cols = self.shape
+        row_st, col_st = max(0, -k), max(0, k)
+        x_len = min(rows - row_st, cols - col_st)
+        if x_len <= 0:
+            raise ValueError('k exceeds matrix dimensions')
+        values = values.astype(self.dtype)
+        if values.ndim == 0:
+            # broadcast
+            x_data = cupy.empty((x_len,), dtype=self.dtype)
+            x_data[...] = values
+        else:
+            x_len = min(x_len, values.size)
+            x_data = values[:x_len]
+        x_indices = cupy.arange(col_st, col_st + x_len, dtype='i')
+        x_indptr = cupy.zeros((rows + 1,), dtype='i')
+        x_indptr[row_st:row_st+x_len+1] = cupy.arange(x_len+1, dtype='i')
+        x_indptr[row_st+x_len+1:] = x_len
+        x_data -= self.diagonal(k=k)[:x_len]
+        y = self + csr_matrix((x_data, x_indices, x_indptr), shape=self.shape)
+        self.data = y.data
+        self.indices = y.indices
+        self.indptr = y.indptr
+
     def sort_indices(self):
         """Sorts the indices of this matrix *in place*.
 

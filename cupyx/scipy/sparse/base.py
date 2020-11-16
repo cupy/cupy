@@ -429,7 +429,15 @@ class spmatrix(object):
     def set_shape(self, shape):
         self.reshape(shape)
 
-    # TODO(unno): Implement setdiag
+    def setdiag(self, values, k=0):
+        """Set diagonal or off-diagonal elements of the array.
+
+        Args:
+            values (cupy.ndarray): New values of the diagonal elements.
+            k (int, optional): Which diagonal to set, corresponding to elements
+                a[i, i+k]. Default: 0 (the main diagonal).
+        """
+        return self.tocsr().setdiag(values, k=k)
 
     def sum(self, axis=None, dtype=None, out=None):
         """Sums the matrix elements over a given axis.
