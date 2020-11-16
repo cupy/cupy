@@ -216,6 +216,13 @@ cpdef tuple _prepare_slice_list(slices, Py_ssize_t ndim):
         slice_list = list(slices)  # copy list
         for s in slice_list:
             if not isinstance(s, int):
+                warnings.warn(
+                    'Using a non-tuple sequence for multidimensional indexing '
+                    'is deprecated; use `arr[tuple(seq)]` instead of '
+                    '`arr[seq]`. In the future this will be interpreted as an '
+                    'array index, `arr[cupy.array(seq)]`, which will result '
+                    'either in an error or a different result.',
+                    FutureWarning)
                 break
         else:
             slice_list = [slice_list]
