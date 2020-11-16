@@ -147,9 +147,7 @@ class TestNumPyCuPyLess(unittest.TestCase, NumPyCuPyDecoratorBase,
 
 class TestNumPyCuPyAllCloseTolPerDtype(unittest.TestCase):
 
-    @helper.for_float_dtypes()
-    @helper.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-6})
-    def test_rtol_per_dtype(self, xp, dtype):
+    def _test_rtol(self, xp, dtype):
         if xp is numpy:
             return numpy.array(1, dtype=dtype)
         else:
@@ -157,13 +155,33 @@ class TestNumPyCuPyAllCloseTolPerDtype(unittest.TestCase):
             return cupy.array(1 + finfo.eps, dtype=dtype)
 
     @helper.for_float_dtypes()
-    @helper.numpy_cupy_allclose(atol={numpy.float16: 1e-3, 'default': 1e-6})
-    def test_atol_per_dtype(self, xp, dtype):
+    @helper.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-6})
+    def test_rtol_per_dtype(self, xp, dtype):
+        return self._test_rtol(xp, dtype)
+
+    @pytest.mark.xfail(strict=True)
+    @helper.for_float_dtypes()
+    @helper.numpy_cupy_allclose(rtol=1e-6)
+    def test_rtol_fail(self, xp, dtype):
+        return self._test_rtol(xp, dtype)
+
+    def _test_atol(self, xp, dtype):
         if xp is numpy:
             return numpy.array(0, dtype=dtype)
         else:
             finfo = numpy.finfo(dtype)
             return cupy.array(finfo.eps, dtype=dtype)
+
+    @helper.for_float_dtypes()
+    @helper.numpy_cupy_allclose(atol={numpy.float16: 1e-3, 'default': 1e-6})
+    def test_atol_per_dtype(self, xp, dtype):
+        return self._test_atol(xp, dtype)
+
+    @pytest.mark.xfail(strict=True)
+    @helper.for_float_dtypes()
+    @helper.numpy_cupy_allclose(atol=1e-6)
+    def test_atol_fail(self, xp, dtype):
+        return self._test_atol(xp, dtype)
 
 
 class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
