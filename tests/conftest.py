@@ -3,6 +3,12 @@ import subprocess
 import sys
 
 
+# Enable `testdir` fixture to test `cupy.testing`.
+# `pytest_plugins` cannot be locally configured. See also
+# https://docs.pytest.org/en/stable/deprecations.html#pytest-plugins-in-non-top-level-conftest-files
+pytest_plugins = ['pytester']
+
+
 def _is_pip_installed():
     try:
         import pip  # NOQA
