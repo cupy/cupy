@@ -248,8 +248,14 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement check_format
 
     def diagonal(self, k=0):
-        # TODO(unno): Implement diagonal
-        raise NotImplementedError
+        rows, cols = self.shape
+        ylen = min(rows + min(k, 0), cols - max(k, 0))
+        if ylen <= 0:
+            return cupy.empty(0, dtype=self.dtype)
+        y = cupy.empty(ylen, dtype=self.dtype)
+        cupy_csr_diagonal()(k, rows, cols, self.data, self.indptr,
+                            self.indices, y)
+        return y
 
     def eliminate_zeros(self):
         """Removes zero entories in place."""
@@ -585,6 +591,26 @@ __device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
         row = (min + max) / 2;
     }
     return row;
+}
+'''
+
+_FIND_INDEX_HOLDING_COL_IN_ROW_ = '''
+__device__ inline int find_index_holding_col_in_row(
+    int row, int col, const int *indptr, const int *indices) {
+    int j_min = indptr[row];
+    int j_max = indptr[row+1] - 1;
+    while (j_min <= j_max) {
+        int j = (j_min + j_max) / 2;
+        int j_col = indices[j];
+        if (j_col == col) {
+            return j;
+        } else if (j_col < col) {
+            j_min = j + 1;
+        } else {
+            j_max = j - 1;
+        }
+    }
+    return -1;
 }
 '''
 
@@ -1115,3 +1141,28 @@ def cupy_dense2csr_step2():
         }
         ''',
         'cupy_dense2csr_step2')
+
+
+@cupy._util.memoize(for_each_device=True)
+def cupy_csr_diagonal():
+    return cupy.ElementwiseKernel(
+        'int32 k, int32 rows, int32 cols, '
+        'raw T data, raw I indptr, raw I indices',
+        'T Y',
+        '''
+        int row = i;
+        int col = i;
+        if (k < 0) row -= k;
+        if (k > 0) col += k;
+        if (row >= rows || col >= cols) return;
+        int j = find_index_holding_col_in_row(row, col,
+            &(indptr[0]), &(indices[0]));
+        if (j >= 0) {
+            Y = data[j];
+        } else {
+            Y = static_cast<T>(0);
+        }
+        ''',
+        '_cupy_csr_diagonal',
+        preamble=_FIND_INDEX_HOLDING_COL_IN_ROW_
+    )
