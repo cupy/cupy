@@ -509,6 +509,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         readonly str preamble
         readonly int nin
         readonly int nout
+        readonly str _input_expr
+        readonly str _output_expr
         readonly dict _routine_cache
         readonly bint _sort_reduce_axis
 
@@ -525,6 +527,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         self.preamble = preamble
         self.nin = 1
         self.nout = 1
+        self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
+        self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
         self._sort_reduce_axis = sort_reduce_axis
 
@@ -594,14 +598,11 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
             Py_ssize_t block_size):
-        cdef str input_expr, output_expr
-        input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
-        output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         return _SimpleReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity,
-            input_expr, output_expr, self.preamble, ())
+            self._input_expr, self._output_expr, self.preamble, ())
 
 
 @_util.memoize(for_each_device=True)
