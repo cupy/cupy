@@ -630,8 +630,6 @@ def gemm(transa, transb, a, b, out=None, alpha=1.0, beta=0.0):
     op(a) = a.T.conj() if transa is 'H'.
     op(b) = b if transb is 'N', op(b) = b.T if transb is 'T',
     op(b) = b.T.conj() if transb is 'H'.
-
-    Note: c will be updated.
     """
     assert a.ndim == b.ndim == 2
     assert a.dtype == b.dtype
