@@ -43,6 +43,8 @@ Example:
 
 import warnings
 
+import scipy.sparse.linalg
+
 import cupy as cp
 
 from cupyx.scipy.sparse import isspmatrix
@@ -744,6 +746,7 @@ def aslinearoperator(A):
      - An object with .shape and .matvec attributes
 
     See the LinearOperator documentation for additional information.
+    .. seealso:: :func:`scipy.sparse.linalg.aslinearoperator`
 
 
     Note:
