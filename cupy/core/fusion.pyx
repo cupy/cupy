@@ -1,3 +1,5 @@
+from cupy.core cimport _accelerator
+
 import functools
 import string
 
@@ -797,8 +799,6 @@ class _FusionHistory(object):
             return kernel, {}
         else:
             _, reduce_expr, postmap_expr, reduce_ctype = self.reduce_op.routine
-            if reduce_ctype is None:
-                reduce_ctype = 'type_in0_raw'
 
             postmap_type, = self.reduce_op.out_types
             postmap_dtype = numpy.dtype(postmap_type)
@@ -815,13 +815,36 @@ class _FusionHistory(object):
                                      for s, t in zip(out_cvars, out_params))
 
             submodule_code += self._emit_premap_code(in_params, operation)
-            submodule_code += 'typedef {} type_in0_raw;\n'.format(
-                postmap_ctype)
             submodule_code += 'typedef {} type_out0_raw;\n'.format(
                 postmap_ctype)
-            submodule_code += self._emit_postmap_cast_code(
-                reduce_ctype, postmap_dtype, postmap_expr)
+            if _accelerator.ACCELERATOR_CUB in _accelerator._reduction_accelerators:
+                #submodule_code += r'''
+                #    #if defined FIRST_PASS
+                #        typedef {0} type_in0_raw;
+                #    #elif defined SECOND_PASS
+                #        typedef ${} type_in0_raw;
+                #    #endif
+                #'''.format(_dtype_to_ctype[self.premap_ret.dtype],
+                #           postmap_ctype)
+                if reduce_ctype is None:
+                    reduce_ctype = 'type_out0_raw'
+                submodule_code += self._emit_postmap_cast_code(
+                    postmap_ctype, postmap_dtype, postmap_expr)
+            else:
+                if reduce_ctype is None:
+                    reduce_ctype = 'type_in0_raw'
+                submodule_code += 'typedef {} type_in0_raw;\n'.format(
+                    postmap_ctype)
+            #submodule_code += '#define __CUPY_FUSION__\n'
+            #submodule_code += '#define type_in0_raw {}\n'.format(
+            #    postmap_ctype)
+            #submodule_code += '#define type_out0_raw(s) ({})(s)\n'.format(
+            #    postmap_ctype)
+                submodule_code += self._emit_postmap_cast_code(
+                    reduce_ctype, postmap_dtype, postmap_expr)
             submodule_code += self._emit_postmap_code(out_params, postmap_code)
+            #submodule_code += '#undef type_in0_raw\n'
+            #submodule_code += '#undef type_out0_raw\n'
 
             kernel = _reduction.ReductionKernel(
                 in_params_code,
@@ -834,6 +857,7 @@ class _FusionHistory(object):
                 name=name,
                 reduce_type=reduce_ctype,
                 preamble=submodule_code)
+                #use_cub=False)  # Workaround for typedef incompatibility
             return kernel, self.reduce_kwargs
 
 
