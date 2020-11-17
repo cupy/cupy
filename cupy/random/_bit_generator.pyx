@@ -132,13 +132,13 @@ class Generator:
 
         y = ndarray(size if size is not None else (), dtype)
 
-        # if dtype is numpy.uint32:
-        #    self._launch_distribution_kernel(interval_32, y, diff, mask)
-        # else:
-        #    self._launch_distribution_kernel(interval_64, y, diff, mask)
+        if dtype is numpy.uint32:
+           self._launch_dist('interval_32', y, diff, mask)
+        else:
+           self._launch_dist('interval_64', y, diff, mask)
         return low + y
 
-    def beta(self, a, b, size=None, dtype=float):
+    def beta(self, a, b, size=None, dtype=numpy.float64):
         """Returns an array of samples drawn from the beta distribution.
 
         .. seealso::
@@ -149,7 +149,7 @@ class Generator:
         cdef ndarray y
         # cdef uint64_t state = <uint64_t>self._bit_generator.state()
         y = ndarray(size if size is not None else (), dtype)
-        # self._launch_distribution_kernel(beta, y, a, b)
+        self._launch_dist('beta', y, a, b)
         return y
 
     def standard_exponential(self, size=None, dtype=numpy.float64, method='inv', out=None):
@@ -184,4 +184,4 @@ class Generator:
                 chunk = out[i*bsize:]
                 bpg =  (bsize + tpb - 1) // tpb;
                 y_ptr = <intptr_t>chunk.data.ptr
-                kernel((bpg,), (tpb,), (state, y_ptr, bsize, *args))
+                kernel((bpg,), (tpb,), (state, y_ptr, bsize, ) + args)
