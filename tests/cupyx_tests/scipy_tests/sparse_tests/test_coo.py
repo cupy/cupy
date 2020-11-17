@@ -983,7 +983,7 @@ class TestIsspmatrixCoo(unittest.TestCase):
             (cupy.array([0], 'f'),
              (cupy.array([0], 'i'), cupy.array([0], 'i'))),
             shape=(1, 1), dtype='f')
-        assert sparse.isspmatrix_coo(x)
+        assert sparse.isspmatrix_coo(x) is True
 
     def test_csr(self):
         x = sparse.csr_matrix(
@@ -991,4 +991,4 @@ class TestIsspmatrixCoo(unittest.TestCase):
              cupy.array([], 'i'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        assert not sparse.isspmatrix_coo(x)
+        assert sparse.isspmatrix_coo(x) is False

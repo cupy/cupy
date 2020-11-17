@@ -339,7 +339,7 @@ class TestIsspmatrixDia(unittest.TestCase):
             (cupy.array([], 'f'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        assert sparse.isspmatrix_dia(x)
+        assert sparse.isspmatrix_dia(x) is True
 
     def test_csr(self):
         x = sparse.csr_matrix(
@@ -347,4 +347,4 @@ class TestIsspmatrixDia(unittest.TestCase):
              cupy.array([], 'i'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        assert not sparse.isspmatrix_dia(x)
+        assert sparse.isspmatrix_dia(x) is False
