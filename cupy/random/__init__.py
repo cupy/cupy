@@ -14,6 +14,29 @@ def bytes(length):
     return _numpy.random.bytes(length)
 
 
+def default_rng(seed=None):  # NOQA  avoid redefinition of seed
+    """Construct a new Generator with the default BitGenerator (XORWOW).
+    Args:
+        seed (None, int, array_like[ints], numpy.random.SeedSequence,
+            cupy.random.BitGenerator, cupy.random.Generator): A seed to
+            initialize the :class:`cupy.random.BitGenerator`. If ``None``,
+            then unpredictable entropy will be pulled from the OS. If an
+            ``int`` or ``array_like[ints]`` is passed, then it will be
+            passed to :class:`numpy.random.SeedSequence` to detive the initial
+            :class:`BitGenerator` state. One may also pass in a `SeedSequence
+            instance. Adiditionally, when passed :class:`BitGenerator`, it will
+            be wrapped by :class:`Generator`. If passed a :class:`Generator`,
+            it will be returned unaltered.
+    Returns:
+        Generator: The initialized generator object.
+    """
+    if isinstance(seed, BitGenerator):
+        return Generator(seed)
+    elif isinstance(seed, Generator):
+        return seed
+    return Generator(XORWOW(seed))
+
+
 # import class and function
 from cupy.random._distributions import beta  # NOQA
 from cupy.random._distributions import binomial  # NOQA
@@ -49,11 +72,11 @@ from cupy.random._distributions import vonmises  # NOQA
 from cupy.random._distributions import wald  # NOQA
 from cupy.random._distributions import weibull  # NOQA
 from cupy.random._distributions import zipf  # NOQA
-from cupy.random._generator import get_random_state  # NOQA
-from cupy.random._generator import RandomState  # NOQA
-from cupy.random._generator import reset_states  # NOQA
-from cupy.random._generator import seed  # NOQA
-from cupy.random._generator import set_random_state  # NOQA
+from cupy.random._random_state import get_random_state  # NOQA
+from cupy.random._random_state import RandomState  # NOQA
+from cupy.random._random_state import reset_states  # NOQA
+from cupy.random._random_state import seed  # NOQA
+from cupy.random._random_state import set_random_state  # NOQA
 from cupy.random._permutations import permutation  # NOQA
 from cupy.random._permutations import shuffle  # NOQA
 from cupy.random._sample import choice  # NOQA
@@ -67,7 +90,7 @@ from cupy.random._sample import random_sample as random  # NOQA
 from cupy.random._sample import random_sample as ranf  # NOQA
 from cupy.random._sample import random_sample as sample  # NOQA
 from cupy.random._bit_generator import BitGenerator  # NOQA
-from cupy.random._bit_generator import Generator  # NOQA
 from cupy.random._bit_generator import XORWOW  # NOQA
 from cupy.random._bit_generator import MRG32k3a  # NOQA
 from cupy.random._bit_generator import Philox4x3210  # NOQA
+from cupy.random._generator import Generator  # NOQA

@@ -205,14 +205,14 @@ class TestRandomIntegers2(unittest.TestCase):
 class TestChoice(unittest.TestCase):
 
     def setUp(self):
-        self.rs_tmp = random._generator._random_states
+        self.rs_tmp = random._random_state._random_states
         device_id = cuda.Device().id
         self.m = mock.Mock()
         self.m.choice.return_value = 0
-        random._generator._random_states = {device_id: self.m}
+        random._random_state._random_states = {device_id: self.m}
 
     def tearDown(self):
-        random._generator._random_states = self.rs_tmp
+        random._random_state._random_states = self.rs_tmp
 
     def test_size_and_replace_and_p_are_none(self):
         random.choice(3)

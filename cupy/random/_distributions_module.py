@@ -1,6 +1,6 @@
 import cupy
 
-distributions_code = """
+distributions_code = r"""
 #include <curand_kernel.h>
 struct rk_state {
     __device__ virtual uint32_t rk_int() {
@@ -26,7 +26,13 @@ struct curand_pseudo_state: rk_state {
         return curand(_state);
     }
     __device__ virtual double rk_double() {
-        return curand_uniform(_state);
+        // Curand returns (0, 1] while the functions
+        // below rely on [0, 1)
+        double r = curand_uniform(_state) - 1e-12;
+        if (r < 0.0) { 
+           r = 0.0;
+        }
+        return r;
     }
     __device__ virtual double rk_normal() {
         return curand_normal(_state);
@@ -44,6 +50,11 @@ __global__ void init_generator(intptr_t state, uint64_t seed, uint64_t size) {
         curand_init(seed, id, 0, curand_state._state);
     }
 }
+
+__device__ int32_t rk_raw(rk_state* state) {
+    return state->rk_int();
+}
+
 __device__ double rk_standard_exponential(rk_state* state) {
     /* We use -log(1-U) since U is [0, 1) */
     return -log(1.0 - state->rk_double());
@@ -146,6 +157,13 @@ struct exponential_functor {
     }
 };
 
+struct raw_functor {
+    template<typename... Args>
+    __device__ int32_t operator () (Args&&... args) {
+        return rk_raw(std::forward<Args>(args)...);
+    }
+};
+
 struct interval_32_functor {
     template<typename... Args>
     __device__ uint32_t operator () (Args&&... args) {
@@ -180,6 +198,11 @@ __device__ void execute_dist(intptr_t state, intptr_t out, uint64_t size, Args..
 }
 
 template<typename T>
+__global__ void raw(intptr_t state, intptr_t out, uint64_t size) {
+    execute_dist<raw_functor, T, int32_t>(state, out, size);
+}
+
+template<typename T>
 __global__ void interval_32(intptr_t state, intptr_t out, uint64_t size, uint32_t mx, uint32_t mask) {
     execute_dist<interval_32_functor, T, int32_t>(state, out, size, mx, mask);
 }
@@ -199,13 +222,14 @@ template<typename T>
 __global__ void exponential(intptr_t state, intptr_t out, uint64_t size) {
     execute_dist<exponential_functor, T, double>(state, out, size);
 }
-"""
+"""  # NOQA
 
 
 @cupy._util.memoize(for_each_device=True)
 def _get_distributions_module(c_type_generator):
     code = distributions_code
     name_expressions = [f'init_generator<{c_type_generator}>',
+                        f'raw<{c_type_generator}>',
                         f'beta<{c_type_generator}>',
                         f'interval_32<{c_type_generator}>',
                         f'interval_64<{c_type_generator}>',

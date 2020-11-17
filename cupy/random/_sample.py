@@ -1,7 +1,7 @@
 from cupy import core
 from cupy._creation import basic
 from cupy.random import _distributions
-from cupy.random import _generator
+from cupy.random import _random_state
 
 
 def rand(*size, **kwarg):
@@ -106,7 +106,7 @@ def randint(low, high=None, size=None, dtype='l'):
         If size is integer, it is the 1D-array of length ``size`` element.
         Otherwise, it is the array whose shape specified by ``size``.
     """
-    rs = _generator.get_random_state()
+    rs = _random_state.get_random_state()
     return rs.randint(low, high, size, dtype)
 
 
@@ -152,7 +152,7 @@ def random_sample(size=None, dtype=float):
     .. seealso:: :meth:`numpy.random.random_sample`
 
     """
-    rs = _generator.get_random_state()
+    rs = _random_state.get_random_state()
     return rs.random_sample(size=size, dtype=dtype)
 
 
@@ -186,7 +186,7 @@ def choice(a, size=None, replace=True, p=None):
     .. seealso:: :meth:`numpy.random.choice`
 
     """
-    rs = _generator.get_random_state()
+    rs = _random_state.get_random_state()
     return rs.choice(a, size, replace, p)
 
 

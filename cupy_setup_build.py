@@ -87,10 +87,12 @@ cuda_files = [
     'cupy.fft._callback',
     'cupy.lib.polynomial',
     'cupy.random._bit_generator',
+    'cupy.random._generator',
     'cupy._util'
 ]
 
 if use_hip:
+    # We handle nvtx (and likely any other future support) here, because
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
