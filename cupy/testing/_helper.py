@@ -17,13 +17,27 @@ from cupy.testing import _parameterized
 import cupyx
 import cupyx.scipy.sparse
 
+_skip_classes = unittest.SkipTest,
+_is_pytest_available = False
+try:
+    import _pytest.outcomes
+    _skip_classes += _pytest.outcomes.Skipped,
+    _is_pytest_available = True
+except ImportError:
+    pass
+
 
 def _call_func(self, impl, args, kw):
+    # Note that `_pytest.outcomes.Skipped` is derived from BaseException.
+    exceptions = Exception,
+    if _is_pytest_available:
+        exceptions += _pytest.outcomes.Skipped,
+
     try:
         result = impl(self, *args, **kw)
         error = None
         tb = None
-    except Exception as e:
+    except exceptions as e:
         tb = e.__traceback__
         if tb.tb_next is None:
             # failed before impl is called, e.g. invalid kw
@@ -120,8 +134,12 @@ def _fail_test_with_unexpected_errors(
 def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
                             numpy_tb, accept_error=False):
     # Skip the test if both raised SkipTest.
-    if (isinstance(cupy_error, unittest.SkipTest)
-            and isinstance(numpy_error, unittest.SkipTest)):
+    if (isinstance(cupy_error, _skip_classes)
+            and isinstance(numpy_error, _skip_classes)):
+        if cupy_error.__class__ is not numpy_error.__class__:
+            raise AssertionError(
+                'Both numpy and cupy were skipped but with different '
+                'exceptions.')
         if cupy_error.args != numpy_error.args:
             raise AssertionError(
                 'Both numpy and cupy were skipped but with different causes.')
@@ -174,12 +192,16 @@ numpy
             cupy_error, cupy_tb, numpy_error, numpy_tb)
 
 
+def _signed_counterpart(dtype):
+    return numpy.dtype(numpy.dtype(dtype).char.lower()).type
+
+
 def _make_positive_mask(self, impl, args, kw, name, sp_name, scipy_name):
     # Returns a mask of output arrays that indicates valid elements for
     # comparison. See the comment at the caller.
     ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
     for k in ks:
-        kw[k] = numpy.intp
+        kw[k] = _signed_counterpart(kw[k])
     result, error, tb = _call_func_cupy(
         self, impl, args, kw, name, sp_name, scipy_name)
     assert error is None
@@ -236,7 +258,11 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
             # Check dtypes
             if type_check:
                 for cupy_r, numpy_r in cupy_numpy_result_ndarrays:
-                    assert cupy_r.dtype == numpy_r.dtype
+                    if cupy_r.dtype != numpy_r.dtype:
+                        raise AssertionError(
+                            '''ndarrays of different dtypes are returned.
+cupy: {}
+numpy: {}'''.format(cupy_r.dtype, numpy_r.dtype))
 
             # Check contiguities
             if contiguous_check:
@@ -635,6 +661,12 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
                     _call_func_numpy_cupy(
                         self, impl, args, kw, name, sp_name, scipy_name))
 
+            if cupy_error or numpy_error:
+                _check_cupy_numpy_error(
+                    self, cupy_error, cupy_tb, numpy_error, numpy_tb,
+                    accept_error=False)
+                return
+
             if cupy_result != numpy_result:
                 message = '''Results are not equal:
 cupy: %s
@@ -707,7 +739,7 @@ def for_dtypes(dtypes, name='dtype'):
                 try:
                     kw[name] = numpy.dtype(dtype).type
                     impl(self, *args, **kw)
-                except unittest.SkipTest as e:
+                except _skip_classes as e:
                     print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
                     print(name, 'is', dtype)
@@ -918,7 +950,6 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
     If the value is set to ``'1'``, it behaves as if ``full=True``, and
     otherwise ``full=False``.
     """
-
     types = list(types)
 
     if len(types) == 1:
@@ -951,6 +982,11 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
                 try:
                     impl(self, *args, **kw_copy)
+                except _skip_classes as e:
+                    msg = ', '.join(
+                        '{} = {}'.format(name, dtype)
+                        for name, dtype in dtypes.items())
+                    print('skipped: {} ({})'.format(msg, e))
                 except Exception:
                     print(dtypes)
                     raise
@@ -1331,19 +1367,6 @@ def generate_matrix(
     return a.astype(dtype)
 
 
-class NumpyError(object):
-
-    def __init__(self, **kw):
-        self.kw = kw
-
-    def __enter__(self):
-        self.err = numpy.geterr()
-        numpy.seterr(**self.kw)
-
-    def __exit__(self, *_):
-        numpy.seterr(**self.err)
-
-
 @contextlib.contextmanager
 def assert_warns(expected):
     with warnings.catch_warnings(record=True) as w:
@@ -1397,31 +1420,21 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
         assert self.cupy_func(*self.args) == self.numpy_func(*self.args)
 
 
-class AssertFunctionIsCalled:
+@contextlib.contextmanager
+def assert_function_is_called(*args, times_called=1, **kwargs):
+    """A handy wrapper for unittest.mock to check if a function is called.
 
-    def __init__(self, mock_mod, **kwargs):
-        """A handy wrapper for unittest.mock to check if a function is called.
+    Args:
+        *args: Arguments of `mock.patch`.
+        times_called (int): The number of times the function should be
+            called. Default is ``1``.
+        **kwargs: Keyword arguments of `mock.patch`.
 
-        This class should be used as a context manager.
+    """
+    with mock.patch(*args, **kwargs) as handle:
+        yield
+        assert handle.call_count == times_called
 
-        Args:
-            mock_mod (str): the function to be mocked.
-            times_called (int): the number of times the function should be
-                called. Default is ``1``.
 
-        """
-
-        self.patch = mock.patch(mock_mod, **kwargs)
-
-        times_called = kwargs.get('times_called')
-        self.times_called = times_called if times_called is not None else 1
-
-    def __enter__(self):
-        self.handle = self.patch.__enter__()
-        assert self.handle.call_count == 0
-        return self.handle
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        assert self.handle.call_count == int(self.times_called)
-        del self.handle
-        return self.patch.__exit__(exc_type, exc_value, traceback)
+# TODO(kataoka): remove this alias
+AssertFunctionIsCalled = assert_function_is_called

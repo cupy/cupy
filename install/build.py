@@ -155,7 +155,10 @@ def get_compiler_setting(use_hip):
         extra_compile_args.append('-std=c++11')
 
     if PLATFORM_DARWIN:
-        library_dirs.append('/usr/local/cuda/lib')
+        if cuda_path:
+            library_dirs.append('/usr/local/cuda/lib')
+        elif rocm_path:
+            library_dirs.append('/opt/rocm/lib')
 
     if PLATFORM_WIN32:
         nvtoolsext_path = os.environ.get('NVTOOLSEXT_PATH', '')
@@ -281,6 +284,7 @@ _nccl_version = None
 _cutensor_version = None
 _cub_path = None
 _cub_version = None
+_compute_capabilities = None
 
 
 def check_cuda_version(compiler, settings):
@@ -323,6 +327,41 @@ def get_cuda_version(formatted=False):
     if formatted:
         return _format_cuda_version(_cuda_version)
     return _cuda_version
+
+
+def check_compute_capabilities(compiler, settings):
+    """Return compute capabilities of the installed devices."""
+    global _compute_capabilities
+    try:
+        src = '''#include <cuda_runtime_api.h>
+        #include <stdio.h>
+        int main() {
+          cudaDeviceProp prop;
+          int device_count;
+          int i;
+          cudaGetDeviceCount(&device_count);
+          for(i=0; i < device_count; i++) {
+              cudaGetDeviceProperties(&prop, i);
+              printf("%d%d ", prop.major,prop.minor);
+          }
+          return 0;
+        }
+        '''
+        out = build_and_run(
+            compiler, src,
+            include_dirs=settings['include_dirs'],
+            libraries=('cudart',),
+            library_dirs=settings['library_dirs'])
+        _compute_capabilities = set([int(o) for o in out.split()])
+    except Exception as e:
+        utils.print_warning('Cannot check cuDNN version\n{0}'.format(e))
+        return False
+
+    return True
+
+
+def get_compute_capabilities(formatted=False):
+    return _compute_capabilities
 
 
 def check_thrust_version(compiler, settings):
@@ -404,22 +443,29 @@ def check_nccl_version(compiler, settings):
 
     # NCCL 1.x does not provide version information.
     try:
-        out = build_and_run(compiler, '''
-        #include <nccl.h>
-        #include <stdio.h>
-        #ifdef NCCL_MAJOR
-        #ifndef NCCL_VERSION_CODE
-        #  define NCCL_VERSION_CODE \
-                (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
-        #endif
-        #else
-        #  define NCCL_VERSION_CODE 0
-        #endif
-        int main() {
-          printf("%d", NCCL_VERSION_CODE);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
+        out = build_and_run(compiler,
+                            '''
+                            #ifndef CUPY_USE_HIP
+                            #include <nccl.h>
+                            #else
+                            #include <rccl.h>
+                            #endif
+                            #include <stdio.h>
+                            #ifdef NCCL_MAJOR
+                            #ifndef NCCL_VERSION_CODE
+                            #  define NCCL_VERSION_CODE \
+                            (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+                            #endif
+                            #else
+                            #  define NCCL_VERSION_CODE 0
+                            #endif
+                            int main() {
+                              printf("%d", NCCL_VERSION_CODE);
+                              return 0;
+                            }
+                            ''',
+                            include_dirs=settings['include_dirs'],
+                            define_macros=settings['define_macros'])
 
     except Exception as e:
         utils.print_warning('Cannot include NCCL\n{0}'.format(e))

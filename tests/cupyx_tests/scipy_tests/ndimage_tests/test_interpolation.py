@@ -6,6 +6,7 @@ import pytest
 import cupy
 from cupy import testing
 import cupyx.scipy.ndimage
+from cupyx.scipy.ndimage import _util
 
 try:
     import scipy.ndimage
@@ -323,14 +324,23 @@ class TestRotateOpenCV(unittest.TestCase):
             return cv2.warpAffine(a, matrix, (a.shape[1], a.shape[0]))
 
 
-@testing.parameterize(*testing.product({
-    'shift': [0.1, -10, (5, -5)],
-    'output': [None, numpy.float64, 'empty'],
-    'order': [0, 1],
-    'mode': ['constant', 'nearest', 'mirror'],
-    'cval': [1.0],
-    'prefilter': [True],
-}))
+@testing.parameterize(*(
+    testing.product({
+        'shift': [0.1, -10, (5, -5)],
+        'output': [None, numpy.float64, 'empty'],
+        'order': [0, 1],
+        'mode': ['constant', 'nearest', 'mirror'],
+        'cval': [1.0],
+        'prefilter': [True],
+    }) + testing.product({
+        'shift': [0.1, ],
+        'output': [None, numpy.float64, 'empty'],
+        'order': [0, 1],
+        'mode': ['constant', ],
+        'cval': [cupy.nan, cupy.inf, -cupy.inf],
+        'prefilter': [True],
+    })
+))
 @testing.gpu
 @testing.with_requires('scipy')
 class TestShift(unittest.TestCase):
@@ -365,6 +375,12 @@ class TestShift(unittest.TestCase):
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_shift_int(self, xp, scp, dtype):
+        if self.mode == 'constant' and not xp.isfinite(self.cval):
+            if self.output is None or self.output == 'empty':
+                # Non-finite cval with integer output array is not supported
+                # CuPy exception is tested in TestInterpolationInvalidCval
+                return xp.asarray([])
+
         if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
             if dtype in (numpy.dtype('l'), numpy.dtype('q')):
                 dtype = numpy.int64
@@ -377,6 +393,91 @@ class TestShift(unittest.TestCase):
         half = xp.full_like(float_out, 0.5)
         out[xp.isclose(float_out, half, atol=1e-5)] = 0
         return out
+
+
+# non-finite cval with integer valued output is not allowed for CuPy
+@testing.parameterize(*testing.product({
+    'output': [None, numpy.float64, numpy.int32, 'empty'],
+    'order': [0, 1],
+    'mode': ['constant', 'nearest'],
+    'cval': [cupy.nan, cupy.inf, -cupy.inf],
+}))
+@testing.gpu
+class TestInterpolationInvalidCval(unittest.TestCase):
+
+    def _prep_output(self, a):
+        if self.output == 'empty':
+            return cupy.zeros_like(a)
+        return self.output
+
+    @testing.for_int_dtypes(no_bool=True)
+    def test_shift(self, dtype):
+        a = cupy.ones((32,), dtype=dtype)
+        shift = cupyx.scipy.ndimage.shift
+        output = self._prep_output(a)
+        if _util._is_integer_output(output, a) and self.mode == 'constant':
+            with pytest.raises(NotImplementedError):
+                shift(a, 1, output=output, order=self.order, mode=self.mode,
+                      cval=self.cval)
+        else:
+            shift(a, 1, output=output, order=self.order, mode=self.mode,
+                  cval=self.cval)
+
+    @testing.for_int_dtypes(no_bool=True)
+    def test_zoom(self, dtype):
+        a = cupy.ones((32,), dtype=dtype)
+        zoom = cupyx.scipy.ndimage.zoom
+        output = self._prep_output(a)
+        if _util._is_integer_output(output, a) and self.mode == 'constant':
+            with pytest.raises(NotImplementedError):
+                # zoom of 1.0 to keep same shape
+                zoom(a, 1, output=output, order=self.order, mode=self.mode,
+                     cval=self.cval)
+        else:
+            zoom(a, 1, output=output, order=self.order, mode=self.mode,
+                 cval=self.cval)
+
+    @testing.for_int_dtypes(no_bool=True)
+    def test_rotate(self, dtype):
+        a = cupy.ones((16, 16), dtype=dtype)
+        rotate = cupyx.scipy.ndimage.rotate
+        output = self._prep_output(a)
+        if _util._is_integer_output(output, a) and self.mode == 'constant':
+            with pytest.raises(NotImplementedError):
+                # rotate by 0 to keep same shape
+                rotate(a, 0, output=output, order=self.order, mode=self.mode,
+                       cval=self.cval)
+        else:
+            rotate(a, 0, output=output, order=self.order, mode=self.mode,
+                   cval=self.cval)
+
+    @testing.for_int_dtypes(no_bool=True)
+    def test_affine(self, dtype):
+        a = cupy.ones((16, 16), dtype=dtype)
+        affine = cupy.eye(2)
+        affine_transform = cupyx.scipy.ndimage.affine_transform
+        output = self._prep_output(a)
+        if _util._is_integer_output(output, a) and self.mode == 'constant':
+            with pytest.raises(NotImplementedError):
+                affine_transform(a, affine, output=output, order=self.order,
+                                 mode=self.mode, cval=self.cval)
+        else:
+            affine_transform(a, affine, output=output, order=self.order,
+                             mode=self.mode, cval=self.cval)
+
+    @testing.for_int_dtypes(no_bool=True)
+    def test_map_coordinates(self, dtype):
+        a = cupy.ones((32,), dtype=dtype)
+        coords = cupy.arange(32)[cupy.newaxis, :] + 2.5
+        map_coordinates = cupyx.scipy.ndimage.map_coordinates
+        output = self._prep_output(a)
+        if _util._is_integer_output(output, a) and self.mode == 'constant':
+            with pytest.raises(NotImplementedError):
+                map_coordinates(a, coords, output=output, order=self.order,
+                                mode=self.mode, cval=self.cval)
+        else:
+            map_coordinates(a, coords, output=output, order=self.order,
+                            mode=self.mode, cval=self.cval)
 
 
 @testing.gpu
@@ -475,3 +576,66 @@ class TestZoomOpenCV(unittest.TestCase):
         else:
             output_shape = numpy.rint(numpy.multiply(a.shape, self.zoom))
             return cv2.resize(a, tuple(output_shape.astype(int)))
+
+
+@testing.parameterize(*testing.product({
+    'mode': ['mirror', 'wrap', 'reflect'],
+    'order': [0, 1, 2, 3, 4, 5],
+    'dtype': [numpy.uint8, numpy.float64],
+    'output': [numpy.float64, numpy.float32],
+    'axis': [0, 1, 2, -1],
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestSplineFilter1d(unittest.TestCase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_spline_filter1d(self, xp, scp):
+        x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
+        return scp.ndimage.spline_filter1d(x, order=self.order, axis=self.axis,
+                                           output=self.output, mode=self.mode)
+
+    @testing.for_CF_orders(name='array_order')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_spline_filter1d_output(self, xp, scp, array_order):
+        x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp,
+                                  order=array_order)
+        output = xp.empty(x.shape, dtype=self.output, order=array_order)
+        scp.ndimage.spline_filter1d(x, order=self.order, axis=self.axis,
+                                    output=output, mode=self.mode)
+        return output
+
+
+@testing.parameterize(*testing.product({
+    'mode': ['mirror', 'wrap', 'reflect'],
+    'order': [0, 1, 2, 3, 4, 5],
+    'dtype': [numpy.uint8, numpy.float64],
+    'output': [numpy.float64, numpy.float32],
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestSplineFilter(unittest.TestCase):
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
+    def test_spline_filter(self, xp, scp):
+        x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
+        if self.order < 2:
+            with pytest.raises(RuntimeError):
+                scp.ndimage.spline_filter(x, order=self.order,
+                                          output=self.output, mode=self.mode)
+            return xp.asarray([])
+        return scp.ndimage.spline_filter(x, order=self.order,
+                                         output=self.output, mode=self.mode)
+
+    @testing.for_CF_orders(name='array_order')
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
+    def test_spline_filter_with_output(self, xp, scp, array_order):
+        x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp,
+                                  order=array_order)
+        output = xp.empty(x.shape, dtype=self.output, order=array_order)
+        if self.order < 2:
+            with pytest.raises(RuntimeError):
+                scp.ndimage.spline_filter(x, order=self.order, output=output,
+                                          mode=self.mode)
+            return xp.asarray([])
+        scp.ndimage.spline_filter(x, order=self.order, output=output,
+                                  mode=self.mode)
+        return output

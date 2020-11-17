@@ -64,6 +64,7 @@ Comparison
    :nosignatures:
 
    cupy.allclose
+   cupy.array_equal
    cupy.isclose
    cupy.greater
    cupy.greater_equal

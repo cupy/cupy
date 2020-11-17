@@ -553,13 +553,13 @@ class TestInplaceSpecialMethods(unittest.TestCase):
         xp.put_along_axis(a, ai, 99, axis=1)
         return a
 
-    @unittest.skipIf(get_numpy_version() < (1, 12, 0),
-                     'nancumsum introduced in numpy v1.12.0')
+    @unittest.skipIf(get_numpy_version() < (1, 15, 0),
+                     'quantile introduced in numpy v1.15.0')
     @numpy_fallback_array_equal()
     def test_out_is_returned_when_fallbacked(self, xp):
         a = testing.shaped_random((3, 4), xp)
-        z = xp.zeros((3, 4))
-        res = xp.nancumsum(a, axis=0, out=z)
+        z = xp.zeros((4, ))
+        res = xp.quantile(a, 0.5, axis=0, out=z)
         assert res is z
         return res
 

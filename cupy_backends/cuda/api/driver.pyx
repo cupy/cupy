@@ -137,7 +137,7 @@ cdef inline void check_attribute_status(int status, int* pi) except *:
 # Build-time version
 ###############################################################################
 
-def get_build_version():
+cpdef get_build_version():
     return CUDA_VERSION
 
 

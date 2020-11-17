@@ -11,6 +11,7 @@ Basic operations
    :nosignatures:
 
    cupy.copyto
+   cupy.shape
 
 
 Changing array shape

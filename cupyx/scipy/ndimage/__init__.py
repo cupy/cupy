@@ -31,6 +31,8 @@ from cupyx.scipy.ndimage.interpolation import affine_transform  # NOQA
 from cupyx.scipy.ndimage.interpolation import map_coordinates  # NOQA
 from cupyx.scipy.ndimage.interpolation import rotate  # NOQA
 from cupyx.scipy.ndimage.interpolation import shift  # NOQA
+from cupyx.scipy.ndimage.interpolation import spline_filter  # NOQA
+from cupyx.scipy.ndimage.interpolation import spline_filter1d  # NOQA
 from cupyx.scipy.ndimage.interpolation import zoom  # NOQA
 
 from cupyx.scipy.ndimage.measurements import label  # NOQA
@@ -38,6 +40,12 @@ from cupyx.scipy.ndimage.measurements import sum  # NOQA
 from cupyx.scipy.ndimage.measurements import mean  # NOQA
 from cupyx.scipy.ndimage.measurements import variance  # NOQA
 from cupyx.scipy.ndimage.measurements import standard_deviation  # NOQA
+from cupyx.scipy.ndimage.measurements import minimum  # NOQA
+from cupyx.scipy.ndimage.measurements import maximum  # NOQA
+from cupyx.scipy.ndimage.measurements import minimum_position  # NOQA
+from cupyx.scipy.ndimage.measurements import maximum_position  # NOQA
+from cupyx.scipy.ndimage.measurements import median  # NOQA
+from cupyx.scipy.ndimage.measurements import extrema  # NOQA
 
 from cupyx.scipy.ndimage.morphology import generate_binary_structure  # NOQA
 from cupyx.scipy.ndimage.morphology import iterate_structure  # NOQA

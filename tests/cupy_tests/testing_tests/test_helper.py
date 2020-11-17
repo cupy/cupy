@@ -290,61 +290,143 @@ class TestGenerateMatrixInvalid(unittest.TestCase):
                 (0, 2, 2), singular_values=numpy.ones(3))
 
 
+class TestAssertFunctionIsCalled(unittest.TestCase):
+
+    def test_patch_ndarray(self):
+        orig = cupy.ndarray
+        with testing.AssertFunctionIsCalled('cupy.ndarray'):
+            a = cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+        assert not isinstance(a, cupy.ndarray)
+
+    def test_spy_ndarray(self):
+        orig = cupy.ndarray
+        with testing.AssertFunctionIsCalled(
+                'cupy.ndarray', wraps=cupy.ndarray):
+            a = cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+        assert isinstance(a, cupy.ndarray)
+
+    def test_fail_not_called(self):
+        orig = cupy.ndarray
+        with pytest.raises(AssertionError):
+            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+                pass
+        assert cupy.ndarray is orig
+
+    def test_fail_called_twice(self):
+        orig = cupy.ndarray
+        with pytest.raises(AssertionError):
+            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+                cupy.ndarray((2, 3), numpy.float32)
+                cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+
+    def test_times_called(self):
+        orig = cupy.ndarray
+        with testing.AssertFunctionIsCalled('cupy.ndarray', times_called=2):
+            cupy.ndarray((2, 3), numpy.float32)
+            cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+
+    def test_inner_error(self):
+        orig = cupy.ndarray
+        with pytest.raises(numpy.AxisError):
+            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+                cupy.ndarray((2, 3), numpy.float32)
+                raise numpy.AxisError('foo')
+        assert cupy.ndarray is orig
+
+
+@testing.parameterize(*testing.product({
+    'framework': ['unittest', 'pytest']
+}))
 class TestSkip(unittest.TestCase):
+
+    def _skip(self, reason):
+        if self.framework == 'unittest':
+            self.skipTest(reason)
+        else:
+            pytest.skip(reason)
 
     @testing.numpy_cupy_allclose()
     def test_allclose(self, xp):
-        raise unittest.SkipTest('Test for skip with @numpy_cupy_allclose')
+        self._skip('Test for skip with @numpy_cupy_allclose')
         assert False
 
     @testing.numpy_cupy_array_almost_equal()
     def test_array_almost_equal(self, xp):
-        raise unittest.SkipTest(
-            'Test for skip with @numpy_cupy_array_almost_equal')
+        raise self._skip('Test for skip with @numpy_cupy_array_almost_equal')
         assert False
 
     @testing.numpy_cupy_array_almost_equal_nulp()
     def test_array_almost_equal_nulp(self, xp):
-        raise unittest.SkipTest(
+        raise self._skip(
             'Test for skip with @numpy_cupy_array_almost_equal_nulp')
         assert False
 
     @testing.numpy_cupy_array_max_ulp()
     def test_array_max_ulp(self, xp):
-        raise unittest.SkipTest('Test for skip with @numpy_cupy_array_max_ulp')
+        raise self._skip('Test for skip with @numpy_cupy_array_max_ulp')
         assert False
 
     @testing.numpy_cupy_array_equal()
     def test_array_equal(self, xp):
-        raise unittest.SkipTest('Test for skip with @numpy_cupy_array_equal')
+        raise self._skip('Test for skip with @numpy_cupy_array_equal')
         assert False
 
     @testing.numpy_cupy_array_less()
     def test_less(self, xp):
-        raise unittest.SkipTest('Test for skip with @numpy_cupy_array_less')
+        raise self._skip('Test for skip with @numpy_cupy_array_less')
         assert False
 
     @testing.numpy_cupy_equal()
     def test_equal(self, xp):
-        raise unittest.SkipTest('Test for skip with @numpy_cupy_equal')
+        raise self._skip('Test for skip with @numpy_cupy_equal')
         assert False
 
+    @testing.for_all_dtypes()
+    def test_dtypes(self, dtype):
+        if dtype is cupy.float32:
+            raise self._skip('Test for skipping a dtype in @for_all_dtypes')
+            assert False
+        else:
+            assert True
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_dtypes_allclose(self, xp, dtype):
+        if dtype is xp.float32:
+            raise self._skip('Test for skipping a dtype in @for_all_dtypes')
+            assert False
+        else:
+            return xp.array(True)
+
+
+@testing.parameterize(*testing.product({
+    'framework': ['unittest', 'pytest']
+}))
 class TestSkipFail(unittest.TestCase):
+
+    def _skip(self, reason):
+        if self.framework == 'unittest':
+            raise unittest.SkipTest(reason)
+        else:
+            pytest.skip(reason)
 
     @pytest.mark.xfail(strict=True)
     @testing.numpy_cupy_allclose()
     def test_different_reason(self, xp):
         if xp is numpy:
-            raise unittest.SkipTest('skip1')
+            self._skip('skip1')
         else:
-            raise unittest.SkipTest('skip2')
+            self._skip('skip2')
 
     @pytest.mark.xfail(strict=True)
     @testing.numpy_cupy_allclose()
     def test_only_numpy(self, xp):
         if xp is numpy:
-            raise unittest.SkipTest('skip')
+            self._skip('skip')
         else:
             return xp.array(True)
 
@@ -354,4 +436,16 @@ class TestSkipFail(unittest.TestCase):
         if xp is numpy:
             return xp.array(True)
         else:
-            raise unittest.SkipTest('skip')
+            self._skip('skip')
+
+    @pytest.mark.xfail(strict=True)
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_dtype_only_cupy(self, xp, dtype):
+        if dtype is not xp.float32:
+            return xp.array(True)
+
+        if xp is numpy:
+            return xp.array(True)
+        else:
+            self._skip('skip')

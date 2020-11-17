@@ -9,6 +9,10 @@ from cupy.fft._cache import get_plan_cache_max_memsize  # NOQA
 from cupy.fft._cache import set_plan_cache_max_memsize  # NOQA
 from cupy.fft._cache import show_plan_cache_info  # NOQA
 
+# expose callback handles to this module
+from cupy.fft._callback import get_current_callback_manager  # NOQA
+from cupy.fft._callback import set_cufft_callbacks  # NOQA
+
 
 enable_nd_planning = True
 use_multi_gpus = False
