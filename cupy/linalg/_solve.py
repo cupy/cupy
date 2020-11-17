@@ -279,9 +279,6 @@ def inv(a):
     if a.ndim >= 3:
         return _batched_inv(a)
 
-    # to prevent `a` to be overwritten
-    a = a.copy()
-
     _util._assert_cupy_array(a)
     _util._assert_rank2(a)
     _util._assert_nd_squareness(a)
@@ -290,56 +287,12 @@ def inv(a):
     if a.dtype.char in 'fdFD':
         dtype = a.dtype.char
     else:
-        dtype = numpy.promote_types(a.dtype.char, 'f')
-
-    cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=numpy.int32)
-
-    ipiv = cupy.empty((a.shape[0], 1), dtype=numpy.intc)
-
-    if dtype == 'f':
-        getrf = cusolver.sgetrf
-        getrf_bufferSize = cusolver.sgetrf_bufferSize
-        getrs = cusolver.sgetrs
-    elif dtype == 'd':
-        getrf = cusolver.dgetrf
-        getrf_bufferSize = cusolver.dgetrf_bufferSize
-        getrs = cusolver.dgetrs
-    elif dtype == 'F':
-        getrf = cusolver.cgetrf
-        getrf_bufferSize = cusolver.cgetrf_bufferSize
-        getrs = cusolver.cgetrs
-    elif dtype == 'D':
-        getrf = cusolver.zgetrf
-        getrf_bufferSize = cusolver.zgetrf_bufferSize
-        getrs = cusolver.zgetrs
-    else:
         msg = ('dtype must be float32, float64, complex64 or complex128'
                ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
 
-    m = a.shape[0]
-
-    buffersize = getrf_bufferSize(cusolver_handle, m, m, a.data.ptr, m)
-    workspace = cupy.empty(buffersize, dtype=dtype)
-
-    # LU factorization
-    getrf(
-        cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr,
-        ipiv.data.ptr, dev_info.data.ptr)
-    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrf, dev_info)
-
-    b = cupy.eye(m, dtype=dtype)
-
-    # solve for the inverse
-    getrs(
-        cusolver_handle, 0, m, m, a.data.ptr, m, ipiv.data.ptr, b.data.ptr, m,
-        dev_info.data.ptr)
-    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrs, dev_info)
-
-    return b
+    b = cupy.eye(a.shape[0], dtype=dtype)
+    return cupyx.lapack.gesv(a, b)
 
 
 def _batched_inv(a):
