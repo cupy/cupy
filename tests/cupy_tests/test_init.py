@@ -35,7 +35,7 @@ def _test_cupy_available(self):
     returncode, stdoutdata, stderrdata = _run_script('''
 import cupy
 print(cupy.is_available())''')
-    self.assertEqual(returncode, 0, 'stderr: {!r}'.format(stderrdata))
+    assert returncode == 0, 'stderr: {!r}'.format(stderrdata)
     self.assertIn(stdoutdata,
                   (b'True\n', b'True\r\n', b'False\n', b'False\r\n'))
     return stdoutdata == b'True\n' or stdoutdata == b'True\r\n'
@@ -50,7 +50,7 @@ try:
 except Exception as e:
     print(type(e).__name__)
 ''')
-        self.assertEqual(returncode, 0, 'stderr: {!r}'.format(stderrdata))
+        assert returncode == 0, 'stderr: {!r}'.format(stderrdata)
         self.assertIn(stdoutdata, (b'', b'RuntimeError\n'))
 
 
