@@ -592,6 +592,13 @@ def make_extensions(options, compiler, use_cython):
         if module['name'] == 'jitify':
             compile_args.append('--std=c++11')
 
+        # make CUPY_CUB_VERSION_CODE defined only when compiling cupy.cuda.cub
+        if module['name'] != 'cub':
+            for kv in s['define_macros']:
+                if kv[0] == 'CUPY_CUB_VERSION_CODE':
+                    s['define_macros'].remove(kv)
+                    break
+
         original_s = s
         for f in module['file']:
             s = copy.deepcopy(original_s)
