@@ -8,28 +8,13 @@ from cupy.cusolver import check_availability
 from cupy.linalg import _util
 
 
-def _batched_invh(a):
-    """Compute the inverse of an array of Hermitian matrices.
+def _batched_cholesky_solve(a, b):
 
-    This function computes an inverse of a real symmetric or complex hermitian
-    positive-definite matrix using Cholesky factorization. If matrix ``a[i]``
-    is not positive definite, Cholesky factorization fails and it raises
-    an error.
-
-    Args:
-        a (cupy.ndarray): Array of real symmetric or complex hermitian
-            matrices with dimension (..., N, N).
-
-    Returns:
-        cupy.ndarray: The array of inverses of matrices ``a[i]``.
-    """
     if not check_availability('potrsBatched'):
         raise RuntimeError('potrsBatched is not available')
 
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
-        dtype = a.dtype.char
-    else:
-        dtype = numpy.promote_types(a.dtype.char, 'f').char
+    dtype = numpy.promote_types(a.dtype, b.dtype)
+    dtype = numpy.promote_types(dtype, 'f')
 
     if dtype == 'f':
         potrfBatched = cusolver.spotrfBatched
@@ -50,11 +35,11 @@ def _batched_invh(a):
 
     a = a.astype(dtype, order='C', copy=True)
     ap = cupy.core._mat_ptrs(a)
-    n = a.shape[-1]
-    lda = a.strides[-2] // a.dtype.itemsize
+    lda, n = a.shape[-2:]
+    batch_size = int(numpy.prod(a.shape[:-2]))
+
     handle = device.get_cusolver_handle()
     uplo = cublas.CUBLAS_FILL_MODE_LOWER
-    batch_size = int(numpy.prod(a.shape[:-2]))
     dev_info = cupy.empty(batch_size, dtype=numpy.int32)
 
     # Cholesky factorization
@@ -63,12 +48,10 @@ def _batched_invh(a):
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         potrfBatched, dev_info)
 
-    identity_matrix = cupy.eye(n, dtype=dtype)
-    b = cupy.empty(a.shape, dtype)
-    b[...] = identity_matrix
-    nrhs = b.shape[-1]
-    ldb = b.strides[-2] // a.dtype.itemsize
+    b_shape = b.shape
+    b = b.reshape(batch_size, n, -1).astype(dtype, order='C', copy=True)
     bp = cupy.core._mat_ptrs(b)
+    ldb, nrhs = b.shape[-2:]
     dev_info = cupy.empty(1, dtype=numpy.int32)
 
     # NOTE: potrsBatched does not currently support nrhs > 1 (CUDA v10.2)
@@ -76,44 +59,34 @@ def _batched_invh(a):
     potrsBatched(handle, uplo, n, nrhs, ap.data.ptr, lda, bp.data.ptr, ldb,
                  dev_info.data.ptr, batch_size)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        potrfBatched, dev_info)
+        potrsBatched, dev_info)
 
-    return b
+    return b.conj().reshape(b_shape)
 
 
-def invh(a):
-    """Compute the inverse of a Hermitian matrix.
+def cholesky_solve(a, b):
+    """Solve the linear equations A x = b via Cholesky factorization of A,
+    where A is a real symmetric or complex Hermitian positive-definite matrix.
 
-    This function computes a inverse of a real symmetric or complex hermitian
-    positive-definite matrix using Cholesky factorization. If matrix ``a`` is
-    not positive definite, Cholesky factorization fails and it raises an error.
+    If matrix ``a[i]`` is not positive definite, Cholesky factorization fails
+    and it raises an error.
 
     Args:
-        a (cupy.ndarray): Real symmetric or complex hermitian maxtix.
-
+        a (cupy.ndarray): Array of real symmetric or complex hermitian
+            matrices with dimension (..., N, N).
+        b (cupy.ndarray): right-hand side (..., N).
     Returns:
-        cupy.ndarray: The inverse of matrix ``a``.
+        x (cupy.ndarray): The array of solutions ``x[i]``.
     """
 
-    _util._assert_cupy_array(a)
+    _util._assert_cupy_array(a, b)
     _util._assert_nd_squareness(a)
 
-    # TODO: Remove this assert once cusolver supports nrhs > 1 for potrsBatched
-    _util._assert_rank2(a)
     if a.ndim > 2:
-        return _batched_invh(a)
+        return _batched_cholesky_solve(a, b)
 
-    # to prevent `a` from being overwritten
-    a = a.copy()
-
-    # support float32, float64, complex64, and complex128
-    if a.dtype.char in 'fdFD':
-        dtype = a.dtype.char
-    else:
-        dtype = numpy.promote_types(a.dtype.char, 'f').char
-
-    cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=numpy.int32)
+    dtype = numpy.promote_types(a.dtype, b.dtype)
+    dtype = numpy.promote_types(dtype, 'f')
 
     if dtype == 'f':
         potrf = cusolver.spotrf
@@ -136,37 +109,63 @@ def invh(a):
                ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
 
-    m = a.shape[0]
-    uplo = cublas.CUBLAS_FILL_MODE_LOWER
+    a = a.astype(dtype, order='C', copy=True)
+    lda, n = a.shape
 
-    worksize = potrf_bufferSize(cusolver_handle, uplo, m, a.data.ptr, m)
+    handle = device.get_cusolver_handle()
+    uplo = cublas.CUBLAS_FILL_MODE_LOWER
+    dev_info = cupy.empty(1, dtype=numpy.int32)
+
+    worksize = potrf_bufferSize(handle, uplo, n, a.data.ptr, lda)
     workspace = cupy.empty(worksize, dtype=dtype)
 
     # Cholesky factorization
-    potrf(cusolver_handle, uplo, m, a.data.ptr, m, workspace.data.ptr,
+    potrf(handle, uplo, n, a.data.ptr, lda, workspace.data.ptr,
           worksize, dev_info.data.ptr)
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        potrf, dev_info)
 
-    info = dev_info[0]
-    if info != 0:
-        if info < 0:
-            msg = '\tThe {}-th parameter is wrong'.format(-info)
-        else:
-            msg = ('\tThe leading minor of order {} is not positive definite'
-                   .format(info))
-        raise RuntimeError('matrix inversion failed at potrf.\n' + msg)
-
-    b = cupy.eye(m, dtype=dtype)
+    b_shape = b.shape
+    b = b.reshape(n, -1).astype(dtype, order='C', copy=True)
+    ldb, nrhs = b.shape
 
     # Solve: A * X = B
-    potrs(cusolver_handle, uplo, m, m, a.data.ptr, m, b.data.ptr, m,
+    potrs(handle, uplo, n, nrhs, a.data.ptr, lda, b.data.ptr, ldb,
           dev_info.data.ptr)
+    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        potrs, dev_info)
 
-    info = dev_info[0]
-    if info > 0:
-        assert False, ('Unexpected output returned by potrs (actual: {})'
-                       .format(info))
-    elif info < 0:
-        raise RuntimeError('matrix inversion failed at potrs.\n'
-                           '\tThe {}-th parameter is wrong'.format(-info))
+    b = b.reshape(b_shape)
 
-    return b
+    if nrhs == 1:
+        return b.conj()
+    else:
+        return b
+
+
+def invh(a):
+    """Compute the inverse of a Hermitian matrix.
+
+    This function computes a inverse of a real symmetric or complex hermitian
+    positive-definite matrix using Cholesky factorization. If matrix ``a`` is
+    not positive definite, Cholesky factorization fails and it raises an error.
+
+    Args:
+        a (cupy.ndarray): Real symmetric or complex hermitian maxtix.
+
+    Returns:
+        cupy.ndarray: The inverse of matrix ``a``.
+    """
+
+    _util._assert_cupy_array(a)
+    _util._assert_nd_squareness(a)
+
+    # TODO: Remove this assert once cusolver supports nrhs > 1 for potrsBatched
+    _util._assert_rank2(a)
+
+    n = a.shape[-1]
+    identity_matrix = cupy.eye(n, dtype=a.dtype)
+    b = cupy.empty(a.shape, a.dtype)
+    b[...] = identity_matrix
+
+    return cholesky_solve(a, b)
