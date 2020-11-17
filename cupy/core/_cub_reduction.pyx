@@ -50,9 +50,9 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
+${type_preamble}
 ${preamble}
 
-${type_preamble}
 typedef ${reduce_type} _type_reduce;
 
 static_assert(sizeof(_type_reduce) <= 32,
@@ -193,11 +193,10 @@ __global__ void ${name}(${params}) {
 }
 '''
 
-    module_code = string.Template(module_code).substitute(
+    module_code = string.Template(module_code).safe_substitute(
         name=name,
         block_size=block_size,
         items_per_thread=items_per_thread,
-        reduce_type=reduce_type,
         params=_get_cub_kernel_params(params, arginfos),
         identity=identity,
         reduce_expr=reduce_expr,
@@ -205,6 +204,12 @@ __global__ void ${name}(${params}) {
         post_map_expr=post_map_expr,
         type_preamble=type_map.get_typedef_code(),
         preamble=preamble)
+
+    # When fusing, preamble could also contain ${reduce_type}, so we resolve
+    # in the end
+        #reduce_type=reduce_type,
+    module_code = string.Template(module_code).substitute(
+        reduce_type=reduce_type)
 
     # To specify the backend, we have to explicitly spell out the default
     # values for arch, cachd, and prepend_cupy_headers to bypass cdef/cpdef
