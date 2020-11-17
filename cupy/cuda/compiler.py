@@ -165,6 +165,7 @@ def _jitify_prep(source, options, cu_path):
         _jitify_header_source_map = None
 
     # jitify requires the 1st line to be the program name
+    old_source = source
     source = cu_path + '\n' + source
 
     # Upon failure, in addition to throw an error Jitify also prints the log
@@ -179,7 +180,7 @@ def _jitify_prep(source, options, cu_path):
         name, options, headers, include_names = jitify(
             source, options, _jitify_header_source_map)
     except Exception as e:  # C++ could throw all kinds of errors
-        cex = CompileException(str(e), source, cu_path, options, 'jitify')
+        cex = CompileException(str(e), old_source, cu_path, options, 'jitify')
         dump = _get_bool_env_variable(
             'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
         if dump:
