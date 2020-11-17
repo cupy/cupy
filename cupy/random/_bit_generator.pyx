@@ -12,7 +12,9 @@ from cupy.cuda cimport stream
 from cupy.core.core cimport ndarray
 from cupy.random._distributions_module import _get_distribution, _initialize_generator
 
-cdef extern from 'cupy_distributions.cuh' nogil:
+# We need access to the sizes here, so this is why we have this header
+# in here instead of cupy backends
+cdef extern from 'device_random.h' nogil:
     cppclass curandState:
         pass
     cppclass curandStateMRG32k3a:
