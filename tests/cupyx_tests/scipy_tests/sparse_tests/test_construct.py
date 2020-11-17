@@ -270,7 +270,7 @@ class TestRandom(unittest.TestCase):
             format=self.format, dtype=self.dtype,
             random_state=1)
 
-        assert (x.toarray() == y.toarray()).all()
+        testing.assert_array_equal(x.toarray(), y.toarray())
 
     def test_random_with_state(self):
         state1 = cupy.random.RandomState(1)
@@ -288,7 +288,7 @@ class TestRandom(unittest.TestCase):
             format=self.format, dtype=self.dtype,
             random_state=state2)
 
-        assert (x.toarray() == y.toarray()).all()
+        testing.assert_array_equal(x.toarray(), y.toarray())
 
     def test_random_with_data_rvs(self):
         if self.random_method == 'rand':

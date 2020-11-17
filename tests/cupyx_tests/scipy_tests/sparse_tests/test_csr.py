@@ -1506,7 +1506,7 @@ class TestIsspmatrixCsr(unittest.TestCase):
              cupy.array([], 'i'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        assert sparse.isspmatrix_csr(x)
+        assert sparse.isspmatrix_csr(x) is True
 
     def test_csc(self):
         x = sparse.csr_matrix(
@@ -1514,7 +1514,7 @@ class TestIsspmatrixCsr(unittest.TestCase):
              cupy.array([], 'i'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        assert not sparse.isspmatrix_csc(x)
+        assert sparse.isspmatrix_csc(x) is False
 
 
 @testing.parameterize(*testing.product({
