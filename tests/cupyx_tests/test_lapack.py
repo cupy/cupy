@@ -1,10 +1,12 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
 from cupy.testing import attr
+import cupyx
 from cupyx import lapack
 
 
@@ -80,3 +82,56 @@ class TestGels(unittest.TestCase):
         x_lstsq = numpy.linalg.lstsq(a, b)[0]
         x_gels = lapack.gels(cupy.array(a), cupy.array(b))
         cupy.testing.assert_allclose(x_gels, x_lstsq, rtol=tol, atol=tol)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 4, 2, 2), (5, 3, 3), (7, 7)],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+}))
+@testing.gpu
+class TestPosv(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_posv(self, xp):
+        a = self._create_posdef_matrix(xp, self.shape, self.dtype)
+        b = xp.ones(self.shape[:-1], self.dtype)
+
+        if xp == cupy:
+            return lapack.posv(a, b)
+        else:
+            return numpy.linalg.solve(a, b)
+
+    def _create_posdef_matrix(self, xp, shape, dtype):
+        n = shape[-1]
+        a = testing.shaped_random(shape, xp, dtype, scale=1)
+        a = a @ a.swapaxes(-2, -1).conjugate()
+        a = a + n * xp.eye(n)
+        return a
+
+
+# TODO: cusolver does not support nrhs > 1 for potrsBatched
+@testing.parameterize(*testing.product({
+    'shape': [(2, 3, 3)],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+}))
+@testing.gpu
+class TestXFailBatchedPosv(unittest.TestCase):
+
+    def test_posv(self):
+        if not cupy.cusolver.check_availability('potrsBatched'):
+            pytest.skip('potrsBatched is not available')
+        a = self._create_posdef_matrix(cupy, self.shape, self.dtype)
+        n = a.shape[-1]
+        identity_matrix = cupy.eye(n, dtype=a.dtype)
+        b = cupy.empty(a.shape, a.dtype)
+        b[...] = identity_matrix
+        with cupyx.errstate(linalg='ignore'):
+            with self.assertRaises(cupy.cuda.cusolver.CUSOLVERError):
+                lapack.posv(a, b)
+
+    def _create_posdef_matrix(self, xp, shape, dtype):
+        n = shape[-1]
+        a = testing.shaped_random(shape, xp, dtype, scale=1)
+        a = a @ a.swapaxes(-2, -1).conjugate()
+        a = a + n * xp.eye(n)
+        return a

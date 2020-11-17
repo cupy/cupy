@@ -10,31 +10,6 @@ import cupyx
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(3, 4, 2, 2), (5, 3, 3), (7, 7)],
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-}))
-@testing.gpu
-class TestCholeskySolve(unittest.TestCase):
-
-    @testing.numpy_cupy_allclose(atol=1e-5)
-    def test_cholesky_solve(self, xp):
-        a = self._create_symmetric_matrix(xp, self.shape, self.dtype)
-        b = xp.ones(self.shape[:-1], self.dtype)
-
-        if xp == cupy:
-            return cupyx.linalg.cholesky_solve(a, b)
-        else:
-            return numpy.linalg.solve(a, b)
-
-    def _create_symmetric_matrix(self, xp, shape, dtype):
-        n = shape[-1]
-        a = testing.shaped_random(shape, xp, dtype, scale=1)
-        a = a @ a.swapaxes(-2, -1).conjugate()
-        a = a + n * xp.eye(n)
-        return a
-
-
-@testing.parameterize(*testing.product({
     'size': [5, 9, 17, 33],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
@@ -96,13 +71,9 @@ class TestXFailBatchedInvh(unittest.TestCase):
         if not cusolver.check_availability('potrsBatched'):
             pytest.skip('potrsBatched is not available')
         a = self._create_symmetric_matrix(self.shape, self.dtype)
-        n = a.shape[-1]
-        identity_matrix = cupy.eye(n, dtype=a.dtype)
-        b = cupy.empty(a.shape, a.dtype)
-        b[...] = identity_matrix
-        with cupyx.errstate(linalg='ignore'):
-            with self.assertRaises(cupy.cuda.cusolver.CUSOLVERError):
-                cupyx.linalg.cholesky_solve(a, b)
+        with cupyx.errstate(linalg='raise'):
+            with self.assertRaises(numpy.linalg.LinAlgError):
+                cupyx.linalg.invh(a)
 
     def _create_symmetric_matrix(self, shape, dtype):
         a = testing.shaped_random(shape, cupy, dtype, scale=1)
