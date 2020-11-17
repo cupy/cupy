@@ -175,5 +175,5 @@ class TestSyevj(unittest.TestCase):
 
         w, v = cusolver.syevj(a, UPLO=self.UPLO, with_eigen_vector=True)
 
-        self.assertEqual(v.shape, a.shape)
-        self.assertEqual(w.shape, a.shape[:-1])
+        assert v.shape == a.shape
+        assert w.shape == a.shape[:-1]

@@ -9,34 +9,34 @@ from cupy import testing
 class TestProd(unittest.TestCase):
 
     def test_empty(self):
-        self.assertEqual(internal.prod([]), 1)
+        assert internal.prod([]) == 1
 
     def test_one(self):
-        self.assertEqual(internal.prod([2]), 2)
+        assert internal.prod([2]) == 2
 
     def test_two(self):
-        self.assertEqual(internal.prod([2, 3]), 6)
+        assert internal.prod([2, 3]) == 6
 
 
 class TestProdSequence(unittest.TestCase):
 
     def test_empty(self):
-        self.assertEqual(internal.prod_sequence(()), 1)
+        assert internal.prod_sequence(()) == 1
 
     def test_one(self):
-        self.assertEqual(internal.prod_sequence((2,)), 2)
+        assert internal.prod_sequence((2,)) == 2
 
     def test_two(self):
-        self.assertEqual(internal.prod_sequence((2, 3)), 6)
+        assert internal.prod_sequence((2, 3)) == 6
 
 
 class TestGetSize(unittest.TestCase):
 
     def test_none(self):
-        self.assertEqual(internal.get_size(None), ())
+        assert internal.get_size(None) == ()
 
     def check_collection(self, a):
-        self.assertEqual(internal.get_size(a), tuple(a))
+        assert internal.get_size(a) == tuple(a)
 
     def test_list(self):
         self.check_collection([1, 2, 3])
@@ -45,7 +45,7 @@ class TestGetSize(unittest.TestCase):
         self.check_collection((1, 2, 3))
 
     def test_int(self):
-        self.assertEqual(internal.get_size(1), (1,))
+        assert internal.get_size(1) == (1,)
 
     def test_invalid(self):
         with self.assertRaises(ValueError):
@@ -55,64 +55,62 @@ class TestGetSize(unittest.TestCase):
 class TestVectorEqual(unittest.TestCase):
 
     def test_empty(self):
-        self.assertEqual(internal.vector_equal([], []), True)
+        assert internal.vector_equal([], []) is True
 
     def test_not_equal(self):
-        self.assertEqual(internal.vector_equal([1, 2, 3], [1, 2, 0]), False)
+        assert internal.vector_equal([1, 2, 3], [1, 2, 0]) is False
 
     def test_equal(self):
-        self.assertEqual(internal.vector_equal([-1, 0, 1], [-1, 0, 1]), True)
+        assert internal.vector_equal([-1, 0, 1], [-1, 0, 1]) is True
 
     def test_different_size(self):
-        self.assertEqual(internal.vector_equal([1, 2, 3], [1, 2]), False)
+        assert internal.vector_equal([1, 2, 3], [1, 2]) is False
 
 
 class TestGetCContiguity(unittest.TestCase):
 
     def test_zero_in_shape(self):
-        self.assertTrue(internal.get_c_contiguity((1, 0, 1), (1, 1, 1), 3))
+        assert internal.get_c_contiguity((1, 0, 1), (1, 1, 1), 3)
 
     def test_all_one_shape(self):
-        self.assertTrue(internal.get_c_contiguity((1, 1, 1), (1, 1, 1), 3))
+        assert internal.get_c_contiguity((1, 1, 1), (1, 1, 1), 3)
 
     def test_normal1(self):
-        self.assertTrue(internal.get_c_contiguity((3, 4, 3), (24, 6, 2), 2))
+        assert internal.get_c_contiguity((3, 4, 3), (24, 6, 2), 2)
 
     def test_normal2(self):
-        self.assertTrue(internal.get_c_contiguity((3, 1, 3), (6, 100, 2), 2))
+        assert internal.get_c_contiguity((3, 1, 3), (6, 100, 2), 2)
 
     def test_normal3(self):
-        self.assertTrue(internal.get_c_contiguity((3,), (4, ), 4))
+        assert internal.get_c_contiguity((3,), (4, ), 4)
 
     def test_normal4(self):
-        self.assertTrue(internal.get_c_contiguity((), (), 4))
+        assert internal.get_c_contiguity((), (), 4)
 
     def test_normal5(self):
-        self.assertTrue(internal.get_c_contiguity((3, 1), (4, 8), 4))
+        assert internal.get_c_contiguity((3, 1), (4, 8), 4)
 
     def test_no_contiguous1(self):
-        self.assertFalse(internal.get_c_contiguity((3, 4, 3), (30, 6, 2), 2))
+        assert not internal.get_c_contiguity((3, 4, 3), (30, 6, 2), 2)
 
     def test_no_contiguous2(self):
-        self.assertFalse(internal.get_c_contiguity((3, 1, 3), (24, 6, 2), 2))
+        assert not internal.get_c_contiguity((3, 1, 3), (24, 6, 2), 2)
 
     def test_no_contiguous3(self):
-        self.assertFalse(internal.get_c_contiguity((3, 1, 3), (6, 6, 4), 2))
+        assert not internal.get_c_contiguity((3, 1, 3), (6, 6, 4), 2)
 
 
 class TestInferUnknownDimension(unittest.TestCase):
 
     def test_known_all(self):
-        self.assertEqual(internal.infer_unknown_dimension((1, 2, 3), 6),
-                         [1, 2, 3])
+        assert internal.infer_unknown_dimension((1, 2, 3), 6) == [1, 2, 3]
 
     def test_multiple_unknown(self):
         with self.assertRaises(ValueError):
             internal.infer_unknown_dimension((-1, 1, -1), 10)
 
     def test_infer(self):
-        self.assertEqual(internal.infer_unknown_dimension((-1, 2, 3), 12),
-                         [2, 2, 3])
+        assert internal.infer_unknown_dimension((-1, 2, 3), 12) == [2, 2, 3]
 
 
 @testing.parameterize(
@@ -160,9 +158,8 @@ class TestInferUnknownDimension(unittest.TestCase):
 class TestCompleteSlice(unittest.TestCase):
 
     def test_complete_slice(self):
-        self.assertEqual(
-            internal.complete_slice(slice(*self.slice), 10),
-            slice(*self.expect))
+        assert internal.complete_slice(
+            slice(*self.slice), 10) == slice(*self.expect)
 
 
 class TestCompleteSliceError(unittest.TestCase):
