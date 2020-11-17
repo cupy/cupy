@@ -800,6 +800,8 @@ class _FusionHistory(object):
             return kernel, {}
         else:
             _, reduce_expr, postmap_expr, reduce_ctype = self.reduce_op.routine
+            if reduce_ctype is None:
+                reduce_ctype = 'type_out0_raw'
 
             postmap_type, = self.reduce_op.out_types
             postmap_dtype = numpy.dtype(postmap_type)
@@ -816,22 +818,14 @@ class _FusionHistory(object):
                                      for s, t in zip(out_cvars, out_params))
 
             submodule_code += self._emit_premap_code(in_params, operation)
-            submodule_code += 'typedef {} type_out0_raw;\n'.format(
-                postmap_ctype)
             use_cub = ACCELERATOR_CUB in _accelerator._reduction_accelerators
-            if use_cub:
-                if reduce_ctype is None:
-                    reduce_ctype = 'type_out0_raw'
-                # ${reduce_type} is resolved in _cub_reduction.pyx
-                submodule_code += self._emit_postmap_cast_code(
-                    '${reduce_type}', postmap_dtype, postmap_expr)
-            else:
-                if reduce_ctype is None:
-                    reduce_ctype = 'type_in0_raw'
+            if not use_cub:
                 submodule_code += 'typedef {} type_in0_raw;\n'.format(
                     postmap_ctype)
-                submodule_code += self._emit_postmap_cast_code(
-                    reduce_ctype, postmap_dtype, postmap_expr)
+            submodule_code += 'typedef {} type_out0_raw;\n'.format(
+                postmap_ctype)
+            submodule_code += self._emit_postmap_cast_code(
+                reduce_ctype, postmap_dtype, postmap_expr)
             submodule_code += self._emit_postmap_code(out_params, postmap_code)
 
             kernel = _reduction.ReductionKernel(
