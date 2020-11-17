@@ -43,8 +43,6 @@ Example:
 
 import warnings
 
-import scipy.sparse.linalg
-
 import cupy as cp
 
 from cupyx.scipy.sparse import isspmatrix
