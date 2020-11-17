@@ -165,7 +165,7 @@ class LinearOperator(object):
         """
         if self.dtype is None:
             v = cp.zeros(self.shape[-1])
-            self.dtype = cp.asarray(self.matvec(v)).dtype
+            self.dtype = self.matvec(v).dtype
 
     def _matmat(self, X):
         """Default matrix-matrix multiplication handler.
@@ -210,16 +210,12 @@ class LinearOperator(object):
 
         """
 
-        x = cp.asanyarray(x)
-
         M, N = self.shape
 
         if x.shape != (N,) and x.shape != (N, 1):
             raise ValueError('dimension mismatch')
 
         y = self._matvec(x)
-
-        y = cp.asarray(y)
 
         if x.ndim == 1:
             y = y.reshape(M)
@@ -252,16 +248,12 @@ class LinearOperator(object):
 
         """
 
-        x = cp.asanyarray(x)
-
         M, N = self.shape
 
         if x.shape != (M,) and x.shape != (M, 1):
             raise ValueError('dimension mismatch')
 
         y = self._rmatvec(x)
-
-        y = cp.asarray(y)
 
         if x.ndim == 1:
             y = y.reshape(N)
@@ -303,8 +295,6 @@ class LinearOperator(object):
 
         """
 
-        X = cp.asanyarray(X)
-
         if X.ndim != 2:
             raise ValueError('expected 2-d ndarray or matrix, not %d-d'
                              % X.ndim)
@@ -338,8 +328,6 @@ class LinearOperator(object):
             This rmatmat wraps the user-specified rmatmat routine.
 
         """
-
-        X = cp.asanyarray(X)
 
         if X.ndim != 2:
             raise ValueError('expected 2-d ndarray or matrix, not %d-d'
@@ -384,8 +372,6 @@ class LinearOperator(object):
         elif cp.isscalar(x):
             return _ScaledLinearOperator(self, x)
         else:
-            x = cp.asarray(x)
-
             if x.ndim == 1 or x.ndim == 2 and x.shape[1] == 1:
                 return self.matvec(x)
             elif x.ndim == 2:
@@ -778,7 +764,7 @@ def aslinearoperator(A):
     elif isinstance(A, cp.ndarray):
         if A.ndim > 2:
             raise ValueError('array must have ndim <= 2')
-        A = cp.atleast_2d(cp.asarray(A))
+        A = cp.atleast_2d(A)
         return MatrixLinearOperator(A)
 
     elif isspmatrix(A):
