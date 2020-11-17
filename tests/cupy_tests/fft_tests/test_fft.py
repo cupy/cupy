@@ -753,8 +753,8 @@ class TestFftnContiguity(unittest.TestCase):
             fft_func = _default_fft_func(a, s=self.s, axes=self.axes)
             if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
-                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
-                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+                assert out.flags.c_contiguous == a.flags.c_contiguous
+                assert out.flags.f_contiguous == a.flags.f_contiguous
             else:
                 # 1d planning case doesn't guarantee preserved contiguity
                 pass
@@ -772,8 +772,8 @@ class TestFftnContiguity(unittest.TestCase):
             fft_func = _default_fft_func(a, s=self.s, axes=self.axes)
             if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
-                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
-                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+                assert out.flags.c_contiguous == a.flags.c_contiguous
+                assert out.flags.f_contiguous == a.flags.f_contiguous
             else:
                 # 1d planning case doesn't guarantee preserved contiguity
                 pass
@@ -1115,8 +1115,8 @@ class TestRfftnContiguity(unittest.TestCase):
                                          value_type='R2C')
             if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
-                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
-                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+                assert out.flags.c_contiguous == a.flags.c_contiguous
+                assert out.flags.f_contiguous == a.flags.f_contiguous
             else:
                 # 1d planning case doesn't guarantee preserved contiguity
                 pass
@@ -1135,8 +1135,8 @@ class TestRfftnContiguity(unittest.TestCase):
                                          value_type='C2R')
             if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
-                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
-                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+                assert out.flags.c_contiguous == a.flags.c_contiguous
+                assert out.flags.f_contiguous == a.flags.f_contiguous
             else:
                 # 1d planning case doesn't guarantee preserved contiguity
                 pass

@@ -14,7 +14,7 @@ from cupy import testing
 class ProductTest(unittest.TestCase):
 
     def test_product(self):
-        self.assertListEqual(testing.product(self.actual), self.expect)
+        assert testing.product(self.actual) == self.expect
 
 
 @testing.parameterize(
@@ -31,7 +31,7 @@ class ProductTest(unittest.TestCase):
 class ProductDictTest(unittest.TestCase):
 
     def test_product_dict(self):
-        self.assertListEqual(testing.product_dict(*self.actual), self.expect)
+        assert testing.product_dict(*self.actual) == self.expect
 
 
 def f(x):
@@ -57,7 +57,7 @@ class TestParameterize(unittest.TestCase):
 
     def test_callable(self):
         y = self.callable(1)
-        self.assertEqual(y, 1)
+        assert y == 1
 
     def test_skip(self):
         # Skipping the test case should not report error.
