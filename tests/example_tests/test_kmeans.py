@@ -19,16 +19,18 @@ class TestKmeans(unittest.TestCase):
         output = example_test.run_example(
             'kmeans/kmeans.py', '-m', '1', '--num', '10')
         assert re.search(
+            r' CPU :  [0-9\.]+ sec\s+GPU :  [0-9\.]+ sec',
             output.decode('utf-8'),
-            r' CPU :  [0-9\.]+ sec\s+GPU :  [0-9\.]+ sec')
+        )
 
     def test_custom_kernel(self):
         output = example_test.run_example(
             'kmeans/kmeans.py', '-m', '1', '--num', '10',
             '--use-custom-kernel')
         assert re.search(
+            r' CPU :  [0-9\.]+ sec\s+GPU :  [0-9\.]+ sec',
             output.decode('utf-8'),
-            r' CPU :  [0-9\.]+ sec\s+GPU :  [0-9\.]+ sec')
+        )
 
     def test_result_image(self):
         dir_path = tempfile.mkdtemp()
