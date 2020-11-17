@@ -30,6 +30,6 @@ class TestGMM(unittest.TestCase):
             image_path = os.path.join(dir_path, 'gmm.png')
             example_test.run_example(
                 'gmm/gmm.py', '--num', '10', '-o', image_path)
-            self.assertTrue(os.path.exists(image_path))
+            assert os.path.exists(image_path)
         finally:
             shutil.rmtree(dir_path, ignore_errors=True)

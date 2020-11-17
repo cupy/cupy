@@ -35,6 +35,6 @@ class TestKmeans(unittest.TestCase):
             image_path = os.path.join(dir_path, 'kmeans.png')
             example_test.run_example(
                 'kmeans/kmeans.py', '-m', '1', '--num', '10', '-o', image_path)
-            self.assertTrue(os.path.exists(image_path))
+            assert os.path.exists(image_path)
         finally:
             shutil.rmtree(dir_path, ignore_errors=True)

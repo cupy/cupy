@@ -39,7 +39,7 @@ class TestLineProfileHook(unittest.TestCase):
         f = io.StringIO()
         hook.print_report(file=f)
         actual = f.getvalue()
-        self.assertEqual(2, len(actual.split('\n')))
+        assert 2 == len(actual.split('\n'))
 
         hook = memory_hooks.LineProfileHook(max_depth=2)
         with hook:
@@ -48,4 +48,4 @@ class TestLineProfileHook(unittest.TestCase):
         f = io.StringIO()
         hook.print_report(file=f)
         actual = f.getvalue()
-        self.assertEqual(3, len(actual.split('\n')))
+        assert 3 == len(actual.split('\n'))
