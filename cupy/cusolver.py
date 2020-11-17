@@ -567,9 +567,9 @@ def gels(a, b):
                     x.data.ptr, max_mn, dwork.data.ptr, lwork, dinfo.data.ptr)
     if niters < 0:
         if niters <= -50:
-            _warnings.warn('irs_gels reached maximum allowed iterations.')
+            _warnings.warn('gels reached maximum allowed iterations.')
         else:
-            raise RuntimeError('irs_gels has failed ({}).'.format(niters))
+            raise RuntimeError('gels has failed ({}).'.format(niters))
     x = x[:n]
     if org_nrhs != nrhs:
         x = x[:, :org_nrhs]

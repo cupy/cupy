@@ -182,7 +182,7 @@ class TestSyevj(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-    'shape': [(32, 32), (33, 32)],
+    'shape': [(32, 32), (37, 32)],
     'nrhs': [None, 1, 4],
     'compute_type': [None,
                      _linalg.COMPUTE_TYPE_FP16,
@@ -200,7 +200,7 @@ class TestGels(unittest.TestCase):
             self.old_compute_type = _linalg.get_compute_type(self.dtype)
             _linalg.set_compute_type(self.dtype, self.compute_type)
 
-    def tearDonw(self):
+    def tearDown(self):
         if self.compute_type is not None:
             _linalg.set_compute_type(self.dtype, self.old_compute_type)
 
