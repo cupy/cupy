@@ -214,6 +214,16 @@ def _contains_signed_and_unsigned(kw):
         any(d in vs for d in _float_dtypes + _signed_dtypes)
 
 
+def _wraps_partial(wrapped, *names):
+    # Only `wrapped` function have args of `names`.
+    def decorator(impl):
+        impl = functools.wraps(wrapped)(impl)
+        impl.__signature__ = inspect.signature(
+            functools.partial(wrapped, **{name: None for name in names}))
+        return impl
+    return decorator
+
+
 def _make_decorator(check_func, name, type_check, contiguous_check,
                     accept_error, sp_name=None, scipy_name=None,
                     check_sparse_format=True):
@@ -222,7 +232,7 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
     assert scipy_name is None or isinstance(scipy_name, str)
 
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
@@ -652,7 +662,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
@@ -704,7 +714,7 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
         DeprecationWarning)
 
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
@@ -733,7 +743,7 @@ def for_dtypes(dtypes, name='dtype'):
     argument.
     """
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             for dtype in dtypes:
                 try:
@@ -974,7 +984,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
         combination = [dict(assoc_list) for assoc_list in set(combination)]
 
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, *names)
         def test_func(self, *args, **kw):
             for dtypes in combination:
                 kw_copy = kw.copy()
@@ -1083,7 +1093,7 @@ def for_orders(orders, name='order'):
 
     """
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             for order in orders:
                 try:
@@ -1122,7 +1132,7 @@ def for_contiguous_axes(name='axis'):
             ``[(0,), (0, 1), (0, 1, 2)]`` for the F order.
     '''
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             ndim = len(self.shape)
             order = self.order

@@ -148,28 +148,26 @@ cpdef zdscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
 # BLAS Level 2
 ###############################################################################
 
-cpdef sgemv(intptr_t handle, int trans, int m, int n, float alpha, size_t A,
-            int lda, size_t x, int incx, float beta, size_t y, int incy)
-cpdef dgemv(intptr_t handle, int trans, int m, int n, double alpha, size_t A,
-            int lda, size_t x, int incx, double beta, size_t y, int incy)
-cpdef cgemv(intptr_t handle, int trans, int m, int n, float complex alpha,
-            size_t A, int lda, size_t x, int incx, float complex beta,
-            size_t y, int incy)
-cpdef zgemv(intptr_t handle, int trans, int m, int n, double complex alpha,
-            size_t A, int lda, size_t x, int incx, double complex beta,
-            size_t y, int incy)
-cpdef sger(intptr_t handle, int m, int n, float alpha, size_t x, int incx,
+cpdef sgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy)
+cpdef dgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy)
+cpdef cgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy)
+cpdef zgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy)
+cpdef sger(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda)
-cpdef dger(intptr_t handle, int m, int n, double alpha, size_t x, int incx,
+cpdef dger(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda)
-cpdef cgeru(intptr_t handle, int m, int n, float complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda)
-cpdef cgerc(intptr_t handle, int m, int n, float complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda)
-cpdef zgeru(intptr_t handle, int m, int n, double complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda)
-cpdef zgerc(intptr_t handle, int m, int n, double complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda)
+cpdef cgeru(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda)
+cpdef cgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda)
+cpdef zgeru(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda)
+cpdef zgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda)
 
 
 ###############################################################################
