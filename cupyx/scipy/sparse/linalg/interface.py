@@ -125,6 +125,9 @@ class LinearOperator(object):
         array([ 2.,  3.])
         >>> A * cp.ones(2)
         array([ 2.,  3.])
+
+
+    .. seealso:: :class:`scipy.sparse.LinearOperator`
     """
 
     ndim = 2
@@ -744,7 +747,6 @@ def aslinearoperator(A):
      - An object with .shape and .matvec attributes
 
     See the LinearOperator documentation for additional information.
-    .. seealso:: :func:`scipy.sparse.linalg.aslinearoperator`
 
 
     Note:
@@ -758,6 +760,9 @@ def aslinearoperator(A):
         >>> M = cp.array([[1,2,3],[4,5,6]], dtype=cp.int32)
         >>> aslinearoperator(M)
         <2x3 MatrixLinearOperator with dtype=int32>
+
+
+    .. seealso:: :func:`scipy.sparse.aslinearoperator`
     """
     if isinstance(A, LinearOperator):
         return A
