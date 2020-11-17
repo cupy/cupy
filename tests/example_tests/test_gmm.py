@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -17,7 +18,7 @@ class TestGMM(unittest.TestCase):
 
     def test_gmm(self):
         output = example_test.run_example('gmm/gmm.py', '--num', '10')
-        self.assertRegex(
+        assert re.search(
             output.decode('utf-8'),
             r'Running CPU\.\.\.\s+train_accuracy : [0-9\.]+\s+' +
             r'test_accuracy : [0-9\.]+\s+CPU :  [0-9\.]+ sec\s+' +

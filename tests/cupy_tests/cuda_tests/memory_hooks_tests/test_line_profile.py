@@ -1,5 +1,6 @@
 import io
 import unittest
+import re
 
 from cupy.cuda import memory
 from cupy.cuda import memory_hooks
@@ -25,11 +26,11 @@ class TestLineProfileHook(unittest.TestCase):
         hook.print_report(file=f)
         actual = f.getvalue()
         expect = r'\A_root \(3\.00KB, 2\.00KB\)'
-        self.assertRegex(actual, expect)
+        assert re.search(actual, expect)
         expect = r'.*\.py:[0-9]+:test_print_report \(1\.00KB, 0\.00B\)'
-        self.assertRegex(actual, expect)
+        assert re.search(actual, expect)
         expect = r'.*\.py:[0-9]+:test_print_report \(2\.00KB, 2\.00KB\)'
-        self.assertRegex(actual, expect)
+        assert re.search(actual, expect)
 
     def test_print_report_max_depth(self):
         hook = memory_hooks.LineProfileHook(max_depth=1)
