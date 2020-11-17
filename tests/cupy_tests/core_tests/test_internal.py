@@ -55,16 +55,16 @@ class TestGetSize(unittest.TestCase):
 class TestVectorEqual(unittest.TestCase):
 
     def test_empty(self):
-        assert internal.vector_equal([], []) == True
+        assert internal.vector_equal([], []) is True
 
     def test_not_equal(self):
-        assert internal.vector_equal([1, 2, 3], [1, 2, 0]) == False
+        assert internal.vector_equal([1, 2, 3], [1, 2, 0]) is False
 
     def test_equal(self):
-        assert internal.vector_equal([-1, 0, 1], [-1, 0, 1]) == True
+        assert internal.vector_equal([-1, 0, 1], [-1, 0, 1]) is True
 
     def test_different_size(self):
-        assert internal.vector_equal([1, 2, 3], [1, 2]) == False
+        assert internal.vector_equal([1, 2, 3], [1, 2]) is False
 
 
 class TestGetCContiguity(unittest.TestCase):

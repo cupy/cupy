@@ -181,21 +181,21 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert chunk.ptr() == mem.ptr
         assert chunk.offset == 0
         assert chunk.size == self.unit * 2
-        assert chunk.prev == None
+        assert chunk.prev is None
         assert chunk.next.ptr() == tail.ptr()
         assert chunk.stream_ptr == self.stream_ptr
         assert tail.ptr() == mem.ptr + self.unit * 2
         assert tail.offset == self.unit * 2
         assert tail.size == self.unit * 2
         assert tail.prev.ptr() == chunk.ptr()
-        assert tail.next == None
+        assert tail.next is None
         assert tail.stream_ptr == self.stream_ptr
 
         tail_of_head = chunk.split(self.unit)
         assert chunk.ptr() == mem.ptr
         assert chunk.offset == 0
         assert chunk.size == self.unit
-        assert chunk.prev == None
+        assert chunk.prev is None
         assert chunk.next.ptr() == tail_of_head.ptr()
         assert chunk.stream_ptr == self.stream_ptr
         assert tail_of_head.ptr() == mem.ptr + self.unit
@@ -216,7 +216,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert tail_of_tail.offset == self.unit * 3
         assert tail_of_tail.size == self.unit
         assert tail_of_tail.prev.ptr() == tail.ptr()
-        assert tail_of_tail.next == None
+        assert tail_of_tail.next is None
         assert tail_of_tail.stream_ptr == self.stream_ptr
 
     def test_merge(self):
@@ -242,7 +242,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert head.ptr() == head_ptr
         assert head.offset == head_offset
         assert head.size == head_size
-        assert head.prev == None
+        assert head.prev is None
         assert head.next.ptr() == tail_ptr
         assert head.stream_ptr == self.stream_ptr
 
@@ -251,15 +251,15 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert tail.offset == tail_offset
         assert tail.size == tail_size
         assert tail.prev.ptr() == head_ptr
-        assert tail.next == None
+        assert tail.next is None
         assert tail.stream_ptr == self.stream_ptr
 
         head.merge(tail)
         assert head.ptr() == chunk_ptr
         assert head.offset == chunk_offset
         assert head.size == chunk_size
-        assert head.prev == None
-        assert head.next == None
+        assert head.prev is None
+        assert head.next is None
         assert head.stream_ptr == self.stream_ptr
 
     def test_alloc(self):
@@ -457,7 +457,8 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         p3 = self.pool.malloc(self.unit * 1)
         assert self.unit * 6 == self.pool.total_bytes()
 
-        assert self.pool.used_bytes() + self.pool.free_bytes() == self.pool.total_bytes()
+        assert (self.pool.used_bytes() + self.pool.free_bytes()
+                == self.pool.total_bytes())
 
         del p3
 
@@ -513,27 +514,27 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         # size
         param = parse_limit_string('0')
         assert 0 == param['size']
-        assert None == param['fraction']
+        assert None is param['fraction']
 
         param = parse_limit_string('1073741824')
         assert 1073741824 == param['size']
-        assert None == param['fraction']
+        assert None is param['fraction']
 
         # fraction
         param = parse_limit_string('0%')
-        assert None == param['size']
+        assert None is param['size']
         assert 0.0 == param['fraction']
 
         param = parse_limit_string('40%')
-        assert None == param['size']
+        assert None is param['size']
         assert 0.4 == param['fraction']
 
         param = parse_limit_string('70.5%')
-        assert None == param['size']
+        assert None is param['size']
         assert 0.705 == param['fraction']
 
         param = parse_limit_string('100%')
-        assert None == param['size']
+        assert None is param['size']
         assert 1.0 == param['fraction']
 
 
