@@ -46,7 +46,7 @@ import warnings
 import cupy as cp
 
 from cupyx.scipy.sparse import isspmatrix
-from cupyx.scipy.sparse.sputils import isshape, isintlike
+from cupyx.scipy.sparse._util import isshape, isintlike
 
 __all__ = ['LinearOperator', 'aslinearoperator']
 

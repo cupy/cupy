@@ -1,8 +1,5 @@
 import cupy
 
-import operator
-import warnings
-
 from cupy.core._dtype import get_dtype
 
 supported_dtypes = [get_dtype(x) for x in
@@ -118,43 +115,3 @@ def upcast(*args):
             return t
 
     raise TypeError('no supported conversion for types: %r' % (args,))
-
-
-def isshape(x, nonneg=False):
-    """Is x a valid 2-tuple of dimensions?
-
-    If nonneg, also checks that the dimensions are non-negative.
-    """
-    try:
-        # assume dimensions are (M,N)
-        (M, N) = x
-    except Exception:
-        return False
-    else:
-        if isintlike(M) and isintlike(N):
-            if cupy.ndim(M) == 0 and cupy.ndim(N) == 0:
-                if not nonneg or (M >= 0 and N >= 0):
-                    return True
-        return False
-
-
-def isintlike(x):
-    """Is x appropriate as an index into a sparse matrix? Returns True
-    if it can be cast safely to a machine int.
-    """
-    # Fast-path check to eliminate non-scalar values. operator.index would
-    # catch this case too, but the exception catching is slow.
-    if cupy.ndim(x) != 0:
-        return False
-    try:
-        operator.index(x)
-    except (TypeError, ValueError):
-        try:
-            loose_int = bool(int(x) == x)
-        except (TypeError, ValueError):
-            return False
-        if loose_int:
-            warnings.warn("Inexact indices into sparse matrices are\
-                           deprecated", DeprecationWarning)
-        return loose_int
-    return True
