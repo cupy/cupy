@@ -50,14 +50,10 @@ def solve(a, b):
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
 
-    # Cast to float32 or float64
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
-        dtype = a.dtype
-    else:
-        dtype = numpy.promote_types(a.dtype.char, 'f')
-
-    a = a.astype(dtype)
-    b = b.astype(dtype)
+    dtype = numpy.promote_types(a.dtype, b.dtype)
+    dtype = numpy.promote_types(dtype, 'f')
+    a = a.astype(dtype, copy=True)  # prevent 'a' to be overwritten
+    b = b.astype(dtype, copy=True)  # prevent 'b' to be overwritten
     if a.ndim == 2:
         return cupyx.lapack.gesv(a, b)
 
@@ -283,14 +279,8 @@ def inv(a):
     _util._assert_rank2(a)
     _util._assert_nd_squareness(a)
 
-    # support float32, float64, complex64, and complex128
-    if a.dtype.char in 'fdFD':
-        dtype = a.dtype.char
-    else:
-        msg = ('dtype must be float32, float64, complex64 or complex128'
-               ' (actual: {})'.format(a.dtype))
-        raise ValueError(msg)
-
+    dtype = numpy.promote_types(a.dtype, 'f')
+    a = a.astype(dtype, copy=True)  # prevent 'a' to be overwritten
     b = cupy.eye(a.shape[0], dtype=dtype)
     return cupyx.lapack.gesv(a, b)
 
