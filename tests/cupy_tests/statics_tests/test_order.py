@@ -152,8 +152,8 @@ class TestOrder(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
             m = xp.nanmax(a)
-        self.assertEqual(len(w), 1)
-        self.assertIs(w[0].category, RuntimeWarning)
+        assert len(w) == 1
+        assert w[0].category is RuntimeWarning
         return m
 
     @testing.for_all_dtypes(no_complex=True)
@@ -200,8 +200,8 @@ class TestOrder(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
             m = xp.nanmin(a)
-        self.assertEqual(len(w), 1)
-        self.assertIs(w[0].category, RuntimeWarning)
+        assert len(w) == 1
+        assert w[0].category is RuntimeWarning
         return m
 
     @testing.for_all_dtypes(no_bool=True)
