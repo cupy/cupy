@@ -1,6 +1,7 @@
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
+import os
 import threading
 import weakref
 
@@ -37,18 +38,25 @@ cdef class _ThreadLocal:
 
     cdef get_current_stream(self):
         if self.current_stream_ref is None:
-            self.current_stream_ref = weakref.ref(Stream.null)
-            return Stream.null
+            if stream_module.is_ptds_enabled():
+                self.current_stream_ref = weakref.ref(Stream.ptds)
+            else:
+                self.current_stream_ref = weakref.ref(Stream.null)
         return self.current_stream_ref()
 
     cdef get_current_stream_ref(self):
         if self.current_stream_ref is None:
-            self.current_stream_ref = weakref.ref(Stream.null)
+            if stream_module.is_ptds_enabled():
+                self.current_stream_ref = weakref.ref(Stream.ptds)
+            else:
+                self.current_stream_ref = weakref.ref(Stream.null)
         return self.current_stream_ref
 
     cdef void* get_current_stream_ptr(self):
         # Returns nullptr if not set, which is equivalent to the default
         # stream.
+        if stream_module.is_ptds_enabled():
+            return <void*>runtime.cudaStreamPerThread
         return self.current_stream
 
 
@@ -275,9 +283,11 @@ class Stream(BaseStream):
 
     """
 
-    def __init__(self, null=False, non_blocking=False):
+    def __init__(self, null=False, ptds=False, non_blocking=False):
         if null:
-            self.ptr = 0
+            self.ptr = runtime.cudaStreamDefault
+        elif ptds:
+            self.ptr = runtime.cudaStreamPerThread
         elif non_blocking:
             self.ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)
         else:
@@ -323,3 +333,4 @@ class ExternalStream(BaseStream):
 
 
 Stream.null = Stream(null=True)
+Stream.ptds = Stream(ptds=True)
