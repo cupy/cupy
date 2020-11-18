@@ -639,9 +639,9 @@ class TestArgpartition(unittest.TestCase):
         rows = [[[0]], [[1]], [[2]]]
         cols = [[[0], [1], [2]]]
         assert (a[rows, cols, idx[:, :, :kth]] <
-                         a[rows, cols, idx[:, :, kth:kth + 1]]).all()
+                a[rows, cols, idx[:, :, kth:kth + 1]]).all()
         assert (a[rows, cols, idx[:, :, kth:kth + 1]] <
-                         a[rows, cols, idx[:, :, kth + 1:]]).all()
+                a[rows, cols, idx[:, :, kth + 1:]]).all()
         return idx[:, :, kth:kth + 1]
 
     # Test non-contiguous array
@@ -701,9 +701,9 @@ class TestArgpartition(unittest.TestCase):
         rows = [[[0], [1], [2]]]
         cols = [[[0, 1, 2]]]
         assert (a[idx[:kth, :, :], rows, cols] <
-                         a[idx[kth:kth + 1, :, :], rows, cols]).all()
+                a[idx[kth:kth + 1, :, :], rows, cols]).all()
         assert (a[idx[kth:kth + 1, :, :], rows, cols] <
-                         a[idx[kth + 1:, :, :], rows, cols]).all()
+                a[idx[kth + 1:, :, :], rows, cols]).all()
         return idx[kth:kth + 1, :, :]
 
     @testing.numpy_cupy_array_equal()
@@ -715,9 +715,9 @@ class TestArgpartition(unittest.TestCase):
         rows = [[[0]], [[1]], [[2]]]
         cols = [[[0], [1], [2]]]
         assert (a[rows, cols, idx[:, :, :kth]] <
-                         a[rows, cols, idx[:, :, kth:kth + 1]]).all()
+                a[rows, cols, idx[:, :, kth:kth + 1]]).all()
         assert (a[rows, cols, idx[:, :, kth:kth + 1]] <
-                         a[rows, cols, idx[:, :, kth + 1:]]).all()
+                a[rows, cols, idx[:, :, kth + 1:]]).all()
         return idx[:, :, kth:kth + 1]
 
     @testing.numpy_cupy_equal()

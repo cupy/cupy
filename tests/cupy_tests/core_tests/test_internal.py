@@ -158,7 +158,8 @@ class TestInferUnknownDimension(unittest.TestCase):
 class TestCompleteSlice(unittest.TestCase):
 
     def test_complete_slice(self):
-        assert internal.complete_slice(slice(*self.slice), 10) == slice(*self.expect)
+        assert internal.complete_slice(
+            slice(*self.slice), 10) == slice(*self.expect)
 
 
 class TestCompleteSliceError(unittest.TestCase):
