@@ -1,4 +1,7 @@
+import os
 import threading
+
+from cupy_backends.cuda.api cimport runtime
 
 
 cdef object _thread_local = threading.local()
@@ -21,6 +24,9 @@ cdef class _ThreadLocal:
     cdef intptr_t get_current_stream_ptr(self):
         # Returns nullptr if not set, which is equivalent to the default
         # stream.
+        if self.current_stream == 0 and is_ptds_enabled():
+            return runtime.cudaStreamPerThread
+
         return self.current_stream
 
 
@@ -44,3 +50,6 @@ cdef set_current_stream_ptr(intptr_t ptr):
     enable_current_stream = True
     tls = _ThreadLocal.get()
     tls.set_current_stream_ptr(ptr)
+
+cdef bint is_ptds_enabled():
+    return bool(int(os.environ.get('CUPY_CUDA_PTDS', '0')) != 0)
