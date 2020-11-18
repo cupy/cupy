@@ -4,6 +4,7 @@
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
 ###############################################################################
@@ -120,6 +121,8 @@ cdef _setStream(size_t generator):
     """
     if stream_module.enable_current_stream:
         setStream(generator, stream_module.get_current_stream_ptr())
+    elif stream_module.is_ptds_enabled():
+        setStream(generator, runtime.cudaStreamPerThread)
 
 
 cpdef setPseudoRandomGeneratorSeed(size_t generator, unsigned long long seed):
