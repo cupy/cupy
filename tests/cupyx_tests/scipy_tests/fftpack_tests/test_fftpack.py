@@ -1,4 +1,6 @@
 import unittest
+
+import numpy
 import pytest
 
 import cupy
@@ -642,9 +644,9 @@ class TestFftnView(unittest.TestCase):
         a = testing.shaped_random(self.shape, cupy, dtype)
         if self.data_order == 'F':
             a = cupy.asfortranarray(a)
-            sl = [Ellipsis, 0]
+            sl = numpy.s_[..., 0]
         else:
-            sl = [0, Ellipsis]
+            sl = numpy.s_[0, ...]
 
         # transform a contiguous view without pre-planning
         view = a[sl]
@@ -661,9 +663,9 @@ class TestFftnView(unittest.TestCase):
         a = testing.shaped_random(self.shape, cupy, dtype)
         if self.data_order == 'F':
             a = cupy.asfortranarray(a)
-            sl = [Ellipsis, slice(None, None, 2)]
+            sl = numpy.s_[..., ::2]
         else:
-            sl = [slice(None, None, 2), Ellipsis]
+            sl = numpy.s_[::2, ...]
 
         # transform a non-contiguous view without pre-planning
         view = a[sl]

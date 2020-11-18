@@ -730,113 +730,105 @@ cpdef zdscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
 # BLAS Level 2
 ###############################################################################
 
-cpdef sgemv(intptr_t handle, int trans, int m, int n, float alpha, size_t A,
-            int lda, size_t x, int incx, float beta, size_t y, int incy):
+cpdef sgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy):
     _setStream(handle)
     with nogil:
         status = cublasSgemv(
-            <Handle>handle, <Operation>trans, m, n, &alpha,
-            <float*>A, lda, <float*>x, incx, &beta, <float*>y, incy)
+            <Handle>handle, <Operation>trans, m, n, <float*>alpha,
+            <float*>A, lda, <float*>x, incx, <float*>beta, <float*>y, incy)
     check_status(status)
 
 
-cpdef dgemv(intptr_t handle, int trans, int m, int n, double alpha, size_t A,
-            int lda, size_t x, int incx, double beta, size_t y, int incy):
+cpdef dgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy):
     _setStream(handle)
     with nogil:
         status = cublasDgemv(
-            <Handle>handle, <Operation>trans, m, n, &alpha,
-            <double*>A, lda, <double*>x, incx, &beta, <double*>y, incy)
+            <Handle>handle, <Operation>trans, m, n, <double*>alpha,
+            <double*>A, lda, <double*>x, incx, <double*>beta, <double*>y, incy)
     check_status(status)
 
 
-cpdef cgemv(intptr_t handle, int trans, int m, int n, float complex alpha,
-            size_t A, int lda, size_t x, int incx, float complex beta,
-            size_t y, int incy):
-    cdef cuComplex a = get_cu_complex(alpha)
-    cdef cuComplex b = get_cu_complex(beta)
+cpdef cgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy):
     _setStream(handle)
     with nogil:
         status = cublasCgemv(
-            <Handle>handle, <Operation>trans, m, n, &a, <cuComplex*>A, lda,
-            <cuComplex*>x, incx, &b, <cuComplex*>y, incy)
+            <Handle>handle, <Operation>trans, m, n, <cuComplex*>alpha,
+            <cuComplex*>A, lda, <cuComplex*>x, incx, <cuComplex*>beta,
+            <cuComplex*>y, incy)
     check_status(status)
 
 
-cpdef zgemv(intptr_t handle, int trans, int m, int n, double complex alpha,
-            size_t A, int lda, size_t x, int incx, double complex beta,
-            size_t y, int incy):
-    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
-    cdef cuDoubleComplex b = get_cu_double_complex(beta)
+cpdef zgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy):
     _setStream(handle)
     with nogil:
         status = cublasZgemv(
-            <Handle>handle, <Operation>trans, m, n, &a, <cuDoubleComplex*>A,
-            lda, <cuDoubleComplex*>x, incx, &b, <cuDoubleComplex*>y, incy)
+            <Handle>handle, <Operation>trans, m, n, <cuDoubleComplex*>alpha,
+            <cuDoubleComplex*>A, lda, <cuDoubleComplex*>x, incx,
+            <cuDoubleComplex*>beta, <cuDoubleComplex*>y, incy)
     check_status(status)
 
 
-cpdef sger(intptr_t handle, int m, int n, float alpha, size_t x, int incx,
+cpdef sger(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasSger(
-            <Handle>handle, m, n, &alpha, <float*>x, incx, <float*>y, incy,
-            <float*>A, lda)
+            <Handle>handle, m, n, <float*>alpha, <float*>x, incx, <float*>y,
+            incy, <float*>A, lda)
     check_status(status)
 
 
-cpdef dger(intptr_t handle, int m, int n, double alpha, size_t x, int incx,
+cpdef dger(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasDger(
-            <Handle>handle, m, n, &alpha, <double*>x, incx, <double*>y, incy,
-            <double*>A, lda)
+            <Handle>handle, m, n, <double*>alpha, <double*>x, incx, <double*>y,
+            incy, <double*>A, lda)
     check_status(status)
 
 
-cpdef cgeru(intptr_t handle, int m, int n, float complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda):
-    cdef cuComplex a = get_cu_complex(alpha)
+cpdef cgeru(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasCgeru(
-            <Handle>handle, m, n, &a, <cuComplex*>x, incx,
+            <Handle>handle, m, n, <cuComplex*>alpha, <cuComplex*>x, incx,
             <cuComplex*>y, incy, <cuComplex*>A, lda)
     check_status(status)
 
 
-cpdef cgerc(intptr_t handle, int m, int n, float complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda):
-    cdef cuComplex a = get_cu_complex(alpha)
+cpdef cgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasCgerc(
-            <Handle>handle, m, n, &a, <cuComplex*>x, incx,
+            <Handle>handle, m, n, <cuComplex*>alpha, <cuComplex*>x, incx,
             <cuComplex*>y, incy, <cuComplex*>A, lda)
     check_status(status)
 
 
-cpdef zgeru(intptr_t handle, int m, int n, double complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda):
-    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
+cpdef zgeru(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasZgeru(
-            <Handle>handle, m, n, &a,
+            <Handle>handle, m, n, <cuDoubleComplex*>alpha,
             <cuDoubleComplex*>x, incx, <cuDoubleComplex*>y, incy,
             <cuDoubleComplex*>A, lda)
     check_status(status)
 
 
-cpdef zgerc(intptr_t handle, int m, int n, double complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda):
-    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
+cpdef zgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasZgerc(
-            <Handle>handle, m, n, &a,
+            <Handle>handle, m, n, <cuDoubleComplex*>alpha,
             <cuDoubleComplex*>x, incx, <cuDoubleComplex*>y, incy,
             <cuDoubleComplex*>A, lda)
     check_status(status)

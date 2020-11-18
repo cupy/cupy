@@ -2,3 +2,6 @@
 	path = cupy/core/include/cupy/cub
 	url = https://github.com/NVlabs/cub.git
 	branch = 1.8.0
+[submodule "cupy/core/include/cupy/jitify"]
+	path = cupy/core/include/cupy/jitify
+	url = https://github.com/NVIDIA/jitify.git

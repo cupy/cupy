@@ -25,9 +25,9 @@ class TestLUFactor(unittest.TestCase):
         a_gpu = cupy.asarray(a_cpu)
         result_cpu = scipy.linalg.lu_factor(a_cpu)
         result_gpu = cupyx.scipy.linalg.lu_factor(a_gpu)
-        self.assertEqual(len(result_cpu), len(result_gpu))
-        self.assertEqual(result_cpu[0].dtype, result_gpu[0].dtype)
-        self.assertEqual(result_cpu[1].dtype, result_gpu[1].dtype)
+        assert len(result_cpu) == len(result_gpu)
+        assert result_cpu[0].dtype == result_gpu[0].dtype
+        assert result_cpu[1].dtype == result_gpu[1].dtype
         cupy.testing.assert_allclose(result_cpu[0], result_gpu[0], atol=1e-5)
         cupy.testing.assert_array_equal(result_cpu[1], result_gpu[1])
 
@@ -74,7 +74,7 @@ class TestLU(unittest.TestCase):
         a_gpu = cupy.asarray(a_cpu)
         result_cpu = scipy.linalg.lu(a_cpu, permute_l=self.permute_l)
         result_gpu = cupyx.scipy.linalg.lu(a_gpu, permute_l=self.permute_l)
-        self.assertEqual(len(result_cpu), len(result_gpu))
+        assert len(result_cpu) == len(result_gpu)
         if not self.permute_l:
             # check permutation matrix
             result_cpu = list(result_cpu)
