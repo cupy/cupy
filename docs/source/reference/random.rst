@@ -21,6 +21,8 @@ New random generator API
 .. autosummary::
    :toctree: generated/
    :nosignatures:
+
+   cupy.random.default_rng
    cupy.random.BitGenerator
    cupy.random.XORWOW
    cupy.random.MRG32k3a
