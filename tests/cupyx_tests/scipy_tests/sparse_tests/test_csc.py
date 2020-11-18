@@ -190,26 +190,6 @@ class TestCscMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.indices, [0])
         cupy.testing.assert_array_equal(n.indptr, [0, 1])
 
-<<<<<<< HEAD
-||||||| parent of ed52a652e... Merge pull request #4292 from toslunar/pytest-assert
-    def test_init_data_row_col(self):
-        o = self.m.tocoo()
-        n = sparse.csc_matrix((o.data, (o.row, o.col)))
-        cupy.testing.assert_array_equal(n.data, self.m.data)
-        cupy.testing.assert_array_equal(n.indices, self.m.indices)
-        cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
-        self.assertEqual(n.shape, self.m.shape)
-
-=======
-    def test_init_data_row_col(self):
-        o = self.m.tocoo()
-        n = sparse.csc_matrix((o.data, (o.row, o.col)))
-        cupy.testing.assert_array_equal(n.data, self.m.data)
-        cupy.testing.assert_array_equal(n.indices, self.m.indices)
-        cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
-        assert n.shape == self.m.shape
-
->>>>>>> ed52a652e... Merge pull request #4292 from toslunar/pytest-assert
     @testing.with_requires('scipy')
     def test_init_dense_invalid_ndim(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
