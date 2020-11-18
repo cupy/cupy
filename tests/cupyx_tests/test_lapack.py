@@ -86,15 +86,23 @@ class TestGels(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'shape': [(3, 4, 2, 2), (5, 3, 3), (7, 7)],
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'nrhs': [None, 1, 4]
 }))
-@testing.gpu
+@attr.gpu
 class TestPosv(unittest.TestCase):
 
+    @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def test_posv(self, xp):
-        a = self._create_posdef_matrix(xp, self.shape, self.dtype)
-        b = xp.ones(self.shape[:-1], self.dtype)
+    def test_posv(self, xp, dtype):
+        # TODO: cusolver does not support nrhs > 1 for potrsBatched
+        if len(self.shape) > 2 and self.nrhs and self.nrhs > 1:
+            pytest.skip('cusolver does not support nrhs > 1 for potrsBatched')
+
+        a = self._create_posdef_matrix(xp, self.shape, dtype)
+        b_shape = list(self.shape[:-1])
+        if self.nrhs is not None:
+            b_shape.append(self.nrhs)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype)
 
         if xp == cupy:
             return lapack.posv(a, b)
@@ -114,7 +122,7 @@ class TestPosv(unittest.TestCase):
     'shape': [(2, 3, 3)],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@testing.gpu
+@attr.gpu
 class TestXFailBatchedPosv(unittest.TestCase):
 
     def test_posv(self):
@@ -126,7 +134,7 @@ class TestXFailBatchedPosv(unittest.TestCase):
         b = cupy.empty(a.shape, a.dtype)
         b[...] = identity_matrix
         with cupyx.errstate(linalg='ignore'):
-            with self.assertRaises(cupy.cuda.cusolver.CUSOLVERError):
+            with pytest.raises(cupy.cuda.cusolver.CUSOLVERError):
                 lapack.posv(a, b)
 
     def _create_posdef_matrix(self, xp, shape, dtype):

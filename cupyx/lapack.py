@@ -244,7 +244,7 @@ def _batched_posv(a, b):
         potrfBatched, dev_info)
 
     b_shape = b.shape
-    b = b.reshape(batch_size, n, -1).astype(dtype, order='C', copy=True)
+    b = b.conj().reshape(batch_size, n, -1).astype(dtype, order='C', copy=True)
     bp = _cupy.core._mat_ptrs(b)
     ldb, nrhs = b.shape[-2:]
     dev_info = _cupy.empty(1, dtype=_numpy.int32)
@@ -307,7 +307,7 @@ def posv(a, b):
                ' (actual: {})'.format(a.dtype))
         raise ValueError(msg)
 
-    a = a.astype(dtype, order='C', copy=True)
+    a = a.astype(dtype, order='F', copy=True)
     lda, n = a.shape
 
     handle = _device.get_cusolver_handle()
@@ -324,7 +324,7 @@ def posv(a, b):
         potrf, dev_info)
 
     b_shape = b.shape
-    b = b.reshape(n, -1).astype(dtype, order='C', copy=True)
+    b = b.reshape(n, -1).astype(dtype, order='F', copy=True)
     ldb, nrhs = b.shape
 
     # Solve: A * X = B
@@ -333,9 +333,4 @@ def posv(a, b):
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         potrs, dev_info)
 
-    b = b.reshape(b_shape)
-
-    if nrhs == 1:
-        return b.conj()
-    else:
-        return b
+    return _cupy.ascontiguousarray(b.reshape(b_shape))
