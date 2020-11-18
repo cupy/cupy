@@ -18,17 +18,17 @@ class TestCheckVersion(unittest.TestCase):
     def test_check_cuda_version(self):
         with self.assertRaises(RuntimeError):
             build.get_cuda_version()
-        self.assertTrue(build.check_cuda_version(
-            self.compiler, self.settings))
-        self.assertIsInstance(build.get_cuda_version(), int)
-        self.assertIsInstance(build.get_cuda_version(True), str)
+        assert build.check_cuda_version(
+            self.compiler, self.settings)
+        assert isinstance(build.get_cuda_version(), int)
+        assert isinstance(build.get_cuda_version(True), str)
 
     @pytest.mark.gpu
     @pytest.mark.cudnn
     def test_check_cudnn_version(self):
         with self.assertRaises(RuntimeError):
             build.get_cudnn_version()
-        self.assertTrue(build.check_cudnn_version(
-            self.compiler, self.settings))
-        self.assertIsInstance(build.get_cudnn_version(), int)
-        self.assertIsInstance(build.get_cudnn_version(True), str)
+        assert build.check_cudnn_version(
+            self.compiler, self.settings)
+        assert isinstance(build.get_cudnn_version(), int)
+        assert isinstance(build.get_cudnn_version(True), str)
