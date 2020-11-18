@@ -686,6 +686,12 @@ cpdef enum:
     cudaReadModeElementType = 0
     cudaReadModeNormalizedFloat = 1
 
+    # cudaStream
+    cudaStreamDefault = 0
+    cudaStreamNonBlocking = 1
+    cudaStreamLegacy = 1
+    cudaStreamPerThread = 2
+
 
 ###############################################################################
 # Error codes
