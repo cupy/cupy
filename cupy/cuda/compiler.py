@@ -150,17 +150,22 @@ def _get_bool_env_variable(name, default):
         return False
 
 
-_jitify_header_source_map = None
+_jitify_header_source_map_populated = False
 
 
 def _jitify_prep(source, options, cu_path):
     # TODO(leofang): refactor this?
-    global _jitify_header_source_map
-    if _jitify_header_source_map is None:
+    global _jitify_header_source_map_populated
+    if not _jitify_header_source_map_populated:
         from cupy.core import core
         _jitify_header_source_map = core._get_header_source_map()
+        _jitify_header_source_map_populated = True
+    else:
+        # this is already cached at the C++ level, so don't pass in anything
+        _jitify_header_source_map = None
 
     # jitify requires the 1st line to be the program name
+    old_source = source
     source = cu_path + '\n' + source
 
     # Upon failure, in addition to throw an error Jitify also prints the log
@@ -172,12 +177,16 @@ def _jitify_prep(source, options, cu_path):
     # (NVIDIA/jitify#79).
 
     try:
-        name, options, headers, include_names, hdr_map = jitify(
+        name, options, headers, include_names = jitify(
             source, options, _jitify_header_source_map)
     except Exception as e:  # C++ could throw all kinds of errors
-        raise JitifyException(str(e))
+        cex = CompileException(str(e), old_source, cu_path, options, 'jitify')
+        dump = _get_bool_env_variable(
+            'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+        if dump:
+            cex.dump(sys.stderr)
+        raise JitifyException(str(cex))
     assert name == cu_path
-    _jitify_header_source_map = hdr_map
 
     return options, headers, include_names
 
