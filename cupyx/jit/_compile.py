@@ -31,11 +31,13 @@ def transpile(func, attributes, mode, in_types, ret_type):
         line.replace(' ' * num_indent, '', 1) for line in lines])
 
     global_mems = dict(inspect.getclosurevars(func).globals)
+    nonlocals = dict(inspect.getclosurevars(func).nonlocals)
+    consts = dict(**global_mems, **nonlocals)
     tree = ast.parse(source)
     assert isinstance(tree, ast.Module)
     assert len(tree.body) == 1
     cuda_code, env = _transpile_function(
-        tree.body[0], attributes, mode, global_mems, in_types, ret_type)
+        tree.body[0], attributes, mode, consts, in_types, ret_type)
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
     return cuda_code, env.ret_type
 
@@ -53,12 +55,21 @@ class CudaObject:
         return f'<CudaObject code = "{self.code}", type = {self.ctype}>'
 
 
+class Constant:
+    def __init__(self, obj):
+        self.obj = obj
+
+
+def is_constants(values):
+    return all(isinstance(x, Constant) for x in values)
+
+
 class Environment:
     """Environment of the scope
 
     Attributes:
         mode ('numpy' or 'cuda'): The rule for typecast.
-        global_mems (dict): The dictionary with keys as the variable names and
+        consts (dict): The dictionary with keys as the variable names and
             the values as the data stored at the global scopes.
         params (dict): The dictionary of function arguments with keys as
             the variable names and the values as the CudaObject.
@@ -69,9 +80,9 @@ class Environment:
             inferred until the end of transpilation of the function.
     """
 
-    def __init__(self, mode, global_mems, params, ret_type):
+    def __init__(self, mode, consts, params, ret_type):
         self.mode = mode
-        self.global_mems = global_mems
+        self.consts = consts
         self.params = params
         self.values = {}
         self.ret_type = ret_type
@@ -82,8 +93,8 @@ class Environment:
             return self.values[key]
         if key in self.params:
             return self.params[key]
-        if key in self.global_mems:
-            return self.global_mems[key]
+        if key in self.consts:
+            return self.consts[key]
         return None
 
     def __setitem__(self, key, value):
@@ -91,13 +102,13 @@ class Environment:
 
 
 def _transpile_function(
-        func, attributes, mode, global_mems, in_types, ret_type):
+        func, attributes, mode, consts, in_types, ret_type):
     """Transpile the function
     Args:
         func (ast.FunctionDef): Target function.
         attributes (str): The attributes of target function.
         mode ('numpy' or 'cuda'): The rule for typecast.
-        global_mems (dict): The dictionary with keys as variable names and
+        consts (dict): The dictionary with keys as variable names and
             values as concrete data object.
         in_types (list of _types.TypeBase): The types of arguments.
         ret_type (_types.TypeBase): The type of return value.
@@ -128,7 +139,8 @@ def _transpile_function(
             f'{func.name}() takes {len(args)} positional arguments '
             'but {len(in_types)} were given.')
     env = Environment(
-        mode, global_mems,
+        mode,
+        dict([(k, Constant(v)) for k, v, in consts.items()]),
         dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)]),
         ret_type)
     params = ', '.join([f'{env[a].ctype} {a}' for a in args])
@@ -139,6 +151,11 @@ def _transpile_function(
 
 
 def _eval_operand(op, args, env, dtype=None):
+    if is_constants(args):
+        pyfunc = _typerules.get_pyfunc(type(op))
+        return Constant(pyfunc(*[x.obj for x in args]))
+
+    args = [_to_cuda_object(x, env) for x in args]
     ufunc = _typerules.get_ufunc(env.mode, type(op))
     assert ufunc.nin == len(args)
     assert ufunc.nout == 1
@@ -187,6 +204,7 @@ def _transpile_stmt(stmt, env):
             'Nested functions are not supported currently.')
     if isinstance(stmt, ast.Return):
         value = _transpile_expr(stmt.value, env)
+        value = _to_cuda_object(value, env)
         t = value.ctype
         if env.ret_type is None:
             env.ret_type = t
@@ -202,6 +220,7 @@ def _transpile_stmt(stmt, env):
         target = stmt.targets[0]
         name = target.id
         value = _transpile_expr(stmt.value, env)
+        value = _to_cuda_object(value, env)
         if isinstance(target, ast.Name):
             if env[name] is None:
                 env[name] = CudaObject(target.id, value.ctype)
@@ -212,6 +231,8 @@ def _transpile_stmt(stmt, env):
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
         target = _transpile_expr(stmt.target, env)
+        assert isinstance(target, CudaObject)
+        value = _to_cuda_object(value, env)
         result = _eval_operand(stmt.op, (target, value), env)
         if not numpy.can_cast(
                 result.ctype.dtype, target.ctype.dtype, 'same_kind'):
@@ -230,13 +251,19 @@ def _transpile_stmt(stmt, env):
     if isinstance(stmt, (ast.Raise, ast.Try)):
         raise ValueError('throw/catch are not allowed.')
     if isinstance(stmt, ast.Assert):
-        return 'assert(' + _transpile_expr(stmt.test, env) + ')'
+        value = _transpile_expr(stmt.test, env)
+        if is_constants([value]):
+            assert value.obj
+            return ';'
+        else:
+            return 'assert(' + value + ');'
     if isinstance(stmt, (ast.Import, ast.ImportFrom)):
         raise ValueError('Cannot import modules from the target functions.')
     if isinstance(stmt, (ast.Global, ast.Nonlocal)):
         raise ValueError('Cannot use global/nonlocal in the target functions.')
     if isinstance(stmt, ast.Expr):
-        return _transpile_expr(stmt.value, env)
+        value = _transpile_expr(stmt.value, env)
+        return ';' if is_constants([value]) else value
     if isinstance(stmt, ast.Pass):
         return ';'
     if isinstance(stmt, ast.Break):
@@ -278,8 +305,13 @@ def _transpile_expr(expr, env):
         cond = _transpile_expr(expr.test, env)
         x = _transpile_expr(expr.body, env)
         y = _transpile_expr(expr.orelse, env)
+
+        if isinstance(expr, Constant):
+            return x if expr.obj else y
         if cond.ctype.dtype.kind == 'c':
             raise NotImplementedError('')
+        x = _to_cuda_object(x, env)
+        y = _to_cuda_object(y, env)
         if x.ctype.dtype != y.ctype.dtype:
             raise TypeError(
                 f'Type mismatch in conditional expression.: '
@@ -289,10 +321,10 @@ def _transpile_expr(expr, env):
     if isinstance(expr, ast.Call):
         raise NotImplementedError('Not implemented.')
     if isinstance(expr, ast.Constant):
-        return _emit_cuda_object_from_constants(expr.value, env)
+        return Constant(expr.value)
     if isinstance(expr, ast.Num):
         # Deprecated since py3.8
-        return _emit_cuda_object_from_constants(expr.n, env)
+        return Constant(expr.n)
     if isinstance(expr, ast.Subscript):
         # # TODO(asi1024): Fix.
         # value = _transpile_expr(expr.value, env)
@@ -307,7 +339,10 @@ def _transpile_expr(expr, env):
                 'Unbound name: {} in L{}'.format(expr.id, expr.lineno))
         return env[expr.id]
     if isinstance(expr, ast.Attribute):
-        raise NotImplementedError('Not implemented')
+        value = _transpile_expr(expr.value, env)
+        if is_constants([value]):
+            return Constant(getattr(value.obj, expr.attr))
+        raise NotImplementedError('Not implemented: __getattr__')
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
@@ -317,6 +352,10 @@ def astype_scalar(x, ctype):
     return CudaObject(f'({ctype})({x.code})', ctype)
 
 
-def _emit_cuda_object_from_constants(x, env):
-    ctype = _typerules.get_ctype_from_scalar(env.mode, x)
-    return CudaObject(str(x), ctype)
+def _to_cuda_object(x, env):
+    if isinstance(x, CudaObject):
+        return x
+    if isinstance(x, Constant):
+        ctype = _typerules.get_ctype_from_scalar(env.mode, x.obj)
+        return CudaObject(str(x.obj).lower(), ctype)
+    assert False

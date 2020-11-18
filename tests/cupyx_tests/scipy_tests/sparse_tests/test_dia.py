@@ -50,26 +50,26 @@ class TestDiaMatrix(unittest.TestCase):
         self.m = _make(cupy, sparse, self.dtype)
 
     def test_dtype(self):
-        self.assertEqual(self.m.dtype, self.dtype)
+        assert self.m.dtype == self.dtype
 
     def test_data(self):
-        self.assertEqual(self.m.data.dtype, self.dtype)
+        assert self.m.data.dtype == self.dtype
         testing.assert_array_equal(
             self.m.data, cupy.array([[0, 1, 2], [3, 4, 5]], self.dtype))
 
     def test_offsets(self):
-        self.assertEqual(self.m.offsets.dtype, numpy.int32)
+        assert self.m.offsets.dtype == numpy.int32
         testing.assert_array_equal(
             self.m.offsets, cupy.array([0, -1], self.dtype))
 
     def test_shape(self):
-        self.assertEqual(self.m.shape, (3, 4))
+        assert self.m.shape == (3, 4)
 
     def test_ndim(self):
-        self.assertEqual(self.m.ndim, 2)
+        assert self.m.ndim == 2
 
     def test_nnz(self):
-        self.assertEqual(self.m.nnz, 5)
+        assert self.m.nnz == 5
 
     def test_conj(self):
         n = _make_complex(cupy, sparse, self.dtype)
@@ -91,7 +91,7 @@ class TestDiaMatrix(unittest.TestCase):
   (2, 2)\t(2+0j)
   (1, 0)\t(3+0j)
   (2, 1)\t(4+0j)'''
-        self.assertEqual(str(self.m), expect)
+        assert str(self.m) == expect
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -100,7 +100,7 @@ class TestDiaMatrix(unittest.TestCase):
             [3, 1, 0, 0],
             [0, 4, 2, 0]
         ]
-        self.assertTrue(m.flags.c_contiguous)
+        assert m.flags.c_contiguous
         cupy.testing.assert_allclose(m, expect)
 
     def test_pickle_roundtrip(self):
@@ -259,7 +259,7 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def test_tocoo_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocoo(copy=True)
-        self.assertIsNot(m.data, n.data)
+        assert m.data is not n.data
         return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -271,7 +271,7 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def test_tocsc_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsc(copy=True)
-        self.assertIsNot(m.data, n.data)
+        assert m.data is not n.data
         return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -283,7 +283,7 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def test_tocsr_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsr(copy=True)
-        self.assertIsNot(m.data, n.data)
+        assert m.data is not n.data
         return n
 
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
@@ -339,7 +339,7 @@ class TestIsspmatrixDia(unittest.TestCase):
             (cupy.array([], 'f'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        self.assertTrue(sparse.isspmatrix_dia(x))
+        assert sparse.isspmatrix_dia(x) is True
 
     def test_csr(self):
         x = sparse.csr_matrix(
@@ -347,4 +347,4 @@ class TestIsspmatrixDia(unittest.TestCase):
              cupy.array([], 'i'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        self.assertFalse(sparse.isspmatrix_dia(x))
+        assert sparse.isspmatrix_dia(x) is False

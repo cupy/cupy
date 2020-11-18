@@ -144,9 +144,11 @@ def _call_kernel(kernel, input, weights, output, structure=None,
 
 
 includes = r'''
+// workaround for HIP: line begins with #include
 #include <type_traits>  // let Jitify handle this
-#include <math_constants.h>
+#include <cupy/math_constants.h>
 '''
+
 
 _CAST_FUNCTION = """
 // Implements a casting function to make it compatible with scipy

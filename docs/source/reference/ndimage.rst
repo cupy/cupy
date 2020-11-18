@@ -65,6 +65,8 @@ Interpolation
    cupyx.scipy.ndimage.map_coordinates
    cupyx.scipy.ndimage.rotate
    cupyx.scipy.ndimage.shift
+   cupyx.scipy.ndimage.spline_filter
+   cupyx.scipy.ndimage.spline_filter1d
    cupyx.scipy.ndimage.zoom
 
 

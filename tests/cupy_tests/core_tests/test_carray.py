@@ -11,7 +11,7 @@ class TestCArray(unittest.TestCase):
         y = cupy.ElementwiseKernel(
             'raw int32 x', 'int32 y', 'y = x.size()', 'test_carray_size',
         )(x, size=1)
-        self.assertEqual(int(y[0]), 3)
+        assert int(y[0]) == 3
 
     def test_shape(self):
         x = cupy.arange(6).reshape((2, 3)).astype('i')

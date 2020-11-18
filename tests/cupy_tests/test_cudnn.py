@@ -91,9 +91,9 @@ class TestCudnnDropout(unittest.TestCase):
     def test_dropout_forward(self):
         _, y = self.states.forward(None, self.x, self.ratio)
         if self.ratio == 0:
-            self.assertTrue(cupy.all(self.x == y))
+            assert cupy.all(self.x == y)
         else:
-            self.assertTrue(cupy.all(self.x != y))
+            assert cupy.all(self.x != y)
 
     def test_dropout_backward(self):
         rspace, y = self.states.forward(None, self.x, self.ratio)
@@ -104,7 +104,7 @@ class TestCudnnDropout(unittest.TestCase):
         backward_mask = gx / self.gy
 
         # backward_mask must be the same as forward_mask
-        self.assertTrue(cupy.all(forward_mask == backward_mask))
+        assert cupy.all(forward_mask == backward_mask)
 
     def test_dropout_seed(self):
         # initialize Dropoutstates with the same seed
@@ -113,12 +113,12 @@ class TestCudnnDropout(unittest.TestCase):
         rspace, y = self.states.forward(None, self.x, self.ratio)
         rspace2, y2 = states2.forward(None, self.x, self.ratio)
         # forward results must be the same
-        self.assertTrue(cupy.all(y == y2))
+        assert cupy.all(y == y2)
 
         gx = self.states.backward(None, self.gy, self.ratio, rspace)
         gx2 = states2.backward(None, self.gy, self.ratio, rspace2)
         # backward results must be the same
-        self.assertTrue(cupy.all(gx == gx2))
+        assert cupy.all(gx == gx2)
 
 
 @testing.parameterize(*(testing.product({
@@ -204,7 +204,7 @@ class TestConvolutionForward(unittest.TestCase):
                 return unittest.SkipTest()
         if self.err is None:
             self.call()
-            self.assertTrue((self.y == 0).all())
+            assert (self.y == 0).all()
         else:
             with self.assertRaises(self.err):
                 self.call()
@@ -282,7 +282,7 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
             return
         if self.err is None:
             self.call()
-            self.assertTrue((self.gW == 0).all())
+            assert (self.gW == 0).all()
         else:
             with self.assertRaises(self.err):
                 self.call()
@@ -363,7 +363,7 @@ class TestConvolutionBackwardData(unittest.TestCase):
             return
         if self.err is None:
             self.call()
-            self.assertTrue((self.gx == 0).all())
+            assert (self.gx == 0).all()
         else:
             with self.assertRaises(self.err):
                 self.call()

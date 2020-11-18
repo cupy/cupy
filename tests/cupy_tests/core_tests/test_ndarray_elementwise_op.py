@@ -406,7 +406,7 @@ class TestArrayElementwiseOp(unittest.TestCase):
             with numpy.errstate(divide='ignore', invalid='ignore'):
                 a = op(val, (testing.shaped_arange((5,), numpy, dtype) - 2))
             b = op(val, (testing.shaped_arange((5,), cupy, dtype) - 2))
-            self.assertEqual(a.dtype, b.dtype)
+            assert a.dtype == b.dtype
 
     def test_typecast_bool1(self):
         self.check_typecast(True)
