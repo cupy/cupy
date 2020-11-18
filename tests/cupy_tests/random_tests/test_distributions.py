@@ -22,8 +22,8 @@ class RandomDistributionsTestCase(unittest.TestCase):
             dtype)
         cp_out = getattr(_distributions, dist_name)(
             size=self.shape, dtype=dtype, **cp_params)
-        self.assertEqual(cp_out.shape, np_out.shape)
-        self.assertEqual(cp_out.dtype, np_out.dtype)
+        assert cp_out.shape == np_out.shape
+        assert cp_out.dtype == np_out.dtype
 
 
 @testing.parameterize(*testing.product({
@@ -77,8 +77,8 @@ class TestDistributionsChisquare(unittest.TestCase):
     def check_distribution(self, dist_func, df_dtype, dtype):
         df = cupy.full(self.df_shape, 5, dtype=df_dtype)
         out = dist_func(df, self.shape, dtype)
-        self.assertEqual(self.shape, out.shape)
-        self.assertEqual(out.dtype, dtype)
+        assert self.shape == out.shape
+        assert out.dtype == dtype
 
     @cupy.testing.for_float_dtypes('df_dtype')
     @cupy.testing.for_float_dtypes('dtype')
@@ -141,8 +141,8 @@ class TestDistributionsF(unittest.TestCase):
         dfnum = cupy.ones(self.dfnum_shape, dtype=dfnum_dtype)
         dfden = cupy.ones(self.dfden_shape, dtype=dfden_dtype)
         out = dist_func(dfnum, dfden, self.shape, dtype)
-        self.assertEqual(self.shape, out.shape)
-        self.assertEqual(out.dtype, dtype)
+        assert self.shape == out.shape
+        assert out.dtype == dtype
 
     @cupy.testing.for_float_dtypes('dfnum_dtype')
     @cupy.testing.for_float_dtypes('dfden_dtype')
@@ -165,8 +165,8 @@ class TestDistributionsGamma(unittest.TestCase):
         shape = cupy.ones(self.shape_shape, dtype=shape_dtype)
         scale = cupy.ones(self.scale_shape, dtype=scale_dtype)
         out = dist_func(shape, scale, self.shape, dtype)
-        self.assertEqual(self.shape, out.shape)
-        self.assertEqual(out.dtype, dtype)
+        assert self.shape == out.shape
+        assert out.dtype == dtype
 
     @cupy.testing.for_dtypes_combination(
         _float_dtypes, names=['shape_dtype', 'scale_dtype'])
@@ -187,8 +187,8 @@ class TestDistributionsGeometric(unittest.TestCase):
     def check_distribution(self, dist_func, p_dtype, dtype):
         p = 0.5 * cupy.ones(self.p_shape, dtype=p_dtype)
         out = dist_func(p, self.shape, dtype)
-        self.assertEqual(self.shape, out.shape)
-        self.assertEqual(out.dtype, dtype)
+        assert self.shape == out.shape
+        assert out.dtype == dtype
 
     @cupy.testing.for_float_dtypes('p_dtype')
     def test_geometric(self, p_dtype):
@@ -233,8 +233,8 @@ class TestDistributionsHyperGeometric(unittest.TestCase):
         nbad = cupy.ones(self.nbad_shape, dtype=nbad_dtype)
         nsample = cupy.ones(self.nsample_shape, dtype=nsample_dtype)
         out = dist_func(ngood, nbad, nsample, self.shape, dtype)
-        self.assertEqual(self.shape, out.shape)
-        self.assertEqual(out.dtype, dtype)
+        assert self.shape == out.shape
+        assert out.dtype == dtype
 
     @cupy.testing.for_dtypes_combination(
         [numpy.int32, numpy.int64], names=['ngood_dtype', 'nbad_dtype'])
@@ -339,8 +339,8 @@ class TestDistributionsMultivariateNormal(unittest.TestCase):
         cov = cupy.random.normal(size=(self.d, self.d), dtype=cov_dtype)
         cov = cov.T.dot(cov)
         out = dist_func(mean, cov, self.shape, dtype=dtype)
-        self.assertEqual(self.shape+(self.d,), out.shape)
-        self.assertEqual(out.dtype, dtype)
+        assert self.shape+(self.d,) == out.shape
+        assert out.dtype == dtype
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('mean_dtype', no_float16=True)
@@ -486,8 +486,8 @@ class TestDistributionsPareto(unittest.TestCase):
     def check_distribution(self, dist_func, a_dtype, dtype):
         a = cupy.ones(self.a_shape, dtype=a_dtype)
         out = dist_func(a, self.shape, dtype)
-        self.assertEqual(self.shape, out.shape)
-        self.assertEqual(out.dtype, dtype)
+        assert self.shape == out.shape
+        assert out.dtype == dtype
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('a_dtype')
@@ -507,8 +507,8 @@ class TestDistributionsPoisson(unittest.TestCase):
     def check_distribution(self, dist_func, lam_dtype, dtype):
         lam = cupy.full(self.lam_shape, 5, dtype=lam_dtype)
         out = dist_func(lam, self.shape, dtype)
-        self.assertEqual(self.shape, out.shape)
-        self.assertEqual(out.dtype, dtype)
+        assert self.shape == out.shape
+        assert out.dtype == dtype
 
     @cupy.testing.for_int_dtypes('dtype')
     @cupy.testing.for_float_dtypes('lam_dtype')
@@ -634,8 +634,8 @@ class TestDistributionsStandardT(unittest.TestCase):
     def check_distribution(self, dist_func, df_dtype, dtype):
         df = cupy.ones(self.df_shape, dtype=df_dtype)
         out = dist_func(df, self.shape, dtype)
-        self.assertEqual(self.shape, out.shape)
-        self.assertEqual(out.dtype, dtype)
+        assert self.shape == out.shape
+        assert out.dtype == dtype
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('df_dtype')
@@ -722,8 +722,8 @@ class TestDistributionsVonmises(unittest.TestCase):
         mu = cupy.ones(self.mu_shape, dtype=mu_dtype)
         kappa = cupy.ones(self.kappa_shape, dtype=kappa_dtype)
         out = dist_func(mu, kappa, self.shape, dtype)
-        self.assertEqual(self.shape, out.shape)
-        self.assertEqual(out.dtype, dtype)
+        assert self.shape == out.shape
+        assert out.dtype == dtype
 
     @cupy.testing.for_dtypes_combination(
         _float_dtypes, names=['mu_dtype', 'kappa_dtype'])

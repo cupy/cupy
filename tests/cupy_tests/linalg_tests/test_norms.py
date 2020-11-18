@@ -82,8 +82,8 @@ class TestMatrixRank(unittest.TestCase):
         a = xp.array(self.array, dtype=dtype)
         y = xp.linalg.matrix_rank(a, tol=self.tol)
         if xp is cupy:
-            self.assertIsInstance(y, cupy.ndarray)
-            self.assertEqual(y.shape, ())
+            assert isinstance(y, cupy.ndarray)
+            assert y.shape == ()
         else:
             # Note numpy returns numpy scalar or python int
             y = xp.array(y)
