@@ -266,6 +266,7 @@ cusolverStatus_t cusolverDnDXgesv(...) {
 cusolverStatus_t cusolverDnSXgesv(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
+
 cusolverStatus_t cusolverDnZZgels_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }

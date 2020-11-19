@@ -540,8 +540,8 @@ def gesv(a, b):
     solver = getattr(_cusolver, solver_name)
     helper = getattr(_cusolver, solver_name + '_bufferSize')
 
-    a = _cupy.asfortranarray(a)
-    b = _cupy.asfortranarray(b)
+    a = a.copy(order='F')
+    b = b.copy(order='F')
     x = _cupy.empty_like(b)
     dipiv = _cupy.empty(n, dtype=_numpy.int32)
     dinfo = _cupy.empty(1, dtype=_numpy.int32)
