@@ -23,13 +23,7 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
                       vector[cpp_str]*,
                       cpp_str*) except +
 
-cdef extern from *:
-    '''
-    #define _str_(s) #s
-    #define _xstr_(s) _str_(s)
-    #define jitify_ver _xstr_(CUPY_JITIFY_VERSION_CODE)
-    '''
-    const char* jitify_ver
+    const char* jitify_ver  # set at build time
 
 
 ###############################################################################
