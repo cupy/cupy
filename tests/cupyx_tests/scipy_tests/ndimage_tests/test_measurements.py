@@ -246,15 +246,15 @@ class TestStats(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestMeasurementsSelect(unittest.TestCase):
 
-    def setUp(self):
-        self.old_accelerators = _accelerator.get_routine_accelerators()
+    @pytest.fixture(autouse=True)
+    def with_accelerators(self):
+        old_accelerators = _accelerator.get_routine_accelerators()
         if self.enable_cub:
             _accelerator.set_routine_accelerators(['cub'])
         else:
             _accelerator.set_routine_accelerators([])
-
-    def tearDown(self):
-        _accelerator.set_routine_accelerators(self.old_accelerators)
+        yield
+        _accelerator.set_routine_accelerators(old_accelerators)
 
     # no_bool=True due to https://github.com/scipy/scipy/issues/12836
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
