@@ -64,7 +64,7 @@ class TestCsrmm(unittest.TestCase):
         y = cupy.cusparse.csrmm(
             a, b, c=c, alpha=self.alpha, beta=self.beta, transa=self.transa)
         expect = self.alpha * self.op_a.dot(self.b) + self.beta * self.c
-        self.assertIs(y, c)
+        assert y is c
         testing.assert_array_almost_equal(y, expect)
 
 
@@ -112,7 +112,7 @@ class TestCsrmm2(unittest.TestCase):
             a, b, c=c, alpha=self.alpha, beta=self.beta,
             transa=self.transa, transb=self.transb)
         expect = self.alpha * self.op_a.dot(self.op_b) + self.beta * self.c
-        self.assertIs(y, c)
+        assert y is c
         testing.assert_array_almost_equal(y, expect)
 
 
@@ -373,7 +373,7 @@ class TestCsrmv(unittest.TestCase):
         z = cupy.cusparse.csrmv(
             a, x, y=y, alpha=self.alpha, beta=self.beta, transa=self.transa)
         expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
-        self.assertIs(y, z)
+        assert y is z
         testing.assert_array_almost_equal(y, expect)
 
     def test_csrmvEx_aligned(self):
@@ -382,7 +382,7 @@ class TestCsrmv(unittest.TestCase):
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
 
-        self.assertTrue(cupy.cusparse.csrmvExIsAligned(a, x))
+        assert cupy.cusparse.csrmvExIsAligned(a, x)
 
     def test_csrmvEx_not_aligned(self):
         if not cusparse.check_availability('csrmvEx'):
@@ -391,7 +391,7 @@ class TestCsrmv(unittest.TestCase):
         tmp = cupy.array(numpy.hstack([self.x, self.y]), order='f')
         x = tmp[0:len(self.x)]
         y = tmp[len(self.x):]
-        self.assertFalse(cupy.cusparse.csrmvExIsAligned(a, x, y))
+        assert not cupy.cusparse.csrmvExIsAligned(a, x, y)
 
     def test_csrmvEx(self):
         if not cusparse.check_availability('csrmvEx'):
@@ -418,7 +418,7 @@ class TestCsrmv(unittest.TestCase):
         z = cupy.cusparse.csrmvEx(
             a, x, y=y, alpha=self.alpha, beta=self.beta)
         expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
-        self.assertIs(y, z)
+        assert y is z
         testing.assert_array_almost_equal(y, expect)
 
 
@@ -548,7 +548,7 @@ class TestSpmv(unittest.TestCase):
         z = cupy.cusparse.spmv(a, x, y=y, alpha=self.alpha, beta=self.beta,
                                transa=self.transa)
         expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
-        self.assertIs(y, z)
+        assert y is z
         testing.assert_array_almost_equal(y, expect)
 
 
@@ -642,7 +642,7 @@ class TestSpmm(unittest.TestCase):
             a, b, c=c, alpha=self.alpha, beta=self.beta,
             transa=self.transa, transb=self.transb)
         expect = self.alpha * self.op_a.dot(self.op_b) + self.beta * self.c
-        self.assertIs(y, c)
+        assert y is c
         testing.assert_array_almost_equal(y, expect)
 
 

@@ -50,13 +50,13 @@ def _cook_shape(a, s, axes, value_type, order='C'):
             if shape[axis] > sz:
                 index = [slice(None)] * a.ndim
                 index[axis] = slice(0, sz)
-                a = a[index]
+                a = a[tuple(index)]
             else:
                 index = [slice(None)] * a.ndim
                 index[axis] = slice(0, shape[axis])
                 shape[axis] = sz
                 z = cupy.zeros(shape, a.dtype.char, order=order)
-                z[index] = a
+                z[tuple(index)] = a
                 a = z
     return a
 
@@ -108,11 +108,11 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     # while hipFFT handles it badly in both Plan1d and PlanNd, so we must
     # do the correction ourselves to ensure the condition is met.
     if cupy.cuda.runtime.is_hip and value_type == 'C2R':
-        a[..., 0] = a[..., 0].real + 0j
+        a[..., 0].imag = 0
         if out_size is None:
-            a[..., -1] = a[..., -1].real + 0j
+            a[..., -1].imag = 0
         elif out_size % 2 == 0:
-            a[..., out_size // 2] = a[...,  out_size // 2].real + 0j
+            a[..., out_size // 2].imag = 0
 
     if out_size is None:
         out_size = n
@@ -136,12 +136,30 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         devices = None if not config.use_multi_gpus else config._devices
         # TODO(leofang): do we need to add the current stream to keys?
         keys = (out_size, fft_type, batch, devices)
+        mgr = config.get_current_callback_manager()
+        if mgr is not None:
+            # to avoid a weird segfault, we generate and cache distinct plans
+            # for every possible (load_aux, store_aux) pairs; the plans are
+            # still generated from the same external Python module
+            load_aux = mgr.cb_load_aux_arr
+            store_aux = mgr.cb_store_aux_arr
+            keys += (mgr.cb_load, mgr.cb_store,
+                     0 if load_aux is None else load_aux.data.ptr,
+                     0 if store_aux is None else store_aux.data.ptr)
         cache = get_plan_cache()
         cached_plan = cache.get(keys)
         if cached_plan is not None:
             plan = cached_plan
-        else:
+        elif mgr is None:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+            cache[keys] = plan
+        else:  # has callback
+            # TODO(leofang): support multi-GPU callback (devices is ignored)
+            if devices:
+                raise NotImplementedError('multi-GPU cuFFT callbacks are not '
+                                          'yet supported')
+            plan = mgr.create_plan(('Plan1d', keys[:-5]))
+            mgr.set_callbacks(plan)
             cache[keys] = plan
     else:
         # check plan validity
@@ -417,14 +435,30 @@ def _get_cufft_plan_nd(
     keys = (plan_dimensions, inembed, istride,
             idist, onembed, ostride, odist,
             fft_type, nbatch, order, fft_axes[-1], out_size)
+    mgr = config.get_current_callback_manager()
+    if mgr is not None:
+        # to avoid a weird segfault, we generate and cache distinct plans
+        # for every possible (load_aux, store_aux) pairs; the plans are
+        # still generated from the same external Python module
+        load_aux = mgr.cb_load_aux_arr
+        store_aux = mgr.cb_store_aux_arr
+        keys += (mgr.cb_load, mgr.cb_store,
+                 0 if load_aux is None else load_aux.data.ptr,
+                 0 if store_aux is None else store_aux.data.ptr)
     cache = get_plan_cache()
     cached_plan = cache.get(keys)
     if cached_plan is not None:
         plan = cached_plan
-    else:
+    elif mgr is None:
         plan = cufft.PlanNd(*keys)
         if to_cache:
             cache[keys] = plan
+    else:  # has callback
+        plan = mgr.create_plan(('PlanNd', keys[:-4]))
+        mgr.set_callbacks(plan)
+        if to_cache:
+            cache[keys] = plan
+
     return plan
 
 

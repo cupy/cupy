@@ -327,6 +327,93 @@ cpdef int shgesv(intptr_t handle, int n, int nrhs, size_t dA, int ldda,
                  size_t dipiv, size_t dB, int lddb, size_t dX, int lddx,
                  size_t dwork, size_t lwork_bytes, size_t dInfo)
 
+# Compute least-saure solution of A * X = B using iterative refinement
+cpdef size_t zzgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t zcgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t zygels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t zkgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t ccgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t cygels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t ckgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t ddgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t dsgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t dxgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t dhgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t ssgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t sxgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+cpdef size_t shgels_bufferSize(intptr_t handle, int m, int n, int nrhs,
+                               size_t dA, int ldda, size_t dB, int lddb,
+                               size_t dX, int lddx, size_t dwork) except? -1
+
+cpdef int zzgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int zcgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int zygels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int zkgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int ccgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int ckgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int cygels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int ddgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int dsgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int dxgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int dhgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int ssgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int sxgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+cpdef int shgels(intptr_t handle, int m, int n, int nrhs, size_t dA, int ldda,
+                 size_t dB, int lddb, size_t dX, int lddx,
+                 size_t dwork, size_t lwork_bytes, size_t dInfo)
+
 ###############################################################################
 # Dense LAPACK Functions (Eigenvalue Solver)
 ###############################################################################

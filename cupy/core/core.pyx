@@ -1735,6 +1735,9 @@ cdef list _cupy_header_list = [
     'cupy/carray.cuh',
     'cupy/atomics.cuh',
 ]
+if runtime._is_hip_environment:
+    _cupy_header_list.append('cupy/math_constants.h')
+
 cdef str _cupy_header = ''.join(
     ['#include <%s>\n' % i for i in _cupy_header_list])
 
@@ -1765,6 +1768,7 @@ cdef list _cupy_extra_header_list = [
 
 cdef str _header_path_cache = None
 cdef str _header_source = None
+cdef dict _header_source_map = {}
 
 
 cpdef str _get_header_dir_path():
@@ -1778,15 +1782,28 @@ cpdef str _get_header_dir_path():
 
 cpdef str _get_header_source():
     global _header_source
-    if _header_source is None:
+    global _header_source_map
+    cdef str header_path, base_path, file_path, header
+    cdef list source
+
+    if _header_source is None or not _header_source_map:
         source = []
         base_path = _get_header_dir_path()
         for file_path in _cupy_extra_header_list + _cupy_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
-                source.append(header_file.read())
+                header = header_file.read()
+            source.append(header)
+            _header_source_map[file_path.encode()] = header.encode()
         _header_source = '\n'.join(source)
     return _header_source
+
+
+cpdef dict _get_header_source_map():
+    global _header_source_map
+    if not _header_source_map:
+        _get_header_source()
+    return _header_source_map
 
 
 # added at the module level for precompiling the regex
@@ -1809,7 +1826,7 @@ cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None):
+        log_stream=None, bint jitify=False):
     if translate_cucomplex:
         source = _translate_cucomplex_to_thrust(source)
         _cupy_header_list.append('cupy/cuComplex_bridge.h')
@@ -1853,16 +1870,17 @@ cpdef function.Module compile_with_cache(
                 'CuPy.')
 
         if bundled_include is not None:
-            options += ('-I ' + os.path.join(
+            options += ('-I' + os.path.join(
                 _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
 
         if cuda_path is not None:
-            options += ('-I ' + os.path.join(cuda_path, 'include'),)
+            options += ('-I' + os.path.join(cuda_path, 'include'),)
 
     return cuda.compile_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
         enable_cooperative_groups=enable_cooperative_groups,
-        name_expressions=name_expressions, log_stream=log_stream)
+        name_expressions=name_expressions, log_stream=log_stream,
+        jitify=jitify)
 
 
 # =============================================================================

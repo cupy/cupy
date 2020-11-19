@@ -54,6 +54,11 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         In the first case, no cuFFT plan will be generated automatically,
         even if ``cupy.fft.config.enable_nd_planning = True`` is set.
 
+    .. note::
+        If this function is called under the context of
+        :func:`~cupy.fft.config.set_cufft_callbacks`, the generated plan will
+        have callbacks enabled.
+
     .. warning::
         This API is a deviation from SciPy's, is currently experimental, and
         may be changed in the future version.
@@ -119,7 +124,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             raise RuntimeError("hipFFT's C2R PlanNd is buggy and unsupported")
         out_size = _get_fftn_out_size(
             shape, transformed_shape, axes[-1], value_type)
-        # _get_cufft_plan_nd handles the interaction with plan cache
+        # _get_cufft_plan_nd interacts with plan cache and callback
         plan = _get_cufft_plan_nd(
             shape, fft_type, axes=axes, order=order, out_size=out_size,
             to_cache=False)
@@ -134,12 +139,29 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         devices = None if not config.use_multi_gpus else config._devices
 
         keys = (out_size, fft_type, batch, devices)
+        mgr = config.get_current_callback_manager()
+        if mgr is not None:
+            # to avoid a weird segfault, we generate and cache distinct plans
+            # for every possible (load_aux, store_aux) pairs; the plans are
+            # still generated from the same external Python module
+            load_aux = mgr.cb_load_aux_arr
+            store_aux = mgr.cb_store_aux_arr
+            keys += (mgr.cb_load, mgr.cb_store,
+                     0 if load_aux is None else load_aux.data.ptr,
+                     0 if store_aux is None else store_aux.data.ptr)
         cache = get_plan_cache()
         cached_plan = cache.get(keys)
         if cached_plan is not None:
             plan = cached_plan
-        else:
+        elif mgr is None:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+        else:  # has callback
+            # TODO(leofang): support multi-GPU callback (devices is ignored)
+            if devices:
+                raise NotImplementedError('multi-GPU cuFFT callbacks are not '
+                                          'yet supported')
+            plan = mgr.create_plan(('Plan1d', keys[:-3]))
+            mgr.set_callbacks(plan)
 
     return plan
 
@@ -406,15 +428,15 @@ def rfft(x, n=None, axis=-1, overwrite_x=False, plan=None):
 
     slice_z[axis] = slice(1)
     slice_f[axis] = slice(1)
-    z[slice_z] = f[slice_f].real
+    z[tuple(slice_z)] = f[tuple(slice_f)].real
 
     slice_z[axis] = slice(1, None, 2)
     slice_f[axis] = slice(1, None)
-    z[slice_z] = f[slice_f].real
+    z[tuple(slice_z)] = f[tuple(slice_f)].real
 
     slice_z[axis] = slice(2, None, 2)
     slice_f[axis] = slice(1, n - f.shape[axis] + 1)
-    z[slice_z] = f[slice_f].imag
+    z[tuple(slice_z)] = f[tuple(slice_f)].imag
 
     return z
 
@@ -457,15 +479,15 @@ def irfft(x, n=None, axis=-1, overwrite_x=False):
 
     slice_x[axis] = slice(1)
     slice_z[axis] = slice(1)
-    z[slice_z].real = x[slice_x]
+    z[tuple(slice_z)].real = x[tuple(slice_x)]
 
     slice_x[axis] = slice(1, m, 2)
     slice_z[axis] = slice(1, m // 2 + 1)
-    z[slice_z].real = x[slice_x]
+    z[tuple(slice_z)].real = x[tuple(slice_x)]
 
     slice_x[axis] = slice(2, m, 2)
     slice_z[axis] = slice(1, (m + 1) // 2)
-    z[slice_z].imag = x[slice_x]
+    z[tuple(slice_z)].imag = x[tuple(slice_x)]
 
     return _fft(z, (n,), (axis,), None, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x)

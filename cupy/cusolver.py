@@ -1,4 +1,5 @@
 import numpy as _numpy
+import warnings as _warnings
 
 import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
@@ -15,10 +16,12 @@ _available_cuda_version = {
     'potrsBatched': (9010, None),
     'syevj': (9000, None),
     'gesv': (10020, None),
+    'gels': (11000, None),
 }
 
 _available_compute_capability = {
     'gesv': 70,
+    'gels': 70,
 }
 
 
@@ -551,4 +554,104 @@ def gesv(a, b):
                     dinfo.data.ptr)
     if niters < 0:
         raise RuntimeError('gesv has failed ({}).'.format(niters))
+    return x
+
+
+def gels(a, b):
+    """Compute least square solution using cusolverDn<t1><t2>gels().
+
+    Computes the least square solution to a system of ``ax = b``.
+
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(M, N)``.
+        b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
+
+    Returns:
+        cupy.ndarray:
+            The matrix with dimension ``(N)`` or ``(N, K)``.
+
+    """
+    if not check_availability('gels'):
+        raise RuntimeError('gels is not available.')
+
+    if a.ndim != 2:
+        raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))
+    if b.ndim == 1:
+        nrhs = 1
+    elif b.ndim == 2:
+        nrhs = b.shape[1]
+    else:
+        raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
+    if a.shape[0] != b.shape[0]:
+        raise ValueError('shape mismatch (a:{}, b:{}).'.
+                         format(a.shape, b.shape))
+    if a.dtype != b.dtype:
+        raise ValueError('dtype mismatch (a:{}, b:{}).'.
+                         format(a.dtype, b.dtype))
+
+    m, n = a.shape
+    if m < n:
+        raise ValueError('m must be equal to or greater than n.')
+    max_mn = max(m, n)
+    b_ndim = b.ndim
+
+    compute_type = _linalg.get_compute_type(a.dtype)
+    if a.dtype.char in 'fd':
+        if a.dtype.char == 'f':
+            t1 = t2 = 's'
+        else:
+            t1 = t2 = 'd'
+        if compute_type == _linalg.COMPUTE_TYPE_FP16:
+            t2 = 'h'
+        elif compute_type == _linalg.COMPUTE_TYPE_TF32:
+            t2 = 'x'
+        elif compute_type == _linalg.COMPUTE_TYPE_FP32:
+            t2 = 's'
+    elif a.dtype.char in 'FD':
+        if a.dtype.char == 'F':
+            t1 = t2 = 'c'
+        else:
+            t1 = t2 = 'z'
+        if compute_type == _linalg.COMPUTE_TYPE_FP16:
+            t2 = 'k'
+        elif compute_type == _linalg.COMPUTE_TYPE_TF32:
+            t2 = 'y'
+        elif compute_type == _linalg.COMPUTE_TYPE_FP32:
+            t2 = 'c'
+    else:
+        raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+    solver_name = t1 + t2 + 'gels'
+    solver = getattr(_cusolver, solver_name)
+    helper = getattr(_cusolver, solver_name + '_bufferSize')
+
+    a = a.copy(order='F')
+    org_nrhs = nrhs
+    if m > n and nrhs == 1:
+        # Note: this is workaround as there is bug in cusolverDn<T1><T2>gels()
+        # of CUDA 11.0/11.1 and it returns CUSOLVER_STATUS_IRS_NOT_SUPPORTED
+        # when m > n and nrhs == 1.
+        nrhs = 2
+        bb = b.reshape(m, 1)
+        b = _cupy.empty((max_mn, nrhs), dtype=a.dtype, order='F')
+        b[:m, :] = bb
+    else:
+        b = b.copy(order='F')
+    x = _cupy.empty((max_mn, nrhs), dtype=a.dtype, order='F')
+    dinfo = _cupy.empty(1, dtype=_numpy.int32)
+    handle = _device.get_cusolver_handle()
+    lwork = helper(handle, m, n, nrhs, a.data.ptr, m, b.data.ptr, m,
+                   x.data.ptr, max_mn, 0)
+    dwork = _cupy.empty(lwork, dtype=_numpy.int8)
+    niters = solver(handle, m, n, nrhs, a.data.ptr, m, b.data.ptr, m,
+                    x.data.ptr, max_mn, dwork.data.ptr, lwork, dinfo.data.ptr)
+    if niters < 0:
+        if niters <= -50:
+            _warnings.warn('gels reached maximum allowed iterations.')
+        else:
+            raise RuntimeError('gels has failed ({}).'.format(niters))
+    x = x[:n]
+    if org_nrhs != nrhs:
+        x = x[:, :org_nrhs]
+    if b_ndim == 1:
+        x = x.reshape(n)
     return x

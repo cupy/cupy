@@ -1,8 +1,10 @@
 import itertools
 import types
 import typing as tp  # NOQA
+import unittest
 
 from cupy.testing import _bundle
+from cupy.testing import _pytest_impl
 
 
 def _param_to_str(obj):
@@ -87,8 +89,14 @@ def parameterize(*params):
     `testing` features.
 
     """
-    return _bundle.make_decorator(
-        lambda base: _parameterize_test_case_generator(base, params))
+    def f(cls):
+        if issubclass(cls, unittest.TestCase):
+            deco = _bundle.make_decorator(
+                lambda base: _parameterize_test_case_generator(base, params))
+        else:
+            deco = _pytest_impl.parameterize(*params)
+        return deco(cls)
+    return f
 
 
 def product(parameter):
