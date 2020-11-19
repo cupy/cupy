@@ -8,7 +8,7 @@ from libc.stdint cimport intptr_t, uint64_t, uint32_t
 import cupy
 from cupy.cuda cimport stream
 from cupy.core.core cimport ndarray
-from cupy.random._generator import _launch_dist
+from cupy.random._generator cimport _launch_dist
 from cupy.random._distributions_module import _initialize_generator
 
 # We need access to the sizes here, so this is why we have this header
@@ -48,7 +48,7 @@ class BitGenerator:
         dev = cupy.cuda.Device()
         self._current_device = dev.id
 
-    def random_raw(self, size=None, out=False):
+    def random_raw(self, size=None, output=True):
         raise NotImplementedError(
             'Not implemented in base BitGenerator')
 
@@ -65,7 +65,7 @@ class BitGenerator:
 
 class _cuRANDGenerator(BitGenerator):
     # Size is the number of threads that will be initialized
-    def __init__(self, seed=None, *, size=10000*256):
+    def __init__(self, seed=None, *, size=1000*256):
         super().__init__(seed)
         # Raw kernel has problems with integers with the 64th bit set
         self._seed = self._seed_seq.generate_state(1, numpy.uint32)[0]
@@ -96,7 +96,7 @@ class _cuRANDGenerator(BitGenerator):
         Returns:
             cupy.ndarray: Drawn samples.
 
-        . note::
+        .. note::
             This method directly exposes the the raw underlying pseudo-random
             number generator. All values are returned as unsigned 64-bit
             values irrespective of the number of bits produced by the PRNG.
@@ -105,7 +105,7 @@ class _cuRANDGenerator(BitGenerator):
         """
         shape = size if size is not None else ()
         y = cupy.zeros(shape, dtype=numpy.int32)
-        _launch_dist(self, 'raw', y)
+        _launch_dist(self, 'raw', y, ())
         return y if output else None
 
     def state(self):
@@ -131,8 +131,8 @@ class XORWOW(_cuRANDGenerator):
             ``array_like[ints]`` is passed, then it will be passed to
             ~`numpy.random.SeedSequence` to derive the initial `BitGenerator`
             state. One may also pass in a `SeedSequence` instance.
-        size (int): MAximum number of samples that can be generated at once.
-            defaults to 10000 * 256.
+        size (int): Maximum number of samples that can be generated at once.
+            defaults to 1000 * 256.
     """
     def _type_size(self):
         return sizeof(curandState)
@@ -153,8 +153,8 @@ class MRG32k3a(_cuRANDGenerator):
             ``array_like[ints]`` is passed, then it will be passed to
             ~`numpy.random.SeedSequence` to derive the initial `BitGenerator`
             state. One may also pass in a `SeedSequence` instance.
-        size (int): MAximum number of samples that can be generated at once.
-            defaults to 10000 * 256.
+        size (int): Maximum number of samples that can be generated at once.
+            defaults to 1000 * 256.
     """
     def _type_size(self):
         return sizeof(curandStateMRG32k3a)
@@ -175,8 +175,8 @@ class Philox4x3210(_cuRANDGenerator):
             ``array_like[ints]`` is passed, then it will be passed to
             ~`numpy.random.SeedSequence` to derive the initial `BitGenerator`
             state. One may also pass in a `SeedSequence` instance.
-        size (int): MAximum number of samples that can be generated at once.
-            defaults to 10000 * 256.
+        size (int): Maximum number of samples that can be generated at once.
+            defaults to 1000 * 256.
     """
     def _type_size(self):
         return sizeof(curandStatePhilox4_32_10_t)

@@ -1,4 +1,5 @@
 import functools
+import threading
 import unittest
 
 import numpy
@@ -257,23 +258,19 @@ class TestIntegers(GeneratorTestCase):
         self.generate(2**34, 2**40, 3)
 
 
-"""
 @testing.gpu
 class TestRandomStateThreadSafe(unittest.TestCase):
 
-    def setUp(self):
-        cupy.random.reset_states()
-
-    def test_get_random_state_thread_safe(self):
+    def test_default_rng_thread_safe(self):
         seed = 10
         threads = [
-            threading.Thread(target=lambda: cupy.random.seed(seed)),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(target=lambda: cupy.random.default_rng(seed)),
+            threading.Thread(target=lambda: cupy.random.default_rng()),
+            threading.Thread(target=lambda: cupy.random.default_rng()),
+            threading.Thread(target=lambda: cupy.random.default_rng()),
+            threading.Thread(target=lambda: cupy.random.default_rng()),
+            threading.Thread(target=lambda: cupy.random.default_rng()),
+            threading.Thread(target=lambda: cupy.random.default_rng()),
         ]
 
         for t in threads:
@@ -281,22 +278,6 @@ class TestRandomStateThreadSafe(unittest.TestCase):
         for t in threads:
             t.join()
 
-        actual = cupy.random.uniform()
-        cupy.random.seed(seed)
-        expected = cupy.random.uniform()
+        actual = cupy.random.default_rng(seed).standard_exponential()
+        expected = cupy.random.default_rng(seed).standard_exponential()
         assert actual == expected
-
-    def test_set_random_state_thread_safe(self):
-        rs = cupy.random.RandomState()
-        threads = [
-            threading.Thread(target=lambda: cupy.random.set_random_state(rs)),
-            threading.Thread(target=lambda: cupy.random.set_random_state(rs)),
-        ]
-
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-
-        assert cupy.random.get_random_state() is rs
-"""

@@ -96,9 +96,9 @@ class Generator:
         y = ndarray(size if size is not None else (), pdtype)
 
         if dtype is numpy.uint32:
-            _launch_dist(self.bit_generator, 'interval_32', y, diff, mask)
+            _launch_dist(self.bit_generator, 'interval_32', y, (diff, mask))
         else:
-            _launch_dist(self.bit_generator, 'interval_64', y, diff, mask)
+            _launch_dist(self.bit_generator, 'interval_64', y, (diff, mask))
         return (lo + y).astype(dtype)
 
     def beta(self, a, b, size=None, dtype=numpy.float64):
@@ -127,7 +127,7 @@ class Generator:
         """
         cdef ndarray y
         y = ndarray(size if size is not None else (), numpy.float64)
-        _launch_dist(self.bit_generator, 'beta', y, a, b)
+        _launch_dist(self.bit_generator, 'beta', y, (a, b))
         return y.astype(dtype)
 
     def standard_exponential(
@@ -163,21 +163,21 @@ class Generator:
             raise NotImplementedError('Ziggurat method is not supported')
 
         y = ndarray(size if size is not None else (), numpy.float64)
-        _launch_dist(self.bit_generator, 'exponential', y)
+        _launch_dist(self.bit_generator, 'exponential', y, ())
         if out is not None:
             out[...] = y
             y = out
         return y.astype(dtype)
 
 
-def _launch_dist(bit_generator, kernel_name, out, *args):
+cdef void _launch_dist(bit_generator, kernel_name, out, args) except*:
     kernel = _get_distribution(bit_generator, kernel_name)
     state_ptr = bit_generator.state()
-    cdef state = <intptr_t>state_ptr
-    cdef y_ptr = <intptr_t>out.data.ptr
+    cdef intptr_t state = <intptr_t>state_ptr
+    cdef intptr_t y_ptr = <intptr_t>out.data.ptr
     cdef ssize_t size = out.size
     cdef ndarray chunk
-    cdef bsize = bit_generator._state_size()
+    cdef ssize_t bsize = bit_generator._state_size()
 
     tpb = 256
     if out.shape == () or bsize == 0:

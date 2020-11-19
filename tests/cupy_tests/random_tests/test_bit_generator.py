@@ -17,9 +17,9 @@ class BitGeneratorTestCase:
         bg2 = self.bg(seed)
         bg3 = self.bg(None)
 
-        xs1 = bg1.random_raw(10, out=True)
-        xs2 = bg2.random_raw(10, out=True)
-        xs3 = bg3.random_raw(10, out=True)
+        xs1 = bg1.random_raw(10)
+        xs2 = bg2.random_raw(10)
+        xs3 = bg3.random_raw(10)
 
         # Random state must be reproducible
         assert cupy.array_equal(xs1, xs2)

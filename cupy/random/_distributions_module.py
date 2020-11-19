@@ -13,19 +13,20 @@ struct rk_state {
         return  0.0;
     }
 };
+
 template<typename CURAND_TYPE>
 struct curand_pseudo_state: rk_state {
     // Valid for  XORWOW and MRG32k3a
     CURAND_TYPE* _state;
-    int _id;
-    __device__ curand_pseudo_state(int id, intptr_t state) {
+    uint64_t _id;
+    __device__ curand_pseudo_state(uint64_t id, intptr_t state) {
         _state = reinterpret_cast<CURAND_TYPE*>(state) + id;
         _id = id;
     }
-    __device__ virtual uint32_t rk_int() {
+    __device__ uint32_t rk_int() final {
         return curand(_state);
     }
-    __device__ virtual double rk_double() {
+    __device__ double rk_double() final {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
         double r = curand_uniform(_state) - 1e-12;
@@ -34,7 +35,7 @@ struct curand_pseudo_state: rk_state {
         }
         return r;
     }
-    __device__ virtual double rk_normal() {
+    __device__ double rk_normal() final {
         return curand_normal(_state);
     }
 };
@@ -42,7 +43,7 @@ struct curand_pseudo_state: rk_state {
 // Use template specialization for custom ones
 template<typename T>
 __global__ void init_generator(intptr_t state, uint64_t seed, uint64_t size) {
-    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    uint64_t id = threadIdx.x + blockIdx.x * blockDim.x;
     /* Each thread gets same seed, a different sequence
        number, no offset */
     T curand_state(id, state);
@@ -187,37 +188,40 @@ struct beta_functor {
 
 template<typename F, typename T, typename R, typename... Args>
 __device__ void execute_dist(intptr_t state, intptr_t out, uint64_t size, Args... args) {
-    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    uint64_t id = threadIdx.x + blockIdx.x * blockDim.x;
     R* out_ptr = reinterpret_cast<R*>(out);
     if (id < size) {
         T random(id, state);
         F func;
         out_ptr[id] = func(&random, std::forward<Args>(args)...);
     }
-    return;
 }
 
+// T is the generator type it is specified in Python when compiling
 template<typename T>
 __global__ void raw(intptr_t state, intptr_t out, uint64_t size) {
     execute_dist<raw_functor, T, int32_t>(state, out, size);
 }
 
+// T is the generator type it is specified in Python when compiling
 template<typename T>
 __global__ void interval_32(intptr_t state, intptr_t out, uint64_t size, uint32_t mx, uint32_t mask) {
     execute_dist<interval_32_functor, T, int32_t>(state, out, size, mx, mask);
 }
 
+// T is the generator type it is specified in Python when compiling
 template<typename T>
 __global__ void interval_64(intptr_t state, intptr_t out, uint64_t size, uint64_t mx, uint64_t mask) {
     execute_dist<interval_64_functor, T, int64_t>(state, out, size, mx, mask);
 }
 
+// T is the generator type it is specified in Python when compiling
 template<typename T>
 __global__ void beta(intptr_t state, intptr_t out, uint64_t size, double a, double b) {
     execute_dist<beta_functor, T, double>(state, out, size, a, b);
 }
 
-// T is the generator type it is overriden by python when compiling
+// T is the generator type it is specified in Python when compiling
 template<typename T>
 __global__ void exponential(intptr_t state, intptr_t out, uint64_t size) {
     execute_dist<exponential_functor, T, double>(state, out, size);
