@@ -1735,6 +1735,9 @@ cdef list _cupy_header_list = [
     'cupy/carray.cuh',
     'cupy/atomics.cuh',
 ]
+if runtime._is_hip_environment:
+    _cupy_header_list.append('cupy/math_constants.h')
+
 cdef str _cupy_header = ''.join(
     ['#include <%s>\n' % i for i in _cupy_header_list])
 

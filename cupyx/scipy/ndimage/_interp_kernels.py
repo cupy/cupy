@@ -5,7 +5,7 @@ import cupy.core.internal
 
 from cupyx.scipy.ndimage import _util
 
-math_constants_preamble = "#include <math_constants.h>\n"
+math_constants_preamble = "#include <cupy/math_constants.h>\n"
 
 
 def _get_coord_map(ndim):
