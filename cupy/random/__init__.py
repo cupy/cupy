@@ -16,9 +16,10 @@ def bytes(length):
 
 def default_rng(seed=None):  # NOQA  avoid redefinition of seed
     """Construct a new Generator with the default BitGenerator (XORWOW).
+
     Args:
-        seed (int, array_like[ints], numpy.random.SeedSequence,
-            cupy.random.BitGenerator, cupy.random.Generator, optional): A seed
+        seed (int, array_like[ints], numpy.random.SeedSequence, cupy.random.BitGenerator, cupy.random.Generator, optional):  # NOQA
+            A seed
             to initialize the :class:`cupy.random.BitGenerator`. If ``None``,
             then unpredictable entropy will be pulled from the OS. If an
             ``int`` or ``array_like[ints]`` is passed, then it will be
@@ -27,6 +28,7 @@ def default_rng(seed=None):  # NOQA  avoid redefinition of seed
             instance. Adiditionally, when passed :class:`BitGenerator`, it will
             be wrapped by :class:`Generator`. If passed a :class:`Generator`,
             it will be returned unaltered.
+
     Returns:
         Generator: The initialized generator object.
     """
