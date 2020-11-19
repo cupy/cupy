@@ -255,6 +255,8 @@ if not use_hip:
             'cudart',
             'nvrtc',
         ],
+        'check_method': build.check_jitify_version,
+        'version_method': build.get_jitify_version,
     })
 else:
     MODULES.append({

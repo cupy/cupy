@@ -32,6 +32,7 @@ class _UnavailableModule():
 
 
 from cupy.cuda import cub  # NOQA
+from cupy.cuda import jitify  # NOQA
 
 try:
     from cupy.cuda import nvtx  # NOQA
