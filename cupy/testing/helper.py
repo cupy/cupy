@@ -224,6 +224,12 @@ def _wraps_partial(wrapped, *names):
     return decorator
 
 
+def _wraps_partial_xp(wrapped, name, sp_name, scipy_name):
+    names = [name, sp_name, scipy_name]
+    names = [n for n in names if n is not None]
+    return _wraps_partial(wrapped, *names)
+
+
 def _make_decorator(check_func, name, type_check, contiguous_check,
                     accept_error, sp_name=None, scipy_name=None,
                     check_sparse_format=True):
@@ -232,7 +238,7 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
     assert scipy_name is None or isinstance(scipy_name, str)
 
     def decorator(impl):
-        @_wraps_partial(impl, name)
+        @_wraps_partial_xp(impl, name, sp_name, scipy_name)
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
@@ -662,7 +668,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
     def decorator(impl):
-        @_wraps_partial(impl, name)
+        @_wraps_partial_xp(impl, name, sp_name, scipy_name)
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
@@ -714,7 +720,7 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
         DeprecationWarning)
 
     def decorator(impl):
-        @_wraps_partial(impl, name)
+        @_wraps_partial_xp(impl, name, sp_name, scipy_name)
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
