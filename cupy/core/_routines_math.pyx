@@ -398,7 +398,8 @@ def _add_scan_blocked_sum_kernel(dtype, op, c_cont):
     return module.get_function(name)
 
 
-cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
+cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None, blk_size=256,
+                  imcomplete=False):
     """Return the prefix sum(scan) of the elements.
 
     Args:
@@ -413,7 +414,7 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     if a._shape.size() != 1:
         raise TypeError('Input array should be 1D array.')
 
-    cdef Py_ssize_t block_size = 256
+    cdef Py_ssize_t block_size = blk_size
     if dtype is None:
         dtype = a.dtype
     if out is None:
@@ -433,6 +434,8 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     if (a.size - 1) // (block_size * 2) > 0:
         blocked_sum = out[block_size * 2 - 1:None:block_size * 2]
         scan(blocked_sum, op, dtype, blocked_sum)
+        if imcomplete:
+            return out
         kern_add = _add_scan_blocked_sum_kernel(
             dtype, op, out_cont)
         kern_add(grid=((a.size - 1) // (2 * block_size),),

@@ -72,6 +72,8 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
     cdef int ndim
     cdef ndarray nonzero
     numpy_int64 = numpy.int64
+    imcomplete_scan = False
+    blk_size = 512
     if self.size == 0:
         count_nonzero = 0
     else:
@@ -87,21 +89,33 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
             scan_dtype = numpy.int32
         else:
             scan_dtype = numpy_int64
-        scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM,
-                                dtype=scan_dtype)
-        count_nonzero = int(scan_index[-1])  # synchronize!
+
+        if nonzero.size >= 1024 * 1024:
+            # Use imcomplete scan when array size is large
+            imcomplete_scan = True
+            scan_index = _math.scan(
+                nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
+                blk_size=blk_size//2, imcomplete=imcomplete_scan)
+            loc = nonzero.size - (nonzero.size % blk_size)
+            if loc == nonzero.size:
+                count_nonzero = int(scan_index[-1])  # sync
+            else:
+                count_nonzero = int(scan_index[-1] + scan_index[loc-1])  # sync
+        else:
+            scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM,
+                                    dtype=scan_dtype)
+            count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = self._shape.size()
     dst = ndarray((count_nonzero, ndim), dtype=numpy_int64)
     if dst.size == 0:
         return dst
 
     if ndim == 1:
-        _nonzero_kernel_1d(nonzero, scan_index, dst)
+        _nonzero_kernel_1d(nonzero, scan_index, imcomplete_scan, blk_size, dst)
         return dst
     else:
         nonzero.shape = self.shape
-        scan_index.shape = self.shape
-        _nonzero_kernel(nonzero, scan_index, dst)
+        _nonzero_kernel(nonzero, scan_index, imcomplete_scan, blk_size, dst)
         return dst
 
 
@@ -413,18 +427,37 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
 
 
 _nonzero_kernel_1d = ElementwiseKernel(
-    'T src, S index', 'raw U dst',
-    'if (src != 0) dst[index - 1] = i',
+    'T src, raw S index, bool imcomplete_index, int32 blk_size', 'raw U dst',
+    '''
+    if (src != 0) {
+        long j = index[i] - 1;
+        if (imcomplete_index) {
+            long ii = i % blk_size;
+            long bi = i - ii;
+            if (ii < blk_size - 1 && bi > 0) {
+                j += index[bi - 1];
+            }
+        }
+        dst[j] = i;
+    }''',
     'nonzero_kernel_1d')
 
 
 _nonzero_kernel = ElementwiseKernel(
-    'T src, S index', 'raw U dst',
+    'T src, raw S index, bool imcomplete_index, int32 blk_size', 'raw U dst',
     '''
     if (src != 0){
-        for(int j = 0; j < _ind.ndim; j++){
-            ptrdiff_t ind[] = {index - 1, j};
-            dst[ind] = _ind.get()[j];
+        long j = index[i] - 1;
+        if (imcomplete_index) {
+            long ii = i % blk_size;
+            long bi = i - ii;
+            if (ii < blk_size - 1 && bi > 0) {
+                j += index[bi - 1];
+            }
+        }
+        for(int k = 0; k < _ind.ndim; k++){
+            ptrdiff_t ind[] = {j, k};
+            dst[ind] = _ind.get()[k];
         }
     }''',
     'nonzero_kernel',
