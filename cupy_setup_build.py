@@ -590,9 +590,11 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
-        # this fixes RTD (no_cuda) builds...
         if module['name'] == 'jitify':
+            # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')
+            # if any change is made to the Jitify header, we force recompiling
+            s['depends'] = ['./cupy/core/include/cupy/jitify/jitify.hpp']
 
         original_s = s
         for f in module['file']:
