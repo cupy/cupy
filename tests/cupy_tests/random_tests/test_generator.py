@@ -219,8 +219,8 @@ class TestStandardExponential(GeneratorTestCase):
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
-        self.check_ks(0.05)(
-            size=2000, dtype=dtype)
+    def test_standard_exponential_ks(self, dtype):
+        self.check_ks(0.05)(size=2000, dtype=dtype)
 
 
 @testing.gpu
