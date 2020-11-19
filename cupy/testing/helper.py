@@ -112,26 +112,22 @@ def _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
 
 
 def _fail_test_with_unexpected_errors(
-        testcase, msg_format, cupy_error, cupy_tb, numpy_error, numpy_tb):
+        msg_format, cupy_error, cupy_tb, numpy_error, numpy_tb):
     # Fails the test due to unexpected errors raised from the test.
     # msg_format may include format placeholders:
     # '{cupy_error}' '{cupy_tb}' '{numpy_error}' '{numpy_tb}'
 
     msg = msg_format.format(
-        cupy_error=''.join(str(cupy_error)),
+        cupy_error=cupy_error,
         cupy_tb=''.join(traceback.format_tb(cupy_tb)),
-        numpy_error=''.join(str(numpy_error)),
+        numpy_error=numpy_error,
         numpy_tb=''.join(traceback.format_tb(numpy_tb)))
 
     # Fail the test with the traceback of the error (for pytest --pdb)
-    try:
-        testcase.fail(msg)
-    except AssertionError as e:
-        raise e.with_traceback(cupy_tb or numpy_tb)
-    assert False  # never reach
+    raise AssertionError(msg).with_traceback(cupy_tb or numpy_tb)
 
 
-def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
+def _check_cupy_numpy_error(cupy_error, cupy_tb, numpy_error,
                             numpy_tb, accept_error=False):
     # Skip the test if both raised SkipTest.
     if (isinstance(cupy_error, _skip_classes)
@@ -152,21 +148,19 @@ def _check_cupy_numpy_error(self, cupy_error, cupy_tb, numpy_error,
         accept_error = ()
     # TODO(oktua): expected_regexp like numpy.testing.assert_raises_regex
     if cupy_error is None and numpy_error is None:
-        self.fail('Both cupy and numpy are expected to raise errors, but not')
+        raise AssertionError(
+            'Both cupy and numpy are expected to raise errors, but not')
     elif cupy_error is None:
         _fail_test_with_unexpected_errors(
-            self,
             'Only numpy raises error\n\n{numpy_tb}{numpy_error}',
             None, None, numpy_error, numpy_tb)
     elif numpy_error is None:
         _fail_test_with_unexpected_errors(
-            self,
             'Only cupy raises error\n\n{cupy_tb}{cupy_error}',
             cupy_error, cupy_tb, None, None)
 
     elif not _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
         _fail_test_with_unexpected_errors(
-            self,
             '''Different types of errors occurred
 
 cupy
@@ -180,7 +174,6 @@ numpy
     elif not (isinstance(cupy_error, accept_error)
               and isinstance(numpy_error, accept_error)):
         _fail_test_with_unexpected_errors(
-            self,
             '''Both cupy and numpy raise exceptions
 
 cupy
@@ -251,7 +244,7 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 
             # Check errors raised
             if cupy_error or numpy_error:
-                _check_cupy_numpy_error(self, cupy_error, cupy_tb,
+                _check_cupy_numpy_error(cupy_error, cupy_tb,
                                         numpy_error, numpy_tb,
                                         accept_error=accept_error)
                 return
@@ -679,7 +672,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
 
             if cupy_error or numpy_error:
                 _check_cupy_numpy_error(
-                    self, cupy_error, cupy_tb, numpy_error, numpy_tb,
+                    cupy_error, cupy_tb, numpy_error, numpy_tb,
                     accept_error=False)
                 return
 
@@ -729,7 +722,7 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
                     _call_func_numpy_cupy(
                         self, impl, args, kw, name, sp_name, scipy_name))
 
-            _check_cupy_numpy_error(self, cupy_error, cupy_tb,
+            _check_cupy_numpy_error(cupy_error, cupy_tb,
                                     numpy_error, numpy_tb,
                                     accept_error=accept_error)
         return test_func
