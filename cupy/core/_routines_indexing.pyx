@@ -90,21 +90,19 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
         else:
             scan_dtype = numpy_int64
 
-        if nonzero.size >= 1024 * 1024:
+        if nonzero.size >= 128 * 1024:
             # Use imcomplete scan when array size is large
             imcomplete_scan = True
             scan_index = _math.scan(
                 nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
                 blk_size=blk_size//2, imcomplete=imcomplete_scan)
             loc = nonzero.size - (nonzero.size % blk_size)
-            if loc == nonzero.size:
-                count_nonzero = int(scan_index[-1])  # sync
-            else:
-                count_nonzero = int(scan_index[-1] + scan_index[loc-1])  # sync
+            if loc != nonzero.size:
+                scan_index[-1] += scan_index[loc-1]
         else:
             scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM,
                                     dtype=scan_dtype)
-            count_nonzero = int(scan_index[-1])  # synchronize!
+        count_nonzero = int(scan_index[-1])  # synchronize!
     ndim = self._shape.size()
     dst = ndarray((count_nonzero, ndim), dtype=numpy_int64)
     if dst.size == 0:
@@ -426,42 +424,44 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
     return v
 
 
+_get_index_preamble = '''
+__device__ S get_index(const S* index, bool imcomplete_index, int blk_size,
+                       long long i, long long size) {
+    S j = index[i] - 1;
+    if (imcomplete_index && i < size - 1) {
+        long long ii = i % blk_size;
+        long long bi = i - ii;
+        if (ii < blk_size - 1 && bi > 0) {
+            j += index[bi - 1];
+        }
+    }
+    return j;
+}'''
+
+
 _nonzero_kernel_1d = ElementwiseKernel(
     'T src, raw S index, bool imcomplete_index, int32 blk_size', 'raw U dst',
     '''
     if (src != 0) {
-        long j = index[i] - 1;
-        if (imcomplete_index) {
-            long ii = i % blk_size;
-            long bi = i - ii;
-            if (ii < blk_size - 1 && bi > 0) {
-                j += index[bi - 1];
-            }
-        }
+        S j = get_index(&(index[0]), imcomplete_index, blk_size,
+                        i, _ind.size());
         dst[j] = i;
     }''',
-    'nonzero_kernel_1d')
+    'nonzero_kernel_1d', preamble=_get_index_preamble)
 
 
 _nonzero_kernel = ElementwiseKernel(
     'T src, raw S index, bool imcomplete_index, int32 blk_size', 'raw U dst',
     '''
-    if (src != 0){
-        long j = index[i] - 1;
-        if (imcomplete_index) {
-            long ii = i % blk_size;
-            long bi = i - ii;
-            if (ii < blk_size - 1 && bi > 0) {
-                j += index[bi - 1];
-            }
-        }
+    if (src != 0) {
+        S j = get_index(&(index[0]), imcomplete_index, blk_size,
+                        i, _ind.size());
         for(int k = 0; k < _ind.ndim; k++){
             ptrdiff_t ind[] = {j, k};
             dst[ind] = _ind.get()[k];
         }
     }''',
-    'nonzero_kernel',
-    reduce_dims=False)
+    'nonzero_kernel', preamble=_get_index_preamble, reduce_dims=False)
 
 
 _take_kernel_core = '''
