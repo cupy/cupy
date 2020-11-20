@@ -1,8 +1,12 @@
+import unittest
+import warnings
+
 import numpy
 import pytest
 
 import cupy
 from cupy import testing
+from cupy import _util
 from cupy.core import _accelerator
 import cupyx.scipy.ndimage  # NOQA
 
@@ -101,7 +105,7 @@ class TestLabelSpecialCases:
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'op': ['sum', 'mean', 'variance', 'standard_deviation'],
+    'op': ['sum', 'mean', 'variance', 'standard_deviation', 'center_of_mass'],
 }))
 @testing.with_requires('scipy')
 class TestStats:
@@ -119,7 +123,15 @@ class TestStats:
         labels = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
         index = xp.array([1, 2, 3])
         op = getattr(scp.ndimage, self.op)
-        return op(image, labels, index)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _util.PerformanceWarning)
+            result = op(image, labels, index)
+        if self.op == 'center_of_mass':
+            assert isinstance(result, list)
+            # assert isinstance(result[0], tuple)
+            assert len(result[0]) == image.ndim
+            result = xp.asarray(result)
+        return result
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -128,7 +140,15 @@ class TestStats:
         labels = testing.shaped_random((8, 8, 8), xp, dtype=xp.int32, scale=4)
         index = xp.array([1, 2, 3])
         op = getattr(scp.ndimage, self.op)
-        return op(image, labels, index)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _util.PerformanceWarning)
+            result = op(image, labels, index)
+        if self.op == 'center_of_mass':
+            assert isinstance(result, list)
+            # assert isinstance(result[0], tuple)
+            assert len(result[0]) == image.ndim
+            result = xp.asarray(result)
+        return result
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -137,7 +157,10 @@ class TestStats:
         image = self._make_image((16, 6), xp, dtype)
         labels = xp.asarray([1, 0, 2, 2, 2, 0], dtype=xp.int32)
         op = getattr(scp.ndimage, self.op)
-        return op(image, labels)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _util.PerformanceWarning)
+            result = op(image, labels)
+        return result
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -147,7 +170,10 @@ class TestStats:
         labels = xp.asarray([1, 0, 2, 2, 2, 0], dtype=xp.int32)
         index = 2
         op = getattr(scp.ndimage, self.op)
-        return op(image, labels, index)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _util.PerformanceWarning)
+            result = op(image, labels, index)
+        return result
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -156,14 +182,27 @@ class TestStats:
         labels = testing.shaped_random((), xp, dtype=xp.int32, scale=4)
         index = xp.array([1, 2, 3])
         op = getattr(scp.ndimage, self.op)
-        return op(image, labels, index)
+        if self.op == 'center_of_mass':
+            # SciPy doesn't handle 0-dimensional array input for center_of_mass
+            with pytest.raises(IndexError):
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', _util.PerformanceWarning)
+                    op(image, labels, index)
+            return xp.array([])
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _util.PerformanceWarning)
+            result = op(image, labels, index)
+        return result
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_only_input(self, xp, scp, dtype):
         image = self._make_image((100,), xp, dtype)
         op = getattr(scp.ndimage, self.op)
-        return op(image)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _util.PerformanceWarning)
+            result = op(image)
+        return result
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -171,7 +210,10 @@ class TestStats:
         image = self._make_image((100,), xp, dtype)
         labels = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
         op = getattr(scp.ndimage, self.op)
-        return op(image, labels)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _util.PerformanceWarning)
+            result = op(image, labels)
+        return result
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -179,7 +221,10 @@ class TestStats:
         image = self._make_image((100,), xp, dtype)
         labels = testing.shaped_random((100,), xp, dtype=xp.int32, scale=4)
         op = getattr(scp.ndimage, self.op)
-        return op(image, labels, 1)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _util.PerformanceWarning)
+            result = op(image, labels, 1)
+        return result
 
     @testing.for_complex_dtypes()
     def test_invalid_image_dtype(self, dtype):
@@ -229,7 +274,10 @@ class TestStats:
         labels = xp.array([])
         index = xp.array([])
         op = getattr(scp.ndimage, self.op)
-        return op(image, labels, index)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', _util.PerformanceWarning)
+            result = op(image, labels, index)
+        return result
 
 
 @testing.gpu

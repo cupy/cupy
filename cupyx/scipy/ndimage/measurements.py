@@ -311,15 +311,15 @@ def variance(input, labels=None, index=None):
                         "".format(input.dtype.type))
 
     use_kern = False
-    # There is constraints on types because of atomicAdd() in CUDA.
+    # There are constraints on types because of atomicAdd() in CUDA.
     if input.dtype not in [cupy.int32, cupy.float16, cupy.float32,
                            cupy.float64, cupy.uint32, cupy.uint64,
                            cupy.ulonglong]:
         warnings.warn(
-            'Using the slower implmentation as '
+            'Using the slower implementation as '
             'cupyx.scipy.ndimage.sum supports int32, float16, '
             'float32, float64, uint32, uint64 as data types'
-            'for the fast implmentation', _util.PerformanceWarning)
+            'for the fast implementation', _util.PerformanceWarning)
         use_kern = True
 
     def calc_var_with_intermediate_float(input):
@@ -1003,3 +1003,50 @@ def extrema(input, labels=None, index=None):
     ]
 
     return minimums, maximums, min_positions, max_positions
+
+
+def center_of_mass(input, labels=None, index=None):
+    """
+    Calculate the center of mass of the values of an array at labels.
+
+    Args:
+        input (cupy.ndarray): Data from which to calculate center-of-mass. The
+            masses can either be positive or negative.
+        labels (cupy.ndarray, optional): Labels for objects in `input`, as
+            enerated by `ndimage.label`. Only used with `index`. Dimensions
+            must be the same as `input`.
+        index (int or sequence of ints, optional): Labels for which to
+            calculate centers-of-mass. If not specified, all labels greater
+            than zero are used. Only used with `labels`.
+
+    Returns:
+        tuple or list of tuples: Coordinates of centers-of-mass.
+
+    .. seealso:: :func:`scipy.ndimage.center_of_mass`
+    """
+    normalizer = sum(input, labels, index)
+    grids = cupy.ogrid[[slice(0, i) for i in input.shape]]
+
+    results = [
+        sum(input * grids[dir].astype(float), labels, index) / normalizer
+        for dir in range(input.ndim)
+    ]
+
+    # have to transfer 0-dim array back to CPU?
+    # may want to modify to avoid this
+    is_0dim_array = (
+        isinstance(results[0], cupy.ndarray) and results[0].ndim == 0
+    )
+    return_on_host = False
+    if return_on_host:
+        # return a tuple or list of tuples
+        if is_0dim_array:
+            return tuple(float(res) for res in results)
+        results = cupy.asnumpy(cupy.stack([r for r in results], axis=-1))
+        return [tuple(v) for v in results]
+    else:
+        if is_0dim_array:
+            # tuple of 0-dimensional cupy arrays
+            return tuple(res for res in results)
+        # list of cupy coordinate arrays
+        return [v for v in cupy.stack(results, axis=-1)]

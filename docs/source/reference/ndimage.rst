@@ -77,6 +77,7 @@ Measurements
    :toctree: generated/
    :nosignatures:
 
+   cupyx.scipy.ndimage.center_of_mass
    cupyx.scipy.ndimage.extrema
    cupyx.scipy.ndimage.label
    cupyx.scipy.ndimage.maximum
