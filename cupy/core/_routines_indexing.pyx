@@ -72,7 +72,7 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
     cdef int ndim
     cdef ndarray nonzero
     numpy_int64 = numpy.int64
-    imcomplete_scan = False
+    incomplete_scan = False
     blk_size = 512
     if self.size == 0:
         count_nonzero = 0
@@ -90,12 +90,17 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
         else:
             scan_dtype = numpy_int64
 
+        # Use "incomplete scan" when array size is large
         if nonzero.size >= 128 * 1024:
-            # Use imcomplete scan when array size is large
-            imcomplete_scan = True
+            # Note: The above threshold value (128 * 1024) was determined based
+            # on the measurement results of the float64 array on V100. In many
+            # cases, the threshold is a bit too small to use "incomplete scan"
+            # and there is no performance improvement, but it is not worse than
+            # the standard "complete scan".
+            incomplete_scan = True
             scan_index = _math.scan(
                 nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
-                blk_size=blk_size//2, imcomplete=imcomplete_scan)
+                blk_size=blk_size//2, incomplete=incomplete_scan)
             loc = nonzero.size - (nonzero.size % blk_size)
             if loc != nonzero.size:
                 scan_index[-1] += scan_index[loc-1]
@@ -109,11 +114,11 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
         return dst
 
     if ndim == 1:
-        _nonzero_kernel_1d(nonzero, scan_index, imcomplete_scan, blk_size, dst)
+        _nonzero_kernel_1d(nonzero, scan_index, incomplete_scan, blk_size, dst)
         return dst
     else:
         nonzero.shape = self.shape
-        _nonzero_kernel(nonzero, scan_index, imcomplete_scan, blk_size, dst)
+        _nonzero_kernel(nonzero, scan_index, incomplete_scan, blk_size, dst)
         return dst
 
 
@@ -425,12 +430,14 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
 
 
 _get_index_preamble = '''
-__device__ S get_index(const S* index, bool imcomplete_index, int blk_size,
-                       long long i, long long size) {
+#include <cstdint>
+
+__device__ S get_index(const S* index, bool incomplete_index, int blk_size,
+                       int64_t i, size_t size) {
     S j = index[i] - 1;
-    if (imcomplete_index && i < size - 1) {
-        long long ii = i % blk_size;
-        long long bi = i - ii;
+    if (incomplete_index && i < size - 1) {
+        int64_t ii = i % blk_size;
+        int64_t bi = i - ii;
         if (ii < blk_size - 1 && bi > 0) {
             j += index[bi - 1];
         }
@@ -440,28 +447,30 @@ __device__ S get_index(const S* index, bool imcomplete_index, int blk_size,
 
 
 _nonzero_kernel_1d = ElementwiseKernel(
-    'T src, raw S index, bool imcomplete_index, int32 blk_size', 'raw U dst',
+    'T src, raw S index, bool incomplete_index, int32 blk_size', 'raw U dst',
     '''
     if (src != 0) {
-        S j = get_index(&(index[0]), imcomplete_index, blk_size,
+        S j = get_index(&(index[0]), incomplete_index, blk_size,
                         i, _ind.size());
         dst[j] = i;
     }''',
-    'nonzero_kernel_1d', preamble=_get_index_preamble)
+    'nonzero_kernel_1d', preamble=_get_index_preamble,
+    options=('-DCUPY_USE_JITIFY',))
 
 
 _nonzero_kernel = ElementwiseKernel(
-    'T src, raw S index, bool imcomplete_index, int32 blk_size', 'raw U dst',
+    'T src, raw S index, bool incomplete_index, int32 blk_size', 'raw U dst',
     '''
     if (src != 0) {
-        S j = get_index(&(index[0]), imcomplete_index, blk_size,
+        S j = get_index(&(index[0]), incomplete_index, blk_size,
                         i, _ind.size());
         for(int k = 0; k < _ind.ndim; k++){
             ptrdiff_t ind[] = {j, k};
             dst[ind] = _ind.get()[k];
         }
     }''',
-    'nonzero_kernel', preamble=_get_index_preamble, reduce_dims=False)
+    'nonzero_kernel', preamble=_get_index_preamble, reduce_dims=False,
+    options=('-DCUPY_USE_JITIFY',))
 
 
 _take_kernel_core = '''

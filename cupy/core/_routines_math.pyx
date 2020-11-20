@@ -399,7 +399,7 @@ def _add_scan_blocked_sum_kernel(dtype, op, c_cont):
 
 
 cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None, blk_size=256,
-                  imcomplete=False):
+                  incomplete=False):
     """Return the prefix sum(scan) of the elements.
 
     Args:
@@ -434,7 +434,7 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None, blk_size=256,
     if (a.size - 1) // (block_size * 2) > 0:
         blocked_sum = out[block_size * 2 - 1:None:block_size * 2]
         scan(blocked_sum, op, dtype, blocked_sum)
-        if imcomplete:
+        if incomplete:
             return out
         kern_add = _add_scan_blocked_sum_kernel(
             dtype, op, out_cont)
