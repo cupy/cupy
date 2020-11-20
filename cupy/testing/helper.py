@@ -17,14 +17,17 @@ from cupy.testing import parameterized
 import cupyx
 import cupyx.scipy.sparse
 
-_skip_classes = unittest.SkipTest,
-_is_pytest_available = False
 try:
+    import pytest
     import _pytest.outcomes
-    _skip_classes += _pytest.outcomes.Skipped,
-    _is_pytest_available = True
 except ImportError:
-    pass
+    _is_pytest_available = False
+    _skip_classes = unittest.SkipTest,
+    _skipif = unittest.skipIf
+else:
+    _is_pytest_available = True
+    _skip_classes = unittest.SkipTest, _pytest.outcomes.Skipped
+    _skipif = pytest.mark.skipif
 
 
 def _call_func(self, impl, args, kw):
@@ -1186,7 +1189,7 @@ def with_requires(*requirements):
         skip = True
 
     msg = 'requires: {}'.format(','.join(requirements))
-    return unittest.skipIf(skip, msg)
+    return _skipif(skip, reason=msg)
 
 
 def numpy_satisfies(version_range):
