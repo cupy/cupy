@@ -1037,19 +1037,11 @@ def center_of_mass(input, labels=None, index=None):
     is_0dim_array = (
         isinstance(results[0], cupy.ndarray) and results[0].ndim == 0
     )
-    return_on_host = False
-    if return_on_host:
-        # return a tuple or list of tuples
-        if is_0dim_array:
-            return tuple(float(res) for res in results)
-        results = cupy.asnumpy(cupy.stack([r for r in results], axis=-1))
-        return [tuple(v) for v in results]
-    else:
-        if is_0dim_array:
-            # tuple of 0-dimensional cupy arrays
-            return tuple(res for res in results)
-        # list of cupy coordinate arrays
-        return [v for v in cupy.stack(results, axis=-1)]
+    if is_0dim_array:
+        # tuple of 0-dimensional cupy arrays
+        return tuple(res for res in results)
+    # list of cupy coordinate arrays
+    return [v for v in cupy.stack(results, axis=-1)]
 
 
 def labeled_comprehension(
@@ -1093,7 +1085,7 @@ def labeled_comprehension(
 
     if labels is None:
         if index is not None:
-            raise ValueError("index without defined labels")
+            raise ValueError('index without defined labels')
         if not pass_positions:
             return func(input.ravel())
         else:
@@ -1103,8 +1095,8 @@ def labeled_comprehension(
         input, labels = cupy.broadcast_arrays(input, labels)
     except ValueError:
         raise ValueError(
-            "input and labels must have the same shape "
-            "(excepting dimensions with width 1)"
+            'input and labels must have the same shape '
+            '(excepting dimensions with width 1)'
         )
 
     if index is None:
@@ -1116,8 +1108,8 @@ def labeled_comprehension(
     index = cupy.atleast_1d(index)
     if cupy.any(index.astype(labels.dtype).astype(index.dtype) != index):
         raise ValueError(
-            "Cannot convert index values from <%s> to <%s> "
-            "(labels' type) without loss of precision"
+            'Cannot convert index values from <%s> to <%s> '
+            '(labels.dtype) without loss of precision'
             % (index.dtype, labels.dtype)
         )
 
@@ -1151,20 +1143,20 @@ def labeled_comprehension(
 
         # Find boundaries for each stretch of constant labels
         # This could be faster, but we already paid N log N to sort labels.
-        lo = cupy.searchsorted(labels, sorted_index, side="left")
-        hi = cupy.searchsorted(labels, sorted_index, side="right")
+        lo = cupy.searchsorted(labels, sorted_index, side='left')
+        hi = cupy.searchsorted(labels, sorted_index, side='right')
 
-        for i, l, h in zip(range(nidx), lo, hi):
-            if l == h:
+        for i, low, high in zip(range(nidx), lo, hi):
+            if low == high:
                 continue
-            output[i] = func(*[inp[l:h] for inp in inputs])
+            output[i] = func(*[inp[low:high] for inp in inputs])
 
     if out_dtype == object:
         temp = {i: default for i in range(index.size)}
     else:
         temp = cupy.empty(index.shape, out_dtype)
         if default is None and temp.dtype.kind in 'fc':
-            default = np.nan  # match NumPy floating-point None behavior
+            default = numpy.nan  # match NumPy floating-point None behavior
         temp[:] = default
 
     if not pass_positions:
@@ -1183,25 +1175,6 @@ def labeled_comprehension(
         output = output[0]
     return output
 
-if False:
-    import cupy as cp
-    import numpy as np
-    import scipy.ndimage as ndi
-    import cupyx.scipy.ndimage as cndi
-    from cupy import testing
-    xp = cp
-    image = testing.shaped_random((16, 20), xp, scale=10)
-    labels = testing.shaped_random(image.shape, xp, dtype=xp.int32,
-                                   scale=4)
-    index = xp.asarray([3, 1])
-    h = cndi.histogram(image, 0, 10, 4, labels, index)
-    h_np = ndi.histogram(image.get(), 0, 10, 4, labels.get(), index.get())
-
-    dtype = np.float64
-    default = 0
-    pass_positions = False
-    lab = cndi.labeled_comprehension(image, labels, index, cp.sum, dtype, default, pass_positions)
-    lab_np = ndi.labeled_comprehension(image.get(), labels.get(), index.get(), np.sum, dtype, default, pass_positions)
 
 def histogram(input, min, max, bins, labels=None, index=None):
     """Calculate the histogram of the values of an array, optionally at labels.

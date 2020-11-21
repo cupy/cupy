@@ -1,4 +1,3 @@
-import unittest
 import warnings
 
 import numpy
@@ -353,11 +352,11 @@ class TestMeasurementsSelect:
 @testing.gpu
 @testing.parameterize(*testing.product({
     'labels': [None, 4, 6],
-    'index' : [None, [0, 2], [3, 1, 0], [1]],
-    'shape' : [(200,), (16, 20)],
+    'index': [None, [0, 2], [3, 1, 0], [1]],
+    'shape': [(200,), (16, 20)],
 }))
 @testing.with_requires('scipy')
-class TestHistogram(unittest.TestCase):
+class TestHistogram():
 
     def _make_image(self, shape, xp, dtype, scale):
         return testing.shaped_random(shape, xp, dtype=dtype, scale=scale)
@@ -365,9 +364,9 @@ class TestHistogram(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_histogram(self, xp, scp, dtype):
+        nbins = 5
         minval = 0
         maxval = 10
-        nbins = 5
         image = self._make_image(self.shape, xp, dtype, scale=maxval)
         labels = self.labels
         index = self.index
@@ -392,14 +391,14 @@ class TestHistogram(unittest.TestCase):
 @testing.gpu
 @testing.parameterize(*testing.product({
     'labels': [None, 4],
-    'index' : [None, [0, 2], [3, 1, 0], [1]],
-    'shape' : [(200,), (16, 20)],
-    'dtype' : [numpy.float64, 'same'],
-    'default' : [0, 3],
-    'pass_positions' : [True, False],
+    'index': [None, [0, 2], [3, 1, 0], [1]],
+    'shape': [(200,), (16, 20)],
+    'dtype': [numpy.float64, 'same'],
+    'default': [0, 3],
+    'pass_positions': [True, False],
 }))
 @testing.with_requires('scipy')
-class TestLabeledComprehension(unittest.TestCase):
+class TestLabeledComprehension():
 
     def _make_image(self, shape, xp, dtype, scale):
         if dtype == xp.bool_:
@@ -410,10 +409,7 @@ class TestLabeledComprehension(unittest.TestCase):
     @testing.for_all_dtypes(no_bool=True, no_complex=True, no_float16=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-4, atol=1e-4)
     def test_labeled_comprehension(self, xp, scp, dtype):
-        minval = 0
-        maxval = 10
-        nbins = 5
-        image = self._make_image(self.shape, xp, dtype, scale=maxval)
+        image = self._make_image(self.shape, xp, dtype, scale=101)
         labels = self.labels
         index = self.index
         if labels is not None:
@@ -439,4 +435,4 @@ class TestLabeledComprehension(unittest.TestCase):
                    self.pass_positions)
             return xp.asarray([])
         return op(image, labels, index, func, dtype, self.default,
-                    self.pass_positions)
+                  self.pass_positions)
