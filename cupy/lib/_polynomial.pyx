@@ -5,7 +5,7 @@ import numpy
 from cupy.core.core cimport ndarray
 
 import cupy
-from cupy._lib import _routines_poly
+from cupy.lib import _routines_poly
 
 cimport cython  # NOQA
 

@@ -4,7 +4,7 @@ import cupyx.scipy.fft
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
-from cupy._lib import stride_tricks
+from cupy.lib import stride_tricks
 
 
 _dot_kernel = core.ReductionKernel(

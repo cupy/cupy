@@ -279,7 +279,7 @@ from cupy._creation.matrix import triu  # NOQA
 # -----------------------------------------------------------------------------
 from cupy._functional.piecewise import piecewise  # NOQA
 from cupy._functional.vectorize import vectorize  # NOQA
-from cupy.lib.shape_base import apply_along_axis  # NOQA
+from cupy.lib._shape_base import apply_along_axis  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -547,13 +547,13 @@ from cupy._logic.truth import any  # NOQA
 # ------------------------------------------------------------------------------
 # Polynomial functions
 # ------------------------------------------------------------------------------
-from cupy._lib.polynomial import poly1d  # NOQA
-from cupy._lib._routines_poly import polyadd  # NOQA
-from cupy._lib._routines_poly import polysub  # NOQA
-from cupy._lib._routines_poly import polymul  # NOQA
-from cupy._lib._routines_poly import polyfit  # NOQA
-from cupy._lib._routines_poly import polyval  # NOQA
-from cupy._lib._routines_poly import roots  # NOQA
+from cupy.lib._polynomial import poly1d  # NOQA
+from cupy.lib._routines_poly import polyadd  # NOQA
+from cupy.lib._routines_poly import polysub  # NOQA
+from cupy.lib._routines_poly import polymul  # NOQA
+from cupy.lib._routines_poly import polyfit  # NOQA
+from cupy.lib._routines_poly import polyval  # NOQA
+from cupy.lib._routines_poly import roots  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
