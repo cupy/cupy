@@ -348,3 +348,95 @@ class TestMeasurementsSelect:
                 # convert list of coordinate tuples to an array for comparison
                 result = xp.asarray(result)
         return result
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'labels': [None, 4, 6],
+    'index' : [None, [0, 2], [3, 1, 0], [1]],
+    'shape' : [(200,), (16, 20)],
+}))
+@testing.with_requires('scipy')
+class TestHistogram(unittest.TestCase):
+
+    def _make_image(self, shape, xp, dtype, scale):
+        return testing.shaped_random(shape, xp, dtype=dtype, scale=scale)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_histogram(self, xp, scp, dtype):
+        minval = 0
+        maxval = 10
+        nbins = 5
+        image = self._make_image(self.shape, xp, dtype, scale=maxval)
+        labels = self.labels
+        index = self.index
+        if labels is not None:
+            labels = testing.shaped_random(self.shape, xp, dtype=xp.int32,
+                                           scale=self.labels)
+        if index is not None:
+            index = xp.array(index)
+        op = getattr(scp.ndimage, 'histogram')
+        if index is not None and labels is None:
+            # cannot give an index array without labels
+            with pytest.raises(ValueError):
+                op(image, minval, maxval, nbins, labels, index)
+            return xp.asarray([])
+        result = op(image, minval, maxval, nbins, labels, index)
+        if index is None:
+            return result
+        # stack 1d arrays into a single array for comparison
+        return xp.stack(result)
+
+
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'labels': [None, 4],
+    'index' : [None, [0, 2], [3, 1, 0], [1]],
+    'shape' : [(200,), (16, 20)],
+    'dtype' : [numpy.float64, 'same'],
+    'default' : [0, 3],
+    'pass_positions' : [True, False],
+}))
+@testing.with_requires('scipy')
+class TestLabeledComprehension(unittest.TestCase):
+
+    def _make_image(self, shape, xp, dtype, scale):
+        if dtype == xp.bool_:
+            return testing.shaped_random(shape, xp, dtype=xp.bool_)
+        else:
+            return testing.shaped_random(shape, xp, dtype=dtype, scale=scale)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True, no_float16=True)
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-4, atol=1e-4)
+    def test_labeled_comprehension(self, xp, scp, dtype):
+        minval = 0
+        maxval = 10
+        nbins = 5
+        image = self._make_image(self.shape, xp, dtype, scale=maxval)
+        labels = self.labels
+        index = self.index
+        if labels is not None:
+            labels = testing.shaped_random(self.shape, xp, dtype=xp.int32,
+                                           scale=4)
+        if index is not None:
+            index = xp.array(index)
+
+        if self.pass_positions:
+            # simple function that takes a positions argument
+            def func(x, pos):
+                return xp.sum(x + pos > 50)
+        else:
+            # simple function to apply to each lable
+            func = xp.sum
+
+        op = getattr(scp.ndimage, 'labeled_comprehension')
+        dtype == image.dtype if self.dtype == 'same' else self.dtype
+        if index is not None and labels is None:
+            # cannot give an index array without labels
+            with pytest.raises(ValueError):
+                op(image, labels, index, func, dtype, self.default,
+                   self.pass_positions)
+            return xp.asarray([])
+        return op(image, labels, index, func, dtype, self.default,
+                    self.pass_positions)
