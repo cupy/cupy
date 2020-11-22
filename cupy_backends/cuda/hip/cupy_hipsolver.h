@@ -1081,6 +1081,91 @@ cusolverStatus_t cusolverDnZheevjBatched(...) {
     return rocblas_status_not_implemented;
 }
 
+cusolverStatus_t cusolverDnZZgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZCgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZYgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZKgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCCgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCYgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCKgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDDgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDSgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDXgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDHgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSSgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSXgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSHgesv_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZZgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZCgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZYgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZKgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCCgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCYgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCKgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDDgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDSgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDXgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDHgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSSgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSXgesv(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSHgesv(...) {
+    return rocblas_status_not_implemented;
+}
+
 cusolverStatus_t cusolverSpCreate(...) {
     return rocblas_status_not_implemented;
 }
