@@ -28,16 +28,17 @@ Example:
     from one::
 
     >>> from cupyx.scipy.sparse import csr_matrix
-    >>> offsets = csr_matrix(cupy.array([[1, 0, 2], [0, -1, 0], [0, 0, 3]]))
+    >>> offsets = csr_matrix(cupy.array([[1., 0., 2.], [0., -1., 0.],
+                                                       [0., 0., 3.]]))
     >>> A = aslinearoperator(offsets) + Ones(offsets.shape)
-    >>> A.dot([1, 2, 3])
-    array([13,  4, 15])
+    >>> A.dot(cp.array([1., 2., 3.]))
+    array([13.,  4., 15.])
 
     The result is the same as that given by its dense, explicitly-stored
     counterpart::
 
-    >>> (cp.ones(A.shape, A.dtype) + offsets.toarray()).dot([1, 2, 3])
-    array([13,  4, 15])
+    >>> (cp.ones(A.shape, A.dtype) + offsets.toarray()).dot([1., 2., 3.])
+    array([13.,  4., 15.])
 
 """
 
@@ -54,41 +55,16 @@ __all__ = ['LinearOperator', 'aslinearoperator']
 class LinearOperator(object):
     """Common interface for performing matrix vector products
 
-    Many iterative methods (e.g. cg, gmres) do not need to know the
-    individual entries of a matrix to solve a linear system A*x=b.
-    Such solvers only require the computation of matrix vector
-    products, A*v where v is a dense vector.  This class serves as
-    an abstract interface between iterative solvers and matrix-like
-    objects.
-
-    To construct a concrete LinearOperator, either pass appropriate
-    callables to the constructor of this class, or subclass it.
-
-    A subclass must implement either one of the methods ``_matvec``
-    and ``_matmat``, and the attributes/properties ``shape`` (pair of
-    integers) and ``dtype`` (may be None). It may call the ``__init__``
-    on this class to have these attributes validated. Implementing
-    ``_matvec`` automatically implements ``_matmat`` (using a naive
-    algorithm) and vice-versa.
-
-    Optionally, a subclass may implement ``_rmatvec`` or ``_adjoint``
-    to implement the Hermitian adjoint (conjugate transpose). As with
-    ``_matvec`` and ``_matmat``, implementing either ``_rmatvec`` or
-    ``_adjoint`` implements the other automatically. Implementing
-    ``_adjoint`` is preferable; ``_rmatvec`` is mostly there for
-    backwards compatibility.
-
-
-    Attributes:
-        shape (tuple):  Matrix dimensions (M, N).
-        matvec (callable f(v)):  Returns returns A * v.
-        rmatvec (callable f(v)):  Returns A^H * v, where A^H is the conjugate
-                                  transpose of A.
-        matmat (callable f(V)):  Returns A * V, where V is a dense matrix
-                                  with dimensions (N, K).
+    Args:
+        shape (tuple):  Matrix dimensions ``(M, N)``.
+        matvec (callable f(v)):  Returns returns ``A * v``.
+        rmatvec (callable f(v)):  Returns ``A^H * v``, where ``A^H`` is the
+                                  conjugate transpose of ``A``.
+        matmat (callable f(V)):  Returns ``A * V``, where ``V`` is a dense
+                                 matrix with dimensions ``(N, K)``.
         dtype (dtype):  Data type of the matrix.
-        rmatmat (callable f(V)):  Returns A^H * V, where V is a dense matrix
-                                   with dimensions (M, K).
+        rmatmat (callable f(V)):  Returns ``A^H * V``, where ``V`` is a dense
+                                  matrix with dimensions ``(M, K)``.
 
 
     Args:
@@ -141,8 +117,8 @@ class LinearOperator(object):
 
             if (type(obj)._matvec == LinearOperator._matvec
                     and type(obj)._matmat == LinearOperator._matmat):
-                warnings.warn("LinearOperator subclass should implement"
-                              " at least one of _matvec and _matmat.",
+                warnings.warn('LinearOperator subclass should implement'
+                              ' at least one of _matvec and _matmat.',
                               category=RuntimeWarning, stacklevel=2)
 
             return obj
@@ -158,7 +134,7 @@ class LinearOperator(object):
 
         shape = tuple(shape)
         if not isshape(shape):
-            raise ValueError("invalid shape %r (must be 2-d)" % (shape,))
+            raise ValueError('invalid shape %r (must be 2-d)' % (shape,))
 
         self.dtype = dtype
         self.shape = shape
@@ -184,7 +160,7 @@ class LinearOperator(object):
 
         If self is a linear operator of shape (M, N), then this method will
         be called on a shape (N,) or (N, 1) ndarray, and should return a
-        shape (M,) or (M, 1) ndarray.
+        shape ``(M,)`` or ``(M, 1)`` ndarray.
 
         This default implementation falls back on _matmat, so defining that
         will define matrix-vector multiplication as well.
@@ -199,11 +175,11 @@ class LinearOperator(object):
 
 
         Args:
-            x (ndarray):  array with shape (N,) or (N,1).
+            x (ndarray):  array with shape ``(N,)`` or ``(N,1)``.
 
 
         Returns:
-            y (ndarray):  An ndarray with shape (M,) or (M,1)
+            y (ndarray):  An ndarray with shape ``(M,)`` or ``(M,1)``
                           depending on the type and shape of the x argument.
 
 
@@ -237,11 +213,11 @@ class LinearOperator(object):
 
 
         Args:
-            x (ndarray):  An array with shape (M,) or (M,1).
+            x (ndarray):  An array with shape ``(M,)`` or ``(M,1)``.
 
 
         Returns:
-            y (ndarray):  An ndarray with shape (N,) or (N,1)
+            y (ndarray):  An ndarray with shape ``(N,)`` or ``(N,1)``
                           depending on the type and shape of the x argument.
 
 
@@ -385,14 +361,14 @@ class LinearOperator(object):
 
     def __matmul__(self, other):
         if cp.isscalar(other):
-            raise ValueError("Scalar operands are not allowed, "
-                             "use '*' instead")
+            raise ValueError('Scalar operands are not allowed, '
+                             'use '*' instead')
         return self.__mul__(other)
 
     def __rmatmul__(self, other):
         if cp.isscalar(other):
-            raise ValueError("Scalar operands are not allowed, "
-                             "use '*' instead")
+            raise ValueError('Scalar operands are not allowed, '
+                             'use '*' instead')
         return self.__rmul__(other)
 
     def __rmul__(self, x):
@@ -492,7 +468,7 @@ class _CustomLinearOperator(LinearOperator):
     def _rmatvec(self, x):
         func = self.__rmatvec_impl
         if func is None:
-            raise NotImplementedError("rmatvec is not defined")
+            raise NotImplementedError('rmatvec is not defined')
         return self.__rmatvec_impl(x)
 
     def _rmatmat(self, X):
