@@ -34,18 +34,18 @@ def _check_parameter(func_name, order, mode):
         raise ValueError('boundary mode is not supported')
 
 
-def _get_spline_output(input, output, allow_float32=False):
+def _get_spline_output(input, output):
     """Create workspace array, temp, and the final dtype for the output.
 
-    If allow_float32 is False, temp will always have float64 dtype.
-    If allow_float32 is True, temp will have float32 dtype when ``input`` or
-    ``output`` is single precision.
+    Differs from SciPy by not always forcing promotion to double precision.
+    The default output dtype will be single precision for single precision
+    inputs.
     """
     complex_data = input.dtype.kind == "c"
     if complex_data:
-        min_float_dtype = cupy.complex64 if allow_float32 else cupy.complex128
+        min_float_dtype = cupy.complex64
     else:
-        min_float_dtype = cupy.float32 if allow_float32 else cupy.float64
+        min_float_dtype = cupy.float32
     if isinstance(output, cupy.ndarray):
         if complex_data and output.dtype.kind != "c":
             raise ValueError(
@@ -74,8 +74,8 @@ def _get_spline_output(input, output, allow_float32=False):
     return temp, float_dtype, output_dtype
 
 
-def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
-                    mode="mirror", *, allow_float32=False):
+def spline_filter1d(input, order=3, axis=-1, output=None,
+                    mode="mirror"):
     """
     Calculate a 1-D spline filter along the given axis.
 
@@ -95,15 +95,16 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
             ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
-        allow_float32 (bool): If True, single-precision inputs will use
-            single precision computation. If False, double precision is used.
-            This option is not present in SciPy.
 
     Returns:
         cupy.ndarray: The result of prefiltering the input.
 
     .. seealso:: :func:`scipy.spline_filter1d`
 
+    .. note::
+        This function differs from SciPy by not automatically promoting
+        all inputs to double precision. For single-precision inputs,
+        computations will be performed in single precision.
     """
     if order < 0 or order > 5:
         raise RuntimeError("spline order not supported")
@@ -119,8 +120,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
         output[...] = x[...]
         return output
 
-    temp, data_dtype, output_dtype = _get_spline_output(x, output,
-                                                        allow_float32)
+    temp, data_dtype, output_dtype = _get_spline_output(x, output)
     data_type = cupy.core._scalar.get_typename(temp.dtype)
     pole_type = cupy.core._scalar.get_typename(temp.real.dtype)
 
@@ -163,8 +163,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
     return temp.astype(output_dtype, copy=False)
 
 
-def spline_filter(input, order=3, output=numpy.float64, mode="mirror", *,
-                  allow_float32=False):
+def spline_filter(input, order=3, output=None, mode="mirror"):
     """Multidimensional spline filter.
 
     Args:
@@ -178,28 +177,25 @@ def spline_filter(input, order=3, output=numpy.float64, mode="mirror", *,
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
             ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
-        allow_float32 (bool): If True, single-precision inputs will use
-            single precision computation. If False, double precision is used.
-            This option is not present in SciPy.
 
     Returns:
         cupy.ndarray: The result of prefiltering the input.
 
     .. seealso:: :func:`scipy.spline_filter1d`
 
+    .. note::
+        This function differs from SciPy by not automatically promoting
+        all inputs to double precision. For single-precision inputs,
+        computations will be performed in single precision.
     """
     if order < 2 or order > 5:
         raise RuntimeError("spline order not supported")
 
     x = input
-    temp, data_dtype, output_dtype = _get_spline_output(x, output,
-                                                        allow_float32)
+    temp, data_dtype, output_dtype = _get_spline_output(x, output)
     if order not in [0, 1] and input.ndim > 0:
         for axis in range(x.ndim):
-            spline_filter1d(
-                x, order, axis, output=temp, mode=mode,
-                allow_float32=allow_float32
-            )
+            spline_filter1d(x, order, axis, output=temp, mode=mode)
             x = temp
     if isinstance(output, cupy.ndarray):
         output[...] = temp[...]
