@@ -65,9 +65,6 @@ class LinearOperator(object):
         dtype (dtype):  Data type of the matrix.
         rmatmat (callable f(V)):  Returns ``A^H * V``, where ``V`` is a dense
                                   matrix with dimensions ``(M, K)``.
-
-
-    Args:
         args (tuple):  For linear operators describing products etc. of other
                         linear operators, the operands of the binary operation.
         ndim (int):  Number of dimensions (this is always 2)
