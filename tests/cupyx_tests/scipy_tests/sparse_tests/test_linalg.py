@@ -475,17 +475,21 @@ class TestLinearOperator(unittest.TestCase):
             original = cp.array([[1., 2., 3.], [4., 5., 6.]])
             self.cases += self._define_cases(original, self.dtype)
             self.cases += [(interface.aslinearoperator(M).T, A.T)
-                        for M, A in self._define_cases(original.T, self.dtype)]
+                           for M, A in self._define_cases(original.T,
+                                                          self.dtype)]
             self.cases += [(interface.aslinearoperator(M).H, A.T.conj())
-                        for M, A in self._define_cases(original.T, self.dtype)]
+                           for M, A in self._define_cases(original.T,
+                                                          self.dtype)]
 
         else:
             original = cp.array([[1, 2j, 3j], [4j, 5j, 6]])
             self.cases += self._define_cases(original, self.dtype)
             self.cases += [(interface.aslinearoperator(M).T, A.T)
-                        for M, A in self._define_cases(original.T, self.dtype)]
+                           for M, A in self._define_cases(original.T,
+                                                          self.dtype)]
             self.cases += [(interface.aslinearoperator(M).H, A.T.conj())
-                        for M, A in self._define_cases(original.T, self.dtype)]
+                           for M, A in self._define_cases(original.T,
+                                                          self.dtype)]
 
     def test_basic(self):
         self._make_cases()
