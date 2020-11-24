@@ -342,6 +342,109 @@ def _inclusive_scan_kernel(src_dtype, dtype, block_size, op, src_c_cont,
 
 
 @_util.memoize(for_each_device=True)
+def _inclusive_scan_kernel_shfl(src_dtype, dtype, block_size, op, src_c_cont,
+                                out_c_cont):
+    """return Prefix Sum(Scan) cuda kernel using warp shuffle
+
+    e.g
+    if blocksize * 2 >= len(src)
+    src [1, 2, 3, 4]
+    dst [1, 3, 6, 10]
+
+    if blocksize * 2 < len(src)
+    block_size: 2
+    src [1, 2, 3, 4, 5, 6]
+    dst [1, 3, 6, 10, 5, 11]
+
+    Args:
+        dtype: src, dst array type
+        block_size: block_size
+
+    Returns:
+         cupy.cuda.Function: cuda function
+    """
+
+    name = 'inclusive_scan_kernel_shfl'
+    src_dtype = get_typename(src_dtype)
+    dtype = get_typename(dtype)
+    op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+    identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
+    source = string.Template("""
+    extern "C" __global__ void ${name}(
+        const CArray<${src_dtype}, 1, ${src_c_cont}> src,
+        CArray<${dtype}, 1, ${out_c_cont}> dst){
+        long long n = src.size();
+        __shared__ ${dtype} temp[${block_size} / 32];
+        unsigned int warp_id = threadIdx.x / 32;
+        unsigned int lane_id = threadIdx.x % 32;
+        unsigned int idx1 = 2 * (threadIdx.x + blockIdx.x * blockDim.x);
+        unsigned int idx2 = idx1 + 1;
+        ${dtype} v1, v2;
+        v1 = (idx1 < n) ? (${dtype})src[idx1] : (${dtype})${identity};
+        v2 = (idx2 < n) ? (${dtype})src[idx2] : (${dtype})${identity};
+
+        v2 ${op}= v1;
+        for (int i = 1; i < 32; i <<= 1) {
+            ${dtype} vtmp = __shfl_up_sync(0xffffffff, v2, i);
+            if (lane_id % (2*i) == (2*i)-1) {
+                v2 ${op}= vtmp;
+            }
+        }
+        if (lane_id == 31) {
+            temp[warp_id] = v2;
+        }
+        __syncthreads();
+
+        if (warp_id == 0) {
+            ${dtype} v2x = (${dtype})${identity};
+            if (lane_id < ${block_size} / 32) {
+                v2x = temp[lane_id];
+            }
+            for (int i = 1; i < ${block_size} / 32; i <<= 1) {
+                ${dtype} vtmp = __shfl_up_sync(0xffffffff, v2x, i);
+                if (lane_id % (2*i) == (2*i)-1) {
+                    v2x ${op}= vtmp;
+                }
+            }
+            for (int i = ${block_size} / 128; i > 0; i >>= 1) {
+                ${dtype} vtmp = __shfl_up_sync(0xffffffff, v2x, i);
+                if ((lane_id % (2*i) == i-1) && (lane_id >= 2*i)) {
+                    v2x ${op}= vtmp;
+                }
+            }
+            if (lane_id < ${block_size} / 32) {
+                temp[lane_id] = v2x;
+            }
+        }
+        __syncthreads();
+
+        ${dtype} v0 = __shfl_up_sync(0xffffffff, v2, 1);
+        if (lane_id == 0) {
+            v0 = (warp_id > 0) ? temp[warp_id - 1] : (${dtype})${identity};
+        }
+        for (int i = 16; i > 0; i >>= 1) {
+            ${dtype} vtmp = __shfl_up_sync(0xffffffff, v0, i);
+            if (lane_id % (2*i) == i) {
+                v0 ${op}= vtmp;
+            }
+        }
+        v1 ${op}= v0;
+        v2 = __shfl_down_sync(0xffffffff, v0, 1);
+        if (lane_id == 31) {
+            v2 = temp[warp_id];
+        }
+        if (idx1 < n) dst[idx1] = v1;
+        if (idx2 < n) dst[idx2] = v2;
+    }
+    """).substitute(name=name, dtype=dtype, block_size=block_size,
+                    src_dtype=src_dtype,
+                    op=op_char[op], identity=identity[op],
+                    src_c_cont=src_c_cont, out_c_cont=out_c_cont)
+    module = compile_with_cache(source)
+    return module.get_function(name)
+
+
+@_util.memoize(for_each_device=True)
 def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
@@ -424,8 +527,12 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
 
     cdef int src_cont = int(a._c_contiguous)
     cdef int out_cont = int(out._c_contiguous)
-    kern_scan = _inclusive_scan_kernel(a.dtype, dtype, block_size, op,
-                                       src_cont, out_cont)
+    if numpy.dtype(dtype).char in 'iIlLfd':
+        kern_scan = _inclusive_scan_kernel_shfl(a.dtype, dtype, block_size, op,
+                                                src_cont, out_cont)
+    else:
+        kern_scan = _inclusive_scan_kernel(a.dtype, dtype, block_size, op,
+                                           src_cont, out_cont)
     kern_scan(grid=((a.size - 1) // (2 * block_size) + 1,),
               block=(block_size,),
               args=(a, out))
