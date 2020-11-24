@@ -1,10 +1,12 @@
 import numpy as _numpy
+import warnings as _warnings
 
 import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusolver as _cusolver
 from cupy.cuda import device as _device
+from cupy.core import _routines_linalg as _linalg
 from cupy import _util
 
 _available_cuda_version = {
@@ -13,6 +15,13 @@ _available_cuda_version = {
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
     'syevj': (9000, None),
+    'gesv': (10020, None),
+    'gels': (11000, None),
+}
+
+_available_compute_capability = {
+    'gesv': 70,
+    'gels': 70,
 }
 
 
@@ -27,6 +36,10 @@ def check_availability(name):
         return False
     if version_removed is not None and cuda_version >= version_removed:
         return False
+    if name in _available_compute_capability:
+        compute_capability = int(_device.get_compute_capability())
+        if compute_capability < _available_compute_capability[name]:
+            return False
     return True
 
 
@@ -468,77 +481,86 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
 
 
 def gesv(a, b):
-    """Solve a linear matrix equation using cusolverDn<t>getr[fs]().
-
+    """Solve a linear matrix equation using cusolverDn<t1><t2>gesv().
     Computes the solution to a system of linear equation ``ax = b``.
-
     Args:
         a (cupy.ndarray): The matrix with dimension ``(M, M)``.
         b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
-
     Returns:
         cupy.ndarray:
             The matrix with dimension ``(M)`` or ``(M, K)``.
     """
+    if not check_availability('gesv'):
+        raise RuntimeError('gesv is not available.')
+
     if a.ndim != 2:
-        raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
+        raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))
     if b.ndim not in (1, 2):
-        raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
+        raise ValueError('b.ndim must be 1 or 2 (actual:{})'.format(b.ndim))
     if a.shape[0] != a.shape[1]:
         raise ValueError('a must be a square matrix.')
     if a.shape[0] != b.shape[0]:
-        raise ValueError('shape mismatch (a: {}, b: {}).'.
+        raise ValueError('shape mismatch (a:{}, b:{}).'.
                          format(a.shape, b.shape))
+    if a.dtype != b.dtype:
+        raise ValueError('dtype mismatch (a:{}, b:{}).'.
+                         format(a.dtype, b.dtype))
 
-    dtype = _numpy.promote_types(a.dtype.char, 'f')
-    if dtype == 'f':
-        t = 's'
-    elif dtype == 'd':
-        t = 'd'
-    elif dtype == 'F':
-        t = 'c'
-    elif dtype == 'D':
-        t = 'z'
+    if b.ndim == 2:
+        n, nrhs = b.shape
+    else:
+        n, nrhs = b.shape[0], 1
+
+    compute_type = _linalg.get_compute_type(a.dtype)
+    if a.dtype.char in 'fd':
+        if a.dtype.char == 'f':
+            t1 = t2 = 's'
+        else:
+            t1 = t2 = 'd'
+        if compute_type == _linalg.COMPUTE_TYPE_FP16:
+            t2 = 'h'
+        elif compute_type == _linalg.COMPUTE_TYPE_TF32:
+            t2 = 'x'
+        elif compute_type == _linalg.COMPUTE_TYPE_FP32:
+            t2 = 's'
+    elif a.dtype.char in 'FD':
+        if a.dtype.char == 'F':
+            t1 = t2 = 'c'
+        else:
+            t1 = t2 = 'z'
+        if compute_type == _linalg.COMPUTE_TYPE_FP16:
+            t2 = 'k'
+        elif compute_type == _linalg.COMPUTE_TYPE_TF32:
+            t2 = 'y'
+        elif compute_type == _linalg.COMPUTE_TYPE_FP32:
+            t2 = 'c'
     else:
         raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
-    helper = getattr(_cusolver, t + 'getrf_bufferSize')
-    getrf = getattr(_cusolver, t + 'getrf')
-    getrs = getattr(_cusolver, t + 'getrs')
+    solver_name = t1 + t2 + 'gesv'
+    solver = getattr(_cusolver, solver_name)
+    helper = getattr(_cusolver, solver_name + '_bufferSize')
 
-    n = b.shape[0]
-    nrhs = b.shape[1] if b.ndim == 2 else 1
-    a_data_ptr = a.data.ptr
-    b_data_ptr = b.data.ptr
-    a = _cupy.asfortranarray(a, dtype=dtype)
-    b = _cupy.asfortranarray(b, dtype=dtype)
-    if a.data.ptr == a_data_ptr:
-        a = a.copy()
-    if b.data.ptr == b_data_ptr:
-        b = b.copy()
-
-    handle = _device.get_cusolver_handle()
+    a = a.copy(order='F')
+    b = b.copy(order='F')
+    x = _cupy.empty_like(b)
     dipiv = _cupy.empty(n, dtype=_numpy.int32)
     dinfo = _cupy.empty(1, dtype=_numpy.int32)
-    lwork = helper(handle, n, n, a.data.ptr, n)
-    dwork = _cupy.empty(lwork, dtype=a.dtype)
-    # LU factrization (A = L * U)
-    getrf(handle, n, n, a.data.ptr, n, dwork.data.ptr, dipiv.data.ptr,
-          dinfo.data.ptr)
-    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrf, dinfo)
-    # Solves Ax = b
-    getrs(handle, _cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
-          dipiv.data.ptr, b.data.ptr, n, dinfo.data.ptr)
-    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrs, dinfo)
-    return b
+    handle = _device.get_cusolver_handle()
+    lwork = helper(handle, n, nrhs, a.data.ptr, n, dipiv.data.ptr,
+                   b.data.ptr, n, x.data.ptr, n, 0)
+    dwork = _cupy.empty(lwork, dtype=_numpy.int8)
+    niters = solver(handle, n, nrhs, a.data.ptr, n, dipiv.data.ptr,
+                    b.data.ptr, n, x.data.ptr, n, dwork.data.ptr, lwork,
+                    dinfo.data.ptr)
+    if niters < 0:
+        raise RuntimeError('gesv has failed ({}).'.format(niters))
+    return x
 
 
 def gels(a, b):
-    """Solves over/well/under-determined linear systems.
+    """Compute least square solution using cusolverDn<t1><t2>gels().
 
-    Computes least-square solution to equation ``ax = b` by QR factorization
-    using cusolverDn<t>geqrf().
+    Computes the least square solution to a system of ``ax = b``.
 
     Args:
         a (cupy.ndarray): The matrix with dimension ``(M, N)``.
@@ -547,9 +569,13 @@ def gels(a, b):
     Returns:
         cupy.ndarray:
             The matrix with dimension ``(N)`` or ``(N, K)``.
+
     """
+    if not check_availability('gels'):
+        raise RuntimeError('gels is not available.')
+
     if a.ndim != 2:
-        raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
+        raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))
     if b.ndim == 1:
         nrhs = 1
     elif b.ndim == 2:
@@ -557,108 +583,75 @@ def gels(a, b):
     else:
         raise ValueError('b.ndim must be 1 or 2 (actual: {})'.format(b.ndim))
     if a.shape[0] != b.shape[0]:
-        raise ValueError('shape mismatch (a: {}, b: {}).'.
+        raise ValueError('shape mismatch (a:{}, b:{}).'.
                          format(a.shape, b.shape))
     if a.dtype != b.dtype:
-        raise ValueError('dtype mismatch (a: {}, b: {}).'.
+        raise ValueError('dtype mismatch (a:{}, b:{}).'.
                          format(a.dtype, b.dtype))
 
-    dtype = a.dtype
-    if dtype == 'f':
-        t = 's'
-    elif dtype == 'd':
-        t = 'd'
-    elif dtype == 'F':
-        t = 'c'
-    elif dtype == 'D':
-        t = 'z'
-    else:
-        raise ValueError('unsupported dtype (actual: {})'.format(dtype))
-
-    geqrf_helper = getattr(_cusolver, t + 'geqrf_bufferSize')
-    geqrf = getattr(_cusolver, t + 'geqrf')
-    trsm = getattr(_cublas, t + 'trsm')
-    if t in 'sd':
-        ormqr_helper = getattr(_cusolver, t + 'ormqr_bufferSize')
-        ormqr = getattr(_cusolver, t + 'ormqr')
-    else:
-        ormqr_helper = getattr(_cusolver, t + 'unmqr_bufferSize')
-        ormqr = getattr(_cusolver, t + 'unmqr')
-
-    no_trans = _cublas.CUBLAS_OP_N
-    if dtype.char in 'fd':
-        trans = _cublas.CUBLAS_OP_T
-    else:
-        trans = _cublas.CUBLAS_OP_C
-
     m, n = a.shape
-    mn_min = min(m, n)
-    dev_info = _cupy.empty(1, dtype=_numpy.int32)
-    tau = _cupy.empty(mn_min, dtype=dtype)
-    cusolver_handle = _device.get_cusolver_handle()
-    cublas_handle = _device.get_cublas_handle()
+    if m < n:
+        raise ValueError('m must be equal to or greater than n.')
+    max_mn = max(m, n)
+    b_ndim = b.ndim
 
-    if m >= n:  # over/well-determined systems
-        a = a.copy(order='F')
+    compute_type = _linalg.get_compute_type(a.dtype)
+    if a.dtype.char in 'fd':
+        if a.dtype.char == 'f':
+            t1 = t2 = 's'
+        else:
+            t1 = t2 = 'd'
+        if compute_type == _linalg.COMPUTE_TYPE_FP16:
+            t2 = 'h'
+        elif compute_type == _linalg.COMPUTE_TYPE_TF32:
+            t2 = 'x'
+        elif compute_type == _linalg.COMPUTE_TYPE_FP32:
+            t2 = 's'
+    elif a.dtype.char in 'FD':
+        if a.dtype.char == 'F':
+            t1 = t2 = 'c'
+        else:
+            t1 = t2 = 'z'
+        if compute_type == _linalg.COMPUTE_TYPE_FP16:
+            t2 = 'k'
+        elif compute_type == _linalg.COMPUTE_TYPE_TF32:
+            t2 = 'y'
+        elif compute_type == _linalg.COMPUTE_TYPE_FP32:
+            t2 = 'c'
+    else:
+        raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+    solver_name = t1 + t2 + 'gels'
+    solver = getattr(_cusolver, solver_name)
+    helper = getattr(_cusolver, solver_name + '_bufferSize')
+
+    a = a.copy(order='F')
+    org_nrhs = nrhs
+    if m > n and nrhs == 1:
+        # Note: this is workaround as there is bug in cusolverDn<T1><T2>gels()
+        # of CUDA 11.0/11.1 and it returns CUSOLVER_STATUS_IRS_NOT_SUPPORTED
+        # when m > n and nrhs == 1.
+        nrhs = 2
+        bb = b.reshape(m, 1)
+        b = _cupy.empty((max_mn, nrhs), dtype=a.dtype, order='F')
+        b[:m, :] = bb
+    else:
         b = b.copy(order='F')
-
-        # geqrf (QR decomposition, A = Q * R)
-        ws_size = geqrf_helper(cusolver_handle, m, n, a.data.ptr, m)
-        workspace = _cupy.empty(ws_size, dtype=dtype)
-        geqrf(cusolver_handle, m, n, a.data.ptr, m, tau.data.ptr,
-              workspace.data.ptr, ws_size, dev_info.data.ptr)
-        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-            geqrf, dev_info)
-
-        # ormqr (Computes Q^T * B)
-        ws_size = ormqr_helper(
-            cusolver_handle, _cublas.CUBLAS_SIDE_LEFT, trans, m, nrhs, mn_min,
-            a.data.ptr, m, tau.data.ptr, b.data.ptr, m)
-        workspace = _cupy.empty(ws_size, dtype=dtype)
-        ormqr(cusolver_handle, _cublas.CUBLAS_SIDE_LEFT, trans, m, nrhs,
-              mn_min, a.data.ptr, m, tau.data.ptr, b.data.ptr, m,
-              workspace.data.ptr, ws_size, dev_info.data.ptr)
-        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-            ormqr, dev_info)
-
-        # trsm (Solves R * X = (Q^T * B))
-        trsm(cublas_handle, _cublas.CUBLAS_SIDE_LEFT,
-             _cublas.CUBLAS_FILL_MODE_UPPER, no_trans,
-             _cublas.CUBLAS_DIAG_NON_UNIT, mn_min, nrhs, 1, a.data.ptr, m,
-             b.data.ptr, m)
-
-        return b[:n]
-
-    else:  # under-determined systems
-        a = a.conj().T.copy(order='F')
-        bb = b
-        out_shape = (n,) if b.ndim == 1 else (n, nrhs)
-        b = _cupy.zeros(out_shape, dtype=dtype, order='F')
-        b[:m] = bb
-
-        # geqrf (QR decomposition, A^T = Q * R)
-        ws_size = geqrf_helper(cusolver_handle, n, m, a.data.ptr, n)
-        workspace = _cupy.empty(ws_size, dtype=dtype)
-        geqrf(cusolver_handle, n, m, a.data.ptr, n, tau.data.ptr,
-              workspace.data.ptr, ws_size, dev_info.data.ptr)
-        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-            geqrf, dev_info)
-
-        # trsm (Solves R^T * Z = B)
-        trsm(cublas_handle, _cublas.CUBLAS_SIDE_LEFT,
-             _cublas.CUBLAS_FILL_MODE_UPPER, trans,
-             _cublas.CUBLAS_DIAG_NON_UNIT, m, nrhs, 1, a.data.ptr, n,
-             b.data.ptr, n)
-
-        # ormqr (Computes Q * Z)
-        ws_size = ormqr_helper(
-            cusolver_handle, _cublas.CUBLAS_SIDE_LEFT, no_trans, n, nrhs,
-            mn_min, a.data.ptr, n, tau.data.ptr, b.data.ptr, n)
-        workspace = _cupy.empty(ws_size, dtype=dtype)
-        ormqr(cusolver_handle, _cublas.CUBLAS_SIDE_LEFT, no_trans, n, nrhs,
-              mn_min, a.data.ptr, n, tau.data.ptr, b.data.ptr, n,
-              workspace.data.ptr, ws_size, dev_info.data.ptr)
-        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-            ormqr, dev_info)
-
-        return b
+    x = _cupy.empty((max_mn, nrhs), dtype=a.dtype, order='F')
+    dinfo = _cupy.empty(1, dtype=_numpy.int32)
+    handle = _device.get_cusolver_handle()
+    lwork = helper(handle, m, n, nrhs, a.data.ptr, m, b.data.ptr, m,
+                   x.data.ptr, max_mn, 0)
+    dwork = _cupy.empty(lwork, dtype=_numpy.int8)
+    niters = solver(handle, m, n, nrhs, a.data.ptr, m, b.data.ptr, m,
+                    x.data.ptr, max_mn, dwork.data.ptr, lwork, dinfo.data.ptr)
+    if niters < 0:
+        if niters <= -50:
+            _warnings.warn('gels reached maximum allowed iterations.')
+        else:
+            raise RuntimeError('gels has failed ({}).'.format(niters))
+    x = x[:n]
+    if org_nrhs != nrhs:
+        x = x[:, :org_nrhs]
+    if b_ndim == 1:
+        x = x.reshape(n)
+    return x

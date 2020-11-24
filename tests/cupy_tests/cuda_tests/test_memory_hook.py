@@ -53,36 +53,35 @@ class TestMemoryHook(unittest.TestCase):
                 mem = self.pool.malloc(1)
                 ptr2, pmem2 = (mem.ptr, id(mem.mem))
                 del mem
-        self.assertEqual(1, len(hook.alloc_preprocess_history))
-        self.assertEqual(1, len(hook.alloc_postprocess_history))
-        self.assertEqual(2, len(hook.malloc_preprocess_history))
-        self.assertEqual(2, len(hook.malloc_postprocess_history))
-        self.assertEqual(2, len(hook.free_preprocess_history))
-        self.assertEqual(2, len(hook.free_postprocess_history))
-        self.assertEqual({'device_id': 0, 'mem_size': self.unit},
-                         hook.alloc_preprocess_history[0])
-        self.assertEqual({'device_id': 0, 'mem_size': self.unit,
-                          'mem_ptr': ptr1},
-                         hook.alloc_postprocess_history[0])
-        self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit},
-                         hook.malloc_preprocess_history[0])
-        self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit,
-                          'mem_ptr': ptr1, 'pmem_id': pmem1},
-                         hook.malloc_postprocess_history[0])
-        self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit},
-                         hook.malloc_preprocess_history[1])
-        self.assertEqual({'device_id': 0, 'size': 1, 'mem_size': self.unit,
-                          'mem_ptr': ptr2, 'pmem_id': pmem2},
-                         hook.malloc_postprocess_history[1])
-        self.assertEqual({'device_id': 0, 'mem_size': self.unit,
-                          'mem_ptr': ptr1, 'pmem_id': pmem1},
-                         hook.free_preprocess_history[0])
-        self.assertEqual({'device_id': 0, 'mem_size': self.unit,
-                          'mem_ptr': ptr1, 'pmem_id': pmem1},
-                         hook.free_postprocess_history[0])
-        self.assertEqual({'device_id': 0, 'mem_size': self.unit,
-                          'mem_ptr': ptr2, 'pmem_id': pmem2},
-                         hook.free_preprocess_history[1])
-        self.assertEqual({'device_id': 0, 'mem_size': self.unit,
-                          'mem_ptr': ptr2, 'pmem_id': pmem2},
-                         hook.free_postprocess_history[1])
+        assert 1 == len(hook.alloc_preprocess_history)
+        assert 1 == len(hook.alloc_postprocess_history)
+        assert 2 == len(hook.malloc_preprocess_history)
+        assert 2 == len(hook.malloc_postprocess_history)
+        assert 2 == len(hook.free_preprocess_history)
+        assert 2 == len(hook.free_postprocess_history)
+        assert {'device_id': 0,
+                'mem_size': self.unit} == hook.alloc_preprocess_history[0]
+        assert {'device_id': 0, 'mem_size': self.unit,
+                'mem_ptr': ptr1} == hook.alloc_postprocess_history[0]
+        assert {'device_id': 0, 'size': 1,
+                'mem_size': self.unit} == hook.malloc_preprocess_history[0]
+        assert {'device_id': 0, 'size': 1, 'mem_size': self.unit,
+                'mem_ptr': ptr1, 'pmem_id': pmem1
+                } == hook.malloc_postprocess_history[0]
+        assert {'device_id': 0, 'size': 1,
+                'mem_size': self.unit} == hook.malloc_preprocess_history[1]
+        assert {'device_id': 0, 'size': 1, 'mem_size': self.unit,
+                'mem_ptr': ptr2, 'pmem_id': pmem2
+                } == hook.malloc_postprocess_history[1]
+        assert {'device_id': 0, 'mem_size': self.unit,
+                'mem_ptr': ptr1, 'pmem_id': pmem1
+                } == hook.free_preprocess_history[0]
+        assert {'device_id': 0, 'mem_size': self.unit,
+                'mem_ptr': ptr1, 'pmem_id': pmem1
+                } == hook.free_postprocess_history[0]
+        assert {'device_id': 0, 'mem_size': self.unit,
+                'mem_ptr': ptr2, 'pmem_id': pmem2
+                } == hook.free_preprocess_history[1]
+        assert {'device_id': 0, 'mem_size': self.unit,
+                'mem_ptr': ptr2, 'pmem_id': pmem2
+                } == hook.free_postprocess_history[1]

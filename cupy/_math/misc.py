@@ -1,13 +1,9 @@
-import contextlib
-
 import cupy
 import cupyx.scipy.fft
 
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
-from cupy.cuda import cufft
-from cupy.fft._fft import _output_dtype
 from cupy.lib import stride_tricks
 
 
@@ -89,39 +85,15 @@ def _fft_convolve(a1, a2, mode):
     # if either of them is complex, the dtype after multiplication will also be
     if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
         fft, ifft = cupy.fft.fft, cupy.fft.ifft
-        is_c2c = True
     else:
         fft, ifft = cupy.fft.rfft, cupy.fft.irfft
-        is_c2c = False
 
-    # hack to work around NumPy/CuPy FFT dtype incompatibility:
-    # CuPy internally converts fp16 to fp32 before doing FFT (whereas Numpy
-    # converts both fp16 and fp32 to fp64), so here we do the cast early and
-    # explicitly, and make sure a correct cuFFT plan can be generated. After
-    # the fft-ifft round trip, we cast the output dtype to the correct one.
-    out_dtype = cupy.result_type(a1, a2)
-    dtype = _output_dtype(out_dtype, 'C2C' if is_c2c else 'R2C')
-    a1 = a1.astype(dtype, copy=False)
-    a2 = a2.astype(dtype, copy=False)
-
+    dtype = cupy.result_type(a1, a2)
     n1, n2 = a1.size, a2.size
     out_size = cupyx.scipy.fft.next_fast_len(n1 + n2 - 1)
-    # skip calling get_fft_plan() as we know the args exactly
-    if is_c2c:
-        fft_t = cufft.CUFFT_C2C if dtype == cupy.complex64 else cufft.CUFFT_Z2Z
-        fft_plan = cufft.Plan1d(out_size, fft_t, 1)
-        ifft_plan = fft_plan
-    else:
-        fft_t = cufft.CUFFT_R2C if dtype == cupy.float32 else cufft.CUFFT_D2Z
-        fft_plan = cufft.Plan1d(out_size, fft_t, 1)
-        # this is a no-op context manager
-        # TODO(leofang): use contextlib.nullcontext() for PY37+?
-        ifft_plan = contextlib.suppress()
-    with fft_plan:
-        fa1 = fft(a1, out_size)
-        fa2 = fft(a2, out_size)
-    with ifft_plan:
-        out = ifft(fa1 * fa2, out_size)
+    fa1 = fft(a1, out_size)
+    fa2 = fft(a2, out_size)
+    out = ifft(fa1 * fa2, out_size)
 
     if mode == 'full':
         start, end = 0, n1 + n2 - 1
@@ -136,10 +108,10 @@ def _fft_convolve(a1, a2, mode):
 
     out = out[start:end]
 
-    if out.dtype.kind in 'iu':
+    if dtype.kind in 'iu':
         out = cupy.around(out)
 
-    return out.astype(out_dtype, copy=False)
+    return out.astype(dtype, copy=False)
 
 
 def _dot_convolve(a1, a2, mode):

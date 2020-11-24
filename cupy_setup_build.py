@@ -85,6 +85,7 @@ cuda_files = [
     'cupy.cuda.stream',
     'cupy.cuda.texture',
     'cupy.fft._cache',
+    'cupy.fft._callback',
     'cupy.lib.polynomial',
     'cupy._util'
 ]
@@ -237,6 +238,25 @@ if not use_hip:
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
+    })
+
+    MODULES.append({
+        'name': 'jitify',
+        'file': [
+            'cupy.cuda.jitify',
+        ],
+        'include': [
+            'cuda.h',
+            'cuda_runtime.h',
+            'nvrtc.h',
+        ],
+        'libraries': [
+            'cuda',
+            'cudart',
+            'nvrtc',
+        ],
+        'check_method': build.check_jitify_version,
+        'version_method': build.get_jitify_version,
     })
 else:
     MODULES.append({
@@ -464,6 +484,8 @@ def preconfigure_modules(compiler, settings):
             # Skip checking other modules when CUDA is unavailable.
             if module['name'] == 'cuda':
                 break
+    # Get a list of the CC of the devices connected to this node
+    build.check_compute_capabilities(compiler, settings)
 
     if len(ret) != len(MODULES):
         if 'cuda' in ret:
@@ -558,8 +580,6 @@ def make_extensions(options, compiler, use_cython):
         link_args = s.setdefault('extra_link_args', [])
 
         if module['name'] == 'cusolver':
-            compile_args = s.setdefault('extra_compile_args', [])
-            link_args = s.setdefault('extra_link_args', [])
             # openmp is required for cusolver
             if use_hip:
                 pass
@@ -569,6 +589,12 @@ def make_extensions(options, compiler, use_cython):
                 link_args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
+
+        if module['name'] == 'jitify':
+            # this fixes RTD (no_cuda) builds...
+            compile_args.append('--std=c++11')
+            # if any change is made to the Jitify header, we force recompiling
+            s['depends'] = ['./cupy/core/include/cupy/jitify/jitify.hpp']
 
         original_s = s
         for f in module['file']:
@@ -766,6 +792,7 @@ def cythonize(extensions, arg_options):
         compile_time_env = {}
         cythonize_options['compile_time_env'] = compile_time_env
     compile_time_env['use_hip'] = arg_options['use_hip']
+    compile_time_env['CUPY_CUFFT_STATIC'] = False
     compile_time_env['cython_version'] = str(cython_version)
     if use_hip or arg_options['no_cuda']:
         compile_time_env['CUDA_VERSION'] = 0
@@ -809,69 +836,74 @@ def _nvcc_gencode_options(cuda_version):
         return []
 
     envcfg = os.getenv('CUPY_NVCC_GENERATE_CODE', None)
-    if envcfg:
+    if envcfg is not None and envcfg != 'current':
         return ['--generate-code={}'.format(arch)
                 for arch in envcfg.split(';') if len(arch) > 0]
-
-    # The arch_list specifies virtual architectures, such as 'compute_61', and
-    # real architectures, such as 'sm_61', for which the CUDA input files are
-    # to be compiled.
-    #
-    # The syntax of an entry of the list is
-    #
-    #     entry ::= virtual_arch | (virtual_arch, real_arch)
-    #
-    # where virtual_arch is a string which means a virtual architecture and
-    # real_arch is a string which means a real architecture.
-    #
-    # If a virtual architecture is supplied, NVCC generates a PTX code for the
-    # virtual architecture. If a pair of a virtual architecture and a real
-    # architecture is supplied, NVCC generates a PTX code for the virtual
-    # architecture as well as a cubin code for the real architecture.
-    #
-    # For example, making NVCC generate a PTX code for 'compute_60' virtual
-    # architecture, the arch_list has an entry of 'compute_60'.
-    #
-    #     arch_list = ['compute_60']
-    #
-    # For another, making NVCC generate a PTX code for 'compute_61' virtual
-    # architecture and a cubin code for 'sm_61' real architecture, the
-    # arch_list has an entry of ('compute_61', 'sm_61').
-    #
-    #     arch_list = [('compute_61', 'sm_61')]
-    #
-    # See the documentation of each CUDA version for the list of supported
-    # architectures:
-    #
-    #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
-
-    if cuda_version >= 11000:
-        arch_list = ['compute_35',
-                     'compute_50',
-                     ('compute_60', 'sm_60'),
-                     ('compute_61', 'sm_61'),
-                     ('compute_70', 'sm_70'),
-                     ('compute_75', 'sm_75'),
-                     ('compute_80', 'sm_80'),
-                     'compute_80']
-    elif cuda_version >= 10000:
-        arch_list = ['compute_30',
-                     'compute_50',
-                     ('compute_60', 'sm_60'),
-                     ('compute_61', 'sm_61'),
-                     ('compute_70', 'sm_70'),
-                     ('compute_75', 'sm_75'),
-                     'compute_70']
-    elif cuda_version >= 9000:
-        arch_list = ['compute_30',
-                     'compute_50',
-                     ('compute_60', 'sm_60'),
-                     ('compute_61', 'sm_61'),
-                     ('compute_70', 'sm_70'),
-                     'compute_70']
+    if envcfg == 'current' and build.get_compute_capabilities() is not None:
+        ccs = build.get_compute_capabilities()
+        arch_list = [
+            f'compute_{cc}' if cc < 60 else (f'compute_{cc}', f'sm_{cc}')
+            for cc in ccs]
     else:
-        # This should not happen.
-        assert False
+        # The arch_list specifies virtual architectures, such as 'compute_61',
+        # and real architectures, such as 'sm_61', for which the CUDA
+        # input files are to be compiled.
+        #
+        # The syntax of an entry of the list is
+        #
+        #     entry ::= virtual_arch | (virtual_arch, real_arch)
+        #
+        # where virtual_arch is a string which means a virtual architecture and
+        # real_arch is a string which means a real architecture.
+        #
+        # If a virtual architecture is supplied, NVCC generates a PTX code
+        # the virtual architecture. If a pair of a virtual architecture and a
+        # real architecture is supplied, NVCC generates a PTX code for the
+        # virtual architecture as well as a cubin code for the real one.
+        #
+        # For example, making NVCC generate a PTX code for 'compute_60' virtual
+        # architecture, the arch_list has an entry of 'compute_60'.
+        #
+        #     arch_list = ['compute_60']
+        #
+        # For another, making NVCC generate a PTX code for 'compute_61' virtual
+        # architecture and a cubin code for 'sm_61' real architecture, the
+        # arch_list has an entry of ('compute_61', 'sm_61').
+        #
+        #     arch_list = [('compute_61', 'sm_61')]
+        #
+        # See the documentation of each CUDA version for the list of supported
+        # architectures:
+        #
+        #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
+
+        if cuda_version >= 11000:
+            arch_list = ['compute_35',
+                         'compute_50',
+                         ('compute_60', 'sm_60'),
+                         ('compute_61', 'sm_61'),
+                         ('compute_70', 'sm_70'),
+                         ('compute_75', 'sm_75'),
+                         ('compute_80', 'sm_80'),
+                         'compute_80']
+        elif cuda_version >= 10000:
+            arch_list = ['compute_30',
+                         'compute_50',
+                         ('compute_60', 'sm_60'),
+                         ('compute_61', 'sm_61'),
+                         ('compute_70', 'sm_70'),
+                         ('compute_75', 'sm_75'),
+                         'compute_70']
+        elif cuda_version >= 9000:
+            arch_list = ['compute_30',
+                         'compute_50',
+                         ('compute_60', 'sm_60'),
+                         ('compute_61', 'sm_61'),
+                         ('compute_70', 'sm_70'),
+                         'compute_70']
+        else:
+            # This should not happen.
+            assert False
 
     options = []
     for arch in arch_list:
@@ -899,7 +931,12 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         if use_hip:
             return self._comiple_unix_hipcc(
                 obj, src, ext, cc_args, extra_postargs, pp_opts)
+        else:
+            return self._comiple_unix_nvcc(
+                obj, src, ext, cc_args, extra_postargs, pp_opts)
 
+    def _comiple_unix_nvcc(self,
+                           obj, src, ext, cc_args, extra_postargs, pp_opts):
         # For CUDA C source files, compile them with NVCC.
         _compiler_so = self.compiler_so
         try:
@@ -922,9 +959,9 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         # For CUDA C source files, compile them with HIPCC.
         _compiler_so = self.compiler_so
         try:
-            rcom_path = build.get_hipcc_path()
+            rocm_path = build.get_hipcc_path()
             base_opts = build.get_compiler_base_options()
-            self.set_executable('compiler_so', rcom_path)
+            self.set_executable('compiler_so', rocm_path)
 
             postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
             print('HIPCC options:', postargs)
@@ -938,13 +975,13 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         use_hipcc = False
         if use_hip:
             for i in objects:
-                if 'cupy_thrust.o' in i:
+                if any([obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')]):
                     use_hipcc = True
         if use_hipcc:
             _compiler_cxx = self.compiler_cxx
             try:
-                rcom_path = build.get_hipcc_path()
-                self.set_executable('compiler_cxx', rcom_path)
+                rocm_path = build.get_hipcc_path()
+                self.set_executable('compiler_cxx', rocm_path)
 
                 return unixccompiler.UnixCCompiler.link(
                     self, target_desc, objects, output_filename, *args)
@@ -1049,3 +1086,8 @@ class custom_build_ext(build_ext.build_ext):
             cythonize(ext_modules, cupy_setup_options)
         check_extensions(self.extensions)
         build_ext.build_ext.run(self)
+
+    def build_extensions(self):
+        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
+        self.parallel = num_jobs
+        super().build_extensions()

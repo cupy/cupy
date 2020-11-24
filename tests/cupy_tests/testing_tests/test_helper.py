@@ -20,21 +20,21 @@ class TestContainsSignedAndUnsigned(unittest.TestCase):
 
     def test_include(self):
         kw = {'x': numpy.int32, 'y': numpy.uint32}
-        self.assertTrue(helper._contains_signed_and_unsigned(kw))
+        assert helper._contains_signed_and_unsigned(kw)
 
         kw = {'x': numpy.float32, 'y': numpy.uint32}
-        self.assertTrue(helper._contains_signed_and_unsigned(kw))
+        assert helper._contains_signed_and_unsigned(kw)
 
     def test_signed_only(self):
         kw = {'x': numpy.int32}
-        self.assertFalse(helper._contains_signed_and_unsigned(kw))
+        assert not helper._contains_signed_and_unsigned(kw)
 
         kw = {'x': numpy.float}
-        self.assertFalse(helper._contains_signed_and_unsigned(kw))
+        assert not helper._contains_signed_and_unsigned(kw)
 
     def test_unsigned_only(self):
         kw = {'x': numpy.uint32}
-        self.assertFalse(helper._contains_signed_and_unsigned(kw))
+        assert not helper._contains_signed_and_unsigned(kw)
 
 
 class NumPyCuPyDecoratorBase(object):
@@ -185,25 +185,25 @@ class TestShapedRandom(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_shape_and_dtype(self, dtype):
         a = testing.shaped_random(self.shape, self.xp, dtype)
-        self.assertIsInstance(a, self.xp.ndarray)
-        self.assertTrue(a.shape == self.shape)
-        self.assertTrue(a.dtype == dtype)
+        assert isinstance(a, self.xp.ndarray)
+        assert a.shape == self.shape
+        assert a.dtype == dtype
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     def test_value_range(self, dtype):
         a = testing.shaped_random(self.shape, self.xp, dtype)
-        self.assertTrue(self.xp.all(0 <= a))
-        self.assertTrue(self.xp.all(a < 10))
+        assert self.xp.all(0 <= a)
+        assert self.xp.all(a < 10)
 
     @testing.for_complex_dtypes()
     def test_complex(self, dtype):
         a = testing.shaped_random(self.shape, self.xp, dtype)
-        self.assertTrue(self.xp.all(0 <= a.real))
-        self.assertTrue(self.xp.all(a.real < 10))
-        self.assertTrue(self.xp.all(0 <= a.imag))
-        self.assertTrue(self.xp.all(a.imag < 10))
+        assert self.xp.all(0 <= a.real)
+        assert self.xp.all(a.real < 10)
+        assert self.xp.all(0 <= a.imag)
+        assert self.xp.all(a.imag < 10)
         if 0 not in self.shape:
-            self.assertTrue(self.xp.any(a.imag))
+            assert self.xp.any(a.imag)
 
 
 @testing.parameterize(*testing.product({
@@ -214,7 +214,7 @@ class TestShapedRandomBool(unittest.TestCase):
 
     def test_bool(self):
         a = testing.shaped_random(10000, self.xp, numpy.bool_)
-        self.assertTrue(4000 < self.xp.sum(a) < 6000)
+        assert 4000 < self.xp.sum(a) < 6000
 
 
 @testing.parameterize(*testing.product({
@@ -288,6 +288,54 @@ class TestGenerateMatrixInvalid(unittest.TestCase):
         with self.assertRaises(numpy.linalg.LinAlgError):
             testing.generate_matrix(
                 (0, 2, 2), singular_values=numpy.ones(3))
+
+
+class TestAssertFunctionIsCalled(unittest.TestCase):
+
+    def test_patch_ndarray(self):
+        orig = cupy.ndarray
+        with testing.AssertFunctionIsCalled('cupy.ndarray'):
+            a = cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+        assert not isinstance(a, cupy.ndarray)
+
+    def test_spy_ndarray(self):
+        orig = cupy.ndarray
+        with testing.AssertFunctionIsCalled(
+                'cupy.ndarray', wraps=cupy.ndarray):
+            a = cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+        assert isinstance(a, cupy.ndarray)
+
+    def test_fail_not_called(self):
+        orig = cupy.ndarray
+        with pytest.raises(AssertionError):
+            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+                pass
+        assert cupy.ndarray is orig
+
+    def test_fail_called_twice(self):
+        orig = cupy.ndarray
+        with pytest.raises(AssertionError):
+            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+                cupy.ndarray((2, 3), numpy.float32)
+                cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+
+    def test_times_called(self):
+        orig = cupy.ndarray
+        with testing.AssertFunctionIsCalled('cupy.ndarray', times_called=2):
+            cupy.ndarray((2, 3), numpy.float32)
+            cupy.ndarray((2, 3), numpy.float32)
+        assert cupy.ndarray is orig
+
+    def test_inner_error(self):
+        orig = cupy.ndarray
+        with pytest.raises(numpy.AxisError):
+            with testing.AssertFunctionIsCalled('cupy.ndarray'):
+                cupy.ndarray((2, 3), numpy.float32)
+                raise numpy.AxisError('foo')
+        assert cupy.ndarray is orig
 
 
 @testing.parameterize(*testing.product({

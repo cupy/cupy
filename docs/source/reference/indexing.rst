@@ -20,6 +20,8 @@ Indexing Routines
    cupy.choose
    cupy.compress
    cupy.diag
+   cupy.diag_indices
+   cupy.diag_indices_from
    cupy.diagonal
    cupy.extract
    cupy.select

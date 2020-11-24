@@ -39,7 +39,7 @@ class TestMapCoordinates(unittest.TestCase):
             return_value = map_coordinates(a, coordinates, output, self.order,
                                            self.mode, self.cval,
                                            self.prefilter)
-            self.assertTrue(return_value is None or return_value is output)
+            assert return_value is None or return_value is output
             return output
         else:
             return map_coordinates(a, coordinates, self.output, self.order,
@@ -119,7 +119,7 @@ class TestAffineTransform(unittest.TestCase):
                                             self.output_shape, output,
                                             self.order, self.mode, self.cval,
                                             self.prefilter)
-            self.assertTrue(return_value is None or return_value is output)
+            assert return_value is None or return_value is output
             return output
         else:
             return affine_transform(a, matrix, self.offset, self.output_shape,
@@ -233,7 +233,7 @@ class TestRotate(unittest.TestCase):
             return_value = rotate(a, self.angle, self.axes,
                                   self.reshape, output, self.order,
                                   self.mode, self.cval, self.prefilter)
-            self.assertTrue(return_value is None or return_value is output)
+            assert return_value is None or return_value is output
             return output
         else:
             return rotate(a, self.angle, self.axes,
@@ -353,7 +353,7 @@ class TestShift(unittest.TestCase):
             output = xp.empty_like(a)
             return_value = shift(a, self.shift, output, self.order,
                                  self.mode, self.cval, self.prefilter)
-            self.assertTrue(return_value is None or return_value is output)
+            assert return_value is None or return_value is output
             return output
         else:
             return shift(a, self.shift, self.output, self.order,
@@ -520,7 +520,7 @@ class TestZoom(unittest.TestCase):
                           self.mode, self.cval, self.prefilter)
             return_value = zoom(a, self.zoom, output, self.order,
                                 self.mode, self.cval, self.prefilter)
-            self.assertTrue(return_value is None or return_value is output)
+            assert return_value is None or return_value is output
             return output
         else:
             return zoom(a, self.zoom, self.output, self.order,
@@ -576,3 +576,66 @@ class TestZoomOpenCV(unittest.TestCase):
         else:
             output_shape = numpy.rint(numpy.multiply(a.shape, self.zoom))
             return cv2.resize(a, tuple(output_shape.astype(int)))
+
+
+@testing.parameterize(*testing.product({
+    'mode': ['mirror', 'wrap', 'reflect'],
+    'order': [0, 1, 2, 3, 4, 5],
+    'dtype': [numpy.uint8, numpy.float64],
+    'output': [numpy.float64, numpy.float32],
+    'axis': [0, 1, 2, -1],
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestSplineFilter1d(unittest.TestCase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_spline_filter1d(self, xp, scp):
+        x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
+        return scp.ndimage.spline_filter1d(x, order=self.order, axis=self.axis,
+                                           output=self.output, mode=self.mode)
+
+    @testing.for_CF_orders(name='array_order')
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_spline_filter1d_output(self, xp, scp, array_order):
+        x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp,
+                                  order=array_order)
+        output = xp.empty(x.shape, dtype=self.output, order=array_order)
+        scp.ndimage.spline_filter1d(x, order=self.order, axis=self.axis,
+                                    output=output, mode=self.mode)
+        return output
+
+
+@testing.parameterize(*testing.product({
+    'mode': ['mirror', 'wrap', 'reflect'],
+    'order': [0, 1, 2, 3, 4, 5],
+    'dtype': [numpy.uint8, numpy.float64],
+    'output': [numpy.float64, numpy.float32],
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestSplineFilter(unittest.TestCase):
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
+    def test_spline_filter(self, xp, scp):
+        x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
+        if self.order < 2:
+            with pytest.raises(RuntimeError):
+                scp.ndimage.spline_filter(x, order=self.order,
+                                          output=self.output, mode=self.mode)
+            return xp.asarray([])
+        return scp.ndimage.spline_filter(x, order=self.order,
+                                         output=self.output, mode=self.mode)
+
+    @testing.for_CF_orders(name='array_order')
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
+    def test_spline_filter_with_output(self, xp, scp, array_order):
+        x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp,
+                                  order=array_order)
+        output = xp.empty(x.shape, dtype=self.output, order=array_order)
+        if self.order < 2:
+            with pytest.raises(RuntimeError):
+                scp.ndimage.spline_filter(x, order=self.order, output=output,
+                                          mode=self.mode)
+            return xp.asarray([])
+        scp.ndimage.spline_filter(x, order=self.order, output=output,
+                                  mode=self.mode)
+        return output

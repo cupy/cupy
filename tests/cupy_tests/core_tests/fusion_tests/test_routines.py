@@ -128,7 +128,7 @@ class TestFusionTrigonometricUnary(unittest.TestCase):
     @fusion_utils.check_fusion()
     def test_trigonometric(self, xp, dtype):
         def impl(x):
-            with testing.NumpyError(divide='ignore', invalid='ignore'):
+            with numpy.errstate(divide='ignore', invalid='ignore'):
                 return getattr(xp, self.func)(x)
         return impl
 

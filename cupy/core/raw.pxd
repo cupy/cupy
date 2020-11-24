@@ -10,6 +10,7 @@ cdef class RawKernel:
         object log_stream
         tuple name_expressions
         bint translate_cucomplex
+        bint jitify
         list _kernel_cache
         readonly str __name__
         int raw_ver
@@ -26,3 +27,4 @@ cdef class RawModule:
         readonly tuple name_expressions
         object log_stream
         bint translate_cucomplex
+        bint jitify

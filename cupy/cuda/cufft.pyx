@@ -2,6 +2,7 @@ cimport cython  # NOQA
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.string cimport memset as c_memset
 from libcpp cimport vector
+
 import numpy
 import threading
 
@@ -108,6 +109,14 @@ cdef extern from 'cupy_cufft.h' nogil:
                                     XtArray* odata, int direction)
 
 
+IF CUPY_CUFFT_STATIC:
+    # cuFFT callback
+    cdef extern from 'cupy_cufftXt.h' nogil:
+        ctypedef enum callbackType 'cufftXtCallbackType':
+            pass
+        Result set_callback(Handle, callbackType, bint, void**)
+
+
 cdef dict RESULT = {
     0: 'CUFFT_SUCCESS',
     1: 'CUFFT_INVALID_PLAN',
@@ -145,7 +154,7 @@ cpdef inline void check_result(int result) except *:
         raise CuFFTError(result)
 
 
-cpdef size_t getVersion() except? -1:
+cpdef int getVersion() except? -1:
     cdef int version, result
     result = cufftGetVersion(&version)
     check_result(result)
@@ -940,3 +949,23 @@ cpdef multi_gpu_execZ2Z(intptr_t plan, intptr_t idata, intptr_t odata,
         result = cufftXtExecDescriptorZ2Z(h, <XtArray*>idata,
                                           <XtArray*>odata, direction)
     check_result(result)
+
+
+cpdef intptr_t setCallback(
+        intptr_t plan, int cb_type, bint is_load, intptr_t aux_arr=0):
+    cdef Handle h = <Handle>plan
+    cdef int result
+    cdef void** callerInfo
+
+    IF CUPY_CUFFT_STATIC:
+        with nogil:
+            if aux_arr > 0:
+                callerInfo = (<void**>(&aux_arr))
+            else:
+                callerInfo = NULL
+            result = set_callback(
+                h, <callbackType>cb_type, is_load, callerInfo)
+        check_result(result)
+    ELSE:
+        raise RuntimeError('cuFFT is dynamically linked and thus does not '
+                           'support callback')

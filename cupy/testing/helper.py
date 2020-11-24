@@ -214,6 +214,16 @@ def _contains_signed_and_unsigned(kw):
         any(d in vs for d in _float_dtypes + _signed_dtypes)
 
 
+def _wraps_partial(wrapped, *names):
+    # Only `wrapped` function have args of `names`.
+    def decorator(impl):
+        impl = functools.wraps(wrapped)(impl)
+        impl.__signature__ = inspect.signature(
+            functools.partial(wrapped, **{name: None for name in names}))
+        return impl
+    return decorator
+
+
 def _make_decorator(check_func, name, type_check, contiguous_check,
                     accept_error, sp_name=None, scipy_name=None,
                     check_sparse_format=True):
@@ -222,7 +232,7 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
     assert scipy_name is None or isinstance(scipy_name, str)
 
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
@@ -652,7 +662,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
     even if ``xp`` is ``numpy`` or ``cupy``.
     """
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
@@ -660,6 +670,12 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
                 numpy_result, numpy_error, numpy_tb) = (
                     _call_func_numpy_cupy(
                         self, impl, args, kw, name, sp_name, scipy_name))
+
+            if cupy_error or numpy_error:
+                _check_cupy_numpy_error(
+                    self, cupy_error, cupy_tb, numpy_error, numpy_tb,
+                    accept_error=False)
+                return
 
             if cupy_result != numpy_result:
                 message = '''Results are not equal:
@@ -698,7 +714,7 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
         DeprecationWarning)
 
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
@@ -727,7 +743,7 @@ def for_dtypes(dtypes, name='dtype'):
     argument.
     """
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             for dtype in dtypes:
                 try:
@@ -968,7 +984,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
         combination = [dict(assoc_list) for assoc_list in set(combination)]
 
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, *names)
         def test_func(self, *args, **kw):
             for dtypes in combination:
                 kw_copy = kw.copy()
@@ -1077,7 +1093,7 @@ def for_orders(orders, name='order'):
 
     """
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             for order in orders:
                 try:
@@ -1116,7 +1132,7 @@ def for_contiguous_axes(name='axis'):
             ``[(0,), (0, 1), (0, 1, 2)]`` for the F order.
     '''
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             ndim = len(self.shape)
             order = self.order
@@ -1361,19 +1377,6 @@ def generate_matrix(
     return a.astype(dtype)
 
 
-class NumpyError(object):
-
-    def __init__(self, **kw):
-        self.kw = kw
-
-    def __enter__(self):
-        self.err = numpy.geterr()
-        numpy.seterr(**self.kw)
-
-    def __exit__(self, *_):
-        numpy.seterr(**self.err)
-
-
 @contextlib.contextmanager
 def assert_warns(expected):
     with warnings.catch_warnings(record=True) as w:
@@ -1427,31 +1430,21 @@ class NumpyAliasValuesTestBase(NumpyAliasTestBase):
         assert self.cupy_func(*self.args) == self.numpy_func(*self.args)
 
 
-class AssertFunctionIsCalled:
+@contextlib.contextmanager
+def assert_function_is_called(*args, times_called=1, **kwargs):
+    """A handy wrapper for unittest.mock to check if a function is called.
 
-    def __init__(self, mock_mod, **kwargs):
-        """A handy wrapper for unittest.mock to check if a function is called.
+    Args:
+        *args: Arguments of `mock.patch`.
+        times_called (int): The number of times the function should be
+            called. Default is ``1``.
+        **kwargs: Keyword arguments of `mock.patch`.
 
-        This class should be used as a context manager.
+    """
+    with mock.patch(*args, **kwargs) as handle:
+        yield
+        assert handle.call_count == times_called
 
-        Args:
-            mock_mod (str): the function to be mocked.
-            times_called (int): the number of times the function should be
-                called. Default is ``1``.
 
-        """
-
-        self.patch = mock.patch(mock_mod, **kwargs)
-
-        times_called = kwargs.get('times_called')
-        self.times_called = times_called if times_called is not None else 1
-
-    def __enter__(self):
-        self.handle = self.patch.__enter__()
-        assert self.handle.call_count == 0
-        return self.handle
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        assert self.handle.call_count == int(self.times_called)
-        del self.handle
-        return self.patch.__exit__(exc_type, exc_value, traceback)
+# TODO(kataoka): remove this alias
+AssertFunctionIsCalled = assert_function_is_called

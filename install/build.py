@@ -284,6 +284,8 @@ _nccl_version = None
 _cutensor_version = None
 _cub_path = None
 _cub_version = None
+_jitify_version = None
+_compute_capabilities = None
 
 
 def check_cuda_version(compiler, settings):
@@ -326,6 +328,41 @@ def get_cuda_version(formatted=False):
     if formatted:
         return _format_cuda_version(_cuda_version)
     return _cuda_version
+
+
+def check_compute_capabilities(compiler, settings):
+    """Return compute capabilities of the installed devices."""
+    global _compute_capabilities
+    try:
+        src = '''#include <cuda_runtime_api.h>
+        #include <stdio.h>
+        int main() {
+          cudaDeviceProp prop;
+          int device_count;
+          int i;
+          cudaGetDeviceCount(&device_count);
+          for(i=0; i < device_count; i++) {
+              cudaGetDeviceProperties(&prop, i);
+              printf("%d%d ", prop.major,prop.minor);
+          }
+          return 0;
+        }
+        '''
+        out = build_and_run(
+            compiler, src,
+            include_dirs=settings['include_dirs'],
+            libraries=('cudart',),
+            library_dirs=settings['library_dirs'])
+        _compute_capabilities = set([int(o) for o in out.split()])
+    except Exception as e:
+        utils.print_warning('Cannot check cuDNN version\n{0}'.format(e))
+        return False
+
+    return True
+
+
+def get_compute_capabilities(formatted=False):
+    return _compute_capabilities
 
 
 def check_thrust_version(compiler, settings):
@@ -548,6 +585,45 @@ def get_cub_version(formatted=False):
             return '<unknown>'
         return str(_cub_version)
     return _cub_version
+
+
+def check_jitify_version(compiler, settings):
+    global _jitify_version
+
+    try:
+        # CuPy's bundle: by the time we arrive here, _cub_path is known
+        cupy_jitify_include = os.path.join(_cub_path, '../jitify')
+        # Unfortunately Jitify does not have any identifiable name (branch,
+        # tag, etc), so we must use the commit here
+        a = subprocess.run(' '.join(['git', 'rev-parse', '--short', 'HEAD']),
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           shell=True, cwd=cupy_jitify_include)
+        if a.returncode == 0:
+            out = a.stdout.decode()[:-1]  # unlike elsewhere, out is a str here
+        else:
+            raise RuntimeError('Cannot determine Jitify version from git')
+    except Exception as e:
+        utils.print_warning('Cannot determine Jitify version\n{}'.format(e))
+        # 0: Jitify is not built (makes no sense), -1: built with unknown ver
+        out = -1
+
+    _jitify_version = out
+    settings['define_macros'].append(('CUPY_JITIFY_VERSION_CODE',
+                                      _jitify_version))
+    return True  # we always build Jitify
+
+
+def get_jitify_version(formatted=False):
+    """Return Jitify version cached in check_jitify_version()."""
+    global _jitify_version
+    if _jitify_version is None:
+        msg = 'check_jitify_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        if _jitify_version == -1:
+            return '<unknown>'
+        return _jitify_version
+    raise RuntimeError('Jitify version is a commit string')
 
 
 def check_cutensor_version(compiler, settings):
