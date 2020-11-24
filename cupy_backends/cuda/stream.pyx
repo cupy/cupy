@@ -52,4 +52,4 @@ cdef set_current_stream_ptr(intptr_t ptr):
     tls.set_current_stream_ptr(ptr)
 
 cdef bint is_ptds_enabled():
-    return bool(int(os.environ.get('CUPY_CUDA_PTDS', '0')) != 0)
+    return bool(int(os.environ.get('CUPY_CUDA_PER_THREAD_DEFAULT_STREAM', '0')) != 0)
