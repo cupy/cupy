@@ -510,7 +510,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
                 dtype = numpy.dtype('L')
             else:
                 dtype = a.dtype
-        result = a.astype(dtype=dtype)
+        result = None
     else:
         if (out.flags.c_contiguous or out.flags.f_contiguous):
             result = out
@@ -519,9 +519,10 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
         result[...] = a
 
     if axis is None:
-        result = result.ravel()
         for accelerator in _accelerator._routine_accelerators:
             if accelerator == _accelerator.ACCELERATOR_CUB:
+                if result is None:
+                    result = a.astype(dtype=dtype).ravel()
                 # result will be None if the scan is not compatible with CUB
                 if op == scan_op.SCAN_SUM:
                     cub_op = cub.CUPY_CUB_CUMSUM
@@ -531,8 +532,13 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
                 if res is not None:
                     break
         else:
-            scan(result, op, dtype, result)
+            if result is None:
+                result = scan(a.ravel(), op, dtype=dtype)
+            else:
+                scan(result, op, dtype=dtype, out=result)
     else:
+        if result is None:
+            result = a.astype(dtype=dtype)
         axis = internal._normalize_axis_index(axis, a.ndim)
         result = _proc_as_batch(result, axis, dtype, op)
     # This is for when the original out param was not contiguous
