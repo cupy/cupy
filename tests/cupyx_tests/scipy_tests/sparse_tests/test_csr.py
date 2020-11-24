@@ -926,7 +926,7 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         # this test is adopted from SciPy's
         M = sp.csr_matrix((xp.array([2], dtype=self.dtype),
                            xp.array([0]), xp.array([0, 1])))
-        assert M.has_canonical_format
+        assert M.has_canonical_format is True
         return M
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -937,11 +937,11 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         indptr = xp.array([0, 2])
 
         M = sp.csr_matrix((data, indices, indptr))
-        assert not M.has_canonical_format
+        assert M.has_canonical_format is False
 
         # set by deduplicating
         M.sum_duplicates()
-        assert M.has_canonical_format
+        assert M.has_canonical_format is True
         assert 1 == len(M.indices)
         return M
 

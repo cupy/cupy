@@ -188,7 +188,7 @@ class TestCooMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
     def test_has_canonical_format(self):
-        assert not self.m.has_canonical_format
+        assert self.m.has_canonical_format is False
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_get(self):
