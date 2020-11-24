@@ -154,7 +154,7 @@ __device__ uint64_t rk_interval_64(rk_state* state, uint64_t  mx, uint64_t mask)
 struct exponential_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
-        return rk_standard_exponential(std::forward<Args>(args)...);
+        return rk_standard_exponential(args...);
     }
 };
 
