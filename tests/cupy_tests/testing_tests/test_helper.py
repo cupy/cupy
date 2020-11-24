@@ -165,6 +165,10 @@ class TestNumPyCuPyAllCloseTolPerDtype(unittest.TestCase):
     def test_rtol_fail(self, xp, dtype):
         return self._test_rtol(xp, dtype)
 
+    def test_rtol_invalid_key(self):
+        with self.assertRaises(TypeError):
+            helper.numpy_cupy_allclose(rtol={'float16': 1e-3})
+
     def _test_atol(self, xp, dtype):
         if xp is numpy:
             return numpy.array(0, dtype=dtype)
@@ -182,6 +186,10 @@ class TestNumPyCuPyAllCloseTolPerDtype(unittest.TestCase):
     @helper.numpy_cupy_allclose(atol=1e-6)
     def test_atol_fail(self, xp, dtype):
         return self._test_atol(xp, dtype)
+
+    def test_atol_invalid_key(self):
+        with self.assertRaises(TypeError):
+            helper.numpy_cupy_allclose(atol={'float16': 1e-3})
 
 
 class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):

@@ -352,6 +352,22 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
             type(c_out), type(n_out)))
 
 
+def _check_tolerance_keys(rtol, atol):
+    def _check(tol):
+        if isinstance(tol, dict):
+            for k in tol.keys():
+                if type(k) is type:
+                    continue
+                if type(k) is str and k == 'default':
+                    continue
+                msg = ('Keys of the tolerance dictionary need to be type '
+                       'objects as `numpy.float32` and `cupy.float32` or '
+                       '`\'default\'` string.')
+                raise TypeError(msg)
+    _check(rtol)
+    _check(atol)
+
+
 def _resolve_tolerance(type_check, result, rtol, atol):
     def _resolve(dtype, tol):
         if isinstance(tol, dict):
@@ -435,6 +451,8 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
+    _check_tolerance_keys(rtol, atol)
+
     def check_func(c, n):
         rtol1, atol1 = _resolve_tolerance(type_check, c, rtol, atol)
         array.assert_allclose(c, n, rtol1, atol1, err_msg, verbose)
