@@ -161,28 +161,28 @@ struct exponential_functor {
 struct raw_functor {
     template<typename... Args>
     __device__ int32_t operator () (Args&&... args) {
-        return rk_raw(std::forward<Args>(args)...);
+        return rk_raw(args...);
     }
 };
 
 struct interval_32_functor {
     template<typename... Args>
     __device__ uint32_t operator () (Args&&... args) {
-        return rk_interval_32(std::forward<Args>(args)...);
+        return rk_interval_32(args...);
     }
 };
 
 struct interval_64_functor {
     template<typename... Args>
     __device__ uint64_t operator () (Args&&... args) {
-        return rk_interval_64(std::forward<Args>(args)...);
+        return rk_interval_64(args...);
     }
 };
 
 struct beta_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
-        return rk_beta(std::forward<Args>(args)...);
+        return rk_beta(args...);
     }
 };
 
