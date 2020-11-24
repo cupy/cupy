@@ -17,6 +17,7 @@ from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
+from cupy_backends.cuda.api cimport runtime
 
 from cupy.cuda import cub
 
@@ -527,7 +528,8 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
 
     cdef int src_cont = int(a._c_contiguous)
     cdef int out_cont = int(out._c_contiguous)
-    if numpy.dtype(dtype).char in 'iIlLfd':
+    if (numpy.dtype(dtype).char in 'iIlLqQfd' and
+            not runtime._is_hip_environment):
         kern_scan = _inclusive_scan_kernel_shfl(a.dtype, dtype, block_size, op,
                                                 src_cont, out_cont)
     else:
