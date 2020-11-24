@@ -400,17 +400,15 @@ class TestCg(unittest.TestCase):
             sp.linalg.cg(ng_a, b, atol=self.atol)
 
 
+@testing.parameterize(*testing.product({
+    'n': [10, 30, 100, 300, 1000],
+    'dtype': [cp.float32, cp.float64, cp.complex_]
+}))
 @testing.gpu
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestLinearOperator(unittest.TestCase):
-    n = 300  # square matrix for simplicity
     density = 0.33
     _tol = {'f': 1e-5, 'd': 1e-12}
-
-    # overriding default constructor
-    def __init__(self, *args):
-        super(TestLinearOperator, self).__init__(*args)
-        self._make_cases()
 
     # class that defines parametrized custom cases
     # adapted from scipy's analogous tests
@@ -473,22 +471,24 @@ class TestLinearOperator(unittest.TestCase):
 
     def _make_cases(self):
         self.cases = []
-        original = cp.array([[1., 2., 3.], [4., 5., 6.]])
-        self.cases += self._define_cases(original, cp.float32)
-        self.cases += self._define_cases(original, cp.float64)
-        self.cases += [(interface.aslinearoperator(M).T, A.T)
-                       for M, A in self._define_cases(original.T, cp.float64)]
-        self.cases += [(interface.aslinearoperator(M).H, A.T.conj())
-                       for M, A in self._define_cases(original.T, cp.float64)]
+        if(self.dtype != cp.complex_):
+            original = cp.array([[1., 2., 3.], [4., 5., 6.]])
+            self.cases += self._define_cases(original, self.dtype)
+            self.cases += [(interface.aslinearoperator(M).T, A.T)
+                        for M, A in self._define_cases(original.T, self.dtype)]
+            self.cases += [(interface.aslinearoperator(M).H, A.T.conj())
+                        for M, A in self._define_cases(original.T, self.dtype)]
 
-        original = cp.array([[1, 2j, 3j], [4j, 5j, 6]])
-        self.cases += self._define_cases(original, cp.complex_)
-        self.cases += [(interface.aslinearoperator(M).T, A.T)
-                       for M, A in self._define_cases(original.T, cp.complex_)]
-        self.cases += [(interface.aslinearoperator(M).H, A.T.conj())
-                       for M, A in self._define_cases(original.T, cp.complex_)]
+        else:
+            original = cp.array([[1, 2j, 3j], [4j, 5j, 6]])
+            self.cases += self._define_cases(original, self.dtype)
+            self.cases += [(interface.aslinearoperator(M).T, A.T)
+                        for M, A in self._define_cases(original.T, self.dtype)]
+            self.cases += [(interface.aslinearoperator(M).H, A.T.conj())
+                        for M, A in self._define_cases(original.T, self.dtype)]
 
     def test_basic(self):
+        self._make_cases()
         for M, A_array in self.cases:
             A = interface.aslinearoperator(M)
             M, N = A.shape
@@ -533,7 +533,7 @@ class TestLinearOperator(unittest.TestCase):
             assert(hasattr(A, 'args'))
 
     def test_dot(self):
-
+        self._make_cases()
         for M, A_array in self.cases:
             A = interface.aslinearoperator(M)
             M, N = A.shape
