@@ -7,4 +7,5 @@ from cupyx.scipy.sparse.linalg._solve import lsqr  # NOQA
 from cupyx.scipy.sparse.linalg._eigen import eigsh  # NOQA
 from cupyx.scipy.sparse.linalg._eigen import svds  # NOQA
 from cupyx.scipy.sparse.linalg._iterative import cg  # NOQA
-from cupyx.scipy.sparse.linalg.interface import *  # NOQA
+from cupyx.scipy.sparse.linalg.interface import LinearOperator  # NOQA
+from cupyx.scipy.sparse.linalg.interface import aslinearoperator  # NOQA
