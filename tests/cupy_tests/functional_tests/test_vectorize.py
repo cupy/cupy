@@ -256,6 +256,39 @@ class TestVectorizeInstructions(unittest.TestCase):
         return f(x)
 
 
+class _MyClass:
+
+    def __init__(self, x):
+        self.x = x
+
+
+class TestVectorizeConstants(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_const_value(self, xp):
+
+        def my_func(x1, x2):
+            return x1 - x2 + const
+
+        const = 8
+        f = xp.vectorize(my_func)
+        x1 = testing.shaped_random((20, 30), xp, xp.int64, seed=1)
+        x2 = testing.shaped_random((20, 30), xp, xp.int64, seed=2)
+        return f(x1, x2)
+
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_const_attr(self, xp):
+
+        def my_func(x1, x2):
+            return x1 - x2 + const.x
+
+        const = _MyClass(10)
+        f = xp.vectorize(my_func)
+        x1 = testing.shaped_random((20, 30), xp, xp.int64, seed=1)
+        x2 = testing.shaped_random((20, 30), xp, xp.int64, seed=2)
+        return f(x1, x2)
+
+
 class TestVectorize(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)

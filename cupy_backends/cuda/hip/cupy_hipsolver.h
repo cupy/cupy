@@ -872,6 +872,91 @@ cusolverStatus_t cusolverDnZgesvdaStridedBatched(...) {
     return rocblas_status_not_implemented;
 }
 
+cusolverStatus_t cusolverDnZZgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZCgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZYgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZKgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCCgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCYgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCKgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDDgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDSgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDXgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDHgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSSgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSXgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSHgels_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZZgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZCgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZYgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnZKgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCCgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCYgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnCKgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDDgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDSgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDXgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnDHgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSSgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSXgels(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnSHgels(...) {
+    return rocblas_status_not_implemented;
+}
+
 cusolverStatus_t cusolverDnSsyevd_bufferSize(...) {
     return rocblas_status_not_implemented;
 }
