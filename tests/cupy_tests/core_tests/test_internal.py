@@ -70,34 +70,34 @@ class TestVectorEqual(unittest.TestCase):
 class TestGetCContiguity(unittest.TestCase):
 
     def test_zero_in_shape(self):
-        assert internal.get_c_contiguity((1, 0, 1), (1, 1, 1), 3) is True
+        assert internal.get_c_contiguity((1, 0, 1), (1, 1, 1), 3)
 
     def test_all_one_shape(self):
-        assert internal.get_c_contiguity((1, 1, 1), (1, 1, 1), 3) is True
+        assert internal.get_c_contiguity((1, 1, 1), (1, 1, 1), 3)
 
     def test_normal1(self):
-        assert internal.get_c_contiguity((3, 4, 3), (24, 6, 2), 2) is True
+        assert internal.get_c_contiguity((3, 4, 3), (24, 6, 2), 2)
 
     def test_normal2(self):
-        assert internal.get_c_contiguity((3, 1, 3), (6, 100, 2), 2) is True
+        assert internal.get_c_contiguity((3, 1, 3), (6, 100, 2), 2)
 
     def test_normal3(self):
-        assert internal.get_c_contiguity((3,), (4, ), 4) is True
+        assert internal.get_c_contiguity((3,), (4, ), 4)
 
     def test_normal4(self):
-        assert internal.get_c_contiguity((), (), 4) is True
+        assert internal.get_c_contiguity((), (), 4)
 
     def test_normal5(self):
-        assert internal.get_c_contiguity((3, 1), (4, 8), 4) is True
+        assert internal.get_c_contiguity((3, 1), (4, 8), 4)
 
     def test_no_contiguous1(self):
-        assert internal.get_c_contiguity((3, 4, 3), (30, 6, 2), 2) is False
+        assert not internal.get_c_contiguity((3, 4, 3), (30, 6, 2), 2)
 
     def test_no_contiguous2(self):
-        assert internal.get_c_contiguity((3, 1, 3), (24, 6, 2), 2) is False
+        assert not internal.get_c_contiguity((3, 1, 3), (24, 6, 2), 2)
 
     def test_no_contiguous3(self):
-        assert internal.get_c_contiguity((3, 1, 3), (6, 6, 4), 2) is False
+        assert not internal.get_c_contiguity((3, 1, 3), (6, 6, 4), 2)
 
 
 class TestInferUnknownDimension(unittest.TestCase):

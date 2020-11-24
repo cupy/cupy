@@ -14,25 +14,25 @@ class TestArrayBoolOp(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_bool_empty(self, dtype):
         with testing.assert_warns(DeprecationWarning):
-            assert bool(cupy.array((), dtype=dtype)) is False
+            assert not bool(cupy.array((), dtype=dtype))
 
     def test_bool_scalar_bool(self):
-        assert bool(cupy.array(True, dtype=numpy.bool)) is True
-        assert bool(cupy.array(False, dtype=numpy.bool)) is False
+        assert bool(cupy.array(True, dtype=numpy.bool))
+        assert not bool(cupy.array(False, dtype=numpy.bool))
 
     @testing.for_all_dtypes()
     def test_bool_scalar(self, dtype):
-        assert bool(cupy.array(1, dtype=dtype)) is True
-        assert bool(cupy.array(0, dtype=dtype)) is False
+        assert bool(cupy.array(1, dtype=dtype))
+        assert not bool(cupy.array(0, dtype=dtype))
 
     def test_bool_one_element_bool(self):
-        assert bool(cupy.array([True], dtype=numpy.bool)) is True
-        assert bool(cupy.array([False], dtype=numpy.bool)) is False
+        assert bool(cupy.array([True], dtype=numpy.bool))
+        assert not bool(cupy.array([False], dtype=numpy.bool))
 
     @testing.for_all_dtypes()
     def test_bool_one_element(self, dtype):
-        assert bool(cupy.array([1], dtype=dtype)) is True
-        assert bool(cupy.array([0], dtype=dtype)) is False
+        assert bool(cupy.array([1], dtype=dtype))
+        assert not bool(cupy.array([0], dtype=dtype))
 
     @testing.for_all_dtypes()
     def test_bool_two_elements(self, dtype):
