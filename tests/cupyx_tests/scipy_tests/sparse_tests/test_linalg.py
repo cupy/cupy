@@ -1,4 +1,4 @@
-from cupyx.scipy.sparse.linalg import interface
+from cupyx.scipy.sparse.linalg import _interface as interface
 from functools import partial
 import cupy as cp
 import unittest
