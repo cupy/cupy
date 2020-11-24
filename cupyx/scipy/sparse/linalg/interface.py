@@ -1,47 +1,3 @@
-"""Abstract linear algebra library.
-
-This module defines a class hierarchy that implements a kind of "lazy"
-matrix representation, called the ``LinearOperator``. It can be used to do
-linear algebra with extremely large sparse or structured matrices, without
-representing those explicitly in memory. Such matrices can be added,
-multiplied, transposed, etc.
-
-As a motivating example, suppose you want have a matrix where almost all of
-the elements have the value one. The standard sparse matrix representation
-skips the storage of zeros, but not ones. By contrast, a LinearOperator is
-able to represent such matrices efficiently. First, we need a compact way to
-represent an all-ones matrix::
-
-
-Example:
-    >>> import cupy as cp
-    >>> class Ones(LinearOperator):
-    ...     def __init__(self, shape):
-    ...         super(Ones, self).__init__(dtype=None, shape=shape)
-    ...     def _matvec(self, x):
-    ...         return cp.repeat(x.sum(), self.shape[0])
-
-    Instances of this class emulate ``cp.ones(shape)``, but using a constant
-    amount of storage, independent of ``shape``. The ``_matvec`` method
-    specifies how this linear operator multiplies with (operates on) a vector.
-    We can now add this operator to a sparse matrix that stores only offsets
-    from one::
-
-    >>> from cupyx.scipy.sparse import csr_matrix
-    >>> offsets = csr_matrix(cupy.array([[1., 0., 2.], [0., -1., 0.],
-                                                       [0., 0., 3.]]))
-    >>> A = aslinearoperator(offsets) + Ones(offsets.shape)
-    >>> A.dot(cp.array([1., 2., 3.]))
-    array([13.,  4., 15.])
-
-    The result is the same as that given by its dense, explicitly-stored
-    counterpart::
-
-    >>> (cp.ones(A.shape, A.dtype) + offsets.toarray()).dot([1., 2., 3.])
-    array([13.,  4., 15.])
-
-"""
-
 import warnings
 
 import cupy as cp
@@ -68,37 +24,6 @@ class LinearOperator(object):
         args (tuple):  For linear operators describing products etc. of other
                         linear operators, the operands of the binary operation.
         ndim (int):  Number of dimensions (this is always 2)
-
-
-    Note:
-        The user-defined matvec() function must properly handle the case
-        where v has shape (N,) as well as the (N,1) case.  The shape of
-        the return type is handled internally by LinearOperator.
-
-        LinearOperator instances can also be multiplied, added with each
-        other and exponentiated, all lazily: the result of these operations
-        is always a new, composite LinearOperator, that defers linear
-        operations to the original operators and combines the results.
-
-        More details regarding how to subclass a LinearOperator and several
-        examples of concrete LinearOperator instances can be found in the
-        external project `PyLops <https://pylops.readthedocs.io>`_.
-
-
-    Examples:
-        >>> import cupy as cp
-        >>> from cupyx.scipy.sparse.linalg import LinearOperator
-        >>> def mv(v):
-        ...     return cp.array([2*v[0], 3*v[1]])
-        ...
-        >>> A = LinearOperator((2,2), matvec=mv)
-        >>> A
-        <2x2 _CustomLinearOperator with dtype=float64>
-        >>> A.matvec(cp.ones(2))
-        array([ 2.,  3.])
-        >>> A * cp.ones(2)
-        array([ 2.,  3.])
-
 
     .. seealso:: :class:`scipy.sparse.LinearOperator`
     """
@@ -720,20 +645,6 @@ def aslinearoperator(A):
      - An object with .shape and .matvec attributes
 
     See the LinearOperator documentation for additional information.
-
-
-    Note:
-        If 'A' has no .dtype attribute, the data type is determined by calling
-        :func:`LinearOperator.matvec()` - set the .dtype attribute to prevent
-        this call upon the linear operator creation.
-
-
-    Examples:
-        >>> from cupyx.scipy.sparse.linalg import aslinearoperator
-        >>> M = cp.array([[1,2,3],[4,5,6]], dtype=cp.int32)
-        >>> aslinearoperator(M)
-        <2x3 MatrixLinearOperator with dtype=int32>
-
 
     .. seealso:: :func:`scipy.sparse.aslinearoperator`
     """
