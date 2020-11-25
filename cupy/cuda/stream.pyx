@@ -224,6 +224,20 @@ class BaseStream(object):
 
         runtime.streamAddCallback(self.ptr, f, 0)
 
+    def launch_host_func(self, callback, arg):
+        """Launch a callback on host when all queued work is done.
+
+        Args:
+            callback (function): Callback function. It must take only one
+                argument (user data object), and returns nothing.
+            arg (object): Argument to the callback.
+
+        """
+        def f(dummy):
+            callback(arg)
+
+        runtime.launchHostFunc(self.ptr, f, 0)
+
     def record(self, event=None):
         """Records an event on the stream.
 
