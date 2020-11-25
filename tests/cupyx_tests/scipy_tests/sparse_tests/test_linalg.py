@@ -1,6 +1,6 @@
-from cupyx.scipy.sparse.linalg import _interface as interface
+from cupyx.scipy.sparse.linalg import _interface
 from functools import partial
-import cupy as cp
+import cupy
 import unittest
 
 import numpy
@@ -402,7 +402,7 @@ class TestCg(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'n': [10, 30, 100, 300, 1000],
-    'dtype': [cp.float32, cp.float64, cp.complex_]
+    'dtype': [cupy.float32, cupy.float64, cupy.complex_]
 }))
 @testing.gpu
 @unittest.skipUnless(scipy_available, 'requires scipy')
@@ -414,7 +414,7 @@ class TestLinearOperator(unittest.TestCase):
     # adapted from scipy's analogous tests
     def _define_cases(self, original, dtype):
         cases = []
-        cases.append((cp.array(original, dtype=dtype), original))
+        cases.append((cupy.array(original, dtype=dtype), original))
         cases.append((cupyx.scipy.sparse.csr_matrix(
             original, dtype=dtype), original))
 
@@ -429,11 +429,11 @@ class TestLinearOperator(unittest.TestCase):
         def rmv(x, dtype):
             return original.T.conj().dot(x)
 
-        class BaseMatlike(interface.LinearOperator):
+        class BaseMatlike(_interface.LinearOperator):
             args = ()
 
             def __init__(self, dtype):
-                self.dtype = cp.dtype(dtype)
+                self.dtype = cupy.dtype(dtype)
                 self.shape = original.shape
 
             def _matvec(self, x):
@@ -452,7 +452,7 @@ class TestLinearOperator(unittest.TestCase):
                 shape = self.shape[1], self.shape[0]
                 matvec = partial(rmv, dtype=self.dtype)
                 rmatvec = partial(mv, dtype=self.dtype)
-                return interface.LinearOperator(matvec=matvec,
+                return _interface.LinearOperator(matvec=matvec,
                                                 rmatvec=rmatvec,
                                                 dtype=self.dtype,
                                                 shape=shape)
@@ -471,84 +471,84 @@ class TestLinearOperator(unittest.TestCase):
 
     def _make_cases(self):
         self.cases = []
-        if(self.dtype != cp.complex_):
-            original = cp.array([[1., 2., 3.], [4., 5., 6.]])
+        if(self.dtype != cupy.complex_):
+            original = cupy.array([[1., 2., 3.], [4., 5., 6.]])
             self.cases += self._define_cases(original, self.dtype)
-            self.cases += [(interface.aslinearoperator(M).T, A.T)
+            self.cases += [(_interface.aslinearoperator(M).T, A.T)
                            for M, A in self._define_cases(original.T,
                                                           self.dtype)]
-            self.cases += [(interface.aslinearoperator(M).H, A.T.conj())
+            self.cases += [(_interface.aslinearoperator(M).H, A.T.conj())
                            for M, A in self._define_cases(original.T,
                                                           self.dtype)]
 
         else:
-            original = cp.array([[1, 2j, 3j], [4j, 5j, 6]])
+            original = cupy.array([[1, 2j, 3j], [4j, 5j, 6]])
             self.cases += self._define_cases(original, self.dtype)
-            self.cases += [(interface.aslinearoperator(M).T, A.T)
+            self.cases += [(_interface.aslinearoperator(M).T, A.T)
                            for M, A in self._define_cases(original.T,
                                                           self.dtype)]
-            self.cases += [(interface.aslinearoperator(M).H, A.T.conj())
+            self.cases += [(_interface.aslinearoperator(M).H, A.T.conj())
                            for M, A in self._define_cases(original.T,
                                                           self.dtype)]
 
     def test_basic(self):
         self._make_cases()
         for M, A_array in self.cases:
-            A = interface.aslinearoperator(M)
+            A = _interface.aslinearoperator(M)
             M, N = A.shape
 
-            xs = [cp.array([1, 2, 3]),
-                  cp.array([[1], [2], [3]])]
-            ys = [cp.array([1, 2]), cp.array([[1], [2]])]
+            xs = [cupy.array([1, 2, 3]),
+                  cupy.array([[1], [2], [3]])]
+            ys = [cupy.array([1, 2]), cupy.array([[1], [2]])]
 
-            if A.dtype == cp.complex_:
-                xs += [cp.array([1, 2j, 3j]),
-                       cp.array([[1], [2j], [3j]])]
-                ys += [cp.array([1, 2j]), cp.array([[1], [2j]])]
+            if A.dtype == cupy.complex_:
+                xs += [cupy.array([1, 2j, 3j]),
+                       cupy.array([[1], [2j], [3j]])]
+                ys += [cupy.array([1, 2j]), cupy.array([[1], [2j]])]
 
-            x2 = cp.array([[1, 4], [2, 5], [3, 6]])
+            x2 = cupy.array([[1, 4], [2, 5], [3, 6]])
 
             for x in xs:
-                cp.testing.assert_array_equal(A.matvec(x), A_array.dot(x))
-                cp.testing.assert_array_equal(A * x, A_array.dot(x))
+                cupy.testing.assert_array_equal(A.matvec(x), A_array.dot(x))
+                cupy.testing.assert_array_equal(A * x, A_array.dot(x))
 
-            cp.testing.assert_array_equal(A.matmat(x2), A_array.dot(x2))
-            cp.testing.assert_array_equal(A * x2, A_array.dot(x2))
+            cupy.testing.assert_array_equal(A.matmat(x2), A_array.dot(x2))
+            cupy.testing.assert_array_equal(A * x2, A_array.dot(x2))
 
             for y in ys:
-                cp.testing.assert_array_equal(
+                cupy.testing.assert_array_equal(
                     A.rmatvec(y), A_array.T.conj().dot(y))
-                cp.testing.assert_array_equal(A.T.matvec(y), A_array.T.dot(y))
-                cp.testing.assert_array_equal(
+                cupy.testing.assert_array_equal(A.T.matvec(y), A_array.T.dot(y))
+                cupy.testing.assert_array_equal(
                     A.H.matvec(y), A_array.T.conj().dot(y))
 
             for y in ys:
                 if y.ndim < 2:
                     continue
-                cp.testing.assert_array_equal(
+                cupy.testing.assert_array_equal(
                     A.rmatmat(y), A_array.T.conj().dot(y))
-                cp.testing.assert_array_equal(A.T.matmat(y), A_array.T.dot(y))
-                cp.testing.assert_array_equal(
+                cupy.testing.assert_array_equal(A.T.matmat(y), A_array.T.dot(y))
+                cupy.testing.assert_array_equal(
                     A.H.matmat(y), A_array.T.conj().dot(y))
 
             if hasattr(M, 'dtype'):
-                cp.testing.assert_array_equal(A.dtype, M.dtype)
+                cupy.testing.assert_array_equal(A.dtype, M.dtype)
 
             assert(hasattr(A, 'args'))
 
     def test_dot(self):
         self._make_cases()
         for M, A_array in self.cases:
-            A = interface.aslinearoperator(M)
+            A = _interface.aslinearoperator(M)
             M, N = A.shape
 
-            x0 = cp.array([1, 2, 3])
-            x1 = cp.array([[1], [2], [3]])
-            x2 = cp.array([[1, 4], [2, 5], [3, 6]])
+            x0 = cupy.array([1, 2, 3])
+            x1 = cupy.array([[1], [2], [3]])
+            x2 = cupy.array([[1, 4], [2, 5], [3, 6]])
 
-            cp.testing.assert_array_equal(A.dot(x0), A_array.dot(x0))
-            cp.testing.assert_array_equal(A.dot(x1), A_array.dot(x1))
-            cp.testing.assert_array_equal(A.dot(x2), A_array.dot(x2))
+            cupy.testing.assert_array_equal(A.dot(x0), A_array.dot(x0))
+            cupy.testing.assert_array_equal(A.dot(x1), A_array.dot(x1))
+            cupy.testing.assert_array_equal(A.dot(x2), A_array.dot(x2))
 
     # generate random matrix
     def _make_matrix(self, dtype, xp):

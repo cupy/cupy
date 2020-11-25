@@ -1,11 +1,9 @@
 import warnings
 
-import cupy as cp
+import cupy
 
-from cupyx.scipy.sparse import isspmatrix
-from cupyx.scipy.sparse._util import isshape, isintlike
-
-__all__ = ['LinearOperator', 'aslinearoperator']
+from cupyx.scipy import sparse
+from cupyx.scipy.sparse import _util
 
 
 class LinearOperator(object):
@@ -21,9 +19,6 @@ class LinearOperator(object):
         dtype (dtype):  Data type of the matrix.
         rmatmat (callable f(V)):  Returns ``A^H * V``, where ``V`` is a dense
                                   matrix with dimensions ``(M, K)``.
-        args (tuple):  For linear operators describing products etc. of other
-                        linear operators, the operands of the binary operation.
-        ndim (int):  Number of dimensions (this is always 2)
 
     .. seealso:: :class:`scipy.sparse.LinearOperator`
     """
@@ -46,16 +41,13 @@ class LinearOperator(object):
             return obj
 
     def __init__(self, dtype, shape):
-        """Initialize this LinearOperator.
-
-        To be called by subclasses. ``dtype`` may be None; ``shape`` should
-        be convertible to a length-2 tuple.
+        """Initialize this :class:`LinearOperator`.
         """
         if dtype is not None:
-            dtype = cp.dtype(dtype)
+            dtype = cupy.dtype(dtype)
 
         shape = tuple(shape)
-        if not isshape(shape):
+        if not _util.isshape(shape):
             raise ValueError('invalid shape %r (must be 2-d)' % (shape,))
 
         self.dtype = dtype
@@ -65,7 +57,7 @@ class LinearOperator(object):
         """Called from subclasses at the end of the __init__ routine.
         """
         if self.dtype is None:
-            v = cp.zeros(self.shape[-1])
+            v = cupy.zeros(self.shape[-1])
             self.dtype = self.matvec(v).dtype
 
     def _matmat(self, X):
@@ -75,7 +67,7 @@ class LinearOperator(object):
         define matrix multiplication (though in a very suboptimal way).
         """
 
-        return cp.hstack([self.matvec(col.reshape(-1, 1)) for col in X.T])
+        return cupy.hstack([self.matvec(col.reshape(-1, 1)) for col in X.T])
 
     def _matvec(self, x):
         """Default matrix-vector multiplication handler.
@@ -244,7 +236,7 @@ class LinearOperator(object):
     def _rmatmat(self, X):
         """Default implementation of _rmatmat defers to rmatvec or adjoint."""
         if type(self)._adjoint == LinearOperator._adjoint:
-            return cp.hstack([self.rmatvec(col.reshape(-1, 1)) for col in X.T])
+            return cupy.hstack([self.rmatvec(col.reshape(-1, 1)) for col in X.T])
         else:
             return self.H.matmat(X)
 
@@ -270,7 +262,7 @@ class LinearOperator(object):
         """
         if isinstance(x, LinearOperator):
             return _ProductLinearOperator(self, x)
-        elif cp.isscalar(x):
+        elif cupy.isscalar(x):
             return _ScaledLinearOperator(self, x)
         else:
             if x.ndim == 1 or x.ndim == 2 and x.shape[1] == 1:
@@ -282,25 +274,25 @@ class LinearOperator(object):
                                  % x)
 
     def __matmul__(self, other):
-        if cp.isscalar(other):
+        if cupy.isscalar(other):
             raise ValueError('Scalar operands are not allowed, '
                              'use '*' instead')
         return self.__mul__(other)
 
     def __rmatmul__(self, other):
-        if cp.isscalar(other):
+        if cupy.isscalar(other):
             raise ValueError('Scalar operands are not allowed, '
                              'use '*' instead')
         return self.__rmul__(other)
 
     def __rmul__(self, x):
-        if cp.isscalar(x):
+        if cupy.isscalar(x):
             return _ScaledLinearOperator(self, x)
         else:
             return NotImplemented
 
     def __pow__(self, p):
-        if cp.isscalar(p):
+        if cupy.isscalar(p):
             return _PowerLinearOperator(self, p)
         else:
             return NotImplemented
@@ -442,18 +434,18 @@ class _TransposedLinearOperator(LinearOperator):
         self.args = (A,)
 
     def _matvec(self, x):
-        # NB. cp.conj works also on sparse matrices
-        return cp.conj(self.A._rmatvec(cp.conj(x)))
+        # NB. cupy.conj works also on sparse matrices
+        return cupy.conj(self.A._rmatvec(cupy.conj(x)))
 
     def _rmatvec(self, x):
-        return cp.conj(self.A._matvec(cp.conj(x)))
+        return cupy.conj(self.A._matvec(cupy.conj(x)))
 
     def _matmat(self, x):
-        # NB. cp.conj works also on sparse matrices
-        return cp.conj(self.A._rmatmat(cp.conj(x)))
+        # NB. cupy.conj works also on sparse matrices
+        return cupy.conj(self.A._rmatmat(cupy.conj(x)))
 
     def _rmatmat(self, x):
-        return cp.conj(self.A._matmat(cp.conj(x)))
+        return cupy.conj(self.A._matmat(cupy.conj(x)))
 
 
 def _get_dtype(operators, dtypes=None):
@@ -462,7 +454,7 @@ def _get_dtype(operators, dtypes=None):
     for obj in operators:
         if obj is not None and hasattr(obj, 'dtype'):
             dtypes.append(obj.dtype)
-    return cp.find_common_type(dtypes, [])
+    return cupy.find_common_type(dtypes, [])
 
 
 class _SumLinearOperator(LinearOperator):
@@ -526,7 +518,7 @@ class _ScaledLinearOperator(LinearOperator):
     def __init__(self, A, alpha):
         if not isinstance(A, LinearOperator):
             raise ValueError('LinearOperator expected as A')
-        if not cp.isscalar(alpha):
+        if not cupy.isscalar(alpha):
             raise ValueError('scalar expected as alpha')
         dtype = _get_dtype([A], [type(alpha)])
         super(_ScaledLinearOperator, self).__init__(dtype, A.shape)
@@ -536,17 +528,17 @@ class _ScaledLinearOperator(LinearOperator):
         return self.args[1] * self.args[0].matvec(x)
 
     def _rmatvec(self, x):
-        return cp.conj(self.args[1]) * self.args[0].rmatvec(x)
+        return cupy.conj(self.args[1]) * self.args[0].rmatvec(x)
 
     def _rmatmat(self, x):
-        return cp.conj(self.args[1]) * self.args[0].rmatmat(x)
+        return cupy.conj(self.args[1]) * self.args[0].rmatmat(x)
 
     def _matmat(self, x):
         return self.args[1] * self.args[0].matmat(x)
 
     def _adjoint(self):
         A, alpha = self.args
-        return A.H * cp.conj(alpha)
+        return A.H * cupy.conj(alpha)
 
 
 class _PowerLinearOperator(LinearOperator):
@@ -555,14 +547,14 @@ class _PowerLinearOperator(LinearOperator):
             raise ValueError('LinearOperator expected as A')
         if A.shape[0] != A.shape[1]:
             raise ValueError('square LinearOperator expected, got %r' % A)
-        if not isintlike(p) or p < 0:
+        if not _util.isintlike(p) or p < 0:
             raise ValueError('non-negative integer expected as p')
 
         super(_PowerLinearOperator, self).__init__(_get_dtype([A]), A.shape)
         self.args = (A, p)
 
     def _power(self, fun, x):
-        res = cp.array(x, copy=True)
+        res = cupy.array(x, copy=True)
         for i in range(self.args[1]):
             res = fun(res)
         return res
@@ -651,13 +643,13 @@ def aslinearoperator(A):
     if isinstance(A, LinearOperator):
         return A
 
-    elif isinstance(A, cp.ndarray):
+    elif isinstance(A, cupy.ndarray):
         if A.ndim > 2:
             raise ValueError('array must have ndim <= 2')
-        A = cp.atleast_2d(A)
+        A = cupy.atleast_2d(A)
         return MatrixLinearOperator(A)
 
-    elif isspmatrix(A):
+    elif sparse.isspmatrix(A):
         return MatrixLinearOperator(A)
 
     else:
