@@ -375,9 +375,9 @@ def _inclusive_scan_kernel_shfl(src_dtype, dtype, block_size, op, src_c_cont,
         const CArray<${src_dtype}, 1, ${src_c_cont}> src,
         CArray<${dtype}, 1, ${out_c_cont}> dst){
         long long n = src.size();
-        __shared__ ${dtype} temp[${block_size} / 32];
-        unsigned int warp_id = threadIdx.x / 32;
-        unsigned int lane_id = threadIdx.x % 32;
+        __shared__ ${dtype} temp[${block_size} / ${warp_size}];
+        unsigned int warp_id = threadIdx.x / ${warp_size};
+        unsigned int lane_id = threadIdx.x % ${warp_size};
         unsigned int idx1 = 2 * (threadIdx.x + blockIdx.x * blockDim.x);
         unsigned int idx2 = idx1 + 1;
         ${dtype} v1, v2;
@@ -385,35 +385,35 @@ def _inclusive_scan_kernel_shfl(src_dtype, dtype, block_size, op, src_c_cont,
         v2 = (idx2 < n) ? (${dtype})src[idx2] : (${dtype})${identity};
 
         v2 ${op}= v1;
-        for (int i = 1; i < 32; i <<= 1) {
+        for (int i = 1; i < ${warp_size}; i <<= 1) {
             ${dtype} vtmp = __shfl_up_sync(0xffffffff, v2, i);
             if (lane_id % (2*i) == (2*i)-1) {
                 v2 ${op}= vtmp;
             }
         }
-        if (lane_id == 31) {
+        if (lane_id == ${warp_size} - 1) {
             temp[warp_id] = v2;
         }
         __syncthreads();
 
         if (warp_id == 0) {
             ${dtype} v2x = (${dtype})${identity};
-            if (lane_id < ${block_size} / 32) {
+            if (lane_id < ${block_size} / ${warp_size}) {
                 v2x = temp[lane_id];
             }
-            for (int i = 1; i < ${block_size} / 32; i <<= 1) {
+            for (int i = 1; i < ${block_size} / ${warp_size}; i <<= 1) {
                 ${dtype} vtmp = __shfl_up_sync(0xffffffff, v2x, i);
                 if (lane_id % (2*i) == (2*i)-1) {
                     v2x ${op}= vtmp;
                 }
             }
-            for (int i = ${block_size} / 128; i > 0; i >>= 1) {
+            for (int i = ${block_size} / ${warp_size} / 4; i > 0; i >>= 1) {
                 ${dtype} vtmp = __shfl_up_sync(0xffffffff, v2x, i);
                 if ((lane_id % (2*i) == i-1) && (lane_id >= 2*i)) {
                     v2x ${op}= vtmp;
                 }
             }
-            if (lane_id < ${block_size} / 32) {
+            if (lane_id < ${block_size} / ${warp_size}) {
                 temp[lane_id] = v2x;
             }
         }
@@ -423,7 +423,7 @@ def _inclusive_scan_kernel_shfl(src_dtype, dtype, block_size, op, src_c_cont,
         if (lane_id == 0) {
             v0 = (warp_id > 0) ? temp[warp_id - 1] : (${dtype})${identity};
         }
-        for (int i = 16; i > 0; i >>= 1) {
+        for (int i = ${warp_size} / 2; i > 0; i >>= 1) {
             ${dtype} vtmp = __shfl_up_sync(0xffffffff, v0, i);
             if (lane_id % (2*i) == i) {
                 v0 ${op}= vtmp;
@@ -431,14 +431,14 @@ def _inclusive_scan_kernel_shfl(src_dtype, dtype, block_size, op, src_c_cont,
         }
         v1 ${op}= v0;
         v2 = __shfl_down_sync(0xffffffff, v0, 1);
-        if (lane_id == 31) {
+        if (lane_id == ${warp_size} - 1) {
             v2 = temp[warp_id];
         }
         if (idx1 < n) dst[idx1] = v1;
         if (idx2 < n) dst[idx2] = v2;
     }
     """).substitute(name=name, dtype=dtype, block_size=block_size,
-                    src_dtype=src_dtype,
+                    warp_size=32, src_dtype=src_dtype,
                     op=op_char[op], identity=identity[op],
                     src_c_cont=src_c_cont, out_c_cont=out_c_cont)
     module = compile_with_cache(source)
