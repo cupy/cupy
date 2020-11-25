@@ -15,6 +15,10 @@ cdef class _ThreadLocal:
     cdef object current_stream_ref
     cdef list prev_stream_ref_stack
 
+    def __init__(self):
+        self.current_stream_ref = None
+        self.prev_stream_ref_stack = []
+
     @staticmethod
     cdef _ThreadLocal get():
         try:
@@ -174,8 +178,6 @@ class BaseStream(object):
 
     def __enter__(self):
         tls = _ThreadLocal.get()
-        if tls.prev_stream_ref_stack is None:
-            tls.prev_stream_ref_stack = []
         prev_stream_ref = tls.get_current_stream_ref()
         tls.prev_stream_ref_stack.append(prev_stream_ref)
         tls.set_current_stream(self)
@@ -185,7 +187,6 @@ class BaseStream(object):
         tls = _ThreadLocal.get()
         prev_stream_ref = tls.prev_stream_ref_stack.pop()
         tls.set_current_stream_ref(prev_stream_ref)
-        pass
 
     def use(self):
         """Makes this stream current.
@@ -193,6 +194,8 @@ class BaseStream(object):
         If you want to switch a stream temporarily, use the *with* statement.
         """
         tls = _ThreadLocal.get()
+        prev_stream_ref = tls.get_current_stream_ref()
+        tls.prev_stream_ref_stack.append(prev_stream_ref)
         tls.set_current_stream(self)
         return self
 
@@ -291,7 +294,8 @@ class Stream(BaseStream):
         if self.ptr:
             current_ptr = <intptr_t>tls.get_current_stream_ptr()
             if <intptr_t>self.ptr == current_ptr:
-                tls.set_current_stream(self.null)
+                prev_stream_ref = tls.prev_stream_ref_stack.pop()
+                tls.set_current_stream_ref(prev_stream_ref)
             runtime.streamDestroy(self.ptr)
         else:
             current_stream = tls.get_current_stream()
