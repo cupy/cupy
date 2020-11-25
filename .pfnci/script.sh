@@ -79,6 +79,8 @@ main() {
       export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ROCM_HOME/lib
       echo $(hipconfig)
       python3.7 -m pip install -v .
+      # Make sure that CuPy is importable.
+      python3.7 -c "import cupy"
       ;;
     # Docker builds.
     docker.* )
