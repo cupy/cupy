@@ -214,6 +214,11 @@ class BaseStream(object):
                 object), and returns nothing.
             arg (object): Argument to the callback.
 
+        .. note::
+            Whenever possible, using the :meth:`launch_host_func` method
+            instead of this one, as it may be deprecated and removed from
+            CUDA at some point.
+
         """
         if runtime._is_hip_environment and self.ptr == 0:
             raise RuntimeError('HIP does not allow adding callbacks to the '
@@ -231,6 +236,16 @@ class BaseStream(object):
             callback (function): Callback function. It must take only one
                 argument (user data object), and returns nothing.
             arg (object): Argument to the callback.
+
+        .. note::
+            Whenever possible, using this method is recommended over
+            :meth:`add_callback`, which may be deprecated and removed from
+            CUDA at some point.
+
+        .. seealso:: `cudaLaunchHostFunc()`_
+
+        .. _cudaLaunchHostFunc():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EXECUTION.html#group__CUDART__EXECUTION_1g05841eaa5f90f27124241baafb3e856f
 
         """
         def f(dummy):
