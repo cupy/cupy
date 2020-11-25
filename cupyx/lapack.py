@@ -50,15 +50,15 @@ def gesv(a, b):
 
     n = b.shape[0]
     nrhs = b.shape[1] if b.ndim == 2 else 1
-    if a._c_contiguous:
+    if a._f_contiguous:
+        trans = _cublas.CUBLAS_OP_N
+    elif a._c_contiguous:
         trans = _cublas.CUBLAS_OP_T
     else:
-        trans = _cublas.CUBLAS_OP_N
-        if not a._f_contiguous:
-            a = a.copy(order='F')
-    ret_b = b
-    if nrhs > 1 and not ret_b._f_contiguous:
-        b = ret_b.copy(order='F')
+        raise ValueError('a must be F-contiguous or C-contiguous.')
+    if not (b._f_contiguous or (b._c_contiguous and nrhs == 1)):
+        raise ValueError('b must be F-contiguous '
+                         '(or C-contiguous if nrhs == 1).')
 
     handle = _device.get_cusolver_handle()
     dipiv = _cupy.empty(n, dtype=_numpy.int32)
@@ -75,9 +75,6 @@ def gesv(a, b):
           dipiv.data.ptr, b.data.ptr, n, dinfo.data.ptr)
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         getrs, dinfo)
-    if nrhs > 1 and not ret_b._f_contiguous:
-        ret_b[...] = b
-    return ret_b
 
 
 def gels(a, b):

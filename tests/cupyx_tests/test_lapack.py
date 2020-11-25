@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -44,15 +45,45 @@ class TestGesv(unittest.TestCase):
         b_shape = [n]
         if self.nrhs is not None:
             b_shape.append(nrhs)
+        b = b.reshape(b_shape)
         self.a = a
-        self.b = b.reshape(b_shape)
+        if self.nrhs is None or self.nrhs == 1:
+            self.b = b.copy(order=self.order)
+        else:
+            self.b = b.copy(order='F')
         self.x_ref = x.reshape(b_shape)
         self.tol = self._tol[self.dtype.char.lower()]
 
     def test_gesv(self):
-        x = lapack.gesv(self.a, self.b)
-        cupy.testing.assert_allclose(x, self.x_ref,
+        lapack.gesv(self.a, self.b)
+        cupy.testing.assert_allclose(self.b, self.x_ref,
                                      rtol=self.tol, atol=self.tol)
+
+    def test_invalid_cases(self):
+        if self.nrhs is None or self.nrhs == 1:
+            raise unittest.SkipTest()
+        with pytest.raises(ValueError):
+            ng_a = self.a.reshape(1, self.n, self.n)
+            lapack.gesv(ng_a, self.b)
+        with pytest.raises(ValueError):
+            ng_b = self.b.reshape(1, self.n, self.nrhs)
+            lapack.gesv(self.a, ng_b)
+        with pytest.raises(ValueError):
+            ng_a = cupy.ones((self.n, self.n+1), dtype=self.dtype)
+            lapack.gesv(ng_a, self.b)
+        with pytest.raises(ValueError):
+            ng_a = cupy.ones((self.n+1, self.n+1), dtype=self.dtype)
+            lapack.gesv(ng_a, self.b)
+        with pytest.raises(TypeError):
+            ng_a = cupy.ones(self.a.shape, dtype='i')
+            lapack.gesv(ng_a, self.b)
+        with pytest.raises(ValueError):
+            ng_a = cupy.ones((2, self.n, self.n), dtype=self.dtype,
+                             order='F')[0]
+            lapack.gesv(ng_a, self.b)
+        with pytest.raises(ValueError):
+            ng_b = self.b.copy(order='C')
+            lapack.gesv(self.a, ng_b)
 
 
 @testing.parameterize(*testing.product({

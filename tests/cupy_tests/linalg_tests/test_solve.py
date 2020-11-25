@@ -12,6 +12,7 @@ from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
 
 @testing.parameterize(*testing.product({
     'batched_gesv_limit': [None, 0],
+    'order': ['C', 'F'],
 }))
 @testing.gpu
 @testing.fix_random()
@@ -32,6 +33,8 @@ class TestSolve(unittest.TestCase):
     def check_x(self, a_shape, b_shape, xp, dtype):
         a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=0)
         b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=1)
+        a = a.copy(order=self.order)
+        b = b.copy(order=self.order)
         a_copy = a.copy()
         b_copy = b.copy()
         result = xp.linalg.solve(a, b)

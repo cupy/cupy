@@ -52,16 +52,23 @@ def solve(a, b):
 
     dtype = numpy.promote_types(a.dtype, b.dtype)
     dtype = numpy.promote_types(dtype, 'f')
-    a = a.astype(dtype, copy=True)  # prevent 'a' to be overwritten
-    b = b.astype(dtype, copy=True)  # prevent 'b' to be overwritten
     if a.ndim == 2:
-        return cupyx.lapack.gesv(a, b)
+        # prevent 'a' and 'b' to be overwritten
+        a = a.astype(dtype, copy=True, order='F')
+        b = b.astype(dtype, copy=True, order='F')
+        cupyx.lapack.gesv(a, b)
+        return b
 
+    # prevent 'a' to be overwritten
+    a = a.astype(dtype, copy=True, order='C')
     x = cupy.empty_like(b)
     shape = a.shape[:-2]
     for i in range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
-        x[index] = cupyx.lapack.gesv(a[index], b[index])
+        # prevent 'b' to be overwritten
+        bi = b[index].astype(dtype, copy=True, order='F')
+        cupyx.lapack.gesv(a[index], bi)
+        x[index] = bi
     return x
 
 
@@ -280,9 +287,11 @@ def inv(a):
     _util._assert_nd_squareness(a)
 
     dtype = numpy.promote_types(a.dtype, 'f')
-    a = a.astype(dtype, copy=True)  # prevent 'a' to be overwritten
-    b = cupy.eye(a.shape[0], dtype=dtype)
-    return cupyx.lapack.gesv(a, b)
+    # prevent 'a' to be overwritten
+    a = a.astype(dtype, copy=True, order='F')
+    b = cupy.eye(a.shape[0], dtype=dtype, order='F')
+    cupyx.lapack.gesv(a, b)
+    return b
 
 
 def _batched_inv(a):
