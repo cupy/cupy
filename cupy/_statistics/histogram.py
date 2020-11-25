@@ -11,7 +11,6 @@ from cupy.cuda import common
 from cupy.cuda import runtime
 
 
-
 # TODO(unno): use searchsorted
 _histogram_kernel = core.ElementwiseKernel(
     'S x, raw T bins, int32 n_bins',
