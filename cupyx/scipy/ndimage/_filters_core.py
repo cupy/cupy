@@ -155,8 +155,7 @@ _CAST_FUNCTION = """
 // Use like cast<to_type>(value)
 template<> struct std::is_floating_point<float16> : std::true_type {};
 template<> struct std::is_signed<float16> : std::true_type {};
-template<class T>
-struct std::is_signed<complex<T>> : std::is_signed<T> {};
+template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
 
 template <class B, class A>
 __device__ __forceinline__
