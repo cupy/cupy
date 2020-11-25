@@ -10,10 +10,13 @@ import shutil
 import sys
 import warnings
 
+from cupy_backends.cuda.api import runtime
 
 # '' for uninitialized, None for non-existing
 _cuda_path = ''
 _nvcc_path = ''
+_rocm_path = ''
+_hipcc_path = ''
 _cub_path = ''
 
 """
@@ -78,6 +81,22 @@ def get_nvcc_path():
     return _nvcc_path
 
 
+def get_rocm_path():
+    # Returns the ROCm installation path or None if not found.
+    global _rocm_path
+    if _rocm_path == '':
+        _rocm_path = _get_rocm_path()
+    return _rocm_path
+
+
+def get_hipcc_path():
+    # Returns the path to the hipcc command or None if not found.
+    global _hipcc_path
+    if _hipcc_path == '':
+        _hipcc_path = _get_hipcc_path()
+    return _hipcc_path
+
+
 def get_cub_path():
     # Returns the CUB header path or None if not found.
     global _cub_path
@@ -118,19 +137,58 @@ def _get_nvcc_path():
     return shutil.which('nvcc', path=os.path.join(cuda_path, 'bin'))
 
 
+def _get_rocm_path():
+    # Use environment variable
+    rocm_path = os.environ.get('ROCM_HOME', '')
+    if os.path.exists(rocm_path):
+        return rocm_path
+
+    # Use hipcc path
+    hipcc_path = shutil.which('hipcc')
+    if hipcc_path is not None:
+        return os.path.dirname(os.path.dirname(hipcc_path))
+
+    # Use typical path
+    if os.path.exists('/opt/rocm'):
+        return '/opt/rocm'
+
+    return None
+
+
+def _get_hipcc_path():
+    # TODO(leofang): Introduce an env var HIPCC?
+
+    # Lookup <ROCM>/bin
+    rocm_path = get_rocm_path()
+    if rocm_path is None:
+        return None
+
+    return shutil.which('hipcc', path=os.path.join(rocm_path, 'bin'))
+
+
 def _get_cub_path():
     # runtime discovery of CUB headers
-    cuda_path = get_cuda_path()
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
-    if os.path.isdir(os.path.join(current_dir, 'core/include/cupy/cub')):
-        _cub_path = '<bundle>'
-    elif cuda_path is not None and os.path.isdir(
-            os.path.join(cuda_path, 'include/cub')):
-        # use built-in CUB for CUDA 11+
-        _cub_path = '<CUDA>'
+    if not runtime.is_hip:
+        cuda_path = get_cuda_path()
+        if os.path.isdir(os.path.join(current_dir, 'core/include/cupy/cub')):
+            _cub_path = '<bundle>'
+        elif cuda_path is not None and os.path.isdir(
+                os.path.join(cuda_path, 'include/cub')):
+            # use built-in CUB for CUDA 11+
+            _cub_path = '<CUDA>'
+        else:
+            _cub_path = None
     else:
-        _cub_path = None
+        # the bundled CUB does not work in ROCm
+        rocm_path = get_rocm_path()
+        if rocm_path is not None and os.path.isdir(
+                os.path.join(rocm_path, 'include/hipcub')):
+            # use hipCUB
+            _cub_path = '<ROCm>'
+        else:
+            _cub_path = None
     return _cub_path
 
 

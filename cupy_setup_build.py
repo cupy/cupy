@@ -233,6 +233,22 @@ if not use_hip:
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
     })
+else:
+    MODULES.append({
+        'name': 'cub',
+        'file': [
+            ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+        ],
+        'include': [
+            'hipcub/hipcub_version.hpp',  # dummy
+        ],
+        'libraries': [
+            'hiprtc',
+            'hip_hcc',
+        ],
+        'check_method': build.check_cub_version,
+        'version_method': build.get_cub_version,
+    })
 
 if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     if use_hip:
