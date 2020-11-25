@@ -243,8 +243,7 @@ else:
             'hipcub/hipcub_version.hpp',  # dummy
         ],
         'libraries': [
-            'hiprtc',
-            'hip_hcc',
+            'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
         ],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
