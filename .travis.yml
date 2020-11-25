@@ -27,5 +27,3 @@ script:
   - pushd docs
   - SPHINXOPTS=-W make html
   - popd
-
-sudo: false
