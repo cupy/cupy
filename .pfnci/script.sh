@@ -80,7 +80,10 @@ main() {
       echo $(hipconfig)
       python3.7 -m pip install -v .
       # Make sure that CuPy is importable.
+      # Note that CuPy cannot be imported from the source directory.
+      pushd /
       python3.7 -c "import cupy"
+      popd
       ;;
     # Docker builds.
     docker.* )
