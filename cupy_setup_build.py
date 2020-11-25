@@ -572,7 +572,7 @@ def make_extensions(options, compiler, use_cython):
         if module['name'] not in available_modules:
             continue
 
-        s = settings.copy()
+        s = copy.deepcopy(settings)
         if not no_cuda:
             s['libraries'] = module['libraries']
 
