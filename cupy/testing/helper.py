@@ -381,14 +381,6 @@ def _resolve_tolerance(type_check, result, rtol, atol):
         else:
             return tol
 
-    # When `type_check` is `False`, cupy result and numpy result may have
-    # different dtypes so we can not determine the dtype to use from the
-    # tolerance associations.
-    if not type_check:
-        if isinstance(rtol, dict) or isinstance(atol, dict):
-            raise TypeError('When `type_ckeck` is `False`, `rtol` and `atol` '
-                            'must be supplied as float.')
-
     dtype = result.dtype
     rtol1 = _resolve(dtype, rtol)
     atol1 = _resolve(dtype, atol)
@@ -452,6 +444,14 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
     _check_tolerance_keys(rtol, atol)
+
+    # When `type_check` is `False`, cupy result and numpy result may have
+    # different dtypes so we can not determine the dtype to use from the
+    # tolerance associations.
+    if not type_check:
+        if isinstance(rtol, dict) or isinstance(atol, dict):
+            raise TypeError('When `type_ckeck` is `False`, `rtol` and `atol` '
+                            'must be supplied as float.')
 
     def check_func(c, n):
         rtol1, atol1 = _resolve_tolerance(type_check, c, rtol, atol)
