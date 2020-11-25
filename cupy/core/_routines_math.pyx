@@ -363,6 +363,10 @@ def _inclusive_scan_kernel_shfl(src_dtype, dtype, block_size, op, src_c_cont,
 
     Returns:
          cupy.cuda.Function: cuda function
+
+    Note: For the algorithm used in this kernel, see the figure in the
+        following link.
+        https://github.com/cupy/cupy/files/5594935/shfl-scan-kernel.pdf
     """
 
     name = 'inclusive_scan_kernel_shfl'
