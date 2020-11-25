@@ -450,7 +450,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     # tolerance associations.
     if not type_check:
         if isinstance(rtol, dict) or isinstance(atol, dict):
-            raise TypeError('When `type_ckeck` is `False`, `rtol` and `atol` '
+            raise TypeError('When `type_check` is `False`, `rtol` and `atol` '
                             'must be supplied as float.')
 
     def check_func(c, n):
