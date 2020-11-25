@@ -187,6 +187,7 @@ def _xp_random(xp, method_name):
     {'a': 3.0, 'b': 3.0},
     {'a': 3.0, 'b': 1.0},
 )
+@testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
 class TestBeta(GeneratorTestCase):
@@ -203,6 +204,7 @@ class TestBeta(GeneratorTestCase):
             a=self.a, b=self.b, size=2000, dtype=dtype)
 
 
+@testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
 class TestStandardExponential(GeneratorTestCase):
@@ -224,6 +226,7 @@ class TestStandardExponential(GeneratorTestCase):
         self.check_ks(0.05)(size=2000, dtype=dtype)
 
 
+@testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
 class TestIntegers(GeneratorTestCase):
@@ -258,6 +261,7 @@ class TestIntegers(GeneratorTestCase):
         self.generate(2**34, 2**40, 3)
 
 
+@testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 class TestRandomStateThreadSafe(unittest.TestCase):
 

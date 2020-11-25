@@ -936,7 +936,7 @@ class TestInterval(RandomGeneratorTestCase):
     @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
         mx = 5
-        trial = 100
+        trial = 300
         vals = self.generate_many(mx, None, _count=trial)
         vals = [val.get() for val in vals]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]

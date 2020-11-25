@@ -44,6 +44,7 @@ class BitGeneratorTestCase:
         self.check_seed(numpy.random.randint(0, 2**31, size=10))
 
 
+@testing.with_requires('numpy>=1.17.0')
 @testing.fix_random()
 @testing.gpu
 class TestBitGeneratorXORWOW(BitGeneratorTestCase, unittest.TestCase):
@@ -52,6 +53,7 @@ class TestBitGeneratorXORWOW(BitGeneratorTestCase, unittest.TestCase):
         self.bg = _bit_generator.XORWOW
 
 
+@testing.with_requires('numpy>=1.17.0')
 @testing.fix_random()
 @testing.gpu
 class TestBitGeneratorMRG32k3a(BitGeneratorTestCase, unittest.TestCase):
@@ -60,6 +62,7 @@ class TestBitGeneratorMRG32k3a(BitGeneratorTestCase, unittest.TestCase):
         self.bg = _bit_generator.MRG32k3a
 
 
+@testing.with_requires('numpy>=1.17.0')
 @testing.fix_random()
 @testing.gpu
 class TestBitGeneratorPhilox4x3210(BitGeneratorTestCase, unittest.TestCase):
