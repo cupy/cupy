@@ -12,7 +12,6 @@ import warnings
 
 from cupy_backends.cuda.api import runtime
 
-
 # '' for uninitialized, None for non-existing
 _cuda_path = ''
 _nvcc_path = ''
