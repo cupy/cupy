@@ -292,7 +292,7 @@ class Stream(BaseStream):
             self.ptr = runtime.cudaStreamPerThread
         elif non_blocking:
             self.ptr = runtime.streamCreateWithFlags(
-                    runtime.cudaStreamNonBlocking)
+                runtime.cudaStreamNonBlocking)
         else:
             self.ptr = runtime.streamCreate()
 
