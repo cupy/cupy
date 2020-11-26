@@ -877,42 +877,40 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
                 self, obj, src, ext, cc_args, extra_postargs, pp_opts)
 
         if use_hip:
-            return self._comiple_unix_hipcc(
+            return self._compile_unix_hipcc(
                 obj, src, ext, cc_args, extra_postargs, pp_opts)
 
         # For CUDA C source files, compile them with NVCC.
-        _compiler_so = self.compiler_so
         try:
             nvcc_path = build.get_nvcc_path()
             base_opts = build.get_compiler_base_options()
-            self.set_executable('compiler_so', nvcc_path)
+            compiler_so = nvcc_path
 
             cuda_version = build.get_cuda_version()
             postargs = _nvcc_gencode_options(cuda_version) + [
                 '-O2', '--compiler-options="-fPIC"', '--std=c++11']
             print('NVCC options:', postargs)
 
-            return unixccompiler.UnixCCompiler._compile(
-                self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
-        finally:
-            self.compiler_so = _compiler_so
+            self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
+                       postargs)
+        except errors.DistutilsExecError as e:
+            raise errors.CompileError(str(e))
 
-    def _comiple_unix_hipcc(self,
+    def _compile_unix_hipcc(self,
                             obj, src, ext, cc_args, extra_postargs, pp_opts):
         # For CUDA C source files, compile them with HIPCC.
-        _compiler_so = self.compiler_so
         try:
-            rcom_path = build.get_hipcc_path()
+            rocm_path = build.get_hipcc_path()
             base_opts = build.get_compiler_base_options()
-            self.set_executable('compiler_so', rcom_path)
+            compiler_so = rocm_path
 
             postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
             print('HIPCC options:', postargs)
 
-            return unixccompiler.UnixCCompiler._compile(
-                self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
-        finally:
-            self.compiler_so = _compiler_so
+            self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
+                       postargs)
+        except errors.DistutilsExecError as e:
+            raise errors.CompileError(str(e))
 
     def link(self, target_desc, objects, output_filename, *args):
         use_hipcc = False
