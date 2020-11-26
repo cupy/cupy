@@ -15,7 +15,7 @@
 | [**Tutorial**](https://docs.cupy.dev/en/stable/tutorial/)
 | [**Examples**](https://github.com/cupy/cupy/tree/master/examples)
 | [**API Reference**](https://docs.cupy.dev/en/stable/reference/)
-| **Forum** ([en](https://groups.google.com/forum/#!forum/cupy), [ja](https://groups.google.com/forum/#!forum/cupy-ja))
+| [**Forum**](https://groups.google.com/forum/#!forum/cupy)
 
 *CuPy* is an implementation of NumPy-compatible multi-dimensional array on CUDA.
 CuPy consists of the core multi-dimensional array class, `cupy.ndarray`, and [many functions](https://docs.cupy.dev/en/stable/reference/comparison.html) on it.
