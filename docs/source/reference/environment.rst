@@ -104,3 +104,7 @@ These environment variables are used during installation (building CuPy from sou
 |                              | architectures in build time. When this is not set,             |
 |                              | the default is to support all architectures.                   |
 +------------------------------+----------------------------------------------------------------+
+| ``CUPY_CUPY_NUM_BUILD_JOBS`` | To enable or disable parallel build, sets the number of        |    
+|                              | processes used to build the extensions in parallel. Defaults   |    
+|                              | to ``4``                                                       |    
++------------------------------+----------------------------------------------------------------+
