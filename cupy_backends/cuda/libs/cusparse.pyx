@@ -1555,12 +1555,8 @@ cpdef size_t getStream(intptr_t handle) except? 0:
 
 
 cdef _setStream(intptr_t handle):
-    """Set current stream when enable_current_stream is True
-    """
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    elif stream_module.is_ptds_enabled():
-        setStream(handle, runtime.cudaStreamPerThread)
+    """Set current stream"""
+    setStream(handle, stream_module.get_current_stream_ptr())
 
 
 ########################################
