@@ -3,6 +3,7 @@ import inspect
 
 import numpy
 
+from cupy.core import _kernel
 from cupyx.jit import _types
 from cupyx.jit import _typerules
 
@@ -155,10 +156,16 @@ def _eval_operand(op, args, env, dtype=None):
         pyfunc = _typerules.get_pyfunc(type(op))
         return Constant(pyfunc(*[x.obj for x in args]))
 
-    args = [_to_cuda_object(x, env) for x in args]
     ufunc = _typerules.get_ufunc(env.mode, type(op))
+    return _call_ufunc(ufunc, args, env, dtype)
+
+
+def _call_ufunc(ufunc, args, env, dtype):
     assert ufunc.nin == len(args)
     assert ufunc.nout == 1
+
+    args = [_to_cuda_object(x, env) for x in args]
+
     for x in args:
         if not isinstance(x.ctype, _types.Scalar):
             raise NotImplementedError
@@ -314,12 +321,20 @@ def _transpile_expr(expr, env):
         y = _to_cuda_object(y, env)
         if x.ctype.dtype != y.ctype.dtype:
             raise TypeError(
-                f'Type mismatch in conditional expression.: '
-                '{x.ctype.dtype} != {y.ctype.dtype}')
+                'Type mismatch in conditional expression.: '
+                f'{x.ctype.dtype} != {y.ctype.dtype}')
         cond = astype_scalar(cond, _types.Scalar(numpy.bool_))
         return CudaObject(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
     if isinstance(expr, ast.Call):
-        raise NotImplementedError('Not implemented.')
+        func = _transpile_expr(expr.func, env)
+        args = [_transpile_expr(x, env) for x in expr.args]
+        if len(expr.keywords) > 0:
+            raise NotImplementedError('Not implemented: keyword arguments')
+        if is_constants([func]):
+            func = func.obj
+            if isinstance(func, _kernel.ufunc):
+                return _call_ufunc(func, args, env, dtype=None)
+        raise NotImplementedError('Not implemented: function call')
     if isinstance(expr, ast.Constant):
         return Constant(expr.value)
     if isinstance(expr, ast.Num):

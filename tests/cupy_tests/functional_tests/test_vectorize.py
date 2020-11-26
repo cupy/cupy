@@ -193,6 +193,14 @@ class TestVectorizeOps(unittest.TestCase):
 
         return self._run(my_usub, xp, [dtype])
 
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    def test_vectorize_ufunc_call(self, xp, dtype1, dtype2):
+        def my_ufunc_add(x, y):
+            return xp.add(x, y)
+
+        return self._run(my_ufunc_add, xp, [dtype1, dtype2])
+
 
 class TestVectorizeExprs(unittest.TestCase):
 
