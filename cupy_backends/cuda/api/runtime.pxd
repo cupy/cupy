@@ -524,8 +524,13 @@ cpdef enum:
     cudaMemAdviseSetAccessedBy = 5
     cudaMemAdviseUnsetAccessedBy = 6
 
-    streamDefault = 0
-    streamNonBlocking = 1
+    # cudaStream flags
+    cudaStreamDefault = 0
+    cudaStreamNonBlocking = 1
+
+    # cudaStream handles
+    cudaStreamLegacy = 1
+    cudaStreamPerThread = 2
 
     eventDefault = 0
     eventBlockingSync = 1
@@ -685,12 +690,6 @@ cpdef enum:
     # cudaTextureReadMode
     cudaReadModeElementType = 0
     cudaReadModeNormalizedFloat = 1
-
-    # cudaStream
-    cudaStreamDefault = 0
-    cudaStreamNonBlocking = 1
-    cudaStreamLegacy = 1
-    cudaStreamPerThread = 2
 
 
 ###############################################################################
