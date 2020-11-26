@@ -22,8 +22,9 @@ cdef class _ThreadLocal:
         self.current_stream = ptr
 
     cdef intptr_t get_current_stream_ptr(self):
-        # Returns nullptr if not set, which is equivalent to the default
-        # stream.
+        # Returns the stream previously set, otherwise returns
+        # nullptr or runtime.cudaStreamPerThread when
+        # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
         if self.current_stream == 0 and is_ptds_enabled():
             return runtime.cudaStreamPerThread
 
