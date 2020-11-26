@@ -402,7 +402,10 @@ class TestCg(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'n': [10, 30, 100, 300, 1000],
-    'dtype': [cupy.float32, cupy.float64, cupy.complex_]
+    'dtype': [cupy.float32, cupy.float64, cupy.complex_],
+    'outer_modification': ['normal', 'transpose', 'hermitian'],
+    'inner_modification': ['normal', 'sparse', 'adjoint',
+                           'adjoint-matrix-vector', 'adjoint-matrix-matrix'],
 }))
 @testing.gpu
 @unittest.skipUnless(scipy_available, 'requires scipy')
@@ -410,16 +413,18 @@ class TestLinearOperator(unittest.TestCase):
     density = 0.33
     _tol = {'f': 1e-5, 'd': 1e-12}
 
+    # modified from scipy
     # class that defines parametrized custom cases
     # adapted from scipy's analogous tests
-    def _define_cases(self, original, dtype):
-        cases = []
-        cases.append((cupy.array(original, dtype=dtype), original))
-        cases.append((cupyx.scipy.sparse.csr_matrix(
-            original, dtype=dtype), original))
+    def _inner_cases(self, original, dtype):
+        if(self.inner_modification == 'normal'):
+            return (cupy.array(original, dtype=dtype), original)
+        if(self.inner_modification == 'sparse'):
+            return (cupyx.scipy.sparse.csr_matrix(
+                    original, dtype=dtype), original)
 
-        # Test default implementations of _adjoint and _rmatvec, which
-        # refer to each other.
+        # creating base-matrix-like class with default
+        # matrix-vector and adjoint-matrix-vector impl
         def mv(x, dtype):
             y = original.dot(x)
             if len(x.shape) == 2:
@@ -429,6 +434,7 @@ class TestLinearOperator(unittest.TestCase):
         def rmv(x, dtype):
             return original.T.conj().dot(x)
 
+        # defining the base-class
         class BaseMatlike(_interface.LinearOperator):
             args = ()
 
@@ -439,116 +445,115 @@ class TestLinearOperator(unittest.TestCase):
             def _matvec(self, x):
                 return mv(x, self.dtype)
 
+        # using above base-class to make and test sub-classes based
+        # on the current `inner_modification` parameter
+        if(self.inner_modification == 'adjoint'):
+
+            # defining the sub-class
+            class HasAdjoint(BaseMatlike):
+                args = ()
+
+                def _adjoint(self):
+                    shape = self.shape[1], self.shape[0]
+                    matvec = partial(rmv, dtype=self.dtype)
+                    rmatvec = partial(mv, dtype=self.dtype)
+                    return _interface.LinearOperator(matvec=matvec,
+                                                     rmatvec=rmatvec,
+                                                     dtype=self.dtype,
+                                                     shape=shape)
+            return (HasAdjoint(dtype), original)
+
+        # defining the sub-classes
         class HasRmatvec(BaseMatlike):
             args = ()
 
             def _rmatvec(self, x):
                 return rmv(x, self.dtype)
 
-        class HasAdjoint(BaseMatlike):
-            args = ()
-
-            def _adjoint(self):
-                shape = self.shape[1], self.shape[0]
-                matvec = partial(rmv, dtype=self.dtype)
-                rmatvec = partial(mv, dtype=self.dtype)
-                return _interface.LinearOperator(matvec=matvec,
-                                                rmatvec=rmatvec,
-                                                dtype=self.dtype,
-                                                shape=shape)
-
         class HasRmatmat(HasRmatvec):
+
             def _matmat(self, x):
                 return original.dot(x)
 
             def _rmatmat(self, x):
                 return original.T.conj().dot(x)
 
-        cases.append((HasRmatvec(dtype), original))
-        cases.append((HasAdjoint(dtype), original))
-        cases.append((HasRmatmat(dtype), original))
-        return cases
+        if(self.inner_modification == 'adjoint-matrix-vector'):
+            return (HasRmatvec(dtype), original)
+        if(self.inner_modification == 'adjoint-matrix-matrix'):
+            return (HasRmatmat(dtype), original)
 
-    def _make_cases(self):
-        self.cases = []
+    def _outer_cases(self):
         if(self.dtype != cupy.complex_):
             original = cupy.array([[1., 2., 3.], [4., 5., 6.]])
-            self.cases += self._define_cases(original, self.dtype)
-            self.cases += [(_interface.aslinearoperator(M).T, A.T)
-                           for M, A in self._define_cases(original.T,
-                                                          self.dtype)]
-            self.cases += [(_interface.aslinearoperator(M).H, A.T.conj())
-                           for M, A in self._define_cases(original.T,
-                                                          self.dtype)]
-
         else:
             original = cupy.array([[1, 2j, 3j], [4j, 5j, 6]])
-            self.cases += self._define_cases(original, self.dtype)
-            self.cases += [(_interface.aslinearoperator(M).T, A.T)
-                           for M, A in self._define_cases(original.T,
-                                                          self.dtype)]
-            self.cases += [(_interface.aslinearoperator(M).H, A.T.conj())
-                           for M, A in self._define_cases(original.T,
-                                                          self.dtype)]
+
+        if(self.outer_modification == 'normal'):
+            return self._inner_cases(original, self.dtype)
+        if(self.outer_modification == 'transpose'):
+            M, A = self._inner_cases(original.T, self.dtype)
+            return (_interface.aslinearoperator(M).T, A.T)
+        if(self.outer_modification == 'hermitian'):
+            M, A = self._inner_cases(original.T, self.dtype)
+            return (_interface.aslinearoperator(M).H, A.T.conj())
 
     def test_basic(self):
-        self._make_cases()
-        for M, A_array in self.cases:
-            A = _interface.aslinearoperator(M)
-            M, N = A.shape
+        M, A_array = self._outer_cases()
+        A = _interface.aslinearoperator(M)
+        M, N = A.shape
 
-            xs = [cupy.array([1, 2, 3]),
-                  cupy.array([[1], [2], [3]])]
-            ys = [cupy.array([1, 2]), cupy.array([[1], [2]])]
+        xs = [cupy.array([1, 2, 3]),
+              cupy.array([[1], [2], [3]])]
+        ys = [cupy.array([1, 2]), cupy.array([[1], [2]])]
 
-            if A.dtype == cupy.complex_:
-                xs += [cupy.array([1, 2j, 3j]),
-                       cupy.array([[1], [2j], [3j]])]
-                ys += [cupy.array([1, 2j]), cupy.array([[1], [2j]])]
+        if A.dtype == cupy.complex_:
+            xs += [cupy.array([1, 2j, 3j]),
+                   cupy.array([[1], [2j], [3j]])]
+            ys += [cupy.array([1, 2j]), cupy.array([[1], [2j]])]
 
-            x2 = cupy.array([[1, 4], [2, 5], [3, 6]])
+        x2 = cupy.array([[1, 4], [2, 5], [3, 6]])
 
-            for x in xs:
-                cupy.testing.assert_array_equal(A.matvec(x), A_array.dot(x))
-                cupy.testing.assert_array_equal(A * x, A_array.dot(x))
+        for x in xs:
+            cupy.testing.assert_array_equal(A.matvec(x), A_array.dot(x))
+            cupy.testing.assert_array_equal(A * x, A_array.dot(x))
 
-            cupy.testing.assert_array_equal(A.matmat(x2), A_array.dot(x2))
-            cupy.testing.assert_array_equal(A * x2, A_array.dot(x2))
+        cupy.testing.assert_array_equal(A.matmat(x2), A_array.dot(x2))
+        cupy.testing.assert_array_equal(A * x2, A_array.dot(x2))
 
-            for y in ys:
-                cupy.testing.assert_array_equal(
-                    A.rmatvec(y), A_array.T.conj().dot(y))
-                cupy.testing.assert_array_equal(A.T.matvec(y), A_array.T.dot(y))
-                cupy.testing.assert_array_equal(
-                    A.H.matvec(y), A_array.T.conj().dot(y))
+        for y in ys:
+            cupy.testing.assert_array_equal(
+                A.rmatvec(y), A_array.T.conj().dot(y))
+            cupy.testing.assert_array_equal(A.T.matvec(y), A_array.T.dot(y))
+            cupy.testing.assert_array_equal(
+                A.H.matvec(y), A_array.T.conj().dot(y))
 
-            for y in ys:
-                if y.ndim < 2:
-                    continue
-                cupy.testing.assert_array_equal(
-                    A.rmatmat(y), A_array.T.conj().dot(y))
-                cupy.testing.assert_array_equal(A.T.matmat(y), A_array.T.dot(y))
-                cupy.testing.assert_array_equal(
-                    A.H.matmat(y), A_array.T.conj().dot(y))
+        for y in ys:
+            if y.ndim < 2:
+                continue
+            cupy.testing.assert_array_equal(
+                A.rmatmat(y), A_array.T.conj().dot(y))
+            cupy.testing.assert_array_equal(A.T.matmat(y), A_array.T.dot(y))
+            cupy.testing.assert_array_equal(
+                A.H.matmat(y), A_array.T.conj().dot(y))
 
-            if hasattr(M, 'dtype'):
-                cupy.testing.assert_array_equal(A.dtype, M.dtype)
+        if hasattr(M, 'dtype'):
+            cupy.testing.assert_array_equal(A.dtype, M.dtype)
 
-            assert(hasattr(A, 'args'))
+        assert(hasattr(A, 'args'))
 
     def test_dot(self):
-        self._make_cases()
-        for M, A_array in self.cases:
-            A = _interface.aslinearoperator(M)
-            M, N = A.shape
+        M, A_array = self._outer_cases()
+        A = _interface.aslinearoperator(M)
+        M, N = A.shape
 
-            x0 = cupy.array([1, 2, 3])
-            x1 = cupy.array([[1], [2], [3]])
-            x2 = cupy.array([[1, 4], [2, 5], [3, 6]])
+        x0 = cupy.array([1, 2, 3])
+        x1 = cupy.array([[1], [2], [3]])
+        x2 = cupy.array([[1, 4], [2, 5], [3, 6]])
 
-            cupy.testing.assert_array_equal(A.dot(x0), A_array.dot(x0))
-            cupy.testing.assert_array_equal(A.dot(x1), A_array.dot(x1))
-            cupy.testing.assert_array_equal(A.dot(x2), A_array.dot(x2))
+        cupy.testing.assert_array_equal(A.dot(x0), A_array.dot(x0))
+        cupy.testing.assert_array_equal(A.dot(x1), A_array.dot(x1))
+        cupy.testing.assert_array_equal(A.dot(x2), A_array.dot(x2))
 
     # generate random matrix
     def _make_matrix(self, dtype, xp):
