@@ -285,7 +285,7 @@ class Stream(BaseStream):
 
     def __init__(self, null=False, ptds=False, non_blocking=False):
         if null:
-            self.ptr = runtime.cudaStreamDefault
+            self.ptr = runtime.cudaStreamLegacy
         elif ptds:
             self.ptr = runtime.cudaStreamPerThread
         elif non_blocking:
