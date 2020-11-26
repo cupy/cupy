@@ -61,7 +61,6 @@ from cupy import random  # NOQA
 # `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
 from cupy import testing  # NOQA  # NOQA
-from cupy import lib  # NOQA
 
 
 # import class and function
@@ -544,12 +543,12 @@ from cupy._logic.truth import any  # NOQA
 # ------------------------------------------------------------------------------
 # Polynomial functions
 # ------------------------------------------------------------------------------
-from cupy.lib import poly1d  # NOQA
-from cupy.lib import polyadd  # NOQA
-from cupy.lib import polysub  # NOQA
-from cupy.lib import polymul  # NOQA
-from cupy.lib import polyval  # NOQA
-from cupy.lib import roots  # NOQA
+from cupy.lib._polynomial import poly1d  # NOQA
+from cupy.lib._routines_poly import polyadd  # NOQA
+from cupy.lib._routines_poly import polysub  # NOQA
+from cupy.lib._routines_poly import polymul  # NOQA
+from cupy.lib._routines_poly import polyval  # NOQA
+from cupy.lib._routines_poly import roots  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
