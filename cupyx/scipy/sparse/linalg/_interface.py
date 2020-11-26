@@ -236,7 +236,8 @@ class LinearOperator(object):
     def _rmatmat(self, X):
         """Default implementation of _rmatmat defers to rmatvec or adjoint."""
         if type(self)._adjoint == LinearOperator._adjoint:
-            return cupy.hstack([self.rmatvec(col.reshape(-1, 1)) for col in X.T])
+            return cupy.hstack([self.rmatvec(col.reshape(-1, 1))
+                                for col in X.T])
         else:
             return self.H.matmat(X)
 

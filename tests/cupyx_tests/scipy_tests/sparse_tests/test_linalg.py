@@ -13,7 +13,6 @@ try:
 except ImportError:
     scipy_available = False
 
-import cupy
 from cupy import testing
 from cupy.testing import condition
 from cupyx.scipy import sparse
