@@ -22,10 +22,10 @@ class TestArrayFunction(unittest.TestCase):
 
         if isinstance(qr_cpu, tuple):
             for b_cpu, b_gpu in zip(qr_cpu, qr_gpu):
-                self.assertEqual(b_cpu.dtype, b_gpu.dtype)
+                assert b_cpu.dtype == b_gpu.dtype
                 cupy.testing.assert_allclose(b_cpu, b_gpu, atol=1e-4)
         else:
-            self.assertEqual(qr_cpu.dtype, qr_gpu.dtype)
+            assert qr_cpu.dtype == qr_gpu.dtype
             cupy.testing.assert_allclose(qr_cpu, qr_gpu, atol=1e-4)
 
     @testing.with_requires('numpy>=1.17.0')
@@ -39,7 +39,7 @@ class TestArrayFunction(unittest.TestCase):
         out_cpu = numpy.sum(a_cpu, axis=1)
         out_gpu = numpy.sum(a_gpu, axis=1)
 
-        self.assertEqual(out_cpu.dtype, out_gpu.dtype)
+        assert out_cpu.dtype == out_gpu.dtype
         cupy.testing.assert_allclose(out_cpu, out_gpu, atol=1e-4)
 
     @testing.with_requires('numpy>=1.17.0')

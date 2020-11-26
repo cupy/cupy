@@ -20,21 +20,21 @@ class TestContainsSignedAndUnsigned(unittest.TestCase):
 
     def test_include(self):
         kw = {'x': numpy.int32, 'y': numpy.uint32}
-        self.assertTrue(_helper._contains_signed_and_unsigned(kw))
+        assert _helper._contains_signed_and_unsigned(kw)
 
         kw = {'x': numpy.float32, 'y': numpy.uint32}
-        self.assertTrue(_helper._contains_signed_and_unsigned(kw))
+        assert _helper._contains_signed_and_unsigned(kw)
 
     def test_signed_only(self):
         kw = {'x': numpy.int32}
-        self.assertFalse(_helper._contains_signed_and_unsigned(kw))
+        assert not _helper._contains_signed_and_unsigned(kw)
 
         kw = {'x': numpy.float}
-        self.assertFalse(_helper._contains_signed_and_unsigned(kw))
+        assert not _helper._contains_signed_and_unsigned(kw)
 
     def test_unsigned_only(self):
         kw = {'x': numpy.uint32}
-        self.assertFalse(_helper._contains_signed_and_unsigned(kw))
+        assert not _helper._contains_signed_and_unsigned(kw)
 
 
 class NumPyCuPyDecoratorBase(object):
@@ -185,25 +185,25 @@ class TestShapedRandom(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_shape_and_dtype(self, dtype):
         a = testing.shaped_random(self.shape, self.xp, dtype)
-        self.assertIsInstance(a, self.xp.ndarray)
-        self.assertTrue(a.shape == self.shape)
-        self.assertTrue(a.dtype == dtype)
+        assert isinstance(a, self.xp.ndarray)
+        assert a.shape == self.shape
+        assert a.dtype == dtype
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     def test_value_range(self, dtype):
         a = testing.shaped_random(self.shape, self.xp, dtype)
-        self.assertTrue(self.xp.all(0 <= a))
-        self.assertTrue(self.xp.all(a < 10))
+        assert self.xp.all(0 <= a)
+        assert self.xp.all(a < 10)
 
     @testing.for_complex_dtypes()
     def test_complex(self, dtype):
         a = testing.shaped_random(self.shape, self.xp, dtype)
-        self.assertTrue(self.xp.all(0 <= a.real))
-        self.assertTrue(self.xp.all(a.real < 10))
-        self.assertTrue(self.xp.all(0 <= a.imag))
-        self.assertTrue(self.xp.all(a.imag < 10))
+        assert self.xp.all(0 <= a.real)
+        assert self.xp.all(a.real < 10)
+        assert self.xp.all(0 <= a.imag)
+        assert self.xp.all(a.imag < 10)
         if 0 not in self.shape:
-            self.assertTrue(self.xp.any(a.imag))
+            assert self.xp.any(a.imag)
 
 
 @testing.parameterize(*testing.product({
@@ -214,7 +214,7 @@ class TestShapedRandomBool(unittest.TestCase):
 
     def test_bool(self):
         a = testing.shaped_random(10000, self.xp, numpy.bool_)
-        self.assertTrue(4000 < self.xp.sum(a) < 6000)
+        assert 4000 < self.xp.sum(a) < 6000
 
 
 @testing.parameterize(*testing.product({

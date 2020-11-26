@@ -2,7 +2,7 @@ from cupy import core
 
 
 _float_preamble = '''
-#include <math_constants.h>
+#include <cupy/math_constants.h>
 
 double __device__ entr(double x) {
     if (isnan(x)) {

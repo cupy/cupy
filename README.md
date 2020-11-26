@@ -15,7 +15,7 @@
 | [**Tutorial**](https://docs.cupy.dev/en/stable/tutorial/)
 | [**Examples**](https://github.com/cupy/cupy/tree/master/examples)
 | [**API Reference**](https://docs.cupy.dev/en/stable/reference/)
-| **Forum** ([en](https://groups.google.com/forum/#!forum/cupy), [ja](https://groups.google.com/forum/#!forum/cupy-ja))
+| [**Forum**](https://groups.google.com/forum/#!forum/cupy)
 
 *CuPy* is an implementation of NumPy-compatible multi-dimensional array on CUDA.
 CuPy consists of the core multi-dimensional array class, `cupy.ndarray`, and [many functions](https://docs.cupy.dev/en/stable/reference/comparison.html) on it.
@@ -33,7 +33,7 @@ Choose the right package for your CUDA Toolkit version.
 | v10.1 | `pip install cupy-cuda101`     |
 | v10.2 | `pip install cupy-cuda102`     |
 | v11.0 | `pip install cupy-cuda110`     |
-| v11.1 | `pip install cupy-cuda111` (Currently only for Windows; See [#4209](https://github.com/cupy/cupy/issues/4209) for Linux) |
+| v11.1 | `pip install cupy-cuda111`     |
 
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or to build from source.
 

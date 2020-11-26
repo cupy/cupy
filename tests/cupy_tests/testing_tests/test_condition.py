@@ -32,7 +32,7 @@ class MockUnitTest(unittest.TestCase):
 
     def success_case(self):
         MockUnitTest.success_case_counter += 1
-        self.assertTrue(True)
+        assert True
 
     def skip_case(self):
         MockUnitTest.skip_case_counter += 1
@@ -45,7 +45,7 @@ class MockUnitTest(unittest.TestCase):
         MockUnitTest.probabilistic_case_counter += 1
         if MockUnitTest.probabilistic_case_counter % 2 == 0:
             MockUnitTest.probabilistic_case_success_counter += 1
-            self.assertTrue(True)
+            assert True
         else:
             MockUnitTest.probabilistic_case_failure_counter += 1
             self.fail()
@@ -61,7 +61,7 @@ def _should_fail(self, f):
             'AssertionError is expected to be raised, but none is raised')
     except AssertionError as e:
         # check if the detail is included in the error object
-        self.assertIn('first error message:', str(e))
+        assert 'first error message:' in str(e)
 
 
 def _should_pass(self, f):
@@ -74,7 +74,7 @@ def _should_skip(self, f):
         self.fail(
             'SkipTest is expected to be raised, but none is raised')
     except unittest.SkipTest as e:
-        self.assertIn(SKIP_REASON, str(e))
+        assert SKIP_REASON in str(e)
 
 
 class TestRepeatWithSuccessAtLeast(unittest.TestCase):
@@ -90,12 +90,12 @@ class TestRepeatWithSuccessAtLeast(unittest.TestCase):
     def test_all_trials_fail(self):
         f = self._decorate(MockUnitTest.failure_case, 10, 1)
         _should_fail(self, f)
-        self.assertEqual(self.unit_test.failure_case_counter, 10)
+        assert self.unit_test.failure_case_counter == 10
 
     def test_all_trials_fail2(self):
         f = self._decorate(MockUnitTest.failure_case, 10, 0)
         _should_pass(self, f)
-        self.assertLessEqual(self.unit_test.failure_case_counter, 10)
+        assert self.unit_test.failure_case_counter <= 10
 
     def test_all_trials_error(self):
         f = self._decorate(MockUnitTest.error_case, 10, 1)
@@ -104,7 +104,7 @@ class TestRepeatWithSuccessAtLeast(unittest.TestCase):
     def test_all_trials_succeed(self):
         f = self._decorate(MockUnitTest.success_case, 10, 10)
         _should_pass(self, f)
-        self.assertEqual(self.unit_test.success_case_counter, 10)
+        assert self.unit_test.success_case_counter == 10
 
     def test_all_trials_succeed2(self):
         self.assertRaises(AssertionError,
@@ -114,20 +114,16 @@ class TestRepeatWithSuccessAtLeast(unittest.TestCase):
     def test_half_of_trials_succeed(self):
         f = self._decorate(MockUnitTest.probabilistic_case, 10, 5)
         _should_pass(self, f)
-        self.assertLessEqual(self.unit_test.probabilistic_case_counter, 10)
-        self.assertGreaterEqual(
-            self.unit_test.probabilistic_case_success_counter, 5)
-        self.assertLessEqual(
-            self.unit_test.probabilistic_case_failure_counter, 5)
+        assert self.unit_test.probabilistic_case_counter <= 10
+        assert self.unit_test.probabilistic_case_success_counter >= 5
+        assert self.unit_test.probabilistic_case_failure_counter <= 5
 
     def test_half_of_trials_succeed2(self):
         f = self._decorate(MockUnitTest.probabilistic_case, 10, 6)
         _should_fail(self, f)
-        self.assertLessEqual(self.unit_test.probabilistic_case_counter, 10)
-        self.assertLess(
-            self.unit_test.probabilistic_case_success_counter, 6)
-        self.assertGreaterEqual(
-            self.unit_test.probabilistic_case_failure_counter, 5)
+        assert self.unit_test.probabilistic_case_counter <= 10
+        assert self.unit_test.probabilistic_case_success_counter < 6
+        assert self.unit_test.probabilistic_case_failure_counter >= 5
 
 
 class TestRepeat(unittest.TestCase):
@@ -142,25 +138,24 @@ class TestRepeat(unittest.TestCase):
     def test_failure_case(self):
         f = self._decorate(MockUnitTest.failure_case, 10)
         _should_fail(self, f)
-        self.assertLessEqual(self.unit_test.failure_case_counter, 10)
+        assert self.unit_test.failure_case_counter <= 10
 
     def test_success_case(self):
         f = self._decorate(MockUnitTest.success_case, 10)
         _should_pass(self, f)
-        self.assertEqual(self.unit_test.success_case_counter, 10)
+        assert self.unit_test.success_case_counter == 10
 
     def test_skip_case(self):
         f = self._decorate(MockUnitTest.skip_case, 10)
         _should_skip(self, f)
-        self.assertEqual(self.unit_test.skip_case_counter, 1)
+        assert self.unit_test.skip_case_counter == 1
 
     def test_probabilistic_case(self):
         f = self._decorate(MockUnitTest.probabilistic_case, 10)
         _should_fail(self, f)
-        self.assertLessEqual(self.unit_test.probabilistic_case_counter, 10)
-        self.assertLess(self.unit_test.probabilistic_case_success_counter, 10)
-        self.assertGreater(
-            self.unit_test.probabilistic_case_failure_counter, 0)
+        assert self.unit_test.probabilistic_case_counter <= 10
+        assert self.unit_test.probabilistic_case_success_counter < 10
+        assert self.unit_test.probabilistic_case_failure_counter > 0
 
 
 class TestRetry(unittest.TestCase):
@@ -175,23 +170,21 @@ class TestRetry(unittest.TestCase):
     def test_failure_case(self):
         f = self._decorate(MockUnitTest.failure_case, 10)
         _should_fail(self, f)
-        self.assertEqual(self.unit_test.failure_case_counter, 10)
+        assert self.unit_test.failure_case_counter == 10
 
     def test_success_case(self):
         f = self._decorate(MockUnitTest.success_case, 10)
         _should_pass(self, f)
-        self.assertLessEqual(self.unit_test.success_case_counter, 10)
+        assert self.unit_test.success_case_counter <= 10
 
     def test_skip_case(self):
         f = self._decorate(MockUnitTest.skip_case, 10)
         _should_skip(self, f)
-        self.assertEqual(self.unit_test.skip_case_counter, 1)
+        assert self.unit_test.skip_case_counter == 1
 
     def test_probabilistic_case(self):
         f = self._decorate(MockUnitTest.probabilistic_case, 10)
         _should_pass(self, f)
-        self.assertLessEqual(
-            self.unit_test.probabilistic_case_counter, 10)
-        self.assertGreater(
-            self.unit_test.probabilistic_case_success_counter, 0)
-        self.assertLess(self.unit_test.probabilistic_case_failure_counter, 10)
+        assert self.unit_test.probabilistic_case_counter <= 10
+        assert self.unit_test.probabilistic_case_success_counter > 0
+        assert self.unit_test.probabilistic_case_failure_counter < 10

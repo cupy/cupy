@@ -125,6 +125,9 @@ class coo_matrix(sparse_data._data_matrix):
             dense = cupy.atleast_2d(arg1)
             row, col = dense.nonzero()
             data = dense[row, col]
+            shape = dense.shape
+
+            self.has_canonical_format = True
 
         else:
             raise TypeError('invalid input format')

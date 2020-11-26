@@ -14,10 +14,10 @@ class TestArrayUfunc(unittest.TestCase):
         a = cupy.array(np.array([0, 1, 2]), dtype=dtype)
         outa = np.sin(a)
         # numpy operation produced a cupy array
-        self.assertTrue(isinstance(outa, cupy.ndarray))
+        assert isinstance(outa, cupy.ndarray)
         b = a.get()
         outb = np.sin(b)
-        self.assertTrue(np.allclose(outa.get(), outb))
+        assert np.allclose(outa.get(), outb)
 
     @testing.for_all_dtypes()
     def test_unary_op_out(self, dtype):
@@ -27,7 +27,7 @@ class TestArrayUfunc(unittest.TestCase):
         # pre-make output with same type as input
         outa = cupy.array(np.array([0, 1, 2]), dtype=outb.dtype)
         np.sin(a, out=outa)
-        self.assertTrue(np.allclose(outa.get(), outb))
+        assert np.allclose(outa.get(), outb)
 
     @testing.for_all_dtypes()
     def test_binary_op(self, dtype):
@@ -35,11 +35,11 @@ class TestArrayUfunc(unittest.TestCase):
         a2 = cupy.array(np.array([0, 1, 2]), dtype=dtype)
         outa = np.add(a1, a2)
         # numpy operation produced a cupy array
-        self.assertTrue(isinstance(outa, cupy.ndarray))
+        assert isinstance(outa, cupy.ndarray)
         b1 = a1.get()
         b2 = a2.get()
         outb = np.add(b1, b2)
-        self.assertTrue(np.allclose(outa.get(), outb))
+        assert np.allclose(outa.get(), outb)
 
     @testing.for_all_dtypes()
     def test_binary_op_out(self, dtype):
@@ -50,7 +50,7 @@ class TestArrayUfunc(unittest.TestCase):
         b1 = a1.get()
         b2 = a2.get()
         outb = np.add(b1, b2)
-        self.assertTrue(np.allclose(outa.get(), outb))
+        assert np.allclose(outa.get(), outb)
 
     @testing.for_all_dtypes()
     def test_binary_mixed_op(self, dtype):
