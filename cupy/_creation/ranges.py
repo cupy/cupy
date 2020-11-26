@@ -389,7 +389,7 @@ class nd_grid(object):
             slobj = [cupy.newaxis] * len(size)
             for k in range(len(size)):
                 slobj[k] = slice(None, None)
-                nn[k] = nn[k][slobj]
+                nn[k] = nn[k][tuple(slobj)]
                 slobj[k] = cupy.newaxis
         return nn
 

@@ -161,8 +161,8 @@ class TestAverage(unittest.TestCase):
             a, axis, weights, returned=True)
         result = cupy.average(
             cupy.asarray(a), axis, weights, returned=True)
-        self.assertTrue(isinstance(result, tuple))
-        self.assertEqual(len(result), 2)
+        assert isinstance(result, tuple)
+        assert len(result) == 2
         average_gpu, sum_weights_gpu = result
         testing.assert_allclose(average_cpu, average_gpu)
         testing.assert_allclose(sum_weights_cpu, sum_weights_gpu)

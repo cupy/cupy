@@ -255,6 +255,8 @@ if not use_hip:
             'cudart',
             'nvrtc',
         ],
+        'check_method': build.check_jitify_version,
+        'version_method': build.get_jitify_version,
     })
 else:
     MODULES.append({
@@ -570,7 +572,7 @@ def make_extensions(options, compiler, use_cython):
         if module['name'] not in available_modules:
             continue
 
-        s = settings.copy()
+        s = copy.deepcopy(settings)
         if not no_cuda:
             s['libraries'] = module['libraries']
 
@@ -588,20 +590,21 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
-        # this fixes RTD (no_cuda) builds...
         if module['name'] == 'jitify':
+            # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')
+            # if any change is made to the Jitify header, we force recompiling
+            s['depends'] = ['./cupy/core/include/cupy/jitify/jitify.hpp']
 
-        original_s = s
         for f in module['file']:
-            s = copy.deepcopy(original_s)
+            s_file = copy.deepcopy(s)
             name = module_extension_name(f)
 
             rpath = []
             if not options['no_rpath']:
                 # Add library directories (e.g., `/usr/local/cuda/lib64`) to
                 # RPATH.
-                rpath += s['library_dirs']
+                rpath += s_file['library_dirs']
 
             if use_wheel_libs_rpath:
                 # Add `cupy/.data/lib` (where shared libraries included in
@@ -615,13 +618,13 @@ def make_extensions(options, compiler, use_cython):
                     '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))
 
             if not PLATFORM_WIN32 and not PLATFORM_LINUX:
-                s['runtime_library_dirs'] = rpath
-            if (PLATFORM_LINUX and s['library_dirs']) or PLATFORM_DARWIN:
+                s_file['runtime_library_dirs'] = rpath
+            if (PLATFORM_LINUX and s_file['library_dirs']) or PLATFORM_DARWIN:
                 ldflag = '-Wl,'
                 if PLATFORM_LINUX:
                     ldflag += '--disable-new-dtags,'
                 ldflag += ','.join('-rpath,' + p for p in rpath)
-                args = s.setdefault('extra_link_args', [])
+                args = s_file.setdefault('extra_link_args', [])
                 args.append(ldflag)
                 if PLATFORM_DARWIN:
                     # -rpath is only supported when targeting Mac OS X 10.5 or
@@ -629,7 +632,7 @@ def make_extensions(options, compiler, use_cython):
                     args.append('-mmacosx-version-min=10.5')
 
             sources = module_extension_sources(f, use_cython, no_cuda)
-            extension = setuptools.Extension(name, sources, **s)
+            extension = setuptools.Extension(name, sources, **s_file)
             ret.append(extension)
 
     return ret
@@ -1084,6 +1087,8 @@ class custom_build_ext(build_ext.build_ext):
         build_ext.build_ext.run(self)
 
     def build_extensions(self):
-        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
-        self.parallel = num_jobs
+        # TODO(kmaehashi): This option may be unstable, under investigation
+        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '1'))
+        if num_jobs > 1:
+            self.parallel = num_jobs
         super().build_extensions()

@@ -29,6 +29,11 @@ except ImportError:
     cub = None
 
 try:
+    import cupy.cuda.jitify as jitify
+except ImportError:
+    jitify = None
+
+try:
     import cupy_backends.cuda.libs.cutensor as cutensor
 except ImportError:
     cutensor = None
@@ -117,6 +122,7 @@ class _RuntimeInfo(object):
     nccl_build_version = None
     nccl_runtime_version = None
     cub_build_version = None
+    jitify_build_version = None
     cutensor_version = None
     cython_build_version = None
     cython_version = None
@@ -180,6 +186,9 @@ class _RuntimeInfo(object):
         if cub is not None:
             self.cub_build_version = cub.get_build_version()
 
+        if jitify is not None:
+            self.jitify_build_version = jitify.get_build_version()
+
         if cutensor is not None:
             self.cutensor_version = cutensor.get_version()
 
@@ -216,6 +225,7 @@ class _RuntimeInfo(object):
             ('NVRTC Version', self.nvrtc_version),
             ('Thrust Version', self.thrust_version),
             ('CUB Build Version', self.cub_build_version),
+            ('Jitify Build Version', self.jitify_build_version),
         ]
 
         records += [
