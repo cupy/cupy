@@ -69,6 +69,7 @@ typedef hipDeviceProp_t cudaDeviceProp;
 
 
 typedef hipStreamCallback_t cudaStreamCallback_t;
+typedef void (*cudaHostFn_t)(void* userData);
 typedef hipPointerAttribute_t cudaPointerAttributes;
 
 typedef hipChannelFormatKind cudaChannelFormatKind;

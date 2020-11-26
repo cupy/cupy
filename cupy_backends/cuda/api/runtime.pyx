@@ -811,6 +811,9 @@ cdef _HostFnFunc(void* func_arg) with gil:
 
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=0):
+    if _is_hip_environment and stream == 0:
+        raise RuntimeError('HIP does not allow adding callbacks to the '
+                           'default (null) stream')
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
     with nogil:

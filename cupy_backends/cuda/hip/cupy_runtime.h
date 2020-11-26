@@ -256,6 +256,10 @@ cudaError_t cudaStreamAddCallback(cudaStream_t stream,
     return hipStreamAddCallback(stream, callback, userData, flags);
 }
 
+cudaError_t cudaLaunchHostFunc(cudaStream_t stream, cudaHostFn_t fn, void* userData) {
+    return hipErrorUnknown;
+}
+
 cudaError_t cudaStreamQuery(cudaStream_t stream) {
     return hipStreamQuery(stream);
 }

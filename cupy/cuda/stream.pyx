@@ -215,15 +215,11 @@ class BaseStream(object):
             arg (object): Argument to the callback.
 
         .. note::
-            Whenever possible, using the :meth:`launch_host_func` method
+            Whenever possible, use the :meth:`launch_host_func` method
             instead of this one, as it may be deprecated and removed from
             CUDA at some point.
 
         """
-        if runtime._is_hip_environment and self.ptr == 0:
-            raise RuntimeError('HIP does not allow adding callbacks to the '
-                               'default (null) stream')
-
         def f(stream, status, dummy):
             callback(self, status, arg)
 
@@ -238,7 +234,7 @@ class BaseStream(object):
             arg (object): Argument to the callback.
 
         .. note::
-            Whenever possible, using this method is recommended over
+            Whenever possible, this method is recommended over
             :meth:`add_callback`, which may be deprecated and removed from
             CUDA at some point.
 
