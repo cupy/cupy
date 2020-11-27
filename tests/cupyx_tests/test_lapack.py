@@ -62,27 +62,26 @@ class TestGesv(unittest.TestCase):
     def test_invalid_cases(self):
         if self.nrhs is None or self.nrhs == 1:
             raise unittest.SkipTest()
+        ng_a = self.a.reshape(1, self.n, self.n)
         with pytest.raises(ValueError):
-            ng_a = self.a.reshape(1, self.n, self.n)
             lapack.gesv(ng_a, self.b)
+        ng_b = self.b.reshape(1, self.n, self.nrhs)
         with pytest.raises(ValueError):
-            ng_b = self.b.reshape(1, self.n, self.nrhs)
             lapack.gesv(self.a, ng_b)
+        ng_a = cupy.ones((self.n, self.n+1), dtype=self.dtype)
         with pytest.raises(ValueError):
-            ng_a = cupy.ones((self.n, self.n+1), dtype=self.dtype)
             lapack.gesv(ng_a, self.b)
+        ng_a = cupy.ones((self.n+1, self.n+1), dtype=self.dtype)
         with pytest.raises(ValueError):
-            ng_a = cupy.ones((self.n+1, self.n+1), dtype=self.dtype)
             lapack.gesv(ng_a, self.b)
+        ng_a = cupy.ones(self.a.shape, dtype='i')
         with pytest.raises(TypeError):
-            ng_a = cupy.ones(self.a.shape, dtype='i')
             lapack.gesv(ng_a, self.b)
+        ng_a = cupy.ones((2, self.n, self.n), dtype=self.dtype, order='F')[0]
         with pytest.raises(ValueError):
-            ng_a = cupy.ones((2, self.n, self.n), dtype=self.dtype,
-                             order='F')[0]
             lapack.gesv(ng_a, self.b)
+        ng_b = self.b.copy(order='C')
         with pytest.raises(ValueError):
-            ng_b = self.b.copy(order='C')
             lapack.gesv(self.a, ng_b)
 
 

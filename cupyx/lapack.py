@@ -56,9 +56,8 @@ def gesv(a, b):
         trans = _cublas.CUBLAS_OP_T
     else:
         raise ValueError('a must be F-contiguous or C-contiguous.')
-    if not (b._f_contiguous or (b._c_contiguous and nrhs == 1)):
-        raise ValueError('b must be F-contiguous '
-                         '(or C-contiguous if nrhs == 1).')
+    if not b._f_contiguous:
+        raise ValueError('b must be F-contiguous.')
 
     handle = _device.get_cusolver_handle()
     dipiv = _cupy.empty(n, dtype=_numpy.int32)
