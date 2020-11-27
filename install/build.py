@@ -571,6 +571,7 @@ def check_cub_version(compiler, settings):
 
     _cub_version = int(out)
     settings['define_macros'].append(('CUPY_CUB_VERSION_CODE', _cub_version))
+    settings['define_macros'].append(('THRUST_IGNORE_CUB_VERSION_CHECK', 1))
     return True  # we always build CUB
 
 
