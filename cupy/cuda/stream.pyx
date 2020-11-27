@@ -285,7 +285,7 @@ class Stream(BaseStream):
 
     """
 
-    def __init__(self, null=False, ptds=False, non_blocking=False):
+    def __init__(self, null=False, non_blocking=False, ptds=False):
         if null:
             self.ptr = runtime.streamLegacy
         elif ptds:
