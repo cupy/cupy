@@ -745,9 +745,11 @@ class TestCsrsm2(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_csrsm2(self, dtype):
+        if not cusparse.check_availability('csrsm2'):
+            raise unittest.SkipTest('csrsm2 is not available')
         if (self.format == 'csc' and numpy.dtype(dtype).char in 'FD' and
                 self.transa == 'H'):
-            raise unittest.SkipTest()
+            raise unittest.SkipTest('unsupported combination')
         self._setup(dtype)
         x = self.b.copy(order=self.order)
         cusparse.csrsm2(self.a, x, alpha=self.alpha,

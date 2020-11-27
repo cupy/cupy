@@ -95,6 +95,9 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         cupy.ndarray:
             Solution to the system ``A x = b``. The shape is the same as ``b``.
     """
+    if not cusparse.check_availability('csrsm2'):
+        raise NotImplementedError
+
     if not sparse.isspmatrix(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if not isinstance(b, cupy.ndarray):
@@ -113,7 +116,7 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         raise TypeError('unsupported dtype (actual: {})'.format(A.dtype))
 
     if not (sparse.isspmatrix_csr(A) or sparse.isspmatrix_csc(A)):
-        warn('CSR or CSC format is required. Converting to CSR matrix.',
+        warn('CSR or CSC format is required. Converting to CSR format.',
              SparseEfficiencyWarning)
         A = A.tocsr()
     A.sum_duplicates()
