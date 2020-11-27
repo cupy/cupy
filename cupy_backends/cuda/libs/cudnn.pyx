@@ -6,7 +6,6 @@ cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy_backends.cuda.api cimport driver
-from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
 ###############################################################################
