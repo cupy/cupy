@@ -395,3 +395,57 @@ class TestCg(unittest.TestCase):
         ng_a = xp.ones((self.n, self.n), dtype='i')
         with pytest.raises(TypeError):
             sp.linalg.cg(ng_a, b, atol=self.atol)
+
+
+@testing.parameterize(*testing.product({
+    'lower': [True, False],
+    'unit_diagonal': [True, False],
+    'nrhs': [None, 1, 4],
+    'order': ['C', 'F']
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.gpu
+class TestSpsolveTriangular(unittest.TestCase):
+
+    n = 10
+    density = 0.5
+
+    def _make_matrix(self, dtype, xp):
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=1)
+        mask = testing.shaped_random(a_shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        diag = xp.diag(xp.ones((self.n,), dtype=dtype))
+        a = a + diag
+        if self.lower:
+            a = xp.tril(a)
+        else:
+            a = xp.triu(a)
+        return a
+
+    def _test_spsolve_triangular(self, dtype, xp, sp, a):
+        b_shape = (self.n,) if self.nrhs is None else (self.n, self.nrhs)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, order=self.order)
+        return sp.linalg.spsolve_triangular(a, b, lower=self.lower,
+                                            unit_diagonal=self.unit_diagonal)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_csr(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        a = sp.csr_matrix(a)
+        return self._test_spsolve_triangular(dtype, xp, sp, a)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_csc(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        a = sp.csc_matrix(a)
+        return self._test_spsolve_triangular(dtype, xp, sp, a)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_coo(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        a = sp.coo_matrix(a)
+        return self._test_spsolve_triangular(dtype, xp, sp, a)
