@@ -87,14 +87,18 @@ class TestTensorSolve(unittest.TestCase):
         return xp.linalg.tensorsolve(a, b, axes=self.axes)
 
 
+@testing.parameterize(*testing.product({
+    'order': ['C', 'F'],
+}))
 @testing.gpu
 class TestInv(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     @condition.retry(10)
     def check_x(self, a_shape, dtype):
-        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
-        a_gpu = cupy.asarray(a_cpu)
+        a_cpu = numpy.random.randint(0, 10, size=a_shape)
+        a_cpu = a_cpu.astype(dtype, order=self.order)
+        a_gpu = cupy.asarray(a_cpu, order=self.order)
         a_gpu_copy = a_gpu.copy()
         result_cpu = numpy.linalg.inv(a_cpu)
         result_gpu = cupy.linalg.inv(a_gpu)

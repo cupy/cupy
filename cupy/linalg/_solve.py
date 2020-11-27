@@ -287,10 +287,14 @@ def inv(a):
     _util._assert_nd_squareness(a)
 
     dtype = numpy.promote_types(a.dtype, 'f')
+    order = 'F' if a._f_contiguous else 'C'
     # prevent 'a' to be overwritten
-    a = a.astype(dtype, copy=True, order='F')
-    b = cupy.eye(a.shape[0], dtype=dtype, order='F')
-    cupyx.lapack.gesv(a, b)
+    a = a.astype(dtype, copy=True, order=order)
+    b = cupy.eye(a.shape[0], dtype=dtype, order=order)
+    if order == 'F':
+        cupyx.lapack.gesv(a, b)
+    else:
+        cupyx.lapack.gesv(a.T, b.T)
     return b
 
 
