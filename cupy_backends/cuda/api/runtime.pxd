@@ -525,12 +525,12 @@ cpdef enum:
     cudaMemAdviseUnsetAccessedBy = 6
 
     # cudaStream flags
-    cudaStreamDefault = 0
-    cudaStreamNonBlocking = 1
+    streamDefault = 0
+    streamNonBlocking = 1
 
     # cudaStream handles
-    cudaStreamLegacy = 1
-    cudaStreamPerThread = 2
+    streamLegacy = 1
+    streamPerThread = 2
 
     eventDefault = 0
     eventBlockingSync = 1

@@ -54,11 +54,11 @@ cdef class _ThreadLocal:
 
     cdef void* get_current_stream_ptr(self):
         # Returns the stream previously set, otherwise returns
-        # nullptr or runtime.cudaStreamPerThread when
+        # nullptr or runtime.streamPerThread when
         # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
         if (stream_module.is_ptds_enabled() and
                 self.current_stream == <void*>0):
-            return <void*>runtime.cudaStreamPerThread
+            return <void*>runtime.streamPerThread
         return self.current_stream
 
 
@@ -287,12 +287,12 @@ class Stream(BaseStream):
 
     def __init__(self, null=False, ptds=False, non_blocking=False):
         if null:
-            self.ptr = runtime.cudaStreamLegacy
+            self.ptr = runtime.streamLegacy
         elif ptds:
-            self.ptr = runtime.cudaStreamPerThread
+            self.ptr = runtime.streamPerThread
         elif non_blocking:
             self.ptr = runtime.streamCreateWithFlags(
-                runtime.cudaStreamNonBlocking)
+                runtime.streamNonBlocking)
         else:
             self.ptr = runtime.streamCreate()
 
