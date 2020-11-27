@@ -200,7 +200,7 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
         assert isinstance(typestr, str)
         assert isinstance(ptr, int)
         assert isinstance(readonly, bool)
-        assert version == 2  # update this when the standard is updated!
+        assert version == 3  # update this when the standard is updated!
         assert (strides is None) or isinstance(strides, tuple)
         assert (descr is None) or isinstance(descr, list)
         if isinstance(descr, list):

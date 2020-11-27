@@ -20,6 +20,10 @@ ENABLE_SLICE_COPY = bool(
     int(os.environ.get('CUPY_EXPERIMENTAL_SLICE_COPY', 0)))
 
 
+CUDA_ARRAY_INTERFACE_SYNC = bool(
+    int(os.environ.get('CUPY_CUDA_ARRAY_INTERFACE_SYNC', 1)))
+
+
 cdef list _memos = []
 
 

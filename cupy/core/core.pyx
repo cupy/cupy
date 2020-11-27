@@ -157,7 +157,7 @@ cdef class ndarray:
             'shape': self.shape,
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
-            'version': 2,
+            'version': 3,
         }
         if self._c_contiguous:
             desc['strides'] = None
@@ -167,6 +167,12 @@ cdef class ndarray:
             desc['data'] = (self.data.ptr, False)
         else:
             desc['data'] = (0, False)
+        stream_ptr = stream_module.get_current_stream_ptr()
+        if stream_ptr == 0:
+            # TODO(leofang): check if we're using PTDS
+            desc['stream'] = None
+        else:
+            desc['stream'] = stream_ptr
 
         return desc
 
@@ -2340,7 +2346,7 @@ cdef int _cuda_runtime_version = -1
 
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef Py_ssize_t sh, st
-    cdef object desc = a.__cuda_array_interface__
+    cdef dict desc = a.__cuda_array_interface__
     cdef tuple shape = desc['shape']
     cdef int dev_id = -1
     cdef size_t nbytes
@@ -2363,6 +2369,14 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
         dev_id = device.get_device_id()
     mem = memory_module.UnownedMemory(ptr, nbytes, a, dev_id)
     memptr = memory.MemoryPointer(mem, 0)
+    # the v3 protocol requires an immediate synchronization, unless
+    # 1. the stream is not set (ex: from v0 - v2) or is None
+    # 2. users explicitly overwrite this requirement
+    stream_ptr = desc.get('stream')
+    if stream_ptr is not None:
+        stream = cuda.stream.ExternalStream(stream_ptr)
+        if _util.CUDA_ARRAY_INTERFACE_SYNC:
+            stream.synchronize()
     return ndarray(shape, dtype, memptr, strides)
 
 

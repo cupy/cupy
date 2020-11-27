@@ -225,14 +225,14 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         iface = arr.__cuda_array_interface__
         assert (set(iface.keys()) ==
                 set(['shape', 'typestr', 'data', 'version', 'descr',
-                     'strides']))
+                     'stream', 'strides']))
         assert iface['shape'] == (2, 3)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
-        assert iface['version'] == 2
+        assert iface['version'] == 3
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
 
@@ -241,15 +241,15 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         view = arr[::2, ::5]
         iface = view.__cuda_array_interface__
         assert (set(iface.keys()) ==
-                set(['shape', 'typestr', 'data', 'version',
-                     'strides', 'descr']))
+                set(['shape', 'typestr', 'data', 'version', 'descr',
+                     'stream', 'strides']))
         assert iface['shape'] == (5, 4)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
-        assert iface['version'] == 2
+        assert iface['version'] == 3
         assert iface['strides'] == (320, 40)
         assert iface['descr'] == [('', '<f8')]
 
@@ -258,15 +258,15 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         view = arr[0:3:-1]
         iface = view.__cuda_array_interface__
         assert (set(iface.keys()) ==
-                set(['shape', 'typestr', 'data', 'version',
-                     'strides', 'descr']))
+                set(['shape', 'typestr', 'data', 'version', 'descr',
+                     'stream', 'strides']))
         assert iface['shape'] == (0,)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
         assert iface['data'][0] == 0
         assert not iface['data'][1]
-        assert iface['version'] == 2
+        assert iface['version'] == 3
         assert iface['strides'] is None
         assert iface['descr'] == [('', '<f8')]
 
