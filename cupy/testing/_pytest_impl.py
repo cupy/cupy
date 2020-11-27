@@ -1,6 +1,6 @@
 import unittest
 
-import cupy.testing.parameterized
+import cupy.testing._parameterized
 
 try:
     import pytest
@@ -40,7 +40,7 @@ if is_available():
 
 def parameterize(*params):
     check_available()
-    param_name = cupy.testing.parameterized._make_class_name
+    param_name = cupy.testing._parameterized._make_class_name
     # TODO(kataoka): Give better names (`id`).
     # For now, use legacy `_make_class_name` just for consistency. Here,
     # a generated name is `TestFoo::test_bar[_param_0_{...}]`, whereas
