@@ -85,7 +85,7 @@ cuda_files = [
     'cupy.cuda.stream',
     'cupy.cuda.texture',
     'cupy.fft._cache',
-    'cupy.lib.polynomial',
+    'cupy.lib._polynomial',
     'cupy._util'
 ]
 
