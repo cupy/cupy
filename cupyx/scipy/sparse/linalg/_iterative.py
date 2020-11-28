@@ -8,9 +8,6 @@ from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import csr
 
-import scipy
-import scipy.linalg
-
 
 def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
        atol=None):
@@ -46,7 +43,7 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         raise TypeError('unsupprted dtype (actual: {})'.format(A.dtype))
     n = A.shape[0]
     if not (b.shape == (n,) or b.shape == (n, 1)):
-        raise ValueError('b has incompatible dimensins')
+        raise ValueError('b has incompatible dimensinos')
     b = b.astype(A.dtype).ravel()
     if n == 0:
         return cupy.empty_like(b), 0
@@ -61,7 +58,7 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         x = cupy.zeros((n,), dtype=A.dtype)
     else:
         if not (x0.shape == (n,) or x0.shape == (n, 1)):
-            raise ValueError('x0 has incompatible dimensins')
+            raise ValueError('x0 has incompatible dimensions')
         x = x0.astype(A.dtype).ravel()
     if maxiter is None:
         maxiter = n * 10
@@ -117,7 +114,7 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
             It is called as ``callback(arg)``, where ``arg`` is selected by
             ``callback_type``.
         callback_type (str): 'x' or 'pr_norm'. If 'x', the current solution
-            vector is used as an argument of callback function. if `pr_norm`,
+            vector is used as an argument of callback function. if 'pr_norm',
             relative (preconditioned) residual norm is used as an arugment.
         atol (float): Tolerance for convergence.
 
@@ -139,7 +136,7 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
         raise TypeError('unsupprted dtype (actual: {})'.format(A.dtype))
     n = A.shape[0]
     if not (b.shape == (n,) or b.shape == (n, 1)):
-        raise ValueError('b has incompatible dimensins')
+        raise ValueError('b has incompatible dimensions')
     b = b.astype(A.dtype).ravel()
     if n == 0:
         return cupy.empty_like(b), 0
@@ -154,7 +151,7 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
         x = cupy.zeros((n,), dtype=A.dtype)
     else:
         if not (x0.shape == (n,) or x0.shape == (n, 1)):
-            raise ValueError('x0 has incompatible dimensins')
+            raise ValueError('x0 has incompatible dimensions')
         x = x0.astype(A.dtype).ravel()
     if maxiter is None:
         maxiter = n * 10
@@ -164,7 +161,7 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
     if callback_type is None:
         callback_type = 'pr_norm'
     if callback_type not in ('x', 'pr_norm'):
-        raise ValueError('Unknow callback_type: {}'.format(callback_type))
+        raise ValueError('Unknown callback_type: {}'.format(callback_type))
     if callback is None:
         callback_type = None
 
@@ -202,7 +199,7 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
 
         # Note: The least-square solution to equation Hy = e is computed on CPU
         # because it is faster if tha matrix size is small.
-        ret = scipy.linalg.lstsq(cupy.asnumpy(H), e)
+        ret = numpy.linalg.lstsq(cupy.asnumpy(H), e)
         y = cupy.array(ret[0])
         x += V @ y
         iters += restart

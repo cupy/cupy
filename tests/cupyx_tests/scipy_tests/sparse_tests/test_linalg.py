@@ -414,10 +414,7 @@ class TestGmres(unittest.TestCase):
     def _make_matrix(self, dtype, xp):
         dtype = numpy.dtype(dtype)
         shape = (self.n, self.n)
-        a = testing.shaped_random(shape, xp, dtype=dtype.char.lower(), scale=1)
-        if dtype.char in 'FD':
-            a = a + 1j * testing.shaped_random(
-                shape, xp, dtype=dtype.char.lower(), scale=1)
+        a = testing.shaped_random(shape, xp, dtype=dtype, scale=1)
         mask = testing.shaped_random(shape, xp, dtype='f', scale=1)
         a[mask > self.density] = 0
         diag = xp.diag(testing.shaped_random(
