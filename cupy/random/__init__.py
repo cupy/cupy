@@ -4,10 +4,14 @@ import numpy as _numpy
 def bytes(length):
     """Returns random bytes.
 
+    .. note:: This function is just a wrapper for :obj:`numpy.random.bytes`.
+        The resulting bytes are generated on the host (NumPy), not GPU.
+
     .. seealso:: :meth:`numpy.random.bytes
                  <numpy.random.mtrand.RandomState.bytes>`
     """
-    return _numpy.bytes(length)
+    # TODO(kmaehashi): should it be provided in CuPy?
+    return _numpy.random.bytes(length)
 
 
 # import class and function

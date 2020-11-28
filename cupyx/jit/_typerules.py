@@ -44,6 +44,33 @@ _scalar_gt = core.create_comparison('scalar_less', '>')
 _scalar_gte = core.create_comparison('scalar_less', '>=')
 
 
+_py_ops = {
+    ast.And: lambda x, y: x and y,
+    ast.Or: lambda x, y: x or y,
+    ast.Add: lambda x, y: x + y,
+    ast.Sub: lambda x, y: x - y,
+    ast.Mult: lambda x, y: x * y,
+    ast.Pow: lambda x, y: x ** y,
+    ast.Div: lambda x, y: x / y,
+    ast.FloorDiv: lambda x, y: x // y,
+    ast.Mod: lambda x, y: x % y,
+    ast.LShift: lambda x, y: x << y,
+    ast.RShift: lambda x, y: x >> y,
+    ast.BitOr: lambda x, y: x | y,
+    ast.BitAnd: lambda x, y: x & y,
+    ast.BitXor: lambda x, y: x ^ y,
+    ast.Invert: lambda x: ~x,
+    ast.Not: lambda x: not x,
+    ast.Eq: lambda x, y: x == y,
+    ast.NotEq: lambda x, y: x != y,
+    ast.Lt: lambda x, y: x < y,
+    ast.LtE: lambda x, y: x <= y,
+    ast.Gt: lambda x, y: x > y,
+    ast.GtE: lambda x, y: x >= y,
+    ast.USub: lambda x: -x,
+}
+
+
 _numpy_ops = {
     ast.And: ops.logical_and,
     ast.Or: ops.logical_or,
@@ -69,6 +96,10 @@ _numpy_ops = {
     ast.GtE: _scalar_gte,
     ast.USub: arithmetic.negative,
 }
+
+
+def get_pyfunc(op_type):
+    return _py_ops[op_type]
 
 
 def get_ufunc(mode, op_type):

@@ -50,21 +50,21 @@ def _make_cudnn_record(
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
 _cudnn_records.append(_make_cudnn_record(
-    '11.1', '8.0.4',
-    'cudnn-11.1-linux-x64-v8.0.4.30.tgz',
-    'cudnn-11.1-windows-x64-v8.0.4.30.zip'))
+    '11.1', '8.0.5',
+    'cudnn-11.1-linux-x64-v8.0.5.39.tgz',
+    'cudnn-11.1-windows-x64-v8.0.5.39.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.0', '8.0.4',
-    'cudnn-11.0-linux-x64-v8.0.4.30.tgz',
-    'cudnn-11.0-windows-x64-v8.0.4.30.zip'))
+    '11.0', '8.0.5',
+    'cudnn-11.0-linux-x64-v8.0.5.39.tgz',
+    'cudnn-11.0-windows-x64-v8.0.5.39.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '10.2', '8.0.4',
-    'cudnn-10.2-linux-x64-v8.0.4.30.tgz',
-    'cudnn-10.2-windows10-x64-v8.0.4.30.zip'))
+    '10.2', '8.0.5',
+    'cudnn-10.2-linux-x64-v8.0.5.39.tgz',
+    'cudnn-10.2-windows10-x64-v8.0.5.39.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '10.1', '8.0.4',
-    'cudnn-10.1-linux-x64-v8.0.4.30.tgz',
-    'cudnn-10.1-windows10-x64-v8.0.4.30.zip'))
+    '10.1', '8.0.5',
+    'cudnn-10.1-linux-x64-v8.0.5.39.tgz',
+    'cudnn-10.1-windows10-x64-v8.0.5.39.zip'))
 _cudnn_records.append(_make_cudnn_record(
     '10.0', '7.6.5',
     'cudnn-10.0-linux-x64-v7.6.5.32.tgz',

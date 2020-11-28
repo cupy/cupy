@@ -94,69 +94,69 @@ class TestCscMatrix(unittest.TestCase):
         self.m = _make(cupy, sparse, self.dtype)
 
     def test_dtype(self):
-        self.assertEqual(self.m.dtype, self.dtype)
+        assert self.m.dtype == self.dtype
 
     def test_data(self):
-        self.assertEqual(self.m.data.dtype, self.dtype)
+        assert self.m.data.dtype == self.dtype
         testing.assert_array_equal(
             self.m.data, cupy.array([0, 1, 3, 2], self.dtype))
 
     def test_indices(self):
-        self.assertEqual(self.m.indices.dtype, numpy.int32)
+        assert self.m.indices.dtype == numpy.int32
         testing.assert_array_equal(
             self.m.indices, cupy.array([0, 0, 2, 1], self.dtype))
 
     def test_indptr(self):
-        self.assertEqual(self.m.indptr.dtype, numpy.int32)
+        assert self.m.indptr.dtype == numpy.int32
         testing.assert_array_equal(
             self.m.indptr, cupy.array([0, 1, 2, 3, 4], self.dtype))
 
     def test_init_copy(self):
         n = sparse.csc_matrix(self.m)
-        self.assertIsNot(n, self.m)
+        assert n is not self.m
         cupy.testing.assert_array_equal(n.data, self.m.data)
         cupy.testing.assert_array_equal(n.indices, self.m.indices)
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
-        self.assertEqual(n.shape, self.m.shape)
+        assert n.shape == self.m.shape
 
     def test_init_copy_other_sparse(self):
         n = sparse.csc_matrix(self.m.tocsr())
         cupy.testing.assert_array_equal(n.data, self.m.data)
         cupy.testing.assert_array_equal(n.indices, self.m.indices)
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
-        self.assertEqual(n.shape, self.m.shape)
+        assert n.shape == self.m.shape
 
     @testing.with_requires('scipy')
     def test_init_copy_scipy_sparse(self):
         m = _make(numpy, scipy.sparse, self.dtype)
         n = sparse.csc_matrix(m)
-        self.assertIsInstance(n.data, cupy.ndarray)
-        self.assertIsInstance(n.indices, cupy.ndarray)
-        self.assertIsInstance(n.indptr, cupy.ndarray)
+        assert isinstance(n.data, cupy.ndarray)
+        assert isinstance(n.indices, cupy.ndarray)
+        assert isinstance(n.indptr, cupy.ndarray)
         cupy.testing.assert_array_equal(n.data, m.data)
         cupy.testing.assert_array_equal(n.indices, m.indices)
         cupy.testing.assert_array_equal(n.indptr, m.indptr)
-        self.assertEqual(n.shape, m.shape)
+        assert n.shape == m.shape
 
     @testing.with_requires('scipy')
     def test_init_copy_other_scipy_sparse(self):
         m = _make(numpy, scipy.sparse, self.dtype)
         n = sparse.csc_matrix(m.tocsr())
-        self.assertIsInstance(n.data, cupy.ndarray)
-        self.assertIsInstance(n.indices, cupy.ndarray)
-        self.assertIsInstance(n.indptr, cupy.ndarray)
+        assert isinstance(n.data, cupy.ndarray)
+        assert isinstance(n.indices, cupy.ndarray)
+        assert isinstance(n.indptr, cupy.ndarray)
         cupy.testing.assert_array_equal(n.data, m.data)
         cupy.testing.assert_array_equal(n.indices, m.indices)
         cupy.testing.assert_array_equal(n.indptr, m.indptr)
-        self.assertEqual(n.shape, m.shape)
+        assert n.shape == m.shape
 
     def test_init_dense(self):
         m = cupy.array([[0, 1, 0, 2],
                         [0, 0, 0, 0],
                         [0, 0, 0, 3]], dtype=self.dtype)
         n = sparse.csc_matrix(m)
-        self.assertEqual(n.nnz, 3)
-        self.assertEqual(n.shape, (3, 4))
+        assert n.nnz == 3
+        assert n.shape == (3, 4)
         cupy.testing.assert_array_equal(n.data, [1, 2, 3])
         cupy.testing.assert_array_equal(n.indices, [0, 0, 2])
         cupy.testing.assert_array_equal(n.indptr, [0, 0, 1, 1, 3])
@@ -166,8 +166,8 @@ class TestCscMatrix(unittest.TestCase):
                         [0, 0, 0, 0],
                         [0, 0, 0, 0]], dtype=self.dtype)
         n = sparse.csc_matrix(m)
-        self.assertEqual(n.nnz, 0)
-        self.assertEqual(n.shape, (3, 4))
+        assert n.nnz == 0
+        assert n.shape == (3, 4)
         cupy.testing.assert_array_equal(n.data, [])
         cupy.testing.assert_array_equal(n.indices, [])
         cupy.testing.assert_array_equal(n.indptr, [0, 0, 0, 0, 0])
@@ -175,8 +175,8 @@ class TestCscMatrix(unittest.TestCase):
     def test_init_dense_one_dim(self):
         m = cupy.array([0, 1, 0, 2], dtype=self.dtype)
         n = sparse.csc_matrix(m)
-        self.assertEqual(n.nnz, 2)
-        self.assertEqual(n.shape, (1, 4))
+        assert n.nnz == 2
+        assert n.shape == (1, 4)
         cupy.testing.assert_array_equal(n.data, [1, 2])
         cupy.testing.assert_array_equal(n.indices, [0, 0])
         cupy.testing.assert_array_equal(n.indptr, [0, 0, 1, 1, 2])
@@ -184,8 +184,8 @@ class TestCscMatrix(unittest.TestCase):
     def test_init_dense_zero_dim(self):
         m = cupy.array(1, dtype=self.dtype)
         n = sparse.csc_matrix(m)
-        self.assertEqual(n.nnz, 1)
-        self.assertEqual(n.shape, (1, 1))
+        assert n.nnz == 1
+        assert n.shape == (1, 1)
         cupy.testing.assert_array_equal(n.data, [1])
         cupy.testing.assert_array_equal(n.indices, [0])
         cupy.testing.assert_array_equal(n.indptr, [0, 1])
@@ -196,7 +196,7 @@ class TestCscMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.data, self.m.data)
         cupy.testing.assert_array_equal(n.indices, self.m.indices)
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
-        self.assertEqual(n.shape, self.m.shape)
+        assert n.shape == self.m.shape
 
     @testing.with_requires('scipy')
     def test_init_dense_invalid_ndim(self):
@@ -207,24 +207,24 @@ class TestCscMatrix(unittest.TestCase):
 
     def test_copy(self):
         n = self.m.copy()
-        self.assertIsInstance(n, sparse.csc_matrix)
-        self.assertIsNot(n, self.m)
-        self.assertIsNot(n.data, self.m.data)
-        self.assertIsNot(n.indices, self.m.indices)
-        self.assertIsNot(n.indptr, self.m.indptr)
+        assert isinstance(n, sparse.csc_matrix)
+        assert n is not self.m
+        assert n.data is not self.m.data
+        assert n.indices is not self.m.indices
+        assert n.indptr is not self.m.indptr
         cupy.testing.assert_array_equal(n.data, self.m.data)
         cupy.testing.assert_array_equal(n.indices, self.m.indices)
         cupy.testing.assert_array_equal(n.indptr, self.m.indptr)
-        self.assertEqual(n.shape, self.m.shape)
+        assert n.shape == self.m.shape
 
     def test_shape(self):
-        self.assertEqual(self.m.shape, (3, 4))
+        assert self.m.shape == (3, 4)
 
     def test_ndim(self):
-        self.assertEqual(self.m.ndim, 2)
+        assert self.m.ndim == 2
 
     def test_nnz(self):
-        self.assertEqual(self.m.nnz, 4)
+        assert self.m.nnz == 4
 
     def test_conj(self):
         n = _make_complex(cupy, sparse, self.dtype)
@@ -233,7 +233,7 @@ class TestCscMatrix(unittest.TestCase):
     @testing.with_requires('scipy')
     def test_get(self):
         m = self.m.get()
-        self.assertIsInstance(m, scipy.sparse.csc_matrix)
+        assert isinstance(m, scipy.sparse.csc_matrix)
         expect = [
             [0, 1, 0, 0],
             [0, 0, 0, 2],
@@ -254,7 +254,7 @@ class TestCscMatrix(unittest.TestCase):
   (2, 2)\t(3+0j)
   (1, 3)\t(2+0j)'''
 
-        self.assertEqual(str(self.m), expect)
+        assert str(self.m) == expect
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -263,7 +263,7 @@ class TestCscMatrix(unittest.TestCase):
             [0, 0, 0, 2],
             [0, 0, 3, 0]
         ]
-        self.assertTrue(m.flags.c_contiguous)
+        assert m.flags.c_contiguous
         cupy.testing.assert_allclose(m, expect)
 
     def test_pickle_roundtrip(self):
@@ -298,14 +298,14 @@ class TestCscMatrixInit(unittest.TestCase):
     def test_shape_none(self, xp, sp):
         x = sp.csc_matrix(
             (self.data(xp), self.indices(xp), self.indptr(xp)), shape=None)
-        self.assertEqual(x.shape, (3, 4))
+        assert x.shape == (3, 4)
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_dtype(self, xp, sp):
         data = self.data(xp).real.astype('i')
         x = sp.csc_matrix(
             (data, self.indices(xp), self.indptr(xp)), dtype=self.dtype)
-        self.assertEqual(x.dtype, self.dtype)
+        assert x.dtype == self.dtype
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_copy_true(self, xp, sp):
@@ -314,24 +314,24 @@ class TestCscMatrixInit(unittest.TestCase):
         indptr = self.indptr(xp)
         x = sp.csc_matrix((data, indices, indptr), copy=True)
 
-        self.assertIsNot(data, x.data)
-        self.assertIsNot(indices, x.indices)
-        self.assertIsNot(indptr, x.indptr)
+        assert data is not x.data
+        assert indices is not x.indices
+        assert indptr is not x.indptr
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_init_with_shape(self, xp, sp):
         s = sp.csc_matrix(self.shape)
-        self.assertEqual(s.shape, self.shape)
-        self.assertEqual(s.dtype, 'd')
-        self.assertEqual(s.size, 0)
+        assert s.shape == self.shape
+        assert s.dtype == 'd'
+        assert s.size == 0
         return s
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_init_with_shape_and_dtype(self, xp, sp):
         s = sp.csc_matrix(self.shape, dtype=self.dtype)
-        self.assertEqual(s.shape, self.shape)
-        self.assertEqual(s.dtype, self.dtype)
-        self.assertEqual(s.size, 0)
+        assert s.shape == self.shape
+        assert s.dtype == self.dtype
+        assert s.size == 0
         return s
 
     @testing.numpy_cupy_allclose(sp_name='sp', atol=1e-5)
@@ -450,21 +450,21 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         a = m.toarray()
         if sp is sparse:
-            self.assertTrue(a.flags.c_contiguous)
+            assert a.flags.c_contiguous
         return a
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray_c_order(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         a = m.toarray(order='C')
-        self.assertTrue(a.flags.c_contiguous)
+        assert a.flags.c_contiguous
         return a
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_toarray_f_order(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         a = m.toarray(order='F')
-        self.assertTrue(a.flags.f_contiguous)
+        assert a.flags.f_contiguous
         return a
 
     @testing.with_requires('numpy>=1.19')
@@ -488,7 +488,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def test_tocoo_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocoo(copy=True)
-        self.assertIsNot(m.data, n.data)
+        assert m.data is not n.data
         return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -500,9 +500,9 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def test_tocsc_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsc(copy=True)
-        self.assertIsNot(m.data, n.data)
-        self.assertIsNot(m.indices, n.indices)
-        self.assertIsNot(m.indptr, n.indptr)
+        assert m.data is not n.data
+        assert m.indices is not n.indices
+        assert m.indptr is not n.indptr
         return n
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -514,9 +514,9 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def test_tocsr_copy(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         n = m.tocsr(copy=True)
-        self.assertIsNot(m.data, n.data)
-        self.assertIsNot(m.indices, n.indices)
-        self.assertIsNot(m.indptr, n.indptr)
+        assert m.data is not n.data
+        assert m.indices is not n.indices
+        assert m.indptr is not n.indptr
         return n
 
     # dot
@@ -853,7 +853,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         # this test is adopted from SciPy's
         M = sp.csc_matrix((xp.array([2], dtype=self.dtype),
                            xp.array([0]), xp.array([0, 1])))
-        assert M.has_canonical_format
+        assert M.has_canonical_format is True
         return M
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -864,11 +864,11 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         indptr = xp.array([0, 2])
 
         M = sp.csc_matrix((data, indices, indptr))
-        assert not M.has_canonical_format
+        assert M.has_canonical_format is False
 
         # set by deduplicating
         M.sum_duplicates()
-        assert M.has_canonical_format
+        assert M.has_canonical_format is True
         assert 1 == len(M.indices)
         return M
 
@@ -982,7 +982,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
     def test_sum_duplicates(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         m.sum_duplicates()
-        self.assertTrue(m.has_canonical_format)
+        assert m.has_canonical_format
         return m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -1267,7 +1267,7 @@ class TestIsspmatrixCsc(unittest.TestCase):
              cupy.array([], 'i'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        self.assertFalse(sparse.isspmatrix_csc(x))
+        assert not sparse.isspmatrix_csc(x)
 
     def test_csc(self):
         x = sparse.csc_matrix(
@@ -1275,7 +1275,7 @@ class TestIsspmatrixCsc(unittest.TestCase):
              cupy.array([], 'i'),
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
-        self.assertTrue(sparse.isspmatrix_csc(x))
+        assert sparse.isspmatrix_csc(x)
 
 
 @testing.parameterize(*testing.product({
@@ -1286,15 +1286,15 @@ class TestCsrMatrixGetitem(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_getitem_int_int(self, xp, sp):
-        self.assertEqual(_make(xp, sp, self.dtype)[0, 1], 1)
+        assert _make(xp, sp, self.dtype)[0, 1] == 1
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_getitem_int_int_not_found(self, xp, sp):
-        self.assertEqual(_make(xp, sp, self.dtype)[1, 1], 0)
+        assert _make(xp, sp, self.dtype)[1, 1] == 0
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_getitem_int_int_negative(self, xp, sp):
-        self.assertEqual(_make(xp, sp, self.dtype)[-1, -2], 3)
+        assert _make(xp, sp, self.dtype)[-1, -2] == 3
 
     def test_getitem_int_int_too_small_row(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
