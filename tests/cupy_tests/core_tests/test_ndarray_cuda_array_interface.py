@@ -12,17 +12,24 @@ class DummyObjectWithCudaArrayInterface(object):
 
     @property
     def __cuda_array_interface__(self):
+        stream = cupy.cuda.get_current_stream()
+        # TODO(leofang): how about PTDS?
+        stream_ptr = stream.ptr if stream.ptr != 0 else None
         desc = {
             'shape': self.a.shape,
             'strides': self.a.strides,
             'typestr': self.a.dtype.str,
             'descr': self.a.dtype.descr,
             'data': (self.a.data.ptr, False),
-            'version': 2,
+            'stream': stream_ptr,
+            'version': 3,
         }
         return desc
 
 
+@testing.parameterize(*testing.product({
+    'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+}))
 @testing.gpu
 class TestArrayUfunc(unittest.TestCase):
 
@@ -45,6 +52,9 @@ class TestArrayUfunc(unittest.TestCase):
         self.check_array_scalar_op('add', trans=True)
 
 
+@testing.parameterize(*testing.product({
+    'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+}))
 @testing.gpu
 class TestElementwiseKernel(unittest.TestCase):
 
@@ -70,6 +80,9 @@ class TestElementwiseKernel(unittest.TestCase):
         self.check_array_scalar_op('add', trans=True)
 
 
+@testing.parameterize(*testing.product({
+    'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+}))
 @testing.gpu
 class SimpleReductionFunction(unittest.TestCase):
 
@@ -98,6 +111,9 @@ class SimpleReductionFunction(unittest.TestCase):
         self.check_int8_sum((2 ** 10, 16), trans=True)
 
 
+@testing.parameterize(*testing.product({
+    'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+}))
 @testing.gpu
 class TestReductionKernel(unittest.TestCase):
 
@@ -165,13 +181,20 @@ class TestSlicingMemoryPointer(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (10,), 'slices': (slice(0, None),)},
-    {'shape': (10,), 'slices': (slice(2, None),)},
-    {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None))},
-    {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None))},
-    {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None))},
-    {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
-    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
+    {'shape': (10,), 'slices': (slice(0, None),), 'stream': cupy.cuda.Stream.null},
+    {'shape': (10,), 'slices': (slice(2, None),), 'stream': cupy.cuda.Stream.null},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None)), 'stream': cupy.cuda.Stream.null},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None)), 'stream': cupy.cuda.Stream.null},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None)), 'stream': cupy.cuda.Stream.null},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None)), 'stream': cupy.cuda.Stream.null},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None)), 'stream': cupy.cuda.Stream.null},
+    {'shape': (10,), 'slices': (slice(0, None),), 'stream': cupy.cuda.Stream()},
+    {'shape': (10,), 'slices': (slice(2, None),), 'stream': cupy.cuda.Stream()},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None)), 'stream': cupy.cuda.Stream()},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None)), 'stream': cupy.cuda.Stream()},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None)), 'stream': cupy.cuda.Stream()},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None)), 'stream': cupy.cuda.Stream()},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None)), 'stream': cupy.cuda.Stream()},
 )
 @testing.gpu
 class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
@@ -194,15 +217,47 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
             descr = y.__cuda_array_interface__['descr']
         else:
             descr = None
+        with self.stream:
+            if 'stream' in y.__cuda_array_interface__:
+                stream = y.__cuda_array_interface__['stream']
+            else:
+                stream = None
 
         # Don't validate correctness of data here, just their types
+        assert version == 3  # bump this when the protocol is updated!
         assert isinstance(shape, tuple)
         assert isinstance(typestr, str)
         assert isinstance(ptr, int)
         assert isinstance(readonly, bool)
-        assert version == 3  # update this when the standard is updated!
         assert (strides is None) or isinstance(strides, tuple)
         assert (descr is None) or isinstance(descr, list)
         if isinstance(descr, list):
             for item in descr:
                 assert isinstance(item, tuple)
+        assert (stream is None) or isinstance(stream, int)
+        if isinstance(stream, int):
+            # TODO(leofang): how about PTDS?
+            assert stream == self.stream.ptr
+
+
+@testing.parameterize(*testing.product({
+    'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+}))
+@testing.gpu
+class TestCUDAArrayInterfaceStream(unittest.TestCase):
+
+    def test_stream_export(self):
+        # TODO(leofang): How about PTDS?
+        a = cupy.empty(100)
+
+        # the stream context should export the stream
+        with self.stream:
+            stream_ptr = a.__cuda_array_interface__['stream']
+        if self.stream is cupy.cuda.Stream.null:
+            assert stream_ptr is None
+        else:
+            assert stream_ptr == self.stream.ptr
+
+        # without a stream context, it's always the default stream
+        stream_ptr = a.__cuda_array_interface__['stream']
+        assert stream_ptr is None

@@ -223,6 +223,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
     def test_cuda_array_interface(self):
         arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
         iface = arr.__cuda_array_interface__
+        assert iface['version'] == 3  # bump this when the protocol is updated!
         assert (set(iface.keys()) ==
                 set(['shape', 'typestr', 'data', 'version', 'descr',
                      'stream', 'strides']))
@@ -232,14 +233,15 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert len(iface['data']) == 2
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
-        assert iface['version'] == 3
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
+        assert iface['stream'] is None
 
     def test_cuda_array_interface_view(self):
         arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
         view = arr[::2, ::5]
         iface = view.__cuda_array_interface__
+        assert iface['version'] == 3  # bump this when the protocol is updated!
         assert (set(iface.keys()) ==
                 set(['shape', 'typestr', 'data', 'version', 'descr',
                      'stream', 'strides']))
@@ -249,14 +251,15 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert len(iface['data']) == 2
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
-        assert iface['version'] == 3
         assert iface['strides'] == (320, 40)
         assert iface['descr'] == [('', '<f8')]
+        assert iface['stream'] is None
 
     def test_cuda_array_interface_zero_size(self):
         arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
         view = arr[0:3:-1]
         iface = view.__cuda_array_interface__
+        assert iface['version'] == 3  # bump this when the protocol is updated!
         assert (set(iface.keys()) ==
                 set(['shape', 'typestr', 'data', 'version', 'descr',
                      'stream', 'strides']))
@@ -266,9 +269,29 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert len(iface['data']) == 2
         assert iface['data'][0] == 0
         assert not iface['data'][1]
-        assert iface['version'] == 3
         assert iface['strides'] is None
         assert iface['descr'] == [('', '<f8')]
+        assert iface['stream'] is None
+
+    def test_cuda_array_interface_stream(self):
+        # this tests exporting CAI with a non-default stream
+        arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
+        stream = cuda.Stream()
+        with stream:
+            iface = arr.__cuda_array_interface__
+        assert iface['version'] == 3  # bump this when the protocol is updated!
+        assert (set(iface.keys()) ==
+                set(['shape', 'typestr', 'data', 'version', 'descr',
+                     'stream', 'strides']))
+        assert iface['shape'] == (10,)
+        assert iface['typestr'] == '<f8'
+        assert isinstance(iface['data'], tuple)
+        assert len(iface['data']) == 2
+        assert iface['data'][0] == arr.data.ptr
+        assert not iface['data'][1]
+        assert iface['descr'] == [('', '<f8')]
+        assert iface['strides'] is None
+        assert iface['stream'] == stream.ptr
 
 
 @testing.parameterize(
