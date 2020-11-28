@@ -62,6 +62,14 @@ Here are the environment variables CuPy uses.
 |                                    | point compute.                                     |
 |                                    | The default is 0 and TF32 is not used.             |
 +------------------------------------+----------------------------------------------------+
+| ``CUPY_CUDA_ARRAY_INTERFACE_SYNC`` | If set to 0, a stream synchronization will *not*   |
+|                                    | be performed when a device array crosses the       |
+|                                    | boundaries between CuPy and other external         |
+|                                    | libraries that implement the CUDA Array Interface. |
+|                                    | Default is 1. For more detail, see the             |
+|                                    | `Synchronization`_ requirement in the CUDA Array   |
+|                                    | Interface documentation.                           |
++------------------------------------+----------------------------------------------------+
 | ``NVCC``                           | Define the compiler to use when compiling CUDA     |
 |                                    | source. Note that most CuPy kernels are built with |
 |                                    | NVRTC; this environment is only effective for      |
@@ -75,6 +83,8 @@ are set, g++-6 or later is required as the runtime host compiler. Please refer t
 :ref:`install_cupy_from_source` for the details on how to install g++.
 
 .. _CUDA Toolkit Documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#env-vars
+
+.. _Synchronization: https://numba.readthedocs.io/en/latest/cuda/cuda_array_interface.html#synchronization
 
 
 For installation
