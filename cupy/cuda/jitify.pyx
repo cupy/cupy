@@ -30,8 +30,8 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
 # API
 ###############################################################################
 
-# cache found headers; this is intialized with a few built-in JIT-safe headers,
-# and expands as needed
+# We cache headers found by Jitify. This is initialized with a few built-in
+# JIT-safe headers, and expands as needed to help reduce compile time.
 cdef cpp_map[cpp_str, cpp_str] cupy_headers
 cdef inline void init_cupy_headers():
     cdef int i
@@ -39,6 +39,7 @@ cdef inline void init_cupy_headers():
         hdr_name = preinclude_jitsafe_header_names[i]
         hdr_source = get_jitsafe_headers_map().at(hdr_name)
         cupy_headers[hdr_name] = hdr_source
+
 init_cupy_headers()
 
 
@@ -97,7 +98,5 @@ cpdef jitify(str code, tuple opt, dict cached_sources=None):
         v = itr.second
         hdr_codes.append(v)
         hdr_names.append(k)
-
-    print("cup jitify cache size:", cupy_headers.size())
 
     return _name.decode(), tuple(new_opt), hdr_codes, hdr_names
