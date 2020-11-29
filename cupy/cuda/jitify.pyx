@@ -25,10 +25,18 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
                       vector[cpp_str]*,
                       cpp_str*) except +
 
+    const char* jitify_ver  # set at build time
+
 
 ###############################################################################
 # API
 ###############################################################################
+
+def get_build_version():
+    if jitify_ver == b'-1':
+        return '<unknown>'
+    return jitify_ver.decode()
+
 
 # We cache headers found by Jitify. This is initialized with a few built-in
 # JIT-safe headers, and expands as needed to help reduce compile time.
@@ -39,6 +47,7 @@ cdef inline void init_cupy_headers():
         hdr_name = preinclude_jitsafe_header_names[i]
         hdr_source = get_jitsafe_headers_map().at(hdr_name)
         cupy_headers[hdr_name] = hdr_source
+
 
 init_cupy_headers()
 
