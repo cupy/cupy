@@ -43,7 +43,7 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         raise TypeError('unsupprted dtype (actual: {})'.format(A.dtype))
     n = A.shape[0]
     if not (b.shape == (n,) or b.shape == (n, 1)):
-        raise ValueError('b has incompatible dimensinos')
+        raise ValueError('b has incompatible dimensions')
     b = b.astype(A.dtype).ravel()
     if n == 0:
         return cupy.empty_like(b), 0
