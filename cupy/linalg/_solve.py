@@ -1,3 +1,5 @@
+import warnings
+
 import numpy
 from numpy import linalg
 
@@ -184,7 +186,7 @@ def tensorsolve(a, b, axes=None):
     return result.reshape(oldshape)
 
 
-def lstsq(a, b, rcond=1e-15):
+def lstsq(a, b, rcond='warn'):
     """Return the least-squares solution to a linear matrix equation.
 
     Solves the equation `a x = b` by computing a vector `x` that
@@ -223,6 +225,18 @@ def lstsq(a, b, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
+    if rcond == 'warn':
+        warnings.warn(
+            '`rcond` parameter will change to the default of '
+            'machine precision times ``max(M, N)`` where M and N '
+            'are the input matrix dimensions.\n'
+            'To use the future default and silence this warning '
+            'we advise to pass `rcond=None`.\n'
+            'Using the old CuPy default: `rcond=1e-15`, which is '
+            'neither the same as the old NumPy default (`rcond=-1`).',
+            FutureWarning)
+        rcond = 1e-15
+
     _util._assert_cupy_array(a, b)
     _util._assert_rank2(a)
     if b.ndim > 2:
@@ -234,6 +248,10 @@ def lstsq(a, b, rcond=1e-15):
         raise linalg.LinAlgError('Incompatible dimensions')
 
     u, s, vt = cupy.linalg.svd(a, full_matrices=False)
+
+    if rcond is None:
+        rcond = numpy.finfo(s.dtype).eps * max(m, n)
+
     # number of singular values and matrix rank
     cutoff = rcond * s.max()
     s1 = 1 / s
