@@ -541,15 +541,15 @@ class TestCudaArrayInterfaceStream(unittest.TestCase):
         self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
         _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync
 
-        if self.current_stream is not None:
-            self.current_stream.use()
         if self.external_stream is False:
-            # -1 is a placeholder for testing both Producer and Consumer on the
-            # same, non-default stream
+            # "False" is a placeholder for testing both Producer and Consumer
+            # on the same, non-default stream
             if self.current_stream is not None and self.current_stream.ptr > 2:
                 self.external_stream = self.current_stream
             else:
                 self.skipTest('invalid test')
+        if self.current_stream is not None:
+            self.current_stream.use()  # switch current stream
 
     def tearDown(self):
         _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync_config
@@ -562,11 +562,9 @@ class TestCudaArrayInterfaceStream(unittest.TestCase):
         if self.external_stream is None:
             times = 0
         elif self.current_stream is None:
-            if self.external_stream.ptr in (0, 1):
-                times = 0
-            else:
-                times = int(self.sync)
+            times = 0 if self.external_stream.ptr in (0, 1) else int(self.sync)
         elif self.current_stream == self.external_stream:
+            # both have a stream ptr that allows a comparison
             times = 0
         else:
             times = int(self.sync)
