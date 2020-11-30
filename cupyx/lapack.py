@@ -136,6 +136,7 @@ def gels(a, b):
     tau = _cupy.empty(mn_min, dtype=dtype)
     cusolver_handle = _device.get_cusolver_handle()
     cublas_handle = _device.get_cublas_handle()
+    one = _numpy.array(1.0, dtype=dtype)
 
     if m >= n:  # over/well-determined systems
         a = a.copy(order='F')
@@ -163,8 +164,8 @@ def gels(a, b):
         # trsm (Solves R * X = (Q^T * B))
         trsm(cublas_handle, _cublas.CUBLAS_SIDE_LEFT,
              _cublas.CUBLAS_FILL_MODE_UPPER, no_trans,
-             _cublas.CUBLAS_DIAG_NON_UNIT, mn_min, nrhs, 1, a.data.ptr, m,
-             b.data.ptr, m)
+             _cublas.CUBLAS_DIAG_NON_UNIT, mn_min, nrhs,
+             one.ctypes.data, a.data.ptr, m, b.data.ptr, m)
 
         return b[:n]
 
@@ -186,8 +187,8 @@ def gels(a, b):
         # trsm (Solves R^T * Z = B)
         trsm(cublas_handle, _cublas.CUBLAS_SIDE_LEFT,
              _cublas.CUBLAS_FILL_MODE_UPPER, trans,
-             _cublas.CUBLAS_DIAG_NON_UNIT, m, nrhs, 1, a.data.ptr, n,
-             b.data.ptr, n)
+             _cublas.CUBLAS_DIAG_NON_UNIT, m, nrhs,
+             one.ctypes.data, a.data.ptr, n, b.data.ptr, n)
 
         # ormqr (Computes Q * Z)
         ws_size = ormqr_helper(
