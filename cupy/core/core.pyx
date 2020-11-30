@@ -2393,10 +2393,7 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
         # TODO(leofang): handle PTDS
         if curr_stream_ptr == 0:
             curr_stream_ptr = 1  # TODO(leofang): use runtime.streamLegacy
-        # micro-optimization (?): we save one extra sync call if we are
-        # already stream-ordered (i.e. foreign object is also on the same
-        # current stream)
-        if stream_ptr != curr_stream_ptr and _util.CUDA_ARRAY_INTERFACE_SYNC:
+        if _util.CUDA_ARRAY_INTERFACE_SYNC:
             stream = cuda.stream.ExternalStream(stream_ptr)
             stream.synchronize()
     return ndarray(shape, dtype, memptr, strides)

@@ -561,11 +561,6 @@ class TestCudaArrayInterfaceStream(unittest.TestCase):
         func = 'cupy.cuda.ExternalStream.synchronize'
         if self.external_stream is None:
             times = 0
-        elif self.current_stream is None:
-            times = 0 if self.external_stream.ptr in (0, 1) else int(self.sync)
-        elif self.current_stream == self.external_stream:
-            # both have a stream ptr that allows a comparison
-            times = 0
         else:
             times = int(self.sync)
         with testing.AssertFunctionIsCalled(func, times_called=times):
