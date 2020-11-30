@@ -2389,10 +2389,13 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     stream_ptr = desc.get('stream')
     curr_stream_ptr = stream_module.get_current_stream_ptr()
     if stream_ptr is not None:
-        # 0 is disallowed, see the comment in __cuda_array_interface__
+        # 0 is disallowed; see the comment in __cuda_array_interface__
         # TODO(leofang): handle PTDS
         if curr_stream_ptr == 0:
             curr_stream_ptr = 1  # TODO(leofang): use runtime.streamLegacy
+        # micro-optimization (?): we save one extra sync call if we are
+        # already stream-ordered (i.e. foreign object is also on the same
+        # current stream)
         if stream_ptr != curr_stream_ptr and _util.CUDA_ARRAY_INTERFACE_SYNC:
             stream = cuda.stream.ExternalStream(stream_ptr)
             stream.synchronize()
