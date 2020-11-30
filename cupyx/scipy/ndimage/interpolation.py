@@ -15,16 +15,11 @@ _prod = cupy.core.internal.prod
 
 def _check_parameter(func_name, order, mode):
     if order is None:
-        warnings.warn('In the current feature the default order of {} is 1. '
-                      'It is different from scipy.ndimage and can change in '
-                      'the future.'.format(func_name))
+        warnings.warn(f'Currently the default order of {func_name} is 1. In a '
+                      'future release this may change to 3 to match '
+                      'scipy.ndimage ')
     elif order < 0 or 5 < order:
         raise ValueError('spline order is not supported')
-    elif 1 < order:
-        # SciPy supports order 0-5, but CuPy supports only order 0 and 1. Other
-        # orders will be implemented, therefore it raises NotImplementedError
-        # instead of ValueError.
-        raise NotImplementedError('spline order is not supported')
 
     if mode in ['grid-mirror', 'grid-wrap', 'grid-reflect', 'wrap', 'reflect']:
         cupy._util.experimental(f"mode '{mode}'")
@@ -198,6 +193,65 @@ def spline_filter(input, order=3, output=cupy.float64, mode='mirror'):
     return output
 
 
+def _check_coordinates(coordinates, order, allow_float32=True):
+    if coordinates.dtype.kind == 'f':
+        if allow_float32:
+            coord_dtype = cupy.promote_types(coordinates.dtype, cupy.float32)
+        else:
+            coord_dtype = cupy.promote_types(coordinates.dtype, cupy.float64)
+        coordinates = coordinates.astype(coord_dtype, copy=False)
+    elif coordinates.dtype.kind in 'iu':
+        if order > 1:
+            # order > 1 (spline) kernels require floating-point coordinates
+            if allow_float32:
+                coord_dtype = cupy.promote_types(
+                    coordinates.dtype, cupy.float32
+                )
+            else:
+                coord_dtype = cupy.promote_types(
+                    coordinates.dtype, cupy.float64
+                )
+            coordinates = coordinates.astype(coord_dtype)
+    else:
+        raise ValueError('coordinates should have floating point dtype')
+    if not coordinates.flags.c_contiguous:
+        coordinates = cupy.ascontiguousarray(coordinates)
+    return coordinates
+
+
+def _prepad_for_spline_filter(input, mode, cval):
+    if mode in ['nearest', 'grid-constant']:
+        # these modes need padding to get accurate boundary values
+        npad = 12  # empirical factor chosen by SciPy
+        if mode == 'grid-constant':
+            kwargs = dict(mode='constant', constant_values=cval)
+        else:
+            kwargs = dict(mode='edge')
+        padded = cupy.pad(input, npad, **kwargs)
+    else:
+        npad = 0
+        padded = input
+    return padded, npad
+
+
+def _filter_input(image, prefilter, mode, cval, order, allow_float32=True):
+    """Perform spline prefiltering when needed.
+
+    Spline orders > 1 need a prefiltering stage to preserve resolution.
+
+    For boundary modes without analytical spline boundary conditions, some
+    prepadding of the input with cupy.pad is used to maintain accuracy.
+    ``npad`` is an integer corresponding to the amount of padding at each edge
+    of the array.
+    """
+    if not prefilter or order < 2:
+        return (cupy.ascontiguousarray(image), 0)
+    padded, npad = _prepad_for_spline_filter(image, mode, cval)
+    filtered = spline_filter(padded, order, output=image.dtype,
+                             mode=mode, allow_float32=True)
+    return cupy.ascontiguousarray(filtered), npad
+
+
 def map_coordinates(input, coordinates, output=None, order=None,
                     mode='constant', cval=0.0, prefilter=True):
     """Map the input array to new coordinates by interpolation.
@@ -251,12 +305,13 @@ def map_coordinates(input, coordinates, output=None, order=None,
 
     if input.dtype.kind in 'iu':
         input = input.astype(cupy.float32)
-
+    coordinates = _check_coordinates(coordinates, order)
+    filtered, nprepad = _filter_input(input, prefilter, mode, cval, order)
     large_int = max(_prod(input.shape), coordinates.shape[0]) > 1 << 31
     kern = _interp_kernels._get_map_kernel(
         input.ndim, large_int, yshape=coordinates.shape, mode=mode, cval=cval,
-        order=order, integer_output=integer_output)
-    kern(input, coordinates, ret)
+        order=order, integer_output=integer_output, nprepad=nprepad)
+    kern(filtered, coordinates, ret)
     return ret
 
 
@@ -362,6 +417,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     output = _util._get_output(output, input, shape=output_shape)
     if input.dtype.kind in 'iu':
         input = input.astype(cupy.float32)
+    filtered, nprepad = _filter_input(input, prefilter, mode, cval, order)
 
     integer_output = output.dtype.kind in 'iu'
     _util._check_cval(mode, cval, integer_output)
@@ -371,16 +427,16 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
         offset = -offset / matrix
         kern = _interp_kernels._get_zoom_shift_kernel(
             ndim, large_int, output_shape, mode, cval=cval, order=order,
-            integer_output=integer_output)
-        kern(input, offset, matrix, output)
+            integer_output=integer_output, nprepad=nprepad)
+        kern(filtered, offset, matrix, output)
     else:
         kern = _interp_kernels._get_affine_kernel(
             ndim, large_int, output_shape, mode, cval=cval, order=order,
-            integer_output=integer_output)
+            integer_output=integer_output, nprepad=nprepad)
         m = cupy.zeros((ndim, ndim + 1), dtype=cupy.float64)
         m[:, :-1] = matrix
         m[:, -1] = cupy.asarray(offset, dtype=cupy.float64)
-        kern(input, m, output)
+        kern(filtered, m, output)
     return output
 
 
@@ -483,7 +539,6 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
     matrix[axes[1], axes[0]] = -sin
     matrix[axes[1], axes[1]] = cos
 
-    iy = input.shape[axes[0]]
     offset = numpy.zeros(ndim, dtype=cupy.float64)
     offset[axes] = in_center - out_center
 
@@ -553,14 +608,19 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
         output = _util._get_output(output, input)
         if input.dtype.kind in 'iu':
             input = input.astype(cupy.float32)
+        filtered, nprepad = _filter_input(input, prefilter, mode, cval, order)
         integer_output = output.dtype.kind in 'iu'
         _util._check_cval(mode, cval, integer_output)
         large_int = _prod(input.shape) > 1 << 31
         kern = _interp_kernels._get_shift_kernel(
             input.ndim, large_int, input.shape, mode, cval=cval, order=order,
-            integer_output=integer_output)
-        shift = cupy.asarray(shift, dtype=cupy.float64)
-        kern(input, shift, output)
+            integer_output=integer_output, nprepad=nprepad)
+        shift = cupy.asarray(shift, dtype=cupy.float64, order='C')
+        if shift.ndim != 1:
+            raise ValueError('shift must be 1d')
+        if shift.size != filtered.ndim:
+            raise ValueError('len(shift) must equal input.ndim')
+        kern(filtered, shift, output)
     return output
 
 
@@ -675,12 +735,14 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
         output = _util._get_output(output, input, shape=output_shape)
         if input.dtype.kind in 'iu':
             input = input.astype(cupy.float32)
+        filtered, nprepad = _filter_input(input, prefilter, mode, cval, order)
         integer_output = output.dtype.kind in 'iu'
         _util._check_cval(mode, cval, integer_output)
         large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
         kern = _interp_kernels._get_zoom_kernel(
             input.ndim, large_int, output_shape, mode, order=order,
-            integer_output=integer_output, grid_mode=grid_mode)
+            integer_output=integer_output, grid_mode=grid_mode,
+            nprepad=nprepad)
         zoom = cupy.asarray(zoom, dtype=cupy.float64)
-        kern(input, zoom, output)
+        kern(filtered, zoom, output)
     return output
