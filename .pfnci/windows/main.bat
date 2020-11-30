@@ -1,7 +1,7 @@
-:: Example: main.bat 3.7.0 9.0 master
+:: Example: main.bat 10.0 3.7
 
-set PYTHON=%1
-set CUDA=%2
+set CUDA=%1
+set PYTHON=%2
 
 :: Set environment variables
 call .pfnci\windows\_use_cuda.bat %CUDA% || goto :error
