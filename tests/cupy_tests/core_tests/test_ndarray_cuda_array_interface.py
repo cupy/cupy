@@ -189,22 +189,20 @@ class TestSlicingMemoryPointer(unittest.TestCase):
         assert slice_cai_ptr == cai_ptr+offset
 
 
-@testing.parameterize(
-    {'shape': (10,), 'slices': (slice(0, None),), 'stream': cupy.cuda.Stream.null},
-    {'shape': (10,), 'slices': (slice(2, None),), 'stream': cupy.cuda.Stream.null},
-    {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None)), 'stream': cupy.cuda.Stream.null},
-    {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None)), 'stream': cupy.cuda.Stream.null},
-    {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None)), 'stream': cupy.cuda.Stream.null},
-    {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None)), 'stream': cupy.cuda.Stream.null},
-    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None)), 'stream': cupy.cuda.Stream.null},
-    {'shape': (10,), 'slices': (slice(0, None),), 'stream': cupy.cuda.Stream()},
-    {'shape': (10,), 'slices': (slice(2, None),), 'stream': cupy.cuda.Stream()},
-    {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None)), 'stream': cupy.cuda.Stream()},
-    {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None)), 'stream': cupy.cuda.Stream()},
-    {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None)), 'stream': cupy.cuda.Stream()},
-    {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None)), 'stream': cupy.cuda.Stream()},
-    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None)), 'stream': cupy.cuda.Stream()},
-)
+test_cases = [
+    {'shape': (10,), 'slices': (slice(0, None),)},
+    {'shape': (10,), 'slices': (slice(2, None),)},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(0, None))},
+    {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))}]
+test_streams = (cupy.cuda.Stream.null, cupy.cuda.Stream())
+test_cases_with_stream = [
+    {'stream': s, **t} for t in test_cases for s in test_streams]
+
+
+@testing.parameterize(*test_cases_with_stream)
 @testing.gpu
 class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 
