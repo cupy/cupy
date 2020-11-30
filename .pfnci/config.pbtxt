@@ -53,7 +53,7 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    command: ".pfnci/windows/main.bat 10.0 3.7"
+    command: ".pfnci\\windows\\main.bat 10.0 3.7"
   }
 }
 
