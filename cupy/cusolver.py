@@ -15,10 +15,12 @@ _available_cuda_version = {
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
     'syevj': (9000, None),
+    'gesv': (10020, None),
     'gels': (11000, None),
 }
 
 _available_compute_capability = {
+    'gesv': 70,
     'gels': 70,
 }
 
@@ -476,6 +478,83 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     v = v.astype(ret_v_dtype, copy=False)
     v = v.swapaxes(-2, -1).reshape(*batch_shape, m, m)
     return w, v
+
+
+def gesv(a, b):
+    """Solve a linear matrix equation using cusolverDn<t1><t2>gesv().
+    Computes the solution to a system of linear equation ``ax = b``.
+    Args:
+        a (cupy.ndarray): The matrix with dimension ``(M, M)``.
+        b (cupy.ndarray): The matrix with dimension ``(M)`` or ``(M, K)``.
+    Returns:
+        cupy.ndarray:
+            The matrix with dimension ``(M)`` or ``(M, K)``.
+    """
+    if not check_availability('gesv'):
+        raise RuntimeError('gesv is not available.')
+
+    if a.ndim != 2:
+        raise ValueError('a.ndim must be 2 (actual:{})'.format(a.ndim))
+    if b.ndim not in (1, 2):
+        raise ValueError('b.ndim must be 1 or 2 (actual:{})'.format(b.ndim))
+    if a.shape[0] != a.shape[1]:
+        raise ValueError('a must be a square matrix.')
+    if a.shape[0] != b.shape[0]:
+        raise ValueError('shape mismatch (a:{}, b:{}).'.
+                         format(a.shape, b.shape))
+    if a.dtype != b.dtype:
+        raise ValueError('dtype mismatch (a:{}, b:{}).'.
+                         format(a.dtype, b.dtype))
+
+    if b.ndim == 2:
+        n, nrhs = b.shape
+    else:
+        n, nrhs = b.shape[0], 1
+
+    compute_type = _linalg.get_compute_type(a.dtype)
+    if a.dtype.char in 'fd':
+        if a.dtype.char == 'f':
+            t1 = t2 = 's'
+        else:
+            t1 = t2 = 'd'
+        if compute_type == _linalg.COMPUTE_TYPE_FP16:
+            t2 = 'h'
+        elif compute_type == _linalg.COMPUTE_TYPE_TF32:
+            t2 = 'x'
+        elif compute_type == _linalg.COMPUTE_TYPE_FP32:
+            t2 = 's'
+    elif a.dtype.char in 'FD':
+        if a.dtype.char == 'F':
+            t1 = t2 = 'c'
+        else:
+            t1 = t2 = 'z'
+        if compute_type == _linalg.COMPUTE_TYPE_FP16:
+            t2 = 'k'
+        elif compute_type == _linalg.COMPUTE_TYPE_TF32:
+            t2 = 'y'
+        elif compute_type == _linalg.COMPUTE_TYPE_FP32:
+            t2 = 'c'
+    else:
+        raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+    solver_name = t1 + t2 + 'gesv'
+    solver = getattr(_cusolver, solver_name)
+    helper = getattr(_cusolver, solver_name + '_bufferSize')
+
+    a = a.copy(order='F')
+    b = b.copy(order='F')
+    x = _cupy.empty_like(b)
+    dipiv = _cupy.empty(n, dtype=_numpy.int32)
+    dinfo = _cupy.empty(1, dtype=_numpy.int32)
+    handle = _device.get_cusolver_handle()
+    lwork = helper(handle, n, nrhs, a.data.ptr, n, dipiv.data.ptr,
+                   b.data.ptr, n, x.data.ptr, n, 0)
+    dwork = _cupy.empty(lwork, dtype=_numpy.int8)
+    niters = solver(handle, n, nrhs, a.data.ptr, n, dipiv.data.ptr,
+                    b.data.ptr, n, x.data.ptr, n, dwork.data.ptr, lwork,
+                    dinfo.data.ptr)
+    if niters < 0:
+        raise RuntimeError('gesv has failed ({}).'.format(niters))
+    return x
 
 
 def gels(a, b):

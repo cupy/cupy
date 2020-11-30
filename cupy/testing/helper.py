@@ -368,6 +368,41 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
             type(c_out), type(n_out)))
 
 
+def _check_tolerance_keys(rtol, atol):
+    def _check(tol):
+        if isinstance(tol, dict):
+            for k in tol.keys():
+                if type(k) is type:
+                    continue
+                if type(k) is str and k == 'default':
+                    continue
+                msg = ('Keys of the tolerance dictionary need to be type '
+                       'objects as `numpy.float32` and `cupy.float32` or '
+                       '`\'default\'` string.')
+                raise TypeError(msg)
+    _check(rtol)
+    _check(atol)
+
+
+def _resolve_tolerance(type_check, result, rtol, atol):
+    def _resolve(dtype, tol):
+        if isinstance(tol, dict):
+            tol1 = tol.get(dtype.type)
+            if tol1 is None:
+                tol1 = tol.get('default')
+                if tol1 is None:
+                    raise TypeError(
+                        'Can not find tolerance for {}'.format(dtype.type))
+            return tol1
+        else:
+            return tol
+
+    dtype = result.dtype
+    rtol1 = _resolve(dtype, rtol)
+    atol1 = _resolve(dtype, atol)
+    return rtol1, atol1
+
+
 def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
                         name='xp', type_check=True, accept_error=False,
                         sp_name=None, scipy_name=None, contiguous_check=True,
@@ -375,8 +410,13 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
     """Decorator that checks NumPy results and CuPy ones are close.
 
     Args:
-         rtol(float): Relative tolerance.
-         atol(float): Absolute tolerance.
+         rtol(float or dict): Relative tolerance. Besides a float value, a
+             dictionary that maps a dtypes to a float value can be supplied to
+             adjust tolerance per dtype. If the dictionary has ``'default'``
+             string as its key, its value is used as the default tolerance in
+             case any dtype keys do not match.
+         atol(float or dict): Absolute tolerance. Besides a float value, a
+             dictionary can be supplied as ``rtol``.
          err_msg(str): The error message to be printed in case of failure.
          verbose(bool): If ``True``, the conflicting values are
              appended to the error message.
@@ -419,8 +459,19 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     .. seealso:: :func:`cupy.testing.assert_allclose`
     """
+    _check_tolerance_keys(rtol, atol)
+
+    # When `type_check` is `False`, cupy result and numpy result may have
+    # different dtypes so we can not determine the dtype to use from the
+    # tolerance associations.
+    if not type_check:
+        if isinstance(rtol, dict) or isinstance(atol, dict):
+            raise TypeError('When `type_check` is `False`, `rtol` and `atol` '
+                            'must be supplied as float.')
+
     def check_func(c, n):
-        array.assert_allclose(c, n, rtol, atol, err_msg, verbose)
+        rtol1, atol1 = _resolve_tolerance(type_check, c, rtol, atol)
+        array.assert_allclose(c, n, rtol1, atol1, err_msg, verbose)
     return _make_decorator(check_func, name, type_check, contiguous_check,
                            accept_error, sp_name, scipy_name,
                            _check_sparse_format)

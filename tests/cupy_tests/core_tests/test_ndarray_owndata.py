@@ -11,12 +11,12 @@ class TestArrayOwndata(unittest.TestCase):
         self.a = core.ndarray(())
 
     def test_original_array(self):
-        assert self.a.flags.owndata
+        assert self.a.flags.owndata is True
 
     def test_view_array(self):
         v = self.a.view()
-        assert not v.flags.owndata
+        assert v.flags.owndata is False
 
     def test_reshaped_array(self):
         r = self.a.reshape(())
-        assert not r.flags.owndata
+        assert r.flags.owndata is False

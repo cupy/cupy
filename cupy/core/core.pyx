@@ -964,6 +964,10 @@ cdef class ndarray:
 
     def __nonzero__(self):
         if self.size == 0:
+            msg = ('The truth value of an empty array is ambiguous. Returning '
+                   'False, but in future this will result in an error. Use '
+                   '`array.size > 0` to check that an array is not empty.')
+            warnings.warn(msg, DeprecationWarning)
             return False
         elif self.size == 1:
             return bool(self.get())

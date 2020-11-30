@@ -5,6 +5,7 @@ from cupy import cublas
 from cupy import cusparse
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cusparse as _cusparse
+from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import csr
 
 
@@ -42,7 +43,7 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         raise TypeError('unsupprted dtype (actual: {})'.format(A.dtype))
     n = A.shape[0]
     if not (b.shape == (n,) or b.shape == (n, 1)):
-        raise ValueError('b has incompatible dimensins')
+        raise ValueError('b has incompatible dimensions')
     b = b.astype(A.dtype).ravel()
     if n == 0:
         return cupy.empty_like(b), 0
@@ -57,7 +58,7 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         x = cupy.zeros((n,), dtype=A.dtype)
     else:
         if not (x0.shape == (n,) or x0.shape == (n, 1)):
-            raise ValueError('x0 has incompatible dimensins')
+            raise ValueError('x0 has incompatible dimensions')
         x = x0.astype(A.dtype).ravel()
     if maxiter is None:
         maxiter = n * 10
@@ -91,6 +92,122 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         info = iters
 
     return x, info
+
+
+def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
+          callback=None, atol=None, callback_type=None):
+    """Uses Generalized Minimal RESidual iteration to solve ``Ax = b``.
+
+    Args:
+        A (cupy.ndarray or cupyx.scipy.sparse.spmatrix): The real or complex
+            matrix of the linear system with shape ``(n, n)``.
+        b (cupy.ndarray): Right hand side of the linear system with shape
+            ``(n,)`` or ``(n, 1)``.
+        x0 (cupy.ndarray): Starting guess for the solution.
+        tol (float): Tolerance for convergence.
+        restart (int): Number of iterations between restarts. Larger values
+            increase iteration cost, but may be necessary for convergence.
+        maxiter (int): Maximum number of iterations.
+        M (cupy.ndarray or cupyx.scipy.sparse.spmatrix): Preconditioner for
+            ``A``. The preconditioner should approximate the inverse of ``A``.
+        callback (function): User-specified function to call on every restart.
+            It is called as ``callback(arg)``, where ``arg`` is selected by
+            ``callback_type``.
+        callback_type (str): 'x' or 'pr_norm'. If 'x', the current solution
+            vector is used as an argument of callback function. if 'pr_norm',
+            relative (preconditioned) residual norm is used as an arugment.
+        atol (float): Tolerance for convergence.
+
+    Returns:
+        tuple:
+            It returns ``x`` (cupy.ndarray) and ``info`` (int) where ``x`` is
+            the converged solution and ``info`` provides convergence
+            information.
+
+    Reference:
+        M. Wang, H. Klie, M. Parashar and H. Sudan, "Solving Sparse Linear
+        Systems on NVIDIA Tesla GPUs", ICCS 2009 (2009).
+
+    .. seealso:: :func:`scipy.sparse.linalg.gmres`
+    """
+    if A.ndim != 2 or A.shape[0] != A.shape[1]:
+        raise ValueError('expected square matrix (shape: {})'.format(A.shape))
+    if A.dtype.char not in 'fdFD':
+        raise TypeError('unsupprted dtype (actual: {})'.format(A.dtype))
+    n = A.shape[0]
+    if not (b.shape == (n,) or b.shape == (n, 1)):
+        raise ValueError('b has incompatible dimensions')
+    b = b.astype(A.dtype).ravel()
+    if n == 0:
+        return cupy.empty_like(b), 0
+    b_norm = cupy.linalg.norm(b)
+    if b_norm == 0:
+        return b, 0
+    if atol is None:
+        atol = tol * float(b_norm)
+    else:
+        atol = max(float(atol), tol * float(b_norm))
+    if x0 is None:
+        x = cupy.zeros((n,), dtype=A.dtype)
+    else:
+        if not (x0.shape == (n,) or x0.shape == (n, 1)):
+            raise ValueError('x0 has incompatible dimensions')
+        x = x0.astype(A.dtype).ravel()
+    if maxiter is None:
+        maxiter = n * 10
+    if restart is None:
+        restart = 20
+    restart = min(restart, n)
+    if callback_type is None:
+        callback_type = 'pr_norm'
+    if callback_type not in ('x', 'pr_norm'):
+        raise ValueError('Unknown callback_type: {}'.format(callback_type))
+    if callback is None:
+        callback_type = None
+
+    V = cupy.empty((n, restart), dtype=A.dtype, order='F')
+    H = cupy.zeros((restart+1, restart), dtype=A.dtype, order='F')
+    e = numpy.zeros((restart+1,), dtype=A.dtype)
+
+    matvec, psolve = _make_funcs(A, M)
+    compute_hu = _make_compute_hu(V)
+
+    iters = 0
+    while True:
+        mx = psolve(x)
+        r = b - matvec(mx)
+        r_norm = cublas.nrm2(r)
+        if callback_type == 'x':
+            callback(mx)
+        elif callback_type == 'pr_norm' and iters > 0:
+            callback(r_norm / b_norm)
+        if r_norm <= atol or iters >= maxiter:
+            break
+        v = r / r_norm
+        V[:, 0] = v
+        e[0] = r_norm
+
+        # Arnoldi iteration
+        for j in range(restart):
+            z = psolve(v)
+            u = matvec(z)
+            H[:j+1, j], u = compute_hu(u, j)
+            cublas.nrm2(u, out=H[j+1, j])
+            if j+1 < restart:
+                v = u / H[j+1, j]
+                V[:, j+1] = v
+
+        # Note: The least-square solution to equation Hy = e is computed on CPU
+        # because it is faster if tha matrix size is small.
+        ret = numpy.linalg.lstsq(cupy.asnumpy(H), e)
+        y = cupy.array(ret[0])
+        x += V @ y
+        iters += restart
+
+    info = 0
+    if iters == maxiter and not (r_norm <= atol):
+        info = iters
+    return mx, info
 
 
 def _make_funcs(A, M):
@@ -134,3 +251,30 @@ def _make_matvec(A):
     else:
         def matvec(x): return A @ x
     return matvec
+
+
+def _make_compute_hu(V):
+    handle = device.get_cublas_handle()
+    if V.dtype.char == 'f':
+        gemv = _cublas.sgemv
+    elif V.dtype.char == 'd':
+        gemv = _cublas.dgemv
+    elif V.dtype.char == 'F':
+        gemv = _cublas.cgemv
+    elif V.dtype.char == 'D':
+        gemv = _cublas.zgemv
+    n = V.shape[0]
+    one = numpy.array(1.0, V.dtype)
+    zero = numpy.array(0.0, V.dtype)
+    mone = numpy.array(-1.0, V.dtype)
+
+    def compute_hu(u, j):
+        # h = V[:, :j+1].conj().T @ u
+        # u -= V[:, :j+1] @ h
+        h = cupy.empty((j+1,), dtype=V.dtype)
+        gemv(handle, _cublas.CUBLAS_OP_C, n, j+1, one.ctypes.data, V.data.ptr,
+             n, u.data.ptr, 1, zero.ctypes.data, h.data.ptr, 1)
+        gemv(handle, _cublas.CUBLAS_OP_N, n, j+1, mone.ctypes.data, V.data.ptr,
+             n, h.data.ptr, 1, one.ctypes.data, u.data.ptr, 1)
+        return h, u
+    return compute_hu

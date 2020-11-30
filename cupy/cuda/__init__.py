@@ -33,6 +33,11 @@ class _UnavailableModule():
 
 from cupy.cuda import cub  # NOQA
 
+if not runtime.is_hip and driver.get_build_version() > 0:
+    from cupy.cuda import jitify  # NOQA
+else:
+    jitify = None
+
 try:
     from cupy.cuda import nvtx  # NOQA
 except ImportError:

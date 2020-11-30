@@ -23,10 +23,18 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
                       vector[cpp_str]*,
                       cpp_str*) except +
 
+    const char* jitify_ver  # set at build time
+
 
 ###############################################################################
 # API
 ###############################################################################
+
+def get_build_version():
+    if jitify_ver == b'-1':
+        return '<unknown>'
+    return jitify_ver.decode()
+
 
 # cache all headers; this is intialized with built-in JIT-safe headers
 cdef cpp_map[cpp_str, cpp_str] cupy_headers = get_jitsafe_headers_map()
