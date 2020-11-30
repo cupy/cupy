@@ -31,7 +31,7 @@ class TestSolve(unittest.TestCase):
     # TODO(kataoka): Fix contiguity
     @testing.numpy_cupy_allclose(atol=1e-3, contiguous_check=False)
     def check_x(self, a_shape, b_shape, xp, dtype):
-        a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=0)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=0, scale=20)
         b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=1)
         a = a.copy(order=self.order)
         b = b.copy(order=self.order)
