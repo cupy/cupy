@@ -1,3 +1,4 @@
+import numpy
 from numpy import linalg
 
 import cupy
@@ -25,6 +26,20 @@ def _assert_nd_squareness(*arrays):
         if max(a.shape[-2:]) != min(a.shape[-2:]):
             raise linalg.LinAlgError(
                 'Last 2 dimensions of the array must be square')
+
+
+# similar to numpy.linalg.linalg._commonType
+def common_type(*arrays):
+    dtypes = [arr.dtype for arr in arrays]
+    if 'float16' in dtypes:
+        raise TypeError('float16 is unsupported in linalg')
+    compute_dtype = numpy.result_type('float32', *dtypes)
+    # numpy casts integer types to float64
+    inexact_dtypes = [
+        dtype if dtype.kind in 'fc' else 'float64'
+        for dtype in dtypes]
+    result_dtype = numpy.result_type(*inexact_dtypes)
+    return compute_dtype, result_dtype
 
 
 def _check_cusolver_dev_info_if_synchronization_allowed(routine, dev_info):

@@ -50,18 +50,17 @@ def solve(a, b):
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
 
-    dtype = numpy.promote_types(a.dtype, b.dtype)
-    dtype = numpy.promote_types(dtype, 'f')
+    dtype, out_dtype = _util.common_type(a, b)
     if a.ndim == 2:
         # prevent 'a' and 'b' to be overwritten
         a = a.astype(dtype, copy=True, order='F')
         b = b.astype(dtype, copy=True, order='F')
         cupyx.lapack.gesv(a, b)
-        return b
+        return b.astype(out_dtype, copy=False)
 
     # prevent 'a' to be overwritten
     a = a.astype(dtype, copy=True, order='C')
-    x = cupy.empty_like(b)
+    x = cupy.empty_like(b, dtype=out_dtype)
     shape = a.shape[:-2]
     for i in range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
@@ -286,7 +285,7 @@ def inv(a):
     _util._assert_rank2(a)
     _util._assert_nd_squareness(a)
 
-    dtype = numpy.promote_types(a.dtype, 'f')
+    dtype, out_dtype = _util.common_type(a)
     order = 'F' if a._f_contiguous else 'C'
     # prevent 'a' to be overwritten
     a = a.astype(dtype, copy=True, order=order)
@@ -295,7 +294,7 @@ def inv(a):
         cupyx.lapack.gesv(a, b)
     else:
         cupyx.lapack.gesv(a.T, b.T)
-    return b
+    return b.astype(out_dtype, copy=False)
 
 
 def _batched_inv(a):
@@ -303,17 +302,18 @@ def _batched_inv(a):
     assert(a.ndim >= 3)
     _util._assert_cupy_array(a)
     _util._assert_nd_squareness(a)
+    dtype, out_dtype = _util.common_type(a)
 
-    if a.dtype == cupy.float32:
+    if dtype == cupy.float32:
         getrf = cupy.cuda.cublas.sgetrfBatched
         getri = cupy.cuda.cublas.sgetriBatched
-    elif a.dtype == cupy.float64:
+    elif dtype == cupy.float64:
         getrf = cupy.cuda.cublas.dgetrfBatched
         getri = cupy.cuda.cublas.dgetriBatched
-    elif a.dtype == cupy.complex64:
+    elif dtype == cupy.complex64:
         getrf = cupy.cuda.cublas.cgetrfBatched
         getri = cupy.cuda.cublas.cgetriBatched
-    elif a.dtype == cupy.complex128:
+    elif dtype == cupy.complex128:
         getrf = cupy.cuda.cublas.zgetrfBatched
         getri = cupy.cuda.cublas.zgetriBatched
     else:
@@ -322,11 +322,11 @@ def _batched_inv(a):
         raise ValueError(msg)
 
     if 0 in a.shape:
-        return cupy.empty_like(a)
+        return cupy.empty_like(a, dtype=out_dtype)
     a_shape = a.shape
 
     # copy is necessary to present `a` to be overwritten.
-    a = a.copy().reshape(-1, a_shape[-2], a_shape[-1])
+    a = a.astype(dtype, order='C').reshape(-1, a_shape[-2], a_shape[-1])
 
     handle = device.get_cublas_handle()
     batch_size = a.shape[0]
@@ -356,7 +356,7 @@ def _batched_inv(a):
     cupy.linalg._util._check_cublas_info_array_if_synchronization_allowed(
         getri, info_array)
 
-    return c.reshape(a_shape)
+    return c.reshape(a_shape).astype(out_dtype, copy=False)
 
 
 def pinv(a, rcond=1e-15):
