@@ -511,7 +511,7 @@ class _FusionHistory(object):
                 self.reduce_op = op
                 self.reduce_identity = raw.identity
                 self.reduce_kwargs = kwargs
-                self._add_preamble(raw._preamble)
+                self._add_preamble(raw.preamble)
                 return self._fresh_postmap_param(return_dtype)
         raise TypeError('Type is mismatched. {}(...), {}'.format(
             self.raw._ops.name, arg.dtype.type))
