@@ -16,6 +16,7 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
 .. toctree::
    :maxdepth: 2
 
+   compatibility
    ndarray
    ufunc
    routines

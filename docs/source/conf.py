@@ -158,7 +158,10 @@ html_theme = 'pydata_sphinx_theme'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+  "github_url": "https://github.com/cupy/cupy",
+  "twitter_url": "https://twitter.com/cupy_team",
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -182,18 +185,18 @@ html_theme = 'pydata_sphinx_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
-
-html_style = 'css/modified_theme.css'
-
-if on_rtd:
-    html_context = {
-        'css_files': [
-            #'https://media.readthedocs.org/css/sphinx_rtd_theme.css',
-            'https://media.readthedocs.org/css/readthedocs-doc-embed.css',
-            '_static/css/modified_theme.css',
-        ],
-    }
+#  html_static_path = ['_static']
+#  
+#  html_style = 'css/theme.css'
+#  
+#  if on_rtd:
+#      html_context = {
+#          'css_files': [
+#              #'https://media.readthedocs.org/css/sphinx_rtd_theme.css',
+#              'https://media.readthedocs.org/css/readthedocs-doc-embed.css',
+#              #'_static/css/modified_theme.css',
+#          ],
+#      }
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied

@@ -1,4 +1,4 @@
-Installation Guide
+Installation
 ==================
 
 Requirements
@@ -356,3 +356,12 @@ On CentOS 6 / 7::
   $ sudo yum install devtoolset-7-gcc-c++
   $ source /opt/rh/devtoolset-7/enable
   $ export NVCC="nvcc --compiler-bidir gcc-7"
+
+----
+
+.. currentmodule:: cupy
+
+.. toctree::
+   :maxdepth: 2
+
+   install_rocm
