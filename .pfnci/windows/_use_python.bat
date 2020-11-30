@@ -10,8 +10,8 @@ if %VERSION% == 3.6 (
     set PYTHON_ROOT=C:\Development\Python\Python38
 ) else (
     echo Unsupported Python version: %VERSION%
-    exit 1
-}
+    exit /b 1
+)
 
 set PATH=%PYTHON_ROOT%;%PYTHON_ROOT%\Scripts;%PATH%
 

@@ -22,8 +22,8 @@ if %VERSION% == 8.0 (
     set CUDA_PATH=%CUDA_PATH_V11_1%
 ) else (
     echo Unsupported CUDA version: %VERSION%
-    exit 1
-}
+    exit /b 1
+)
 
 set PATH=%CUDA_PATH%\bin;%ProgramFiles%\NVIDIA Corporation\NvToolsExt\bin\x64;%PATH%
 
