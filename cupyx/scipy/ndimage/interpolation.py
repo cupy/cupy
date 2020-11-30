@@ -565,7 +565,7 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
 
 
 def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
-         prefilter=True):
+         prefilter=True, *, grid_mode=False):
     """Zoom an array.
 
     The array is zoomed using spline interpolation of the requested order.
@@ -589,6 +589,21 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
             0.0
         prefilter (bool): It is not used yet. It just exists for compatibility
             with :mod:`scipy.ndimage`.
+        grid_mode (bool, optional): If False, the distance from the pixel
+            centers is zoomed. Otherwise, the distance including the full pixel
+            extent is used. For example, a 1d signal of length 5 is considered
+            to have length 4 when ``grid_mode`` is False, but length 5 when
+            ``grid_mode`` is True. See the following visual illustration:
+
+            .. code-block:: text
+
+                    | pixel 1 | pixel 2 | pixel 3 | pixel 4 | pixel 5 |
+                         |<-------------------------------------->|
+                                            vs.
+                    |<----------------------------------------------->|
+
+            The starting point of the arrow in the diagram above corresponds to
+            coordinate location 0 in each mode.
 
     Returns:
         cupy.ndarray or None:
@@ -633,10 +648,25 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
         if order is None:
             order = 1
 
+        if grid_mode:
+            # warn about modes that may have surprising behavior
+            suggest_mode = None
+            if mode == 'constant':
+                suggest_mode = 'grid-constant'
+            elif mode == 'wrap':
+                suggest_mode = 'grid-wrap'
+            if suggest_mode is not None:
+                warnings.warn(
+                    f'It is recommended to use mode = {suggest_mode} instead '
+                    f'of {mode} when grid_mode is True.')
+
         zoom = []
         for in_size, out_size in zip(input.shape, output_shape):
             if out_size > 1:
-                zoom.append(float(in_size - 1) / (out_size - 1))
+                if grid_mode:
+                    zoom.append(in_size / out_size)
+                else:
+                    zoom.append((in_size - 1) / (out_size - 1))
             else:
                 zoom.append(0)
 
@@ -648,7 +678,7 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
         large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
         kern = _interp_kernels._get_zoom_kernel(
             input.ndim, large_int, output_shape, mode, order=order,
-            integer_output=integer_output)
+            integer_output=integer_output, grid_mode=grid_mode)
         zoom = cupy.asarray(zoom, dtype=cupy.float64)
         kern(input, zoom, output)
     return output
