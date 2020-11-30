@@ -44,6 +44,7 @@ configs {
       memory: 24
       disk: 10
       gpu: 2
+      image: "windows"
     }
     time_limit {
       seconds: 3600
