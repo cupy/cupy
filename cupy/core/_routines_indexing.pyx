@@ -1,6 +1,7 @@
 # distutils: language = c++
 import sys
 import warnings
+import string
 
 import numpy
 
@@ -87,22 +88,36 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
             scan_dtype = numpy.int32
         else:
             scan_dtype = numpy_int64
-        scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM,
-                                dtype=scan_dtype)
+
+        block_size = 512
+        if nonzero.size > block_size:
+            # TODO(anruse): We need to set an appropriate threshold, as
+            # "incomplete scan" is a bit slower when the array size is small.
+            incomplete_scan = True
+        else:
+            incomplete_scan = False
+        scan_index = _math.scan(
+            nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
+            incomplete=incomplete_scan, block_size=block_size)
         count_nonzero = int(scan_index[-1])  # synchronize!
+
     ndim = self._shape.size()
     dst = ndarray((count_nonzero, ndim), dtype=numpy_int64)
     if dst.size == 0:
         return dst
 
-    if ndim == 1:
-        _nonzero_kernel_1d(nonzero, scan_index, dst)
-        return dst
+    nonzero.shape = self.shape
+    if incomplete_scan:
+        warp_size = 32
+        size = scan_index.size * block_size
+        _nonzero_kernel_incomplete_scan(block_size, warp_size)(
+            nonzero, scan_index, dst,
+            size=size, block_size=block_size)
     else:
-        nonzero.shape = self.shape
         scan_index.shape = self.shape
         _nonzero_kernel(nonzero, scan_index, dst)
-        return dst
+
+    return dst
 
 
 cdef _ndarray_scatter_add(ndarray self, slices, value):
@@ -412,10 +427,61 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
     return v
 
 
-_nonzero_kernel_1d = ElementwiseKernel(
-    'T src, S index', 'raw U dst',
-    'if (src != 0) dst[index - 1] = i',
-    'nonzero_kernel_1d')
+@cupy._util.memoize(for_each_device=True)
+def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
+    in_params = 'raw T a, raw S b'
+    out_params = 'raw O dst'
+    loop_prep = string.Template("""
+        __shared__ S smem1[${block_size}];
+        __shared__ S smem2[${warp_size}];
+        const int n_warp = ${block_size} / ${warp_size};
+        const int warp_id = threadIdx.x / ${warp_size};
+        const int lane_id = threadIdx.x % ${warp_size};
+    """).substitute(block_size=block_size, warp_size=warp_size)
+    loop_body = string.Template("""
+        S x = 0;
+        if (i < a.size()) x = a[i];
+        for (int j = 1; j < ${warp_size}; j *= 2) {
+            smem1[threadIdx.x] = x;  __syncwarp();
+            if (lane_id - j >= 0) x += smem1[threadIdx.x - j];
+            __syncwarp();
+        }
+        if (lane_id == ${warp_size} - 1) smem2[warp_id] = x;
+        __syncthreads();
+        if (warp_id == 0) {
+            S y = 0;
+            if (lane_id < n_warp) y = smem2[lane_id];
+            for (int j = 1; j < n_warp; j *= 2) {
+                smem2[lane_id] = y;  __syncwarp();
+                if (lane_id - j >= 0) y += smem2[lane_id - j];
+                __syncwarp();
+            }
+            smem2[lane_id] = y;
+        }
+        __syncthreads();
+        if (warp_id > 0) x += smem2[warp_id - 1];
+        int block_id = i / ${block_size};
+        if (block_id > 0) x += b[block_id - 1];
+        smem1[threadIdx.x] = x;
+        __syncthreads();
+        S x0 = 0;
+        if (threadIdx.x > 0) {
+            x0 = smem1[threadIdx.x - 1];
+        } else if (block_id > 0) {
+            x0 = b[block_id - 1];
+        }
+        if (x0 < x && i < a.size()) {
+            O j = i;
+            for (int d = a.ndim - 1; d >= 0; d--) {
+                ptrdiff_t ind[] = {x0, d};
+                dst[ind] = (j % a.shape()[d]);
+                j /= a.shape()[d];
+            }
+        }
+    """).substitute(block_size=block_size, warp_size=warp_size)
+    return cupy.ElementwiseKernel(in_params, out_params, loop_body,
+                                  'nonzero_kernel_incomplete_scan',
+                                  loop_prep=loop_prep)
 
 
 _nonzero_kernel = ElementwiseKernel(

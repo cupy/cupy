@@ -420,7 +420,8 @@ def _cupy_scan_btree(op, block_size, warp_size=32):
                                   'cupy_scan_btree', loop_prep=loop_prep)
 
 
-cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
+cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None,
+                  incomplete=False, block_size=512):
     """Return the prefix sum(scan) of the elements.
 
     Args:
@@ -438,28 +439,32 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     if out is None:
         if dtype is None:
             dtype = a.dtype
-        out = _ndarray_init(a._shape, dtype)
+        if not incomplete:
+            out = _ndarray_init(a._shape, dtype)
     else:
         if a.size != out.size:
             raise ValueError('Provided out is the wrong size')
+        dtype = out.dtype
+    dtype = numpy.dtype(dtype)
 
-    block_size = 512
     warp_size = 32
-    if out.dtype.char in 'iIlLqQfd':
+    if dtype.char in 'iIlLqQfd':
         bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
     else:
         bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
-    if out.dtype.char in 'fdFD':
+    if dtype.char in 'fdFD':
         scan_kernel = _cupy_scan_btree(op, block_size, warp_size)
     else:
         scan_kernel = _cupy_scan_naive(op, block_size, warp_size)
     b_size = (a.size + block_size - 1) // block_size
-    b = cupy.empty((b_size,), dtype=out.dtype)
+    b = cupy.empty((b_size,), dtype=dtype)
     size = b.size * block_size
 
     if a.size > block_size:
         bsum_kernel(a, b, size=size // 2, block_size=block_size // 2)
-        scan(b, op, dtype=out.dtype, out=b)
+        scan(b, op, dtype=dtype, out=b)
+        if incomplete:
+            return b
         scan_kernel(b, a, out, size=size, block_size=block_size)
     else:
         scan_kernel(b, a, out, size=size, block_size=block_size)
