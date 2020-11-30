@@ -36,6 +36,26 @@ configs {
     command: "bash .pfnci/script.sh py37"
   }
 }
+configs {
+  key: "cupy.win.cuda100"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+    }
+    time_limit {
+      seconds: 3600
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/windows/main.bat 10.0 3.7"
+  }
+}
+
 
 # CuPy CI related targets: cupy.docker.{version}.{action}.
 # - version should be either "py37" or "py27and35".
