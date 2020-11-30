@@ -62,40 +62,24 @@ class LinearOperator(object):
 
     def _matmat(self, X):
         """Default matrix-matrix multiplication handler.
-
-        Falls back on the user-defined _matvec method, so defining that will
-        define matrix multiplication (though in a very suboptimal way).
         """
 
         return cupy.hstack([self.matvec(col.reshape(-1, 1)) for col in X.T])
 
     def _matvec(self, x):
         """Default matrix-vector multiplication handler.
-
-        If self is a linear operator of shape (M, N), then this method will
-        be called on a shape (N,) or (N, 1) ndarray, and should return a
-        shape ``(M,)`` or ``(M, 1)`` ndarray.
-
-        This default implementation falls back on _matmat, so defining that
-        will define matrix-vector multiplication as well.
         """
         return self.matmat(x.reshape(-1, 1))
 
     def matvec(self, x):
         """Matrix-vector multiplication.
 
-        Performs the operation y=A*x where A is an MxN linear
-        operator and x is a column vector or 1-d array.
-
-
         Args:
             x (ndarray):  array with shape ``(N,)`` or ``(N,1)``.
-
 
         Returns:
             y (ndarray):  An ndarray with shape ``(M,)`` or ``(M,1)``
                           depending on the type and shape of the x argument.
-
 
         Note:
             This matvec wraps the user-specified matvec routine or overridden
@@ -122,18 +106,12 @@ class LinearOperator(object):
     def rmatvec(self, x):
         """Adjoint matrix-vector multiplication.
 
-        Performs the operation y = A^H * x where A is an MxN linear
-        operator and x is a column vector or 1-d array.
-
-
         Args:
             x (ndarray):  An array with shape ``(M,)`` or ``(M,1)``.
-
 
         Returns:
             y (ndarray):  An ndarray with shape ``(N,)`` or ``(N,1)``
                           depending on the type and shape of the x argument.
-
 
         Note:
             This rmatvec wraps the user-specified rmatvec routine or overridden
@@ -159,7 +137,8 @@ class LinearOperator(object):
         return y
 
     def _rmatvec(self, x):
-        """Default implementation of _rmatvec; defers to adjoint."""
+        """Default implementation of _rmatvec; defers to adjoint.
+        """
         if type(self)._adjoint == LinearOperator._adjoint:
             # _adjoint not overridden, prevent infinite recursion
             raise NotImplementedError
@@ -169,23 +148,16 @@ class LinearOperator(object):
     def matmat(self, X):
         """Matrix-matrix multiplication.
 
-        Performs the operation y=A*X where A is an MxN linear
-        operator and X dense N*K matrix or ndarray.
-
-
         Args:
             X (ndarray):  An array with shape (N,K).
-
 
         Returns:
             Y (ndarray):  An ndarray with shape (M,K)
                           depending on the type of the X argument.
 
-
         Note:
             This matmat wraps any user-specified matmat routine or overridden
             _matmat method to ensure that y has the correct type.
-
         """
 
         if X.ndim != 2:
@@ -203,23 +175,15 @@ class LinearOperator(object):
     def rmatmat(self, X):
         """Adjoint matrix-matrix multiplication.
 
-        Performs the operation y = A^H * x where A is an MxN linear
-        operator and x is a column vector or 1-d array, or 2-d array.
-        The default implementation defers to the adjoint.
-
-
         Args:
             X (ndarray):  A 2D array.
-
 
         Returns:
             Y (ndarray):  A 2D array depending on the type of the
                           input
 
-
         Note:
             This rmatmat wraps the user-specified rmatmat routine.
-
         """
 
         if X.ndim != 2:
@@ -250,13 +214,11 @@ class LinearOperator(object):
     def dot(self, x):
         """Matrix-matrix or matrix-vector multiplication.
 
-
         Args:
-            x (array_like):  1-d or 2-d array, representing a vector or matrix.
-
+            x (array_like):  1-d or 2-d array, representing a vector.
 
         Returns:
-            Ax (array):  1-d or 2-d array (depending on the shape of x) that
+            Ax (ndarray):  1-d or 2-d array (depending on the shape of x) that
                          represents the result of applying this linear
                          operator on x.
 
@@ -271,19 +233,19 @@ class LinearOperator(object):
             elif x.ndim == 2:
                 return self.matmat(x)
             else:
-                raise ValueError('expected 1-d or 2-d array or matrix, got %r'
+                raise ValueError('expected 1-d or 2-d array, got %r'
                                  % x)
 
     def __matmul__(self, other):
         if cupy.isscalar(other):
             raise ValueError('Scalar operands are not allowed, '
-                             'use '*' instead')
+                             'use \'*\' instead')
         return self.__mul__(other)
 
     def __rmatmul__(self, other):
         if cupy.isscalar(other):
             raise ValueError('Scalar operands are not allowed, '
-                             'use '*' instead')
+                             'use \'*\' instead')
         return self.__rmul__(other)
 
     def __rmul__(self, x):
@@ -322,13 +284,6 @@ class LinearOperator(object):
     def adjoint(self):
         """Hermitian adjoint.
 
-        Returns the Hermitian adjoint of self, aka the Hermitian
-        conjugate or Hermitian transpose. For a complex matrix, the
-        Hermitian adjoint is equal to the conjugate transpose.
-
-        Can be abbreviated self.H instead of self.adjoint().
-
-
         Returns:
             A_H (LinearOperator):  Hermitian adjoint of self.
         """
@@ -338,9 +293,6 @@ class LinearOperator(object):
 
     def transpose(self):
         """Transpose this linear operator.
-
-        Returns a LinearOperator that represents the transpose of this one.
-        Can be abbreviated self.T instead of self.transpose().
         """
         return self._transpose()
 
