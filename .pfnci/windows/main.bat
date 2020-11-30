@@ -17,7 +17,6 @@ python -m pip install -U Cython
 python -m pip list
 
 :: Build
-cd cupy
 python -m pip install -e ".[jenkins]" -vvv
 
 :: Test import
