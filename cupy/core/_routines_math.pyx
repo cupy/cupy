@@ -165,7 +165,7 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
 
     Example:
         a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        _cupy_bsum(op=SCAN_SUM, block_size=4)(a, a.size, b, ...)
+        _cupy_bsum(op=SCAN_SUM, block_size=4)(a, b, ...)
         b == [10, 26, 19]
 
     Note:
@@ -218,7 +218,7 @@ def _cupy_bsum_smem(op, block_size, warp_size=32):
 
     Example:
         a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        _cupy_bsum(op=SCAN_SUM, block_size=4)(a, a.size, b, ...)
+        _cupy_bsum(op=SCAN_SUM, block_size=4)(a, b, ...)
         b == [10, 26, 19]
 
     Note:
@@ -276,7 +276,7 @@ def _cupy_scan_naive(op, block_size, warp_size=32):
     Example:
         b = [10, 36, 55]
         a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        _cupy_scan(op=SCAN_SUM, block_size=4)(b, a.size, a, out, ...)
+        _cupy_scan(op=SCAN_SUM, block_size=4)(b, a, out, ...)
         out == [1, 3, 6, 10, 15, 21, 28, 36, 45, 55]
 
     Note:
@@ -342,7 +342,7 @@ def _cupy_scan_btree(op, block_size, warp_size=32):
     Example:
         b = [10, 36, 55]
         a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        _cupy_scan(op=SCAN_SUM, block_size=4)(b, a.size, a, out, ...)
+        _cupy_scan(op=SCAN_SUM, block_size=4)(b, a, out, ...)
         out == [1, 3, 6, 10, 15, 21, 28, 36, 45, 55]
 
     Note:
@@ -424,7 +424,7 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     Args:
         a (cupy.ndarray): input array.
         out (cupy.ndarray): Alternative output array in which to place
-         the result. The same size and same type as the input array(a).
+            the result. The same size and same type as the input array(a).
 
     Returns:
         cupy.ndarray: A new array holding the result is returned.
