@@ -474,8 +474,9 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
             O j = i;
             for (int d = a.ndim - 1; d >= 0; d--) {
                 ptrdiff_t ind[] = {x0, d};
-                dst[ind] = (j % a.shape()[d]);
-                j /= a.shape()[d];
+                O j_next = j / a.shape()[d];
+                dst[ind] = j - j_next * a.shape()[d];
+                j = j_next;
             }
         }
     """).substitute(block_size=block_size, warp_size=warp_size)
