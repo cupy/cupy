@@ -176,14 +176,15 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
     in_params = 'raw T a'
     out_params = 'raw O b'
     loop_prep = string.Template("""
-        __shared__ O smem[${block_size} / ${warp_size}];
-        const int n_warp = ${block_size} / ${warp_size};
+        __shared__ O smem[${block_size} / 2 / ${warp_size}];
+        const int n_warp = ${block_size} / 2 / ${warp_size};
         const int warp_id = threadIdx.x / ${warp_size};
         const int lane_id = threadIdx.x % ${warp_size};
     """).substitute(block_size=block_size, warp_size=warp_size)
     loop_body = string.Template("""
         O x = ${identity};
-        if (i < a.size()) x = a[i];
+        if (2*i < a.size()) x = a[2*i];
+        if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
         for (int j = 1; j < ${warp_size}; j *= 2) {
             x ${op}= __shfl_xor_sync(0xffffffff, x, j);
         }
@@ -195,7 +196,7 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
             for (int j = 1; j < n_warp; j *= 2) {
                 x ${op}= __shfl_xor_sync(0xffffffff, x, j);
             }
-            int block_id = i / ${block_size};
+            int block_id = i / (${block_size} / 2);
             if (lane_id == 0) b[block_id] = x;
         }
     """).substitute(block_size=block_size, warp_size=warp_size,
@@ -227,15 +228,16 @@ def _cupy_bsum_smem(op, block_size, warp_size=32):
     in_params = 'raw T a'
     out_params = 'raw O b'
     loop_prep = string.Template("""
-        __shared__ O smem1[${block_size}];
+        __shared__ O smem1[${block_size} / 2];
         __shared__ O smem2[${warp_size}];
-        const int n_warp = ${block_size} / ${warp_size};
+        const int n_warp = ${block_size} / 2 / ${warp_size};
         const int warp_id = threadIdx.x / ${warp_size};
         const int lane_id = threadIdx.x % ${warp_size};
     """).substitute(block_size=block_size, warp_size=warp_size)
     loop_body = string.Template("""
         O x = ${identity};
-        if (i < a.size()) x = a[i];
+        if (2*i < a.size()) x = a[2*i];
+        if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
         for (int j = 1; j < ${warp_size}; j *= 2) {
             smem1[threadIdx.x] = x;          __syncwarp();
             x ${op}= smem1[threadIdx.x ^ j]; __syncwarp();
@@ -249,7 +251,7 @@ def _cupy_bsum_smem(op, block_size, warp_size=32):
                 smem2[lane_id] = x;          __syncwarp();
                 x ${op}= smem2[lane_id ^ j]; __syncwarp();
             }
-            int block_id = i / ${block_size};
+            int block_id = i / (${block_size} / 2);
             if (lane_id == 0) b[block_id] = x;
         }
     """).substitute(block_size=block_size, warp_size=warp_size,
@@ -456,7 +458,7 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     size = b.size * block_size
 
     if a.size > block_size:
-        bsum_kernel(a, b, size=size, block_size=block_size)
+        bsum_kernel(a, b, size=size // 2, block_size=block_size // 2)
         scan(b, op, dtype=out.dtype, out=b)
         scan_kernel(b, a, out, size=size, block_size=block_size)
     else:
