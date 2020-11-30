@@ -168,9 +168,23 @@ cdef class ndarray:
         else:
             desc['data'] = (0, False)
         stream_ptr = stream_module.get_current_stream_ptr()
+        # TODO(leofang): check if we're using PTDS
         if stream_ptr == 0:
-            # TODO(leofang): check if we're using PTDS
-            desc['stream'] = None
+            # We are on the legacy default stream, which already implicitly
+            # synchronizes with all blocking streams [1]. To reduce the
+            # overhead and restore old behavior, we do not export it (so that
+            # other participating libraries lacking a finer control of sync
+            # behavior can avoid syncing) if CUPY_CUDA_ARRAY_INTERFACE_SYNC is
+            # set to 0. In addition, CAI v3 says setting the stream field to 0
+            # is disallowed [2].
+            #
+            # Refs:
+            # [1] https://docs.nvidia.com/cuda/cuda-runtime-api/stream-sync-behavior.html  # noqa
+            # [2] https://numba.readthedocs.io/en/latest/cuda/cuda_array_interface.html  # noqa
+            if _util.CUDA_ARRAY_INTERFACE_SYNC:
+                desc['stream'] = 1  # TODO(leofang): use runtime.streamLegacy
+            else:
+                desc['stream'] = None
         else:
             desc['stream'] = stream_ptr
 
@@ -2373,9 +2387,14 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     # 1. the stream is not set (ex: from v0 - v2) or is None
     # 2. users explicitly overwrite this requirement
     stream_ptr = desc.get('stream')
+    curr_stream_ptr = stream_module.get_current_stream_ptr()
     if stream_ptr is not None:
-        stream = cuda.stream.ExternalStream(stream_ptr)
-        if _util.CUDA_ARRAY_INTERFACE_SYNC:
+        # 0 is disallowed, see the comment in __cuda_array_interface__
+        # TODO(leofang): handle PTDS
+        if curr_stream_ptr == 0:
+            curr_stream_ptr = 1  # TODO(leofang): use runtime.streamLegacy
+        if stream_ptr != curr_stream_ptr and _util.CUDA_ARRAY_INTERFACE_SYNC:
+            stream = cuda.stream.ExternalStream(stream_ptr)
             stream.synchronize()
     return ndarray(shape, dtype, memptr, strides)
 

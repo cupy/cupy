@@ -527,9 +527,11 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
         assert 'does not support' in str(ex.value)
 
 
+# TODO(leofang): test PTDS
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'stream': (None, cuda.Stream.null, cuda.Stream()),
+    'current_stream': (None, cuda.Stream.null, cuda.Stream()),
+    'external_stream': (None, cuda.Stream.null, cuda.Stream(), False),
     'sync': (True, False),
 }))
 class TestCudaArrayInterfaceStream(unittest.TestCase):
@@ -539,21 +541,38 @@ class TestCudaArrayInterfaceStream(unittest.TestCase):
         self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
         _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync
 
+        if self.current_stream is not None:
+            self.current_stream.use()
+        if self.external_stream is False:
+            # -1 is a placeholder for testing both Producer and Consumer on the
+            # same, non-default stream
+            if self.current_stream is not None and self.current_stream.ptr > 2:
+                self.external_stream = self.current_stream
+            else:
+                self.skipTest('invalid test')
+
     def tearDown(self):
         _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync_config
+        cuda.Stream.null.use()  # ensure we return to the legacy default stream
 
     @testing.for_all_dtypes()
     def test_stream(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         func = 'cupy.cuda.ExternalStream.synchronize'
-        # TODO(leofang): how about PTDS?
-        if self.stream is None or self.stream is cuda.Stream.null:
+        if self.external_stream is None:
+            times = 0
+        elif self.current_stream is None:
+            if self.external_stream.ptr in (0, 1):
+                times = 0
+            else:
+                times = int(self.sync)
+        elif self.current_stream == self.external_stream:
             times = 0
         else:
             times = int(self.sync)
         with testing.AssertFunctionIsCalled(func, times_called=times):
             b = cupy.asarray(DummyObjectWithCudaArrayInterface(
-                a, self.ver, stream=self.stream))
+                a, self.ver, stream=self.external_stream))
         testing.assert_array_equal(a, b)
 
 
@@ -607,7 +626,7 @@ class DummyObjectWithCudaArrayInterface(object):
         if self.stream is not None:
             # TODO(leofang): how about PTDS?
             if self.stream is cuda.Stream.null:
-                desc['stream'] = None
+                desc['stream'] = 1
             else:
                 desc['stream'] = self.stream.ptr
         return desc

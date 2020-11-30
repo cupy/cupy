@@ -1,8 +1,12 @@
 import unittest
 
 import cupy
+from cupy import _util
 from cupy import core
 from cupy import testing
+
+
+# TODO(leofang): test PTDS in this file
 
 
 class DummyObjectWithCudaArrayInterface(object):
@@ -13,8 +17,13 @@ class DummyObjectWithCudaArrayInterface(object):
     @property
     def __cuda_array_interface__(self):
         stream = cupy.cuda.get_current_stream()
-        # TODO(leofang): how about PTDS?
-        stream_ptr = stream.ptr if stream.ptr != 0 else None
+        if stream.ptr == 0:
+            if _util.CUDA_ARRAY_INTERFACE_SYNC:
+                stream_ptr = 1
+            else:
+                stream_ptr = None
+        else:
+            stream_ptr = stream.ptr
         desc = {
             'shape': self.a.shape,
             'strides': self.a.strides,
@@ -225,6 +234,7 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 
         # Don't validate correctness of data here, just their types
         assert version == 3  # bump this when the protocol is updated!
+        assert isinstance(y.__cuda_array_interface__, dict)
         assert isinstance(shape, tuple)
         assert isinstance(typestr, str)
         assert isinstance(ptr, int)
@@ -235,29 +245,38 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
             for item in descr:
                 assert isinstance(item, tuple)
         assert (stream is None) or isinstance(stream, int)
-        if isinstance(stream, int):
-            # TODO(leofang): how about PTDS?
-            assert stream == self.stream.ptr
 
 
 @testing.parameterize(*testing.product({
     'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+    'sync': (True, False),
 }))
 @testing.gpu
 class TestCUDAArrayInterfaceStream(unittest.TestCase):
+    def setUp(self):
+        self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
+        _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync
+
+    def tearDown(self):
+        _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync_config
 
     def test_stream_export(self):
-        # TODO(leofang): How about PTDS?
         a = cupy.empty(100)
 
         # the stream context should export the stream
         with self.stream:
             stream_ptr = a.__cuda_array_interface__['stream']
         if self.stream is cupy.cuda.Stream.null:
-            assert stream_ptr is None
+            if self.sync:
+                assert stream_ptr == 1
+            else:
+                assert stream_ptr is None
         else:
             assert stream_ptr == self.stream.ptr
 
         # without a stream context, it's always the default stream
         stream_ptr = a.__cuda_array_interface__['stream']
-        assert stream_ptr is None
+        if self.sync:
+            assert stream_ptr == 1
+        else:
+            assert stream_ptr is None
