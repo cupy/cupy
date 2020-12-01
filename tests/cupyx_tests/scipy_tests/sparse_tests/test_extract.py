@@ -58,7 +58,7 @@ class TestExtract(unittest.TestCase):
             assert np_out.format == cp_out.format
             assert np_out.nnz == cp_out.nnz
             cupy.testing.assert_allclose(np_out.todense(), cp_out.todense())
-            
+
     @testing.for_dtypes('fdFD')
     def test_find(self, dtype):
         if self.out_format is not None:
