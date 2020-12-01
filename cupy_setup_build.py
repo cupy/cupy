@@ -85,7 +85,7 @@ cuda_files = [
     'cupy.cuda.texture',
     'cupy.fft._cache',
     'cupy.fft._callback',
-    'cupy.lib.polynomial',
+    'cupy.lib._polynomial',
     'cupy.random._bit_generator',
     'cupy.random._generator',
     'cupy._util'
