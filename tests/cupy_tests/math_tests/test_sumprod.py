@@ -717,7 +717,7 @@ class TestCumprod(unittest.TestCase):
         a = cupy.ones(size, 'b')
         result = cupy.cumprod(a, dtype='b')
         del a
-        self.assertTrue((result == 1).all())
+        assert (result == 1).all()
         # Free huge memory for slow test
         del result
         cupy.get_default_memory_pool().free_all_blocks()

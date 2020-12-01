@@ -50,22 +50,25 @@ def solve(a, b):
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
 
-    # Cast to float32 or float64
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
-        dtype = a.dtype
-    else:
-        dtype = numpy.promote_types(a.dtype.char, 'f')
-
-    a = a.astype(dtype)
-    b = b.astype(dtype)
+    dtype = numpy.promote_types(a.dtype, b.dtype)
+    dtype = numpy.promote_types(dtype, 'f')
     if a.ndim == 2:
-        return cupyx.lapack.gesv(a, b)
+        # prevent 'a' and 'b' to be overwritten
+        a = a.astype(dtype, copy=True, order='F')
+        b = b.astype(dtype, copy=True, order='F')
+        cupyx.lapack.gesv(a, b)
+        return b
 
+    # prevent 'a' to be overwritten
+    a = a.astype(dtype, copy=True, order='C')
     x = cupy.empty_like(b)
     shape = a.shape[:-2]
     for i in range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
-        x[index] = cupyx.lapack.gesv(a[index], b[index])
+        # prevent 'b' to be overwritten
+        bi = b[index].astype(dtype, copy=True, order='F')
+        cupyx.lapack.gesv(a[index], bi)
+        x[index] = bi
     return x
 
 
@@ -279,66 +282,19 @@ def inv(a):
     if a.ndim >= 3:
         return _batched_inv(a)
 
-    # to prevent `a` to be overwritten
-    a = a.copy()
-
     _util._assert_cupy_array(a)
     _util._assert_rank2(a)
     _util._assert_nd_squareness(a)
 
-    # support float32, float64, complex64, and complex128
-    if a.dtype.char in 'fdFD':
-        dtype = a.dtype.char
+    dtype = numpy.promote_types(a.dtype, 'f')
+    order = 'F' if a._f_contiguous else 'C'
+    # prevent 'a' to be overwritten
+    a = a.astype(dtype, copy=True, order=order)
+    b = cupy.eye(a.shape[0], dtype=dtype, order=order)
+    if order == 'F':
+        cupyx.lapack.gesv(a, b)
     else:
-        dtype = numpy.promote_types(a.dtype.char, 'f')
-
-    cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=numpy.int32)
-
-    ipiv = cupy.empty((a.shape[0], 1), dtype=numpy.intc)
-
-    if dtype == 'f':
-        getrf = cusolver.sgetrf
-        getrf_bufferSize = cusolver.sgetrf_bufferSize
-        getrs = cusolver.sgetrs
-    elif dtype == 'd':
-        getrf = cusolver.dgetrf
-        getrf_bufferSize = cusolver.dgetrf_bufferSize
-        getrs = cusolver.dgetrs
-    elif dtype == 'F':
-        getrf = cusolver.cgetrf
-        getrf_bufferSize = cusolver.cgetrf_bufferSize
-        getrs = cusolver.cgetrs
-    elif dtype == 'D':
-        getrf = cusolver.zgetrf
-        getrf_bufferSize = cusolver.zgetrf_bufferSize
-        getrs = cusolver.zgetrs
-    else:
-        msg = ('dtype must be float32, float64, complex64 or complex128'
-               ' (actual: {})'.format(a.dtype))
-        raise ValueError(msg)
-
-    m = a.shape[0]
-
-    buffersize = getrf_bufferSize(cusolver_handle, m, m, a.data.ptr, m)
-    workspace = cupy.empty(buffersize, dtype=dtype)
-
-    # LU factorization
-    getrf(
-        cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr,
-        ipiv.data.ptr, dev_info.data.ptr)
-    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrf, dev_info)
-
-    b = cupy.eye(m, dtype=dtype)
-
-    # solve for the inverse
-    getrs(
-        cusolver_handle, 0, m, m, a.data.ptr, m, ipiv.data.ptr, b.data.ptr, m,
-        dev_info.data.ptr)
-    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrs, dev_info)
-
+        cupyx.lapack.gesv(a.T, b.T)
     return b
 
 

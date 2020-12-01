@@ -12,6 +12,7 @@ from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
 
 @testing.parameterize(*testing.product({
     'batched_gesv_limit': [None, 0],
+    'order': ['C', 'F'],
 }))
 @testing.gpu
 @testing.fix_random()
@@ -32,6 +33,8 @@ class TestSolve(unittest.TestCase):
     def check_x(self, a_shape, b_shape, xp, dtype):
         a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=0)
         b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=1)
+        a = a.copy(order=self.order)
+        b = b.copy(order=self.order)
         a_copy = a.copy()
         b_copy = b.copy()
         result = xp.linalg.solve(a, b)
@@ -84,18 +87,22 @@ class TestTensorSolve(unittest.TestCase):
         return xp.linalg.tensorsolve(a, b, axes=self.axes)
 
 
+@testing.parameterize(*testing.product({
+    'order': ['C', 'F'],
+}))
 @testing.gpu
 class TestInv(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     @condition.retry(10)
     def check_x(self, a_shape, dtype):
-        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
-        a_gpu = cupy.asarray(a_cpu)
+        a_cpu = numpy.random.randint(0, 10, size=a_shape)
+        a_cpu = a_cpu.astype(dtype, order=self.order)
+        a_gpu = cupy.asarray(a_cpu, order=self.order)
         a_gpu_copy = a_gpu.copy()
         result_cpu = numpy.linalg.inv(a_cpu)
         result_gpu = cupy.linalg.inv(a_gpu)
-        self.assertEqual(result_cpu.dtype, result_gpu.dtype)
+        assert result_cpu.dtype == result_gpu.dtype
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
 
@@ -152,7 +159,7 @@ class TestPinv(unittest.TestCase):
         result_cpu = numpy.linalg.pinv(a_cpu, rcond=rcond)
         result_gpu = cupy.linalg.pinv(a_gpu, rcond=rcond)
 
-        self.assertEqual(result_cpu.dtype, result_gpu.dtype)
+        assert result_cpu.dtype == result_gpu.dtype
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
 
@@ -199,13 +206,13 @@ class TestLstsq(unittest.TestCase):
         x_gpu, resids_gpu, rank_gpu, s_gpu = cupy.linalg.lstsq(a_gpu,
                                                                b_gpu,
                                                                rcond=rcond)
-        self.assertEqual(x_cpu.dtype, x_gpu.dtype)
+        assert x_cpu.dtype == x_gpu.dtype
         # check the least squares solutions are close
         # if a is singular, no guarantee that x_cpu will be close to x_gpu
         if not singular:
             cupy.testing.assert_allclose(x_cpu, x_gpu, atol=1e-3)
         cupy.testing.assert_allclose(resids_cpu, resids_gpu, atol=1e-3)
-        self.assertEqual(rank_cpu, rank_gpu)
+        assert rank_cpu == rank_gpu
         cupy.testing.assert_allclose(s_cpu, s_gpu, atol=1e-3)
         # check that lstsq did not modify arrays
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
@@ -260,7 +267,7 @@ class TestTensorInv(unittest.TestCase):
         a_gpu_copy = a_gpu.copy()
         result_cpu = numpy.linalg.tensorinv(a_cpu, ind=ind)
         result_gpu = cupy.linalg.tensorinv(a_gpu, ind=ind)
-        self.assertEqual(result_cpu.dtype, result_gpu.dtype)
+        assert result_cpu.dtype == result_gpu.dtype
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
 

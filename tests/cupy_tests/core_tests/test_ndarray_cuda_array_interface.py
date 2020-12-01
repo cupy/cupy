@@ -71,7 +71,7 @@ class TestElementwiseKernel(unittest.TestCase):
 
 
 @testing.gpu
-class SimpleReductionFunction(unittest.TestCase):
+class TestSimpleReductionFunction(unittest.TestCase):
 
     def setUp(self):
         self.my_int8_sum = core.create_reduction_func(

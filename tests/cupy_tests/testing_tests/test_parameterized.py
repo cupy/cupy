@@ -16,10 +16,10 @@ from cupy import testing
     {'actual': {'a': [1, 2], 'b': []}, 'expect': []},
     {'actual': {'a': []}, 'expect': []},
     {'actual': {}, 'expect': [{}]})
-class ProductTest(unittest.TestCase):
+class TestProduct(unittest.TestCase):
 
     def test_product(self):
-        self.assertListEqual(testing.product(self.actual), self.expect)
+        assert testing.product(self.actual) == self.expect
 
 
 @testing.parameterize(
@@ -33,10 +33,10 @@ class ProductTest(unittest.TestCase):
     {'actual': [[{'a': 1}, {'a': 2}], []], 'expect': []},
     {'actual': [[]], 'expect': []},
     {'actual': [], 'expect': [{}]})
-class ProductDictTest(unittest.TestCase):
+class TestProductDict(unittest.TestCase):
 
     def test_product_dict(self):
-        self.assertListEqual(testing.product_dict(*self.actual), self.expect)
+        assert testing.product_dict(*self.actual) == self.expect
 
 
 def f(x):
@@ -62,7 +62,7 @@ class TestParameterize(unittest.TestCase):
 
     def test_callable(self):
         y = self.callable(1)
-        self.assertEqual(y, 1)
+        assert y == 1
 
     def test_skip(self):
         # Skipping the test case should not report error.
