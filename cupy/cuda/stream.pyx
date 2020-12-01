@@ -188,7 +188,7 @@ class BaseStream(object):
         pass
 
     def __repr__(self):
-        return 'Stream {}'.format(self.ptr)
+        return '<{} {}>'.format(type(self).__name__, self.ptr)
 
     def use(self):
         """Makes this stream current.
