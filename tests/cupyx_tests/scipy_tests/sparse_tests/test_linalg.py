@@ -561,3 +561,39 @@ class TestGmres(unittest.TestCase):
         ng_a = xp.ones((self.n, self.n), dtype='i')
         with pytest.raises(TypeError):
             sp.linalg.gmres(ng_a, b)
+
+
+@testing.parameterize(*testing.product({
+    'nrhs': [None, 1],
+    'format': ['csr', 'csc', 'coo'],
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.gpu
+class TestSpsolve(unittest.TestCase):
+
+    n = 10
+    density = 0.5
+
+    def _make_matrix(self, dtype, xp):
+        dtype = numpy.dtype(dtype)
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=2/self.n)
+        a_mask = testing.shaped_random(a_shape, xp, dtype='f', scale=1)
+        a[a_mask > self.density] = 0
+        a_diag = xp.diag(xp.ones((self.n,), dtype=dtype))
+        a = a + a_diag
+        b_shape = (self.n,) if self.nrhs is None else (self.n, self.nrhs)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype)
+        return a, b
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_spsolve(self, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp)
+        if self.format == 'csr':
+            sp_a = sp.csr_matrix(a)
+        elif self.format == 'csc':
+            sp_a = sp.csc_matrix(a)
+        elif self.format == 'coo':
+            sp_a = sp.coo_matrix(a)
+        return sp.linalg.spsolve(sp_a, b)

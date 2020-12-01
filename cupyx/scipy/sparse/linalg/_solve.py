@@ -4,7 +4,10 @@ import cupy
 from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import _util
-import cupyx.scipy.sparse
+import cupyx.scipy.sparse as sparse
+
+from warnings import warn
+from scipy.sparse import SparseEfficiencyWarning
 
 
 def lsqr(A, b):
@@ -31,8 +34,8 @@ def lsqr(A, b):
     .. seealso:: :func:`scipy.sparse.linalg.lsqr`
     """
 
-    if not cupyx.scipy.sparse.isspmatrix_csr(A):
-        A = cupyx.scipy.sparse.csr_matrix(A)
+    if not sparse.isspmatrix_csr(A):
+        A = sparse.csr_matrix(A)
     _util._assert_nd_squareness(A)
     _util._assert_cupy_array(b)
     m = A.shape[0]
@@ -65,3 +68,41 @@ def lsqr(A, b):
     x = x.astype(numpy.float64)
     ret = (x, None, None, None, None, None, None, None, None, None)
     return ret
+
+
+def spsolve(A, b):
+    """Solve the sparse linear system ``A x = b``
+
+    Args:
+        A (cupyx.scipy.sparse.spmatrix): Sparse matrix with dimension
+            ``(M, M)``.
+        b (cupy.ndarray):
+            Dense vector or matrix with dimension ``(M)`` or ``(M, 1)``.
+
+    Returns:
+        cupy.ndarray:
+            Solution to the system ``A x = b``.
+    """
+    if not cupy.cusolver.check_availability('csrlsvqr'):
+        raise NotImplementedError
+    if not sparse.isspmatrix(A):
+        raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
+    if not isinstance(b, cupy.ndarray):
+        raise TypeError('b must be cupy.ndarray')
+    if A.shape[0] != A.shape[1]:
+        raise ValueError('A must be a square matrix (A.shape: {})'.
+                         format(A.shape))
+    if not (b.ndim == 1 or (b.ndim == 2 and b.shape[1] == 1)):
+        raise ValueError('Invalid b.shape (b.shape: {})'.format(b.shape))
+    if A.shape[0] != b.shape[0]:
+        raise ValueError('matrix dimension mismatch (A.shape: {}, b.shape: {})'
+                         .format(A.shape, b.shape))
+
+    if not sparse.isspmatrix_csr(A):
+        warn('CSR format is required. Converting to CSR format.',
+             SparseEfficiencyWarning)
+        A = A.tocsr()
+    A.sum_duplicates()
+    b = b.astype(A.dtype, copy=False).ravel()
+
+    return cupy.cusolver.csrlsvqr(A, b)
