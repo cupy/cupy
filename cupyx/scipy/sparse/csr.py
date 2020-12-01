@@ -254,8 +254,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             return cupy.empty(0, dtype=self.dtype)
         self.sum_duplicates()
         y = cupy.empty(ylen, dtype=self.dtype)
-        cupy_csr_diagonal()(k, rows, cols, self.data, self.indptr,
-                            self.indices, y)
+        _cupy_csr_diagonal()(k, rows, cols, self.data, self.indptr,
+                             self.indices, y)
         return y
 
     def eliminate_zeros(self):
@@ -1156,7 +1156,7 @@ def cupy_dense2csr_step2():
 
 
 @cupy._util.memoize(for_each_device=True)
-def cupy_csr_diagonal():
+def _cupy_csr_diagonal():
     return cupy.ElementwiseKernel(
         'int32 k, int32 rows, int32 cols, '
         'raw T data, raw I indptr, raw I indices',
