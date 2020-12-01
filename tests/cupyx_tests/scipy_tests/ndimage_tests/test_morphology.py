@@ -76,7 +76,7 @@ class TestIterateStructure(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryErosionAndDilation1d(unittest.TestCase):
+class TestBinaryErosionAndDilation1d(unittest.TestCase):
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
         structure = self.structure
@@ -130,7 +130,7 @@ class BinaryErosionAndDilation1d(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy>=1.1.0')
-class BinaryOpeningAndClosing(unittest.TestCase):
+class TestBinaryOpeningAndClosing(unittest.TestCase):
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
         structure = scp.ndimage.generate_binary_structure(x.ndim,
@@ -181,7 +181,7 @@ class BinaryOpeningAndClosing(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryFillHoles(unittest.TestCase):
+class TestBinaryFillHoles(unittest.TestCase):
     def _filter(self, xp, scp, x):
         filter = scp.ndimage.binary_fill_holes
         structure = scp.ndimage.generate_binary_structure(x.ndim,
@@ -230,7 +230,7 @@ class BinaryFillHoles(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryHitOrMiss(unittest.TestCase):
+class TestBinaryHitOrMiss(unittest.TestCase):
     def _filter(self, xp, scp, x):
         filter = scp.ndimage.binary_hit_or_miss
         if self.struct == 'same':
@@ -303,7 +303,7 @@ class BinaryHitOrMiss(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryPropagation(unittest.TestCase):
+class TestBinaryPropagation(unittest.TestCase):
     def _filter(self, xp, scp, x):
         filter = scp.ndimage.binary_propagation
         structure = scp.ndimage.generate_binary_structure(x.ndim,
@@ -335,7 +335,7 @@ class BinaryPropagation(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryErosionAndDilation(unittest.TestCase):
+class TestBinaryErosionAndDilation(unittest.TestCase):
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
         ndim = len(self.shape)
@@ -372,7 +372,7 @@ class BinaryErosionAndDilation(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryErosionAndDilationContiguity(unittest.TestCase):
+class TestBinaryErosionAndDilationContiguity(unittest.TestCase):
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
         ndim = len(self.shape)
@@ -527,7 +527,7 @@ class TestGreyClosingAndOpening(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class MorphologicalGradientAndLaplace(unittest.TestCase):
+class TestMorphologicalGradientAndLaplace(unittest.TestCase):
 
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
@@ -590,7 +590,7 @@ class MorphologicalGradientAndLaplace(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class WhiteTophatAndBlackTopHat(unittest.TestCase):
+class TestWhiteTophatAndBlackTopHat(unittest.TestCase):
 
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
