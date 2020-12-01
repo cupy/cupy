@@ -432,8 +432,7 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
     in_params = 'raw T a, raw S b'
     out_params = 'raw O dst'
     loop_prep = string.Template("""
-        __shared__ S smem1[${block_size}];
-        __shared__ S smem2[${warp_size}];
+        __shared__ S smem[${warp_size}];
         const int n_warp = ${block_size} / ${warp_size};
         const int warp_id = threadIdx.x / ${warp_size};
         const int lane_id = threadIdx.x % ${warp_size};
@@ -442,33 +441,29 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
         S x = 0;
         if (i < a.size()) x = a[i];
         for (int j = 1; j < ${warp_size}; j *= 2) {
-            smem1[threadIdx.x] = x;  __syncwarp();
-            if (lane_id - j >= 0) x += smem1[threadIdx.x - j];
-            __syncwarp();
+            S tmp = __shfl_up_sync(0xffffffff, x, j);
+            if (lane_id - j >= 0) x += tmp;
         }
-        if (lane_id == ${warp_size} - 1) smem2[warp_id] = x;
+        if (lane_id == ${warp_size} - 1) smem[warp_id] = x;
         __syncthreads();
         if (warp_id == 0) {
             S y = 0;
-            if (lane_id < n_warp) y = smem2[lane_id];
+            if (lane_id < n_warp) y = smem[lane_id];
             for (int j = 1; j < n_warp; j *= 2) {
-                smem2[lane_id] = y;  __syncwarp();
-                if (lane_id - j >= 0) y += smem2[lane_id - j];
-                __syncwarp();
+                S tmp = __shfl_up_sync(0xffffffff, y, j);
+                if (lane_id - j >= 0) y += tmp;
             }
-            smem2[lane_id] = y;
+            int block_id = i / ${block_size};
+            S base = 0;
+            if (block_id > 0) base = b[block_id - 1];
+            if (lane_id == ${warp_size} - 1) y = 0;
+            smem[(lane_id + 1) % ${warp_size}] = y + base;
         }
         __syncthreads();
-        if (warp_id > 0) x += smem2[warp_id - 1];
-        int block_id = i / ${block_size};
-        if (block_id > 0) x += b[block_id - 1];
-        smem1[threadIdx.x] = x;
-        __syncthreads();
-        S x0 = 0;
-        if (threadIdx.x > 0) {
-            x0 = smem1[threadIdx.x - 1];
-        } else if (block_id > 0) {
-            x0 = b[block_id - 1];
+        x += smem[warp_id];
+        S x0 = __shfl_up_sync(0xffffffff, x, 1);
+        if (lane_id == 0) {
+            x0 = smem[warp_id];
         }
         if (x0 < x && i < a.size()) {
             O j = i;
