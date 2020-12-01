@@ -255,7 +255,7 @@ class TestSvds(unittest.TestCase):
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 @testing.gpu
-class TestCg(unittest.TestCase):
+class TestCg:
     n = 30
     density = 0.33
     _atol = {'f': 1e-5, 'd': 1e-12}
@@ -389,7 +389,7 @@ class TestCg(unittest.TestCase):
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 @testing.gpu
-class TestGmres(unittest.TestCase):
+class TestGmres:
     n = 30
     density = 0.2
     _atol = {'f': 1e-5, 'd': 1e-12}
