@@ -16,13 +16,17 @@ python -m pip install -U Cython || goto :error
 python -m pip list || goto :error
 
 :: Build
+set CUPY_NUM_BUILD_JOBS=16
+set CUPY_NVCC_GENERATE_CODE=current
 python -m pip install -e ".[jenkins]" -vvv || goto :error
 
 :: Test import
 python -c "import cupy; cupy.show_config()" || goto :error
 
 :: Run unit tests
+.pfnci\windows\_cache_download.bat
 python -m pytest tests || goto :error
+.pfnci\windows\_cache_upload.bat
 
 
 goto :EOF
