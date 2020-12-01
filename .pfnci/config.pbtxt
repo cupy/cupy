@@ -47,7 +47,7 @@ configs {
       image: "windows"
     }
     time_limit {
-      seconds: 3600
+      seconds: 36000
     }
     checkout_strategy {
       include_dot_git: true
