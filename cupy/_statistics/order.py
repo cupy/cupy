@@ -306,8 +306,8 @@ def quantile(a, q, axis=None, out=None, interpolation='linear',
     """Computes the q-th quantile of the data along the specified axis.
 
     Args:
-        a (cupy.ndarray): Array for which to compute percentiles.
-        q (float, tuple of floats or cupy.ndarray): Percentiles to compute
+        a (cupy.ndarray): Array for which to compute quantiles.
+        q (float, tuple of floats or cupy.ndarray): Quantiles to compute
             in the range between 0 and 1 inclusive.
         axis (int or tuple of ints): Along which axis or axes to compute the
             quantiles. The flattened array is used by default.
