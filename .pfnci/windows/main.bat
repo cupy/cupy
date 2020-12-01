@@ -24,9 +24,9 @@ python -m pip install -e ".[jenkins]" -vvv || goto :error
 python -c "import cupy; cupy.show_config()" || goto :error
 
 :: Run unit tests
-.pfnci\windows\_cache_download.bat
+call .pfnci\windows\_cache_download.bat
 python -m pytest tests || goto :error
-.pfnci\windows\_cache_upload.bat
+call .pfnci\windows\_cache_upload.bat
 
 
 goto :EOF
