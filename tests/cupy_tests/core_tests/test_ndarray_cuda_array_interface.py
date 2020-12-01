@@ -264,13 +264,13 @@ class TestCUDAArrayInterfaceStream(unittest.TestCase):
         # the stream context should export the stream
         with self.stream:
             stream_ptr = a.__cuda_array_interface__['stream']
-        if self.stream is cupy.cuda.Stream.null:
-            if self.sync:
+        if self.sync:
+            if self.stream is cupy.cuda.Stream.null:
                 assert stream_ptr == 1
             else:
-                assert stream_ptr is None
+                assert stream_ptr == self.stream.ptr
         else:
-            assert stream_ptr == self.stream.ptr
+            assert stream_ptr is None
 
         # without a stream context, it's always the default stream
         stream_ptr = a.__cuda_array_interface__['stream']

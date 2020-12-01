@@ -530,8 +530,7 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
 # TODO(leofang): test PTDS
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'current_stream': (None, cuda.Stream.null, cuda.Stream()),
-    'external_stream': (None, cuda.Stream.null, cuda.Stream(), False),
+    'external_stream': (None, cuda.Stream.null, cuda.Stream()),
     'sync': (True, False),
 }))
 class TestCudaArrayInterfaceStream(unittest.TestCase):
@@ -541,28 +540,14 @@ class TestCudaArrayInterfaceStream(unittest.TestCase):
         self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
         _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync
 
-        if self.external_stream is False:
-            # "False" is a placeholder for testing both Producer and Consumer
-            # on the same, non-default stream
-            if self.current_stream is not None and self.current_stream.ptr > 2:
-                self.external_stream = self.current_stream
-            else:
-                self.skipTest('invalid test')
-        if self.current_stream is not None:
-            self.current_stream.use()  # switch current stream
-
     def tearDown(self):
         _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync_config
-        cuda.Stream.null.use()  # ensure we return to the legacy default stream
 
     @testing.for_all_dtypes()
     def test_stream(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         func = 'cupy.cuda.ExternalStream.synchronize'
-        if self.external_stream is None:
-            times = 0
-        else:
-            times = int(self.sync)
+        times = 0 if self.external_stream is None else int(self.sync)
         with testing.AssertFunctionIsCalled(func, times_called=times):
             b = cupy.asarray(DummyObjectWithCudaArrayInterface(
                 a, self.ver, stream=self.external_stream))

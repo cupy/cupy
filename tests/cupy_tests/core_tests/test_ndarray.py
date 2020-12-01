@@ -306,13 +306,13 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         assert not iface['data'][1]
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
-        if stream.ptr == 0:
-            if self.sync:
+        if self.sync:
+            if stream.ptr == 0:
                 assert iface['stream'] == 1
             else:
-                assert iface['stream'] is None
+                assert iface['stream'] == stream.ptr
         else:
-            assert iface['stream'] == stream.ptr
+            assert iface['stream'] is None
 
 
 @testing.parameterize(
