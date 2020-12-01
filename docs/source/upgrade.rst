@@ -6,6 +6,15 @@ Upgrade Guide
 
 This is a list of changes introduced in each release that users should be aware of when migrating from older versions.
 
+CuPy v9
+=======
+
+Dropping Support of Python 3.5
+------------------------------
+
+Python 3.5 is no longer supported in CuPy v9.
+
+
 CuPy v8
 =======
 

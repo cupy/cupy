@@ -86,7 +86,7 @@ cuda_files = [
     'cupy.cuda.texture',
     'cupy.fft._cache',
     'cupy.fft._callback',
-    'cupy.lib.polynomial',
+    'cupy.lib._polynomial',
     'cupy._util'
 ]
 
@@ -600,6 +600,9 @@ def make_extensions(options, compiler, use_cython):
             s_file = copy.deepcopy(s)
             name = module_extension_name(f)
 
+            if name.endswith('fft._callback') and not PLATFORM_LINUX:
+                continue
+
             rpath = []
             if not options['no_rpath']:
                 # Add library directories (e.g., `/usr/local/cuda/lib64`) to
@@ -928,47 +931,42 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
                 self, obj, src, ext, cc_args, extra_postargs, pp_opts)
 
         if use_hip:
-            return self._comiple_unix_hipcc(
+            return self._compile_unix_hipcc(
                 obj, src, ext, cc_args, extra_postargs, pp_opts)
         else:
-            return self._comiple_unix_nvcc(
+            return self._compile_unix_nvcc(
                 obj, src, ext, cc_args, extra_postargs, pp_opts)
 
-    def _comiple_unix_nvcc(self,
+    def _compile_unix_nvcc(self,
                            obj, src, ext, cc_args, extra_postargs, pp_opts):
         # For CUDA C source files, compile them with NVCC.
-        _compiler_so = self.compiler_so
+        nvcc_path = build.get_nvcc_path()
+        base_opts = build.get_compiler_base_options()
+        compiler_so = nvcc_path
+
+        cuda_version = build.get_cuda_version()
+        postargs = _nvcc_gencode_options(cuda_version) + [
+            '-O2', '--compiler-options="-fPIC"', '--std=c++11']
+        print('NVCC options:', postargs)
         try:
-            nvcc_path = build.get_nvcc_path()
-            base_opts = build.get_compiler_base_options()
-            self.set_executable('compiler_so', nvcc_path)
+            self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
+                       postargs)
+        except errors.DistutilsExecError as e:
+            raise errors.CompileError(str(e))
 
-            cuda_version = build.get_cuda_version()
-            postargs = _nvcc_gencode_options(cuda_version) + [
-                '-O2', '--compiler-options="-fPIC"', '--std=c++11']
-            print('NVCC options:', postargs)
-
-            return unixccompiler.UnixCCompiler._compile(
-                self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
-        finally:
-            self.compiler_so = _compiler_so
-
-    def _comiple_unix_hipcc(self,
+    def _compile_unix_hipcc(self,
                             obj, src, ext, cc_args, extra_postargs, pp_opts):
         # For CUDA C source files, compile them with HIPCC.
-        _compiler_so = self.compiler_so
+        rocm_path = build.get_hipcc_path()
+        base_opts = build.get_compiler_base_options()
+        compiler_so = rocm_path
+        postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
+        print('HIPCC options:', postargs)
         try:
-            rocm_path = build.get_hipcc_path()
-            base_opts = build.get_compiler_base_options()
-            self.set_executable('compiler_so', rocm_path)
-
-            postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
-            print('HIPCC options:', postargs)
-
-            return unixccompiler.UnixCCompiler._compile(
-                self, obj, src, ext, base_opts + cc_args, postargs, pp_opts)
-        finally:
-            self.compiler_so = _compiler_so
+            self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
+                       postargs)
+        except errors.DistutilsExecError as e:
+            raise errors.CompileError(str(e))
 
     def link(self, target_desc, objects, output_filename, *args):
         use_hipcc = False
@@ -1087,8 +1085,7 @@ class custom_build_ext(build_ext.build_ext):
         build_ext.build_ext.run(self)
 
     def build_extensions(self):
-        # TODO(kmaehashi): This option may be unstable, under investigation
-        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '1'))
+        num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
         if num_jobs > 1:
             self.parallel = num_jobs
         super().build_extensions()

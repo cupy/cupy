@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -12,14 +13,15 @@ from cupyx import lapack
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'n': [3],
     'nrhs': [None, 1, 4],
+    'order': ['C', 'F'],
 }))
 @attr.gpu
 class TestGesv(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
     def _make_array(self, shape, alpha, beta):
-        a = testing.shaped_random(shape, cupy, dtype=self.r_dtype,
-                                  scale=alpha) + beta
+        a = testing.shaped_random(shape, cupy, dtype=self.dtype.char.lower(),
+                                  order=self.order, scale=alpha) + beta
         return a
 
     def _make_matrix(self, shape, alpha, beta):
@@ -30,16 +32,12 @@ class TestGesv(unittest.TestCase):
 
     def setUp(self):
         self.dtype = numpy.dtype(self.dtype)
-        if self.dtype.char in 'fF':
-            self.r_dtype = numpy.float32
-        else:
-            self.r_dtype = numpy.float64
         n = self.n
         nrhs = 1 if self.nrhs is None else self.nrhs
         # Diagonally dominant matrix is used as it is stable
         alpha = 2.0 / n
         a = self._make_matrix((n, n), alpha, -alpha / 2)
-        diag = cupy.diag(cupy.ones((n,), dtype=self.r_dtype))
+        diag = cupy.diag(cupy.ones((n,), dtype=self.dtype.char.lower()))
         a[diag > 0] = 0
         a += diag
         x = self._make_matrix((n, nrhs), 0.2, 0.9)
@@ -47,18 +45,44 @@ class TestGesv(unittest.TestCase):
         b_shape = [n]
         if self.nrhs is not None:
             b_shape.append(nrhs)
+        b = b.reshape(b_shape)
         self.a = a
-        self.b = b.reshape(b_shape)
+        if self.nrhs is None or self.nrhs == 1:
+            self.b = b.copy(order=self.order)
+        else:
+            self.b = b.copy(order='F')
         self.x_ref = x.reshape(b_shape)
-        if self.r_dtype == numpy.float32:
-            self.tol = self._tol['f']
-        elif self.r_dtype == numpy.float64:
-            self.tol = self._tol['d']
+        self.tol = self._tol[self.dtype.char.lower()]
 
     def test_gesv(self):
-        x = lapack.gesv(self.a, self.b)
-        cupy.testing.assert_allclose(x, self.x_ref,
+        lapack.gesv(self.a, self.b)
+        cupy.testing.assert_allclose(self.b, self.x_ref,
                                      rtol=self.tol, atol=self.tol)
+
+    def test_invalid_cases(self):
+        if self.nrhs is None or self.nrhs == 1:
+            raise unittest.SkipTest()
+        ng_a = self.a.reshape(1, self.n, self.n)
+        with pytest.raises(ValueError):
+            lapack.gesv(ng_a, self.b)
+        ng_b = self.b.reshape(1, self.n, self.nrhs)
+        with pytest.raises(ValueError):
+            lapack.gesv(self.a, ng_b)
+        ng_a = cupy.ones((self.n, self.n+1), dtype=self.dtype)
+        with pytest.raises(ValueError):
+            lapack.gesv(ng_a, self.b)
+        ng_a = cupy.ones((self.n+1, self.n+1), dtype=self.dtype)
+        with pytest.raises(ValueError):
+            lapack.gesv(ng_a, self.b)
+        ng_a = cupy.ones(self.a.shape, dtype='i')
+        with pytest.raises(TypeError):
+            lapack.gesv(ng_a, self.b)
+        ng_a = cupy.ones((2, self.n, self.n), dtype=self.dtype, order='F')[0]
+        with pytest.raises(ValueError):
+            lapack.gesv(ng_a, self.b)
+        ng_b = self.b.copy(order='C')
+        with pytest.raises(ValueError):
+            lapack.gesv(self.a, ng_b)
 
 
 @testing.parameterize(*testing.product({
