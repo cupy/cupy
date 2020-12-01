@@ -32,26 +32,22 @@ from cupy.cuda.cufft import getVersion as get_cufft_version
 
 
 # information needed for building an external module
-cdef list _cc = sysconfig.get_config_var('CXX').split(' ')
-cdef str _python_include = sysconfig.get_path('include')
+cdef list _cc = []
+cdef str _python_include = None
 cdef list _nvcc = []
-cdef str _cuda_path = get_cuda_path()
-cdef str _cuda_include = None  # workaround for Read the Docs...
+cdef str _cuda_path = None
+cdef str _cuda_include = None
 cdef str _nvprune = None
-if _cuda_path is not None:
-    _cuda_include = _cuda_path + '/include/'
-    _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
-    if not os.path.isfile(_nvprune):
-        _nvprune = None
-cdef str _build_ver = str(get_build_version())
-cdef int _cufft_ver = get_cufft_version()
+cdef str _build_ver = None
+cdef int _cufft_ver = 0
 cdef str _cupy_root = None
 cdef str _cupy_include = None
 cdef str _source_dir = None
-cdef str _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
+cdef str _ext_suffix = None
 
 
 # callback related stuff
+cdef bint _is_init = False
 cdef str _callback_dev_code = None
 cdef str _callback_cache_dir = os.environ.get(
     'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/callback_cache')) + '/'
@@ -73,6 +69,36 @@ cdef class _ThreadLocal:
         except AttributeError:
             tls = _callback_thread_local.tls = _ThreadLocal()
         return tls
+
+
+cdef inline void _set_vars() except*:
+    global _cc, _python_include, _cuda_path, _cuda_include, _nvprune
+    global _build_ver, _cufft_ver, _ext_suffix, _is_init
+
+    cdef str cxx = sysconfig.get_config_var('CXX')
+    if cxx is not None:
+        _cc = cxx.split(' ')
+    elif 'CXX' in os.environ:
+        _cc = os.environ.get('CXX').split(' ')
+    else:
+        _cc = None
+
+    _python_include = sysconfig.get_path('include')
+
+    _cuda_path = get_cuda_path()
+    if _cuda_path is not None:
+        _cuda_include = os.path.join(_cuda_path, 'include')
+        _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
+        if not os.path.isfile(_nvprune):
+            _nvprune = None
+
+    _build_ver = str(get_build_version())
+    _cufft_ver = get_cufft_version()
+    _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
+
+    _set_cupy_paths()
+    _set_nvcc_path()
+    _is_init = True
 
 
 cdef inline void _set_cupy_paths() except*:
@@ -123,6 +149,9 @@ cdef inline void _sanity_checks(
         raise ValueError('need to specify d_loadCallbackPtr in cb_load')
     if cb_store and 'd_storeCallbackPtr' not in cb_store:
         raise ValueError('need to specify d_storeCallbackPtr in cb_store')
+    if _cc is None:
+        raise RuntimeError('a C++ compiler is required but not found, '
+                           'please set the environment variable CXX')
     if _nvcc is None:
         raise RuntimeError('nvcc is required but not found')
     if _nvprune is None:
@@ -266,9 +295,8 @@ cdef class _CallbackManager:
                  str cb_store='',
                  ndarray cb_load_aux_arr=None,
                  ndarray cb_store_aux_arr=None):
-        # Sanity checks
-        _set_nvcc_path()
-        _set_cupy_paths()
+        if not _is_init:
+            _set_vars()
         _sanity_checks(cb_load, cb_store,
                        cb_load_aux_arr, cb_store_aux_arr)
 

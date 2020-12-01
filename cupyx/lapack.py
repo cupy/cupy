@@ -18,6 +18,8 @@ def gesv(a, b):
     Returns:
         cupy.ndarray:
             The matrix with dimension ``(M)`` or ``(M, K)``.
+
+    Note: ``a`` and ``b`` will be overwritten.
     """
     if a.ndim != 2:
         raise ValueError('a.ndim must be 2 (actual: {})'.format(a.ndim))
@@ -28,8 +30,10 @@ def gesv(a, b):
     if a.shape[0] != b.shape[0]:
         raise ValueError('shape mismatch (a: {}, b: {}).'.
                          format(a.shape, b.shape))
-
-    dtype = _numpy.promote_types(a.dtype.char, 'f')
+    if a.dtype != b.dtype:
+        raise TypeError('dtype mismatch (a: {}, b: {})'.
+                        format(a.dtype, b.dtype))
+    dtype = a.dtype
     if dtype == 'f':
         t = 's'
     elif dtype == 'd':
@@ -39,21 +43,21 @@ def gesv(a, b):
     elif dtype == 'D':
         t = 'z'
     else:
-        raise ValueError('unsupported dtype (actual:{})'.format(a.dtype))
+        raise TypeError('unsupported dtype (actual:{})'.format(a.dtype))
     helper = getattr(_cusolver, t + 'getrf_bufferSize')
     getrf = getattr(_cusolver, t + 'getrf')
     getrs = getattr(_cusolver, t + 'getrs')
 
     n = b.shape[0]
     nrhs = b.shape[1] if b.ndim == 2 else 1
-    a_data_ptr = a.data.ptr
-    b_data_ptr = b.data.ptr
-    a = _cupy.asfortranarray(a, dtype=dtype)
-    b = _cupy.asfortranarray(b, dtype=dtype)
-    if a.data.ptr == a_data_ptr:
-        a = a.copy()
-    if b.data.ptr == b_data_ptr:
-        b = b.copy()
+    if a._f_contiguous:
+        trans = _cublas.CUBLAS_OP_N
+    elif a._c_contiguous:
+        trans = _cublas.CUBLAS_OP_T
+    else:
+        raise ValueError('a must be F-contiguous or C-contiguous.')
+    if not b._f_contiguous:
+        raise ValueError('b must be F-contiguous.')
 
     handle = _device.get_cusolver_handle()
     dipiv = _cupy.empty(n, dtype=_numpy.int32)
@@ -66,11 +70,10 @@ def gesv(a, b):
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         getrf, dinfo)
     # Solves Ax = b
-    getrs(handle, _cublas.CUBLAS_OP_N, n, nrhs, a.data.ptr, n,
+    getrs(handle, trans, n, nrhs, a.data.ptr, n,
           dipiv.data.ptr, b.data.ptr, n, dinfo.data.ptr)
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         getrs, dinfo)
-    return b
 
 
 def gels(a, b):
