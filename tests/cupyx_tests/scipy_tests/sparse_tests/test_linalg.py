@@ -458,9 +458,9 @@ class TestLinearOperator(unittest.TestCase):
                     matvec = partial(rmv, dtype=self.dtype)
                     rmatvec = partial(mv, dtype=self.dtype)
                     return sp.linalg.LinearOperator(matvec=matvec,
-                                                     rmatvec=rmatvec,
-                                                     dtype=self.dtype,
-                                                     shape=shape)
+                                                    rmatvec=rmatvec,
+                                                    dtype=self.dtype,
+                                                    shape=shape)
             return (HasAdjoint(dtype), original)
 
         # defining the sub-classes
@@ -498,15 +498,19 @@ class TestLinearOperator(unittest.TestCase):
             M, A = self._inner_cases(original.T, xp, sp, self.dtype)
             return (sp.linalg.aslinearoperator(M).H, A.T.conj())
 
-
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_matvec(self, xp, sp):
         M, A_array = self._outer_cases(xp, sp)
         A = sp.linalg.aslinearoperator(M)
-        cupy.testing.assert_array_equal(A.matvec(xp.array(self.xs)), A_array.dot(xp.array(self.xs)))
-        cupy.testing.assert_array_equal(A.T.matvec(xp.array(self.ys)), A_array.T.dot(xp.array(self.ys)))
-        cupy.testing.assert_array_equal(A.H.matvec(xp.array(self.ys)), A_array.T.conj().dot(xp.array(self.ys)))
-        cupy.testing.assert_array_equal(A * xp.array(self.xs), A_array.dot(xp.array(self.xs)))
+        cupy.testing.assert_array_equal(A.matvec(xp.array(self.xs)),
+                                        A_array.dot(xp.array(self.xs)))
+        cupy.testing.assert_array_equal(A.T.matvec(xp.array(self.ys)),
+                                        A_array.T.dot(xp.array(self.ys)))
+        cupy.testing.assert_array_equal(A.H.matvec(xp.array(self.ys)),
+                                        A_array.T.conj()
+                                                 .dot(xp.array(self.ys)))
+        cupy.testing.assert_array_equal(A * xp.array(self.xs),
+                                        A_array.dot(xp.array(self.xs)))
         return (A.matvec(xp.array(self.xs)), A*xp.array(self.xs))
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
@@ -516,7 +520,8 @@ class TestLinearOperator(unittest.TestCase):
         A = sp.linalg.aslinearoperator(M)
         cupy.testing.assert_array_equal(A.matmat(x2), A_array.dot(x2))
         if xp.array(self.ys).ndim == 2:
-            cupy.testing.assert_array_equal(A.T.matmat(xp.array(self.ys)), A_array.T.dot(xp.array(self.ys)))
+            cupy.testing.assert_array_equal(A.T.matmat(xp.array(self.ys)),
+                                            A_array.T.dot(xp.array(self.ys)))
         return (A.matmat(x2), A*x2)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
@@ -524,7 +529,8 @@ class TestLinearOperator(unittest.TestCase):
         M, A_array = self._outer_cases(xp, sp)
         A = sp.linalg.aslinearoperator(M)
         cupy.testing.assert_array_equal(
-            A.rmatvec(xp.array(self.ys)), A_array.T.conj().dot(xp.array(self.ys)))
+            A.rmatvec(xp.array(self.ys)), A_array.T.conj()
+                                                   .dot(xp.array(self.ys)))
         return A.rmatvec(xp.array(self.ys))
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
@@ -533,7 +539,9 @@ class TestLinearOperator(unittest.TestCase):
             return 1
         M, A_array = self._outer_cases(xp, sp)
         A = sp.linalg.aslinearoperator(M)
-        cupy.testing.assert_array_equal(A.rmatmat(xp.array(self.ys)), A_array.T.conj().dot(xp.array(self.ys)))
+        cupy.testing.assert_array_equal(A.rmatmat(xp.array(self.ys)),
+                                        A_array.T.conj()
+                                        .dot(xp.array(self.ys)))
         return A.rmatmat(xp.array(self.ys))
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
