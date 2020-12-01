@@ -1,4 +1,3 @@
-from cupyx.scipy.sparse.linalg import _interface
 from functools import partial
 import cupy
 import unittest
@@ -405,6 +404,8 @@ class TestCg(unittest.TestCase):
     'outer_modification': ['normal', 'transpose', 'hermitian'],
     'inner_modification': ['normal', 'sparse', 'adjoint',
                            'adjoint-matrix-vector', 'adjoint-matrix-matrix'],
+    'xs': [[1, 2, 3], [[1], [2], [3]]],
+    'ys': [[1, 2], [[1], [2]]],
 }))
 @testing.gpu
 @unittest.skipUnless(scipy_available, 'requires scipy')
@@ -415,11 +416,11 @@ class TestLinearOperator(unittest.TestCase):
     # modified from scipy
     # class that defines parametrized custom cases
     # adapted from scipy's analogous tests
-    def _inner_cases(self, original, dtype):
+    def _inner_cases(self, original, xp, sp, dtype):
         if(self.inner_modification == 'normal'):
-            return (cupy.array(original, dtype=dtype), original)
+            return (xp.array(original, dtype=dtype), original)
         if(self.inner_modification == 'sparse'):
-            return (cupyx.scipy.sparse.csr_matrix(
+            return (sp.csr_matrix(
                     original, dtype=dtype), original)
 
         # creating base-matrix-like class with default
@@ -434,11 +435,11 @@ class TestLinearOperator(unittest.TestCase):
             return original.T.conj().dot(x)
 
         # defining the base-class
-        class BaseMatlike(_interface.LinearOperator):
+        class BaseMatlike(sp.linalg.LinearOperator):
             args = ()
 
             def __init__(self, dtype):
-                self.dtype = cupy.dtype(dtype)
+                self.dtype = xp.dtype(dtype)
                 self.shape = original.shape
 
             def _matvec(self, x):
@@ -456,7 +457,7 @@ class TestLinearOperator(unittest.TestCase):
                     shape = self.shape[1], self.shape[0]
                     matvec = partial(rmv, dtype=self.dtype)
                     rmatvec = partial(mv, dtype=self.dtype)
-                    return _interface.LinearOperator(matvec=matvec,
+                    return sp.linalg.LinearOperator(matvec=matvec,
                                                      rmatvec=rmatvec,
                                                      dtype=self.dtype,
                                                      shape=shape)
@@ -482,77 +483,74 @@ class TestLinearOperator(unittest.TestCase):
         if(self.inner_modification == 'adjoint-matrix-matrix'):
             return (HasRmatmat(dtype), original)
 
-    def _outer_cases(self):
-        if(self.dtype != cupy.complex_):
-            original = cupy.array([[1., 2., 3.], [4., 5., 6.]])
+    def _outer_cases(self, xp, sp):
+        if(self.dtype != xp.complex_):
+            original = xp.array([[1., 2., 3.], [4., 5., 6.]])
         else:
-            original = cupy.array([[1, 2j, 3j], [4j, 5j, 6]])
+            original = xp.array([[1, 2j, 3j], [4j, 5j, 6]])
 
         if(self.outer_modification == 'normal'):
-            return self._inner_cases(original, self.dtype)
+            return self._inner_cases(original, xp, sp, self.dtype)
         if(self.outer_modification == 'transpose'):
-            M, A = self._inner_cases(original.T, self.dtype)
-            return (_interface.aslinearoperator(M).T, A.T)
+            M, A = self._inner_cases(original.T, xp, sp, self.dtype)
+            return (sp.linalg.aslinearoperator(M).T, A.T)
         if(self.outer_modification == 'hermitian'):
-            M, A = self._inner_cases(original.T, self.dtype)
-            return (_interface.aslinearoperator(M).H, A.T.conj())
+            M, A = self._inner_cases(original.T, xp, sp, self.dtype)
+            return (sp.linalg.aslinearoperator(M).H, A.T.conj())
 
-    def test_basic(self):
-        M, A_array = self._outer_cases()
-        A = _interface.aslinearoperator(M)
-        M, N = A.shape
 
-        xs = [cupy.array([1, 2, 3]),
-              cupy.array([[1], [2], [3]])]
-        ys = [cupy.array([1, 2]), cupy.array([[1], [2]])]
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_matvec(self, xp, sp):
+        M, A_array = self._outer_cases(xp, sp)
+        A = sp.linalg.aslinearoperator(M)
+        cupy.testing.assert_array_equal(A.matvec(xp.array(self.xs)), A_array.dot(xp.array(self.xs)))
+        cupy.testing.assert_array_equal(A.T.matvec(xp.array(self.ys)), A_array.T.dot(xp.array(self.ys)))
+        cupy.testing.assert_array_equal(A.H.matvec(xp.array(self.ys)), A_array.T.conj().dot(xp.array(self.ys)))
+        cupy.testing.assert_array_equal(A * xp.array(self.xs), A_array.dot(xp.array(self.xs)))
+        return (A.matvec(xp.array(self.xs)), A*xp.array(self.xs))
 
-        if A.dtype == cupy.complex_:
-            xs += [cupy.array([1, 2j, 3j]),
-                   cupy.array([[1], [2j], [3j]])]
-            ys += [cupy.array([1, 2j]), cupy.array([[1], [2j]])]
-
-        x2 = cupy.array([[1, 4], [2, 5], [3, 6]])
-
-        for x in xs:
-            cupy.testing.assert_array_equal(A.matvec(x), A_array.dot(x))
-            cupy.testing.assert_array_equal(A * x, A_array.dot(x))
-
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_matmat(self, xp, sp):
+        x2 = xp.array([[1, 4], [2, 5], [3, 6]])
+        M, A_array = self._outer_cases(xp, sp)
+        A = sp.linalg.aslinearoperator(M)
         cupy.testing.assert_array_equal(A.matmat(x2), A_array.dot(x2))
-        cupy.testing.assert_array_equal(A * x2, A_array.dot(x2))
+        if xp.array(self.ys).ndim == 2:
+            cupy.testing.assert_array_equal(A.T.matmat(xp.array(self.ys)), A_array.T.dot(xp.array(self.ys)))
+        return (A.matmat(x2), A*x2)
 
-        for y in ys:
-            cupy.testing.assert_array_equal(
-                A.rmatvec(y), A_array.T.conj().dot(y))
-            cupy.testing.assert_array_equal(A.T.matvec(y), A_array.T.dot(y))
-            cupy.testing.assert_array_equal(
-                A.H.matvec(y), A_array.T.conj().dot(y))
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_rmatvec(self, xp, sp):
+        M, A_array = self._outer_cases(xp, sp)
+        A = sp.linalg.aslinearoperator(M)
+        cupy.testing.assert_array_equal(
+            A.rmatvec(xp.array(self.ys)), A_array.T.conj().dot(xp.array(self.ys)))
+        return A.rmatvec(xp.array(self.ys))
 
-        for y in ys:
-            if y.ndim < 2:
-                continue
-            cupy.testing.assert_array_equal(
-                A.rmatmat(y), A_array.T.conj().dot(y))
-            cupy.testing.assert_array_equal(A.T.matmat(y), A_array.T.dot(y))
-            cupy.testing.assert_array_equal(
-                A.H.matmat(y), A_array.T.conj().dot(y))
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_rmatmat(self, xp, sp):
+        if xp.array(self.ys).ndim < 2:
+            return 1
+        M, A_array = self._outer_cases(xp, sp)
+        A = sp.linalg.aslinearoperator(M)
+        cupy.testing.assert_array_equal(A.rmatmat(xp.array(self.ys)), A_array.T.conj().dot(xp.array(self.ys)))
+        return A.rmatmat(xp.array(self.ys))
 
-        if hasattr(M, 'dtype'):
-            cupy.testing.assert_array_equal(A.dtype, M.dtype)
-
-        assert(hasattr(A, 'args'))
-
-    def test_dot(self):
-        M, A_array = self._outer_cases()
-        A = _interface.aslinearoperator(M)
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_dot(self, xp, sp):
+        M, A_array = self._outer_cases(xp, sp)
+        A = sp.linalg.aslinearoperator(M)
         M, N = A.shape
 
-        x0 = cupy.array([1, 2, 3])
-        x1 = cupy.array([[1], [2], [3]])
-        x2 = cupy.array([[1, 4], [2, 5], [3, 6]])
+        x0 = xp.array([1, 2, 3])
+        x1 = xp.array([[1], [2], [3]])
+        x2 = xp.array([[1, 4], [2, 5], [3, 6]])
 
         cupy.testing.assert_array_equal(A.dot(x0), A_array.dot(x0))
         cupy.testing.assert_array_equal(A.dot(x1), A_array.dot(x1))
         cupy.testing.assert_array_equal(A.dot(x2), A_array.dot(x2))
+
+        return (A.dot(x0), A.dot(x1), A.dot(x2))
 
     # generate random matrix
     def _make_matrix(self, dtype, xp):
