@@ -348,9 +348,9 @@ def _cupy_scan_btree(op, block_size, warp_size=32):
         out == [1, 3, 6, 10, 15, 21, 28, 36, 45, 55]
 
     Note:
-        This usea a kind of method called "Work-Efficenet Parallel Scan" for
+        This uses a kind of method called "Work-Efficient Parallel Scan" for
         inclusive scan in each block. See below link for details about
-        "Work-Efficent Parallel Scan".
+        "Work-Efficient Parallel Scan".
         https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
     """
     in_params = 'raw O b'
