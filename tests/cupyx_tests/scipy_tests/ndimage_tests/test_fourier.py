@@ -305,7 +305,7 @@ class TestFourierUniform:
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class TestFourierEllipsoid(unittest.TestCase):
+class TestFourierEllipsoid():
     def _test_real_nd(self, xp, scp, x, real_axis):
         if x.ndim == 1 and scipy_version < '1.5.3':
             # 1D case gives an incorrect result in SciPy < 1.5.3
@@ -374,7 +374,7 @@ class TestFourierEllipsoid(unittest.TestCase):
         return xp.ascontiguousarray(a)
 
 
-class TestFourierEllipsoidInvalid(unittest.TestCase):
+class TestFourierEllipsoidInvalid():
 
     def test_0d_input(self):
         for xp, scp in zip((numpy, cupy), (scipy, cupyx.scipy)):
