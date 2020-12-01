@@ -17,13 +17,13 @@ class DummyObjectWithCudaArrayInterface(object):
     @property
     def __cuda_array_interface__(self):
         stream = cupy.cuda.get_current_stream()
-        if stream.ptr == 0:
-            if _util.CUDA_ARRAY_INTERFACE_SYNC:
+        if _util.CUDA_ARRAY_INTERFACE_SYNC:
+            if stream.ptr == 0:
                 stream_ptr = 1
             else:
-                stream_ptr = None
+                stream_ptr = stream.ptr
         else:
-            stream_ptr = stream.ptr
+            stream_ptr = None
         desc = {
             'shape': self.a.shape,
             'strides': self.a.strides,
@@ -51,7 +51,8 @@ class TestArrayUfunc(unittest.TestCase):
             a = a.T
 
         if xp is cupy:
-            a = DummyObjectWithCudaArrayInterface(a)
+            with self.stream:
+                a = DummyObjectWithCudaArrayInterface(a)
         return getattr(xp, op)(a, y_type(3))
 
     def test_add_scalar(self):
@@ -76,9 +77,10 @@ class TestElementwiseKernel(unittest.TestCase):
             a = a.T
 
         if xp is cupy:
-            a = DummyObjectWithCudaArrayInterface(a)
-            f = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
-            return f(a, dtyes(3))
+            with self.stream:
+                a = DummyObjectWithCudaArrayInterface(a)
+                f = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
+                return f(a, dtyes(3))
         else:
             return a + dtyes(3)
 
@@ -107,9 +109,10 @@ class SimpleReductionFunction(unittest.TestCase):
             a = a.T
 
         if xp == cupy:
-            a = DummyObjectWithCudaArrayInterface(a)
-            return self.my_int8_sum(
-                a, axis=axis, keepdims=keepdims)
+            with self.stream:
+                a = DummyObjectWithCudaArrayInterface(a)
+                return self.my_int8_sum(
+                    a, axis=axis, keepdims=keepdims)
         else:
             return a.sum(axis=axis, keepdims=keepdims, dtype='b')
 
@@ -138,9 +141,10 @@ class TestReductionKernel(unittest.TestCase):
             a = a.T
 
         if xp == cupy:
-            a = DummyObjectWithCudaArrayInterface(a)
-            return self.my_sum(
-                a, axis=axis, keepdims=keepdims)
+            with self.stream:
+                a = DummyObjectWithCudaArrayInterface(a)
+                return self.my_sum(
+                    a, axis=axis, keepdims=keepdims)
         else:
             return a.sum(axis=axis, keepdims=keepdims, dtype='b')
 
@@ -196,7 +200,8 @@ test_cases = [
     {'shape': (10, 10), 'slices': (slice(0, None), slice(2, None))},
     {'shape': (10, 10), 'slices': (slice(2, None), slice(0, None))},
     {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
-    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))}]
+    {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
+]
 test_streams = (cupy.cuda.Stream.null, cupy.cuda.Stream())
 test_cases_with_stream = [
     {'stream': s, **t} for t in test_cases for s in test_streams]
