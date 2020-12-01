@@ -9,6 +9,8 @@ from cupy.cuda import device as _device
 from cupy.core import _routines_linalg as _linalg
 from cupy import _util
 
+import cupyx as _cupyx
+
 _available_cuda_version = {
     'gesvdj': (9000, None),
     'gesvda': (10010, None),
@@ -17,6 +19,7 @@ _available_cuda_version = {
     'syevj': (9000, None),
     'gesv': (10020, None),
     'gels': (11000, None),
+    'csrlsvqr': (9000, None),
 }
 
 _available_compute_capability = {
@@ -654,4 +657,62 @@ def gels(a, b):
         x = x[:, :org_nrhs]
     if b_ndim == 1:
         x = x.reshape(n)
+    return x
+
+
+def csrlsvqr(A, b, tol=0, reorder=1):
+    """Solves the linear system ``Ax = b`` using QR fractorinzation.
+
+    Args:
+        A (cupyx.scipy.sparse.csr_matrix): Sparse matrix with dimension
+            ``(M, M)``.
+        b (cupy.ndarray): Dense vector with dimension ``(M,)``.
+        tol (float): Tolerance to decide if singular or not.
+        reorder (int): Reordering scheme to reduce zero fill-in.
+            1: symrcm is used.
+            2: symamd is used.
+            3: csrmetisnd is used.
+            else: no reordering.
+    """
+    if not check_availability('csrlsvqr'):
+        raise RuntimeError('csrlsvqr is not available.')
+
+    if not _cupyx.scipy.sparse.isspmatrix_csr(A):
+        raise ValueError('A must be CSR sparse matrix')
+    if not isinstance(b, _cupy.ndarray):
+        raise ValueError('b must be cupy.ndarray')
+    if b.ndim != 1:
+        raise ValueError('b.ndim must be 1 (actual: {})'.format(b.ndim))
+    if not (A.shape[0] == A.shape[1] == b.shape[0]):
+        raise ValueError('invalid shape')
+    if A.dtype != b.dtype:
+        raise TypeError('dtype mismatch')
+
+    dtype = A.dtype
+    if dtype.char == 'f':
+        t = 's'
+    elif dtype.char == 'd':
+        t = 'd'
+    elif dtype.char == 'F':
+        t = 'c'
+    elif dtype.char == 'D':
+        t = 'z'
+    else:
+        raise TypeError('Invalid dtype (actual: {})'.format(dtype))
+    solve = getattr(_cusolver, t + 'csrlsvqr')
+
+    tol = max(tol, 0)
+    m = A.shape[0]
+    x = _cupy.empty((m,), dtype=dtype)
+    singularity = _numpy.empty((1,), _numpy.int32)
+
+    handle = _device.get_cusolver_sp_handle()
+    solve(handle, m, A.nnz, A._descr.descriptor, A.data.data.ptr,
+          A.indptr.data.ptr, A.indices.data.ptr, b.data.ptr, tol, reorder,
+          x.data.ptr, singularity.ctypes.data)
+
+    if singularity[0] >= 0:
+        _warnings.warn('A is not positive definite or near singular uner '
+                       'tolerance {} (singularity: {})'.
+                       format(tol, singularity))
     return x
