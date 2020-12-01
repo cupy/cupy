@@ -6,7 +6,8 @@ python .pfnci\trim_cupy_kernel_cache.py --expiry 259200 --rm
 
 set ORIG_CD=%CD%
 cd %USERPROFILE%
-7z a -tzip cupy_kernel_cache.zip .cupy
-call gsutil -m cp cupy_kernel_cache_windows.zip gs://tmp-asia-pfn-public-ci/cupy-ci/
-del cupy_kernel_cache_windows.zip
+set CACHE_FILE=cupy_kernel_cache_windows.zip
+7z a -tzip -mx=0 -mtc=on %CACHE_FILE% .cupy
+call gsutil -m cp %CACHE_FILE% gs://tmp-asia-pfn-public-ci/cupy-ci/
+del %CACHE_FILE%
 cd %ORIG_CD%
