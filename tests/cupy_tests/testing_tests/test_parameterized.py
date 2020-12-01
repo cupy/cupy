@@ -11,7 +11,7 @@ from cupy import testing
     {'actual': {'a': [1, 2], 'b': []}, 'expect': []},
     {'actual': {'a': []}, 'expect': []},
     {'actual': {}, 'expect': [{}]})
-class ProductTest(unittest.TestCase):
+class TestProduct(unittest.TestCase):
 
     def test_product(self):
         assert testing.product(self.actual) == self.expect
@@ -28,7 +28,7 @@ class ProductTest(unittest.TestCase):
     {'actual': [[{'a': 1}, {'a': 2}], []], 'expect': []},
     {'actual': [[]], 'expect': []},
     {'actual': [], 'expect': [{}]})
-class ProductDictTest(unittest.TestCase):
+class TestProductDict(unittest.TestCase):
 
     def test_product_dict(self):
         assert testing.product_dict(*self.actual) == self.expect
