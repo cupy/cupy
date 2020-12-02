@@ -227,12 +227,12 @@ class TestLstsq(unittest.TestCase):
                     self.check_lstsq_solution((i, j), (i, k), seed,
                                               rcond=0.5)
                     self.check_lstsq_solution((i, j), (i, k), seed,
-                                              rcond=1e-7, singular=True)
+                                              rcond=1e-6, singular=True)
                 # check when b has shape (i, )
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=-1)
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=None)
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=0.5)
-                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-7,
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-6,
                                           singular=True)
 
     def test_invalid_shapes(self):
