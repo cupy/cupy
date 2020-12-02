@@ -251,6 +251,9 @@ def lstsq(a, b, rcond='warn'):
 
     if rcond is None:
         rcond = numpy.finfo(s.dtype).eps * max(m, n)
+    elif rcond <= 0 or rcond >= 1:
+        # some doc of gelss/gelsd says "rcond < 0", but it's not true!
+        rcond = numpy.finfo(s.dtype).eps
 
     # number of singular values and matrix rank
     cutoff = rcond * s.max()
