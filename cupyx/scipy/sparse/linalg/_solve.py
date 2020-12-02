@@ -8,7 +8,8 @@ from cupy.linalg import _util
 import cupyx.scipy.sparse as sparse
 
 from warnings import warn
-from scipy.sparse import SparseEfficiencyWarning
+import scipy.sparse
+import scipy.sparse.linalg
 
 
 def lsqr(A, b):
@@ -117,7 +118,7 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
 
     if not (sparse.isspmatrix_csr(A) or sparse.isspmatrix_csc(A)):
         warn('CSR or CSC format is required. Converting to CSR format.',
-             SparseEfficiencyWarning)
+             scipy.sparse.SparseEfficiencyWarning)
         A = A.tocsr()
     A.sum_duplicates()
 
@@ -134,3 +135,113 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         dtype = numpy.promote_types(x.dtype, 'float64')
         x = x.astype(dtype)
     return x
+
+
+class SuperLU():
+
+    def __init__(self, obj):
+        """LU factorization of a sparse matrix.
+
+        Args:
+            obj (scipy.sparse.linalg.SuperLU): LU factorization of a sparse
+                matrix, computed by `scipy.sparse.linalg.splu`, etc.
+        """
+        if not isinstance(obj, scipy.sparse.linalg.SuperLU):
+            raise TypeError('obj must be scipy.sparse.linalg.SuperLU')
+
+        self.shape = obj.shape
+        self.nnz = obj.nnz
+        self.perm_r = cupy.array(obj.perm_r)
+        self.perm_c = cupy.array(obj.perm_c)
+        self.L = sparse.csr_matrix(obj.L.tocsr())
+        self.U = sparse.csr_matrix(obj.U.tocsr())
+
+        self._perm_r_rev = cupy.argsort(self.perm_r)
+        self._perm_c_rev = cupy.argsort(self.perm_c)
+
+    def solve(self, rhs, trans='N'):
+        """Solves linear system of equations with one or several right-hand sides.
+
+        Args:
+            rhs (cupy.ndarray): Right-hand side(s) of equation with dimension
+                ``(M)`` or ``(M, K)``.
+            trans (str): 'N', 'T' or 'H'.
+                'N': Solves ``A * x = rhs``.
+                'T': Solves ``A.T * x = rhs``.
+                'H': Solves ``A.conj().T * x = rhs``.
+
+        Returns:
+            cupy.ndarray:
+                Solution vector(s)
+        """
+        if not isinstance(rhs, cupy.ndarray):
+            raise TypeError('ojb must be cupy.ndarray')
+        if rhs.ndim not in (1, 2):
+            raise ValueError('rhs.ndim must be 1 or 2 (actual: {})'.
+                             format(rhs.ndim))
+        if rhs.shape[0] != self.shape[0]:
+            raise ValueError('shape mismatch (self.shape: {}, rhs.shape: {})'
+                             .format(self.shape, rhs.shape))
+        if trans not in ('N', 'T', 'H'):
+            raise ValueError('trans must be \'N\', \'T\', or \'H\'')
+
+        if trans == 'N':
+            x = rhs[self._perm_r_rev].astype(self.L.dtype)
+            cusparse.csrsm2(self.L, x, lower=True, transa=trans)
+            cusparse.csrsm2(self.U, x, lower=False, transa=trans)
+            x = x[self.perm_c]
+        else:
+            x = rhs[self._perm_c_rev].astype(self.L.dtype)
+            cusparse.csrsm2(self.U, x, lower=False, transa=trans)
+            cusparse.csrsm2(self.L, x, lower=True, transa=trans)
+            x = x[self.perm_r]
+
+        if not x._f_contiguous:
+            # For compatibility with SciPy
+            x = x.copy(order='F')
+        return x
+
+
+def splu(A, permc_spec=None, diag_pivot_thresh=None, relax=None,
+         panel_size=None, options={}):
+    """Computes the LU decomposition of a sparse square matrix.
+
+    Args:
+        A (cupyx.scipy.sparse.spmatrix): Sparse matrix to factorize.
+        permc_spec (str): (For further augments, see
+            :func:`scipy.sparse.linalg.splu`)
+        diag_pivot_thresh (float):
+        relax (int):
+        panel_size (int):
+        options (dict):
+
+    Returns:
+        cupyx.scipy.sparse.linalg.SuperLU:
+            Object which has a ``solve`` method.
+
+    Note:
+        This function LU-decomposes a sparse matrix on the CPU using
+        `scipy.sparse.linalg.splu`. Therefore, LU decomposition is not
+        accelerated on the GPU. On the other hand, the computation of solving
+        linear equations using the ``solve`` method, which this function
+        returns, is performed on the GPU.
+
+    .. seealso:: :func:`scipy.sparse.linalg.splu`
+    """
+    if not sparse.isspmatrix(A):
+        raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
+    if A.shape[0] != A.shape[1]:
+        raise ValueError('A must be a square matrix (A.shape: {})'
+                         .format(A.shape))
+    if A.dtype.char not in 'fdFD':
+        raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
+
+    A = A.tocoo()
+    data = cupy.asnumpy(A.data)
+    row = cupy.asnumpy(A.row)
+    col = cupy.asnumpy(A.col)
+    a = scipy.sparse.csc_matrix((data, (row, col)), shape=A.shape)
+    a_inv = scipy.sparse.linalg.splu(
+        a, permc_spec=permc_spec, diag_pivot_thresh=diag_pivot_thresh,
+        relax=relax, panel_size=panel_size, options=options)
+    return SuperLU(a_inv)
