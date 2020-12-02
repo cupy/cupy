@@ -41,7 +41,7 @@ class LinearOperator(object):
             return obj
 
     def __init__(self, dtype, shape):
-        """Initialize this :class:`LinearOperator`.
+        """Initialize this :class:`LinearOperator`
         """
         if dtype is not None:
             dtype = cupy.dtype(dtype)
@@ -73,18 +73,6 @@ class LinearOperator(object):
 
     def matvec(self, x):
         """Matrix-vector multiplication.
-
-        Args:
-            x (ndarray):  array with shape ``(N,)`` or ``(N,1)``.
-
-        Returns:
-            y (ndarray):  An ndarray with shape ``(M,)`` or ``(M,1)``
-                          depending on the type and shape of the x argument.
-
-        Note:
-            This matvec wraps the user-specified matvec routine or overridden
-            _matvec method to ensure that y has the correct shape and type.
-
         """
 
         M, N = self.shape
@@ -105,18 +93,6 @@ class LinearOperator(object):
 
     def rmatvec(self, x):
         """Adjoint matrix-vector multiplication.
-
-        Args:
-            x (ndarray):  An array with shape ``(M,)`` or ``(M,1)``.
-
-        Returns:
-            y (ndarray):  An ndarray with shape ``(N,)`` or ``(N,1)``
-                          depending on the type and shape of the x argument.
-
-        Note:
-            This rmatvec wraps the user-specified rmatvec routine or overridden
-            _rmatvec method to ensure that y has the correct shape and type.
-
         """
 
         M, N = self.shape
@@ -147,17 +123,6 @@ class LinearOperator(object):
 
     def matmat(self, X):
         """Matrix-matrix multiplication.
-
-        Args:
-            X (ndarray):  An array with shape (N,K).
-
-        Returns:
-            Y (ndarray):  An ndarray with shape (M,K)
-                          depending on the type of the X argument.
-
-        Note:
-            This matmat wraps any user-specified matmat routine or overridden
-            _matmat method to ensure that y has the correct type.
         """
 
         if X.ndim != 2:
@@ -174,16 +139,6 @@ class LinearOperator(object):
 
     def rmatmat(self, X):
         """Adjoint matrix-matrix multiplication.
-
-        Args:
-            X (ndarray):  A 2D array.
-
-        Returns:
-            Y (ndarray):  A 2D array depending on the type of the
-                          input
-
-        Note:
-            This rmatmat wraps the user-specified rmatmat routine.
         """
 
         if X.ndim != 2:
@@ -213,15 +168,6 @@ class LinearOperator(object):
 
     def dot(self, x):
         """Matrix-matrix or matrix-vector multiplication.
-
-        Args:
-            x (array_like):  1-d or 2-d array, representing a vector.
-
-        Returns:
-            Ax (ndarray):  1-d or 2-d array (depending on the shape of x) that
-                         represents the result of applying this linear
-                         operator on x.
-
         """
         if isinstance(x, LinearOperator):
             return _ProductLinearOperator(self, x)
@@ -283,9 +229,6 @@ class LinearOperator(object):
 
     def adjoint(self):
         """Hermitian adjoint.
-
-        Returns:
-            A_H (LinearOperator):  Hermitian adjoint of self.
         """
         return self._adjoint()
 
