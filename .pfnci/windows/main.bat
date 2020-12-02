@@ -2,6 +2,7 @@
 
 set CUDA=%1
 set PYTHON=%2
+set TARGET=%3
 
 :: Set environment variables
 call .pfnci\windows\_use_cuda.bat %CUDA% || goto :error
@@ -23,9 +24,18 @@ python -m pip install -e ".[jenkins]" -vvv || goto :error
 :: Test import
 python -c "import cupy; cupy.show_config()" || goto :error
 
+:: Exit if build only mode
+if "%TARGET%" = "build" (
+  goto :eof
+)
+
 :: Run unit tests
+set PYTEST_OPTS=-m "not slow"
+if "%TARGET%" = "slow" (
+  set PYTEST_OPTS=-m "slow"
+)
 call .pfnci\windows\_cache_download.bat
-python -m pytest tests || goto :error
+python -m pytest %PYTEST_OPTS% tests || goto :error
 call .pfnci\windows\_cache_upload.bat
 
 
