@@ -273,7 +273,7 @@ def lstsq(a, b, rcond='warn'):
     zh = b.T.conj().dot(u) * s1
     x = zh.dot(vh).T.conj()
     # Calculate squared Euclidean 2-norm for each column in b - a*x
-    if rank != n or m <= n:
+    if m <= n or rank != n:
         resids = cupy.empty((0,), dtype=s.dtype)
     else:
         e = b - a.dot(x)
