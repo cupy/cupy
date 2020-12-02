@@ -193,10 +193,8 @@ class TestLstsq(unittest.TestCase):
                              singular=False):
         a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=seed)
         if singular:
-            # make one row a linear combination of the others
-            a[-1] = a[:-1].sum(axis=0)
-            # make one column a linear combination of the others
-            a[:, -1] = a[:, :-1].sum(axis=1)
+            a -= a.mean(axis=0, keepdims=True)
+            a -= a.mean(axis=1, keepdims=True)
         b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=seed+37)
         a_copy = a.copy()
         b_copy = b.copy()
