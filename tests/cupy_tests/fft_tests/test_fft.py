@@ -1,5 +1,4 @@
 import functools
-import string
 
 import numpy as np
 import pytest
