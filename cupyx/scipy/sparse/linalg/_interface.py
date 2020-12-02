@@ -527,14 +527,17 @@ def aslinearoperator(A):
     """Return A as a LinearOperator.
 
     Args:
-        A (array-like): May be any of types :class: `cupy.ndarray`,
-        sparse matrix (e.g. csr_matrix, coo_matrix, etc.),
-        LinearOperator or an object with ``.shape`` and ``.matvec`` attributes
+        A (array-like):
+            May be any of the following types:
+               * :class:`cupy.ndarray`
+               * sparse matrix (e.g. ``csr_matrix``, ``coo_matrix``, etc.)
+               * :class:`cupyx.scipy.sparse.LinearOperator`
+               * object with ``.shape`` and ``.matvec`` attributes
 
     Returns:
         cupyx.scipy.sparse.linalg.LinearOperator: LinearOperator object
 
-    .. seealso:: :func:`scipy.sparse.aslinearoperator`
+    .. seealso:: :func:`scipy.sparse.aslinearoperator``
     """
     if isinstance(A, LinearOperator):
         return A
