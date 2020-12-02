@@ -13,7 +13,7 @@ set || goto :error
 python -V || goto :error
 
 :: Install dependencies
-python -m pip install -U Cython || goto :error
+python -m pip install -U Cython scipy optuna || goto :error
 python -m pip list || goto :error
 
 :: Build
