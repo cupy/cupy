@@ -541,6 +541,8 @@ class TestCudaArrayInterfaceStream(unittest.TestCase):
         elif self.external_stream == 'new':
             self.external_stream = cupy.cuda.Stream()
 
+        # in this test, "sync" refers to whether the Consumer would sync
+        # over the stream provided by the Producer or not
         self.ver = 3
         self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
         _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync

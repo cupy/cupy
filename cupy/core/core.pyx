@@ -167,7 +167,7 @@ cdef class ndarray:
             desc['data'] = (self.data.ptr, False)
         else:
             desc['data'] = (0, False)
-        if _util.CUDA_ARRAY_INTERFACE_SYNC:
+        if _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM:
             stream_ptr = stream_module.get_current_stream_ptr()
             # TODO(leofang): check if we're using PTDS
             # CAI v3 says setting the stream field to 0 is disallowed
@@ -177,9 +177,9 @@ cdef class ndarray:
                 desc['stream'] = stream_ptr
         else:
             # Old behavior (prior to CAI v3): stream sync is explicitly handled
-            # by users. To restore it, we do not export any stream if
-            # CUPY_CUDA_ARRAY_INTERFACE_SYNC is set to 0 (so that other
-            # participating libraries lacking a finer control over sync
+            # by users. To restore this behavior, we do not export any stream
+            # if CUPY_CUDA_ARRAY_INTERFACE_EXPORT_STREAM is set to 0 (so that
+            # other participating libraries lacking a finer control over sync
             # behavior can avoid syncing).
             desc['stream'] = None
 

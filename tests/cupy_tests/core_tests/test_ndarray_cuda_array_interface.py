@@ -17,7 +17,7 @@ class DummyObjectWithCudaArrayInterface(object):
     @property
     def __cuda_array_interface__(self):
         stream = cupy.cuda.get_current_stream()
-        if _util.CUDA_ARRAY_INTERFACE_SYNC:
+        if _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM:
             if stream.ptr == 0:
                 stream_ptr = 1
             else:
@@ -290,11 +290,11 @@ class TestCUDAArrayInterfaceStream(unittest.TestCase):
         elif self.stream == 'new':
             self.stream = cupy.cuda.Stream()
 
-        self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
-        _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync
+        self.sync_config = _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM = self.sync
 
     def tearDown(self):
-        _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync_config
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM = self.sync_config
 
     def test_stream_export(self):
         a = cupy.empty(100)

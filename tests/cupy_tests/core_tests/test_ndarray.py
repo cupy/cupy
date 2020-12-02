@@ -287,11 +287,13 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         elif self.stream == 'new':
             self.stream = cuda.Stream()
 
-        self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
-        _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync
+        # in this test, "sync" refers to whether the Producer would export
+        # its stream (for Consumers to sync) or not
+        self.sync_config = _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM = self.sync
 
     def tearDown(self):
-        _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync_config
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM = self.sync_config
 
     def test_cuda_array_interface_stream(self):
         # this tests exporting CAI with a given stream
