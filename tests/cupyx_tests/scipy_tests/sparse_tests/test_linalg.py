@@ -655,3 +655,39 @@ class TestSpsolveTriangular(unittest.TestCase):
         ng_b = numpy.ones((self.n, self.nrhs), dtype=dtype)
         with pytest.raises(TypeError):
             self._test_spsolve_triangular(sp, a, ng_b)
+
+
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc', 'coo'],
+    'nrhs': [None, 1, 4],
+    'order': ['C', 'F']
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.gpu
+class TestSplu(unittest.TestCase):
+
+    n = 10
+    density = 0.5
+
+    def _make_matrix(self, dtype, xp, sp):
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=1)
+        mask = testing.shaped_random(a_shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        diag = xp.diag(xp.ones((self.n,), dtype=dtype))
+        a = a + diag
+        if self.format == 'csr':
+            a = sp.csr_matrix(a)
+        elif self.format == 'csc':
+            a = sp.csc_matrix(a)
+        elif self.format == 'coo':
+            a = sp.coo_matrix(a)
+        b_shape = (self.n,) if self.nrhs is None else (self.n, self.nrhs)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, order=self.order)
+        return a, b
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_splu(self, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp, sp)
+        return sp.linalg.splu(a).solve(b)
