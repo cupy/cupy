@@ -310,9 +310,9 @@ class TestCg:
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_sparse(self, format, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
-        a = sp.coo_matrix(a).as_format(format)
+        a = sp.coo_matrix(a).asformat(format)
         if M is not None:
-            M = sp.coo_matrix(M).as_format(format)
+            M = sp.coo_matrix(M).asformat(format)
         return self._test_cg(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
@@ -445,9 +445,9 @@ class TestGmres:
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_sparse(self, format, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
-        a = sp.coo_matrix(a).as_format(format)
+        a = sp.coo_matrix(a).asformat(format)
         if M is not None:
-            M = sp.coo_matrix(M).as_format(format)
+            M = sp.coo_matrix(M).asformat(format)
         return self._test_gmres(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
