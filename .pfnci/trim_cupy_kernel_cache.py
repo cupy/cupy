@@ -25,13 +25,21 @@ def main():
 
     expiry = datetime.datetime.now() - datetime.timedelta(
                 seconds=options.expiry)
-    sys.stderr.write('Expiring cache unused since {}\n'.format(expiry))
+    sys.stderr.write('Looking for cache unused since {}\n'.format(expiry))
     expiry_ts = expiry.timestamp()
+
+    total_size = 0
+    trim_size = 0
     for f in glob.glob(os.path.expanduser('~/.cupy/kernel_cache/*.cubin')):
-        if os.lstat(f).st_atime < expiry_ts:
+        stat = os.lstat(f)
+        total_size += stat.st_size
+        if stat.st_atime < expiry_ts:
             print(f)
+            trim_size += stat.st_size
             if options.rm:
                 os.unlink(f)
+    sys.stderr.write('Total: {} bytes\n'.format(total_size))
+    sys.stderr.write('Expired: {} bytes\n'.format(trim_size))
 
 
 if __name__ == '__main__':
