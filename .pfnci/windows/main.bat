@@ -25,13 +25,13 @@ python -m pip install -e ".[jenkins]" -vvv || goto :error
 python -c "import cupy; cupy.show_config()" || goto :error
 
 :: Exit if build only mode
-if "%TARGET%" = "build" (
+if "%TARGET%" == "build" (
   goto :eof
 )
 
 :: Run unit tests
 set PYTEST_OPTS=-m "not slow"
-if "%TARGET%" = "slow" (
+if "%TARGET%" == "slow" (
   set PYTEST_OPTS=-m "slow"
 )
 call .pfnci\windows\_cache_download.bat
