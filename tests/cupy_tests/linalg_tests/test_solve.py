@@ -195,6 +195,8 @@ class TestLstsq(unittest.TestCase):
         if singular:
             # make one row a linear combination of the others
             a[-1] = a[:-1].sum(axis=0)
+            # make one column a linear combination of the others
+            a[:, -1] = a[:, :-1].sum(axis=1)
         b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=seed+37)
         a_copy = a.copy()
         b_copy = b.copy()
