@@ -1,4 +1,5 @@
 import string
+import sys
 
 import numpy as np
 import pytest
@@ -93,6 +94,8 @@ def _set_store_cb(code, element, data_type, callback_type, aux_type=None):
 }))
 @testing.with_requires('cython>=0.29.0')
 @testing.gpu
+@pytest.mark.skipif(not sys.platform.startswith('linux'),
+                    reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='hipFFT does not support callbacks')
 class Test1dCallbacks:
