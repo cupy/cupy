@@ -235,13 +235,16 @@ class TestLstsq(unittest.TestCase):
                     seed = i + j + k
                     # check when b has shape (i, k)
                     self.check_lstsq_solution((i, j), (i, k), seed,
+                                              rcond=-1)
+                    self.check_lstsq_solution((i, j), (i, k), seed,
                                               rcond=None)
                     self.check_lstsq_solution((i, j), (i, k), seed,
                                               rcond=0.5)
                     self.check_lstsq_solution((i, j), (i, k), seed,
                                               rcond=1e-7, singular=True)
                 # check when b has shape (i, )
-                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-15)
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=-1)
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=None)
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=0.5)
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-7,
                                           singular=True)

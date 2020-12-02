@@ -231,11 +231,10 @@ def lstsq(a, b, rcond='warn'):
             'machine precision times ``max(M, N)`` where M and N '
             'are the input matrix dimensions.\n'
             'To use the future default and silence this warning '
-            'we advise to pass `rcond=None`.\n'
-            'Using the old CuPy default: `rcond=1e-15`, which is '
-            'neither the same as the old NumPy default (`rcond=-1`).',
+            'we advise to pass `rcond=None`, to keep using the old, '
+            'explicitly pass `rcond=-1`.',
             FutureWarning)
-        rcond = 1e-15
+        rcond = -1
 
     _util._assert_cupy_array(a, b)
     _util._assert_rank2(a)
