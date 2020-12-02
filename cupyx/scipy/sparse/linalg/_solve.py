@@ -187,13 +187,17 @@ class SuperLU():
 
         if trans == 'N':
             x = rhs[self._perm_r_rev].astype(self.L.dtype)
-            cusparse.csrsm2(self.L, x, lower=True, transa=trans)
-            cusparse.csrsm2(self.U, x, lower=False, transa=trans)
+            cusparse.csrsm2(self.L, x, lower=True, transa=trans,
+                            blocking=True)
+            cusparse.csrsm2(self.U, x, lower=False, transa=trans,
+                            blocking=True)
             x = x[self.perm_c]
         else:
             x = rhs[self._perm_c_rev].astype(self.L.dtype)
-            cusparse.csrsm2(self.U, x, lower=False, transa=trans)
-            cusparse.csrsm2(self.L, x, lower=True, transa=trans)
+            cusparse.csrsm2(self.U, x, lower=False, transa=trans,
+                            blocking=True)
+            cusparse.csrsm2(self.L, x, lower=True, transa=trans,
+                            blocking=True)
             x = x[self.perm_r]
 
         if not x._f_contiguous:
