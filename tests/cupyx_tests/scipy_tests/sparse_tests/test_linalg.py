@@ -565,7 +565,6 @@ class TestGmres(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'n': [10, 30, 100, 300, 1000],
     'dtype': [cupy.float32, cupy.float64, cupy.complex_],
     'outer_modification': ['normal', 'transpose', 'hermitian'],
     'inner_modification': ['normal', 'sparse', 'adjoint',
@@ -576,8 +575,6 @@ class TestGmres(unittest.TestCase):
 @testing.gpu
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestLinearOperator(unittest.TestCase):
-    density = 0.33
-    _tol = {'f': 1e-5, 'd': 1e-12}
 
     # modified from scipy
     # class that defines parametrized custom cases
@@ -654,9 +651,9 @@ class TestLinearOperator(unittest.TestCase):
             original = xp.array([[1., 2., 3.], [4., 5., 6.]])
         else:
             original = xp.array([[1, 2j, 3j], [4j, 5j, 6]])
-
         if(self.outer_modification == 'normal'):
-            return self._inner_cases(original, xp, sp, self.dtype)
+            M, A = self._inner_cases(original, xp, sp, self.dtype)
+            return (sp.linalg.aslinearoperator(M), A)
         if(self.outer_modification == 'transpose'):
             M, A = self._inner_cases(original.T, xp, sp, self.dtype)
             return (sp.linalg.aslinearoperator(M).T, A.T)
@@ -682,8 +679,7 @@ class TestLinearOperator(unittest.TestCase):
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_matmat(self, xp, sp):
         x2 = xp.array([[1, 4], [2, 5], [3, 6]])
-        M, A_array = self._outer_cases(xp, sp)
-        A = sp.linalg.aslinearoperator(M)
+        A, A_array = self._outer_cases(xp, sp)
         cupy.testing.assert_array_equal(A.matmat(x2), A_array.dot(x2))
         if xp.array(self.ys).ndim == 2:
             cupy.testing.assert_array_equal(A.T.matmat(xp.array(self.ys)),
@@ -692,8 +688,7 @@ class TestLinearOperator(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_rmatvec(self, xp, sp):
-        M, A_array = self._outer_cases(xp, sp)
-        A = sp.linalg.aslinearoperator(M)
+        A, A_array = self._outer_cases(xp, sp)
         cupy.testing.assert_array_equal(
             A.rmatvec(xp.array(self.ys)), A_array.T.conj()
                                                    .dot(xp.array(self.ys)))
@@ -703,8 +698,7 @@ class TestLinearOperator(unittest.TestCase):
     def test_rmatmat(self, xp, sp):
         if xp.array(self.ys).ndim < 2:
             return 1
-        M, A_array = self._outer_cases(xp, sp)
-        A = sp.linalg.aslinearoperator(M)
+        A, A_array = self._outer_cases(xp, sp)
         cupy.testing.assert_array_equal(A.rmatmat(xp.array(self.ys)),
                                         A_array.T.conj()
                                         .dot(xp.array(self.ys)))
@@ -712,40 +706,12 @@ class TestLinearOperator(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_dot(self, xp, sp):
-        M, A_array = self._outer_cases(xp, sp)
-        A = sp.linalg.aslinearoperator(M)
+        A, A_array = self._outer_cases(xp, sp)
         M, N = A.shape
-
         x0 = xp.array([1, 2, 3])
         x1 = xp.array([[1], [2], [3]])
         x2 = xp.array([[1, 4], [2, 5], [3, 6]])
-
         cupy.testing.assert_array_equal(A.dot(x0), A_array.dot(x0))
         cupy.testing.assert_array_equal(A.dot(x1), A_array.dot(x1))
         cupy.testing.assert_array_equal(A.dot(x2), A_array.dot(x2))
-
         return (A.dot(x0), A.dot(x1), A.dot(x2))
-
-    # generate random matrix
-    def _make_matrix(self, dtype, xp):
-        shape = (self.n, self.n)
-        a = testing.shaped_random(shape, xp, dtype=dtype)
-        mask = testing.shaped_random(shape, xp, dtype=dtype, scale=1)
-        a[mask > self.density] = 0
-        return a
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
-                                 contiguous_check=False)
-    def test_sparse(self, dtype, xp, sp):
-        a = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
-        A = sp.linalg.aslinearoperator(a)
-        return A(xp.eye(self.n, dtype=dtype))
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_dense(self, dtype, xp, sp):
-        a = self._make_matrix(dtype, xp)
-        A = sp.linalg.aslinearoperator(a)
-        return A(xp.eye(self.n, dtype=dtype))
