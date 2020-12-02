@@ -187,6 +187,12 @@ def tensorsolve(a, b, axes=None):
     return result.reshape(oldshape)
 
 
+def _nrm2_last_axis(x):
+    real_dtype = x.dtype.char.lower()
+    x = cupy.ascontiguousarray(x)
+    return cupy.sum(cupy.square(x.view(real_dtype)), axis=-1)
+
+
 def lstsq(a, b, rcond='warn'):
     """Return the least-squares solution to a linear matrix equation.
 
@@ -247,7 +253,7 @@ def lstsq(a, b, rcond='warn'):
     if m != m2:
         raise linalg.LinAlgError('Incompatible dimensions')
 
-    u, s, vt = cupy.linalg.svd(a, full_matrices=False)
+    u, s, vh = cupy.linalg.svd(a, full_matrices=False)
 
     if rcond is None:
         rcond = numpy.finfo(s.dtype).eps * max(m, n)
@@ -262,20 +268,16 @@ def lstsq(a, b, rcond='warn'):
     s1[sing_vals] = 0
     rank = s.size - sing_vals.sum(dtype=numpy.int32)
 
-    if b.ndim == 2:
-        s1 = cupy.repeat(s1.reshape(-1, 1), b.shape[1], axis=1)
     # Solve the least-squares solution
-    z = core.dot(u.transpose(), b) * s1
-    x = core.dot(vt.transpose(), z)
+    # x = vh.T.conj() @ diag(s1) @ u.T.conj() @ b
+    zh = b.T.conj().dot(u) * s1
+    x = zh.dot(vh).T.conj()
     # Calculate squared Euclidean 2-norm for each column in b - a*x
     if rank != n or m <= n:
-        resids = cupy.array([], dtype=a.dtype)
-    elif b.ndim == 2:
-        e = b - core.dot(a, x)
-        resids = cupy.sum(cupy.square(e), axis=0)
+        resids = cupy.empty((0,), dtype=s.dtype)
     else:
-        e = b - cupy.dot(a, x)
-        resids = cupy.dot(e.T, e).reshape(-1)
+        e = b - a.dot(x)
+        resids = cupy.atleast_1d(_nrm2_last_axis(e.T))
     return x, resids, rank, s
 
 

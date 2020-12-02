@@ -187,7 +187,7 @@ class TestPinv(unittest.TestCase):
 @testing.gpu
 class TestLstsq(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(atol=1e-3, contiguous_check=False)
     def check_lstsq_solution(self, a_shape, b_shape, seed, rcond, xp, dtype,
                              singular=False):
