@@ -526,13 +526,16 @@ class IdentityOperator(LinearOperator):
 def aslinearoperator(A):
     """Return A as a LinearOperator.
 
-    'A' may be any of the following types:
-     - ndarray
-     - sparse matrix (e.g. csr_matrix, lil_matrix, etc.)
-     - LinearOperator
-     - An object with .shape and .matvec attributes
+    Args:
+        A (array-like): May be any of the following types
+            - :class: `cupy.ndarray`
+            - sparse matrix (e.g. csr_matrix, coo_matrix, etc.)
+            - LinearOperator
+            - An object with .shape and .matvec attributes
 
-    See the LinearOperator documentation for additional information.
+    Returns:
+        :class: `cupyx.scipy.sparse.linalg.LinearOperator`: LinearOperator
+                                                            object
 
     .. seealso:: :func:`scipy.sparse.aslinearoperator`
     """
