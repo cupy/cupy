@@ -155,6 +155,8 @@ napoleon_include_special_with_doc = True
 # a list of builtin themes.
 html_theme = 'pydata_sphinx_theme'
 
+html_logo = '../image/cupy_logo_1000px.png'
+
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
