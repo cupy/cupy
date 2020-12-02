@@ -264,10 +264,7 @@ class TestLstsq(unittest.TestCase):
         a = testing.shaped_random((3, 3), xp, dtype)
         b = testing.shaped_random((3,), xp, dtype)
         with testing.assert_warns(FutureWarning):
-            x, residuals, rank, s = xp.linalg.lstsq(a, b)
-        # ignore dtype of rank
-        rank = rank.astype(xp.int64)
-        return x, residuals, rank, s
+            return xp.linalg.lstsq(a, b)
 
 
 @testing.gpu

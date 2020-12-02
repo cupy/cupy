@@ -259,7 +259,7 @@ def lstsq(a, b, rcond='warn'):
     s1 = 1 / s
     sing_vals = s <= cutoff
     s1[sing_vals] = 0
-    rank = s.size - sing_vals.sum()
+    rank = s.size - sing_vals.sum(dtype=numpy.int32)
 
     if b.ndim == 2:
         s1 = cupy.repeat(s1.reshape(-1, 1), b.shape[1], axis=1)
