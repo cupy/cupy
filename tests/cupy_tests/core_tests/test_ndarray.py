@@ -224,7 +224,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
     def test_cuda_array_interface(self):
         arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
         iface = arr.__cuda_array_interface__
-        assert iface['version'] == 3  # bump this when the protocol is updated!
+        assert iface['version'] == 3
         assert (set(iface.keys()) ==
                 set(['shape', 'typestr', 'data', 'version', 'descr',
                      'stream', 'strides']))
@@ -242,7 +242,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
         view = arr[::2, ::5]
         iface = view.__cuda_array_interface__
-        assert iface['version'] == 3  # bump this when the protocol is updated!
+        assert iface['version'] == 3
         assert (set(iface.keys()) ==
                 set(['shape', 'typestr', 'data', 'version', 'descr',
                      'stream', 'strides']))
@@ -260,7 +260,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
         view = arr[0:3:-1]
         iface = view.__cuda_array_interface__
-        assert iface['version'] == 3  # bump this when the protocol is updated!
+        assert iface['version'] == 3
         assert (set(iface.keys()) ==
                 set(['shape', 'typestr', 'data', 'version', 'descr',
                      'stream', 'strides']))
@@ -277,11 +277,16 @@ class TestNdarrayCudaInterface(unittest.TestCase):
 
 # TODO(leofang): test PTDS
 @testing.parameterize(*testing.product({
-    'stream': (cuda.Stream.null, cuda.Stream()),
+    'stream': ('null', 'new'),
     'sync': (True, False),
 }))
 class TestNdarrayCudaInterfaceStream(unittest.TestCase):
     def setUp(self):
+        if self.stream == 'null':
+            self.stream = cuda.Stream.null
+        elif self.stream == 'new':
+            self.stream = cuda.Stream()
+
         self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
         _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync
 
@@ -294,7 +299,7 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         stream = self.stream
         with stream:
             iface = arr.__cuda_array_interface__
-        assert iface['version'] == 3  # bump this when the protocol is updated!
+        assert iface['version'] == 3
         assert (set(iface.keys()) ==
                 set(['shape', 'typestr', 'data', 'version', 'descr',
                      'stream', 'strides']))
@@ -302,8 +307,7 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
-        assert iface['data'][0] == arr.data.ptr
-        assert not iface['data'][1]
+        assert iface['data'] == (arr.data.ptr, False)
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
         if self.sync:

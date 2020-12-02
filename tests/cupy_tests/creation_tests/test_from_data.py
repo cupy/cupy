@@ -530,12 +530,17 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
 # TODO(leofang): test PTDS
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'external_stream': (None, cuda.Stream.null, cuda.Stream()),
+    'external_stream': (None, 'null', 'new'),
     'sync': (True, False),
 }))
 class TestCudaArrayInterfaceStream(unittest.TestCase):
 
     def setUp(self):
+        if self.external_stream == 'null':
+            self.external_stream = cupy.cuda.Stream.null
+        elif self.external_stream == 'new':
+            self.external_stream = cupy.cuda.Stream()
+
         self.ver = 3
         self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
         _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync

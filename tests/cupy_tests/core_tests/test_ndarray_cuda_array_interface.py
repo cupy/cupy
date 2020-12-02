@@ -37,10 +37,16 @@ class DummyObjectWithCudaArrayInterface(object):
 
 
 @testing.parameterize(*testing.product({
-    'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+    'stream': ('null', 'new'),
 }))
 @testing.gpu
 class TestArrayUfunc(unittest.TestCase):
+
+    def setUp(self):
+        if self.stream == 'null':
+            self.stream = cupy.cuda.Stream.null
+        elif self.stream == 'new':
+            self.stream = cupy.cuda.Stream()
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError,
@@ -63,10 +69,16 @@ class TestArrayUfunc(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+    'stream': ('null', 'new'),
 }))
 @testing.gpu
 class TestElementwiseKernel(unittest.TestCase):
+
+    def setUp(self):
+        if self.stream == 'null':
+            self.stream = cupy.cuda.Stream.null
+        elif self.stream == 'new':
+            self.stream = cupy.cuda.Stream()
 
     @testing.for_all_dtypes_combination()
     @testing.numpy_cupy_allclose(rtol=1e-6, accept_error=TypeError,
@@ -92,12 +104,17 @@ class TestElementwiseKernel(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+    'stream': ('null', 'new'),
 }))
 @testing.gpu
 class SimpleReductionFunction(unittest.TestCase):
 
     def setUp(self):
+        if self.stream == 'null':
+            self.stream = cupy.cuda.Stream.null
+        elif self.stream == 'new':
+            self.stream = cupy.cuda.Stream()
+
         self.my_int8_sum = core.create_reduction_func(
             'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None))
 
@@ -124,12 +141,17 @@ class SimpleReductionFunction(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+    'stream': ('null', 'new'),
 }))
 @testing.gpu
 class TestReductionKernel(unittest.TestCase):
 
     def setUp(self):
+        if self.stream == 'null':
+            self.stream = cupy.cuda.Stream.null
+        elif self.stream == 'new':
+            self.stream = cupy.cuda.Stream()
+
         self.my_sum = core.ReductionKernel(
             'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
 
@@ -202,7 +224,7 @@ test_cases = [
     {'shape': (10, 10), 'slices': (slice(2, None), slice(2, None))},
     {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
 ]
-test_streams = (cupy.cuda.Stream.null, cupy.cuda.Stream())
+test_streams = ('null', 'new')
 test_cases_with_stream = [
     {'stream': s, **t} for t in test_cases for s in test_streams]
 
@@ -210,6 +232,12 @@ test_cases_with_stream = [
 @testing.parameterize(*test_cases_with_stream)
 @testing.gpu
 class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
+
+    def setUp(self):
+        if self.stream == 'null':
+            self.stream = cupy.cuda.Stream.null
+        elif self.stream == 'new':
+            self.stream = cupy.cuda.Stream()
 
     @testing.for_all_dtypes_combination(names=['dtype'])
     @testing.for_orders('CF')
@@ -251,12 +279,17 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'stream': (cupy.cuda.Stream.null, cupy.cuda.Stream()),
+    'stream': ('null', 'new'),
     'sync': (True, False),
 }))
 @testing.gpu
 class TestCUDAArrayInterfaceStream(unittest.TestCase):
     def setUp(self):
+        if self.stream == 'null':
+            self.stream = cupy.cuda.Stream.null
+        elif self.stream == 'new':
+            self.stream = cupy.cuda.Stream()
+
         self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
         _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync
 
