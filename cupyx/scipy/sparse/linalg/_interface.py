@@ -528,10 +528,10 @@ def aslinearoperator(A):
 
     Args:
         A (array-like):
-            May be any of the following types:
+            * May be any of the following types:
                * :class:`cupy.ndarray`
                * sparse matrix (e.g. ``csr_matrix``, ``coo_matrix``, etc.)
-               * :class:`cupyx.scipy.sparse.LinearOperator`
+               * :class:`cupyx.scipy.sparse.linalg.LinearOperator`
                * object with ``.shape`` and ``.matvec`` attributes
 
     Returns:
