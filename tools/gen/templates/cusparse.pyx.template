@@ -1,0 +1,8 @@
+# This code was automatically generated. Do not modify it directly.
+
+cimport cython  # NOQA
+
+cdef extern from '../cupy_cusparse.h' nogil:
+{ffi}
+
+{wrapper}
