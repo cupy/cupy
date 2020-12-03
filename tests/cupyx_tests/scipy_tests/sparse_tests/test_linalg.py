@@ -556,12 +556,6 @@ class TestGmres(unittest.TestCase):
         ng_a = xp.ones((self.n, self.n), dtype='i')
         with pytest.raises(TypeError):
             sp.linalg.gmres(ng_a, b)
-        a, M = self._make_matrix(dtype, xp)
-        return self._test_gmres(dtype, xp, sp, a, M)
-
-from cupyx.scipy.sparse.linalg import interface
-import cupy as cp
-from functools import partial
 
 @testing.parameterize(*testing.product({
     'dtype': [cupy.float32, cupy.float64, cupy.complex_],
