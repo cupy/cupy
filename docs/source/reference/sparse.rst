@@ -67,6 +67,16 @@ Building sparse matrices
    cupyx.scipy.sparse.vstack
 
 
+Sparse matrix tools
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.sparse.find
+
+
 Identifying sparse matrices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
