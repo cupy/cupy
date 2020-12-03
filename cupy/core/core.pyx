@@ -1,6 +1,7 @@
 # distutils: language = c++
 
 import functools
+import numbers
 import os
 import pickle
 import re
@@ -1356,12 +1357,14 @@ cdef class ndarray:
         numpy array.
         """
         import cupy  # top-level ufuncs
+        inout = inputs
         if 'out' in kwargs:
             # need to unfold tuple argument in kwargs
             out = kwargs['out']
             if len(out) != 1:
                 raise ValueError('The \'out\' parameter must have exactly one '
                                  'array value')
+            inout += out
             kwargs['out'] = out[0]
 
         if method == '__call__':
@@ -1373,6 +1376,9 @@ cdef class ndarray:
                 cp_ufunc = getattr(cupy, name)
             except AttributeError:
                 return NotImplemented
+            for x in inout:
+                if not isinstance(x, _HANDLED_TYPES):
+                    return NotImplemented
             if name in [
                     'greater', 'greater_equal', 'less', 'less_equal',
                     'equal', 'not_equal']:
@@ -1759,7 +1765,7 @@ cpdef strides_t _get_strides_for_order_K(ndarray x, dtype, shape=None):
     return strides
 
 
-_HANDLED_TYPES = (ndarray, numpy.ndarray)
+_HANDLED_TYPES = (ndarray, numpy.ndarray, numbers.Number)
 
 
 # =============================================================================
