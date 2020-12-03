@@ -54,11 +54,32 @@ from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cublas
 
 
+# If rop of cupy.ndarray is called, cupy's op is the last chance.
+# If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
+# it is safe to call cupy's op.
+# Otherwise, use this function `_should_use_rop` to choose
+# * [True] return NotImplemented to defer rhs, or
+# * [False] call NumPy's ufunc to try all `__array_ufunc__`.
+# Note that extension types (`cdef class`) in Cython 0.x shares
+# implementations of op and rop. (i.e. `__radd__(self, other)` is
+# `__add__(other, self)`.)
+#
+# It follows NEP 13 except that cupy also implements the fallback to
+# `__array_priority__`, which seems fair and necessary because of the
+# following facts:
+# * `numpy` : `scipy.sparse` = `cupy` : `cupyx.scipy.sparse`;
+# * NumPy ignores `__array_priority__` attributes of arguments if NumPy finds
+#   `__array_function__` of `cupy.ndarray`;
+# * SciPy sparse classes don't implement `__array_function__` and they even
+#   don't set `__array_function__ = None` to opt-out the feature; and
+# * `__array_priority__` of SciPy sparse classes is respected because
+#   `numpy.ndarray.__array_function__` does not disable `__array_priority__`.
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
     try:
         y_ufunc = y.__array_ufunc__
     except AttributeError:
+        # NEP 13's recommendation is `return False`.
         xp = getattr(x, '__array_priority__', 0)
         yp = getattr(y, '__array_priority__', 0)
         return xp < yp
