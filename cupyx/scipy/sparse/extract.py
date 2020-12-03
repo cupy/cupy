@@ -12,9 +12,12 @@ def find(A):
             elements are desired.
 
     Returns:
-        tuple of arrays, (I, J, V).
-            I, J, and V contain the row indices, column indices, and values of
-            the nonzero matrix entries.
+        tuple of cupy.ndarray:
+            It returns (``I``, ``J``, ``V``). ``I``, ``J``, and ``V`` contain
+            respectively the row indices, column indices, and values of the
+            nonzero matrix entries.
+
+    .. seealso:: :func:`scipy.sparse.find`
     """
     _check_A_type(A)
     A = coo_matrix(A, copy=True)
@@ -33,11 +36,10 @@ def tril(A, k=0, format=None):
         format (string): Sparse format of the result, e.g. 'csr', 'csc', etc.
 
     Returns:
-        cupyx.scipy.sparse.spmatrix
+        cupyx.scipy.sparse.spmatrix:
             Lower triangular portion of A in sparse format.
 
-    .. seealso::
-        :mesh:`scipy.sparse.tril`
+    .. seealso:: :func:`scipy.sparse.tril`
     """
     _check_A_type(A)
     A = coo_matrix(A, copy=False)
@@ -55,11 +57,10 @@ def triu(A, k=0, format=None):
         format (string): Sparse format of the result, e.g. 'csr', 'csc', etc.
 
     Returns:
-        cupyx.scipy.sparse.spmatrix
+        cupyx.scipy.sparse.spmatrix:
             Upper triangular portion of A in sparse format.
 
-    .. seealso::
-        :mesh:`scipy.sparse.triu`
+    .. seealso:: :func:`scipy.sparse.triu`
     """
     _check_A_type(A)
     A = coo_matrix(A, copy=False)
