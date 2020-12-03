@@ -303,7 +303,7 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                ws_init=ws_init, ws_pre=ws_pre, ws_post=ws_post,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
-    mode_str = mode.replace('-', '_') # avoid potential hyphen in kernel name
+    mode_str = mode.replace('-', '_')  # avoid potential hyphen in kernel name
     name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
         name, ndim, mode_str, '_'.join(['{}'.format(x) for x in w_shape]))
     if all_weights_nonzero:

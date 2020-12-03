@@ -26,8 +26,8 @@ def _check_parameter(func_name, order, mode):
         raise NotImplementedError('spline order is not supported')
 
     if mode not in ('constant', 'grid-constant', 'nearest', 'mirror',
-                      'reflect', 'grid-mirror', 'wrap', 'grid-wrap', 'opencv',
-                      '_opencv_edge'):
+                    'reflect', 'grid-mirror', 'wrap', 'grid-wrap', 'opencv',
+                    '_opencv_edge'):
         raise ValueError('boundary mode ({}) is not supported'.format(mode))
 
 
@@ -37,15 +37,15 @@ def _get_spline_output(input, output):
     Differs from SciPy by not always forcing the internal floating point dtype
     to be double precision.
     """
-    complex_data = input.dtype.kind == "c"
+    complex_data = input.dtype.kind == 'c'
     if complex_data:
         min_float_dtype = cupy.complex64
     else:
         min_float_dtype = cupy.float32
     if isinstance(output, cupy.ndarray):
-        if complex_data and output.dtype.kind != "c":
+        if complex_data and output.dtype.kind != 'c':
             raise ValueError(
-                "output must have complex dtype for complex inputs"
+                'output must have complex dtype for complex inputs'
             )
         float_dtype = cupy.promote_types(output.dtype, min_float_dtype)
         output_dtype = output.dtype
@@ -71,7 +71,7 @@ def _get_spline_output(input, output):
 
 
 def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
-                    mode="mirror"):
+                    mode='mirror'):
     """
     Calculate a 1-D spline filter along the given axis.
 
@@ -98,7 +98,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
     .. seealso:: :func:`scipy.spline_filter1d`
     """
     if order < 0 or order > 5:
-        raise RuntimeError("spline order not supported")
+        raise RuntimeError('spline order not supported')
     x = input
     ndim = x.ndim
     axis = internal._normalize_axis_index(axis, ndim)
@@ -154,7 +154,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
     return temp.astype(output_dtype, copy=False)
 
 
-def spline_filter(input, order=3, output=cupy.float64, mode="mirror"):
+def spline_filter(input, order=3, output=cupy.float64, mode='mirror'):
     """Multidimensional spline filter.
 
     Args:
@@ -175,7 +175,7 @@ def spline_filter(input, order=3, output=cupy.float64, mode="mirror"):
     .. seealso:: :func:`scipy.spline_filter1d`
     """
     if order < 2 or order > 5:
-        raise RuntimeError("spline order not supported")
+        raise RuntimeError('spline order not supported')
 
     x = input
     temp, data_dtype, output_dtype = _get_spline_output(x, output)
@@ -320,7 +320,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
             offset = matrix[:-1, -1]
             matrix = matrix[:-1, :-1]
         if matrix.shape != (input.ndim, input.ndim):
-            raise RuntimeError("improper affine shape")
+            raise RuntimeError('improper affine shape')
 
     if mode == 'opencv':
         m = cupy.zeros((input.ndim + 1, input.ndim + 1))

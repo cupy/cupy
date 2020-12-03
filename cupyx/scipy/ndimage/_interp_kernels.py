@@ -35,8 +35,8 @@ def _get_coord_map(ndim):
     ops.append('ptrdiff_t ncoords = _ind.size();')
     for j in range(ndim):
         ops.append(
-            """
-    W c_{j} = coords[i + {j} * ncoords];""".format(j=j))
+            '''
+    W c_{j} = coords[i + {j} * ncoords];'''.format(j=j))
     return ops
 
 
@@ -59,8 +59,8 @@ def _get_coord_zoom_and_shift(ndim):
     ops = []
     for j in range(ndim):
         ops.append(
-            """
-    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] - shift[{j}]);""".format(j=j))
+            '''
+    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] - shift[{j}]);'''.format(j=j))
     return ops
 
 
@@ -82,8 +82,8 @@ def _get_coord_zoom(ndim):
     ops = []
     for j in range(ndim):
         ops.append(
-            """
-    W c_{j} = zoom[{j}] * (W)in_coord[{j}];""".format(j=j))
+            '''
+    W c_{j} = zoom[{j}] * (W)in_coord[{j}];'''.format(j=j))
     return ops
 
 
@@ -105,8 +105,8 @@ def _get_coord_shift(ndim):
     ops = []
     for j in range(ndim):
         ops.append(
-            """
-    W c_{j} = (W)in_coord[{j}] - shift[{j}];""".format(j=j))
+            '''
+    W c_{j} = (W)in_coord[{j}] - shift[{j}];'''.format(j=j))
     return ops
 
 
@@ -133,18 +133,18 @@ def _get_coord_affine(ndim):
     ops = []
     ncol = ndim + 1
     for j in range(ndim):
-        ops.append("""
+        ops.append('''
             W c_{j} = (W)0.0;
-            """.format(j=j))
+            '''.format(j=j))
         for k in range(ndim):
             m_index = ncol * j + k
             ops.append(
-                """
-            c_{j} += mat[{m_index}] * (W)in_coord[{k}];""".format(
+                '''
+            c_{j} += mat[{m_index}] * (W)in_coord[{k}];'''.format(
                     j=j, k=k, m_index=m_index))
         ops.append(
-            """
-            c_{j} += mat[{m_index}];""".format(
+            '''
+            c_{j} += mat[{m_index}];'''.format(
                 j=j, m_index=ncol * j + ndim))
     return ops
 
@@ -156,17 +156,17 @@ def _unravel_loop_index(shape, uint_t='unsigned int'):
     """
     ndim = len(shape)
     code = [
-        """
+        '''
         {uint_t} in_coord[{ndim}];
-        {uint_t} s, t, idx = i;""".format(uint_t=uint_t, ndim=ndim)]
+        {uint_t} s, t, idx = i;'''.format(uint_t=uint_t, ndim=ndim)]
     for j in range(ndim - 1, 0, -1):
-        code.append("""
+        code.append('''
         s = {size};
         t = idx / s;
         in_coord[{j}] = idx - t * s;
-        idx = t;""".format(j=j, size=shape[j]))
-    code.append("""
-        in_coord[0] = idx;""")
+        idx = t;'''.format(j=j, size=shape[j]))
+    code.append('''
+        in_coord[0] = idx;''')
     return '\n'.join(code)
 
 
@@ -226,24 +226,24 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
         # use cval if coordinate is outside the bounds of x
         _cond = ' || '.join(
             [f'(c_{j} < 0) || (c_{j} > xsize_{j} - 1)' for j in range(ndim)])
-        ops.append(f"""
+        ops.append(f'''
         if ({_cond})
         {{
             out = {cval};
         }}
         else
-        {{""")
+        {{''')
 
     if order == 0:
-        ops.append("double dcoord;")  # mode 'wrap' requires this to work
+        ops.append('double dcoord;')  # mode 'wrap' requires this to work
         for j in range(ndim):
             # determine nearest neighbor
             if mode == 'wrap':
-                ops.append(f"""
-                dcoord = c_{j};""")
+                ops.append(f'''
+                dcoord = c_{j};''')
             else:
-                ops.append(f"""
-                {int_t} cf_{j} = ({int_t})lrint((double)c_{j});""")
+                ops.append(f'''
+                {int_t} cf_{j} = ({int_t})lrint((double)c_{j});''')
 
             # handle boundary
             if mode != 'constant':
@@ -261,37 +261,37 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                 {int_t} cf_{j} = ({int_t})floor(dcoord + 0.5);''')
 
             # sum over ic_j will give the raveled coordinate in the input
-            ops.append(f"""
-            {int_t} ic_{j} = cf_{j} * sx_{j};""")
+            ops.append(f'''
+            {int_t} ic_{j} = cf_{j} * sx_{j};''')
         _coord_idx = ' + '.join([f'ic_{j}' for j in range(ndim)])
-        ops.append(f"""
-            out = x[{_coord_idx}];""")
+        ops.append(f'''
+            out = x[{_coord_idx}];''')
 
     elif order == 1:
         for j in range(ndim):
             # get coordinates for linear interpolation along axis j
-            ops.append(f"""
+            ops.append(f'''
             {int_t} cf_{j} = ({int_t})floor((double)c_{j});
             {int_t} cc_{j} = cf_{j} + 1;
             {int_t} n_{j} = (c_{j} == cf_{j}) ? 1 : 2;  // points needed
-            """)
+            ''')
 
-            if mode == "wrap":
-                ops.append(f"""
+            if mode == 'wrap':
+                ops.append(f'''
                 double dcoordf = c_{j};
-                double dcoordc = c_{j} + 1;""")
+                double dcoordc = c_{j} + 1;''')
             else:
                 # handle boundaries for extension modes.
-                ops.append(f"""
+                ops.append(f'''
                 {int_t} cf_bounded_{j} = cf_{j};
-                {int_t} cc_bounded_{j} = cc_{j};""")
+                {int_t} cc_bounded_{j} = cc_{j};''')
 
             if mode != 'constant':
-                if mode == "wrap":
-                    ixvar = "dcoordf"
+                if mode == 'wrap':
+                    ixvar = 'dcoordf'
                     float_ix = True
                 else:
-                    ixvar = f"cf_bounded_{j}"
+                    ixvar = f'cf_bounded_{j}'
                     float_ix = False
                 ops.append(
                     _util._generate_boundary_condition_ops(
@@ -301,15 +301,15 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                 ops.append(
                     _util._generate_boundary_condition_ops(
                         mode, ixvar, f'xsize_{j}', int_t, float_ix))
-                if mode == "wrap":
+                if mode == 'wrap':
                     ops.append(
-                        f"""
+                        f'''
                     {int_t} cf_bounded_{j} = ({int_t})floor(dcoordf);;
                     {int_t} cc_bounded_{j} = ({int_t})floor(dcoordf + 1);;
-                    """
+                    '''
                     )
 
-            ops.append(f"""
+            ops.append(f'''
             for (int s_{j} = 0; s_{j} < n_{j}; s_{j}++)
                 {{
                     W w_{j};
@@ -322,29 +322,27 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                     {{
                         w_{j} = c_{j} - (W)cf_{j};
                         ic_{j} = cc_bounded_{j} * sx_{j};
-                    }}""")
+                    }}''')
 
     if order > 0:
 
-        _weight = " * ".join([f"w_{j}" for j in range(ndim)])
-        _coord_idx = " + ".join([f"ic_{j}" for j in range(ndim)])
-        if mode == "grid-constant" or (order > 1 and mode == "constant"):
-            _cond = " || ".join([f"(ic_{j} < 0)" for j in range(ndim)])
-            ops.append(f"""
+        _weight = ' * '.join([f'w_{j}' for j in range(ndim)])
+        _coord_idx = ' + '.join([f'ic_{j}' for j in range(ndim)])
+        if mode == 'grid-constant' or (order > 1 and mode == 'constant'):
+            _cond = ' || '.join([f'(ic_{j} < 0)' for j in range(ndim)])
+            ops.append(f'''
             if ({_cond}) {{
                 out += (X){cval} * ({_weight});
             }} else {{
                 X val = x[{_coord_idx}];
                 out += val * ({_weight});
-            }}""")
+            }}''')
         else:
-            ops.append(f"""
+            ops.append(f'''
             X val = x[{_coord_idx}];
-            out += val * ({_weight});""")
+            out += val * ({_weight});''')
 
-        ops.append("}" * ndim)
-
-
+        ops.append('}' * ndim)
 
     if mode == 'constant':
         ops.append('}')
@@ -355,9 +353,9 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
         ops.append('y = (Y)out;')
     operation = '\n'.join(ops)
 
-    mode_str = mode.replace("-", "_")  # avoid hyphen in kernel name
+    mode_str = mode.replace('-', '_')  # avoid hyphen in kernel name
     name = 'interpolate_{}_order{}_{}_{}d_y{}'.format(
-        name, order, mode_str, ndim, "_".join([f"{j}" for j in yshape]),
+        name, order, mode_str, ndim, '_'.join([f'{j}' for j in yshape]),
     )
     if uint_t == 'size_t':
         name += '_i64'
