@@ -90,7 +90,8 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
             ``numpy.float64``.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
 
     Returns:
         cupy.ndarray: The result of prefiltering the input.
@@ -167,7 +168,8 @@ def spline_filter(input, order=3, output=cupy.float64, mode='mirror'):
             ``numpy.float64``.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
 
     Returns:
         cupy.ndarray: The result of prefiltering the input.
@@ -215,7 +217,8 @@ def map_coordinates(input, coordinates, output=None, order=None,
             change in the future. Currently it supports only order 0 and 1.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
@@ -291,7 +294,8 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
             change in the future. Currently it supports only order 0 and 1.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
@@ -410,7 +414,8 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
             change in the future. Currently it supports only order 0 and 1.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
@@ -505,7 +510,8 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
             change in the future. Currently it supports only order 0 and 1.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
@@ -572,7 +578,8 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
             change in the future. Currently it supports only order 0 and 1.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
