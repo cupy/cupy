@@ -54,7 +54,7 @@ class LinearOperator(object):
         self.shape = shape
 
     def _init_dtype(self):
-        """Called from subclasses at the end of the __init__ routine.
+        """Called from subclasses at the end of the `__init__` routine.
         """
         if self.dtype is None:
             v = cupy.zeros(self.shape[-1])
@@ -524,18 +524,20 @@ class IdentityOperator(LinearOperator):
 
 
 def aslinearoperator(A):
-    """Return A as a LinearOperator.
+    """Return `A` as a LinearOperator.
 
     Args:
         A (array-like):
-            * May be any of the following types:
+            The input array to be converted to a `LinearOperator` object.
+            It may be any of the following types:
+
                * :class:`cupy.ndarray`
                * sparse matrix (e.g. ``csr_matrix``, ``coo_matrix``, etc.)
                * :class:`cupyx.scipy.sparse.linalg.LinearOperator`
                * object with ``.shape`` and ``.matvec`` attributes
 
     Returns:
-        cupyx.scipy.sparse.linalg.LinearOperator: LinearOperator object
+        cupyx.scipy.sparse.linalg.LinearOperator: `LinearOperator` object
 
     .. seealso:: :func:`scipy.sparse.aslinearoperator``
     """
