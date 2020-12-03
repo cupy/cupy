@@ -86,6 +86,12 @@ class TestArrayUfunc:
         with pytest.raises(TypeError):
             x @= y
 
+    def test_lt(self):
+        x = cupy.array([3, 7])
+        y = MockArray()
+        assert (x < y) == ('less', (x, y), {})
+        assert (y < x) == ('less', (y, x), {})
+
 
 class MockArray2:
     __array_ufunc__ = None
@@ -102,6 +108,12 @@ class MockArray2:
     def __rmatmul__(self, other):
         return 'rmatmul'
 
+    def __lt__(self, other):
+        return 'lt'
+
+    def __gt__(self, other):
+        return 'gt'
+
 
 @testing.gpu
 class TestArrayUfuncOptout:
@@ -117,3 +129,9 @@ class TestArrayUfuncOptout:
         y = MockArray2()
         assert x @ y == 'rmatmul'
         assert y @ x == 'matmul'
+
+    def test_lt(self):
+        x = cupy.array([3, 7])
+        y = MockArray2()
+        assert (x < y) == 'gt'
+        assert (y < x) == 'lt'

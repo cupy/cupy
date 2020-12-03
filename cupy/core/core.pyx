@@ -970,20 +970,34 @@ cdef class ndarray:
     # Comparison operators:
 
     def __richcmp__(object self, object other, int op):
-        if isinstance(other, numpy.ndarray) and other.ndim == 0:
-            other = other.item()  # Workaround for numpy<1.13
-        if op == 0:
-            return _logic._ndarray_less(self, other)
-        if op == 1:
-            return _logic._ndarray_less_equal(self, other)
-        if op == 2:
-            return _logic._ndarray_equal(self, other)
-        if op == 3:
-            return _logic._ndarray_not_equal(self, other)
-        if op == 4:
-            return _logic._ndarray_greater(self, other)
-        if op == 5:
-            return _logic._ndarray_greater_equal(self, other)
+        if isinstance(other, ndarray):
+            if op == 0:
+                return _logic._ndarray_less(self, other)
+            if op == 1:
+                return _logic._ndarray_less_equal(self, other)
+            if op == 2:
+                return _logic._ndarray_equal(self, other)
+            if op == 3:
+                return _logic._ndarray_not_equal(self, other)
+            if op == 4:
+                return _logic._ndarray_greater(self, other)
+            if op == 5:
+                return _logic._ndarray_greater_equal(self, other)
+        elif not _should_use_rop(self, other):
+            if isinstance(other, numpy.ndarray) and other.ndim == 0:
+                other = other.item()  # Workaround for numpy<1.13
+            if op == 0:
+                return numpy.less(self, other)
+            if op == 1:
+                return numpy.less_equal(self, other)
+            if op == 2:
+                return numpy.equal(self, other)
+            if op == 3:
+                return numpy.not_equal(self, other)
+            if op == 4:
+                return numpy.greater(self, other)
+            if op == 5:
+                return numpy.greater_equal(self, other)
         return NotImplemented
 
     # Truth value of an array (bool):
