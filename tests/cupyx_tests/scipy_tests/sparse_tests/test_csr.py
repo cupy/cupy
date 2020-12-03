@@ -1962,7 +1962,7 @@ class TestCsrMatrixComparison(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(8, 5), (5, 5), (5, 8)],
 }))
-@testing.with_requires('scipy>1.0')
+@testing.with_requires('scipy>=1.5.0')
 @testing.gpu
 class TestCsrMatrixDiagonal(unittest.TestCase):
     density = 0.5
