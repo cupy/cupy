@@ -387,7 +387,7 @@ class TestCg:
     'b_ndim': [1, 2],
     'restart': [None, 10],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy>=1.4')
 @testing.gpu
 class TestGmres:
     n = 30

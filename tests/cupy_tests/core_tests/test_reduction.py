@@ -45,7 +45,7 @@ class SimpleReductionFunctionTestBase(AbstractReductionTestBase):
 
 
 @testing.gpu
-class SimpleReductionFunctionTest(
+class TestSimpleReductionFunction(
         unittest.TestCase, SimpleReductionFunctionTestBase):
     def test_shape1(self):
         for i in range(1, 10):

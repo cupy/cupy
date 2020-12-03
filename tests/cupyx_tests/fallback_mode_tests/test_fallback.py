@@ -249,7 +249,7 @@ class TestDocs(unittest.TestCase):
 
 
 @testing.gpu
-class FallbackArray(unittest.TestCase):
+class TestFallbackArray(unittest.TestCase):
 
     def test_ndarray_creation_compatible(self):
 
