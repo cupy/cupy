@@ -454,6 +454,12 @@ class TestGmres(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_dense(self, dtype, xp, sp):
+        a, M = self._make_matrix(dtype, xp)
+        return self._test_gmres(dtype, xp, sp, a, M)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_csr(self, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
         a = sp.csr_matrix(a)
