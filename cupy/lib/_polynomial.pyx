@@ -11,6 +11,12 @@ from cupy.lib import _routines_poly
 cdef class poly1d:
     """A one-dimensional polynomial class.
 
+    .. note::
+        This is a counterpart of an old polynomial class in NumPy.
+        Note that the new NumPy polynomial API
+        (:mod:`numpy.polynomial.polynomial`)
+        has different convention, e.g. order of coefficients is reversed.
+
     Args:
         c_or_r (array_like): The polynomial's
          coefficients in decreasing powers
@@ -19,7 +25,7 @@ cdef class poly1d:
         variable (str, optional): Changes the variable used when
             printing the polynomial from ``x`` to ``variable``
 
-    .. seealso:: :func:`numpy.poly1d`
+    .. seealso:: :class:`numpy.poly1d`
 
     """
     __hash__ = None
@@ -123,6 +129,7 @@ cdef class poly1d:
     def __pos__(self):
         return self
 
+    # TODO(kataoka): Rename `self`. It is misleading for cdef class.
     def __mul__(self, other):
         if cupy.isscalar(other):
             # case: poly1d * python scalar
