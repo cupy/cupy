@@ -7,15 +7,6 @@ from cupy.core.core cimport ndarray
 import cupy
 from cupy.lib import _routines_poly
 
-cimport cython  # NOQA
-
-
-@cython.profile(False)
-cdef inline _should_use_rop(x, y):
-    xp = getattr(x, '__array_priority__', 0)
-    yp = getattr(y, '__array_priority__', 0)
-    return xp < yp and not isinstance(y, poly1d)
-
 
 cdef class poly1d:
     """A one-dimensional polynomial class.
@@ -32,7 +23,6 @@ cdef class poly1d:
 
     """
     __hash__ = None
-    __array_priority__ = 100
 
     cdef:
         readonly ndarray _coeffs
@@ -134,8 +124,6 @@ cdef class poly1d:
         return self
 
     def __mul__(self, other):
-        if _should_use_rop(self, other):
-            return other.__rmul__(self)
         if cupy.isscalar(other):
             # case: poly1d * python scalar
             # the return type of cupy.polymul output is
@@ -157,8 +145,6 @@ cdef class poly1d:
         return _routines_poly.polymul(self, other)
 
     def __add__(self, other):
-        if _should_use_rop(self, other):
-            return other.__radd__(self)
         if isinstance(self, numpy.generic):
             # for the case: numpy scalar + poly1d
             raise TypeError('Numpy scalar and poly1d '
@@ -183,8 +169,6 @@ cdef class poly1d:
         return poly1d(_routines_poly._polypow(base, val))
 
     def __sub__(self, other):
-        if _should_use_rop(self, other):
-            return other.__rsub__(self)
         if isinstance(self, numpy.generic):
             # for the case: numpy scalar - poly1d
             raise TypeError('Numpy scalar and poly1d '
