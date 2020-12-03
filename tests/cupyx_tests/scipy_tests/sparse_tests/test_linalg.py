@@ -253,7 +253,7 @@ class TestSvds(unittest.TestCase):
     'atol': [None, 'select-by-dtype'],
     'b_ndim': [1, 2],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 @testing.gpu
 class TestCg:
     n = 30
