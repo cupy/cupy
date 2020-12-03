@@ -264,7 +264,16 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
             ops.append(f'''
             {int_t} ic_{j} = cf_{j} * sx_{j};''')
         _coord_idx = ' + '.join([f'ic_{j}' for j in range(ndim)])
-        ops.append(f'''
+        if mode == 'grid-constant':
+            _cond = ' || '.join([f'(ic_{j} < 0)' for j in range(ndim)])
+            ops.append(f'''
+            if ({_cond}) {{
+                out = (double){cval};
+            }} else {{
+                out = x[{_coord_idx}];
+            }}''')
+        else:
+            ops.append(f'''
             out = x[{_coord_idx}];''')
 
     elif order == 1:

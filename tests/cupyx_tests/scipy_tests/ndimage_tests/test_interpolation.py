@@ -615,7 +615,7 @@ class TestSplineFilter1d:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_spline_filter1d(self, xp, scp):
         if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
-            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
+            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
         return scp.ndimage.spline_filter1d(x, order=self.order, axis=self.axis,
                                            output=self.output, mode=self.mode)
@@ -624,7 +624,7 @@ class TestSplineFilter1d:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_spline_filter1d_output(self, xp, scp, array_order):
         if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
-            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
+            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp,
                                   order=array_order)
         output = xp.empty(x.shape, dtype=self.output, order=array_order)
@@ -646,7 +646,7 @@ class TestSplineFilter:
     @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
     def test_spline_filter(self, xp, scp):
         if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
-            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
+            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
         if self.order < 2:
             with pytest.raises(RuntimeError):
@@ -660,7 +660,7 @@ class TestSplineFilter:
     @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
     def test_spline_filter_with_output(self, xp, scp, array_order):
         if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
-            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
+            pytest.skip('testing mode grid-wrap requires scipy >= 1.6.0')
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp,
                                   order=array_order)
         output = xp.empty(x.shape, dtype=self.output, order=array_order)
