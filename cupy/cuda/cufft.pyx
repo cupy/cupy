@@ -118,6 +118,7 @@ cdef extern from 'cupy_cufft.h' nogil:
                                runtime.DataType outputtype,
                                long long int batch, size_t* workSize,
                                runtime.DataType executiontype)
+    Result cufftXtExec(Handle plan, void* inarr, void* outarr, int d)
 
 
 IF CUPY_CUFFT_STATIC:
@@ -936,6 +937,10 @@ cdef class XtPlanNd:
         cdef runtime.DataType otype = to_cuda_dtype(odtype, True)
         cdef runtime.DataType etype = to_cuda_dtype(edtype, True)
 
+        # TODO(leofang): check fp16 and bf16 runtime constraints
+        # https://docs.nvidia.com/cuda/cufft/index.html#half-precision-transforms
+        # https://docs.nvidia.com/cuda/cufft/index.html#bfloat16-precision-transforms
+
         if batch == 0:
             work_size = 0
         else:
@@ -981,37 +986,22 @@ cdef class XtPlanNd:
             check_result(result)
             self.handle = <intptr_t>0
 
-#    def __enter__(self):
-#        _thread_local._current_plan = self
-#        return self
-#
-#    def __exit__(self, exc_type, exc_value, traceback):
-#        _thread_local._current_plan = None
-#
-#    def fft(self, a, out, direction):
-#        cdef intptr_t plan = self.handle
-#        cdef intptr_t stream = stream_module.get_current_stream_ptr()
-#        cdef int result
-#
-#        with nogil:
-#            result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
-#        check_result(result)
-#
-#        if self.fft_type == CUFFT_C2C:
-#            execC2C(plan, a.data.ptr, out.data.ptr, direction)
-#        elif self.fft_type == CUFFT_R2C:
-#            execR2C(plan, a.data.ptr, out.data.ptr)
-#        elif self.fft_type == CUFFT_C2R:
-#            execC2R(plan, a.data.ptr, out.data.ptr)
-#        elif self.fft_type == CUFFT_Z2Z:
-#            execZ2Z(plan, a.data.ptr, out.data.ptr, direction)
-#        elif self.fft_type == CUFFT_D2Z:
-#            execD2Z(plan, a.data.ptr, out.data.ptr)
-#        elif self.fft_type == CUFFT_Z2D:
-#            execZ2D(plan, a.data.ptr, out.data.ptr)
-#        else:
-#            raise ValueError
-#
+    def __enter__(self):
+        _thread_local._current_plan = self
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        _thread_local._current_plan = None
+
+    def fft(self, a, out, direction):
+        cdef intptr_t plan = self.handle
+        cdef intptr_t stream = stream_module.get_current_stream_ptr()
+        cdef int result
+
+        with nogil:
+            result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+        XtExec(plan, a.data.ptr, out.data.ptr, direction)
+
 #    def _output_dtype_and_shape(self, a):
 #        shape = list(a.shape)
 #        if self.fft_type == CUFFT_C2C:
@@ -1112,6 +1102,15 @@ cpdef multi_gpu_execZ2Z(intptr_t plan, intptr_t idata, intptr_t odata,
     with nogil:
         result = cufftXtExecDescriptorZ2Z(h, <XtArray*>idata,
                                           <XtArray*>odata, direction)
+    check_result(result)
+
+
+cpdef inline XtExec(intptr_t plan, intptr_t idata, intptr_t odata, int direction):
+    cdef Handle h = <Handle>plan
+    cdef int result
+
+    with nogil:
+        result = cufftXtExec(h, <void*>idata, <void*>odata, direction)
     check_result(result)
 
 
