@@ -237,6 +237,10 @@ cudaError_t cudaStreamAddCallback(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaLaunchHostFunc(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaStreamQuery(...) {
     return cudaSuccess;
 }
