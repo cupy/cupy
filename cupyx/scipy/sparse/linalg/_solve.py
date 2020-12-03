@@ -5,10 +5,9 @@ from cupy import cusparse
 from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import _util
-import cupyx.scipy.sparse as sparse
+from cupyx.scipy import sparse
 
 from warnings import warn
-from scipy.sparse import SparseEfficiencyWarning
 
 
 def lsqr(A, b):
@@ -117,7 +116,7 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
 
     if not (sparse.isspmatrix_csr(A) or sparse.isspmatrix_csc(A)):
         warn('CSR or CSC format is required. Converting to CSR format.',
-             SparseEfficiencyWarning)
+             sparse.SparseEfficiencyWarning)
         A = A.tocsr()
     A.sum_duplicates()
 
