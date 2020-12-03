@@ -1,7 +1,6 @@
 # distutils: language = c++
 
 import functools
-import numbers
 import os
 import pickle
 import re
@@ -56,10 +55,16 @@ from cupy_backends.cuda.libs cimport cublas
 
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    return not isinstance(y, _KNOWN_TYPES) and hasattr(y, '__array_ufunc__')
+    try:
+        y_ufunc = y.__array_ufunc__
+    except AttributeError:
+        xp = getattr(x, '__array_priority__', 0)
+        yp = getattr(y, '__array_priority__', 0)
+        return xp < yp
+    return y_ufunc is None
 
 
-cdef tuple _HANDLED_TYPES, _KNOWN_TYPES
+cdef tuple _HANDLED_TYPES
 
 
 cdef class ndarray:
@@ -992,95 +997,124 @@ cdef class ndarray:
     # Arithmetic:
 
     def __add__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _math._add(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _math._add(x, y)
+            return numpy.add(x, y)
 
     def __sub__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _math._subtract(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _math._subtract(x, y)
+            return numpy.subtract(x, y)
 
     def __mul__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _math._multiply(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _math._multiply(x, y)
+            return numpy.multiply(x, y)
 
     def __matmul__(x, y):
-        if _should_use_rop(x, y):
+        # TODO(kataoka): Support matmul (gufunc) in __array_ufunc__
+        if not isinstance(y, ndarray) and _should_use_rop(x, y):
             return NotImplemented
         else:
             return _linalg.matmul(x, y)
 
     def __div__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _math._divide(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _math._divide(x, y)
+            return numpy.divide(x, y)
 
     def __truediv__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _math._true_divide(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _math._true_divide(x, y)
+            return numpy.true_divide(x, y)
 
     def __floordiv__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _math._floor_divide(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _math._floor_divide(x, y)
+            return numpy.floor_divide(x, y)
 
     def __mod__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _math._remainder(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _math._remainder(x, y)
+            return numpy.remainder(x, y)
 
     def __divmod__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return divmod(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return divmod(x, y)
+            return numpy.divmod(x, y)
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _math._power(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _math._power(x, y)
+            return numpy.power(x, y)
 
     def __lshift__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _binary._left_shift(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _binary._left_shift(x, y)
+            return numpy.left_shift(x, y)
 
     def __rshift__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _binary._right_shift(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _binary._right_shift(x, y)
+            return numpy.right_shift(x, y)
 
     def __and__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _binary._bitwise_and(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _binary._bitwise_and(x, y)
+            return numpy.bitwise_and(x, y)
 
     def __or__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _binary._bitwise_or(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _binary._bitwise_or(x, y)
+            return numpy.bitwise_or(x, y)
 
     def __xor__(x, y):
-        if _should_use_rop(x, y):
+        if isinstance(y, ndarray):
+            return _binary._bitwise_xor(x, y)
+        elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _binary._bitwise_xor(x, y)
+            return numpy.bitwise_xor(x, y)
 
     # Arithmetic, in-place:
 
@@ -1726,7 +1760,6 @@ cpdef strides_t _get_strides_for_order_K(ndarray x, dtype, shape=None):
 
 
 _HANDLED_TYPES = (ndarray, numpy.ndarray)
-_KNOWN_TYPES = (ndarray, numbers.Number)
 
 
 # =============================================================================
