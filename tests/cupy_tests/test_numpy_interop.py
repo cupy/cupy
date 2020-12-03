@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -47,3 +48,72 @@ class TestGetArrayModule(unittest.TestCase):
             assert cupy is cupy.get_array_module(csrn1, c1)
             assert numpy is cupy.get_array_module(n1, csrn1)
             assert numpy is cupy.get_array_module(csrn1, n1)
+
+
+class MockArray(numpy.lib.mixins.NDArrayOperatorsMixin):
+    __array_priority__ = 20  # less than cupy.ndarray.__array_priority__
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        assert method == '__call__'
+        name = ufunc.__name__
+        return name, inputs, kwargs
+
+
+@testing.gpu
+class TestArrayUfunc:
+
+    def test_add(self):
+        x = cupy.array([3, 7])
+        y = MockArray()
+        assert x + y == ('add', (x, y), {})
+        assert y + x == ('add', (y, x), {})
+        y2 = y
+        y2 += x
+        assert y2 == ('add', (y, x), {'out': y})
+        with pytest.raises(TypeError):
+            x += y
+
+    @pytest.mark.xfail(
+        reason='cupy.ndarray.__array_ufunc__ does not support gufuncs yet')
+    def test_matmul(self):
+        x = cupy.array([3, 7])
+        y = MockArray()
+        assert x @ y == ('matmul', (x, y), {})
+        assert y @ x == ('matmul', (y, x), {})
+        y2 = y
+        y2 @= x
+        assert y2 == ('matmul', (y, x), {'out': y})
+        with pytest.raises(TypeError):
+            x @= y
+
+
+class MockArray2:
+    __array_ufunc__ = None
+
+    def __add__(self, other):
+        return 'add'
+
+    def __radd__(self, other):
+        return 'radd'
+
+    def __matmul__(self, other):
+        return 'matmul'
+
+    def __rmatmul__(self, other):
+        return 'rmatmul'
+
+
+@testing.gpu
+class TestArrayUfuncOptout:
+
+    def test_add(self):
+        x = cupy.array([3, 7])
+        y = MockArray2()
+        assert x + y == 'radd'
+        assert y + x == 'add'
+
+    def test_matmul(self):
+        x = cupy.array([3, 7])
+        y = MockArray2()
+        assert x @ y == 'rmatmul'
+        assert y @ x == 'matmul'
