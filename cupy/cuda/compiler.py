@@ -45,7 +45,7 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
         # NVCC_PREPEND_FLAGS, NVCC_APPEND_FLAGS.
         env = os.environ
         if _win32:
-            # Adds the extra PATH to be added for NVCC invocation.
+            # Adds the extra PATH for NVCC invocation.
             # When running NVCC, a host compiler must be available in PATH,
             # but this is not true in general Windows environment unless
             # running inside the SDK Tools command prompt.
