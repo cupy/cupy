@@ -7,7 +7,9 @@ import cupyx.scipy.ndimage
 from cupyx.scipy.ndimage import _util
 
 try:
+    import scipy
     import scipy.ndimage
+    scipy_version = numpy.lib.NumpyVersion(scipy.__version__)
 except ImportError:
     pass
 
@@ -15,6 +17,12 @@ try:
     import cv2
 except ImportError:
     pass
+
+# testing these modes can only be tested against SciPy >= 1.6.0+
+scipy16_modes = ['wrap', 'grid-wrap', 'reflect', 'grid-mirror',
+                 'grid-constant']
+# these modes are okay to test on older SciPy
+legacy_modes = ['constant', 'nearest', 'mirror']
 
 
 @testing.parameterize(*testing.product({
@@ -92,7 +100,7 @@ class TestMapCoordinates:
     'output_shape': [None],
     'output': [None, numpy.float64, 'empty'],
     'order': [0, 1],
-    'mode': ['constant', 'nearest', 'mirror'],
+    'mode': legacy_modes + scipy16_modes,
     'cval': [1.0],
     'prefilter': [True],
 }))
@@ -103,6 +111,8 @@ class TestAffineTransform:
     _multiprocess_can_split = True
 
     def _affine_transform(self, xp, scp, a, matrix):
+        if self.mode in scipy16_modes and scipy_version < '1.6.0':
+            pytest.skip('specified mode requires SciPy >= 1.6.0')
         ver = numpy.lib.NumpyVersion(scipy.__version__)
         if ver < '1.0.0' and matrix.ndim == 2 and matrix.shape[1] == 3:
             return xp.empty(0)
@@ -206,16 +216,27 @@ class TestAffineTransformOpenCV:
             return cv2.warpAffine(a, matrix, (a.shape[1], a.shape[0]))
 
 
-@testing.parameterize(*testing.product({
-    'angle': [-10, 1000],
-    'axes': [(1, 0)],
-    'reshape': [False, True],
-    'output': [None, numpy.float64, 'empty'],
-    'order': [0, 1],
-    'mode': ['constant', 'nearest', 'mirror'],
-    'cval': [1.0],
-    'prefilter': [True],
-}))
+@testing.parameterize(*(
+    testing.product({
+        'angle': [-10, 1000],
+        'axes': [(1, 0)],
+        'reshape': [False, True],
+        'output': [None, numpy.float64, 'empty'],
+        'order': [0, 1],
+        'mode': legacy_modes,
+        'cval': [1.0],
+        'prefilter': [True],
+    }) + testing.product({
+        'angle': [-15],
+        'axes': [(1, 0)],
+        'reshape': [False],
+        'output': [None],
+        'order': [0, 1],
+        'mode': legacy_modes + scipy16_modes,
+        'cval': [1.0],
+        'prefilter': [True],
+    })
+))
 @testing.gpu
 @testing.with_requires('scipy')
 class TestRotate:
@@ -223,6 +244,8 @@ class TestRotate:
     _multiprocess_can_split = True
 
     def _rotate(self, xp, scp, a):
+        if self.mode in scipy16_modes and scipy_version < '1.6.0':
+            pytest.skip('specified mode requires SciPy >= 1.6.0')
         rotate = scp.ndimage.rotate
         if self.output == 'empty':
             output = rotate(a, self.angle, self.axes,
@@ -327,7 +350,7 @@ class TestRotateOpenCV:
         'shift': [0.1, -10, (5, -5)],
         'output': [None, numpy.float64, 'empty'],
         'order': [0, 1],
-        'mode': ['constant', 'nearest', 'mirror'],
+        'mode': legacy_modes + scipy16_modes,
         'cval': [1.0],
         'prefilter': [True],
     }) + testing.product({
@@ -347,6 +370,8 @@ class TestShift:
 
     def _shift(self, xp, scp, a):
         shift = scp.ndimage.shift
+        if self.mode in scipy16_modes and scipy_version < '1.6.0':
+            pytest.skip('specified mode requires SciPy >= 1.6.0')
         if self.output == 'empty':
             output = xp.empty_like(a)
             return_value = shift(a, self.shift, output, self.order,
@@ -501,7 +526,7 @@ class TestShiftOpenCV:
     'zoom': [0.1, 10, (0.1, 10)],
     'output': [None, numpy.float64, 'empty'],
     'order': [0, 1],
-    'mode': ['constant', 'nearest', 'mirror'],
+    'mode': legacy_modes,
     'cval': [1.0],
     'prefilter': [True],
 }))
@@ -577,7 +602,8 @@ class TestZoomOpenCV:
 
 
 @testing.parameterize(*testing.product({
-    'mode': ['mirror', 'wrap', 'reflect'],
+    # these 3 modes have analytical spline boundary conditions
+    'mode': ['mirror', 'grid-wrap', 'reflect'],
     'order': [0, 1, 2, 3, 4, 5],
     'dtype': [numpy.uint8, numpy.float64],
     'output': [numpy.float64, numpy.float32],
@@ -588,6 +614,8 @@ class TestZoomOpenCV:
 class TestSplineFilter1d:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_spline_filter1d(self, xp, scp):
+        if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
+            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
         return scp.ndimage.spline_filter1d(x, order=self.order, axis=self.axis,
                                            output=self.output, mode=self.mode)
@@ -595,6 +623,8 @@ class TestSplineFilter1d:
     @testing.for_CF_orders(name='array_order')
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_spline_filter1d_output(self, xp, scp, array_order):
+        if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
+            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp,
                                   order=array_order)
         output = xp.empty(x.shape, dtype=self.output, order=array_order)
@@ -604,7 +634,8 @@ class TestSplineFilter1d:
 
 
 @testing.parameterize(*testing.product({
-    'mode': ['mirror', 'wrap', 'reflect'],
+    # these 3 modes have analytical spline boundary conditions
+    'mode': ['mirror', 'grid-wrap', 'reflect'],
     'order': [0, 1, 2, 3, 4, 5],
     'dtype': [numpy.uint8, numpy.float64],
     'output': [numpy.float64, numpy.float32],
@@ -614,6 +645,8 @@ class TestSplineFilter1d:
 class TestSplineFilter:
     @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
     def test_spline_filter(self, xp, scp):
+        if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
+            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
         if self.order < 2:
             with pytest.raises(RuntimeError):
@@ -626,6 +659,8 @@ class TestSplineFilter:
     @testing.for_CF_orders(name='array_order')
     @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
     def test_spline_filter_with_output(self, xp, scp, array_order):
+        if self.mode == 'grid-wrap' and scipy_version < '1.6.0':
+            pytest.skip("testing mode grid-wrap requires scipy >= 1.6.0")
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp,
                                   order=array_order)
         output = xp.empty(x.shape, dtype=self.output, order=array_order)

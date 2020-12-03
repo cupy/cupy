@@ -25,13 +25,10 @@ def _check_parameter(func_name, order, mode):
         # instead of ValueError.
         raise NotImplementedError('spline order is not supported')
 
-    if mode in ('reflect', 'wrap'):
-        raise NotImplementedError('\'{}\' mode is not supported. See '
-                                  'https://github.com/scipy/scipy/issues/8465'
-                                  .format(mode))
-    elif mode not in ('constant', 'nearest', 'mirror', 'opencv',
+    if mode not in ('constant', 'grid-constant', 'nearest', 'mirror',
+                      'reflect', 'grid-mirror', 'wrap', 'grid-wrap', 'opencv',
                       '_opencv_edge'):
-        raise ValueError('boundary mode is not supported')
+        raise ValueError('boundary mode ({}) is not supported'.format(mode))
 
 
 def _get_spline_output(input, output):

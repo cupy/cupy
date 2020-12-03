@@ -42,8 +42,6 @@ def _causal_init_code(mode):
 
     c is a 1d array of length n and z is a filter pole
     """
-    if mode in ["nearest", "constant"]:
-        mode = "mirror"
     code = """
         // causal init for mode={mode}""".format(
         mode=mode
@@ -60,7 +58,7 @@ def _causal_init_code(mode):
             z_i *= z;
         }}
         c[0] /= 1 - z_n_1 * z_n_1;"""
-    elif mode == "wrap":
+    elif mode == "grid-wrap":
         code += """
         z_i = z;
 
@@ -93,8 +91,6 @@ def _anticausal_init_code(mode):
 
     c is a 1d array of length n and z is a filter pole
     """
-    if mode in ["nearest", "constant"]:
-        mode = "mirror"
     code = """
         // anti-causal init for mode={mode}""".format(
         mode=mode
@@ -104,7 +100,7 @@ def _anticausal_init_code(mode):
         c[(n - 1) * element_stride] = (
             z * c[(n - 2) * element_stride] +
             c[(n - 1) * element_stride]) * z / (z * z - 1);"""
-    elif mode == "wrap":
+    elif mode == "grid-wrap":
         code += """
         z_i = z;
 
@@ -119,6 +115,20 @@ def _anticausal_init_code(mode):
     else:
         raise ValueError("invalid mode: {}".format(mode))
     return code
+
+
+def _get_spline_mode(mode):
+    """spline boundary mode for interpolation with order >= 2."""
+    if mode in ["mirror", "reflect", "grid-wrap"]:
+        # exact analytic boundary conditions exist for these modes.
+        return mode
+    elif mode == "grid-mirror":
+        # grid-mirror is a synonym for 'reflect'
+        return "reflect"
+    # No exact analytical spline boundary condition implemented. Reflect gives
+    # lower error than using mirror or wrap for mode 'nearest'. Otherwise, a
+    # mirror spline boundary condition is used.
+    return "reflect" if mode == "nearest" else "mirror"
 
 
 def _get_spline1d_code(mode, poles, n_boundary):
@@ -137,12 +147,15 @@ def _get_spline1d_code(mode, poles, n_boundary):
         idx_t i, n = signal_length;
         P z, z_i;""")
 
-    if mode in ["mirror", "constant", "nearest"]:
-        # variables specific to these modes
+    # retrieve the spline boundary extension mode to use
+    mode = _get_spline_mode(mode)
+
+    if mode == "mirror":
+        # variables specific to mirror boundary mode
         code.append("""
         P z_n_1;""")
     elif mode == "reflect":
-        # variables specific to this modes
+        # variables specific to reflect boundary mode
         code.append("""
         P z_n;
         T c0;""")
