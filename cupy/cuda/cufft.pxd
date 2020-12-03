@@ -1,5 +1,6 @@
 from libc.stdint cimport intptr_t
 
+from cupy_backends.cuda.api.runtime cimport DataType
 from cupy.cuda cimport memory
 
 
@@ -74,6 +75,23 @@ cdef class PlanNd:
         readonly memory.MemoryPointer work_area
         readonly tuple shape
         readonly Type fft_type
+        readonly str order
+        readonly int last_axis
+        readonly object last_size
+
+        # TODO(leofang): support multi-GPU transforms
+        readonly list gpus
+
+
+cdef class XtPlanNd:
+    cdef:
+        readonly intptr_t handle
+        readonly memory.MemoryPointer work_area
+        readonly tuple shape
+        #readonly Type fft_type
+        readonly DataType itype
+        readonly DataType otype
+        readonly DataType etype
         readonly str order
         readonly int last_axis
         readonly object last_size
