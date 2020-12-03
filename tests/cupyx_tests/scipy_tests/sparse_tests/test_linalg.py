@@ -557,6 +557,7 @@ class TestGmres(unittest.TestCase):
         with pytest.raises(TypeError):
             sp.linalg.gmres(ng_a, b)
 
+
 @testing.parameterize(*testing.product({
     'dtype': [cupy.float32, cupy.float64, cupy.complex_],
     'outer_modification': ['normal', 'transpose', 'hermitian'],
