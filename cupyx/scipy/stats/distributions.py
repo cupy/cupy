@@ -30,21 +30,23 @@ def entropy(pk, qk=None, base=None, axis=0):
         S (cupy.ndarray): The calculated entropy.
 
     """
-    pk = cupy.asarray(pk)
+    pk = pk.astype(cupy.promote_types(pk.dtype, cupy.float32))
+    pk_sum = cupy.sum(pk, axis=axis, keepdims=True)
     if pk.dtype.kind == 'f':
-        pk /= cupy.sum(pk, axis=axis, keepdims=True)
+        pk /= pk_sum
     else:
-        pk = pk / cupy.sum(pk, axis=axis, keepdims=True)
+        pk = pk / pk_sum
     if qk is None:
         vec = special.entr(pk)
     else:
-        qk = cupy.asarray(qk)
         if qk.shape != pk.shape:
             raise ValueError("qk and pk must have same shape.")
+        qk = qk.astype(cupy.promote_types(qk.dtype, cupy.float32))
+        qk_sum = cupy.sum(qk, axis=axis, keepdims=True)
         if qk.dtype.kind == 'f':
-            qk /= cupy.sum(qk, axis=axis, keepdims=True)
+            qk /= qk_sum
         else:
-            qk = qk / cupy.sum(qk, axis=axis, keepdims=True)
+            qk = qk / qk_sum
         vec = special.rel_entr(pk, qk)
     s = cupy.sum(vec, axis=axis)
     if base is not None:

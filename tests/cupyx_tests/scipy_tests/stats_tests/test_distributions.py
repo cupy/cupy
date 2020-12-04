@@ -110,15 +110,13 @@ class TestEntropy(unittest.TestCase):
                 qk = qk / qk.sum(axis=norm_axis, keepdims=True)
         return scp.stats.entropy(pk, qk=qk, base=base, axis=axis)
 
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-6, rtol=1e-6, scipy_name='scp')
+    #@testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @cupy.testing.for_dtypes('e')
+    @testing.numpy_cupy_allclose(rtol={cupy.float16: 1e-3,
+                                       cupy.float32: 1e-6,
+                                       'default': 1e-12},
+                                 scipy_name='scp')
     def test_entropy(self, xp, scp, dtype):
-        return self._entropy(xp, scp, dtype, self.shape, self.use_qk,
-                             self.base, self.axis, self.normalize)
-
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=5e-3, scipy_name='scp')
-    def test_entropy_float16(self, xp, scp):
-        dtype = numpy.float16
         return self._entropy(xp, scp, dtype, self.shape, self.use_qk,
                              self.base, self.axis, self.normalize)
 
