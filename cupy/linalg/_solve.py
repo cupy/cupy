@@ -1,3 +1,5 @@
+import warnings
+
 import numpy
 from numpy import linalg
 
@@ -185,7 +187,7 @@ def tensorsolve(a, b, axes=None):
     return result.reshape(oldshape)
 
 
-def lstsq(a, b, rcond=1e-15):
+def lstsq(a, b, rcond='warn'):
     """Return the least-squares solution to a linear matrix equation.
 
     Solves the equation `a x = b` by computing a vector `x` that
@@ -224,6 +226,17 @@ def lstsq(a, b, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
+    if rcond == 'warn':
+        warnings.warn(
+            '`rcond` parameter will change to the default of '
+            'machine precision times ``max(M, N)`` where M and N '
+            'are the input matrix dimensions.\n'
+            'To use the future default and silence this warning '
+            'we advise to pass `rcond=None`, to keep using the old, '
+            'explicitly pass `rcond=-1`.',
+            FutureWarning)
+        rcond = -1
+
     _util._assert_cupy_array(a, b)
     _util._assert_rank2(a)
     if b.ndim > 2:
@@ -235,12 +248,19 @@ def lstsq(a, b, rcond=1e-15):
         raise linalg.LinAlgError('Incompatible dimensions')
 
     u, s, vt = cupy.linalg.svd(a, full_matrices=False)
+
+    if rcond is None:
+        rcond = numpy.finfo(s.dtype).eps * max(m, n)
+    elif rcond <= 0 or rcond >= 1:
+        # some doc of gelss/gelsd says "rcond < 0", but it's not true!
+        rcond = numpy.finfo(s.dtype).eps
+
     # number of singular values and matrix rank
     cutoff = rcond * s.max()
     s1 = 1 / s
     sing_vals = s <= cutoff
     s1[sing_vals] = 0
-    rank = s.size - sing_vals.sum()
+    rank = s.size - sing_vals.sum(dtype=numpy.int32)
 
     if b.ndim == 2:
         s1 = cupy.repeat(s1.reshape(-1, 1), b.shape[1], axis=1)
