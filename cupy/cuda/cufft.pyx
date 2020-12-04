@@ -1050,29 +1050,29 @@ cdef class XtPlanNd:
         # TODO(leofang): also check for bf16?
         # https://docs.nvidia.com/cuda/cufft/index.html#bfloat16-precision-transforms
 
-#    def _output_dtype_and_shape(self, a):
-#        shape = list(a.shape)
-#        if self.fft_type == CUFFT_C2C:
-#            dtype = numpy.complex64
-#        elif self.fft_type == CUFFT_R2C:
-#            shape[self.last_axis] = self.last_size
-#            dtype = numpy.complex64
-#        elif self.fft_type == CUFFT_C2R:
-#            shape[self.last_axis] = self.last_size
-#            dtype = numpy.float32
-#        elif self.fft_type == CUFFT_Z2Z:
-#            dtype = numpy.complex128
-#        elif self.fft_type == CUFFT_D2Z:
-#            shape[self.last_axis] = self.last_size
-#            dtype = numpy.complex128
-#        else:  # CUFFT_Z2D
-#            shape[self.last_axis] = self.last_size
-#            dtype = numpy.float64
-#        return tuple(shape), dtype
-#
-#    def get_output_array(self, a, order='C'):
-#        shape, dtype = self._output_dtype_and_shape(a)
-#        return cupy.empty(shape, dtype, order=order)
+    def _output_dtype_and_shape(self, a):
+        shape = list(a.shape)
+        if self.itype != self.otype:  # R2C or C2R
+            shape[self.last_axis] = self.last_size
+        if self.otype == runtime.CUDA_C_16F:
+            # dtype = numpy.complex32
+            raise NotImplementedError('complex32 is not supported yet, please '
+                                      'allocate the output array manually')
+        elif self.otype == runtime.CUDA_C_32F:
+            dtype = numpy.complex64
+        elif self.otype == runtime.CUDA_C_64F:
+            dtype = numpy.complex128
+        elif self.otype == runtime.CUDA_R_16F:
+            dtype = numpy.float16
+        elif self.otype == runtime.CUDA_R_32F:
+            dtype = numpy.float32
+        elif self.otype == runtime.CUDA_R_64F:
+            dtype = numpy.float64
+        return tuple(shape), dtype
+
+    def get_output_array(self, a, order='C'):
+        shape, dtype = self._output_dtype_and_shape(a)
+        return cupy.empty(shape, dtype, order=order)
 
 
 cpdef execC2C(intptr_t plan, intptr_t idata, intptr_t odata, int direction):
