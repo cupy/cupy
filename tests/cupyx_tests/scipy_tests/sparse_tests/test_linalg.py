@@ -669,11 +669,13 @@ class TestSplu(unittest.TestCase):
     n = 10
     density = 0.5
 
-    def _make_matrix(self, dtype, xp, sp):
+    def _make_matrix(self, dtype, xp, sp, density=None):
+        if density is None:
+            density = self.density
         a_shape = (self.n, self.n)
-        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=1)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=2 / self.n)
         mask = testing.shaped_random(a_shape, xp, dtype='f', scale=1)
-        a[mask > self.density] = 0
+        a[mask > density] = 0
         diag = xp.diag(xp.ones((self.n,), dtype=dtype))
         a = a + diag
         if self.format == 'csr':
@@ -694,12 +696,18 @@ class TestSplu(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_factorized(self, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp, sp)
+        return sp.linalg.factorized(a)(b)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_spilu(self, dtype, xp, sp):
         a, b = self._make_matrix(dtype, xp, sp)
         return sp.linalg.spilu(a).solve(b)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_factorized(self, dtype, xp, sp):
-        a, b = self._make_matrix(dtype, xp, sp)
-        return sp.linalg.factorized(a)(b)
+    def test_spilu_0(self, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp, sp, 1.0)
+        return sp.linalg.spilu(a, fill_factor=1).solve(b)

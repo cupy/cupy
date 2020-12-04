@@ -760,7 +760,7 @@ class TestCsrsm2(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'n': [5, 8],
+    'n': [7, 10],
     'level_info': [True, False],
 }))
 @testing.with_requires('scipy')
