@@ -408,6 +408,8 @@ class Test1dCallbacks:
 )
 @testing.with_requires('cython>=0.29.0')
 @testing.gpu
+@pytest.mark.skipif(not sys.platform.startswith('linux'),
+                    reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='hipFFT does not support callbacks')
 class TestNdCallbacks:
