@@ -15,6 +15,7 @@ import cupy
 from cupy.core._kernel import create_ufunc
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._kernel import ufunc  # NOQA
+from cupy.core cimport _scalar
 from cupy.core._ufuncs import elementwise_copy
 from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
@@ -1412,7 +1413,15 @@ cdef class ndarray:
             except AttributeError:
                 return NotImplemented
             for x in inout:
-                if not isinstance(x, _HANDLED_TYPES):
+                # numpy.ndarray is handled and then TypeError is raised due to
+                # implicit host-to-device conversion.
+                # Except for numpy.ndarray, types should be supported by
+                # `_kernel._preprocess_args`.
+                if (
+                        not hasattr(x, '__cuda_array_interface__')
+                        and not type(x) in _scalar.scalar_type_set
+                        and not isinstance(x, numpy.ndarray)
+                ):
                     return NotImplemented
             if name in [
                     'greater', 'greater_equal', 'less', 'less_equal',
@@ -1800,7 +1809,7 @@ cpdef strides_t _get_strides_for_order_K(ndarray x, dtype, shape=None):
     return strides
 
 
-_HANDLED_TYPES = (ndarray, numpy.ndarray, numpy.bool_, numbers.Number)
+_HANDLED_TYPES = (ndarray, numpy.ndarray)
 
 
 # =============================================================================
