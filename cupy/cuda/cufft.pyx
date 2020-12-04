@@ -10,7 +10,7 @@ import cupy
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport stream as stream_module
-from cupy.cuda.device import Device
+from cupy.cuda cimport device
 from cupy.cuda.stream import Event, Stream
 
 
@@ -241,7 +241,7 @@ cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
 
     xtArr_desc.nGPUs = nGPUs
     for i, (gpu, size) in enumerate(zip(gpus, sizes)):
-        with Device(gpu):
+        with device.Device(gpu):
             buf = memory.alloc(size)
         assert gpu == buf.device_id
         xtArr_buffer.append(buf)
@@ -404,7 +404,7 @@ cdef class Plan1d:
         check_result(result)
 
         for i in range(nGPUs):
-            with Device(gpus[i]):
+            with device.Device(gpus[i]):
                 buf = memory.alloc(work_size[i])
                 stream = Stream()
                 event = Event()
@@ -437,7 +437,7 @@ cdef class Plan1d:
 
         assert curr_device in self.gpus
 
-        with Device(curr_device):
+        with device.Device(curr_device):
             for i in self.gpus:
                 scatter_streams.append(Stream())
                 scatter_events.append(Event())
@@ -931,25 +931,29 @@ cdef class XtPlanNd:
 
         # determine input/output/execution types here; note that we don't
         # cimport to_cuda_dtype due to circular dependency
-        # TODO(leofang): do a sanity check here, since not every possible
-        # combination is legit
         from cupy.core._dtype import to_cuda_dtype
-        cdef runtime.DataType itype = to_cuda_dtype(idtype, True)
-        cdef runtime.DataType otype = to_cuda_dtype(odtype, True)
-        cdef runtime.DataType etype = to_cuda_dtype(edtype, True)
+        cdef int itype = to_cuda_dtype(idtype, True)
+        cdef int otype = to_cuda_dtype(odtype, True)
+        cdef int etype = to_cuda_dtype(edtype, True)
 
-        # TODO(leofang): check fp16 and bf16 runtime constraints
-        # https://docs.nvidia.com/cuda/cufft/index.html#half-precision-transforms
-        # https://docs.nvidia.com/cuda/cufft/index.html#bfloat16-precision-transforms
+        length = last_size if last_size is not None else shape[-1]
+        full = 1
+        for s in shape:
+            full *= s
+        try:
+            self._sanity_checks(itype, otype, etype, length, full)
+        except AssertionError:
+            raise ValueError('input/output/execution types mismatch')
 
         if batch == 0:
             work_size = 0
         else:
             with nogil:
-                result = cufftXtMakePlanMany(plan, ndim, shape_ptr,
-                                             inembed_ptr, istride, idist, itype,
-                                             onembed_ptr, ostride, odist, otype,
-                                             batch, &work_size, etype)
+                result = cufftXtMakePlanMany(
+                    plan, ndim, shape_ptr,
+                    inembed_ptr, istride, idist, <runtime.DataType>itype,
+                    onembed_ptr, ostride, odist, <runtime.DataType>otype,
+                    batch, &work_size, <runtime.DataType>etype)
 
             # cufftMakePlanMany could use a large amount of memory
             if result == 2:
@@ -957,9 +961,9 @@ cdef class XtPlanNd:
                 with nogil:
                     result = cufftXtMakePlanMany(
                         plan, ndim, shape_ptr,
-                        inembed_ptr, istride, idist, itype,
-                        onembed_ptr, ostride, odist, otype,
-                        batch, &work_size, etype)
+                        inembed_ptr, istride, idist, <runtime.DataType>itype,
+                        onembed_ptr, ostride, odist, <runtime.DataType>otype,
+                        batch, &work_size, <runtime.DataType>etype)
             check_result(result)
 
         work_area = memory.alloc(work_size)
@@ -969,6 +973,9 @@ cdef class XtPlanNd:
 
         self.shape = tuple(shape)
         #self.fft_type = <Type>fft_type
+        self.itype = itype
+        self.otype = otype
+        self.etype = etype
         self.work_area = work_area
         self.order = order  # either 'C' or 'F'
         self.last_axis = last_axis  # ignored for C2C
@@ -999,6 +1006,49 @@ cdef class XtPlanNd:
         with nogil:
             result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
         XtExec(plan, a.data.ptr, out.data.ptr, direction)
+
+    def _sanity_checks(self, int itype, int otype, int etype,
+                       long long int last_size, long long int full_size):
+        cdef long long int nx = last_size
+        cdef long long int total = full_size
+
+        # not every possible type combination is legit
+        # C2C
+        if itype == runtime.CUDA_C_16F and otype == runtime.CUDA_C_16F:
+            assert etype == runtime.CUDA_C_16F
+        elif itype == runtime.CUDA_C_32F and otype == runtime.CUDA_C_32F:
+            assert etype == runtime.CUDA_C_32F
+        elif itype == runtime.CUDA_C_64F and otype == runtime.CUDA_C_64F:
+            assert etype == runtime.CUDA_C_64F
+        # C2R
+        elif itype == runtime.CUDA_C_16F and otype == runtime.CUDA_R_16F:
+            assert etype == runtime.CUDA_C_16F
+        elif itype == runtime.CUDA_C_32F and otype == runtime.CUDA_R_32F:
+            assert etype == runtime.CUDA_C_32F
+        elif itype == runtime.CUDA_C_64F and otype == runtime.CUDA_R_64F:
+            assert etype == runtime.CUDA_C_64F
+        # R2C
+        elif itype == runtime.CUDA_R_16F and otype == runtime.CUDA_C_16F:
+            assert etype == runtime.CUDA_C_16F
+        elif itype == runtime.CUDA_R_32F and otype == runtime.CUDA_C_32F:
+            assert etype == runtime.CUDA_C_32F
+        elif itype == runtime.CUDA_R_64F and otype == runtime.CUDA_C_64F:
+            assert etype == runtime.CUDA_C_64F
+        else:
+            assert False
+
+        # check fp16 runtime constraints
+        # https://docs.nvidia.com/cuda/cufft/index.html#half-precision-transforms
+        if etype == runtime.CUDA_C_16F:
+            if int(device.get_compute_capability()) < 53:
+                raise RuntimeError("this device doesn't support complex32 FFT")
+            if (nx & (nx - 1)) != 0:
+                raise ValueError('size must be power of 2')
+            if total > 4000000000:
+                raise ValueError('input array too large')
+            # TODO(leofang): check if multi-GPU is requested
+        # TODO(leofang): also check for bf16?
+        # https://docs.nvidia.com/cuda/cufft/index.html#bfloat16-precision-transforms
 
 #    def _output_dtype_and_shape(self, a):
 #        shape = list(a.shape)

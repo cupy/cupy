@@ -1,6 +1,5 @@
 from libc.stdint cimport intptr_t
 
-from cupy_backends.cuda.api.runtime cimport DataType
 from cupy.cuda cimport memory
 
 
@@ -89,9 +88,9 @@ cdef class XtPlanNd:
         readonly memory.MemoryPointer work_area
         readonly tuple shape
         #readonly Type fft_type
-        readonly DataType itype
-        readonly DataType otype
-        readonly DataType etype
+        readonly int itype
+        readonly int otype
+        readonly int etype
         readonly str order
         readonly int last_axis
         readonly object last_size
