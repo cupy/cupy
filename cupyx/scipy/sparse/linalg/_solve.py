@@ -206,6 +206,28 @@ class SuperLU():
         return x
 
 
+def factorized(A):
+    """Return a function for solving a sparse linear system, with A pre-factorized.
+
+    Args:
+        A (cupyx.scipy.sparse.spmatrix): Sparse matrix to factorize.
+
+    Returns:
+        callable: a function to solve the linear system of equations given in
+            ``A``.
+
+    Note:
+        This function computes LU decomposition of a sparse matrix on the CPU
+        using `scipy.sparse.linalg.splu`. Therefore, LU decomposition is not
+        accelerated on the GPU. On the other hand, the computation of solving
+        linear equations using the method returned by this function is
+        performed on the GPU.
+
+    .. seealso:: :func:`scipy.sparse.linalg.factorized`
+    """
+    return splu(A).solve
+
+
 def splu(A, permc_spec=None, diag_pivot_thresh=None, relax=None,
          panel_size=None, options={}):
     """Computes the LU decomposition of a sparse square matrix.
@@ -247,5 +269,55 @@ def splu(A, permc_spec=None, diag_pivot_thresh=None, relax=None,
     a = scipy.sparse.csc_matrix((data, (row, col)), shape=A.shape)
     a_inv = scipy.sparse.linalg.splu(
         a, permc_spec=permc_spec, diag_pivot_thresh=diag_pivot_thresh,
+        relax=relax, panel_size=panel_size, options=options)
+    return SuperLU(a_inv)
+
+
+def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
+          permc_spec=None, diag_pivot_thresh=None, relax=None,
+          panel_size=None, options={}):
+    """Computes the incomplete LU decomposition of a sparse square matrix.
+
+    Args:
+        A (cupyx.scipy.sparse.spmatrix): Sparse matrix to factorize.
+        drop_tol (float): (For further augments, see
+            :func:`scipy.sparse.linalg.spilu`)
+        fill_factor (float):
+        drop_rule (str):
+        permc_spec (str):
+        diag_pivot_thresh (float):
+        relax (int):
+        panel_size (int):
+        options (dict):
+
+    Returns:
+        cupyx.scipy.sparse.linalg.SuperLU:
+            Object which has a ``solve`` method.
+
+    Note:
+        This function computes incomplete LU decomposition of a sparse matrix
+        on the CPU using `scipy.sparse.linalg.spilu`. Therefore, incomplete LU
+        decomposition is not accelerated on the GPU. On the other hand, the
+        computation of solving linear equations using the ``solve`` method,
+        which this function returns, is performed on the GPU.
+
+    .. seealso:: :func:`scipy.sparse.linalg.spilu`
+    """
+    if not sparse.isspmatrix(A):
+        raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
+    if A.shape[0] != A.shape[1]:
+        raise ValueError('A must be a square matrix (A.shape: {})'
+                         .format(A.shape))
+    if A.dtype.char not in 'fdFD':
+        raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
+
+    A = A.tocoo()
+    data = cupy.asnumpy(A.data)
+    row = cupy.asnumpy(A.row)
+    col = cupy.asnumpy(A.col)
+    a = scipy.sparse.csc_matrix((data, (row, col)), shape=A.shape)
+    a_inv = scipy.sparse.linalg.spilu(
+        a, fill_factor=fill_factor, drop_tol=drop_tol, drop_rule=drop_rule,
+        permc_spec=permc_spec, diag_pivot_thresh=diag_pivot_thresh,
         relax=relax, panel_size=panel_size, options=options)
     return SuperLU(a_inv)
