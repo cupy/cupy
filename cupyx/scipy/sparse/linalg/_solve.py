@@ -206,6 +206,63 @@ class SuperLU():
         return x
 
 
+class CusparseLU():
+
+    def __init__(self, a):
+        """Incomplete LU factorization of a sparse matrix.
+
+        Args:
+            a (cupyx.scipy.sparse.csr_matrix): Incomplete LU factorization of a
+                sparse matrix, computed by `cusparse.csrilu02`.
+        """
+        if not sparse.isspmatrix_csr(a):
+            raise TypeError('a must be cupyx.scipy.sparse.csr_matrix')
+
+        self.shape = a.shape
+        self.nnz = a.nnz
+        self.dtype = a.dtype
+        self.LU = a
+
+    def solve(self, rhs, trans='N'):
+        """Solves linear system of equations with one or several right-hand sides.
+
+        Args:
+            rhs (cupy.ndarray): Right-hand side(s) of equation with dimension
+                ``(M)`` or ``(M, K)``.
+            trans (str): 'N', 'T' or 'H'.
+                'N': Solves ``A * x = rhs``.
+                'T': Solves ``A.T * x = rhs``.
+                'H': Solves ``A.conj().T * x = rhs``.
+
+        Returns:
+            cupy.ndarray:
+                Solution vector(s)
+        """
+        if not isinstance(rhs, cupy.ndarray):
+            raise TypeError('ojb must be cupy.ndarray')
+        if rhs.ndim not in (1, 2):
+            raise ValueError('rhs.ndim must be 1 or 2 (actual: {})'.
+                             format(rhs.ndim))
+        if rhs.shape[0] != self.shape[0]:
+            raise ValueError('shape mismatch (self.shape: {}, rhs.shape: {})'
+                             .format(self.shape, rhs.shape))
+        if trans not in ('N', 'T', 'H'):
+            raise ValueError('trans must be \'N\', \'T\', or \'H\'')
+
+        x = rhs.astype(self.dtype, order='F')
+        if trans == 'N':
+            cusparse.csrsm2(self.LU, x, lower=True, unit_diag=True,
+                            transa=trans, blocking=True)
+            cusparse.csrsm2(self.LU, x, lower=False, unit_diag=False,
+                            transa=trans, blocking=True)
+        else:
+            cusparse.csrsm2(self.LU, x, lower=False, unit_diag=False,
+                            transa=trans, blocking=True)
+            cusparse.csrsm2(self.LU, x, lower=True, unit_diag=True,
+                            transa=trans, blocking=True)
+        return x
+
+
 def factorized(A):
     """Return a function for solving a sparse linear system, with A pre-factorized.
 
@@ -292,10 +349,14 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
 
     Note:
         This function computes incomplete LU decomposition of a sparse matrix
-        on the CPU using `scipy.sparse.linalg.spilu`. Therefore, incomplete LU
-        decomposition is not accelerated on the GPU. On the other hand, the
-        computation of solving linear equations using the ``solve`` method,
-        which this function returns, is performed on the GPU.
+        on the CPU using `scipy.sparse.linalg.spilu` (unless you set
+        ``fill_factor`` to ``1``). Therefore, incomplete LU decomposition is
+        not accelerated on the GPU. On the other hand, the computation of
+        solving linear equations using the ``solve`` method, which this
+        function returns, is performed on the GPU.
+
+        If you set ``fill_factor`` to ``1``, this function computes incomplete
+        LU decomposition on the GPU, but without fill-in or pivoting.
 
     .. seealso:: :func:`scipy.sparse.linalg.spilu`
     """
@@ -306,6 +367,15 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
                          .format(A.shape))
     if A.dtype.char not in 'fdFD':
         raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
+
+    if fill_factor == 1:
+        # computes ILU(0) on the GPU using cuSparse functions
+        if not sparse.isspmatrix_csr(A):
+            a = A.tocsr()
+        else:
+            a = A.copy()
+        cusparse.csrilu02(a)
+        return CusparseLU(a)
 
     a = A.get().tocsc()
     a_inv = scipy.sparse.linalg.spilu(

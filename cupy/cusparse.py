@@ -1571,7 +1571,7 @@ def csrilu02(a, level_info=False):
         (only ILU(0) is supported) nor pivoting.
     """
     if not check_availability('csrilu02'):
-        raise RuntimeError('csrsm2 is not available.')
+        raise RuntimeError('csrilu02 is not available.')
 
     if not cupyx.scipy.sparse.isspmatrix_csr(a):
         raise TypeError('a must be CSR sparse matrix')
