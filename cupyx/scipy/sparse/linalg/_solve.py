@@ -262,11 +262,7 @@ def splu(A, permc_spec=None, diag_pivot_thresh=None, relax=None,
     if A.dtype.char not in 'fdFD':
         raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
 
-    A = A.tocoo()
-    data = cupy.asnumpy(A.data)
-    row = cupy.asnumpy(A.row)
-    col = cupy.asnumpy(A.col)
-    a = scipy.sparse.csc_matrix((data, (row, col)), shape=A.shape)
+    a = A.get().tocsc()
     a_inv = scipy.sparse.linalg.splu(
         a, permc_spec=permc_spec, diag_pivot_thresh=diag_pivot_thresh,
         relax=relax, panel_size=panel_size, options=options)
@@ -311,11 +307,7 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
     if A.dtype.char not in 'fdFD':
         raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
 
-    A = A.tocoo()
-    data = cupy.asnumpy(A.data)
-    row = cupy.asnumpy(A.row)
-    col = cupy.asnumpy(A.col)
-    a = scipy.sparse.csc_matrix((data, (row, col)), shape=A.shape)
+    a = A.get().tocsc()
     a_inv = scipy.sparse.linalg.spilu(
         a, fill_factor=fill_factor, drop_tol=drop_tol, drop_rule=drop_rule,
         permc_spec=permc_spec, diag_pivot_thresh=diag_pivot_thresh,
