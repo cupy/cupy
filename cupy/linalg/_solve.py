@@ -138,10 +138,11 @@ def _solve(a, b, cublas_handle, cusolver_handle):
     # Explicitly free the space allocated by ormqr
     del workspace
     # 3. trsm (X = R^{-1} * (Q^T * B))
+    one = numpy.array(1, dtype=dtype)
     trsm(
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_FILL_MODE_UPPER,
         cublas.CUBLAS_OP_N, cublas.CUBLAS_DIAG_NON_UNIT,
-        m, k, 1, a.data.ptr, m, b.data.ptr, m)
+        m, k, one.ctypes.data, a.data.ptr, m, b.data.ptr, m)
     return b
 
 

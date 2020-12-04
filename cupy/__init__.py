@@ -712,6 +712,7 @@ from cupy._statistics.order import nanmax  # NOQA
 from cupy._statistics.order import nanmin  # NOQA
 from cupy._statistics.order import percentile  # NOQA
 from cupy._statistics.order import ptp  # NOQA
+from cupy._statistics.order import quantile  # NOQA
 
 from cupy._statistics.meanvar import median  # NOQA
 from cupy._statistics.meanvar import average  # NOQA

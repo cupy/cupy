@@ -564,7 +564,37 @@ cublasStatus_t cublasDgeam(
     return hipblasDgeam(handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb), m, n, alpha, A, lda, beta, B, ldb, C, ldc);
 }
 
+cublasStatus_t cublasCgeam(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, const cuComplex *alpha,
+        const cuComplex *A, int lda, const cuComplex *beta, const cuComplex *B, int ldb,
+        cuComplex *C, int ldc) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+
+cublasStatus_t cublasZgeam(
+        cublasHandle_t handle,
+        cublasOperation_t transa, cublasOperation_t transb,
+        int m, int n, const cuDoubleComplex *alpha,
+        const cuDoubleComplex *A, int lda, const cuDoubleComplex *beta, const cuDoubleComplex *B, int ldb,
+	cuDoubleComplex *C, int ldc) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+
 cublasStatus_t cublasSdgmm(...) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+
+cublasStatus_t cublasDdgmm(...) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+
+cublasStatus_t cublasCdgmm(...) {
+    return HIPBLAS_STATUS_NOT_SUPPORTED;
+}
+
+cublasStatus_t cublasZdgmm(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 
