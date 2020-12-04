@@ -894,6 +894,13 @@ cdef class XtPlanNd:
                  int batch, edtype, *,
                  str order, int last_axis, last_size):
         # Note: we don't pass in fft_type here because it's useless
+
+        # Eliminate dead code to avoid providing stubs (cupy/cupy#4393)
+        if runtime._is_hip_environment:
+            raise RuntimeError('HIP does not support cufftXt plans')
+        if CUDA_VERSION == 0:
+            raise RuntimeError('RTD')
+
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, i, result
@@ -961,12 +968,9 @@ cdef class XtPlanNd:
                         batch, &work_size, etype)
             check_result(result)
 
-        # TODO: for CUDA>=9.2 could also allow setting a work area policy
-        # result = cufftXtSetWorkAreaPolicy(plan, policy, &work_size)
-
         work_area = memory.alloc(work_size)
         with nogil:
-            result = cufftSetWorkArea(plan, <void *>(work_area.ptr))
+            result = cufftSetWorkArea(plan, <void*>(work_area.ptr))
         check_result(result)
 
         self.shape = tuple(shape)
