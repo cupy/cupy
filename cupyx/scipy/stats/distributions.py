@@ -1,5 +1,4 @@
 import math
-import numpy
 
 import cupy
 from cupyx.scipy import special
@@ -18,19 +17,19 @@ def _normalize(x, axis):
 def entropy(pk, qk=None, base=None, axis=0):
     """Calculate the entropy of a distribution for given probability values.
 
-    If only probabilities `pk` are given, the entropy is calculated as
+    If only probabilities ``pk`` are given, the entropy is calculated as
     ``S = -sum(pk * log(pk), axis=axis)``.
 
-    If `qk` is not None, then compute the Kullback-Leibler divergence
+    If ``qk`` is not None, then compute the Kullback-Leibler divergence
     ``S = sum(pk * log(pk / qk), axis=axis)``.
 
-    This routine will normalize `pk` and `qk` if they don't sum to 1.
+    This routine will normalize ``pk`` and ``qk`` if they don't sum to 1.
 
     Args:
-        pk (sequence): Defines the (discrete) distribution. ``pk[i]`` is the
+        pk (ndarray): Defines the (discrete) distribution. ``pk[i]`` is the
             (possibly unnormalized) probability of event ``i``.
-        qk (sequence, optional): Sequence against which the relative entropy is
-            computed. Should be in the same format as `pk`.
+        qk (ndarray, optional): Sequence against which the relative entropy is
+            computed. Should be in the same format as ``pk``.
         base (float, optional): The logarithmic base to use, defaults to ``e``
             (natural logarithm).
         axis (int, optional): The axis along which the entropy is calculated.

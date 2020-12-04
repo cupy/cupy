@@ -115,11 +115,11 @@ class TestEntropy(unittest.TestCase):
 
         float_type = xp.float32 if pk.dtype.char in 'ef' else xp.float64
         if res.ndim > 0:
-            # get float32 output for float16 or float32 input
+            # verify expected dtype
             assert res.dtype == float_type
 
-        # we need to manually cast back to the floating precision of the
-        # input so that the correct rtol is used by numpy_cupy_allclose.
+        # Cast back to the floating precision of the input so that the
+        # correct rtol is used by numpy_cupy_allclose
         res = xp.asarray(res, xp.float16 if is_float16 else float_type)
         return res
 
