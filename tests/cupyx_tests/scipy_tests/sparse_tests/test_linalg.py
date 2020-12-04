@@ -253,9 +253,9 @@ class TestSvds(unittest.TestCase):
     'atol': [None, 'select-by-dtype'],
     'b_ndim': [1, 2],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 @testing.gpu
-class TestCg(unittest.TestCase):
+class TestCg:
     n = 30
     density = 0.33
     _atol = {'f': 1e-5, 'd': 1e-12}
@@ -305,31 +305,14 @@ class TestCg(unittest.TestCase):
         a, M = self._make_matrix(dtype, xp)
         return self._test_cg(dtype, xp, sp, a, M)
 
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csr(self, dtype, xp, sp):
+    def test_sparse(self, format, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
+        a = sp.coo_matrix(a).asformat(format)
         if M is not None:
-            M = sp.csr_matrix(M)
-        return self._test_cg(dtype, xp, sp, a, M)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csc(self, dtype, xp, sp):
-        a, M = self._make_matrix(dtype, xp)
-        a = sp.csc_matrix(a)
-        if M is not None:
-            M = sp.csc_matrix(M)
-        return self._test_cg(dtype, xp, sp, a, M)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_coo(self, dtype, xp, sp):
-        a, M = self._make_matrix(dtype, xp)
-        a = sp.coo_matrix(a)
-        if M is not None:
-            M = sp.coo_matrix(M)
+            M = sp.coo_matrix(M).asformat(format)
         return self._test_cg(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
@@ -406,7 +389,7 @@ class TestCg(unittest.TestCase):
 }))
 @testing.with_requires('scipy>=1.4')
 @testing.gpu
-class TestGmres(unittest.TestCase):
+class TestGmres:
     n = 30
     density = 0.2
     _atol = {'f': 1e-5, 'd': 1e-12}
@@ -457,31 +440,14 @@ class TestGmres(unittest.TestCase):
         a, M = self._make_matrix(dtype, xp)
         return self._test_gmres(dtype, xp, sp, a, M)
 
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csr(self, dtype, xp, sp):
+    def test_sparse(self, format, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
+        a = sp.coo_matrix(a).asformat(format)
         if M is not None:
-            M = sp.csr_matrix(M)
-        return self._test_gmres(dtype, xp, sp, a, M)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csc(self, dtype, xp, sp):
-        a, M = self._make_matrix(dtype, xp)
-        a = sp.csc_matrix(a)
-        if M is not None:
-            M = sp.csc_matrix(M)
-        return self._test_gmres(dtype, xp, sp, a, M)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_coo(self, dtype, xp, sp):
-        a, M = self._make_matrix(dtype, xp)
-        a = sp.coo_matrix(a)
-        if M is not None:
-            M = sp.coo_matrix(M)
+            M = sp.coo_matrix(M).asformat(format)
         return self._test_gmres(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
