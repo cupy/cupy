@@ -5,6 +5,16 @@ import cupy
 from cupyx.scipy import special
 
 
+def _normalize(x, axis):
+    """Normalize, preserving floating point precision of x."""
+    x_sum = x.sum(axis=axis, keepdims=True)
+    if x.dtype.kind == 'f':
+        x /= x_sum
+    else:
+        x = x / x_sum
+    return x
+
+
 def entropy(pk, qk=None, base=None, axis=0):
     """Calculate the entropy of a distribution for given probability values.
 
@@ -30,28 +40,21 @@ def entropy(pk, qk=None, base=None, axis=0):
         S (cupy.ndarray): The calculated entropy.
 
     """
-    pk = pk.astype(cupy.promote_types(pk.dtype, cupy.float32))
-    pk_sum = cupy.sum(pk, axis=axis, keepdims=True)
-    if pk.dtype.kind == 'f':
-        pk /= pk_sum
-    else:
-        pk = pk / pk_sum
+    if pk.dtype.kind == 'c' or qk is not None and qk.dtype.kind == 'c':
+        raise TypeError("complex dtype not supported")
+
+    float_type = cupy.float32 if pk.dtype.char in 'ef' else cupy.float64
+    pk = pk.astype(float_type, copy=False)
+    pk = _normalize(pk, axis)
     if qk is None:
         vec = special.entr(pk)
     else:
         if qk.shape != pk.shape:
             raise ValueError("qk and pk must have same shape.")
-        qk = qk.astype(cupy.promote_types(qk.dtype, cupy.float32))
-        qk_sum = cupy.sum(qk, axis=axis, keepdims=True)
-        if qk.dtype.kind == 'f':
-            qk /= qk_sum
-        else:
-            qk = qk / qk_sum
+        qk = qk.astype(float_type, copy=False)
+        qk = _normalize(qk, axis)
         vec = special.rel_entr(pk, qk)
     s = cupy.sum(vec, axis=axis)
     if base is not None:
-        if s.ndim == 0:
-            # required to match scipy output dtype
-            s = s.astype(numpy.float64)
         s /= math.log(base)
     return s

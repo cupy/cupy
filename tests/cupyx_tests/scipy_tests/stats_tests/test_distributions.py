@@ -8,6 +8,7 @@ import cupy
 from cupy import testing
 import cupyx.scipy.stats  # NOQA
 from cupyx.scipy import stats
+from cupyx.scipy.stats import distributions
 
 try:
     import scipy.stats  # NOQA
@@ -85,7 +86,7 @@ class TestEntropyBasic(unittest.TestCase):
 
 @testing.parameterize(*(
     testing.product({
-        'shape': [(128, ), (64, 33), (16, 4, 12)],
+        'shape': [(64, ), (16, 15), (14, 4, 10)],
         'base': [None, 10],
         'axis': [None, 0, -1],
         'use_qk': [False, True],
@@ -98,23 +99,34 @@ class TestEntropy(unittest.TestCase):
 
     def _entropy(self, xp, scp, dtype, shape, use_qk, base, axis, normalize):
         pk = testing.shaped_random(shape, xp, dtype=dtype)
+        is_float16 = pk.dtype.char == 'e'
         if use_qk:
             qk = testing.shaped_random(shape, xp, dtype=dtype)
         else:
             qk = None
-        if normalize:
+
+        if normalize and pk.dtype.kind != 'c':
             # if we don't normalize pk and qk, entropy will do it internally
             norm_axis = 0 if axis is None else axis
-            pk = pk / pk.sum(axis=norm_axis, keepdims=True)
+            pk = distributions._normalize(pk, norm_axis)
             if qk is not None:
-                qk = qk / qk.sum(axis=norm_axis, keepdims=True)
-        return scp.stats.entropy(pk, qk=qk, base=base, axis=axis)
+                qk = distributions._normalize(qk, norm_axis)
+        res = scp.stats.entropy(pk, qk=qk, base=base, axis=axis)
 
-    #@testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @cupy.testing.for_dtypes('e')
+        float_type = xp.float32 if pk.dtype.char in 'ef' else xp.float64
+        if res.ndim > 0:
+            # get float32 output for float16 or float32 input
+            assert res.dtype == float_type
+
+        # we need to manually cast back to the floating precision of the
+        # input so that the correct rtol is used by numpy_cupy_allclose.
+        res = xp.asarray(res, xp.float16 if is_float16 else float_type)
+        return res
+
+    @testing.for_all_dtypes(no_float16=True, no_complex=True)
     @testing.numpy_cupy_allclose(rtol={cupy.float16: 1e-3,
                                        cupy.float32: 1e-6,
-                                       'default': 1e-12},
+                                       'default': 1e-15},
                                  scipy_name='scp')
     def test_entropy(self, xp, scp, dtype):
         return self._entropy(xp, scp, dtype, self.shape, self.use_qk,
