@@ -895,12 +895,6 @@ cdef class XtPlanNd:
                  str order, int last_axis, last_size):
         # Note: we don't pass in fft_type here because it's useless
 
-        # Eliminate dead code to avoid providing stubs (cupy/cupy#4393)
-        if runtime._is_hip_environment:
-            raise RuntimeError('HIP does not support cufftXt plans')
-        if CUDA_VERSION == 0:
-            raise RuntimeError('RTD')
-
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, i, result
