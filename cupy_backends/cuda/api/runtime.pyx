@@ -61,6 +61,9 @@ cdef extern from *:
         driver.Stream stream, Error status, void* userData)
     ctypedef StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
 
+    ctypedef void HostFnDef(void* userData)
+    ctypedef HostFnDef* HostFn 'cudaHostFn_t'
+
 
 cdef extern from '../cupy_cuda_runtime.h' nogil:
 
@@ -170,6 +173,7 @@ cdef extern from '../cupy_cuda_runtime.h' nogil:
     int cudaStreamSynchronize(driver.Stream stream)
     int cudaStreamAddCallback(driver.Stream stream, StreamCallback callback,
                               void* userData, unsigned int flags)
+    int cudaLaunchHostFunc(driver.Stream stream, HostFn fn, void* userData)
     int cudaStreamQuery(driver.Stream stream)
     int cudaStreamWaitEvent(driver.Stream stream, driver.Event event,
                             unsigned int flags)
@@ -798,14 +802,39 @@ cdef _streamCallbackFunc(driver.Stream hStream, int status,
     cpython.Py_DECREF(obj)
 
 
+cdef _HostFnFunc(void* func_arg) with gil:
+    obj = <object>func_arg
+    func, arg = obj
+    func(arg)
+    cpython.Py_DECREF(obj)
+
+
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=0):
+    if _is_hip_environment and stream == 0:
+        raise RuntimeError('HIP does not allow adding callbacks to the '
+                           'default (null) stream')
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
     with nogil:
         status = cudaStreamAddCallback(
             <driver.Stream>stream, <StreamCallback>_streamCallbackFunc,
             <void*>func_arg, flags)
+    check_status(status)
+
+
+cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
+    if _is_hip_environment:
+        raise RuntimeError('This feature is not supported on HIP')
+    if CUDA_VERSION < 10000:
+        raise RuntimeError('This feature is only supported on CUDA 10.0+')
+
+    func_arg = (callback, arg)
+    cpython.Py_INCREF(func_arg)
+    with nogil:
+        status = cudaLaunchHostFunc(
+            <driver.Stream>stream, <HostFn>_HostFnFunc,
+            <void*>func_arg)
     check_status(status)
 
 

@@ -222,7 +222,7 @@ class TestLstsq(unittest.TestCase):
         a = cupy.random.rand(*a_shape)
         b = cupy.random.rand(*b_shape)
         with self.assertRaises(numpy.linalg.LinAlgError):
-            cupy.linalg.lstsq(a, b)
+            cupy.linalg.lstsq(a, b, rcond=None)
 
     def test_lstsq_solutions(self):
         # Comapres numpy.linalg.lstsq and cupy.linalg.lstsq solutions for:
@@ -235,13 +235,16 @@ class TestLstsq(unittest.TestCase):
                     seed = i + j + k
                     # check when b has shape (i, k)
                     self.check_lstsq_solution((i, j), (i, k), seed,
-                                              rcond=1e-15)
+                                              rcond=-1)
+                    self.check_lstsq_solution((i, j), (i, k), seed,
+                                              rcond=None)
                     self.check_lstsq_solution((i, j), (i, k), seed,
                                               rcond=0.5)
                     self.check_lstsq_solution((i, j), (i, k), seed,
                                               rcond=1e-7, singular=True)
                 # check when b has shape (i, )
-                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-15)
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=-1)
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=None)
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=0.5)
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-7,
                                           singular=True)
@@ -254,6 +257,14 @@ class TestLstsq(unittest.TestCase):
         self.check_invalid_shapes((2, 2), (10, ))
         self.check_invalid_shapes((3, 3), (2, 2))
         self.check_invalid_shapes((4, 3), (10, 3, 3))
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-3)
+    def test_warn_rcond(self, xp, dtype):
+        a = testing.shaped_random((3, 3), xp, dtype)
+        b = testing.shaped_random((3,), xp, dtype)
+        with testing.assert_warns(FutureWarning):
+            return xp.linalg.lstsq(a, b)
 
 
 @testing.gpu
