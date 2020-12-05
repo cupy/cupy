@@ -208,6 +208,10 @@ config = [  # TODO: The name `config` is fine?
         'out': None,
         'use_stream': True,
     }),
+    ('cusparse<t>nnz_compress', {
+        'out': None,
+        'use_stream': False,
+    }),
     # ...
 
     # cuSPARSE Generic API - Sparse Vector APIs
@@ -302,7 +306,10 @@ def transpile_type_name(env, node):
     if isinstance(node, c_ast.TypeDecl):
         assert len(node.type.names) == 1
         name = node.type.names[0]
-        if is_opaque_data_structure(name, env):
+        if is_special_type(name, env):
+            name1 = special_type_transpiled(name, env)
+            return qualified(name1)
+        elif is_opaque_data_structure(name, env):
             m = re.match(r'cusparse([A-Z].*)_t', name)
             if m is not None:
                 return  qualified(m[1])
@@ -326,6 +333,8 @@ def erased_type_name(env, node):
         name = node.type.names[0]
         if name == 'cusparseHandle_t':
             return 'intptr_t'
+        elif is_special_type(name, env):
+            return special_type_erased(name, env)
         elif is_opaque_data_structure(name, env):
             return 'size_t'
         elif is_enum(name, env):
@@ -420,6 +429,23 @@ def deref_var_name(name):
         return name
 
 
+def transpile_type_conversion(env, node, var_name):
+    if isinstance(node, c_ast.TypeDecl):
+        assert len(node.type.names) == 1
+        type_name = node.type.names[0]
+        if is_special_type(type_name, env):
+            conversion = special_type_conversion(type_name, env)
+            return conversion(var_name)
+        else:
+            cast_type = transpile_type_name(env, node)
+            return '<{}>{}'.format(cast_type, var_name)
+    elif isinstance(node, c_ast.PtrDecl):
+        cast_type = transpile_type_name(env, node)
+        return '<{}>{}'.format(cast_type, var_name)
+    else:
+        assert False
+
+
 def transpile_wrapper_call(env, config, node):
     def argaux(env, config, node):
         name = node.name
@@ -430,8 +456,7 @@ def transpile_wrapper_call(env, config, node):
         else:
             erased_type = erased_type_name(env, node.type)
             if erased_type is not None:
-                cast_type = transpile_type_name(env, node.type)
-                return '<{}>{}'.format(cast_type, name)
+                return transpile_type_conversion(env, node.type, name)
             else:
                 return name
     assert isinstance(node.type, c_ast.FuncDecl)
@@ -512,26 +537,48 @@ def validate_config(config):
     pass
 
 
+special_types = {
+    'cuComplex': {
+        'conversion': 'complex_to_cuda({})'.format,
+        'transpiled': 'cuComplex',
+        'erased': 'complex',
+    },
+    'cuDoubleComplex': {
+        'conversion': 'double_complex_to_cuda({})'.format,
+        'transpiled': 'cuDoubleComplex',
+        'erased': 'double complex',
+    },
+}
+
 def make_environment(nodes):
+    specials = special_types
     opaques = collect_opaque_decls(nodes)
     enums = collect_enum_decls(nodes)
     funcs = collect_func_decls(nodes)
-    return ('environment', opaques, enums, funcs)
+    return ('environment', specials, opaques, enums, funcs)
 
 
-def environment_opaques(env):
+def environment_specials(env):
     assert env[0] == 'environment'
     return env[1]
 
-
-def environment_enums(env):
+def environment_opaques(env):
     assert env[0] == 'environment'
     return env[2]
 
 
-def environment_funcs(env):
+def environment_enums(env):
     assert env[0] == 'environment'
     return env[3]
+
+
+def environment_funcs(env):
+    assert env[0] == 'environment'
+    return env[4]
+
+
+def is_special_type(name, env):
+    return name in environment_specials(env)
 
 
 def is_opaque_data_structure(name, env):
@@ -540,6 +587,22 @@ def is_opaque_data_structure(name, env):
 
 def is_enum(name, env):
     return name in (n.name for n in environment_enums(env))
+
+
+def query_special_type(name, env):
+    return environment_specials(env)[name]
+
+
+def special_type_conversion(name, env):
+    return query_special_type(name, env)['conversion']
+
+
+def special_type_transpiled(name, env):
+    return query_special_type(name, env)['transpiled']
+
+
+def special_type_erased(name, env):
+    return query_special_type(name, env)['erased']
 
 
 def query_func_decls(name, env):

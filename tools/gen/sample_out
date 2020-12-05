@@ -110,6 +110,10 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseCnnz(Handle handle, Direction dirA, int m, int n, const MatDescr descrA, const cuComplex *A, int lda, int *nnzPerRowCol, int *nnzTotalDevHostPtr)
     Status cusparseZnnz(Handle handle, Direction dirA, int m, int n, const MatDescr descrA, const cuDoubleComplex *A, int lda, int *nnzPerRowCol, int *nnzTotalDevHostPtr)
     Status cusparseXcoosortByRow(Handle handle, int m, int n, int nnz, int *cooRowsA, int *cooColsA, int *P, void *pBuffer)
+    Status cusparseSnnz_compress(Handle handle, int m, const MatDescr descr, const float *csrSortedValA, const int *csrSortedRowPtrA, int *nnzPerRow, int *nnzC, float tol)
+    Status cusparseDnnz_compress(Handle handle, int m, const MatDescr descr, const double *csrSortedValA, const int *csrSortedRowPtrA, int *nnzPerRow, int *nnzC, double tol)
+    Status cusparseCnnz_compress(Handle handle, int m, const MatDescr descr, const cuComplex *csrSortedValA, const int *csrSortedRowPtrA, int *nnzPerRow, int *nnzC, cuComplex tol)
+    Status cusparseZnnz_compress(Handle handle, int m, const MatDescr descr, const cuDoubleComplex *csrSortedValA, const int *csrSortedRowPtrA, int *nnzPerRow, int *nnzC, cuDoubleComplex tol)
 
     # cuSPARSE Generic API - Sparse Vector APIs
     Status cusparseCreateSpVec(SpVecDescr *spVecDescr, int64_t size, int64_t nnz, void *indices, void *values, IndexType idxType, IndexBase idxBase, cudaDataType valueType)
@@ -595,6 +599,22 @@ cpdef znnz(intptr_t handle, size_t dirA, int m, int n, size_t descrA, size_t A, 
 cpdef xcoosortByRow(intptr_t handle, int m, int n, int nnz, size_t cooRowsA, size_t cooColsA, size_t P, size_t pBuffer) except *:
     _setStream(get_handle_name(node))
     status = cusparseXcoosortByRow(<Handle>handle, m, n, nnz, <int *>cooRowsA, <int *>cooColsA, <int *>P, <void *>pBuffer)
+    check_status(status)
+
+cpdef snnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, float tol) except *:
+    status = cusparseSnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const float *>csrSortedValA, <const int *>csrSortedRowPtrA, <int *>nnzPerRow, <int *>nnzC, tol)
+    check_status(status)
+
+cpdef dnnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, double tol) except *:
+    status = cusparseDnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const double *>csrSortedValA, <const int *>csrSortedRowPtrA, <int *>nnzPerRow, <int *>nnzC, tol)
+    check_status(status)
+
+cpdef cnnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, complex tol) except *:
+    status = cusparseCnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const cuComplex *>csrSortedValA, <const int *>csrSortedRowPtrA, <int *>nnzPerRow, <int *>nnzC, complex_to_cuda(tol))
+    check_status(status)
+
+cpdef znnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, double complex tol) except *:
+    status = cusparseZnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const cuDoubleComplex *>csrSortedValA, <const int *>csrSortedRowPtrA, <int *>nnzPerRow, <int *>nnzC, double_complex_to_cuda(tol))
     check_status(status)
 
 
