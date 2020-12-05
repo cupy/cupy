@@ -1152,7 +1152,7 @@ cpdef multi_gpu_execZ2Z(intptr_t plan, intptr_t idata, intptr_t odata,
     check_result(result)
 
 
-cpdef inline XtExec(intptr_t plan, intptr_t idata, intptr_t odata, int direction):
+cpdef XtExec(intptr_t plan, intptr_t idata, intptr_t odata, int direction):
     cdef Handle h = <Handle>plan
     cdef int result
 
