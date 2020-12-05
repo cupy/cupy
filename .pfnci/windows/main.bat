@@ -35,7 +35,7 @@ if "%TARGET%" == "slow" (
   set PYTEST_OPTS=-m "slow"
 )
 call .pfnci\windows\_cache_download.bat
-python -m pytest %PYTEST_OPTS% tests || goto :error
+python -m pytest -rfEX %PYTEST_OPTS% tests || goto :error
 call .pfnci\windows\_cache_upload.bat
 
 
