@@ -16,6 +16,7 @@ config = [  # TODO: The name `config` is fine?
     ('Comment', 'cuSPARSE Management Function'),
     ('cusparseCreate', {
         'out': 'handle',
+        'except?': 0,
         'use_stream': False,
     }),
     ('cusparseDestroy', {
@@ -24,10 +25,12 @@ config = [  # TODO: The name `config` is fine?
     }),
     ('cusparseGetVersion', {
         'out': 'version',
+        'except': -1,
         'use_stream': False,
     }),
     ('cusparseGetPointerMode', {
         'out': 'mode',
+        'except?': 0,
         'use_stream': False,
     }),
     ('cusparseSetPointerMode', {
@@ -36,6 +39,7 @@ config = [  # TODO: The name `config` is fine?
     }),
     ('cusparseGetStream', {
         'out': 'streamId',
+        'except?': 0,
         'use_stream': False,
     }),
     ('cusparseSetStream', {
@@ -47,6 +51,7 @@ config = [  # TODO: The name `config` is fine?
     ('Comment', 'cuSPARSE Helper Function'),
     ('cusparseCreateMatDescr', {
         'out': 'descrA',
+        'except?': 0,
         'use_stream': False,
     }),
     ('cusparseDestroyMatDescr', {
@@ -87,6 +92,7 @@ config = [  # TODO: The name `config` is fine?
     }),
     ('cusparseCreateCsrgemm2Info', {
         'out': 'info',
+        'except?': 0,
         'use_stream': False,
     }),
 
@@ -141,6 +147,7 @@ config = [  # TODO: The name `config` is fine?
     ('Comment', 'cuSPARSE Extra Function'),
     ('cusparse<t>csrgeam2_bufferSizeExt', {
         'out': 'pBufferSizeInBytes',
+        'except?': 0,
         'use_stream': True,
     }),
     ('cusparse<t>csrgeam2', {
@@ -154,6 +161,7 @@ config = [  # TODO: The name `config` is fine?
                  'Incomplete Cholesky Factorization: level 0')),
     ('cusparse<t>csric02_bufferSize', {
         'out': 'pBufferSizeInBytes',
+        'except?': 0,
         'use_stream': True,
     }),
     ('cusparse<t>csric02_analysis', {
@@ -166,6 +174,7 @@ config = [  # TODO: The name `config` is fine?
     }),
     ('cusparseXcsric02_zeroPivot', {
         'out': 'position',
+        'except?': 0,
         'use_stream': False,
     }),
 
@@ -205,6 +214,7 @@ config = [  # TODO: The name `config` is fine?
     ('Comment', 'cuSPARSE Generic API - Sparse Vector APIs'),
     ('cusparseCreateSpVec', {
         'out': 'spVecDescr',
+        'except?': 0,
         'use_stream': False,
     }),
 
@@ -212,6 +222,7 @@ config = [  # TODO: The name `config` is fine?
     ('Comment', 'cuSPARSE Generic API - Dense Vector APIs'),
     ('cusparseCreateDnVec', {
         'out': 'dnVecDescr',
+        'except?': 0,
         'use_stream': False,
     }),
     # ...
@@ -365,14 +376,21 @@ def transpile_wrapper_def(env, config, node):
         if type is None:
             type = transpile_type_name(env, node.type)
         return '{} {}'.format(type, name)
+    def config_except(config):
+        excpt_ret = config.get('except?')
+        if excpt_ret is not None:
+            return 'except? {}'.format(excpt_ret)
+        excpt_ret = config.get('except')
+        if excpt_ret is not None:
+            return 'except {}'.format(excpt_ret)
+        assert False
     assert isinstance(node.type, c_ast.FuncDecl)
     out_name = config.get('out')
     if out_name is None:
         name = transpile_func_name(node)
         args = [argaux(env, p) for p in node.type.args.params]
-        return '{}({})'.format(name, ', '.join(args))
+        return '{}({}) except *'.format(name, ', '.join(args))
     elif out_name == 'Returned':
-        # TODO: except? 0
         ret_type = erased_type_name(env, node.type.type)
         if ret_type is None:
             ret_type = transpile_type_name(env, node.type.type)
@@ -380,7 +398,6 @@ def transpile_wrapper_def(env, config, node):
         args = [argaux(env, p) for p in node.type.args.params]
         return '{} {}({})'.format(ret_type, name, ', '.join(args))
     else:
-        # TODO: except? 0
         out, params = partition(
             lambda p: p.name == out_name, node.type.args.params)
         assert len(out) == 1
@@ -390,7 +407,8 @@ def transpile_wrapper_def(env, config, node):
             ret_type = transpile_type_name(env, out[0].type.type)
         name = transpile_func_name(node)
         args = [argaux(env, p) for p in params]
-        return '{} {}({})'.format(ret_type, name, ', '.join(args))
+        excpt = config_except(config)
+        return '{} {}({}) {}'.format(ret_type, name, ', '.join(args), excpt)
 
 
 def deref_var_name(name):
