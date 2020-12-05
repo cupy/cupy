@@ -87,7 +87,6 @@ cdef class XtPlanNd:
         readonly intptr_t handle
         readonly memory.MemoryPointer work_area
         readonly tuple shape
-        #readonly Type fft_type
         readonly int itype
         readonly int otype
         readonly int etype

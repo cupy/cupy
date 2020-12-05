@@ -891,13 +891,14 @@ cdef class XtPlanNd:
     def __init__(self, shape,
                  inembed, long long int istride, long long int idist, idtype,
                  onembed, long long int ostride, long long int odist, odtype,
-                 int batch, edtype, *,
+                 long long int batch, edtype, *,
                  str order, int last_axis, last_size):
-        # Note: we don't pass in fft_type here because it's useless
+        # Note: we don't pass in fft_type here because it's redundant and
+        # does not cover exotic types like complex32 or bf16
 
         cdef Handle plan
         cdef size_t work_size
-        cdef int ndim, i, result
+        cdef int ndim, result
         cdef vector.vector[long long int] shape_arr = shape
         cdef vector.vector[long long int] inembed_arr
         cdef vector.vector[long long int] onembed_arr
@@ -936,10 +937,11 @@ cdef class XtPlanNd:
         cdef int otype = to_cuda_dtype(odtype, True)
         cdef int etype = to_cuda_dtype(edtype, True)
 
+        cdef long long int length
+        cdef long long int full = 1
+        for length in shape:
+            full *= length
         length = last_size if last_size is not None else shape[-1]
-        full = 1
-        for s in shape:
-            full *= s
         try:
             self._sanity_checks(itype, otype, etype, length, full)
         except AssertionError:
@@ -972,7 +974,6 @@ cdef class XtPlanNd:
         check_result(result)
 
         self.shape = tuple(shape)
-        #self.fft_type = <Type>fft_type
         self.itype = itype
         self.otype = otype
         self.etype = etype
@@ -1009,10 +1010,8 @@ cdef class XtPlanNd:
 
     def _sanity_checks(self, int itype, int otype, int etype,
                        long long int last_size, long long int full_size):
-        cdef long long int nx = last_size
-        cdef long long int total = full_size
-
         # not every possible type combination is legit
+        # TODO(leofang): support bf16?
         # C2C
         if itype == runtime.CUDA_C_16F and otype == runtime.CUDA_C_16F:
             assert etype == runtime.CUDA_C_16F
@@ -1042,9 +1041,9 @@ cdef class XtPlanNd:
         if etype == runtime.CUDA_C_16F:
             if int(device.get_compute_capability()) < 53:
                 raise RuntimeError("this device doesn't support complex32 FFT")
-            if (nx & (nx - 1)) != 0:
+            if (last_size & (last_size - 1)) != 0:
                 raise ValueError('size must be power of 2')
-            if total > 4000000000:
+            if full_size > 4000000000:
                 raise ValueError('input array too large')
             # TODO(leofang): check if multi-GPU is requested
         # TODO(leofang): also check for bf16?
