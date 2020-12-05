@@ -8,170 +8,214 @@ from pycparser import c_ast
 FILENAME = '/usr/local/cuda/include/cusparse.h'
 
 
-config = {
+# functions, orders, configurations
+# The reference and the header have different orders, even different sections.
+# https://docs.nvidia.com/cuda/cusparse/index.html
+config = [  # TODO: The name `config` is fine?
     # cuSPARSE Management Function
-    'cusparseCreate': {
+    ('Comment', 'cuSPARSE Management Function'),
+    ('cusparseCreate', {
         'out': 'handle',
         'use_stream': False,
-    },
-    'cusparseDestroy': {
+    }),
+    ('cusparseDestroy', {
         'out': None,
         'use_stream': False,
-    },
-    'cusparseGetVersion': {
+    }),
+    ('cusparseGetVersion', {
         'out': 'version',
         'use_stream': False,
-    },
-    'cusparseGetPointerMode': {
+    }),
+    ('cusparseGetPointerMode', {
         'out': 'mode',
         'use_stream': False,
-    },
-    'cusparseSetPointerMode': {
+    }),
+    ('cusparseSetPointerMode', {
         'out': None,
         'use_stream': False,
-    },
-    'cusparseGetStream': {
+    }),
+    ('cusparseGetStream', {
         'out': 'streamId',
         'use_stream': False,
-    },
-    'cusparseSetStream': {
+    }),
+    ('cusparseSetStream', {
         'out': None,
         'use_stream': False,
-    },
+    }),
+
     # cuSPARSE Helper Function
-    'cusparseCreateMatDescr': {
+    ('Comment', 'cuSPARSE Helper Function'),
+    ('cusparseCreateMatDescr', {
         'out': 'descrA',
         'use_stream': False,
-    },
-    'cusparseDestroyMatDescr': {
+    }),
+    ('cusparseDestroyMatDescr', {
         'out': None,
         'use_stream': False,
-    },
-    'cusparseGetMatDiagType': {
+    }),
+    ('cusparseGetMatDiagType', {
         'out': 'Returned',
         'use_stream': False,
-    },
-    'cusparseGetMatFillMode': {
+    }),
+    ('cusparseGetMatFillMode', {
         'out': 'Returned',
         'use_stream': False,
-    },
-    'cusparseGetMatIndexBase': {
+    }),
+    ('cusparseGetMatIndexBase', {
         'out': 'Returned',
         'use_stream': False,
-    },
-    'cusparseGetMatType': {
+    }),
+    ('cusparseGetMatType', {
         'out': 'Returned',
         'use_stream': False,
-    },
-    'cusparseSetMatDiagType': {
+    }),
+    ('cusparseSetMatDiagType', {
         'out': None,
         'use_stream': False,
-    },
-    'cusparseSetMatFillMode': {
+    }),
+    ('cusparseSetMatFillMode', {
         'out': None,
         'use_stream': False,
-    },
-    'cusparseSetMatIndexBase': {
+    }),
+    ('cusparseSetMatIndexBase', {
         'out': None,
         'use_stream': False,
-    },
-    'cusparseSetMatType': {
+    }),
+    ('cusparseSetMatType', {
         'out': None,
         'use_stream': False,
-    },
+    }),
+    ('cusparseCreateCsrgemm2Info', {
+        'out': 'info',
+        'use_stream': False,
+    }),
+
     # cuSPARSE Level 1 Function
-    'cusparse<t>axpyi': {
+    ('Comment', 'cuSPARSE Level 1 Function'),
+    ('cusparse<t>axpyi', {
         'out': None,
         'use_stream': True,
-    },
-    'cusparse<t>gthr': {
+    }),
+    ('cusparse<t>gthr', {
         'out': None,
         'use_stream': True,
-    },
-    'cusparse<t>gthrz': {
+    }),
+    ('cusparse<t>gthrz', {
         'out': None,
         'use_stream': True,
-    },
-    'cusparse<t>rtoi': {
+    }),
+    ('cusparse<t>roti', {
         'out': None,
         'use_stream': True,
-    },
-    'cusparse<t>sctr': {
+    }),
+    ('cusparse<t>sctr', {
         'out': None,
         'use_stream': True,
-    },
+    }),
+
     # cuSPARSE Level 2 Function
-    'cusparse<t>bsrmv': {
+    ('Comment', 'cuSPARSE Level 2 Function'),
+    ('cusparse<t>bsrmv', {
         'out': None,
         'use_stream': True,
-    },
-    'cusparse<t>bsrxmv': {
+    }),
+    ('cusparse<t>bsrxmv', {
         'out': None,
         'use_stream': True,
-    },
+    }),
     # ...
+    ('cusparse<t>gemvi', {
+        'out': None,
+        'use_stream': True,
+    }),
+
     # cuSPARSE Level 3 Function
-    'cusparse<t>bsrmm': {
+    ('Comment', 'cuSPARSE Level 3 Function'),
+    ('cusparse<t>bsrmm', {
         'out': None,
         'use_stream': True,
-    },
-    # ...
-    # cuSPARSE Extra Function
-    'cusparse<t>csrgeam2_bufferSizeExt': {
-        'out': 'pBufferSizeInBytes',
-        'use_stream': True,
-    },
-    'cusparse<t>csrgeam2': {
-        'out': None,
-        'use_stream': True,
-    },
+    }),
     # ...
 
-    # cuSPARSE Preconditioners
-    # - Incomplete Cholesky Factrization: level 0
-    'cusparse<t>csric02_bufferSize': {
+    # cuSPARSE Extra Function
+    ('Comment', 'cuSPARSE Extra Function'),
+    ('cusparse<t>csrgeam2_bufferSizeExt', {
         'out': 'pBufferSizeInBytes',
         'use_stream': True,
-    },
-    'cusparse<t>csric02_analysis': {
+    }),
+    ('cusparse<t>csrgeam2', {
+        'out': None,
+        'use_stream': True,
+    }),
+    # ...
+
+    # cuSPARSE Preconditioners - Incomplete Cholesky Factorization: level 0
+    ('Comment', ('cuSPARSE Preconditioners - '
+                 'Incomplete Cholesky Factorization: level 0')),
+    ('cusparse<t>csric02_bufferSize', {
+        'out': 'pBufferSizeInBytes',
+        'use_stream': True,
+    }),
+    ('cusparse<t>csric02_analysis', {
         'out': None,
         'use_stream': False,
-    },
-    'cusparse<t>csric02': {
+    }),
+    ('cusparse<t>csric02', {
         'out': None,
         'use_stream': False,
-    },
-    'cusparseXcsric02_zeroPivot': {
+    }),
+    ('cusparseXcsric02_zeroPivot', {
         'out': 'position',
         'use_stream': False,
-    },
+    }),
+
+    # cuSPARSE Preconditioners - Incomplete LU Factorization: level 0
+    ('Comment', ('cuSPARSE Preconditioners - '
+                 'Incomplete LU Factorization: level 0')),
+    ('cusparse<t>csrilu02_numericBoost', {
+        'out': None,
+        'use_stream': True,
+    }),
     # ...
 
     # cuSPARSE Reordering
+    ('Comment', 'cuSPARSE Reorderings'),
 
     # cuSPARSE Format Conversion
-    'cusparseXcoo2csr': {
+    ('Comment', 'cuSPARSE Format Conversion'),
+    ('cusparseXcoo2csr', {
         'out': None,
         'use_stream': True,
-    },
-    'cusparse<t>dense2csr': {
+    }),
+    ('cusparse<t>dense2csr', {
         'out': None,
         'use_stream': True,
-    },
-    'cusparseXcoosortByRow': {
+    }),
+    ('cusparse<t>nnz', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseXcoosortByRow', {
         'out': None,
         'use_stream': True,
-    },
+    }),
     # ...
 
-    # cuSPARSE Generic API
-    # - Sparse Vector APIs
-    'cusparseCreateSpVec': {
+    # cuSPARSE Generic API - Sparse Vector APIs
+    ('Comment', 'cuSPARSE Generic API - Sparse Vector APIs'),
+    ('cusparseCreateSpVec', {
         'out': 'spVecDescr',
         'use_stream': False,
-    },
+    }),
+
+    # cuSPARSE Generic API - Dense Vector APIs
+    ('Comment', 'cuSPARSE Generic API - Dense Vector APIs'),
+    ('cusparseCreateDnVec', {
+        'out': 'dnVecDescr',
+        'use_stream': False,
+    }),
     # ...
-}
+]
 
 
 def partition(pred, seq):
@@ -181,6 +225,7 @@ def partition(pred, seq):
     return a, b
         
 
+# not used
 def get_config(config, name):
     def possible_generic_func_name(name):
         # Can not determine the data type specifiers ('SDCZ') or the first
@@ -188,9 +233,13 @@ def get_config(config, name):
         return re.sub(r'(cusparse)[SDCZ](.*)', r'\1<t>\2', name)
     config1 = config.get(name)
     if config1 is not None:
-        return config1
+        return config1, None
     name1 = possible_generic_func_name(name)
-    return config.get(name1)
+    config1 = config.get(name1)
+    if config1 is not None:
+        type_spec = name[8]  # one of 'SDCZ'
+        return config.get(name1), type_spec
+    return None
 
 
 def collect_cusparse_decls(nodes):
@@ -223,11 +272,10 @@ def collect_enum_decls(nodes):
     return [n for n in nodes if is_enum(n)]
 
 
-def collect_func_decls(config, nodes):
+def collect_func_decls(nodes):
     def pred(node):
         return (isinstance(node, c_ast.Decl) and
-                isinstance(node.type, c_ast.FuncDecl) and
-                get_config(config, node.name) is not None)
+                isinstance(node.type, c_ast.FuncDecl))
     return [n for n in nodes if pred(n)]
 
 
@@ -284,7 +332,7 @@ def erased_type_name(env, node):
         assert False
 
 
-def transpile_ffi(env, node):
+def transpile_ffi_decl(env, node):
     def argaux(env, node):
         name = node.name
         type = transpile_type_name(env, node.type)
@@ -292,11 +340,22 @@ def transpile_ffi(env, node):
             return '{}{}'.format(type, name)
         else:
             return '{} {}'.format(type, name)
+
     assert isinstance(node.type, c_ast.FuncDecl)
     ret_type = transpile_type_name(env, node.type.type)
     name = node.name
     args = [argaux(env, p) for p in node.type.args.params]
     return '{} {}({})'.format(ret_type, name, ', '.join(args))
+
+
+def transpile_ffi(env, item):
+    head = item[0]
+    if head == 'Comment':
+        comment = item[1]
+        return '\n# ' + comment
+    else:
+        decls = query_func_decls(head, env)
+        return '\n'.join(transpile_ffi_decl(env, decl) for decl in decls)
 
 
 def transpile_wrapper_def(env, config, node):
@@ -363,18 +422,17 @@ def transpile_wrapper_call(env, config, node):
     return '{}({})'.format(name, ', '.join(args))
 
 
-def transpile_wrapper(env, config, node):
+def transpile_wrapper_decl(env, config, node):
     assert isinstance(node.type, c_ast.FuncDecl)
 
-    config1 = get_config(config, node.name)
     code = []
 
     # Function definition
-    def_ = transpile_wrapper_def(env, config1, node)
+    def_ = transpile_wrapper_def(env, config, node)
     code.append('cpdef {}:'.format(def_))
 
     # Allocate space for the value to return
-    out_name = config1.get('out')
+    out_name = config.get('out')
     if out_name is not None and out_name != 'Returned':
         out, params = partition(
             lambda p: p.name == out_name, node.type.args.params)
@@ -385,18 +443,18 @@ def transpile_wrapper(env, config, node):
         code.append('    cdef {} {}'.format(out_type, out_name1))
 
     # Set stream if necessary
-    if config1.get('use_stream', False):
+    if config.get('use_stream', False):
         handle_var = 'get_handle_name(node)'  # FIXME
         code.append('    _setStream({})'.format(handle_var))
 
     if out_name is None or out_name != 'Returned':
         # Call cuSPARSE API and check its status returned
         status_var = 'status'  # assuming cusparse API does not use the name
-        call = transpile_wrapper_call(env, config1, node)
+        call = transpile_wrapper_call(env, config, node)
         code.append('    {} = {}'.format(status_var, call))
         code.append('    check_status({})'.format(status_var))
     elif out_name == 'Returned':
-        call = transpile_wrapper_call(env, config1, node)
+        call = transpile_wrapper_call(env, config, node)
         code.append('    return {}'.format(call))
     else:
         assert False
@@ -414,6 +472,23 @@ def transpile_wrapper(env, config, node):
     return '\n'.join(code)
 
 
+def transpile_wrapper(env, item):
+    head = item[0]
+    if head == 'Comment':
+        comment = item[1]
+        code = []
+        code.append('')
+        code.append('# ' + '-' * len(comment))
+        code.append('# ' + comment)
+        code.append('# ' + '-' * len(comment))
+        return '\n'.join(code)
+    else:
+        decls = query_func_decls(head, env)
+        config = item[1]
+        return '\n\n'.join(
+            transpile_wrapper_decl(env, config, decl) for decl in decls)
+
+
 def validate_config(config):
     # too much, too less
     pass
@@ -422,7 +497,8 @@ def validate_config(config):
 def make_environment(nodes):
     opaques = collect_opaque_decls(nodes)
     enums = collect_enum_decls(nodes)
-    return ('environment', opaques, enums)
+    funcs = collect_func_decls(nodes)
+    return ('environment', opaques, enums, funcs)
 
 
 def environment_opaques(env):
@@ -435,12 +511,33 @@ def environment_enums(env):
     return env[2]
 
 
+def environment_funcs(env):
+    assert env[0] == 'environment'
+    return env[3]
+
+
 def is_opaque_data_structure(name, env):
     return name in (n.name for _, n in environment_opaques(env))
 
 
 def is_enum(name, env):
     return name in (n.name for n in environment_enums(env))
+
+
+def query_func_decls(name, env):
+    def aux(node, t):
+        return node.name == name.replace('<t>', t)
+    nodes = environment_funcs(env)
+    if '<t>' in name:
+        decls = [n for n in nodes for t in 'SDCZ' if aux(n, t)]
+        assert decls != []
+        return decls
+    else:
+        return [next(n for n in nodes if n.name == name)]
+
+
+def indent(code):
+   return '\n'.join('    ' + l if l != '' else '' for l in code.split('\n'))
 
 
 if __name__ == '__main__':
@@ -454,13 +551,12 @@ if __name__ == '__main__':
     nodes = ast.ext
     nodes = collect_cusparse_decls(nodes)
     env = make_environment(nodes)
-    nodes = collect_func_decls(config, nodes)
 
     path = os.path.join(
         os.path.dirname(__file__), 'templates/cusparse.pyx.template')
     with open(path) as f:
         template = f.read()
 
-    ffi = '\n'.join('    ' + transpile_ffi(env, n) for n in nodes)
-    wrapper = '\n\n'.join(transpile_wrapper(env, config, n) for n in nodes)
+    ffi = '\n'.join(indent(transpile_ffi(env, item)) for item in config)
+    wrapper = '\n\n'.join(transpile_wrapper(env, item) for item in config)
     print(template.format(ffi=ffi, wrapper=wrapper))

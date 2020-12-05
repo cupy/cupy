@@ -3,23 +3,30 @@
 cimport cython  # NOQA
 
 cdef extern from '../cupy_cusparse.h' nogil:
+
+    # cuSPARSE Management Function
     Status cusparseCreate(Handle *handle)
     Status cusparseDestroy(Handle handle)
     Status cusparseGetVersion(Handle handle, int *version)
-    Status cusparseSetStream(Handle handle, cudaStream_t streamId)
-    Status cusparseGetStream(Handle handle, cudaStream_t *streamId)
     Status cusparseGetPointerMode(Handle handle, PointerMode *mode)
     Status cusparseSetPointerMode(Handle handle, PointerMode mode)
+    Status cusparseGetStream(Handle handle, cudaStream_t *streamId)
+    Status cusparseSetStream(Handle handle, cudaStream_t streamId)
+
+    # cuSPARSE Helper Function
     Status cusparseCreateMatDescr(MatDescr *descrA)
     Status cusparseDestroyMatDescr(MatDescr descrA)
-    Status cusparseSetMatType(MatDescr descrA, MatrixType type)
-    MatrixType cusparseGetMatType(const MatDescr descrA)
-    Status cusparseSetMatFillMode(MatDescr descrA, FillMode fillMode)
-    FillMode cusparseGetMatFillMode(const MatDescr descrA)
-    Status cusparseSetMatDiagType(MatDescr descrA, DiagType diagType)
     DiagType cusparseGetMatDiagType(const MatDescr descrA)
-    Status cusparseSetMatIndexBase(MatDescr descrA, IndexBase base)
+    FillMode cusparseGetMatFillMode(const MatDescr descrA)
     IndexBase cusparseGetMatIndexBase(const MatDescr descrA)
+    MatrixType cusparseGetMatType(const MatDescr descrA)
+    Status cusparseSetMatDiagType(MatDescr descrA, DiagType diagType)
+    Status cusparseSetMatFillMode(MatDescr descrA, FillMode fillMode)
+    Status cusparseSetMatIndexBase(MatDescr descrA, IndexBase base)
+    Status cusparseSetMatType(MatDescr descrA, MatrixType type)
+    Status cusparseCreateCsrgemm2Info(csrgemm2Info_t *info)
+
+    # cuSPARSE Level 1 Function
     Status cusparseSaxpyi(Handle handle, int nnz, const float *alpha, const float *xVal, const int *xInd, float *y, IndexBase idxBase)
     Status cusparseDaxpyi(Handle handle, int nnz, const double *alpha, const double *xVal, const int *xInd, double *y, IndexBase idxBase)
     Status cusparseCaxpyi(Handle handle, int nnz, const cuComplex *alpha, const cuComplex *xVal, const int *xInd, cuComplex *y, IndexBase idxBase)
@@ -32,10 +39,14 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseDgthrz(Handle handle, int nnz, double *y, double *xVal, const int *xInd, IndexBase idxBase)
     Status cusparseCgthrz(Handle handle, int nnz, cuComplex *y, cuComplex *xVal, const int *xInd, IndexBase idxBase)
     Status cusparseZgthrz(Handle handle, int nnz, cuDoubleComplex *y, cuDoubleComplex *xVal, const int *xInd, IndexBase idxBase)
+    Status cusparseSroti(Handle handle, int nnz, float *xVal, const int *xInd, float *y, const float *c, const float *s, IndexBase idxBase)
+    Status cusparseDroti(Handle handle, int nnz, double *xVal, const int *xInd, double *y, const double *c, const double *s, IndexBase idxBase)
     Status cusparseSsctr(Handle handle, int nnz, const float *xVal, const int *xInd, float *y, IndexBase idxBase)
     Status cusparseDsctr(Handle handle, int nnz, const double *xVal, const int *xInd, double *y, IndexBase idxBase)
     Status cusparseCsctr(Handle handle, int nnz, const cuComplex *xVal, const int *xInd, cuComplex *y, IndexBase idxBase)
     Status cusparseZsctr(Handle handle, int nnz, const cuDoubleComplex *xVal, const int *xInd, cuDoubleComplex *y, IndexBase idxBase)
+
+    # cuSPARSE Level 2 Function
     Status cusparseSbsrmv(Handle handle, Direction dirA, Operation transA, int mb, int nb, int nnzb, const float *alpha, const MatDescr descrA, const float *bsrSortedValA, const int *bsrSortedRowPtrA, const int *bsrSortedColIndA, int blockDim, const float *x, const float *beta, float *y)
     Status cusparseDbsrmv(Handle handle, Direction dirA, Operation transA, int mb, int nb, int nnzb, const double *alpha, const MatDescr descrA, const double *bsrSortedValA, const int *bsrSortedRowPtrA, const int *bsrSortedColIndA, int blockDim, const double *x, const double *beta, double *y)
     Status cusparseCbsrmv(Handle handle, Direction dirA, Operation transA, int mb, int nb, int nnzb, const cuComplex *alpha, const MatDescr descrA, const cuComplex *bsrSortedValA, const int *bsrSortedRowPtrA, const int *bsrSortedColIndA, int blockDim, const cuComplex *x, const cuComplex *beta, cuComplex *y)
@@ -44,11 +55,28 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseDbsrxmv(Handle handle, Direction dirA, Operation transA, int sizeOfMask, int mb, int nb, int nnzb, const double *alpha, const MatDescr descrA, const double *bsrSortedValA, const int *bsrSortedMaskPtrA, const int *bsrSortedRowPtrA, const int *bsrSortedEndPtrA, const int *bsrSortedColIndA, int blockDim, const double *x, const double *beta, double *y)
     Status cusparseCbsrxmv(Handle handle, Direction dirA, Operation transA, int sizeOfMask, int mb, int nb, int nnzb, const cuComplex *alpha, const MatDescr descrA, const cuComplex *bsrSortedValA, const int *bsrSortedMaskPtrA, const int *bsrSortedRowPtrA, const int *bsrSortedEndPtrA, const int *bsrSortedColIndA, int blockDim, const cuComplex *x, const cuComplex *beta, cuComplex *y)
     Status cusparseZbsrxmv(Handle handle, Direction dirA, Operation transA, int sizeOfMask, int mb, int nb, int nnzb, const cuDoubleComplex *alpha, const MatDescr descrA, const cuDoubleComplex *bsrSortedValA, const int *bsrSortedMaskPtrA, const int *bsrSortedRowPtrA, const int *bsrSortedEndPtrA, const int *bsrSortedColIndA, int blockDim, const cuDoubleComplex *x, const cuDoubleComplex *beta, cuDoubleComplex *y)
+    Status cusparseSgemvi(Handle handle, Operation transA, int m, int n, const float *alpha, const float *A, int lda, int nnz, const float *xVal, const int *xInd, const float *beta, float *y, IndexBase idxBase, void *pBuffer)
+    Status cusparseDgemvi(Handle handle, Operation transA, int m, int n, const double *alpha, const double *A, int lda, int nnz, const double *xVal, const int *xInd, const double *beta, double *y, IndexBase idxBase, void *pBuffer)
+    Status cusparseCgemvi(Handle handle, Operation transA, int m, int n, const cuComplex *alpha, const cuComplex *A, int lda, int nnz, const cuComplex *xVal, const int *xInd, const cuComplex *beta, cuComplex *y, IndexBase idxBase, void *pBuffer)
+    Status cusparseZgemvi(Handle handle, Operation transA, int m, int n, const cuDoubleComplex *alpha, const cuDoubleComplex *A, int lda, int nnz, const cuDoubleComplex *xVal, const int *xInd, const cuDoubleComplex *beta, cuDoubleComplex *y, IndexBase idxBase, void *pBuffer)
+
+    # cuSPARSE Level 3 Function
     Status cusparseSbsrmm(Handle handle, Direction dirA, Operation transA, Operation transB, int mb, int n, int kb, int nnzb, const float *alpha, const MatDescr descrA, const float *bsrSortedValA, const int *bsrSortedRowPtrA, const int *bsrSortedColIndA, const int blockSize, const float *B, const int ldb, const float *beta, float *C, int ldc)
     Status cusparseDbsrmm(Handle handle, Direction dirA, Operation transA, Operation transB, int mb, int n, int kb, int nnzb, const double *alpha, const MatDescr descrA, const double *bsrSortedValA, const int *bsrSortedRowPtrA, const int *bsrSortedColIndA, const int blockSize, const double *B, const int ldb, const double *beta, double *C, int ldc)
     Status cusparseCbsrmm(Handle handle, Direction dirA, Operation transA, Operation transB, int mb, int n, int kb, int nnzb, const cuComplex *alpha, const MatDescr descrA, const cuComplex *bsrSortedValA, const int *bsrSortedRowPtrA, const int *bsrSortedColIndA, const int blockSize, const cuComplex *B, const int ldb, const cuComplex *beta, cuComplex *C, int ldc)
     Status cusparseZbsrmm(Handle handle, Direction dirA, Operation transA, Operation transB, int mb, int n, int kb, int nnzb, const cuDoubleComplex *alpha, const MatDescr descrA, const cuDoubleComplex *bsrSortedValA, const int *bsrSortedRowPtrA, const int *bsrSortedColIndA, const int blockSize, const cuDoubleComplex *B, const int ldb, const cuDoubleComplex *beta, cuDoubleComplex *C, int ldc)
-    Status cusparseXcsric02_zeroPivot(Handle handle, csric02Info_t info, int *position)
+
+    # cuSPARSE Extra Function
+    Status cusparseScsrgeam2_bufferSizeExt(Handle handle, int m, int n, const float *alpha, const MatDescr descrA, int nnzA, const float *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const float *beta, const MatDescr descrB, int nnzB, const float *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, const float *csrSortedValC, const int *csrSortedRowPtrC, const int *csrSortedColIndC, size_t *pBufferSizeInBytes)
+    Status cusparseDcsrgeam2_bufferSizeExt(Handle handle, int m, int n, const double *alpha, const MatDescr descrA, int nnzA, const double *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const double *beta, const MatDescr descrB, int nnzB, const double *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, const double *csrSortedValC, const int *csrSortedRowPtrC, const int *csrSortedColIndC, size_t *pBufferSizeInBytes)
+    Status cusparseCcsrgeam2_bufferSizeExt(Handle handle, int m, int n, const cuComplex *alpha, const MatDescr descrA, int nnzA, const cuComplex *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const cuComplex *beta, const MatDescr descrB, int nnzB, const cuComplex *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, const cuComplex *csrSortedValC, const int *csrSortedRowPtrC, const int *csrSortedColIndC, size_t *pBufferSizeInBytes)
+    Status cusparseZcsrgeam2_bufferSizeExt(Handle handle, int m, int n, const cuDoubleComplex *alpha, const MatDescr descrA, int nnzA, const cuDoubleComplex *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const cuDoubleComplex *beta, const MatDescr descrB, int nnzB, const cuDoubleComplex *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, const cuDoubleComplex *csrSortedValC, const int *csrSortedRowPtrC, const int *csrSortedColIndC, size_t *pBufferSizeInBytes)
+    Status cusparseScsrgeam2(Handle handle, int m, int n, const float *alpha, const MatDescr descrA, int nnzA, const float *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const float *beta, const MatDescr descrB, int nnzB, const float *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, float *csrSortedValC, int *csrSortedRowPtrC, int *csrSortedColIndC, void *pBuffer)
+    Status cusparseDcsrgeam2(Handle handle, int m, int n, const double *alpha, const MatDescr descrA, int nnzA, const double *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const double *beta, const MatDescr descrB, int nnzB, const double *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, double *csrSortedValC, int *csrSortedRowPtrC, int *csrSortedColIndC, void *pBuffer)
+    Status cusparseCcsrgeam2(Handle handle, int m, int n, const cuComplex *alpha, const MatDescr descrA, int nnzA, const cuComplex *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const cuComplex *beta, const MatDescr descrB, int nnzB, const cuComplex *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, cuComplex *csrSortedValC, int *csrSortedRowPtrC, int *csrSortedColIndC, void *pBuffer)
+    Status cusparseZcsrgeam2(Handle handle, int m, int n, const cuDoubleComplex *alpha, const MatDescr descrA, int nnzA, const cuDoubleComplex *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const cuDoubleComplex *beta, const MatDescr descrB, int nnzB, const cuDoubleComplex *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, cuDoubleComplex *csrSortedValC, int *csrSortedRowPtrC, int *csrSortedColIndC, void *pBuffer)
+
+    # cuSPARSE Preconditioners - Incomplete Cholesky Factorization: level 0
     Status cusparseScsric02_bufferSize(Handle handle, int m, int nnz, const MatDescr descrA, float *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, csric02Info_t info, int *pBufferSizeInBytes)
     Status cusparseDcsric02_bufferSize(Handle handle, int m, int nnz, const MatDescr descrA, double *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, csric02Info_t info, int *pBufferSizeInBytes)
     Status cusparseCcsric02_bufferSize(Handle handle, int m, int nnz, const MatDescr descrA, cuComplex *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, csric02Info_t info, int *pBufferSizeInBytes)
@@ -61,21 +89,38 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseDcsric02(Handle handle, int m, int nnz, const MatDescr descrA, double *csrSortedValA_valM, const int *csrSortedRowPtrA, const int *csrSortedColIndA, csric02Info_t info, SolvePolicy policy, void *pBuffer)
     Status cusparseCcsric02(Handle handle, int m, int nnz, const MatDescr descrA, cuComplex *csrSortedValA_valM, const int *csrSortedRowPtrA, const int *csrSortedColIndA, csric02Info_t info, SolvePolicy policy, void *pBuffer)
     Status cusparseZcsric02(Handle handle, int m, int nnz, const MatDescr descrA, cuDoubleComplex *csrSortedValA_valM, const int *csrSortedRowPtrA, const int *csrSortedColIndA, csric02Info_t info, SolvePolicy policy, void *pBuffer)
-    Status cusparseScsrgeam2_bufferSizeExt(Handle handle, int m, int n, const float *alpha, const MatDescr descrA, int nnzA, const float *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const float *beta, const MatDescr descrB, int nnzB, const float *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, const float *csrSortedValC, const int *csrSortedRowPtrC, const int *csrSortedColIndC, size_t *pBufferSizeInBytes)
-    Status cusparseDcsrgeam2_bufferSizeExt(Handle handle, int m, int n, const double *alpha, const MatDescr descrA, int nnzA, const double *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const double *beta, const MatDescr descrB, int nnzB, const double *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, const double *csrSortedValC, const int *csrSortedRowPtrC, const int *csrSortedColIndC, size_t *pBufferSizeInBytes)
-    Status cusparseCcsrgeam2_bufferSizeExt(Handle handle, int m, int n, const cuComplex *alpha, const MatDescr descrA, int nnzA, const cuComplex *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const cuComplex *beta, const MatDescr descrB, int nnzB, const cuComplex *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, const cuComplex *csrSortedValC, const int *csrSortedRowPtrC, const int *csrSortedColIndC, size_t *pBufferSizeInBytes)
-    Status cusparseZcsrgeam2_bufferSizeExt(Handle handle, int m, int n, const cuDoubleComplex *alpha, const MatDescr descrA, int nnzA, const cuDoubleComplex *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const cuDoubleComplex *beta, const MatDescr descrB, int nnzB, const cuDoubleComplex *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, const cuDoubleComplex *csrSortedValC, const int *csrSortedRowPtrC, const int *csrSortedColIndC, size_t *pBufferSizeInBytes)
-    Status cusparseScsrgeam2(Handle handle, int m, int n, const float *alpha, const MatDescr descrA, int nnzA, const float *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const float *beta, const MatDescr descrB, int nnzB, const float *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, float *csrSortedValC, int *csrSortedRowPtrC, int *csrSortedColIndC, void *pBuffer)
-    Status cusparseDcsrgeam2(Handle handle, int m, int n, const double *alpha, const MatDescr descrA, int nnzA, const double *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const double *beta, const MatDescr descrB, int nnzB, const double *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, double *csrSortedValC, int *csrSortedRowPtrC, int *csrSortedColIndC, void *pBuffer)
-    Status cusparseCcsrgeam2(Handle handle, int m, int n, const cuComplex *alpha, const MatDescr descrA, int nnzA, const cuComplex *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const cuComplex *beta, const MatDescr descrB, int nnzB, const cuComplex *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, cuComplex *csrSortedValC, int *csrSortedRowPtrC, int *csrSortedColIndC, void *pBuffer)
-    Status cusparseZcsrgeam2(Handle handle, int m, int n, const cuDoubleComplex *alpha, const MatDescr descrA, int nnzA, const cuDoubleComplex *csrSortedValA, const int *csrSortedRowPtrA, const int *csrSortedColIndA, const cuDoubleComplex *beta, const MatDescr descrB, int nnzB, const cuDoubleComplex *csrSortedValB, const int *csrSortedRowPtrB, const int *csrSortedColIndB, const MatDescr descrC, cuDoubleComplex *csrSortedValC, int *csrSortedRowPtrC, int *csrSortedColIndC, void *pBuffer)
+    Status cusparseXcsric02_zeroPivot(Handle handle, csric02Info_t info, int *position)
+
+    # cuSPARSE Preconditioners - Incomplete LU Factorization: level 0
+    Status cusparseScsrilu02_numericBoost(Handle handle, csrilu02Info_t info, int enable_boost, double *tol, float *boost_val)
+    Status cusparseDcsrilu02_numericBoost(Handle handle, csrilu02Info_t info, int enable_boost, double *tol, double *boost_val)
+    Status cusparseCcsrilu02_numericBoost(Handle handle, csrilu02Info_t info, int enable_boost, double *tol, cuComplex *boost_val)
+    Status cusparseZcsrilu02_numericBoost(Handle handle, csrilu02Info_t info, int enable_boost, double *tol, cuDoubleComplex *boost_val)
+
+    # cuSPARSE Reorderings
+
+    # cuSPARSE Format Conversion
+    Status cusparseXcoo2csr(Handle handle, const int *cooRowInd, int nnz, int m, int *csrSortedRowPtr, IndexBase idxBase)
     Status cusparseSdense2csr(Handle handle, int m, int n, const MatDescr descrA, const float *A, int lda, const int *nnzPerRow, float *csrSortedValA, int *csrSortedRowPtrA, int *csrSortedColIndA)
     Status cusparseDdense2csr(Handle handle, int m, int n, const MatDescr descrA, const double *A, int lda, const int *nnzPerRow, double *csrSortedValA, int *csrSortedRowPtrA, int *csrSortedColIndA)
     Status cusparseCdense2csr(Handle handle, int m, int n, const MatDescr descrA, const cuComplex *A, int lda, const int *nnzPerRow, cuComplex *csrSortedValA, int *csrSortedRowPtrA, int *csrSortedColIndA)
     Status cusparseZdense2csr(Handle handle, int m, int n, const MatDescr descrA, const cuDoubleComplex *A, int lda, const int *nnzPerRow, cuDoubleComplex *csrSortedValA, int *csrSortedRowPtrA, int *csrSortedColIndA)
-    Status cusparseXcoo2csr(Handle handle, const int *cooRowInd, int nnz, int m, int *csrSortedRowPtr, IndexBase idxBase)
+    Status cusparseSnnz(Handle handle, Direction dirA, int m, int n, const MatDescr descrA, const float *A, int lda, int *nnzPerRowCol, int *nnzTotalDevHostPtr)
+    Status cusparseDnnz(Handle handle, Direction dirA, int m, int n, const MatDescr descrA, const double *A, int lda, int *nnzPerRowCol, int *nnzTotalDevHostPtr)
+    Status cusparseCnnz(Handle handle, Direction dirA, int m, int n, const MatDescr descrA, const cuComplex *A, int lda, int *nnzPerRowCol, int *nnzTotalDevHostPtr)
+    Status cusparseZnnz(Handle handle, Direction dirA, int m, int n, const MatDescr descrA, const cuDoubleComplex *A, int lda, int *nnzPerRowCol, int *nnzTotalDevHostPtr)
     Status cusparseXcoosortByRow(Handle handle, int m, int n, int nnz, int *cooRowsA, int *cooColsA, int *P, void *pBuffer)
+
+    # cuSPARSE Generic API - Sparse Vector APIs
     Status cusparseCreateSpVec(SpVecDescr *spVecDescr, int64_t size, int64_t nnz, void *indices, void *values, IndexType idxType, IndexBase idxBase, cudaDataType valueType)
+
+    # cuSPARSE Generic API - Dense Vector APIs
+    Status cusparseCreateDnVec(DnVecDescr *dnVecDescr, int64_t size, void *values, cudaDataType valueType)
+
+
+# ----------------------------
+# cuSPARSE Management Function
+# ----------------------------
 
 cpdef intptr_t create():
     cdef Handle handle
@@ -93,16 +138,6 @@ cpdef int getVersion(intptr_t handle):
     check_status(status)
     return version
 
-cpdef setStream(intptr_t handle, cudaStream_t streamId):
-    status = cusparseSetStream(<Handle>handle, streamId)
-    check_status(status)
-
-cpdef cudaStream_t getStream(intptr_t handle):
-    cdef cudaStream_t streamId
-    status = cusparseGetStream(<Handle>handle, &streamId)
-    check_status(status)
-    return streamId
-
 cpdef size_t getPointerMode(intptr_t handle):
     cdef PointerMode mode
     status = cusparseGetPointerMode(<Handle>handle, &mode)
@@ -112,6 +147,21 @@ cpdef size_t getPointerMode(intptr_t handle):
 cpdef setPointerMode(intptr_t handle, size_t mode):
     status = cusparseSetPointerMode(<Handle>handle, <PointerMode>mode)
     check_status(status)
+
+cpdef cudaStream_t getStream(intptr_t handle):
+    cdef cudaStream_t streamId
+    status = cusparseGetStream(<Handle>handle, &streamId)
+    check_status(status)
+    return streamId
+
+cpdef setStream(intptr_t handle, cudaStream_t streamId):
+    status = cusparseSetStream(<Handle>handle, streamId)
+    check_status(status)
+
+
+# ------------------------
+# cuSPARSE Helper Function
+# ------------------------
 
 cpdef size_t createMatDescr():
     cdef MatDescr descrA
@@ -123,33 +173,44 @@ cpdef destroyMatDescr(size_t descrA):
     status = cusparseDestroyMatDescr(<MatDescr>descrA)
     check_status(status)
 
-cpdef setMatType(size_t descrA, size_t type):
-    status = cusparseSetMatType(<MatDescr>descrA, <MatrixType>type)
-    check_status(status)
-
-cpdef size_t getMatType(size_t descrA):
-    return cusparseGetMatType(<const MatDescr>descrA)
-
-cpdef setMatFillMode(size_t descrA, size_t fillMode):
-    status = cusparseSetMatFillMode(<MatDescr>descrA, <FillMode>fillMode)
-    check_status(status)
+cpdef size_t getMatDiagType(size_t descrA):
+    return cusparseGetMatDiagType(<const MatDescr>descrA)
 
 cpdef size_t getMatFillMode(size_t descrA):
     return cusparseGetMatFillMode(<const MatDescr>descrA)
+
+cpdef size_t getMatIndexBase(size_t descrA):
+    return cusparseGetMatIndexBase(<const MatDescr>descrA)
+
+cpdef size_t getMatType(size_t descrA):
+    return cusparseGetMatType(<const MatDescr>descrA)
 
 cpdef setMatDiagType(size_t descrA, size_t diagType):
     status = cusparseSetMatDiagType(<MatDescr>descrA, <DiagType>diagType)
     check_status(status)
 
-cpdef size_t getMatDiagType(size_t descrA):
-    return cusparseGetMatDiagType(<const MatDescr>descrA)
+cpdef setMatFillMode(size_t descrA, size_t fillMode):
+    status = cusparseSetMatFillMode(<MatDescr>descrA, <FillMode>fillMode)
+    check_status(status)
 
 cpdef setMatIndexBase(size_t descrA, size_t base):
     status = cusparseSetMatIndexBase(<MatDescr>descrA, <IndexBase>base)
     check_status(status)
 
-cpdef size_t getMatIndexBase(size_t descrA):
-    return cusparseGetMatIndexBase(<const MatDescr>descrA)
+cpdef setMatType(size_t descrA, size_t type):
+    status = cusparseSetMatType(<MatDescr>descrA, <MatrixType>type)
+    check_status(status)
+
+cpdef size_t createCsrgemm2Info():
+    cdef csrgemm2Info_t info
+    status = cusparseCreateCsrgemm2Info(&info)
+    check_status(status)
+    return <size_t>info
+
+
+# -------------------------
+# cuSPARSE Level 1 Function
+# -------------------------
 
 cpdef saxpyi(intptr_t handle, int nnz, size_t alpha, size_t xVal, size_t xInd, size_t y, size_t idxBase):
     _setStream(get_handle_name(node))
@@ -211,6 +272,16 @@ cpdef zgthrz(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd, size_
     status = cusparseZgthrz(<Handle>handle, nnz, <cuDoubleComplex *>y, <cuDoubleComplex *>xVal, <const int *>xInd, <IndexBase>idxBase)
     check_status(status)
 
+cpdef sroti(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t c, size_t s, size_t idxBase):
+    _setStream(get_handle_name(node))
+    status = cusparseSroti(<Handle>handle, nnz, <float *>xVal, <const int *>xInd, <float *>y, <const float *>c, <const float *>s, <IndexBase>idxBase)
+    check_status(status)
+
+cpdef droti(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t c, size_t s, size_t idxBase):
+    _setStream(get_handle_name(node))
+    status = cusparseDroti(<Handle>handle, nnz, <double *>xVal, <const int *>xInd, <double *>y, <const double *>c, <const double *>s, <IndexBase>idxBase)
+    check_status(status)
+
 cpdef ssctr(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t idxBase):
     _setStream(get_handle_name(node))
     status = cusparseSsctr(<Handle>handle, nnz, <const float *>xVal, <const int *>xInd, <float *>y, <IndexBase>idxBase)
@@ -230,6 +301,11 @@ cpdef zsctr(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t
     _setStream(get_handle_name(node))
     status = cusparseZsctr(<Handle>handle, nnz, <const cuDoubleComplex *>xVal, <const int *>xInd, <cuDoubleComplex *>y, <IndexBase>idxBase)
     check_status(status)
+
+
+# -------------------------
+# cuSPARSE Level 2 Function
+# -------------------------
 
 cpdef sbsrmv(intptr_t handle, size_t dirA, size_t transA, int mb, int nb, int nnzb, size_t alpha, size_t descrA, size_t bsrSortedValA, size_t bsrSortedRowPtrA, size_t bsrSortedColIndA, int blockDim, size_t x, size_t beta, size_t y):
     _setStream(get_handle_name(node))
@@ -271,6 +347,31 @@ cpdef zbsrxmv(intptr_t handle, size_t dirA, size_t transA, int sizeOfMask, int m
     status = cusparseZbsrxmv(<Handle>handle, <Direction>dirA, <Operation>transA, sizeOfMask, mb, nb, nnzb, <const cuDoubleComplex *>alpha, <const MatDescr>descrA, <const cuDoubleComplex *>bsrSortedValA, <const int *>bsrSortedMaskPtrA, <const int *>bsrSortedRowPtrA, <const int *>bsrSortedEndPtrA, <const int *>bsrSortedColIndA, blockDim, <const cuDoubleComplex *>x, <const cuDoubleComplex *>beta, <cuDoubleComplex *>y)
     check_status(status)
 
+cpdef sgemvi(intptr_t handle, size_t transA, int m, int n, size_t alpha, size_t A, int lda, int nnz, size_t xVal, size_t xInd, size_t beta, size_t y, size_t idxBase, size_t pBuffer):
+    _setStream(get_handle_name(node))
+    status = cusparseSgemvi(<Handle>handle, <Operation>transA, m, n, <const float *>alpha, <const float *>A, lda, nnz, <const float *>xVal, <const int *>xInd, <const float *>beta, <float *>y, <IndexBase>idxBase, <void *>pBuffer)
+    check_status(status)
+
+cpdef dgemvi(intptr_t handle, size_t transA, int m, int n, size_t alpha, size_t A, int lda, int nnz, size_t xVal, size_t xInd, size_t beta, size_t y, size_t idxBase, size_t pBuffer):
+    _setStream(get_handle_name(node))
+    status = cusparseDgemvi(<Handle>handle, <Operation>transA, m, n, <const double *>alpha, <const double *>A, lda, nnz, <const double *>xVal, <const int *>xInd, <const double *>beta, <double *>y, <IndexBase>idxBase, <void *>pBuffer)
+    check_status(status)
+
+cpdef cgemvi(intptr_t handle, size_t transA, int m, int n, size_t alpha, size_t A, int lda, int nnz, size_t xVal, size_t xInd, size_t beta, size_t y, size_t idxBase, size_t pBuffer):
+    _setStream(get_handle_name(node))
+    status = cusparseCgemvi(<Handle>handle, <Operation>transA, m, n, <const cuComplex *>alpha, <const cuComplex *>A, lda, nnz, <const cuComplex *>xVal, <const int *>xInd, <const cuComplex *>beta, <cuComplex *>y, <IndexBase>idxBase, <void *>pBuffer)
+    check_status(status)
+
+cpdef zgemvi(intptr_t handle, size_t transA, int m, int n, size_t alpha, size_t A, int lda, int nnz, size_t xVal, size_t xInd, size_t beta, size_t y, size_t idxBase, size_t pBuffer):
+    _setStream(get_handle_name(node))
+    status = cusparseZgemvi(<Handle>handle, <Operation>transA, m, n, <const cuDoubleComplex *>alpha, <const cuDoubleComplex *>A, lda, nnz, <const cuDoubleComplex *>xVal, <const int *>xInd, <const cuDoubleComplex *>beta, <cuDoubleComplex *>y, <IndexBase>idxBase, <void *>pBuffer)
+    check_status(status)
+
+
+# -------------------------
+# cuSPARSE Level 3 Function
+# -------------------------
+
 cpdef sbsrmm(intptr_t handle, size_t dirA, size_t transA, size_t transB, int mb, int n, int kb, int nnzb, size_t alpha, size_t descrA, size_t bsrSortedValA, size_t bsrSortedRowPtrA, size_t bsrSortedColIndA, const int blockSize, size_t B, const int ldb, size_t beta, size_t C, int ldc):
     _setStream(get_handle_name(node))
     status = cusparseSbsrmm(<Handle>handle, <Direction>dirA, <Operation>transA, <Operation>transB, mb, n, kb, nnzb, <const float *>alpha, <const MatDescr>descrA, <const float *>bsrSortedValA, <const int *>bsrSortedRowPtrA, <const int *>bsrSortedColIndA, blockSize, <const float *>B, ldb, <const float *>beta, <float *>C, ldc)
@@ -291,11 +392,63 @@ cpdef zbsrmm(intptr_t handle, size_t dirA, size_t transA, size_t transB, int mb,
     status = cusparseZbsrmm(<Handle>handle, <Direction>dirA, <Operation>transA, <Operation>transB, mb, n, kb, nnzb, <const cuDoubleComplex *>alpha, <const MatDescr>descrA, <const cuDoubleComplex *>bsrSortedValA, <const int *>bsrSortedRowPtrA, <const int *>bsrSortedColIndA, blockSize, <const cuDoubleComplex *>B, ldb, <const cuDoubleComplex *>beta, <cuDoubleComplex *>C, ldc)
     check_status(status)
 
-cpdef int xcsric02_zeroPivot(intptr_t handle, size_t info):
-    cdef int position
-    status = cusparseXcsric02_zeroPivot(<Handle>handle, <csric02Info_t>info, &position)
+
+# -----------------------
+# cuSPARSE Extra Function
+# -----------------------
+
+cpdef size_t scsrgeam2_bufferSizeExt(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC):
+    cdef size_t bufferSizeInBytes
+    _setStream(get_handle_name(node))
+    status = cusparseScsrgeam2_bufferSizeExt(<Handle>handle, m, n, <const float *>alpha, <const MatDescr>descrA, nnzA, <const float *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const float *>beta, <const MatDescr>descrB, nnzB, <const float *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <const float *>csrSortedValC, <const int *>csrSortedRowPtrC, <const int *>csrSortedColIndC, &bufferSizeInBytes)
     check_status(status)
-    return position
+    return bufferSizeInBytes
+
+cpdef size_t dcsrgeam2_bufferSizeExt(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC):
+    cdef size_t bufferSizeInBytes
+    _setStream(get_handle_name(node))
+    status = cusparseDcsrgeam2_bufferSizeExt(<Handle>handle, m, n, <const double *>alpha, <const MatDescr>descrA, nnzA, <const double *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const double *>beta, <const MatDescr>descrB, nnzB, <const double *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <const double *>csrSortedValC, <const int *>csrSortedRowPtrC, <const int *>csrSortedColIndC, &bufferSizeInBytes)
+    check_status(status)
+    return bufferSizeInBytes
+
+cpdef size_t ccsrgeam2_bufferSizeExt(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC):
+    cdef size_t bufferSizeInBytes
+    _setStream(get_handle_name(node))
+    status = cusparseCcsrgeam2_bufferSizeExt(<Handle>handle, m, n, <const cuComplex *>alpha, <const MatDescr>descrA, nnzA, <const cuComplex *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const cuComplex *>beta, <const MatDescr>descrB, nnzB, <const cuComplex *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <const cuComplex *>csrSortedValC, <const int *>csrSortedRowPtrC, <const int *>csrSortedColIndC, &bufferSizeInBytes)
+    check_status(status)
+    return bufferSizeInBytes
+
+cpdef size_t zcsrgeam2_bufferSizeExt(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC):
+    cdef size_t bufferSizeInBytes
+    _setStream(get_handle_name(node))
+    status = cusparseZcsrgeam2_bufferSizeExt(<Handle>handle, m, n, <const cuDoubleComplex *>alpha, <const MatDescr>descrA, nnzA, <const cuDoubleComplex *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const cuDoubleComplex *>beta, <const MatDescr>descrB, nnzB, <const cuDoubleComplex *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <const cuDoubleComplex *>csrSortedValC, <const int *>csrSortedRowPtrC, <const int *>csrSortedColIndC, &bufferSizeInBytes)
+    check_status(status)
+    return bufferSizeInBytes
+
+cpdef scsrgeam2(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC, size_t pBuffer):
+    _setStream(get_handle_name(node))
+    status = cusparseScsrgeam2(<Handle>handle, m, n, <const float *>alpha, <const MatDescr>descrA, nnzA, <const float *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const float *>beta, <const MatDescr>descrB, nnzB, <const float *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <float *>csrSortedValC, <int *>csrSortedRowPtrC, <int *>csrSortedColIndC, <void *>pBuffer)
+    check_status(status)
+
+cpdef dcsrgeam2(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC, size_t pBuffer):
+    _setStream(get_handle_name(node))
+    status = cusparseDcsrgeam2(<Handle>handle, m, n, <const double *>alpha, <const MatDescr>descrA, nnzA, <const double *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const double *>beta, <const MatDescr>descrB, nnzB, <const double *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <double *>csrSortedValC, <int *>csrSortedRowPtrC, <int *>csrSortedColIndC, <void *>pBuffer)
+    check_status(status)
+
+cpdef ccsrgeam2(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC, size_t pBuffer):
+    _setStream(get_handle_name(node))
+    status = cusparseCcsrgeam2(<Handle>handle, m, n, <const cuComplex *>alpha, <const MatDescr>descrA, nnzA, <const cuComplex *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const cuComplex *>beta, <const MatDescr>descrB, nnzB, <const cuComplex *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <cuComplex *>csrSortedValC, <int *>csrSortedRowPtrC, <int *>csrSortedColIndC, <void *>pBuffer)
+    check_status(status)
+
+cpdef zcsrgeam2(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC, size_t pBuffer):
+    _setStream(get_handle_name(node))
+    status = cusparseZcsrgeam2(<Handle>handle, m, n, <const cuDoubleComplex *>alpha, <const MatDescr>descrA, nnzA, <const cuDoubleComplex *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const cuDoubleComplex *>beta, <const MatDescr>descrB, nnzB, <const cuDoubleComplex *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <cuDoubleComplex *>csrSortedValC, <int *>csrSortedRowPtrC, <int *>csrSortedColIndC, <void *>pBuffer)
+    check_status(status)
+
+
+# ---------------------------------------------------------------------
+# cuSPARSE Preconditioners - Incomplete Cholesky Factorization: level 0
+# ---------------------------------------------------------------------
 
 cpdef int scsric02_bufferSize(intptr_t handle, int m, int nnz, size_t descrA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t info):
     cdef int bufferSizeInBytes
@@ -357,52 +510,50 @@ cpdef zcsric02(intptr_t handle, int m, int nnz, size_t descrA, size_t csrSortedV
     status = cusparseZcsric02(<Handle>handle, m, nnz, <const MatDescr>descrA, <cuDoubleComplex *>csrSortedValA_valM, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <csric02Info_t>info, <SolvePolicy>policy, <void *>pBuffer)
     check_status(status)
 
-cpdef size_t scsrgeam2_bufferSizeExt(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC):
-    cdef size_t bufferSizeInBytes
-    _setStream(get_handle_name(node))
-    status = cusparseScsrgeam2_bufferSizeExt(<Handle>handle, m, n, <const float *>alpha, <const MatDescr>descrA, nnzA, <const float *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const float *>beta, <const MatDescr>descrB, nnzB, <const float *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <const float *>csrSortedValC, <const int *>csrSortedRowPtrC, <const int *>csrSortedColIndC, &bufferSizeInBytes)
+cpdef int xcsric02_zeroPivot(intptr_t handle, size_t info):
+    cdef int position
+    status = cusparseXcsric02_zeroPivot(<Handle>handle, <csric02Info_t>info, &position)
     check_status(status)
-    return bufferSizeInBytes
+    return position
 
-cpdef size_t dcsrgeam2_bufferSizeExt(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC):
-    cdef size_t bufferSizeInBytes
-    _setStream(get_handle_name(node))
-    status = cusparseDcsrgeam2_bufferSizeExt(<Handle>handle, m, n, <const double *>alpha, <const MatDescr>descrA, nnzA, <const double *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const double *>beta, <const MatDescr>descrB, nnzB, <const double *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <const double *>csrSortedValC, <const int *>csrSortedRowPtrC, <const int *>csrSortedColIndC, &bufferSizeInBytes)
-    check_status(status)
-    return bufferSizeInBytes
 
-cpdef size_t ccsrgeam2_bufferSizeExt(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC):
-    cdef size_t bufferSizeInBytes
-    _setStream(get_handle_name(node))
-    status = cusparseCcsrgeam2_bufferSizeExt(<Handle>handle, m, n, <const cuComplex *>alpha, <const MatDescr>descrA, nnzA, <const cuComplex *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const cuComplex *>beta, <const MatDescr>descrB, nnzB, <const cuComplex *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <const cuComplex *>csrSortedValC, <const int *>csrSortedRowPtrC, <const int *>csrSortedColIndC, &bufferSizeInBytes)
-    check_status(status)
-    return bufferSizeInBytes
+# ---------------------------------------------------------------
+# cuSPARSE Preconditioners - Incomplete LU Factorization: level 0
+# ---------------------------------------------------------------
 
-cpdef size_t zcsrgeam2_bufferSizeExt(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC):
-    cdef size_t bufferSizeInBytes
+cpdef scsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost, size_t tol, size_t boost_val):
     _setStream(get_handle_name(node))
-    status = cusparseZcsrgeam2_bufferSizeExt(<Handle>handle, m, n, <const cuDoubleComplex *>alpha, <const MatDescr>descrA, nnzA, <const cuDoubleComplex *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const cuDoubleComplex *>beta, <const MatDescr>descrB, nnzB, <const cuDoubleComplex *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <const cuDoubleComplex *>csrSortedValC, <const int *>csrSortedRowPtrC, <const int *>csrSortedColIndC, &bufferSizeInBytes)
-    check_status(status)
-    return bufferSizeInBytes
-
-cpdef scsrgeam2(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC, size_t pBuffer):
-    _setStream(get_handle_name(node))
-    status = cusparseScsrgeam2(<Handle>handle, m, n, <const float *>alpha, <const MatDescr>descrA, nnzA, <const float *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const float *>beta, <const MatDescr>descrB, nnzB, <const float *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <float *>csrSortedValC, <int *>csrSortedRowPtrC, <int *>csrSortedColIndC, <void *>pBuffer)
+    status = cusparseScsrilu02_numericBoost(<Handle>handle, <csrilu02Info_t>info, enable_boost, <double *>tol, <float *>boost_val)
     check_status(status)
 
-cpdef dcsrgeam2(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC, size_t pBuffer):
+cpdef dcsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost, size_t tol, size_t boost_val):
     _setStream(get_handle_name(node))
-    status = cusparseDcsrgeam2(<Handle>handle, m, n, <const double *>alpha, <const MatDescr>descrA, nnzA, <const double *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const double *>beta, <const MatDescr>descrB, nnzB, <const double *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <double *>csrSortedValC, <int *>csrSortedRowPtrC, <int *>csrSortedColIndC, <void *>pBuffer)
+    status = cusparseDcsrilu02_numericBoost(<Handle>handle, <csrilu02Info_t>info, enable_boost, <double *>tol, <double *>boost_val)
     check_status(status)
 
-cpdef ccsrgeam2(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC, size_t pBuffer):
+cpdef ccsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost, size_t tol, size_t boost_val):
     _setStream(get_handle_name(node))
-    status = cusparseCcsrgeam2(<Handle>handle, m, n, <const cuComplex *>alpha, <const MatDescr>descrA, nnzA, <const cuComplex *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const cuComplex *>beta, <const MatDescr>descrB, nnzB, <const cuComplex *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <cuComplex *>csrSortedValC, <int *>csrSortedRowPtrC, <int *>csrSortedColIndC, <void *>pBuffer)
+    status = cusparseCcsrilu02_numericBoost(<Handle>handle, <csrilu02Info_t>info, enable_boost, <double *>tol, <cuComplex *>boost_val)
     check_status(status)
 
-cpdef zcsrgeam2(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC, size_t pBuffer):
+cpdef zcsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost, size_t tol, size_t boost_val):
     _setStream(get_handle_name(node))
-    status = cusparseZcsrgeam2(<Handle>handle, m, n, <const cuDoubleComplex *>alpha, <const MatDescr>descrA, nnzA, <const cuDoubleComplex *>csrSortedValA, <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA, <const cuDoubleComplex *>beta, <const MatDescr>descrB, nnzB, <const cuDoubleComplex *>csrSortedValB, <const int *>csrSortedRowPtrB, <const int *>csrSortedColIndB, <const MatDescr>descrC, <cuDoubleComplex *>csrSortedValC, <int *>csrSortedRowPtrC, <int *>csrSortedColIndC, <void *>pBuffer)
+    status = cusparseZcsrilu02_numericBoost(<Handle>handle, <csrilu02Info_t>info, enable_boost, <double *>tol, <cuDoubleComplex *>boost_val)
+    check_status(status)
+
+
+# --------------------
+# cuSPARSE Reorderings
+# --------------------
+
+
+# --------------------------
+# cuSPARSE Format Conversion
+# --------------------------
+
+cpdef xcoo2csr(intptr_t handle, size_t cooRowInd, int nnz, int m, size_t csrSortedRowPtr, size_t idxBase):
+    _setStream(get_handle_name(node))
+    status = cusparseXcoo2csr(<Handle>handle, <const int *>cooRowInd, nnz, m, <int *>csrSortedRowPtr, <IndexBase>idxBase)
     check_status(status)
 
 cpdef sdense2csr(intptr_t handle, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerRow, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA):
@@ -425,9 +576,20 @@ cpdef zdense2csr(intptr_t handle, int m, int n, size_t descrA, size_t A, int lda
     status = cusparseZdense2csr(<Handle>handle, m, n, <const MatDescr>descrA, <const cuDoubleComplex *>A, lda, <const int *>nnzPerRow, <cuDoubleComplex *>csrSortedValA, <int *>csrSortedRowPtrA, <int *>csrSortedColIndA)
     check_status(status)
 
-cpdef xcoo2csr(intptr_t handle, size_t cooRowInd, int nnz, int m, size_t csrSortedRowPtr, size_t idxBase):
-    _setStream(get_handle_name(node))
-    status = cusparseXcoo2csr(<Handle>handle, <const int *>cooRowInd, nnz, m, <int *>csrSortedRowPtr, <IndexBase>idxBase)
+cpdef snnz(intptr_t handle, size_t dirA, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerRowCol, size_t nnzTotalDevHostPtr):
+    status = cusparseSnnz(<Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA, <const float *>A, lda, <int *>nnzPerRowCol, <int *>nnzTotalDevHostPtr)
+    check_status(status)
+
+cpdef dnnz(intptr_t handle, size_t dirA, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerRowCol, size_t nnzTotalDevHostPtr):
+    status = cusparseDnnz(<Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA, <const double *>A, lda, <int *>nnzPerRowCol, <int *>nnzTotalDevHostPtr)
+    check_status(status)
+
+cpdef cnnz(intptr_t handle, size_t dirA, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerRowCol, size_t nnzTotalDevHostPtr):
+    status = cusparseCnnz(<Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA, <const cuComplex *>A, lda, <int *>nnzPerRowCol, <int *>nnzTotalDevHostPtr)
+    check_status(status)
+
+cpdef znnz(intptr_t handle, size_t dirA, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerRowCol, size_t nnzTotalDevHostPtr):
+    status = cusparseZnnz(<Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA, <const cuDoubleComplex *>A, lda, <int *>nnzPerRowCol, <int *>nnzTotalDevHostPtr)
     check_status(status)
 
 cpdef xcoosortByRow(intptr_t handle, int m, int n, int nnz, size_t cooRowsA, size_t cooColsA, size_t P, size_t pBuffer):
@@ -435,9 +597,24 @@ cpdef xcoosortByRow(intptr_t handle, int m, int n, int nnz, size_t cooRowsA, siz
     status = cusparseXcoosortByRow(<Handle>handle, m, n, nnz, <int *>cooRowsA, <int *>cooColsA, <int *>P, <void *>pBuffer)
     check_status(status)
 
+
+# -----------------------------------------
+# cuSPARSE Generic API - Sparse Vector APIs
+# -----------------------------------------
+
 cpdef size_t createSpVec(int64_t size, int64_t nnz, size_t indices, size_t values, size_t idxType, size_t idxBase, cudaDataType valueType):
     cdef SpVecDescr spVecDescr
     status = cusparseCreateSpVec(&spVecDescr, size, nnz, <void *>indices, <void *>values, <IndexType>idxType, <IndexBase>idxBase, valueType)
     check_status(status)
     return <size_t>spVecDescr
 
+
+# ----------------------------------------
+# cuSPARSE Generic API - Dense Vector APIs
+# ----------------------------------------
+
+cpdef size_t createDnVec(int64_t size, size_t values, cudaDataType valueType):
+    cdef DnVecDescr dnVecDescr
+    status = cusparseCreateDnVec(&dnVecDescr, size, <void *>values, valueType)
+    check_status(status)
+    return <size_t>dnVecDescr
