@@ -96,6 +96,7 @@ if use_hip:
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
     MODULES.append({
+        # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
         'file': cuda_files + [
             'cupy.cuda.nvtx',
@@ -119,6 +120,8 @@ if use_hip:
             'rocblas',
             'rocsolver',
         ],
+        'check_method': build.check_hip_version,
+        'version_method': build.get_hip_version,
     })
 else:
     MODULES.append({
