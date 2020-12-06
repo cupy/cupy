@@ -7,6 +7,9 @@ from cupy.core import fusion
 from cupy.lib import stride_tricks
 
 
+_prod = cupy.core.internal.prod
+
+
 _dot_kernel = core.ReductionKernel(
     'T x1, T x2',
     'T y',
@@ -359,4 +362,56 @@ nan_to_num = core.create_ufunc(
 # TODO(okuta): Implement real_if_close
 
 
-# TODO(okuta): Implement interp
+def _get_coord_interp(ndim):
+    """Compute target coordinate.
+
+    Notes
+    -----
+    Assumes the following variables have been initialized on the device::
+
+        in_coord[ndim]: array containing the source coordinate
+
+    computes::
+
+        c_j = in_coord[j]
+
+    """
+    ops = []
+    for j in range(ndim):
+        ops.append(
+            """
+    W c_{j} = (W)in_coord[{j}];""".format(j=j))
+    return ops
+
+
+@cupy._util.memoize(for_each_device=True)
+def _get_interp_kernel(ndim, large_int, yshape, mode='nearest', cval=0.0,
+                       order=1, integer_output=False):
+    # TODO(leofang): check if the import can be moved to the top
+    from cupyx.scipy.ndimage._interp_kernels import (_generate_interp_custom,
+                                                     math_constants_preamble)
+
+    in_params = 'raw X x, raw X fx, raw W fy'
+    out_params = 'Y y'
+    operation, name = _generate_interp_custom(
+        coord_func=_get_coord_interp,
+        ndim=ndim,
+        large_int=large_int,
+        yshape=yshape,
+        mode=mode,
+        cval=cval,
+        order=order,
+        name='cupy_interp',
+        integer_output=integer_output,
+    )
+    return cupy.ElementwiseKernel(in_params, out_params, operation, name,
+                                  preamble=math_constants_preamble)
+
+
+def interp(x, xp, fp, left=None, right=None, period=None):
+    ndim = 1
+    output = cupy.empty(x.shape, dtype=fp.dtype)
+    large_int = max(_prod(x.shape), _prod(output.shape)) > 1 << 31
+    kern = _get_interp_kernel(1, large_int, x.shape)
+    kern(x, xp, fp, output)
+    return output
