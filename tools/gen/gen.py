@@ -322,7 +322,7 @@ def transpile_type_name(env, node):
         else:
             return qualified(name)
     elif isinstance(node, c_ast.PtrDecl):
-        return transpile_type_name(env, node.type) + ' *'
+        return transpile_type_name(env, node.type) + '*'
     else:
         assert False
 
@@ -356,10 +356,7 @@ def transpile_ffi_decl(env, node):
     def argaux(env, node):
         name = node.name
         type = transpile_type_name(env, node.type)
-        if type[-1] == '*':
-            return '{}{}'.format(type, name)
-        else:
-            return '{} {}'.format(type, name)
+        return '{} {}'.format(type, name)
 
     assert isinstance(node.type, c_ast.FuncDecl)
     ret_type = transpile_type_name(env, node.type.type)
