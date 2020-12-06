@@ -6,6 +6,13 @@ from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda cimport stream as stream_module
 
 
+cdef extern from '../cupy_cuComplex.h':
+    ctypedef struct cuComplex 'cuComplex':
+        float x, y
+
+    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
+        double x, y
+
 cdef extern from '../cupy_cusparse.h' nogil:
 
     # cuSPARSE Management Function
@@ -147,6 +154,25 @@ cdef dict STATUS = {
 cpdef inline check_status(int status):
     if status != 0:
         raise CuSparseError(status)
+
+
+########################################
+# Convert complex numbers
+
+@cython.profile(False)
+cdef inline cuComplex complex_to_cuda(complex value):
+    cdef cuComplex value_cuda
+    value_cuda.x = value.real
+    value_cuda.y = value.imag
+    return value_cuda
+
+
+@cython.profile(False)
+cdef inline cuDoubleComplex double_complex_to_cuda(double complex value):
+    cdef cuDoubleComplex value_cuda
+    value_cuda.x = value.real
+    value_cuda.y = value.imag
+    return value_cuda
 
 
 ########################################
