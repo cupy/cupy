@@ -359,31 +359,11 @@ nan_to_num = core.create_ufunc(
 # TODO(okuta): Implement real_if_close
 
 
-def _get_coord_interp(ndim):
-    """Compute target coordinate.
-
-    Notes
-    -----
-    Assumes the following variables have been initialized on the device::
-
-        in_coord[ndim]: array containing the source coordinate
-
-    computes::
-
-        c_j = in_coord[j]
-
-    """
-    ops = []
-    for j in range(ndim):
-        ops.append(
-            """
-    W c_{j} = (W)in_coord[{j}];""".format(j=j))
-    return ops
-
-
 @cupy._util.memoize(for_each_device=True)
 def _get_interp_kernel():
-    # TODO(leofang): check NaN
+    # TODO(leofang): check NaN; for complex numbers it seems a bit involved
+    # TODO(leofang): better memory access pattern?
+    # TODO(leofang): investigate if we could use texture to accelerate
     in_params = 'raw X x, raw U idx, '
     in_params += 'raw X fx, raw Y fy, U len, raw X left, raw X right'
     out_params = 'Y y'
@@ -433,6 +413,8 @@ def interp(x, xp, fp, left=None, right=None, period=None):
         raise ValueError('xp and fp must be 1D arrays')
     if xp.size != fp.size:
         raise ValueError('fp and xp are not of the same length')
+    if xp.size == 0:
+        raise ValueError('array of sample points is empty')
     if not x.flags.c_contiguous:
         raise NotImplementedError('Non-C-contiguous x is currently not '
                                   'supported')
