@@ -9,4 +9,27 @@ from cupy_backends.cuda cimport stream as stream_module
 cdef extern from '../cupy_cusparse.h' nogil:
 {ffi}
 
+
+########################################
+# Status check
+
+cdef dict STATUS = {{
+    0: 'CUSPARSE_STATUS_SUCCESS',
+    1: 'CUSPARSE_STATUS_NOT_INITIALIZED',
+    2: 'CUSPARSE_STATUS_ALLOC_FAILED',
+    3: 'CUSPARSE_STATUS_INVALID_VALUE',
+    4: 'CUSPARSE_STATUS_ARCH_MISMATCH',
+    5: 'CUSPARSE_STATUS_MAPPING_ERROR',
+    6: 'CUSPARSE_STATUS_EXECUTION_FAILED',
+    7: 'CUSPARSE_STATUS_INTERNAL_ERROR',
+    8: 'CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED',
+    9: 'CUSPARSE_STATUS_ZERO_PIVOT',
+    10: 'CUSPARSE_STATUS_NOT_SUPPORTED',
+}}
+
+@cython.profile(False)
+cpdef inline check_status(int status):
+    if status != 0:
+        raise CuSparseError(status)
+
 {wrapper}
