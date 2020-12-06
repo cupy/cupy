@@ -395,7 +395,7 @@ def transpile_wrapper_def(env, config, node):
     if out_name is None:
         name = transpile_func_name(node)
         args = [argaux(env, p) for p in node.type.args.params]
-        return '{}({}) except *'.format(name, ', '.join(args))
+        return '{}({})'.format(name, ', '.join(args))
     elif out_name == 'Returned':
         ret_type = erased_type_name(env, node.type.type)
         if ret_type is None:
