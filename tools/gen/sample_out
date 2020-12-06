@@ -132,6 +132,9 @@ cdef extern from '../cupy_cusparse.h' nogil:
     # cuSPARSE Generic API - Dense Vector APIs
     Status cusparseCreateDnVec(DnVecDescr *dnVecDescr, int64_t size, void *values, cudaDataType valueType)
 
+    # Build-time version
+    int CUSPARSE_VERSION
+
 
 ########################################
 # Status check
@@ -173,6 +176,13 @@ cdef inline cuDoubleComplex double_complex_to_cuda(double complex value):
     value_cuda.x = value.real
     value_cuda.y = value.imag
     return value_cuda
+
+
+########################################
+# Build-time version
+
+def get_build_version():
+    return CUSPARSE_VERSION
 
 
 ########################################
