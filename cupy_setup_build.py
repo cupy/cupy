@@ -471,7 +471,7 @@ def preconfigure_modules(compiler, settings):
             installed = True
             errmsg = ['The library is installed but not supported.']
         elif (module['name'] in ('thrust', 'cub')
-                and (nvcc_path is None or hipcc_path is None)):
+                and (nvcc_path is None and hipcc_path is None)):
             installed = True
             errmsg = ['nvcc command could not be found in PATH.',
                       'Check your PATH environment variable.']
