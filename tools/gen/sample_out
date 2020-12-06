@@ -3,6 +3,7 @@
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api.runtime cimport DataType
 from cupy_backends.cuda cimport stream as stream_module
 
 
@@ -127,10 +128,10 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseZnnz_compress(Handle handle, int m, const MatDescr descr, const cuDoubleComplex *csrSortedValA, const int *csrSortedRowPtrA, int *nnzPerRow, int *nnzC, cuDoubleComplex tol)
 
     # cuSPARSE Generic API - Sparse Vector APIs
-    Status cusparseCreateSpVec(SpVecDescr *spVecDescr, int64_t size, int64_t nnz, void *indices, void *values, IndexType idxType, IndexBase idxBase, cudaDataType valueType)
+    Status cusparseCreateSpVec(SpVecDescr *spVecDescr, int64_t size, int64_t nnz, void *indices, void *values, IndexType idxType, IndexBase idxBase, DataType valueType)
 
     # cuSPARSE Generic API - Dense Vector APIs
-    Status cusparseCreateDnVec(DnVecDescr *dnVecDescr, int64_t size, void *values, cudaDataType valueType)
+    Status cusparseCreateDnVec(DnVecDescr *dnVecDescr, int64_t size, void *values, DataType valueType)
 
     # Build-time version
     int CUSPARSE_VERSION
@@ -730,9 +731,9 @@ cpdef znnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, 
 ###########################################
 # cuSPARSE Generic API - Sparse Vector APIs
 
-cpdef size_t createSpVec(int64_t size, int64_t nnz, size_t indices, size_t values, size_t idxType, size_t idxBase, cudaDataType valueType) except? 0:
+cpdef size_t createSpVec(int64_t size, int64_t nnz, size_t indices, size_t values, size_t idxType, size_t idxBase, size_t valueType) except? 0:
     cdef SpVecDescr spVecDescr
-    status = cusparseCreateSpVec(&spVecDescr, size, nnz, <void *>indices, <void *>values, <IndexType>idxType, <IndexBase>idxBase, valueType)
+    status = cusparseCreateSpVec(&spVecDescr, size, nnz, <void *>indices, <void *>values, <IndexType>idxType, <IndexBase>idxBase, <DataType>valueType)
     check_status(status)
     return <size_t>spVecDescr
 
@@ -740,8 +741,8 @@ cpdef size_t createSpVec(int64_t size, int64_t nnz, size_t indices, size_t value
 ##########################################
 # cuSPARSE Generic API - Dense Vector APIs
 
-cpdef size_t createDnVec(int64_t size, size_t values, cudaDataType valueType) except? 0:
+cpdef size_t createDnVec(int64_t size, size_t values, size_t valueType) except? 0:
     cdef DnVecDescr dnVecDescr
-    status = cusparseCreateDnVec(&dnVecDescr, size, <void *>values, valueType)
+    status = cusparseCreateDnVec(&dnVecDescr, size, <void *>values, <DataType>valueType)
     check_status(status)
     return <size_t>dnVecDescr

@@ -550,20 +550,25 @@ def validate_config(config):
 
 
 special_types = {
+    'cudaDataType': {
+        'transpiled': 'DataType',
+        'erased': 'size_t',
+        'conversion': '<DataType>{}'.format,
+    },
     'cudaStream_t': {
-        'conversion': '<driver.Stream>{}'.format,
         'transpiled': 'driver.Stream',
         'erased': 'size_t',
+        'conversion': '<driver.Stream>{}'.format,
     },
     'cuComplex': {
-        'conversion': 'complex_to_cuda({})'.format,
         'transpiled': 'cuComplex',
         'erased': 'complex',
+        'conversion': 'complex_to_cuda({})'.format,
     },
     'cuDoubleComplex': {
-        'conversion': 'double_complex_to_cuda({})'.format,
         'transpiled': 'cuDoubleComplex',
         'erased': 'double complex',
+        'conversion': 'double_complex_to_cuda({})'.format,
     },
 }
 
