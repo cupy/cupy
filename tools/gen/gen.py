@@ -465,6 +465,16 @@ def transpile_wrapper_call(env, config, node):
     return '{}({})'.format(name, ', '.join(args))
 
 
+def handle_arg_name(node):
+    assert isinstance(node, c_ast.Decl)
+    for param in node.type.args.params:
+        assert len(param.type.type.names) == 1
+        type_name = param.type.type.names[0]
+        if type_name == 'cusparseHandle_t':
+            return param.name
+    assert False
+
+
 def transpile_wrapper_decl(env, config, node):
     assert isinstance(node.type, c_ast.FuncDecl)
 
@@ -487,8 +497,8 @@ def transpile_wrapper_decl(env, config, node):
 
     # Set stream if necessary
     if config.get('use_stream', False):
-        handle_var = 'get_handle_name(node)'  # FIXME
-        code.append('    _setStream({})'.format(handle_var))
+        handle_name = handle_arg_name(node)
+        code.append('    _setStream({})'.format(handle_name))
 
     if out_name is None or out_name != 'Returned':
         # Call cuSPARSE API and check its status returned
