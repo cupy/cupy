@@ -471,7 +471,7 @@ def preconfigure_modules(compiler, settings):
             installed = True
             errmsg = ['The library is installed but not supported.']
         elif (module['name'] in ('thrust', 'cub')
-                and (nvcc_path is None or hipcc_path is None)):
+                and (nvcc_path is None and hipcc_path is None)):
             installed = True
             errmsg = ['nvcc command could not be found in PATH.',
                       'Check your PATH environment variable.']
@@ -953,7 +953,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
                            obj, src, ext, cc_args, extra_postargs, pp_opts):
         # For CUDA C source files, compile them with NVCC.
         nvcc_path = build.get_nvcc_path()
-        base_opts = build.get_compiler_base_options()
+        base_opts = build.get_compiler_base_options(False)
         compiler_so = nvcc_path
 
         cuda_version = build.get_cuda_version()
@@ -970,7 +970,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
                             obj, src, ext, cc_args, extra_postargs, pp_opts):
         # For CUDA C source files, compile them with HIPCC.
         rocm_path = build.get_hipcc_path()
-        base_opts = build.get_compiler_base_options()
+        base_opts = build.get_compiler_base_options(True)
         compiler_so = rocm_path
         postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
         print('HIPCC options:', postargs)

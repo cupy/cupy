@@ -230,21 +230,21 @@ def _match_output_lines(output_lines, regexs):
     return None
 
 
-def get_compiler_base_options():
+def get_compiler_base_options(use_hip=False):
     """Returns base options for nvcc compiler.
 
     """
     global _compiler_base_options
     if _compiler_base_options is None:
-        _compiler_base_options = _get_compiler_base_options()
+        _compiler_base_options = _get_compiler_base_options(use_hip)
     return _compiler_base_options
 
 
-def _get_compiler_base_options():
+def _get_compiler_base_options(use_hip=False):
     # Try compiling a dummy code.
     # If the compilation fails, try to parse the output of compilation
     # and try to compose base options according to it.
-    nvcc_path = get_nvcc_path()
+    nvcc_path = get_nvcc_path() if not use_hip else get_hipcc_path()
     with _tempdir() as temp_dir:
         test_cu_path = os.path.join(temp_dir, 'test.cu')
         test_out_path = os.path.join(temp_dir, 'test.out')
