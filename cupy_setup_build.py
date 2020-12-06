@@ -393,6 +393,7 @@ def preconfigure_modules(compiler, settings):
     """
 
     nvcc_path = build.get_nvcc_path()
+    hipcc_path = build.get_hipcc_path()
     summary = [
         '',
         '************************************************************',
@@ -404,12 +405,14 @@ def preconfigure_modules(compiler, settings):
         '  Library directories: {}'.format(str(settings['library_dirs'])),
         '  nvcc command       : {}'.format(
             nvcc_path if nvcc_path else '(not found)'),
+        '  hipcc command      : {}'.format(
+            hipcc_path if hipcc_path else '(not found)'),
         '',
         'Environment Variables:',
     ]
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
-                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC',
+                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC', 'HIPCC',
                 'ROCM_HOME']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
@@ -464,7 +467,8 @@ def preconfigure_modules(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
-        elif module['name'] in ('thrust', 'cub') and nvcc_path is None:
+        elif (module['name'] in ('thrust', 'cub')
+                and (nvcc_path is None or hipcc_path is None)):
             installed = True
             errmsg = ['nvcc command could not be found in PATH.',
                       'Check your PATH environment variable.']
@@ -487,6 +491,7 @@ def preconfigure_modules(compiler, settings):
             # Skip checking other modules when CUDA is unavailable.
             if module['name'] == 'cuda':
                 break
+
     # Get a list of the CC of the devices connected to this node
     build.check_compute_capabilities(compiler, settings)
 
@@ -1002,6 +1007,8 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
                     include_dirs=None, debug=0, extra_preargs=None,
                     extra_postargs=None, depends=None):
         # Compile CUDA C files, mainly derived from UnixCCompiler._compile().
+        if use_hip:
+            raise RuntimeError('ROCm is not supported on Windows')
 
         macros, objects, extra_postargs, pp_opts, _build = \
             self._setup_compile(output_dir, macros, include_dirs, sources,
@@ -1064,7 +1071,8 @@ class custom_build_ext(build_ext.build_ext):
     """Custom `build_ext` command to include CUDA C source files."""
 
     def run(self):
-        if build.get_nvcc_path() is not None:
+        if (build.get_nvcc_path() is not None
+                or build.get_hipcc_path() is not None):
             def wrap_new_compiler(func):
                 def _wrap_new_compiler(*args, **kwargs):
                     try:

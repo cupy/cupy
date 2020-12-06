@@ -72,6 +72,7 @@ main() {
 
       apt update -qqy
       apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl -qqy
+      apt list --installed | grep cuda  # TODO(leofang): remove cuda toolkit
       export HCC_AMDGPU_TARGET=gfx900
       export ROCM_HOME=/opt/rocm
       export CUPY_INSTALL_USE_HIP=1
