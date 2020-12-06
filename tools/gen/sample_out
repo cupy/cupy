@@ -126,9 +126,8 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseCreateDnVec(DnVecDescr *dnVecDescr, int64_t size, void *values, cudaDataType valueType)
 
 
-# ----------------------------
+########################################
 # cuSPARSE Management Function
-# ----------------------------
 
 cpdef intptr_t create() except? 0:
     cdef Handle handle
@@ -167,9 +166,8 @@ cpdef setStream(intptr_t handle, size_t streamId) except *:
     check_status(status)
 
 
-# ------------------------
+########################################
 # cuSPARSE Helper Function
-# ------------------------
 
 cpdef size_t createMatDescr() except? 0:
     cdef MatDescr descrA
@@ -216,9 +214,8 @@ cpdef size_t createCsrgemm2Info() except? 0:
     return <size_t>info
 
 
-# -------------------------
+########################################
 # cuSPARSE Level 1 Function
-# -------------------------
 
 cpdef saxpyi(intptr_t handle, int nnz, size_t alpha, size_t xVal, size_t xInd, size_t y, size_t idxBase) except *:
     if stream_module.enable_current_stream:
@@ -329,9 +326,8 @@ cpdef zsctr(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t
     check_status(status)
 
 
-# -------------------------
+########################################
 # cuSPARSE Level 2 Function
-# -------------------------
 
 cpdef sbsrmv(intptr_t handle, size_t dirA, size_t transA, int mb, int nb, int nnzb, size_t alpha, size_t descrA, size_t bsrSortedValA, size_t bsrSortedRowPtrA, size_t bsrSortedColIndA, int blockDim, size_t x, size_t beta, size_t y) except *:
     if stream_module.enable_current_stream:
@@ -406,9 +402,8 @@ cpdef zgemvi(intptr_t handle, size_t transA, int m, int n, size_t alpha, size_t 
     check_status(status)
 
 
-# -------------------------
+########################################
 # cuSPARSE Level 3 Function
-# -------------------------
 
 cpdef sbsrmm(intptr_t handle, size_t dirA, size_t transA, size_t transB, int mb, int n, int kb, int nnzb, size_t alpha, size_t descrA, size_t bsrSortedValA, size_t bsrSortedRowPtrA, size_t bsrSortedColIndA, const int blockSize, size_t B, const int ldb, size_t beta, size_t C, int ldc) except *:
     if stream_module.enable_current_stream:
@@ -435,9 +430,8 @@ cpdef zbsrmm(intptr_t handle, size_t dirA, size_t transA, size_t transB, int mb,
     check_status(status)
 
 
-# -----------------------
+########################################
 # cuSPARSE Extra Function
-# -----------------------
 
 cpdef size_t scsrgeam2_bufferSizeExt(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int nnzA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t beta, size_t descrB, int nnzB, size_t csrSortedValB, size_t csrSortedRowPtrB, size_t csrSortedColIndB, size_t descrC, size_t csrSortedValC, size_t csrSortedRowPtrC, size_t csrSortedColIndC) except? 0:
     cdef size_t bufferSizeInBytes
@@ -496,9 +490,8 @@ cpdef zcsrgeam2(intptr_t handle, int m, int n, size_t alpha, size_t descrA, int 
     check_status(status)
 
 
-# ---------------------------------------------------------------------
+#######################################################################
 # cuSPARSE Preconditioners - Incomplete Cholesky Factorization: level 0
-# ---------------------------------------------------------------------
 
 cpdef int scsric02_bufferSize(intptr_t handle, int m, int nnz, size_t descrA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t info) except? 0:
     cdef int bufferSizeInBytes
@@ -571,9 +564,8 @@ cpdef int xcsric02_zeroPivot(intptr_t handle, size_t info) except? 0:
     return position
 
 
-# ---------------------------------------------------------------
+#################################################################
 # cuSPARSE Preconditioners - Incomplete LU Factorization: level 0
-# ---------------------------------------------------------------
 
 cpdef scsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost, size_t tol, size_t boost_val) except *:
     if stream_module.enable_current_stream:
@@ -600,14 +592,12 @@ cpdef zcsrilu02_numericBoost(intptr_t handle, size_t info, int enable_boost, siz
     check_status(status)
 
 
-# --------------------
+########################################
 # cuSPARSE Reorderings
-# --------------------
 
 
-# --------------------------
+########################################
 # cuSPARSE Format Conversion
-# --------------------------
 
 cpdef xcoo2csr(intptr_t handle, size_t cooRowInd, int nnz, int m, size_t csrSortedRowPtr, size_t idxBase) except *:
     if stream_module.enable_current_stream:
@@ -678,9 +668,8 @@ cpdef znnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, 
     check_status(status)
 
 
-# -----------------------------------------
+###########################################
 # cuSPARSE Generic API - Sparse Vector APIs
-# -----------------------------------------
 
 cpdef size_t createSpVec(int64_t size, int64_t nnz, size_t indices, size_t values, size_t idxType, size_t idxBase, cudaDataType valueType) except? 0:
     cdef SpVecDescr spVecDescr
@@ -689,9 +678,8 @@ cpdef size_t createSpVec(int64_t size, int64_t nnz, size_t indices, size_t value
     return <size_t>spVecDescr
 
 
-# ----------------------------------------
+##########################################
 # cuSPARSE Generic API - Dense Vector APIs
-# ----------------------------------------
 
 cpdef size_t createDnVec(int64_t size, size_t values, cudaDataType valueType) except? 0:
     cdef DnVecDescr dnVecDescr

@@ -534,9 +534,8 @@ def transpile_wrapper(env, item):
         comment = item[1]
         code = []
         code.append('')
-        code.append('# ' + '-' * len(comment))
+        code.append('#' * max(40, len(comment) + 2))
         code.append('# ' + comment)
-        code.append('# ' + '-' * len(comment))
         return '\n'.join(code)
     else:
         decls = query_func_decls(head, env)
