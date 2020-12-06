@@ -2,6 +2,7 @@
 
 cimport cython  # NOQA
 
+from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda cimport stream as stream_module
 
 
@@ -13,8 +14,8 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseGetVersion(Handle handle, int *version)
     Status cusparseGetPointerMode(Handle handle, PointerMode *mode)
     Status cusparseSetPointerMode(Handle handle, PointerMode mode)
-    Status cusparseGetStream(Handle handle, cudaStream_t *streamId)
-    Status cusparseSetStream(Handle handle, cudaStream_t streamId)
+    Status cusparseGetStream(Handle handle, driver.Stream *streamId)
+    Status cusparseSetStream(Handle handle, driver.Stream streamId)
 
     # cuSPARSE Helper Function
     Status cusparseCreateMatDescr(MatDescr *descrA)
@@ -155,14 +156,14 @@ cpdef setPointerMode(intptr_t handle, size_t mode) except *:
     status = cusparseSetPointerMode(<Handle>handle, <PointerMode>mode)
     check_status(status)
 
-cpdef cudaStream_t getStream(intptr_t handle) except? 0:
-    cdef cudaStream_t streamId
+cpdef size_t getStream(intptr_t handle) except? 0:
+    cdef driver.Stream streamId
     status = cusparseGetStream(<Handle>handle, &streamId)
     check_status(status)
-    return streamId
+    return <size_t>streamId
 
-cpdef setStream(intptr_t handle, cudaStream_t streamId) except *:
-    status = cusparseSetStream(<Handle>handle, streamId)
+cpdef setStream(intptr_t handle, size_t streamId) except *:
+    status = cusparseSetStream(<Handle>handle, <driver.Stream>streamId)
     check_status(status)
 
 

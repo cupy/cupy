@@ -551,6 +551,11 @@ def validate_config(config):
 
 
 special_types = {
+    'cudaStream_t': {
+        'conversion': '<driver.Stream>{}'.format,
+        'transpiled': 'driver.Stream',
+        'erased': 'size_t',
+    },
     'cuComplex': {
         'conversion': 'complex_to_cuda({})'.format,
         'transpiled': 'cuComplex',
