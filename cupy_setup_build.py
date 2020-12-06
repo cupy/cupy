@@ -496,7 +496,8 @@ def preconfigure_modules(compiler, settings):
                 break
 
     # Get a list of the CC of the devices connected to this node
-    build.check_compute_capabilities(compiler, settings)
+    if not use_hip:
+        build.check_compute_capabilities(compiler, settings)
 
     if len(ret) != len(MODULES):
         if 'cuda' in ret:
@@ -1010,9 +1011,6 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
                     include_dirs=None, debug=0, extra_preargs=None,
                     extra_postargs=None, depends=None):
         # Compile CUDA C files, mainly derived from UnixCCompiler._compile().
-        if use_hip:
-            raise RuntimeError('ROCm is not supported on Windows')
-
         macros, objects, extra_postargs, pp_opts, _build = \
             self._setup_compile(output_dir, macros, include_dirs, sources,
                                 depends, extra_postargs)
@@ -1038,6 +1036,9 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
 
     def compile(self, sources, **kwargs):
         # Split CUDA C sources and others.
+        if use_hip:
+            raise RuntimeError('ROCm is not supported on Windows')
+
         cu_sources = []
         other_sources = []
         for source in sources:
