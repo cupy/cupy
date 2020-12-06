@@ -498,7 +498,10 @@ def transpile_wrapper_decl(env, config, node):
     # Set stream if necessary
     if config.get('use_stream', False):
         handle_name = handle_arg_name(node)
-        code.append('    _setStream({})'.format(handle_name))
+        code.append('    if stream_module.enable_current_stream:')
+        code.append(
+            '        setStream({}, stream_module.get_current_stream_ptr())'
+            ''.format(handle_name))
 
     if out_name is None or out_name != 'Returned':
         # Call cuSPARSE API and check its status returned
