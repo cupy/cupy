@@ -20,7 +20,7 @@ import cupyx.scipy.sparse.linalg  # NOQA
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestLsqr(unittest.TestCase):
 
     def setUp(self):
@@ -69,7 +69,7 @@ class TestLsqr(unittest.TestCase):
     ],
     'axis': [None, (0, 1), (1, -2)],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 @testing.gpu
 class TestMatrixNorm(unittest.TestCase):
 
@@ -95,7 +95,7 @@ class TestMatrixNorm(unittest.TestCase):
     'axis': [0, (1,), (-2,), -1],
 })
 )
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 @testing.gpu
 class TestVectorNorm(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
@@ -116,7 +116,7 @@ class TestVectorNorm(unittest.TestCase):
     'k': [3, 6, 12],
     'return_eigenvectors': [True, False],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestEigsh(unittest.TestCase):
     n = 30
     density = 0.33
@@ -183,7 +183,7 @@ class TestEigsh(unittest.TestCase):
     'k': [3, 6, 12],
     'return_vectors': [True, False],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestSvds(unittest.TestCase):
     density = 0.33
 
@@ -539,7 +539,7 @@ class TestGmres:
     'N': [1, 7],
 }))
 @testing.gpu
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestLinearOperator(unittest.TestCase):
 
     # modified from scipy
