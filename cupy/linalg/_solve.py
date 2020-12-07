@@ -270,8 +270,8 @@ def lstsq(a, b, rcond='warn'):
 
     # Solve the least-squares solution
     # x = vh.T.conj() @ diag(s1) @ u.T.conj() @ b
-    zh = b.T.conj().dot(u) * s1
-    x = zh.dot(vh).T.conj()
+    z = (cupy.dot(b.T, u.conj()) * s1).T
+    x = cupy.dot(vh.T.conj(), z)
     # Calculate squared Euclidean 2-norm for each column in b - a*x
     if m <= n or rank != n:
         resids = cupy.empty((0,), dtype=s.dtype)

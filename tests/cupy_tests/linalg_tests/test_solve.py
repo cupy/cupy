@@ -188,7 +188,7 @@ class TestPinv(unittest.TestCase):
 class TestLstsq(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(atol=1e-3, contiguous_check=False)
+    @testing.numpy_cupy_allclose(atol=1e-3)
     def check_lstsq_solution(self, a_shape, b_shape, seed, rcond, xp, dtype,
                              singular=False):
         a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=seed)
