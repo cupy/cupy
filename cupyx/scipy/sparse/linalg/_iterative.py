@@ -7,6 +7,7 @@ from cupy.cuda import device
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import csr
+from ._interface import aslinearoperator, LinearOperator, IdentityOperator
 
 
 def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
@@ -14,7 +15,8 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
     """Uses Conjugate Gradient iteration to solve ``Ax = b``.
 
     Args:
-        A (cupy.ndarray or cupyx.scipy.sparse.spmatrix): The real or complex
+        A (cupy.ndarray, cupyx.scipy.sparse.spmatrix or
+            cupyx.scipy.sparse.linalg.LinearOperator): The real or complex
             matrix of the linear system with shape ``(n, n)``. ``A`` must
             be a hermitian, positive definitive matrix.
         b (cupy.ndarray): Right hand side of the linear system with shape
@@ -22,7 +24,8 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         x0 (cupy.ndarray): Starting guess for the solution.
         tol (float): Tolerance for convergence.
         maxiter (int): Maximum number of iterations.
-        M (cupy.ndarray or cupyx.scipy.sparse.spmatrix): Preconditioner for
+        M (cupy.ndarray, cupyx.scipy.sparse.spmatrix or
+            cupyx.scipy.sparse.linalg.LinearOperator): Preconditioner for
             ``A``. The preconditioner should approximate the inverse of ``A``.
         callback (function): User-specified function to call after each
             iteration. It is called as ``callback(xk)``, where ``xk`` is the
@@ -37,14 +40,13 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
 
     .. seealso:: :func:`scipy.sparse.linalg.cg`
     """
-    if A.ndim != 2 or A.shape[0] != A.shape[1]:
-        raise ValueError('expected square matrix (shape: {})'.format(A.shape))
-    if A.dtype.char not in 'fdFD':
-        raise TypeError('unsupprted dtype (actual: {})'.format(A.dtype))
+    A, M, x, b = _make_system(A, M, x0, b)
+    matvec = A.matvec
+    psolve = M.matvec
+
     n = A.shape[0]
-    if not (b.shape == (n,) or b.shape == (n, 1)):
-        raise ValueError('b has incompatible dimensions')
-    b = b.astype(A.dtype).ravel()
+    if maxiter is None:
+        maxiter = n * 10
     if n == 0:
         return cupy.empty_like(b), 0
     b_norm = cupy.linalg.norm(b)
@@ -54,15 +56,6 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         atol = tol * float(b_norm)
     else:
         atol = max(float(atol), tol * float(b_norm))
-    if x0 is None:
-        x = cupy.zeros((n,), dtype=A.dtype)
-    else:
-        if not (x0.shape == (n,) or x0.shape == (n, 1)):
-            raise ValueError('x0 has incompatible dimensions')
-        x = x0.astype(A.dtype).ravel()
-    if maxiter is None:
-        maxiter = n * 10
-    matvec, psolve = _make_funcs(A, M)
 
     r = b - matvec(x)
     iters = 0
@@ -99,7 +92,8 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
     """Uses Generalized Minimal RESidual iteration to solve ``Ax = b``.
 
     Args:
-        A (cupy.ndarray or cupyx.scipy.sparse.spmatrix): The real or complex
+        A (cupy.ndarray, cupyx.scipy.sparse.spmatrix or
+            cupyx.scipy.sparse.linalg.LinearOperator): The real or complex
             matrix of the linear system with shape ``(n, n)``.
         b (cupy.ndarray): Right hand side of the linear system with shape
             ``(n,)`` or ``(n, 1)``.
@@ -108,7 +102,8 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
         restart (int): Number of iterations between restarts. Larger values
             increase iteration cost, but may be necessary for convergence.
         maxiter (int): Maximum number of iterations.
-        M (cupy.ndarray or cupyx.scipy.sparse.spmatrix): Preconditioner for
+        M (cupy.ndarray or cupyx.scipy.sparse.spmatrixor
+            cupyx.scipy.sparse.linalg.LinearOperator): Preconditioner for
             ``A``. The preconditioner should approximate the inverse of ``A``.
         callback (function): User-specified function to call on every restart.
             It is called as ``callback(arg)``, where ``arg`` is selected by
@@ -130,14 +125,11 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
 
     .. seealso:: :func:`scipy.sparse.linalg.gmres`
     """
-    if A.ndim != 2 or A.shape[0] != A.shape[1]:
-        raise ValueError('expected square matrix (shape: {})'.format(A.shape))
-    if A.dtype.char not in 'fdFD':
-        raise TypeError('unsupprted dtype (actual: {})'.format(A.dtype))
+    A, M, x, b = _make_system(A, M, x0, b)
+    matvec = A.matvec
+    psolve = M.matvec
+
     n = A.shape[0]
-    if not (b.shape == (n,) or b.shape == (n, 1)):
-        raise ValueError('b has incompatible dimensions')
-    b = b.astype(A.dtype).ravel()
     if n == 0:
         return cupy.empty_like(b), 0
     b_norm = cupy.linalg.norm(b)
@@ -147,12 +139,6 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
         atol = tol * float(b_norm)
     else:
         atol = max(float(atol), tol * float(b_norm))
-    if x0 is None:
-        x = cupy.zeros((n,), dtype=A.dtype)
-    else:
-        if not (x0.shape == (n,) or x0.shape == (n, 1)):
-            raise ValueError('x0 has incompatible dimensions')
-        x = x0.astype(A.dtype).ravel()
     if maxiter is None:
         maxiter = n * 10
     if restart is None:
@@ -169,7 +155,6 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
     H = cupy.zeros((restart+1, restart), dtype=A.dtype, order='F')
     e = numpy.zeros((restart+1,), dtype=A.dtype)
 
-    matvec, psolve = _make_funcs(A, M)
     compute_hu = _make_compute_hu(V)
 
     iters = 0
@@ -210,18 +195,59 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
     return mx, info
 
 
-def _make_funcs(A, M):
-    matvec = _make_matvec(A)
-    if M is None:
-        def psolve(x): return x
+def _make_system(A, M, x0, b):
+    """Make a linear system Ax = b
+
+    Args:
+        A (cupy.ndarray, cupyx.scipy.sparse.spmatrix or
+            cupyx.scipy.sparse.LinearOperator): sparse or dense matrix.
+        M (cupy.ndarray, cupyx.scipy.sparse.spmatrix or
+            cupyx.scipy.sparse.LinearOperator): preconditioner.
+        x0 (cupy.ndarray): initial guess to iterative method.
+        b (cupy.ndarray): right hand side.
+
+    Returns:
+        tuple:
+            It returns (A, M, x, b).
+            A (LinaerOperator): matrix of linear system
+            M (LinearOperator): preconditioner
+            x (cupy.ndarray): initial guess
+            b (cupy.ndarray): right hand side.
+    """
+    fast_matvec = _make_fast_matvec(A)
+    A = aslinearoperator(A)
+    if fast_matvec is not None:
+        A = LinearOperator(A.shape, matvec=fast_matvec, rmatvec=A.rmatvec,
+                           dtype=A.dtype)
+    if A.shape[0] != A.shape[1]:
+        raise ValueError('expected square matrix (shape: {})'.format(A.shape))
+    if A.dtype.char not in 'fdFD':
+        raise TypeError('unsupprted dtype (actual: {})'.format(A.dtype))
+    n = A.shape[0]
+    if not (b.shape == (n,) or b.shape == (n, 1)):
+        raise ValueError('b has incompatible dimensions')
+    b = b.astype(A.dtype).ravel()
+    if x0 is None:
+        x = cupy.zeros((n,), dtype=A.dtype)
     else:
-        psolve = _make_matvec(M)
+        if not (x0.shape == (n,) or x0.shape == (n, 1)):
+            raise ValueError('x0 has incompatible dimensions')
+        x = x0.astype(A.dtype).ravel()
+    if M is None:
+        M = IdentityOperator(shape=A.shape, dtype=A.dtype)
+    else:
+        fast_matvec = _make_fast_matvec(M)
+        M = aslinearoperator(M)
+        if fast_matvec is not None:
+            M = LinearOperator(M.shape, matvec=fast_matvec, rmatvec=M.rmatvec,
+                               dtype=M.dtype)
         if A.shape != M.shape:
             raise ValueError('matrix and preconditioner have different shapes')
-    return matvec, psolve
+    return A, M, x, b
 
 
-def _make_matvec(A):
+def _make_fast_matvec(A):
+    matvec = None
     if csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
         handle = device.get_cusparse_handle()
         op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
@@ -248,8 +274,7 @@ def _make_matvec(A):
                 handle, op_a, alpha.ctypes.data, desc_A.desc, desc_x.desc,
                 beta.ctypes.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
             return y
-    else:
-        def matvec(x): return A @ x
+
     return matvec
 
 
