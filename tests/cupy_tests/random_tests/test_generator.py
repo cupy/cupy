@@ -38,8 +38,8 @@ def numpy_cupy_equal_continuous_distribution(significance_level, name='xp'):
             kw[name] = numpy
             numpy_result = impl(self, *args, **kw)
 
-            self.assertIsNotNone(cupy_result)
-            self.assertIsNotNone(numpy_result)
+            assert cupy_result is not None
+            assert numpy_result is not None
             d_plus, d_minus, p_value = \
                 two_sample_Kolmogorov_Smirnov_test(
                     cupy.asnumpy(cupy_result), numpy_result)
@@ -463,7 +463,7 @@ class TestLogistic(RandomGeneratorTestCase):
     @condition.repeat(10)
     def test_standard_logistic_isfinite(self):
         x = self.generate(size=10**7)
-        self.assertTrue(cupy.isfinite(x).all())
+        assert cupy.isfinite(x).all()
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
@@ -835,7 +835,7 @@ class TestStandardCauchy(RandomGeneratorTestCase):
     @condition.repeat(10)
     def test_standard_cauchy_isfinite(self):
         x = self.generate(size=10**7)
-        self.assertTrue(cupy.isfinite(x).all())
+        assert cupy.isfinite(x).all()
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
@@ -936,12 +936,12 @@ class TestInterval(RandomGeneratorTestCase):
     @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
         mx = 5
-        trial = 100
+        trial = 200
         vals = self.generate_many(mx, None, _count=trial)
         vals = [val.get() for val in vals]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
         expected = numpy.array([float(trial) / (mx + 1)] * (mx + 1))
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        assert hypothesis.chi_square_test(counts, expected)
 
     @condition.repeat(3)
     def test_goodness_of_fit_2(self):
@@ -949,7 +949,7 @@ class TestInterval(RandomGeneratorTestCase):
         vals = self.generate(mx, (5, 5)).get()
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 2))[0]
         expected = numpy.array([float(vals.size) / (mx + 1)] * (mx + 1))
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        assert hypothesis.chi_square_test(counts, expected)
 
 
 @testing.fix_random()
@@ -960,21 +960,21 @@ class TestTomaxint(RandomGeneratorTestCase):
 
     def test_tomaxint_none(self):
         x = self.generate()
-        self.assertEqual(x.shape, ())
-        self.assertTrue((0 <= x).all())
-        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
+        assert x.shape == ()
+        assert (0 <= x).all()
+        assert (x <= cupy.iinfo(cupy.int_).max).all()
 
     def test_tomaxint_int(self):
         x = self.generate(3)
-        self.assertEqual(x.shape, (3,))
-        self.assertTrue((0 <= x).all())
-        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
+        assert x.shape == (3,)
+        assert (0 <= x).all()
+        assert (x <= cupy.iinfo(cupy.int_).max).all()
 
     def test_tomaxint_tuple(self):
         x = self.generate((2, 3))
-        self.assertEqual(x.shape, (2, 3))
-        self.assertTrue((0 <= x).all())
-        self.assertTrue((x <= cupy.iinfo(cupy.int_).max).all())
+        assert x.shape == (2, 3)
+        assert (0 <= x).all()
+        assert (x <= cupy.iinfo(cupy.int_).max).all()
 
 
 @testing.parameterize(
@@ -1001,8 +1001,8 @@ class TestChoice1(RandomGeneratorTestCase):
             expected_dtype = 'float'
         else:
             expected_dtype = 'int64'
-        self.assertEqual(v.dtype, expected_dtype)
-        self.assertEqual(v.shape, expected_shape)
+        assert v.dtype == expected_dtype
+        assert v.shape == expected_shape
 
     @condition.repeat(3, 10)
     def test_bound(self):
@@ -1011,9 +1011,9 @@ class TestChoice1(RandomGeneratorTestCase):
         vals = [val.get() for val in vals]
         size_ = self.size if isinstance(self.size, tuple) else (self.size,)
         for val in vals:
-            self.assertEqual(val.shape, size_)
-        self.assertEqual(min(val.min() for val in vals), 0)
-        self.assertEqual(max(val.max() for val in vals), 2)
+            assert val.shape == size_
+        assert min(val.min() for val in vals) == 0
+        assert max(val.max() for val in vals) == 2
 
 
 @testing.parameterize(
@@ -1035,8 +1035,8 @@ class TestChoice2(RandomGeneratorTestCase):
             expected_dtype = 'float'
         else:
             expected_dtype = 'int'
-        self.assertEqual(v.dtype, expected_dtype)
-        self.assertEqual(v.shape, expected_shape)
+        assert v.dtype == expected_dtype
+        assert v.shape == expected_shape
 
     @condition.repeat(3, 10)
     def test_bound(self):
@@ -1045,9 +1045,9 @@ class TestChoice2(RandomGeneratorTestCase):
         vals = [val.get() for val in vals]
         size_ = self.size if isinstance(self.size, tuple) else (self.size,)
         for val in vals:
-            self.assertEqual(val.shape, size_)
-        self.assertEqual(min(val.min() for val in vals), 0)
-        self.assertEqual(max(val.max() for val in vals), 2)
+            assert val.shape == size_
+        assert min(val.min() for val in vals) == 0
+        assert max(val.max() for val in vals) == 2
 
 
 @testing.fix_random()
@@ -1063,14 +1063,14 @@ class TestChoiceChi(RandomGeneratorTestCase):
         vals = [val.get() for val in vals]
         counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
         expected = numpy.array([30, 30, 40])
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        assert hypothesis.chi_square_test(counts, expected)
 
     @condition.repeat(3, 10)
     def test_goodness_of_fit_2(self):
         vals = self.generate(3, (5, 20), True, [0.3, 0.3, 0.4]).get()
         counts = numpy.histogram(vals, bins=numpy.arange(4))[0]
         expected = numpy.array([30, 30, 40])
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        assert hypothesis.chi_square_test(counts, expected)
 
 
 @testing.fix_random()
@@ -1133,18 +1133,18 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
             expected_dtype = 'float'
         else:
             expected_dtype = 'int'
-        self.assertEqual(v.dtype, expected_dtype)
-        self.assertEqual(v.shape, expected_shape)
+        assert v.dtype == expected_dtype
+        assert v.shape == expected_shape
 
     @condition.repeat(3, 10)
     def test_bound(self):
         val = self.generate(a=self.a, size=self.size, replace=False).get()
         size = self.size if isinstance(self.size, tuple) else (self.size,)
-        self.assertEqual(val.shape, size)
-        self.assertTrue((0 <= val).all())
-        self.assertTrue((val < 5).all())
+        assert val.shape == size
+        assert (0 <= val).all()
+        assert (val < 5).all()
         val = numpy.asarray(val)
-        self.assertEqual(numpy.unique(val).size, val.size)
+        assert numpy.unique(val).size == val.size
 
 
 @testing.gpu
@@ -1330,7 +1330,7 @@ class TestResetStates(unittest.TestCase):
     def test_reset_states(self):
         _generator._random_states = 'dummy'
         _generator.reset_states()
-        self.assertEqual({}, _generator._random_states)
+        assert {} == _generator._random_states
 
 
 @testing.gpu
@@ -1346,16 +1346,15 @@ class TestGetRandomState(unittest.TestCase):
     def test_get_random_state_initialize(self):
         _generator._random_states = {}
         rs = _generator.get_random_state()
-        self.assertEqual(_generator._random_states[self.device_id], rs)
+        assert _generator._random_states[self.device_id] == rs
 
     def test_get_random_state_memoized(self):
         _generator._random_states = {self.device_id: 'expected',
                                      self.device_id + 1: 'dummy'}
         rs = _generator.get_random_state()
-        self.assertEqual('expected', _generator._random_states[self.device_id])
-        self.assertEqual(
-            'dummy', _generator._random_states[self.device_id + 1])
-        self.assertEqual('expected', rs)
+        assert 'expected' == _generator._random_states[self.device_id]
+        assert 'dummy' == _generator._random_states[self.device_id + 1]
+        assert 'expected' == rs
 
 
 @testing.gpu
@@ -1392,7 +1391,7 @@ class TestStandardExponential(RandomGeneratorTestCase):
     @condition.repeat(10)
     def test_standard_exponential_isfinite(self):
         x = self.generate(size=10**7)
-        self.assertTrue(cupy.isfinite(x).all())
+        assert cupy.isfinite(x).all()
 
     @testing.for_dtypes('fd')
     @condition.repeat_with_success_at_least(10, 3)
@@ -1441,7 +1440,7 @@ class TestRandomStateThreadSafe(unittest.TestCase):
         actual = cupy.random.uniform()
         cupy.random.seed(seed)
         expected = cupy.random.uniform()
-        self.assertEqual(actual, expected)
+        assert actual == expected
 
     def test_set_random_state_thread_safe(self):
         rs = cupy.random.RandomState()
@@ -1504,15 +1503,14 @@ class TestGetRandomState2(unittest.TestCase):
     def _check_different(self, rvs0, rvs1):
         for rv0, rv1 in zip(rvs0, rvs1):
             for r0, r1 in zip(rv0, rv1):
-                self.assertNotEqual(r0, r1)
+                assert r0 != r1
 
 
 class TestCheckAndGetDtype(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     def test_float32_64_type(self, dtype):
-        self.assertEqual(_generator._check_and_get_dtype(dtype),
-                         numpy.dtype(dtype))
+        assert _generator._check_and_get_dtype(dtype) == numpy.dtype(dtype)
 
     def test_float16(self):
         with self.assertRaises(TypeError):

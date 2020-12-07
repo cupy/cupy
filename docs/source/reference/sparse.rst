@@ -41,6 +41,7 @@ Sparse matrix classes
    cupyx.scipy.sparse.csr_matrix
    cupyx.scipy.sparse.dia_matrix
    cupyx.scipy.sparse.spmatrix
+   cupyx.scipy.sparse.linalg.LinearOperator
 
 
 Functions
@@ -91,6 +92,8 @@ Linear Algebra
 
    cupyx.scipy.sparse.linalg.norm
    cupyx.scipy.sparse.linalg.cg
+   cupyx.scipy.sparse.linalg.gmres
    cupyx.scipy.sparse.linalg.lsqr
    cupyx.scipy.sparse.linalg.eigsh
    cupyx.scipy.sparse.linalg.svds
+   cupyx.scipy.sparse.linalg.aslinearoperator

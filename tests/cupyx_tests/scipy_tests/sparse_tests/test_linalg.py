@@ -1,3 +1,5 @@
+from functools import partial
+import cupy
 import unittest
 
 import numpy
@@ -10,7 +12,6 @@ try:
 except ImportError:
     scipy_available = False
 
-import cupy
 from cupy import testing
 from cupy.testing import condition
 from cupyx.scipy import sparse
@@ -253,9 +254,9 @@ class TestSvds(unittest.TestCase):
     'atol': [None, 'select-by-dtype'],
     'b_ndim': [1, 2],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 @testing.gpu
-class TestCg(unittest.TestCase):
+class TestCg:
     n = 30
     density = 0.33
     _atol = {'f': 1e-5, 'd': 1e-12}
@@ -305,31 +306,14 @@ class TestCg(unittest.TestCase):
         a, M = self._make_matrix(dtype, xp)
         return self._test_cg(dtype, xp, sp, a, M)
 
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csr(self, dtype, xp, sp):
+    def test_sparse(self, format, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
+        a = sp.coo_matrix(a).asformat(format)
         if M is not None:
-            M = sp.csr_matrix(M)
-        return self._test_cg(dtype, xp, sp, a, M)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csc(self, dtype, xp, sp):
-        a, M = self._make_matrix(dtype, xp)
-        a = sp.csc_matrix(a)
-        if M is not None:
-            M = sp.csc_matrix(M)
-        return self._test_cg(dtype, xp, sp, a, M)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_coo(self, dtype, xp, sp):
-        a, M = self._make_matrix(dtype, xp)
-        a = sp.coo_matrix(a)
-        if M is not None:
-            M = sp.coo_matrix(M)
+            M = sp.coo_matrix(M).asformat(format)
         return self._test_cg(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
@@ -395,3 +379,305 @@ class TestCg(unittest.TestCase):
         ng_a = xp.ones((self.n, self.n), dtype='i')
         with pytest.raises(TypeError):
             sp.linalg.cg(ng_a, b, atol=self.atol)
+
+
+@testing.parameterize(*testing.product({
+    'x0': [None, 'ones'],
+    'M': [None, 'jacobi'],
+    'atol': [None, 'select-by-dtype'],
+    'b_ndim': [1, 2],
+    'restart': [None, 10],
+}))
+@testing.with_requires('scipy>=1.4')
+@testing.gpu
+class TestGmres:
+    n = 30
+    density = 0.2
+    _atol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, dtype, xp):
+        dtype = numpy.dtype(dtype)
+        shape = (self.n, self.n)
+        a = testing.shaped_random(shape, xp, dtype=dtype, scale=1)
+        mask = testing.shaped_random(shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        diag = xp.diag(testing.shaped_random(
+            (self.n,), xp, dtype=dtype.char.lower(), scale=1) + 1)
+        a[diag > 0] = 0
+        a = a + diag
+        M = None
+        if self.M == 'jacobi':
+            M = xp.diag(1.0 / xp.diag(a))
+        return a, M
+
+    def _make_normalized_vector(self, dtype, xp):
+        b = testing.shaped_random((self.n,), xp, dtype=dtype, scale=1)
+        return b / xp.linalg.norm(b)
+
+    def _test_gmres(self, dtype, xp, sp, a, M):
+        dtype = numpy.dtype(dtype)
+        b = self._make_normalized_vector(dtype, xp)
+        if self.b_ndim == 2:
+            b = b.reshape(self.n, 1)
+        x0 = None
+        if self.x0 == 'ones':
+            x0 = xp.ones((self.n,), dtype=dtype)
+        atol = None
+        if self.atol == 'select-by-dtype':
+            atol = self._atol[dtype.char.lower()]
+        if atol is None and xp == numpy:
+            # Note: If atol is None or not specified, Scipy (at least 1.5.3)
+            # raises DeprecationWarning
+            with pytest.deprecated_call():
+                return sp.linalg.gmres(
+                    a, b, x0=x0, restart=self.restart, M=M, atol=atol)
+        else:
+            return sp.linalg.gmres(
+                a, b, x0=x0, restart=self.restart, M=M, atol=atol)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_dense(self, dtype, xp, sp):
+        a, M = self._make_matrix(dtype, xp)
+        return self._test_gmres(dtype, xp, sp, a, M)
+
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_sparse(self, format, dtype, xp, sp):
+        a, M = self._make_matrix(dtype, xp)
+        a = sp.coo_matrix(a).asformat(format)
+        if M is not None:
+            M = sp.coo_matrix(M).asformat(format)
+        return self._test_gmres(dtype, xp, sp, a, M)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_empty(self, dtype, xp, sp):
+        if (self.x0 is not None or self.M is not None or self.atol is not None
+                or self.restart is not None):
+            raise unittest.SkipTest
+        a = xp.empty((0, 0), dtype=dtype)
+        b = xp.empty((0,), dtype=dtype)
+        if self.atol is None and xp == numpy:
+            # Note: If atol is None or not specified, Scipy (at least 1.5.3)
+            # raises DeprecationWarning
+            with pytest.deprecated_call():
+                return sp.linalg.gmres(a, b)
+        else:
+            return sp.linalg.gmres(a, b)
+
+    @testing.for_dtypes('fdFD')
+    def test_callback(self, dtype):
+        if (self.x0 is not None or self.M is not None or self.atol is not None
+                or self.restart is not None):
+            raise unittest.SkipTest
+        xp, sp = cupy, sparse
+        a, M = self._make_matrix(dtype, xp)
+        b = self._make_normalized_vector(dtype, xp)
+        is_called = False
+
+        def callback1(x):
+            print(xp.linalg.norm(b - a @ x))
+            nonlocal is_called
+            is_called = True
+        sp.linalg.gmres(a, b, callback=callback1, callback_type='x')
+        assert is_called
+        is_called = False
+
+        def callback2(pr_norm):
+            print(pr_norm)
+            nonlocal is_called
+            is_called = True
+        sp.linalg.gmres(a, b, callback=callback2, callback_type='pr_norm')
+        assert is_called
+
+    def test_invalid(self):
+        if (self.x0 is not None or self.M is not None or self.atol is not None
+                or self.restart is not None):
+            raise unittest.SkipTest
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            a, M = self._make_matrix('f', xp)
+            b = self._make_normalized_vector('f', xp)
+            ng_a = xp.ones((self.n, ), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.gmres(ng_a, b)
+            ng_a = xp.ones((self.n, self.n + 1), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.gmres(ng_a, b)
+            ng_a = xp.ones((self.n, self.n, 1), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.gmres(ng_a, b)
+            ng_b = xp.ones((self.n + 1,), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.gmres(a, ng_b)
+            ng_b = xp.ones((self.n, 2), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.gmres(a, ng_b)
+            ng_x0 = xp.ones((self.n + 1,), dtype='f')
+            with pytest.raises(ValueError):
+                sp.linalg.gmres(a, b, x0=ng_x0)
+            ng_M = xp.diag(xp.ones((self.n + 1,), dtype='f'))
+            with pytest.raises(ValueError):
+                sp.linalg.gmres(a, b, M=ng_M)
+            ng_callback_type = '?'
+            with pytest.raises(ValueError):
+                sp.linalg.gmres(a, b, callback_type=ng_callback_type)
+        xp, sp = cupy, sparse
+        b = self._make_normalized_vector('f', xp)
+        ng_a = xp.ones((self.n, self.n), dtype='i')
+        with pytest.raises(TypeError):
+            sp.linalg.gmres(ng_a, b)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [cupy.float32, cupy.float64, cupy.complex_],
+    'outer_modification': ['normal', 'transpose', 'hermitian'],
+    'inner_modification': ['normal', 'sparse', 'adjoint',
+                           'adjoint-matrix-vector', 'adjoint-matrix-matrix'],
+    'xs': [[1, 2, 3], [[1], [2], [3]]],
+    'ys': [[1, 2], [[1], [2]]],
+}))
+@testing.gpu
+@unittest.skipUnless(scipy_available, 'requires scipy')
+class TestLinearOperator(unittest.TestCase):
+
+    # modified from scipy
+    # class that defines parametrized custom cases
+    # adapted from scipy's analogous tests
+    def _inner_cases(self, original, xp, sp, dtype):
+        if(self.inner_modification == 'normal'):
+            return (xp.array(original, dtype=dtype), original)
+        if(self.inner_modification == 'sparse'):
+            return (sp.csr_matrix(
+                    original, dtype=dtype), original)
+
+        # creating base-matrix-like class with default
+        # matrix-vector and adjoint-matrix-vector impl
+        def mv(x, dtype):
+            y = original.dot(x)
+            if len(x.shape) == 2:
+                y = y.reshape(-1, 1)
+            return y
+
+        def rmv(x, dtype):
+            return original.T.conj().dot(x)
+
+        # defining the base-class
+        class BaseMatlike(sp.linalg.LinearOperator):
+            args = ()
+
+            def __init__(self, dtype):
+                self.dtype = xp.dtype(dtype)
+                self.shape = original.shape
+
+            def _matvec(self, x):
+                return mv(x, self.dtype)
+
+        # using above base-class to make and test sub-classes based
+        # on the current `inner_modification` parameter
+        if(self.inner_modification == 'adjoint'):
+
+            # defining the sub-class
+            class HasAdjoint(BaseMatlike):
+                args = ()
+
+                def _adjoint(self):
+                    shape = self.shape[1], self.shape[0]
+                    matvec = partial(rmv, dtype=self.dtype)
+                    rmatvec = partial(mv, dtype=self.dtype)
+                    return sp.linalg.LinearOperator(matvec=matvec,
+                                                    rmatvec=rmatvec,
+                                                    dtype=self.dtype,
+                                                    shape=shape)
+            return (HasAdjoint(dtype), original)
+
+        # defining the sub-classes
+        class HasRmatvec(BaseMatlike):
+            args = ()
+
+            def _rmatvec(self, x):
+                return rmv(x, self.dtype)
+
+        class HasRmatmat(HasRmatvec):
+
+            def _matmat(self, x):
+                return original.dot(x)
+
+            def _rmatmat(self, x):
+                return original.T.conj().dot(x)
+
+        if(self.inner_modification == 'adjoint-matrix-vector'):
+            return (HasRmatvec(dtype), original)
+        if(self.inner_modification == 'adjoint-matrix-matrix'):
+            return (HasRmatmat(dtype), original)
+
+    def _outer_cases(self, xp, sp):
+        if(self.dtype != xp.complex_):
+            original = xp.array([[1., 2., 3.], [4., 5., 6.]])
+        else:
+            original = xp.array([[1, 2j, 3j], [4j, 5j, 6]])
+        if(self.outer_modification == 'normal'):
+            M, A = self._inner_cases(original, xp, sp, self.dtype)
+            return (sp.linalg.aslinearoperator(M), A)
+        if(self.outer_modification == 'transpose'):
+            M, A = self._inner_cases(original.T, xp, sp, self.dtype)
+            return (sp.linalg.aslinearoperator(M).T, A.T)
+        if(self.outer_modification == 'hermitian'):
+            M, A = self._inner_cases(original.T, xp, sp, self.dtype)
+            return (sp.linalg.aslinearoperator(M).H, A.T.conj())
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_matvec(self, xp, sp):
+        M, A_array = self._outer_cases(xp, sp)
+        A = sp.linalg.aslinearoperator(M)
+        cupy.testing.assert_array_equal(A.matvec(xp.array(self.xs)),
+                                        A_array.dot(xp.array(self.xs)))
+        cupy.testing.assert_array_equal(A.T.matvec(xp.array(self.ys)),
+                                        A_array.T.dot(xp.array(self.ys)))
+        cupy.testing.assert_array_equal(A.H.matvec(xp.array(self.ys)),
+                                        A_array.T.conj()
+                                                 .dot(xp.array(self.ys)))
+        cupy.testing.assert_array_equal(A * xp.array(self.xs),
+                                        A_array.dot(xp.array(self.xs)))
+        return (A.matvec(xp.array(self.xs)), A*xp.array(self.xs))
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_matmat(self, xp, sp):
+        x2 = xp.array([[1, 4], [2, 5], [3, 6]])
+        A, A_array = self._outer_cases(xp, sp)
+        cupy.testing.assert_array_equal(A.matmat(x2), A_array.dot(x2))
+        if xp.array(self.ys).ndim == 2:
+            cupy.testing.assert_array_equal(A.T.matmat(xp.array(self.ys)),
+                                            A_array.T.dot(xp.array(self.ys)))
+        return (A.matmat(x2), A*x2)
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_rmatvec(self, xp, sp):
+        A, A_array = self._outer_cases(xp, sp)
+        cupy.testing.assert_array_equal(
+            A.rmatvec(xp.array(self.ys)), A_array.T.conj()
+                                                   .dot(xp.array(self.ys)))
+        return A.rmatvec(xp.array(self.ys))
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_rmatmat(self, xp, sp):
+        if xp.array(self.ys).ndim < 2:
+            return 1
+        A, A_array = self._outer_cases(xp, sp)
+        cupy.testing.assert_array_equal(A.rmatmat(xp.array(self.ys)),
+                                        A_array.T.conj()
+                                        .dot(xp.array(self.ys)))
+        return A.rmatmat(xp.array(self.ys))
+
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_dot(self, xp, sp):
+        A, A_array = self._outer_cases(xp, sp)
+        M, N = A.shape
+        x0 = xp.array([1, 2, 3])
+        x1 = xp.array([[1], [2], [3]])
+        x2 = xp.array([[1, 4], [2, 5], [3, 6]])
+        cupy.testing.assert_array_equal(A.dot(x0), A_array.dot(x0))
+        cupy.testing.assert_array_equal(A.dot(x1), A_array.dot(x1))
+        cupy.testing.assert_array_equal(A.dot(x2), A_array.dot(x2))
+        return (A.dot(x0), A.dot(x1), A.dot(x2))

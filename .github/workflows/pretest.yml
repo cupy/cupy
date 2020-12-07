@@ -4,7 +4,7 @@ jobs:
   pretest:
     runs-on: ubuntu-18.04
     env:
-      CUPY_CI: travis
+      CUPY_CI: GitHub
 
     steps:
     - uses: actions/checkout@v2
@@ -20,7 +20,7 @@ jobs:
       run: |
         pip install -U pip wheel
         pip install cython
-        READTHEDOCS=True pip install -U -e .[travis]
+        READTHEDOCS=True pip install -U -e .[stylecheck,docs]
 
     - name: flake8
       run: |

@@ -196,7 +196,12 @@ def _get_generic_filter_raw(rk, filter_size, mode, wshape, offsets, cval,
         'generic_{}_{}'.format(filter_size, rk.name),
         setup, 'values[iv++] = cast<double>({value});', sub_call,
         mode, wshape, int_type, offsets, cval,
-        preamble='namespace raw_kernel {{\n{}\n}}'.format(rk.code),
+        preamble='namespace raw_kernel {{\n{}\n}}'.format(
+            # Users can test RawKernel independently, but when passed to here
+            # it must be used as a device function here. In fact, RawKernel
+            # wouldn't compile if code only contains device functions, so this
+            # is necessary.
+            rk.code.replace('__global__', '__device__')),
         options=rk.options)
 
 
@@ -301,6 +306,11 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
 }}'''.format(n_lines=n_lines, length=length, in_length=in_length, start=start,
              in_ctype=in_ctype, out_ctype=out_ctype, int_type=int_type,
              boundary_early=boundary_early, boundary=boundary,
-             name=name, rk_name=rk.name, rk_code=rk.code,
+             name=name, rk_name=rk.name,
+             # Users can test RawKernel independently, but when passed to here
+             # it must be used as a device function here. In fact, RawKernel
+             # wouldn't compile if code only contains device functions, so this
+             # is necessary.
+             rk_code=rk.code.replace('__global__', '__device__'),
              CAST=_filters_core._CAST_FUNCTION)
     return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options)

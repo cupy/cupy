@@ -50,9 +50,9 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
+${type_preamble}
 ${preamble}
 
-${type_preamble}
 typedef ${reduce_type} _type_reduce;
 
 static_assert(sizeof(_type_reduce) <= 32,
@@ -219,7 +219,7 @@ __global__ void ${name}(${params}) {
 def _SimpleCubReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
-        name, block_size, identity, input_expr, output_expr, _preamble,
+        name, block_size, identity, preamble,
         options, cub_params):
     items_per_thread = cub_params[0]
     name = name.replace('cupy_', 'cupy_cub_')
@@ -228,7 +228,7 @@ def _SimpleCubReductionKernel_get_cached_function(
         name, block_size, items_per_thread,
         reduce_type, params, arginfos, identity,
         map_expr, reduce_expr, post_map_expr,
-        type_map, _preamble, options)
+        type_map, preamble, options)
 
 
 cdef str _cub_path = _environment.get_cub_path()
@@ -282,7 +282,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
         warnings.warn('CUB headers are not found.', RuntimeWarning)
         return None
 
-    # we currently support only _SimpleReductionKernel
+    # we currently support reductions with 1 input and 1 output
     if len(in_args) != 1 or len(out_args) != 1:
         return None
 
@@ -345,19 +345,18 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
     cdef lst = []
-    cdef str c_type
+    cdef str c_type, c_name
     cdef int i
     assert len(params) == len(arginfos)
 
     for i, (p, arginfo) in enumerate(zip(params, arginfos)):
+        c_name = arginfo.get_c_var_name(p)
         if i < len(params) - 2:
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
             c_type = arginfo.get_param_c_type(p)
-        lst.append('{} {}'.format(
-            c_type,
-            arginfo.get_c_var_name(p)))
+        lst.append('{} {}'.format(c_type, c_name))
     return ', '.join(lst)
 
 
@@ -399,15 +398,13 @@ cdef inline void _cub_two_pass_launch(
         Py_ssize_t items_per_thread, str reduce_type, tuple params,
         list in_args, list out_args,
         str identity, str pre_map_expr, str reduce_expr, str post_map_expr,
-        _kernel._TypeMap type_map, str input_expr, str output_expr,
-        str preamble, tuple options, stream) except *:
+        _kernel._TypeMap type_map, str preamble,
+        tuple options, stream) except*:
     '''
     Notes:
     1. Two-pass reduction: the first pass distributes an even share over
        a number of blocks (with block_size threads), and the second pass
        does reduction over 1 block of threads
-    2. input_expr & output_expr are used only as part of the cache key;
-       the actual kernel does not use them
     '''
 
     cdef list out_args_2nd_pass = [out_args[0]]
@@ -460,8 +457,7 @@ cdef inline void _cub_two_pass_launch(
         params,
         _kernel._get_arginfos(inout_args),
         type_map,
-        name, block_size, identity,
-        input_expr, output_expr, preamble,
+        name, block_size, identity, preamble,
         ('-DFIRST_PASS=1',), cub_params)
 
     # Kernel arguments passed to the __global__ function.
@@ -495,8 +491,7 @@ cdef inline void _cub_two_pass_launch(
         params,
         _kernel._get_arginfos(inout_args),
         type_map,
-        name, block_size, identity,
-        input_expr, output_expr, preamble,
+        name, block_size, identity, preamble,
         ('-DSECOND_PASS=1',), cub_params)
 
     # Kernel arguments passed to the __global__ function.
@@ -526,8 +521,7 @@ cdef inline void _launch_cub(
             self.name, block_size, contiguous_size, items_per_thread,
             reduce_type, params, in_args, out_args, self.identity,
             map_expr, reduce_expr, post_map_expr,
-            type_map, self._input_expr, self._output_expr,
-            self._preamble, (), stream)
+            type_map, self.preamble, (), stream)
         return
     else:
         inout_args = (
@@ -540,8 +534,7 @@ cdef inline void _launch_cub(
         func = _SimpleCubReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
-            self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble,
+            self.name, block_size, self.identity, self.preamble,
             (), cub_params)
 
         func.linear_launch(
@@ -595,12 +588,15 @@ def _get_cub_optimized_params(
 cdef bint _try_to_call_cub_reduction(
         self, list in_args, list out_args, const shape_t& a_shape,
         stream, optimize_context, tuple key,
-        map_expr, reduce_expr, post_map_expr, reduce_type, type_map,
+        map_expr, reduce_expr, post_map_expr,
+        reduce_type, _kernel._TypeMap type_map,
         tuple reduce_axis, tuple out_axis, const shape_t& out_shape,
         ndarray ret) except *:
     """Try to use cub.
 
     Updates `ret` and returns a boolean value whether cub is used.
+
+    Note: input_expr and output_expr are not used in CUB kernels.
     """
     cdef tuple axis_permutes
     cdef tuple params, opt_params
@@ -644,6 +640,24 @@ cdef bint _try_to_call_cub_reduction(
               + _get_param_info(
                   size_type + '_segment_size', not full_reduction)
               + _get_param_info(size_type + '_array_size', True))
+
+    # HACK for ReductionKernel:
+    # 1. input/output arguments might not be named as in0/out0
+    # 2. pre-/post- maps might not contain in0/out0
+    # 3. type_map does not contain the expected names (type_in0_raw and
+    #    type_out0_raw)
+    cdef str old_in0 = params[0].name, old_out0 = params[1].name
+    if old_in0 != 'in0' or old_out0 != 'out0':
+        # avoid overwriting self's attributes
+        params = (_get_param_info('T in0', True)
+                  + _get_param_info('T out0', False)
+                  + params[2:])
+        map_expr = map_expr.replace(old_in0, 'in0')
+        post_map_expr = post_map_expr.replace(old_out0, 'out0')
+        type_map = _kernel._TypeMap(type_map._pairs + (
+            ('type_in0_raw', in_args[0].dtype.type),
+            ('type_out0_raw', out_args[0].dtype.type),
+        ))
 
     # Calculate the reduction block dimensions.
     optimize_context = _optimize_config.get_current_context()

@@ -50,6 +50,8 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': (None, [1, 0], [0, 2], slice(None))},
     {'shape': (2, 3, 4), 'indexes': (None, [0, 1], None, [2, 1], slice(None))},
     {'shape': (2, 3, 4), 'indexes': numpy.array([1, 0])},
+    {'shape': (2, 3, 4), 'indexes': [1]},
+    {'shape': (2, 3, 4), 'indexes': [1, 1]},
     {'shape': (2, 3, 4), 'indexes': [1, -1]},
     {'shape': (2, 3, 4), 'indexes': ([0, 1], slice(None), [[2, 1], [3, 1]])},
     # mask
@@ -79,12 +81,7 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     # empty arrays
     {'shape': (2, 3, 4), 'indexes': []},
     {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.int32)},
-    {'shape': (2, 3, 4), 'indexes': [[]]},
     {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.int32)},
-    {'shape': (2, 3, 4), 'indexes': [[[]]]},
-    {'shape': (2, 3, 4), 'indexes': [[[[]]]]},
-    {'shape': (2, 3, 4, 5), 'indexes': [[[[]]]]},
-    {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]]},
     {'shape': (2, 3, 4), 'indexes': (slice(None), [])},
     {'shape': (2, 3, 4), 'indexes': ([], [])},
     {'shape': (2, 3, 4), 'indexes': ([[]],)},
@@ -92,15 +89,6 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     {'shape': (2, 3, 4),
      'indexes': (slice(None), numpy.array([], dtype=numpy.bool))},
     {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool)},
-    # list indexes
-    {'shape': (2, 3, 4), 'indexes': [1]},
-    {'shape': (2, 3, 4), 'indexes': [1, 1]},
-    {'shape': (2, 3, 4), 'indexes': [[1]]},
-    {'shape': (2, 3, 4), 'indexes': [[1, 1]]},
-    {'shape': (2, 3, 4), 'indexes': [[1], [1]]},
-    {'shape': (2, 3, 4), 'indexes': [[1, 1], 1]},
-    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)]},
-    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)]},
     # TODO(okuta): pass the following commented out tests
     # {'shape': (2, 3, 4), 'indexes': (True, [True, False])},
     # {'shape': (2, 3, 4), 'indexes': (False, [True, False])},
@@ -131,6 +119,32 @@ class TestArrayAdvancedIndexingGetitemParametrized(unittest.TestCase):
     def test_adv_getitem(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         return a[self.indexes]
+
+
+@testing.parameterize(
+    # empty arrays (list indexes)
+    {'shape': (2, 3, 4), 'indexes': [[]]},
+    {'shape': (2, 3, 4), 'indexes': [[[]]]},
+    {'shape': (2, 3, 4), 'indexes': [[[[]]]]},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[]]]]},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]]},
+    # list indexes
+    {'shape': (2, 3, 4), 'indexes': [[1]]},
+    {'shape': (2, 3, 4), 'indexes': [[1, 1]]},
+    {'shape': (2, 3, 4), 'indexes': [[1], [1]]},
+    {'shape': (2, 3, 4), 'indexes': [[1, 1], 1]},
+    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)]},
+    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)]},
+)
+@testing.gpu
+class TestArrayAdvancedIndexingGetitemDeprecated(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_adv_getitem(self, xp, dtype):
+        with testing.assert_warns(FutureWarning):
+            a = testing.shaped_arange(self.shape, xp, dtype)
+            return a[self.indexes]
 
 
 @testing.parameterize(
@@ -332,13 +346,15 @@ class TestArrayInvalidValueAdvGetitem(unittest.TestCase):
         for xp in (numpy, cupy):
             a = testing.shaped_arange(self.shape, xp)
             with pytest.raises(IndexError):
-                a[self.indexes]
+                with testing.assert_warns(FutureWarning):
+                    a[self.indexes]
 
 
 @testing.parameterize(
     # array only
     {'shape': (2, 3, 4), 'indexes': numpy.array(-1), 'value': 1},
     {'shape': (2, 3, 4), 'indexes': numpy.array([1, 0]), 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [1, 0], 'value': 1},
     {'shape': (2, 3, 4), 'indexes': [1, -1], 'value': 1},
     {'shape': (2, 3, 4), 'indexes': (slice(None), [1, 2]), 'value': 1},
     {'shape': (2, 3, 4),
@@ -419,18 +435,8 @@ class TestArrayInvalidValueAdvGetitem(unittest.TestCase):
      'value': numpy.random.uniform(size=(3, 4))},
     {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.int32),
      'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[]],
-     'value': 1},
     {'shape': (2, 3, 4), 'indexes': numpy.array([[]], dtype=numpy.int32),
      'value': numpy.random.uniform(size=(3, 4))},
-    {'shape': (2, 3, 4), 'indexes': [[[]]],
-     'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[[[]]]],
-     'value': 1},
-    {'shape': (2, 3, 4, 5), 'indexes': [[[[]]]],
-     'value': 1},
-    {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]],
-     'value': 1},
     {'shape': (2, 3, 4), 'indexes': (slice(None), []),
      'value': 1},
     {'shape': (2, 3, 4), 'indexes': ([], []),
@@ -442,14 +448,6 @@ class TestArrayInvalidValueAdvGetitem(unittest.TestCase):
      'value': 1},
     {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool),
      'value': numpy.random.uniform(size=(4,))},
-    # list indexes
-    {'shape': (2, 3, 4), 'indexes': [1, 0], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[1]], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[1, 0]], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[1], [0]], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[1, 0], 2], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
-    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
     # zero-dim and zero-sized arrays
     {'shape': (), 'indexes': Ellipsis, 'value': 1},
     {'shape': (), 'indexes': (), 'value': 1},
@@ -473,6 +471,33 @@ class TestArrayAdvancedIndexingSetitemScalarValue(unittest.TestCase):
     def test_adv_setitem(self, xp, dtype):
         a = xp.zeros(self.shape, dtype=dtype)
         a[self.indexes] = self.value
+        return a
+
+
+@testing.parameterize(
+    # empty arrays (list indexes)
+    {'shape': (2, 3, 4), 'indexes': [[]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[[]]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[[[]]]], 'value': 1},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[]]]], 'value': 1},
+    {'shape': (2, 3, 4, 5), 'indexes': [[[[[]]]]], 'value': 1},
+    # list indexes
+    {'shape': (2, 3, 4), 'indexes': [[1]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1, 0]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1], [0]], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1, 0], 2], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[1], slice(1, 2)], 'value': 1},
+    {'shape': (2, 3, 4), 'indexes': [[[1]], slice(1, 2)], 'value': 1},
+)
+@testing.gpu
+class TestArrayAdvancedIndexingSetitemScalarValueDeprecated(unittest.TestCase):
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_adv_setitem(self, xp, dtype):
+        a = xp.zeros(self.shape, dtype=dtype)
+        with testing.assert_warns(FutureWarning):
+            a[self.indexes] = self.value
         return a
 
 

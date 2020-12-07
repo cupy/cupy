@@ -50,13 +50,13 @@ def _cook_shape(a, s, axes, value_type, order='C'):
             if shape[axis] > sz:
                 index = [slice(None)] * a.ndim
                 index[axis] = slice(0, sz)
-                a = a[index]
+                a = a[tuple(index)]
             else:
                 index = [slice(None)] * a.ndim
                 index[axis] = slice(0, shape[axis])
                 shape[axis] = sz
                 z = cupy.zeros(shape, a.dtype.char, order=order)
-                z[index] = a
+                z[tuple(index)] = a
                 a = z
     return a
 
@@ -108,11 +108,11 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     # while hipFFT handles it badly in both Plan1d and PlanNd, so we must
     # do the correction ourselves to ensure the condition is met.
     if cupy.cuda.runtime.is_hip and value_type == 'C2R':
-        a[..., 0] = a[..., 0].real + 0j
+        a[..., 0].imag = 0
         if out_size is None:
-            a[..., -1] = a[..., -1].real + 0j
+            a[..., -1].imag = 0
         elif out_size % 2 == 0:
-            a[..., out_size // 2] = a[...,  out_size // 2].real + 0j
+            a[..., out_size // 2].imag = 0
 
     if out_size is None:
         out_size = n

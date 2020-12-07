@@ -964,6 +964,10 @@ cdef class ndarray:
 
     def __nonzero__(self):
         if self.size == 0:
+            msg = ('The truth value of an empty array is ambiguous. Returning '
+                   'False, but in future this will result in an error. Use '
+                   '`array.size > 0` to check that an array is not empty.')
+            warnings.warn(msg, DeprecationWarning)
             return False
         elif self.size == 1:
             return bool(self.get())
@@ -1735,6 +1739,9 @@ cdef list _cupy_header_list = [
     'cupy/carray.cuh',
     'cupy/atomics.cuh',
 ]
+if runtime._is_hip_environment:
+    _cupy_header_list.append('cupy/math_constants.h')
+
 cdef str _cupy_header = ''.join(
     ['#include <%s>\n' % i for i in _cupy_header_list])
 
@@ -2262,20 +2269,22 @@ cpdef ndarray _internal_asfortranarray(ndarray a):
             (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
         m, n = a.shape
         handle = device.get_cublas_handle()
+        one = numpy.array(1, dtype=a.dtype)
+        zero = numpy.array(0, dtype=a.dtype)
         if a.dtype == numpy.float32:
             cublas.sgeam(
                 handle,
                 1,  # transpose a
                 1,  # transpose newarray
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                newarray.data.ptr, m)
+                m, n, one.ctypes.data, a.data.ptr, n,
+                zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
         elif a.dtype == numpy.float64:
             cublas.dgeam(
                 handle,
                 1,  # transpose a
                 1,  # transpose newarray
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                newarray.data.ptr, m)
+                m, n, one.ctypes.data, a.data.ptr, n,
+                zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
     else:
         elementwise_copy(a, newarray)
     return newarray
