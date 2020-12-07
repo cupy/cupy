@@ -1,7 +1,6 @@
 # distutils: language = c++
 
 import functools
-import numbers
 import os
 import pickle
 import re
@@ -15,7 +14,6 @@ import cupy
 from cupy.core._kernel import create_ufunc
 from cupy.core._kernel import ElementwiseKernel
 from cupy.core._kernel import ufunc  # NOQA
-from cupy.core cimport _scalar
 from cupy.core._ufuncs import elementwise_copy
 from cupy.core._ufuncs import elementwise_copy_where
 from cupy.core import flags
@@ -44,6 +42,7 @@ from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _routines_math as _math
 from cupy.core cimport _routines_sorting as _sorting
 from cupy.core cimport _routines_statistics as _statistics
+from cupy.core cimport _scalar
 from cupy.core cimport dlpack
 from cupy.core cimport internal
 from cupy.cuda cimport device
