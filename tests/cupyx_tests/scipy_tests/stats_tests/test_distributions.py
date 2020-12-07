@@ -123,7 +123,7 @@ class TestEntropy(unittest.TestCase):
         res = xp.asarray(res, xp.float16 if is_float16 else float_type)
         return res
 
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol={cupy.float16: 1e-3,
                                        cupy.float32: 1e-6,
                                        'default': 1e-15},
