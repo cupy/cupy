@@ -360,24 +360,48 @@ nan_to_num = core.create_ufunc(
 
 
 @cupy._util.memoize(for_each_device=True)
-def _get_interp_kernel():
-    # TODO(leofang): check NaN; for complex numbers it seems a bit involved
-    # TODO(leofang): better memory access pattern?
-    # TODO(leofang): investigate if we could use texture to accelerate
+def _get_interp_kernel(is_complex):
     in_params = 'raw X x, raw U idx, '
-    in_params += 'raw X fx, raw Y fy, U len, raw X left, raw X right'
-    out_params = 'Y y'
+    in_params += 'raw X fx, raw Y fy, U len, raw Y left, raw Y right'
+    out_params = 'Z y'  # output dtype follows NumPy's
+
+    if is_complex:
+        preamble = r'''
+        typedef double real_t;
+        typedef Z value_t;
+        '''
+    else:
+        preamble = r'''
+        typedef Z real_t;
+        typedef Z value_t;
+        '''
+
     code = r'''
         U x_idx = idx[i] - 1;
 
-        if (x_idx < 0) { y = left[0]; }
+        if (_isnan(x[i])) { y = x[i]; }
+        else if (x_idx < 0) { y = left[0]; }
+        else if (x[i] == fx[len - 1]) {
+            // searchsorted cannot handle both of the boundary points,
+            // so we must detect and correct ourselves...
+            y = fy[len - 1];
+        }
         else if (x_idx >= len - 1) { y = right[0]; }
         else {
-            y = (fy[x_idx+1] - fy[x_idx]) / (fx[x_idx+1] - fx[x_idx]) \
-                * (x[i] - fx[x_idx]) + fy[x_idx];
+            const Z slope = (value_t)(fy[x_idx+1] - fy[x_idx]) / \
+                            (real_t)(fx[x_idx+1] - fx[x_idx]);
+            Z out = slope * (real_t)(x[i] - fx[x_idx]) + (value_t)fy[x_idx];
+            if (_isnan(out)) {
+                out = slope * (real_t)(x[i] - fx[x_idx+1]) + (value_t)fy[x_idx+1];
+                if (_isnan(out) && (fy[x_idx] == fy[x_idx+1])) {
+                    out = fy[x_idx];
+                }
+            }
+            y = out;
         }
     '''
-    return cupy.ElementwiseKernel(in_params, out_params, code, 'cupy_interp')
+    return cupy.ElementwiseKernel(in_params, out_params, code, 'cupy_interp',
+        preamble=preamble+cupy._sorting.search._preamble)  # for _isnan()
 
 
 def interp(x, xp, fp, left=None, right=None, period=None):
@@ -418,8 +442,21 @@ def interp(x, xp, fp, left=None, right=None, period=None):
     if not x.flags.c_contiguous:
         raise NotImplementedError('Non-C-contiguous x is currently not '
                                   'supported')
+    x_dtype = cupy.common_type(x, xp)
+    if not cupy.can_cast(x_dtype, cupy.float64):
+        raise TypeError('Cannot cast array data from'
+                        ' {} to {} according to the rule \'safe\''
+                        .format(x_dtype, cupy.float64))
+    if x.dtype != xp.dtype:
+        # cast now
+        x = x.astype(cupy.float64)
+        xp = xp.astype(cupy.float64)
+    else:
+        # cast in the kernel
+        pass
+
     if period is not None:
-        # The handling of "period" below is borrowed from NumPy
+        # The handling of "period" below is modified from NumPy's
 
         if period == 0:
             raise ValueError("period must be a non-zero value")
@@ -441,10 +478,13 @@ def interp(x, xp, fp, left=None, right=None, period=None):
         assert xp.flags.c_contiguous
         assert fp.flags.c_contiguous
 
-    output = cupy.empty(x.shape, dtype=fp.dtype)
+    # NumPy always returns float64 or complex128, so we upcast all values in the kernel
+    out_dtype = 'D' if fp.dtype.kind == 'c' else 'd'
+    output = cupy.empty(x.shape, dtype=out_dtype)
     idx = cupy.searchsorted(xp, x, side='right')
-    left = fp[0] if left is None else cupy.array(left, xp.dtype)
-    right = fp[-1] if right is None else cupy.array(right, xp.dtype)
-    kern = _get_interp_kernel()
+    left = fp[0] if left is None else cupy.array(left, fp.dtype)
+    right = fp[-1] if right is None else cupy.array(right, fp.dtype)
+    kern = _get_interp_kernel(out_dtype=='D')
+    #print('before kern', x.dtype, idx.dtype, xp.dtype, fp.dtype, left.dtype, right.dtype)
     kern(x, idx, xp, fp, xp.size, left, right, output)
     return output

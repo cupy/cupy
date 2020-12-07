@@ -211,6 +211,24 @@ class TestMisc(unittest.TestCase):
     def test_nan_to_num_inf_nan(self):
         self.check_unary_inf_nan('nan_to_num')
 
+    @testing.for_float_dtypes(name='dtype_x', no_float16=False)
+    @testing.for_all_dtypes(name='dtype_y', no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, type_check=False)  # todo: check type
+    def test_interp(self, xp, dtype_y, dtype_x):
+        x = xp.arange(10, dtype=dtype_x)
+        fx = xp.empty(2*x.size+4, dtype=dtype_x)
+        fx[1:-1] = xp.arange(0.5, 22, dtype=dtype_x)
+        x[0] = -0.5
+        fx[0] = -2
+        fx[1] = x[1] = -1
+        fx[-2] = x[-2] = 22
+        x[-1] = 21.5
+        fx[-1] = 23
+        fy = xp.sin(fx).astype(dtype_y)
+        if xp is cupy:
+            print(x.dtype, fx.dtype, fy.dtype)
+        return xp.interp(x, fx, fy)
+
 
 @testing.gpu
 @testing.parameterize(*testing.product({
