@@ -1,6 +1,8 @@
 from cupyx.scipy.sparse.base import issparse  # NOQA
 from cupyx.scipy.sparse.base import isspmatrix  # NOQA
 from cupyx.scipy.sparse.base import spmatrix  # NOQA
+from cupyx.scipy.sparse.base import SparseWarning  # NOQA
+from cupyx.scipy.sparse.base import SparseEfficiencyWarning  # NOQA
 from cupyx.scipy.sparse.coo import coo_matrix  # NOQA
 from cupyx.scipy.sparse.coo import isspmatrix_coo  # NOQA
 from cupyx.scipy.sparse.csc import csc_matrix  # NOQA

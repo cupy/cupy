@@ -5,7 +5,7 @@ from cupy import cusparse
 from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import _util
-import cupyx.scipy.sparse as sparse
+from cupyx.scipy import sparse
 
 from warnings import warn
 import scipy.sparse
@@ -118,7 +118,7 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
 
     if not (sparse.isspmatrix_csr(A) or sparse.isspmatrix_csc(A)):
         warn('CSR or CSC format is required. Converting to CSR format.',
-             scipy.sparse.SparseEfficiencyWarning)
+             sparse.SparseEfficiencyWarning)
         A = A.tocsr()
     A.sum_duplicates()
 
@@ -185,20 +185,21 @@ class SuperLU():
         if trans not in ('N', 'T', 'H'):
             raise ValueError('trans must be \'N\', \'T\', or \'H\'')
 
+        x = rhs.astype(self.L.dtype)
         if trans == 'N':
-            x = rhs[self._perm_r_rev].astype(self.L.dtype)
-            cusparse.csrsm2(self.L, x, lower=True, transa=trans,
-                            blocking=True)
-            cusparse.csrsm2(self.U, x, lower=False, transa=trans,
-                            blocking=True)
-            x = x[self.perm_c]
+            if self.perm_r is not None:
+                x = x[self._perm_r_rev]
+            cusparse.csrsm2(self.L, x, lower=True, transa=trans)
+            cusparse.csrsm2(self.U, x, lower=False, transa=trans)
+            if self.perm_c is not None:
+                x = x[self.perm_c]
         else:
-            x = rhs[self._perm_c_rev].astype(self.L.dtype)
-            cusparse.csrsm2(self.U, x, lower=False, transa=trans,
-                            blocking=True)
-            cusparse.csrsm2(self.L, x, lower=True, transa=trans,
-                            blocking=True)
-            x = x[self.perm_r]
+            if self.perm_c is not None:
+                x = x[self._perm_c_rev]
+            cusparse.csrsm2(self.U, x, lower=False, transa=trans)
+            cusparse.csrsm2(self.L, x, lower=True, transa=trans)
+            if self.perm_r is not None:
+                x = x[self.perm_r]
 
         if not x._f_contiguous:
             # For compatibility with SciPy
@@ -206,7 +207,7 @@ class SuperLU():
         return x
 
 
-class CusparseLU():
+class CusparseLU(SuperLU):
 
     def __init__(self, a):
         """Incomplete LU factorization of a sparse matrix.
@@ -220,47 +221,15 @@ class CusparseLU():
 
         self.shape = a.shape
         self.nnz = a.nnz
-        self.dtype = a.dtype
-        self.LU = a
-
-    def solve(self, rhs, trans='N'):
-        """Solves linear system of equations with one or several right-hand sides.
-
-        Args:
-            rhs (cupy.ndarray): Right-hand side(s) of equation with dimension
-                ``(M)`` or ``(M, K)``.
-            trans (str): 'N', 'T' or 'H'.
-                'N': Solves ``A * x = rhs``.
-                'T': Solves ``A.T * x = rhs``.
-                'H': Solves ``A.conj().T * x = rhs``.
-
-        Returns:
-            cupy.ndarray:
-                Solution vector(s)
-        """
-        if not isinstance(rhs, cupy.ndarray):
-            raise TypeError('ojb must be cupy.ndarray')
-        if rhs.ndim not in (1, 2):
-            raise ValueError('rhs.ndim must be 1 or 2 (actual: {})'.
-                             format(rhs.ndim))
-        if rhs.shape[0] != self.shape[0]:
-            raise ValueError('shape mismatch (self.shape: {}, rhs.shape: {})'
-                             .format(self.shape, rhs.shape))
-        if trans not in ('N', 'T', 'H'):
-            raise ValueError('trans must be \'N\', \'T\', or \'H\'')
-
-        x = rhs.astype(self.dtype, order='F')
-        if trans == 'N':
-            cusparse.csrsm2(self.LU, x, lower=True, unit_diag=True,
-                            transa=trans, blocking=True)
-            cusparse.csrsm2(self.LU, x, lower=False, unit_diag=False,
-                            transa=trans, blocking=True)
-        else:
-            cusparse.csrsm2(self.LU, x, lower=False, unit_diag=False,
-                            transa=trans, blocking=True)
-            cusparse.csrsm2(self.LU, x, lower=True, unit_diag=True,
-                            transa=trans, blocking=True)
-        return x
+        self.perm_r = None
+        self.perm_c = None
+        # TODO(anaruse): Computes tril and triu on GPU
+        a = a.get()
+        al = scipy.sparse.tril(a)
+        al.setdiag(1.0)
+        au = scipy.sparse.triu(a)
+        self.L = sparse.csr_matrix(al.tocsr())
+        self.U = sparse.csr_matrix(au.tocsr())
 
 
 def factorized(A):
@@ -369,7 +338,7 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
         raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
 
     if fill_factor == 1:
-        # computes ILU(0) on the GPU using cuSparse functions
+        # Computes ILU(0) on the GPU using cuSparse functions
         if not sparse.isspmatrix_csr(A):
             a = A.tocsr()
         else:

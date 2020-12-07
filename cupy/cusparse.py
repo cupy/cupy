@@ -1416,7 +1416,7 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
 
 
 def csrsm2(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False,
-           blocking=False, level_info=False):
+           blocking=True, level_info=False):
     """Solves a sparse triangular linear system op(a) * x = alpha * b.
 
     Args:

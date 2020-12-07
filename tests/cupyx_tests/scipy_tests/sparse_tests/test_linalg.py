@@ -795,5 +795,13 @@ class TestSplu(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_spilu_0(self, dtype, xp, sp):
-        a, b = self._make_matrix(dtype, xp, sp, 1.0)
-        return sp.linalg.spilu(a, fill_factor=1).solve(b)
+        # Note: We don't know how to compute ILU(0) with
+        # scipy.sprase.linalg.spilu, so in this test we use a matrix where the
+        # format is a sparse matrix but is actually a dense matrix.
+        a, b = self._make_matrix(dtype, xp, sp, density=1.0)
+        if xp == cupy:
+            # Set fill_factor=1 to computes ILU(0) using cuSparse
+            ainv = sp.linalg.spilu(a, fill_factor=1)
+        else:
+            ainv = sp.linalg.spilu(a)
+        return ainv.solve(b)
