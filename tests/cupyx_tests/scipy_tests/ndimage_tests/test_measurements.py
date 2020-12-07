@@ -1,7 +1,5 @@
-import unittest
-import pytest
-
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -36,7 +34,7 @@ def _generate_binary_structure(rank, connectivity):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestLabel(unittest.TestCase):
+class TestLabel:
 
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_label(self, xp, scp):
@@ -61,7 +59,7 @@ class TestLabel(unittest.TestCase):
 
 @testing.gpu
 @testing.with_requires('scipy')
-class TestLabelSpecialCases(unittest.TestCase):
+class TestLabelSpecialCases:
 
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_label_empty(self, xp, scp):
@@ -106,7 +104,7 @@ class TestLabelSpecialCases(unittest.TestCase):
     'op': ['sum', 'mean', 'variance', 'standard_deviation'],
 }))
 @testing.with_requires('scipy')
-class TestStats(unittest.TestCase):
+class TestStats:
 
     def _make_image(self, shape, xp, dtype):
         if dtype == xp.bool_:
@@ -244,17 +242,17 @@ class TestStats(unittest.TestCase):
     'enable_cub': [True, False],
 }))
 @testing.with_requires('scipy')
-class TestMeasurementsSelect(unittest.TestCase):
+class TestMeasurementsSelect:
 
-    def setUp(self):
-        self.old_accelerators = _accelerator.get_routine_accelerators()
+    @pytest.fixture(autouse=True)
+    def with_accelerators(self):
+        old_accelerators = _accelerator.get_routine_accelerators()
         if self.enable_cub:
             _accelerator.set_routine_accelerators(['cub'])
         else:
             _accelerator.set_routine_accelerators([])
-
-    def tearDown(self):
-        _accelerator.set_routine_accelerators(self.old_accelerators)
+        yield
+        _accelerator.set_routine_accelerators(old_accelerators)
 
     # no_bool=True due to https://github.com/scipy/scipy/issues/12836
     @testing.for_all_dtypes(no_complex=True, no_bool=True)

@@ -174,32 +174,8 @@ def ptp(a, axis=None, out=None, keepdims=False):
     return a.ptp(axis=axis, out=out, keepdims=keepdims)
 
 
-def percentile(a, q, axis=None, out=None, interpolation='linear',
-               keepdims=False):
-    """Computes the q-th percentile of the data along the specified axis.
-
-    Args:
-        a (cupy.ndarray): Array for which to compute percentiles.
-        q (float, tuple of floats or cupy.ndarray): Percentiles to compute
-            in the range between 0 and 100 inclusive.
-        axis (int or tuple of ints): Along which axis or axes to compute the
-            percentiles. The flattened array is used by default.
-        out (cupy.ndarray): Output array.
-        interpolation (str): Interpolation method when a quantile lies between
-            two data points. ``linear`` interpolation is used by default.
-            Supported interpolations are``lower``, ``higher``, ``midpoint``,
-            ``nearest`` and ``linear``.
-        keepdims (bool): If ``True``, the axis is remained as an axis of
-            size one.
-
-    Returns:
-        cupy.ndarray: The percentiles of ``a``, along the axis if specified.
-
-    .. seealso:: :func:`numpy.percentile`
-
-    """
-    if not isinstance(q, cupy.ndarray):
-        q = cupy.asarray(q, dtype='d')
+def _quantile_unchecked(a, q, axis=None, out=None, interpolation='linear',
+                        keepdims=False):
     if q.ndim == 0:
         q = q[None]
         zerod = True
@@ -208,7 +184,6 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
     if q.ndim > 1:
         raise ValueError('Expected q to have a dimension of 1.\n'
                          'Actual: {0} != 1'.format(q.ndim))
-
     if keepdims:
         if axis is None:
             keepdim = (1,) * a.ndim
@@ -236,7 +211,7 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
     axis = -1
     ap.sort(axis=axis)
     Nx = ap.shape[axis]
-    indices = q * 0.01 * (Nx - 1.)  # percents to decimals
+    indices = q * (Nx - 1.)
 
     if interpolation == 'lower':
         indices = cupy.floor(indices).astype(cupy.int32)
@@ -286,3 +261,72 @@ def percentile(a, q, axis=None, out=None, interpolation='linear',
         ret = ret.reshape(keepdim)
 
     return core._internal_ascontiguousarray(ret)
+
+
+def _quantile_is_valid(q):
+    if cupy.count_nonzero(q < 0.0) or cupy.count_nonzero(q > 1.0):
+        return False
+    return True
+
+
+def percentile(a, q, axis=None, out=None, interpolation='linear',
+               keepdims=False):
+    """Computes the q-th percentile of the data along the specified axis.
+
+    Args:
+        a (cupy.ndarray): Array for which to compute percentiles.
+        q (float, tuple of floats or cupy.ndarray): Percentiles to compute
+            in the range between 0 and 100 inclusive.
+        axis (int or tuple of ints): Along which axis or axes to compute the
+            percentiles. The flattened array is used by default.
+        out (cupy.ndarray): Output array.
+        interpolation (str): Interpolation method when a quantile lies between
+            two data points. ``linear`` interpolation is used by default.
+            Supported interpolations are``lower``, ``higher``, ``midpoint``,
+            ``nearest`` and ``linear``.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
+
+    Returns:
+        cupy.ndarray: The percentiles of ``a``, along the axis if specified.
+
+    .. seealso:: :func:`numpy.percentile`
+    """
+    if not isinstance(q, cupy.ndarray):
+        q = cupy.asarray(q, dtype='d')
+    q = cupy.true_divide(q, 100)
+    if not _quantile_is_valid(q):  # synchronize
+        raise ValueError('Percentiles must be in the range [0, 100]')
+    return _quantile_unchecked(a, q, axis=axis, out=out,
+                               interpolation=interpolation, keepdims=keepdims)
+
+
+def quantile(a, q, axis=None, out=None, interpolation='linear',
+             keepdims=False):
+    """Computes the q-th quantile of the data along the specified axis.
+
+    Args:
+        a (cupy.ndarray): Array for which to compute quantiles.
+        q (float, tuple of floats or cupy.ndarray): Quantiles to compute
+            in the range between 0 and 1 inclusive.
+        axis (int or tuple of ints): Along which axis or axes to compute the
+            quantiles. The flattened array is used by default.
+        out (cupy.ndarray): Output array.
+        interpolation (str): Interpolation method when a quantile lies between
+            two data points. ``linear`` interpolation is used by default.
+            Supported interpolations are``lower``, ``higher``, ``midpoint``,
+            ``nearest`` and ``linear``.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
+
+    Returns:
+        cupy.ndarray: The quantiles of ``a``, along the axis if specified.
+
+    .. seealso:: :func:`numpy.quantile`
+    """
+    if not isinstance(q, cupy.ndarray):
+        q = cupy.asarray(q, dtype='d')
+    if not _quantile_is_valid(q):  # synchronize
+        raise ValueError('Quantiles must be in the range [0, 1]')
+    return _quantile_unchecked(a, q, axis=axis, out=out,
+                               interpolation=interpolation, keepdims=keepdims)

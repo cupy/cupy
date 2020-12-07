@@ -9,3 +9,5 @@ from cupyx.scipy.sparse.linalg._eigen import eigsh  # NOQA
 from cupyx.scipy.sparse.linalg._eigen import svds  # NOQA
 from cupyx.scipy.sparse.linalg._iterative import cg  # NOQA
 from cupyx.scipy.sparse.linalg._iterative import gmres  # NOQA
+from cupyx.scipy.sparse.linalg._interface import LinearOperator  # NOQA
+from cupyx.scipy.sparse.linalg._interface import aslinearoperator  # NOQA

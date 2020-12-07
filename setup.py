@@ -49,10 +49,6 @@ requirements = {
         'sphinx==3.0.4',
         'sphinx_rtd_theme',
     ],
-    'travis': [
-        '-r stylecheck',
-        '-r docs',
-    ],
     'appveyor': [
         '-r test',
     ],
