@@ -37,9 +37,8 @@ def _check_parameter(func_name, order, mode):
 def _get_spline_output(input, output):
     """Create workspace array, temp, and the final dtype for the output.
 
-    Differs from SciPy by not always forcing promotion to double precision.
-    The default output dtype will be single precision for single precision
-    inputs.
+    Differs from SciPy by not always forcing the internal floating point dtype
+    to be double precision.
     """
     complex_data = input.dtype.kind == "c"
     if complex_data:
@@ -100,11 +99,6 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
         cupy.ndarray: The result of prefiltering the input.
 
     .. seealso:: :func:`scipy.spline_filter1d`
-
-    .. note::
-        This function differs from SciPy by not automatically promoting
-        all inputs to double precision. For single-precision inputs,
-        computations will be performed in single precision.
     """
     if order < 0 or order > 5:
         raise RuntimeError("spline order not supported")
@@ -182,11 +176,6 @@ def spline_filter(input, order=3, output=cupy.float64, mode="mirror"):
         cupy.ndarray: The result of prefiltering the input.
 
     .. seealso:: :func:`scipy.spline_filter1d`
-
-    .. note::
-        This function differs from SciPy by not automatically promoting
-        all inputs to double precision. For single-precision inputs,
-        computations will be performed in single precision.
     """
     if order < 2 or order > 5:
         raise RuntimeError("spline order not supported")
