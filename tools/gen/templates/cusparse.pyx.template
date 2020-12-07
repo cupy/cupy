@@ -69,4 +69,10 @@ cdef inline cuDoubleComplex double_complex_to_cuda(double complex value):
 def get_build_version():
     return CUSPARSE_VERSION
 
+
+########################################
+# Auxiliary structures
+
+{aux_struct}
+
 {wrapper}

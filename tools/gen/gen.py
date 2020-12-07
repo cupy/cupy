@@ -221,6 +221,13 @@ config = [  # TODO: The name `config` is fine?
         'except?': 0,
         'use_stream': False,
     }),
+    ('cusparseSpVecGet', {
+        'out': ('SpVecAttributes',
+                ('size', 'nnz', 'indices', 'values', 'idxType', 'idxBase',
+                 'valueType')),
+        'use_stream': False,
+    }),
+    # ...
 
     # cuSPARSE Generic API - Dense Vector APIs
     ('Comment', 'cuSPARSE Generic API - Dense Vector APIs'),
@@ -239,6 +246,10 @@ def partition(pred, seq):
         (a if pred(item) else b).append(item)
     return a, b
         
+
+def compact(iterable):
+    return (x for x in iterable if x is not None)
+
 
 # not used
 def get_config(config, name):
@@ -342,12 +353,17 @@ def erased_type_name(env, node):
         else:
             return None
     elif isinstance(node, c_ast.PtrDecl):
-        assert len(node.type.type.names) == 1
-        name = node.type.type.names[0]
-        if name == 'cusparseHandle_t':  # for cusparseHandle_t *
-            return 'intptr_t'
-        else:
+        if isinstance(node.type, c_ast.TypeDecl):
+            assert len(node.type.type.names) == 1
+            name = node.type.type.names[0]
+            if name == 'cusparseHandle_t':  # for cusparseHandle_t *
+                return 'intptr_t'
+            else:
+                return 'size_t'  # TODO: should use 'intptr_t'?
+        elif isinstance(node.type, c_ast.PtrDecl):
             return 'size_t'  # TODO: should use 'intptr_t'?
+        else:
+            assert False
     else:
         assert False
 
@@ -357,7 +373,6 @@ def transpile_ffi_decl(env, node):
         name = node.name
         type = transpile_type_name(env, node.type)
         return '{} {}'.format(type, name)
-
     assert isinstance(node.type, c_ast.FuncDecl)
     ret_type = transpile_type_name(env, node.type.type)
     name = node.name
@@ -365,14 +380,60 @@ def transpile_ffi_decl(env, node):
     return '{} {}({})'.format(ret_type, name, ', '.join(args))
 
 
-def transpile_ffi(env, item):
-    head = item[0]
-    if head == 'Comment':
-        comment = item[1]
-        return '\n# ' + comment
-    else:
-        decls = query_func_decls(head, env)
-        return '\n'.join(transpile_ffi_decl(env, decl) for decl in decls)
+def transpile_ffi(env, config):
+    def aux(env, item):
+        head = item[0]
+        if head == 'Comment':
+            comment = item[1]
+            return '\n# ' + comment
+        else:
+            decls = query_func_decls(head, env)
+            return '\n'.join(transpile_ffi_decl(env, decl) for decl in decls)
+    return [aux(env, item) for item in config]
+
+
+def transpile_aux_struct_decl(env, config, node):
+    def argaux(env, node):
+        name = deref_var_name(node.name)
+        type = erased_type_name(env, node.type.type)
+        if type is None:
+            type = transpile_type_name(env, node.type.type)
+        return '{} {}'.format(type, name)
+
+    assert isinstance(node.type, c_ast.FuncDecl)
+
+    out_type, out_args = config['out']
+
+    code = []
+    code.append('cdef class {}'.format(out_type))
+    code.append('')
+
+    params = [p for p in node.type.args.params if p.name in out_args]
+    args = [argaux(env, p) for p in params]
+    code.append('    def __init__(self, {})'.format(', '.join(args)))
+
+    for p in params:
+        attr = deref_var_name(p.name)
+        code.append('        self.{attr} = {attr}'.format(attr=attr))
+
+    return '\n'.join(code)
+
+
+def transpile_aux_struct(env, config):
+    # Assuming multiple functions do not use the same auxiliary structure.
+    def aux(env, item):
+        head = item[0]
+        if head == 'Comment':
+            return None
+        else:
+            config1 = item[1]
+            if isinstance(config1['out'], tuple):
+                decls = query_func_decls(head, env)
+                assert len(decls) == 1  # assuming not type generic
+                return transpile_aux_struct_decl(env, config1, decls[0])
+            else:
+                return None
+    return list(compact(aux(env, item) for item in config))
 
 
 def transpile_wrapper_def(env, config, node):
@@ -393,17 +454,19 @@ def transpile_wrapper_def(env, config, node):
     assert isinstance(node.type, c_ast.FuncDecl)
     out_name = config.get('out')
     if out_name is None:
+        assert 'except' not in config and 'except?' not in config
         name = transpile_func_name(node)
         args = [argaux(env, p) for p in node.type.args.params]
         return '{}({})'.format(name, ', '.join(args))
     elif out_name == 'Returned':
+        assert 'except' not in config and 'except?' not in config
         ret_type = erased_type_name(env, node.type.type)
         if ret_type is None:
             ret_type = transpile_type_name(env, node.type.type)
         name = transpile_func_name(node)
         args = [argaux(env, p) for p in node.type.args.params]
         return '{} {}({})'.format(ret_type, name, ', '.join(args))
-    else:
+    elif isinstance(out_name, str):
         out, params = partition(
             lambda p: p.name == out_name, node.type.args.params)
         assert len(out) == 1
@@ -415,6 +478,17 @@ def transpile_wrapper_def(env, config, node):
         args = [argaux(env, p) for p in params]
         excpt = config_except(config)
         return '{} {}({}) {}'.format(ret_type, name, ', '.join(args), excpt)
+    elif isinstance(out_name, tuple):
+        assert 'except' not in config and 'except?' not in config
+        out_type, out_args = out_name
+        outs, params = partition(
+            lambda p: p.name in out_args, node.type.args.params)
+        assert len(outs) > 1
+        name = transpile_func_name(node)
+        args = [argaux(env, p) for p in params]
+        return '{} {}({})'.format(out_type, name, ', '.join(args))
+    else:
+        assert False
 
 
 def deref_var_name(name):
@@ -447,7 +521,10 @@ def transpile_wrapper_call(env, config, node):
     def argaux(env, config, node):
         name = node.name
         out_name = config.get('out')
-        if out_name is not None and name == out_name:
+        if isinstance(out_name, str) and name == out_name:
+            name1 = deref_var_name(name)
+            return '&{}'.format(name1)
+        elif isinstance(out_name, tuple) and name in out_name[1]:
             name1 = deref_var_name(name)
             return '&{}'.format(name1)
         else:
@@ -483,7 +560,11 @@ def transpile_wrapper_decl(env, config, node):
 
     # Allocate space for the value to return
     out_name = config.get('out')
-    if out_name is not None and out_name != 'Returned':
+    if out_name is None:
+        pass
+    elif out_name == 'Returned':
+        pass
+    elif isinstance(out_name, str):
         out, params = partition(
             lambda p: p.name == out_name, node.type.args.params)
         assert len(out) == 1
@@ -491,6 +572,18 @@ def transpile_wrapper_decl(env, config, node):
         out_type = transpile_type_name(env, out[0].type.type)
         out_name1 = deref_var_name(out_name)
         code.append('    cdef {} {}'.format(out_type, out_name1))
+    elif isinstance(out_name, tuple):
+        _, out_args = out_name
+        outs, params = partition(
+            lambda p: p.name in out_args, node.type.args.params)
+        assert len(outs) > 1
+        for out, out_arg in zip(outs, out_args):
+            # dereference out
+            out_arg_type = transpile_type_name(env, out.type.type)
+            out_arg1 = deref_var_name(out_arg)
+            code.append('    cdef {} {}'.format(out_arg_type, out_arg1))
+    else:
+        assert False
 
     # Set stream if necessary
     if config.get('use_stream', False):
@@ -500,45 +593,65 @@ def transpile_wrapper_decl(env, config, node):
             '        setStream({}, stream_module.get_current_stream_ptr())'
             ''.format(handle_name))
 
-    if out_name is None or out_name != 'Returned':
+    if isinstance(out_name, str) and out_name == 'Returned':
+        call = transpile_wrapper_call(env, config, node)
+        code.append('    return {}'.format(call))
+    else:
         # Call cuSPARSE API and check its status returned
         status_var = 'status'  # assuming cusparse API does not use the name
         call = transpile_wrapper_call(env, config, node)
         code.append('    {} = {}'.format(status_var, call))
         code.append('    check_status({})'.format(status_var))
-    elif out_name == 'Returned':
-        call = transpile_wrapper_call(env, config, node)
-        code.append('    return {}'.format(call))
-    else:
-        assert False
 
     # Return value if necessary
-    if out_name is not None and out_name != 'Returned':
+    if out_name is None:
+        pass
+    elif out_name == 'Returned':
+        pass
+    elif isinstance(out_name, str):
         # dereference out[0]
         ret_type = erased_type_name(env, out[0].type.type)
-        # `out_name1` should have been assigned on `cdef` above
+        out_name1 = deref_var_name(out_name)
         if ret_type is not None:
             code.append('    return <{}>{}'.format(ret_type, out_name1))
         else:
             code.append('    return {}'.format(out_name1))
+    elif isinstance(out_name, tuple):
+        out_type, out_args = out_name
+        outs, params = partition(
+            lambda p: p.name in out_args, node.type.args.params)
+        assert len(outs) > 1
+        out_args1 = []
+        for out_arg, out in zip(out_args, outs):
+            out_arg_type = erased_type_name(env, out.type.type)
+            out_arg_name = deref_var_name(out_arg)
+            if out_arg_type is not None:
+                out_args1.append('<{}>{}'.format(out_arg_type, out_arg_name))
+            else:
+                out_args1.append(out_arg_name)
+        code.append('    return {}({})'.format(out_type, ', '.join(out_args1)))
+    else:
+        assert False
 
     return '\n'.join(code)
 
 
-def transpile_wrapper(env, item):
-    head = item[0]
-    if head == 'Comment':
-        comment = item[1]
-        code = []
-        code.append('')
-        code.append('#' * max(40, len(comment) + 2))
-        code.append('# ' + comment)
-        return '\n'.join(code)
-    else:
-        decls = query_func_decls(head, env)
-        config = item[1]
-        return '\n\n'.join(
-            transpile_wrapper_decl(env, config, decl) for decl in decls)
+def transpile_wrapper(env, config):
+    def aux(env, item):
+        head = item[0]
+        if head == 'Comment':
+            comment = item[1]
+            code = []
+            code.append('')
+            code.append('#' * max(40, len(comment) + 2))
+            code.append('# ' + comment)
+            return '\n'.join(code)
+        else:
+            decls = query_func_decls(head, env)
+            config1 = item[1]
+            return '\n\n'.join(
+                transpile_wrapper_decl(env, config1, decl) for decl in decls)
+    return [aux(env, item) for item in config]
 
 
 def validate_config(config):
@@ -657,6 +770,7 @@ if __name__ == '__main__':
     with open(path) as f:
         template = f.read()
 
-    ffi = '\n'.join(indent(transpile_ffi(env, item)) for item in config)
-    wrapper = '\n\n'.join(transpile_wrapper(env, item) for item in config)
-    print(template.format(ffi=ffi, wrapper=wrapper))
+    ffi = indent('\n'.join(transpile_ffi(env, config)))
+    aux_struct = '\n'.join(transpile_aux_struct(env, config))
+    wrapper = '\n\n'.join(transpile_wrapper(env, config))
+    print(template.format(ffi=ffi, aux_struct=aux_struct, wrapper=wrapper))

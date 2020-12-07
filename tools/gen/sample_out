@@ -129,6 +129,7 @@ cdef extern from '../cupy_cusparse.h' nogil:
 
     # cuSPARSE Generic API - Sparse Vector APIs
     Status cusparseCreateSpVec(SpVecDescr* spVecDescr, int64_t size, int64_t nnz, void* indices, void* values, IndexType idxType, IndexBase idxBase, DataType valueType)
+    Status cusparseSpVecGet(SpVecDescr spVecDescr, int64_t* size, int64_t* nnz, void** indices, void** values, IndexType* idxType, IndexBase* idxBase, DataType* valueType)
 
     # cuSPARSE Generic API - Dense Vector APIs
     Status cusparseCreateDnVec(DnVecDescr* dnVecDescr, int64_t size, void* values, DataType valueType)
@@ -184,6 +185,21 @@ cdef inline cuDoubleComplex double_complex_to_cuda(double complex value):
 
 def get_build_version():
     return CUSPARSE_VERSION
+
+
+########################################
+# Auxiliary structures
+
+cdef class SpVecAttributes
+
+    def __init__(self, int64_t size, int64_t nnz, size_t indices, size_t values, size_t idxType, size_t idxBase, size_t valueType)
+        self.size = size
+        self.nnz = nnz
+        self.indices = indices
+        self.values = values
+        self.idxType = idxType
+        self.idxBase = idxBase
+        self.valueType = valueType
 
 
 ########################################
@@ -736,6 +752,18 @@ cpdef size_t createSpVec(int64_t size, int64_t nnz, size_t indices, size_t value
     status = cusparseCreateSpVec(&spVecDescr, size, nnz, <void*>indices, <void*>values, <IndexType>idxType, <IndexBase>idxBase, <DataType>valueType)
     check_status(status)
     return <size_t>spVecDescr
+
+cpdef SpVecAttributes spVecGet(size_t spVecDescr):
+    cdef int64_t size
+    cdef int64_t nnz
+    cdef void* indices
+    cdef void* values
+    cdef IndexType idxType
+    cdef IndexBase idxBase
+    cdef DataType valueType
+    status = cusparseSpVecGet(<SpVecDescr>spVecDescr, &size, &nnz, &indices, &values, &idxType, &idxBase, &valueType)
+    check_status(status)
+    return SpVecAttributes(size, nnz, <size_t>indices, <size_t>values, <size_t>idxType, <size_t>idxBase, <size_t>valueType)
 
 
 ##########################################
