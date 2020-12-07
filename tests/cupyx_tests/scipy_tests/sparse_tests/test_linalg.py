@@ -539,7 +539,7 @@ class TestGmres:
     'N': [1, 7],
 }))
 @testing.gpu
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.4')
 class TestLinearOperator(unittest.TestCase):
 
     # modified from scipy
@@ -597,6 +597,7 @@ class TestLinearOperator(unittest.TestCase):
         if self.outer_modification == 'normal':
             return self._inner_cases(xp, sp, A)
         if self.outer_modification == 'transpose':
+            # From SciPy 1.4 (scipy/scipy#9064)
             return self._inner_cases(xp, sp, A.T).T
         if self.outer_modification == 'hermitian':
             return self._inner_cases(xp, sp, A.T.conj()).H
