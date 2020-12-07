@@ -599,7 +599,7 @@ class TestLinearOperator(unittest.TestCase):
         if self.outer_modification == 'transpose':
             return self._inner_cases(xp, sp, A.T).T
         if self.outer_modification == 'hermitian':
-            return self._inner_cases(xp, sp, A.T).H
+            return self._inner_cases(xp, sp, A.T.conj()).H
         assert False
 
     @testing.numpy_cupy_allclose(sp_name='sp', rtol=1e-6)
