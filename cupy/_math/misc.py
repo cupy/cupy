@@ -361,8 +361,8 @@ nan_to_num = core.create_ufunc(
 
 @cupy._util.memoize(for_each_device=True)
 def _get_interp_kernel(is_complex):
-    in_params = 'raw X x, raw U idx, '
-    in_params += 'raw X fx, raw Y fy, U len, raw Y left, raw Y right'
+    in_params = 'raw V x, raw U idx, '
+    in_params += 'raw W fx, raw Y fy, U len, raw Y left, raw Y right'
     out_params = 'Z y'  # output dtype follows NumPy's
 
     if is_complex:
@@ -389,10 +389,10 @@ def _get_interp_kernel(is_complex):
         else if (x_idx >= len - 1) { y = right[0]; }
         else {
             const Z slope = (value_t)(fy[x_idx+1] - fy[x_idx]) / \
-                            (real_t)(fx[x_idx+1] - fx[x_idx]);
-            Z out = slope * (real_t)(x[i] - fx[x_idx]) + (value_t)fy[x_idx];
+                            ((real_t)fx[x_idx+1] - (real_t)fx[x_idx]);
+            Z out = slope * ((real_t)x[i] - (real_t)fx[x_idx]) + (value_t)fy[x_idx];
             if (_isnan(out)) {
-                out = slope * (real_t)(x[i] - fx[x_idx+1]) + (value_t)fy[x_idx+1];
+                out = slope * ((real_t)x[i] - (real_t)fx[x_idx+1]) + (value_t)fy[x_idx+1];
                 if (_isnan(out) && (fy[x_idx] == fy[x_idx+1])) {
                     out = fy[x_idx];
                 }
@@ -447,13 +447,6 @@ def interp(x, xp, fp, left=None, right=None, period=None):
         raise TypeError('Cannot cast array data from'
                         ' {} to {} according to the rule \'safe\''
                         .format(x_dtype, cupy.float64))
-    if x.dtype != xp.dtype:
-        # cast now
-        x = x.astype(cupy.float64)
-        xp = xp.astype(cupy.float64)
-    else:
-        # cast in the kernel
-        pass
 
     if period is not None:
         # The handling of "period" below is modified from NumPy's
@@ -465,7 +458,7 @@ def interp(x, xp, fp, left=None, right=None, period=None):
         right = None
 
         x = x.astype(cupy.float64)
-        xp = xp.asdtype(cupy.float64)
+        xp = xp.astype(cupy.float64)
 
         # normalizing periodic boundaries
         x %= period
@@ -485,6 +478,5 @@ def interp(x, xp, fp, left=None, right=None, period=None):
     left = fp[0] if left is None else cupy.array(left, fp.dtype)
     right = fp[-1] if right is None else cupy.array(right, fp.dtype)
     kern = _get_interp_kernel(out_dtype=='D')
-    #print('before kern', x.dtype, idx.dtype, xp.dtype, fp.dtype, left.dtype, right.dtype)
     kern(x, idx, xp, fp, xp.size, left, right, output)
     return output

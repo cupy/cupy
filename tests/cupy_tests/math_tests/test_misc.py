@@ -211,22 +211,48 @@ class TestMisc(unittest.TestCase):
     def test_nan_to_num_inf_nan(self):
         self.check_unary_inf_nan('nan_to_num')
 
-    @testing.for_float_dtypes(name='dtype_x', no_float16=False)
-    @testing.for_all_dtypes(name='dtype_y', no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, type_check=False)  # todo: check type
+    @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name='dtype_y', no_bool=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
     def test_interp(self, xp, dtype_y, dtype_x):
-        x = xp.arange(10, dtype=dtype_x)
-        fx = xp.empty(2*x.size+4, dtype=dtype_x)
-        fx[1:-1] = xp.arange(0.5, 22, dtype=dtype_x)
-        x[0] = -0.5
-        fx[0] = -2
-        fx[1] = x[1] = -1
-        fx[-2] = x[-2] = 22
-        x[-1] = 21.5
-        fx[-1] = 23
+        # interpolate at points on and outside the boundaries
+        x = xp.asarray([0, 1, 2, 4, 6, 8, 9, 10], dtype=dtype_x)
+        fx = xp.asarray([1, 3, 5, 7, 9], dtype=dtype_x)
         fy = xp.sin(fx).astype(dtype_y)
-        if xp is cupy:
-            print(x.dtype, fx.dtype, fy.dtype)
+        return xp.interp(x, fx, fy)
+
+    @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name='dtype_y', no_bool=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_interp_period(self, xp, dtype_y, dtype_x):
+        # interpolate at points on and outside the boundaries
+        x = xp.asarray([0, 1, 2, 4, 6, 8, 9, 10], dtype=dtype_x)
+        fx = xp.asarray([1, 3, 5, 7, 9], dtype=dtype_x)
+        fy = xp.sin(fx).astype(dtype_y)
+        period = 5
+        return xp.interp(x, fx, fy, period=5)
+
+    @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name='dtype_y', no_bool=True)
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_interp_left_right(self, xp, dtype_y, dtype_x):
+        # interpolate at points on and outside the boundaries
+        x = xp.asarray([0, 1, 2, 4, 6, 8, 9, 10], dtype=dtype_x)
+        fx = xp.asarray([1, 3, 5, 7, 9], dtype=dtype_x)
+        fy = xp.sin(fx).astype(dtype_y)
+        left = 10
+        right = 20
+        return xp.interp(x, fx, fy, left, right)
+
+    @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
+    @testing.for_dtypes('efdFD', name='dtype_y')
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_interp_nan(self, xp, dtype_y, dtype_x):
+        # interpolate at points on and outside the boundaries
+        x = xp.asarray([0, 1, 2, 4, 6, 8, 9, 10], dtype=dtype_x)
+        fx = xp.asarray([1, 3, 5, 7, 9], dtype=dtype_x)
+        fy = xp.sin(fx).astype(dtype_y)
+        fy[0] = fy[2] = fy[-1] = numpy.nan
         return xp.interp(x, fx, fy)
 
 
