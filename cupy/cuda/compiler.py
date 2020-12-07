@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import math
 import os
@@ -32,7 +33,22 @@ class HIPCCException(Exception):
 def _run_cc(cmd, cwd, backend, log_stream=None):
     # backend in ('nvcc', 'hipcc')
     try:
-        env = os.environ if backend == 'hipcc' else None
+        # Inherit the environment variable as NVCC refers to PATH, TMPDIR/TMP,
+        # NVCC_PREPEND_FLAGS, NVCC_APPEND_FLAGS.
+        env = os.environ
+        if _win32:
+            # Adds the extra PATH for NVCC invocation.
+            # When running NVCC, a host compiler must be available in PATH,
+            # but this is not true in general Windows environment unless
+            # running inside the SDK Tools command prompt.
+            # To mitigate the situation CuPy automatically adds a path to
+            # the VC++ compiler used to build Python / CuPy to the PATH, if
+            # VC++ is not available in PATH.
+            extra_path = _get_extra_path_for_msvc()
+            if extra_path is not None:
+                path = extra_path + os.pathsep + os.environ.get('PATH', '')
+                env = copy.deepcopy(env)
+                env['PATH'] = path
         log = subprocess.check_output(cmd, cwd=cwd, env=env,
                                       stderr=subprocess.STDOUT,
                                       universal_newlines=True)
@@ -59,6 +75,28 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
               'Check PATH environment variable: ' \
               + str(e)
         raise OSError(msg.format(backend))
+
+
+@_util.memoize()
+def _get_extra_path_for_msvc():
+    import distutils.spawn
+    cl_exe = distutils.spawn.find_executable('cl.exe')
+    if cl_exe:
+        # The compiler is already on PATH, no extra path needed.
+        return None
+
+    from distutils import msvc9compiler
+    vcvarsall_bat = msvc9compiler.find_vcvarsall(
+        msvc9compiler.get_build_version())
+    if not vcvarsall_bat:
+        # Failed to find VC.
+        return None
+
+    path = os.path.join(os.path.dirname(vcvarsall_bat), 'bin')
+    if not distutils.spawn.find_executable('cl.exe', path):
+        # The compiler could not be found.
+        return None
+    return path
 
 
 def _get_nvrtc_version():
