@@ -4,7 +4,7 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy import core
+from cupy.core import internal
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
@@ -179,7 +179,7 @@ def tensorsolve(a, b, axes=None):
         a = a.transpose(allaxes)
 
     oldshape = a.shape[-(a.ndim - b.ndim):]
-    prod = cupy.core.internal.prod(oldshape)
+    prod = internal.prod(oldshape)
 
     a = a.reshape(-1, prod)
     b = b.ravel()
@@ -411,7 +411,7 @@ def pinv(a, rcond=1e-15):
     cutoff = rcond * s.max()
     s1 = 1 / s
     s1[s <= cutoff] = 0
-    return core.dot(vt.T, s1[:, None] * u.T)
+    return cupy.dot(vt.T, s1[:, None] * u.T)
 
 
 def tensorinv(a, ind=2):
@@ -447,7 +447,7 @@ def tensorinv(a, ind=2):
         raise ValueError('Invalid ind argument')
     oldshape = a.shape
     invshape = oldshape[ind:] + oldshape[:ind]
-    prod = cupy.core.internal.prod(oldshape[ind:])
+    prod = internal.prod(oldshape[ind:])
     a = a.reshape(prod, -1)
     a_inv = inv(a)
     return a_inv.reshape(*invshape)
