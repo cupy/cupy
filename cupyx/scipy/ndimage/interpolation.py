@@ -74,7 +74,7 @@ def _get_spline_output(input, output):
     return temp, float_dtype, output_dtype
 
 
-def spline_filter1d(input, order=3, axis=-1, output=None,
+def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
                     mode="mirror"):
     """
     Calculate a 1-D spline filter along the given axis.
@@ -163,7 +163,7 @@ def spline_filter1d(input, order=3, axis=-1, output=None,
     return temp.astype(output_dtype, copy=False)
 
 
-def spline_filter(input, order=3, output=None, mode="mirror"):
+def spline_filter(input, order=3, output=cupy.float64, mode="mirror"):
     """Multidimensional spline filter.
 
     Args:

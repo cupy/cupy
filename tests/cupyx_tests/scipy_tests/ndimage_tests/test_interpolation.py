@@ -647,7 +647,7 @@ class TestSplineFilter:
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestSplineFilterComplex(unittest.TestCase):
+class TestSplineFilterComplex:
 
     @testing.with_requires('scipy>=1.6')
     @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
