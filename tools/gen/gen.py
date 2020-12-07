@@ -11,7 +11,7 @@ FILENAME = '/usr/local/cuda/include/cusparse.h'
 # functions, orders, configurations
 # The reference and the header have different orders, even different sections.
 # https://docs.nvidia.com/cuda/cusparse/index.html
-config = [  # TODO: The name `config` is fine?
+DIRECTIVES = [
     # cuSPARSE Management Function
     ('Comment', 'cuSPARSE Management Function'),
     ('cusparseCreate', {
@@ -251,23 +251,6 @@ def compact(iterable):
     return (x for x in iterable if x is not None)
 
 
-# not used
-def get_config(config, name):
-    def possible_generic_func_name(name):
-        # Can not determine the data type specifiers ('SDCZ') or the first
-        # letter of a word ('C'reate)
-        return re.sub(r'(cusparse)[SDCZ](.*)', r'\1<t>\2', name)
-    config1 = config.get(name)
-    if config1 is not None:
-        return config1, None
-    name1 = possible_generic_func_name(name)
-    config1 = config.get(name1)
-    if config1 is not None:
-        type_spec = name[8]  # one of 'SDCZ'
-        return config.get(name1), type_spec
-    return None
-
-
 def collect_cusparse_decls(nodes):
     return [n for n in nodes if 'cusparse.h' in str(n.coord)]
 
@@ -380,7 +363,7 @@ def transpile_ffi_decl(env, node):
     return '{} {}({})'.format(ret_type, name, ', '.join(args))
 
 
-def transpile_ffi(env, config):
+def transpile_ffi(env, directives):
     def aux(env, item):
         head = item[0]
         if head == 'Comment':
@@ -389,7 +372,7 @@ def transpile_ffi(env, config):
         else:
             decls = query_func_decls(head, env)
             return '\n'.join(transpile_ffi_decl(env, decl) for decl in decls)
-    return [aux(env, item) for item in config]
+    return [aux(env, d) for d in directives]
 
 
 def transpile_aux_struct_decl(env, config, node):
@@ -419,21 +402,22 @@ def transpile_aux_struct_decl(env, config, node):
     return '\n'.join(code)
 
 
-def transpile_aux_struct(env, config):
+def transpile_aux_struct(env, directives):
     # Assuming multiple functions do not use the same auxiliary structure.
-    def aux(env, item):
-        head = item[0]
+    def aux(env, directive):
+        head = directive[0]
         if head == 'Comment':
             return None
         else:
-            config1 = item[1]
-            if isinstance(config1['out'], tuple):
+            config = directive[1]
+            out_spec = config['out']
+            if isinstance(out_spec, tuple):
                 decls = query_func_decls(head, env)
                 assert len(decls) == 1  # assuming not type generic
-                return transpile_aux_struct_decl(env, config1, decls[0])
+                return transpile_aux_struct_decl(env, config, decls[0])
             else:
                 return None
-    return list(compact(aux(env, item) for item in config))
+    return list(compact(aux(env, d) for d in directives))
 
 
 def transpile_wrapper_def(env, config, node):
@@ -446,19 +430,20 @@ def transpile_wrapper_def(env, config, node):
     def config_except(config):
         excpt_ret = config.get('except?')
         if excpt_ret is not None:
+            assert config.get('except') is None  # either except or except?
             return 'except? {}'.format(excpt_ret)
         excpt_ret = config.get('except')
         if excpt_ret is not None:
             return 'except {}'.format(excpt_ret)
         assert False
     assert isinstance(node.type, c_ast.FuncDecl)
-    out_name = config.get('out')
-    if out_name is None:
+    out_spec = config.get('out')
+    if out_spec is None:
         assert 'except' not in config and 'except?' not in config
         name = transpile_func_name(node)
         args = [argaux(env, p) for p in node.type.args.params]
         return '{}({})'.format(name, ', '.join(args))
-    elif out_name == 'Returned':
+    elif out_spec == 'Returned':
         assert 'except' not in config and 'except?' not in config
         ret_type = erased_type_name(env, node.type.type)
         if ret_type is None:
@@ -466,9 +451,9 @@ def transpile_wrapper_def(env, config, node):
         name = transpile_func_name(node)
         args = [argaux(env, p) for p in node.type.args.params]
         return '{} {}({})'.format(ret_type, name, ', '.join(args))
-    elif isinstance(out_name, str):
+    elif isinstance(out_spec, str):
         out, params = partition(
-            lambda p: p.name == out_name, node.type.args.params)
+            lambda p: p.name == out_spec, node.type.args.params)
         assert len(out) == 1
         # dereference out[0]
         ret_type = erased_type_name(env, out[0].type.type)
@@ -478,9 +463,9 @@ def transpile_wrapper_def(env, config, node):
         args = [argaux(env, p) for p in params]
         excpt = config_except(config)
         return '{} {}({}) {}'.format(ret_type, name, ', '.join(args), excpt)
-    elif isinstance(out_name, tuple):
+    elif isinstance(out_spec, tuple):
         assert 'except' not in config and 'except?' not in config
-        out_type, out_args = out_name
+        out_type, out_args = out_spec
         outs, params = partition(
             lambda p: p.name in out_args, node.type.args.params)
         assert len(outs) > 1
@@ -520,11 +505,11 @@ def transpile_type_conversion(env, node, var_name):
 def transpile_wrapper_call(env, config, node):
     def argaux(env, config, node):
         name = node.name
-        out_name = config.get('out')
-        if isinstance(out_name, str) and name == out_name:
+        out_spec = config.get('out')
+        if isinstance(out_spec, str) and name == out_spec:
             name1 = deref_var_name(name)
             return '&{}'.format(name1)
-        elif isinstance(out_name, tuple) and name in out_name[1]:
+        elif isinstance(out_spec, tuple) and name in out_spec[1]:
             name1 = deref_var_name(name)
             return '&{}'.format(name1)
         else:
@@ -539,7 +524,7 @@ def transpile_wrapper_call(env, config, node):
     return '{}({})'.format(name, ', '.join(args))
 
 
-def handle_arg_name(node):
+def handler_name(node):
     assert isinstance(node, c_ast.Decl)
     for param in node.type.args.params:
         assert len(param.type.type.names) == 1
@@ -559,21 +544,21 @@ def transpile_wrapper_decl(env, config, node):
     code.append('cpdef {}:'.format(def_))
 
     # Allocate space for the value to return
-    out_name = config.get('out')
-    if out_name is None:
+    out_spec = config.get('out')
+    if out_spec is None:
         pass
-    elif out_name == 'Returned':
+    elif out_spec == 'Returned':
         pass
-    elif isinstance(out_name, str):
+    elif isinstance(out_spec, str):
         out, params = partition(
-            lambda p: p.name == out_name, node.type.args.params)
+            lambda p: p.name == out_spec, node.type.args.params)
         assert len(out) == 1
         # dereference out[0]
         out_type = transpile_type_name(env, out[0].type.type)
-        out_name1 = deref_var_name(out_name)
-        code.append('    cdef {} {}'.format(out_type, out_name1))
-    elif isinstance(out_name, tuple):
-        _, out_args = out_name
+        out_name = deref_var_name(out_spec)
+        code.append('    cdef {} {}'.format(out_type, out_name))
+    elif isinstance(out_spec, tuple):
+        _, out_args = out_spec
         outs, params = partition(
             lambda p: p.name in out_args, node.type.args.params)
         assert len(outs) > 1
@@ -587,13 +572,13 @@ def transpile_wrapper_decl(env, config, node):
 
     # Set stream if necessary
     if config.get('use_stream', False):
-        handle_name = handle_arg_name(node)
+        handle = handler_name(node)
         code.append('    if stream_module.enable_current_stream:')
         code.append(
             '        setStream({}, stream_module.get_current_stream_ptr())'
-            ''.format(handle_name))
+            ''.format(handle))
 
-    if isinstance(out_name, str) and out_name == 'Returned':
+    if isinstance(out_spec, str) and out_spec == 'Returned':
         call = transpile_wrapper_call(env, config, node)
         code.append('    return {}'.format(call))
     else:
@@ -604,20 +589,20 @@ def transpile_wrapper_decl(env, config, node):
         code.append('    check_status({})'.format(status_var))
 
     # Return value if necessary
-    if out_name is None:
+    if out_spec is None:
         pass
-    elif out_name == 'Returned':
+    elif out_spec == 'Returned':
         pass
-    elif isinstance(out_name, str):
+    elif isinstance(out_spec, str):
         # dereference out[0]
         ret_type = erased_type_name(env, out[0].type.type)
-        out_name1 = deref_var_name(out_name)
+        out_name = deref_var_name(out_spec)
         if ret_type is not None:
-            code.append('    return <{}>{}'.format(ret_type, out_name1))
+            code.append('    return <{}>{}'.format(ret_type, out_name))
         else:
-            code.append('    return {}'.format(out_name1))
-    elif isinstance(out_name, tuple):
-        out_type, out_args = out_name
+            code.append('    return {}'.format(out_name))
+    elif isinstance(out_spec, tuple):
+        out_type, out_args = out_spec
         outs, params = partition(
             lambda p: p.name in out_args, node.type.args.params)
         assert len(outs) > 1
@@ -636,11 +621,11 @@ def transpile_wrapper_decl(env, config, node):
     return '\n'.join(code)
 
 
-def transpile_wrapper(env, config):
-    def aux(env, item):
-        head = item[0]
+def transpile_wrapper(env, directives):
+    def aux(env, directive):
+        head = directive[0]
         if head == 'Comment':
-            comment = item[1]
+            comment = directive[1]
             code = []
             code.append('')
             code.append('#' * max(40, len(comment) + 2))
@@ -648,18 +633,18 @@ def transpile_wrapper(env, config):
             return '\n'.join(code)
         else:
             decls = query_func_decls(head, env)
-            config1 = item[1]
+            config = directive[1]
             return '\n\n'.join(
-                transpile_wrapper_decl(env, config1, decl) for decl in decls)
-    return [aux(env, item) for item in config]
+                transpile_wrapper_decl(env, config, decl) for decl in decls)
+    return [aux(env, d) for d in directives]
 
 
-def validate_config(config):
+def validate_directives(directives):
     # too much, too less
     pass
 
 
-special_types = {
+SPECIAL_TYPES = {
     'cudaDataType': {
         'transpiled': 'DataType',
         'erased': 'size_t',
@@ -683,7 +668,7 @@ special_types = {
 }
 
 def make_environment(nodes):
-    specials = special_types
+    specials = SPECIAL_TYPES
     opaques = collect_opaque_decls(nodes)
     enums = collect_enum_decls(nodes)
     funcs = collect_func_decls(nodes)
@@ -754,7 +739,8 @@ def indent(code):
 
 
 if __name__ == '__main__':
-    validate_config(config)
+    directives = DIRECTIVES
+    validate_directives(directives)
 
     ast = pycparser.parse_file(FILENAME, use_cpp=True, cpp_args=[
         r'-I/usr/local/cuda/include',
@@ -770,7 +756,7 @@ if __name__ == '__main__':
     with open(path) as f:
         template = f.read()
 
-    ffi = indent('\n'.join(transpile_ffi(env, config)))
-    aux_struct = '\n'.join(transpile_aux_struct(env, config))
-    wrapper = '\n\n'.join(transpile_wrapper(env, config))
+    ffi = indent('\n'.join(transpile_ffi(env, directives)))
+    aux_struct = '\n'.join(transpile_aux_struct(env, directives))
+    wrapper = '\n\n'.join(transpile_wrapper(env, directives))
     print(template.format(ffi=ffi, aux_struct=aux_struct, wrapper=wrapper))
