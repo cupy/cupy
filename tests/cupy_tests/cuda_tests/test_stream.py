@@ -60,6 +60,25 @@ class TestStream(unittest.TestCase):
         assert out == list(range(N))
 
     @attr.gpu
+    @unittest.skipIf(cuda.runtime.is_hip, 'HIP does not support this')
+    @unittest.skipIf(cuda.driver.get_build_version() < 10000,
+                     'Only CUDA 10.0+ supports this')
+    def test_launch_host_func(self):
+        N = 100
+        cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
+
+        stream = cuda.Stream.null
+
+        out = []
+        for i in range(N):
+            numpy_array = cupy_arrays[i].get(stream=stream)
+            stream.launch_host_func(
+                lambda t: out.append(t[0]), (i, numpy_array))
+
+        stream.synchronize()
+        assert out == list(range(N))
+
+    @attr.gpu
     def test_with_statement(self):
         stream1 = cuda.Stream()
         stream2 = cuda.Stream()
@@ -93,11 +112,7 @@ class TestExternalStream(unittest.TestCase):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
 
-        if not cuda.runtime.is_hip:
-            stream = cuda.Stream.null
-        else:
-            # adding callbacks to the null stream in HIP would segfault...
-            stream = cuda.Stream()
+        stream = self.stream
 
         out = []
         for i in range(N):
@@ -105,6 +120,25 @@ class TestExternalStream(unittest.TestCase):
             stream.add_callback(
                 lambda _, __, t: out.append(t[0]),
                 (i, numpy_array))
+
+        stream.synchronize()
+        assert out == list(range(N))
+
+    @attr.gpu
+    @unittest.skipIf(cuda.runtime.is_hip, 'HIP does not support this')
+    @unittest.skipIf(cuda.driver.get_build_version() < 10000,
+                     'Only CUDA 10.0+ supports this')
+    def test_launch_host_func(self):
+        N = 100
+        cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
+
+        stream = self.stream
+
+        out = []
+        for i in range(N):
+            numpy_array = cupy_arrays[i].get(stream=stream)
+            stream.launch_host_func(
+                lambda t: out.append(t[0]), (i, numpy_array))
 
         stream.synchronize()
         assert out == list(range(N))

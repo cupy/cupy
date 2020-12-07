@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -28,7 +26,7 @@ except ImportError:
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestMapCoordinates(unittest.TestCase):
+class TestMapCoordinates:
 
     _multiprocess_can_split = True
 
@@ -100,7 +98,7 @@ class TestMapCoordinates(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestAffineTransform(unittest.TestCase):
+class TestAffineTransform:
 
     _multiprocess_can_split = True
 
@@ -163,7 +161,7 @@ class TestAffineTransform(unittest.TestCase):
 
 @testing.gpu
 @testing.with_requires('scipy')
-class TestAffineExceptions(unittest.TestCase):
+class TestAffineExceptions:
 
     def test_invalid_affine_ndim(self):
         ndimage_modules = (scipy.ndimage, cupyx.scipy.ndimage)
@@ -190,7 +188,7 @@ class TestAffineExceptions(unittest.TestCase):
 
 @testing.gpu
 @testing.with_requires('opencv-python')
-class TestAffineTransformOpenCV(unittest.TestCase):
+class TestAffineTransformOpenCV:
 
     _multiprocess_can_split = True
 
@@ -220,7 +218,7 @@ class TestAffineTransformOpenCV(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestRotate(unittest.TestCase):
+class TestRotate:
 
     _multiprocess_can_split = True
 
@@ -273,7 +271,7 @@ class TestRotate(unittest.TestCase):
 @testing.gpu
 # Scipy older than 1.3.0 raises IndexError instead of ValueError
 @testing.with_requires('scipy>=1.3.0')
-class TestRotateExceptions(unittest.TestCase):
+class TestRotateExceptions:
 
     def test_rotate_invalid_plane(self):
         ndimage_modules = (scipy.ndimage, cupyx.scipy.ndimage)
@@ -294,7 +292,7 @@ class TestRotateExceptions(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class TestRotateAxes(unittest.TestCase):
+class TestRotateAxes:
 
     _multiprocess_can_split = True
 
@@ -308,7 +306,7 @@ class TestRotateAxes(unittest.TestCase):
 
 @testing.gpu
 @testing.with_requires('opencv-python')
-class TestRotateOpenCV(unittest.TestCase):
+class TestRotateOpenCV:
 
     _multiprocess_can_split = True
 
@@ -343,7 +341,7 @@ class TestRotateOpenCV(unittest.TestCase):
 ))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestShift(unittest.TestCase):
+class TestShift:
 
     _multiprocess_can_split = True
 
@@ -403,7 +401,7 @@ class TestShift(unittest.TestCase):
     'cval': [cupy.nan, cupy.inf, -cupy.inf],
 }))
 @testing.gpu
-class TestInterpolationInvalidCval(unittest.TestCase):
+class TestInterpolationInvalidCval:
 
     def _prep_output(self, a):
         if self.output == 'empty':
@@ -482,7 +480,7 @@ class TestInterpolationInvalidCval(unittest.TestCase):
 
 @testing.gpu
 @testing.with_requires('opencv-python')
-class TestShiftOpenCV(unittest.TestCase):
+class TestShiftOpenCV:
 
     _multiprocess_can_split = True
 
@@ -509,7 +507,7 @@ class TestShiftOpenCV(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestZoom(unittest.TestCase):
+class TestZoom:
 
     _multiprocess_can_split = True
 
@@ -562,7 +560,7 @@ class TestZoom(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('opencv-python')
-class TestZoomOpenCV(unittest.TestCase):
+class TestZoomOpenCV:
 
     _multiprocess_can_split = True
 
@@ -587,7 +585,7 @@ class TestZoomOpenCV(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestSplineFilter1d(unittest.TestCase):
+class TestSplineFilter1d:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_spline_filter1d(self, xp, scp):
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
@@ -613,7 +611,7 @@ class TestSplineFilter1d(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestSplineFilter(unittest.TestCase):
+class TestSplineFilter:
     @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
     def test_spline_filter(self, xp, scp):
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)

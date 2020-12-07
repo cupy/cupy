@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 
 from cupy import testing
@@ -46,7 +44,7 @@ except ImportError:
 )
 @testing.gpu
 @testing.with_requires("scipy")
-class TestFourierShift(unittest.TestCase):
+class TestFourierShift:
 
     def _test_real_nd(self, xp, scp, x, real_axis):
         a = scp.fft.rfft(x, axis=real_axis)
@@ -134,7 +132,7 @@ class TestFourierShift(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires("scipy")
-class TestFourierGaussian(unittest.TestCase):
+class TestFourierGaussian:
 
     def _test_real_nd(self, xp, scp, x, real_axis):
         a = scp.fft.rfft(x, axis=real_axis)
@@ -222,7 +220,7 @@ class TestFourierGaussian(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires("scipy")
-class TestFourierUniform(unittest.TestCase):
+class TestFourierUniform:
 
     def _test_real_nd(self, xp, scp, x, real_axis):
         a = scp.fft.rfft(x, axis=real_axis)

@@ -1,7 +1,7 @@
 Statistical Functions
 =====================
 
-.. https://docs.scipy.org/doc/scipy/reference/stats.html
+.. https://numpy.org/doc/stable/reference/routines.statistics.html
 
 Order statistics
 ----------------
@@ -16,6 +16,7 @@ Order statistics
    cupy.nanmax
    cupy.percentile
    cupy.ptp
+   cupy.quantile
 
 
 Means and variances
