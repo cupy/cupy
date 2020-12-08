@@ -45,24 +45,10 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseDestroyBsrilu02Info(bsrilu02Info_t info)
 
     # cuSPARSE Level 1 Function
-    Status cusparseSaxpyi(Handle handle, int nnz, const float* alpha, const float* xVal, const int* xInd, float* y, IndexBase idxBase)
-    Status cusparseDaxpyi(Handle handle, int nnz, const double* alpha, const double* xVal, const int* xInd, double* y, IndexBase idxBase)
-    Status cusparseCaxpyi(Handle handle, int nnz, const cuComplex* alpha, const cuComplex* xVal, const int* xInd, cuComplex* y, IndexBase idxBase)
-    Status cusparseZaxpyi(Handle handle, int nnz, const cuDoubleComplex* alpha, const cuDoubleComplex* xVal, const int* xInd, cuDoubleComplex* y, IndexBase idxBase)
     Status cusparseSgthr(Handle handle, int nnz, const float* y, float* xVal, const int* xInd, IndexBase idxBase)
     Status cusparseDgthr(Handle handle, int nnz, const double* y, double* xVal, const int* xInd, IndexBase idxBase)
     Status cusparseCgthr(Handle handle, int nnz, const cuComplex* y, cuComplex* xVal, const int* xInd, IndexBase idxBase)
     Status cusparseZgthr(Handle handle, int nnz, const cuDoubleComplex* y, cuDoubleComplex* xVal, const int* xInd, IndexBase idxBase)
-    Status cusparseSgthrz(Handle handle, int nnz, float* y, float* xVal, const int* xInd, IndexBase idxBase)
-    Status cusparseDgthrz(Handle handle, int nnz, double* y, double* xVal, const int* xInd, IndexBase idxBase)
-    Status cusparseCgthrz(Handle handle, int nnz, cuComplex* y, cuComplex* xVal, const int* xInd, IndexBase idxBase)
-    Status cusparseZgthrz(Handle handle, int nnz, cuDoubleComplex* y, cuDoubleComplex* xVal, const int* xInd, IndexBase idxBase)
-    Status cusparseSroti(Handle handle, int nnz, float* xVal, const int* xInd, float* y, const float* c, const float* s, IndexBase idxBase)
-    Status cusparseDroti(Handle handle, int nnz, double* xVal, const int* xInd, double* y, const double* c, const double* s, IndexBase idxBase)
-    Status cusparseSsctr(Handle handle, int nnz, const float* xVal, const int* xInd, float* y, IndexBase idxBase)
-    Status cusparseDsctr(Handle handle, int nnz, const double* xVal, const int* xInd, double* y, IndexBase idxBase)
-    Status cusparseCsctr(Handle handle, int nnz, const cuComplex* xVal, const int* xInd, cuComplex* y, IndexBase idxBase)
-    Status cusparseZsctr(Handle handle, int nnz, const cuDoubleComplex* xVal, const int* xInd, cuDoubleComplex* y, IndexBase idxBase)
 
     # cuSPARSE Level 2 Function
     Status cusparseSbsrmv(Handle handle, Direction dirA, Operation transA, int mb, int nb, int nnzb, const float* alpha, const MatDescr descrA, const float* bsrSortedValA, const int* bsrSortedRowPtrA, const int* bsrSortedColIndA, int blockDim, const float* x, const float* beta, float* y)
@@ -335,30 +321,6 @@ cpdef destroyBsrilu02Info(size_t info):
 ########################################
 # cuSPARSE Level 1 Function
 
-cpdef saxpyi(intptr_t handle, int nnz, size_t alpha, size_t xVal, size_t xInd, size_t y, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseSaxpyi(<Handle>handle, nnz, <const float*>alpha, <const float*>xVal, <const int*>xInd, <float*>y, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef daxpyi(intptr_t handle, int nnz, size_t alpha, size_t xVal, size_t xInd, size_t y, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseDaxpyi(<Handle>handle, nnz, <const double*>alpha, <const double*>xVal, <const int*>xInd, <double*>y, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef caxpyi(intptr_t handle, int nnz, size_t alpha, size_t xVal, size_t xInd, size_t y, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseCaxpyi(<Handle>handle, nnz, <const cuComplex*>alpha, <const cuComplex*>xVal, <const int*>xInd, <cuComplex*>y, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef zaxpyi(intptr_t handle, int nnz, size_t alpha, size_t xVal, size_t xInd, size_t y, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseZaxpyi(<Handle>handle, nnz, <const cuDoubleComplex*>alpha, <const cuDoubleComplex*>xVal, <const int*>xInd, <cuDoubleComplex*>y, <IndexBase>idxBase)
-    check_status(status)
-
 cpdef sgthr(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd, size_t idxBase):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
@@ -381,66 +343,6 @@ cpdef zgthr(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd, size_t
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZgthr(<Handle>handle, nnz, <const cuDoubleComplex*>y, <cuDoubleComplex*>xVal, <const int*>xInd, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef sgthrz(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseSgthrz(<Handle>handle, nnz, <float*>y, <float*>xVal, <const int*>xInd, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef dgthrz(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseDgthrz(<Handle>handle, nnz, <double*>y, <double*>xVal, <const int*>xInd, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef cgthrz(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseCgthrz(<Handle>handle, nnz, <cuComplex*>y, <cuComplex*>xVal, <const int*>xInd, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef zgthrz(intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseZgthrz(<Handle>handle, nnz, <cuDoubleComplex*>y, <cuDoubleComplex*>xVal, <const int*>xInd, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef sroti(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t c, size_t s, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseSroti(<Handle>handle, nnz, <float*>xVal, <const int*>xInd, <float*>y, <const float*>c, <const float*>s, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef droti(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t c, size_t s, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseDroti(<Handle>handle, nnz, <double*>xVal, <const int*>xInd, <double*>y, <const double*>c, <const double*>s, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef ssctr(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseSsctr(<Handle>handle, nnz, <const float*>xVal, <const int*>xInd, <float*>y, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef dsctr(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseDsctr(<Handle>handle, nnz, <const double*>xVal, <const int*>xInd, <double*>y, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef csctr(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseCsctr(<Handle>handle, nnz, <const cuComplex*>xVal, <const int*>xInd, <cuComplex*>y, <IndexBase>idxBase)
-    check_status(status)
-
-cpdef zsctr(intptr_t handle, int nnz, size_t xVal, size_t xInd, size_t y, size_t idxBase):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusparseZsctr(<Handle>handle, nnz, <const cuDoubleComplex*>xVal, <const int*>xInd, <cuDoubleComplex*>y, <IndexBase>idxBase)
     check_status(status)
 
 

@@ -124,27 +124,10 @@ DIRECTIVES = [
     }),
     # cuSPARSE Level 1 Function
     ('Comment', 'cuSPARSE Level 1 Function'),
-    ('cusparse<t>axpyi', {
-        'out': None,
-        'use_stream': True,
-    }),
     ('cusparse<t>gthr', {
         'out': None,
         'use_stream': True,
     }),
-    ('cusparse<t>gthrz', {
-        'out': None,
-        'use_stream': True,
-    }),
-    ('cusparse<t>roti', {
-        'out': None,
-        'use_stream': True,
-    }),
-    ('cusparse<t>sctr', {
-        'out': None,
-        'use_stream': True,
-    }),
-
     # cuSPARSE Level 2 Function
     ('Comment', 'cuSPARSE Level 2 Function'),
     ('cusparse<t>bsrmv', {
