@@ -20,7 +20,7 @@ class LinearOperator(object):
         rmatmat (callable f(V)):  Returns ``A^H * V``, where ``V`` is a dense
                                   matrix with dimensions ``(M, K)``.
 
-    .. seealso:: :class:`scipy.sparse.LinearOperator`
+    .. seealso:: :class:`scipy.sparse.linalg.LinearOperator`
     """
 
     ndim = 2
