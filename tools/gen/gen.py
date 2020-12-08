@@ -52,22 +52,6 @@ DIRECTIVES = [
         'out': None,
         'use_stream': False,
     }),
-    ('cusparseGetMatDiagType', {
-        'out': 'Returned',
-        'use_stream': False,
-    }),
-    ('cusparseGetMatFillMode', {
-        'out': 'Returned',
-        'use_stream': False,
-    }),
-    ('cusparseGetMatIndexBase', {
-        'out': 'Returned',
-        'use_stream': False,
-    }),
-    ('cusparseGetMatType', {
-        'out': 'Returned',
-        'use_stream': False,
-    }),
     ('cusparseSetMatDiagType', {
         'out': None,
         'use_stream': False,
@@ -84,12 +68,60 @@ DIRECTIVES = [
         'out': None,
         'use_stream': False,
     }),
-    ('cusparseCreateCsrgemm2Info', {
+    ('cusparseCreateCsrsv2Info', {
         'out': 'info',
         'except?': 0,
         'use_stream': False,
     }),
-
+    ('cusparseDestroyCsrsv2Info', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseCreateCsrsm2Info', {
+        'out': 'info',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseDestroyCsrsm2Info', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseCreateCsric02Info', {
+        'out': 'info',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseDestroyCsric02Info', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseCreateCsrilu02Info', {
+        'out': 'info',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseDestroyCsrilu02Info', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseCreateBsric02Info', {
+        'out': 'info',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseDestroyBsric02Info', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseCreateBsrilu02Info', {
+        'out': 'info',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseDestroyBsrilu02Info', {
+        'out': None,
+        'use_stream': False,
+    }),
     # cuSPARSE Level 1 Function
     ('Comment', 'cuSPARSE Level 1 Function'),
     ('cusparse<t>axpyi', {
