@@ -15,18 +15,21 @@ def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
     """Uses Conjugate Gradient iteration to solve ``Ax = b``.
 
     Args:
-        A (cupy.ndarray, cupyx.scipy.sparse.spmatrix or
-            cupyx.scipy.sparse.linalg.LinearOperator): The real or complex
-            matrix of the linear system with shape ``(n, n)``. ``A`` must
-            be a hermitian, positive definitive matrix.
+        A (ndarray, spmatrix or LinearOperator): The real or complex matrix of
+            the linear system with shape ``(n, n)``. ``A`` must be a hermitian,
+            positive definitive matrix with type of :class:`cupy.ndarray`,
+            :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         b (cupy.ndarray): Right hand side of the linear system with shape
             ``(n,)`` or ``(n, 1)``.
         x0 (cupy.ndarray): Starting guess for the solution.
         tol (float): Tolerance for convergence.
         maxiter (int): Maximum number of iterations.
-        M (cupy.ndarray, cupyx.scipy.sparse.spmatrix or
-            cupyx.scipy.sparse.linalg.LinearOperator): Preconditioner for
-            ``A``. The preconditioner should approximate the inverse of ``A``.
+        M (ndarray, spmatrix or LinearOperator): Preconditioner for ``A``.
+            The preconditioner should approximate the inverse of ``A``.
+            ``M`` must be :class:`cupy.ndarray`,
+            :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         callback (function): User-specified function to call after each
             iteration. It is called as ``callback(xk)``, where ``xk`` is the
             current solution vector.
@@ -92,9 +95,10 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
     """Uses Generalized Minimal RESidual iteration to solve ``Ax = b``.
 
     Args:
-        A (cupy.ndarray, cupyx.scipy.sparse.spmatrix or
-            cupyx.scipy.sparse.linalg.LinearOperator): The real or complex
-            matrix of the linear system with shape ``(n, n)``.
+        A (ndarray, spmatrix or LinearOperator): The real or complex
+            matrix of the linear system with shape ``(n, n)``. ``A`` must be
+            :class:`cupy.ndarray`, :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         b (cupy.ndarray): Right hand side of the linear system with shape
             ``(n,)`` or ``(n, 1)``.
         x0 (cupy.ndarray): Starting guess for the solution.
@@ -102,9 +106,11 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
         restart (int): Number of iterations between restarts. Larger values
             increase iteration cost, but may be necessary for convergence.
         maxiter (int): Maximum number of iterations.
-        M (cupy.ndarray or cupyx.scipy.sparse.spmatrixor
-            cupyx.scipy.sparse.linalg.LinearOperator): Preconditioner for
-            ``A``. The preconditioner should approximate the inverse of ``A``.
+        M (ndarray, spmatrix or LinearOperator): Preconditioner for ``A``.
+            The preconditioner should approximate the inverse of ``A``.
+            ``M`` must be :class:`cupy.ndarray`,
+            :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         callback (function): User-specified function to call on every restart.
             It is called as ``callback(arg)``, where ``arg`` is selected by
             ``callback_type``.
@@ -199,9 +205,9 @@ def _make_system(A, M, x0, b):
     """Make a linear system Ax = b
 
     Args:
-        A (cupy.ndarray, cupyx.scipy.sparse.spmatrix or
+        A (cupy.ndarray or cupyx.scipy.sparse.spmatrix or
             cupyx.scipy.sparse.LinearOperator): sparse or dense matrix.
-        M (cupy.ndarray, cupyx.scipy.sparse.spmatrix or
+        M (cupy.ndarray or cupyx.scipy.sparse.spmatrix or
             cupyx.scipy.sparse.LinearOperator): preconditioner.
         x0 (cupy.ndarray): initial guess to iterative method.
         b (cupy.ndarray): right hand side.
