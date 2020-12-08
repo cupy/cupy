@@ -252,6 +252,7 @@ class TestSvds(unittest.TestCase):
     'M': [None, 'jacobi'],
     'atol': [None, 'select-by-dtype'],
     'b_ndim': [1, 2],
+    'use_linear_operator': [False, True],
 }))
 @testing.with_requires('scipy')
 @testing.gpu
@@ -303,6 +304,10 @@ class TestCg:
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_dense(self, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+            if M is not None:
+                M = sp.linalg.aslinearoperator(M)
         return self._test_cg(dtype, xp, sp, a, M)
 
     @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
@@ -311,14 +316,19 @@ class TestCg:
     def test_sparse(self, format, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
         if M is not None:
             M = sp.coo_matrix(M).asformat(format)
+            if self.use_linear_operator:
+                M = sp.linalg.aslinearoperator(M)
         return self._test_cg(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):
-        if self.x0 is not None or self.M is not None or self.atol is not None:
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.use_linear_operator is False):
             raise unittest.SkipTest
         a = xp.empty((0, 0), dtype=dtype)
         b = xp.empty((0,), dtype=dtype)
@@ -332,7 +342,8 @@ class TestCg:
 
     @testing.for_dtypes('fdFD')
     def test_callback(self, dtype):
-        if self.x0 is not None or self.M is not None or self.atol is not None:
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.use_linear_operator is False):
             raise unittest.SkipTest
         xp, sp = cupy, sparse
         a, M = self._make_matrix(dtype, xp)
@@ -347,7 +358,8 @@ class TestCg:
         assert is_called
 
     def test_invalid(self):
-        if self.x0 is not None or self.M is not None or self.atol is not None:
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.use_linear_operator is False):
             raise unittest.SkipTest
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a, M = self._make_matrix('f', xp)
@@ -386,6 +398,7 @@ class TestCg:
     'atol': [None, 'select-by-dtype'],
     'b_ndim': [1, 2],
     'restart': [None, 10],
+    'use_linear_operator': [False, True],
 }))
 @testing.with_requires('scipy>=1.4')
 @testing.gpu
@@ -438,6 +451,10 @@ class TestGmres:
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_dense(self, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+            if M is not None:
+                M = sp.linalg.aslinearoperator(M)
         return self._test_gmres(dtype, xp, sp, a, M)
 
     @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
@@ -446,15 +463,19 @@ class TestGmres:
     def test_sparse(self, format, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
         if M is not None:
             M = sp.coo_matrix(M).asformat(format)
+            if self.use_linear_operator:
+                M = sp.linalg.aslinearoperator(M)
         return self._test_gmres(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):
-        if (self.x0 is not None or self.M is not None or self.atol is not None
-                or self.restart is not None):
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.restart is None and self.use_linear_operator is False):
             raise unittest.SkipTest
         a = xp.empty((0, 0), dtype=dtype)
         b = xp.empty((0,), dtype=dtype)
@@ -468,8 +489,8 @@ class TestGmres:
 
     @testing.for_dtypes('fdFD')
     def test_callback(self, dtype):
-        if (self.x0 is not None or self.M is not None or self.atol is not None
-                or self.restart is not None):
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.restart is None and self.use_linear_operator is False):
             raise unittest.SkipTest
         xp, sp = cupy, sparse
         a, M = self._make_matrix(dtype, xp)
@@ -492,8 +513,8 @@ class TestGmres:
         assert is_called
 
     def test_invalid(self):
-        if (self.x0 is not None or self.M is not None or self.atol is not None
-                or self.restart is not None):
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.restart is None and self.use_linear_operator is False):
             raise unittest.SkipTest
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a, M = self._make_matrix('f', xp)
