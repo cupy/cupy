@@ -240,6 +240,91 @@ DIRECTIVES = [
 ]
 
 
+def is_comment_directive(directive):
+    return directive[0] == 'Comment'
+
+
+def is_function_directive(directive):
+    head = directive[0]
+    return isinstance(directive[0], str) and head != 'Comment'
+
+
+def directive_head(directive):
+    return directive[0]
+
+
+def directive_comment(directive):
+    assert is_comment_directive(directive)
+    return directive[1]
+
+
+def is_directive_none_out(directive):
+    assert is_function_directive(directive)
+    return directive[1]['out'] is None
+
+
+def is_directive_returned_out(directive):
+    assert is_function_directive(directive)
+    out_spec = directive[1]['out']
+    return isinstance(out_spec, str) and out_spec == 'Returned'
+
+
+def is_directive_single_out(directive):
+    assert is_function_directive(directive)
+    out_spec = directive[1]['out']
+    return isinstance(out_spec, str) and out_spec != 'Returned'
+
+
+def is_directive_multi_out(directive):
+    assert is_function_directive(directive)
+    out_spec = directive[1]['out']
+    if not isinstance(out_spec, tuple):
+        return False
+    assert len(out_spec) == 2
+    assert isinstance(out_spec[0], str)
+    assert isinstance(out_spec[1], tuple)
+    return True
+
+
+def directive_single_out(directive):
+    assert is_directive_single_out(directive)
+    return directive[1]['out']
+
+
+def directive_multi_out(directive):
+    assert is_directive_multi_out(directive)
+    return directive[1]['out']
+
+
+def directive_use_stream(directive):
+    assert is_function_directive(directive)
+    return directive[1]['use_stream']
+
+
+def directive_except(directive):
+    config = directive[1]
+    if is_directive_none_out(directive):
+        assert 'except' not in config and 'except?' not in config
+        return None
+    elif is_directive_returned_out(directive):
+        assert 'except' not in config and 'except?' not in config
+        return None
+    elif is_directive_single_out(directive):
+        excpt = config.get('except?')
+        if excpt is not None:
+            assert 'except' not in config  # either 'except?' or 'except'
+            return 'except? {}'.format(excpt)
+        excpt = config.get('except')
+        if excpt is not None:
+            return 'except {}'.format(excpt)
+        assert False
+    elif is_directive_multi_out(directive):
+        assert 'except' not in config and 'except?' not in config
+        return None
+    else:
+        assert False
+
+
 def partition(pred, seq):
     a, b = [], []
     for item in seq:
@@ -364,18 +449,20 @@ def transpile_ffi_decl(env, node):
 
 
 def transpile_ffi(env, directives):
-    def aux(env, item):
-        head = item[0]
-        if head == 'Comment':
-            comment = item[1]
+    def aux(env, directive):
+        if is_comment_directive(directive):
+            comment = directive_comment(directive)
             return '\n# ' + comment
-        else:
+        elif is_function_directive(directive):
+            head = directive_head(directive)
             decls = query_func_decls(head, env)
             return '\n'.join(transpile_ffi_decl(env, decl) for decl in decls)
+        else:
+            assert False
     return [aux(env, d) for d in directives]
 
 
-def transpile_aux_struct_decl(env, config, node):
+def transpile_aux_struct_decl(env, directive, node):
     def argaux(env, node):
         name = deref_var_name(node.name)
         type = erased_type_name(env, node.type.type)
@@ -385,9 +472,9 @@ def transpile_aux_struct_decl(env, config, node):
 
     assert isinstance(node.type, c_ast.FuncDecl)
 
-    out_type, out_args = config['out']
-
+    out_type, out_args = directive_multi_out(directive)
     code = []
+
     code.append('cdef class {}'.format(out_type))
     code.append('')
 
@@ -405,55 +492,46 @@ def transpile_aux_struct_decl(env, config, node):
 def transpile_aux_struct(env, directives):
     # Assuming multiple functions do not use the same auxiliary structure.
     def aux(env, directive):
-        head = directive[0]
-        if head == 'Comment':
+        if is_comment_directive(directive):
             return None
-        else:
-            config = directive[1]
-            out_spec = config['out']
-            if isinstance(out_spec, tuple):
+        elif is_function_directive(directive):
+            if is_directive_multi_out(directive):
+                head = directive_head(directive)
                 decls = query_func_decls(head, env)
                 assert len(decls) == 1  # assuming not type generic
-                return transpile_aux_struct_decl(env, config, decls[0])
+                return transpile_aux_struct_decl(env, directive, decls[0])
             else:
                 return None
+        else:
+            assert False
     return list(compact(aux(env, d) for d in directives))
 
 
-def transpile_wrapper_def(env, config, node):
+def transpile_wrapper_def(env, directive, node):
     def argaux(env, node):
         name = node.name
         type = erased_type_name(env, node.type)
         if type is None:
             type = transpile_type_name(env, node.type)
         return '{} {}'.format(type, name)
-    def config_except(config):
-        excpt_ret = config.get('except?')
-        if excpt_ret is not None:
-            assert config.get('except') is None  # either except or except?
-            return 'except? {}'.format(excpt_ret)
-        excpt_ret = config.get('except')
-        if excpt_ret is not None:
-            return 'except {}'.format(excpt_ret)
-        assert False
     assert isinstance(node.type, c_ast.FuncDecl)
-    out_spec = config.get('out')
-    if out_spec is None:
-        assert 'except' not in config and 'except?' not in config
+    if is_directive_none_out(directive):
+        assert directive_except(directive) is None
         name = transpile_func_name(node)
         args = [argaux(env, p) for p in node.type.args.params]
         return '{}({})'.format(name, ', '.join(args))
-    elif out_spec == 'Returned':
-        assert 'except' not in config and 'except?' not in config
+    elif is_directive_returned_out(directive):
+        assert directive_except(directive) is None
         ret_type = erased_type_name(env, node.type.type)
         if ret_type is None:
             ret_type = transpile_type_name(env, node.type.type)
         name = transpile_func_name(node)
         args = [argaux(env, p) for p in node.type.args.params]
         return '{} {}({})'.format(ret_type, name, ', '.join(args))
-    elif isinstance(out_spec, str):
+    elif is_directive_single_out(directive):
+        out_name = directive_single_out(directive)
         out, params = partition(
-            lambda p: p.name == out_spec, node.type.args.params)
+            lambda p: p.name == out_name, node.type.args.params)
         assert len(out) == 1
         # dereference out[0]
         ret_type = erased_type_name(env, out[0].type.type)
@@ -461,11 +539,11 @@ def transpile_wrapper_def(env, config, node):
             ret_type = transpile_type_name(env, out[0].type.type)
         name = transpile_func_name(node)
         args = [argaux(env, p) for p in params]
-        excpt = config_except(config)
+        excpt = directive_except(directive)
         return '{} {}({}) {}'.format(ret_type, name, ', '.join(args), excpt)
-    elif isinstance(out_spec, tuple):
-        assert 'except' not in config and 'except?' not in config
-        out_type, out_args = out_spec
+    elif is_directive_multi_out(directive):
+        assert directive_except(directive) is None
+        out_type, out_args = directive_multi_out(directive)
         outs, params = partition(
             lambda p: p.name in out_args, node.type.args.params)
         assert len(outs) > 1
@@ -502,25 +580,25 @@ def transpile_type_conversion(env, node, var_name):
         assert False
 
 
-def transpile_wrapper_call(env, config, node):
-    def argaux(env, config, node):
+def transpile_wrapper_call(env, directive, node):
+    def argaux(env, directive, node):
         name = node.name
-        out_spec = config.get('out')
-        if isinstance(out_spec, str) and name == out_spec:
-            name1 = deref_var_name(name)
-            return '&{}'.format(name1)
-        elif isinstance(out_spec, tuple) and name in out_spec[1]:
-            name1 = deref_var_name(name)
-            return '&{}'.format(name1)
-        else:
-            erased_type = erased_type_name(env, node.type)
-            if erased_type is not None:
-                return transpile_type_conversion(env, node.type, name)
-            else:
-                return name
+        if is_directive_single_out(directive):
+            if name == directive_single_out(directive):
+                name1 = deref_var_name(name)
+                return '&{}'.format(name1)
+        if is_directive_multi_out(directive):
+            _, out_args = directive_multi_out(directive)
+            if name in out_args:
+                name1 = deref_var_name(name)
+                return '&{}'.format(name1)
+        erased_type = erased_type_name(env, node.type)
+        if erased_type is not None:
+            return transpile_type_conversion(env, node.type, name)
+        return name
     assert isinstance(node.type, c_ast.FuncDecl)
     name = node.name
-    args = [argaux(env, config, p) for p in node.type.args.params]
+    args = [argaux(env, directive, p) for p in node.type.args.params]
     return '{}({})'.format(name, ', '.join(args))
 
 
@@ -534,31 +612,31 @@ def handler_name(node):
     assert False
 
 
-def transpile_wrapper_decl(env, config, node):
+def transpile_wrapper_decl(env, directive, node):
     assert isinstance(node.type, c_ast.FuncDecl)
 
     code = []
 
     # Function definition
-    def_ = transpile_wrapper_def(env, config, node)
+    def_ = transpile_wrapper_def(env, directive, node)
     code.append('cpdef {}:'.format(def_))
 
     # Allocate space for the value to return
-    out_spec = config.get('out')
-    if out_spec is None:
+    if is_directive_none_out(directive):
         pass
-    elif out_spec == 'Returned':
+    elif is_directive_returned_out(directive):
         pass
-    elif isinstance(out_spec, str):
+    elif is_directive_single_out(directive):
+        out_name = directive_single_out(directive)
         out, params = partition(
-            lambda p: p.name == out_spec, node.type.args.params)
+            lambda p: p.name == out_name, node.type.args.params)
         assert len(out) == 1
         # dereference out[0]
         out_type = transpile_type_name(env, out[0].type.type)
-        out_name = deref_var_name(out_spec)
-        code.append('    cdef {} {}'.format(out_type, out_name))
-    elif isinstance(out_spec, tuple):
-        _, out_args = out_spec
+        out_name1 = deref_var_name(out_name)
+        code.append('    cdef {} {}'.format(out_type, out_name1))
+    elif is_directive_multi_out(directive):
+        _, out_args = directive_multi_out(directive)
         outs, params = partition(
             lambda p: p.name in out_args, node.type.args.params)
         assert len(outs) > 1
@@ -571,43 +649,45 @@ def transpile_wrapper_decl(env, config, node):
         assert False
 
     # Set stream if necessary
-    if config.get('use_stream', False):
+    if directive_use_stream(directive):
         handle = handler_name(node)
         code.append('    if stream_module.enable_current_stream:')
         code.append(
             '        setStream({}, stream_module.get_current_stream_ptr())'
             ''.format(handle))
 
-    if isinstance(out_spec, str) and out_spec == 'Returned':
-        call = transpile_wrapper_call(env, config, node)
+    # Call cuSPARSE API and check its returned status if necessary
+    if is_directive_returned_out(directive):
+        call = transpile_wrapper_call(env, directive, node)
         code.append('    return {}'.format(call))
     else:
-        # Call cuSPARSE API and check its status returned
         status_var = 'status'  # assuming cusparse API does not use the name
-        call = transpile_wrapper_call(env, config, node)
+        call = transpile_wrapper_call(env, directive, node)
         code.append('    {} = {}'.format(status_var, call))
         code.append('    check_status({})'.format(status_var))
 
     # Return value if necessary
-    if out_spec is None:
+    if is_directive_none_out(directive):
         pass
-    elif out_spec == 'Returned':
+    elif is_directive_returned_out(directive):
         pass
-    elif isinstance(out_spec, str):
+    elif is_directive_single_out(directive):
+        out_name = directive_single_out(directive)
         # dereference out[0]
         ret_type = erased_type_name(env, out[0].type.type)
-        out_name = deref_var_name(out_spec)
+        out_name1 = deref_var_name(out_name)
         if ret_type is not None:
-            code.append('    return <{}>{}'.format(ret_type, out_name))
+            code.append('    return <{}>{}'.format(ret_type, out_name1))
         else:
-            code.append('    return {}'.format(out_name))
-    elif isinstance(out_spec, tuple):
-        out_type, out_args = out_spec
+            code.append('    return {}'.format(out_name1))
+    elif is_directive_multi_out(directive):
+        out_type, out_args = directive_multi_out(directive)
         outs, params = partition(
             lambda p: p.name in out_args, node.type.args.params)
         assert len(outs) > 1
         out_args1 = []
         for out_arg, out in zip(out_args, outs):
+            # dereference out
             out_arg_type = erased_type_name(env, out.type.type)
             out_arg_name = deref_var_name(out_arg)
             if out_arg_type is not None:
@@ -623,19 +703,20 @@ def transpile_wrapper_decl(env, config, node):
 
 def transpile_wrapper(env, directives):
     def aux(env, directive):
-        head = directive[0]
-        if head == 'Comment':
-            comment = directive[1]
+        if is_comment_directive(directive):
+            comment = directive_comment(directive)
             code = []
             code.append('')
             code.append('#' * max(40, len(comment) + 2))
             code.append('# ' + comment)
             return '\n'.join(code)
-        else:
+        elif is_function_directive(directive):
+            head = directive_head(directive)
             decls = query_func_decls(head, env)
-            config = directive[1]
             return '\n\n'.join(
-                transpile_wrapper_decl(env, config, decl) for decl in decls)
+                transpile_wrapper_decl(env, directive, decl) for decl in decls)
+        else:
+            assert False
     return [aux(env, d) for d in directives]
 
 
