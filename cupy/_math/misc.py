@@ -366,20 +366,16 @@ def _get_interp_kernel(is_complex):
     out_params = 'Z y'  # output dtype follows NumPy's
 
     if is_complex:
-        preamble = r'''
-        typedef double real_t;
-        typedef Z value_t;
-        '''
+        preamble = 'typedef double real_t;\n'
     else:
-        preamble = r'''
-        typedef Z real_t;
-        typedef Z value_t;
-        '''
+        preamble = 'typedef Z real_t;\n'
+    preamble += 'typedef Z value_t;\n'
+    preamble += cupy._sorting.search._preamble  # for _isnan
 
     code = r'''
         U x_idx = idx[i] - 1;
 
-        if (_isnan(x[i])) { y = x[i]; }
+        if ( _isnan<V>(x[i]) ) { y = x[i]; }
         else if (x_idx < 0) { y = left[0]; }
         else if (x[i] == fx[len - 1]) {
             // searchsorted cannot handle both of the boundary points,
@@ -390,44 +386,46 @@ def _get_interp_kernel(is_complex):
         else {
             const Z slope = (value_t)(fy[x_idx+1] - fy[x_idx]) / \
                             ((real_t)fx[x_idx+1] - (real_t)fx[x_idx]);
-            Z out = slope * ((real_t)x[i] - (real_t)fx[x_idx]) + (value_t)fy[x_idx];
-            if (_isnan(out)) {
-                out = slope * ((real_t)x[i] - (real_t)fx[x_idx+1]) + (value_t)fy[x_idx+1];
-                if (_isnan(out) && (fy[x_idx] == fy[x_idx+1])) {
+            Z out = slope * ((real_t)x[i] - (real_t)fx[x_idx]) \
+                    + (value_t)fy[x_idx];
+            if (_isnan<Z>(out)) {
+                out = slope * ((real_t)x[i] - (real_t)fx[x_idx+1]) \
+                      + (value_t)fy[x_idx+1];
+                if (_isnan<Z>(out) && (fy[x_idx] == fy[x_idx+1])) {
                     out = fy[x_idx];
                 }
             }
             y = out;
         }
     '''
-    return cupy.ElementwiseKernel(in_params, out_params, code, 'cupy_interp',
-        preamble=preamble+cupy._sorting.search._preamble)  # for _isnan()
+    return cupy.ElementwiseKernel(
+        in_params, out_params, code, 'cupy_interp', preamble=preamble)
 
 
 def interp(x, xp, fp, left=None, right=None, period=None):
     """ One-dimensional linear interpolation.
 
     Args:
-        x (cupy.ndarray): a 1-dimensional input on which the interpolation is
-            performed.
-        xp (cupy.ndarray): a 1-dimensional input on which the function values
+        x (cupy.ndarray): a 1D array of points on which the interpolation
+            is performed.
+        xp (cupy.ndarray): a 1D array of points on which the function values
             (``fp``) are known.
-        fp (cupy.ndarray): a 1-dimensional input containing the function values
-            corresponding to the ``xp`` points.
+        fp (cupy.ndarray): a 1D array containing the function values at the
+            the points ``xp``.
         left (float or complex): value to return if ``x < xp[0]``. Default is
             ``fp[0]``.
         right (float or complex): value to return if ``x > xp[-1]``. Default is
             ``fp[-1]``.
-        period (optional): refer to the Numpy documentation for detail.
+        period (None or float): a period for the x-coordinates. Parameters
+            ``left`` and ``right`` are ignored if ``period`` is specified.
+            Default is ``None``.
 
     Returns:
-        cupy.ndarray: The one-dimensional piecewise linear interpolant to a
-            function with given discrete data points (``xp``, ``fp``),
-            evaluated at ``x``.
+        cupy.ndarray: The interpolated values, same shape as ``x``.
 
     .. note::
-        This function may synchronize if ``left`` or ``right`` is not on the
-        device already.
+        This function may synchronize if ``left`` or ``right`` is not already
+        on the device.
 
     .. seealso:: :func:`numpy.interp`
 
@@ -471,12 +469,13 @@ def interp(x, xp, fp, left=None, right=None, period=None):
         assert xp.flags.c_contiguous
         assert fp.flags.c_contiguous
 
-    # NumPy always returns float64 or complex128, so we upcast all values in the kernel
+    # NumPy always returns float64 or complex128, so we upcast all values
+    # on the fly in the kernel
     out_dtype = 'D' if fp.dtype.kind == 'c' else 'd'
     output = cupy.empty(x.shape, dtype=out_dtype)
     idx = cupy.searchsorted(xp, x, side='right')
     left = fp[0] if left is None else cupy.array(left, fp.dtype)
     right = fp[-1] if right is None else cupy.array(right, fp.dtype)
-    kern = _get_interp_kernel(out_dtype=='D')
+    kern = _get_interp_kernel(out_dtype == 'D')
     kern(x, idx, xp, fp, xp.size, left, right, output)
     return output
