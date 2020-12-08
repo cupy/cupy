@@ -7,7 +7,13 @@ from cupyx.scipy.sparse import _util
 
 
 class LinearOperator(object):
-    """Common interface for performing matrix vector products
+    """LinearOperator(shape, matvec, rmatvec=None, matmat=None, dtype=None, \
+rmatmat=None)
+
+    Common interface for performing matrix vector products
+
+    To construct a concrete LinearOperator, either pass appropriate callables
+    to the constructor of this class, or subclass it.
 
     Args:
         shape (tuple):  Matrix dimensions ``(M, N)``.
