@@ -124,11 +124,12 @@ class TestEntropy(unittest.TestCase):
         return res
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol={cupy.float16: 1e-3,
-                                       cupy.float32: 1e-6,
+    @testing.numpy_cupy_allclose(rtol={cupy.float32: 1e-6,
                                        'default': 1e-15},
                                  scipy_name='scp')
     def test_entropy(self, xp, scp, dtype):
+        # `entropy` returns float32 value for float16 input so float32
+        # tolerance is used for it.
         return self._entropy(xp, scp, dtype, self.shape, self.use_qk,
                              self.base, self.axis, self.normalize)
 
