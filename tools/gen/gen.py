@@ -448,18 +448,16 @@ def transpile_ffi_decl(env, node):
     return '{} {}({})'.format(ret_type, name, ', '.join(args))
 
 
-def transpile_ffi(env, directives):
-    def aux(env, directive):
-        if is_comment_directive(directive):
-            comment = directive_comment(directive)
-            return '\n# ' + comment
-        elif is_function_directive(directive):
-            head = directive_head(directive)
-            decls = query_func_decls(head, env)
-            return '\n'.join(transpile_ffi_decl(env, decl) for decl in decls)
-        else:
-            assert False
-    return [aux(env, d) for d in directives]
+def transpile_ffi(env, directive):
+    if is_comment_directive(directive):
+        comment = directive_comment(directive)
+        return '\n# ' + comment
+    elif is_function_directive(directive):
+        head = directive_head(directive)
+        decls = query_func_decls(head, env)
+        return '\n'.join(transpile_ffi_decl(env, decl) for decl in decls)
+    else:
+        assert False
 
 
 def transpile_aux_struct_decl(env, directive, node):
@@ -489,22 +487,20 @@ def transpile_aux_struct_decl(env, directive, node):
     return '\n'.join(code)
 
 
-def transpile_aux_struct(env, directives):
-    # Assuming multiple functions do not use the same auxiliary structure.
-    def aux(env, directive):
-        if is_comment_directive(directive):
-            return None
-        elif is_function_directive(directive):
-            if is_directive_multi_out(directive):
-                head = directive_head(directive)
-                decls = query_func_decls(head, env)
-                assert len(decls) == 1  # assuming not type generic
-                return transpile_aux_struct_decl(env, directive, decls[0])
-            else:
-                return None
+# Assuming multiple functions do not use the same auxiliary structure.
+def transpile_aux_struct(env, directive):
+    if is_comment_directive(directive):
+        return None
+    elif is_function_directive(directive):
+        if is_directive_multi_out(directive):
+            head = directive_head(directive)
+            decls = query_func_decls(head, env)
+            assert len(decls) == 1  # assuming not type generic
+            return transpile_aux_struct_decl(env, directive, decls[0])
         else:
-            assert False
-    return list(compact(aux(env, d) for d in directives))
+            return None
+    else:
+        assert False
 
 
 def transpile_wrapper_def(env, directive, node):
@@ -701,23 +697,21 @@ def transpile_wrapper_decl(env, directive, node):
     return '\n'.join(code)
 
 
-def transpile_wrapper(env, directives):
-    def aux(env, directive):
-        if is_comment_directive(directive):
-            comment = directive_comment(directive)
-            code = []
-            code.append('')
-            code.append('#' * max(40, len(comment) + 2))
-            code.append('# ' + comment)
-            return '\n'.join(code)
-        elif is_function_directive(directive):
-            head = directive_head(directive)
-            decls = query_func_decls(head, env)
-            return '\n\n'.join(
-                transpile_wrapper_decl(env, directive, decl) for decl in decls)
-        else:
-            assert False
-    return [aux(env, d) for d in directives]
+def transpile_wrapper(env, directive):
+    if is_comment_directive(directive):
+        comment = directive_comment(directive)
+        code = []
+        code.append('')
+        code.append('#' * max(40, len(comment) + 2))
+        code.append('# ' + comment)
+        return '\n'.join(code)
+    elif is_function_directive(directive):
+        head = directive_head(directive)
+        decls = query_func_decls(head, env)
+        return '\n\n'.join(
+            transpile_wrapper_decl(env, directive, decl) for decl in decls)
+    else:
+        assert False
 
 
 def validate_directives(directives):
@@ -837,7 +831,8 @@ if __name__ == '__main__':
     with open(path) as f:
         template = f.read()
 
-    ffi = indent('\n'.join(transpile_ffi(env, directives)))
-    aux_struct = '\n'.join(transpile_aux_struct(env, directives))
-    wrapper = '\n\n'.join(transpile_wrapper(env, directives))
+    ffi = '\n'.join(indent(transpile_ffi(env, d)) for d in directives)
+    aux_struct = '\n'.join(
+        compact(transpile_aux_struct(env, d) for d in directives))
+    wrapper = '\n\n'.join(transpile_wrapper(env, d) for d in directives)
     print(template.format(ffi=ffi, aux_struct=aux_struct, wrapper=wrapper))
