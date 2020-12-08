@@ -28,11 +28,6 @@ DIRECTIVES = [
         'except': -1,
         'use_stream': False,
     }),
-    ('cusparseGetPointerMode', {
-        'out': 'mode',
-        'except?': 0,
-        'use_stream': False,
-    }),
     ('cusparseSetPointerMode', {
         'out': None,
         'use_stream': False,
@@ -46,7 +41,6 @@ DIRECTIVES = [
         'out': None,
         'use_stream': False,
     }),
-
     # cuSPARSE Helper Function
     ('Comment', 'cuSPARSE Helper Function'),
     ('cusparseCreateMatDescr', {

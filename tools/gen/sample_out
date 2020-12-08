@@ -20,7 +20,6 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseCreate(Handle* handle)
     Status cusparseDestroy(Handle handle)
     Status cusparseGetVersion(Handle handle, int* version)
-    Status cusparseGetPointerMode(Handle handle, PointerMode* mode)
     Status cusparseSetPointerMode(Handle handle, PointerMode mode)
     Status cusparseGetStream(Handle handle, driver.Stream* streamId)
     Status cusparseSetStream(Handle handle, driver.Stream streamId)
@@ -220,12 +219,6 @@ cpdef int getVersion(intptr_t handle) except -1:
     status = cusparseGetVersion(<Handle>handle, &version)
     check_status(status)
     return version
-
-cpdef size_t getPointerMode(intptr_t handle) except? 0:
-    cdef PointerMode mode
-    status = cusparseGetPointerMode(<Handle>handle, &mode)
-    check_status(status)
-    return <size_t>mode
 
 cpdef setPointerMode(intptr_t handle, size_t mode):
     status = cusparseSetPointerMode(<Handle>handle, <PointerMode>mode)
