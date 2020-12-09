@@ -5,7 +5,8 @@ import pycparser
 from pycparser import c_ast
 
 
-FILENAME = '/usr/local/cuda/include/cusparse.h'
+FILENAME_110 = '/usr/local/cuda-11.0/include/cusparse.h'
+FILENAME_102 = '/usr/local/cuda-10.2/include/cusparse.h'
 
 
 # functions, orders, configurations
@@ -445,16 +446,23 @@ def erased_type_name(env, node):
         assert False
 
 
-def transpile_ffi_decl(env, node):
+def transpile_ffi_decl(env, node, removed):
     def argaux(env, node):
         name = node.name
         type = transpile_type_name(env, node.type)
         return '{} {}'.format(type, name)
     assert isinstance(node.type, c_ast.FuncDecl)
+
+    code = []
+    if removed:
+        code.append('# REMOVED')
+
     ret_type = transpile_type_name(env, node.type.type)
     name = node.name
     args = [argaux(env, p) for p in node.type.args.params]
-    return '{} {}({})'.format(ret_type, name, ', '.join(args))
+    code.append('{} {}({})'.format(ret_type, name, ', '.join(args)))
+
+    return '\n'.join(code)
 
 
 def transpile_ffi(env, directive):
@@ -463,13 +471,14 @@ def transpile_ffi(env, directive):
         return '\n# ' + comment
     elif is_function_directive(directive):
         head = directive_head(directive)
-        decls = query_func_decls(head, env)
-        return '\n'.join(transpile_ffi_decl(env, decl) for decl in decls)
+        decls, removed = query_func_decls(head, env)
+        return '\n'.join(
+            transpile_ffi_decl(env, decl, removed) for decl in decls)
     else:
         assert False
 
 
-def transpile_aux_struct_decl(env, directive, node):
+def transpile_aux_struct_decl(env, directive, node, removed):
     def argaux(env, node):
         name = deref_var_name(node.name)
         type = erased_type_name(env, node.type.type)
@@ -481,6 +490,9 @@ def transpile_aux_struct_decl(env, directive, node):
 
     out_type, out_args = directive_multi_out(directive)
     code = []
+
+    if removed:
+        code.append('# REMOVED')
 
     code.append('cdef class {}'.format(out_type))
     code.append('')
@@ -503,9 +515,9 @@ def transpile_aux_struct(env, directive):
     elif is_function_directive(directive):
         if is_directive_multi_out(directive):
             head = directive_head(directive)
-            decls = query_func_decls(head, env)
+            decls, removed = query_func_decls(head, env)
             assert len(decls) == 1  # assuming not type generic
-            return transpile_aux_struct_decl(env, directive, decls[0])
+            return transpile_aux_struct_decl(env, directive, decls[0], removed)
         else:
             return None
     else:
@@ -617,10 +629,14 @@ def handler_name(node):
     assert False
 
 
-def transpile_wrapper_decl(env, directive, node):
+def transpile_wrapper_decl(env, directive, node, removed):
     assert isinstance(node.type, c_ast.FuncDecl)
 
     code = []
+
+    # Comment if removed
+    if removed:
+        code.append('# REMOVED')
 
     # Function definition
     def_ = transpile_wrapper_def(env, directive, node)
@@ -716,9 +732,10 @@ def transpile_wrapper(env, directive):
         return '\n'.join(code)
     elif is_function_directive(directive):
         head = directive_head(directive)
-        decls = query_func_decls(head, env)
+        decls, removed = query_func_decls(head, env)
         return '\n\n'.join(
-            transpile_wrapper_decl(env, directive, decl) for decl in decls)
+            transpile_wrapper_decl(
+                env, directive, decl, removed) for decl in decls)
     else:
         assert False
 
@@ -751,12 +768,13 @@ SPECIAL_TYPES = {
     },
 }
 
-def make_environment(nodes):
+def make_environment(nodes_110, nodes_102):
     specials = SPECIAL_TYPES
-    opaques = collect_opaque_decls(nodes)
-    enums = collect_enum_decls(nodes)
-    funcs = collect_func_decls(nodes)
-    return ('environment', specials, opaques, enums, funcs)
+    opaques = collect_opaque_decls(nodes_110)  # assuming no opaques removed
+    enums = collect_enum_decls(nodes_110)  # assuming no enums removed
+    funcs_110 = collect_func_decls(nodes_110)
+    funcs_102 = collect_func_decls(nodes_102)
+    return ('environment', specials, opaques, enums, (funcs_110, funcs_102))
 
 
 def environment_specials(env):
@@ -773,9 +791,14 @@ def environment_enums(env):
     return env[3]
 
 
-def environment_funcs(env):
+def environment_funcs(cuda_ver, env):
     assert env[0] == 'environment'
-    return env[4]
+    if cuda_ver == 'cuda-11.0':
+        return env[4][0]
+    elif cuda_ver == 'cuda-10.2':
+        return env[4][1]
+    else:
+        assert False
 
 
 def is_special_type(name, env):
@@ -809,13 +832,36 @@ def special_type_erased(name, env):
 def query_func_decls(name, env):
     def aux(node, t):
         return node.name == name.replace('<t>', t)
-    nodes = environment_funcs(env)
-    if '<t>' in name:
-        decls = [n for n in nodes for t in 'SDCZ' if aux(n, t)]
-        assert decls != []
-        return decls
-    else:
-        return [next(n for n in nodes if n.name == name)]
+    def query(nodes):
+        if '<t>' in name:
+            return [n for n in nodes for t in 'SDCZ' if aux(n, t)]
+        else:
+            try:
+                return [next(n for n in nodes if n.name == name)]
+            except StopIteration:
+                return []
+    nodes_110 = environment_funcs('cuda-11.0', env)
+    decls = query(nodes_110)
+    if decls != []:
+        return decls, False
+
+    nodes_102 = environment_funcs('cuda-10.2', env)
+    decls = query(nodes_102)
+    if decls != []:
+        return decls, True
+
+    assert False, '`{}` not found'.format(name)
+
+
+def parse_file(filename):
+    ast = pycparser.parse_file(filename, use_cpp=True, cpp_args=[
+        r'-I/usr/local/cuda/include',
+        r'-I/home/ext-mtakagi/pycparser/utils/fake_libc_include',
+        r'-D __attribute__(n)=',
+        r'-D __inline__='])
+    nodes = ast.ext
+    nodes = collect_cusparse_decls(nodes)
+    return nodes
 
 
 def indent(code):
@@ -826,14 +872,9 @@ if __name__ == '__main__':
     directives = DIRECTIVES
     validate_directives(directives)
 
-    ast = pycparser.parse_file(FILENAME, use_cpp=True, cpp_args=[
-        r'-I/usr/local/cuda/include',
-        r'-I/home/ext-mtakagi/pycparser/utils/fake_libc_include',
-        r'-D __attribute__(n)=',
-        r'-D __inline__='])
-    nodes = ast.ext
-    nodes = collect_cusparse_decls(nodes)
-    env = make_environment(nodes)
+    nodes_110 = parse_file(FILENAME_110)
+    nodes_102 = parse_file(FILENAME_102)
+    env = make_environment(nodes_110, nodes_102)
 
     path = os.path.join(
         os.path.dirname(__file__), 'templates/cusparse.pyx.template')
