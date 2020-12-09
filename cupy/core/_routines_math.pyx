@@ -152,7 +152,7 @@ _op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
 _identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
 _preamble = '' if not runtime._is_hip_environment else r'''
     // ignore mask
-    #define __shfl_xor_sync(x, y, z) __shfl_xor(y, z)
+    #define __shfl_xor_sync(m, x, y, z) __shfl_xor(x, y, z)
     // TODO(leofang): replace this when HIP supports syncing warps
     #define __syncwarp __syncthreads
     '''
@@ -193,7 +193,7 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
         if (2*i < a.size()) x = a[2*i];
         if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
         for (int j = 1; j < ${warp_size}; j *= 2) {
-            x ${op}= __shfl_xor_sync(0xffffffff, x, j);
+            x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
         }
         if (lane_id == 0) smem[warp_id] = x;
         __syncthreads();
@@ -201,7 +201,7 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
             x = ${identity};
             if (lane_id < n_warp) x = smem[lane_id];
             for (int j = 1; j < n_warp; j *= 2) {
-                x ${op}= __shfl_xor_sync(0xffffffff, x, j);
+                x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
             }
             int block_id = i / (${block_size} / 2);
             if (lane_id == 0) b[block_id] = x;
