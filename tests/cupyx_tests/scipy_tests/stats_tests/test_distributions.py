@@ -94,7 +94,7 @@ class TestEntropyBasic(unittest.TestCase):
     })
 ))
 @testing.gpu
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.4.0')
 class TestEntropy(unittest.TestCase):
 
     def _entropy(self, xp, scp, dtype, shape, use_qk, base, axis, normalize):
