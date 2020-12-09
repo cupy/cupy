@@ -163,12 +163,31 @@ DIRECTIVES = [
     }),
     # cuSPARSE Level 3 Function
     ('Comment', 'cuSPARSE Level 3 Function'),
-    ('cusparse<t>bsrmm', {
+    ('cusparse<t>csrmm', {  # REMOVED
         'out': None,
         'use_stream': True,
     }),
-    # ...
-
+    ('cusparse<t>csrmm2', {  # REMOVED
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csrsm2_bufferSizeExt', {
+        'out': 'pBufferSize',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csrsm2_analysis', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csrsm2_solve', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseXcsrsm2_zeroPivot', {
+        'out': None,
+        'use_stream': True,
+    }),
     # cuSPARSE Extra Function
     ('Comment', 'cuSPARSE Extra Function'),
     ('cusparse<t>csrgeam2_bufferSizeExt', {
@@ -565,7 +584,8 @@ def transpile_wrapper_def(env, directive, node):
         out_name = directive_single_out(directive)
         out, params = partition(
             lambda p: p.name == out_name, node.type.args.params)
-        assert len(out) == 1
+        assert len(out) == 1, \
+            '`{}` not found in API arguments'.format(out_name)
         # dereference out[0]
         ret_type = erased_type_name(env, out[0].type.type)
         if ret_type is None:
