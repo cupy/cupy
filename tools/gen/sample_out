@@ -173,6 +173,37 @@ cdef extern from '../cupy_cusparse.h' nogil:
 
     # cuSPARSE Format Conversion
     Status cusparseXcoo2csr(Handle handle, const int* cooRowInd, int nnz, int m, int* csrSortedRowPtr, IndexBase idxBase)
+    Status cusparseScsc2dense(Handle handle, int m, int n, const MatDescr descrA, const float* cscSortedValA, const int* cscSortedRowIndA, const int* cscSortedColPtrA, float* A, int lda)
+    Status cusparseDcsc2dense(Handle handle, int m, int n, const MatDescr descrA, const double* cscSortedValA, const int* cscSortedRowIndA, const int* cscSortedColPtrA, double* A, int lda)
+    Status cusparseCcsc2dense(Handle handle, int m, int n, const MatDescr descrA, const cuComplex* cscSortedValA, const int* cscSortedRowIndA, const int* cscSortedColPtrA, cuComplex* A, int lda)
+    Status cusparseZcsc2dense(Handle handle, int m, int n, const MatDescr descrA, const cuDoubleComplex* cscSortedValA, const int* cscSortedRowIndA, const int* cscSortedColPtrA, cuDoubleComplex* A, int lda)
+    Status cusparseXcsr2coo(Handle handle, const int* csrSortedRowPtr, int nnz, int m, int* cooRowInd, IndexBase idxBase)
+    # REMOVED
+    Status cusparseScsr2csc(Handle handle, int m, int n, int nnz, const float* csrSortedVal, const int* csrSortedRowPtr, const int* csrSortedColInd, float* cscSortedVal, int* cscSortedRowInd, int* cscSortedColPtr, Action copyValues, IndexBase idxBase)
+    # REMOVED
+    Status cusparseDcsr2csc(Handle handle, int m, int n, int nnz, const double* csrSortedVal, const int* csrSortedRowPtr, const int* csrSortedColInd, double* cscSortedVal, int* cscSortedRowInd, int* cscSortedColPtr, Action copyValues, IndexBase idxBase)
+    # REMOVED
+    Status cusparseCcsr2csc(Handle handle, int m, int n, int nnz, const cuComplex* csrSortedVal, const int* csrSortedRowPtr, const int* csrSortedColInd, cuComplex* cscSortedVal, int* cscSortedRowInd, int* cscSortedColPtr, Action copyValues, IndexBase idxBase)
+    # REMOVED
+    Status cusparseZcsr2csc(Handle handle, int m, int n, int nnz, const cuDoubleComplex* csrSortedVal, const int* csrSortedRowPtr, const int* csrSortedColInd, cuDoubleComplex* cscSortedVal, int* cscSortedRowInd, int* cscSortedColPtr, Action copyValues, IndexBase idxBase)
+    Status cusparseCsr2cscEx2_bufferSize(Handle handle, int m, int n, int nnz, const void* csrVal, const int* csrRowPtr, const int* csrColInd, void* cscVal, int* cscColPtr, int* cscRowInd, DataType valType, Action copyValues, IndexBase idxBase, Csr2CscAlg alg, size_t* bufferSize)
+    Status cusparseCsr2cscEx2(Handle handle, int m, int n, int nnz, const void* csrVal, const int* csrRowPtr, const int* csrColInd, void* cscVal, int* cscColPtr, int* cscRowInd, DataType valType, Action copyValues, IndexBase idxBase, Csr2CscAlg alg, void* buffer)
+    Status cusparseScsr2dense(Handle handle, int m, int n, const MatDescr descrA, const float* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, float* A, int lda)
+    Status cusparseDcsr2dense(Handle handle, int m, int n, const MatDescr descrA, const double* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, double* A, int lda)
+    Status cusparseCcsr2dense(Handle handle, int m, int n, const MatDescr descrA, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, cuComplex* A, int lda)
+    Status cusparseZcsr2dense(Handle handle, int m, int n, const MatDescr descrA, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, const int* csrSortedColIndA, cuDoubleComplex* A, int lda)
+    Status cusparseSnnz_compress(Handle handle, int m, const MatDescr descr, const float* csrSortedValA, const int* csrSortedRowPtrA, int* nnzPerRow, int* nnzC, float tol)
+    Status cusparseDnnz_compress(Handle handle, int m, const MatDescr descr, const double* csrSortedValA, const int* csrSortedRowPtrA, int* nnzPerRow, int* nnzC, double tol)
+    Status cusparseCnnz_compress(Handle handle, int m, const MatDescr descr, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, int* nnzPerRow, int* nnzC, cuComplex tol)
+    Status cusparseZnnz_compress(Handle handle, int m, const MatDescr descr, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, int* nnzPerRow, int* nnzC, cuDoubleComplex tol)
+    Status cusparseScsr2csr_compress(Handle handle, int m, int n, const MatDescr descrA, const float* csrSortedValA, const int* csrSortedColIndA, const int* csrSortedRowPtrA, int nnzA, const int* nnzPerRow, float* csrSortedValC, int* csrSortedColIndC, int* csrSortedRowPtrC, float tol)
+    Status cusparseDcsr2csr_compress(Handle handle, int m, int n, const MatDescr descrA, const double* csrSortedValA, const int* csrSortedColIndA, const int* csrSortedRowPtrA, int nnzA, const int* nnzPerRow, double* csrSortedValC, int* csrSortedColIndC, int* csrSortedRowPtrC, double tol)
+    Status cusparseCcsr2csr_compress(Handle handle, int m, int n, const MatDescr descrA, const cuComplex* csrSortedValA, const int* csrSortedColIndA, const int* csrSortedRowPtrA, int nnzA, const int* nnzPerRow, cuComplex* csrSortedValC, int* csrSortedColIndC, int* csrSortedRowPtrC, cuComplex tol)
+    Status cusparseZcsr2csr_compress(Handle handle, int m, int n, const MatDescr descrA, const cuDoubleComplex* csrSortedValA, const int* csrSortedColIndA, const int* csrSortedRowPtrA, int nnzA, const int* nnzPerRow, cuDoubleComplex* csrSortedValC, int* csrSortedColIndC, int* csrSortedRowPtrC, cuDoubleComplex tol)
+    Status cusparseSdense2csc(Handle handle, int m, int n, const MatDescr descrA, const float* A, int lda, const int* nnzPerCol, float* cscSortedValA, int* cscSortedRowIndA, int* cscSortedColPtrA)
+    Status cusparseDdense2csc(Handle handle, int m, int n, const MatDescr descrA, const double* A, int lda, const int* nnzPerCol, double* cscSortedValA, int* cscSortedRowIndA, int* cscSortedColPtrA)
+    Status cusparseCdense2csc(Handle handle, int m, int n, const MatDescr descrA, const cuComplex* A, int lda, const int* nnzPerCol, cuComplex* cscSortedValA, int* cscSortedRowIndA, int* cscSortedColPtrA)
+    Status cusparseZdense2csc(Handle handle, int m, int n, const MatDescr descrA, const cuDoubleComplex* A, int lda, const int* nnzPerCol, cuDoubleComplex* cscSortedValA, int* cscSortedRowIndA, int* cscSortedColPtrA)
     Status cusparseSdense2csr(Handle handle, int m, int n, const MatDescr descrA, const float* A, int lda, const int* nnzPerRow, float* csrSortedValA, int* csrSortedRowPtrA, int* csrSortedColIndA)
     Status cusparseDdense2csr(Handle handle, int m, int n, const MatDescr descrA, const double* A, int lda, const int* nnzPerRow, double* csrSortedValA, int* csrSortedRowPtrA, int* csrSortedColIndA)
     Status cusparseCdense2csr(Handle handle, int m, int n, const MatDescr descrA, const cuComplex* A, int lda, const int* nnzPerRow, cuComplex* csrSortedValA, int* csrSortedRowPtrA, int* csrSortedColIndA)
@@ -181,11 +212,14 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseDnnz(Handle handle, Direction dirA, int m, int n, const MatDescr descrA, const double* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr)
     Status cusparseCnnz(Handle handle, Direction dirA, int m, int n, const MatDescr descrA, const cuComplex* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr)
     Status cusparseZnnz(Handle handle, Direction dirA, int m, int n, const MatDescr descrA, const cuDoubleComplex* A, int lda, int* nnzPerRowCol, int* nnzTotalDevHostPtr)
+    Status cusparseCreateIdentityPermutation(Handle handle, int n, int* p)
+    Status cusparseXcoosort_bufferSizeExt(Handle handle, int m, int n, int nnz, const int* cooRowsA, const int* cooColsA, size_t* pBufferSizeInBytes)
     Status cusparseXcoosortByRow(Handle handle, int m, int n, int nnz, int* cooRowsA, int* cooColsA, int* P, void* pBuffer)
-    Status cusparseSnnz_compress(Handle handle, int m, const MatDescr descr, const float* csrSortedValA, const int* csrSortedRowPtrA, int* nnzPerRow, int* nnzC, float tol)
-    Status cusparseDnnz_compress(Handle handle, int m, const MatDescr descr, const double* csrSortedValA, const int* csrSortedRowPtrA, int* nnzPerRow, int* nnzC, double tol)
-    Status cusparseCnnz_compress(Handle handle, int m, const MatDescr descr, const cuComplex* csrSortedValA, const int* csrSortedRowPtrA, int* nnzPerRow, int* nnzC, cuComplex tol)
-    Status cusparseZnnz_compress(Handle handle, int m, const MatDescr descr, const cuDoubleComplex* csrSortedValA, const int* csrSortedRowPtrA, int* nnzPerRow, int* nnzC, cuDoubleComplex tol)
+    Status cusparseXcoosortByColumn(Handle handle, int m, int n, int nnz, int* cooRowsA, int* cooColsA, int* P, void* pBuffer)
+    Status cusparseXcsrsort_bufferSizeExt(Handle handle, int m, int n, int nnz, const int* csrRowPtrA, const int* csrColIndA, size_t* pBufferSizeInBytes)
+    Status cusparseXcsrsort(Handle handle, int m, int n, int nnz, const MatDescr descrA, const int* csrRowPtrA, int* csrColIndA, int* P, void* pBuffer)
+    Status cusparseXcscsort_bufferSizeExt(Handle handle, int m, int n, int nnz, const int* cscColPtrA, const int* cscRowIndA, size_t* pBufferSizeInBytes)
+    Status cusparseXcscsort(Handle handle, int m, int n, int nnz, const MatDescr descrA, const int* cscColPtrA, int* cscRowIndA, int* P, void* pBuffer)
 
     # cuSPARSE Generic API - Sparse Vector APIs
     Status cusparseCreateSpVec(SpVecDescr* spVecDescr, int64_t size, int64_t nnz, void* indices, void* values, IndexType idxType, IndexBase idxBase, DataType valueType)
@@ -1015,6 +1049,172 @@ cpdef xcoo2csr(intptr_t handle, size_t cooRowInd, int nnz, int m, size_t csrSort
     status = cusparseXcoo2csr(<Handle>handle, <const int*>cooRowInd, nnz, m, <int*>csrSortedRowPtr, <IndexBase>idxBase)
     check_status(status)
 
+cpdef scsc2dense(intptr_t handle, int m, int n, size_t descrA, size_t cscSortedValA, size_t cscSortedRowIndA, size_t cscSortedColPtrA, size_t A, int lda):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseScsc2dense(<Handle>handle, m, n, <const MatDescr>descrA, <const float*>cscSortedValA, <const int*>cscSortedRowIndA, <const int*>cscSortedColPtrA, <float*>A, lda)
+    check_status(status)
+
+cpdef dcsc2dense(intptr_t handle, int m, int n, size_t descrA, size_t cscSortedValA, size_t cscSortedRowIndA, size_t cscSortedColPtrA, size_t A, int lda):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseDcsc2dense(<Handle>handle, m, n, <const MatDescr>descrA, <const double*>cscSortedValA, <const int*>cscSortedRowIndA, <const int*>cscSortedColPtrA, <double*>A, lda)
+    check_status(status)
+
+cpdef ccsc2dense(intptr_t handle, int m, int n, size_t descrA, size_t cscSortedValA, size_t cscSortedRowIndA, size_t cscSortedColPtrA, size_t A, int lda):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCcsc2dense(<Handle>handle, m, n, <const MatDescr>descrA, <const cuComplex*>cscSortedValA, <const int*>cscSortedRowIndA, <const int*>cscSortedColPtrA, <cuComplex*>A, lda)
+    check_status(status)
+
+cpdef zcsc2dense(intptr_t handle, int m, int n, size_t descrA, size_t cscSortedValA, size_t cscSortedRowIndA, size_t cscSortedColPtrA, size_t A, int lda):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseZcsc2dense(<Handle>handle, m, n, <const MatDescr>descrA, <const cuDoubleComplex*>cscSortedValA, <const int*>cscSortedRowIndA, <const int*>cscSortedColPtrA, <cuDoubleComplex*>A, lda)
+    check_status(status)
+
+cpdef xcsr2coo(intptr_t handle, size_t csrSortedRowPtr, int nnz, int m, size_t cooRowInd, size_t idxBase):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseXcsr2coo(<Handle>handle, <const int*>csrSortedRowPtr, nnz, m, <int*>cooRowInd, <IndexBase>idxBase)
+    check_status(status)
+
+# REMOVED
+cpdef scsr2csc(intptr_t handle, int m, int n, int nnz, size_t csrSortedVal, size_t csrSortedRowPtr, size_t csrSortedColInd, size_t cscSortedVal, size_t cscSortedRowInd, size_t cscSortedColPtr, size_t copyValues, size_t idxBase):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseScsr2csc(<Handle>handle, m, n, nnz, <const float*>csrSortedVal, <const int*>csrSortedRowPtr, <const int*>csrSortedColInd, <float*>cscSortedVal, <int*>cscSortedRowInd, <int*>cscSortedColPtr, <Action>copyValues, <IndexBase>idxBase)
+    check_status(status)
+
+# REMOVED
+cpdef dcsr2csc(intptr_t handle, int m, int n, int nnz, size_t csrSortedVal, size_t csrSortedRowPtr, size_t csrSortedColInd, size_t cscSortedVal, size_t cscSortedRowInd, size_t cscSortedColPtr, size_t copyValues, size_t idxBase):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseDcsr2csc(<Handle>handle, m, n, nnz, <const double*>csrSortedVal, <const int*>csrSortedRowPtr, <const int*>csrSortedColInd, <double*>cscSortedVal, <int*>cscSortedRowInd, <int*>cscSortedColPtr, <Action>copyValues, <IndexBase>idxBase)
+    check_status(status)
+
+# REMOVED
+cpdef ccsr2csc(intptr_t handle, int m, int n, int nnz, size_t csrSortedVal, size_t csrSortedRowPtr, size_t csrSortedColInd, size_t cscSortedVal, size_t cscSortedRowInd, size_t cscSortedColPtr, size_t copyValues, size_t idxBase):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCcsr2csc(<Handle>handle, m, n, nnz, <const cuComplex*>csrSortedVal, <const int*>csrSortedRowPtr, <const int*>csrSortedColInd, <cuComplex*>cscSortedVal, <int*>cscSortedRowInd, <int*>cscSortedColPtr, <Action>copyValues, <IndexBase>idxBase)
+    check_status(status)
+
+# REMOVED
+cpdef zcsr2csc(intptr_t handle, int m, int n, int nnz, size_t csrSortedVal, size_t csrSortedRowPtr, size_t csrSortedColInd, size_t cscSortedVal, size_t cscSortedRowInd, size_t cscSortedColPtr, size_t copyValues, size_t idxBase):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseZcsr2csc(<Handle>handle, m, n, nnz, <const cuDoubleComplex*>csrSortedVal, <const int*>csrSortedRowPtr, <const int*>csrSortedColInd, <cuDoubleComplex*>cscSortedVal, <int*>cscSortedRowInd, <int*>cscSortedColPtr, <Action>copyValues, <IndexBase>idxBase)
+    check_status(status)
+
+cpdef size_t csr2cscEx2_bufferSize(intptr_t handle, int m, int n, int nnz, size_t csrVal, size_t csrRowPtr, size_t csrColInd, size_t cscVal, size_t cscColPtr, size_t cscRowInd, size_t valType, size_t copyValues, size_t idxBase, size_t alg) except? 0:
+    cdef size_t bufferSize
+    status = cusparseCsr2cscEx2_bufferSize(<Handle>handle, m, n, nnz, <const void*>csrVal, <const int*>csrRowPtr, <const int*>csrColInd, <void*>cscVal, <int*>cscColPtr, <int*>cscRowInd, <DataType>valType, <Action>copyValues, <IndexBase>idxBase, <Csr2CscAlg>alg, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef csr2cscEx2(intptr_t handle, int m, int n, int nnz, size_t csrVal, size_t csrRowPtr, size_t csrColInd, size_t cscVal, size_t cscColPtr, size_t cscRowInd, size_t valType, size_t copyValues, size_t idxBase, size_t alg, size_t buffer):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCsr2cscEx2(<Handle>handle, m, n, nnz, <const void*>csrVal, <const int*>csrRowPtr, <const int*>csrColInd, <void*>cscVal, <int*>cscColPtr, <int*>cscRowInd, <DataType>valType, <Action>copyValues, <IndexBase>idxBase, <Csr2CscAlg>alg, <void*>buffer)
+    check_status(status)
+
+cpdef scsr2dense(intptr_t handle, int m, int n, size_t descrA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t A, int lda):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseScsr2dense(<Handle>handle, m, n, <const MatDescr>descrA, <const float*>csrSortedValA, <const int*>csrSortedRowPtrA, <const int*>csrSortedColIndA, <float*>A, lda)
+    check_status(status)
+
+cpdef dcsr2dense(intptr_t handle, int m, int n, size_t descrA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t A, int lda):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseDcsr2dense(<Handle>handle, m, n, <const MatDescr>descrA, <const double*>csrSortedValA, <const int*>csrSortedRowPtrA, <const int*>csrSortedColIndA, <double*>A, lda)
+    check_status(status)
+
+cpdef ccsr2dense(intptr_t handle, int m, int n, size_t descrA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t A, int lda):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCcsr2dense(<Handle>handle, m, n, <const MatDescr>descrA, <const cuComplex*>csrSortedValA, <const int*>csrSortedRowPtrA, <const int*>csrSortedColIndA, <cuComplex*>A, lda)
+    check_status(status)
+
+cpdef zcsr2dense(intptr_t handle, int m, int n, size_t descrA, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA, size_t A, int lda):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseZcsr2dense(<Handle>handle, m, n, <const MatDescr>descrA, <const cuDoubleComplex*>csrSortedValA, <const int*>csrSortedRowPtrA, <const int*>csrSortedColIndA, <cuDoubleComplex*>A, lda)
+    check_status(status)
+
+cpdef snnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, float tol):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseSnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const float*>csrSortedValA, <const int*>csrSortedRowPtrA, <int*>nnzPerRow, <int*>nnzC, tol)
+    check_status(status)
+
+cpdef dnnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, double tol):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseDnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const double*>csrSortedValA, <const int*>csrSortedRowPtrA, <int*>nnzPerRow, <int*>nnzC, tol)
+    check_status(status)
+
+cpdef cnnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, complex tol):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const cuComplex*>csrSortedValA, <const int*>csrSortedRowPtrA, <int*>nnzPerRow, <int*>nnzC, complex_to_cuda(tol))
+    check_status(status)
+
+cpdef znnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, double complex tol):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseZnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const cuDoubleComplex*>csrSortedValA, <const int*>csrSortedRowPtrA, <int*>nnzPerRow, <int*>nnzC, double_complex_to_cuda(tol))
+    check_status(status)
+
+cpdef scsr2csr_compress(intptr_t handle, int m, int n, size_t descrA, size_t csrSortedValA, size_t csrSortedColIndA, size_t csrSortedRowPtrA, int nnzA, size_t nnzPerRow, size_t csrSortedValC, size_t csrSortedColIndC, size_t csrSortedRowPtrC, float tol):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseScsr2csr_compress(<Handle>handle, m, n, <const MatDescr>descrA, <const float*>csrSortedValA, <const int*>csrSortedColIndA, <const int*>csrSortedRowPtrA, nnzA, <const int*>nnzPerRow, <float*>csrSortedValC, <int*>csrSortedColIndC, <int*>csrSortedRowPtrC, tol)
+    check_status(status)
+
+cpdef dcsr2csr_compress(intptr_t handle, int m, int n, size_t descrA, size_t csrSortedValA, size_t csrSortedColIndA, size_t csrSortedRowPtrA, int nnzA, size_t nnzPerRow, size_t csrSortedValC, size_t csrSortedColIndC, size_t csrSortedRowPtrC, double tol):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseDcsr2csr_compress(<Handle>handle, m, n, <const MatDescr>descrA, <const double*>csrSortedValA, <const int*>csrSortedColIndA, <const int*>csrSortedRowPtrA, nnzA, <const int*>nnzPerRow, <double*>csrSortedValC, <int*>csrSortedColIndC, <int*>csrSortedRowPtrC, tol)
+    check_status(status)
+
+cpdef ccsr2csr_compress(intptr_t handle, int m, int n, size_t descrA, size_t csrSortedValA, size_t csrSortedColIndA, size_t csrSortedRowPtrA, int nnzA, size_t nnzPerRow, size_t csrSortedValC, size_t csrSortedColIndC, size_t csrSortedRowPtrC, complex tol):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCcsr2csr_compress(<Handle>handle, m, n, <const MatDescr>descrA, <const cuComplex*>csrSortedValA, <const int*>csrSortedColIndA, <const int*>csrSortedRowPtrA, nnzA, <const int*>nnzPerRow, <cuComplex*>csrSortedValC, <int*>csrSortedColIndC, <int*>csrSortedRowPtrC, complex_to_cuda(tol))
+    check_status(status)
+
+cpdef zcsr2csr_compress(intptr_t handle, int m, int n, size_t descrA, size_t csrSortedValA, size_t csrSortedColIndA, size_t csrSortedRowPtrA, int nnzA, size_t nnzPerRow, size_t csrSortedValC, size_t csrSortedColIndC, size_t csrSortedRowPtrC, double complex tol):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseZcsr2csr_compress(<Handle>handle, m, n, <const MatDescr>descrA, <const cuDoubleComplex*>csrSortedValA, <const int*>csrSortedColIndA, <const int*>csrSortedRowPtrA, nnzA, <const int*>nnzPerRow, <cuDoubleComplex*>csrSortedValC, <int*>csrSortedColIndC, <int*>csrSortedRowPtrC, double_complex_to_cuda(tol))
+    check_status(status)
+
+cpdef sdense2csc(intptr_t handle, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerCol, size_t cscSortedValA, size_t cscSortedRowIndA, size_t cscSortedColPtrA):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseSdense2csc(<Handle>handle, m, n, <const MatDescr>descrA, <const float*>A, lda, <const int*>nnzPerCol, <float*>cscSortedValA, <int*>cscSortedRowIndA, <int*>cscSortedColPtrA)
+    check_status(status)
+
+cpdef ddense2csc(intptr_t handle, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerCol, size_t cscSortedValA, size_t cscSortedRowIndA, size_t cscSortedColPtrA):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseDdense2csc(<Handle>handle, m, n, <const MatDescr>descrA, <const double*>A, lda, <const int*>nnzPerCol, <double*>cscSortedValA, <int*>cscSortedRowIndA, <int*>cscSortedColPtrA)
+    check_status(status)
+
+cpdef cdense2csc(intptr_t handle, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerCol, size_t cscSortedValA, size_t cscSortedRowIndA, size_t cscSortedColPtrA):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCdense2csc(<Handle>handle, m, n, <const MatDescr>descrA, <const cuComplex*>A, lda, <const int*>nnzPerCol, <cuComplex*>cscSortedValA, <int*>cscSortedRowIndA, <int*>cscSortedColPtrA)
+    check_status(status)
+
+cpdef zdense2csc(intptr_t handle, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerCol, size_t cscSortedValA, size_t cscSortedRowIndA, size_t cscSortedColPtrA):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseZdense2csc(<Handle>handle, m, n, <const MatDescr>descrA, <const cuDoubleComplex*>A, lda, <const int*>nnzPerCol, <cuDoubleComplex*>cscSortedValA, <int*>cscSortedRowIndA, <int*>cscSortedColPtrA)
+    check_status(status)
+
 cpdef sdense2csr(intptr_t handle, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerRow, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t csrSortedColIndA):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
@@ -1040,20 +1240,42 @@ cpdef zdense2csr(intptr_t handle, int m, int n, size_t descrA, size_t A, int lda
     check_status(status)
 
 cpdef snnz(intptr_t handle, size_t dirA, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerRowCol, size_t nnzTotalDevHostPtr):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseSnnz(<Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA, <const float*>A, lda, <int*>nnzPerRowCol, <int*>nnzTotalDevHostPtr)
     check_status(status)
 
 cpdef dnnz(intptr_t handle, size_t dirA, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerRowCol, size_t nnzTotalDevHostPtr):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseDnnz(<Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA, <const double*>A, lda, <int*>nnzPerRowCol, <int*>nnzTotalDevHostPtr)
     check_status(status)
 
 cpdef cnnz(intptr_t handle, size_t dirA, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerRowCol, size_t nnzTotalDevHostPtr):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseCnnz(<Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA, <const cuComplex*>A, lda, <int*>nnzPerRowCol, <int*>nnzTotalDevHostPtr)
     check_status(status)
 
 cpdef znnz(intptr_t handle, size_t dirA, int m, int n, size_t descrA, size_t A, int lda, size_t nnzPerRowCol, size_t nnzTotalDevHostPtr):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
     status = cusparseZnnz(<Handle>handle, <Direction>dirA, m, n, <const MatDescr>descrA, <const cuDoubleComplex*>A, lda, <int*>nnzPerRowCol, <int*>nnzTotalDevHostPtr)
     check_status(status)
+
+cpdef createIdentityPermutation(intptr_t handle, int n, size_t p):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseCreateIdentityPermutation(<Handle>handle, n, <int*>p)
+    check_status(status)
+
+cpdef size_t xcoosort_bufferSizeExt(intptr_t handle, int m, int n, int nnz, size_t cooRowsA, size_t cooColsA) except? 0:
+    cdef size_t bufferSizeInBytes
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseXcoosort_bufferSizeExt(<Handle>handle, m, n, nnz, <const int*>cooRowsA, <const int*>cooColsA, &bufferSizeInBytes)
+    check_status(status)
+    return bufferSizeInBytes
 
 cpdef xcoosortByRow(intptr_t handle, int m, int n, int nnz, size_t cooRowsA, size_t cooColsA, size_t P, size_t pBuffer):
     if stream_module.enable_current_stream:
@@ -1061,20 +1283,38 @@ cpdef xcoosortByRow(intptr_t handle, int m, int n, int nnz, size_t cooRowsA, siz
     status = cusparseXcoosortByRow(<Handle>handle, m, n, nnz, <int*>cooRowsA, <int*>cooColsA, <int*>P, <void*>pBuffer)
     check_status(status)
 
-cpdef snnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, float tol):
-    status = cusparseSnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const float*>csrSortedValA, <const int*>csrSortedRowPtrA, <int*>nnzPerRow, <int*>nnzC, tol)
+cpdef xcoosortByColumn(intptr_t handle, int m, int n, int nnz, size_t cooRowsA, size_t cooColsA, size_t P, size_t pBuffer):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseXcoosortByColumn(<Handle>handle, m, n, nnz, <int*>cooRowsA, <int*>cooColsA, <int*>P, <void*>pBuffer)
     check_status(status)
 
-cpdef dnnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, double tol):
-    status = cusparseDnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const double*>csrSortedValA, <const int*>csrSortedRowPtrA, <int*>nnzPerRow, <int*>nnzC, tol)
+cpdef size_t xcsrsort_bufferSizeExt(intptr_t handle, int m, int n, int nnz, size_t csrRowPtrA, size_t csrColIndA) except? 0:
+    cdef size_t bufferSizeInBytes
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseXcsrsort_bufferSizeExt(<Handle>handle, m, n, nnz, <const int*>csrRowPtrA, <const int*>csrColIndA, &bufferSizeInBytes)
+    check_status(status)
+    return bufferSizeInBytes
+
+cpdef xcsrsort(intptr_t handle, int m, int n, int nnz, size_t descrA, size_t csrRowPtrA, size_t csrColIndA, size_t P, size_t pBuffer):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseXcsrsort(<Handle>handle, m, n, nnz, <const MatDescr>descrA, <const int*>csrRowPtrA, <int*>csrColIndA, <int*>P, <void*>pBuffer)
     check_status(status)
 
-cpdef cnnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, complex tol):
-    status = cusparseCnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const cuComplex*>csrSortedValA, <const int*>csrSortedRowPtrA, <int*>nnzPerRow, <int*>nnzC, complex_to_cuda(tol))
+cpdef size_t xcscsort_bufferSizeExt(intptr_t handle, int m, int n, int nnz, size_t cscColPtrA, size_t cscRowIndA) except? 0:
+    cdef size_t bufferSizeInBytes
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseXcscsort_bufferSizeExt(<Handle>handle, m, n, nnz, <const int*>cscColPtrA, <const int*>cscRowIndA, &bufferSizeInBytes)
     check_status(status)
+    return bufferSizeInBytes
 
-cpdef znnz_compress(intptr_t handle, int m, size_t descr, size_t csrSortedValA, size_t csrSortedRowPtrA, size_t nnzPerRow, size_t nnzC, double complex tol):
-    status = cusparseZnnz_compress(<Handle>handle, m, <const MatDescr>descr, <const cuDoubleComplex*>csrSortedValA, <const int*>csrSortedRowPtrA, <int*>nnzPerRow, <int*>nnzC, double_complex_to_cuda(tol))
+cpdef xcscsort(intptr_t handle, int m, int n, int nnz, size_t descrA, size_t cscColPtrA, size_t cscRowIndA, size_t P, size_t pBuffer):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseXcscsort(<Handle>handle, m, n, nnz, <const MatDescr>descrA, <const int*>cscColPtrA, <int*>cscRowIndA, <int*>P, <void*>pBuffer)
     check_status(status)
 
 

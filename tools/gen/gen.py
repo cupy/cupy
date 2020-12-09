@@ -281,24 +281,86 @@ DIRECTIVES = [
         'out': None,
         'use_stream': True,
     }),
+    ('cusparse<t>csc2dense', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseXcsr2coo', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csr2csc', {  # REMOVED
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseCsr2cscEx2_bufferSize', {
+        'out': 'bufferSize',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseCsr2cscEx2', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csr2dense', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>nnz_compress', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csr2csr_compress', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>dense2csc', {
+        'out': None,
+        'use_stream': True,
+    }),
     ('cusparse<t>dense2csr', {
         'out': None,
         'use_stream': True,
     }),
     ('cusparse<t>nnz', {
         'out': None,
-        'use_stream': False,
+        'use_stream': True,
+    }),
+    ('cusparseCreateIdentityPermutation', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseXcoosort_bufferSizeExt', {
+        'out': 'pBufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
     }),
     ('cusparseXcoosortByRow', {
         'out': None,
         'use_stream': True,
     }),
-    ('cusparse<t>nnz_compress', {
+    ('cusparseXcoosortByColumn', {
         'out': None,
-        'use_stream': False,
+        'use_stream': True,
     }),
-    # ...
-
+    ('cusparseXcsrsort_bufferSizeExt', {
+        'out': 'pBufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparseXcsrsort', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseXcscsort_bufferSizeExt', {
+        'out': 'pBufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparseXcscsort', {
+        'out': None,
+        'use_stream': True,
+    }),
     # cuSPARSE Generic API - Sparse Vector APIs
     ('Comment', 'cuSPARSE Generic API - Sparse Vector APIs'),
     ('cusparseCreateSpVec', {
