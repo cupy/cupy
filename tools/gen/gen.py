@@ -131,20 +131,36 @@ DIRECTIVES = [
     }),
     # cuSPARSE Level 2 Function
     ('Comment', 'cuSPARSE Level 2 Function'),
-    ('cusparse<t>bsrmv', {
+    ('cusparse<t>csrmv', {  # REMOVED
         'out': None,
         'use_stream': True,
     }),
-    ('cusparse<t>bsrxmv', {
+    ('cusparseCsrmvEx_bufferSize', {
+        'out': 'bufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparseCsrmvEx', {
         'out': None,
         'use_stream': True,
     }),
-    # ...
-    ('cusparse<t>gemvi', {
+    ('cusparse<t>csrsv2_bufferSize', {
+        'out': 'pBufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csrsv2_analysis', {
         'out': None,
         'use_stream': True,
     }),
-
+    ('cusparse<t>csrsv2_solve', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseXcsrsv2_zeroPivot', {
+        'out': None,
+        'use_stream': True,
+    }),
     # cuSPARSE Level 3 Function
     ('Comment', 'cuSPARSE Level 3 Function'),
     ('cusparse<t>bsrmm', {
@@ -327,7 +343,7 @@ def directive_except(directive):
         excpt = config.get('except')
         if excpt is not None:
             return 'except {}'.format(excpt)
-        assert False
+        assert False, "Either 'except?' or 'except' must be given"
     elif is_directive_multi_out(directive):
         assert 'except' not in config and 'except?' not in config
         return None
