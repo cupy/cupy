@@ -246,6 +246,10 @@ cdef extern from '../cupy_cusparse.h' nogil:
 
     # cuSPARSE Generic API - Dense Vector APIs
     Status cusparseCreateDnVec(DnVecDescr* dnVecDescr, int64_t size, void* values, DataType valueType)
+    Status cusparseDestroyDnVec(DnVecDescr dnVecDescr)
+    Status cusparseDnVecGet(DnVecDescr dnVecDescr, int64_t* size, void** values, DataType* valueType)
+    Status cusparseDnVecGetValues(DnVecDescr dnVecDescr, void** values)
+    Status cusparseDnVecSetValues(DnVecDescr dnVecDescr, void* values)
 
     # Build-time version
     int CUSPARSE_VERSION
@@ -351,6 +355,13 @@ cdef class CsrAttributes
         self.csrRowOffsetsType = csrRowOffsetsType
         self.csrColIndType = csrColIndType
         self.idxBase = idxBase
+        self.valueType = valueType
+
+cdef class DnVecAttributes
+
+    def __init__(self, int64_t size, size_t values, size_t valueType)
+        self.size = size
+        self.values = values
         self.valueType = valueType
 
 
@@ -1526,3 +1537,25 @@ cpdef size_t createDnVec(int64_t size, size_t values, size_t valueType) except? 
     status = cusparseCreateDnVec(&dnVecDescr, size, <void*>values, <DataType>valueType)
     check_status(status)
     return <size_t>dnVecDescr
+
+cpdef destroyDnVec(size_t dnVecDescr):
+    status = cusparseDestroyDnVec(<DnVecDescr>dnVecDescr)
+    check_status(status)
+
+cpdef DnVecAttributes dnVecGet(size_t dnVecDescr):
+    cdef int64_t size
+    cdef void* values
+    cdef DataType valueType
+    status = cusparseDnVecGet(<DnVecDescr>dnVecDescr, &size, &values, &valueType)
+    check_status(status)
+    return DnVecAttributes(size, <size_t>values, <size_t>valueType)
+
+cpdef size_t dnVecGetValues(size_t dnVecDescr) except? 0:
+    cdef void* values
+    status = cusparseDnVecGetValues(<DnVecDescr>dnVecDescr, &values)
+    check_status(status)
+    return <size_t>values
+
+cpdef dnVecSetValues(size_t dnVecDescr, size_t values):
+    status = cusparseDnVecSetValues(<DnVecDescr>dnVecDescr, <void*>values)
+    check_status(status)

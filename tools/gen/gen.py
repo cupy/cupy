@@ -467,7 +467,24 @@ DIRECTIVES = [
         'except?': 0,
         'use_stream': False,
     }),
-    # ...
+    ('cusparseDestroyDnVec', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseDnVecGet', {
+        'out': ('DnVecAttributes',
+                ('size', 'values', 'valueType')),
+        'use_stream': False,
+    }),
+    ('cusparseDnVecGetValues', {
+        'out': 'values',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseDnVecSetValues', {
+        'out': None,
+        'use_stream': False,
+    }),
 ]
 
 
