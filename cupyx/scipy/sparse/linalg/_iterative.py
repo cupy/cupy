@@ -7,7 +7,7 @@ from cupy.cuda import device
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import csr
-from ._interface import aslinearoperator, LinearOperator, IdentityOperator
+from cupyx.scipy.sparse.linalg import _interface
 
 
 def cg(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
@@ -221,10 +221,10 @@ def _make_system(A, M, x0, b):
             b (cupy.ndarray): right hand side.
     """
     fast_matvec = _make_fast_matvec(A)
-    A = aslinearoperator(A)
+    A = _interface.aslinearoperator(A)
     if fast_matvec is not None:
-        A = LinearOperator(A.shape, matvec=fast_matvec, rmatvec=A.rmatvec,
-                           dtype=A.dtype)
+        A = _interface.LinearOperator(A.shape, matvec=fast_matvec,
+                                      rmatvec=A.rmatvec, dtype=A.dtype)
     if A.shape[0] != A.shape[1]:
         raise ValueError('expected square matrix (shape: {})'.format(A.shape))
     if A.dtype.char not in 'fdFD':
@@ -240,13 +240,13 @@ def _make_system(A, M, x0, b):
             raise ValueError('x0 has incompatible dimensions')
         x = x0.astype(A.dtype).ravel()
     if M is None:
-        M = IdentityOperator(shape=A.shape, dtype=A.dtype)
+        M = _interface.IdentityOperator(shape=A.shape, dtype=A.dtype)
     else:
         fast_matvec = _make_fast_matvec(M)
-        M = aslinearoperator(M)
+        M = _interface.aslinearoperator(M)
         if fast_matvec is not None:
-            M = LinearOperator(M.shape, matvec=fast_matvec, rmatvec=M.rmatvec,
-                               dtype=M.dtype)
+            M = _interface.LinearOperator(M.shape, matvec=fast_matvec,
+                                          rmatvec=M.rmatvec, dtype=M.dtype)
         if A.shape != M.shape:
             raise ValueError('matrix and preconditioner have different shapes')
     return A, M, x, b
