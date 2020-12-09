@@ -223,7 +223,11 @@ cdef extern from '../cupy_cusparse.h' nogil:
 
     # cuSPARSE Generic API - Sparse Vector APIs
     Status cusparseCreateSpVec(SpVecDescr* spVecDescr, int64_t size, int64_t nnz, void* indices, void* values, IndexType idxType, IndexBase idxBase, DataType valueType)
+    Status cusparseDestroySpVec(SpVecDescr spVecDescr)
     Status cusparseSpVecGet(SpVecDescr spVecDescr, int64_t* size, int64_t* nnz, void** indices, void** values, IndexType* idxType, IndexBase* idxBase, DataType* valueType)
+    Status cusparseSpVecGetIndexBase(SpVecDescr spVecDescr, IndexBase* idxBase)
+    Status cusparseSpVecGetValues(SpVecDescr spVecDescr, void** values)
+    Status cusparseSpVecSetValues(SpVecDescr spVecDescr, void* values)
 
     # cuSPARSE Generic API - Dense Vector APIs
     Status cusparseCreateDnVec(DnVecDescr* dnVecDescr, int64_t size, void* values, DataType valueType)
@@ -1327,6 +1331,10 @@ cpdef size_t createSpVec(int64_t size, int64_t nnz, size_t indices, size_t value
     check_status(status)
     return <size_t>spVecDescr
 
+cpdef destroySpVec(size_t spVecDescr):
+    status = cusparseDestroySpVec(<SpVecDescr>spVecDescr)
+    check_status(status)
+
 cpdef SpVecAttributes spVecGet(size_t spVecDescr):
     cdef int64_t size
     cdef int64_t nnz
@@ -1338,6 +1346,22 @@ cpdef SpVecAttributes spVecGet(size_t spVecDescr):
     status = cusparseSpVecGet(<SpVecDescr>spVecDescr, &size, &nnz, &indices, &values, &idxType, &idxBase, &valueType)
     check_status(status)
     return SpVecAttributes(size, nnz, <size_t>indices, <size_t>values, <size_t>idxType, <size_t>idxBase, <size_t>valueType)
+
+cpdef size_t spVecGetIndexBase(size_t spVecDescr) except? 0:
+    cdef IndexBase idxBase
+    status = cusparseSpVecGetIndexBase(<SpVecDescr>spVecDescr, &idxBase)
+    check_status(status)
+    return <size_t>idxBase
+
+cpdef size_t spVecGetValues(size_t spVecDescr) except? 0:
+    cdef void* values
+    status = cusparseSpVecGetValues(<SpVecDescr>spVecDescr, &values)
+    check_status(status)
+    return <size_t>values
+
+cpdef spVecSetValues(size_t spVecDescr, size_t values):
+    status = cusparseSpVecSetValues(<SpVecDescr>spVecDescr, <void*>values)
+    check_status(status)
 
 
 ##########################################

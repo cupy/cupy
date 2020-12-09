@@ -368,14 +368,30 @@ DIRECTIVES = [
         'except?': 0,
         'use_stream': False,
     }),
+    ('cusparseDestroySpVec', {
+        'out': None,
+        'use_stream': False,
+    }),
     ('cusparseSpVecGet', {
         'out': ('SpVecAttributes',
                 ('size', 'nnz', 'indices', 'values', 'idxType', 'idxBase',
                  'valueType')),
         'use_stream': False,
     }),
-    # ...
-
+    ('cusparseSpVecGetIndexBase', {
+        'out': 'idxBase',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseSpVecGetValues', {
+        'out': 'values',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseSpVecSetValues', {
+        'out': None,
+        'use_stream': False,
+    }),
     # cuSPARSE Generic API - Dense Vector APIs
     ('Comment', 'cuSPARSE Generic API - Dense Vector APIs'),
     ('cusparseCreateDnVec', {
