@@ -10,6 +10,7 @@ from cupy.core._ufuncs import elementwise_copy
 from cupy.core cimport internal
 from cupy import _util
 
+from cupy_backends.cuda.api cimport runtime
 from cupy.core cimport _accelerator
 from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
@@ -149,6 +150,12 @@ cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
 
 _op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
 _identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
+_preamble = '' if not runtime._is_hip_environment else r'''
+    // ignore mask
+    #define __shfl_xor_sync(x, y, z) __shfl_xor(y, z)
+    // TODO(leofang): replace this when HIP supports syncing warps
+    #define __syncwarp __syncthreads
+    '''
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -202,7 +209,8 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_bsum_shfl', loop_prep=loop_prep)
+                                  'cupy_bsum_shfl', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -257,7 +265,8 @@ def _cupy_bsum_smem(op, block_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_bsum_smem', loop_prep=loop_prep)
+                                  'cupy_bsum_smem', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -323,7 +332,8 @@ def _cupy_scan_naive(op, block_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_scan_naive', loop_prep=loop_prep)
+                                  'cupy_scan_naive', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -417,7 +427,8 @@ def _cupy_scan_btree(op, block_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_scan_btree', loop_prep=loop_prep)
+                                  'cupy_scan_btree', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
@@ -444,11 +455,18 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
             raise ValueError('Provided out is the wrong size')
 
     block_size = 512
-    warp_size = 32
-    if out.dtype.char in 'iIlLqQfd':
-        bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
+    warp_size = 64 if runtime._is_hip_environment else 32
+    if runtime._is_hip_environment:
+        if out.dtype.char in 'if':
+            # On HIP, __shfl* only supports int and float for now
+            bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
+        else:
+            bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
     else:
-        bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
+        if out.dtype.char in 'iIlLqQfd':
+            bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
+        else:
+            bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
     if out.dtype.char in 'fdFD':
         scan_kernel = _cupy_scan_btree(op, block_size, warp_size)
     else:
