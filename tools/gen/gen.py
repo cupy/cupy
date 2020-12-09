@@ -392,6 +392,74 @@ DIRECTIVES = [
         'out': None,
         'use_stream': False,
     }),
+    # cuSPARSE Generic API - Sparse Matrix APIs
+    ('Comment', 'cuSPARSE Generic API - Sparse Matrix APIs'),
+    ('cusparseCreateCoo', {
+        'out': 'spMatDescr',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseCreateCooAoS', {
+        'out': 'spMatDescr',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseCreateCsr', {
+        'out': 'spMatDescr',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseDestroySpMat', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseCooGet', {
+        'out': ('CooAttributes',
+                ('rows', 'cols', 'nnz', 'cooRowInd', 'cooColInd', 'cooValues',
+                 'idxType', 'idxBase', 'valueType')),
+        'use_stream': False,
+    }),
+    ('cusparseCooAoSGet', {
+        'out': ('CooAoSAttributes',
+                ('rows', 'cols', 'nnz', 'cooInd', 'cooValues', 'idxType',
+                 'idxBase', 'valueType')),
+        'use_stream': False,
+    }),
+    ('cusparseCsrGet', {
+        'out': ('CsrAttributes',
+                ('rows', 'cols', 'nnz', 'csrRowOffsets', 'csrColInd',
+                 'csrValues', 'csrRowOffsetsType', 'csrColIndType', 'idxBase',
+                 'valueType')),
+        'use_stream': False,
+    }),
+    ('cusparseSpMatGetFormat', {
+        'out': 'format',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseSpMatGetIndexBase', {
+        'out': 'idxBase',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseSpMatGetValues', {
+        'out': 'values',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseSpMatSetValues', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseSpMatGetStridedBatch', {
+        'out': 'batchCount',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseSpMatSetStridedBatch', {
+        'out': None,
+        'use_stream': False,
+    }),
     # cuSPARSE Generic API - Dense Vector APIs
     ('Comment', 'cuSPARSE Generic API - Dense Vector APIs'),
     ('cusparseCreateDnVec', {
@@ -1036,7 +1104,7 @@ if __name__ == '__main__':
         template = f.read()
 
     ffi = '\n'.join(indent(transpile_ffi(env, d)) for d in directives)
-    aux_struct = '\n'.join(
+    aux_struct = '\n\n'.join(
         compact(transpile_aux_struct(env, d) for d in directives))
     wrapper = '\n\n'.join(transpile_wrapper(env, d) for d in directives)
     print(template.format(ffi=ffi, aux_struct=aux_struct, wrapper=wrapper))
