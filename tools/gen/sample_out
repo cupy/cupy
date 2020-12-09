@@ -260,6 +260,16 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseDnMatGetStridedBatch(DnMatDescr dnMatDescr, int* batchCount, int64_t* batchStride)
     Status cusparseDnMatSetStridedBatch(DnMatDescr dnMatDescr, int batchCount, int64_t batchStride)
 
+    # cuSPARSE Generic API - Generic API Functions
+    Status cusparseSpVV_bufferSize(Handle handle, Operation opX, SpVecDescr vecX, DnVecDescr vecY, const void* result, DataType computeType, size_t* bufferSize)
+    Status cusparseSpVV(Handle handle, Operation opX, SpVecDescr vecX, DnVecDescr vecY, void* result, DataType computeType, void* externalBuffer)
+    Status cusparseSpMV_bufferSize(Handle handle, Operation opA, const void* alpha, SpMatDescr matA, DnVecDescr vecX, const void* beta, DnVecDescr vecY, DataType computeType, SpMVAlg alg, size_t* bufferSize)
+    Status cusparseSpMV(Handle handle, Operation opA, const void* alpha, SpMatDescr matA, DnVecDescr vecX, const void* beta, DnVecDescr vecY, DataType computeType, SpMVAlg alg, void* externalBuffer)
+    Status cusparseSpMM_bufferSize(Handle handle, Operation opA, Operation opB, const void* alpha, SpMatDescr matA, DnMatDescr matB, const void* beta, DnMatDescr matC, DataType computeType, SpMMAlg alg, size_t* bufferSize)
+    Status cusparseSpMM(Handle handle, Operation opA, Operation opB, const void* alpha, SpMatDescr matA, DnMatDescr matB, const void* beta, DnMatDescr matC, DataType computeType, SpMMAlg alg, void* externalBuffer)
+    Status cusparseConstrainedGeMM_bufferSize(Handle handle, Operation opA, Operation opB, const void* alpha, DnMatDescr matA, DnMatDescr matB, const void* beta, SpMatDescr matC, DataType computeType, size_t* bufferSize)
+    Status cusparseConstrainedGeMM(Handle handle, Operation opA, Operation opB, const void* alpha, DnMatDescr matA, DnMatDescr matB, const void* beta, SpMatDescr matC, DataType computeType, void* externalBuffer)
+
     # Build-time version
     int CUSPARSE_VERSION
 
@@ -1629,4 +1639,56 @@ cpdef DnMatBatchAttributes dnMatGetStridedBatch(size_t dnMatDescr):
 
 cpdef dnMatSetStridedBatch(size_t dnMatDescr, int batchCount, int64_t batchStride):
     status = cusparseDnMatSetStridedBatch(<DnMatDescr>dnMatDescr, batchCount, batchStride)
+    check_status(status)
+
+
+##############################################
+# cuSPARSE Generic API - Generic API Functions
+
+cpdef size_t spVV_bufferSize(intptr_t handle, size_t opX, size_t vecX, size_t vecY, size_t result, size_t computeType) except? 0:
+    cdef size_t bufferSize
+    status = cusparseSpVV_bufferSize(<Handle>handle, <Operation>opX, <SpVecDescr>vecX, <DnVecDescr>vecY, <const void*>result, <DataType>computeType, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef spVV(intptr_t handle, size_t opX, size_t vecX, size_t vecY, size_t result, size_t computeType, size_t externalBuffer):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseSpVV(<Handle>handle, <Operation>opX, <SpVecDescr>vecX, <DnVecDescr>vecY, <void*>result, <DataType>computeType, <void*>externalBuffer)
+    check_status(status)
+
+cpdef size_t spMV_bufferSize(intptr_t handle, size_t opA, size_t alpha, size_t matA, size_t vecX, size_t beta, size_t vecY, size_t computeType, size_t alg) except? 0:
+    cdef size_t bufferSize
+    status = cusparseSpMV_bufferSize(<Handle>handle, <Operation>opA, <const void*>alpha, <SpMatDescr>matA, <DnVecDescr>vecX, <const void*>beta, <DnVecDescr>vecY, <DataType>computeType, <SpMVAlg>alg, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef spMV(intptr_t handle, size_t opA, size_t alpha, size_t matA, size_t vecX, size_t beta, size_t vecY, size_t computeType, size_t alg, size_t externalBuffer):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseSpMV(<Handle>handle, <Operation>opA, <const void*>alpha, <SpMatDescr>matA, <DnVecDescr>vecX, <const void*>beta, <DnVecDescr>vecY, <DataType>computeType, <SpMVAlg>alg, <void*>externalBuffer)
+    check_status(status)
+
+cpdef size_t spMM_bufferSize(intptr_t handle, size_t opA, size_t opB, size_t alpha, size_t matA, size_t matB, size_t beta, size_t matC, size_t computeType, size_t alg) except? 0:
+    cdef size_t bufferSize
+    status = cusparseSpMM_bufferSize(<Handle>handle, <Operation>opA, <Operation>opB, <const void*>alpha, <SpMatDescr>matA, <DnMatDescr>matB, <const void*>beta, <DnMatDescr>matC, <DataType>computeType, <SpMMAlg>alg, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef spMM(intptr_t handle, size_t opA, size_t opB, size_t alpha, size_t matA, size_t matB, size_t beta, size_t matC, size_t computeType, size_t alg, size_t externalBuffer):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseSpMM(<Handle>handle, <Operation>opA, <Operation>opB, <const void*>alpha, <SpMatDescr>matA, <DnMatDescr>matB, <const void*>beta, <DnMatDescr>matC, <DataType>computeType, <SpMMAlg>alg, <void*>externalBuffer)
+    check_status(status)
+
+cpdef size_t constrainedGeMM_bufferSize(intptr_t handle, size_t opA, size_t opB, size_t alpha, size_t matA, size_t matB, size_t beta, size_t matC, size_t computeType) except? 0:
+    cdef size_t bufferSize
+    status = cusparseConstrainedGeMM_bufferSize(<Handle>handle, <Operation>opA, <Operation>opB, <const void*>alpha, <DnMatDescr>matA, <DnMatDescr>matB, <const void*>beta, <SpMatDescr>matC, <DataType>computeType, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef constrainedGeMM(intptr_t handle, size_t opA, size_t opB, size_t alpha, size_t matA, size_t matB, size_t beta, size_t matC, size_t computeType, size_t externalBuffer):
+    if stream_module.enable_current_stream:
+        setStream(handle, stream_module.get_current_stream_ptr())
+    status = cusparseConstrainedGeMM(<Handle>handle, <Operation>opA, <Operation>opB, <const void*>alpha, <DnMatDescr>matA, <DnMatDescr>matB, <const void*>beta, <SpMatDescr>matC, <DataType>computeType, <void*>externalBuffer)
     check_status(status)

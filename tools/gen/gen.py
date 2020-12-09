@@ -518,6 +518,44 @@ DIRECTIVES = [
         'out': None,
         'use_stream': False,
     }),
+    # cuSPARSE Generic API - Generic API Functions
+    ('Comment', 'cuSPARSE Generic API - Generic API Functions'),
+    ('cusparseSpVV_bufferSize', {
+        'out': 'bufferSize',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseSpVV', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseSpMV_bufferSize', {
+        'out': 'bufferSize',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseSpMV', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseSpMM_bufferSize', {
+        'out': 'bufferSize',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseSpMM', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseConstrainedGeMM_bufferSize', {
+        'out': 'bufferSize',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseConstrainedGeMM', {
+        'out': None,
+        'use_stream': True,
+    }),
 ]
 
 
