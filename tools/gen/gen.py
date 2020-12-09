@@ -123,6 +123,15 @@ DIRECTIVES = [
         'out': None,
         'use_stream': False,
     }),
+    ('cusparseCreateCsrgemm2Info', {
+        'out': 'info',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseDestroyCsrgemm2Info', {
+        'out': None,
+        'use_stream': False,
+    }),
     # cuSPARSE Level 1 Function
     ('Comment', 'cuSPARSE Level 1 Function'),
     ('cusparse<t>gthr', {
@@ -190,17 +199,48 @@ DIRECTIVES = [
     }),
     # cuSPARSE Extra Function
     ('Comment', 'cuSPARSE Extra Function'),
+    ('cusparseXcsrgeamNnz', {  # REMOVED
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csrgeam', {  # REMOVED
+        'out': None,
+        'use_stream': True,
+    }),
     ('cusparse<t>csrgeam2_bufferSizeExt', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparseXcsrgeam2Nnz', {
+        'out': None,
         'use_stream': True,
     }),
     ('cusparse<t>csrgeam2', {
         'out': None,
         'use_stream': True,
     }),
-    # ...
-
+    ('cusparseXcsrgemmNnz', {  # REMOVED
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csrgemm', {  # REMOVED
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csrgemm2_bufferSizeExt', {
+        'out': 'pBufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparseXcsrgemm2Nnz', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csrgemm2', {
+        'out': None,
+        'use_stream': True,
+    }),
     # cuSPARSE Preconditioners - Incomplete Cholesky Factorization: level 0
     ('Comment', ('cuSPARSE Preconditioners - '
                  'Incomplete Cholesky Factorization: level 0')),
