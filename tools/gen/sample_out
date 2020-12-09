@@ -251,6 +251,15 @@ cdef extern from '../cupy_cusparse.h' nogil:
     Status cusparseDnVecGetValues(DnVecDescr dnVecDescr, void** values)
     Status cusparseDnVecSetValues(DnVecDescr dnVecDescr, void* values)
 
+    # cuSPARSE Generic API - Dense Matrix APIs
+    Status cusparseCreateDnMat(DnMatDescr* dnMatDescr, int64_t rows, int64_t cols, int64_t ld, void* values, DataType valueType, Order order)
+    Status cusparseDestroyDnMat(DnMatDescr dnMatDescr)
+    Status cusparseDnMatGet(DnMatDescr dnMatDescr, int64_t* rows, int64_t* cols, int64_t* ld, void** values, DataType* type, Order* order)
+    Status cusparseDnMatGetValues(DnMatDescr dnMatDescr, void** values)
+    Status cusparseDnMatSetValues(DnMatDescr dnMatDescr, void* values)
+    Status cusparseDnMatGetStridedBatch(DnMatDescr dnMatDescr, int* batchCount, int64_t* batchStride)
+    Status cusparseDnMatSetStridedBatch(DnMatDescr dnMatDescr, int batchCount, int64_t batchStride)
+
     # Build-time version
     int CUSPARSE_VERSION
 
@@ -363,6 +372,22 @@ cdef class DnVecAttributes
         self.size = size
         self.values = values
         self.valueType = valueType
+
+cdef class DnMatAttributes
+
+    def __init__(self, int64_t rows, int64_t cols, int64_t ld, size_t values, size_t type, size_t order)
+        self.rows = rows
+        self.cols = cols
+        self.ld = ld
+        self.values = values
+        self.type = type
+        self.order = order
+
+cdef class DnMatBatchAttributes
+
+    def __init__(self, int batchCount, int64_t batchStride)
+        self.batchCount = batchCount
+        self.batchStride = batchStride
 
 
 ########################################
@@ -1558,4 +1583,50 @@ cpdef size_t dnVecGetValues(size_t dnVecDescr) except? 0:
 
 cpdef dnVecSetValues(size_t dnVecDescr, size_t values):
     status = cusparseDnVecSetValues(<DnVecDescr>dnVecDescr, <void*>values)
+    check_status(status)
+
+
+##########################################
+# cuSPARSE Generic API - Dense Matrix APIs
+
+cpdef size_t createDnMat(int64_t rows, int64_t cols, int64_t ld, size_t values, size_t valueType, size_t order) except? 0:
+    cdef DnMatDescr dnMatDescr
+    status = cusparseCreateDnMat(&dnMatDescr, rows, cols, ld, <void*>values, <DataType>valueType, <Order>order)
+    check_status(status)
+    return <size_t>dnMatDescr
+
+cpdef destroyDnMat(size_t dnMatDescr):
+    status = cusparseDestroyDnMat(<DnMatDescr>dnMatDescr)
+    check_status(status)
+
+cpdef DnMatAttributes dnMatGet(size_t dnMatDescr):
+    cdef int64_t rows
+    cdef int64_t cols
+    cdef int64_t ld
+    cdef void* values
+    cdef DataType type
+    cdef Order order
+    status = cusparseDnMatGet(<DnMatDescr>dnMatDescr, &rows, &cols, &ld, &values, &type, &order)
+    check_status(status)
+    return DnMatAttributes(rows, cols, ld, <size_t>values, <size_t>type, <size_t>order)
+
+cpdef size_t dnMatGetValues(size_t dnMatDescr) except? 0:
+    cdef void* values
+    status = cusparseDnMatGetValues(<DnMatDescr>dnMatDescr, &values)
+    check_status(status)
+    return <size_t>values
+
+cpdef dnMatSetValues(size_t dnMatDescr, size_t values):
+    status = cusparseDnMatSetValues(<DnMatDescr>dnMatDescr, <void*>values)
+    check_status(status)
+
+cpdef DnMatBatchAttributes dnMatGetStridedBatch(size_t dnMatDescr):
+    cdef int batchCount
+    cdef int64_t batchStride
+    status = cusparseDnMatGetStridedBatch(<DnMatDescr>dnMatDescr, &batchCount, &batchStride)
+    check_status(status)
+    return DnMatBatchAttributes(batchCount, batchStride)
+
+cpdef dnMatSetStridedBatch(size_t dnMatDescr, int batchCount, int64_t batchStride):
+    status = cusparseDnMatSetStridedBatch(<DnMatDescr>dnMatDescr, batchCount, batchStride)
     check_status(status)

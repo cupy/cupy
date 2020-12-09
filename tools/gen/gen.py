@@ -485,6 +485,39 @@ DIRECTIVES = [
         'out': None,
         'use_stream': False,
     }),
+    # cuSPARSE Generic API - Dense Matrix APIs
+    ('Comment', 'cuSPARSE Generic API - Dense Matrix APIs'),
+    ('cusparseCreateDnMat', {
+        'out': 'dnMatDescr',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseDestroyDnMat', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseDnMatGet', {
+        'out': ('DnMatAttributes',
+                ('rows', 'cols', 'ld', 'values', 'type', 'order')),
+        'use_stream': False,
+    }),
+    ('cusparseDnMatGetValues', {
+        'out': 'values',
+        'except?': 0,
+        'use_stream': False,
+    }),
+    ('cusparseDnMatSetValues', {
+        'out': None,
+        'use_stream': False,
+    }),
+    ('cusparseDnMatGetStridedBatch', {
+        'out': ('DnMatBatchAttributes', ('batchCount', 'batchStride')),
+        'use_stream': False,
+    }),
+    ('cusparseDnMatSetStridedBatch', {
+        'out': None,
+        'use_stream': False,
+    }),
 ]
 
 
