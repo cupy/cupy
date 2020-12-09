@@ -655,9 +655,9 @@ class TestLinearOperator(unittest.TestCase):
     'nrhs': [None, 1, 4],
     'order': ['C', 'F']
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy>=1.4.0')
 @testing.gpu
-class TestSpsolveTriangular(unittest.TestCase):
+class TestSpsolveTriangular:
 
     n = 10
     density = 0.5
@@ -681,25 +681,12 @@ class TestSpsolveTriangular(unittest.TestCase):
         return sp.linalg.spsolve_triangular(a, b, lower=self.lower,
                                             unit_diagonal=self.unit_diagonal)
 
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csr(self, dtype, xp, sp):
+    def test_sparse(self, format, dtype, xp, sp):
         a, b = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
-        return self._test_spsolve_triangular(sp, a, b)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csc(self, dtype, xp, sp):
-        a, b = self._make_matrix(dtype, xp)
-        a = sp.csc_matrix(a)
-        return self._test_spsolve_triangular(sp, a, b)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_coo(self, dtype, xp, sp):
-        a, b = self._make_matrix(dtype, xp)
-        a = sp.coo_matrix(a)
+        a = sp.coo_matrix(a).asformat(format)
         return self._test_spsolve_triangular(sp, a, b)
 
     def test_invalid_cases(self):
