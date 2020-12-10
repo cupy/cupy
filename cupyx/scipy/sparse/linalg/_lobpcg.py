@@ -160,22 +160,26 @@ def lobpcg(A, X,
     definite (SPD) generalized eigenproblems.
 
     Args:
-        A (cupy.ndarray, cupyx.scipy.sparse.csr_matrix,
-        cupy.scipy.sparse.linalg.LinearOperator):
-            The symmetric linear operator of the problem, usually a
-            sparse matrix.
-        X (cupy.ndarray):
-            Initial approximation to the ``k`` eigenvectors (non-sparse).
-            If `A` has ``shape=(n,n)`` then `X` should have shape
-            ``shape=(n,k)``.
-        B (cupy.ndarray, cupyx.scipy.sparse.csr_matrix,
-        cupy.scipy.sparse.linalg.LinearOperator):
-            The right hand side operator in a generalized eigenproblem.
-            By default, ``B = Identity``.
-        M (cupy.ndarray, cupyx.scipy.sparse.csr_matrix,
-        cupy.scipy.sparse.linalg.LinearOperator):
-            Preconditioner to `A`; by default ``M = Identity``.
+        A (array-like): The symmetric linear operator of the problem,
+            usually a sparse matrix. Can be of the following types
+                - cupy.ndarray
+                - cupyx.scipy.sparse.csr_matrix
+                - cupy.scipy.sparse.linalg.LinearOperator
+        X (cupy.ndarray): Initial approximation to the ``k``
+            eigenvectors (non-sparse). If `A` has ``shape=(n,n)``
+            then `X` should have shape ``shape=(n,k)``.
+        B (array-like): The right hand side operator in a generalized
+            eigenproblem. By default, ``B = Identity``.
+            Can be of following types:
+                - cupy.ndarray
+                - cupyx.scipy.sparse.csr_matrix
+                - cupy.scipy.sparse.linalg.LinearOperator
+        M (array-like): Preconditioner to `A`; by default ``M = Identity``.
             `M` should approximate the inverse of `A`.
+            Can be of the following types:
+                - cupy.ndarray
+                - cupyx.scipy.sparse.csr_matrix
+                - cupy.scipy.sparse.linalg.LinearOperator
         Y (cupy.ndarray):
             `n-by-sizeY` matrix of constraints (non-sparse), `sizeY < n`
             The iterations will be performed in the B-orthogonal complement
@@ -196,25 +200,21 @@ def lobpcg(A, X,
             Whether to return history of residual norms.  Default is False.
 
     Returns:
-        w (cupy.ndarray):
-            Array of ``k`` eigenvalues
-        v (cupy.ndarray):
-            An array of ``k`` eigenvectors.  `v` has the same shape as `X`.
-        lambdas (list of cupy.ndarray):
-            The eigenvalue history, if `retLambdaHistory` is True.
-        rnorms (list of cupy.ndarray):
-            The history of residual norms, if `retResidualNormsHistory`
-            is True.
+        tuple:
+            - `w` (cupy.ndarray): Array of ``k`` eigenvalues
+            - `v` (cupy.ndarray) An array of ``k`` eigenvectors.
+              `v` has the same shape as `X`.
+            - `lambdas` (list of cupy.ndarray): The eigenvalue history,
+              if `retLambdaHistory` is True.
+            - `rnorms` (list of cupy.ndarray): The history of residual norms,
+              if `retResidualNormsHistory` is True.
 
     .. seealso:: :func:`scipy.sparse.linalg.lobpcg`
 
-    ..note::
-        If both ``retLambdaHistory`` and ``retResidualNormsHistory`` are True,
+    .. note::
+        If both ``retLambdaHistory`` and ``retResidualNormsHistory`` are `True`
         the return tuple has the following format
         ``(lambda, V, lambda history, residual norms history)``.
-
-        In the following ``n`` denotes the matrix size and ``m`` the number
-        of required eigenvalues (smallest or largest).
     """
     blockVectorX = X
     blockVectorY = Y
