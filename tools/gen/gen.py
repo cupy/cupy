@@ -410,7 +410,8 @@ DIRECTIVES = [
         'use_stream': True,
     }),
     ('cusparse<t>nnz_compress', {
-        'out': None,
+        'out': 'nnzC',
+        'except?': 0,
         'use_stream': True,
     }),
     ('cusparse<t>csr2csr_compress', {
@@ -837,23 +838,13 @@ def erased_type_name(env, node):
         elif is_special_type(name, env):
             return special_type_erased(name, env)
         elif is_opaque_data_structure(name, env):
-            return 'size_t'
+            return 'size_t'  # TODO: should be 'intptr_t'?
         elif is_enum(name, env):
-            return 'size_t'
+            return 'int'
         else:
             return None
     elif isinstance(node, c_ast.PtrDecl):
-        if isinstance(node.type, c_ast.TypeDecl):
-            assert len(node.type.type.names) == 1
-            name = node.type.type.names[0]
-            if name == 'cusparseHandle_t':  # for cusparseHandle_t *
-                return 'intptr_t'
-            else:
-                return 'size_t'  # TODO: should use 'intptr_t'?
-        elif isinstance(node.type, c_ast.PtrDecl):
-            return 'size_t'  # TODO: should use 'intptr_t'?
-        else:
-            assert False
+        return 'intptr_t'
     else:
         assert False
 
@@ -893,9 +884,13 @@ def transpile_ffi(env, directive):
 def transpile_aux_struct_decl(env, directive, node, removed):
     def argaux(env, node):
         name = deref_var_name(node.name)
-        type = erased_type_name(env, node.type.type)
-        if type is None:
+        if isinstance(node.type.type, c_ast.TypeDecl):
             type = transpile_type_name(env, node.type.type)
+        elif isinstance(node.type.type, c_ast.PtrDecl):
+            type = erased_type_name(env, node.type.type)
+            assert type is not None
+        else:
+            assert False
         return '{} {}'.format(type, name)
 
     assert isinstance(node.type, c_ast.FuncDecl)
@@ -906,12 +901,12 @@ def transpile_aux_struct_decl(env, directive, node, removed):
     if removed:
         code.append('# REMOVED')
 
-    code.append('cdef class {}'.format(out_type))
+    code.append('cdef class {}:'.format(out_type))
     code.append('')
 
     params = [p for p in node.type.args.params if p.name in out_args]
     args = [argaux(env, p) for p in params]
-    code.append('    def __init__(self, {})'.format(', '.join(args)))
+    code.append('    def __init__(self, {}):'.format(', '.join(args)))
 
     for p in params:
         attr = deref_var_name(p.name)
@@ -1122,12 +1117,14 @@ def transpile_wrapper_decl(env, directive, node, removed):
         out_args1 = []
         for out_arg, out in zip(out_args, outs):
             # dereference out
-            out_arg_type = erased_type_name(env, out.type.type)
             out_arg_name = deref_var_name(out_arg)
-            if out_arg_type is not None:
+            if isinstance(out.type.type, c_ast.TypeDecl):
+                out_args1.append(out_arg_name)
+            elif isinstance(out.type.type, c_ast.PtrDecl):
+                out_arg_type = erased_type_name(env, out.type.type)
                 out_args1.append('<{}>{}'.format(out_arg_type, out_arg_name))
             else:
-                out_args1.append(out_arg_name)
+                assert False
         code.append('    return {}({})'.format(out_type, ', '.join(out_args1)))
     else:
         assert False

@@ -38,6 +38,17 @@ cdef dict STATUS = {{
     10: 'CUSPARSE_STATUS_NOT_SUPPORTED',
 }}
 
+
+class CuSparseError(RuntimeError):
+
+    def __init__(self, int status):
+        self.status = status
+        super(CuSparseError, self).__init__('%s' % (STATUS[status]))
+
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
+
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
