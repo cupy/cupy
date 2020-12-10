@@ -251,18 +251,35 @@ DIRECTIVES = [
     }),
     ('cusparse<t>csric02_analysis', {
         'out': None,
-        'use_stream': False,
+        'use_stream': True,
     }),
     ('cusparse<t>csric02', {
         'out': None,
-        'use_stream': False,
+        'use_stream': True,
     }),
     ('cusparseXcsric02_zeroPivot', {
         'out': 'position',
         'except?': 0,
-        'use_stream': False,
+        'use_stream': True,
     }),
-
+    ('cusparse<t>bsric02_bufferSize', {
+        'out': 'pBufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparse<t>bsric02_analysis', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>bsric02', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseXbsric02_zeroPivot', {
+        'out': 'position',
+        'except?': 0,
+        'use_stream': True,
+    }),
     # cuSPARSE Preconditioners - Incomplete LU Factorization: level 0
     ('Comment', ('cuSPARSE Preconditioners - '
                  'Incomplete LU Factorization: level 0')),
@@ -270,11 +287,97 @@ DIRECTIVES = [
         'out': None,
         'use_stream': True,
     }),
-    # ...
-
+    ('cusparse<t>csrilu02_bufferSize', {
+        'out': 'pBufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csrilu02_analysis', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>csrilu02', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseXcsrilu02_zeroPivot', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>bsrilu02_numericBoost', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>bsrilu02_bufferSize', {
+        'out': 'pBufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparse<t>bsrilu02_analysis', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>bsrilu02', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparseXbsrilu02_zeroPivot', {
+        'out': None,
+        'use_stream': True,
+    }),
+    # cuSPARSE Preconditioners - Tridiagonal Solve
+    ('Comment', 'cuSPARSE Preconditioners - Tridiagonal Solve'),
+    ('cusparse<t>gtsv2_bufferSizeExt', {
+        'out': 'bufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparse<t>gtsv2', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>gtsv2_nopivot_bufferSizeExt', {
+        'out': 'bufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparse<t>gtsv2_nopivot', {
+        'out': None,
+        'use_stream': True,
+    }),
+    # cuSPARSE Preconditioners - Batched Tridiagonal Solve
+    ('Comment', 'cuSPARSE Preconditioners - Batched Tridiagonal Solve'),
+    ('cusparse<t>gtsv2StridedBatch_bufferSizeExt', {
+        'out': 'bufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparse<t>gtsv2StridedBatch', {
+        'out': None,
+        'use_stream': True,
+    }),
+    ('cusparse<t>gtsvInterleavedBatch_bufferSizeExt', {
+        'out': 'pBufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparse<t>gtsvInterleavedBatch', {
+        'out': None,
+        'use_stream': True,
+    }),
+    # cuSPARSE Preconditioners - Batched Pentadiagonal Solve
+    ('Comment', 'cuSPARSE Preconditioners - Batched Pentadiagonal Solve'),
+    ('cusparse<t>gpsvInterleavedBatch_bufferSizeExt', {
+        'out': 'pBufferSizeInBytes',
+        'except?': 0,
+        'use_stream': True,
+    }),
+    ('cusparse<t>gpsvInterleavedBatch', {
+        'out': None,
+        'use_stream': True,
+    }),
     # cuSPARSE Reordering
     ('Comment', 'cuSPARSE Reorderings'),
-
     # cuSPARSE Format Conversion
     ('Comment', 'cuSPARSE Format Conversion'),
     ('cusparseXcoo2csr', {
