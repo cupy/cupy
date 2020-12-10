@@ -694,6 +694,8 @@ class TestSplineFilterComplex:
     # the following test case is for SciPy versions lacking complex support
     @testing.with_requires('scipy<1.6')
     def test_spline_filter_complex2(self):
+        if self.mode == 'wrap':
+            pytest.skip('mode cannot be tested against SciPy < 1.6')
         cpu_func = scipy.ndimage.spline_filter
         gpu_func = cupyx.scipy.ndimage.spline_filter
         x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=numpy)
