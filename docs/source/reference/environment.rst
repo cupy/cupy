@@ -71,14 +71,14 @@ Here are the environment variables CuPy uses.
 |                                                | requirement in the CUDA Array Interface v3         |
 |                                                | documentation.                                     |
 +------------------------------------------------+----------------------------------------------------+
-| ``CUPY_CUDA_ARRAY_INTERFACE_EXPORT_STREAM``    | This controls CuPy's behavior as a Producer. If set|
-|                                                | to 0, the CuPy stream on which the data is being   |
-|                                                | operated will not be exported (``stream`` is set to|
-|                                                | ``None``) and thus the Consumer (another library)  |
-|                                                | will not perform any stream synchronization.       |
-|                                                | Default is 1. For more detail, see the             |
-|                                                | `Synchronization`_ requirement in the CUDA Array   |
-|                                                | Interface v3 documentation.                        |
+| ``CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION``   | This controls CuPy's behavior as a Producer. If set|
+|                                                | to 0, 1, or 2, the CuPy stream on which the data is|
+|                                                | being operated will not be exported (``stream`` is |
+|                                                | set to ``None``) and thus the Consumer (another    |
+|                                                | library) will not perform any stream               |
+|                                                | synchronization. Default is 3. For more detail, see|
+|                                                | the `Synchronization`_ requirement in the CUDA     |
+|                                                | Array Interface v3 documentation.                  |
 +------------------------------------------------+----------------------------------------------------+
 | ``NVCC``                                       | Define the compiler to use when compiling CUDA     |
 |                                                | source. Note that most CuPy kernels are built with |
