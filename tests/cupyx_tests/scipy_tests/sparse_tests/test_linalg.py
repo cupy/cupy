@@ -1,5 +1,4 @@
 from functools import partial
-import platform
 import cupy
 import itertools
 import unittest
