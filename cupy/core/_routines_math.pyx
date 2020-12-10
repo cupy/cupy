@@ -459,8 +459,11 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
     block_size = 512
     warp_size = 64 if runtime._is_hip_environment else 32
     if runtime._is_hip_environment:
-        if out.dtype.char in 'if':
-            # On HIP, __shfl* only supports int and float for now
+        if out.dtype.char in 'iIfdlq':
+            # On HIP, __shfl* supports int, unsigned int, float, double,
+            # long, and long long. The documentation is too outdated and
+            # unreliable; refer to the header at
+            # $ROCM_HOME/include/hip/hcc_detail/device_functions.h
             bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
         else:
             bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
