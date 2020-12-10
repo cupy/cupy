@@ -17,6 +17,7 @@ from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
+from cupy_backends.cuda.api cimport runtime
 
 from cupy.cuda import cub
 
@@ -150,14 +151,19 @@ cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
 _op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
 _identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
 
+_preamble = '' if not runtime._is_hip_environment else r'''
+    // TODO(leofang): replace this when HIP supports syncing warps
+    #define __syncwarp __syncthreads
+    '''
+
 
 @cupy._util.memoize(for_each_device=True)
-def _cupy_bsum_shfl(op, block_size, warp_size=32):
+def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
     """Returns a kernel that computes the sum/prod of each block.
 
     Args:
         op (int): Operation type. SCAN_SUM or SCAN_PROD.
-        block_size (int): Block size.
+        chunk_size (int): # of array elements processed by a thread-block.
         warp_size (int); Warp size.
 
     Returns:
@@ -165,7 +171,7 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
 
     Example:
         a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        _cupy_bsum(op=SCAN_SUM, block_size=4)(a, b, ...)
+        _cupy_bsum(op=SCAN_SUM, chunk_size=4)(a, b, ...)
         b == [10, 26, 19]
 
     Note:
@@ -173,11 +179,12 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
         See the link below for details about warp shuffle functions.
         https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions
     """
+    block_size = chunk_size // 2  # each thread handles two array elements
     in_params = 'raw T a'
     out_params = 'raw O b'
     loop_prep = string.Template("""
-        __shared__ O smem[${block_size} / 2 / ${warp_size}];
-        const int n_warp = ${block_size} / 2 / ${warp_size};
+        __shared__ O smem[${block_size} / ${warp_size}];
+        const int n_warp = ${block_size} / ${warp_size};
         const int warp_id = threadIdx.x / ${warp_size};
         const int lane_id = threadIdx.x % ${warp_size};
     """).substitute(block_size=block_size, warp_size=warp_size)
@@ -196,7 +203,7 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
             for (int j = 1; j < n_warp; j *= 2) {
                 x ${op}= __shfl_xor_sync(0xffffffff, x, j);
             }
-            int block_id = i / (${block_size} / 2);
+            int block_id = i / ${block_size};
             if (lane_id == 0) b[block_id] = x;
         }
     """).substitute(block_size=block_size, warp_size=warp_size,
@@ -206,12 +213,12 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
 
 
 @cupy._util.memoize(for_each_device=True)
-def _cupy_bsum_smem(op, block_size, warp_size=32):
+def _cupy_bsum_smem(op, chunk_size, warp_size=32):
     """Returns a kernel that computes the sum/prod of each block.
 
     Args:
         op (int): Operation type. SCAN_SUM or SCAN_PROD.
-        block_size (int): Block size.
+        chunk_size (int): # of array elements processed by a thread-block.
         warp_size (int); Warp size.
 
     Returns:
@@ -219,18 +226,20 @@ def _cupy_bsum_smem(op, block_size, warp_size=32):
 
     Example:
         a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        _cupy_bsum(op=SCAN_SUM, block_size=4)(a, b, ...)
+        _cupy_bsum(op=SCAN_SUM, chunk_size=4)(a, b, ...)
         b == [10, 26, 19]
 
     Note:
         This uses shared memory to exchange data in a warp.
     """
+    block_size = chunk_size // 2  # each thread handles two array elements
+    warp_size = min(warp_size, block_size)
     in_params = 'raw T a'
     out_params = 'raw O b'
     loop_prep = string.Template("""
-        __shared__ O smem1[${block_size} / 2];
+        __shared__ O smem1[${block_size}];
         __shared__ O smem2[${warp_size}];
-        const int n_warp = ${block_size} / 2 / ${warp_size};
+        const int n_warp = ${block_size} / ${warp_size};
         const int warp_id = threadIdx.x / ${warp_size};
         const int lane_id = threadIdx.x % ${warp_size};
     """).substitute(block_size=block_size, warp_size=warp_size)
@@ -242,34 +251,39 @@ def _cupy_bsum_smem(op, block_size, warp_size=32):
             smem1[threadIdx.x] = x;          __syncwarp();
             x ${op}= smem1[threadIdx.x ^ j]; __syncwarp();
         }
-        if (lane_id == 0) smem2[warp_id] = x;
-        __syncthreads();
-        if (warp_id == 0) {
-            x = ${identity};
-            if (lane_id < n_warp) x = smem2[lane_id];
-            for (int j = 1; j < n_warp; j *= 2) {
-                smem2[lane_id] = x;          __syncwarp();
-                x ${op}= smem2[lane_id ^ j]; __syncwarp();
+        if (n_warp > 1) {
+            if (lane_id == 0) smem2[warp_id] = x;
+            __syncthreads();
+            if (warp_id == 0) {
+                x = ${identity};
+                if (lane_id < n_warp) x = smem2[lane_id];
+                for (int j = 1; j < n_warp; j *= 2) {
+                    smem2[lane_id] = x;          __syncwarp();
+                    x ${op}= smem2[lane_id ^ j]; __syncwarp();
+                }
             }
-            int block_id = i / (${block_size} / 2);
-            if (lane_id == 0) b[block_id] = x;
+        }
+        if (threadIdx.x == 0) {
+            int block_id = i / ${block_size};
+            b[block_id] = x;
         }
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_bsum_smem', loop_prep=loop_prep)
+                                  'cupy_bsum_smem', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
-def _cupy_scan_naive(op, block_size, warp_size=32):
+def _cupy_scan_naive(op, chunk_size, warp_size=32):
     """Returns a kernel to compute an inclusive scan.
 
-    It first performs an inclusive scan in each block and the add the
-    scan results for the sum/prod of each block.
+    It first performs an inclusive scan in each thread-block and then add the
+    scan results for the sum/prod of each chunk.
 
     Args:
         op (int): Operation type. SCAN_SUM or SCAN_PROD.
-        block_size (int): Block size.
+        chunk_size (int): # of array elements processed by a thread-block.
         warp_size (int); Warp size.
 
     Returns:
@@ -278,12 +292,12 @@ def _cupy_scan_naive(op, block_size, warp_size=32):
     Example:
         b = [10, 36, 55]
         a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        _cupy_scan(op=SCAN_SUM, block_size=4)(b, a, out, ...)
+        _cupy_scan(op=SCAN_SUM, chunk_size=4)(b, a, out, ...)
         out == [1, 3, 6, 10, 15, 21, 28, 36, 45, 55]
 
     Note:
         This uses a kind of method called "Naive Parallel Scan" for inclusive
-        scan in each block. See below for details about "Naive Parallel Scan".
+        scan in each thread-block. See below for details.
         https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
     """
     in_params = 'raw O b'
@@ -294,7 +308,7 @@ def _cupy_scan_naive(op, block_size, warp_size=32):
         const int n_warp = ${block_size} / ${warp_size};
         const int warp_id = threadIdx.x / ${warp_size};
         const int lane_id = threadIdx.x % ${warp_size};
-    """).substitute(block_size=block_size, warp_size=warp_size)
+    """).substitute(block_size=chunk_size, warp_size=warp_size)
     loop_body = string.Template("""
         O x = ${identity};
         if (i < a.size()) x = a[i];
@@ -303,39 +317,42 @@ def _cupy_scan_naive(op, block_size, warp_size=32):
             if (lane_id - j >= 0) x ${op}= smem1[threadIdx.x - j];
             __syncwarp();
         }
-        if (lane_id == ${warp_size} - 1) smem2[warp_id] = x;
-        __syncthreads();
-        if (warp_id == 0) {
-            O y = ${identity};
-            if (lane_id < n_warp) y = smem2[lane_id];
-            for (int j = 1; j < n_warp; j *= 2) {
-                smem2[lane_id] = y;  __syncwarp();
-                if (lane_id - j >= 0) y ${op}= smem2[lane_id - j];
-                __syncwarp();
+        if (n_warp > 1) {
+            if (lane_id == ${warp_size} - 1) smem2[warp_id] = x;
+            __syncthreads();
+            if (warp_id == 0) {
+                O y = ${identity};
+                if (lane_id < n_warp) y = smem2[lane_id];
+                for (int j = 1; j < n_warp; j *= 2) {
+                    smem2[lane_id] = y;  __syncwarp();
+                    if (lane_id - j >= 0) y ${op}= smem2[lane_id - j];
+                    __syncwarp();
+                }
+                smem2[lane_id] = y;
             }
-            smem2[lane_id] = y;
+            __syncthreads();
+            if (warp_id > 0) x ${op}= smem2[warp_id - 1];
         }
-        __syncthreads();
-        if (warp_id > 0) x ${op}= smem2[warp_id - 1];
         int block_id = i / ${block_size};
         if (block_id > 0) x ${op}= b[block_id - 1];
         if (i < a.size()) out[i] = x;
-    """).substitute(block_size=block_size, warp_size=warp_size,
+    """).substitute(block_size=chunk_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_scan_naive', loop_prep=loop_prep)
+                                  'cupy_scan_naive', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
-def _cupy_scan_btree(op, block_size, warp_size=32):
+def _cupy_scan_btree(op, chunk_size, warp_size=32):
     """Returns a kernel to compute an inclusive scan.
 
-    It first performs an inclusive scan in each block and the add the
-    scan results for the sum/prod of each block.
+    It first performs an inclusive scan in each thread-block and then add the
+    scan results for the sum/prod of each chunk.
 
     Args:
         op (int): Operation type. SCAN_SUM or SCAN_PROD.
-        block_size (int): Block size.
+        chunk_size (int): # of array elements processed by a thread-block.
         warp_size (int); Warp size.
 
     Returns:
@@ -344,12 +361,12 @@ def _cupy_scan_btree(op, block_size, warp_size=32):
     Example:
         b = [10, 36, 55]
         a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        _cupy_scan(op=SCAN_SUM, block_size=4)(b, a, out, ...)
+        _cupy_scan(op=SCAN_SUM, chunk_size=4)(b, a, out, ...)
         out == [1, 3, 6, 10, 15, 21, 28, 36, 45, 55]
 
     Note:
         This uses a kind of method called "Work-Efficient Parallel Scan" for
-        inclusive scan in each block. See below link for details about
+        inclusive scan in each thread-block. See below link for details about
         "Work-Efficient Parallel Scan".
         https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
     """
@@ -363,7 +380,7 @@ def _cupy_scan_btree(op, block_size, warp_size=32):
         const int warp_id = threadIdx.x / ${warp_size};
         const int lane_id = threadIdx.x % ${warp_size};
         if (threadIdx.x == 0) smem0[0] = ${identity};
-    """).substitute(block_size=block_size, warp_size=warp_size,
+    """).substitute(block_size=chunk_size, warp_size=warp_size,
                     identity=_identity[op])
     loop_body = string.Template("""
         O x = ${identity};
@@ -377,30 +394,32 @@ def _cupy_scan_btree(op, block_size, warp_size=32):
         }
         smem1[threadIdx.x] = x;
         __syncthreads();
-        if (warp_id == 0) {
-            O y = ${identity};
-            if (lane_id < n_warp) {
-                y = smem0[${warp_size} * (lane_id + 1)];
-            }
-            for (int j = 1; j < n_warp; j *= 2) {
-                smem2[lane_id] = y;  __syncwarp();
-                if (lane_id % (2*j) == (2*j)-1) {
-                    y ${op}= smem2[lane_id - j];
+        if (n_warp > 1) {
+            if (warp_id == 0) {
+                O y = ${identity};
+                if (lane_id < n_warp) {
+                    y = smem0[${warp_size} * (lane_id + 1)];
                 }
-                __syncwarp();
-            }
-            for (int j = n_warp / 4; j > 0; j /= 2) {
-                smem2[lane_id] = y; __syncwarp();
-                if ((lane_id % (2*j) == j-1) && (lane_id >= 2*j)) {
-                    y ${op}= smem2[lane_id - j];
+                for (int j = 1; j < n_warp; j *= 2) {
+                    smem2[lane_id] = y;  __syncwarp();
+                    if (lane_id % (2*j) == (2*j)-1) {
+                        y ${op}= smem2[lane_id - j];
+                    }
+                    __syncwarp();
                 }
-                __syncwarp();
+                for (int j = n_warp / 4; j > 0; j /= 2) {
+                    smem2[lane_id] = y; __syncwarp();
+                    if ((lane_id % (2*j) == j-1) && (lane_id >= 2*j)) {
+                        y ${op}= smem2[lane_id - j];
+                    }
+                    __syncwarp();
+                }
+                if (lane_id < n_warp) {
+                    smem0[${warp_size} * (lane_id + 1)] = y;
+                }
             }
-            if (lane_id < n_warp) {
-                smem0[${warp_size} * (lane_id + 1)] = y;
-            }
+            __syncthreads();
         }
-        __syncthreads();
         x = smem0[threadIdx.x];
         for (int j = ${warp_size} / 2; j > 0; j /= 2) {
             if (lane_id % (2*j) == j) {
@@ -414,10 +433,11 @@ def _cupy_scan_btree(op, block_size, warp_size=32):
         int block_id = i / ${block_size};
         if (block_id > 0) x ${op}= b[block_id - 1];
         if (i < a.size()) out[i] = x;
-    """).substitute(block_size=block_size, warp_size=warp_size,
+    """).substitute(block_size=chunk_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_scan_btree', loop_prep=loop_prep)
+                                  'cupy_scan_btree', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
@@ -443,26 +463,32 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
         if a.size != out.size:
             raise ValueError('Provided out is the wrong size')
 
-    block_size = 512
-    warp_size = 32
-    if out.dtype.char in 'iIlLqQfd':
-        bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
+    chunk_size = 512
+    if runtime._is_hip_environment:
+        # Note: This is to avoid problems caused by the lack of support for
+        # __syncwarp() in HIP.
+        warp_size = chunk_size
     else:
-        bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
+        warp_size = 32
+    if out.dtype.char in 'iIlLqQfd' and not runtime._is_hip_environment:
+        bsum_kernel = _cupy_bsum_shfl(op, chunk_size, warp_size)
+    else:
+        bsum_kernel = _cupy_bsum_smem(op, chunk_size, warp_size)
     if out.dtype.char in 'fdFD':
-        scan_kernel = _cupy_scan_btree(op, block_size, warp_size)
+        scan_kernel = _cupy_scan_btree(op, chunk_size, warp_size)
     else:
-        scan_kernel = _cupy_scan_naive(op, block_size, warp_size)
-    b_size = (a.size + block_size - 1) // block_size
-    b = cupy.empty((b_size,), dtype=out.dtype)
-    size = b.size * block_size
+        scan_kernel = _cupy_scan_naive(op, chunk_size, warp_size)
 
-    if a.size > block_size:
-        bsum_kernel(a, b, size=size // 2, block_size=block_size // 2)
+    b_size = (a.size + chunk_size - 1) // chunk_size
+    b = cupy.empty((b_size,), dtype=out.dtype)
+    size = b.size * chunk_size
+
+    if a.size > chunk_size:
+        bsum_kernel(a, b, size=size // 2, block_size=chunk_size // 2)
         scan(b, op, dtype=out.dtype, out=b)
-        scan_kernel(b, a, out, size=size, block_size=block_size)
+        scan_kernel(b, a, out, size=size, block_size=chunk_size)
     else:
-        scan_kernel(b, a, out, size=size, block_size=block_size)
+        scan_kernel(b, a, out, size=size, block_size=chunk_size)
 
     return out
 
