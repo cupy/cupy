@@ -402,15 +402,15 @@ def lobpcg(A, X,
         # B-orthogonalize the preconditioned residuals to X.
         if B is not None:
             activeBlockVectorR = activeBlockVectorR\
-                                 - cupy.matmul(blockVectorX,
-                                               cupy
-                                               .matmul(blockVectorBX.T.conj(),
-                                                       activeBlockVectorR))
+                - cupy.matmul(blockVectorX,
+                              cupy
+                              .matmul(blockVectorBX.T.conj(),
+                                      activeBlockVectorR))
         else:
             activeBlockVectorR = activeBlockVectorR - \
-                                 cupy.matmul(blockVectorX,
-                                             cupy.matmul(blockVectorX.T.conj(),
-                                                         activeBlockVectorR))
+                cupy.matmul(blockVectorX,
+                            cupy.matmul(blockVectorX.T.conj(),
+                                        activeBlockVectorR))
 
         ##
         # B-orthonormalize the preconditioned residuals.
@@ -504,11 +504,11 @@ def lobpcg(A, X,
                 gramPBP = ident
 
             gramA = _bmat([[gramXAX, gramXAR, gramXAP],
-                          [gramXAR.T.conj(), gramRAR, gramRAP],
-                          [gramXAP.T.conj(), gramRAP.T.conj(), gramPAP]])
+                           [gramXAR.T.conj(), gramRAR, gramRAP],
+                           [gramXAP.T.conj(), gramRAP.T.conj(), gramPAP]])
             gramB = _bmat([[gramXBX, gramXBR, gramXBP],
-                          [gramXBR.T.conj(), gramRBR, gramRBP],
-                          [gramXBP.T.conj(), gramRBP.T.conj(), gramPBP]])
+                           [gramXBR.T.conj(), gramRBR, gramRBP],
+                           [gramXBP.T.conj(), gramRBP.T.conj(), gramPBP]])
 
             _handle_gramA_gramB_verbosity(gramA, gramB)
 
@@ -521,9 +521,9 @@ def lobpcg(A, X,
 
         if restart:
             gramA = _bmat([[gramXAX, gramXAR],
-                          [gramXAR.T.conj(), gramRAR]])
+                           [gramXAR.T.conj(), gramRAR]])
             gramB = _bmat([[gramXBX, gramXBR],
-                          [gramXBR.T.conj(), gramRBR]])
+                           [gramXBR.T.conj(), gramRBR]])
 
             _handle_gramA_gramB_verbosity(gramA, gramB)
 

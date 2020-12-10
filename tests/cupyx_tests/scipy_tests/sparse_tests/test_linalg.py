@@ -721,7 +721,7 @@ class TestLOBPCG:
         w, _ = scipy.linalg.eig(cupy.asnumpy(A), b=cupy.asnumpy(B))
         w.sort()
         cupy.testing.assert_array_almost_equal(
-                     w[:int(m/2)], cupy.asnumpy(eigvals[:int(m/2)]), decimal=2)
+            w[:int(m/2)], cupy.asnumpy(eigvals[:int(m/2)]), decimal=2)
         return eigvals
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
@@ -783,7 +783,7 @@ class TestLOBPCG:
                                          maxiter=40, largest=False)
 
         cupy.testing.assert_allclose(eigvals, xp.arange(1+m_excluded,
-                                     1+m_excluded+m))
+                                                        1+m_excluded+m))
         self._check_eigen(A, eigvals, vecs, xp, sp, rtol=1e-3, atol=1e-3)
         return eigvals
 
@@ -843,7 +843,7 @@ class TestLOBPCG:
                                      xp.asarray(analytic_w[-p:]))
 
         fiedler_guess = numpy.concatenate((numpy.ones(n//2),
-                                          -numpy.ones(n-n//2)))
+                                           -numpy.ones(n-n//2)))
         X = numpy.vstack((numpy.ones(n), fiedler_guess)).T
         lobpcg_w, _ = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
                                        largest=False)
