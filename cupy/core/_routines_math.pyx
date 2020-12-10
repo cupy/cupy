@@ -456,38 +456,63 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None):
         if a.size != out.size:
             raise ValueError('Provided out is the wrong size')
 
-    block_size = 512
-    warp_size = 64 if runtime._is_hip_environment else 32
+    cdef int block_size = 512
+    cdef int src_cont = int(a._c_contiguous)
+    cdef int out_cont = int(out._c_contiguous)
+
     if runtime._is_hip_environment:
-        if out.dtype.char in 'iIfdlq':
-            # On HIP, __shfl* supports int, unsigned int, float, double,
-            # long, and long long. The documentation is too outdated and
-            # unreliable; refer to the header at
-            # $ROCM_HOME/include/hip/hcc_detail/device_functions.h
-            bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
-        else:
-            bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
+        # TODO(leofang): this seems to make tests pass, but it's unclear if
+        # it is actually safe to nuke __syncwarp or not, so for HIP we still
+        # stay with the old kernel. We should revisit this in the future.
+
+        # if out.dtype.char in 'iIfdlq':
+        #     # On HIP, __shfl* supports int, unsigned int, float, double,
+        #     # long, and long long. The documentation is too outdated and
+        #     # unreliable; refer to the header at
+        #     # $ROCM_HOME/include/hip/hcc_detail/device_functions.h
+        #     bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
+        # else:
+        #     bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
+
+        kern_scan = _inclusive_scan_kernel(a.dtype, out.dtype, block_size, op,
+                                           src_cont, out_cont)
+        kern_scan(grid=((a.size - 1) // (2 * block_size) + 1,),
+                  block=(block_size,),
+                  args=(a, out))
+
+        if (a.size - 1) // (block_size * 2) > 0:
+            blocked_sum = out[block_size * 2 - 1:None:block_size * 2]
+            scan(blocked_sum, op, dtype, blocked_sum)
+            kern_add = _add_scan_blocked_sum_kernel(
+                dtype, op, out_cont)
+            kern_add(grid=((a.size - 1) // (2 * block_size),),
+                     block=(2 * block_size - 1,),
+                     args=(out,))
+        return out
     else:
+        warp_size = 32
+
         if out.dtype.char in 'iIlLqQfd':
             bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
         else:
             bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
-    if out.dtype.char in 'fdFD':
-        scan_kernel = _cupy_scan_btree(op, block_size, warp_size)
-    else:
-        scan_kernel = _cupy_scan_naive(op, block_size, warp_size)
-    b_size = (a.size + block_size - 1) // block_size
-    b = cupy.empty((b_size,), dtype=out.dtype)
-    size = b.size * block_size
 
-    if a.size > block_size:
-        bsum_kernel(a, b, size=size // 2, block_size=block_size // 2)
-        scan(b, op, dtype=out.dtype, out=b)
-        scan_kernel(b, a, out, size=size, block_size=block_size)
-    else:
-        scan_kernel(b, a, out, size=size, block_size=block_size)
+        if out.dtype.char in 'fdFD':
+            scan_kernel = _cupy_scan_btree(op, block_size, warp_size)
+        else:
+            scan_kernel = _cupy_scan_naive(op, block_size, warp_size)
 
-    return out
+        b_size = (a.size + block_size - 1) // block_size
+        b = cupy.empty((b_size,), dtype=out.dtype)
+        size = b.size * block_size
+
+        if a.size > block_size:
+            bsum_kernel(a, b, size=size // 2, block_size=block_size // 2)
+            scan(b, op, dtype=out.dtype, out=b)
+            scan_kernel(b, a, out, size=size, block_size=block_size)
+        else:
+            scan_kernel(b, a, out, size=size, block_size=block_size)
+        return out
 
 
 @_util.memoize(for_each_device=True)
@@ -605,6 +630,85 @@ def _inclusive_batch_scan_kernel(
 
 
 @_util.memoize(for_each_device=True)
+def _inclusive_scan_kernel(src_dtype, dtype, block_size, op, src_c_cont,
+                           out_c_cont):
+    """return Prefix Sum(Scan) cuda kernel
+
+    e.g
+    if blocksize * 2 >= len(src)
+    src [1, 2, 3, 4]
+    dst [1, 3, 6, 10]
+
+    if blocksize * 2 < len(src)
+    block_size: 2
+    src [1, 2, 3, 4, 5, 6]
+    dst [1, 3, 6, 10, 5, 11]
+
+    Args:
+        dtype: src, dst array type
+        block_size: block_size
+
+    Returns:
+         cupy.cuda.Function: cuda function
+    """
+
+    name = 'inclusive_scan_kernel'
+    src_dtype = get_typename(src_dtype)
+    dtype = get_typename(dtype)
+    op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+    identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
+    source = string.Template("""
+    extern "C" __global__ void ${name}(
+        const CArray<${src_dtype}, 1, ${src_c_cont}> src,
+        CArray<${dtype}, 1, ${out_c_cont}> dst){
+        long long n = src.size();
+        __shared__ ${dtype} temp[${block_size} * 2];
+        unsigned int thid = threadIdx.x;
+        unsigned int block = 2 * blockIdx.x * blockDim.x;
+
+        unsigned int idx0 = thid + block;
+        unsigned int idx1 = thid + blockDim.x + block;
+
+        temp[thid] = (idx0 < n) ? (${dtype})src[idx0] : (${dtype})${identity};
+        if (idx1 < n) {
+            temp[thid + blockDim.x] = (${dtype}) src[idx1];
+        } else {
+            temp[thid + blockDim.x] = (${dtype}) ${identity};
+        }
+        __syncthreads();
+
+        for(int i = 1; i <= ${block_size}; i <<= 1){
+            int index = (threadIdx.x + 1) * i * 2 - 1;
+            if (index < (${block_size} << 1)){
+                temp[index] ${op}= temp[index - i];
+            }
+            __syncthreads();
+        }
+
+        for(int i = ${block_size} >> 1; i > 0; i >>= 1){
+            int index = (threadIdx.x + 1) * i * 2 - 1;
+            if(index + i < (${block_size} << 1)){
+                temp[index + i] ${op}= temp[index];
+            }
+            __syncthreads();
+        }
+
+        if(idx0 < n){
+            dst[idx0] = temp[thid];
+        }
+        if(idx1 < n){
+            dst[idx1] = temp[thid + blockDim.x];
+        }
+    }
+    """).substitute(name=name, dtype=dtype, block_size=block_size,
+                    src_dtype=src_dtype,
+                    op=op_char[op], identity=identity[op],
+                    src_c_cont=src_c_cont, out_c_cont=out_c_cont)
+    module = compile_with_cache(source)
+    return module.get_function(name)
+
+
+@_util.memoize(for_each_device=True)
 def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     name = 'add_scan_blocked_sum_kernel'
     dtype = get_typename(dtype)
@@ -636,6 +740,27 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     }
     """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size,
                     c_cont=c_cont)
+    module = compile_with_cache(source)
+    return module.get_function(name)
+
+
+@_util.memoize(for_each_device=True)
+def _add_scan_blocked_sum_kernel(dtype, op, c_cont):
+    name = 'add_scan_blocked_sum_kernel'
+    dtype = get_typename(dtype)
+    ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+    source = string.Template("""
+    extern "C" __global__ void ${name}(CArray<${dtype}, 1, ${c_cont}> src_dst){
+        long long n = src_dst.size();
+        unsigned int idxBase = (blockDim.x + 1) * (blockIdx.x + 1);
+        unsigned int idxAdded = idxBase + threadIdx.x;
+        unsigned int idxAdd = idxBase - 1;
+
+        if(idxAdded < n){
+            src_dst[idxAdded] ${op}= src_dst[idxAdd];
+        }
+    }
+    """).substitute(name=name, dtype=dtype, op=ops[op], c_cont=c_cont)
     module = compile_with_cache(source)
     return module.get_function(name)
 
