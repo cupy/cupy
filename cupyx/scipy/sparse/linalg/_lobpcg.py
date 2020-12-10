@@ -1,23 +1,45 @@
 import numpy
 import cupy
 import cupy.linalg as linalg
-#waiting implementation of the following modules in PR #4172
-#from cupyx.scipy.linalg import (cho_factor, cho_solve)
-import cupyx.scipy.sparse as sparse
+# waiting implementation of the following modules in PR #4172
+# from cupyx.scipy.linalg import (cho_factor, cho_solve)
 import cupyx.scipy.sparse.linalg as splinalg
+
+
+def _bmat(list_obj):
+    """
+    Helper function to create a block matrix in cupy from a list
+    of smaller 2D dense arrays
+    """
+    arr_rows = cupy.array([])
+    for row in list_obj:  # row & list_obj are a list of cupy arrays
+        arr_cols = cupy.array([])
+        for col in row:  # col is a cupy ndarray
+            if col.ndim == 0:
+                col = cupy.array([col])
+            if(arr_cols.size == 0):
+                arr_cols = col
+                continue
+
+            arr_cols = cupy.hstack((arr_cols, col))
+        if(arr_rows.size == 0):
+            arr_rows = arr_cols
+            continue
+        arr_rows = cupy.vstack((arr_rows, arr_cols))
+
+    return arr_rows
 
 
 def _report_nonhermitian(M, name):
     """
     Report if `M` is not a hermitian matrix given its type.
     """
-    from scipy.linalg import norm
 
     md = M - M.T.conj()
 
-    nmd = norm(md, 1)
+    nmd = linalg.norm(md, 1)
     tol = 10 * cupy.finfo(M.dtype).eps
-    tol = max(tol, tol * norm(M, 1))
+    tol = max(tol, tol * linalg.norm(M, 1))
     if nmd > tol:
         print('matrix %s of the type %s is not sufficiently Hermitian:'
               % (name, M.dtype))
@@ -56,9 +78,10 @@ def _makeOperator(operatorInput, expectedShape):
 def _applyConstraints(blockVectorV, YBY, blockVectorBY, blockVectorY):
     """Changes blockVectorV in place."""
     YBV = cupy.dot(blockVectorBY.T.conj(), blockVectorV)
-    #awaiting the implementation of cho_solve in PR #4172
-    #tmp = cho_solve(factYBY, YBV)
+    # awaiting the implementation of cho_solve in PR #4172
+    # tmp = cho_solve(factYBY, YBV)
     tmp = linalg.solve(YBY, YBV)
+    assert(not isinstance(tmp, type(None)))
     blockVectorV -= cupy.dot(blockVectorY, tmp)
 
 
@@ -70,24 +93,24 @@ def _b_orthonormalize(B, blockVectorV, blockVectorBV=None, retInvR=False):
         if B is not None:
             blockVectorBV = B(blockVectorV)
         else:
-            blockVectorBV = blockVectorV  # Shared data!!!
+            blockVectorBV = blockVectorV
     else:
         blockVectorBV = blockVectorBV / normalization
     VBV = cupy.matmul(blockVectorV.T.conj(), blockVectorBV)
     try:
-        # VBV is a Cholesky factor from now on...
-        VBV = linalg.cholesky(VBV, overwrite_a=True)
-        VBV = linalg.inv(VBV, overwrite_a=True)
+        # VBV is a Cholesky factor
+        VBV = linalg.cholesky(VBV).T
+        VBV = cupy.asarray(VBV)
+        assert not isinstance(VBV, type(None))
+        VBV = linalg.inv(VBV)
+        assert not isinstance(VBV, type(None))
         blockVectorV = cupy.matmul(blockVectorV, VBV)
-        # blockVectorV = (cho_solve((VBV.T, True), blockVectorV.T)).T
         if B is not None:
             blockVectorBV = cupy.matmul(blockVectorBV, VBV)
-            # blockVectorBV = (cho_solve((VBV.T, True), blockVectorBV.T)).T
         else:
             blockVectorBV = None
     except Exception as e:
-        print("{} occured".format(e))
-        #raise ValueError('Cholesky has failed')
+        print("Exception: {}, cholesky has failed".format(e))
         blockVectorV = None
         blockVectorBV = None
         VBV = None
@@ -105,16 +128,19 @@ def _get_indx(_lambda, num, largest):
         ii = ii[:-num-1:-1]
     else:
         ii = ii[:num]
-
     return ii
 
-def _genEigh(A, B):
+
+def _genEigh(A, B=None):
     """
     Helper function for converting a generalized eigenvalue problem
-    A(X) = lambda(B(X)) to standard eigen value problem using cholesky.
+    A(X) = lambda(B(X)) to standard eigen value problem using cholesky
+    transformation
     """
-    # we transpose lower triangular matrix to get upper triangular matrix
-    R = cupy.transpose(linalg.cholesky(B))
+    if(B is None):  # use cupy's eigh in standard case
+        vals, vecs = linalg.eigh(A)
+        return vals, vecs
+    R = linalg.cholesky(B).T  # cholesky might fail
     RTi = linalg.inv(cupy.transpose(R))
     Ri = linalg.inv(R)
     F = cupy.matmul(RTi, cupy.matmul(A, Ri))
@@ -134,16 +160,20 @@ def lobpcg(A, X,
     definite (SPD) generalized eigenproblems.
 
     Args:
-        A (cupy.ndarray, cupyx.scipy.sparse.csr_matrix, cupy.scipy.sparse.linalg.LinearOperator):
+        A (cupy.ndarray, cupyx.scipy.sparse.csr_matrix,
+        cupy.scipy.sparse.linalg.LinearOperator):
             The symmetric linear operator of the problem, usually a
             sparse matrix.
         X (cupy.ndarray):
-            Initial approximation to the ``k`` eigenvectors (non-sparse). If `A`
-            has ``shape=(n,n)`` then `X` should have shape ``shape=(n,k)``.
-        B (cupy.ndarray, cupyx.scipy.sparse.csr_matrix, cupy.scipy.sparse.linalg.LinearOperator):
+            Initial approximation to the ``k`` eigenvectors (non-sparse).
+            If `A` has ``shape=(n,n)`` then `X` should have shape
+            ``shape=(n,k)``.
+        B (cupy.ndarray, cupyx.scipy.sparse.csr_matrix,
+        cupy.scipy.sparse.linalg.LinearOperator):
             The right hand side operator in a generalized eigenproblem.
             By default, ``B = Identity``.
-        M (cupy.ndarray, cupyx.scipy.sparse.csr_matrix, cupy.scipy.sparse.linalg.LinearOperator):
+        M (cupy.ndarray, cupyx.scipy.sparse.csr_matrix,
+        cupy.scipy.sparse.linalg.LinearOperator):
             Preconditioner to `A`; by default ``M = Identity``.
             `M` should approximate the inverse of `A`.
         Y (cupy.ndarray):
@@ -156,7 +186,8 @@ def lobpcg(A, X,
         maxiter (int):
             Maximum number of iterations.  The default is ``maxiter = 20``.
         largest (bool):
-            When True, solve for the largest eigenvalues, otherwise the smallest.
+            When True, solve for the largest eigenvalues,
+            otherwise the smallest.
         verbosityLevel (int):
             Controls solver output.  The default is ``verbosityLevel=0``.
         retLambdaHistory (bool):
@@ -172,7 +203,8 @@ def lobpcg(A, X,
         lambdas (list of cupy.ndarray):
             The eigenvalue history, if `retLambdaHistory` is True.
         rnorms (list of cupy.ndarray):
-            The history of residual norms, if `retResidualNormsHistory` is True.
+            The history of residual norms, if `retResidualNormsHistory`
+            is True.
 
     .. seealso:: :func:`scipy.sparse.linalg.lobpcg`
 
@@ -187,6 +219,7 @@ def lobpcg(A, X,
     blockVectorX = X
     blockVectorY = Y
     residualTolerance = tol
+
     if maxiter is None:
         maxiter = 20
 
@@ -195,7 +228,6 @@ def lobpcg(A, X,
     else:
         sizeY = 0
 
-    # Block size.
     if len(blockVectorX.shape) != 2:
         raise ValueError('expected rank-2 array for argument X')
 
@@ -227,29 +259,26 @@ def lobpcg(A, X,
     M = _makeOperator(M, (n, n))
 
     if (n - sizeY) < (5 * sizeX):
-        # warn('The problem size is small compared to the block size.' \
-        #        ' Using dense eigensolver instead of LOBPCG.')
-
+        # The problem size is small compared to the block size.
+        # Using dense general eigensolver instead of LOBPCG.
         sizeX = min(sizeX, n)
 
         if blockVectorY is not None:
             raise NotImplementedError('The dense eigensolver '
                                       'does not support constraints.')
 
-        # Define the closed range of indices of eigenvalues to return.
-        if largest:
-            eigvals = (n - sizeX, n-1)
-        else:
-            eigvals = (0, sizeX-1)
-
         A_dense = A(cupy.eye(n, dtype=A.dtype))
         B_dense = None if B is None else B(cupy.eye(n, dtype=B.dtype))
 
+        # call numerically unstable general eigen solver
         vals, vecs = _genEigh(A_dense, B_dense)
         if largest:
             # Reverse order to be compatible with eigs() in 'LM' mode.
             vals = vals[::-1]
             vecs = vecs[:, ::-1]
+
+        vals = vals[:sizeX]
+        vecs = vecs[:, :sizeX]
 
         return vals, vecs
 
@@ -266,11 +295,12 @@ def lobpcg(A, X,
 
         # gramYBY is a dense array.
         gramYBY = cupy.dot(blockVectorY.T.conj(), blockVectorBY)
-        #try:
-            # gramYBY is a Cholesky factor from now on...
-            #awaiting implementation of cho_factor in PR #4172
-            #gramYBY = cho_factor(gramYBY)
-        #except Exception as e:
+
+        # awaiting implementation of cho_factor in PR #4172
+        # try:
+        #    gramYBY is a Cholesky factor from now on...
+        #    gramYBY = cho_factor(gramYBY)
+        # except Exception as e:
         #    raise ValueError('''cannot handle linearly dependent constraints,
         #                     {} occurred'''.format(e))
 
@@ -280,10 +310,11 @@ def lobpcg(A, X,
     blockVectorX, blockVectorBX = _b_orthonormalize(B, blockVectorX)
 
     # Compute the initial Ritz vectors: solve the eigenproblem.
+    assert(not isinstance(blockVectorX, type(None)))
     blockVectorAX = A(blockVectorX)
     gramXAX = cupy.dot(blockVectorX.T.conj(), blockVectorAX)
 
-    _lambda, eigBlockVector = linalg.eigh(gramXAX)
+    _lambda, eigBlockVector = _genEigh(gramXAX)
     ii = _get_indx(_lambda, sizeX, largest)
     _lambda = _lambda[ii]
 
@@ -335,7 +366,7 @@ def lobpcg(A, X,
         if verbosityLevel > 2:
             print(activeMask)
 
-        currentBlockSize = activeMask.sum()
+        currentBlockSize = int(activeMask.sum())
         if currentBlockSize != previousBlockSize:
             previousBlockSize = currentBlockSize
             ident = cupy.eye(currentBlockSize, dtype=A.dtype)
@@ -345,6 +376,7 @@ def lobpcg(A, X,
 
         if verbosityLevel > 0:
             print('current block size:', currentBlockSize)
+            print('tolerance: ', residualTolerance)
             print('eigenvalue:', _lambda)
             print('residual norms:', residualNorms)
         if verbosityLevel > 10:
@@ -369,13 +401,16 @@ def lobpcg(A, X,
 
         # B-orthogonalize the preconditioned residuals to X.
         if B is not None:
-            activeBlockVectorR = activeBlockVectorR - cupy.matmul(blockVectorX,
-                                 cupy.matmul(blockVectorBX.T.conj(),
-                                 activeBlockVectorR))
+            activeBlockVectorR = activeBlockVectorR\
+                                 - cupy.matmul(blockVectorX,
+                                               cupy
+                                               .matmul(blockVectorBX.T.conj(),
+                                                       activeBlockVectorR))
         else:
-            activeBlockVectorR = activeBlockVectorR - cupy.matmul(blockVectorX,
-                                 cupy.matmul(blockVectorX.T.conj(),
-                                 activeBlockVectorR))
+            activeBlockVectorR = activeBlockVectorR - \
+                                 cupy.matmul(blockVectorX,
+                                             cupy.matmul(blockVectorX.T.conj(),
+                                                         activeBlockVectorR))
 
         ##
         # B-orthonormalize the preconditioned residuals.
@@ -433,13 +468,15 @@ def lobpcg(A, X,
             gramXAX = cupy.dot(blockVectorX.T.conj(), blockVectorAX)
             gramXAX = (gramXAX + gramXAX.T.conj())/2
             gramXBX = cupy.dot(blockVectorX.T.conj(), blockVectorBX)
-            gramRBR = cupy.dot(activeBlockVectorR.T.conj(), activeBlockVectorBR)
+            gramRBR = cupy.dot(activeBlockVectorR.T.conj(),
+                               activeBlockVectorBR)
             gramXBR = cupy.dot(blockVectorX.T.conj(), activeBlockVectorBR)
         else:
             gramXAX = cupy.diag(_lambda)
             gramXBX = ident0
             gramRBR = ident
-            gramXBR = cupy.zeros((sizeX, currentBlockSize), dtype=A.dtype)
+            gramXBR = cupy.zeros((int(sizeX), int(currentBlockSize)),
+                                 dtype=A.dtype)
 
         def _handle_gramA_gramB_verbosity(gramA, gramB):
             if verbosityLevel > 0:
@@ -452,21 +489,24 @@ def lobpcg(A, X,
 
         if not restart:
             gramXAP = cupy.dot(blockVectorX.T.conj(), activeBlockVectorAP)
-            gramRAP = cupy.dot(activeBlockVectorR.T.conj(), activeBlockVectorAP)
-            gramPAP = cupy.dot(activeBlockVectorP.T.conj(), activeBlockVectorAP)
+            gramRAP = cupy.dot(activeBlockVectorR.T.conj(),
+                               activeBlockVectorAP)
+            gramPAP = cupy.dot(activeBlockVectorP.T.conj(),
+                               activeBlockVectorAP)
             gramXBP = cupy.dot(blockVectorX.T.conj(), activeBlockVectorBP)
-            gramRBP = cupy.dot(activeBlockVectorR.T.conj(), activeBlockVectorBP)
+            gramRBP = cupy.dot(activeBlockVectorR.T.conj(),
+                               activeBlockVectorBP)
             if explicitGramFlag:
                 gramPAP = (gramPAP + gramPAP.T.conj())/2
                 gramPBP = cupy.dot(activeBlockVectorP.T.conj(),
-                                 activeBlockVectorBP)
+                                   activeBlockVectorBP)
             else:
                 gramPBP = ident
 
-            gramA = sparse.bmat([[gramXAX, gramXAR, gramXAP],
+            gramA = _bmat([[gramXAX, gramXAR, gramXAP],
                           [gramXAR.T.conj(), gramRAR, gramRAP],
                           [gramXAP.T.conj(), gramRAP.T.conj(), gramPAP]])
-            gramB = sparse.bmat([[gramXBX, gramXBR, gramXBP],
+            gramB = _bmat([[gramXBX, gramXBR, gramXBP],
                           [gramXBR.T.conj(), gramRBR, gramRBP],
                           [gramXBP.T.conj(), gramRBP.T.conj(), gramPBP]])
 
@@ -475,23 +515,23 @@ def lobpcg(A, X,
             try:
                 _lambda, eigBlockVector = _genEigh(gramA, gramB)
             except Exception as e:
-                print("{} occured".format(e))
+                print("{} occured, restarting...\n\n".format(e))
                 # try again after dropping the direction vectors P from RR
                 restart = True
 
         if restart:
-            gramA = sparse.bmat([[gramXAX, gramXAR],
+            gramA = _bmat([[gramXAX, gramXAR],
                           [gramXAR.T.conj(), gramRAR]])
-            gramB = sparse.bmat([[gramXBX, gramXBR],
+            gramB = _bmat([[gramXBX, gramXBR],
                           [gramXBR.T.conj(), gramRBR]])
 
             _handle_gramA_gramB_verbosity(gramA, gramB)
 
             try:
                 _lambda, eigBlockVector = _genEigh(gramA, gramB)
-            except Exception as e:
-                print("{} occured".format(e))
-                raise ValueError('eigh has failed in lobpcg iterations')
+            except Exception:
+                raise ValueError('eigh has failed in lobpcg iterations'
+                                 'even after restart...')
 
         ii = _get_indx(_lambda, sizeX, largest)
         if verbosityLevel > 10:
@@ -505,11 +545,6 @@ def lobpcg(A, X,
 
         if verbosityLevel > 10:
             print('lambda:', _lambda)
-#         # Normalize eigenvectors!
-#         aux = cupy.sum( eigBlockVector.conj() * eigBlockVector, 0 )
-#         eigVecNorms = cupy.sqrt( aux )
-#         eigBlockVector = eigBlockVector / eigVecNorms[cupy.newaxis, :]
-#         eigBlockVector, aux = _b_orthonormalize( B, eigBlockVector )
 
         if verbosityLevel > 10:
             print(eigBlockVector)
@@ -586,7 +621,10 @@ def lobpcg(A, X,
     aux = cupy.sum(blockVectorR.conj() * blockVectorR, 0)
     residualNorms = cupy.sqrt(aux)
 
-    # Future work: Need to add Postprocessing here:
+    # Future work:
+    # Generalized eigen value solver like `scipy.linalg.eigh`
+    # that takes in `B` matrix as input
+    # `cupy.linalg.cholesky` is more unstable than `scipy.linalg.cholesky`
     # Making sure eigenvectors "exactly" satisfy the blockVectorY constrains?
     # Making sure eigenvecotrs are "exactly" othonormalized by final "exact" RR
     # Computing the actual true residuals
