@@ -49,6 +49,7 @@ Fourier Filters
    :toctree: generated/
    :nosignatures:
 
+   cupyx.scipy.ndimage.fourier_ellipsoid
    cupyx.scipy.ndimage.fourier_gaussian
    cupyx.scipy.ndimage.fourier_shift
    cupyx.scipy.ndimage.fourier_uniform
