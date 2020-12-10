@@ -19,3 +19,4 @@ These functions cover a subset of
    sparse
    special
    signal
+   stats
