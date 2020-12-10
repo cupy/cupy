@@ -153,8 +153,10 @@ _identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
 _preamble = '' if not runtime._is_hip_environment else r'''
     // ignore mask
     #define __shfl_xor_sync(m, x, y, z) __shfl_xor(x, y, z)
-    // TODO(leofang): replace this when HIP supports syncing warps
-    #define __syncwarp __syncthreads
+
+    // It is guaranteed to be safe on AMD's hardware, see
+    // https://rocmdocs.amd.com/en/latest/Programming_Guides/HIP-GUIDE.html#warp-cross-lane-functions  # NOQA
+    #define __syncwarp() {}
     '''
 
 
