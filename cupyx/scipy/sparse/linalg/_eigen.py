@@ -7,6 +7,7 @@ from cupy.cuda import device
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupyx.scipy.sparse import csr
+from cupyx.scipy.sparse.linalg import _interface
 
 
 def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
@@ -17,8 +18,10 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     with corresponding eigenvectors ``x``.
 
     Args:
-        a (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): A symmetric square
-            matrix with dimension ``(n, n)``.
+        a (ndarray, spmatrix or LinearOperator): A symmetric square matrix with
+            dimension ``(n, n)``. ``a`` must :class:`cupy.ndarray`,
+            :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         k (int): The number of eigenvalues and eigenvectors to compute. Must be
             ``1 <= k < n``.
         which (str): 'LM' or 'LA'. 'LM': finds ``k`` largest (in magnitude)
@@ -80,6 +83,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         lanczos = _lanczos_fast(a, n, ncv)
     else:
         lanczos = _lanczos_asis
+    a_matvec = _get_matvec(a)
 
     # Lanczos iteration
     lanczos(a, V, u, alpha, beta, 0, ncv)
@@ -101,7 +105,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         u -= u.T @ V[:k].conj().T @ V[:k]
         V[k] = u / cublas.nrm2(u)
 
-        u[...] = a @ V[k]
+        u[...] = a_matvec(V[k])
         cublas.dotc(V[k], u, out=alpha[k])
         u -= alpha[k] * V[k]
         u -= V[:k].T @ beta_k
@@ -126,9 +130,19 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         return cupy.sort(w)
 
 
+def _get_matvec(a):
+    if isinstance(a, _interface.LinearOperator):
+        matvec = a.matvec
+    else:
+        def matvec(x):
+            return a @ x
+    return matvec
+
+
 def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
+    a_matvec = _get_matvec(a)
     for i in range(i_start, i_end):
-        u[...] = a @ V[i]
+        u[...] = a_matvec(V[i])
         cublas.dotc(V[i], u, out=alpha[i])
         u -= u.T @ V[:i+1].conj().T @ V[:i+1]
         cublas.nrm2(u, out=beta[i])
@@ -167,6 +181,8 @@ def _lanczos_fast(A, n, ncv):
         spmv_beta = numpy.array(0.0, A.dtype)
         spmv_cuda_dtype = cusparse._dtype_to_DataType(A.dtype)
         spmv_alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
+    else:
+        A_matvec = _get_matvec(A)
 
     v = cupy.empty((n,), dtype=A.dtype)
     uu = cupy.empty((ncv,), dtype=A.dtype)
@@ -197,7 +213,7 @@ def _lanczos_fast(A, n, ncv):
         for i in range(i_start, i_end):
             # Matrix-vector multiplication
             if cusparse_handle is None:
-                u[...] = A @ v
+                u[...] = A_matvec(v)
             else:
                 _cusparse.spMV(
                     cusparse_handle, spmv_op_a, spmv_alpha.ctypes.data,
@@ -279,8 +295,10 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
     """Finds the largest ``k`` singular values/vectors for a sparse matrix.
 
     Args:
-        a (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): A real or complex
-            array with dimension ``(m, n)``
+        a (ndarray, spmatrix or LinearOperator): A real or complex array with
+            dimension ``(m, n)``. ``a`` must :class:`cupy.ndarray`,
+            :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         k (int): The number of singular values/vectors to compute. Must be
             ``1 <= k < min(m, n)``.
         ncv (int): The number of Lanczos vectors generated. Must be
@@ -319,17 +337,41 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
         raise ValueError('k must be smaller than min(m, n) (actual: {})'
                          ''.format(k))
 
-    aH = a.conj().T
-    if m >= n:
-        aa = aH @ a
+    if isinstance(a, _interface.LinearOperator):
+        if m >= n:
+            a_dot = a.matvec
+            a_matmat = a.matmat
+            aH_dot = a.rmatvec
+            aH_matmat = a.rmatmat
+        else:
+            a_dot = a.rmatvec
+            a_matmat = a.rmatmat
+            aH_dot = a.matvec
+            aH_matmat = a.matmat
     else:
-        aa = a @ aH
+        aH = a.conj().T
+        if m >= n:
+            a_dot = a_matmat = a.dot
+            aH_dot = aH_matmat = aH.dot
+        else:
+            a_dot = a_matmat = aH.dot
+            aH_dot = aH_matmat = a.dot
+
+    def aH_a_matvec(x):
+        return(aH_dot(a_dot(x)))
+
+    def aH_a_matmat(x):
+        return(aH_matmat(a_matmat(x)))
+
+    min_mn = min(m, n)
+    aH_a = _interface.LinearOperator(matvec=aH_a_matvec, matmat=aH_a_matmat,
+                                     dtype=a.dtype, shape=(min_mn, min_mn))
 
     if return_singular_vectors:
-        w, x = eigsh(aa, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
+        w, x = eigsh(aH_a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
                      return_eigenvectors=True)
     else:
-        w = eigsh(aa, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
+        w = eigsh(aH_a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
                   return_eigenvectors=False)
 
     w = cupy.maximum(w, 0)
@@ -347,10 +389,10 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
     x = x[:, above_cutoff]
     if m >= n:
         v = x
-        u = a @ v / s[:n_large]
+        u = a_matmat(v) / s[:n_large]
     else:
         u = x
-        v = aH @ u / s[:n_large]
+        v = a_matmat(u) / s[:n_large]
     u = _augmented_orthnormal_cols(u, k - n_large)
     v = _augmented_orthnormal_cols(v, k - n_large)
 
