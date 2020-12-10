@@ -170,6 +170,9 @@ def _lanczos_fast(A, n, ncv):
 
     v = cupy.empty((n,), dtype=A.dtype)
     uu = cupy.empty((ncv,), dtype=A.dtype)
+    one = numpy.array(1.0, dtype=A.dtype)
+    zero = numpy.array(0.0, dtype=A.dtype)
+    mone = numpy.array(-1.0, dtype=A.dtype)
 
     outer_A = A
 
@@ -214,12 +217,12 @@ def _lanczos_fast(A, n, ncv):
             # Orthogonalize
             gemm(cublas_handle, _cublas.CUBLAS_OP_C, _cublas.CUBLAS_OP_N,
                  1, i + 1, n,
-                 1.0, u.data.ptr, n, V.data.ptr, n,
-                 0.0, uu.data.ptr, 1)
+                 one.ctypes.data, u.data.ptr, n, V.data.ptr, n,
+                 zero.ctypes.data, uu.data.ptr, 1)
             gemm(cublas_handle, _cublas.CUBLAS_OP_N, _cublas.CUBLAS_OP_C,
                  n, 1, i + 1,
-                 -1.0, V.data.ptr, n, uu.data.ptr, 1,
-                 1.0, u.data.ptr, n)
+                 mone.ctypes.data, V.data.ptr, n, uu.data.ptr, 1,
+                 one.ctypes.data, u.data.ptr, n)
 
             # Call nrm2
             _cublas.setPointerMode(

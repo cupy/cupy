@@ -214,15 +214,40 @@ class BaseStream(object):
                 object), and returns nothing.
             arg (object): Argument to the callback.
 
-        """
-        if runtime._is_hip_environment and self.ptr == 0:
-            raise RuntimeError('HIP does not allow adding callbacks to the '
-                               'default (null) stream')
+        .. note::
+            Whenever possible, use the :meth:`launch_host_func` method
+            instead of this one, as it may be deprecated and removed from
+            CUDA at some point.
 
+        """
         def f(stream, status, dummy):
             callback(self, status, arg)
 
         runtime.streamAddCallback(self.ptr, f, 0)
+
+    def launch_host_func(self, callback, arg):
+        """Launch a callback on host when all queued work is done.
+
+        Args:
+            callback (function): Callback function. It must take only one
+                argument (user data object), and returns nothing.
+            arg (object): Argument to the callback.
+
+        .. note::
+            Whenever possible, this method is recommended over
+            :meth:`add_callback`, which may be deprecated and removed from
+            CUDA at some point.
+
+        .. seealso:: `cudaLaunchHostFunc()`_
+
+        .. _cudaLaunchHostFunc():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EXECUTION.html#group__CUDART__EXECUTION_1g05841eaa5f90f27124241baafb3e856f
+
+        """
+        def f(dummy):
+            callback(arg)
+
+        runtime.launchHostFunc(self.ptr, f, 0)
 
     def record(self, event=None):
         """Records an event on the stream.

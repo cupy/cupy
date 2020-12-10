@@ -425,16 +425,19 @@ def preconfigure_modules(compiler, settings):
         errmsg = []
 
         if module['name'] == 'cutensor':
-            cuda_version = build.get_cuda_version()
-            cuda_version = str(cuda_version // 1000) + '.' + \
-                str((cuda_version // 10) % 100)
             cutensor_path = os.environ.get('CUTENSOR_PATH', '')
             inc_path = os.path.join(cutensor_path, 'include')
             if os.path.exists(inc_path):
                 settings['include_dirs'].append(inc_path)
-            lib_path = os.path.join(cutensor_path, 'lib', cuda_version)
-            if os.path.exists(lib_path):
-                settings['library_dirs'].append(lib_path)
+            cuda_version = build.get_cuda_version()
+            cuda_major = str(cuda_version // 1000)
+            cuda_major_minor = cuda_major + '.' + \
+                str((cuda_version // 10) % 100)
+            for cuda_ver in (cuda_major_minor, cuda_major):
+                lib_path = os.path.join(cutensor_path, 'lib', cuda_ver)
+                if os.path.exists(lib_path):
+                    settings['library_dirs'].append(lib_path)
+                    break
 
         print('')
         print('-------- Configuring Module: {} --------'.format(
