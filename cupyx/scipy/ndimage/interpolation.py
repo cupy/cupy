@@ -234,7 +234,7 @@ def _prepad_for_spline_filter(input, mode, cval):
     return padded, npad
 
 
-def _filter_input(image, prefilter, mode, cval, order, allow_float32=True):
+def _filter_input(image, prefilter, mode, cval, order):
     """Perform spline prefiltering when needed.
 
     Spline orders > 1 need a prefiltering stage to preserve resolution.
@@ -247,8 +247,8 @@ def _filter_input(image, prefilter, mode, cval, order, allow_float32=True):
     if not prefilter or order < 2:
         return (cupy.ascontiguousarray(image), 0)
     padded, npad = _prepad_for_spline_filter(image, mode, cval)
-    filtered = spline_filter(padded, order, output=image.dtype,
-                             mode=mode, allow_float32=True)
+    float_dtype = cupy.promote_types(image.dtype, cupy.float32)
+    filtered = spline_filter(padded, order, output=float_dtype, mode=mode)
     return cupy.ascontiguousarray(filtered), npad
 
 
