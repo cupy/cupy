@@ -1,6 +1,7 @@
 import cupy
 import numpy
 import pytest
+import scipy
 
 from cupy import testing
 # TODO (grlee77): use fft instead of fftpack once min. supported scipy >= 1.4
