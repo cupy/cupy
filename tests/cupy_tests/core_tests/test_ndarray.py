@@ -278,7 +278,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
 # TODO(leofang): test PTDS
 @testing.parameterize(*testing.product({
     'stream': ('null', 'new'),
-    'sync': (True, False),
+    'ver': (0, 1, 2, 3),
 }))
 class TestNdarrayCudaInterfaceStream(unittest.TestCase):
     def setUp(self):
@@ -289,11 +289,11 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
 
         # in this test, "sync" refers to whether the Producer would export
         # its stream (for Consumers to sync) or not
-        self.sync_config = _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM
-        _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM = self.sync
+        self.ver_config = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.ver
 
     def tearDown(self):
-        _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM = self.sync_config
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.ver_config
 
     def test_cuda_array_interface_stream(self):
         # this tests exporting CAI with a given stream
@@ -312,13 +312,13 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         assert iface['data'] == (arr.data.ptr, False)
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
-        if self.sync:
+        if self.ver == 3:
             if stream.ptr == 0:
                 assert iface['stream'] == 1
             else:
                 assert iface['stream'] == stream.ptr
         else:
-            assert iface['stream'] is None
+            assert getattr(iface, 'stream') is None
 
 
 @testing.parameterize(

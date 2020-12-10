@@ -181,7 +181,7 @@ cdef class ndarray:
             # if CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION is set to 0, 1, or 2
             # (so that other participating libraries lacking a finer control
             # over sync behavior can avoid syncing).
-            desc['stream'] = None
+            pass
 
         return desc
 
