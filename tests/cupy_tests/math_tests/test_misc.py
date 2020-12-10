@@ -243,6 +243,7 @@ class TestMisc(unittest.TestCase):
         right = 20
         return xp.interp(x, fx, fy, left, right)
 
+    @testing.with_requires('numpy>=1.17.0')
     @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
     @testing.for_dtypes('efdFD', name='dtype_y')
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -254,6 +255,7 @@ class TestMisc(unittest.TestCase):
         fy[0] = fy[2] = fy[-1] = numpy.nan
         return xp.interp(x, fx, fy)
 
+    @testing.with_requires('numpy>=1.17.0')
     @testing.for_float_dtypes(name='dtype_x')
     @testing.for_dtypes('efdFD', name='dtype_y')
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -265,6 +267,7 @@ class TestMisc(unittest.TestCase):
         fx[-1] = numpy.nan  # x and fx must remain sorted (NaNs are the last)
         return xp.interp(x, fx, fy)
 
+    @testing.with_requires('numpy>=1.17.0')
     @testing.for_float_dtypes(name='dtype_x')
     @testing.for_dtypes('efdFD', name='dtype_y')
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -276,6 +279,7 @@ class TestMisc(unittest.TestCase):
         x[-1] = numpy.nan  # x and fx must remain sorted (NaNs are the last)
         return xp.interp(x, fx, fy)
 
+    @testing.with_requires('numpy>=1.17.0')
     @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
     @testing.for_dtypes('efdFD', name='dtype_y')
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -287,6 +291,7 @@ class TestMisc(unittest.TestCase):
         fy[0] = fy[2] = fy[-1] = numpy.inf
         return xp.interp(x, fx, fy)
 
+    @testing.with_requires('numpy>=1.17.0')
     @testing.for_float_dtypes(name='dtype_x')
     @testing.for_dtypes('efdFD', name='dtype_y')
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -298,6 +303,7 @@ class TestMisc(unittest.TestCase):
         fx[-1] = numpy.inf  # x and fx must remain sorted
         return xp.interp(x, fx, fy)
 
+    @testing.with_requires('numpy>=1.17.0')
     @testing.for_float_dtypes(name='dtype_x')
     @testing.for_dtypes('efdFD', name='dtype_y')
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -321,6 +327,7 @@ class TestMisc(unittest.TestCase):
         right = 20
         return xp.interp(x, fx, fy, left, right)
 
+    @testing.with_requires('numpy>=1.17.0')
     @testing.for_float_dtypes(name='dtype_x')
     @testing.for_dtypes('efdFD', name='dtype_y')
     @testing.numpy_cupy_allclose(atol=1e-5)
