@@ -1,7 +1,7 @@
 import cupy
 import cupyx
 
-from .coo import coo_matrix
+from cupyx.scipy import sparse
 
 
 def find(A):
@@ -20,7 +20,7 @@ def find(A):
     .. seealso:: :func:`scipy.sparse.find`
     """
     _check_A_type(A)
-    A = coo_matrix(A, copy=True)
+    A = sparse.coo_matrix(A, copy=True)
     A.sum_duplicates()
     nz_mask = A.data != 0
     return A.row[nz_mask], A.col[nz_mask], A.data[nz_mask]
@@ -42,7 +42,7 @@ def tril(A, k=0, format=None):
     .. seealso:: :func:`scipy.sparse.tril`
     """
     _check_A_type(A)
-    A = coo_matrix(A, copy=False)
+    A = sparse.coo_matrix(A, copy=False)
     mask = A.row + k >= A.col
     return _masked_coo(A, mask).asformat(format)
 
@@ -63,7 +63,7 @@ def triu(A, k=0, format=None):
     .. seealso:: :func:`scipy.sparse.triu`
     """
     _check_A_type(A)
-    A = coo_matrix(A, copy=False)
+    A = sparse.coo_matrix(A, copy=False)
     mask = A.row + k <= A.col
     return _masked_coo(A, mask).asformat(format)
 
@@ -78,4 +78,4 @@ def _masked_coo(A, mask):
     row = A.row[mask]
     col = A.col[mask]
     data = A.data[mask]
-    return coo_matrix((data, (row, col)), shape=A.shape, dtype=A.dtype)
+    return sparse.coo_matrix((data, (row, col)), shape=A.shape, dtype=A.dtype)
