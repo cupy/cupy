@@ -1,0 +1,33 @@
+# This code was automatically generated. Do not modify it directly.
+
+from libc.stdint cimport intptr_t, int64_t
+
+
+########################################
+# Opaque data structures
+
+cdef extern from *:
+    ctypedef int DataType 'cudaDataType'
+
+
+cdef extern from *:
+{opaque}
+
+
+########################################
+# Enumerators
+
+cdef extern from *:
+{enum_type}
+
+
+{enum_value}
+
+
+########################################
+# Auxiliary structures
+
+{aux_struct}
+
+
+# TODO: should also expose functions?
