@@ -92,7 +92,7 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
 
         chunk_size = 512
         if nonzero.size > chunk_size:
-            # TODO(anruse): We need to set an appropriate threshold, as
+            # TODO(anaruse): We need to set an appropriate threshold, as
             # "incomplete scan" is a bit slower when the array size is small.
             incomplete_scan = True
         else:
