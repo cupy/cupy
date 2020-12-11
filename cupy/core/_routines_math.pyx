@@ -463,7 +463,7 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None,
     block_size = 512
     warp_size = 64 if runtime._is_hip_environment else 32
     if runtime._is_hip_environment:
-        if out.dtype.char in 'iIfdlq':
+        if dtype.char in 'iIfdlq':
             # On HIP, __shfl* supports int, unsigned int, float, double,
             # long, and long long. The documentation is too outdated and
             # unreliable; refer to the header at
@@ -472,11 +472,11 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None,
         else:
             bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
     else:
-        if out.dtype.char in 'iIlLqQfd':
+        if dtype.char in 'iIlLqQfd':
             bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
         else:
             bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
-    if out.dtype.char in 'fdFD':
+    if dtype.char in 'fdFD':
         scan_kernel = _cupy_scan_btree(op, block_size, warp_size)
     else:
         scan_kernel = _cupy_scan_naive(op, block_size, warp_size)
