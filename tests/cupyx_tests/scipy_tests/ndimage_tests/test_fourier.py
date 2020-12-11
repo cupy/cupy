@@ -1,7 +1,6 @@
 import cupy
 import numpy
 import pytest
-import scipy
 
 from cupy import testing
 # TODO (grlee77): use fft instead of fftpack once min. supported scipy >= 1.4
@@ -10,13 +9,19 @@ import cupyx.scipy.fftpack  # NOQA
 import cupyx.scipy.ndimage  # NOQA
 
 try:
+    # scipy.fft only available since SciPy 1.4.0
     import scipy.fft  # NOQA
 except ImportError:
     pass
-finally:
+
+try:
+    # These modules will be present in all supported SciPy versions
+    import scipy
     import scipy.fftpack  # NOQA
     import scipy.ndimage  # NOQA
     scipy_version = numpy.lib.NumpyVersion(scipy.__version__)
+except ImportError:
+    pass
 
 
 @testing.parameterize(
@@ -376,6 +381,8 @@ class TestFourierEllipsoid():
         return xp.ascontiguousarray(a)
 
 
+@testing.gpu
+@testing.with_requires('scipy')
 class TestFourierEllipsoidInvalid():
 
     # SciPy < 1.5 raises ValueError instead of AxisError
