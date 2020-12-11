@@ -11,6 +11,7 @@ from cupy.core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
 
+from cupy_backends.cuda.api cimport runtime
 from cupy.core._carray cimport shape_t
 from cupy.core._carray cimport strides_t
 from cupy.core cimport core
@@ -108,7 +109,7 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
 
     nonzero.shape = self.shape
     if incomplete_scan:
-        warp_size = 32
+        warp_size = 64 if runtime._is_hip_environment else 32
         size = scan_index.size * chunk_size
         _nonzero_kernel_incomplete_scan(chunk_size, warp_size)(
             nonzero, scan_index, dst,
@@ -427,6 +428,12 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
     return v
 
 
+_preamble = '' if not runtime._is_hip_environment else r'''
+    // ignore mask
+    #define __shfl_up_sync(m, x, y, z) __shfl_up(x, y, z)
+    '''
+
+
 @cupy._util.memoize(for_each_device=True)
 def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
     in_params = 'raw T a, raw S b'
@@ -441,7 +448,7 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
         S x = 0;
         if (i < a.size()) x = a[i];
         for (int j = 1; j < ${warp_size}; j *= 2) {
-            S tmp = __shfl_up_sync(0xffffffff, x, j);
+            S tmp = __shfl_up_sync(0xffffffff, x, j, ${warp_size});
             if (lane_id - j >= 0) x += tmp;
         }
         if (lane_id == ${warp_size} - 1) smem[warp_id] = x;
@@ -450,7 +457,7 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
             S y = 0;
             if (lane_id < n_warp) y = smem[lane_id];
             for (int j = 1; j < n_warp; j *= 2) {
-                S tmp = __shfl_up_sync(0xffffffff, y, j);
+                S tmp = __shfl_up_sync(0xffffffff, y, j, ${warp_size});
                 if (lane_id - j >= 0) y += tmp;
             }
             int block_id = i / ${block_size};
@@ -461,7 +468,7 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
         }
         __syncthreads();
         x += smem[warp_id];
-        S x0 = __shfl_up_sync(0xffffffff, x, 1);
+        S x0 = __shfl_up_sync(0xffffffff, x, 1, ${warp_size});
         if (lane_id == 0) {
             x0 = smem[warp_id];
         }
@@ -477,7 +484,7 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size)
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
                                   'nonzero_kernel_incomplete_scan',
-                                  loop_prep=loop_prep)
+                                  loop_prep=loop_prep, preamble=_preamble)
 
 
 _nonzero_kernel = ElementwiseKernel(
