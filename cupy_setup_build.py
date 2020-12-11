@@ -890,7 +890,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         # For CUDA C source files, compile them with NVCC.
         try:
             nvcc_path = build.get_nvcc_path()
-            base_opts = build.get_compiler_base_options()
+            base_opts = build.get_compiler_base_options(nvcc_path)
             compiler_so = nvcc_path
 
             cuda_version = build.get_cuda_version()
@@ -908,7 +908,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         # For CUDA C source files, compile them with HIPCC.
         try:
             rocm_path = build.get_hipcc_path()
-            base_opts = build.get_compiler_base_options()
+            base_opts = build.get_compiler_base_options(rocm_path)
             compiler_so = rocm_path
 
             postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
