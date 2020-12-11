@@ -89,8 +89,8 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
         else:
             scan_dtype = numpy_int64
 
-        block_size = 512
-        if nonzero.size > block_size:
+        chunk_size = 512
+        if nonzero.size > chunk_size:
             # TODO(anruse): We need to set an appropriate threshold, as
             # "incomplete scan" is a bit slower when the array size is small.
             incomplete_scan = True
@@ -98,7 +98,7 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
             incomplete_scan = False
         scan_index = _math.scan(
             nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
-            incomplete=incomplete_scan, block_size=block_size)
+            incomplete=incomplete_scan, chunk_size=chunk_size)
         count_nonzero = int(scan_index[-1])  # synchronize!
 
     ndim = self._shape.size()
@@ -109,10 +109,10 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
     nonzero.shape = self.shape
     if incomplete_scan:
         warp_size = 32
-        size = scan_index.size * block_size
-        _nonzero_kernel_incomplete_scan(block_size, warp_size)(
+        size = scan_index.size * chunk_size
+        _nonzero_kernel_incomplete_scan(chunk_size, warp_size)(
             nonzero, scan_index, dst,
-            size=size, block_size=block_size)
+            size=size, block_size=chunk_size)
     else:
         scan_index.shape = self.shape
         _nonzero_kernel(nonzero, scan_index, dst)

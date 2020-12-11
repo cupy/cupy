@@ -20,7 +20,7 @@ cpdef enum scan_op:
     SCAN_PROD = 1
 
 cdef ndarray scan(ndarray a, op, dtype=*, ndarray out=*, incomplete=*,
-                  block_size=*)
+                  chunk_size=*)
 cdef object _sum_auto_dtype
 cdef object _add
 cdef object _conj
