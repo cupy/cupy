@@ -383,7 +383,7 @@ def _searchsorted(a, v, side, sorter, assume_increasing):
         a = a.astype(v.dtype)
 
     # Numpy does not check if the array is monotonic inside searchsorted
-    # which leds to undefined behavior in such cases.
+    # which leads to undefined behavior in such cases.
     if sorter is not None:
         if sorter.dtype.kind not in ('i', 'u'):
             raise TypeError('sorter must be of integer type')

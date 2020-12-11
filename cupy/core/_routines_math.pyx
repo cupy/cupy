@@ -10,6 +10,7 @@ from cupy.core._ufuncs import elementwise_copy
 from cupy.core cimport internal
 from cupy import _util
 
+from cupy_backends.cuda.api cimport runtime
 from cupy.core cimport _accelerator
 from cupy.core._dtype cimport get_dtype
 from cupy.core cimport _kernel
@@ -149,6 +150,14 @@ cdef ndarray _ndarray_clip(ndarray self, a_min, a_max, out):
 
 _op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
 _identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
+_preamble = '' if not runtime._is_hip_environment else r'''
+    // ignore mask
+    #define __shfl_xor_sync(m, x, y, z) __shfl_xor(x, y, z)
+
+    // It is guaranteed to be safe on AMD's hardware, see
+    // https://rocmdocs.amd.com/en/latest/Programming_Guides/HIP-GUIDE.html#warp-cross-lane-functions  # NOQA
+    #define __syncwarp() {}
+    '''
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -186,7 +195,7 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
         if (2*i < a.size()) x = a[2*i];
         if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
         for (int j = 1; j < ${warp_size}; j *= 2) {
-            x ${op}= __shfl_xor_sync(0xffffffff, x, j);
+            x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
         }
         if (lane_id == 0) smem[warp_id] = x;
         __syncthreads();
@@ -194,7 +203,7 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
             x = ${identity};
             if (lane_id < n_warp) x = smem[lane_id];
             for (int j = 1; j < n_warp; j *= 2) {
-                x ${op}= __shfl_xor_sync(0xffffffff, x, j);
+                x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
             }
             int block_id = i / (${block_size} / 2);
             if (lane_id == 0) b[block_id] = x;
@@ -202,7 +211,8 @@ def _cupy_bsum_shfl(op, block_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_bsum_shfl', loop_prep=loop_prep)
+                                  'cupy_bsum_shfl', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -257,7 +267,8 @@ def _cupy_bsum_smem(op, block_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_bsum_smem', loop_prep=loop_prep)
+                                  'cupy_bsum_smem', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -323,7 +334,8 @@ def _cupy_scan_naive(op, block_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_scan_naive', loop_prep=loop_prep)
+                                  'cupy_scan_naive', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -348,9 +360,9 @@ def _cupy_scan_btree(op, block_size, warp_size=32):
         out == [1, 3, 6, 10, 15, 21, 28, 36, 45, 55]
 
     Note:
-        This usea a kind of method called "Work-Efficenet Parallel Scan" for
+        This uses a kind of method called "Work-Efficient Parallel Scan" for
         inclusive scan in each block. See below link for details about
-        "Work-Efficent Parallel Scan".
+        "Work-Efficient Parallel Scan".
         https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
     """
     in_params = 'raw O b'
@@ -417,7 +429,8 @@ def _cupy_scan_btree(op, block_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size,
                     op=_op_char[op], identity=_identity[op])
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
-                                  'cupy_scan_btree', loop_prep=loop_prep)
+                                  'cupy_scan_btree', loop_prep=loop_prep,
+                                  preamble=_preamble)
 
 
 cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None,
@@ -447,12 +460,23 @@ cdef ndarray scan(ndarray a, op, dtype=None, ndarray out=None,
         dtype = out.dtype
     dtype = numpy.dtype(dtype)
 
-    warp_size = 32
-    if dtype.char in 'iIlLqQfd':
-        bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
+    block_size = 512
+    warp_size = 64 if runtime._is_hip_environment else 32
+    if runtime._is_hip_environment:
+        if out.dtype.char in 'iIfdlq':
+            # On HIP, __shfl* supports int, unsigned int, float, double,
+            # long, and long long. The documentation is too outdated and
+            # unreliable; refer to the header at
+            # $ROCM_HOME/include/hip/hcc_detail/device_functions.h
+            bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
+        else:
+            bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
     else:
-        bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
-    if dtype.char in 'fdFD':
+        if out.dtype.char in 'iIlLqQfd':
+            bsum_kernel = _cupy_bsum_shfl(op, block_size, warp_size)
+        else:
+            bsum_kernel = _cupy_bsum_smem(op, block_size, warp_size)
+    if out.dtype.char in 'fdFD':
         scan_kernel = _cupy_scan_btree(op, block_size, warp_size)
     else:
         scan_kernel = _cupy_scan_naive(op, block_size, warp_size)
@@ -691,18 +715,21 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
                 dtype = numpy.dtype('L')
             else:
                 dtype = a.dtype
-        result = a.astype(dtype=dtype)
+        result = None
     else:
         if (out.flags.c_contiguous or out.flags.f_contiguous):
             result = out
+            result[...] = a
         else:
-            result = a.astype(out.dtype)
-        result[...] = a
+            result = a.astype(out.dtype, copy=True, order='C',
+                              casting=None, subok=None)
 
     if axis is None:
-        result = result.ravel()
         for accelerator in _accelerator._routine_accelerators:
             if accelerator == _accelerator.ACCELERATOR_CUB:
+                if result is None:
+                    result = a.astype(dtype, copy=False, order='C',
+                                      casting=None, subok=None).ravel()
                 # result will be None if the scan is not compatible with CUB
                 if op == scan_op.SCAN_SUM:
                     cub_op = cub.CUPY_CUB_CUMSUM
@@ -712,8 +739,14 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
                 if res is not None:
                     break
         else:
-            scan(result, op, dtype, result)
+            if result is None:
+                result = scan(a.ravel(), op, dtype=dtype)
+            else:
+                scan(result, op, dtype=dtype, out=result)
     else:
+        if result is None:
+            result = a.astype(dtype, copy=False, order='C',
+                              casting=None, subok=None)
         axis = internal._normalize_axis_index(axis, a.ndim)
         result = _proc_as_batch(result, axis, dtype, op)
     # This is for when the original out param was not contiguous

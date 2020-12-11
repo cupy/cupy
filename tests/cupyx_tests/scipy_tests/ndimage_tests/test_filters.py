@@ -1,6 +1,5 @@
-import unittest
-
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -12,7 +11,7 @@ except ImportError:
     pass
 
 
-class FilterTestCaseBase(unittest.TestCase):
+class FilterTestCaseBase:
     """
     Add some utility methods for the parameterized tests for filters. these
     assume there are the "parameters" self.filter, self.wdtype or self.dtype,
@@ -196,7 +195,7 @@ class TestFilter(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         if self.dtype == getattr(self, 'output', None):
-            raise unittest.SkipTest("redundant")
+            pytest.skip("redundant")
         return self._filter(xp, scp)
 
 
@@ -508,7 +507,7 @@ class TestWeightDtype(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         if self.dtype == self.wdtype:
-            raise unittest.SkipTest("redundant")
+            pytest.skip("redundant")
         return self._filter(xp, scp)
 
 

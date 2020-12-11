@@ -2269,20 +2269,22 @@ cpdef ndarray _internal_asfortranarray(ndarray a):
             (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
         m, n = a.shape
         handle = device.get_cublas_handle()
+        one = numpy.array(1, dtype=a.dtype)
+        zero = numpy.array(0, dtype=a.dtype)
         if a.dtype == numpy.float32:
             cublas.sgeam(
                 handle,
                 1,  # transpose a
                 1,  # transpose newarray
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                newarray.data.ptr, m)
+                m, n, one.ctypes.data, a.data.ptr, n,
+                zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
         elif a.dtype == numpy.float64:
             cublas.dgeam(
                 handle,
                 1,  # transpose a
                 1,  # transpose newarray
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                newarray.data.ptr, m)
+                m, n, one.ctypes.data, a.data.ptr, n,
+                zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
     else:
         elementwise_copy(a, newarray)
     return newarray

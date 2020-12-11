@@ -652,6 +652,7 @@ from cupy._math.misc import cbrt  # NOQA
 from cupy._math.misc import clip  # NOQA
 from cupy._math.misc import fmax  # NOQA
 from cupy._math.misc import fmin  # NOQA
+from cupy._math.misc import interp  # NOQA
 from cupy._math.misc import maximum  # NOQA
 from cupy._math.misc import minimum  # NOQA
 from cupy._math.misc import nan_to_num  # NOQA
@@ -712,6 +713,7 @@ from cupy._statistics.order import nanmax  # NOQA
 from cupy._statistics.order import nanmin  # NOQA
 from cupy._statistics.order import percentile  # NOQA
 from cupy._statistics.order import ptp  # NOQA
+from cupy._statistics.order import quantile  # NOQA
 
 from cupy._statistics.meanvar import median  # NOQA
 from cupy._statistics.meanvar import average  # NOQA
