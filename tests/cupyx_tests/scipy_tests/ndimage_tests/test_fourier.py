@@ -11,11 +11,12 @@ import cupyx.scipy.ndimage  # NOQA
 
 try:
     import scipy.fft  # NOQA
+except ImportError:
+    pass
+finally:
     import scipy.fftpack  # NOQA
     import scipy.ndimage  # NOQA
     scipy_version = numpy.lib.NumpyVersion(scipy.__version__)
-except ImportError:
-    pass
 
 
 @testing.parameterize(
@@ -377,6 +378,8 @@ class TestFourierEllipsoid():
 
 class TestFourierEllipsoidInvalid():
 
+    # SciPy < 1.5 raises ValueError instead of AxisError
+    @testing.with_requires('scipy>=1.5.0')
     def test_0d_input(self):
         for xp, scp in zip((numpy, cupy), (scipy, cupyx.scipy)):
             with pytest.raises(numpy.AxisError):
@@ -392,6 +395,8 @@ class TestFourierEllipsoidInvalid():
                 scp.ndimage.fourier_ellipsoid(xp.ones(shape), size=2)
         return
 
+    # SciPy < 1.5 raises ValueError instead of AxisError
+    @testing.with_requires('scipy>=1.5.0')
     def test_invalid_axis(self):
         # SciPy should raise here too because >3d isn't implemented, but
         # as of 1.5.4, it does not.
