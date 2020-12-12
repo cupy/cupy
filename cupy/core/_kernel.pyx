@@ -13,6 +13,7 @@ from libcpp cimport vector
 from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
+from cupy.cuda cimport texture
 from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
@@ -92,7 +93,9 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
 
     for arg in args:
         if type(arg) is not ndarray:
-            if use_c_scalar:
+            if isinstance(arg, texture.TextureObject):
+                s = arg
+            elif use_c_scalar:
                 s = _scalar.scalar_to_c_scalar(arg)
             else:
                 s = _scalar.scalar_to_numpy_scalar(arg)
@@ -144,6 +147,8 @@ cdef class _ArgInfo:
             return _ArgInfo.from_indexer(arg)
         if typ is memory.MemoryPointer:
             return _ArgInfo.from_memptr(arg)
+        if typ is texture.TextureObject:
+            return _ArgInfo.from_texture(arg)
         assert False, typ
 
     @staticmethod
@@ -177,6 +182,13 @@ cdef class _ArgInfo:
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         ret._init(
             ARG_KIND_POINTER, memory.MemoryPointer, None, 0, True, True)
+        return ret
+
+    @staticmethod
+    cdef _ArgInfo from_texture(texture.TextureObject arg):
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
+        ret._init(
+            ARG_KIND_TEXTURE, texture.TextureObject, None, 0, True, True)
         return ret
 
     def __hash__(self):
@@ -232,6 +244,8 @@ cdef class _ArgInfo:
             return _get_typename(self.dtype)
         if self.arg_kind == ARG_KIND_INDEXER:
             return 'CIndexer<%d>' % self.ndim
+        if self.arg_kind == ARG_KIND_TEXTURE:
+            return 'cudaTextureObject_t'
         assert False
 
     cdef str get_param_c_type(self, ParameterInfo p):
@@ -384,6 +398,8 @@ cdef class ParameterInfo:
             pass
         elif len(t) == 1:
             self.ctype = t
+        elif t == 'cudaTextureObject_t':
+            self.ctype = t
         else:
             dtype = get_dtype(t)
             self.dtype = dtype.type
@@ -489,7 +505,7 @@ cdef tuple _decide_params_type_core(
     for p, a in zip(in_params, in_args_dtype):
         if a is None:
             if p.dtype is None:
-                unknown_ctype.append(p.ctype)
+                unknown_ctype.append((p.ctype, p))
         else:
             if p.dtype is not None:
                 if numpy.dtype(a) != numpy.dtype(p.dtype):
@@ -503,6 +519,10 @@ cdef tuple _decide_params_type_core(
                             p.name, a, t, p.ctype))
             else:
                 type_dict[p.ctype] = a
+    #if unknown_ctype:
+    #    for t, a in unknown_ctype:
+    #        if isinstance(a, texture.TextureObject):
+    #            type_dict[t] = 'cudaTextureObject_t'
 
     in_types = tuple([type_dict[p.ctype] if p.dtype is None else p.dtype
                       for p in in_params])
@@ -781,9 +801,18 @@ cdef class ElementwiseKernel:
         in_args = _broadcast(
             arg_list, self.params, size != -1, shape)[:self.nin]
 
-        in_ndarray_types = tuple(
-            [a.dtype.type if isinstance(a, ndarray) else None
-             for a in in_args])
+        in_ndarray_types = []
+        for a in in_args:
+            if isinstance(a, ndarray):
+                in_ndarray_types.append(a.dtype.type)
+            elif isinstance(a, texture.TextureObject):
+                in_ndarray_types.append('cudaTextureObject_t')
+            else:
+                in_ndarray_types.append(None)
+        in_ndarray_types = tuple(in_ndarray_types)
+        #in_ndarray_types = tuple(
+        #    [a.dtype.type if isinstance(a, ndarray) else None
+        #     for a in in_args])
         out_ndarray_types = tuple([a.dtype.type for a in out_args])
 
         in_types, out_types, type_map = self._decide_params_type(
