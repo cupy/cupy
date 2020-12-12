@@ -92,23 +92,40 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     cdef list ret = []
 
     for arg in args:
-        if type(arg) is not ndarray:
-            if isinstance(arg, texture.TextureObject):
-                s = arg
-            elif use_c_scalar:
+        if isinstance(arg, ndarray):
+            s = arg
+            _check_array_device_id(<ndarray>s, dev_id)
+        elif isinstance(arg, texture.TextureObject):
+            s = arg
+        elif hasattr(arg, '__cuda_array_interface__'):
+            s = _convert_object_with_cuda_array_interface(arg)
+            _check_array_device_id(<ndarray>s, dev_id)
+        else:  # scalars or invalid args
+            if use_c_scalar:
                 s = _scalar.scalar_to_c_scalar(arg)
             else:
                 s = _scalar.scalar_to_numpy_scalar(arg)
-
-            if s is not None:
-                ret.append(s)
-                continue
-            if not hasattr(arg, '__cuda_array_interface__'):
+            if s is None:
                 raise TypeError('Unsupported type %s' % type(arg))
-            arg = _convert_object_with_cuda_array_interface(arg)
+        ret.append(s)
 
-        _check_array_device_id(<ndarray>arg, dev_id)
-        ret.append(arg)
+        #if type(arg) is not ndarray:
+        #    if isinstance(arg, texture.TextureObject):
+        #        s = arg
+        #    elif use_c_scalar:
+        #        s = _scalar.scalar_to_c_scalar(arg)
+        #    else:
+        #        s = _scalar.scalar_to_numpy_scalar(arg)
+
+        #    if s is not None:
+        #        ret.append(s)
+        #        continue
+        #    if not hasattr(arg, '__cuda_array_interface__'):
+        #        raise TypeError('Unsupported type %s' % type(arg))
+        #    arg = _convert_object_with_cuda_array_interface(arg)
+        #
+        #_check_array_device_id(<ndarray>arg, dev_id)
+        #ret.append(arg)
 
     return ret
 
