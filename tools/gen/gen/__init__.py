@@ -5,33 +5,6 @@ import pycparser
 import pycparser.c_ast as c_ast
 
 
-FILENAME_110 = '/usr/local/cuda-11.0/include/cusparse.h'
-FILENAME_102 = '/usr/local/cuda-10.2/include/cusparse.h'
-
-SPECIAL_TYPES = {
-    'cudaDataType': {
-        'transpiled': 'DataType',
-        'erased': 'size_t',
-        'conversion': '<DataType>{}'.format,
-    },
-    'cudaStream_t': {
-        'transpiled': 'driver.Stream',
-        'erased': 'size_t',
-        'conversion': '<driver.Stream>{}'.format,
-    },
-    'cuComplex': {
-        'transpiled': 'cuComplex',
-        'erased': 'complex',
-        'conversion': 'complex_to_cuda({})'.format,
-    },
-    'cuDoubleComplex': {
-        'transpiled': 'cuDoubleComplex',
-        'erased': 'double complex',
-        'conversion': 'double_complex_to_cuda({})'.format,
-    },
-}
-
-
 # Utilities
 
 def partition(pred, seq):
@@ -49,33 +22,87 @@ def indent(code):
     return '\n'.join('    ' + l if l != '' else '' for l in code.split('\n'))
 
 
+def maybe(fn):
+    return lambda x: fn(x) if x is not None else None
+
+
 # Directive
 
 def read_directives(path):
-    # TODO: properly resolve path
-    path1 = os.path.join(os.path.dirname(__file__), '../', path)
-    with open(path1) as f:
+    with open(path) as f:
         directives = eval(f.read())
-    assert isinstance(directives, list)
+    headers, regexes, *rest = directives
+    assert is_headers_directive(headers)
+    assert is_regexes_directive(regexes)
+    assert not any(is_headers_directive(d) for d in rest)
+    assert not any(is_regexes_directive(d) for d in rest)
+    assert not any(is_special_types_directive(d) for d in rest[1:])
     return directives
+
+
+def is_headers_directive(directive):
+    return directive[0] == 'Headers'
+
+
+def is_regexes_directive(directive):
+    return directive[0] == 'Regexes'
+
+
+def is_special_types_directive(directive):
+    return directive[0] == 'SpecialTypes'
 
 
 def is_comment_directive(directive):
     return directive[0] == 'Comment'
 
 
+def is_raw_directive(directive):
+    return directive[0] == 'Raw'
+
+
 def is_function_directive(directive):
-    head = directive[0]
-    return isinstance(directive[0], str) and head != 'Comment'
+    return (
+        isinstance(directive[0], str)
+        and not is_headers_directive(directive)
+        and not is_regexes_directive(directive)
+        and not is_special_types_directive(directive)
+        and not is_comment_directive(directive)
+        and not is_raw_directive(directive)
+    )
 
 
 def directive_head(directive):
     return directive[0]
 
 
+def directive_headers(directive):
+    assert is_headers_directive(directive)
+    return directive[1]
+
+
+def directive_regexes(directive):
+    assert is_regexes_directive(directive)
+    return directive[1]
+
+
+def directive_special_types(directive):
+    assert is_special_types_directive(directive)
+    return directive[1]
+
+
 def directive_comment(directive):
     assert is_comment_directive(directive)
     return directive[1]
+
+
+def directive_raw(directive):
+    assert is_raw_directive(directive)
+    return directive[1]
+
+
+def directive_transpiled_name(directive):
+    assert is_function_directive(directive)
+    return directive[1].get('transpiled', None)
 
 
 def is_directive_none_out(directive):
@@ -118,7 +145,16 @@ def directive_multi_out(directive):
 
 def directive_use_stream(directive):
     assert is_function_directive(directive)
-    return directive[1]['use_stream']
+    use_stream = directive[1].get('use_stream', False)
+    if isinstance(use_stream, bool):
+        if use_stream:
+            return True, 'setStream'
+        else:
+            return False, None
+    elif isinstance(use_stream, str):
+        return True, use_stream
+    else:
+        assert False
 
 
 def directive_except(directive):
@@ -147,47 +183,61 @@ def directive_except(directive):
 
 # Transpilation
 
-def transpile_func_name(node):
+def transpile_func_name(env, directive, node):
     assert isinstance(node.type, c_ast.FuncDecl)
-    name = re.match(r'cusparse([A-Z].*)', node.name)[1]
-    return name[0].lower() + name[1:]
+    name = directive_transpiled_name(directive)
+    if name is not None:
+        return name
+    regex = regex_func_name(env)
+    name = regex.fullmatch(node.name)[1]
+    return name[0:2].lower() + name[2:]
 
 
 def transpile_type_name(env, node):
-    def transpile(env, name, quals):
-        if is_special_type(name, env):
+    def transpile(env, names, quals):
+        name = names[0]
+        if len(names) > 1:
+            return ' '.join(quals + names)
+        elif is_special_type(name, env):
             name1 = special_type_transpiled(name, env)
             return ' '.join(quals + [name1])
         elif is_opaque_data_structure(name, env):
-            m = re.match(r'cusparse([A-Z].*)_t', name)
+            regex = regex_type_name(env)
+            m = regex.fullmatch(name)
             if m is not None:
                 return ' '.join(quals + [m[1]])
             else:
                 # Opaque data structures that do not follow the pattern above
                 return ' '.join(quals + [name])
         elif is_enum(name, env):
-            name1 = re.match(r'cusparse([A-Z].*)_t', name)[1]
+            regex = regex_type_name(env)
+            name1 = re.fullmatch(regex, name)[1]
             return ' '.join(quals + [name1])
         else:
-            return ' '.join(quals + [name])
+            return ' '.join(quals + names)
     if isinstance(node, c_ast.TypeDecl):
-        assert len(node.type.names) == 1
-        name = node.type.names[0]
+        names = node.type.names
         quals = node.quals
-        return transpile(env, name, quals)
+        return transpile(env, names, quals)
     elif isinstance(node, c_ast.PtrDecl):
         return transpile_type_name(env, node.type) + '*'
+    elif isinstance(node, c_ast.ArrayDecl):
+        return transpile_type_name(env, node.type) + '*'
     elif isinstance(node, c_ast.Typedef):
-        return transpile(env, node.name, [])
+        return transpile(env, [node.name], [])
     else:
         assert False
 
 
 def erased_type_name(env, node):
     if isinstance(node, c_ast.TypeDecl):
-        assert len(node.type.names) == 1
-        name = node.type.names[0]
-        if name == 'cusparseHandle_t':
+        names = node.type.names
+        name = names[0]
+        if len(names) > 1:
+            return None
+        elif re.fullmatch(r'cu.+Handle_t', name) is not None:
+            # We can remove this adhoc branch if we also use `intptr_t` for
+            # opaque data structures. See #2716 and #3081.
             return 'intptr_t'
         elif is_special_type(name, env):
             return special_type_erased(name, env)
@@ -199,12 +249,14 @@ def erased_type_name(env, node):
             return None
     elif isinstance(node, c_ast.PtrDecl):
         return 'intptr_t'
+    elif isinstance(node, c_ast.ArrayDecl):
+        return 'intptr_t'
     else:
         assert False
 
 
 def deref_var_name(name):
-    m = re.match(r'p([A-Z].*)', name)
+    m = re.fullmatch(r'p([A-Z].*)', name)
     if m is not None:
         name1 = m[1]
         return name1[0].lower() + name1[1:]
@@ -214,9 +266,9 @@ def deref_var_name(name):
 
 def transpile_type_conversion(env, node, var_name):
     if isinstance(node, c_ast.TypeDecl):
-        assert len(node.type.names) == 1
-        type_name = node.type.names[0]
-        if is_special_type(type_name, env):
+        type_names = node.type.names
+        type_name = type_names[0]
+        if len(type_names) == 1 and is_special_type(type_name, env):
             conversion = special_type_conversion(type_name, env)
             return conversion(var_name)
         else:
@@ -225,40 +277,44 @@ def transpile_type_conversion(env, node, var_name):
     elif isinstance(node, c_ast.PtrDecl):
         cast_type = transpile_type_name(env, node)
         return '<{}>{}'.format(cast_type, var_name)
+    elif isinstance(node, c_ast.ArrayDecl):
+        cast_type = transpile_type_name(env, node)
+        return '<{}>{}'.format(cast_type, var_name)
     else:
         assert False
 
 
 # Environment
 
-def _collect_cusparse_decls(nodes):
-    return [n for n in nodes if 'cusparse.h' in str(n.coord)]
-
-
 def _collect_opaque_decls(nodes):
-    tmp_decls = {}
-    for n in nodes:
-        if (isinstance(n, c_ast.Decl) and isinstance(n.type, c_ast.Struct)):
-            name = n.type.name
-            tmp_decls[name] = n
     opaques = []
+    unique = set()
     for n in nodes:
-        if (isinstance(n, c_ast.Typedef)
-                and isinstance(n.type, c_ast.PtrDecl)
-                and isinstance(n.type.type, c_ast.TypeDecl)
-                and isinstance(n.type.type.type, c_ast.Struct)):
-            decl = tmp_decls.pop(n.type.type.type.name)
-            opaques.append((decl, n))
-    assert tmp_decls == {}
+        if (
+            isinstance(n, c_ast.Typedef)
+            and isinstance(n.type, c_ast.PtrDecl)
+            and isinstance(n.type.type, c_ast.TypeDecl)
+            and isinstance(n.type.type.type, c_ast.Struct)
+            and n.name not in unique
+        ):
+            opaques.append(n)
+            unique.add(n.name)
     return opaques
 
 
 def _collect_enum_decls(nodes):
-    def is_enum(node):
-        return (isinstance(node, c_ast.Typedef) and
-                isinstance(node.type, c_ast.TypeDecl) and
-                isinstance(node.type.type, c_ast.Enum))
-    return [n for n in nodes if is_enum(n)]
+    enums = []
+    unique = set()
+    for n in nodes:
+        if (
+            isinstance(n, c_ast.Typedef)
+            and isinstance(n.type, c_ast.TypeDecl)
+            and isinstance(n.type.type, c_ast.Enum)
+            and n.name not in unique
+        ):
+            enums.append(n)
+            unique.add(n.name)
+    return enums
 
 
 def _collect_func_decls(nodes):
@@ -268,44 +324,87 @@ def _collect_func_decls(nodes):
     return [n for n in nodes if pred(n)]
 
 
-def _parse_file(filename):
-    ast = pycparser.parse_file(filename, use_cpp=True, cpp_args=[
-        r'-I/usr/local/cuda/include',
-        r'-I/home/ext-mtakagi/pycparser/utils/fake_libc_include',
-        r'-D __attribute__(n)=',
-        r'-D __inline__='])
-    nodes = ast.ext
-    nodes = _collect_cusparse_decls(nodes)
+def _parse_headers(headers, version):
+    assert version in ['11.0', '10.2']
+    include_path = '/usr/local/cuda-{}/include/'.format(version)
+    nodes = []
+    for h in headers:
+        path = os.path.join(include_path, h)        
+        ast = pycparser.parse_file(path, use_cpp=True, cpp_args=[
+            r'-I{}'.format(include_path),
+            r'-I/home/ext-mtakagi/pycparser/utils/fake_libc_include',
+            r'-D __attribute__(n)=',
+            r'-D __inline__='])
+        nodes.extend(ast.ext)
     return nodes
 
 
-def make_environment():
-    nodes_110 = _parse_file(FILENAME_110)
-    nodes_102 = _parse_file(FILENAME_102)
+SPECIAL_TYPES = {
+    'cudaDataType': {
+        'transpiled': 'DataType',
+        'erased': 'size_t',
+        'conversion': '<DataType>{}',
+    },
+    'libraryPropertyType': {
+        'transpiled': 'LibraryPropertyType',
+        'erased': 'int',
+        'conversion': '<LibraryPropertyType>{}',
+    },
+    'cudaStream_t': {
+        'transpiled': 'driver.Stream',
+        'erased': 'size_t',
+        'conversion': '<driver.Stream>{}',
+    },
+}
 
-    specials = SPECIAL_TYPES
+
+def make_environment(directives):
+    headers = directive_headers(directives[0])
+    nodes_110 = _parse_headers(headers, '11.0')
+    nodes_102 = _parse_headers(headers, '10.2')
+
+    # Assuming the letters before the first appearance of `_` or `.` make the
+    # library name.
+    lib_name = re.match(r'^([a-z]+)(:?_|.)', headers[0])[1]
+
+    patterns = directive_regexes(directives[1])
+    regexes = {
+        'func': re.compile(patterns['func']),
+        'type': re.compile(patterns['type']),
+    }
+
+    special_types = {}
+    special_types.update(SPECIAL_TYPES)
+    if is_special_types_directive(directives[2]):
+        special_types1 = directive_special_types(directives[2])
+        special_types.update(special_types1)
+
     opaques = _collect_opaque_decls(nodes_110)  # assuming no opaques removed
     enums = _collect_enum_decls(nodes_110)  # assuming no enums removed
     funcs_110 = _collect_func_decls(nodes_110)
     funcs_102 = _collect_func_decls(nodes_102)
-    return ('environment', specials, opaques, enums, (funcs_110, funcs_102))
+    return ('environment', special_types, opaques, enums,
+            (funcs_110, funcs_102), regexes, lib_name)
 
 
-def environment_specials(env):
+def _environment_specials(env):
     assert env[0] == 'environment'
     return env[1]
 
+
 def environment_opaques(env):
     assert env[0] == 'environment'
-    return env[2]
+    lib_name = env[6]
+    return [n for n in env[2] if lib_name in str(n.coord)]
 
 
 def environment_enums(env):
     assert env[0] == 'environment'
-    return env[3]
+    lib_name = env[6]
+    return [n for n in env[3] if lib_name in str(n.coord)]
 
 
-def environment_funcs(cuda_ver, env):
+def _environment_funcs(cuda_ver, env):
     assert env[0] == 'environment'
     if cuda_ver == 'cuda-11.0':
         return env[4][0]
@@ -315,51 +414,46 @@ def environment_funcs(cuda_ver, env):
         assert False
 
 
+def _environment_regexes(env):
+    assert env[0] == 'environment'
+    return env[5]
+
+
 def is_special_type(name, env):
-    return name in environment_specials(env)
+    return name in _environment_specials(env)
 
 
 def is_opaque_data_structure(name, env):
-    return name in (n.name for _, n in environment_opaques(env))
+    assert env[0] == 'environment'
+    return name in (n.name for n in env[2])
 
 
 def is_enum(name, env):
-    return name in (n.name for n in environment_enums(env))
-
-
-def query_special_type(name, env):
-    return environment_specials(env)[name]
-
-
-def special_type_conversion(name, env):
-    return query_special_type(name, env)['conversion']
-
-
-def special_type_transpiled(name, env):
-    return query_special_type(name, env)['transpiled']
-
-
-def special_type_erased(name, env):
-    return query_special_type(name, env)['erased']
+    assert env[0] == 'environment'
+    return name in (n.name for n in env[3])
 
 
 def query_func_decls(name, env):
-    def aux(node, t):
-        return node.name == name.replace('<t>', t)
+    def compile_pattern(string):
+        p = re.sub(r'<t\d?>', r'[ZCKEYDSHBX]', string)
+        p = p.replace('{', '(|').replace(',', '|').replace('}', ')')
+        return p, p != string
     def query(nodes):
-        if '<t>' in name:
-            return [n for n in nodes for t in 'SDCZ' if aux(n, t)]
+        pat, generic = compile_pattern(name)
+        if generic:
+            pat = re.compile(pat, flags=re.I)
+            return [n for n in nodes if pat.fullmatch(n.name) is not None]
         else:
             try:
                 return [next(n for n in nodes if n.name == name)]
             except StopIteration:
                 return []
-    nodes_110 = environment_funcs('cuda-11.0', env)
+    nodes_110 = _environment_funcs('cuda-11.0', env)
     decls = query(nodes_110)
     if decls != []:
         return decls, False
 
-    nodes_102 = environment_funcs('cuda-10.2', env)
+    nodes_102 = _environment_funcs('cuda-10.2', env)
     decls = query(nodes_102)
     if decls != []:
         return decls, True
@@ -367,10 +461,28 @@ def query_func_decls(name, env):
     assert False, '`{}` not found'.format(name)
 
 
+def special_type_conversion(name, env):
+    return _environment_specials(env)[name]['conversion'].format
+
+
+def special_type_transpiled(name, env):
+    return _environment_specials(env)[name]['transpiled']
+
+
+def special_type_erased(name, env):
+    return _environment_specials(env)[name]['erased']
+
+
+def regex_func_name(env):
+    return _environment_regexes(env)['func']
+
+
+def regex_type_name(env):
+    return _environment_regexes(env)['type']
+
+
 # Template
 
 def read_template(path):
-    # TODO: properly resolve path
-    path1 = os.path.join(os.path.dirname(__file__), '../', path)
-    with open(path1) as f:
+    with open(path) as f:
         return f.read()

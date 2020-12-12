@@ -1,15 +1,15 @@
-import os.path
+import argparse
+import sys
 
 import pycparser.c_ast as c_ast
 
 import gen
 
 
-def transpile_opaque(decl, typedef):
-    assert isinstance(decl, c_ast.Decl)
-    assert isinstance(typedef, c_ast.Typedef)
-    type_name = typedef.name
-    type_name1 = gen.transpile_type_name(env, typedef)
+def transpile_opaque(env, node):
+    assert isinstance(node, c_ast.Typedef)
+    type_name = node.name
+    type_name1 = gen.transpile_type_name(env, node)
     # Use `void*` for opaque data structures.
     return "ctypedef void* {} '{}'".format(type_name1, type_name)
 
@@ -42,13 +42,19 @@ def transpile_enum_value(node):
 
     for e in node.type.type.values.enumerators:
         name = e.name
-        if e.value is not None:
+        if e.value is None:
+            code.append('    ' + name)
+        elif isinstance(e.value, c_ast.Constant):
             value = e.value.value
             assert e.value.type == 'int'
             code.append('    {} = {}'.format(name, value))
+        elif isinstance(e.value, c_ast.UnaryOp):
+            op = e.value.op
+            value = e.value.expr.value
+            assert e.value.expr.type == 'int'
+            code.append('    {} = {}{}'.format(name, op, value))
         else:
-            code.append('    ' + name)
-
+            assert False
     return '\n'.join(code)
 
 
@@ -81,7 +87,15 @@ def transpile_aux_struct_decl(env, directive, node, removed):
 
 # Assuming multiple functions do not use the same auxiliary structure.
 def transpile_aux_struct(env, directive):
-    if gen.is_comment_directive(directive):
+    if gen.is_headers_directive(directive):
+        return None
+    elif gen.is_regexes_directive(directive):
+        return None
+    elif gen.is_special_types_directive(directive):
+        return None
+    elif gen.is_comment_directive(directive):
+        return None
+    elif gen.is_raw_directive(directive):
         return None
     elif gen.is_function_directive(directive):
         if gen.is_directive_multi_out(directive):
@@ -95,16 +109,25 @@ def transpile_aux_struct(env, directive):
         assert False
 
 
-if __name__ == '__main__':
-    directives = gen.read_directives('directives/cusparse.py')
+def main(args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-d', '--directive', required=True, type=str,
+        help='Path to directive file')
+    parser.add_argument(
+        '-t', '--template', required=True, type=str,
+        help='Path to template file')
+    args = parser.parse_args(args)
 
-    env = gen.make_environment()
+    directives = gen.read_directives(args.directive)
 
-    template = gen.read_template('templates/cusparse.pxd.template')
+    env  = gen.make_environment(directives)
+
+    template = gen.read_template(args.template)
 
     opaques = gen.environment_opaques(env)
     opaque = '\n'.join(
-        gen.indent(transpile_opaque(decl, tydef)) for decl, tydef in opaques)
+        gen.indent(transpile_opaque(env, o)) for o in opaques)
 
     enums = gen.environment_enums(env)
     enum_type = '\n'.join(
@@ -117,3 +140,7 @@ if __name__ == '__main__':
     print(template.format(
         opaque=opaque, enum_type=enum_type, enum_value=enum_value,
         aux_struct=aux_struct))
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

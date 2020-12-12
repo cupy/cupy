@@ -1,4 +1,5 @@
-import os.path
+import argparse
+import sys
 
 import pycparser.c_ast as c_ast
 
@@ -25,9 +26,17 @@ def transpile_ffi_decl(env, node, removed):
 
 
 def transpile_ffi(env, directive):
-    if gen.is_comment_directive(directive):
+    if gen.is_headers_directive(directive):
+        return None
+    elif gen.is_regexes_directive(directive):
+        return None
+    elif gen.is_special_types_directive(directive):
+        return None
+    elif gen.is_comment_directive(directive):
         comment = gen.directive_comment(directive)
         return '\n# ' + comment
+    elif gen.is_raw_directive(directive):
+        return None
     elif gen.is_function_directive(directive):
         head = gen.directive_head(directive)
         decls, removed = gen.query_func_decls(head, env)
@@ -73,7 +82,15 @@ def transpile_aux_struct_decl(env, directive, node, removed):
 
 # Assuming multiple functions do not use the same auxiliary structure.
 def transpile_aux_struct(env, directive):
-    if gen.is_comment_directive(directive):
+    if gen.is_headers_directive(directive):
+        return None
+    elif gen.is_regexes_directive(directive):
+        return None
+    elif gen.is_special_types_directive(directive):
+        return None
+    elif gen.is_comment_directive(directive):
+        return None
+    elif gen.is_raw_directive(directive):
         return None
     elif gen.is_function_directive(directive):
         if gen.is_directive_multi_out(directive):
@@ -97,7 +114,7 @@ def transpile_wrapper_def(env, directive, node):
     assert isinstance(node.type, c_ast.FuncDecl)
     if gen.is_directive_none_out(directive):
         assert gen.directive_except(directive) is None
-        name = gen.transpile_func_name(node)
+        name = gen.transpile_func_name(env, directive, node)
         args = [argaux(env, p) for p in node.type.args.params]
         return '{}({})'.format(name, ', '.join(args))
     elif gen.is_directive_returned_out(directive):
@@ -105,7 +122,7 @@ def transpile_wrapper_def(env, directive, node):
         ret_type = gen.erased_type_name(env, node.type.type)
         if ret_type is None:
             ret_type = gen.transpile_type_name(env, node.type.type)
-        name = gen.transpile_func_name(node)
+        name = gen.transpile_func_name(env, directive, node)
         args = [argaux(env, p) for p in node.type.args.params]
         return '{} {}({})'.format(ret_type, name, ', '.join(args))
     elif gen.is_directive_single_out(directive):
@@ -118,7 +135,7 @@ def transpile_wrapper_def(env, directive, node):
         ret_type = gen.erased_type_name(env, out[0].type.type)
         if ret_type is None:
             ret_type = gen.transpile_type_name(env, out[0].type.type)
-        name = gen.transpile_func_name(node)
+        name = gen.transpile_func_name(env, directive, node)
         args = [argaux(env, p) for p in params]
         excpt = gen.directive_except(directive)
         return '{} {}({}) {}'.format(ret_type, name, ', '.join(args), excpt)
@@ -128,7 +145,7 @@ def transpile_wrapper_def(env, directive, node):
         outs, params = gen.partition(
             lambda p: p.name in out_args, node.type.args.params)
         assert len(outs) > 1
-        name = gen.transpile_func_name(node)
+        name = gen.transpile_func_name(env, directive, node)
         args = [argaux(env, p) for p in params]
         return '{} {}({})'.format(out_type, name, ', '.join(args))
     else:
@@ -159,11 +176,10 @@ def transpile_wrapper_call(env, directive, node):
 
 def handler_name(node):
     assert isinstance(node, c_ast.Decl)
+    # Assuming the handler's name is always 'handle'.
     for param in node.type.args.params:
-        assert len(param.type.type.names) == 1
-        type_name = param.type.type.names[0]
-        if type_name == 'cusparseHandle_t':
-            return param.name
+        if param.name == 'handle':
+            return 'handle'
     assert False
 
 
@@ -208,12 +224,13 @@ def transpile_wrapper_decl(env, directive, node, removed):
         assert False
 
     # Set stream if necessary
-    if gen.directive_use_stream(directive):
+    use_stream, func_name = gen.directive_use_stream(directive)
+    if use_stream:
         handle = handler_name(node)
         code.append('    if stream_module.enable_current_stream:')
         code.append(
-            '        setStream({}, stream_module.get_current_stream_ptr())'
-            ''.format(handle))
+            '        {}({}, stream_module.get_current_stream_ptr())'
+            ''.format(func_name, handle))
 
     # Call cuSPARSE API and check its returned status if necessary
     if gen.is_directive_returned_out(directive):
@@ -263,13 +280,21 @@ def transpile_wrapper_decl(env, directive, node, removed):
 
 
 def transpile_wrapper(env, directive):
-    if gen.is_comment_directive(directive):
+    if gen.is_headers_directive(directive):
+        return None
+    elif gen.is_regexes_directive(directive):
+        return None
+    elif gen.is_special_types_directive(directive):
+        return None
+    elif gen.is_comment_directive(directive):
         comment = gen.directive_comment(directive)
         code = []
         code.append('')
         code.append('#' * max(40, len(comment) + 2))
         code.append('# ' + comment)
         return '\n'.join(code)
+    elif gen.is_raw_directive(directive):
+        return gen.directive_raw(directive)
     elif gen.is_function_directive(directive):
         head = gen.directive_head(directive)
         decls, removed = gen.query_func_decls(head, env)
@@ -280,15 +305,31 @@ def transpile_wrapper(env, directive):
         assert False
 
 
-if __name__ == '__main__':
-    directives = gen.read_directives('directives/cusparse.py')
+def main(args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-d', '--directive', required=True, type=str,
+        help='Path to directive file')
+    parser.add_argument(
+        '-t', '--template', required=True, type=str,
+        help='Path to template file')
+    args = parser.parse_args(args)
 
-    env = gen.make_environment()
+    directives = gen.read_directives(args.directive)
 
-    template = gen.read_template('templates/cusparse.pyx.template')
+    env = gen.make_environment(directives)
 
-    ffi = '\n'.join(gen.indent(transpile_ffi(env, d)) for d in directives)
+    template = gen.read_template(args.template)
+
+    maybe_indent = gen.maybe(gen.indent)
+    ffi = '\n'.join(
+        gen.compact(maybe_indent(transpile_ffi(env, d)) for d in directives))
     aux_struct = '\n\n'.join(
         gen.compact(transpile_aux_struct(env, d) for d in directives))
-    wrapper = '\n\n'.join(transpile_wrapper(env, d) for d in directives)
+    wrapper = '\n\n'.join(
+        gen.compact(transpile_wrapper(env, d) for d in directives))
     print(template.format(ffi=ffi, aux_struct=aux_struct, wrapper=wrapper))
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

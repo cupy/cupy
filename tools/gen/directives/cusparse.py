@@ -1,7 +1,22 @@
-# functions, orders, configurations
-# The reference and the header have different orders, even different sections.
-# https://docs.nvidia.com/cuda/cusparse/index.html
 [
+    # Setting
+    ('Headers', ['cusparse.h']),
+    ('Regexes', {
+        'func': r'cusparse([A-Z].*)',
+        'type': r'cusparse([A-Z].*)_t',
+    }),
+    ('SpecialTypes', {
+        'cuComplex': {
+            'transpiled': 'cuComplex',
+            'erased': 'complex',
+            'conversion': 'complex_to_cuda({})',
+        },
+        'cuDoubleComplex': {
+            'transpiled': 'cuDoubleComplex',
+            'erased': 'double complex',
+            'conversion': 'double_complex_to_cuda({})',
+        },
+    }),
     # cuSPARSE Management Function
     ('Comment', 'cuSPARSE Management Function'),
     ('cusparseCreate', {

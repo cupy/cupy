@@ -1,0 +1,107 @@
+# This code was automatically generated. Do not modify it directly.
+
+cimport cython  # NOQA
+
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.libs.cublas cimport FillMode
+from cupy_backends.cuda.libs.cublas cimport Operation
+from cupy_backends.cuda.libs.cublas cimport SideMode
+from cupy_backends.cuda.libs.cusparse cimport MatDescr
+from cupy_backends.cuda cimport stream as stream_module
+
+
+cdef extern from *:
+    ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
+
+cdef extern from '../cupy_cuComplex.h':
+    ctypedef struct cuComplex 'cuComplex':
+        float x, y
+
+    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
+        double x, y
+
+cdef extern from '../cupy_cusolver.h' nogil:
+{ffi}
+
+    # libraryPropertyType_t
+    int MAJOR_VERSION
+    int MINOR_VERSION
+    int PATCH_LEVEL
+
+
+########################################
+# Error handling
+
+cdef dict STATUS = {{
+    0: 'CUSOLVER_STATUS_SUCCESS',
+    1: 'CUSOLVER_STATUS_NOT_INITIALIZED',
+    2: 'CUSOLVER_STATUS_ALLOC_FAILED',
+    3: 'CUSOLVER_STATUS_INVALID_VALUE',
+    4: 'CUSOLVER_STATUS_ARCH_MISMATCH',
+    5: 'CUSOLVER_STATUS_MAPPING_ERROR',
+    6: 'CUSOLVER_STATUS_EXECUTION_FAILED',
+    7: 'CUSOLVER_STATUS_INTERNAL_ERROR',
+    8: 'CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED',
+    9: 'CUSOLVER_STATUS_NOT_SUPPORTED',
+    10: 'CUSOLVER_STATUS_ZERO_PIVOT',
+    11: 'CUSOLVER_STATUS_INVALID_LICENSE',
+    12: 'CUSOLVER_STATUS_IRS_PARAMS_NOT_INITIALIZED',
+    13: 'CUSOLVER_STATUS_IRS_PARAMS_INVALID',
+    14: 'CUSOLVER_STATUS_IRS_PARAMS_INVALID_PREC',
+    15: 'CUSOLVER_STATUS_IRS_PARAMS_INVALID_REFINE',
+    16: 'CUSOLVER_STATUS_IRS_PARAMS_INVALID_MAXITER',
+    20: 'CUSOLVER_STATUS_IRS_INTERNAL_ERROR',
+    21: 'CUSOLVER_STATUS_IRS_NOT_SUPPORTED',
+    22: 'CUSOLVER_STATUS_IRS_OUT_OF_RANGE',
+    23: 'CUSOLVER_STATUS_IRS_NRHS_NOT_SUPPORTED_FOR_REFINE_GMRES',
+    25: 'CUSOLVER_STATUS_IRS_INFOS_NOT_INITIALIZED',
+    26: 'CUSOLVER_STATUS_IRS_INFOS_NOT_DESTROYED',
+    30: 'CUSOLVER_STATUS_IRS_MATRIX_SINGULAR',
+    31: 'CUSOLVER_STATUS_INVALID_WORKSPACE',
+}}
+
+# for rocBLAS and rocSOLVER
+cdef dict ROC_STATUS = {{
+    0: 'rocblas_status_success',
+    1: 'rocblas_status_invalid_handle',
+    2: 'rocblas_status_not_implemented',
+    3: 'rocblas_status_invalid_pointer',
+    4: 'rocblas_status_invalid_size',
+    5: 'rocblas_status_memory_error',
+    6: 'rocblas_status_internal_error',
+    7: 'rocblas_status_perf_degraded',
+    8: 'rocblas_status_size_query_mismatch',
+    9: 'rocblas_status_size_increased',
+    10: 'rocblas_status_size_unchanged',
+    11: 'rocblas_status_invalid_value',
+    12: 'rocblas_status_continue',
+}}
+
+
+class CUSOLVERError(RuntimeError):
+
+    def __init__(self, status):
+        self.status = status
+        if runtime._is_hip_environment:
+            err = ROC_STATUS
+        else:
+            err = STATUS
+        super(CUSOLVERError, self).__init__(err[status])
+
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
+
+@cython.profile(False)
+cpdef inline check_status(int status):
+    if status != 0:
+        raise CUSOLVERError(status)
+
+
+########################################
+# Auxiliary structures
+
+{aux_struct}
+
+{wrapper}
