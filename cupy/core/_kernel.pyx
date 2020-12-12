@@ -109,24 +109,6 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
                 raise TypeError('Unsupported type %s' % type(arg))
         ret.append(s)
 
-        #if type(arg) is not ndarray:
-        #    if isinstance(arg, texture.TextureObject):
-        #        s = arg
-        #    elif use_c_scalar:
-        #        s = _scalar.scalar_to_c_scalar(arg)
-        #    else:
-        #        s = _scalar.scalar_to_numpy_scalar(arg)
-
-        #    if s is not None:
-        #        ret.append(s)
-        #        continue
-        #    if not hasattr(arg, '__cuda_array_interface__'):
-        #        raise TypeError('Unsupported type %s' % type(arg))
-        #    arg = _convert_object_with_cuda_array_interface(arg)
-        #
-        #_check_array_device_id(<ndarray>arg, dev_id)
-        #ret.append(arg)
-
     return ret
 
 
@@ -415,8 +397,6 @@ cdef class ParameterInfo:
             pass
         elif len(t) == 1:
             self.ctype = t
-        elif t == 'cudaTextureObject_t':
-            self.ctype = t
         else:
             dtype = get_dtype(t)
             self.dtype = dtype.type
@@ -518,11 +498,11 @@ cdef tuple _decide_params_type_core(
                 type_dict[p.ctype] = a
 
     assert len(in_params) == len(in_args_dtype)
-    unknown_ctype = []
+    unknown_ctype = []  # TODO(leofang): remove this as it's unused?
     for p, a in zip(in_params, in_args_dtype):
         if a is None:
             if p.dtype is None:
-                unknown_ctype.append((p.ctype, p))
+                unknown_ctype.append(p.ctype)
         else:
             if p.dtype is not None:
                 if numpy.dtype(a) != numpy.dtype(p.dtype):
@@ -536,10 +516,6 @@ cdef tuple _decide_params_type_core(
                             p.name, a, t, p.ctype))
             else:
                 type_dict[p.ctype] = a
-    #if unknown_ctype:
-    #    for t, a in unknown_ctype:
-    #        if isinstance(a, texture.TextureObject):
-    #            type_dict[t] = 'cudaTextureObject_t'
 
     in_types = tuple([type_dict[p.ctype] if p.dtype is None else p.dtype
                       for p in in_params])
@@ -821,15 +797,13 @@ cdef class ElementwiseKernel:
         in_ndarray_types = []
         for a in in_args:
             if isinstance(a, ndarray):
-                in_ndarray_types.append(a.dtype.type)
+                t = a.dtype.type
             elif isinstance(a, texture.TextureObject):
-                in_ndarray_types.append('cudaTextureObject_t')
+                t = 'cudaTextureObject_t'
             else:
-                in_ndarray_types.append(None)
+                t = None
+            in_ndarray_types.append(t)
         in_ndarray_types = tuple(in_ndarray_types)
-        #in_ndarray_types = tuple(
-        #    [a.dtype.type if isinstance(a, ndarray) else None
-        #     for a in in_args])
         out_ndarray_types = tuple([a.dtype.type for a in out_args])
 
         in_types, out_types, type_map = self._decide_params_type(
