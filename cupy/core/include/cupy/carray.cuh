@@ -1,6 +1,6 @@
 #pragma once
 
-#if __cplusplus >= 201103
+#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
 #ifdef __CUDACC_RTC__
 // in NVRTC std:initializer_list is pre-defined (no need to include it) and
 // <type_traits> are not available, but we only need enable_if from there
@@ -227,7 +227,7 @@ public:
     }
   } 
 
-#if __cplusplus >= 201103
+#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int, typename U=T>
   __device__ CArray(typename std::enable_if<_c_contiguous, U>::type* data,
                     const Int* shape)
@@ -280,7 +280,7 @@ public:
     return strides_;
   }
 
-#if __cplusplus >= 201103
+#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int>
   __device__ T& operator[](const std::initializer_list<Int> idx_) {
     assert(idx_.size() == _ndim);
@@ -379,7 +379,7 @@ public:
   __device__ CArray(T* data, const Int1* shape, const Int2* strides)
       : data_(data), size_(1) { }
 
-#if __cplusplus >= 201103
+#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   __device__ CArray(T* data,
                     const std::initializer_list<int> shape,
                     const std::initializer_list<int> strides)
@@ -452,7 +452,7 @@ public:
     }
   }
 
-#if __cplusplus >= 201103
+#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int>
   __device__ CIndexer(const std::initializer_list<Int> shape)
       : CIndexer(shape.begin())
@@ -544,7 +544,7 @@ public:
   __device__ CIndexer(const Int1* shape, const Int2* strides)
       : size_(1) { }
 
-#if __cplusplus >= 201103
+#if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   __device__ CIndexer(const std::initializer_list<int> shape)
       : size_(1)
   {
