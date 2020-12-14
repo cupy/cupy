@@ -341,9 +341,7 @@ class TestEinSumUnaryOperation(unittest.TestCase):
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_einsum_unary_dtype(self, xp, dtype_a, dtype_out):
         if not numpy.can_cast(dtype_a, dtype_out):
-            # skip this combination
-            return xp.array([])
-
+            pytest.skip()
         a = testing.shaped_arange(self.shape_a, xp, dtype_a)
         return xp.einsum(self.subscripts, a, dtype=dtype_out)
 
@@ -471,7 +469,7 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         try:
             out = xp.einsum(self.subscripts, a, b, c, optimize=False)
         except TypeError:
-            self.assertIs(xp, numpy)
+            assert xp is numpy
             out = xp.einsum(self.subscripts, a, b, c)
 
         if xp is not numpy:  # Avoid numpy issues #11059, #11060
@@ -532,7 +530,7 @@ class TestEinSumLarge(unittest.TestCase):
             if xp is not numpy and \
                     isinstance(self.opt, tuple):  # with memory limit
                 for w in ws:
-                    self.assertIn('memory', str(w.message))
+                    assert 'memory' in str(w.message)
             else:
-                self.assertEqual(len(ws), 0)
+                assert len(ws) == 0
         return out

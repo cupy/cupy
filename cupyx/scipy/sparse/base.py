@@ -5,6 +5,14 @@ from cupyx.scipy.sparse import _util
 from cupyx.scipy.sparse import sputils
 
 
+class SparseWarning(Warning):
+    pass
+
+
+class SparseEfficiencyWarning(SparseWarning):
+    pass
+
+
 class spmatrix(object):
 
     """Base class of all sparse matrixes.
@@ -105,6 +113,19 @@ class spmatrix(object):
             except AttributeError:
                 return NotImplemented
             return (self.T * tr).T
+
+    # matmul (@) operator
+    def __matmul__(self, other):
+        if _util.isscalarlike(other):
+            raise ValueError('Scalar operands are not allowed, '
+                             'use \'*\' instead')
+        return self.__mul__(other)
+
+    def __rmatmul__(self, other):
+        if _util.isscalarlike(other):
+            raise ValueError('Scalar operands are not allowed, '
+                             'use \'*\' instead')
+        return self.__rmul__(other)
 
     def __div__(self, other):
         return self.tocsr().__div__(other)
@@ -416,7 +437,20 @@ class spmatrix(object):
     def set_shape(self, shape):
         self.reshape(shape)
 
-    # TODO(unno): Implement setdiag
+    def setdiag(self, values, k=0):
+        """Set diagonal or off-diagonal elements of the array.
+
+        Args:
+            values (cupy.ndarray): New values of the diagonal elements.
+                Values may have any length. If the diagonal is longer than
+                values, then the remaining diagonal entries will not be set.
+                If values is longer than the diagonal, then the remaining
+                values are ignored. If a scalar value is given, all of the
+                diagonal is set to it.
+            k (int, optional): Which diagonal to set, corresponding to elements
+                a[i, i+k]. Default: 0 (the main diagonal).
+        """
+        raise NotImplementedError
 
     def sum(self, axis=None, dtype=None, out=None):
         """Sums the matrix elements over a given axis.

@@ -6,8 +6,6 @@ from cupy import _util
 from cupy.core import _routines_indexing as _indexing
 from cupy.core import _routines_statistics as _statistics
 
-import warnings
-
 
 def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
     """Returns the indices of the maximum along an axis.
@@ -118,8 +116,6 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
 
     return _statistics._nanargmin(a, axis, dtype, out, keepdims)
 
-# TODO(okuta): Implement argwhere
-
 
 def nonzero(a):
     """Return the indices of the elements that are non-zero.
@@ -220,7 +216,7 @@ def argwhere(a):
 
     Returns a (N, ndim) dimantional array containing the
     indices of the non-zero elements. Where `N` is number of
-    non-zero elements and `ndim` is dimention of the given array.
+    non-zero elements and `ndim` is dimension of the given array.
 
     Args:
         a (cupy.ndarray): array
@@ -232,10 +228,6 @@ def argwhere(a):
 
     """
     _util.check_array(a, arg_name='a')
-    if a.ndim == 0:
-        warnings.warn(
-            'calling argwhere on 0d arrays is deprecated',
-            DeprecationWarning)
     return _indexing._ndarray_argwhere(a)
 
 
@@ -391,7 +383,7 @@ def _searchsorted(a, v, side, sorter, assume_increasing):
         a = a.astype(v.dtype)
 
     # Numpy does not check if the array is monotonic inside searchsorted
-    # which leds to undefined behavior in such cases.
+    # which leads to undefined behavior in such cases.
     if sorter is not None:
         if sorter.dtype.kind not in ('i', 'u'):
             raise TypeError('sorter must be of integer type')

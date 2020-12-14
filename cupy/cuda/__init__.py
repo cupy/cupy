@@ -31,11 +31,12 @@ class _UnavailableModule():
         self.__name__ = name
 
 
-# TODO(leofang): always import cub (but not enable it) when hipCUB is supported
-if not runtime.is_hip:
-    from cupy.cuda import cub  # NOQA
+from cupy.cuda import cub  # NOQA
+
+if not runtime.is_hip and driver.get_build_version() > 0:
+    from cupy.cuda import jitify  # NOQA
 else:
-    cub = _UnavailableModule('cupy.cuda.cub')
+    jitify = None
 
 try:
     from cupy.cuda import nvtx  # NOQA
@@ -89,8 +90,10 @@ def is_available():
         try:
             _available = runtime.getDeviceCount() > 0
         except Exception as e:
-            if (e.args[0] !=
+            if (not runtime.is_hip and e.args[0] !=
                     'cudaErrorNoDevice: no CUDA-capable device is detected'):
+                raise
+            elif runtime.is_hip and 'hipErrorNoDevice' not in e.args[0]:
                 raise
     return _available
 
@@ -160,6 +163,10 @@ def profile():
     >>> with cupy.cuda.profile():
     ...    # do something you want to measure
     ...    pass
+
+    .. note::
+        When starting ``nvprof`` from the command line, manually setting
+        ``--profile-from-start off`` may be required for the desired behavior.
 
     """
     profiler.start()

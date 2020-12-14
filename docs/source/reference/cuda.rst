@@ -172,6 +172,7 @@ to use these functions.
    cupy.cuda.runtime.streamAddCallback
    cupy.cuda.runtime.streamQuery
    cupy.cuda.runtime.streamWaitEvent
+   cupy.cuda.runtime.launchHostFunc
    cupy.cuda.runtime.eventCreate
    cupy.cuda.runtime.eventCreateWithFlags
    cupy.cuda.runtime.eventDestroy

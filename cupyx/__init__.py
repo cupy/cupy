@@ -1,5 +1,5 @@
 # "NOQA" to suppress flake8 warning
-from cupyx.rsqrt import rsqrt  # NOQA
+from cupyx._rsqrt import rsqrt  # NOQA
 from cupyx._runtime import get_runtime_info  # NOQA
 from cupyx._scatter import scatter_add  # NOQA
 from cupyx._scatter import scatter_max  # NOQA
@@ -9,6 +9,7 @@ from cupyx import linalg  # NOQA
 from cupyx import time  # NOQA
 from cupyx import scipy  # NOQA
 from cupyx import optimizing  # NOQA
+from cupyx import lapack  # NOQA
 
 from cupyx._ufunc_config import errstate  # NOQA
 from cupyx._ufunc_config import geterr  # NOQA

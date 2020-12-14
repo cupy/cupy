@@ -3,7 +3,7 @@ import numpy
 import cupy
 from cupy.cuda import cublas
 from cupy.cuda import device
-from cupy.linalg import util
+from cupy.linalg import _util
 
 
 def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
@@ -38,7 +38,7 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
     .. seealso:: :func:`scipy.linalg.solve_triangular`
     """
 
-    util._assert_cupy_array(a, b)
+    _util._assert_cupy_array(a, b)
 
     if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
         raise ValueError('expected square matrix')
@@ -69,6 +69,7 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
         trsm = cublas.strsm
     else:  # dtype == 'd'
         trsm = cublas.dtrsm
+    one = numpy.array(1, dtype=dtype)
 
     if lower:
         uplo = cublas.CUBLAS_FILL_MODE_LOWER
@@ -90,5 +91,5 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
     trsm(
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, uplo,
         trans, diag,
-        m, n, 1, a.data.ptr, m, b.data.ptr, m)
+        m, n, one.ctypes.data, a.data.ptr, m, b.data.ptr, m)
     return b

@@ -2,6 +2,7 @@ import numpy
 
 import cupy
 
+from cupy.core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _filters_core
 from cupyx.scipy.ndimage import _filters_generic
@@ -32,6 +33,7 @@ def correlate(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
         cupy.ndarray: The result of correlate.
 
     .. seealso:: :func:`scipy.ndimage.correlate`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -65,6 +67,7 @@ def convolve(input, weights, output=None, mode='reflect', cval=0.0, origin=0):
         cupy.ndarray: The result of convolution.
 
     .. seealso:: :func:`scipy.ndimage.convolve`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -94,9 +97,12 @@ def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
         origin (int): The origin parameter controls the placement of the
             filter, relative to the center of the current element of the
             input. Default is ``0``.
+
     Returns:
         cupy.ndarray: The result of the 1D correlation.
+
     .. seealso:: :func:`scipy.ndimage.correlate1d`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -129,7 +135,9 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
             input. Default is ``0``.
     Returns:
         cupy.ndarray: The result of the 1D convolution.
+
     .. seealso:: :func:`scipy.ndimage.convolve1d`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -150,6 +158,9 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
                                                      mode, origin)
     if weights.size == 0:
         return cupy.zeros_like(input)
+
+    _util._check_cval(mode, cval, _util._is_integer_output(output, input))
+
     if convolution:
         weights = weights[tuple([slice(None, None, -1)] * weights.ndim)]
         origins = list(origins)
@@ -161,7 +172,8 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     offsets = _filters_core._origins_to_offsets(origins, weights.shape)
     kernel = _get_correlate_kernel(mode, weights.shape, int_type,
                                    offsets, cval)
-    return _filters_core._call_kernel(kernel, input, weights, output)
+    output = _filters_core._call_kernel(kernel, input, weights, output)
+    return output
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -196,8 +208,10 @@ def _run_1d_correlates(input, params, get_weights, output, mode, cval,
 def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
                      cval=0.0, origin=0):
     """One-dimensional uniform filter along the given axis.
+
     The lines of the array along the given axis are filtered with a uniform
     filter of the given size.
+
     Args:
         input (cupy.ndarray): The input array.
         size (int): Length of the uniform filter.
@@ -212,9 +226,12 @@ def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
         origin (int): The origin parameter controls the placement of the
             filter, relative to the center of the current element of the
             input. Default is ``0``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.uniform_filter1d`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -227,6 +244,7 @@ def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
 def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
                    origin=0):
     """Multi-dimensional uniform filter.
+
     Args:
         input (cupy.ndarray): The input array.
         size (int or sequence of int): Lengths of the uniform filter for each
@@ -242,9 +260,12 @@ def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
             placement of the filter, relative to the center of the current
             element of the input. Default of ``0`` is equivalent to
             ``(0,)*input.ndim``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.uniform_filter`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -261,8 +282,10 @@ def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
 def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
                       mode="reflect", cval=0.0, truncate=4.0):
     """One-dimensional Gaussian filter along the given axis.
+
     The lines of the array along the given axis are filtered with a Gaussian
     filter of the given standard deviation.
+
     Args:
         input (cupy.ndarray): The input array.
         sigma (scalar): Standard deviation for Gaussian kernel.
@@ -279,9 +302,12 @@ def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
             ``'constant'``. Default is ``0.0``.
         truncate (float): Truncate the filter at this many standard deviations.
             Default is ``4.0``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.gaussian_filter1d`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -295,6 +321,7 @@ def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
 def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
                     cval=0.0, truncate=4.0):
     """Multi-dimensional Gaussian filter.
+
     Args:
         input (cupy.ndarray): The input array.
         sigma (scalar or sequence of scalar): Standard deviations for each axis
@@ -312,9 +339,12 @@ def gaussian_filter(input, sigma, order=0, output=None, mode="reflect",
             ``'constant'``. Default is ``0.0``.
         truncate (float): Truncate the filter at this many standard deviations.
             Default is ``4.0``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.gaussian_filter`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -368,6 +398,7 @@ def _gaussian_kernel1d(sigma, order, radius):
 
 def prewitt(input, axis=-1, output=None, mode="reflect", cval=0.0):
     """Compute a Prewitt filter along the given axis.
+
     Args:
         input (cupy.ndarray): The input array.
         axis (int): The axis of input along which to calculate. Default is -1.
@@ -378,9 +409,12 @@ def prewitt(input, axis=-1, output=None, mode="reflect", cval=0.0):
             ``'wrap'``). Default is ``'reflect'``.
         cval (scalar): Value to fill past edges of input if mode is
             ``'constant'``. Default is ``0.0``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.prewitt`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -391,6 +425,7 @@ def prewitt(input, axis=-1, output=None, mode="reflect", cval=0.0):
 
 def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
     """Compute a Sobel filter along the given axis.
+
     Args:
         input (cupy.ndarray): The input array.
         axis (int): The axis of input along which to calculate. Default is -1.
@@ -401,9 +436,12 @@ def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
             ``'wrap'``). Default is ``'reflect'``.
         cval (scalar): Value to fill past edges of input if mode is
             ``'constant'``. Default is ``0.0``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.sobel`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -414,7 +452,7 @@ def sobel(input, axis=-1, output=None, mode="reflect", cval=0.0):
 
 
 def _prewitt_or_sobel(input, axis, output, mode, cval, weights):
-    axis = cupy._util._normalize_axis_index(axis, input.ndim)
+    axis = internal._normalize_axis_index(axis, input.ndim)
 
     def get(is_diff):
         return cupy.array([-1, 0, 1]) if is_diff else weights
@@ -427,12 +465,15 @@ def generic_laplace(input, derivative2, output=None, mode="reflect",
                     cval=0.0, extra_arguments=(), extra_keywords=None):
     """Multi-dimensional Laplace filter using a provided second derivative
     function.
+
     Args:
         input (cupy.ndarray): The input array.
         derivative2 (callable): Function or other callable with the following
             signature that is called once per axis::
+
                 derivative2(input, axis, output, mode, cval,
                             *extra_arguments, **extra_keywords)
+
             where ``input`` and ``output`` are ``cupy.ndarray``, ``axis`` is an
             ``int`` from ``0`` to the number of dimensions, and ``mode``,
             ``cval``, ``extra_arguments``, ``extra_keywords`` are the values
@@ -448,9 +489,12 @@ def generic_laplace(input, derivative2, output=None, mode="reflect",
             Sequence of extra positional arguments to pass to ``derivative2``.
         extra_keywords (dict, optional):
             dict of extra keyword arguments to pass ``derivative2``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.generic_laplace`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -479,6 +523,7 @@ def generic_laplace(input, derivative2, output=None, mode="reflect",
 def laplace(input, output=None, mode="reflect", cval=0.0):
     """Multi-dimensional Laplace filter based on approximate second
     derivatives.
+
     Args:
         input (cupy.ndarray): The input array.
         output (cupy.ndarray, dtype or None): The array in which to place the
@@ -490,7 +535,9 @@ def laplace(input, output=None, mode="reflect", cval=0.0):
             ``'constant'``. Default is ``0.0``.
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.laplace`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -507,6 +554,7 @@ def laplace(input, output=None, mode="reflect", cval=0.0):
 def gaussian_laplace(input, sigma, output=None, mode="reflect",
                      cval=0.0, **kwargs):
     """Multi-dimensional Laplace filter using Gaussian second derivatives.
+
     Args:
         input (cupy.ndarray): The input array.
         sigma (scalar or sequence of scalar): Standard deviations for each axis
@@ -520,9 +568,12 @@ def gaussian_laplace(input, sigma, output=None, mode="reflect",
             ``'constant'``. Default is ``0.0``.
         kwargs (dict, optional):
             dict of extra keyword arguments to pass ``gaussian_filter()``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.gaussian_laplace`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -541,12 +592,15 @@ def generic_gradient_magnitude(input, derivative, output=None,
                                extra_arguments=(), extra_keywords=None):
     """Multi-dimensional gradient magnitude filter using a provided derivative
     function.
+
     Args:
         input (cupy.ndarray): The input array.
         derivative (callable): Function or other callable with the following
             signature that is called once per axis::
+
                 derivative(input, axis, output, mode, cval,
                            *extra_arguments, **extra_keywords)
+
             where ``input`` and ``output`` are ``cupy.ndarray``, ``axis`` is an
             ``int`` from ``0`` to the number of dimensions, and ``mode``,
             ``cval``, ``extra_arguments``, ``extra_keywords`` are the values
@@ -562,9 +616,12 @@ def generic_gradient_magnitude(input, derivative, output=None,
             Sequence of extra positional arguments to pass to ``derivative2``.
         extra_keywords (dict, optional):
             dict of extra keyword arguments to pass ``derivative2``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.generic_gradient_magnitude`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -595,6 +652,7 @@ def generic_gradient_magnitude(input, derivative, output=None,
 def gaussian_gradient_magnitude(input, sigma, output=None, mode="reflect",
                                 cval=0.0, **kwargs):
     """Multi-dimensional gradient magnitude using Gaussian derivatives.
+
     Args:
         input (cupy.ndarray): The input array.
         sigma (scalar or sequence of scalar): Standard deviations for each axis
@@ -608,9 +666,12 @@ def gaussian_gradient_magnitude(input, sigma, output=None, mode="reflect",
             ``'constant'``. Default is ``0.0``.
         kwargs (dict, optional):
             dict of extra keyword arguments to pass ``gaussian_filter()``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.gaussian_gradient_magnitude`
+
     .. note::
         When the output data type is integral (or when no output is provided
         and input is integral) the results may not perfectly match the results
@@ -647,8 +708,10 @@ def minimum_filter(input, size=None, footprint=None, output=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.minimum_filter`
     """
     return _min_or_max_filter(input, size, footprint, None, output, mode,
@@ -678,8 +741,10 @@ def maximum_filter(input, size=None, footprint=None, output=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.maximum_filter`
     """
     return _min_or_max_filter(input, size, footprint, None, output, mode,
@@ -693,6 +758,8 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
 
     sizes, ftprnt, structure = _filters_core._check_size_footprint_structure(
         input.ndim, size, ftprnt, structure)
+    if cval is cupy.nan:
+        raise NotImplementedError("NaN cval is unsupported")
 
     if sizes is not None:
         # Seperable filter, run as a series of 1D filters
@@ -735,8 +802,10 @@ def minimum_filter1d(input, size, axis=-1, output=None, mode="reflect",
         origin (int): The origin parameter controls the placement of the
             filter, relative to the center of the current element of the
             input. Default is ``0``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.minimum_filter1d`
     """
     return _min_or_max_1d(input, size, axis, output, mode, cval, origin, 'min')
@@ -760,8 +829,10 @@ def maximum_filter1d(input, size, axis=-1, output=None, mode="reflect",
         origin (int): The origin parameter controls the placement of the
             filter, relative to the center of the current element of the
             input. Default is ``0``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.maximum_filter1d`
     """
     return _min_or_max_1d(input, size, axis, output, mode, cval, origin, 'max')
@@ -817,6 +888,7 @@ def _get_min_or_max_kernel(mode, w_shape, func, offsets, cval, int_type,
 def rank_filter(input, rank, size=None, footprint=None, output=None,
                 mode="reflect", cval=0.0, origin=0):
     """Multi-dimensional rank filter.
+
     Args:
         input (cupy.ndarray): The input array.
         rank (int): The rank of the element to get. Can be negative to count
@@ -838,8 +910,10 @@ def rank_filter(input, rank, size=None, footprint=None, output=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.rank_filter`
     """
     rank = int(rank)
@@ -850,6 +924,7 @@ def rank_filter(input, rank, size=None, footprint=None, output=None,
 def median_filter(input, size=None, footprint=None, output=None,
                   mode="reflect", cval=0.0, origin=0):
     """Multi-dimensional median filter.
+
     Args:
         input (cupy.ndarray): The input array.
         size (int or sequence of int): One of ``size`` or ``footprint`` must be
@@ -869,8 +944,10 @@ def median_filter(input, size=None, footprint=None, output=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.median_filter`
     """
     return _rank_filter(input, lambda fs: fs//2,
@@ -880,6 +957,7 @@ def median_filter(input, size=None, footprint=None, output=None,
 def percentile_filter(input, percentile, size=None, footprint=None,
                       output=None, mode="reflect", cval=0.0, origin=0):
     """Multi-dimensional percentile filter.
+
     Args:
         input (cupy.ndarray): The input array.
         percentile (scalar): The percentile of the element to get (from ``0``
@@ -901,8 +979,10 @@ def percentile_filter(input, percentile, size=None, footprint=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
+
     .. seealso:: :func:`scipy.ndimage.percentile_filter`
     """
     percentile = float(percentile)
@@ -924,6 +1004,8 @@ def _rank_filter(input, get_rank, size=None, footprint=None, output=None,
                  mode="reflect", cval=0.0, origin=0):
     _, footprint, _ = _filters_core._check_size_footprint_structure(
         input.ndim, size, footprint, None, force_footprint=True)
+    if cval is cupy.nan:
+        raise NotImplementedError("NaN cval is unsupported")
     origins, int_type = _filters_core._check_nd_args(input, footprint,
                                                      mode, origin, 'footprint')
     if footprint.size == 0:
@@ -1052,13 +1134,14 @@ def generic_filter(input, function, size=None, footprint=None,
             placement of the filter, relative to the center of the current
             element of the input. Default of 0 is equivalent to
             ``(0,)*input.ndim``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
 
-    .. notes::
+    .. note::
         If the `function` is a :class:`cupy.RawKernel` then it must be for a
         function that has the following signature. Unlike most functions, this
-        should not utilize `blockDim`/`blockIdx`/`threadIdx`.
+        should not utilize `blockDim`/`blockIdx`/`threadIdx`::
 
             __global__ void func(double *buffer, int filter_size,
                                  double *return_value)
@@ -1112,13 +1195,14 @@ def generic_filter1d(input, function, filter_size, axis=-1, output=None,
         origin (int): The origin parameter controls the placement of the
             filter, relative to the center of the current element of the
             input. Default is ``0``.
+
     Returns:
         cupy.ndarray: The result of the filtering.
 
-    .. notes::
+    .. note::
         The provided function (as a RawKernel) must have the following
         signature. Unlike most functions, this should not utilize
-        `blockDim`/`blockIdx`/`threadIdx`.
+        `blockDim`/`blockIdx`/`threadIdx`::
 
             __global__ void func(double *input_line, ptrdiff_t input_length,
                                  double *output_line, ptrdiff_t output_length)
@@ -1136,7 +1220,7 @@ def generic_filter1d(input, function, filter_size, axis=-1, output=None,
         raise TypeError('bad function type')
     if filter_size < 1:
         raise RuntimeError('invalid filter size')
-    axis = cupy._util._normalize_axis_index(axis, input.ndim)
+    axis = internal._normalize_axis_index(axis, input.ndim)
     origin = _util._check_origin(origin, filter_size)
     _util._check_mode(mode)
     output = _util._get_output(output, input)

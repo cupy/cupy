@@ -1,7 +1,14 @@
+import numpy
+
 import cupy
 import cupy.core.internal
 
 from cupyx.scipy.ndimage import _util
+
+math_constants_preamble = r'''
+// workaround for HIP: line begins with #include
+#include <cupy/math_constants.h>
+'''
 
 
 def _get_coord_map(ndim):
@@ -213,6 +220,15 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     # compute the transformed (target) coordinates, c_j
     ops = ops + coord_func(ndim)
 
+    if cval is numpy.nan:
+        cval = 'CUDART_NAN'
+    elif cval == numpy.inf:
+        cval = 'CUDART_INF'
+    elif cval == -numpy.inf:
+        cval = '-CUDART_INF'
+    else:
+        cval = '(double){cval}'.format(cval=cval)
+
     if mode == 'constant':
         # use cval if coordinate is outside the bounds of x
         _cond = ' || '.join(
@@ -221,7 +237,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
         ops.append("""
         if ({cond})
         {{
-            out = (double){cval};
+            out = {cval};
         }}
         else
         {{""".format(cond=_cond, cval=cval))
@@ -328,7 +344,8 @@ def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         name='shift',
         integer_output=integer_output,
     )
-    return cupy.ElementwiseKernel(in_params, out_params, operation, name)
+    return cupy.ElementwiseKernel(in_params, out_params, operation, name,
+                                  preamble=math_constants_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -347,7 +364,8 @@ def _get_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         name='shift',
         integer_output=integer_output,
     )
-    return cupy.ElementwiseKernel(in_params, out_params, operation, name)
+    return cupy.ElementwiseKernel(in_params, out_params, operation, name,
+                                  preamble=math_constants_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -366,7 +384,8 @@ def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         name='zoom_shift',
         integer_output=integer_output,
     )
-    return cupy.ElementwiseKernel(in_params, out_params, operation, name)
+    return cupy.ElementwiseKernel(in_params, out_params, operation, name,
+                                  preamble=math_constants_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -385,7 +404,8 @@ def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         name='zoom',
         integer_output=integer_output,
     )
-    return cupy.ElementwiseKernel(in_params, out_params, operation, name)
+    return cupy.ElementwiseKernel(in_params, out_params, operation, name,
+                                  preamble=math_constants_preamble)
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -404,4 +424,5 @@ def _get_affine_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         name='affine',
         integer_output=integer_output,
     )
-    return cupy.ElementwiseKernel(in_params, out_params, operation, name)
+    return cupy.ElementwiseKernel(in_params, out_params, operation, name,
+                                  preamble=math_constants_preamble)

@@ -1,7 +1,9 @@
 import numpy
 
 import cupy
+from cupy.core import internal
 from cupyx.scipy.ndimage import _util
+from cupyx.scipy import special
 
 
 def _get_output_fourier(output, input, complex_only=False):
@@ -16,10 +18,10 @@ def _get_output_fourier(output, input, complex_only=False):
             output = cupy.zeros(input.shape, dtype=types[-1])
     elif type(output) is type:
         if output not in types:
-            raise RuntimeError("output type not supported")
+            raise RuntimeError('output type not supported')
         output = cupy.zeros(input.shape, dtype=output)
     elif output.shape != input.shape:
-        raise RuntimeError("output shape not correct")
+        raise RuntimeError('output shape not correct')
     return output
 
 
@@ -55,7 +57,7 @@ def fourier_gaussian(input, sigma, n=-1, axis=-1, output=None):
     """
     ndim = input.ndim
     output = _get_output_fourier(output, input)
-    axis = cupy._util._normalize_axis_index(axis, ndim)
+    axis = internal._normalize_axis_index(axis, ndim)
     sigmas = _util._fix_sequence_arg(sigma, ndim, 'sigma')
 
     output[...] = input
@@ -107,7 +109,7 @@ def fourier_uniform(input, size, n=-1, axis=-1, output=None):
     """
     ndim = input.ndim
     output = _get_output_fourier(output, input)
-    axis = cupy._util._normalize_axis_index(axis, ndim)
+    axis = internal._normalize_axis_index(axis, ndim)
     sizes = _util._fix_sequence_arg(size, ndim, 'size')
 
     output[...] = input
@@ -158,7 +160,7 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
     """
     ndim = input.ndim
     output = _get_output_fourier(output, input, complex_only=True)
-    axis = cupy._util._normalize_axis_index(axis, ndim)
+    axis = internal._normalize_axis_index(axis, ndim)
     shifts = _util._fix_sequence_arg(shift, ndim, 'shift')
 
     output[...] = input
@@ -177,5 +179,74 @@ def fourier_shift(input, shift, n=-1, axis=-1, output=None):
         # reshape for broadcasting
         arr = _reshape_nd(arr, ndim=ndim, axis=ax)
         output *= arr
+
+    return output
+
+
+def fourier_ellipsoid(input, size, n=-1, axis=-1, output=None):
+    """Multidimensional ellipsoid Fourier filter.
+
+    The array is multiplied with the fourier transform of a ellipsoid of
+    given sizes.
+
+    Args:
+        input (cupy.ndarray): The input array.
+        size (float or sequence of float):  The size of the box used for
+            filtering. If a float, `size` is the same for all axes. If a
+            sequence, `size` has to contain one value for each axis.
+        n (int, optional):  If `n` is negative (default), then the input is
+            assumed to be the result of a complex fft. If `n` is larger than or
+            equal to zero, the input is assumed to be the result of a real fft,
+            and `n` gives the length of the array before transformation along
+            the real transform direction.
+        axis (int, optional): The axis of the real transform (only used when
+            ``n > -1``).
+        output (cupy.ndarray, optional):
+            If given, the result of shifting the input is placed in this array.
+
+    Returns:
+        output (cupy.ndarray): The filtered output.
+    """
+    ndim = input.ndim
+    if ndim == 1:
+        return fourier_uniform(input, size, n, axis, output)
+
+    if ndim > 3:
+        # Note: SciPy currently does not do any filtering on >=4d inputs, but
+        #       does not warn about this!
+        raise NotImplementedError('Only 1d, 2d and 3d inputs are supported')
+    output = _get_output_fourier(output, input)
+    axis = internal._normalize_axis_index(axis, ndim)
+    sizes = _util._fix_sequence_arg(size, ndim, 'size')
+
+    output[...] = input
+
+    # compute the distance from the origin for all samples in Fourier space
+    distance = 0
+    for ax, (size, ax_size) in enumerate(zip(sizes, output.shape)):
+        # compute the frequency grid in Hz
+        if ax == axis and n > 0:
+            arr = cupy.arange(ax_size, dtype=output.real.dtype)
+            arr *= numpy.pi * size / n
+        else:
+            arr = cupy.fft.fftfreq(ax_size)
+            arr *= numpy.pi * size
+        arr = arr.astype(output.real.dtype, copy=False)
+        arr *= arr
+        arr = _reshape_nd(arr, ndim=ndim, axis=ax)
+        distance = distance + arr
+    cupy.sqrt(distance, out=distance)
+
+    if ndim == 2:
+        special.j1(distance, out=output)
+        output *= 2
+        output /= distance
+    elif ndim == 3:
+        cupy.sin(distance, out=output)
+        output -= distance * cupy.cos(distance)
+        output *= 3
+        output /= distance ** 3
+    output[(0,) * ndim] = 1.0  # avoid NaN in corner at frequency=0 location
+    output *= input
 
     return output

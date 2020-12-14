@@ -48,7 +48,7 @@ class TestSolveTriangular(unittest.TestCase):
             a_gpu, b_gpu, trans=self.trans, lower=self.lower,
             unit_diagonal=self.unit_diagonal, overwrite_b=self.overwrite_b,
             check_finite=self.check_finite)
-        self.assertEqual(result_cpu.dtype, result_gpu.dtype)
+        assert result_cpu.dtype == result_gpu.dtype
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
         if not self.overwrite_b:

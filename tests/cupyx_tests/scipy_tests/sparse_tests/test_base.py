@@ -76,7 +76,7 @@ class TestSpmatrix(unittest.TestCase):
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_asformat_none(self, xp, sp):
         s = self.dummy_class(sp)()
-        self.assertIs(s.asformat(None), s)
+        assert s.asformat(None) is s
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_maxprint(self, xp, sp):

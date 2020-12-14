@@ -1,13 +1,10 @@
-import functools
 import itertools
-import io
 import types
 import typing as tp  # NOQA
 import unittest
 
 from cupy.testing import _bundle
-from cupy.cuda import cufft
-from cupy.cuda import driver
+from cupy.testing import _pytest_impl
 
 
 def _param_to_str(obj):
@@ -55,11 +52,11 @@ def _parameterize_test_case_generator(base, params):
 def _parameterize_test_case(base, i, param):
     cls_name = _make_class_name(base.__name__, i, param)
 
-    def __str__(self):
-        name = base.__str__(self)
-        return '%s  parameter: %s' % (name, param)
+    def __repr__(self):
+        name = base.__repr__(self)
+        return '<%s  parameter: %s>' % (name, param)
 
-    mb = {'__str__': __str__}
+    mb = {'__repr__': __repr__}
     for k, v in sorted(param.items()):
         if isinstance(v, types.FunctionType):
 
@@ -74,88 +71,45 @@ def _parameterize_test_case(base, i, param):
         else:
             mb[k] = v
 
-    def method_generator(base_method):
-        # Generates a wrapped test method
-
-        @functools.wraps(base_method)
-        def new_method(self, *args, **kwargs):
-            try:
-                return base_method(self, *args, **kwargs)
-            except unittest.SkipTest:
-                raise
-            except Exception as e:
-                s = io.StringIO()
-                s.write('Parameterized test failed.\n\n')
-                s.write('Base test method: {}.{}\n'.format(
-                    base.__name__, base_method.__name__))
-                s.write('Test parameters:\n')
-                for k, v in sorted(param.items()):
-                    s.write('  {}: {}\n'.format(k, v))
-                err_class = e.__class__
-                if isinstance(e, (driver.CUDADriverError, cufft.CuFFTError)):
-                    err_class, = err_class.__bases__
-                raise err_class(s.getvalue()).with_traceback(e.__traceback__)
-        return new_method
-
-    return (cls_name, mb, method_generator)
+    return (cls_name, mb, lambda method: method)
 
 
 def parameterize(*params):
-    # TODO(niboshi): Add documentation
-    return _bundle.make_decorator(
-        lambda base: _parameterize_test_case_generator(base, params))
+    """Generates test classes with given sets of additional attributes
 
+    >>> @parameterize({"a": 1}, {"b": 2, "c": 3})
+    ... class TestX(unittest.TestCase):
+    ...     def test_y(self):
+    ...         pass
 
-def _values_to_dicts(names, values):
-    assert isinstance(names, str)
-    assert isinstance(values, (tuple, list))
+    generates two classes `TestX_param_0_...`, `TestX_param_1_...` and
+    removes the original class `TestX`.
 
-    def safe_zip(ns, vs):
-        if len(ns) == 1:
-            return [(ns[0], vs)]
-        assert isinstance(vs, (tuple, list)) and len(ns) == len(vs)
-        return zip(ns, vs)
+    The specification is subject to change, which applies to all the non-NumPy
+    `testing` features.
 
-    names = names.split(',')
-    params = [dict(safe_zip(names, value_list)) for value_list in values]
-    return params
-
-
-def from_pytest_parameterize(names, values):
-    # Pytest-style parameterization.
-    # TODO(niboshi): Add documentation
-    return _values_to_dicts(names, values)
-
-
-def parameterize_pytest(names, values):
-    # Pytest-style parameterization.
-    # TODO(niboshi): Add documentation
-    return parameterize(*from_pytest_parameterize(names, values))
+    """
+    def f(cls):
+        if issubclass(cls, unittest.TestCase):
+            deco = _bundle.make_decorator(
+                lambda base: _parameterize_test_case_generator(base, params))
+        else:
+            deco = _pytest_impl.parameterize(*params)
+        return deco(cls)
+    return f
 
 
 def product(parameter):
-    # TODO(niboshi): Add documentation
-    if isinstance(parameter, dict):
-        return product_dict(*[
-            _values_to_dicts(names, values)
-            for names, values in sorted(parameter.items())])
-
-    elif isinstance(parameter, list):
-        # list of lists of dicts
-        if not all(isinstance(_, list) for _ in parameter):
-            raise TypeError('parameter must be list of lists of dicts')
-        if not all(isinstance(_, dict) for l in parameter for _ in l):
-            raise TypeError('parameter must be list of lists of dicts')
-        return product_dict(*parameter)
-
-    else:
-        raise TypeError(
-            'parameter must be either dict or list. Actual: {}'.format(
-                type(parameter)))
+    # TODO(kataoka): Add documentation
+    assert isinstance(parameter, dict)
+    keys = sorted(parameter)
+    values = [parameter[key] for key in keys]
+    values_product = itertools.product(*values)
+    return [dict(zip(keys, vals)) for vals in values_product]
 
 
 def product_dict(*parameters):
-    # TODO(niboshi): Add documentation
+    # TODO(kataoka): Add documentation
     return [
         {k: v for dic in dicts for k, v in dic.items()}
         for dicts in itertools.product(*parameters)]

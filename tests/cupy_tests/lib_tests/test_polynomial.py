@@ -369,54 +369,6 @@ class TestPoly1dRoutines(Poly1dTestBase):
         return func(a1, a2)
 
 
-class UserDefinedArray:
-
-    __array_priority__ = cupy.poly1d.__array_priority__ + 10
-
-    def __init__(self):
-        self.op_count = 0
-        self.rop_count = 0
-
-    def __add__(self, other):
-        self.op_count += 1
-
-    def __radd__(self, other):
-        self.rop_count += 1
-
-    def __sub__(self, other):
-        self.op_count += 1
-
-    def __rsub__(self, other):
-        self.rop_count += 1
-
-    def __mul__(self, other):
-        self.op_count += 1
-
-    def __rmul__(self, other):
-        self.rop_count += 1
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': [
-        lambda x, y: x + y,
-        lambda x, y: x - y,
-        lambda x, y: x * y,
-    ],
-}))
-class TestPoly1dArrayPriority(Poly1dTestBase):
-
-    def test_poly1d_array_priority_greator(self):
-        a1 = self._get_input(cupy, 'poly1d', 'int64')
-        a2 = UserDefinedArray()
-        self.func(a1, a2)
-        assert a2.op_count == 0
-        assert a2.rop_count == 1
-        self.func(a2, a1)
-        assert a2.op_count == 1
-        assert a2.rop_count == 1
-
-
 @testing.gpu
 class TestPoly1dEquality(unittest.TestCase):
 
@@ -535,7 +487,7 @@ class TestPolyfitParametersCombinations(unittest.TestCase):
 
         testing.assert_allclose(cp_c, np_c, atol=1e-9)
         testing.assert_allclose(cp_resids, np_resids, atol=1e-9)
-        testing.assert_allclose(cp_s, np_s)
+        testing.assert_allclose(cp_s, np_s, atol=1e-9)
         assert cp_rank == np_rank
         if self.rcond is not None:
             assert cp_rcond == np_rcond
