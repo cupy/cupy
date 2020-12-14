@@ -286,7 +286,7 @@ class TestElementwiseKernelTexture(unittest.TestCase):
             'T y',
             '''
             T temp = tex1D<T>(texObj,
-                              T(i)
+                              float(i)
                               );
             y = temp + x;
             ''', name='test_tex1D')
@@ -297,8 +297,8 @@ class TestElementwiseKernelTexture(unittest.TestCase):
             'T y',
             '''
             T temp = tex2D<T>(texObj,
-                              (T)(i % width),
-                              (T)(i / width)
+                              (float)(i % width),
+                              (float)(i / width)
                               );
             y = temp + x;
             ''', name='test_tex2D')
@@ -309,9 +309,9 @@ class TestElementwiseKernelTexture(unittest.TestCase):
             'T y',
             '''
             T temp = tex3D<T>(texObj,
-                              (T)((i % (width * height)) % width),
-                              (T)((i % (width * height)) / width),
-                              (T)((i / (width * height)))
+                              (float)((i % (width * height)) % width),
+                              (float)((i % (width * height)) / width),
+                              (float)((i / (width * height)))
                               );
             y = temp + x;
             ''', name='test_tex3D')
