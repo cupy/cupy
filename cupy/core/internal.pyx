@@ -400,8 +400,8 @@ cpdef Py_ssize_t _normalize_axis_index(
     return axis
 
 
-cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim,
-        cpp_bool sort_axes=True):
+cpdef tuple _normalize_axis_indices(
+        axes, Py_ssize_t ndim, cpp_bool sort_axes=True):
     """Normalize axis indices.
 
     Args:
@@ -431,4 +431,3 @@ cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim,
         res.append(axis)
 
     return tuple(sorted(res) if sort_axes else res)
-
