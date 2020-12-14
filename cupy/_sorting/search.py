@@ -246,6 +246,10 @@ _searchsorted_kernel = core.ElementwiseKernel(
     'bool assume_increassing',
     'int64 y',
     '''
+    #ifdef __HIP_DEVICE_COMPILE__
+    bool is_done = false;
+    #endif
+
     // Array is assumed to be monotonically
     // increasing unless a check is requested with the
     // `assume_increassing = False` parameter.
@@ -272,7 +276,11 @@ _searchsorted_kernel = core.ElementwiseKernel(
             }
         }
         y = pos;
+        #ifdef __HIP_DEVICE_COMPILE__
+        is_done = true;
+        #else
         return;
+        #endif
     }
 
     bool greater = false;
@@ -282,8 +290,15 @@ _searchsorted_kernel = core.ElementwiseKernel(
         greater = (inc ? x > bins[n_bins-1] : x <= bins[n_bins-1]);
     }
     if (greater) {
+        #ifdef __HIP_DEVICE_COMPILE__
+        if (!is_done) {
+          y = n_bins;
+          is_done = true;
+        }
+        #else
         y = n_bins;
         return;
+        #endif
     }
 
     long long left = 0;
@@ -294,14 +309,28 @@ _searchsorted_kernel = core.ElementwiseKernel(
             ++left;
         }
         if (left == n_bins) {
+            #ifdef __HIP_DEVICE_COMPILE__
+            if (!is_done) {
+              y = n_bins;
+              is_done = true;
+            }
+            #else
             y = n_bins;
             return;
+            #endif
         }
         if (side_is_right
                 && !_isnan<T>(bins[n_bins-1]) && !_isnan<S>(x)
                 && bins[n_bins-1] > x) {
+            #ifdef __HIP_DEVICE_COMPILE__
+            if (!is_done) {
+              y = n_bins;
+              is_done = true;
+            }
+            #else
             y = n_bins;
             return;
+            #endif
         }
     }
 
@@ -320,7 +349,14 @@ _searchsorted_kernel = core.ElementwiseKernel(
             right = m;
         }
     }
+    #ifdef __HIP_DEVICE_COMPILE__
+    if (!is_done) {
+      y = right;
+      is_done = true;
+    }
+    #else
     y = right;
+    #endif
     ''', preamble=_preamble)
 
 
