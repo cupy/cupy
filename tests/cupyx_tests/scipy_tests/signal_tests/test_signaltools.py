@@ -70,7 +70,7 @@ class TestFFTConvolve(unittest.TestCase):
 
     # Note: float16 is tested separately
     @testing.for_all_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, rtol=5e-4, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp',
                                  accept_error=ValueError)
     def test_fftconvolve(self, xp, scp, dtype):
         return self._filter('fftconvolve', dtype, xp, scp)
@@ -83,7 +83,7 @@ class TestFFTConvolve(unittest.TestCase):
 
     # Note: float16 is tested separately
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, rtol=5e-4, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp',
                                  accept_error=ValueError)
     def test_convolve_fft(self, xp, scp, dtype):
         return self._filter('convolve', dtype, xp, scp, method='fft')
@@ -96,7 +96,7 @@ class TestFFTConvolve(unittest.TestCase):
 
     # Note: float16 is tested separately
     @testing.for_all_dtypes(no_float16=True, no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-4, rtol=5e-4, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp',
                                  accept_error=ValueError)
     def test_correlate_fft(self, xp, scp, dtype):
         return self._filter('correlate', dtype, xp, scp, method='fft')
