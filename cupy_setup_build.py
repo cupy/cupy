@@ -91,6 +91,7 @@ cuda_files = [
 
 if use_hip:
     MODULES.append({
+        # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
         'file': cuda_files,
         'include': [
@@ -104,6 +105,8 @@ if use_hip:
             'hipblas',
             'hiprand',
         ],
+        'check_method': build.check_hip_version,
+        'version_method': build.get_hip_version,
     })
 else:
     MODULES.append({
@@ -353,6 +356,7 @@ def preconfigure_modules(compiler, settings):
     """
 
     nvcc_path = build.get_nvcc_path()
+    hipcc_path = build.get_hipcc_path()
     summary = [
         '',
         '************************************************************',
@@ -364,12 +368,14 @@ def preconfigure_modules(compiler, settings):
         '  Library directories: {}'.format(str(settings['library_dirs'])),
         '  nvcc command       : {}'.format(
             nvcc_path if nvcc_path else '(not found)'),
+        '  hipcc command      : {}'.format(
+            hipcc_path if hipcc_path else '(not found)'),
         '',
         'Environment Variables:',
     ]
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
-                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC',
+                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC', 'HIPCC',
                 'ROCM_HOME']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
@@ -421,9 +427,11 @@ def preconfigure_modules(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
-        elif module['name'] in ('thrust', 'cub') and nvcc_path is None:
+        elif (module['name'] in ('thrust', 'cub')
+                and (nvcc_path is None and hipcc_path is None)):
             installed = True
-            errmsg = ['nvcc command could not be found in PATH.',
+            cmd = 'nvcc' if not use_hip else 'hipcc'
+            errmsg = ['{} command could not be found in PATH.'.format(cmd),
                       'Check your PATH environment variable.']
         else:
             installed = True
@@ -882,7 +890,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         # For CUDA C source files, compile them with NVCC.
         try:
             nvcc_path = build.get_nvcc_path()
-            base_opts = build.get_compiler_base_options()
+            base_opts = build.get_compiler_base_options(nvcc_path)
             compiler_so = nvcc_path
 
             cuda_version = build.get_cuda_version()
@@ -900,7 +908,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         # For CUDA C source files, compile them with HIPCC.
         try:
             rocm_path = build.get_hipcc_path()
-            base_opts = build.get_compiler_base_options()
+            base_opts = build.get_compiler_base_options(rocm_path)
             compiler_so = rocm_path
 
             postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
@@ -942,7 +950,6 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
                     include_dirs=None, debug=0, extra_preargs=None,
                     extra_postargs=None, depends=None):
         # Compile CUDA C files, mainly derived from UnixCCompiler._compile().
-
         macros, objects, extra_postargs, pp_opts, _build = \
             self._setup_compile(output_dir, macros, include_dirs, sources,
                                 depends, extra_postargs)
@@ -968,6 +975,9 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
 
     def compile(self, sources, **kwargs):
         # Split CUDA C sources and others.
+        if use_hip:
+            raise RuntimeError('ROCm is not supported on Windows')
+
         cu_sources = []
         other_sources = []
         for source in sources:
@@ -1004,7 +1014,8 @@ class custom_build_ext(build_ext.build_ext):
     """Custom `build_ext` command to include CUDA C source files."""
 
     def run(self):
-        if build.get_nvcc_path() is not None:
+        if (build.get_nvcc_path() is not None
+                or build.get_hipcc_path() is not None):
             def wrap_new_compiler(func):
                 def _wrap_new_compiler(*args, **kwargs):
                     try:
