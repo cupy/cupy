@@ -61,9 +61,21 @@ Building sparse matrices
    cupyx.scipy.sparse.identity
    cupyx.scipy.sparse.kron
    cupyx.scipy.sparse.spdiags
+   cupyx.scipy.sparse.tril
+   cupyx.scipy.sparse.triu
    cupyx.scipy.sparse.rand
    cupyx.scipy.sparse.random
    cupyx.scipy.sparse.vstack
+
+
+Sparse matrix tools
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.sparse.find
 
 
 Identifying sparse matrices
