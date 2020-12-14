@@ -42,6 +42,7 @@ from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _routines_math as _math
 from cupy.core cimport _routines_sorting as _sorting
 from cupy.core cimport _routines_statistics as _statistics
+from cupy.core cimport _scalar
 from cupy.core cimport dlpack
 from cupy.core cimport internal
 from cupy.cuda cimport device
@@ -53,11 +54,36 @@ from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cublas
 
 
+# If rop of cupy.ndarray is called, cupy's op is the last chance.
+# If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
+# it is safe to call cupy's op.
+# Otherwise, use this function `_should_use_rop` to choose
+# * [True] return NotImplemented to defer rhs, or
+# * [False] call NumPy's ufunc to try all `__array_ufunc__`.
+# Note that extension types (`cdef class`) in Cython 0.x shares
+# implementations of op and rop. (i.e. `__radd__(self, other)` is
+# `__add__(other, self)`.)
+#
+# It follows NEP 13 except that cupy also implements the fallback to
+# `__array_priority__`, which seems fair and necessary because of the
+# following facts:
+# * `numpy` : `scipy.sparse` = `cupy` : `cupyx.scipy.sparse`;
+# * NumPy ignores `__array_priority__` attributes of arguments if NumPy finds
+#   `__array_function__` of `cupy.ndarray`;
+# * SciPy sparse classes don't implement `__array_function__` and they even
+#   don't set `__array_function__ = None` to opt-out the feature; and
+# * `__array_priority__` of SciPy sparse classes is respected because
+#   `numpy.ndarray.__array_function__` does not disable `__array_priority__`.
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    xp = getattr(x, '__array_priority__', 0)
-    yp = getattr(y, '__array_priority__', 0)
-    return xp < yp and not isinstance(y, ndarray)
+    try:
+        y_ufunc = y.__array_ufunc__
+    except AttributeError:
+        # NEP 13's recommendation is `return False`.
+        xp = getattr(x, '__array_priority__', 0)
+        yp = getattr(y, '__array_priority__', 0)
+        return xp < yp
+    return y_ufunc is None
 
 
 cdef tuple _HANDLED_TYPES
@@ -944,20 +970,34 @@ cdef class ndarray:
     # Comparison operators:
 
     def __richcmp__(object self, object other, int op):
-        if isinstance(other, numpy.ndarray) and other.ndim == 0:
-            other = other.item()  # Workaround for numpy<1.13
-        if op == 0:
-            return _logic._ndarray_less(self, other)
-        if op == 1:
-            return _logic._ndarray_less_equal(self, other)
-        if op == 2:
-            return _logic._ndarray_equal(self, other)
-        if op == 3:
-            return _logic._ndarray_not_equal(self, other)
-        if op == 4:
-            return _logic._ndarray_greater(self, other)
-        if op == 5:
-            return _logic._ndarray_greater_equal(self, other)
+        if isinstance(other, ndarray):
+            if op == 0:
+                return _logic._ndarray_less(self, other)
+            if op == 1:
+                return _logic._ndarray_less_equal(self, other)
+            if op == 2:
+                return _logic._ndarray_equal(self, other)
+            if op == 3:
+                return _logic._ndarray_not_equal(self, other)
+            if op == 4:
+                return _logic._ndarray_greater(self, other)
+            if op == 5:
+                return _logic._ndarray_greater_equal(self, other)
+        elif not _should_use_rop(self, other):
+            if isinstance(other, numpy.ndarray) and other.ndim == 0:
+                other = other.item()  # Workaround for numpy<1.13
+            if op == 0:
+                return numpy.less(self, other)
+            if op == 1:
+                return numpy.less_equal(self, other)
+            if op == 2:
+                return numpy.equal(self, other)
+            if op == 3:
+                return numpy.not_equal(self, other)
+            if op == 4:
+                return numpy.greater(self, other)
+            if op == 5:
+                return numpy.greater_equal(self, other)
         return NotImplemented
 
     # Truth value of an array (bool):
@@ -993,95 +1033,124 @@ cdef class ndarray:
     # Arithmetic:
 
     def __add__(x, y):
-        if _should_use_rop(x, y):
-            return y.__radd__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._add(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.add(x, y)
 
     def __sub__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rsub__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._subtract(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.subtract(x, y)
 
     def __mul__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rmul__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._multiply(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.multiply(x, y)
 
     def __matmul__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rmatmul__(x)
+        # TODO(kataoka): Support matmul (gufunc) in __array_ufunc__
+        if not isinstance(y, ndarray) and _should_use_rop(x, y):
+            return NotImplemented
         else:
             return _linalg.matmul(x, y)
 
     def __div__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rdiv__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.divide(x, y)
 
     def __truediv__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rtruediv__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._true_divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.true_divide(x, y)
 
     def __floordiv__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rfloordiv__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._floor_divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.floor_divide(x, y)
 
     def __mod__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rmod__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._remainder(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.remainder(x, y)
 
     def __divmod__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rdivmod__(x)
-        else:
+        if isinstance(y, ndarray):
             return divmod(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.divmod(x, y)
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
-        if _should_use_rop(x, y):
-            return y.__rpow__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._power(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.power(x, y)
 
     def __lshift__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rlshift__(x)
-        else:
+        if isinstance(y, ndarray):
             return _binary._left_shift(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.left_shift(x, y)
 
     def __rshift__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rrshift__(x)
-        else:
+        if isinstance(y, ndarray):
             return _binary._right_shift(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.right_shift(x, y)
 
     def __and__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rand__(x)
-        else:
+        if isinstance(y, ndarray):
             return _binary._bitwise_and(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.bitwise_and(x, y)
 
     def __or__(x, y):
-        if _should_use_rop(x, y):
-            return y.__ror__(x)
-        else:
+        if isinstance(y, ndarray):
             return _binary._bitwise_or(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.bitwise_or(x, y)
 
     def __xor__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rxor__(x)
-        else:
+        if isinstance(y, ndarray):
             return _binary._bitwise_xor(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.bitwise_xor(x, y)
 
     # Arithmetic, in-place:
 
@@ -1323,12 +1392,14 @@ cdef class ndarray:
         numpy array.
         """
         import cupy  # top-level ufuncs
+        inout = inputs
         if 'out' in kwargs:
             # need to unfold tuple argument in kwargs
             out = kwargs['out']
             if len(out) != 1:
                 raise ValueError('The \'out\' parameter must have exactly one '
                                  'array value')
+            inout += out
             kwargs['out'] = out[0]
 
         if method == '__call__':
@@ -1340,6 +1411,17 @@ cdef class ndarray:
                 cp_ufunc = getattr(cupy, name)
             except AttributeError:
                 return NotImplemented
+            for x in inout:
+                # numpy.ndarray is handled and then TypeError is raised due to
+                # implicit host-to-device conversion.
+                # Except for numpy.ndarray, types should be supported by
+                # `_kernel._preprocess_args`.
+                if (
+                        not hasattr(x, '__cuda_array_interface__')
+                        and not type(x) in _scalar.scalar_type_set
+                        and not isinstance(x, numpy.ndarray)
+                ):
+                    return NotImplemented
             if name in [
                     'greater', 'greater_equal', 'less', 'less_equal',
                     'equal', 'not_equal']:
