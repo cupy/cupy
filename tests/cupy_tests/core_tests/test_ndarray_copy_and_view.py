@@ -113,14 +113,14 @@ class TestArrayCopyAndView(unittest.TestCase):
         b = astype_without_warning(a, dst_dtype, order=order)
         a_cpu = testing.shaped_arange((2, 3, 4), numpy, src_dtype)
         b_cpu = astype_without_warning(a_cpu, dst_dtype, order=order)
-        self.assertEqual(b.dtype.type, b_cpu.dtype.type)
+        assert b.dtype.type == b_cpu.dtype.type
 
     @testing.for_orders('CAK')
     @testing.for_all_dtypes()
     def test_astype_type_c_contiguous_no_copy(self, dtype, order):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         b = a.astype(dtype, order=order, copy=False)
-        self.assertTrue(b is a)
+        assert b is a
 
     @testing.for_orders('FAK')
     @testing.for_all_dtypes()
@@ -128,7 +128,7 @@ class TestArrayCopyAndView(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
         a = cupy.asfortranarray(a)
         b = a.astype(dtype, order=order, copy=False)
-        self.assertTrue(b is a)
+        assert b is a
 
     @testing.for_all_dtypes_combination(('src_dtype', 'dst_dtype'))
     @testing.numpy_cupy_equal()

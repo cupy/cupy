@@ -1,8 +1,6 @@
-============================================
-CuPy -- NumPy-like API accelerated with CUDA
-============================================
-
-This is the `CuPy <https://github.com/cupy/cupy>`_ documentation.
+============================================================
+CuPy -- A NumPy-compatible array library accelerated by CUDA
+============================================================
 
 .. module:: cupy
 

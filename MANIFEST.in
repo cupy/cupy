@@ -9,3 +9,6 @@ recursive-include tests *.py
 include LICENSE
 include docs/LICENSE_THIRD_PARTY
 include docs/source/license.rst
+include cupy/cuda/cupy_cufftXt.cu  # for cuFFT callback
+include cupy/cuda/cufft.pxd  # for cuFFT callback
+include cupy/cuda/cufft.pyx  # for cuFFT callback

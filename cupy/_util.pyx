@@ -12,68 +12,15 @@ import cupy
 from cupy.cuda cimport device
 
 
+DEF CYTHON_BUILD_VER = cython_version
+cython_build_ver = CYTHON_BUILD_VER
+
+
 ENABLE_SLICE_COPY = bool(
     int(os.environ.get('CUPY_EXPERIMENTAL_SLICE_COPY', 0)))
 
 
 cdef list _memos = []
-
-
-def _normalize_axis_index(axis, ndim):
-    """
-    Normalizes an axis index, ``axis``, such that is a valid positive index
-    into the shape of array with ``ndim`` dimensions. Raises a ValueError
-    with an appropriate message if this is not possible.
-
-    Args:
-        axis (int):
-            The un-normalized index of the axis. Can be negative
-        ndim (int):
-            The number of dimensions of the array that ``axis`` should be
-            normalized against
-
-    Returns:
-        int:
-            The normalized axis index, such that `0 <= normalized_axis < ndim`
-
-    """
-    if axis < 0:
-        axis += ndim
-    if not (0 <= axis < ndim):
-        raise numpy.AxisError('axis out of bounds')
-    return axis
-
-
-def _normalize_axis_indices(axes, ndim, sort_axes=True):
-    """Normalize axis indices.
-
-    Args:
-        axis (int, tuple of int or None):
-            The un-normalized indices of the axis. Can be negative.
-        ndim (int):
-            The number of dimensions of the array that ``axis`` should be
-            normalized against
-        sort_axes (bool):
-            If provided as False will not sort the axes, default is to return
-            the sorted values.
-
-    Returns:
-        tuple of int:
-            The tuple of normalized axis indices.
-    """
-    if axes is None:
-        axes = tuple(range(ndim))
-    elif not isinstance(axes, tuple):
-        axes = axes,
-
-    res = []
-    for axis in axes:
-        axis = _normalize_axis_index(axis, ndim)
-        if axis in res:
-            raise ValueError('Duplicate value in \'axis\'')
-        res.append(axis)
-
-    return tuple(sorted(res) if sort_axes else res)
 
 
 def memoize(bint for_each_device=False):

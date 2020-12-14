@@ -40,6 +40,7 @@ cdef set_current_stream_ptr(intptr_t ptr):
     Args:
         ptr (intptr_t): CUDA stream pointer.
     """
+    global enable_current_stream
     enable_current_stream = True
     tls = _ThreadLocal.get()
     tls.set_current_stream_ptr(ptr)

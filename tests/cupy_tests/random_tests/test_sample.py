@@ -47,27 +47,27 @@ class TestRandint2(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_bound_1(self):
-        vals = [random.randint(0, 10, (2, 3)).get() for _ in range(10)]
+        vals = [random.randint(0, 10, (2, 3)).get() for _ in range(20)]
         for val in vals:
-            self.assertEqual(val.shape, (2, 3))
-        self.assertEqual(min(_.min() for _ in vals), 0)
-        self.assertEqual(max(_.max() for _ in vals), 9)
+            assert val.shape == (2, 3)
+        assert min(_.min() for _ in vals) == 0
+        assert max(_.max() for _ in vals) == 9
 
     @condition.repeat(3, 10)
     def test_bound_2(self):
         vals = [random.randint(0, 2).get() for _ in range(20)]
         for val in vals:
-            self.assertEqual(val.shape, ())
-        self.assertEqual(min(vals), 0)
-        self.assertEqual(max(vals), 1)
+            assert val.shape == ()
+        assert min(vals) == 0
+        assert max(vals) == 1
 
     @condition.repeat(3, 10)
     def test_bound_overflow(self):
         # 100 - (-100) exceeds the range of int8
         val = random.randint(numpy.int8(-100), numpy.int8(100), size=20).get()
-        self.assertEqual(val.shape, (20,))
-        self.assertGreaterEqual(val.min(), -100)
-        self.assertLess(val.max(), 100)
+        assert val.shape == (20,)
+        assert val.min() >= -100
+        assert val.max() < 100
 
     @condition.repeat(3, 10)
     def test_bound_float1(self):
@@ -77,16 +77,16 @@ class TestRandint2(unittest.TestCase):
         high += 1
         vals = [random.randint(low, high, (2, 3)).get() for _ in range(10)]
         for val in vals:
-            self.assertEqual(val.shape, (2, 3))
-        self.assertEqual(min(_.min() for _ in vals), int(low))
-        self.assertEqual(max(_.max() for _ in vals), int(high) - 1)
+            assert val.shape == (2, 3)
+        assert min(_.min() for _ in vals) == int(low)
+        assert max(_.max() for _ in vals) == int(high) - 1
 
     def test_bound_float2(self):
         vals = [random.randint(-1.0, 1.0, (2, 3)).get() for _ in range(10)]
         for val in vals:
-            self.assertEqual(val.shape, (2, 3))
-        self.assertEqual(min(_.min() for _ in vals), -1)
-        self.assertEqual(max(_.max() for _ in vals), 0)
+            assert val.shape == (2, 3)
+        assert min(_.min() for _ in vals) == -1
+        assert max(_.max() for _ in vals) == 0
 
     @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
@@ -95,7 +95,7 @@ class TestRandint2(unittest.TestCase):
         vals = [random.randint(mx).get() for _ in range(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(trial) / mx] * mx)
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        assert hypothesis.chi_square_test(counts, expected)
 
     @condition.repeat(3, 10)
     def test_goodness_of_fit_2(self):
@@ -103,7 +103,7 @@ class TestRandint2(unittest.TestCase):
         vals = random.randint(mx, size=(5, 20)).get()
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(vals.size) / mx] * mx)
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        assert hypothesis.chi_square_test(counts, expected)
 
 
 @testing.gpu
@@ -116,8 +116,8 @@ class TestRandintDtype(unittest.TestCase):
         low = numpy.iinfo(dtype).min
         high = numpy.iinfo(dtype).max + 1
         x = random.randint(low, high, size, dtype).get()
-        self.assertLessEqual(low, min(x))
-        self.assertLessEqual(max(x), high)
+        assert low <= min(x)
+        assert max(x) <= high
 
     @testing.for_int_dtypes(no_bool=True)
     def test_dtype2(self, dtype):
@@ -131,9 +131,9 @@ class TestRandintDtype(unittest.TestCase):
         size = (10000,)
 
         x = random.randint(iinfo.min, iinfo.max + 1, size, dtype).get()
-        self.assertEqual(x.dtype, dtype)
-        self.assertLessEqual(iinfo.min, min(x))
-        self.assertLessEqual(max(x), iinfo.max)
+        assert x.dtype == dtype
+        assert iinfo.min <= min(x)
+        assert max(x) <= iinfo.max
 
         # Lower bound check
         with self.assertRaises(ValueError):
@@ -171,17 +171,17 @@ class TestRandomIntegers2(unittest.TestCase):
     def test_bound_1(self):
         vals = [random.random_integers(0, 10, (2, 3)).get() for _ in range(10)]
         for val in vals:
-            self.assertEqual(val.shape, (2, 3))
-        self.assertEqual(min(_.min() for _ in vals), 0)
-        self.assertEqual(max(_.max() for _ in vals), 10)
+            assert val.shape == (2, 3)
+        assert min(_.min() for _ in vals) == 0
+        assert max(_.max() for _ in vals) == 10
 
     @condition.repeat(3, 10)
     def test_bound_2(self):
         vals = [random.random_integers(0, 2).get() for _ in range(20)]
         for val in vals:
-            self.assertEqual(val.shape, ())
-        self.assertEqual(min(vals), 0)
-        self.assertEqual(max(vals), 2)
+            assert val.shape == ()
+        assert min(vals) == 0
+        assert max(vals) == 2
 
     @condition.repeat(3, 10)
     def test_goodness_of_fit(self):
@@ -190,7 +190,7 @@ class TestRandomIntegers2(unittest.TestCase):
         vals = [random.randint(0, mx).get() for _ in range(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(trial) / mx] * mx)
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        assert hypothesis.chi_square_test(counts, expected)
 
     @condition.repeat(3, 10)
     def test_goodness_of_fit_2(self):
@@ -198,7 +198,7 @@ class TestRandomIntegers2(unittest.TestCase):
         vals = random.randint(0, mx, (5, 20)).get()
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(vals.size) / mx] * mx)
-        self.assertTrue(hypothesis.chi_square_test(counts, expected))
+        assert hypothesis.chi_square_test(counts, expected)
 
 
 @testing.gpu
@@ -300,5 +300,5 @@ class TestMultinomial(unittest.TestCase):
     def test_multinomial(self, xp, dtype):
         pvals = xp.array([0.2, 0.3, 0.5], dtype)
         x = xp.random.multinomial(100000, pvals, self.size)
-        self.assertEqual(x.dtype, 'l')
+        assert x.dtype == 'l'
         return x / 100000

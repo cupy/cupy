@@ -69,6 +69,8 @@ Sums, products, differences
    cupy.cumsum
    cupy.nansum
    cupy.nanprod
+   cupy.nancumsum
+   cupy.nancumprod
    cupy.diff
    cupy.gradient
 
@@ -171,6 +173,7 @@ Miscellaneous
    cupy.fmax
    cupy.fmin
    cupy.nan_to_num
+   cupy.interp
    cupy.bartlett
    cupy.blackman
    cupy.hamming

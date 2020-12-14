@@ -51,6 +51,10 @@ class TestCholeskyDecomposition(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-3)
     def check_L(self, array, xp):
         a = xp.asarray(array)
+        if (a.dtype in (numpy.complex64, numpy.complex128)
+                and cupy.cuda.runtime.is_hip):
+            raise unittest.SkipTest('ROCm does not yet support complex '
+                                    'Cholesky decomposition')
         return xp.linalg.cholesky(a)
 
     @testing.for_dtypes([
@@ -107,10 +111,10 @@ class TestQRDecomposition(unittest.TestCase):
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
         if isinstance(result_cpu, tuple):
             for b_cpu, b_gpu in zip(result_cpu, result_gpu):
-                self.assertEqual(b_cpu.dtype, b_gpu.dtype)
+                assert b_cpu.dtype == b_gpu.dtype
                 cupy.testing.assert_allclose(b_cpu, b_gpu, atol=1e-4)
         else:
-            self.assertEqual(result_cpu.dtype, result_gpu.dtype)
+            assert result_cpu.dtype == result_gpu.dtype
             cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
     @testing.fix_random()

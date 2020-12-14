@@ -164,6 +164,33 @@ typedef struct {
     unsigned char reserved[64];
 } cudaIpcEventHandle_t;
 
+typedef struct {
+     char name[256];
+     size_t totalGlobalMem;
+     size_t sharedMemPerBlock;
+     int regsPerBlock;
+     int warpSize;
+     int maxThreadsPerBlock;
+     int maxThreadsDim[3];
+     int maxGridSize[3];
+     int clockRate;
+     int memoryClockRate;
+     int memoryBusWidth;
+     size_t totalConstMem;
+     int major;
+     int minor;
+     int multiProcessorCount;
+     int l2CacheSize;
+     int maxThreadsPerMultiProcessor;
+     int computeMode;
+     int clockInstructionRate;
+     int concurrentKernels;
+     int pciBusID;
+     int pciDeviceID;
+     size_t maxSharedMemoryPerMultiProcessor;
+     int isMultiGpuBoard;
+     int canMapHostMemory;
+} cudaDeviceProp;
 
 ///////////////////////////////////////////////////////////////////////////////
 // library_types.h

@@ -228,7 +228,7 @@ cpdef (Py_ssize_t, Py_ssize_t, Py_ssize_t) _get_block_specs(  # NOQA
     return block_size, block_stride, out_block_num
 
 
-def _sort_axis(tuple axis, tuple strides):
+cdef tuple _sort_axis(tuple axis, tuple strides):
     # Sorts axis in the decreasing order of absolute values of strides.
     return tuple(sorted(axis, key=lambda i: -abs(strides[i])))
 
@@ -285,7 +285,7 @@ cdef class _AbstractReductionKernel:
             list in_args, list out_args,
             const shape_t& a_shape, axis, dtype,
             bint keepdims, bint reduce_dims, int device_id,
-            stream, bint try_use_cub=False):
+            stream, bint try_use_cub=False, bint sort_reduce_axis=True):
         cdef tuple reduce_axis, out_axis, axis_permutes
         cdef tuple params, opt_params
         cdef tuple shape_and_strides
@@ -314,7 +314,8 @@ cdef class _AbstractReductionKernel:
                 and len(out_axis) <= 1
                 and not in_args[0]._c_contiguous):
             strides = in_args[0].strides
-            reduce_axis = _sort_axis(reduce_axis, strides)
+            if sort_reduce_axis:
+                reduce_axis = _sort_axis(reduce_axis, strides)
             out_axis = _sort_axis(out_axis, strides)
 
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
@@ -494,23 +495,28 @@ cdef class _AbstractReductionKernel:
 # -----------------------------------------------------------------------------
 
 cpdef _SimpleReductionKernel create_reduction_func(
-        name, ops, routine=None, identity=None, preamble=''):
+        name, ops, routine=None, identity=None, preamble='',
+        sort_reduce_axis=True):
     ops = _kernel._Ops.from_tuples(ops, routine)
-    return _SimpleReductionKernel(name, ops, identity, preamble)
+    return _SimpleReductionKernel(
+        name, ops, identity, preamble, sort_reduce_axis)
 
 
 cdef class _SimpleReductionKernel(_AbstractReductionKernel):
 
     cdef:
         readonly _kernel._Ops _ops
-        readonly _preamble
+        readonly str preamble
         readonly int nin
         readonly int nout
         readonly str _input_expr
         readonly str _output_expr
         readonly dict _routine_cache
+        readonly bint _sort_reduce_axis
 
-    def __init__(self, name, _kernel._Ops ops, identity, preamble):
+    def __init__(
+            self, name, _kernel._Ops ops, identity, preamble,
+            sort_reduce_axis=True):
         super().__init__(
             name,
             '' if identity is None else str(identity),
@@ -518,12 +524,13 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             'T out0',
         )
         self._ops = ops
-        self._preamble = preamble
+        self.preamble = preamble
         self.nin = 1
         self.nout = 1
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
+        self._sort_reduce_axis = sort_reduce_axis
 
     def __call__(self, object a, axis=None, dtype=None, ndarray out=None,
                  bint keepdims=False):
@@ -552,7 +559,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         reduce_dims = True
         return self._call(
             in_args, out_args,
-            arr._shape, axis, dtype, keepdims, reduce_dims, dev_id, None, True)
+            arr._shape, axis, dtype, keepdims, reduce_dims, dev_id,
+            None, True, self._sort_reduce_axis)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
@@ -594,19 +602,19 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self._preamble, ())
+            self._input_expr, self._output_expr, self.preamble, ())
 
 
 @_util.memoize(for_each_device=True)
 def _SimpleReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
-        name, block_size, identity, input_expr, output_expr, _preamble,
+        name, block_size, identity, input_expr, output_expr, preamble,
         options):
     return _create_reduction_function(
         name, block_size, reduce_type, params, arginfos, identity,
         map_expr, reduce_expr, post_map_expr,
-        type_map, input_expr, output_expr, _preamble, options)
+        type_map, input_expr, output_expr, preamble, options)
 
 
 # -----------------------------------------------------------------------------
@@ -684,10 +692,14 @@ cdef class ReductionKernel(_AbstractReductionKernel):
 
         Args:
             args: Arguments of the kernel.
+            out (cupy.ndarray): The output array. This can only be specified if
+                ``args`` does not contain the output array.
             axis (int or tuple of ints): Axis or axes along which the
                 reduction is performed.
             keepdims (bool): If ``True``, the specified axes are remained as
                 axes of length one.
+            stream (cupy.cuda.Stream, optional): The CUDA stream to launch the
+                kernel on. If not given, the current stream will be used.
 
         Returns:
             Arrays are returned according to the ``out_params`` argument of the
@@ -724,7 +736,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         return self._call(
             in_args, out_args,
             broad_shape, axis, None,
-            keepdims, self.reduce_dims, dev_id, stream, False)
+            keepdims, self.reduce_dims, dev_id, stream, True, True)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
