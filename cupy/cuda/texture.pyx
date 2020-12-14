@@ -489,7 +489,8 @@ cdef class CUDAarray:
 cdef class TextureObject:
     '''A class that holds a texture object. Equivalent to
     ``cudaTextureObject_t``. The returned :class:`TextureObject` instance can
-    be passed as a argument when launching :class:`~cupy.RawKernel`.
+    be passed as a argument when launching :class:`~cupy.RawKernel` or
+    :class:`~cupy.ElementwiseKernel`.
 
     Args:
         ResDesc (ResourceDescriptor): an intance of the resource descriptor.

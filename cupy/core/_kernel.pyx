@@ -771,7 +771,6 @@ cdef class ElementwiseKernel:
         cdef tuple in_types, out_types, types
         cdef shape_t shape
 
-        size = -1
         size = kwargs.pop('size', -1)
         stream = kwargs.pop('stream', None)
         block_size = kwargs.pop('block_size', 128)
