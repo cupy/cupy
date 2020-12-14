@@ -23,6 +23,7 @@ from cupyx.scipy.ndimage.filters import percentile_filter  # NOQA
 from cupyx.scipy.ndimage.filters import generic_filter  # NOQA
 from cupyx.scipy.ndimage.filters import generic_filter1d  # NOQA
 
+from cupyx.scipy.ndimage.fourier import fourier_ellipsoid  # NOQA
 from cupyx.scipy.ndimage.fourier import fourier_gaussian  # NOQA
 from cupyx.scipy.ndimage.fourier import fourier_shift  # NOQA
 from cupyx.scipy.ndimage.fourier import fourier_uniform  # NOQA
