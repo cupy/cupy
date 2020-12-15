@@ -169,10 +169,12 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
             if wsize % 2 == 0:
                 origins[i] -= 1
         origins = tuple(origins)
+    weights_dtype = _util._get_weights_dtype(input, weights)
     offsets = _filters_core._origins_to_offsets(origins, weights.shape)
     kernel = _get_correlate_kernel(mode, weights.shape, int_type,
                                    offsets, cval)
-    output = _filters_core._call_kernel(kernel, input, weights, output)
+    output = _filters_core._call_kernel(kernel, input, weights, output,
+                                        weights_dtype=weights_dtype)
     return output
 
 

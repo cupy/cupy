@@ -127,13 +127,15 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     dtype conversion will occur. The input and output are never converted.
     """
     args = [input]
+    complex_output = input.dtype.kind == 'c'
     if weights is not None:
         weights = cupy.ascontiguousarray(weights, weights_dtype)
+        complex_output = complex_output or weights.dtype.kind == 'c'
         args.append(weights)
     if structure is not None:
         structure = cupy.ascontiguousarray(structure, structure_dtype)
         args.append(structure)
-    output = _util._get_output(output, input)
+    output = _util._get_output(output, input, None, complex_output)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
         output, temp = _util._get_output(output.dtype, input), output
