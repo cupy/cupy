@@ -5,7 +5,7 @@
 
 #if CUPY_USE_HIP
 
-#include "../../cupy_backends/cuda/hip/cupy_roctx.h"
+#include "../../cupy_backends/hip/cupy_roctx.h"
 
 #elif !defined(CUPY_NO_CUDA)
 
@@ -35,7 +35,7 @@ int nvtxRangePop() {
 
 #if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
 
-//#include "../../cupy_backends/cuda/cupy_cuda_common.h"
+//#include "../../cupy_backends/cupy_cuda_common.h"
 
 extern "C" {
 

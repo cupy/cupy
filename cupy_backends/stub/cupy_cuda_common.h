@@ -1,7 +1,7 @@
 // This file is a stub header file of cuda for Read the Docs.
 
-#ifndef INCLUDE_GUARD_CUPY_CUDA_COMMON_H
-#define INCLUDE_GUARD_CUPY_CUDA_COMMON_H
+#ifndef INCLUDE_GUARD_STUB_CUPY_CUDA_COMMON_H
+#define INCLUDE_GUARD_STUB_CUPY_CUDA_COMMON_H
 
 #define CUDA_VERSION 0
 
@@ -222,4 +222,4 @@ typedef enum {
 
 } // extern "C"
 
-#endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_COMMON_H
+#endif // #ifndef INCLUDE_GUARD_STUB_CUPY_CUDA_COMMON_H

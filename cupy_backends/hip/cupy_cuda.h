@@ -1,7 +1,8 @@
 #ifndef INCLUDE_GUARD_HIP_CUPY_CUDA_H
 #define INCLUDE_GUARD_HIP_CUPY_CUDA_H
+
 #include "cupy_common.h"
-#include "../cupy_cuComplex.h"
+#include "cupy_cuComplex.h"
 
 extern "C" {
 
@@ -167,6 +168,6 @@ CUresult cuOccupancyMaxPotentialBlockSize(...) {
     return hipErrorUnknown;
 }
 
-} // extern "C" {
+} // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_HIP_CUPY_CUDA_H
