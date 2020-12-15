@@ -14,7 +14,7 @@
 
 #else
 
-#include "hip/cupy_common.h"
+#include "hip/cupy_hip_common.h"
 #include "stub/cupy_cudnn.h"
 
 #endif // #ifdef CUPY_NO_CUDA

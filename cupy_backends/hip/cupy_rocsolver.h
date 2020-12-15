@@ -1,9 +1,9 @@
 #ifndef INCLUDE_GUARD_HIP_CUPY_ROCSOLVER_H
 #define INCLUDE_GUARD_HIP_CUPY_ROCSOLVER_H
 
-#include "cupy_cuda.h"
+#include "cupy_hip.h"
 #include "cupy_hipblas.h"
-#include <hipblas.h>
+
 
 extern "C" {
 /* ---------- helpers ---------- */

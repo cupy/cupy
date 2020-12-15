@@ -2,7 +2,7 @@
 #define INCLUDE_GUARD_HIP_CUPY_RUNTIME_H
 
 #include <hip/hip_runtime_api.h>
-#include "cupy_common.h"
+#include "cupy_hip_common.h"
 
 extern "C" {
 

@@ -1,7 +1,7 @@
 #ifndef INCLUDE_GUARD_HIP_CUPY_CUDA_H
 #define INCLUDE_GUARD_HIP_CUPY_CUDA_H
 
-#include "cupy_common.h"
+#include "cupy_hip_common.h"
 #include "cupy_cuComplex.h"
 
 extern "C" {
