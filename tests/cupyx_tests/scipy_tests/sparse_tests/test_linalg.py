@@ -672,6 +672,87 @@ class TestLinearOperator(unittest.TestCase):
         return linop * x0, linop * x1, linop * x2
 
 
+@testing.parameterize(*testing.product({
+    'lower': [True, False],
+    'unit_diagonal': [True, False],
+    'nrhs': [None, 1, 4],
+    'order': ['C', 'F']
+}))
+@testing.with_requires('scipy>=1.4.0')
+@testing.gpu
+class TestSpsolveTriangular:
+
+    n = 10
+    density = 0.5
+
+    def _make_matrix(self, dtype, xp):
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=1)
+        mask = testing.shaped_random(a_shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        diag = xp.diag(xp.ones((self.n,), dtype=dtype))
+        a = a + diag
+        if self.lower:
+            a = xp.tril(a)
+        else:
+            a = xp.triu(a)
+        b_shape = (self.n,) if self.nrhs is None else (self.n, self.nrhs)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, order=self.order)
+        return a, b
+
+    def _test_spsolve_triangular(self, sp, a, b):
+        return sp.linalg.spsolve_triangular(a, b, lower=self.lower,
+                                            unit_diagonal=self.unit_diagonal)
+
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_sparse(self, format, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp)
+        a = sp.coo_matrix(a).asformat(format)
+        return self._test_spsolve_triangular(sp, a, b)
+
+    def test_invalid_cases(self):
+        dtype = 'float64'
+        if not (self.lower and self.unit_diagonal and self.nrhs == 4 and
+                self.order == 'C'):
+            raise unittest.SkipTest
+
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            a, b = self._make_matrix(dtype, xp)
+            a = sp.csr_matrix(a)
+
+            # a is not a square matrix
+            ng_a = sp.csr_matrix(xp.ones((self.n + 1, self.n), dtype=dtype))
+            with pytest.raises(ValueError):
+                self._test_spsolve_triangular(sp, ng_a, b)
+            # b is not a 1D/2D matrix
+            ng_b = xp.ones((1, self.n, self.nrhs), dtype=dtype)
+            with pytest.raises(ValueError):
+                self._test_spsolve_triangular(sp, a, ng_b)
+            # mismatched shape
+            ng_b = xp.ones((self.n + 1, self.nrhs), dtype=dtype)
+            with pytest.raises(ValueError):
+                self._test_spsolve_triangular(sp, a, ng_b)
+
+        xp, sp = cupy, sparse
+        a, b = self._make_matrix(dtype, xp)
+        a = sp.csr_matrix(a)
+
+        # unsupported dtype
+        ng_a = sp.csr_matrix(xp.ones((self.n, self.n), dtype='bool'))
+        with pytest.raises(TypeError):
+            self._test_spsolve_triangular(sp, ng_a, b)
+        # a is not spmatrix
+        ng_a = xp.ones((self.n, self.n), dtype=dtype)
+        with pytest.raises(TypeError):
+            self._test_spsolve_triangular(sp, ng_a, b)
+        # b is not cupy ndarray
+        ng_b = numpy.ones((self.n, self.nrhs), dtype=dtype)
+        with pytest.raises(TypeError):
+            self._test_spsolve_triangular(sp, a, ng_b)
+
+
 @testing.with_requires('scipy>=1.4')
 @testing.gpu
 # tests adapted from scipy's tests of lobpcg

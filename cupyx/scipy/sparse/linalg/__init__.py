@@ -3,6 +3,7 @@
 
 # "NOQA" to suppress flake8 warning
 from cupyx.scipy.sparse.linalg._norm import norm  # NOQA
+from cupyx.scipy.sparse.linalg._solve import spsolve_triangular  # NOQA
 from cupyx.scipy.sparse.linalg._solve import lsqr  # NOQA
 from cupyx.scipy.sparse.linalg._eigen import eigsh  # NOQA
 from cupyx.scipy.sparse.linalg._eigen import svds  # NOQA
