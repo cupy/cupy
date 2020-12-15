@@ -4,7 +4,6 @@ import unittest
 import pytest
 
 import cupy
-from cupy import _util
 from cupy import cuda
 from cupy import testing
 import numpy
@@ -527,40 +526,6 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
         assert 'does not support' in str(ex.value)
 
 
-# TODO(leofang): test PTDS
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'external_stream': (None, 'null', 'new'),
-    'sync': (True, False),
-}))
-class TestCudaArrayInterfaceStream(unittest.TestCase):
-
-    def setUp(self):
-        if self.external_stream == 'null':
-            self.external_stream = cupy.cuda.Stream.null
-        elif self.external_stream == 'new':
-            self.external_stream = cupy.cuda.Stream()
-
-        # in this test, "sync" refers to whether the Consumer would sync
-        # over the stream provided by the Producer or not
-        self.ver = 3
-        self.sync_config = _util.CUDA_ARRAY_INTERFACE_SYNC
-        _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync
-
-    def tearDown(self):
-        _util.CUDA_ARRAY_INTERFACE_SYNC = self.sync_config
-
-    @testing.for_all_dtypes()
-    def test_stream(self, dtype):
-        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-        func = 'cupy.cuda.ExternalStream.synchronize'
-        times = 0 if self.external_stream is None else int(self.sync)
-        with testing.AssertFunctionIsCalled(func, times_called=times):
-            b = cupy.asarray(DummyObjectWithCudaArrayInterface(
-                a, self.ver, stream=self.external_stream))
-        testing.assert_array_equal(a, b)
-
-
 @testing.slow
 @testing.gpu
 class TestCudaArrayInterfaceBigArray(unittest.TestCase):
@@ -608,10 +573,13 @@ class DummyObjectWithCudaArrayInterface(object):
             desc['strides'] = self.a.strides
         if self.mask is not None:
             desc['mask'] = self.mask
+        # The stream field is kept here for compliance. However, since the
+        # synchronization is done via calling a cpdef function, which cannot
+        # be mock-tested.
         if self.stream is not None:
             # TODO(leofang): how about PTDS?
             if self.stream is cuda.Stream.null:
-                desc['stream'] = 1
+                desc['stream'] = 1  # TODO(leofang): use runtime.streamLegacy
             else:
                 desc['stream'] = self.stream.ptr
         return desc

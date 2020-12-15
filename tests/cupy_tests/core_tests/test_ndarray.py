@@ -278,7 +278,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
 # TODO(leofang): test PTDS
 @testing.parameterize(*testing.product({
     'stream': ('null', 'new'),
-    'ver': (0, 1, 2, 3),
+    'ver': (2, 3),
 }))
 class TestNdarrayCudaInterfaceStream(unittest.TestCase):
     def setUp(self):
@@ -287,13 +287,11 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         elif self.stream == 'new':
             self.stream = cuda.Stream()
 
-        # in this test, "sync" refers to whether the Producer would export
-        # its stream (for Consumers to sync) or not
-        self.ver_config = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
+        self.old_ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
         _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.ver
 
     def tearDown(self):
-        _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.ver_config
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.old_ver
 
     def test_cuda_array_interface_stream(self):
         # this tests exporting CAI with a given stream
@@ -301,10 +299,11 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         stream = self.stream
         with stream:
             iface = arr.__cuda_array_interface__
-        assert iface['version'] == 3
-        assert (set(iface.keys()) ==
-                set(['shape', 'typestr', 'data', 'version', 'descr',
-                     'stream', 'strides']))
+        assert iface['version'] == self.ver
+        attrs = ['shape', 'typestr', 'data', 'version', 'descr', 'strides']
+        if self.ver == 3:
+            attrs.append('stream')
+        assert set(iface.keys()) == set(attrs)
         assert iface['shape'] == (10,)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
@@ -313,12 +312,7 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
         if self.ver == 3:
-            if stream.ptr == 0:
-                assert iface['stream'] == 1
-            else:
-                assert iface['stream'] == stream.ptr
-        else:
-            assert getattr(iface, 'stream') is None
+            assert iface['stream'] == 1 if stream.ptr == 0 else stream.ptr
 
 
 @testing.parameterize(

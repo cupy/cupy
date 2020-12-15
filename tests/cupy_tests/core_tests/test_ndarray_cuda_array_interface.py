@@ -1,7 +1,6 @@
 import unittest
 
 import cupy
-from cupy import _util
 from cupy import core
 from cupy import testing
 
@@ -11,33 +10,29 @@ from cupy import testing
 
 class DummyObjectWithCudaArrayInterface(object):
 
-    def __init__(self, a):
+    def __init__(self, a, ver=3):
         self.a = a
+        self.ver = ver
 
     @property
     def __cuda_array_interface__(self):
-        stream = cupy.cuda.get_current_stream()
-        if _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM:
-            if stream.ptr == 0:
-                stream_ptr = 1
-            else:
-                stream_ptr = stream.ptr
-        else:
-            stream_ptr = None
         desc = {
             'shape': self.a.shape,
             'strides': self.a.strides,
             'typestr': self.a.dtype.str,
             'descr': self.a.dtype.descr,
             'data': (self.a.data.ptr, False),
-            'stream': stream_ptr,
-            'version': 3,
+            'version': self.ver,
         }
+        if self.ver == 3:
+            stream = cupy.cuda.get_current_stream()
+            desc['stream'] = 1 if stream.ptr == 0 else stream.ptr
         return desc
 
 
 @testing.parameterize(*testing.product({
     'stream': ('null', 'new'),
+    'ver': (2, 3),
 }))
 @testing.gpu
 class TestArrayUfunc(unittest.TestCase):
@@ -58,8 +53,10 @@ class TestArrayUfunc(unittest.TestCase):
 
         if xp is cupy:
             with self.stream:
-                a = DummyObjectWithCudaArrayInterface(a)
-        return getattr(xp, op)(a, y_type(3))
+                a = DummyObjectWithCudaArrayInterface(a, self.ver)
+                return getattr(xp, op)(a, y_type(3))
+        else:
+            return getattr(xp, op)(a, y_type(3))
 
     def test_add_scalar(self):
         self.check_array_scalar_op('add')
@@ -70,6 +67,7 @@ class TestArrayUfunc(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'stream': ('null', 'new'),
+    'ver': (2, 3),
 }))
 @testing.gpu
 class TestElementwiseKernel(unittest.TestCase):
@@ -90,7 +88,7 @@ class TestElementwiseKernel(unittest.TestCase):
 
         if xp is cupy:
             with self.stream:
-                a = DummyObjectWithCudaArrayInterface(a)
+                a = DummyObjectWithCudaArrayInterface(a, self.ver)
                 f = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
                 return f(a, dtyes(3))
         else:
@@ -105,6 +103,7 @@ class TestElementwiseKernel(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'stream': ('null', 'new'),
+    'ver': (2, 3),
 }))
 @testing.gpu
 class SimpleReductionFunction(unittest.TestCase):
@@ -127,7 +126,7 @@ class SimpleReductionFunction(unittest.TestCase):
 
         if xp == cupy:
             with self.stream:
-                a = DummyObjectWithCudaArrayInterface(a)
+                a = DummyObjectWithCudaArrayInterface(a, self.ver)
                 return self.my_int8_sum(
                     a, axis=axis, keepdims=keepdims)
         else:
@@ -142,6 +141,7 @@ class SimpleReductionFunction(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'stream': ('null', 'new'),
+    'ver': (2, 3),
 }))
 @testing.gpu
 class TestReductionKernel(unittest.TestCase):
@@ -164,7 +164,7 @@ class TestReductionKernel(unittest.TestCase):
 
         if xp == cupy:
             with self.stream:
-                a = DummyObjectWithCudaArrayInterface(a)
+                a = DummyObjectWithCudaArrayInterface(a, self.ver)
                 return self.my_sum(
                     a, axis=axis, keepdims=keepdims)
         else:
@@ -246,26 +246,21 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
         y = x[self.slices]
 
         # mandatory entries
-        shape = y.__cuda_array_interface__['shape']
-        typestr = y.__cuda_array_interface__['typestr']
-        ptr, readonly = y.__cuda_array_interface__['data']
-        version = y.__cuda_array_interface__['version']
-        strides = y.__cuda_array_interface__['strides']
+        with self.stream:
+            CAI = y.__cuda_array_interface__
+        shape = CAI['shape']
+        typestr = CAI['typestr']
+        ptr, readonly = CAI['data']
+        version = CAI['version']
+        strides = CAI['strides']
 
         # optional entries
-        if 'descr' in y.__cuda_array_interface__:
-            descr = y.__cuda_array_interface__['descr']
-        else:
-            descr = None
-        with self.stream:
-            if 'stream' in y.__cuda_array_interface__:
-                stream = y.__cuda_array_interface__['stream']
-            else:
-                stream = None
+        descr = CAI['descr'] if 'descr' in CAI else None
+        stream = CAI['stream'] if 'stream' in CAI else None
 
         # Don't validate correctness of data here, just their types
         assert version == 3  # bump this when the protocol is updated!
-        assert isinstance(y.__cuda_array_interface__, dict)
+        assert isinstance(CAI, dict)
         assert isinstance(shape, tuple)
         assert isinstance(typestr, str)
         assert isinstance(ptr, int)
@@ -280,7 +275,6 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'stream': ('null', 'new'),
-    'sync': (True, False),
 }))
 @testing.gpu
 class TestCUDAArrayInterfaceStream(unittest.TestCase):
@@ -290,29 +284,18 @@ class TestCUDAArrayInterfaceStream(unittest.TestCase):
         elif self.stream == 'new':
             self.stream = cupy.cuda.Stream()
 
-        self.sync_config = _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM
-        _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM = self.sync
-
-    def tearDown(self):
-        _util.CUDA_ARRAY_INTERFACE_EXPORT_STREAM = self.sync_config
-
     def test_stream_export(self):
         a = cupy.empty(100)
 
         # the stream context should export the stream
         with self.stream:
             stream_ptr = a.__cuda_array_interface__['stream']
-        if self.sync:
-            if self.stream is cupy.cuda.Stream.null:
-                assert stream_ptr == 1
-            else:
-                assert stream_ptr == self.stream.ptr
+
+        if self.stream is cupy.cuda.Stream.null:
+            assert stream_ptr == 1
         else:
-            assert stream_ptr is None
+            assert stream_ptr == self.stream.ptr
 
         # without a stream context, it's always the default stream
         stream_ptr = a.__cuda_array_interface__['stream']
-        if self.sync:
-            assert stream_ptr == 1
-        else:
-            assert stream_ptr is None
+        assert stream_ptr == 1

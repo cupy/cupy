@@ -153,12 +153,32 @@ cdef class ndarray:
 
     @property
     def __cuda_array_interface__(self):
-        desc = {
+        cdef dict desc = {
             'shape': self.shape,
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
-            'version': 3,
         }
+        cdef int ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
+        cdef intptr_t stream_ptr
+
+        if ver == 3:
+            stream_ptr = stream_module.get_current_stream_ptr()
+            # TODO(leofang): check if we're using PTDS
+            # CAI v3 says setting the stream field to 0 is disallowed
+            if stream_ptr == 0:
+                stream_ptr = 1  # TODO(leofang): use runtime.streamLegacy
+            desc['stream'] = stream_ptr
+        elif ver == 2:
+            # Old behavior (prior to CAI v3): stream sync is explicitly handled
+            # by users. To restore this behavior, we do not export any stream
+            # if CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION is set to 2 (so that
+            # other participating libraries lacking a finer control over sync
+            # behavior can avoid syncing).
+            pass
+        else:
+            raise ValueError('CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION can '
+                             'only be set to 3 (default) or 2')
+        desc['version'] = ver
         if self._c_contiguous:
             desc['strides'] = None
         else:
@@ -167,21 +187,6 @@ cdef class ndarray:
             desc['data'] = (self.data.ptr, False)
         else:
             desc['data'] = (0, False)
-        if _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION == 3:
-            stream_ptr = stream_module.get_current_stream_ptr()
-            # TODO(leofang): check if we're using PTDS
-            # CAI v3 says setting the stream field to 0 is disallowed
-            if stream_ptr == 0:
-                desc['stream'] = 1  # TODO(leofang): use runtime.streamLegacy
-            else:
-                desc['stream'] = stream_ptr
-        else:
-            # Old behavior (prior to CAI v3): stream sync is explicitly handled
-            # by users. To restore this behavior, we do not export any stream
-            # if CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION is set to 0, 1, or 2
-            # (so that other participating libraries lacking a finer control
-            # over sync behavior can avoid syncing).
-            pass
 
         return desc
 
