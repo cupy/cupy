@@ -241,6 +241,21 @@ __device__ bool _isnan(T val) {
 '''
 
 
+_hip_preamble = r'''
+#ifdef __HIP_DEVICE_COMPILE__
+  #define no_thread_divergence(do_work, to_return) \
+    if (!is_done) {                                \
+      do_work;                                     \
+      is_done = true;                              \
+    }
+#else
+  #define no_thread_divergence(do_work, to_return) \
+    do_work;                                       \
+    if (to_return) { return; }
+#endif
+'''
+
+
 _searchsorted_kernel = core.ElementwiseKernel(
     'S x, raw T bins, int64 n_bins, bool side_is_right, '
     'bool assume_increassing',
@@ -275,12 +290,7 @@ _searchsorted_kernel = core.ElementwiseKernel(
                 }
             }
         }
-        y = pos;
-        #ifdef __HIP_DEVICE_COMPILE__
-        is_done = true;
-        #else
-        return;
-        #endif
+        no_thread_divergence( y = pos , true )
     }
 
     bool greater = false;
@@ -290,15 +300,7 @@ _searchsorted_kernel = core.ElementwiseKernel(
         greater = (inc ? x > bins[n_bins-1] : x <= bins[n_bins-1]);
     }
     if (greater) {
-        #ifdef __HIP_DEVICE_COMPILE__
-        if (!is_done) {
-          y = n_bins;
-          is_done = true;
-        }
-        #else
-        y = n_bins;
-        return;
-        #endif
+        no_thread_divergence( y = n_bins , true )
     }
 
     long long left = 0;
@@ -309,28 +311,12 @@ _searchsorted_kernel = core.ElementwiseKernel(
             ++left;
         }
         if (left == n_bins) {
-            #ifdef __HIP_DEVICE_COMPILE__
-            if (!is_done) {
-              y = n_bins;
-              is_done = true;
-            }
-            #else
-            y = n_bins;
-            return;
-            #endif
+            no_thread_divergence( y = n_bins , true )
         }
         if (side_is_right
                 && !_isnan<T>(bins[n_bins-1]) && !_isnan<S>(x)
                 && bins[n_bins-1] > x) {
-            #ifdef __HIP_DEVICE_COMPILE__
-            if (!is_done) {
-              y = n_bins;
-              is_done = true;
-            }
-            #else
-            y = n_bins;
-            return;
-            #endif
+            no_thread_divergence( y = n_bins , true )
         }
     }
 
@@ -349,15 +335,8 @@ _searchsorted_kernel = core.ElementwiseKernel(
             right = m;
         }
     }
-    #ifdef __HIP_DEVICE_COMPILE__
-    if (!is_done) {
-      y = right;
-      is_done = true;
-    }
-    #else
-    y = right;
-    #endif
-    ''', preamble=_preamble)
+    no_thread_divergence( y = right , false )
+    ''', preamble=_preamble+_hip_preamble)
 
 
 def searchsorted(a, v, side='left', sorter=None):
