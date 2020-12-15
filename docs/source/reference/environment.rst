@@ -62,8 +62,8 @@ Here are the environment variables CuPy uses.
 |                                                | point compute.                                     |
 |                                                | The default is 0 and TF32 is not used.             |
 +------------------------------------------------+----------------------------------------------------+
-| ``CUPY_CUDA_ARRAY_INTERFACE_SYNC``             | This controls CuPy's behavior as a Consumer. If set|
-|                                                | to 0, a stream synchronization will *not* be       |
+| ``CUPY_CUDA_ARRAY_INTERFACE_SYNC``             | This controls CuPy's behavior as a Consumer. If    |
+|                                                | set to 0, a stream synchronization will *not* be   |
 |                                                | performed when a device array provided by an       |
 |                                                | external library that implements the CUDA Array    |
 |                                                | Interface is being consumed by CuPy. Default is 1. |
@@ -71,14 +71,13 @@ Here are the environment variables CuPy uses.
 |                                                | requirement in the CUDA Array Interface v3         |
 |                                                | documentation.                                     |
 +------------------------------------------------+----------------------------------------------------+
-| ``CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION``   | This controls CuPy's behavior as a Producer. If set|
-|                                                | to 0, 1, or 2, the CuPy stream on which the data is|
-|                                                | being operated will not be exported (``stream`` is |
-|                                                | set to ``None``) and thus the Consumer (another    |
-|                                                | library) will not perform any stream               |
-|                                                | synchronization. Default is 3. For more detail, see|
-|                                                | the `Synchronization`_ requirement in the CUDA     |
-|                                                | Array Interface v3 documentation.                  |
+| ``CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION``   | This controls CuPy's behavior as a Producer. If    |
+|                                                | set to 2, the CuPy stream on which the data is     |
+|                                                | being operated will not be exported and thus the   |
+|                                                | Consumer (another library) will not perform any    |
+|                                                | stream synchronization. Default is 3. For more     |
+|                                                | detail, see the `Synchronization`_ requirement in  |
+|                                                | the CUDA Array Interface v3 documentation.         |
 +------------------------------------------------+----------------------------------------------------+
 | ``NVCC``                                       | Define the compiler to use when compiling CUDA     |
 |                                                | source. Note that most CuPy kernels are built with |
