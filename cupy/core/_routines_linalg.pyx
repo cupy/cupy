@@ -28,7 +28,7 @@ from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cublas
 
 
-cdef extern from '../../cupy_backends/cuda/cupy_cuComplex.h':
+cdef extern from '../../cupy_backends/cupy_cuComplex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 

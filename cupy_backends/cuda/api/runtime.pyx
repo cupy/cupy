@@ -65,7 +65,7 @@ cdef extern from *:
     ctypedef HostFnDef* HostFn 'cudaHostFn_t'
 
 
-cdef extern from '../cupy_cuda_runtime.h' nogil:
+cdef extern from '../../cupy_cuda_runtime.h' nogil:
 
     # Types
     ctypedef struct _PointerAttributes 'cudaPointerAttributes':
