@@ -672,36 +672,119 @@ class TestLinearOperator(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'nrhs': [None, 1],
-    'format': ['csr', 'csc', 'coo'],
+    'lower': [True, False],
+    'unit_diagonal': [True, False],
+    'nrhs': [None, 1, 4],
+    'order': ['C', 'F']
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy>=1.4.0')
 @testing.gpu
-class TestSpsolve(unittest.TestCase):
+class TestSpsolveTriangular:
 
     n = 10
     density = 0.5
 
     def _make_matrix(self, dtype, xp):
-        dtype = numpy.dtype(dtype)
         a_shape = (self.n, self.n)
-        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=2/self.n)
-        a_mask = testing.shaped_random(a_shape, xp, dtype='f', scale=1)
-        a[a_mask > self.density] = 0
-        a_diag = xp.diag(xp.ones((self.n,), dtype=dtype))
-        a = a + a_diag
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=1)
+        mask = testing.shaped_random(a_shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        diag = xp.diag(xp.ones((self.n,), dtype=dtype))
+        a = a + diag
+        if self.lower:
+            a = xp.tril(a)
+        else:
+            a = xp.triu(a)
         b_shape = (self.n,) if self.nrhs is None else (self.n, self.nrhs)
-        b = testing.shaped_random(b_shape, xp, dtype=dtype)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, order=self.order)
         return a, b
 
+    def _test_spsolve_triangular(self, sp, a, b):
+        return sp.linalg.spsolve_triangular(a, b, lower=self.lower,
+                                            unit_diagonal=self.unit_diagonal)
+
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_spsolve(self, dtype, xp, sp):
+    def test_sparse(self, format, dtype, xp, sp):
         a, b = self._make_matrix(dtype, xp)
-        if self.format == 'csr':
-            sp_a = sp.csr_matrix(a)
-        elif self.format == 'csc':
-            sp_a = sp.csc_matrix(a)
-        elif self.format == 'coo':
-            sp_a = sp.coo_matrix(a)
-        return sp.linalg.spsolve(sp_a, b)
+        a = sp.coo_matrix(a).asformat(format)
+        return self._test_spsolve_triangular(sp, a, b)
+
+    def test_invalid_cases(self):
+        dtype = 'float64'
+        if not (self.lower and self.unit_diagonal and self.nrhs == 4 and
+                self.order == 'C'):
+            raise unittest.SkipTest
+
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            a, b = self._make_matrix(dtype, xp)
+            a = sp.csr_matrix(a)
+
+            # a is not a square matrix
+            ng_a = sp.csr_matrix(xp.ones((self.n + 1, self.n), dtype=dtype))
+            with pytest.raises(ValueError):
+                self._test_spsolve_triangular(sp, ng_a, b)
+            # b is not a 1D/2D matrix
+            ng_b = xp.ones((1, self.n, self.nrhs), dtype=dtype)
+            with pytest.raises(ValueError):
+                self._test_spsolve_triangular(sp, a, ng_b)
+            # mismatched shape
+            ng_b = xp.ones((self.n + 1, self.nrhs), dtype=dtype)
+            with pytest.raises(ValueError):
+                self._test_spsolve_triangular(sp, a, ng_b)
+
+        xp, sp = cupy, sparse
+        a, b = self._make_matrix(dtype, xp)
+        a = sp.csr_matrix(a)
+
+        # unsupported dtype
+        ng_a = sp.csr_matrix(xp.ones((self.n, self.n), dtype='bool'))
+        with pytest.raises(TypeError):
+            self._test_spsolve_triangular(sp, ng_a, b)
+        # a is not spmatrix
+        ng_a = xp.ones((self.n, self.n), dtype=dtype)
+        with pytest.raises(TypeError):
+            self._test_spsolve_triangular(sp, ng_a, b)
+        # b is not cupy ndarray
+        ng_b = numpy.ones((self.n, self.nrhs), dtype=dtype)
+        with pytest.raises(TypeError):
+            self._test_spsolve_triangular(sp, a, ng_b)
+
+
+@testing.parameterize(*testing.product({
+    'tol': [0, 1e-5],
+    'reorder': [0, 1, 2, 3],
+}))
+@testing.with_requires('scipy')
+class TestCsrlsvqr(unittest.TestCase):
+
+    n = 8
+    density = 0.75
+    _test_tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _setup(self, dtype):
+        dtype = numpy.dtype(dtype)
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, numpy, dtype=dtype, scale=2/self.n)
+        a_mask = testing.shaped_random(a_shape, numpy, dtype='f', scale=1)
+        a[a_mask > self.density] = 0
+        a_diag = numpy.diag(numpy.ones((self.n,), dtype=dtype))
+        a = a + a_diag
+        b = testing.shaped_random((self.n,), numpy, dtype=dtype)
+        test_tol = self._test_tol[dtype.char.lower()]
+        return a, b, test_tol
+
+    @testing.for_dtypes('fdFD')
+    def test_csrlsvqr(self, dtype):
+        if not cupy.cusolver.check_availability('csrlsvqr'):
+            unittest.SkipTest('csrlsvqr is not available')
+        a, b, test_tol = self._setup(dtype)
+        ref_x = numpy.linalg.solve(a, b)
+        cp_a = cupy.array(a)
+        sp_a = cupyx.scipy.sparse.csr_matrix(cp_a)
+        cp_b = cupy.array(b)
+        x = cupy.cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
+                                   reorder=self.reorder)
+        cupy.testing.assert_allclose(x, ref_x, rtol=test_tol,
+                                     atol=test_tol)
