@@ -661,7 +661,7 @@ def gels(a, b):
 
 
 def csrlsvqr(A, b, tol=0, reorder=1):
-    """Solves the linear system ``Ax = b`` using QR fractorinzation.
+    """Solves the linear system ``Ax = b`` using QR factorization.
 
     Args:
         A (cupyx.scipy.sparse.csr_matrix): Sparse matrix with dimension
@@ -712,7 +712,7 @@ def csrlsvqr(A, b, tol=0, reorder=1):
           x.data.ptr, singularity.ctypes.data)
 
     if singularity[0] >= 0:
-        _warnings.warn('A is not positive definite or near singular uner '
+        _warnings.warn('A is not positive definite or near singular under '
                        'tolerance {} (singularity: {})'.
                        format(tol, singularity))
     return x
