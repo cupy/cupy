@@ -83,7 +83,6 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         lanczos = _lanczos_fast(a, n, ncv)
     else:
         lanczos = _lanczos_asis
-    a_matvec = _get_matvec(a)
 
     # Lanczos iteration
     lanczos(a, V, u, alpha, beta, 0, ncv)
@@ -105,7 +104,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         u -= u.T @ V[:k].conj().T @ V[:k]
         V[k] = u / cublas.nrm2(u)
 
-        u[...] = a_matvec(V[k])
+        u[...] = a @ V[k]
         cublas.dotc(V[k], u, out=alpha[k])
         u -= alpha[k] * V[k]
         u -= V[:k].T @ beta_k
@@ -130,19 +129,9 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         return cupy.sort(w)
 
 
-def _get_matvec(a):
-    if isinstance(a, _interface.LinearOperator):
-        matvec = a.matvec
-    else:
-        def matvec(x):
-            return a @ x
-    return matvec
-
-
 def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
-    a_matvec = _get_matvec(a)
     for i in range(i_start, i_end):
-        u[...] = a_matvec(V[i])
+        u[...] = a @ V[i]
         cublas.dotc(V[i], u, out=alpha[i])
         u -= u.T @ V[:i+1].conj().T @ V[:i+1]
         cublas.nrm2(u, out=beta[i])
@@ -181,8 +170,6 @@ def _lanczos_fast(A, n, ncv):
         spmv_beta = numpy.array(0.0, A.dtype)
         spmv_cuda_dtype = cusparse._dtype_to_DataType(A.dtype)
         spmv_alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
-    else:
-        A_matvec = _get_matvec(A)
 
     v = cupy.empty((n,), dtype=A.dtype)
     uu = cupy.empty((ncv,), dtype=A.dtype)
@@ -213,7 +200,7 @@ def _lanczos_fast(A, n, ncv):
         for i in range(i_start, i_end):
             # Matrix-vector multiplication
             if cusparse_handle is None:
-                u[...] = A_matvec(v)
+                u[...] = A @ v
             else:
                 _cusparse.spMV(
                     cusparse_handle, spmv_op_a, spmv_alpha.ctypes.data,
