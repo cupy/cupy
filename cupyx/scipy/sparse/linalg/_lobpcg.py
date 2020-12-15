@@ -162,24 +162,24 @@ def lobpcg(A, X,
     Args:
         A (array-like): The symmetric linear operator of the problem,
             usually a sparse matrix. Can be of the following types
-                - cupy.ndarray
-                - cupyx.scipy.sparse.csr_matrix
-                - cupy.scipy.sparse.linalg.LinearOperator
+            - cupy.ndarray
+            - cupyx.scipy.sparse.csr_matrix
+            - cupy.scipy.sparse.linalg.LinearOperator
         X (cupy.ndarray): Initial approximation to the ``k``
             eigenvectors (non-sparse). If `A` has ``shape=(n,n)``
             then `X` should have shape ``shape=(n,k)``.
         B (array-like): The right hand side operator in a generalized
             eigenproblem. By default, ``B = Identity``.
             Can be of following types:
-                - cupy.ndarray
-                - cupyx.scipy.sparse.csr_matrix
-                - cupy.scipy.sparse.linalg.LinearOperator
+            - cupy.ndarray
+            - cupyx.scipy.sparse.csr_matrix
+            - cupy.scipy.sparse.linalg.LinearOperator
         M (array-like): Preconditioner to `A`; by default ``M = Identity``.
             `M` should approximate the inverse of `A`.
             Can be of the following types:
-                - cupy.ndarray
-                - cupyx.scipy.sparse.csr_matrix
-                - cupy.scipy.sparse.linalg.LinearOperator
+            - cupy.ndarray
+            - cupyx.scipy.sparse.csr_matrix
+            - cupy.scipy.sparse.linalg.LinearOperator
         Y (cupy.ndarray):
             `n-by-sizeY` matrix of constraints (non-sparse), `sizeY < n`
             The iterations will be performed in the B-orthogonal complement
