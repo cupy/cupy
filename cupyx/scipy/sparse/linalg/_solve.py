@@ -136,12 +136,14 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
 
 
 def spsolve(A, b):
-    """Solve the sparse linear system ``A x = b``
+    """Solves a sparse linear system ``A x = b``
+
     Args:
-        A (cupyx.scipy.sparse.spmatrix): Sparse matrix with dimension
-            ``(M, M)``.
+        A (cupyx.scipy.sparse.spmatrix):
+            Sparse matrix with dimension ``(M, M)``.
         b (cupy.ndarray):
             Dense vector or matrix with dimension ``(M)`` or ``(M, 1)``.
+
     Returns:
         cupy.ndarray:
             Solution to the system ``A x = b``.
