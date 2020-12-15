@@ -143,13 +143,10 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    weights = weights[::-1]
-    origin = -origin
-    if not len(weights) & 1:
-        origin -= 1
     weights, origins = _filters_core._convert_1d_args(input.ndim, weights,
                                                       origin, axis)
-    return _correlate_or_convolve(input, weights, output, mode, cval, origins)
+    return _correlate_or_convolve(input, weights, output, mode, cval, origins,
+                                  True)
 
 
 def _correlate_or_convolve(input, weights, output, mode, cval, origin,
@@ -169,6 +166,9 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
             if wsize % 2 == 0:
                 origins[i] -= 1
         origins = tuple(origins)
+    elif weights.dtype.kind == "c":
+        # numpy.correlate conjugates weights rather than input.
+        weights = weights.conj()
     weights_dtype = _util._get_weights_dtype(input, weights)
     offsets = _filters_core._origins_to_offsets(origins, weights.shape)
     kernel = _get_correlate_kernel(mode, weights.shape, int_type,

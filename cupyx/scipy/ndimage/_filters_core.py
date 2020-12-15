@@ -56,8 +56,6 @@ def _convert_1d_args(ndim, weights, origin, axis):
 
 
 def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
-    if input.dtype.kind == 'c':
-        raise TypeError('Complex type not supported')
     _util._check_mode(mode)
     # Weights must always be less than 2 GiB
     if weights.nbytes >= (1 << 31):
@@ -176,6 +174,8 @@ cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
 template <class T>
 __device__ __forceinline__ bool nonzero(T x) { return x!=0; }
 
+template <typename T>
+__device__ __forceinline__ bool nonzero(complex<T> x){ return x.real() || x.imag(); }
 """
 
 

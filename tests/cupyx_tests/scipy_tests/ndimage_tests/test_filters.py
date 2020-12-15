@@ -271,6 +271,56 @@ class TestFilterFast(FilterTestCaseBase):
         return self._filter(xp, scp)
 
 
+# This tests filters that are very similar to other filters so we only check
+# the basics with them.
+@testing.parameterize(*(
+    testing.product_dict(
+        # All of these filters have no ksize and evoke undef behavior
+        # outputting to uint8
+        testing.product({
+            'filter': ['gaussian_filter1d'],
+            'axis': [0, 1, -1],
+            'sigma': [1.5, 2],
+            'truncate': [2.75, 4],
+        }) + testing.product({
+            'filter': ['gaussian_filter', 'gaussian_laplace',
+                       'gaussian_gradient_magnitude'],
+            'sigma': [1.5, 2.25, (1.5, 2.25, 1.0, 3.0)],
+            'truncate': [2.75, 4],
+        }) + testing.product({
+            'filter': ['prewitt', 'sobel'],
+            'axis': [0, 1, -1],
+        }) + testing.product({
+            'filter': ['laplace'],
+        }),
+        testing.product({
+            'shape': [(4, 5), (3, 4, 5), (1, 3, 4, 5)],
+            'dtype': [numpy.complex64, numpy.complex128],
+            'output': [None],
+        })
+    ) + testing.product_dict(
+        # These take derivative functions to compute part of the process
+        testing.product({
+            'filter': ['generic_laplace'],
+            'derivative': [dummy_deriv_func],
+        }) + testing.product({
+            'filter': ['generic_gradient_magnitude'],
+            'derivative': [dummy_deriv_func],
+        }),
+        testing.product({
+            'shape': [(4, 5), (3, 4, 5), (1, 3, 4, 5)],
+            'dtype': [numpy.complex64, numpy.complex128],
+        })
+    )
+))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestFilterComplexFast(FilterTestCaseBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        return self._filter(xp, scp)
+
+
 # Kernels and Functions for testing generic_filter
 rms_raw = cupy.RawKernel('''extern "C" __global__
 void rms(const double* x, int filter_size, double* y) {
@@ -509,6 +559,68 @@ class TestWeightDtype(FilterTestCaseBase):
         if self.dtype == self.wdtype:
             pytest.skip("redundant")
         return self._filter(xp, scp)
+
+
+# Tests with weight dtypes that are distinct from the input and output dtypes
+@testing.parameterize(*(
+    testing.product_dict(
+        testing.product({
+            'filter': ['convolve', 'correlate'],
+        }) + testing.product({
+            'filter': ['convolve1d', 'correlate1d'],
+            'axis': [-1],
+        }),
+        testing.product({
+            'shape': [(8, 12)],
+            'ksize': [3],
+            'mode': ['reflect'],
+            'output': [None],
+            'dtype': [numpy.uint8, numpy.float32, numpy.float64,
+                      numpy.complex64, numpy.complex128],
+            'wdtype': [numpy.uint8, numpy.float32, numpy.float64,
+                       numpy.complex64, numpy.complex128],
+        })
+    )
+))
+@testing.gpu
+@testing.with_requires('scipy>=1.5.9')
+class TestWeightComplexDtype(FilterTestCaseBase):
+
+    def _skip_noncomplex(self):
+        if not (numpy.dtype(self.dtype).kind == 'c' or
+                numpy.dtype(self.wdtype).kind == 'c'):
+            pytest.skip("non-complex")
+
+    def _get_array_and_weights(self, xp):
+            arr = testing.shaped_random(self.shape, xp, self.dtype)
+            weights = self._get_weights(xp)
+            return arr, weights
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter_complex(self, xp, scp):
+        self._skip_noncomplex()
+        return self._filter(xp, scp)
+
+    def test_filter_complex_output_dtype_error(self):
+        # raises RuntimeError if provided a real-valued output array
+        self._skip_noncomplex()
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            func = getattr(scp.ndimage, self.filter)
+            arr, weights = self._get_array_and_weights(xp)
+            output = xp.empty(self.shape, dtype=numpy.float64)
+            with pytest.raises(RuntimeError):
+                func(arr, weights, output=output)
+        return
+
+    def test_filter_complex_output_dtype_warns(self):
+        # warns if a real-valued dtype is specified for the output
+        self._skip_noncomplex()
+        for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
+            func = getattr(scp.ndimage, self.filter)
+            arr, weights = self._get_array_and_weights(xp)
+            with pytest.warns(UserWarning):
+                func(arr, weights, output=numpy.float64)
+        return
 
 
 # Tests special weights (ND)
