@@ -24,16 +24,13 @@ cdef class _ThreadLocal:
 
     cdef set_current_stream(self, stream):
         cdef intptr_t ptr = <intptr_t>stream.ptr
-        self.set_current_stream_ptr(ptr)
+        self.current_stream = ptr
         self.current_stream_ref = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
         cdef intptr_t ptr = <intptr_t>stream_ref().ptr
-        self.set_current_stream_ptr(ptr)
-        self.current_stream_ref = stream_ref
-
-    cdef set_current_stream_ptr(self, intptr_t ptr):
         self.current_stream = ptr
+        self.current_stream_ref = stream_ref
 
     cdef get_current_stream(self):
         if self.current_stream_ref is None:
@@ -60,16 +57,6 @@ cdef intptr_t get_current_stream_ptr():
     """
     tls = _ThreadLocal.get()
     return tls.get_current_stream_ptr()
-
-
-cdef set_current_stream_ptr(intptr_t ptr):
-    """C API to set current CUDA stream pointer.
-
-    Args:
-        ptr (intptr_t): CUDA stream pointer.
-    """
-    tls = _ThreadLocal.get()
-    tls.set_current_stream_ptr(ptr)
 
 
 cpdef get_current_stream():
