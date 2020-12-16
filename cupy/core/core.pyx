@@ -179,12 +179,32 @@ cdef class ndarray:
 
     @property
     def __cuda_array_interface__(self):
-        desc = {
+        cdef dict desc = {
             'shape': self.shape,
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
-            'version': 2,
         }
+        cdef int ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
+        cdef intptr_t stream_ptr
+
+        if ver == 3:
+            stream_ptr = stream_module.get_current_stream_ptr()
+            # TODO(leofang): check if we're using PTDS
+            # CAI v3 says setting the stream field to 0 is disallowed
+            if stream_ptr == 0:
+                stream_ptr = 1  # TODO(leofang): use runtime.streamLegacy
+            desc['stream'] = stream_ptr
+        elif ver == 2:
+            # Old behavior (prior to CAI v3): stream sync is explicitly handled
+            # by users. To restore this behavior, we do not export any stream
+            # if CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION is set to 2 (so that
+            # other participating libraries lacking a finer control over sync
+            # behavior can avoid syncing).
+            pass
+        else:
+            raise ValueError('CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION can '
+                             'only be set to 3 (default) or 2')
+        desc['version'] = ver
         if self._c_contiguous:
             desc['strides'] = None
         else:
@@ -2424,7 +2444,7 @@ cdef int _cuda_runtime_version = -1
 
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef Py_ssize_t sh, st
-    cdef object desc = a.__cuda_array_interface__
+    cdef dict desc = a.__cuda_array_interface__
     cdef tuple shape = desc['shape']
     cdef int dev_id = -1
     cdef size_t nbytes
@@ -2447,6 +2467,13 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
         dev_id = device.get_device_id()
     mem = memory_module.UnownedMemory(ptr, nbytes, a, dev_id)
     memptr = memory.MemoryPointer(mem, 0)
+    # the v3 protocol requires an immediate synchronization, unless
+    # 1. the stream is not set (ex: from v0 ~ v2) or is None
+    # 2. users explicitly overwrite this requirement
+    stream_ptr = desc.get('stream')
+    if stream_ptr is not None:
+        if _util.CUDA_ARRAY_INTERFACE_SYNC:
+            runtime.streamSynchronize(stream_ptr)
     return ndarray(shape, dtype, memptr, strides)
 
 
