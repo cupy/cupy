@@ -6,7 +6,6 @@ import cupy
 import cupy._util
 
 
-
 def _is_integer_output(output, input):
     if output is None:
         return input.dtype.kind in 'iu'

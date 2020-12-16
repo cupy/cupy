@@ -225,7 +225,7 @@ def _unravel_loop_index(shape, uint_t='unsigned int'):
 
 def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                             order, name='', integer_output=False, nprepad=0,
-                            omit_in_coord=False, real_output=True):
+                            omit_in_coord=False):
     """
     Args:
         coord_func (function): generates code to do the coordinate
@@ -247,9 +247,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     """
 
     ops = []
-    # TODO: Y (allowing single precison) or complex<double> for internal dtype
-    internal_dtype = 'double' if real_output else 'complex<double>'
-    # internal_dtype = 'double' if integer_output else 'Y'
+    internal_dtype = 'double' if integer_output else 'Y'
     ops.append(f'{internal_dtype} out = 0.0;')
 
     if large_int:
@@ -274,11 +272,11 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     ops = ops + coord_func(ndim, nprepad)
 
     if cval is numpy.nan:
-        cval = 'CUDART_NAN'
+        cval = '(Y)CUDART_NAN'
     elif cval == numpy.inf:
-        cval = 'CUDART_INF'
+        cval = '(Y)CUDART_INF'
     elif cval == -numpy.inf:
-        cval = '-CUDART_INF'
+        cval = '(Y)(-CUDART_INF)'
     else:
         cval = f'({internal_dtype}){cval}'
 
@@ -462,12 +460,12 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
             if ({_cond}) {{
                 out += {cval} * ({internal_dtype})({_weight});
             }} else {{
-                {internal_dtype} val = x[{_coord_idx}];
+                {internal_dtype} val = ({internal_dtype})x[{_coord_idx}];
                 out += val * ({internal_dtype})({_weight});
             }}''')
         else:
             ops.append(f'''
-            {internal_dtype} val = x[{_coord_idx}];
+            {internal_dtype} val = ({internal_dtype})x[{_coord_idx}];
             out += val * ({internal_dtype})({_weight});''')
 
         ops.append('}' * ndim)
@@ -492,7 +490,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
 
 @cupy._util.memoize(for_each_device=True)
 def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
-                    integer_output=False, nprepad=0, real_output=True):
+                    integer_output=False, nprepad=0):
     in_params = 'raw X x, raw W coords'
     out_params = 'Y y'
     operation, name = _generate_interp_custom(
@@ -507,7 +505,6 @@ def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         integer_output=integer_output,
         nprepad=nprepad,
         omit_in_coord=True,  # input image coordinates are not needed
-        real_output=real_output,
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   preamble=math_constants_preamble)
@@ -515,7 +512,7 @@ def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 @cupy._util.memoize(for_each_device=True)
 def _get_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
-                      integer_output=False, nprepad=0, real_output=True):
+                      integer_output=False, nprepad=0):
     in_params = 'raw X x, raw W shift'
     out_params = 'Y y'
     operation, name = _generate_interp_custom(
@@ -529,7 +526,6 @@ def _get_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         name='shift',
         integer_output=integer_output,
         nprepad=nprepad,
-        real_output=real_output,
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   preamble=math_constants_preamble)
@@ -537,8 +533,7 @@ def _get_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 @cupy._util.memoize(for_each_device=True)
 def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
-                           integer_output=False, grid_mode=False, nprepad=0,
-                           real_output=True):
+                           integer_output=False, grid_mode=False, nprepad=0):
     in_params = 'raw X x, raw W shift, raw W zoom'
     out_params = 'Y y'
     if grid_mode:
@@ -556,7 +551,6 @@ def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         name="zoom_shift_grid" if grid_mode else "zoom_shift",
         integer_output=integer_output,
         nprepad=nprepad,
-        real_output=real_output,
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   preamble=math_constants_preamble)
@@ -564,8 +558,7 @@ def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 @cupy._util.memoize(for_each_device=True)
 def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
-                     integer_output=False, grid_mode=False, nprepad=0,
-                     real_output=True):
+                     integer_output=False, grid_mode=False, nprepad=0):
     in_params = 'raw X x, raw W zoom'
     out_params = 'Y y'
     operation, name = _generate_interp_custom(
@@ -579,7 +572,6 @@ def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         name="zoom_grid" if grid_mode else "zoom",
         integer_output=integer_output,
         nprepad=nprepad,
-        real_output=real_output,
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   preamble=math_constants_preamble)
@@ -587,7 +579,7 @@ def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 @cupy._util.memoize(for_each_device=True)
 def _get_affine_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
-                       integer_output=False, nprepad=0, real_output=True):
+                       integer_output=False, nprepad=0):
     in_params = 'raw X x, raw W mat'
     out_params = 'Y y'
     operation, name = _generate_interp_custom(
@@ -601,7 +593,6 @@ def _get_affine_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         name='affine',
         integer_output=integer_output,
         nprepad=nprepad,
-        real_output=real_output,
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   preamble=math_constants_preamble)
