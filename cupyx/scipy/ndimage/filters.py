@@ -1057,6 +1057,10 @@ def _get_shell_gap(filter_size):
 def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
                      int_type):
     s_rank = min(rank, filter_size - rank - 1)
+    # The threshold was set based on the measurements on a V100
+    # TODO(leofang, anaruse): Use Optuna to automatically tune the threshold,
+    # as it may vary depending on the GPU in use, compiler version, dtype,
+    # filter size, etc.
     if s_rank <= 80:
         # When s_rank is small and register usage is low, this partial
         # selection sort approach is faster than general sorting approach
