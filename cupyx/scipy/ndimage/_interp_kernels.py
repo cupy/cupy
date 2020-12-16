@@ -282,7 +282,6 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     else:
         cval = f'({internal_dtype}){cval}'
 
-
     if mode == 'constant':
         # use cval if coordinate is outside the bounds of x
         _cond = ' || '.join(

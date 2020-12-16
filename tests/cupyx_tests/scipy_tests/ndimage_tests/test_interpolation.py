@@ -68,6 +68,7 @@ class TestMapCoordinates:
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
+    @testing.with_requires('scipy>=1.6.0')
     def test_map_coordinates_complex_float(self, xp, scp, dtype):
         # promote output to a complex dtype
         if self.output == numpy.float64:
@@ -164,6 +165,7 @@ class TestAffineTransform:
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.with_requires('scipy>=1.6.0')
     def test_affine_transform_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
             # must promote output to a complex dtype
@@ -226,6 +228,7 @@ class TestAffineExceptions:
             with pytest.raises(RuntimeError):
                 ndi.affine_transform(x, xp.eye(x.ndim)[:, :-1])
 
+    @testing.with_requires('scipy>=1.6.0')
     def test_invalid_output_dtype(self):
         # real output array with complex input is not allowed
         ndimage_modules = (scipy.ndimage, cupyx.scipy.ndimage)
@@ -234,6 +237,7 @@ class TestAffineExceptions:
             output = xp.ones_like(x, dtype=x.real.dtype)
             with pytest.raises(RuntimeError):
                 ndi.affine_transform(x, xp.ones((0, 3)), output=output)
+
 
 @testing.gpu
 @testing.with_requires('opencv-python')
@@ -307,6 +311,7 @@ class TestRotate:
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.with_requires('scipy>=1.6.0')
     def test_rotate_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
             self.output = numpy.complex128
@@ -433,9 +438,9 @@ class TestShift:
         a = testing.shaped_random((100, 100), xp, dtype)
         return self._shift(xp, scp, a)
 
-
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.with_requires('scipy>=1.6.0')
     def test_shift_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
             self.output = numpy.complex128
@@ -612,6 +617,7 @@ class TestZoom:
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.with_requires('scipy>=1.6.0')
     def test_zoom_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
             self.output = numpy.complex128

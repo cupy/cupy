@@ -175,7 +175,9 @@ template <class T>
 __device__ __forceinline__ bool nonzero(T x) { return x!=0; }
 
 template <typename T>
-__device__ __forceinline__ bool nonzero(complex<T> x){ return x.real() || x.imag(); }
+__device__ __forceinline__ bool nonzero(complex<T> x) {
+    return x.real() || x.imag();
+}
 """
 
 
