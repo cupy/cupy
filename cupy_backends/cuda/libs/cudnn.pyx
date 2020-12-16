@@ -845,11 +845,10 @@ cpdef size_t getStream(intptr_t handle) except? 0:
     return <size_t>stream
 
 
-cdef _setStream(intptr_t handle):
+cdef inline _setStream(intptr_t handle):
     """Set current stream when enable_current_stream is True
     """
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
+    setStream(handle, stream_module.get_current_stream_ptr())
 
 ###############################################################################
 # Tensor manipulation
