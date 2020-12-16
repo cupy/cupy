@@ -324,34 +324,19 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
         raise ValueError('k must be smaller than min(m, n) (actual: {})'
                          ''.format(k))
 
-    if isinstance(a, _interface.LinearOperator):
-        if m >= n:
-            a_dot = a.matvec
-            a_matmat = a.matmat
-            aH_dot = a.rmatvec
-            aH_matmat = a.rmatmat
-        else:
-            a_dot = a.rmatvec
-            a_matmat = a.rmatmat
-            aH_dot = a.matvec
-            aH_matmat = a.matmat
+    aH = a.H if isinstance(a, _interface.LinearOperator) else a.conj().T
+    if m >= n:
+        a_dot = a.dot
+        aH_dot = aH.dot
     else:
-        aH = a.conj().T
-        if m >= n:
-            a_dot = a_matmat = a.dot
-            aH_dot = aH_matmat = aH.dot
-        else:
-            a_dot = a_matmat = aH.dot
-            aH_dot = aH_matmat = a.dot
+        a_dot = aH.dot
+        aH_dot = a.dot
 
-    def aH_a_matvec(x):
+    def aH_a_dot(x):
         return(aH_dot(a_dot(x)))
 
-    def aH_a_matmat(x):
-        return(aH_matmat(a_matmat(x)))
-
     min_mn = min(m, n)
-    aH_a = _interface.LinearOperator(matvec=aH_a_matvec, matmat=aH_a_matmat,
+    aH_a = _interface.LinearOperator(matvec=aH_a_dot, matmat=aH_a_dot,
                                      dtype=a.dtype, shape=(min_mn, min_mn))
 
     if return_singular_vectors:
@@ -376,10 +361,10 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
     x = x[:, above_cutoff]
     if m >= n:
         v = x
-        u = a_matmat(v) / s[:n_large]
+        u = a_dot(v) / s[:n_large]
     else:
         u = x
-        v = a_matmat(u) / s[:n_large]
+        v = a_dot(u) / s[:n_large]
     u = _augmented_orthnormal_cols(u, k - n_large)
     v = _augmented_orthnormal_cols(v, k - n_large)
 
