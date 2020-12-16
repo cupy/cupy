@@ -1,5 +1,8 @@
 #from libc.string cimport memcpy
+from cython.operator cimport dereference as deref
+from libc.stdint cimport intptr_t
 cimport cpython
+from cpython.ref cimport PyObject
 from numpy cimport (#dtype, PyArray_ArrFuncs,
                     PyArray_Descr, PyArray_DescrFromType)# PyArray_RegisterDataType)
 cimport numpy
@@ -7,6 +10,8 @@ cimport numpy
 from numpy cimport import_array
 
 import_array()
+
+
 
 
 cdef extern from *:
@@ -21,12 +26,7 @@ cdef extern from *:
         _complex32 x;
     } _complex32_obj;
 
-    static PyTypeObject _complex32_type = {
-        PyVarObject_HEAD_INIT(NULL, 0)
-        .tp_name = "cupy.complex32",
-        .tp_basicsize = sizeof(_complex32_obj),
-        .tp_doc = "a complex number consisting of two float16",
-    };
+    static PyTypeObject _complex32_type;
 
     static PyObject* PyComplex32_FromComplex32(_complex32 c) {
         printf("\\n\\n\\nI am here!!!!\\n\\n\\n"); fflush(stdout);
@@ -38,6 +38,20 @@ cdef extern from *:
         return (PyObject*)p;
     }
     
+    //static PyObject* _complex32_obj_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
+    //    _complex32 c = { 0 };
+    //    return PyComplex32_FromComplex32(c);
+    //}
+
+    static PyTypeObject _complex32_type = {
+        PyVarObject_HEAD_INIT(NULL, 0)
+        .tp_name = "test_dtype._complex32_obj",
+        .tp_basicsize = sizeof(_complex32_obj),
+        .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+        .tp_doc = "a complex number consisting of two float16",
+        .tp_new = PyType_GenericNew,  //_complex32_obj_new,
+    };
+
     static PyObject* complex32_getitem(void* data, void* arr) {
         printf("\\n\\n\\n getitem !!!!\\n\\n\\n");  fflush(stdout);
         _complex32 c;
@@ -97,6 +111,7 @@ cdef extern from *:
     };
 
     int register_dtype (void) {
+        _complex32_type.tp_base = &PyComplexFloatingArrType_Type;
         int is_ready = PyType_Ready((PyTypeObject*)(&_complex32_type));
         printf("is _complex32_type ready? %i\\n", is_ready);
 
@@ -109,8 +124,7 @@ cdef extern from *:
 
     #ctypedef struct _complex32:
     #    pass
-    #ctypedef struct _complex32_obj:
-    #    pass
+    #object _complex32_obj
     cpython.PyTypeObject _complex32_type
     #PyArray_ArrFuncs _complex32_arrfuncs
     PyArray_Descr _complex32_dtype
@@ -137,7 +151,9 @@ cdef extern from *:
 #        self.names = (b'real', b'imag')
 
 complex32_num = None
-complex32 = None  #_complex32_type
+#cdef cpython.PyObject* _complex32 = <cpython.PyObject*>_complex32_type
+#complex32 = <object>(<PyObject*>&_complex32_type)
+complex32 = <object>(&_complex32_type)
 
 
 def init():
@@ -147,5 +163,14 @@ def init():
     cdef int _complex32_num = register_dtype()
     print("after registering...", flush=True)
     complex32_num = _complex32_num
-    print(_complex32_num)
-    complex32 = PyArray_DescrFromType(_complex32_num)
+    print(type(complex32))
+    print(complex32.__doc__)
+    #print(_complex32_num)
+    #d = PyArray_DescrFromType(_complex32_num)
+    ##print(type(d), flush=True)
+    #import numpy
+    #print("before numpy dtype")
+    #x = numpy.dtype(complex32)
+    #print(x)
+    #print(<intptr_t>PyArray_DescrFromType(_complex32_num))
+    #print(complex32)
