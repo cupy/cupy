@@ -4,7 +4,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy.indexing import generate
+from cupy._indexing import generate
 from cupy import testing
 
 
@@ -35,20 +35,20 @@ class TestIndices(unittest.TestCase):
 @testing.gpu
 class TestIX_(unittest.TestCase):
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ix_list(self, xp):
         return xp.ix_([0, 1], [2, 4])
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ix_ndarray(self, xp, dtype):
         return xp.ix_(xp.array([0, 1], dtype), xp.array([2, 3], dtype))
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal(type_check=False)
     def test_ix_empty_ndarray(self, xp):
         return xp.ix_(xp.array([]))
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ix_bool_ndarray(self, xp):
         return xp.ix_(xp.array([True, False] * 2))
 
@@ -138,11 +138,11 @@ class TestAxisConcatenator(unittest.TestCase):
 
     def test_AxisConcatenator_init1(self):
         with self.assertRaises(TypeError):
-            cupy.indexing.generate.AxisConcatenator.__init__()
+            generate.AxisConcatenator.__init__()
 
     def test_len(self):
         a = generate.AxisConcatenator()
-        self.assertEqual(len(a), 0)
+        assert len(a) == 0
 
 
 @testing.gpu
@@ -150,17 +150,18 @@ class TestUnravelIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal(type_check=False)
     def test(self, xp, order, dtype):
         a = testing.shaped_arange((4, 3, 2), xp, dtype)
         a = xp.minimum(a, 6 * 4 - 1)
         return xp.unravel_index(a, (6, 4), order=order)
 
+    @testing.with_requires('numpy>=1.19')
     @testing.for_int_dtypes()
     def test_invalid_order(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((4, 3, 2), xp, dtype)
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 xp.unravel_index(a, (6, 4), order='V')
 
     @testing.for_orders(['C', 'F', None])
@@ -185,7 +186,7 @@ class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_basic(self, xp, order, dtype):
         dims = (8, 4)
         a = [xp.ones(5, dtype=dtype)] * len(dims)
@@ -193,7 +194,7 @@ class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_multi_index_broadcasting(self, xp, order, dtype):
         dims = (3, 5)
         x, y = xp.meshgrid(*[xp.arange(s, dtype=dtype) for s in dims],
@@ -202,7 +203,7 @@ class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_basic_nd_coords(self, xp, order, dtype):
         dims = (8, 4)
         a = [xp.ones((3, 3, 3), dtype=dtype)] * len(dims)
@@ -210,7 +211,7 @@ class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_basic_clip(self, xp, order, dtype):
         dims = (8, 4, 2)
         a = [xp.arange(max(dims), dtype=dtype)] * len(dims)
@@ -218,7 +219,7 @@ class TestRavelMultiIndex(unittest.TestCase):
 
     @testing.for_orders(['C', 'F', None])
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_basic_wrap(self, xp, order, dtype):
         dims = (8, 4, 2)
         a = [xp.arange(max(dims), dtype=dtype)] * len(dims)
@@ -257,12 +258,13 @@ class TestRavelMultiIndex(unittest.TestCase):
             with pytest.raises(ValueError):
                 xp.ravel_multi_index(a, dims, order=order)
 
+    @testing.with_requires('numpy>=1.19')
     @testing.for_int_dtypes(no_bool=True)
     def test_invalid_order(self, dtype):
         for xp in (numpy, cupy):
             dims = (8, 4)
             a = tuple([xp.arange(min(dims), dtype=dtype) for d in dims])
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 xp.ravel_multi_index(a, dims, order='V')
 
     @testing.for_orders(['C', 'F', None])
@@ -275,10 +277,11 @@ class TestRavelMultiIndex(unittest.TestCase):
                 xp.ravel_multi_index(
                     a, (xp.iinfo(xp.int64).max, 4), order=order)
 
+    @testing.with_requires('numpy>=1.19')
     @testing.for_int_dtypes(no_bool=True)
     def test_invalid_mode(self, dtype):
         for xp in (numpy, cupy):
             dims = (8, 4)
             a = tuple([xp.arange(min(dims), dtype=dtype) for d in dims])
-            with pytest.raises(TypeError):
+            with pytest.raises(ValueError):
                 xp.ravel_multi_index(a, dims, mode='invalid')

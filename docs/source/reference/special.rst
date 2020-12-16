@@ -18,6 +18,20 @@ Bessel Functions
    cupyx.scipy.special.i1
 
 
+Information Theory Functions
+----------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.special.entr
+   cupyx.scipy.special.huber
+   cupyx.scipy.special.kl_div
+   cupyx.scipy.special.pseudo_huber
+   cupyx.scipy.special.rel_entr
+
+
 Gamma and Related Functions
 ---------------------------
 

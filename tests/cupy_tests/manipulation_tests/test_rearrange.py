@@ -218,9 +218,21 @@ class TestFlip(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_flip_all(self, xp, dtype):
+        x = testing.shaped_arange((3, 4), xp, dtype)
+        return xp.flip(x)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_flip_with_negative_axis(self, xp, dtype):
         x = testing.shaped_arange((3, 4, 2), xp, dtype)
         return xp.flip(x, -1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_flip_with_axis_tuple(self, xp, dtype):
+        x = testing.shaped_arange((3, 4, 2), xp, dtype)
+        return xp.flip(x, (0, 2))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -239,6 +251,12 @@ class TestFlip(unittest.TestCase):
     def test_flip_empty_dim_3(self, xp, dtype):
         x = xp.array([], dtype).reshape((1, 0, 1))
         return xp.flip(x, 1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_flip_empty_dim_all(self, xp, dtype):
+        x = xp.array([], dtype).reshape((1, 0, 1))
+        return xp.flip(x)
 
     @testing.for_all_dtypes()
     def test_flip_insufficient_ndim(self, dtype):

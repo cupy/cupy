@@ -4,6 +4,7 @@ import unittest
 
 import pytest
 
+import cupy
 from cupy import cuda
 from cupy import testing
 
@@ -146,3 +147,8 @@ class TestDeviceHandles(unittest.TestCase):
 
     def test_cusparse_handle(self):
         self._check_handle(cuda.device.get_cusparse_handle)
+
+
+class TestDeviceFromPointer(unittest.TestCase):
+    def test_from_pointer(self):
+        assert cuda.device.from_pointer(cupy.empty(1).data.ptr).id == 0

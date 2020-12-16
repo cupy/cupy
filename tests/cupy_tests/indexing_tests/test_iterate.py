@@ -8,6 +8,47 @@ import cupy
 from cupy import testing
 
 
+@testing.gpu
+class TestFlatiter(unittest.TestCase):
+
+    def test_base(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros((2, 3, 4))
+            assert a.flat.base is a
+
+    def test_iter(self):
+        for xp in (numpy, cupy):
+            it = xp.zeros((2, 3, 4)).flat
+            assert iter(it) is it
+
+    def test_next(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((2, 3, 4), xp)
+            e = a.flatten()
+            for ai, ei in zip(a.flat, e):
+                assert ai == ei
+
+    def test_len(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros((2, 3, 4))
+            assert len(a.flat) == 24
+            assert len(a[::2].flat) == 12
+
+    @testing.numpy_cupy_array_equal()
+    def test_copy(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        o = a.flat.copy()
+        assert a is not o
+        return a.flat.copy()
+
+    @testing.numpy_cupy_array_equal()
+    def test_copy_next(self, xp):
+        a = testing.shaped_arange((2, 3, 4), xp)
+        it = a.flat
+        it.__next__()
+        return it.copy()  # Returns the flattened copy of whole `a`
+
+
 @testing.parameterize(
     {'shape': (2, 3, 4), 'index': Ellipsis},
     {'shape': (2, 3, 4), 'index': 0},
@@ -44,7 +85,7 @@ class TestFlatiterSubscript(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_setitem_ndarray_1d(self, xp, dtype, order):
         if numpy.isscalar(self.index):
-            return xp.array([])  # skip
+            pytest.skip()
         a = xp.zeros(self.shape, dtype=dtype, order=order)
         v = testing.shaped_arange((3,), xp, dtype, order)
         a.flat[self.index] = v
@@ -55,7 +96,7 @@ class TestFlatiterSubscript(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_setitem_ndarray_nd(self, xp, dtype, order):
         if numpy.isscalar(self.index):
-            return xp.array([])  # skip
+            pytest.skip()
         a = xp.zeros(self.shape, dtype=dtype, order=order)
         v = testing.shaped_arange((2, 3), xp, dtype, order)
         a.flat[self.index] = v
@@ -67,7 +108,7 @@ class TestFlatiterSubscript(unittest.TestCase):
     def test_setitem_ndarray_different_types(
             self, xp, a_dtype, v_dtype, order):
         if numpy.isscalar(self.index):
-            return xp.array([])  # skip
+            pytest.skip()
         a = xp.zeros(self.shape, dtype=a_dtype, order=order)
         v = testing.shaped_arange((3,), xp, v_dtype, order)
         with warnings.catch_warnings():

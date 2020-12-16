@@ -5,6 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy import cuda
 
 
 @testing.gpu
@@ -91,6 +92,15 @@ class TestJoin(unittest.TestCase):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         b = testing.shaped_reverse_arange((2, 3, 4), xp, 'i')
         return xp.concatenate((a, b) * 10, axis=-1)
+
+    @testing.multi_gpu(2)
+    def test_concatenate_large_different_devices(self):
+        arrs = []
+        for i in range(10):
+            with cuda.Device(i % 2):
+                arrs.append(cupy.empty((2, 3, 4)))
+        with pytest.raises(ValueError):
+            cupy.concatenate(arrs)
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
@@ -257,7 +267,7 @@ class TestJoin(unittest.TestCase):
         b = testing.shaped_arange((2, 3), cupy)
         c = testing.shaped_arange((2, 3), cupy)
         s = cupy.stack((a, b, c))
-        self.assertEqual(s.shape, (3, 2, 3))
+        assert s.shape == (3, 2, 3)
         cupy.testing.assert_array_equal(s[0], a)
         cupy.testing.assert_array_equal(s[1], b)
         cupy.testing.assert_array_equal(s[2], c)
@@ -282,7 +292,7 @@ class TestJoin(unittest.TestCase):
         a = testing.shaped_arange((2, 3), cupy)
         s = cupy.stack((a, a), axis=1)
 
-        self.assertEqual(s.shape, (2, 2, 3))
+        assert s.shape == (2, 2, 3)
         cupy.testing.assert_array_equal(s[:, 0, :], a)
         cupy.testing.assert_array_equal(s[:, 1, :], a)
 
@@ -295,7 +305,7 @@ class TestJoin(unittest.TestCase):
         a = testing.shaped_arange((2, 3), cupy)
         s = cupy.stack((a, a), axis=-1)
 
-        self.assertEqual(s.shape, (2, 3, 2))
+        assert s.shape == (2, 3, 2)
         cupy.testing.assert_array_equal(s[:, :, 0], a)
         cupy.testing.assert_array_equal(s[:, :, 1], a)
 

@@ -10,6 +10,8 @@ cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
 
 cpdef Py_ssize_t prod_sequence(object args)
 
+cpdef bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x)
+
 cpdef tuple get_size(object size)
 
 cpdef bint vector_equal(
@@ -49,3 +51,8 @@ cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0
 cdef _broadcast_core(list arrays, shape_t& shape)
 
 cpdef bint _contig_axes(tuple axes)
+
+cpdef Py_ssize_t _normalize_axis_index(
+    Py_ssize_t axis, Py_ssize_t ndim) except -1
+
+cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim)

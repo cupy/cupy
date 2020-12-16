@@ -1,10 +1,9 @@
 import string
-import threading
 
 import numpy
 
 from cupy.cuda import compiler
-from cupy import util
+from cupy import _util
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -13,27 +12,19 @@ from libcpp cimport vector
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.cuda cimport memory
 from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
+from cupy.core._memory_range cimport may_share_bounds
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core.core cimport _convert_object_with_cuda_array_interface
 from cupy.core.core cimport _ndarray_init
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
 from cupy.core cimport internal
-from cupy.core._memory_range cimport may_share_bounds
 
-
-_thread_local = threading.local()
-
-
-cpdef inline bint _is_fusing() except? -1:
-    try:
-        return _thread_local.history is not None
-    except AttributeError:
-        _thread_local.history = None
-    return False
+from cupy.core import _fusion_thread_local
 
 
 cdef inline bint _contains_zero(const shape_t& v) except? -1:
@@ -70,7 +61,7 @@ cpdef function.Function _get_simple_elementwise_kernel(
     return module.get_function(name)
 
 
-cdef inline int get_kind_score(int kind):
+cpdef inline int get_kind_score(int kind):
     if b'b' == kind:
         return 0
     if b'u' == kind or b'i' == kind:
@@ -123,18 +114,24 @@ cdef class _ArgInfo:
     # Holds metadata of an argument.
     # This class is immutable and used as a part of hash keys.
 
-    def __init__(
+    def __init__(self, *args):
+        arg_kind, typ, dtype, ndim, c_contiguous, index_32_bits = args
+        self._init(arg_kind, typ, dtype, ndim, c_contiguous, index_32_bits)
+
+    cdef _ArgInfo _init(
             self,
             _ArgKind arg_kind,
             type typ,
             object dtype,
             int ndim,
-            bint c_contiguous):
+            bint c_contiguous,
+            bint index_32_bits):
         self.arg_kind = arg_kind
         self.type = typ
         self.dtype = dtype
         self.ndim = ndim
         self.c_contiguous = c_contiguous
+        self.index_32_bits = index_32_bits
 
     @staticmethod
     cdef _ArgInfo from_arg(object arg):
@@ -145,30 +142,46 @@ cdef class _ArgInfo:
             return _ArgInfo.from_scalar(arg)
         if typ is _carray.Indexer:
             return _ArgInfo.from_indexer(arg)
+        if typ is memory.MemoryPointer:
+            return _ArgInfo.from_memptr(arg)
         assert False, typ
 
     @staticmethod
     cdef _ArgInfo from_ndarray(ndarray arg):
-        return _ArgInfo(
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
+        ret._init(
             ARG_KIND_NDARRAY,
             ndarray,
             arg.dtype.type,
             arg._shape.size(),
-            arg._c_contiguous)
+            arg._c_contiguous,
+            arg._index_32_bits)
+        return ret
 
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg):
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         dtype = arg.get_numpy_type()
-        return _ArgInfo(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0, True)
+        ret._init(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0, True, True)
+        return ret
 
     @staticmethod
     cdef _ArgInfo from_indexer(_carray.Indexer arg):
-        return _ArgInfo(
-            ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True)
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
+        ret._init(
+            ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True, True)
+        return ret
+
+    @staticmethod
+    cdef _ArgInfo from_memptr(memory.MemoryPointer arg):
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
+        ret._init(
+            ARG_KIND_POINTER, memory.MemoryPointer, None, 0, True, True)
+        return ret
 
     def __hash__(self):
         return hash((self.arg_kind, self.type, self.dtype, self.ndim,
-                     self.c_contiguous))
+                     self.c_contiguous, self.index_32_bits))
 
     def __eq__(self, other):
         cdef _ArgInfo oth
@@ -180,7 +193,19 @@ cdef class _ArgInfo:
             and self.type is oth.type
             and self.dtype == oth.dtype
             and self.ndim == oth.ndim
-            and self.c_contiguous == oth.c_contiguous)
+            and self.c_contiguous == oth.c_contiguous
+            and self.index_32_bits == oth.index_32_bits)
+
+    def __repr__(self):
+        return '<_ArgInfo({})>'.format(
+            ' '.join([
+                'arg_kind={!r}'.format(self.arg_kind),
+                'type={!r}'.format(self.type),
+                'dtype={!r}'.format(self.dtype),
+                'ndim={!r}'.format(self.ndim),
+                'c_contiguous={!r}'.format(self.c_contiguous),
+                'index_32_bits={!r}'.format(self.index_32_bits),
+            ]))
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim):
         # Returns an ndarray _ArgInfo with altered ndim.
@@ -188,7 +213,8 @@ cdef class _ArgInfo:
         assert self.arg_kind == ARG_KIND_NDARRAY
         if self.ndim == ndim:
             return self
-        return _ArgInfo(ARG_KIND_NDARRAY, ndarray, self.dtype, ndim, False)
+        return _ArgInfo(
+            ARG_KIND_NDARRAY, ndarray, self.dtype, ndim, False, False)
 
     cdef bint is_ndarray(self):
         return self.arg_kind == ARG_KIND_NDARRAY
@@ -199,8 +225,9 @@ cdef class _ArgInfo:
     cdef str get_c_type(self):
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
-            return 'CArray<%s, %d, %d>' % (
-                _get_typename(self.dtype), self.ndim, self.c_contiguous)
+            return 'CArray<%s, %d, %d, %d>' % (
+                _get_typename(self.dtype), self.ndim,
+                self.c_contiguous, self.index_32_bits)
         if self.arg_kind == ARG_KIND_SCALAR:
             return _get_typename(self.dtype)
         if self.arg_kind == ARG_KIND_INDEXER:
@@ -216,7 +243,7 @@ cdef class _ArgInfo:
         return ctyp
 
     cdef str get_c_var_name(self, ParameterInfo p):
-        if self.arg_kind == ARG_KIND_NDARRAY and not p.raw:
+        if self.arg_kind in (ARG_KIND_NDARRAY, ARG_KIND_POINTER) and not p.raw:
             return '_raw_' + p.name
         return p.name
 
@@ -239,11 +266,11 @@ cpdef str _get_kernel_params(tuple params, tuple arginfos):
     return ', '.join(lst)
 
 
-cdef tuple _reduce_dims(list args, tuple params, tuple shape):
+cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape):
     """ Remove contiguous stride to optimize CUDA kernel."""
     cdef ndarray arr
 
-    if len(shape) <= 1 or len(args) == 0:
+    if shape.size() <= 1 or len(args) == 0:
         return shape
 
     if len(args) == 1:  # fast path for reduction
@@ -256,11 +283,11 @@ cdef tuple _reduce_dims(list args, tuple params, tuple shape):
             return shape
         else:
             args[0] = arr
-            return arr.shape
+            return arr._shape
     return _reduced_view_core(args, params, shape)
 
 
-cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
+cdef shape_t _reduced_view_core(list args, tuple params, const shape_t& shape):
     cdef int i, ax, last_ax, ndim
     cdef Py_ssize_t x, total_size
     cdef shape_t vecshape, newshape, newstrides
@@ -269,15 +296,20 @@ cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
     cdef ParameterInfo p
     cdef ndarray arr
 
-    ndim = len(shape)
+    ndim = shape.size()
     array_indexes.reserve(len(args))
     strides_indexes.reserve(len(args))
     for i in range(len(args)):
         p = params[i]
-        if not p.raw and isinstance(args[i], ndarray):
+        if p.raw:
+            continue
+        a = args[i]
+        if isinstance(a, ndarray):
             array_indexes.push_back(i)
-            arr = args[i]
+            arr = a
             if not arr._c_contiguous:
+                if ndim == 2:  # short cut
+                    return shape
                 strides_indexes.push_back(i)
 
     if array_indexes.size() == 0:
@@ -295,12 +327,12 @@ cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
             newstrides[0] = arr.dtype.itemsize
             # TODO(niboshi): Confirm update_x_contiguity flags
             args[i] = arr._view(newshape, newstrides, False, True)
-        return total_size,
+        return newshape
 
     axes.reserve(ndim)
     vecshape.reserve(ndim)
-    for x in shape:
-        vecshape.push_back(x)
+    for ax in range(ndim):
+        vecshape.push_back(shape[ax])
     last_ax = -1
     for ax in range(ndim):
         if vecshape[ax] == 1:
@@ -332,7 +364,7 @@ cdef tuple _reduced_view_core(list args, tuple params, tuple shape):
             newstrides.push_back(arr._strides[ax])
         # TODO(niboshi): Confirm update_x_contiguity flags
         args[i] = arr._view(newshape, newstrides, False, True)
-    return tuple(newshape)
+    return newshape
 
 
 cdef class ParameterInfo:
@@ -394,14 +426,14 @@ cdef class ParameterInfo:
             ]))
 
 
-@util.memoize()
+@_util.memoize()
 def _get_param_info(str s, is_const):
     if len(s) == 0:
         return ()
     return tuple([ParameterInfo(i, is_const) for i in s.strip().split(',')])
 
 
-@util.memoize()
+@_util.memoize()
 def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return _decide_params_type_core(in_params, out_params, in_args_dtype,
                                     out_args_dtype)
@@ -588,7 +620,7 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_elementwise_kernel(
         tuple arginfos, _TypeMap type_map, tuple params, operation, name,
         preamble, **kwargs):
@@ -657,7 +689,8 @@ cdef class ElementwiseKernel:
         readonly Py_ssize_t nargs
         readonly tuple params
         readonly object operation
-        readonly object name
+        readonly str name
+        readonly str __name__
         readonly bint reduce_dims
         readonly object preamble
         readonly bint no_return
@@ -692,6 +725,8 @@ cdef class ElementwiseKernel:
         if 'i' in names:
             raise ValueError('Can not use \'i\' as a parameter name')
         self._elementwise_kernel_memo = {}
+        # This is for profiling mechanisms to auto infer a name
+        self.__name__ = name
 
     def __call__(self, *args, **kwargs):
         """Compiles and invokes the elementwise kernel.
@@ -720,8 +755,8 @@ cdef class ElementwiseKernel:
         cdef function.Function kern
         cdef Py_ssize_t size, i
         cdef list in_args, out_args
-        cdef tuple in_types, out_types, types, shape
-        cdef shape_t vec_shape
+        cdef tuple in_types, out_types, types
+        cdef shape_t shape
 
         size = -1
         size = kwargs.pop('size', -1)
@@ -742,9 +777,9 @@ cdef class ElementwiseKernel:
         arg_list = _preprocess_args(dev_id, args, True)
 
         out_args = arg_list[self.nin:]
-        # _broadcast updates vec_shape
+        # _broadcast updates shape
         in_args = _broadcast(
-            arg_list, self.params, size != -1, vec_shape)[:self.nin]
+            arg_list, self.params, size != -1, shape)[:self.nin]
 
         in_ndarray_types = tuple(
             [a.dtype.type if isinstance(a, ndarray) else None
@@ -756,11 +791,11 @@ cdef class ElementwiseKernel:
 
         is_size_specified = False
         if size != -1:
-            vec_shape.assign(1, size)
+            shape.assign(1, size)
             is_size_specified = True
 
         out_args = _get_out_args_with_params(
-            out_args, out_types, vec_shape, self.out_params, is_size_specified)
+            out_args, out_types, shape, self.out_params, is_size_specified)
         if self.no_return:
             ret = None
         elif not self.return_tuple and self.nout == 1:
@@ -768,7 +803,7 @@ cdef class ElementwiseKernel:
         else:
             ret = tuple(out_args)
 
-        if _contains_zero(vec_shape):
+        if _contains_zero(shape):
             return ret
 
         for i, x in enumerate(in_args):
@@ -777,10 +812,9 @@ cdef class ElementwiseKernel:
 
         inout_args = in_args + out_args
 
-        shape = tuple(vec_shape)
         if self.reduce_dims:
             shape = _reduce_dims(inout_args, self.params, shape)
-        indexer = _carray.Indexer(shape)
+        indexer = _carray._indexer_init(shape)
         inout_args.append(indexer)
 
         arginfos = _get_arginfos(inout_args)
@@ -978,13 +1012,12 @@ cdef class ufunc:
             Output array or a tuple of output arrays.
 
         """
-        if _is_fusing():
-            return _thread_local.history.call_ufunc(self, args, kwargs)
+        if _fusion_thread_local.is_fusing():
+            return _fusion_thread_local.call_ufunc(self, *args, **kwargs)
 
         cdef function.Function kern
         cdef list broad_values
-        cdef shape_t vec_shape
-        cdef tuple shape
+        cdef shape_t shape
         cdef Py_ssize_t s
 
         out = kwargs.pop('out', None)
@@ -1022,18 +1055,18 @@ cdef class ufunc:
         # _copy_in_args_if_needed updates in_args
         _copy_in_args_if_needed(in_args, out_args)
         broad_values = in_args + out_args
-        # _broadcast updates vec_shape
-        internal._broadcast_core(broad_values, vec_shape)
+        # _broadcast updates shape
+        internal._broadcast_core(broad_values, shape)
 
         op = self._ops.guess_routine(
             self.name, self._routine_cache, in_args, dtype, self._out_ops)
-        out_args = _get_out_args(out_args, op.out_types, vec_shape, casting)
+        out_args = _get_out_args(out_args, op.out_types, shape, casting)
         if self.nout == 1:
             ret = out_args[0]
         else:
             ret = tuple(out_args)
 
-        if _contains_zero(vec_shape):
+        if _contains_zero(shape):
             return ret
 
         inout_args = []
@@ -1043,8 +1076,8 @@ cdef class ufunc:
                 x if isinstance(x, ndarray) else
                 _scalar.CScalar.from_numpy_scalar_with_dtype(x, t))
         inout_args.extend(out_args)
-        shape = _reduce_dims(inout_args, self._params, tuple(vec_shape))
-        indexer = _carray.Indexer(shape)
+        shape = _reduce_dims(inout_args, self._params, shape)
+        indexer = _carray._indexer_init(shape)
         inout_args.append(indexer)
         arginfos = _get_arginfos(inout_args)
 
@@ -1119,6 +1152,12 @@ cdef class _Op:
         if self.error_func is not None:
             self.error_func()
 
+    cpdef tuple get_in_dtypes(self):
+        return tuple([get_dtype(t) for t in self.in_types])
+
+    cpdef tuple get_out_dtypes(self):
+        return tuple([get_dtype(t) for t in self.out_types])
+
 
 cdef class _Ops:
 
@@ -1150,7 +1189,7 @@ cdef class _Ops:
             ops_.append(_Op.from_type_and_routine(typ, rt))
         return _Ops(tuple(ops_))
 
-    cdef _Op guess_routine(
+    cpdef _Op guess_routine(
             self, str name, dict cache, list in_args, dtype, _Ops out_ops):
         cdef _Ops ops_
         if dtype is None:
@@ -1184,7 +1223,7 @@ cdef class _Ops:
         raise TypeError('Wrong type (%s) of arguments for %s' %
                         (dtype, name))
 
-    cdef _Op _guess_routine_from_in_types(self, tuple in_types):
+    cpdef _Op _guess_routine_from_in_types(self, tuple in_types):
         cdef _Op op
         cdef tuple op_types
         cdef Py_ssize_t n = len(in_types)
@@ -1204,7 +1243,7 @@ cdef class _Ops:
                 return op
         return None
 
-    cdef _Op _guess_routine_from_dtype(self, object dtype):
+    cpdef _Op _guess_routine_from_dtype(self, object dtype):
         cdef _Op op
         cdef tuple op_types
         for op in self.ops:

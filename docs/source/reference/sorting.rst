@@ -14,6 +14,7 @@ Sorting
    cupy.lexsort
    cupy.argsort
    cupy.msort
+   cupy.sort_complex
    cupy.partition
    cupy.argpartition
 
@@ -35,6 +36,7 @@ Searching
    cupy.flatnonzero
    cupy.where
    cupy.argwhere
+   cupy.searchsorted
 
 Counting
 --------

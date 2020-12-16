@@ -173,11 +173,12 @@ __device__ int signbit(float16 x) {return x.signbit();}
          i < (n); \
          i += static_cast<ptrdiff_t>(blockDim.x) * gridDim.x)
 
-template <typename T, int _ndim, bool _c_contiguous=false>
+template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false>
 class CArray {
 public:
   static const int ndim = _ndim;
   static const bool c_contiguous = _c_contiguous;
+  static const bool use_32bit_indexing = _use_32bit_indexing;
 private:
   T* data_;
   ptrdiff_t size_;
@@ -205,8 +206,15 @@ public:
   template <typename Int>
   __device__ const T& operator[](const Int (&idx)[ndim]) const {
     const char* ptr = reinterpret_cast<const char*>(data_);
-    for (int dim = 0; dim < ndim; ++dim) {
-      ptr += static_cast<ptrdiff_t>(strides_[dim]) * idx[dim];
+    if (use_32bit_indexing) {
+      for (int dim = 0; dim < ndim; ++dim) {
+        int i = static_cast<int>(idx[dim]);
+        ptr += static_cast<int>(strides_[dim]) * i;
+      }
+    } else {
+      for (int dim = 0; dim < ndim; ++dim) {
+        ptr += static_cast<ptrdiff_t>(strides_[dim]) * idx[dim];
+      }
     }
     return *reinterpret_cast<const T*>(ptr);
   }
@@ -215,27 +223,43 @@ public:
     return const_cast<T&>(const_cast<const CArray&>(*this)[i]);
   }
 
-  __device__ const T& operator[](ptrdiff_t i) const {
+  __device__ const T& operator[](ptrdiff_t idx) const {
     if (c_contiguous) {
       // contiguous arrays can be directly addressed by the
       // numeric value, avoiding expensive 64 bit operations in cuda
-      return data_[i];
+      return data_[idx];
     }
+    // 64-bit mults and divs are pretty expensive and can 
+    // lead to severe perforamance degradation in computation bound
+    // kernels
     const char* ptr = reinterpret_cast<const char*>(data_);
-    for (int dim = ndim; --dim > 0; ) {
-      ptr += static_cast<ptrdiff_t>(strides_[dim]) * (i % shape_[dim]);
-      i /= shape_[dim];
+    if (use_32bit_indexing) {
+      int i = static_cast<int>(idx);
+      for (int dim = ndim; --dim > 0; ) {
+        int shape_dim = static_cast<int>(shape_[dim]);
+        ptr += static_cast<int>(strides_[dim]) * (i % shape_dim);
+        i /= shape_dim;
+      }
+      if (ndim > 0) {
+        ptr += static_cast<int>(strides_[0]) * i;
+      }
+    } else {
+      ptrdiff_t i = idx;
+      for (int dim = ndim; --dim > 0; ) {
+        ptr += static_cast<ptrdiff_t>(strides_[dim]) * (i % shape_[dim]);
+        i /= shape_[dim];
+      }
+      if (ndim > 0) {
+        ptr += static_cast<ptrdiff_t>(strides_[0]) * i;
+      }
     }
-    if (ndim > 0) {
-      ptr += static_cast<ptrdiff_t>(strides_[0]) * i;
-    }
-
     return *reinterpret_cast<const T*>(ptr);
   }
 };
 
 template <typename T>
-class CArray<T, 0, true> {
+
+class CArray<T, 0, true, true> {
 private:
   T* data_;
   ptrdiff_t size_;

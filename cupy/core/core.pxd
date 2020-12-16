@@ -15,6 +15,8 @@ cdef class ndarray:
         public strides_t _strides
         readonly bint _c_contiguous
         readonly bint _f_contiguous
+        # To do fast indexing in the CArray class
+        readonly bint _index_32_bits
         readonly object dtype
         readonly memory.MemoryPointer data
         # TODO(niboshi): Return arbitrary owner object as `base` if the
@@ -100,7 +102,9 @@ cpdef ndarray asfortranarray(ndarray a, dtype=*)
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*,
                                 backend=*, translate_cucomplex=*,
-                                enable_cooperative_groups=*)
+                                enable_cooperative_groups=*,
+                                name_expressions=*, log_stream=*,
+                                bint jitify=*)
 
 
 # TODO(niboshi): Move to _routines_creation.pyx
@@ -109,3 +113,6 @@ cpdef ndarray array(obj, dtype=*, bint copy=*, order=*, bint subok=*,
 cpdef ndarray _convert_object_with_cuda_array_interface(a)
 
 cdef ndarray _ndarray_init(const shape_t& shape, dtype)
+
+cdef ndarray _create_ndarray_from_shape_strides(
+    const shape_t& shape, const strides_t& strides, dtype)

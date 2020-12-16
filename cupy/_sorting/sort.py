@@ -1,8 +1,7 @@
 import cupy
 import numpy
 
-if cupy.cuda.thrust_enabled:
-    from cupy.cuda import thrust
+from cupy.cuda import thrust
 
 
 def sort(a, axis=-1):
@@ -56,7 +55,7 @@ def lexsort(keys):
 
     # TODO(takagi): Support axis argument.
 
-    if not cupy.cuda.thrust_enabled:
+    if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.lexsort. Please '
                            'install CUDA Toolkit with Thrust then reinstall '
                            'CuPy after uninstalling it.')
@@ -127,7 +126,25 @@ def msort(a):
     return sort(a, axis=0)
 
 
-# TODO(okuta): Implement sort_complex
+def sort_complex(a):
+    """Sort a complex array using the real part first,
+    then the imaginary part.
+
+    Args:
+        a (cupy.ndarray): Array to be sorted.
+
+    Returns:
+        cupy.ndarray: sorted complex array.
+
+    .. seealso:: :func:`numpy.sort_complex`
+
+    """
+    if a.dtype.char in 'bhBHF':
+        a = a.astype('F')
+    else:
+        a = a.astype('D')
+    a.sort()
+    return a
 
 
 def partition(a, kth, axis=-1):

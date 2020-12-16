@@ -416,6 +416,35 @@ class TestMsort(unittest.TestCase):
         return xp.msort(a)
 
 
+@testing.gpu
+class TestSort_complex(unittest.TestCase):
+
+    def test_sort_complex_zero_dim(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_random((), xp)
+            with pytest.raises(numpy.AxisError):
+                xp.sort_complex(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_sort_complex_1dim(self, xp, dtype):
+        a = testing.shaped_random((100,), xp, dtype)
+        return a, xp.sort_complex(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_sort_complex_ndim(self, xp, dtype):
+        a = testing.shaped_random((2, 5, 3), xp, dtype)
+        return a, xp.sort_complex(a)
+
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_sort_complex_nan(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 5), xp, dtype)
+        a[0, 2, 1] = a[1, 0, 3] = xp.nan
+        return a, xp.sort_complex(a)
+
+
 @testing.parameterize(*testing.product({
     'external': [False, True],
     'length': [10, 20000],
@@ -446,8 +475,8 @@ class TestPartition(unittest.TestCase):
         a = testing.shaped_random((self.length,), xp, dtype)
         kth = 2
         x = self.partition(a, kth)
-        self.assertTrue(xp.all(x[0:kth] <= x[kth:kth + 1]))
-        self.assertTrue(xp.all(x[kth:kth + 1] <= x[kth + 1:]))
+        assert xp.all(x[0:kth] <= x[kth:kth + 1])
+        assert xp.all(x[kth:kth + 1] <= x[kth + 1:])
         return x[kth]
 
     @testing.for_all_dtypes()
@@ -456,8 +485,8 @@ class TestPartition(unittest.TestCase):
         a = testing.shaped_random((10, 10, self.length), xp, dtype)
         kth = 2
         x = self.partition(a, kth)
-        self.assertTrue(xp.all(x[:, :, 0:kth] <= x[:, :, kth:kth + 1]))
-        self.assertTrue(xp.all(x[:, :, kth:kth + 1] <= x[:, :, kth + 1:]))
+        assert xp.all(x[:, :, 0:kth] <= x[:, :, kth:kth + 1])
+        assert xp.all(x[:, :, kth:kth + 1] <= x[:, :, kth + 1:])
         return x[:, :, kth:kth + 1]
 
     # Test non-contiguous array
@@ -473,8 +502,8 @@ class TestPartition(unittest.TestCase):
             return 0  # dummy
         else:
             x = self.partition(a, kth)
-            self.assertTrue(xp.all(x[0:kth] <= x[kth:kth + 1]))
-            self.assertTrue(xp.all(x[kth:kth + 1] <= x[kth + 1:]))
+            assert xp.all(x[0:kth] <= x[kth:kth + 1])
+            assert xp.all(x[kth:kth + 1] <= x[kth + 1:])
             return x[kth]
 
     # Test kth
@@ -595,9 +624,9 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((10,), xp, dtype, 100)
         kth = 2
         idx = self.argpartition(a, kth)
-        self.assertTrue((a[idx[:kth]] < a[idx[kth]]).all())
-        self.assertTrue((a[idx[kth]] < a[idx[kth + 1:]]).all())
-        return idx[kth]
+        assert (a[idx[:kth]] <= a[idx[kth]]).all()
+        assert (a[idx[kth]] <= a[idx[kth + 1:]]).all()
+        return a[idx[kth]]
 
     # TODO(leofang): test all dtypes -- this workaround needs to be kept,
     # likely due to #3287? Need investigation.
@@ -609,10 +638,10 @@ class TestArgpartition(unittest.TestCase):
         idx = self.argpartition(a, kth)
         rows = [[[0]], [[1]], [[2]]]
         cols = [[[0], [1], [2]]]
-        self.assertTrue((a[rows, cols, idx[:, :, :kth]] <
-                         a[rows, cols, idx[:, :, kth:kth + 1]]).all())
-        self.assertTrue((a[rows, cols, idx[:, :, kth:kth + 1]] <
-                         a[rows, cols, idx[:, :, kth + 1:]]).all())
+        assert (a[rows, cols, idx[:, :, :kth]] <
+                a[rows, cols, idx[:, :, kth:kth + 1]]).all()
+        assert (a[rows, cols, idx[:, :, kth:kth + 1]] <
+                a[rows, cols, idx[:, :, kth + 1:]]).all()
         return idx[:, :, kth:kth + 1]
 
     # Test non-contiguous array
@@ -622,8 +651,8 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((10,), xp, 'i', 100)[::2]
         kth = 2
         idx = self.argpartition(a, kth)
-        self.assertTrue((a[idx[:kth]] < a[idx[kth]]).all())
-        self.assertTrue((a[idx[kth]] < a[idx[kth + 1:]]).all())
+        assert (a[idx[:kth]] < a[idx[kth]]).all()
+        assert (a[idx[kth]] < a[idx[kth + 1:]]).all()
         return idx[kth]
 
     # Test kth
@@ -634,8 +663,8 @@ class TestArgpartition(unittest.TestCase):
         kth = (2, 4)
         idx = self.argpartition(a, kth)
         for _kth in kth:
-            self.assertTrue((a[idx[:_kth]] < a[idx[_kth]]).all())
-            self.assertTrue((a[idx[_kth]] < a[idx[_kth + 1:]]).all())
+            assert (a[idx[:_kth]] < a[idx[_kth]]).all()
+            assert (a[idx[_kth]] < a[idx[_kth + 1:]]).all()
         return (idx[2], idx[4])
 
     @testing.numpy_cupy_equal()
@@ -643,8 +672,8 @@ class TestArgpartition(unittest.TestCase):
         a = testing.shaped_random((10,), xp, scale=100)
         kth = -3
         idx = self.argpartition(a, kth)
-        self.assertTrue((a[idx[:kth]] < a[idx[kth]]).all())
-        self.assertTrue((a[idx[kth]] < a[idx[kth + 1:]]).all())
+        assert (a[idx[:kth]] < a[idx[kth]]).all()
+        assert (a[idx[kth]] < a[idx[kth + 1:]]).all()
         return idx[kth]
 
     def test_argpartition_invalid_kth(self):
@@ -671,10 +700,10 @@ class TestArgpartition(unittest.TestCase):
         idx = self.argpartition(a, kth, axis=axis)
         rows = [[[0], [1], [2]]]
         cols = [[[0, 1, 2]]]
-        self.assertTrue((a[idx[:kth, :, :], rows, cols] <
-                         a[idx[kth:kth + 1, :, :], rows, cols]).all())
-        self.assertTrue((a[idx[kth:kth + 1, :, :], rows, cols] <
-                         a[idx[kth + 1:, :, :], rows, cols]).all())
+        assert (a[idx[:kth, :, :], rows, cols] <
+                a[idx[kth:kth + 1, :, :], rows, cols]).all()
+        assert (a[idx[kth:kth + 1, :, :], rows, cols] <
+                a[idx[kth + 1:, :, :], rows, cols]).all()
         return idx[kth:kth + 1, :, :]
 
     @testing.numpy_cupy_array_equal()
@@ -685,10 +714,10 @@ class TestArgpartition(unittest.TestCase):
         idx = self.argpartition(a, kth, axis=axis)
         rows = [[[0]], [[1]], [[2]]]
         cols = [[[0], [1], [2]]]
-        self.assertTrue((a[rows, cols, idx[:, :, :kth]] <
-                         a[rows, cols, idx[:, :, kth:kth + 1]]).all())
-        self.assertTrue((a[rows, cols, idx[:, :, kth:kth + 1]] <
-                         a[rows, cols, idx[:, :, kth + 1:]]).all())
+        assert (a[rows, cols, idx[:, :, :kth]] <
+                a[rows, cols, idx[:, :, kth:kth + 1]]).all()
+        assert (a[rows, cols, idx[:, :, kth:kth + 1]] <
+                a[rows, cols, idx[:, :, kth + 1:]]).all()
         return idx[:, :, kth:kth + 1]
 
     @testing.numpy_cupy_equal()
@@ -698,8 +727,8 @@ class TestArgpartition(unittest.TestCase):
         axis = None
         idx = self.argpartition(a, kth, axis=axis)
         a1 = a.flatten()
-        self.assertTrue((a1[idx[:kth]] < a1[idx[kth]]).all())
-        self.assertTrue((a1[idx[kth]] < a1[idx[kth + 1:]]).all())
+        assert (a1[idx[:kth]] < a1[idx[kth]]).all()
+        assert (a1[idx[kth]] < a1[idx[kth + 1:]]).all()
         return idx[kth]
 
     def test_argpartition_invalid_axis1(self):

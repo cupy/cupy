@@ -14,6 +14,9 @@ These functions cover a subset of
 
    scipy_fft
    fftpack
+   scipy_linalg
    ndimage
    sparse
    special
+   signal
+   stats
