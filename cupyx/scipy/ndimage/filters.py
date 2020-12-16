@@ -1065,7 +1065,7 @@ def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
             comp_op = '<'
         else:
             comp_op = '>'
-        array_size = s_rank + 1
+        array_size = s_rank + 2
         found_post = '''
             if (iv > {rank} + 1) {{{{
                 int target_iv = 0;
@@ -1099,7 +1099,7 @@ def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
 
     return _filters_core._generate_nd_kernel(
         'rank_{}_{}'.format(filter_size, rank),
-        'int iv = 0;\nX values[{}+1];'.format(array_size),
+        'int iv = 0;\nX values[{}];'.format(array_size),
         'values[iv++] = {value};' + found_post, post,
         mode, w_shape, int_type, offsets, cval, preamble=sorter)
 
