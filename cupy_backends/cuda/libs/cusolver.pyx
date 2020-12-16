@@ -4,7 +4,8 @@ cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda cimport stream as stream_module
+from cupy.cuda cimport stream as stream_module
+
 
 ###############################################################################
 # Extern
@@ -1131,18 +1132,17 @@ cpdef size_t spGetStream(intptr_t handle) except *:
     return <size_t>stream
 
 
-cdef _setStream(intptr_t handle):
+cdef inline _setStream(intptr_t handle):
     """Set current stream when enable_current_stream is True
     """
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
+    setStream(handle, stream_module.get_current_stream_ptr())
 
 
-cdef _spSetStream(intptr_t handle):
+cdef inline _spSetStream(intptr_t handle):
     """Set current stream when enable_current_stream is True
     """
-    if stream_module.enable_current_stream:
-        spSetStream(handle, stream_module.get_current_stream_ptr())
+    spSetStream(handle, stream_module.get_current_stream_ptr())
+
 
 ###########################################################################
 # Dense LAPACK Functions (Linear Solver)

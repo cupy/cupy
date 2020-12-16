@@ -4,7 +4,8 @@
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver
-from cupy_backends.cuda cimport stream as stream_module
+from cupy.cuda cimport stream as stream_module
+
 
 ###############################################################################
 # Extern
@@ -115,11 +116,10 @@ cpdef setStream(size_t generator, size_t stream):
     check_status(status)
 
 
-cdef _setStream(size_t generator):
+cdef inline _setStream(size_t generator):
     """Set current stream when enable_current_stream is True
     """
-    if stream_module.enable_current_stream:
-        setStream(generator, stream_module.get_current_stream_ptr())
+    setStream(generator, stream_module.get_current_stream_ptr())
 
 
 cpdef setPseudoRandomGeneratorSeed(size_t generator, unsigned long long seed):
