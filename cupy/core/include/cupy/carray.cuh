@@ -6,6 +6,14 @@
 // in NVRTC std:initializer_list is pre-defined (no need to include it)
 #include <initializer_list>
 #endif
+#else
+// Basic implementation of std::conditional when not using C++11
+namespace std {
+  template<bool B, class T, class F>
+  struct conditional { typedef T type; };
+  template<class T, class F>
+  struct conditional<false, T, F> { typedef F type; };
+}
 #endif
 
 // math
@@ -187,6 +195,7 @@ public:
   static const int ndim = _ndim;
   static const bool c_contiguous = _c_contiguous;
   static const bool use_32bit_indexing = _use_32bit_indexing;
+  typedef typename std::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
 private:
   T* data_;
   ptrdiff_t size_;
@@ -299,15 +308,9 @@ public:
   template <typename Int>
   __device__ const T& operator[](const Int (&idx)[ndim]) const {
     const char* ptr = reinterpret_cast<const char*>(data_);
-    if (use_32bit_indexing) {
-      for (int dim = 0; dim < ndim; ++dim) {
-        int i = static_cast<int>(idx[dim]);
-        ptr += static_cast<int>(strides_[dim]) * i;
-      }
-    } else {
-      for (int dim = 0; dim < ndim; ++dim) {
-        ptr += static_cast<ptrdiff_t>(strides_[dim]) * idx[dim];
-      }
+    for (int dim = 0; dim < ndim; ++dim) {
+      index_t i = static_cast<index_t>(idx[dim]);
+      ptr += static_cast<index_t>(strides_[dim]) * i;
     }
     return *reinterpret_cast<const T*>(ptr);
   }
@@ -321,32 +324,19 @@ public:
       // contiguous arrays can be directly addressed by the
       // numeric value, avoiding expensive 64 bit operations in cuda
       return data_[idx];
-    }
-    // 64-bit mults and divs are pretty expensive and can 
-    // lead to severe perforamance degradation in computation bound
-    // kernels
-    const char* ptr = reinterpret_cast<const char*>(data_);
-    if (use_32bit_indexing) {
-      int i = static_cast<int>(idx);
-      for (int dim = ndim; --dim > 0; ) {
-        int shape_dim = static_cast<int>(shape_[dim]);
-        ptr += static_cast<int>(strides_[dim]) * (i % shape_dim);
-        i /= shape_dim;
-      }
-      if (ndim > 0) {
-        ptr += static_cast<int>(strides_[0]) * i;
-      }
     } else {
-      ptrdiff_t i = idx;
+      // 64-bit mults and divs are pretty expensive and can lead to severe
+      // performance degradation in computation bound kernels
+      const char* ptr = reinterpret_cast<const char*>(data_);
+      index_t i = static_cast<index_t>(idx);
       for (int dim = ndim; --dim > 0; ) {
-        ptr += static_cast<ptrdiff_t>(strides_[dim]) * (i % shape_[dim]);
-        i /= shape_[dim];
+          index_t shape_dim = static_cast<index_t>(shape_[dim]);
+          ptr += static_cast<index_t>(strides_[dim]) * (i % shape_dim);
+          i /= shape_dim;
       }
-      if (ndim > 0) {
-        ptr += static_cast<ptrdiff_t>(strides_[0]) * i;
-      }
+      ptr += static_cast<index_t>(strides_[0]) * i;
+      return *reinterpret_cast<const T*>(ptr);
     }
-    return *reinterpret_cast<const T*>(ptr);
   }
 };
 
@@ -473,47 +463,42 @@ public:
     return size_;
   }
 
+  __device__ const index_t& get() const {
+    return index_;
+  }
+
   __device__ void set(ptrdiff_t i) {
     // ndim == 0 case uses partial template specialization
     if (ndim == 1) {
       index_[0] = i;
-      return;
-    }
-    if (size_ > 1LL << 31) {
+    } else if (size_ > 1LL << 31) {
       // 64-bit division is very slow on GPU
-      size_t a = static_cast<size_t>(i);
-      for (int dim = ndim; --dim > 0; ) {
-        size_t s = static_cast<size_t>(shape_[dim]);
-        if (s & (s - 1)) {
-          size_t t = a / s;
-          index_[dim] = a - t * s;
-          a = t;
-        } else { // exp of 2
-          index_[dim] = a & (s - 1);
-          a >>= __popcll(s - 1);
-        }
-      }
-      index_[0] = a;
+      this->_set(static_cast<unsigned long long int>(i));
     } else {
-      unsigned int a = static_cast<unsigned int>(i);
-      for (int dim = ndim; --dim > 0; ) {
-        unsigned int s = static_cast<unsigned int>(shape_[dim]);
-        if (s & (s - 1)) {
-          unsigned int t = a / s;
-          index_[dim] = a - t * s;
-          a = t;
-        } else { // exp of 2
-          index_[dim] = a & (s - 1);
-          a >>= __popc(s - 1);
-        }
-      }
-      index_[0] = a;
+      this->_set(static_cast<unsigned int>(i));
     }
   }
 
-  __device__ const index_t& get() const {
-    return index_;
+private:
+  template<typename index_t>
+  __device__ void _set(index_t i) {
+      for (int dim = ndim; --dim > 0; ) {
+        index_t s = static_cast<index_t>(shape_[dim]);
+        if (s & (s - 1)) {
+          index_t t = i / s;
+          index_[dim] = i - t * s;
+          i = t;
+        } else { // exp of 2
+          index_[dim] = i & (s - 1);
+          i >>= _log2(s);
+        }
+      }
+      index_[0] = i;
   }
+
+  // can also be implemented as __ffs(x)-1 or 31-__clz(x)
+  static unsigned int __device__ _log2(unsigned int x) { return __popc(x-1); }
+  static unsigned long long int __device__ _log2(unsigned long long int x) { return __popcll(x-1); }
 };
 
 template <>
