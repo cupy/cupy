@@ -33,3 +33,10 @@ cdef extern from *:
 # TODO: should also expose functions?
 
 {wrapper}
+
+# Define `gemmEx` by hands for a backward compatibility reason.
+cpdef gemmEx(
+        intptr_t handle, int transa, int transb, int m, int n, int k,
+        size_t alpha, size_t A, int Atype, int lda, size_t B,
+        int Btype, int ldb, size_t beta, size_t C, int Ctype,
+        int ldc, int computeType, int algo)

@@ -4,6 +4,7 @@ import sys
 import pycparser.c_ast as c_ast
 
 import gen
+import gen_pyx
 
 
 def transpile_opaque(env, node):
@@ -109,6 +110,48 @@ def transpile_aux_struct(env, directive):
         assert False
 
 
+def transpile_wrapper_decl(env, directive, node, removed):
+    assert isinstance(node.type, c_ast.FuncDecl)
+
+    code = []
+
+    # Comment if removed
+    if removed:
+        code.append('# REMOVED')
+
+    # Function declaration
+    decl = gen_pyx.transpile_wrapper_def(env, directive, node)
+    code.append('cpdef {}'.format(decl))
+
+    return '\n'.join(code)
+
+
+def transpile_wrapper(env, directive):
+    if gen.is_headers_directive(directive):
+        return None
+    elif gen.is_regexes_directive(directive):
+        return None
+    elif gen.is_special_types_directive(directive):
+        return None
+    elif gen.is_comment_directive(directive):
+        comment = gen.directive_comment(directive)
+        code = []
+        code.append('')
+        code.append('#' * max(40, len(comment) + 2))
+        code.append('# ' + comment)
+        return '\n'.join(code)
+    elif gen.is_raw_directive(directive):
+        return None  # planned to be deprecated
+    elif gen.is_function_directive(directive):
+        head = gen.directive_head(directive)
+        decls, removed = gen.query_func_decls(head, env)
+        return '\n'.join(
+            transpile_wrapper_decl(
+                env, directive, decl, removed) for decl in decls)
+    else:
+        assert False
+
+
 def main(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -137,9 +180,12 @@ def main(args):
     aux_struct = '\n\n\n'.join(
         gen.compact(transpile_aux_struct(env, d) for d in directives))
 
+    wrapper = '\n\n'.join(
+        gen.compact(transpile_wrapper(env, d) for d in directives))
+
     print(template.format(
         opaque=opaque, enum_type=enum_type, enum_value=enum_value,
-        aux_struct=aux_struct))
+        aux_struct=aux_struct, wrapper=wrapper))
 
 
 if __name__ == '__main__':
