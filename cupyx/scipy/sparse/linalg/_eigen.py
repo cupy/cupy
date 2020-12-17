@@ -324,26 +324,17 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
         raise ValueError('k must be smaller than min(m, n) (actual: {})'
                          ''.format(k))
 
-    aH = a.H if isinstance(a, _interface.LinearOperator) else a.conj().T
+    a = _interface.aslinearoperator(a)
     if m >= n:
-        a_dot = a.dot
-        aH_dot = aH.dot
+        aH, a = a.H, a
     else:
-        a_dot = aH.dot
-        aH_dot = a.dot
-
-    def aH_a_dot(x):
-        return(aH_dot(a_dot(x)))
-
-    min_mn = min(m, n)
-    aH_a = _interface.LinearOperator(matvec=aH_a_dot, matmat=aH_a_dot,
-                                     dtype=a.dtype, shape=(min_mn, min_mn))
+        aH, a = a, a.H
 
     if return_singular_vectors:
-        w, x = eigsh(aH_a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
-                     return_eigenvectors=True)
+        w, x = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter,
+                     tol=tol, return_eigenvectors=True)
     else:
-        w = eigsh(aH_a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
+        w = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
                   return_eigenvectors=False)
 
     w = cupy.maximum(w, 0)
@@ -361,10 +352,10 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
     x = x[:, above_cutoff]
     if m >= n:
         v = x
-        u = a_dot(v) / s[:n_large]
+        u = a @ v / s[:n_large]
     else:
         u = x
-        v = a_dot(u) / s[:n_large]
+        v = a @ u / s[:n_large]
     u = _augmented_orthnormal_cols(u, k - n_large)
     v = _augmented_orthnormal_cols(v, k - n_large)
 
