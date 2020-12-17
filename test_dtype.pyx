@@ -224,8 +224,16 @@ def init():
     #print(type(PyArray_DescrFromType(_complex32_num)))  # <--- <NULL> ?!
     #print(complex32)
 
-    global complex32_dtype
+    global complex32_dtype, complex32_dtype2
     complex32_dtype = PyArray_DescrNewFromType(_complex32_num)
+    complex32_dtype2 = PyArray_DescrFromType(_complex32_num)
+
+    # make numpy.dtype() recognize the aliases
+    import numpy
+    numpy.typeDict['c4'] = complex32
+    numpy.typeDict['chalf'] = complex32
+    numpy.typeDict['complex32'] = complex32
+    numpy.typeDict['E'] = complex32
 
 
 #cdef class Complex32(PyComplexFloatingArrType_Type):
