@@ -1,3 +1,4 @@
+import gc
 import unittest
 import warnings
 
@@ -116,6 +117,19 @@ class TestOrder(unittest.TestCase):
             q = testing.shaped_random((5,), xp, dtype=dtype, scale=100)
             with pytest.raises(ValueError):
                 xp.percentile(a, q, axis=-1, interpolation='deadbeef')
+
+    @testing.for_float_dtypes()
+    def test_percentile_memory_access(self, dtype):
+        # Fill a large chunk of memory with NaNs
+        nans = cupy.full((1000,), cupy.nan, dtype=dtype)
+        del nans
+        gc.collect()
+
+        # Check that percentile still returns non-NaN results
+        a = testing.shaped_random((5,), cupy, dtype)
+        q = cupy.array((0,100,), dtype=dtype)
+        percentiles = cupy.percentile(a, q, axis=None, interpolation='linear')
+        assert not cupy.any(cupy.isnan(percentiles))
 
     @testing.for_all_dtypes()
     @for_all_interpolations()
