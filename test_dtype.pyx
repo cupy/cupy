@@ -4,7 +4,7 @@ from libc.stdint cimport intptr_t
 cimport cpython
 from cpython.ref cimport PyObject
 from numpy cimport (#dtype, PyArray_ArrFuncs,
-                    PyArray_Descr, PyArray_DescrFromType)# PyArray_RegisterDataType)
+                    PyArray_Descr, PyArray_DescrFromType, PyArray_DescrNewFromType)# PyArray_RegisterDataType)
 cimport numpy
 
 from numpy cimport import_array
@@ -17,13 +17,14 @@ import_array()
 cdef extern from *:
     '''
     typedef struct {
-        unsigned short x;
-        unsigned short y;
+        //unsigned short real;
+        //unsigned short imag;
+        npy_float16 real, imag;
     } _complex32;
 
     typedef struct {
         PyObject_HEAD
-        _complex32 x;
+        _complex32 obval;
     } _complex32_obj;
 
     static PyTypeObject _complex32_type;
@@ -32,8 +33,8 @@ cdef extern from *:
         printf("\\n\\n\\nI am here!!!!\\n\\n\\n"); fflush(stdout);
         _complex32_obj* p = (_complex32_obj*)_complex32_type.tp_alloc(&_complex32_type, 0);
         if (p) {
-            p->x.x = c.x;
-            p->x.y = c.y;
+            p->obval.real = c.real;
+            p->obval.imag = c.imag;
         }
         return (PyObject*)p;
     }
@@ -45,7 +46,7 @@ cdef extern from *:
 
     static PyTypeObject _complex32_type = {
         PyVarObject_HEAD_INIT(NULL, 0)
-        .tp_name = "test_dtype._complex32_obj",
+        .tp_name = "test_dtype.complex32",
         .tp_basicsize = sizeof(_complex32_obj),
         .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
         .tp_doc = "a complex number consisting of two float16",
@@ -66,7 +67,7 @@ cdef extern from *:
         return 0;
     }
 
-    static NPY_INLINE void byteswap(npy_half* x) {
+    static NPY_INLINE void byteswap(npy_float16* x) {
         char* p = (char*)x;
         for (size_t i = 0; i < sizeof(*x)/2; i++) {
             size_t j = sizeof(*x)-1-i;
@@ -84,8 +85,8 @@ cdef extern from *:
         c = (_complex32*)dst;
         memcpy(c, src, sizeof(_complex32));
         if (swap) {
-            byteswap(&c->x);
-            byteswap(&c->y);
+            byteswap(&c->real);
+            byteswap(&c->imag);
         }
     }
 
@@ -118,6 +119,9 @@ cdef extern from *:
         //((PyObject*)(&_complex32_dtype)) -> ob_refcnt = 1;
         //((PyObject*)(&_complex32_dtype)) -> ob_type = PyArray_Descr*;
         int _complex32_num = PyArray_RegisterDataType(&_complex32_dtype);
+        printf("got type num, get a new one...\\n");
+        PyArray_Descr* c_dtype = PyArray_DescrNewFromType(_complex32_num);
+        printf("done\\n");
         return _complex32_num;
     }
     '''
@@ -178,6 +182,9 @@ def init():
     #print(x)
     #print(<intptr_t>PyArray_DescrFromType(_complex32_num))
     #print(complex32)
+
+    global complex32_dtype
+    complex32_dtype = PyArray_DescrNewFromType(_complex32_num)
 
 
 #cdef class Complex32(PyComplexFloatingArrType_Type):
