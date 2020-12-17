@@ -130,6 +130,10 @@ cdef extern from *:
     PyArray_Descr _complex32_dtype
     int register_dtype()
 
+    ctypedef class numpy.complexfloating [object PyObject]:
+        pass
+    #cpython.PyTypeObject PyComplexFloatingArrType_Type
+
 
 #import_ufunc()
 
@@ -174,3 +178,17 @@ def init():
     #print(x)
     #print(<intptr_t>PyArray_DescrFromType(_complex32_num))
     #print(complex32)
+
+
+#cdef class Complex32(PyComplexFloatingArrType_Type):
+cdef class Complex32:
+    '''cdef class implementation of complex32'''
+
+    cdef:
+        unsigned int x, y
+
+    def __init__(self):
+        pass
+
+
+cdef cpython.PyTypeObject* type_to_Complex32 = <cpython.PyTypeObject*>Complex32
