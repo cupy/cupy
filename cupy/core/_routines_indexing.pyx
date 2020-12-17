@@ -91,12 +91,13 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
             scan_dtype = numpy_int64
 
         chunk_size = 512
-        if nonzero.size > chunk_size:
-            # TODO(anaruse): We need to set an appropriate threshold, as
-            # "incomplete scan" is a bit slower when the array size is small.
-            incomplete_scan = True
-        else:
-            incomplete_scan = False
+
+        # TODO(anaruse): Use Optuna to automatically tune the threshold
+        # that determines whether "incomplete scan" is enabled or not.
+        # Basically, "incomplete scan" is fast when the array size is large,
+        # but for small arrays, it is better to use the normal method.
+        incomplete_scan = nonzero.size > chunk_size
+
         scan_index = _math.scan(
             nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
             incomplete=incomplete_scan, chunk_size=chunk_size)
