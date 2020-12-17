@@ -39,9 +39,25 @@ cdef extern from *:
         return (PyObject*)p;
     }
     
-    //static PyObject* _complex32_obj_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
-    //    _complex32 c = { 0 };
-    //    return PyComplex32_FromComplex32(c);
+    static PyObject* _complex32_obj_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
+        _complex32_obj* self;
+        self = (_complex32_obj*)type->tp_alloc(type, 0);
+        if (self != NULL) {
+            self->obval.real = 0.;
+            self->obval.imag = 0.;
+        }
+        return (PyObject*)self;
+    }
+
+    static void _complex32_obj_dealloc(_complex32_obj* self) {
+        Py_TYPE(self)->tp_free((PyObject*)self);
+    }
+
+    //static int _complex32_obj_init(_complex32_obj* self, PyObject* args, PyObject* kwds) {
+    //    if (PyList_Type.tp_init((PyObject *) self, args, kwds) < 0)
+    //        return -1;
+    //    self->state = 0;
+    //    return 0;
     //}
 
     static PyTypeObject _complex32_type = {
@@ -50,7 +66,8 @@ cdef extern from *:
         .tp_basicsize = sizeof(_complex32_obj),
         .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
         .tp_doc = "a complex number consisting of two float16",
-        .tp_new = PyType_GenericNew,  //_complex32_obj_new,
+        .tp_new = _complex32_obj_new, // PyType_GenericNew,
+        .tp_dealloc = (destructor)_complex32_obj_dealloc,
     };
 
     static PyObject* complex32_getitem(void* data, void* arr) {
@@ -175,12 +192,12 @@ def init():
     print(complex32.__doc__)
     #print(_complex32_num)
     #d = PyArray_DescrFromType(_complex32_num)
-    ##print(type(d), flush=True)
+    #print(type(d), flush=True)
     #import numpy
     #print("before numpy dtype")
     #x = numpy.dtype(complex32)
     #print(x)
-    #print(<intptr_t>PyArray_DescrFromType(_complex32_num))
+    #print(type(PyArray_DescrFromType(_complex32_num)))  # <--- <NULL> ?!
     #print(complex32)
 
     global complex32_dtype
