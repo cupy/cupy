@@ -157,6 +157,8 @@ cdef extern from *:
         _complex32_arrfuncs.copyswap = complex32_copyswap;
         _complex32_arrfuncs.nonzero = complex32_nonzero;
 
+        // Py_SET_TYPE(&_complex32_dtype, &PyArrayDescr_Type);  // Python 3.9+ ...
+        ((PyObject*)(&_complex32_dtype)) -> ob_type = &PyArrayDescr_Type;
         int _complex32_num = PyArray_RegisterDataType(&_complex32_dtype);
         printf("got type num, get a new one...\\n");
         PyArray_Descr* c_dtype = PyArray_DescrNewFromType(_complex32_num);
