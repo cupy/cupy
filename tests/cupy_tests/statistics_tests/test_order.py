@@ -127,7 +127,7 @@ class TestOrder(unittest.TestCase):
 
         # Check that percentile still returns non-NaN results
         a = testing.shaped_random((5,), cupy, dtype)
-        q = cupy.array((0,100,), dtype=dtype)
+        q = cupy.array((0, 100), dtype=dtype)
         percentiles = cupy.percentile(a, q, axis=None, interpolation='linear')
         assert not cupy.any(cupy.isnan(percentiles))
 
