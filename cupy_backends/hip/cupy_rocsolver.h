@@ -1,9 +1,9 @@
-#ifndef INCLUDE_GUARD_HIP_CUPY_HIPSOLVER_H
-#define INCLUDE_GUARD_HIP_CUPY_HIPSOLVER_H
+#ifndef INCLUDE_GUARD_HIP_CUPY_ROCSOLVER_H
+#define INCLUDE_GUARD_HIP_CUPY_ROCSOLVER_H
 
-#include "cupy_cuda.h"
+#include "cupy_hip.h"
 #include "cupy_hipblas.h"
-#include <hipblas.h>
+
 
 extern "C" {
 /* ---------- helpers ---------- */
@@ -26,6 +26,8 @@ static rocblas_side convert_rocblas_side(cublasSideMode_t mode) {
 
 
 // rocSOLVER
+/* ---------- helpers ---------- */
+
 cusolverStatus_t cusolverDnCreate(cusolverDnHandle_t *handle) {
     return rocblas_create_handle(handle);
 }
@@ -1224,4 +1226,4 @@ cusolverStatus_t cusolverSpZcsreigvsi(...) {
 
 } // extern "C" 
 
-#endif // #ifdef INCLUDE_GUARD_HIP_CUPY_HIPSOLVER_H
+#endif // #ifdef INCLUDE_GUARD_HIP_CUPY_ROCSOLVER_H
