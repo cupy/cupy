@@ -70,6 +70,10 @@ cdef extern from *:
         .tp_dealloc = (destructor)_complex32_obj_dealloc,
     };
 
+    static NPY_INLINE int PyComplex32_Check(PyObject* object) {
+        return PyObject_IsInstance(object, (PyObject*)&_complex32_type);
+    }
+
     static PyObject* complex32_getitem(void* data, void* arr) {
         printf("\\n\\n\\n getitem !!!!\\n\\n\\n");  fflush(stdout);
         _complex32 c;
@@ -80,9 +84,26 @@ cdef extern from *:
     static int complex32_setitem(PyObject* item, void* data, void* arr) {
         printf("\\n\\n\\n setitem !!!!\\n\\n\\n");  fflush(stdout);
         _complex32 c;
+        if (PyComplex32_Check(item)) {
+            c = ((_complex32_obj*)item)->obval;
+        }
+        else {
+            PyErr_Format(PyExc_TypeError,
+                         "expected complex32, got %s", item->ob_type->tp_name);
+            return -1;
+            //c.real = 0.;
+            //c.imag = 0.;
+        }
         memcpy(data, &c, sizeof(_complex32));
         return 0;
     }
+
+    static npy_bool complex32_nonzero(void* data, void* arr) {
+        _complex32 c;
+        memcpy(&c, data, sizeof(_complex32));
+        return (c.real == 0. && c.imag == 0.) ? NPY_TRUE : NPY_FALSE;
+    }
+
 
     static NPY_INLINE void byteswap(npy_float16* x) {
         char* p = (char*)x;
@@ -107,13 +128,7 @@ cdef extern from *:
         }
     }
 
-    // minimal requirement to make dtype registration work
-    // TODO: use PyArray_InitArrFuncs to initialize the struct
-    static PyArray_ArrFuncs _complex32_arrfuncs = {
-        .getitem = complex32_getitem,
-        .setitem = complex32_setitem,
-        .copyswap = complex32_copyswap,
-    };
+    static PyArray_ArrFuncs _complex32_arrfuncs;
 
     static PyArray_Descr _complex32_dtype = {
         PyObject_HEAD_INIT(0)
@@ -121,7 +136,7 @@ cdef extern from *:
         .kind = 'c',
         .type = 'E',  // lowercase for fp16
         .byteorder = '=',  // native order
-        .flags = NPY_NEEDS_PYAPI | NPY_USE_GETITEM | NPY_USE_SETITEM,
+        //.flags = NPY_NEEDS_PYAPI | NPY_USE_GETITEM | NPY_USE_SETITEM,
         .elsize = 4,
         .alignment = 4,
         //.names = {'real', 'imag'},
@@ -135,6 +150,13 @@ cdef extern from *:
 
         //((PyObject*)(&_complex32_dtype)) -> ob_refcnt = 1;
         //((PyObject*)(&_complex32_dtype)) -> ob_type = PyArray_Descr*;
+        // minimal requirement to make dtype registration work
+        PyArray_InitArrFuncs(&_complex32_arrfuncs);
+        _complex32_arrfuncs.getitem = complex32_getitem;
+        _complex32_arrfuncs.setitem = complex32_setitem;
+        _complex32_arrfuncs.copyswap = complex32_copyswap;
+        _complex32_arrfuncs.nonzero = complex32_nonzero;
+
         int _complex32_num = PyArray_RegisterDataType(&_complex32_dtype);
         printf("got type num, get a new one...\\n");
         PyArray_Descr* c_dtype = PyArray_DescrNewFromType(_complex32_num);
