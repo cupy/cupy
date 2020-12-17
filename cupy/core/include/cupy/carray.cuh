@@ -1,16 +1,9 @@
 #pragma once
 
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
-#ifdef __CUDACC_RTC__
-// in NVRTC std:initializer_list is pre-defined (no need to include it) and
-// <type_traits> are not available, but we only need enable_if from there
-namespace std {
-template<bool B, class T=void> struct enable_if {};
-template<class T> struct enable_if<true, T> { typedef T type; };
-}
-#else
-// in NVCC we need to include both of these
 #include <type_traits>
+#ifndef __CUDACC_RTC__
+// in NVRTC std:initializer_list is pre-defined (no need to include it)
 #include <initializer_list>
 #endif
 #endif
