@@ -61,6 +61,7 @@ def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
         mode, wshape, int_type, offsets, cval, preamble=sub_kernel,
         options=getattr(rk, 'options', ()))
 
+
 def _reduction_kernel_code(rk, filter_size, out_dtype, in_dtype):
     # NOTE: differences from the code generated for real reduction kernels:
     #  * input is always 1D and always less than 2^31 elements
