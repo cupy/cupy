@@ -67,8 +67,12 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
 
     if dtype == 'f':
         trsm = cublas.strsm
-    else:  # dtype == 'd'
+    elif dtype == 'd':
         trsm = cublas.dtrsm
+    elif dtype == 'F':
+        trsm = cublas.ctrsm
+    else:  # dtype == 'D'
+        trsm = cublas.ztrsm
 
     if lower:
         uplo = cublas.CUBLAS_FILL_MODE_LOWER
