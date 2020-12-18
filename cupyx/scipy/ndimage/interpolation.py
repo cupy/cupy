@@ -649,6 +649,8 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
             order = 1
 
         if grid_mode:
+            cupy._util.experimental("grid_mode=True is currently experimental")
+
             # warn about modes that may have surprising behavior
             suggest_mode = None
             if mode == 'constant':
