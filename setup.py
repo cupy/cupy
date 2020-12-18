@@ -55,9 +55,10 @@ requirements = {
     'jenkins': [
         '-r test',
         'pytest-timeout',
-        'pytest-cov',
+        'pytest-cov<2.10',  # pytest-cov 2.10 requires pytest>=4.6
         'coveralls',
         'codecov',
+        'coverage<5',  # Otherwise, Python must be built with sqlite
     ],
 }
 
