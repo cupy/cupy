@@ -2471,6 +2471,11 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     # 1. the stream is not set (ex: from v0 ~ v2) or is None
     # 2. users explicitly overwrite this requirement
     stream_ptr = desc.get('stream')
+    if stream_ptr == 1:
+        stream_ptr = cuda.cupy.cuda.Stream.null.ptr
+    if stream_ptr == 2:
+        # TODO(ecastill) -> fix after merge #4322
+        raise RuntimeError('Per thread default stream is not yet supported')
     if stream_ptr is not None:
         if _util.CUDA_ARRAY_INTERFACE_SYNC:
             runtime.streamSynchronize(stream_ptr)
