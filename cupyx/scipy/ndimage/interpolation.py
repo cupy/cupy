@@ -4,6 +4,7 @@ import warnings
 import cupy
 import numpy
 
+import cupy._util
 from cupy.core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _interp_kernels
@@ -24,6 +25,9 @@ def _check_parameter(func_name, order, mode):
         # orders will be implemented, therefore it raises NotImplementedError
         # instead of ValueError.
         raise NotImplementedError('spline order is not supported')
+
+    if mode in ['grid-mirror', 'grid-wrap', 'grid-reflect', 'wrap', 'reflect']:
+        cupy._util.experimental(f"mode '{mode}' is currently experimental")
 
     if mode not in ('constant', 'grid-constant', 'nearest', 'mirror',
                     'reflect', 'grid-mirror', 'wrap', 'grid-wrap', 'opencv',
