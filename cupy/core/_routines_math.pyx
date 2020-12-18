@@ -739,7 +739,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
                 scan(result, op, dtype=dtype, out=result)
     else:
         if result is None:
-            result = a.astype(dtype, copy=False, order='C',
+            result = a.astype(dtype, copy=True, order='C',
                               casting=None, subok=None)
         axis = internal._normalize_axis_index(axis, a.ndim)
         result = _proc_as_batch(result, axis, dtype, op)
