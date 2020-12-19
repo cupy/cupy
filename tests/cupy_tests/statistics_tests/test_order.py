@@ -7,7 +7,7 @@ import pytest
 
 import cupy
 import cupy.core._accelerator as _acc
-from cupy import testing
+from cupy import cuda, testing
 
 
 _all_interpolations = (
@@ -120,15 +120,29 @@ class TestOrder(unittest.TestCase):
 
     @testing.for_float_dtypes()
     def test_percentile_memory_access(self, dtype):
-        # Fill a large chunk of memory with NaNs
-        nans = cupy.full((1000,), cupy.nan, dtype=dtype)
-        del nans
-        gc.collect()
+        # Create an allocator that guarantees array allocated in
+        # cupy.percentile call will be followed by a NaN
+        original_allocator = cuda.get_allocator()
+        def controlled_allocator(size):
+            memptr = original_allocator(size)
+            base_size = memptr.mem.size
+            assert base_size == 512
+            item_size = dtype().itemsize
+            shape = (base_size // item_size,)
+            x = cupy.ndarray(memptr=memptr, shape=shape, dtype=dtype)
+            x.fill(cupy.nan)
+            return memptr
 
         # Check that percentile still returns non-NaN results
         a = testing.shaped_random((5,), cupy, dtype)
         q = cupy.array((0, 100), dtype=dtype)
-        percentiles = cupy.percentile(a, q, axis=None, interpolation='linear')
+
+        cuda.set_allocator(controlled_allocator)
+        try:
+            percentiles = cupy.percentile(a, q, axis=None, interpolation='linear')
+        finally:
+            cuda.set_allocator(original_allocator)
+
         assert not cupy.any(cupy.isnan(percentiles))
 
     @testing.for_all_dtypes()
