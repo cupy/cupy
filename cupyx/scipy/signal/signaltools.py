@@ -353,7 +353,7 @@ def wiener(im, mysize=None, noise=None):
 
     # Perform the filtering
     res = im - local_mean
-    res *= (1 - noise / local_var)
+    res *= 1 - noise / local_var
     res += local_mean
     return cupy.where(local_var < noise, local_mean, res)
 
