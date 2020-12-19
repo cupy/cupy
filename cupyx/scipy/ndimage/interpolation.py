@@ -292,6 +292,8 @@ def map_coordinates(input, coordinates, output=None, order=None,
     """
 
     _check_parameter('map_coordinates', order, mode)
+    if order is None:
+        order = 1
 
     if mode == 'opencv' or mode == '_opencv_edge':
         input = cupy.pad(input, [(1, 1)] * input.ndim, 'constant',
