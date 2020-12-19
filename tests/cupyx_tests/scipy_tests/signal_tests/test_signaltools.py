@@ -2,6 +2,8 @@ import unittest
 
 import pytest
 
+import numpy as np
+
 import cupy
 from cupy import testing
 
@@ -26,32 +28,21 @@ class TestConvolveCorrelate(unittest.TestCase):
         in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, method='direct')
 
+    tols = {np.float32: 1e-5, np.complex64: 1e-5,
+            np.float16: 1e-3, 'default': 1e-10}
+
     # TODO: support complex
-    # Note: float16 is tested separately
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_convolve(self, xp, scp, dtype):
         return self._filter('convolve', dtype, xp, scp)
 
     # TODO: support complex
-    # Note: float16 is tested separately
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_correlate(self, xp, scp, dtype):
-        return self._filter('correlate', dtype, xp, scp)
-
-    # float16 has significantly worse error tolerances
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
-                                 accept_error=ValueError)
-    def test_convolve_float16(self, xp, scp, dtype=cupy.float16):
-        return self._filter('convolve', dtype, xp, scp)
-
-    # float16 has significantly worse error tolerances
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
-                                 accept_error=ValueError)
-    def test_correlate_float16(self, xp, scp, dtype=cupy.float16):
         return self._filter('correlate', dtype, xp, scp)
 
 
@@ -68,20 +59,23 @@ class TestFFTConvolve(unittest.TestCase):
         in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
         return getattr(scp.signal, func)(in1, in2, self.mode, **kwargs)
 
+    tols = {np.float32: 1e-3, np.complex64: 1e-3,
+            np.float16: 1e-3, 'default': 1e-8}
+
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_fftconvolve(self, xp, scp, dtype):
         return self._filter('fftconvolve', dtype, xp, scp)
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_convolve_fft(self, xp, scp, dtype):
         return self._filter('convolve', dtype, xp, scp, method='fft')
 
     @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_correlate_fft(self, xp, scp, dtype):
         return self._filter('correlate', dtype, xp, scp, method='fft')
@@ -112,32 +106,21 @@ class TestConvolveCorrelate2D(unittest.TestCase):
         return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary,
                                          self.fillvalue)
 
+    tols = {np.float32: 1e-5, np.complex64: 1e-5,
+            np.float16: 1e-3, 'default': 1e-10}
+
     # TODO: support complex
-    # Note: float16 is tested separately
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_convolve2d(self, xp, scp, dtype):
         return self._filter('convolve2d', dtype, xp, scp)
 
     # TODO: support complex
-    # Note: float16 is tested separately
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_correlate2d(self, xp, scp, dtype):
-        return self._filter('correlate2d', dtype, xp, scp)
-
-    # float16 has significantly worse error tolerances
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
-                                 accept_error=ValueError)
-    def test_convolve2d_float16(self, xp, scp, dtype=cupy.float16):
-        return self._filter('convolve2d', dtype, xp, scp)
-
-    # float16 has significantly worse error tolerances
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp',
-                                 accept_error=ValueError)
-    def test_correlate2d_float16(self, xp, scp, dtype=cupy.float16):
         return self._filter('correlate2d', dtype, xp, scp)
 
 
@@ -191,10 +174,12 @@ class TestChooseConvMethod(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('scipy')
 class TestWiener(unittest.TestCase):
+    tols = {np.float32: 1e-5, np.complex64: 1e-5,
+            np.float16: 1e-3, 'default': 1e-10}
+
     # TODO: support complex
-    # Note: float16 is tested separately
-    @testing.for_all_dtypes(no_float16=True, no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp')
     def test_wiener(self, xp, scp, dtype):
         im = testing.shaped_random(self.im, xp, dtype)
         mysize = self.mysize
@@ -202,18 +187,12 @@ class TestWiener(unittest.TestCase):
             mysize = mysize[:im.ndim]
         noise = (testing.shaped_random(self.im, xp, dtype)
                  if self.noise else None)
-        return scp.signal.wiener(im, mysize, noise)
-
-    # float16 has significantly worse error tolerances
-    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
-    def test_wiener_float16(self, xp, scp, dtype=cupy.float16):
-        im = testing.shaped_random(self.im, xp, dtype)
-        mysize = self.mysize
-        if isinstance(mysize, tuple):
-            mysize = mysize[:im.ndim]
-        noise = (testing.shaped_random(self.im, xp, dtype)
-                 if self.noise else None)
-        return scp.signal.wiener(im, mysize, noise)
+        out = scp.signal.wiener(im, mysize, noise)
+        # Always returns float64 data in both scipy and cupyx.scipy
+        # Per-datatype tolerances are based on the output data type
+        # But quality is based on input data type (if floating point)
+        assert out.dtype == np.float64
+        return out.astype(dtype, copy=False) if dtype in self.tols else out
 
 
 @testing.parameterize(*testing.product({
@@ -225,7 +204,7 @@ class TestWiener(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestOrderFilter(unittest.TestCase):
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
     def test_order_filter(self, xp, scp, dtype):
         a = testing.shaped_random(self.a, xp, dtype)
@@ -244,7 +223,7 @@ class TestOrderFilter(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestMedFilt(unittest.TestCase):
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
         volume = testing.shaped_random(self.volume, xp, dtype)
@@ -262,7 +241,7 @@ class TestMedFilt(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestMedFilt2d(unittest.TestCase):
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
     def test_medfilt2d(self, xp, scp, dtype):
         input = testing.shaped_random(self.input, xp, dtype)
