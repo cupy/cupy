@@ -1,4 +1,3 @@
-import gc
 import unittest
 import warnings
 
@@ -123,6 +122,7 @@ class TestOrder(unittest.TestCase):
         # Create an allocator that guarantees array allocated in
         # cupy.percentile call will be followed by a NaN
         original_allocator = cuda.get_allocator()
+
         def controlled_allocator(size):
             memptr = original_allocator(size)
             base_size = memptr.mem.size
@@ -139,7 +139,8 @@ class TestOrder(unittest.TestCase):
 
         cuda.set_allocator(controlled_allocator)
         try:
-            percentiles = cupy.percentile(a, q, axis=None, interpolation='linear')
+            percentiles = cupy.percentile(a, q, axis=None,
+                                          interpolation='linear')
         finally:
             cuda.set_allocator(original_allocator)
 
