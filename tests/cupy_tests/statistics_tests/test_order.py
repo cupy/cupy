@@ -126,7 +126,7 @@ class TestOrder(unittest.TestCase):
         def controlled_allocator(size):
             memptr = original_allocator(size)
             base_size = memptr.mem.size
-            assert base_size == 512
+            assert base_size % 512 == 0
             item_size = dtype().itemsize
             shape = (base_size // item_size,)
             x = cupy.ndarray(memptr=memptr, shape=shape, dtype=dtype)
