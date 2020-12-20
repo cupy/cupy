@@ -81,6 +81,27 @@ class TestFFTConvolve(unittest.TestCase):
         return self._filter('correlate', dtype, xp, scp, method='fft')
 
 
+@testing.parameterize(*testing.product({
+    'size1': [(10,), (5, 10), (10, 3), (3, 10, 15)],
+    'size2': [3, 4, 5, 10, None],
+    'mode': ['full', 'same', 'valid'],
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestOAConvolve(unittest.TestCase):
+    tols = {np.float32: 1e-3, np.complex64: 1e-3,
+            np.float16: 1e-3, 'default': 1e-8}
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_oaconvolve(self, xp, scp, dtype):
+        in1 = testing.shaped_random(self.size1, xp, dtype)
+        shape2 = self.size1 if self.size2 is None else (self.size2,)*in1.ndim
+        in2 = testing.shaped_random(shape2, xp, dtype)
+        return scp.signal.oaconvolve(in1, in2, self.mode)
+
+
 @testing.parameterize(*(testing.product({
     'size1': [(5, 10), (10, 7)],
     'size2': [(3, 2), (3, 3), (2, 2), (10, 10), (11, 11)],

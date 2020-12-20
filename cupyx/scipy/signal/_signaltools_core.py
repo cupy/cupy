@@ -1,3 +1,5 @@
+import math
+
 import cupy
 from cupy.core import internal
 from cupyx.scipy import fft
@@ -125,6 +127,9 @@ def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
 def _init_nd_and_axes(x, axes):
     # See documentation in scipy.fft._helper._init_nd_shape_and_axes
     # except shape argument is always None and doesn't return new shape
+    #if axes is not None and not isinstance(axes, tuple):
+    #    try: axes = tuple(axes)
+    #    except TypeError: pass
     axes = internal._normalize_axis_indices(axes, x.ndim, sort_axes=False)
     if not len(axes):
         raise ValueError('when provided, axes cannot be empty')
@@ -159,3 +164,123 @@ def _apply_conv_mode(full, s1, s2, mode, axes):
     slices = tuple(slice(start, start+length)
                    for start, length in zip(starts, s1))
     return cupy.ascontiguousarray(full[slices])
+
+
+__EXP_N1 = 0.36787944117144232159553 # exp(-1)
+
+
+def _optimal_oa_block_size(overlap):
+    """
+    Computes the optimal block size for the OA method given the overlap size.
+
+    Computed as ``ceil(-overlap*W(-1/(2*e*overlap)))`` where ``W(z)`` is the
+    Lambert W function solved as per ``scipy.special.lambertw(z, -1)`` with a
+    fixed 4 iterations.
+    
+    Returned size should still be given to ``cupyx.scipy.fft.next_fast_len()``.
+    """
+
+    # This function is 10x faster in Cython (but only 1.7us in Python). Can be
+    # easily moved to Cython by:
+    #  * adding `DEF` before `__EXP_N1`
+    #  * changing `import math` to `from libc cimport math`
+    #  * adding `@cython.cdivision(True)` before the function
+    #  * adding `Py_ssize_t` as the type for the `overlap` argument
+    #  * adding a cast `<Py_ssize_t>` or `int(...)` to the return value
+    #  * adding the following type declarations:
+    #      cdef double z, w, ew, wew, wewz
+    #      cdef int i
+
+    # Compute W(-1/(2*e*overlap))
+    z = -__EXP_N1/(2*overlap) # value to compute for
+    w = -1 - math.log(2*overlap) # initial guess
+    for i in range(4):
+        ew = math.exp(w)
+        wew = w*ew
+        wewz = wew - z
+        w -= wewz/(wew + ew - (w + 2)*wewz/(2*w + 2))
+    return math.ceil(-overlap*w)
+
+
+def _calc_oa_lens(s1, s2):
+    # See scipy's documentation in scipy.signal.signaltools
+
+    # Set up the arguments for the conventional FFT approach.
+    fallback = (s1+s2-1, None, s1, s2)
+
+    # Use conventional FFT convolve if sizes are same.
+    if s1 == s2 or s1 == 1 or s2 == 1:
+        return fallback
+
+    # Make s1 the larger size
+    swapped = s2 > s1
+    if swapped:
+        s1, s2 = s2, s1
+
+    # There cannot be a useful block size if s2 is more than half of s1.
+    if s2 >= s1//2:
+        return fallback
+
+    # Compute the optimal block size from the overlap
+    overlap = s2-1
+    block_size = fft.next_fast_len(_optimal_oa_block_size(overlap))
+
+    # Use conventional FFT convolve if there is only going to be one block.
+    if block_size >= s1:
+        return fallback
+
+    # Get step size for each of the blocks
+    in1_step, in2_step = block_size-s2+1, s2
+    if swapped:
+        in1_step, in2_step = in2_step, in1_step
+
+    return block_size, overlap, in1_step, in2_step
+
+
+def _oa_reshape_inputs(in1, in2, axes, shape_final,
+                       block_size, overlaps, in1_step, in2_step):
+    # Figure out the number of steps and padding.
+    # This would get too complicated in a list comprehension.
+    nsteps1 = []
+    nsteps2 = []
+    pad_size1 = []
+    pad_size2 = []
+    for i in range(in1.ndim):
+        if i not in axes:
+            pad_size1 += [(0, 0)]
+            pad_size2 += [(0, 0)]
+            continue
+
+        curnstep1, curpad1, curnstep2, curpad2 = 1, 0, 1, 0
+
+        if in1.shape[i] > in1_step[i]:
+            curnstep1 = math.ceil((in1.shape[i]+1)/in1_step[i])
+            if (block_size[i] - overlaps[i])*curnstep1 < shape_final[i]:
+                curnstep1 += 1
+            curpad1 = curnstep1*in1_step[i] - in1.shape[i]
+        if in2.shape[i] > in2_step[i]:
+            curnstep2 = math.ceil((in2.shape[i]+1)/in2_step[i])
+            if (block_size[i] - overlaps[i])*curnstep2 < shape_final[i]:
+                curnstep2 += 1
+            curpad2 = curnstep2*in2_step[i] - in2.shape[i]
+
+        nsteps1 += [curnstep1]
+        nsteps2 += [curnstep2]
+        pad_size1 += [(0, curpad1)]
+        pad_size2 += [(0, curpad2)]
+
+    # Pad array to a size that can be reshaped to desired shape if necessary
+    if not all(curpad == (0, 0) for curpad in pad_size1):
+        in1 = cupy.pad(in1, pad_size1, mode='constant', constant_values=0)
+    if not all(curpad == (0, 0) for curpad in pad_size2):
+        in2 = cupy.pad(in2, pad_size2, mode='constant', constant_values=0)
+
+    # We need to put each new dimension before the corresponding dimension
+    # being reshaped in order to get the data in the right layout at the end.
+    reshape_size1 = list(in1_step)
+    reshape_size2 = list(in2_step)
+    for i, iax in enumerate(axes):
+        reshape_size1.insert(iax+i, nsteps1[i])
+        reshape_size2.insert(iax+i, nsteps2[i])
+
+    return in1.reshape(*reshape_size1), in2.reshape(*reshape_size2)
