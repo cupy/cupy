@@ -9,14 +9,13 @@ from cupy import cusparse
 import cupyx.scipy.sparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
-from cupyx.scipy.sparse import _index
 
 
 class csc_matrix(compressed._compressed_sparse_matrix):
 
     """Compressed Sparse Column matrix.
 
-    Now it has only part of initializer formats:
+    This can be instantiated in several ways.
 
     ``csc_matrix(D)``
         ``D`` is a rank-2 :class:`cupy.ndarray`.
@@ -25,6 +24,9 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     ``csc_matrix((M, N), [dtype])``
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
         is float64.
+    ``csc_matrix((data, (row, col))``
+        All ``data``, ``row`` and ``col`` are one-dimenaional
+        :class:`cupy.ndarray`.
     ``csc_matrix((data, indices, indptr))``
         All ``data``, ``indices`` and ``indptr`` are one-dimenaional
         :class:`cupy.ndarray`.
@@ -264,6 +266,11 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         # don't touch has_sorted_indices, as cuSPARSE made no guarantee
         return csc2csr(self)
 
+    def _tocsx(self):
+        """Inverts the format.
+        """
+        return self.tocsr()
+
     # TODO(unno): Implement todia
     # TODO(unno): Implement todok
     # TODO(unno): Implement tolil
@@ -301,9 +308,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         Returns:
             cupyx.scipy.sparse.csc_matrix: Sparse matrix with single row
         """
-        M, N = self.shape
-        i = _index._normalize_index(i, M, 'index')
-        return self._get_submatrix(minor=slice(i, i+1, 1)).tocsr()
+        return self._minor_slice(slice(i, i + 1), copy=True).tocsr()
 
     def getcol(self, i):
         """Returns a copy of column i of the matrix, as a (m x 1)
@@ -315,30 +320,27 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         Returns:
             cupyx.scipy.sparse.csc_matrix: Sparse matrix with single column
         """
-        M, N = self.shape
-        i = _index._normalize_index(i, N, 'index')
-        return self._get_submatrix(major=slice(i, i+1, 1), copy=True)
+        return self._major_slice(slice(i, i + 1), copy=True)
 
     def _get_intXarray(self, row, col):
-        return self._major_index_fancy(col)._get_submatrix(minor=row)
+        row = slice(row, row + 1)
+        return self._major_index_fancy(col)._minor_slice(row)
 
     def _get_intXslice(self, row, col):
-        if col.step in {1, None}:
-            return self._get_submatrix(major=col, minor=row, copy=True)
-        return self._major_slice(col)._get_submatrix(
-            minor=slice(row, row+1, 1))
+        row = slice(row, row + 1)
+        copy = col.step in (1, None)
+        return self._major_slice(col)._minor_slice(row, copy=copy)
 
     def _get_sliceXint(self, row, col):
-        if row.step in {1, None}:
-            return self._get_submatrix(major=col, minor=row, copy=True)
-        return self._get_submatrix(
-            major=slice(col, col+1, 1))._minor_slice(row)
+        col = slice(col, col + 1)
+        return self._major_slice(col)._minor_slice(row, copy=True)
 
     def _get_sliceXarray(self, row, col):
         return self._major_index_fancy(col)._minor_slice(row)
 
     def _get_arrayXint(self, row, col):
-        return self._get_submatrix(major=col)._minor_index_fancy(row)
+        col = slice(col, col + 1)
+        return self._major_slice(col)._minor_index_fancy(row)
 
     def _get_arrayXslice(self, row, col):
         return self._major_slice(col)._minor_index_fancy(row)

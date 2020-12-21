@@ -5,7 +5,15 @@ Upgrade Guide
 =============
 
 This is a list of changes introduced in each release that users should be aware of when migrating from older versions.
-Most changes are carefully designed not to break existing code; however changes that may possibly break them are highlighted with a box.
+
+CuPy v9
+=======
+
+Dropping Support of Python 3.5
+------------------------------
+
+Python 3.5 is no longer supported in CuPy v9.
+
 
 CuPy v8
 =======
@@ -13,13 +21,44 @@ CuPy v8
 Dropping Support of CUDA 8.0 and 9.1
 ------------------------------------
 
-Starting from CuPy v8, CUDA 8.0 and 9.1 are no longer supported.
-Use CUDA 9.0, 9.2, 10.0 or later.
+CUDA 8.0 and 9.1 are no longer supported.
+Use CUDA 9.0, 9.2, 10.0, or later.
+
+Dropping Support of NumPy 1.15 and SciPy 1.2
+--------------------------------------------
+
+NumPy 1.15 (or earlier) and SciPy 1.2 (or earlier) are no longer supported.
 
 Update of Docker Images
 -----------------------
 
-CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 10.2 and Python 3.6.
+* CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 10.2 and Python 3.6.
+* SciPy and Optuna are now pre-installed.
+
+CUB Support and Compiler Requirement
+------------------------------------
+
+CUB module is now built by default.
+You can enable the use of CUB by setting ``CUPY_ACCELERATORS="cub"`` (see :doc:`reference/environment` for details).
+
+Due to this change, g++-6 or later is required when building CuPy from the source.
+See :doc:`install` for details.
+
+The following environment variables are no longer effective:
+
+* ``CUB_DISABLED``: Use ``CUPY_ACCELERATORS`` as aforementioned.
+* ``CUB_PATH``: No longer required as CuPy uses either the CUB source bundled with CUDA (only when using CUDA 11.0 or later) or the one in the CuPy distribution.
+
+API Changes
+-----------
+
+* ``cupy.scatter_add``, which was deprecated in CuPy v4, has been removed. Use :func:`cupyx.scatter_add` instead.
+* ``cupy.sparse`` module has been deprecated and will be removed in future releases. Use :mod:`cupyx.scipy.sparse` instead.
+* ``dtype`` argument of :func:`cupy.ndarray.min` and :func:`cupy.ndarray.max` has been removed to align with the NumPy specification.
+* :func:`cupy.allclose` now returns the result as 0-dim GPU array instead of Python bool to avoid device synchronization.
+* :class:`cupy.RawModule` now delays the compilation to the time of the first call to align the behavior with :class:`cupy.RawKernel`.
+* ``cupy.cuda.*_enabled`` flags (``nccl_enabled``, ``nvtx_enabled``, etc.) has been deprecated. Use ``cupy.cuda.*.available`` flag (``cupy.cuda.nccl.available``, ``cupy.cuda.nvtx.available``, etc.) instead.
+* ``CHAINER_SEED`` environment variable is no longer effective. Use ``CUPY_SEED`` instead.
 
 
 CuPy v7

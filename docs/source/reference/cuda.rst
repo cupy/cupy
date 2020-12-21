@@ -33,6 +33,7 @@ Memory management
    cupy.cuda.set_pinned_memory_allocator
    cupy.cuda.MemoryPool
    cupy.cuda.PinnedMemoryPool
+   cupy.cuda.PythonFunctionAllocator
 
 
 Memory hook
@@ -171,6 +172,7 @@ to use these functions.
    cupy.cuda.runtime.streamAddCallback
    cupy.cuda.runtime.streamQuery
    cupy.cuda.runtime.streamWaitEvent
+   cupy.cuda.runtime.launchHostFunc
    cupy.cuda.runtime.eventCreate
    cupy.cuda.runtime.eventCreateWithFlags
    cupy.cuda.runtime.eventDestroy

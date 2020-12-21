@@ -96,7 +96,6 @@ cdef class ndarray:
 
 cpdef ndarray _internal_ascontiguousarray(ndarray a)
 cpdef ndarray _internal_asfortranarray(ndarray a)
-cpdef ndarray _mat_ptrs(ndarray a)
 cpdef ndarray ascontiguousarray(ndarray a, dtype=*)
 cpdef ndarray asfortranarray(ndarray a, dtype=*)
 
@@ -104,7 +103,8 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 cachd_dir=*, prepend_cupy_headers=*,
                                 backend=*, translate_cucomplex=*,
                                 enable_cooperative_groups=*,
-                                name_expressions=*, log_stream=*)
+                                name_expressions=*, log_stream=*,
+                                bint jitify=*)
 
 
 # TODO(niboshi): Move to _routines_creation.pyx
@@ -116,13 +116,3 @@ cdef ndarray _ndarray_init(const shape_t& shape, dtype)
 
 cdef ndarray _create_ndarray_from_shape_strides(
     const shape_t& shape, const strides_t& strides, dtype)
-
-cpdef enum:
-    COMPUTE_TYPE_TBD = 0
-    COMPUTE_TYPE_DEFAULT = 1   # default
-    COMPUTE_TYPE_PEDANTIC = 2  # disable algorithmic optimizations
-    COMPUTE_TYPE_FP16 = 3      # allow converting inputs to FP16
-    COMPUTE_TYPE_FP32 = 4      # allow converting inputs to FP32
-    COMPUTE_TYPE_FP64 = 5      # allow converting inputs to FP64
-    COMPUTE_TYPE_BF16 = 6      # allow converting inputs to BF16
-    COMPUTE_TYPE_TF32 = 7      # allow converting inputs to TF32

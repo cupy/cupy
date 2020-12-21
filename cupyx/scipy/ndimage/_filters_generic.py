@@ -1,5 +1,6 @@
 import cupy
 
+from cupy import _util
 from cupyx.scipy.ndimage import _filters_core
 
 
@@ -28,7 +29,7 @@ def _get_sub_kernel(f):
         raise TypeError('bad function type')
 
 
-@cupy.util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
                             wshape, offsets, cval, int_type):
     """Generic filter implementation based on a reduction kernel."""
@@ -179,7 +180,7 @@ def _get_type_info(param, dtype, types):
     return ctype
 
 
-@cupy.util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_generic_filter_raw(rk, filter_size, mode, wshape, offsets, cval,
                             int_type):
     """Generic filter implementation based on a raw kernel."""
@@ -195,11 +196,16 @@ def _get_generic_filter_raw(rk, filter_size, mode, wshape, offsets, cval,
         'generic_{}_{}'.format(filter_size, rk.name),
         setup, 'values[iv++] = cast<double>({value});', sub_call,
         mode, wshape, int_type, offsets, cval,
-        preamble='namespace raw_kernel {{\n{}\n}}'.format(rk.code),
+        preamble='namespace raw_kernel {{\n{}\n}}'.format(
+            # Users can test RawKernel independently, but when passed to here
+            # it must be used as a device function here. In fact, RawKernel
+            # wouldn't compile if code only contains device functions, so this
+            # is necessary.
+            rk.code.replace('__global__', '__device__')),
         options=rk.options)
 
 
-@cupy.util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
                           in_ctype, out_ctype, int_type):
     """
@@ -246,6 +252,7 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
     name = 'generic1d_{}_{}_{}'.format(length, filter_size, rk.name)
     code = '''#include "cupy/carray.cuh"
 #include "cupy/complex.cuh"
+#include <type_traits>  // let Jitify handle this
 
 namespace raw_kernel {{\n{rk_code}\n}}
 
@@ -300,6 +307,12 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
 }}'''.format(n_lines=n_lines, length=length, in_length=in_length, start=start,
              in_ctype=in_ctype, out_ctype=out_ctype, int_type=int_type,
              boundary_early=boundary_early, boundary=boundary,
-             name=name, rk_name=rk.name, rk_code=rk.code,
+             name=name, rk_name=rk.name,
+             # Users can test RawKernel independently, but when passed to here
+             # it must be used as a device function here. In fact, RawKernel
+             # wouldn't compile if code only contains device functions, so this
+             # is necessary.
+             rk_code=rk.code.replace('__global__', '__device__'),
              CAST=_filters_core._CAST_FUNCTION)
-    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options)
+    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options,
+                          jitify=True)

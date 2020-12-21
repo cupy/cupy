@@ -38,11 +38,11 @@ class TestIndexing(unittest.TestCase):
     def test_take_index_range_overflow(self, xp, dtype):
         # Skip for too large dimensions
         if numpy.dtype(dtype) in (numpy.int64, numpy.uint64):
-            return xp.array([])
+            pytest.skip()
         # Skip because NumPy actually allocates a contiguous array in the
         # `take` below to require much time.
         if dtype in (numpy.int32, numpy.uint32):
-            return xp.array([])
+            pytest.skip()
         iinfo = numpy.iinfo(dtype)
         a = xp.broadcast_to(xp.ones(1), (iinfo.max + 1,))
         b = xp.array([0], dtype=dtype)

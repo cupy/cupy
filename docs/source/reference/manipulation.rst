@@ -11,6 +11,7 @@ Basic operations
    :nosignatures:
 
    cupy.copyto
+   cupy.shape
 
 
 Changing array shape
@@ -117,6 +118,8 @@ Adding and removing elements
    :toctree: generated/
    :nosignatures:
 
+   cupy.append
+   cupy.resize
    cupy.unique
    cupy.trim_zeros
 

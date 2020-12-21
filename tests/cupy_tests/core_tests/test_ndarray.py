@@ -5,6 +5,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy import _util
 from cupy import core
 from cupy import cuda
 from cupy import get_array_module
@@ -223,52 +224,95 @@ class TestNdarrayCudaInterface(unittest.TestCase):
     def test_cuda_array_interface(self):
         arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
         iface = arr.__cuda_array_interface__
+        assert iface['version'] == 3
         assert (set(iface.keys()) ==
                 set(['shape', 'typestr', 'data', 'version', 'descr',
-                     'strides']))
+                     'stream', 'strides']))
         assert iface['shape'] == (2, 3)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
-        assert iface['version'] == 2
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
+        assert iface['stream'] == 1
 
     def test_cuda_array_interface_view(self):
         arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
         view = arr[::2, ::5]
         iface = view.__cuda_array_interface__
+        assert iface['version'] == 3
         assert (set(iface.keys()) ==
-                set(['shape', 'typestr', 'data', 'version',
-                     'strides', 'descr']))
+                set(['shape', 'typestr', 'data', 'version', 'descr',
+                     'stream', 'strides']))
         assert iface['shape'] == (5, 4)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
-        assert iface['version'] == 2
         assert iface['strides'] == (320, 40)
         assert iface['descr'] == [('', '<f8')]
+        assert iface['stream'] == 1
 
     def test_cuda_array_interface_zero_size(self):
         arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
         view = arr[0:3:-1]
         iface = view.__cuda_array_interface__
+        assert iface['version'] == 3
         assert (set(iface.keys()) ==
-                set(['shape', 'typestr', 'data', 'version',
-                     'strides', 'descr']))
+                set(['shape', 'typestr', 'data', 'version', 'descr',
+                     'stream', 'strides']))
         assert iface['shape'] == (0,)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
         assert iface['data'][0] == 0
         assert not iface['data'][1]
-        assert iface['version'] == 2
         assert iface['strides'] is None
         assert iface['descr'] == [('', '<f8')]
+        assert iface['stream'] == 1
+
+
+# TODO(leofang): test PTDS
+@testing.parameterize(*testing.product({
+    'stream': ('null', 'new'),
+    'ver': (2, 3),
+}))
+class TestNdarrayCudaInterfaceStream(unittest.TestCase):
+    def setUp(self):
+        if self.stream == 'null':
+            self.stream = cuda.Stream.null
+        elif self.stream == 'new':
+            self.stream = cuda.Stream()
+
+        self.old_ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.ver
+
+    def tearDown(self):
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.old_ver
+
+    def test_cuda_array_interface_stream(self):
+        # this tests exporting CAI with a given stream
+        arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
+        stream = self.stream
+        with stream:
+            iface = arr.__cuda_array_interface__
+        assert iface['version'] == self.ver
+        attrs = ['shape', 'typestr', 'data', 'version', 'descr', 'strides']
+        if self.ver == 3:
+            attrs.append('stream')
+        assert set(iface.keys()) == set(attrs)
+        assert iface['shape'] == (10,)
+        assert iface['typestr'] == '<f8'
+        assert isinstance(iface['data'], tuple)
+        assert len(iface['data']) == 2
+        assert iface['data'] == (arr.data.ptr, False)
+        assert iface['descr'] == [('', '<f8')]
+        assert iface['strides'] is None
+        if self.ver == 3:
+            assert iface['stream'] == 1 if stream.ptr == 0 else stream.ptr
 
 
 @testing.parameterize(
@@ -490,19 +534,23 @@ class TestPythonInterface(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_bytes_tobytes_empty(self, xp, dtype):
-        x = xp.empty((3, 4, 5), dtype)
+        x = xp.empty((0,), dtype)
         return bytes(x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_bytes_tobytes_empty2(self, xp, dtype):
-        x = xp.empty((), dtype)
+        x = xp.empty((3, 0, 4), dtype)
         return bytes(x)
 
-    @testing.for_all_dtypes()
+    # The result of bytes(numpy.array(scalar)) is the same as bytes(scalar)
+    # if scalar is of an integer dtype including bool_. It's spec is
+    # bytes(int): bytes object of size given by the parameter initialized with
+    # null bytes.
+    @testing.for_float_dtypes()
     @testing.numpy_cupy_equal()
-    def test_bytes_tobytes_scalar(self, xp, dtype):
-        x = xp.array([3], dtype).item()
+    def test_bytes_tobytes_scalar_array(self, xp, dtype):
+        x = xp.array(3, dtype)
         return bytes(x)
 
 

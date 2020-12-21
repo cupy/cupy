@@ -24,8 +24,8 @@ desc_c = cutensor.create_tensor_descriptor(c)
 
 mode_a = cutensor.create_mode(*mode_a)
 mode_c = cutensor.create_mode(*mode_c)
-alpha = numpy.array(1.1, dtype)
-gamma = numpy.array(1.3, dtype)
+alpha = 1.1
+gamma = 1.3
 
 perf = cupyx.time.repeat(
     cutensor.elementwise_binary,
@@ -34,9 +34,9 @@ perf = cupyx.time.repeat(
 
 itemsize = numpy.dtype(dtype).itemsize
 transfer_byte = a.size * itemsize
-if alpha.item() != 0.0:
+if alpha != 0.0:
     transfer_byte += a.size * itemsize
-if gamma.item() != 0.0:
+if gamma != 0.0:
     transfer_byte += c.size * itemsize
 elapsed = perf.gpu_times.mean()
 gbs = transfer_byte / elapsed / 1e9

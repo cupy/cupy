@@ -1,3 +1,9 @@
+"""
+cuDNN Wrapper
+
+Use `cupy_backends.cuda.libs.cudnn` directly in CuPy codebase.
+"""
+
 available = True
 
 try:

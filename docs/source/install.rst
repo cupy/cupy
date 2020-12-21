@@ -13,12 +13,12 @@ These components must be installed to use CuPy:
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.0 / v9.2 / v10.0 / v10.1 / v10.2 / v11.0
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.0 / v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
 
-* `Python <https://python.org/>`_: v3.5.1+ / v3.6.0+ / v3.7.0+ / v3.8.0+
+* `Python <https://python.org/>`_: v3.6.0+ / v3.7.0+ / v3.8.0+
 
 .. note::
 
@@ -35,7 +35,7 @@ NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.19 and SciPy 1.5, and 
 
     * Required only when using :doc:`reference/scipy` (``cupyx.scipy``).
 
-* `Optuna <https://optuna.org/>`_ (*optional*): v1.x
+* `Optuna <https://optuna.org/>`_ (*optional*): v2.x
 
     * Required only when using :doc:`reference/optimize`.
 
@@ -56,7 +56,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
 * `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.2
 
-    * The library to accelerate tensor operations. See :docs:environment: for the details.
+    * The library to accelerate tensor operations. See :doc:`reference/environment` for the details.
 
 * `NCCL <https://developer.nvidia.com/nccl>`_: v2.0 / v2.1 / v2.2 / v2.3 / v2.4 / v2.5 / v2.6 / v2.7
 
@@ -90,6 +90,8 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda102``
    * - v11.0
      - ``$ pip install cupy-cuda110``
+   * - v11.1
+     - ``$ pip install cupy-cuda111``
 
 .. note::
 

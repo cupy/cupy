@@ -32,20 +32,20 @@ class TestDebugPrintHook(unittest.TestCase):
 
         expect = {'hook': 'alloc', 'device_id': device_id,
                   'mem_size': unit, 'mem_ptr': ptr1}
-        self.assertEqual(expect, json.loads(actual_lines[0]))
+        assert expect == json.loads(actual_lines[0])
 
         expect = {'hook': 'malloc', 'device_id': device_id, 'size': size,
                   'mem_size': unit, 'mem_ptr': ptr1, 'pmem_id': hex(pmem1)}
-        self.assertEqual(expect, json.loads(actual_lines[1]))
+        assert expect == json.loads(actual_lines[1])
 
         expect = {'hook': 'free', 'device_id': device_id,
                   'mem_size': unit, 'mem_ptr': ptr1, 'pmem_id': hex(pmem1)}
-        self.assertEqual(expect, json.loads(actual_lines[2]))
+        assert expect == json.loads(actual_lines[2])
 
         expect = {'hook': 'malloc', 'device_id': device_id, 'size': size,
                   'mem_size': unit, 'mem_ptr': ptr2, 'pmem_id': hex(pmem2)}
-        self.assertEqual(expect, json.loads(actual_lines[3]))
+        assert expect == json.loads(actual_lines[3])
 
         expect = {'hook': 'free', 'device_id': device_id,
                   'mem_size': unit, 'mem_ptr': ptr2, 'pmem_id': hex(pmem2)}
-        self.assertEqual(expect, json.loads(actual_lines[4]))
+        assert expect == json.loads(actual_lines[4])
