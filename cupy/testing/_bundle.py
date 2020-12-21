@@ -19,6 +19,7 @@ def make_decorator(test_case_generator):
 
         # Generate parameterized test cases out of the input test case.
         module = sys.modules[module_name]
+        assert module.__name__ == module_name
         for cls_name, members, method_generator in test_case_generator(cls):
             _generate_case(
                 cls, module, cls_name, members, method_generator)
@@ -42,4 +43,5 @@ def _generate_case(base, module, cls_name, mb, method_generator):
     cls = type(cls_name, (base,), members)
 
     # Add new test class to module
+    cls.__module__ = module.__name__
     setattr(module, cls_name, cls)
