@@ -1,8 +1,10 @@
 import contextlib
 import warnings
 
-from cupy._environment import (get_cuda_path, get_nvcc_path,
-                               get_rocm_path, get_hipcc_path)
+from cupy._environment import get_cuda_path  # NOQA
+from cupy._environment import get_nvcc_path  # NOQA
+from cupy._environment import get_rocm_path  # NOQA
+from cupy._environment import get_hipcc_path  # NOQA
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import function  # NOQA
