@@ -44,6 +44,7 @@ def _call_func(self, impl, args, kw):
     try:
         result = impl(self, *args, **kw)
         error = None
+        tb = None
     except exceptions as e:
         tb = e.__traceback__
         if tb.tb_next is None:
@@ -52,7 +53,7 @@ def _call_func(self, impl, args, kw):
         result = None
         error = e
 
-    return result, error
+    return result, error, tb
 
 
 def _call_func_cupy(self, impl, args, kw, name, sp_name, scipy_name):
@@ -67,8 +68,8 @@ def _call_func_cupy(self, impl, args, kw, name, sp_name, scipy_name):
     if scipy_name:
         kw[scipy_name] = cupyx.scipy
     kw[name] = cupy
-    result, error = _call_func(self, impl, args, kw)
-    return result, error
+    result, error, tb = _call_func(self, impl, args, kw)
+    return result, error, tb
 
 
 def _call_func_numpy(self, impl, args, kw, name, sp_name, scipy_name):
@@ -85,22 +86,22 @@ def _call_func_numpy(self, impl, args, kw, name, sp_name, scipy_name):
     if scipy_name:
         import scipy
         kw[scipy_name] = scipy
-    result, error = _call_func(self, impl, args, kw)
-    return result, error
+    result, error, tb = _call_func(self, impl, args, kw)
+    return result, error, tb
 
 
 def _call_func_numpy_cupy(self, impl, args, kw, name, sp_name, scipy_name):
     # Run cupy
-    cupy_result, cupy_error = _call_func_cupy(
+    cupy_result, cupy_error, cupy_tb = _call_func_cupy(
         self, impl, args, kw, name, sp_name, scipy_name)
 
     # Run numpy
-    numpy_result, numpy_error = _call_func_numpy(
+    numpy_result, numpy_error, numpy_tb = _call_func_numpy(
         self, impl, args, kw, name, sp_name, scipy_name)
 
     return (
-        cupy_result, cupy_error,
-        numpy_result, numpy_error)
+        cupy_result, cupy_error, cupy_tb,
+        numpy_result, numpy_error, numpy_tb)
 
 
 _numpy_errors = [
@@ -118,30 +119,24 @@ def _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
                 for err in _numpy_errors])
 
 
-def _fail_test_with_formatted_message(
-        msg_format, cupy_error, numpy_error):
+def _fail_test_with_unexpected_errors(
+        msg_format, cupy_error, cupy_tb, numpy_error, numpy_tb):
     # Fails the test due to unexpected errors raised from the test.
     # msg_format may include format placeholders:
-    # '{cupy_error}' '{numpy_error}'
+    # '{cupy_error}' '{cupy_tb}' '{numpy_error}' '{numpy_tb}'
 
-    kw = {}
-    if cupy_error is not None:
-        kw['cupy_error'] = _format_exception(cupy_error)
-    if numpy_error is not None:
-        kw['numpy_error'] = _format_exception(numpy_error)
-    msg = msg_format.format(**kw)
+    msg = msg_format.format(
+        cupy_error=cupy_error,
+        cupy_tb=''.join(traceback.format_tb(cupy_tb)),
+        numpy_error=numpy_error,
+        numpy_tb=''.join(traceback.format_tb(numpy_tb)))
 
     # Fail the test with the traceback of the error (for pytest --pdb)
-    if cupy_error is not None:
-        tb = cupy_error.__traceback__
-    elif numpy_error is not None:
-        tb = numpy_error.__traceback__
-    else:
-        tb = None
-    raise AssertionError(msg).with_traceback(tb)
+    raise AssertionError(msg).with_traceback(cupy_tb or numpy_tb)
 
 
-def _check_cupy_numpy_error(cupy_error, numpy_error, accept_error=False):
+def _check_cupy_numpy_error(cupy_error, cupy_tb, numpy_error,
+                            numpy_tb, accept_error=False):
     # Skip the test if both raised SkipTest.
     if (isinstance(cupy_error, _skip_classes)
             and isinstance(numpy_error, _skip_classes)):
@@ -161,34 +156,41 @@ def _check_cupy_numpy_error(cupy_error, numpy_error, accept_error=False):
         accept_error = ()
     # TODO(oktua): expected_regexp like numpy.testing.assert_raises_regex
     if cupy_error is None and numpy_error is None:
-        msg = 'Both cupy and numpy are expected to raise errors, but not'
+        raise AssertionError(
+            'Both cupy and numpy are expected to raise errors, but not')
     elif cupy_error is None:
-        msg = 'Only numpy raises error\n\n{numpy_error}'
+        _fail_test_with_unexpected_errors(
+            'Only numpy raises error\n\n{numpy_tb}{numpy_error}',
+            None, None, numpy_error, numpy_tb)
     elif numpy_error is None:
-        msg = 'Only cupy raises error\n\n{cupy_error}'
+        _fail_test_with_unexpected_errors(
+            'Only cupy raises error\n\n{cupy_tb}{cupy_error}',
+            cupy_error, cupy_tb, None, None)
+
     elif not _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
-        msg = '''Different types of errors occurred
+        _fail_test_with_unexpected_errors(
+            '''Different types of errors occurred
 
 cupy
-{cupy_error}
+{cupy_tb}{cupy_error}
 
 numpy
-{numpy_error}
-'''
+{numpy_tb}{numpy_error}
+''',
+            cupy_error, cupy_tb, numpy_error, numpy_tb)
+
     elif not (isinstance(cupy_error, accept_error)
               and isinstance(numpy_error, accept_error)):
-        msg = '''Both cupy and numpy raise exceptions
+        _fail_test_with_unexpected_errors(
+            '''Both cupy and numpy raise exceptions
 
 cupy
-{cupy_error}
+{cupy_tb}{cupy_error}
 
 numpy
-{numpy_error}
-'''
-    else:
-        return  # did not fail
-
-    _fail_test_with_formatted_message(msg, cupy_error, numpy_error)
+{numpy_tb}{numpy_error}
+''',
+            cupy_error, cupy_tb, numpy_error, numpy_tb)
 
 
 def _signed_counterpart(dtype):
@@ -201,7 +203,7 @@ def _make_positive_mask(self, impl, args, kw, name, sp_name, scipy_name):
     ks = [k for k, v in kw.items() if v in _unsigned_dtypes]
     for k in ks:
         kw[k] = _signed_counterpart(kw[k])
-    result, error = _call_func_cupy(
+    result, error, tb = _call_func_cupy(
         self, impl, args, kw, name, sp_name, scipy_name)
     assert error is None
     return cupy.asnumpy(result) >= 0
@@ -241,8 +243,8 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
-                cupy_result, cupy_error,
-                numpy_result, numpy_error) = (
+                cupy_result, cupy_error, cupy_tb,
+                numpy_result, numpy_error, numpy_tb) = (
                     _call_func_numpy_cupy(
                         self, impl, args, kw, name, sp_name, scipy_name))
             assert cupy_result is not None or cupy_error is not None
@@ -250,8 +252,8 @@ def _make_decorator(check_func, name, type_check, contiguous_check,
 
             # Check errors raised
             if cupy_error or numpy_error:
-                _check_cupy_numpy_error(cupy_error,
-                                        numpy_error,
+                _check_cupy_numpy_error(cupy_error, cupy_tb,
+                                        numpy_error, numpy_tb,
                                         accept_error=accept_error)
                 return
 
@@ -722,14 +724,14 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
-                cupy_result, cupy_error,
-                numpy_result, numpy_error) = (
+                cupy_result, cupy_error, cupy_tb,
+                numpy_result, numpy_error, numpy_tb) = (
                     _call_func_numpy_cupy(
                         self, impl, args, kw, name, sp_name, scipy_name))
 
             if cupy_error or numpy_error:
                 _check_cupy_numpy_error(
-                    cupy_error, numpy_error,
+                    cupy_error, cupy_tb, numpy_error, numpy_tb,
                     accept_error=False)
                 return
 
@@ -774,13 +776,13 @@ def numpy_cupy_raises(name='xp', sp_name=None, scipy_name=None,
         def test_func(self, *args, **kw):
             # Run cupy and numpy
             (
-                cupy_result, cupy_error,
-                numpy_result, numpy_error) = (
+                cupy_result, cupy_error, cupy_tb,
+                numpy_result, numpy_error, numpy_tb) = (
                     _call_func_numpy_cupy(
                         self, impl, args, kw, name, sp_name, scipy_name))
 
-            _check_cupy_numpy_error(cupy_error,
-                                    numpy_error,
+            _check_cupy_numpy_error(cupy_error, cupy_tb,
+                                    numpy_error, numpy_tb,
                                     accept_error=accept_error)
         return test_func
     return decorator
