@@ -6,7 +6,6 @@ from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
 import sys
-import collections.abc
 
 import numpy
 
@@ -421,7 +420,7 @@ cpdef tuple _normalize_axis_indices(
     """
     if axes is None:
         axes = tuple(range(ndim))
-    elif not isinstance(axes, collections.abc.Iterable):
+    elif not isinstance(axes, tuple):
         axes = axes,
 
     res = []

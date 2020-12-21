@@ -92,7 +92,7 @@ def _inputs_swap_needed(mode, shape1, shape2, axes=None):
     if mode != 'valid' or not shape1:
         return False
     if axes is None:
-        axes = range(len(shape1))
+        axes = tuple(range(len(shape1)))
     not_ok1 = any(shape1[i] < shape2[i] for i in axes)
     not_ok2 = any(shape1[i] > shape2[i] for i in axes)
     if not_ok1 and not_ok2:
@@ -121,15 +121,12 @@ def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
         # Convolution is commutative
         in1, in2 = in2, in1
 
-    return in1, in2, axes
+    return in1, in2, tuple(axes)
 
 
 def _init_nd_and_axes(x, axes):
     # See documentation in scipy.fft._helper._init_nd_shape_and_axes
     # except shape argument is always None and doesn't return new shape
-    #if axes is not None and not isinstance(axes, tuple):
-    #    try: axes = tuple(axes)
-    #    except TypeError: pass
     axes = internal._normalize_axis_indices(axes, x.ndim, sort_axes=False)
     if not len(axes):
         raise ValueError('when provided, axes cannot be empty')
