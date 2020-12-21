@@ -1960,7 +1960,7 @@ cpdef function.Module compile_with_cache(
         else:
             _cuda_path = cuda.get_rocm_path()
 
-    if not _is_hip and _cuda_runtime_version >= 9000:
+    if not _is_hip:
         if 9020 <= _cuda_runtime_version < 9030:
             bundled_include = 'cuda-9.2'
         elif 10000 <= _cuda_runtime_version < 10010:
@@ -1987,16 +1987,14 @@ cpdef function.Module compile_with_cache(
         if bundled_include is not None:
             options += ('-I' + os.path.join(
                 _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
-
-        if _cuda_path is not None:
-            options += ('-I' + os.path.join(_cuda_path, 'include'),)
     elif _is_hip:
-        if _cuda_path is not None:
-            options += ('-I' + os.path.join(_cuda_path, 'include'),)
-        else:
+        if _cuda_path is None:
             raise RuntimeError(
                 'Failed to auto-detect ROCm root directory. '
                 'Please specify `ROCM_HOME` environment variable.')
+
+    if _cuda_path is not None:
+        options += ('-I' + os.path.join(_cuda_path, 'include'),)
 
     return cuda.compile_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
