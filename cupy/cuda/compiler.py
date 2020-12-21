@@ -40,7 +40,6 @@ class JitifyException(Exception):
 
 def _run_cc(cmd, cwd, backend, log_stream=None):
     # backend in ('nvcc', 'hipcc')
-    print("i get called")
     try:
         # Inherit the environment variable as NVCC refers to PATH, TMPDIR/TMP,
         # NVCC_PREPEND_FLAGS, NVCC_APPEND_FLAGS.
@@ -641,18 +640,6 @@ def is_valid_kernel_name(name):
     return re.match('^[a-zA-Z_][a-zA-Z_0-9]*$', name) is not None
 
 
-_hipcc_version = None
-
-
-def _get_hipcc_version():
-    global _hipcc_version
-    if _hipcc_version is None:
-        cmd = ['hipcc', '--version']
-        print("am I here?")
-        _hipcc_version = _run_cc(cmd, '.', 'hipcc')
-    return _hipcc_version
-
-
 def compile_using_hipcc(source, options, arch, log_stream=None):
     assert len(arch) > 0
     # pass HCC_AMDGPU_TARGET same as arch
@@ -702,7 +689,6 @@ def _preprocess_hipcc(source, options):
             cu_file.write(source)
 
         cmd.append(cu_path)
-        print("could it be here?")
         pp_src = _run_cc(cmd, root_dir, 'hipcc')
         assert isinstance(pp_src, str)
         return re.sub('(?m)^#.*$', '', pp_src)
@@ -710,7 +696,6 @@ def _preprocess_hipcc(source, options):
 
 def _preprocess_hiprtc(source, options):
     # source is ignored
-    print("i am called!!!!!!!!")
     prog = _NVRTCProgram(
         '''
         // hiprtc segfaults if the input code is empty
