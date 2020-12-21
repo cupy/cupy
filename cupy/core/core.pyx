@@ -1836,12 +1836,16 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 # =============================================================================
 # TODO(niboshi): Move it out of core.pyx
 
+cdef bint _is_hip = runtime._is_hip_environment
+cdef int _cuda_runtime_version = -1
+cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
+
 cdef list _cupy_header_list = [
     'cupy/complex.cuh',
     'cupy/carray.cuh',
     'cupy/atomics.cuh',
 ]
-if runtime._is_hip_environment:
+if _is_hip:
     _cupy_header_list.append('cupy/math_constants.h')
 
 cdef str _cupy_header = ''.join(
@@ -2451,9 +2455,6 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
     return newarray
 
 
-cdef int _cuda_runtime_version = -1
-
-
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
     cdef Py_ssize_t sh, st
     cdef dict desc = a.__cuda_array_interface__
@@ -2483,7 +2484,7 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     # 1. the stream is not set (ex: from v0 ~ v2) or is None
     # 2. users explicitly overwrite this requirement
     stream_ptr = desc.get('stream')
-    if runtime._is_hip_environment:
+    if _is_hip:
         if stream_ptr == 1:
             stream_ptr = cuda.cupy.cuda.Stream.null.ptr
         if stream_ptr == 2:
