@@ -6,7 +6,8 @@ import pytest
 
 import cupy
 import cupy.core._accelerator as _acc
-from cupy import cuda, testing
+from cupy import cuda
+from cupy import testing
 
 
 _all_interpolations = (
