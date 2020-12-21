@@ -118,6 +118,7 @@ class TestOrder(unittest.TestCase):
             with pytest.raises(ValueError):
                 xp.percentile(a, q, axis=-1, interpolation='deadbeef')
 
+    # See gh-4453
     @testing.for_float_dtypes()
     def test_percentile_memory_access(self, dtype):
         # Create an allocator that guarantees array allocated in
