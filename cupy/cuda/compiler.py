@@ -718,14 +718,6 @@ _hip_extra_source = None
 
 
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
-    table = [
-        ('threadIdx.', 'hipThreadIdx_'),
-        ('blockIdx.', 'hipBlockIdx_'),
-        ('blockDim.', 'hipBlockDim_'),
-        ('gridDim.', 'hipGridDim_'),
-    ]
-    for i, j in table:
-        source = source.replace(i, j)
     if not is_hiprtc:
         return '#include <hip/hip_runtime.h>\n' + source
 
