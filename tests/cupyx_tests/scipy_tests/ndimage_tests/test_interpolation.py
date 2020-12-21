@@ -637,3 +637,37 @@ class TestSplineFilter:
         scp.ndimage.spline_filter(x, order=self.order, output=output,
                                   mode=self.mode)
         return output
+
+
+@testing.parameterize(*testing.product({
+    'mode': ['mirror', 'wrap', 'reflect'],
+    'order': [2, 3, 4, 5],
+    'dtype': [numpy.complex64, numpy.complex128],
+    'output': [numpy.complex64, numpy.complex128],
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestSplineFilterComplex:
+
+    @testing.with_requires('scipy>=1.6')
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
+    def test_spline_filter_complex(self, xp, scp):
+        x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=xp)
+        return scp.ndimage.spline_filter(x, order=self.order,
+                                         output=self.output, mode=self.mode)
+
+    # the following test case is for SciPy versions lacking complex support
+    @testing.with_requires('scipy<1.6')
+    def test_spline_filter_complex2(self):
+        cpu_func = scipy.ndimage.spline_filter
+        gpu_func = cupyx.scipy.ndimage.spline_filter
+        x = testing.shaped_random((16, 12, 11), dtype=self.dtype, xp=numpy)
+        x_gpu = cupy.asarray(x)
+
+        kwargs_gpu = dict(order=self.order, output=self.output, mode=self.mode)
+        res_gpu = gpu_func(x_gpu, **kwargs_gpu)
+
+        output_real = numpy.empty((1,), dtype=self.output).real.dtype
+        kwargs = dict(order=self.order, output=output_real, mode=self.mode)
+        res_cpu = cpu_func(x.real, **kwargs) + 1j * cpu_func(x.imag, **kwargs)
+        testing.assert_allclose(res_cpu, res_gpu, atol=1e-4, rtol=1e-4)

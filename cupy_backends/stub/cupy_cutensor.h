@@ -3,7 +3,7 @@
 #ifndef INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H
 #define INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H
 
-#include "../cupy_cuda_common.h"
+#include "cupy_cuda_common.h"
 
 extern "C" {
 

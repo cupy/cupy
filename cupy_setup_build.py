@@ -96,6 +96,7 @@ if use_hip:
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
     MODULES.append({
+        # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
         'file': cuda_files + [
             'cupy.cuda.nvtx',
@@ -119,6 +120,8 @@ if use_hip:
             'rocblas',
             'rocsolver',
         ],
+        'check_method': build.check_hip_version,
+        'version_method': build.get_hip_version,
     })
 else:
     MODULES.append({
@@ -393,6 +396,7 @@ def preconfigure_modules(compiler, settings):
     """
 
     nvcc_path = build.get_nvcc_path()
+    hipcc_path = build.get_hipcc_path()
     summary = [
         '',
         '************************************************************',
@@ -404,12 +408,14 @@ def preconfigure_modules(compiler, settings):
         '  Library directories: {}'.format(str(settings['library_dirs'])),
         '  nvcc command       : {}'.format(
             nvcc_path if nvcc_path else '(not found)'),
+        '  hipcc command      : {}'.format(
+            hipcc_path if hipcc_path else '(not found)'),
         '',
         'Environment Variables:',
     ]
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
-                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC',
+                'CUDA_PATH', 'NVTOOLSEXT_PATH', 'NVCC', 'HIPCC',
                 'ROCM_HOME']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
@@ -425,16 +431,19 @@ def preconfigure_modules(compiler, settings):
         errmsg = []
 
         if module['name'] == 'cutensor':
-            cuda_version = build.get_cuda_version()
-            cuda_version = str(cuda_version // 1000) + '.' + \
-                str((cuda_version // 10) % 100)
             cutensor_path = os.environ.get('CUTENSOR_PATH', '')
             inc_path = os.path.join(cutensor_path, 'include')
             if os.path.exists(inc_path):
                 settings['include_dirs'].append(inc_path)
-            lib_path = os.path.join(cutensor_path, 'lib', cuda_version)
-            if os.path.exists(lib_path):
-                settings['library_dirs'].append(lib_path)
+            cuda_version = build.get_cuda_version()
+            cuda_major = str(cuda_version // 1000)
+            cuda_major_minor = cuda_major + '.' + \
+                str((cuda_version // 10) % 100)
+            for cuda_ver in (cuda_major_minor, cuda_major):
+                lib_path = os.path.join(cutensor_path, 'lib', cuda_ver)
+                if os.path.exists(lib_path):
+                    settings['library_dirs'].append(lib_path)
+                    break
 
         print('')
         print('-------- Configuring Module: {} --------'.format(
@@ -461,9 +470,11 @@ def preconfigure_modules(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
-        elif module['name'] in ('thrust', 'cub') and nvcc_path is None:
+        elif (module['name'] in ('thrust', 'cub')
+                and (nvcc_path is None and hipcc_path is None)):
             installed = True
-            errmsg = ['nvcc command could not be found in PATH.',
+            cmd = 'nvcc' if not use_hip else 'hipcc'
+            errmsg = ['{} command could not be found in PATH.'.format(cmd),
                       'Check your PATH environment variable.']
         else:
             installed = True
@@ -484,8 +495,10 @@ def preconfigure_modules(compiler, settings):
             # Skip checking other modules when CUDA is unavailable.
             if module['name'] == 'cuda':
                 break
+
     # Get a list of the CC of the devices connected to this node
-    build.check_compute_capabilities(compiler, settings)
+    if not use_hip:
+        build.check_compute_capabilities(compiler, settings)
 
     if len(ret) != len(MODULES):
         if 'cuda' in ret:
@@ -941,7 +954,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
                            obj, src, ext, cc_args, extra_postargs, pp_opts):
         # For CUDA C source files, compile them with NVCC.
         nvcc_path = build.get_nvcc_path()
-        base_opts = build.get_compiler_base_options()
+        base_opts = build.get_compiler_base_options(nvcc_path)
         compiler_so = nvcc_path
 
         cuda_version = build.get_cuda_version()
@@ -958,7 +971,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
                             obj, src, ext, cc_args, extra_postargs, pp_opts):
         # For CUDA C source files, compile them with HIPCC.
         rocm_path = build.get_hipcc_path()
-        base_opts = build.get_compiler_base_options()
+        base_opts = build.get_compiler_base_options(rocm_path)
         compiler_so = rocm_path
         postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
         print('HIPCC options:', postargs)
@@ -999,7 +1012,6 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
                     include_dirs=None, debug=0, extra_preargs=None,
                     extra_postargs=None, depends=None):
         # Compile CUDA C files, mainly derived from UnixCCompiler._compile().
-
         macros, objects, extra_postargs, pp_opts, _build = \
             self._setup_compile(output_dir, macros, include_dirs, sources,
                                 depends, extra_postargs)
@@ -1025,6 +1037,9 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
 
     def compile(self, sources, **kwargs):
         # Split CUDA C sources and others.
+        if use_hip:
+            raise RuntimeError('ROCm is not supported on Windows')
+
         cu_sources = []
         other_sources = []
         for source in sources:
@@ -1061,7 +1076,8 @@ class custom_build_ext(build_ext.build_ext):
     """Custom `build_ext` command to include CUDA C source files."""
 
     def run(self):
-        if build.get_nvcc_path() is not None:
+        if (build.get_nvcc_path() is not None
+                or build.get_hipcc_path() is not None):
             def wrap_new_compiler(func):
                 def _wrap_new_compiler(*args, **kwargs):
                     try:

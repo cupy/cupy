@@ -1,7 +1,5 @@
-#ifndef INCLUDE_GUARD_CUPY_CUSOLVER_H
-#define INCLUDE_GUARD_CUPY_CUSOLVER_H
-
-#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#ifndef INCLUDE_GUARD_CUDA_CUPY_CUSOLVER_H
+#define INCLUDE_GUARD_CUDA_CUPY_CUSOLVER_H
 
 #include <cuda.h>
 #include <cusolverDn.h>
@@ -355,14 +353,4 @@ cusolverStatus_t cusolverDnSHgels(...) {
 
 } // extern "C"
 
-#elif defined(CUPY_USE_HIP) // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
-
-#include "hip/cupy_hipsolver.h"
-
-
-#else // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
-
-#include "stub/cupy_cusolver.h"
-
-#endif // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
-#endif // #ifndef INCLUDE_GUARD_CUPY_CUSOLVER_H
+#endif // #ifndef INCLUDE_GUARD_CUDA_CUPY_CUSOLVER_H

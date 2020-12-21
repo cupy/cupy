@@ -449,7 +449,7 @@ class TestFromData(unittest.TestCase):
             return xp.fromfile(fh, dtype="u1")
 
 
-max_cuda_array_interface_version = 2
+max_cuda_array_interface_version = 3
 
 
 @testing.gpu
@@ -545,12 +545,13 @@ class TestCudaArrayInterfaceBigArray(unittest.TestCase):
 
 
 class DummyObjectWithCudaArrayInterface(object):
-    def __init__(self, a, ver, include_strides=False, mask=None):
+    def __init__(self, a, ver, include_strides=False, mask=None, stream=None):
         assert ver in tuple(range(max_cuda_array_interface_version+1))
         self.a = a
         self.ver = ver
         self.include_strides = include_strides
         self.mask = mask
+        self.stream = stream
 
     @property
     def __cuda_array_interface__(self):
@@ -572,6 +573,15 @@ class DummyObjectWithCudaArrayInterface(object):
             desc['strides'] = self.a.strides
         if self.mask is not None:
             desc['mask'] = self.mask
+        # The stream field is kept here for compliance. However, since the
+        # synchronization is done via calling a cpdef function, which cannot
+        # be mock-tested.
+        if self.stream is not None:
+            # TODO(leofang): how about PTDS?
+            if self.stream is cuda.Stream.null:
+                desc['stream'] = 1  # TODO(leofang): use runtime.streamLegacy
+            else:
+                desc['stream'] = self.stream.ptr
         return desc
 
 

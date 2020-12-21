@@ -4,8 +4,6 @@
 #define INCLUDE_GUARD_STUB_CUPY_CUDNN_H
 
 
-#include "../cupy_cuda_common.h"
-
 #define CUDNN_VERSION 0
 
 #define CUDNN_BN_MIN_EPSILON 0.0

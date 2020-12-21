@@ -31,5 +31,6 @@ cdef class CScalar(CPointer):
 
 cpdef str get_typename(dtype)
 
+cdef set scalar_type_set
 cdef CScalar scalar_to_c_scalar(object x)
 cdef object scalar_to_numpy_scalar(object x)
