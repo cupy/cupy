@@ -14,8 +14,8 @@ PLATFORM_DARWIN = sys.platform.startswith('darwin')
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 9000
-minimum_cudnn_version = 7000
+minimum_cuda_version = 9020
+minimum_cudnn_version = 7600
 maximum_cudnn_version = 8099
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
@@ -312,7 +312,7 @@ def check_cuda_version(compiler, settings):
     if _cuda_version < minimum_cuda_version:
         utils.print_warning(
             'CUDA version is too old: %d' % _cuda_version,
-            'CUDA 9.0 or newer is required')
+            'CUDA 9.2 or newer is required')
         return False
 
     return True
