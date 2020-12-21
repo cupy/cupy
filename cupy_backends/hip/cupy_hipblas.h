@@ -3,6 +3,8 @@
 
 #include "cupy_hip_common.h"
 #include <hipblas.h>
+#include <hip/hip_version.h>  // for HIP_VERSION
+
 
 extern "C" {
 
@@ -607,8 +609,10 @@ cublasStatus_t cublasSgetriBatched(cublasHandle_t handle,
                                    int ldc,
                                    int *info,
                                    int batchSize) {
-    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+    if (HIP_VERSION <= 307) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasSgetriBatched(handle, n, const_cast<float* const*>(A), lda, const_cast<int*>(P), C, ldc, info, batchSize);
 }
 
 cublasStatus_t cublasDgetriBatched(cublasHandle_t handle,
@@ -620,8 +624,10 @@ cublasStatus_t cublasDgetriBatched(cublasHandle_t handle,
                                    int ldc,
                                    int *info,
                                    int batchSize) {
-    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+    if (HIP_VERSION <= 307) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasDgetriBatched(handle, n, const_cast<double* const*>(A), lda, const_cast<int*>(P), C, ldc, info, batchSize);
 }
 
 cublasStatus_t cublasCgetriBatched(cublasHandle_t handle,
@@ -633,8 +639,14 @@ cublasStatus_t cublasCgetriBatched(cublasHandle_t handle,
                                    int ldc,
                                    int *info,
                                    int batchSize) {
-    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+    if (HIP_VERSION <= 307) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasCgetriBatched(handle, n,
+                                reinterpret_cast<hipblasComplex* const*>(const_cast<cuComplex* const*>(A)),
+                                lda, const_cast<int*>(P),
+                                reinterpret_cast<hipblasComplex* const*>(C),
+                                ldc, info, batchSize);
 }
 
 cublasStatus_t cublasZgetriBatched(cublasHandle_t handle,
@@ -646,8 +658,14 @@ cublasStatus_t cublasZgetriBatched(cublasHandle_t handle,
                                    int ldc,
                                    int *info,
                                    int batchSize) {
-    // TODO(leofang): getri seems to be supported in ROCm 3.7.0
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+    if (HIP_VERSION <= 307) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasZgetriBatched(handle, n,
+                                reinterpret_cast<hipblasDoubleComplex* const*>(const_cast<cuDoubleComplex* const*>(A)),
+                                lda, const_cast<int*>(P),
+                                reinterpret_cast<hipblasDoubleComplex* const*>(C),
+                                ldc, info, batchSize);
 }
 
 cublasStatus_t cublasSgemmStridedBatched(

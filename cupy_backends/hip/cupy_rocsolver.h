@@ -6,7 +6,6 @@
 
 
 extern "C" {
-/* ---------- helpers ---------- */
 // TODO(leofang): perhaps these should be merged with the support of hipBLAS?
 static rocblas_fill convert_rocblas_fill(cublasFillMode_t mode) {
     switch(static_cast<int>(mode)) {
