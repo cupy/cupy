@@ -418,7 +418,7 @@ class TestGdmm(unittest.TestCase):
                 (xlen, xlen), cupy, dtype=dtype, scale=1.0)
 
     @testing.for_dtypes('fdFD')
-    def test_gdmm(self, dtype):
+    def test_dgmm(self, dtype):
         if self.orderc != 'F':
             raise unittest.SkipTest()
         self._setup(dtype)
@@ -430,7 +430,7 @@ class TestGdmm(unittest.TestCase):
         cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
 
     @testing.for_dtypes('fdFD')
-    def test_gdmm_out(self, dtype):
+    def test_dgmm_out(self, dtype):
         self._setup(dtype)
         if self.side == 'L':
             ref = cupy.diag(self.x) @ self.a
@@ -441,7 +441,7 @@ class TestGdmm(unittest.TestCase):
         cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
 
     @testing.for_dtypes('fdFD')
-    def test_gdmm_inplace(self, dtype):
+    def test_dgmm_inplace(self, dtype):
         if self.orderc != 'F':
             raise unittest.SkipTest()
         self._setup(dtype)
@@ -453,7 +453,7 @@ class TestGdmm(unittest.TestCase):
         cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
 
     @testing.for_dtypes('fdFD')
-    def test_gdmm_incx_minus_one(self, dtype):
+    def test_dgmm_incx_minus_one(self, dtype):
         if self.orderc != 'F':
             raise unittest.SkipTest()
         self._setup(dtype)
@@ -465,7 +465,7 @@ class TestGdmm(unittest.TestCase):
         cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
 
     @testing.for_dtypes('fdFD')
-    def test_gdmm_x_scalar(self, dtype):
+    def test_dgmm_x_scalar(self, dtype):
         if self.orderc != 'F':
             raise unittest.SkipTest()
         self._setup(dtype, xdim=0)
@@ -474,7 +474,7 @@ class TestGdmm(unittest.TestCase):
         cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
 
     @testing.for_dtypes('fdFD')
-    def test_gdmm_x_matrix(self, dtype):
+    def test_dgmm_x_matrix(self, dtype):
         if self.orderc != 'F':
             raise unittest.SkipTest()
         self._setup(dtype, xdim=2)

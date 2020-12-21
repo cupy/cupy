@@ -606,20 +606,50 @@ cublasStatus_t cublasZgeam(
                         ldc);
 }
 
-cublasStatus_t cublasSdgmm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasSdgmm(cublasHandle_t handle, cublasSideMode_t mode, int m, int n,
+                           const float *A, int lda,
+                           const float *x, int incx,
+                           float *C, int ldc) {
+    if (HIP_VERSION < 306) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasSdgmm(handle, convert_hipblasSideMode_t(mode), m, n, A, lda, x, incx, C, ldc);
 }
 
-cublasStatus_t cublasDdgmm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasDdgmm(cublasHandle_t handle, cublasSideMode_t mode, int m, int n,
+                           const double *A, int lda,
+                           const double *x, int incx,
+                           double *C, int ldc) {
+    if (HIP_VERSION < 306) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasDdgmm(handle, convert_hipblasSideMode_t(mode), m, n, A, lda, x, incx, C, ldc);
 }
 
-cublasStatus_t cublasCdgmm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasCdgmm(cublasHandle_t handle, cublasSideMode_t mode, int m, int n,
+                           const cuComplex *A, int lda,
+                           const cuComplex *x, int incx,
+                           cuComplex *C, int ldc) {
+    if (HIP_VERSION < 306) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasCdgmm(handle, convert_hipblasSideMode_t(mode), m, n,
+                        reinterpret_cast<const hipblasComplex*>(A), lda,
+                        reinterpret_cast<const hipblasComplex*>(x), incx,
+                        reinterpret_cast<hipblasComplex*>(C), ldc);
 }
 
-cublasStatus_t cublasZdgmm(...) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+cublasStatus_t cublasZdgmm(cublasHandle_t handle, cublasSideMode_t mode, int m, int n,
+                           const cuDoubleComplex *A, int lda,
+                           const cuDoubleComplex *x, int incx,
+                           cuDoubleComplex *C, int ldc) {
+    if (HIP_VERSION < 306) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasZdgmm(handle, convert_hipblasSideMode_t(mode), m, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(A), lda,
+                        reinterpret_cast<const hipblasDoubleComplex*>(x), incx,
+                        reinterpret_cast<hipblasDoubleComplex*>(C), ldc);
 }
 
 cublasStatus_t cublasSgetriBatched(cublasHandle_t handle,
