@@ -640,7 +640,7 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     return module.get_function(name)
 
 
-cdef ndarray _batch_scan_op(ndarray a, scan_op op, dtype, ndarray out):
+cdef ndarray _batch_scan_op(ndarray a, scan_op op, ndarray out):
     batch_size = a.shape[1]
     # TODO(ecastill) replace this with "_reduction._block_size" once it is
     # properly exposed
@@ -664,7 +664,7 @@ cdef ndarray _batch_scan_op(ndarray a, scan_op op, dtype, ndarray out):
               shared_mem=a.itemsize * block_size)
     if batch_size > block_size:
         blocked_sum = out[:, block_size-1::block_size]
-        _batch_scan_op(blocked_sum, op, dtype, blocked_sum)
+        _batch_scan_op(blocked_sum, op, blocked_sum)
         kern_add = _add_scan_batch_blocked_sum_kernel(
             out.dtype, op, block_size, out_cont)
         kern_add(
@@ -674,27 +674,14 @@ cdef ndarray _batch_scan_op(ndarray a, scan_op op, dtype, ndarray out):
     return out
 
 
-cdef _axis_to_first(ndarray x, int axis):
-    trans = [axis] + [a for a in range(x.ndim) if a != axis]
-    pre = list(range(1, axis + 1))
-    succ = list(range(axis + 1, x.ndim))
-    revert = pre + [0] + succ
-    return trans, revert
-
-
-cdef _proc_as_batch(ndarray x, int axis, dtype, scan_op op):
+cdef _proc_as_batch(ndarray x, int axis, scan_op op):
     if x.shape[axis] == 0:
         return cupy.empty_like(x)
-    trans, revert = _axis_to_first(x, axis)
-    t = x.transpose(trans)
+    t = cupy.rollaxis(x, axis, x.ndim)
     s = t.shape
-    r = t.reshape(x.shape[axis], -1)
-    # This is to use the current implemented fast scan
-    # TODO(ecastill) merge with above transformations
-    r = r.transpose((1, 0))
-    r = _batch_scan_op(r, op, dtype, r)
-    r = r.transpose((1, 0))
-    return r.reshape(s).transpose(revert)
+    r = t.reshape(-1, x.shape[axis])
+    _batch_scan_op(r, op, r)
+    return cupy.rollaxis(r.reshape(s), x.ndim-1, axis)
 
 
 cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
@@ -739,7 +726,7 @@ cpdef scan_core(ndarray a, axis, scan_op op, dtype=None, ndarray out=None):
         if result is None:
             result = a.astype(dtype, order='C')
         axis = internal._normalize_axis_index(axis, a.ndim)
-        result = _proc_as_batch(result, axis, dtype, op)
+        result = _proc_as_batch(result, axis, op)
     # This is for when the original out param was not contiguous
     if out is not None and out.data != result.data:
         out[...] = result.reshape(out.shape)
