@@ -82,6 +82,8 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     output = _util._get_output(output, input)
     modes = _util._fix_sequence_arg(mode, input.ndim, 'mode',
                                     _util._check_mode)
+    # for filters, "wrap" is a synonym for "grid-wrap".
+    modes = ['grid-wrap' if m == 'wrap' else m for m in modes]
     origins = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
@@ -143,53 +145,34 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     return output
 
 
+includes = r'''
+// workaround for HIP: line begins with #include
+#include <type_traits>  // let Jitify handle this
+#include <cupy/math_constants.h>
+'''
+
+
 _CAST_FUNCTION = """
 // Implements a casting function to make it compatible with scipy
 // Use like cast<to_type>(value)
-// It's actually really simple - most of this is <type_traits>
-
-// Small bit of <type_traits> which cannot be imported in NVRTC
-// Requires compiling with --std=c++11 or higher
-template<bool B, class T=void> struct enable_if {};
-template<class T> struct enable_if<true, T> { typedef T type; };
-template<class T> struct remove_const          { typedef T type; };
-template<class T> struct remove_const<const T> { typedef T type; };
-template<class T> struct remove_volatile             { typedef T type; };
-template<class T> struct remove_volatile<volatile T> { typedef T type; };
-template<class T> struct remove_cv {
-  typedef typename remove_volatile<typename remove_const<T>::type>::type type;
-};
-template<class T, T v>
-struct integral_constant { static constexpr T value = v; };
-typedef integral_constant<bool, true> true_type;
-typedef integral_constant<bool, false> false_type;
-template<class T> struct __is_fp : public false_type {};
-template<>        struct __is_fp<float16> : public true_type {};
-template<>        struct __is_fp<float> : public true_type {};
-template<>        struct __is_fp<double> : public true_type {};
-template<>        struct __is_fp<long double> : public true_type {};
-template<class T> struct is_floating_point
-    : public __is_fp<typename remove_cv<T>::type> {};
-template<class T> struct is_signed
-    : public integral_constant<bool, (T)(-1)<0> {};
-template<> struct is_signed<float16> : public true_type {};
-template<class T> struct is_signed<complex<T>> : public is_signed<T> {};
+template<> struct std::is_floating_point<float16> : std::true_type {};
+template<> struct std::is_signed<float16> : std::true_type {};
+template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
 
 template <class B, class A>
-__device__
-typename enable_if<!is_floating_point<A>::value||is_signed<B>::value, B>::type
+__device__ __forceinline__
+typename std::enable_if<(!std::is_floating_point<A>::value
+                         || std::is_signed<B>::value), B>::type
 cast(A a) { return (B)a; }
 
 template <class B, class A>
-__device__
-typename enable_if<is_floating_point<A>::value&&!is_signed<B>::value, B>::type
+__device__ __forceinline__
+typename std::enable_if<(std::is_floating_point<A>::value
+                         && (!std::is_signed<B>::value)), B>::type
 cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
 
 template <class T>
-__device__ bool nonzero(T x) { return (bool)x; }
-
-template <typename T>
-__device__ bool nonzero(complex<T> x) { return x.real() || x.imag(); }
+__device__ __forceinline__ bool nonzero(T x) { return x!=0; }
 
 """
 
@@ -197,7 +180,7 @@ __device__ bool nonzero(complex<T> x) { return x.real() || x.imag(); }
 def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                         offsets, cval, ctype='X', preamble='', options=(),
                         has_weights=True, has_structure=False, has_mask=False,
-                        binary_morphology=False):
+                        binary_morphology=False, all_weights_nonzero=False):
     # Currently this code uses CArray for weights but avoids using CArray for
     # the input data and instead does the indexing itself since it is faster.
     # If CArray becomes faster than follow the comments that start with
@@ -213,6 +196,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         in_params += ', raw M mask'
     out_params = 'Y y'
 
+    # for filters, "wrap" is a synonym for "grid-wrap"
+    mode = 'grid-wrap' if mode == 'wrap' else mode
+
     # CArray: remove xstride_{j}=... from string
     size = ('%s xsize_{j}=x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
             ', xstride_{j}=x.strides()[{j}];' % int_type)
@@ -227,7 +213,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         if has_structure:
             ws_pre = 'S sval = s[iws];\n'
         if has_weights:
-            ws_pre += 'W wval = w[iws];\nif (nonzero(wval))'
+            ws_pre += 'W wval = w[iws];\n'
+            if not all_weights_nonzero:
+                ws_pre += 'if (nonzero(wval))'
         ws_post = 'iws++;'
 
     loops = []
@@ -252,6 +240,13 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     value = '(*(X*)&data[{expr}])'.format(expr=expr)
     if mode == 'constant':
         cond = ' || '.join(['(ix_{} < 0)'.format(j) for j in range(ndim)])
+
+    if cval is numpy.nan:
+        cval = 'CUDART_NAN'
+    elif cval == numpy.inf:
+        cval = 'CUDART_INF'
+    elif cval == -numpy.inf:
+        cval = '-CUDART_INF'
 
     if binary_morphology:
         found = found.format(cond=cond, value=value)
@@ -283,15 +278,19 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                ws_init=ws_init, ws_pre=ws_pre, ws_post=ws_post,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
+    mode_str = mode.replace('-', '_')  # avoid potential hyphen in kernel name
     name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
-        name, ndim, mode, '_'.join(['{}'.format(x) for x in w_shape]))
+        name, ndim, mode_str, '_'.join(['{}'.format(x) for x in w_shape]))
+    if all_weights_nonzero:
+        name += '_all_nonzero'
     if int_type == 'ptrdiff_t':
         name += '_i64'
     if has_structure:
         name += '_with_structure'
     if has_mask:
         name += '_with_mask'
-    preamble = _CAST_FUNCTION + preamble
+    preamble = includes + _CAST_FUNCTION + preamble
+    options += ('--std=c++11', '-DCUPY_USE_JITIFY')
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
-                                  options=('--std=c++11',) + options)
+                                  options=options)

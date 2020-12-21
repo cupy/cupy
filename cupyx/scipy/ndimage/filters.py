@@ -158,6 +158,9 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
                                                      mode, origin)
     if weights.size == 0:
         return cupy.zeros_like(input)
+
+    _util._check_cval(mode, cval, _util._is_integer_output(output, input))
+
     if convolution:
         weights = weights[tuple([slice(None, None, -1)] * weights.ndim)]
         origins = list(origins)
@@ -169,7 +172,8 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
     offsets = _filters_core._origins_to_offsets(origins, weights.shape)
     kernel = _get_correlate_kernel(mode, weights.shape, int_type,
                                    offsets, cval)
-    return _filters_core._call_kernel(kernel, input, weights, output)
+    output = _filters_core._call_kernel(kernel, input, weights, output)
+    return output
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -754,6 +758,8 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
 
     sizes, ftprnt, structure = _filters_core._check_size_footprint_structure(
         input.ndim, size, ftprnt, structure)
+    if cval is cupy.nan:
+        raise NotImplementedError("NaN cval is unsupported")
 
     if sizes is not None:
         # Seperable filter, run as a series of 1D filters
@@ -998,6 +1004,8 @@ def _rank_filter(input, get_rank, size=None, footprint=None, output=None,
                  mode="reflect", cval=0.0, origin=0):
     _, footprint, _ = _filters_core._check_size_footprint_structure(
         input.ndim, size, footprint, None, force_footprint=True)
+    if cval is cupy.nan:
+        raise NotImplementedError("NaN cval is unsupported")
     origins, int_type = _filters_core._check_nd_args(input, footprint,
                                                      mode, origin, 'footprint')
     if footprint.size == 0:
@@ -1049,6 +1057,10 @@ def _get_shell_gap(filter_size):
 def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
                      int_type):
     s_rank = min(rank, filter_size - rank - 1)
+    # The threshold was set based on the measurements on a V100
+    # TODO(leofang, anaruse): Use Optuna to automatically tune the threshold,
+    # as it may vary depending on the GPU in use, compiler version, dtype,
+    # filter size, etc.
     if s_rank <= 80:
         # When s_rank is small and register usage is low, this partial
         # selection sort approach is faster than general sorting approach
@@ -1057,7 +1069,7 @@ def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
             comp_op = '<'
         else:
             comp_op = '>'
-        array_size = s_rank + 1
+        array_size = s_rank + 2
         found_post = '''
             if (iv > {rank} + 1) {{{{
                 int target_iv = 0;

@@ -89,11 +89,16 @@ cdef class _Node:
 
     def __repr__(self):
         cdef str output
-        cdef str plan_type
+        cdef str plan_type = str(type(self.plan))
         if isinstance(self.plan, cufft.Plan1d):
             plan_type = 'Plan1d'
         elif isinstance(self.plan, cufft.PlanNd):
             plan_type = 'PlanNd'
+        elif 'cupy_callback' in plan_type:
+            # <class 'cupy_callback.Plan1d'> or PlanNd
+            plan_type = plan_type.split('.')[1]
+            plan_type = plan_type[:6]
+            plan_type += ' (static)'
         else:
             raise TypeError('unrecognized plan type: {}'.format(
                 type(self.plan)))

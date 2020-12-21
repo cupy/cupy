@@ -4,7 +4,6 @@
 
 [![pypi](https://img.shields.io/pypi/v/cupy.svg)](https://pypi.python.org/pypi/cupy)
 [![GitHub license](https://img.shields.io/github/license/cupy/cupy.svg)](https://github.com/cupy/cupy)
-[![travis](https://img.shields.io/travis/cupy/cupy.svg)](https://travis-ci.org/cupy/cupy)
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
 [![Gitter](https://badges.gitter.im/cupy/community.svg)](https://gitter.im/cupy/community)
 [![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
@@ -15,14 +14,14 @@
 | [**Tutorial**](https://docs.cupy.dev/en/stable/tutorial/)
 | [**Examples**](https://github.com/cupy/cupy/tree/master/examples)
 | [**API Reference**](https://docs.cupy.dev/en/stable/reference/)
-| **Forum** ([en](https://groups.google.com/forum/#!forum/cupy), [ja](https://groups.google.com/forum/#!forum/cupy-ja))
+| [**Forum**](https://groups.google.com/forum/#!forum/cupy)
 
 *CuPy* is an implementation of NumPy-compatible multi-dimensional array on CUDA.
 CuPy consists of the core multi-dimensional array class, `cupy.ndarray`, and [many functions](https://docs.cupy.dev/en/stable/reference/comparison.html) on it.
 
 ## Installation
 
-Wheels (precompiled binary packages) are available for Linux (Python 3.5+) and Windows (Python 3.6+).
+Wheels (precompiled binary packages) are available for Linux and Windows.
 Choose the right package for your CUDA Toolkit version.
 
 | CUDA  | Command                        |
@@ -33,6 +32,7 @@ Choose the right package for your CUDA Toolkit version.
 | v10.1 | `pip install cupy-cuda101`     |
 | v10.2 | `pip install cupy-cuda102`     |
 | v11.0 | `pip install cupy-cuda110`     |
+| v11.1 | `pip install cupy-cuda111`     |
 
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or to build from source.
 

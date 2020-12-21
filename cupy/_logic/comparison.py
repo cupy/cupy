@@ -2,6 +2,7 @@ import numpy
 
 import cupy
 from cupy import core
+from cupy._logic import content
 
 
 _is_close = core.create_ufunc(
@@ -38,12 +39,14 @@ _is_close_complex = core.create_ufunc(
 )
 
 
-def array_equal(a1, a2):
+def array_equal(a1, a2, equal_nan=False):
     """Returns ``True`` if two arrays are element-wise exactly equal.
 
     Args:
         a1 (cupy.ndarray): Input array to compare.
         a2 (cupy.ndarray): Input array to compare.
+        equal_nan (bool): If ``True``, NaN's in ``a1`` will be considered equal
+            to NaN's in ``a2``.
 
     Returns:
         cupy.ndarray: A boolean 0-dim array.
@@ -54,7 +57,15 @@ def array_equal(a1, a2):
     """
     if a1.shape != a2.shape:
         return cupy.array(False)
-    return (a1 == a2).all()
+    if not equal_nan:
+        return (a1 == a2).all()
+    # Handling NaN values if equal_nan is True
+    a1nan, a2nan = content.isnan(a1), content.isnan(a2)
+    # NaN's occur at different locations
+    if not (a1nan == a2nan).all():
+        return cupy.array(False)
+    # Shapes of a1, a2 and masks are guaranteed to be consistent by this point
+    return (a1[~a1nan] == a2[~a1nan]).all()
 
 
 def allclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):

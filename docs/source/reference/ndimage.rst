@@ -49,6 +49,7 @@ Fourier Filters
    :toctree: generated/
    :nosignatures:
 
+   cupyx.scipy.ndimage.fourier_ellipsoid
    cupyx.scipy.ndimage.fourier_gaussian
    cupyx.scipy.ndimage.fourier_shift
    cupyx.scipy.ndimage.fourier_uniform
@@ -65,6 +66,8 @@ Interpolation
    cupyx.scipy.ndimage.map_coordinates
    cupyx.scipy.ndimage.rotate
    cupyx.scipy.ndimage.shift
+   cupyx.scipy.ndimage.spline_filter
+   cupyx.scipy.ndimage.spline_filter1d
    cupyx.scipy.ndimage.zoom
 
 
@@ -75,8 +78,17 @@ Measurements
    :toctree: generated/
    :nosignatures:
 
+   cupyx.scipy.ndimage.center_of_mass
+   cupyx.scipy.ndimage.extrema
+   cupyx.scipy.ndimage.histogram
    cupyx.scipy.ndimage.label
+   cupyx.scipy.ndimage.labeled_comprehension
+   cupyx.scipy.ndimage.maximum
+   cupyx.scipy.ndimage.maximum_position
    cupyx.scipy.ndimage.mean
+   cupyx.scipy.ndimage.median
+   cupyx.scipy.ndimage.minimum
+   cupyx.scipy.ndimage.minimum_position
    cupyx.scipy.ndimage.standard_deviation
    cupyx.scipy.ndimage.sum
    cupyx.scipy.ndimage.variance
@@ -89,10 +101,23 @@ Morphology
    :toctree: generated/
    :nosignatures:
 
+   cupyx.scipy.ndimage.binary_closing
+   cupyx.scipy.ndimage.binary_dilation
+   cupyx.scipy.ndimage.binary_erosion
+   cupyx.scipy.ndimage.binary_fill_holes
+   cupyx.scipy.ndimage.binary_hit_or_miss
+   cupyx.scipy.ndimage.binary_opening
+   cupyx.scipy.ndimage.binary_propagation
+   cupyx.scipy.ndimage.black_tophat
+   cupyx.scipy.ndimage.generate_binary_structure
    cupyx.scipy.ndimage.grey_closing
    cupyx.scipy.ndimage.grey_dilation
    cupyx.scipy.ndimage.grey_erosion
    cupyx.scipy.ndimage.grey_opening
+   cupyx.scipy.ndimage.iterate_structure
+   cupyx.scipy.ndimage.morphological_gradient
+   cupyx.scipy.ndimage.morphological_laplace
+   cupyx.scipy.ndimage.white_tophat
 
 
 OpenCV mode

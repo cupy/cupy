@@ -12,8 +12,18 @@ import cupy
 from cupy.cuda cimport device
 
 
+DEF CYTHON_BUILD_VER = cython_version
+cython_build_ver = CYTHON_BUILD_VER
+
+
 ENABLE_SLICE_COPY = bool(
     int(os.environ.get('CUPY_EXPERIMENTAL_SLICE_COPY', 0)))
+
+
+CUDA_ARRAY_INTERFACE_SYNC = bool(
+    int(os.environ.get('CUPY_CUDA_ARRAY_INTERFACE_SYNC', 1)))
+CUDA_ARRAY_INTERFACE_EXPORT_VERSION = int(
+    os.environ.get('CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION', 3))
 
 
 cdef list _memos = []

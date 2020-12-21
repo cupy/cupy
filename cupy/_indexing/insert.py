@@ -162,7 +162,7 @@ def fill_diagonal(a, val, wrap=False):
            [0, 5, 0],
            [0, 0, 5]])
 
-     .. seealso:: :func:`numpy.fill_diagonal`
+    .. seealso:: :func:`numpy.fill_diagonal`
     """
     # The followings are imported from the original numpy
     if a.ndim < 2:
@@ -181,7 +181,7 @@ def fill_diagonal(a, val, wrap=False):
 
 
 def diag_indices(n, ndim=2):
-    """ Return the indices to access the main diagonal of an array.
+    """Return the indices to access the main diagonal of an array.
 
     Returns a tuple of indices that can be used to access the main
     diagonal of an array with ``ndim >= 2`` dimensions and shape
@@ -195,8 +195,9 @@ def diag_indices(n, ndim=2):
     Examples
     --------
     Create a set of indices to access the diagonal of a (4, 4) array:
-    >>> dig = cupy.diag_indices(4)
-    >>> dig
+
+    >>> di = cupy.diag_indices(4)
+    >>> di
     (array([0, 1, 2, 3]), array([0, 1, 2, 3]))
     >>> a = cupy.arange(16).reshape(4, 4)
     >>> a
@@ -212,19 +213,23 @@ def diag_indices(n, ndim=2):
            [ 12,  13,  14, 100]])
 
     Create indices to manipulate a 3-D array:
+
     >>> d3 = cupy.diag_indices(2, 3)
     >>> d3
     (array([0, 1]), array([0, 1]), array([0, 1]))
+
     And use it to set the diagonal of an array of zeros to 1:
+
     >>> a = cupy.zeros((2, 2, 2), dtype=int)
     >>> a[d3] = 1
     >>> a
     array([[[1, 0],
             [0, 0]],
+    <BLANKLINE>
            [[0, 0],
             [0, 1]]])
 
-     .. seealso:: :func:`numpy.diag_indices`
+    .. seealso:: :func:`numpy.diag_indices`
 
     """
     idx = cupy.arange(n)
@@ -239,7 +244,7 @@ def diag_indices_from(arr):
     Args:
         arr (cupy.ndarray): At least 2-D.
 
-     .. seealso:: :func:`numpy.diag_indices_from`
+    .. seealso:: :func:`numpy.diag_indices_from`
 
     """
     if not isinstance(arr, cupy.ndarray):

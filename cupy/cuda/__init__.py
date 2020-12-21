@@ -34,6 +34,11 @@ class _UnavailableModule():
 
 from cupy.cuda import cub  # NOQA
 
+if not runtime.is_hip and driver.get_build_version() > 0:
+    from cupy.cuda import jitify  # NOQA
+else:
+    jitify = None
+
 try:
     from cupy.cuda import nvtx  # NOQA
 except ImportError:
@@ -159,6 +164,10 @@ def profile():
     >>> with cupy.cuda.profile():
     ...    # do something you want to measure
     ...    pass
+
+    .. note::
+        When starting ``nvprof`` from the command line, manually setting
+        ``--profile-from-start off`` may be required for the desired behavior.
 
     """
     profiler.start()

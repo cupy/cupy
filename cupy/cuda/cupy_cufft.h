@@ -139,8 +139,8 @@ cufftResult_t cufftXtExecDescriptorZ2Z(...) {
 
 #else  // defined(CUPY_NO_CUDA)
 
-#include "../../cupy_backends/cuda/cupy_cuda_common.h"
-#include "../../cupy_backends/cuda/cupy_cuComplex.h"
+#include "../../cupy_backends/stub/cupy_cuda_common.h"
+#include "../../cupy_backends/stub/cupy_cuComplex.h"
 
 extern "C" {
 
