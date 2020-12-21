@@ -572,7 +572,18 @@ cublasStatus_t cublasCgeam(
         int m, int n, const cuComplex *alpha,
         const cuComplex *A, int lda, const cuComplex *beta, const cuComplex *B, int ldb,
         cuComplex *C, int ldc) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+    if (HIP_VERSION < 307) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasCgeam(handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb), m, n,
+                        reinterpret_cast<const hipblasComplex*>(alpha),
+                        reinterpret_cast<const hipblasComplex*>(A),
+                        lda,
+                        reinterpret_cast<const hipblasComplex*>(beta),
+                        reinterpret_cast<const hipblasComplex*>(B),
+                        ldb,
+                        reinterpret_cast<hipblasComplex*>(C),
+                        ldc);
 }
 
 cublasStatus_t cublasZgeam(
@@ -580,8 +591,19 @@ cublasStatus_t cublasZgeam(
         cublasOperation_t transa, cublasOperation_t transb,
         int m, int n, const cuDoubleComplex *alpha,
         const cuDoubleComplex *A, int lda, const cuDoubleComplex *beta, const cuDoubleComplex *B, int ldb,
-	cuDoubleComplex *C, int ldc) {
-    return HIPBLAS_STATUS_NOT_SUPPORTED;
+	    cuDoubleComplex *C, int ldc) {
+    if (HIP_VERSION < 307) {
+        return HIPBLAS_STATUS_NOT_SUPPORTED;
+    }
+    return hipblasZgeam(handle, convert_hipblasOperation_t(transa), convert_hipblasOperation_t(transb), m, n,
+                        reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                        reinterpret_cast<const hipblasDoubleComplex*>(A),
+                        lda,
+                        reinterpret_cast<const hipblasDoubleComplex*>(beta),
+                        reinterpret_cast<const hipblasDoubleComplex*>(B),
+                        ldb,
+                        reinterpret_cast<hipblasDoubleComplex*>(C),
+                        ldc);
 }
 
 cublasStatus_t cublasSdgmm(...) {
