@@ -27,7 +27,7 @@ def _check_parameter(func_name, order, mode):
         raise NotImplementedError('spline order is not supported')
 
     if mode in ['grid-mirror', 'grid-wrap', 'grid-reflect', 'wrap', 'reflect']:
-        cupy._util.experimental(f"mode '{mode}' is currently experimental")
+        cupy._util.experimental(f"mode '{mode}'")
 
     if mode not in ('constant', 'grid-constant', 'nearest', 'mirror',
                     'reflect', 'grid-mirror', 'wrap', 'grid-wrap', 'opencv',

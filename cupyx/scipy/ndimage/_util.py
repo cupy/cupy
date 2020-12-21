@@ -47,7 +47,7 @@ def _check_origin(origin, width):
 
 def _check_mode(mode):
     if mode in ['grid-mirror', 'grid-wrap', 'grid-reflect']:
-        cupy._util.experimental(f"mode '{mode}' is currently experimental")
+        cupy._util.experimental(f"mode '{mode}'")
     if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap',
                     'grid-mirror', 'grid-wrap', 'grid-reflect'):
         msg = f'boundary mode not supported (actual: {mode})'
