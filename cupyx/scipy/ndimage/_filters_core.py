@@ -82,6 +82,8 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     output = _util._get_output(output, input)
     modes = _util._fix_sequence_arg(mode, input.ndim, 'mode',
                                     _util._check_mode)
+    # for filters, "wrap" is a synonym for "grid-wrap".
+    modes = ['grid-wrap' if m == 'wrap' else m for m in modes]
     origins = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
@@ -194,6 +196,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         in_params += ', raw M mask'
     out_params = 'Y y'
 
+    # for filters, "wrap" is a synonym for "grid-wrap"
+    mode = 'grid-wrap' if mode == 'wrap' else mode
+
     # CArray: remove xstride_{j}=... from string
     size = ('%s xsize_{j}=x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
             ', xstride_{j}=x.strides()[{j}];' % int_type)
@@ -273,8 +278,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                ws_init=ws_init, ws_pre=ws_pre, ws_post=ws_post,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
+    mode_str = mode.replace('-', '_')  # avoid potential hyphen in kernel name
     name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
-        name, ndim, mode, '_'.join(['{}'.format(x) for x in w_shape]))
+        name, ndim, mode_str, '_'.join(['{}'.format(x) for x in w_shape]))
     if all_weights_nonzero:
         name += '_all_nonzero'
     if int_type == 'ptrdiff_t':
