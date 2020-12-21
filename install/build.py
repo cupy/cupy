@@ -10,7 +10,6 @@ import tempfile
 from install import utils
 
 
-PLATFORM_DARWIN = sys.platform.startswith('darwin')
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
@@ -155,12 +154,6 @@ def get_compiler_setting(use_hip):
 
     if use_hip:
         extra_compile_args.append('-std=c++11')
-
-    if PLATFORM_DARWIN:
-        if cuda_path:
-            library_dirs.append('/usr/local/cuda/lib')
-        elif rocm_path:
-            library_dirs.append('/opt/rocm/lib')
 
     if PLATFORM_WIN32:
         nvtoolsext_path = os.environ.get('NVTOOLSEXT_PATH', '')
