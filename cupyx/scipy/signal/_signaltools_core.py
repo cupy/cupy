@@ -163,7 +163,7 @@ def _apply_conv_mode(full, s1, s2, mode, axes):
     return cupy.ascontiguousarray(full[slices])
 
 
-__EXP_N1 = 0.36787944117144232159553 # exp(-1)
+__EXP_N1 = 0.36787944117144232159553  # exp(-1)
 
 
 def _optimal_oa_block_size(overlap):
@@ -173,7 +173,7 @@ def _optimal_oa_block_size(overlap):
     Computed as ``ceil(-overlap*W(-1/(2*e*overlap)))`` where ``W(z)`` is the
     Lambert W function solved as per ``scipy.special.lambertw(z, -1)`` with a
     fixed 4 iterations.
-    
+
     Returned size should still be given to ``cupyx.scipy.fft.next_fast_len()``.
     """
 
@@ -189,8 +189,8 @@ def _optimal_oa_block_size(overlap):
     #      cdef int i
 
     # Compute W(-1/(2*e*overlap))
-    z = -__EXP_N1/(2*overlap) # value to compute for
-    w = -1 - math.log(2*overlap) # initial guess
+    z = -__EXP_N1/(2*overlap)  # value to compute for
+    w = -1 - math.log(2*overlap)  # initial guess
     for i in range(4):
         ew = math.exp(w)
         wew = w*ew
