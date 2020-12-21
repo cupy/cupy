@@ -41,6 +41,7 @@ def _get_coord_map(ndim, nprepad=0):
     for j in range(ndim):
         ops.append(f'''
     W c_{j} = coords[i + {j} * ncoords]{pre};''')
+    return ops
 
 
 def _get_coord_zoom_and_shift(ndim, nprepad=0):
@@ -93,7 +94,6 @@ def _get_coord_zoom_and_shift_grid(ndim, nprepad=0):
         ops.append(f'''
     W c_{j} = zoom[{j}] * ((W)in_coord[{j}] - shift[j] + 0.5) - 0.5{pre};''')
     return ops
-
 
 
 def _get_coord_zoom(ndim, nprepad=0):
@@ -224,7 +224,7 @@ def _unravel_loop_index(shape, uint_t='unsigned int'):
 
 
 def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
-                            order, name='', integer_output=False, nprepad=0,):
+                            order, name='', integer_output=False, nprepad=0):
     """
     Args:
         coord_func (function): generates code to do the coordinate
