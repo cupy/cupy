@@ -79,6 +79,28 @@ cusolverStatus_t cusolverDnDpotrf_bufferSize(cusolverDnHandle_t handle,
     return rocblas_status_success;
 }
 
+cusolverStatus_t cusolverDnCpotrf_bufferSize(cusolverDnHandle_t handle,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             cuComplex *A,
+                                             int lda,
+                                             int *Lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnZpotrf_bufferSize(cusolverDnHandle_t handle,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             cuDoubleComplex *A,
+                                             int lda,
+                                             int *Lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *Lwork = 0;
+    return rocblas_status_success;
+}
+
 cusolverStatus_t cusolverDnSpotrf(cusolverDnHandle_t handle,
                                   cublasFillMode_t uplo,
                                   int n,
@@ -105,6 +127,38 @@ cusolverStatus_t cusolverDnDpotrf(cusolverDnHandle_t handle,
                             n, A, lda, devInfo);
 }
 
+cusolverStatus_t cusolverDnCpotrf(cusolverDnHandle_t handle,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  cuComplex *A,
+                                  int lda,
+                                  cuComplex *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    if (HIP_VERSION < 306) {
+        return rocblas_status_not_implemented;
+    }
+    // ignore Workspace and Lwork as rocSOLVER does not need them
+    return rocsolver_cpotrf(handle, convert_rocblas_fill(uplo), n,
+                            reinterpret_cast<rocblas_float_complex*>(A), lda, devInfo);
+}
+
+cusolverStatus_t cusolverDnZpotrf(cusolverDnHandle_t handle,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  cuDoubleComplex *A,
+                                  int lda,
+                                  cuDoubleComplex *Workspace,
+                                  int Lwork,
+                                  int *devInfo) {
+    if (HIP_VERSION < 306) {
+        return rocblas_status_not_implemented;
+    }
+    // ignore Workspace and Lwork as rocSOLVER does not need them
+    return rocsolver_zpotrf(handle, convert_rocblas_fill(uplo), n,
+                            reinterpret_cast<rocblas_double_complex*>(A), lda, devInfo);
+}
+
 cusolverStatus_t cusolverDnSpotrfBatched(cusolverDnHandle_t handle,
                                          cublasFillMode_t uplo,
                                          int n,
@@ -125,6 +179,36 @@ cusolverStatus_t cusolverDnDpotrfBatched(cusolverDnHandle_t handle,
                                          int batchSize) {
     return rocsolver_dpotrf_batched(handle, convert_rocblas_fill(uplo),
                                     n, Aarray, lda, infoArray, batchSize);
+}
+
+cusolverStatus_t cusolverDnCpotrfBatched(cusolverDnHandle_t handle,
+                                         cublasFillMode_t uplo,
+                                         int n,
+                                         cuComplex *Aarray[],
+                                         int lda,
+                                         int *infoArray,
+                                         int batchSize) {
+    if (HIP_VERSION < 306) {
+        return rocblas_status_not_implemented;
+    }
+    return rocsolver_cpotrf_batched(handle, convert_rocblas_fill(uplo), n,
+                                    reinterpret_cast<rocblas_float_complex* const*>(Aarray), lda,
+                                    infoArray, batchSize);
+}
+
+cusolverStatus_t cusolverDnZpotrfBatched(cusolverDnHandle_t handle,
+                                         cublasFillMode_t uplo,
+                                         int n,
+                                         cuDoubleComplex *Aarray[],
+                                         int lda,
+                                         int *infoArray,
+                                         int batchSize) {
+    if (HIP_VERSION < 306) {
+        return rocblas_status_not_implemented;
+    }
+    return rocsolver_zpotrf_batched(handle, convert_rocblas_fill(uplo), n,
+                                    reinterpret_cast<rocblas_double_complex* const*>(Aarray), lda,
+                                    infoArray, batchSize);
 }
 
 
@@ -540,7 +624,7 @@ cusolverStatus_t cusolverDnDormqr(cusolverDnHandle_t handle,
 }
 
 
-/* all of the stubs here are unsupported functions; the supported ones are in cupy_hip.h */
+/* all of the stubs below are unsupported functions; the supported ones are moved to above */
 
 typedef enum{} cusolverEigType_t;
 typedef enum{} cusolverEigMode_t;
@@ -557,31 +641,6 @@ cusolverStatus_t cusolverSpSetStream(...) {
     return rocblas_status_not_implemented;
 }
 
-
-/* ---------- potrf ---------- */
-cusolverStatus_t cusolverDnCpotrf_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZpotrf_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnCpotrf(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZpotrf(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnCpotrfBatched(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZpotrfBatched(...) {
-    return rocblas_status_not_implemented;
-}
 
 
 /* ---------- potrs ---------- */
