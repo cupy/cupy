@@ -240,17 +240,18 @@ def _quantile_unchecked(a, q, axis=None, out=None, interpolation='linear',
             ret = cupy.rollaxis(out, 0, out.ndim)
 
         cupy.ElementwiseKernel(
-            'S idx, raw T a, raw int32 offset', 'U ret',
+            'S idx, raw T a, raw int32 offset, raw int32 size', 'U ret',
             '''
             ptrdiff_t idx_below = floor(idx);
             U weight_above = idx - idx_below;
 
             ptrdiff_t offset_i = _ind.get()[0] * offset;
+            ptrdiff_t max_idx = size - 1;
             ret = a[offset_i + idx_below] * (1.0 - weight_above)
-              + a[offset_i + idx_below + 1] * weight_above;
+              + a[min(offset_i + idx_below + 1, max_idx)] * weight_above;
             ''',
             'percentile_weightnening'
-        )(indices, ap, ap.shape[-1] if ap.ndim > 1 else 0, ret)
+        )(indices, ap, ap.shape[-1] if ap.ndim > 1 else 0, ap.size, ret)
         ret = cupy.rollaxis(ret, -1)  # Roll q dimension back to first axis
 
     if zerod:
