@@ -23,6 +23,7 @@ static rocblas_side convert_rocblas_side(cublasSideMode_t mode) {
     return static_cast<rocblas_side>(static_cast<int>(mode) + 141);
 }
 
+#if HIP_VERSION >= 309
 static rocblas_svect convert_rocblas_svect(signed char mode) {
     switch(mode) {
         case 'A': return rocblas_svect_all;
@@ -32,6 +33,7 @@ static rocblas_svect convert_rocblas_svect(signed char mode) {
         default: throw std::runtime_error("unrecognized mode");
     }
 }
+#endif
 
 
 // rocSOLVER
@@ -145,12 +147,13 @@ cusolverStatus_t cusolverDnCpotrf(cusolverDnHandle_t handle,
                                   cuComplex *Workspace,
                                   int Lwork,
                                   int *devInfo) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     // ignore Workspace and Lwork as rocSOLVER does not need them
     return rocsolver_cpotrf(handle, convert_rocblas_fill(uplo), n,
                             reinterpret_cast<rocblas_float_complex*>(A), lda, devInfo);
+    #endif
 }
 
 cusolverStatus_t cusolverDnZpotrf(cusolverDnHandle_t handle,
@@ -161,12 +164,13 @@ cusolverStatus_t cusolverDnZpotrf(cusolverDnHandle_t handle,
                                   cuDoubleComplex *Workspace,
                                   int Lwork,
                                   int *devInfo) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     // ignore Workspace and Lwork as rocSOLVER does not need them
     return rocsolver_zpotrf(handle, convert_rocblas_fill(uplo), n,
                             reinterpret_cast<rocblas_double_complex*>(A), lda, devInfo);
+    #endif
 }
 
 cusolverStatus_t cusolverDnSpotrfBatched(cusolverDnHandle_t handle,
@@ -198,12 +202,13 @@ cusolverStatus_t cusolverDnCpotrfBatched(cusolverDnHandle_t handle,
                                          int lda,
                                          int *infoArray,
                                          int batchSize) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     return rocsolver_cpotrf_batched(handle, convert_rocblas_fill(uplo), n,
                                     reinterpret_cast<rocblas_float_complex* const*>(Aarray), lda,
                                     infoArray, batchSize);
+    #endif
 }
 
 cusolverStatus_t cusolverDnZpotrfBatched(cusolverDnHandle_t handle,
@@ -213,12 +218,13 @@ cusolverStatus_t cusolverDnZpotrfBatched(cusolverDnHandle_t handle,
                                          int lda,
                                          int *infoArray,
                                          int batchSize) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     return rocsolver_zpotrf_batched(handle, convert_rocblas_fill(uplo), n,
                                     reinterpret_cast<rocblas_double_complex* const*>(Aarray), lda,
                                     infoArray, batchSize);
+    #endif
 }
 
 
@@ -587,13 +593,14 @@ cusolverStatus_t cusolverDnCungqr(cusolverDnHandle_t handle,
                                   cuComplex *work,
                                   int lwork,
                                   int *info) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     // ignore work, lwork and info as rocSOLVER does not need them
     return rocsolver_cungqr(handle, m, n, k,
                             reinterpret_cast<rocblas_float_complex*>(A), lda,
                             reinterpret_cast<rocblas_float_complex*>(const_cast<cuComplex*>(tau)));
+    #endif
 }
 
 cusolverStatus_t cusolverDnZungqr(cusolverDnHandle_t handle,
@@ -606,13 +613,14 @@ cusolverStatus_t cusolverDnZungqr(cusolverDnHandle_t handle,
                                   cuDoubleComplex *work,
                                   int lwork,
                                   int *info) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     // ignore work, lwork and info as rocSOLVER does not need them
     return rocsolver_zungqr(handle, m, n, k,
                             reinterpret_cast<rocblas_double_complex*>(A), lda,
                             reinterpret_cast<rocblas_double_complex*>(const_cast<cuDoubleComplex*>(tau)));
+    #endif
 }
 
 
@@ -749,14 +757,15 @@ cusolverStatus_t cusolverDnCunmqr(cusolverDnHandle_t handle,
                                   cuComplex *work,
                                   int lwork,
                                   int *devInfo) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     // ignore work, lwork and devInfo as rocSOLVER does not need them
     return rocsolver_cunmqr(handle, convert_rocblas_side(side), convert_rocblas_operation(trans),
                             m, n, k, reinterpret_cast<rocblas_float_complex*>(const_cast<cuComplex*>(A)),
                             lda, reinterpret_cast<rocblas_float_complex*>(const_cast<cuComplex*>(tau)),
                             reinterpret_cast<rocblas_float_complex*>(C), ldc);
+    #endif
 }
 
 cusolverStatus_t cusolverDnZunmqr(cusolverDnHandle_t handle,
@@ -773,14 +782,15 @@ cusolverStatus_t cusolverDnZunmqr(cusolverDnHandle_t handle,
                                   cuDoubleComplex *work,
                                   int lwork,
                                   int *devInfo) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     // ignore work, lwork and devInfo as rocSOLVER does not need them
     return rocsolver_zunmqr(handle, convert_rocblas_side(side), convert_rocblas_operation(trans),
                             m, n, k, reinterpret_cast<rocblas_double_complex*>(const_cast<cuDoubleComplex*>(A)),
                             lda, reinterpret_cast<rocblas_double_complex*>(const_cast<cuDoubleComplex*>(tau)),
                             reinterpret_cast<rocblas_double_complex*>(C), ldc);
+    #endif
 }
 
 
@@ -837,13 +847,14 @@ cusolverStatus_t cusolverDnSgesvd(cusolverDnHandle_t handle,
                                   int lwork,
                                   float *rwork,
                                   int *info) {
-    if (HIP_VERSION < 309) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 309
+    return rocblas_status_not_implemented;
+    #else
     // ignore work and lwork as rocSOLVER does not need them
     return rocsolver_sgesvd(handle, convert_rocblas_svect(jobu), convert_rocblas_svect(jobvt),
                             m, n, A, lda, S, U, ldu, VT, ldvt, rwork, rocblas_outofplace,  // always out-of-place
                             info);
+    #endif
 }
 
 cusolverStatus_t cusolverDnDgesvd(cusolverDnHandle_t handle,
@@ -862,13 +873,14 @@ cusolverStatus_t cusolverDnDgesvd(cusolverDnHandle_t handle,
                                   int lwork,
                                   double *rwork,
                                   int *info) {
-    if (HIP_VERSION < 309) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 309
+    return rocblas_status_not_implemented;
+    #else
     // ignore work and lwork as rocSOLVER does not need them
     return rocsolver_dgesvd(handle, convert_rocblas_svect(jobu), convert_rocblas_svect(jobvt),
                             m, n, A, lda, S, U, ldu, VT, ldvt, rwork, rocblas_outofplace,  // always out-of-place
                             info);
+    #endif
 }
 
 cusolverStatus_t cusolverDnCgesvd(cusolverDnHandle_t handle,
@@ -887,9 +899,9 @@ cusolverStatus_t cusolverDnCgesvd(cusolverDnHandle_t handle,
                                   int lwork,
                                   float *rwork,
                                   int *info) {
-    if (HIP_VERSION < 309) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 309
+    return rocblas_status_not_implemented;
+    #else
     // ignore work and lwork as rocSOLVER does not need them
     return rocsolver_cgesvd(handle, convert_rocblas_svect(jobu), convert_rocblas_svect(jobvt),
                             m, n, reinterpret_cast<rocblas_float_complex*>(A), lda,
@@ -897,6 +909,7 @@ cusolverStatus_t cusolverDnCgesvd(cusolverDnHandle_t handle,
                             reinterpret_cast<rocblas_float_complex*>(VT), ldvt, rwork,
                             rocblas_outofplace,  // always out-of-place
                             info);
+    #endif
 }
 
 cusolverStatus_t cusolverDnZgesvd(cusolverDnHandle_t handle,
@@ -915,9 +928,9 @@ cusolverStatus_t cusolverDnZgesvd(cusolverDnHandle_t handle,
                                   int lwork,
                                   double *rwork,
                                   int *info) {
-    if (HIP_VERSION < 309) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 309
+    return rocblas_status_not_implemented;
+    #else
     // ignore work and lwork as rocSOLVER does not need them
     return rocsolver_zgesvd(handle, convert_rocblas_svect(jobu), convert_rocblas_svect(jobvt),
                             m, n, reinterpret_cast<rocblas_double_complex*>(A), lda,
@@ -925,6 +938,7 @@ cusolverStatus_t cusolverDnZgesvd(cusolverDnHandle_t handle,
                             reinterpret_cast<rocblas_double_complex*>(VT), ldvt, rwork,
                             rocblas_outofplace,  // always out-of-place
                             info);
+    #endif
 }
 
 
@@ -977,11 +991,12 @@ cusolverStatus_t cusolverDnSgebrd(cusolverDnHandle_t handle,
                                   float *Work,
                                   int Lwork,
                                   int *devInfo) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     // ignore work, lwork and devinfo as rocSOLVER does not need them
     return rocsolver_sgebrd(handle, m, n, A, lda, D, E, TAUQ, TAUP);
+    #endif
 }
 
 cusolverStatus_t cusolverDnDgebrd(cusolverDnHandle_t handle,
@@ -996,11 +1011,12 @@ cusolverStatus_t cusolverDnDgebrd(cusolverDnHandle_t handle,
                                   double *Work,
                                   int Lwork,
                                   int *devInfo) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     // ignore work, lwork and devinfo as rocSOLVER does not need them
     return rocsolver_dgebrd(handle, m, n, A, lda, D, E, TAUQ, TAUP);
+    #endif
 }
 
 cusolverStatus_t cusolverDnCgebrd(cusolverDnHandle_t handle,
@@ -1015,13 +1031,14 @@ cusolverStatus_t cusolverDnCgebrd(cusolverDnHandle_t handle,
                                   cuComplex *Work,
                                   int Lwork,
                                   int *devInfo) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     // ignore work, lwork and devinfo as rocSOLVER does not need them
     return rocsolver_cgebrd(handle, m, n, reinterpret_cast<rocblas_float_complex*>(A),
                             lda, D, E, reinterpret_cast<rocblas_float_complex*>(TAUQ),
                             reinterpret_cast<rocblas_float_complex*>(TAUP));
+    #endif
 }
 
 cusolverStatus_t cusolverDnZgebrd(cusolverDnHandle_t handle,
@@ -1036,13 +1053,14 @@ cusolverStatus_t cusolverDnZgebrd(cusolverDnHandle_t handle,
                                   cuDoubleComplex *Work,
                                   int Lwork,
                                   int *devInfo) {
-    if (HIP_VERSION < 306) {
-        return rocblas_status_not_implemented;
-    }
+    #if HIP_VERSION < 306
+    return rocblas_status_not_implemented;
+    #else
     // ignore work, lwork and devinfo as rocSOLVER does not need them
     return rocsolver_zgebrd(handle, m, n, reinterpret_cast<rocblas_double_complex*>(A),
                             lda, D, E, reinterpret_cast<rocblas_double_complex*>(TAUQ),
                             reinterpret_cast<rocblas_double_complex*>(TAUP));
+    #endif
 }
 
 
