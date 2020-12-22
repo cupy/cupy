@@ -25,6 +25,15 @@ _available_cuda_version = {
 
 _available_hip_version = {
     'potrfBatched': (306, None),
+    # Below are APIs supported by CUDA but not yet by HIP. We need them here
+    # so that our test suite can cover both platforms.
+    'gesvdj': (_numpy.inf, None),
+    'gesvda': (_numpy.inf, None),
+    'potrsBatched': (_numpy.inf, None),
+    'syevj': (_numpy.inf, None),
+    'gesv': (_numpy.inf, None),
+    'gels': (_numpy.inf, None),
+    'csrlsvqr': (_numpy.inf, None),
 }
 
 _available_compute_capability = {
