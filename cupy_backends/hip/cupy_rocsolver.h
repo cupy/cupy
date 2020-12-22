@@ -700,6 +700,90 @@ cusolverStatus_t cusolverDnDormqr(cusolverDnHandle_t handle,
 }
 
 
+/* ---------- unmqr ---------- */
+cusolverStatus_t cusolverDnCunmqr_bufferSize(cusolverDnHandle_t handle,
+                                             cublasSideMode_t side,
+                                             cublasOperation_t trans,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const cuComplex *A,
+                                             int lda,
+                                             const cuComplex *tau,
+                                             const cuComplex *C,
+                                             int ldc,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnZunmqr_bufferSize(cusolverDnHandle_t handle,
+                                             cublasSideMode_t side,
+                                             cublasOperation_t trans,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const cuDoubleComplex *A,
+                                             int lda,
+                                             const cuDoubleComplex *tau,
+                                             const cuDoubleComplex *C,
+                                             int ldc,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnCunmqr(cusolverDnHandle_t handle,
+                                  cublasSideMode_t side,
+                                  cublasOperation_t trans,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  const cuComplex *A,
+                                  int lda,
+                                  const cuComplex *tau,
+                                  cuComplex *C,
+                                  int ldc,
+                                  cuComplex *work,
+                                  int lwork,
+                                  int *devInfo) {
+    if (HIP_VERSION < 306) {
+        return rocblas_status_not_implemented;
+    }
+    // ignore work, lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_cunmqr(handle, convert_rocblas_side(side), convert_rocblas_operation(trans),
+                            m, n, k, reinterpret_cast<rocblas_float_complex*>(const_cast<cuComplex*>(A)),
+                            lda, reinterpret_cast<rocblas_float_complex*>(const_cast<cuComplex*>(tau)),
+                            reinterpret_cast<rocblas_float_complex*>(C), ldc);
+}
+
+cusolverStatus_t cusolverDnZunmqr(cusolverDnHandle_t handle,
+                                  cublasSideMode_t side,
+                                  cublasOperation_t trans,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  const cuDoubleComplex *A,
+                                  int lda,
+                                  const cuDoubleComplex *tau,
+                                  cuDoubleComplex *C,
+                                  int ldc,
+                                  cuDoubleComplex *work,
+                                  int lwork,
+                                  int *devInfo) {
+    if (HIP_VERSION < 306) {
+        return rocblas_status_not_implemented;
+    }
+    // ignore work, lwork and devInfo as rocSOLVER does not need them
+    return rocsolver_zunmqr(handle, convert_rocblas_side(side), convert_rocblas_operation(trans),
+                            m, n, k, reinterpret_cast<rocblas_double_complex*>(const_cast<cuDoubleComplex*>(A)),
+                            lda, reinterpret_cast<rocblas_double_complex*>(const_cast<cuDoubleComplex*>(tau)),
+                            reinterpret_cast<rocblas_double_complex*>(C), ldc);
+}
+
+
 /* ---------- gesvd ---------- */
 cusolverStatus_t cusolverDnSgesvd_bufferSize(cusolverDnHandle_t handle,
                                              int m,
@@ -896,23 +980,6 @@ cusolverStatus_t cusolverDnZpotrsBatched(...) {
     return rocblas_status_not_implemented;
 }
 
-
-/* ---------- unmqr ---------- */
-cusolverStatus_t cusolverDnCunmqr_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZunmqr_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnCunmqr(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZunmqr(...) {
-    return rocblas_status_not_implemented;
-}
 
 cusolverStatus_t cusolverDnSsytrf_bufferSize(...) {
     return rocblas_status_not_implemented;
