@@ -42,18 +42,27 @@ def transpile_enum_value(node):
     code.append('cpdef enum:')
 
     for e in node.type.type.values.enumerators:
+        # TODO: Recursively resolve expressions
         name = e.name
         if e.value is None:
             code.append('    ' + name)
         elif isinstance(e.value, c_ast.Constant):
             value = e.value.value
-            assert e.value.type == 'int'
+            assert e.value.type in ['int', 'unsigned int']
             code.append('    {} = {}'.format(name, value))
         elif isinstance(e.value, c_ast.UnaryOp):
             op = e.value.op
-            value = e.value.expr.value
-            assert e.value.expr.type == 'int'
-            code.append('    {} = {}{}'.format(name, op, value))
+            expr = e.value.expr
+            assert expr.type in ['int', 'unsigned int']
+            code.append('    {} = {}{}'.format(name, op, expr.value))
+        elif isinstance(e.value, c_ast.BinaryOp):
+            op = e.value.op
+            left = e.value.left
+            assert left.type in ['int', 'unsigned int']
+            right = e.value.right
+            assert right.type in ['int', 'unsigned int']
+            code.append('    {} = ({} {} {})'
+                        ''.format(name, left.value, op, right.value))
         else:
             assert False
     return '\n'.join(code)
@@ -88,7 +97,9 @@ def transpile_aux_struct_decl(env, directive, node, removed):
 
 # Assuming multiple functions do not use the same auxiliary structure.
 def transpile_aux_struct(env, directive):
-    if gen.is_headers_directive(directive):
+    if gen.is_cuda_versions_directive(directive):
+        return None
+    elif gen.is_headers_directive(directive):
         return None
     elif gen.is_regexes_directive(directive):
         return None
@@ -113,6 +124,9 @@ def transpile_aux_struct(env, directive):
 def transpile_wrapper_decl(env, directive, node, removed):
     assert isinstance(node.type, c_ast.FuncDecl)
 
+    # Get stream configuration for following steps
+    use_stream, fashion, _ = gen.directive_use_stream(directive)
+
     code = []
 
     # Comment if removed
@@ -120,14 +134,17 @@ def transpile_wrapper_decl(env, directive, node, removed):
         code.append('# REMOVED')
 
     # Function declaration
-    decl = gen_pyx.transpile_wrapper_def(env, directive, node)
+    decl = gen_pyx.transpile_wrapper_def(
+        env, directive, node, use_stream and fashion == 'pass')
     code.append('cpdef {}'.format(decl))
 
     return '\n'.join(code)
 
 
 def transpile_wrapper(env, directive):
-    if gen.is_headers_directive(directive):
+    if gen.is_cuda_versions_directive(directive):
+        return None
+    elif gen.is_headers_directive(directive):
         return None
     elif gen.is_regexes_directive(directive):
         return None

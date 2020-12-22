@@ -1,0 +1,142 @@
+# This code was automatically generated. Do not modify it directly.
+
+cimport cython  # NOQA
+from cython.mem cimport PyMem_Malloc, PyMem_Free
+from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
+
+from cupy_backends.cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport driver
+
+cdef extern from '../cupy_cutensor.h' nogil:
+    ctypedef struct cutensorHandle_t 'cutensorHandle_t':
+        int64_t fields[512]
+    ctypedef struct cutensorTensorDescriptor_t 'cutensorTensorDescriptor_t':
+        int64_t fields[64]
+    ctypedef struct cutensorContractionDescriptor_t 'cutensorContractionDescriptor_t':
+        int64_t fields[256]
+    ctypedef struct cutensorContractionPlan_t 'cutensorContractionPlan_t':
+        int64_t fields[640]
+    ctypedef struct cutensorContractionFind_t 'cutensorContractionFind_t':
+        int64_t fields[64]
+
+    const char* cutensorGetErrorString(Status status)
+
+    size_t cutensorGetVersion()
+
+
+cdef extern from '../cupy_cublas.h' nogil:
+{ffi}
+
+
+available = True
+
+
+###############################################################################
+# Version information
+###############################################################################
+
+cpdef size_t get_version():
+    return cutensorGetVersion()
+
+
+###############################################################################
+# Classes
+###############################################################################
+
+cdef class Handle:
+
+    def __init__(self):
+        self._ptr = PyMem_Malloc(sizeof(cutensorHandle_t))
+
+    def __dealloc__(self):
+        PyMem_Free(self._ptr)
+        self._ptr = NULL
+
+    @property
+    def ptr(self):
+        return <intptr_t>self._ptr
+
+
+cdef class TensorDescriptor:
+
+    def __init__(self):
+        self._ptr = PyMem_Malloc(sizeof(cutensorTensorDescriptor_t))
+
+    def __dealloc__(self):
+        PyMem_Free(self._ptr)
+        self._ptr = NULL
+
+    @property
+    def ptr(self):
+        return <intptr_t>self._ptr
+
+
+cdef class ContractionDescriptor:
+
+    def __init__(self):
+        self._ptr = PyMem_Malloc(sizeof(cutensorContractionDescriptor_t))
+
+    def __dealloc__(self):
+        PyMem_Free(self._ptr)
+        self._ptr = NULL
+
+    @property
+    def ptr(self):
+        return <intptr_t>self._ptr
+
+
+cdef class ContractionFind:
+
+    def __init__(self):
+        self._ptr = PyMem_Malloc(sizeof(cutensorContractionFind_t))
+
+    def __dealloc__(self):
+        PyMem_Free(self._ptr)
+        self._ptr = NULL
+
+    @property
+    def ptr(self):
+        return <intptr_t>self._ptr
+
+
+cdef class ContractionPlan:
+
+    def __init__(self):
+        self._ptr = PyMem_Malloc(sizeof(cutensorContractionPlan_t))
+
+    def __dealloc__(self):
+        PyMem_Free(self._ptr)
+        self._ptr = NULL
+
+    @property
+    def ptr(self):
+        return <intptr_t>self._ptr
+
+
+###############################################################################
+# Error handling
+###############################################################################
+
+class CuTensorError(RuntimeError):
+
+    def __init__(self, int status):
+        self.status = status
+        msg = cutensorGetErrorString(<Status>status)
+        super(CuTensorError, self).__init__(msg.decode())
+
+    def __reduce__(self):
+        return (type(self), (self.status,))
+
+
+@cython.profile(False)
+cdef inline check_status(int status):
+    if status != STATUS_SUCCESS:
+        raise CuTensorError(status)
+
+
+########################################
+# Auxiliary structures
+
+{aux_struct}
+
+{wrapper}

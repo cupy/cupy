@@ -26,7 +26,9 @@ def transpile_ffi_decl(env, node, removed):
 
 
 def transpile_ffi(env, directive):
-    if gen.is_headers_directive(directive):
+    if gen.is_cuda_versions_directive(directive):
+        return None
+    elif gen.is_headers_directive(directive):
         return None
     elif gen.is_regexes_directive(directive):
         return None
@@ -48,6 +50,7 @@ def transpile_ffi(env, directive):
 
 def transpile_aux_struct_decl(env, directive, node, removed):
     def argaux(env, node):
+        # dereference node
         name = gen.deref_var_name(node.name)
         if isinstance(node.type.type, c_ast.TypeDecl):
             type = gen.transpile_type_name(env, node.type.type)
@@ -82,7 +85,9 @@ def transpile_aux_struct_decl(env, directive, node, removed):
 
 # Assuming multiple functions do not use the same auxiliary structure.
 def transpile_aux_struct(env, directive):
-    if gen.is_headers_directive(directive):
+    if gen.is_cuda_versions_directive(directive):
+        return None
+    elif gen.is_headers_directive(directive):
         return None
     elif gen.is_regexes_directive(directive):
         return None
@@ -104,18 +109,30 @@ def transpile_aux_struct(env, directive):
         assert False
 
 
-def transpile_wrapper_def(env, directive, node):
+def transpile_wrapper_def(env, directive, node, pass_stream):
+    def is_stream_param(node):
+        return (isinstance(node.type, c_ast.TypeDecl)
+                and node.type.type.names[0] == 'cudaStream_t')
+
     def argaux(env, node):
         name = node.name
         type = gen.erased_type_name(env, node.type)
         if type is None:
             type = gen.transpile_type_name(env, node.type)
         return '{} {}'.format(type, name)
+
     assert isinstance(node.type, c_ast.FuncDecl)
+
+    if pass_stream:
+        params = [p for p in node.type.args.params if not is_stream_param(p)]
+        assert len(params) == len(node.type.args.params) - 1
+    else:
+        params = node.type.args.params
+
     if gen.is_directive_none_out(directive):
         assert gen.directive_except(directive) is None
         name = gen.transpile_func_name(env, directive, node)
-        args = [argaux(env, p) for p in node.type.args.params]
+        args = [argaux(env, p) for p in params]
         return '{}({})'.format(name, ', '.join(args))
     elif gen.is_directive_returned_out(directive):
         assert gen.directive_except(directive) is None
@@ -123,12 +140,12 @@ def transpile_wrapper_def(env, directive, node):
         if ret_type is None:
             ret_type = gen.transpile_type_name(env, node.type.type)
         name = gen.transpile_func_name(env, directive, node)
-        args = [argaux(env, p) for p in node.type.args.params]
+        args = [argaux(env, p) for p in params]
         return '{} {}({})'.format(ret_type, name, ', '.join(args))
     elif gen.is_directive_single_out(directive):
         out_name = gen.directive_single_out(directive)
-        out, params = gen.partition(
-            lambda p: p.name == out_name, node.type.args.params)
+        out, params1 = gen.partition(
+            lambda p: p.name == out_name, params)
         assert len(out) == 1, \
             '`{}` not found in API arguments'.format(out_name)
         # dereference out[0]
@@ -136,17 +153,17 @@ def transpile_wrapper_def(env, directive, node):
         if ret_type is None:
             ret_type = gen.transpile_type_name(env, out[0].type.type)
         name = gen.transpile_func_name(env, directive, node)
-        args = [argaux(env, p) for p in params]
+        args = [argaux(env, p) for p in params1]
         excpt = gen.directive_except(directive)
         return '{} {}({}) {}'.format(ret_type, name, ', '.join(args), excpt)
     elif gen.is_directive_multi_out(directive):
         assert gen.directive_except(directive) is None
         out_type, out_args = gen.directive_multi_out(directive)
-        outs, params = gen.partition(
-            lambda p: p.name in out_args, node.type.args.params)
+        outs, params1 = gen.partition(
+            lambda p: p.name in out_args, params)
         assert len(outs) > 1
         name = gen.transpile_func_name(env, directive, node)
-        args = [argaux(env, p) for p in params]
+        args = [argaux(env, p) for p in params1]
         return '{} {}({})'.format(out_type, name, ', '.join(args))
     else:
         assert False
@@ -183,8 +200,20 @@ def handler_name(node):
     assert False
 
 
+def stream_name(node):
+    assert isinstance(node, c_ast.Decl)
+    # Assuming the stream pointer's name is always 'stream'.
+    for param in node.type.args.params:
+        if param.name == 'stream':
+            return 'stream'
+    assert False
+
+
 def transpile_wrapper_decl(env, directive, node, removed):
     assert isinstance(node.type, c_ast.FuncDecl)
+
+    # Get stream configuration for following steps
+    use_stream, fashion, func_name = gen.directive_use_stream(directive)
 
     code = []
 
@@ -193,7 +222,8 @@ def transpile_wrapper_decl(env, directive, node, removed):
         code.append('# REMOVED')
 
     # Function definition
-    def_ = transpile_wrapper_def(env, directive, node)
+    def_ = transpile_wrapper_def(
+        env, directive, node, use_stream and fashion == 'pass')
     code.append('cpdef {}:'.format(def_))
 
     # Allocate space for the value to return
@@ -223,14 +253,22 @@ def transpile_wrapper_decl(env, directive, node, removed):
     else:
         assert False
 
-    # Set stream if necessary
-    use_stream, func_name = gen.directive_use_stream(directive)
     if use_stream:
-        handle = handler_name(node)
-        code.append('    if stream_module.enable_current_stream:')
-        code.append(
-            '        {}({}, stream_module.get_current_stream_ptr())'
-            ''.format(func_name, handle))
+        # Set stream if necessary
+        if fashion == 'set':
+            handle = handler_name(node)
+            code.append('    if stream_module.enable_current_stream:')
+            code.append(
+                '        {}({}, stream_module.get_current_stream_ptr())'
+                ''.format(func_name, handle))
+        # Assign the current stream pointer to a variable
+        elif fashion == 'pass':
+            stream = stream_name(node)
+            code.append(
+                '    cdef intptr_t {} = stream_module.get_current_stream_ptr()'
+                ''.format(stream))
+        else:
+            assert False
 
     # Call cuSPARSE API and check its returned status if necessary
     if gen.is_directive_returned_out(directive):
@@ -280,7 +318,9 @@ def transpile_wrapper_decl(env, directive, node, removed):
 
 
 def transpile_wrapper(env, directive):
-    if gen.is_headers_directive(directive):
+    if gen.is_cuda_versions_directive(directive):
+        return None
+    elif gen.is_headers_directive(directive):
         return None
     elif gen.is_regexes_directive(directive):
         return None

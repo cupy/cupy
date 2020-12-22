@@ -29,9 +29,6 @@ cdef extern from *:
 
 {aux_struct}
 
-
-# TODO: should also expose functions?
-
 {wrapper}
 
 # Define `gemmEx` by hands for a backward compatibility reason.

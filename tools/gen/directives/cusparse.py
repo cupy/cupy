@@ -1,5 +1,6 @@
 [
     # Setting
+    ('CudaVersions', ['11.0', '10.2']),
     ('Headers', ['cusparse.h']),
     ('Regexes', {
         'func': r'cusparse([A-Z].*)',
@@ -9,12 +10,12 @@
         'cuComplex': {
             'transpiled': 'cuComplex',
             'erased': 'complex',
-            'conversion': 'complex_to_cuda({})',
+            'conversion': 'complex_to_cuda({var})',
         },
         'cuDoubleComplex': {
             'transpiled': 'cuDoubleComplex',
             'erased': 'double complex',
-            'conversion': 'double_complex_to_cuda({})',
+            'conversion': 'double_complex_to_cuda({var})',
         },
     }),
     # cuSPARSE Management Function
@@ -140,110 +141,110 @@
     ('Comment', 'cuSPARSE Level 1 Function'),
     ('cusparse<t>gthr', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSPARSE Level 2 Function
     ('Comment', 'cuSPARSE Level 2 Function'),
     ('cusparse<t>csrmv', {  # REMOVED
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseCsrmvEx_bufferSize', {
         'out': 'bufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseCsrmvEx', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrsv2_bufferSize', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrsv2_analysis', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrsv2_solve', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcsrsv2_zeroPivot', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSPARSE Level 3 Function
     ('Comment', 'cuSPARSE Level 3 Function'),
     ('cusparse<t>csrmm', {  # REMOVED
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrmm2', {  # REMOVED
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrsm2_bufferSizeExt', {
         'out': 'pBufferSize',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrsm2_analysis', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrsm2_solve', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcsrsm2_zeroPivot', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSPARSE Extra Function
     ('Comment', 'cuSPARSE Extra Function'),
     ('cusparseXcsrgeamNnz', {  # REMOVED
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrgeam', {  # REMOVED
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrgeam2_bufferSizeExt', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcsrgeam2Nnz', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrgeam2', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcsrgemmNnz', {  # REMOVED
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrgemm', {  # REMOVED
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrgemm2_bufferSizeExt', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcsrgemm2Nnz', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrgemm2', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSPARSE Preconditioners - Incomplete Cholesky Factorization: level 0
     ('Comment', ('cuSPARSE Preconditioners - '
@@ -251,134 +252,134 @@
     ('cusparse<t>csric02_bufferSize', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csric02_analysis', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csric02', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcsric02_zeroPivot', {
         'out': 'position',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>bsric02_bufferSize', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>bsric02_analysis', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>bsric02', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXbsric02_zeroPivot', {
         'out': 'position',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSPARSE Preconditioners - Incomplete LU Factorization: level 0
     ('Comment', ('cuSPARSE Preconditioners - '
                  'Incomplete LU Factorization: level 0')),
     ('cusparse<t>csrilu02_numericBoost', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrilu02_bufferSize', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrilu02_analysis', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csrilu02', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcsrilu02_zeroPivot', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>bsrilu02_numericBoost', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>bsrilu02_bufferSize', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>bsrilu02_analysis', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>bsrilu02', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXbsrilu02_zeroPivot', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSPARSE Preconditioners - Tridiagonal Solve
     ('Comment', 'cuSPARSE Preconditioners - Tridiagonal Solve'),
     ('cusparse<t>gtsv2_bufferSizeExt', {
         'out': 'bufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>gtsv2', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>gtsv2_nopivot_bufferSizeExt', {
         'out': 'bufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>gtsv2_nopivot', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSPARSE Preconditioners - Batched Tridiagonal Solve
     ('Comment', 'cuSPARSE Preconditioners - Batched Tridiagonal Solve'),
     ('cusparse<t>gtsv2StridedBatch_bufferSizeExt', {
         'out': 'bufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>gtsv2StridedBatch', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>gtsvInterleavedBatch_bufferSizeExt', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>gtsvInterleavedBatch', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSPARSE Preconditioners - Batched Pentadiagonal Solve
     ('Comment', 'cuSPARSE Preconditioners - Batched Pentadiagonal Solve'),
     ('cusparse<t>gpsvInterleavedBatch_bufferSizeExt', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>gpsvInterleavedBatch', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSPARSE Reordering
     ('Comment', 'cuSPARSE Reorderings'),
@@ -386,19 +387,19 @@
     ('Comment', 'cuSPARSE Format Conversion'),
     ('cusparseXcoo2csr', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csc2dense', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcsr2coo', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csr2csc', {  # REMOVED
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseCsr2cscEx2_bufferSize', {
         'out': 'bufferSize',
@@ -407,67 +408,67 @@
     }),
     ('cusparseCsr2cscEx2', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csr2dense', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>nnz_compress', {
         'out': 'nnzC',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>csr2csr_compress', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>dense2csc', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>dense2csr', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparse<t>nnz', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseCreateIdentityPermutation', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcoosort_bufferSizeExt', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcoosortByRow', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcoosortByColumn', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcsrsort_bufferSizeExt', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcsrsort', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcscsort_bufferSizeExt', {
         'out': 'pBufferSizeInBytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseXcscsort', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSPARSE Generic API - Sparse Vector APIs
     ('Comment', 'cuSPARSE Generic API - Sparse Vector APIs'),
@@ -635,7 +636,7 @@
     }),
     ('cusparseSpVV', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseSpMV_bufferSize', {
         'out': 'bufferSize',
@@ -644,7 +645,7 @@
     }),
     ('cusparseSpMV', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseSpMM_bufferSize', {
         'out': 'bufferSize',
@@ -653,7 +654,7 @@
     }),
     ('cusparseSpMM', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusparseConstrainedGeMM_bufferSize', {
         'out': 'bufferSize',
@@ -662,6 +663,6 @@
     }),
     ('cusparseConstrainedGeMM', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
 ]

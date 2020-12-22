@@ -9,17 +9,17 @@
         'cusolver_int_t': {
             'transpiled': 'int',
             'erased': 'int',
-            'conversion': '{}',
+            'conversion': '{var}',
         },
         'cuComplex': {
             'transpiled': 'cuComplex',
             'erased': 'size_t',  # should be `intptr_t`?
-            'conversion': '(<cuComplex*>{})[0]',
+            'conversion': '(<{quals}cuComplex*>{var})[0]',
         },
         'cuDoubleComplex': {
             'transpiled': 'cuDoubleComplex',
             'erased': 'size_t',  # should be `intptr_t`?
-            'conversion': '(<cuDoubleComplex*>{})[0]',
+            'conversion': '(<{quals}cuDoubleComplex*>{var})[0]',
         },
     }),
     # Library Attributes
@@ -124,128 +124,128 @@
     ('cusolverDn<t>potrf_bufferSize', {
         'out': 'Lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>potrf', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>potrs', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>potrfBatched', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>potrsBatched', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>getrf_bufferSize', {
         'out': 'Lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>getrf', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>getrs', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>geqrf_bufferSize', {
         'out': 'lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>geqrf', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>{or,un}gqr_bufferSize', {
         'out': 'lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>{or,un}gqr', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>{or,un}mqr_bufferSize', {
         'out': 'lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>{or,un}mqr', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>sytrf_bufferSize', {
         'out': 'lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>sytrf', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t1><t2>gesv_bufferSize', {
         'out': 'lwork_bytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t1><t2>gesv', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t1><t2>gels_bufferSize', {
         'out': 'lwork_bytes',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t1><t2>gels', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSOLVER Dense LAPACK Function - Dense Eigenvalue Solver
     ('Comment', 'cuSOLVER Dense LAPACK Function - Dense Eigenvalue Solver'),
     ('cusolverDn<t>gebrd_bufferSize', {
         'out': 'Lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>gebrd', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>gesvd_bufferSize', {
         'out': 'lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>gesvd', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>gesvdj_bufferSize', {
         'out': 'lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>gesvdj', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>gesvdjBatched_bufferSize', {
         'out': 'lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>gesvdjBatched', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>gesvdaStridedBatched_bufferSize', {
         'out': 'lwork',
@@ -254,7 +254,7 @@
     }),
     ('cusolverDn<t>gesvdaStridedBatched', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>{sy,he}evd_bufferSize', {
         'out': 'lwork',
@@ -263,25 +263,25 @@
     }),
     ('cusolverDn<t>{sy,he}evd', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>{sy,he}evj_bufferSize', {
         'out': 'lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>{sy,he}evj', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>{sy,he}evjBatched_bufferSize', {
         'out': 'lwork',
         'except?': 0,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     ('cusolverDn<t>{sy,he}evjBatched', {
         'out': None,
-        'use_stream': True,
+        'use_stream': 'set',
     }),
     # cuSOLVER Sparse LAPACK Function - Helper Function
     ('Comment', 'cuSOLVER Sparse LAPACK Function - Helper Function'),
@@ -311,14 +311,14 @@
     ('Comment', 'cuSOLVER Sparse LAPACK Function - High Level Function'),
     ('cusolverSp<t>csrlsvchol', {
         'out': None,
-        'use_stream': 'spSetStream',
+        'use_stream': ('set', 'spSetStream'),
     }),
     ('cusolverSp<t>csrlsvqr', {
         'out': None,
-        'use_stream': 'spSetStream',
+        'use_stream': ('set', 'spSetStream'),
     }),
     ('cusolverSp<t>csreigvsi', {
         'out': None,
-        'use_stream': 'spSetStream',
+        'use_stream': ('set', 'spSetStream'),
     }),
 ]

@@ -1,5 +1,7 @@
+import os
 import os.path
 import re
+import tempfile
 
 import pycparser
 import pycparser.c_ast as c_ast
@@ -31,13 +33,19 @@ def maybe(fn):
 def read_directives(path):
     with open(path) as f:
         directives = eval(f.read())
-    headers, regexes, *rest = directives
+    cuda_versions, headers, regexes, *rest = directives
+    assert is_cuda_versions_directive(cuda_versions)
     assert is_headers_directive(headers)
     assert is_regexes_directive(regexes)
+    assert not any(is_cuda_versions_directive(d) for d in rest)
     assert not any(is_headers_directive(d) for d in rest)
     assert not any(is_regexes_directive(d) for d in rest)
     assert not any(is_special_types_directive(d) for d in rest[1:])
     return directives
+
+
+def is_cuda_versions_directive(directive):
+    return directive[0] == 'CudaVersions'
 
 
 def is_headers_directive(directive):
@@ -63,6 +71,7 @@ def is_raw_directive(directive):
 def is_function_directive(directive):
     return (
         isinstance(directive[0], str)
+        and not is_cuda_versions_directive(directive)
         and not is_headers_directive(directive)
         and not is_regexes_directive(directive)
         and not is_special_types_directive(directive)
@@ -73,6 +82,16 @@ def is_function_directive(directive):
 
 def directive_head(directive):
     return directive[0]
+
+
+def directive_cuda_versions(directive):
+    assert is_cuda_versions_directive(directive)
+    versions = directive[1]
+    assert len(versions) in [1, 2]
+    assert all(isinstance(v, str) for v in versions)
+    if len(versions) == 2:
+        assert versions[0] > versions[1]
+    return versions
 
 
 def directive_headers(directive):
@@ -148,11 +167,21 @@ def directive_use_stream(directive):
     use_stream = directive[1].get('use_stream', False)
     if isinstance(use_stream, bool):
         if use_stream:
-            return True, 'setStream'
+            assert False
         else:
-            return False, None
+            return False, None, None
     elif isinstance(use_stream, str):
-        return True, use_stream
+        if use_stream == 'set':
+            return True, 'set', 'setStream'
+        elif use_stream == 'pass':
+            return True, 'pass', None
+        else:
+            assert False
+    elif isinstance(use_stream, tuple):
+        head, func_name = use_stream
+        assert head == 'set'
+        assert isinstance(func_name, str)
+        return True, 'set', func_name
     else:
         assert False
 
@@ -220,6 +249,17 @@ def transpile_type_name(env, node):
         quals = node.quals
         return transpile(env, names, quals)
     elif isinstance(node, c_ast.PtrDecl):
+        # In case a special type as a pointer
+        if isinstance(node.type, c_ast.TypeDecl):
+            # Currently non-recursive pointer types only
+            assert node.quals == []  # assuming PtrDecl has no qualifiers
+            type_names = node.type.type.names
+            type_name = type_names[0] + '*'
+            if len(type_names) == 1 and is_special_type(type_name, env):
+                # Currently support one-token types only
+                type_name1 = special_type_transpiled(type_name, env)
+                quals = node.type.quals
+                return ' '.join(quals + [type_name1])
         return transpile_type_name(env, node.type) + '*'
     elif isinstance(node, c_ast.ArrayDecl):
         return transpile_type_name(env, node.type) + '*'
@@ -248,6 +288,15 @@ def erased_type_name(env, node):
         else:
             return None
     elif isinstance(node, c_ast.PtrDecl):
+        # In case a special type as a pointer
+        if isinstance(node.type, c_ast.TypeDecl):
+            # Currently non-recursive pointer types only
+            assert node.quals == []  # assuming PtrDecl has no qualifiers
+            type_names = node.type.type.names
+            type_name = type_names[0] + '*'
+            if len(type_names) == 1 and is_special_type(type_name, env):
+                # Currently support one-token types only
+                return special_type_erased(type_name, env)
         return 'intptr_t'
     elif isinstance(node, c_ast.ArrayDecl):
         return 'intptr_t'
@@ -269,12 +318,24 @@ def transpile_type_conversion(env, node, var_name):
         type_names = node.type.names
         type_name = type_names[0]
         if len(type_names) == 1 and is_special_type(type_name, env):
+            # Currently for one-token types only
             conversion = special_type_conversion(type_name, env)
-            return conversion(var_name)
-        else:
-            cast_type = transpile_type_name(env, node)
-            return '<{}>{}'.format(cast_type, var_name)
+            quals = ''.join([q + ' ' for q in node.quals])
+            return conversion(var=var_name, quals=quals)
+        cast_type = transpile_type_name(env, node)
+        return '<{}>{}'.format(cast_type, var_name)
     elif isinstance(node, c_ast.PtrDecl):
+        # In case a special type as a pointer
+        if isinstance(node.type, c_ast.TypeDecl):
+            # Currently non-recursive pointer types only
+            assert node.quals == []  # assuming PtrDecl has no qualifiers
+            type_names = node.type.type.names
+            type_name = type_names[0] + '*'
+            if len(type_names) == 1 and is_special_type(type_name, env):
+                # Currently support one-token types only
+                conversion = special_type_conversion(type_name, env)
+                quals = ''.join([q + ' ' for q in node.type.quals])
+                return conversion(var=var_name, quals=quals)
         cast_type = transpile_type_name(env, node)
         return '<{}>{}'.format(cast_type, var_name)
     elif isinstance(node, c_ast.ArrayDecl):
@@ -326,48 +387,55 @@ def _collect_func_decls(nodes):
 
 def _parse_headers(headers, version):
     assert version in ['11.0', '10.2']
-    include_path = '/usr/local/cuda-{}/include/'.format(version)
-    nodes = []
-    for h in headers:
-        path = os.path.join(include_path, h)        
-        ast = pycparser.parse_file(path, use_cpp=True, cpp_args=[
-            r'-I{}'.format(include_path),
-            r'-I/home/ext-mtakagi/pycparser/utils/fake_libc_include',
-            r'-D __attribute__(n)=',
-            r'-D __inline__='])
-        nodes.extend(ast.ext)
-    return nodes
+    cuda_path = '/usr/local/cuda-{}/'.format(version)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_c_path = os.path.join(temp_dir, 'temp.c')
+        with open(temp_c_path, 'w') as f:
+            for h in headers:
+                f.write('#include "{}"\n'.format(h))
+        ast = pycparser.parse_file(temp_c_path, use_cpp=True, cpp_args=[
+            os.path.expandvars('$CFLAGS'),  # use CFLAGS as CuPy does
+            '-I{}include/'.format(cuda_path),
+            '-I/home/ext-mtakagi/pycparser/utils/fake_libc_include',
+            '-D __attribute__(n)=',
+            '-D __inline__='])
+    return ast.ext
 
 
 SPECIAL_TYPES = {
     'cudaDataType': {
         'transpiled': 'DataType',
         'erased': 'size_t',
-        'conversion': '<DataType>{}',
+        'conversion': '<{quals}DataType>{var}',
+    },
+    'cudaDataType_t': {
+        'transpiled': 'DataType',
+        'erased': 'size_t',
+        'conversion': '<{quals}DataType>{var}',
     },
     'libraryPropertyType': {
         'transpiled': 'LibraryPropertyType',
         'erased': 'int',
-        'conversion': '<LibraryPropertyType>{}',
+        'conversion': '<{quals}LibraryPropertyType>{var}',
     },
     'cudaStream_t': {
         'transpiled': 'driver.Stream',
         'erased': 'size_t',
-        'conversion': '<driver.Stream>{}',
+        'conversion': '<{quals}driver.Stream>{var}',
     },
 }
 
 
 def make_environment(directives):
-    headers = directive_headers(directives[0])
-    nodes_110 = _parse_headers(headers, '11.0')
-    nodes_102 = _parse_headers(headers, '10.2')
+    cuda_versions = directive_cuda_versions(directives[0])
+    headers = directive_headers(directives[1])
+    nodes_list = [_parse_headers(headers, ver) for ver in cuda_versions]
 
     # Assuming the letters before the first appearance of `_` or `.` make the
     # library name.
     lib_name = re.match(r'^([a-z]+)(:?_|.)', headers[0])[1]
 
-    patterns = directive_regexes(directives[1])
+    patterns = directive_regexes(directives[2])
     regexes = {
         'func': re.compile(patterns['func']),
         'type': re.compile(patterns['type']),
@@ -375,16 +443,17 @@ def make_environment(directives):
 
     special_types = {}
     special_types.update(SPECIAL_TYPES)
-    if is_special_types_directive(directives[2]):
-        special_types1 = directive_special_types(directives[2])
+    if is_special_types_directive(directives[3]):
+        special_types1 = directive_special_types(directives[3])
         special_types.update(special_types1)
 
-    opaques = _collect_opaque_decls(nodes_110)  # assuming no opaques removed
-    enums = _collect_enum_decls(nodes_110)  # assuming no enums removed
-    funcs_110 = _collect_func_decls(nodes_110)
-    funcs_102 = _collect_func_decls(nodes_102)
-    return ('environment', special_types, opaques, enums,
-            (funcs_110, funcs_102), regexes, lib_name)
+    opaques = _collect_opaque_decls(nodes_list[0])  # assuming no opaques removed
+    enums = _collect_enum_decls(nodes_list[0])  # assuming no enums removed
+    funcs_list = [_collect_func_decls(nodes) for nodes in nodes_list]
+    if len(funcs_list) == 1:
+        funcs_list.append(None)
+    return ('environment', special_types, opaques, enums, funcs_list, regexes,
+            lib_name)
 
 
 def _environment_specials(env):
@@ -404,14 +473,9 @@ def environment_enums(env):
     return [n for n in env[3] if lib_name in str(n.coord)]
 
 
-def _environment_funcs(cuda_ver, env):
+def _environment_funcs(env):
     assert env[0] == 'environment'
-    if cuda_ver == 'cuda-11.0':
-        return env[4][0]
-    elif cuda_ver == 'cuda-10.2':
-        return env[4][1]
-    else:
-        assert False
+    return env[4]
 
 
 def _environment_regexes(env):
@@ -438,6 +502,7 @@ def query_func_decls(name, env):
         p = re.sub(r'<t\d?>', r'[ZCKEYDSHBX]', string)
         p = p.replace('{', '(|').replace(',', '|').replace('}', ')')
         return p, p != string
+
     def query(nodes):
         pat, generic = compile_pattern(name)
         if generic:
@@ -448,15 +513,17 @@ def query_func_decls(name, env):
                 return [next(n for n in nodes if n.name == name)]
             except StopIteration:
                 return []
-    nodes_110 = _environment_funcs('cuda-11.0', env)
-    decls = query(nodes_110)
+
+    nodes0, nodes1 = _environment_funcs(env)
+
+    decls = query(nodes0)
     if decls != []:
         return decls, False
 
-    nodes_102 = _environment_funcs('cuda-10.2', env)
-    decls = query(nodes_102)
-    if decls != []:
-        return decls, True
+    if nodes1 is not None:
+        decls = query(nodes1)
+        if decls != []:
+            return decls, True
 
     assert False, '`{}` not found'.format(name)
 
