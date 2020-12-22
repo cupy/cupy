@@ -177,7 +177,15 @@ class TestSVD(unittest.TestCase):
             numpy.testing.assert_allclose(vj_gpu, v_sign * vj_cpu, atol=1e-4)
             numpy.testing.assert_allclose(abs(u_sign), 1, atol=1e-4)
             numpy.testing.assert_allclose(abs(v_sign), 1, atol=1e-4)
-            numpy.testing.assert_allclose(u_sign, v_sign, atol=1e-4)
+            # we don't compare u_sign with v_sign directly, as the sign
+            # convention is implementation dependent
+
+        # reconstruct the matrix
+        if self.full_matrices:
+            a_gpu_usv = cupy.dot(u_gpu[:, :k] * s_gpu, vh_gpu[:k, :])
+        else:
+            a_gpu_usv = cupy.dot(u_gpu * s_gpu, vh_gpu)
+        cupy.testing.assert_allclose(a_gpu, a_gpu_usv, atol=1e-4)
 
         # assert unitary
         cupy.testing.assert_allclose(
