@@ -11,6 +11,7 @@ from cupy import _util
 
 import cupyx as _cupyx
 
+
 _available_cuda_version = {
     'gesvdj': (9000, None),
     'gesvda': (10010, None),
@@ -22,6 +23,10 @@ _available_cuda_version = {
     'csrlsvqr': (9000, None),
 }
 
+_available_hip_version = {
+    'potrfBatched': (306, None),
+}
+
 _available_compute_capability = {
     'gesv': 70,
     'gels': 70,
@@ -30,15 +35,23 @@ _available_compute_capability = {
 
 @_util.memoize()
 def check_availability(name):
-    if name not in _available_cuda_version:
+    if not _runtime.is_hip:
+        available_version = _available_cuda_version
+        version = _runtime.runtimeGetVersion()
+    else:
+        available_version = _available_hip_version
+        # TODO(leofang): use HIP_VERSION instead?
+        version = _cusolver._getVersion()
+        version = version[0] * 100 + version[1]
+    if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
-    version_added, version_removed = _available_cuda_version[name]
-    cuda_version = _runtime.runtimeGetVersion()
-    if version_added is not None and cuda_version < version_added:
+    version_added, version_removed = available_version[name]
+    if version_added is not None and version < version_added:
         return False
-    if version_removed is not None and cuda_version >= version_removed:
+    if version_removed is not None and version >= version_removed:
         return False
+    # CUDA specific stuff
     if name in _available_compute_capability:
         compute_capability = int(_device.get_compute_capability())
         if compute_capability < _available_compute_capability[name]:
