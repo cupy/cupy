@@ -4,12 +4,19 @@ import numpy
 from libc.stdint cimport intptr_t, uint64_t, uint32_t
 
 import cupy
+from cupy.cuda cimport stream
 from cupy.core.core cimport ndarray
 from cupy.random._distributions_module import _get_distribution
 
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
+
+cdef extern from 'cupy_distributions.cuh' nogil:
+    void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask)    
+    void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask)    
+    void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b)    
+    void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream)
 
 
 class Generator:
@@ -96,9 +103,9 @@ class Generator:
         y = ndarray(size if size is not None else (), pdtype)
 
         if dtype is numpy.uint32:
-            _launch_dist(self.bit_generator, 'interval_32', y, (diff, mask))
+            _launch_dist(self.bit_generator, interval_32, y, (diff, mask))
         else:
-            _launch_dist(self.bit_generator, 'interval_64', y, (diff, mask))
+            _launch_dist(self.bit_generator, interval_64, y, (diff, mask))
         return (lo + y).astype(dtype)
 
     def beta(self, a, b, size=None, dtype=numpy.float64):
@@ -127,7 +134,7 @@ class Generator:
         """
         cdef ndarray y
         y = ndarray(size if size is not None else (), numpy.float64)
-        _launch_dist(self.bit_generator, 'beta', y, (a, b))
+        _launch_dist(self.bit_generator, beta, y, (a, b))
         return y.astype(dtype)
 
     def standard_exponential(
@@ -163,31 +170,31 @@ class Generator:
             raise NotImplementedError('Ziggurat method is not supported')
 
         y = ndarray(size if size is not None else (), numpy.float64)
-        _launch_dist(self.bit_generator, 'exponential', y, ())
+        _launch_dist(self.bit_generator, exponential, y, ())
         if out is not None:
             out[...] = y
             y = out
         return y.astype(dtype)
 
 
-cdef void _launch_dist(bit_generator, kernel_name, out, args) except*:
-    kernel = _get_distribution(bit_generator, kernel_name)
-    state_ptr = bit_generator.state()
-    cdef intptr_t state = <intptr_t>state_ptr
-    cdef intptr_t y_ptr = <intptr_t>out.data.ptr
-    cdef ssize_t size = out.size
-    cdef ndarray chunk
-    cdef ssize_t bsize = bit_generator._state_size()
+def _launch_dist(bit_generator, func, out, args):
+        # The generator might only have state for a few number of threads,
+        # what we do is to split the array filling in several chunks that are
+        # generated sequentially using the same state
+        cdef intptr_t strm = stream.get_current_stream_ptr()
+        state_ptr = bit_generator.state()
+        cdef state = <intptr_t>state_ptr
+        cdef y_ptr = <intptr_t>out.data.ptr
+        cdef ssize_t size = out.size
+        cdef ndarray chunk
+        cdef int generator = bit_generator.generator
 
-    tpb = 256
-    if out.shape == () or bsize == 0:
-        bpg = (size + tpb - 1) // tpb
-        kernel((bpg,), (tpb,), (state, y_ptr, size, *args))
-    else:
-        chunks = (out.size + bsize - 1) // bsize
-        for i in range(chunks):
-            chunk = out[i*bsize:]
-            bpg = (bsize + tpb - 1) // tpb
-            y_ptr = <intptr_t>chunk.data.ptr
-            k_args = (state, y_ptr, min(bsize, chunk.size), ) + args
-            kernel((bpg,), (tpb,), k_args)
+        cdef bsize = bit_generator.state_size()
+        if bsize == 0:
+            func(generator, state, y_ptr, out.size, strm, *args)
+        else:
+            chunks = (out.size + bsize - 1) // bsize
+            for i in range(chunks):
+                chunk = out[i*bsize:]
+                y_ptr = <intptr_t>chunk.data.ptr
+                func(generator, state, y_ptr, chunk.size, strm, *args)

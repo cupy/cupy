@@ -1,8 +1,14 @@
-import cupy
+#include <stdio.h>
+#include <stdexcept>
+#include <utility>
 
-distributions_code = r"""
 #include <curand_kernel.h>
+
+#include "cupy_distributions.cuh"
+
+
 struct rk_state {
+
     __device__ virtual uint32_t rk_int() {
         return  0;
     }
@@ -18,42 +24,64 @@ template<typename CURAND_TYPE>
 struct curand_pseudo_state: rk_state {
     // Valid for  XORWOW and MRG32k3a
     CURAND_TYPE* _state;
-    uint64_t _id;
-    __device__ curand_pseudo_state(uint64_t id, intptr_t state) {
+    int _id;
+
+    __device__ curand_pseudo_state(int id, intptr_t state) {
         _state = reinterpret_cast<CURAND_TYPE*>(state) + id;
         _id = id;
     }
-    __device__ uint32_t rk_int() final {
+    __device__ virtual uint32_t rk_int() {
         return curand(_state);
     }
-    __device__ double rk_double() final {
-        // Curand returns (0, 1] while the functions
-        // below rely on [0, 1)
-        double r = curand_uniform(_state) - 1e-12;
-        if (r < 0.0) { 
-           r = 0.0;
-        }
-        return r;
+    __device__ virtual double rk_double() {
+        return curand_uniform(_state);
     }
-    __device__ double rk_normal() final {
+    __device__ virtual double rk_normal() {
         return curand_normal(_state);
     }
 };
 
-// Use template specialization for custom ones
+
+// This design is the same as the dtypes one
+template <typename F, typename... Ts>
+void generator_dispatcher(int generator_id, F f, Ts&&... args) {
+   switch(generator_id) {
+       case CURAND_XOR_WOW: return f.template operator()<curand_pseudo_state<curandState>>(std::forward<Ts>(args)...);
+       case CURAND_MRG32k3a: return f.template operator()<curand_pseudo_state<curandStateMRG32k3a>>(std::forward<Ts>(args)...);
+       case CURAND_PHILOX_4x32_10: return f.template operator()<curand_pseudo_state<curandStatePhilox4_32_10_t>>(std::forward<Ts>(args)...);
+       default: throw std::runtime_error("Unknown random generator");
+   }
+}
+
+
 template<typename T>
-__global__ void init_generator(intptr_t state, uint64_t seed, uint64_t size) {
-    uint64_t id = threadIdx.x + blockIdx.x * blockDim.x;
+__global__ void init_curand(intptr_t state, uint64_t seed, ssize_t size) {
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
     /* Each thread gets same seed, a different sequence
        number, no offset */
     T curand_state(id, state);
     if (id < size) {
-        curand_init(seed, id, 0, curand_state._state);
+        curand_init(seed, id, 0, curand_state._state);    
     }
 }
 
-__device__ int32_t rk_raw(rk_state* state) {
-    return state->rk_int();
+struct initialize_launcher {
+    initialize_launcher(ssize_t size, cudaStream_t stream) : _size(size), _stream(stream) {
+    }
+    template<typename T, typename... Args>
+    void operator()(Args&&... args) { 
+        int tpb = 256;
+        int bpg =  (_size + tpb - 1) / tpb;
+        init_curand<T><<<bpg, tpb, 0, _stream>>>(std::forward<Args>(args)...);
+    }
+    ssize_t _size;
+    cudaStream_t _stream;
+};
+
+void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {
+    // state_ptr is a device ptr
+    initialize_launcher launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state_ptr, seed, size);
 }
 
 __device__ double rk_standard_exponential(rk_state* state) {
@@ -129,6 +157,7 @@ __device__ double rk_beta(rk_state* state, double a, double b) {
     }
 }
 
+
 __device__ uint32_t rk_interval_32(rk_state* state, uint32_t mx, uint32_t mask) {
     uint32_t sampled = state->rk_int() & mask;
     while(sampled > mx)  {
@@ -149,111 +178,80 @@ __device__ uint64_t rk_interval_64(rk_state* state, uint64_t  mx, uint64_t mask)
     return sampled;
 }
 
-// There are several errors when trying to do this a full template
-// THIS CAN BE A PYTHON TEMPLATE
-struct exponential_functor {
-    template<typename... Args>
-    __device__ double operator () (Args&&... args) {
-        return rk_standard_exponential(args...);
-    }
-};
-
-struct raw_functor {
-    template<typename... Args>
-    __device__ int32_t operator () (Args&&... args) {
-        return rk_raw(args...);
-    }
-};
 
 struct interval_32_functor {
     template<typename... Args>
     __device__ uint32_t operator () (Args&&... args) {
-        return rk_interval_32(args...);
+        return rk_interval_32(std::forward<Args>(args)...);
     }
 };
 
 struct interval_64_functor {
     template<typename... Args>
     __device__ uint64_t operator () (Args&&... args) {
-        return rk_interval_64(args...);
+        return rk_interval_64(std::forward<Args>(args)...);
     }
 };
 
 struct beta_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
-        return rk_beta(args...);
+        return rk_beta(std::forward<Args>(args)...);
+    }
+};
+
+// There are several errors when trying to do this a full template
+struct exponential_functor {
+    template<typename... Args>
+    __device__ double operator () (Args&&... args) {
+        return rk_standard_exponential(std::forward<Args>(args)...);
     }
 };
 
 template<typename F, typename T, typename R, typename... Args>
-__device__ void execute_dist(intptr_t state, intptr_t out, uint64_t size, Args... args) {
-    uint64_t id = threadIdx.x + blockIdx.x * blockDim.x;
+__global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
     R* out_ptr = reinterpret_cast<R*>(out);
     if (id < size) {
         T random(id, state);
         F func;
         out_ptr[id] = func(&random, std::forward<Args>(args)...);
     }
+    return;
 }
 
-// T is the generator type it is specified in Python when compiling
-template<typename T>
-__global__ void raw(intptr_t state, intptr_t out, uint64_t size) {
-    execute_dist<raw_functor, T, int32_t>(state, out, size);
+template <typename F, typename R>
+struct kernel_launcher {
+    kernel_launcher(ssize_t size, cudaStream_t stream) : _size(size), _stream(stream) {
+    }
+    template<typename T, typename... Args>
+    void operator()(Args&&... args) { 
+        int tpb = 256;
+        int bpg =  (_size + tpb - 1) / tpb;
+        execute_dist<F, T, R><<<bpg, tpb, 0, _stream>>>(std::forward<Args>(args)...);
+    }
+    ssize_t _size;
+    cudaStream_t _stream;
+};
+
+//These functions will take the generator_id as a parameter
+void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask) {
+    kernel_launcher<interval_32_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, mx, mask);
 }
 
-// T is the generator type it is specified in Python when compiling
-template<typename T>
-__global__ void interval_32(intptr_t state, intptr_t out, uint64_t size, uint32_t mx, uint32_t mask) {
-    execute_dist<interval_32_functor, T, int32_t>(state, out, size, mx, mask);
+void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {
+    kernel_launcher<interval_64_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, mx, mask);
 }
 
-// T is the generator type it is specified in Python when compiling
-template<typename T>
-__global__ void interval_64(intptr_t state, intptr_t out, uint64_t size, uint64_t mx, uint64_t mask) {
-    execute_dist<interval_64_functor, T, int64_t>(state, out, size, mx, mask);
+void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {
+    kernel_launcher<beta_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, a, b);
 }
 
-// T is the generator type it is specified in Python when compiling
-template<typename T>
-__global__ void beta(intptr_t state, intptr_t out, uint64_t size, double a, double b) {
-    execute_dist<beta_functor, T, double>(state, out, size, a, b);
+void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<exponential_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size);
 }
 
-// T is the generator type it is specified in Python when compiling
-template<typename T>
-__global__ void exponential(intptr_t state, intptr_t out, uint64_t size) {
-    execute_dist<exponential_functor, T, double>(state, out, size);
-}
-"""  # NOQA
-
-
-@cupy._util.memoize(for_each_device=True)
-def _get_distributions_module(c_type_generator):
-    code = distributions_code
-    name_expressions = [f'init_generator<{c_type_generator}>',
-                        f'raw<{c_type_generator}>',
-                        f'beta<{c_type_generator}>',
-                        f'interval_32<{c_type_generator}>',
-                        f'interval_64<{c_type_generator}>',
-                        f'exponential<{c_type_generator}>']
-    module = cupy.RawModule(code=code, options=('--std=c++11',),
-                            name_expressions=name_expressions, jitify=True)
-    return module
-
-
-@cupy._util.memoize(for_each_device=True)
-def _get_distribution(generator, distribution):
-    c_generator = generator._c_layer_generator()
-    module = _get_distributions_module(generator._c_layer_generator())
-    kernel = module.get_function(f'{distribution}<{c_generator}>')
-    return kernel
-
-
-@cupy._util.memoize(for_each_device=True)
-def _initialize_generator(generator):
-    c_generator = generator._c_layer_generator()
-    module = _get_distributions_module(generator._c_layer_generator())
-    kernel = module.get_function(f'init_generator<{c_generator}>')
-    return kernel

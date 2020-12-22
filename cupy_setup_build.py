@@ -127,7 +127,12 @@ if use_hip:
 else:
     MODULES.append({
         'name': 'cuda',
-        'file': cuda_files,
+        'file': cuda_files + [
+             ('cupy.random._generator',
+              ['cupy/random/cupy_distributions.cu']),
+             ('cupy.random._bit_generator',
+              ['cupy/random/cupy_distributions.cu']),
+         ],
         'include': [
             'cublas_v2.h',
             'cuda.h',
@@ -324,6 +329,20 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
             'check_method': build.check_thrust_version,
             'version_method': build.get_thrust_version,
         })
+
+
+MODULES.append({
+    'name': 'random',
+    'file': [
+        ('cupy.random._bit_generator', ['cupy/random/cupy_distributions.cu']),
+    ],
+    'include': [
+    ],
+    'libraries': [
+        'cudart',
+        'curand',
+    ],
+})
 
 
 def ensure_module_file(file):
