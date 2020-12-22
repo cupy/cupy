@@ -553,7 +553,7 @@ def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 @cupy._util.memoize(for_each_device=True)
 def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
-                     integer_output=False, grid_mode=False):
+                     integer_output=False, grid_mode=False, nprepad=0):
     in_params = 'raw X x, raw W zoom'
     out_params = 'Y y'
     operation, name = _generate_interp_custom(
