@@ -203,7 +203,7 @@ class TestWiener(unittest.TestCase):
 @testing.gpu
 @testing.with_requires('scipy')
 class TestOrderFilter(unittest.TestCase):
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
     def test_order_filter(self, xp, scp, dtype):
