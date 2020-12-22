@@ -1,11 +1,21 @@
 #include <stdio.h>
 #include <stdexcept>
 #include <utility>
+#include <iostream>
 
 #include <curand_kernel.h>
 
 #include "cupy_distributions.cuh"
 
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess) 
+   {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+   }
+}
 
 struct rk_state {
 
@@ -34,7 +44,13 @@ struct curand_pseudo_state: rk_state {
         return curand(_state);
     }
     __device__ virtual double rk_double() {
-        return curand_uniform(_state);
+        // Curand returns (0, 1] while the functions
+        // below rely on [0, 1)
+        double r = curand_uniform(_state) - 1e-12;
+        if (r < 0.0) { 
+           r = 0.0;
+        }
+        return r;
     }
     __device__ virtual double rk_normal() {
         return curand_normal(_state);
@@ -157,6 +173,9 @@ __device__ double rk_beta(rk_state* state, double a, double b) {
     }
 }
 
+__device__ uint32_t rk_raw(rk_state* state) {
+    return state->rk_int();
+}
 
 __device__ uint32_t rk_interval_32(rk_state* state, uint32_t mx, uint32_t mask) {
     uint32_t sampled = state->rk_int() & mask;
@@ -179,24 +198,32 @@ __device__ uint64_t rk_interval_64(rk_state* state, uint64_t  mx, uint64_t mask)
 }
 
 
+struct raw_functor {
+    template<typename... Args>
+    __device__ uint32_t operator () (Args&&... args) {
+        return rk_raw(args...);
+    }
+};
+
+
 struct interval_32_functor {
     template<typename... Args>
     __device__ uint32_t operator () (Args&&... args) {
-        return rk_interval_32(std::forward<Args>(args)...);
+        return rk_interval_32(args...);
     }
 };
 
 struct interval_64_functor {
     template<typename... Args>
     __device__ uint64_t operator () (Args&&... args) {
-        return rk_interval_64(std::forward<Args>(args)...);
+        return rk_interval_64(args...);
     }
 };
 
 struct beta_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
-        return rk_beta(std::forward<Args>(args)...);
+        return rk_beta(args...);
     }
 };
 
@@ -204,7 +231,7 @@ struct beta_functor {
 struct exponential_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
-        return rk_standard_exponential(std::forward<Args>(args)...);
+        return rk_standard_exponential(args...);
     }
 };
 
@@ -229,20 +256,28 @@ struct kernel_launcher {
         int tpb = 256;
         int bpg =  (_size + tpb - 1) / tpb;
         execute_dist<F, T, R><<<bpg, tpb, 0, _stream>>>(std::forward<Args>(args)...);
+        gpuErrchk( cudaPeekAtLastError() );
+        gpuErrchk( cudaDeviceSynchronize() );
     }
     ssize_t _size;
     cudaStream_t _stream;
 };
 
 //These functions will take the generator_id as a parameter
-void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask) {
-    kernel_launcher<interval_32_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, mx, mask);
+void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<raw_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size);
 }
 
-void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {
+//These functions will take the generator_id as a parameter
+void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {
+    kernel_launcher<interval_32_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, static_cast<uint32_t>(mx), static_cast<uint32_t>(mask));
+}
+
+void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {
     kernel_launcher<interval_64_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, mx, mask);
+    generator_dispatcher(generator, launcher, state, out, size, static_cast<uint64_t>(mx), static_cast<uint64_t>(mask));
 }
 
 void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {

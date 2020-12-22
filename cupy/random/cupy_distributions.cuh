@@ -25,8 +25,9 @@ typedef hiprandStatePhilox4_32_10_t {} curandStatePhilox4_32_10_t;
 #include <curand_kernel.h>
 
 void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream);
-void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask);
-void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask);
+void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
+void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask);
+void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask);
 void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b);
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 
@@ -38,8 +39,9 @@ typedef struct {} curandStatePhilox4_32_10_t;
 
 //Travis doesn't like variadic templates in these functions
 void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream) {}
-void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask) {}
-void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {}
+void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
+void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {}
+void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {}
 void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {}
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
 #endif

@@ -130,8 +130,6 @@ else:
         'file': cuda_files + [
              ('cupy.random._generator',
               ['cupy/random/cupy_distributions.cu']),
-             ('cupy.random._bit_generator',
-              ['cupy/random/cupy_distributions.cu']),
          ],
         'include': [
             'cublas_v2.h',
@@ -334,7 +332,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
 MODULES.append({
     'name': 'random',
     'file': [
-        ('cupy.random._bit_generator', ['cupy/random/cupy_distributions.cu']),
+        ('cupy.random._generator', ['cupy/random/cupy_distributions.cu']),
     ],
     'include': [
     ],

@@ -1,20 +1,21 @@
 # distutils: language = c++
 import numpy
 
-from libc.stdint cimport intptr_t, uint64_t, uint32_t
+from libc.stdint cimport intptr_t, uint64_t, uint32_t, int32_t, int64_t
 
 import cupy
 from cupy.cuda cimport stream
 from cupy.core.core cimport ndarray
-from cupy.random._distributions_module import _get_distribution
 
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
 
 cdef extern from 'cupy_distributions.cuh' nogil:
-    void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask)    
-    void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask)    
+    void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream)    
+    void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream)
+    void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask)    
+    void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask)    
     void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b)    
     void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream)
 
@@ -177,24 +178,37 @@ class Generator:
         return y.astype(dtype)
 
 
-def _launch_dist(bit_generator, func, out, args):
-        # The generator might only have state for a few number of threads,
-        # what we do is to split the array filling in several chunks that are
-        # generated sequentially using the same state
-        cdef intptr_t strm = stream.get_current_stream_ptr()
-        state_ptr = bit_generator.state()
-        cdef state = <intptr_t>state_ptr
-        cdef y_ptr = <intptr_t>out.data.ptr
-        cdef ssize_t size = out.size
-        cdef ndarray chunk
-        cdef int generator = bit_generator.generator
+def init_curand(generator, state, seed, size):
+    cdef int generator_enum = <int> generator
+    cdef intptr_t state_ptr = <intptr_t>state 
+    cdef uint64_t c_seed = <uint64_t>seed
+    cdef uint64_t c_size = <uint64_t>size
+    cdef intptr_t strm = stream.get_current_stream_ptr()
+    init_curand_generator(generator_enum, state_ptr, c_seed, c_size, strm)    
 
-        cdef bsize = bit_generator.state_size()
-        if bsize == 0:
-            func(generator, state, y_ptr, out.size, strm, *args)
-        else:
-            chunks = (out.size + bsize - 1) // bsize
-            for i in range(chunks):
-                chunk = out[i*bsize:]
-                y_ptr = <intptr_t>chunk.data.ptr
-                func(generator, state, y_ptr, chunk.size, strm, *args)
+
+def random_raw(generator, out):
+    _launch_dist(generator, raw, out, ())
+
+
+cdef void _launch_dist(bit_generator, func, out, args) except*:
+    # The generator might only have state for a few number of threads,
+    # what we do is to split the array filling in several chunks that are
+    # generated sequentially using the same state
+    cdef intptr_t strm = stream.get_current_stream_ptr()
+    state_ptr = bit_generator.state()
+    cdef state = <intptr_t>state_ptr
+    cdef y_ptr = <intptr_t>out.data.ptr
+    cdef ssize_t size = out.size
+    cdef ndarray chunk
+    cdef int generator = bit_generator.generator
+
+    cdef bsize = bit_generator._state_size()
+    if out.shape == () or bsize == 0:
+        func(generator, state, y_ptr, out.size, strm, *args)
+    else:
+        chunks = (out.size + bsize - 1) // bsize
+        for i in range(chunks):
+            chunk = out[i*bsize:]
+            y_ptr = <intptr_t>chunk.data.ptr
+            func(generator, state, y_ptr, min(bsize, chunk.size), strm, *args)
