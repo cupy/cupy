@@ -540,6 +540,72 @@ cusolverStatus_t cusolverDnDorgqr(cusolverDnHandle_t handle,
 }
 
 
+/* ---------- ungqr ---------- */
+cusolverStatus_t cusolverDnCungqr_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const cuComplex *A,
+                                             int lda,
+                                             const cuComplex *tau,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnZungqr_bufferSize(cusolverDnHandle_t handle,
+                                             int m,
+                                             int n,
+                                             int k,
+                                             const cuDoubleComplex *A,
+                                             int lda,
+                                             const cuDoubleComplex *tau,
+                                             int *lwork) {
+    // this needs to return 0 because rocSolver does not rely on it
+    *lwork = 0;
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnCungqr(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  cuComplex *A,
+                                  int lda,
+                                  const cuComplex *tau,
+                                  cuComplex *work,
+                                  int lwork,
+                                  int *info) {
+    if (HIP_VERSION < 306) {
+        return rocblas_status_not_implemented;
+    }
+    // ignore work, lwork and info as rocSOLVER does not need them
+    return rocsolver_cungqr(handle, m, n, k,
+                            reinterpret_cast<rocblas_float_complex*>(A), lda,
+                            reinterpret_cast<rocblas_float_complex*>(const_cast<cuComplex*>(tau)));
+}
+
+cusolverStatus_t cusolverDnZungqr(cusolverDnHandle_t handle,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  cuDoubleComplex *A,
+                                  int lda,
+                                  const cuDoubleComplex *tau,
+                                  cuDoubleComplex *work,
+                                  int lwork,
+                                  int *info) {
+    if (HIP_VERSION < 306) {
+        return rocblas_status_not_implemented;
+    }
+    // ignore work, lwork and info as rocSOLVER does not need them
+    return rocsolver_zungqr(handle, m, n, k,
+                            reinterpret_cast<rocblas_double_complex*>(A), lda,
+                            reinterpret_cast<rocblas_double_complex*>(const_cast<cuDoubleComplex*>(tau)));
+}
+
+
 /* ---------- ormqr ---------- */
 cusolverStatus_t cusolverDnSormqr_bufferSize(cusolverDnHandle_t handle,
                                              cublasSideMode_t side,
@@ -624,6 +690,7 @@ cusolverStatus_t cusolverDnDormqr(cusolverDnHandle_t handle,
 }
 
 
+
 /* all of the stubs below are unsupported functions; the supported ones are moved to above */
 
 typedef enum{} cusolverEigType_t;
@@ -673,24 +740,6 @@ cusolverStatus_t cusolverDnCpotrsBatched(...) {
 }
 
 cusolverStatus_t cusolverDnZpotrsBatched(...) {
-    return rocblas_status_not_implemented;
-}
-
-
-/* ---------- ungqr ---------- */
-cusolverStatus_t cusolverDnCungqr_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZungqr_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnCungqr(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZungqr(...) {
     return rocblas_status_not_implemented;
 }
 
