@@ -79,9 +79,8 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
 
     Args:
         input (cupy.ndarray): The input array.
-        order (int): The order of the spline interpolation. If it is not given,
-            order 1 is used. It is different from :mod:`scipy.ndimage` and can
-            change in the future. Currently it supports only order 0 and 1.
+        order (int): The order of the spline interpolation, default is 3. Must
+            be in the range 0-5.
         axis (int): The axis along which the spline filter is applied. Default
             is the last axis.
         output (cupy.ndarray or dtype, optional): The array in which to place
@@ -159,9 +158,8 @@ def spline_filter(input, order=3, output=cupy.float64, mode='mirror'):
 
     Args:
         input (cupy.ndarray): The input array.
-        order (int): The order of the spline interpolation. If it is not given,
-            order 1 is used. It is different from :mod:`scipy.ndimage` and can
-            change in the future. Currently it supports only order 0 and 1.
+        order (int): The order of the spline interpolation, default is 3. Must
+            be in the range 0-5.
         output (cupy.ndarray or dtype, optional): The array in which to place
             the output, or the dtype of the returned array. Default is
             ``numpy.float64``.
@@ -252,7 +250,7 @@ def _filter_input(image, prefilter, mode, cval, order):
     return cupy.ascontiguousarray(filtered), npad
 
 
-def map_coordinates(input, coordinates, output=None, order=None,
+def map_coordinates(input, coordinates, output=None, order=3,
                     mode='constant', cval=0.0, prefilter=True):
     """Map the input array to new coordinates by interpolation.
 
@@ -270,9 +268,8 @@ def map_coordinates(input, coordinates, output=None, order=None,
             evaluated.
         output (cupy.ndarray or ~cupy.dtype): The array in which to place the
             output, or the dtype of the returned array.
-        order (int): The order of the spline interpolation. If it is not given,
-            order 1 is used. It is different from :mod:`scipy.ndimage` and can
-            change in the future. Currently it supports only order 0 and 1.
+        order (int): The order of the spline interpolation, default is 3. Must
+            be in the range 0-5.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
             ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
@@ -292,8 +289,6 @@ def map_coordinates(input, coordinates, output=None, order=None,
     """
 
     _check_parameter('map_coordinates', order, mode)
-    if order is None:
-        order = 1
 
     if mode == 'opencv' or mode == '_opencv_edge':
         input = cupy.pad(input, [(1, 1)] * input.ndim, 'constant',
@@ -318,7 +313,7 @@ def map_coordinates(input, coordinates, output=None, order=None,
 
 
 def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
-                     order=None, mode='constant', cval=0.0, prefilter=True):
+                     order=3, mode='constant', cval=0.0, prefilter=True):
     """Apply an affine transformation.
 
     Given an output image pixel index vector ``o``, the pixel value is
@@ -350,9 +345,8 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
         output_shape (tuple of ints): Shape tuple.
         output (cupy.ndarray or ~cupy.dtype): The array in which to place the
             output, or the dtype of the returned array.
-        order (int): The order of the spline interpolation. If it is not given,
-            order 1 is used. It is different from :mod:`scipy.ndimage` and can
-            change in the future. Currently it supports only order 0 and 1.
+        order (int): The order of the spline interpolation, default is 3. Must
+            be in the range 0-5.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
             ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
@@ -413,8 +407,6 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
         return ret
 
     matrix = matrix.astype(cupy.float64, copy=False)
-    if order is None:
-        order = 1
     ndim = input.ndim
     output = _util._get_output(output, input, shape=output_shape)
     if input.dtype.kind in 'iu':
@@ -454,7 +446,7 @@ def _minmax(coor, minc, maxc):
     return minc, maxc
 
 
-def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
+def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
            mode='constant', cval=0.0, prefilter=True):
     """Rotate an array.
 
@@ -471,9 +463,8 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
             is True.
         output (cupy.ndarray or ~cupy.dtype): The array in which to place the
             output, or the dtype of the returned array.
-        order (int): The order of the spline interpolation. If it is not given,
-            order 1 is used. It is different from :mod:`scipy.ndimage` and can
-            change in the future. Currently it supports only order 0 and 1.
+        order (int): The order of the spline interpolation, default is 3. Must
+            be in the range 0-5.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
             ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
@@ -551,7 +542,7 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
                             mode, cval, prefilter)
 
 
-def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
+def shift(input, shift, output=None, order=3, mode='constant', cval=0.0,
           prefilter=True):
     """Shift an array.
 
@@ -566,9 +557,8 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
             should contain one value for each axis.
         output (cupy.ndarray or ~cupy.dtype): The array in which to place the
             output, or the dtype of the returned array.
-        order (int): The order of the spline interpolation. If it is not given,
-            order 1 is used. It is different from :mod:`scipy.ndimage` and can
-            change in the future. Currently it supports only order 0 and 1.
+        order (int): The order of the spline interpolation, default is 3. Must
+            be in the range 0-5.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
             ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
@@ -605,8 +595,6 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
             prefilter,
         )
     else:
-        if order is None:
-            order = 1
         output = _util._get_output(output, input)
         if input.dtype.kind in 'iu':
             input = input.astype(cupy.float32)
@@ -626,7 +614,7 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
     return output
 
 
-def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
+def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
          prefilter=True, *, grid_mode=False):
     """Zoom an array.
 
@@ -639,9 +627,8 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
             contain one value for each axis.
         output (cupy.ndarray or ~cupy.dtype): The array in which to place the
             output, or the dtype of the returned array.
-        order (int): The order of the spline interpolation. If it is not given,
-            order 1 is used. It is different from :mod:`scipy.ndimage` and can
-            change in the future. Currently it supports only order 0 and 1.
+        order (int): The order of the spline interpolation, default is 3. Must
+            be in the range 0-5.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
             ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
@@ -707,9 +694,6 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
             prefilter,
         )
     else:
-        if order is None:
-            order = 1
-
         if grid_mode:
             cupy._util.experimental("grid_mode=True")
 
