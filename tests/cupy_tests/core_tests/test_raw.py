@@ -533,17 +533,18 @@ class TestRaw(unittest.TestCase):
         file_path = self.cache_dir + 'test_load_cubin'
         with open(source, 'w') as f:
             f.write(code)
-        if ext == 'cubin':
-            file_path += '.cubin'
-            flag = '-cubin'
-        elif ext == 'ptx':
-            file_path += '.ptx'
-            flag = '-ptx'
-        elif ext == 'hsaco':
+        if not cupy.cuda.runtime.is_hip:
+            if ext == 'cubin':
+                file_path += '.cubin'
+                flag = '-cubin'
+            elif ext == 'ptx':
+                file_path += '.ptx'
+                flag = '-ptx'
+            else:
+                raise ValueError
+        else:
             file_path += '.hsaco'
             flag = '--genco'
-        else:
-            raise ValueError
         cmd += [arch, flag, source, '-o', file_path]
         cc = 'nvcc' if not cupy.cuda.runtime.is_hip else 'hipcc'
         compiler._run_cc(cmd, self.cache_dir, cc)

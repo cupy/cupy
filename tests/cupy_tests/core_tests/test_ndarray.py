@@ -219,6 +219,8 @@ class TestNdarrayShape(unittest.TestCase):
         return xp.array(arr.shape)
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestNdarrayCudaInterface(unittest.TestCase):
 
     def test_cuda_array_interface(self):
@@ -280,6 +282,8 @@ class TestNdarrayCudaInterface(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestNdarrayCudaInterfaceStream(unittest.TestCase):
     def setUp(self):
         if self.stream == 'null':

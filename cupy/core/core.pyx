@@ -1440,7 +1440,8 @@ cdef class ndarray:
                 # Except for numpy.ndarray, types should be supported by
                 # `_kernel._preprocess_args`.
                 if (
-                        not hasattr(x, '__cuda_array_interface__')
+                        (not runtime._is_hip_environment 
+                        and not hasattr(x, '__cuda_array_interface__'))
                         and not type(x) in _scalar.scalar_type_set
                         and not isinstance(x, numpy.ndarray)
                 ):
