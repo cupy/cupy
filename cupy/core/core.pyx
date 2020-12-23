@@ -1952,38 +1952,36 @@ cpdef function.Module compile_with_cache(
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if _cuda_runtime_version >= 9000:
-        if 9020 <= _cuda_runtime_version < 9030:
-            bundled_include = 'cuda-9.2'
-        elif 10000 <= _cuda_runtime_version < 10010:
-            bundled_include = 'cuda-10.0'
-        elif 10010 <= _cuda_runtime_version < 10020:
-            bundled_include = 'cuda-10.1'
-        elif 10020 <= _cuda_runtime_version < 10030:
-            bundled_include = 'cuda-10.2'
-        elif 11000 <= _cuda_runtime_version < 11010:
-            bundled_include = 'cuda-11.0'
-        elif 11010 <= _cuda_runtime_version < 11020:
-            bundled_include = 'cuda-11.1'
-        else:
-            # CUDA v9.0, v9.1 or versions not yet supported.
-            bundled_include = None
+    if 9020 <= _cuda_runtime_version < 9030:
+        bundled_include = 'cuda-9.2'
+    elif 10000 <= _cuda_runtime_version < 10010:
+        bundled_include = 'cuda-10.0'
+    elif 10010 <= _cuda_runtime_version < 10020:
+        bundled_include = 'cuda-10.1'
+    elif 10020 <= _cuda_runtime_version < 10030:
+        bundled_include = 'cuda-10.2'
+    elif 11000 <= _cuda_runtime_version < 11010:
+        bundled_include = 'cuda-11.0'
+    elif 11010 <= _cuda_runtime_version < 11020:
+        bundled_include = 'cuda-11.1'
+    else:
+        # CUDA versions not yet supported.
+        bundled_include = None
 
-        cuda_path = cuda.get_cuda_path()
+    cuda_path = cuda.get_cuda_path()
 
-        if bundled_include is None and cuda_path is None:
-            raise RuntimeError(
-                'Failed to auto-detect CUDA root directory. '
-                'Please specify `CUDA_PATH` environment variable if you '
-                'are using CUDA v9.0, v9.1 or versions not yet supported by '
-                'CuPy.')
+    if bundled_include is None and cuda_path is None:
+        raise RuntimeError(
+            'Failed to auto-detect CUDA root directory. '
+            'Please specify `CUDA_PATH` environment variable if you '
+            'are using CUDA versions not yet supported by CuPy.')
 
-        if bundled_include is not None:
-            options += ('-I' + os.path.join(
-                _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
+    if bundled_include is not None:
+        options += ('-I' + os.path.join(
+            _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
 
-        if cuda_path is not None:
-            options += ('-I' + os.path.join(cuda_path, 'include'),)
+    if cuda_path is not None:
+        options += ('-I' + os.path.join(cuda_path, 'include'),)
 
     return cuda.compile_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
