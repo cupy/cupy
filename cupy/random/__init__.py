@@ -1,5 +1,7 @@
 import numpy as _numpy
 
+from cupy_backends.cuda.api import runtime
+
 
 def bytes(length):
     """Returns random bytes.
@@ -31,6 +33,9 @@ def default_rng(seed=None):  # NOQA  avoid redefinition of seed
     Returns:
         Generator: The initialized generator object.
     """  # NOQA, list of types need to be in one line for sphinx
+    if runtime.is_hip:
+        raise RuntimeError('Generator API not supported in HIP,'
+                           ' please use the legacy one.')
     if isinstance(seed, BitGenerator):
         return Generator(seed)
     elif isinstance(seed, Generator):
@@ -90,8 +95,9 @@ from cupy.random._sample import random_sample  # NOQA
 from cupy.random._sample import random_sample as random  # NOQA
 from cupy.random._sample import random_sample as ranf  # NOQA
 from cupy.random._sample import random_sample as sample  # NOQA
-from cupy.random._bit_generator import BitGenerator  # NOQA
-from cupy.random._bit_generator import XORWOW  # NOQA
-from cupy.random._bit_generator import MRG32k3a  # NOQA
-from cupy.random._bit_generator import Philox4x3210  # NOQA
-from cupy.random._generator import Generator  # NOQA
+if not runtime.is_hip:
+    from cupy.random._bit_generator import BitGenerator  # NOQA
+    from cupy.random._bit_generator import XORWOW  # NOQA
+    from cupy.random._bit_generator import MRG32k3a  # NOQA
+    from cupy.random._bit_generator import Philox4x3210  # NOQA
+    from cupy.random._generator import Generator  # NOQA

@@ -1,6 +1,7 @@
 import functools
 import threading
 import unittest
+import pytest
 
 import numpy
 
@@ -74,6 +75,8 @@ def two_sample_Kolmogorov_Smirnov_test(observed1, observed2):
     return d_plus, d_minus, p
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class GeneratorTestCase(unittest.TestCase):
 
     target_method = None
@@ -263,6 +266,8 @@ class TestIntegers(GeneratorTestCase):
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestRandomStateThreadSafe(unittest.TestCase):
 
     def test_default_rng_thread_safe(self):
