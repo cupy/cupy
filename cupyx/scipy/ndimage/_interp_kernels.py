@@ -34,14 +34,15 @@ def _get_coord_map(ndim):
     ops = []
     ops.append('ptrdiff_t ncoords = _ind.size();')
     for j in range(ndim):
-        ops.append(
-            '''
-    W c_{j} = coords[i + {j} * ncoords];'''.format(j=j))
+        ops.append(f'''
+    W c_{j} = coords[i + {j} * ncoords];''')
     return ops
 
 
 def _get_coord_zoom_and_shift(ndim):
     """Compute target coordinate based on a shift followed by a zoom.
+
+    This version zooms from the center of the edge pixels.
 
     Notes
     -----
@@ -58,14 +59,40 @@ def _get_coord_zoom_and_shift(ndim):
     """
     ops = []
     for j in range(ndim):
-        ops.append(
-            '''
-    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] - shift[{j}]);'''.format(j=j))
+        ops.append(f'''
+    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] - shift[{j}]);''')
     return ops
 
 
-def _get_coord_zoom(ndim):
+def _get_coord_zoom_and_shift_grid(ndim):
+    """Compute target coordinate based on a shift followed by a zoom.
+
+    This version zooms from the outer edges of the grid pixels.
+
+    Notes
+    -----
+    Assumes the following variables have been initialized on the device::
+
+        in_coord[ndim]: array containing the source coordinate
+        zoom[ndim]: array containing the zoom for each axis
+        shift[ndim]: array containing the zoom for each axis
+
+    computes::
+
+        c_j = zoom[j] * (in_coord[j] - shift[j] + 0.5) - 0.5
+
+    """
+    ops = []
+    for j in range(ndim):
+        ops.append(f'''
+    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] - shift[j] + 0.5) - 0.5;''')
+    return ops
+
+
+def _get_coord_zoom(ndim, nprepad=0):
     """Compute target coordinate based on a zoom.
+
+    This version zooms from the center of the edge pixels.
 
     Notes
     -----
@@ -81,13 +108,36 @@ def _get_coord_zoom(ndim):
     """
     ops = []
     for j in range(ndim):
-        ops.append(
-            '''
-    W c_{j} = zoom[{j}] * (W)in_coord[{j}];'''.format(j=j))
+        ops.append(f'''
+    W c_{j} = zoom[{j}] * (W)in_coord[{j}];''')
     return ops
 
 
-def _get_coord_shift(ndim):
+def _get_coord_zoom_grid(ndim, nprepad=0):
+    """Compute target coordinate based on a zoom (grid_mode=True version).
+
+    This version zooms from the outer edges of the grid pixels.
+
+    Notes
+    -----
+    Assumes the following variables have been initialized on the device::
+
+        in_coord[ndim]: array containing the source coordinate
+        zoom[ndim]: array containing the zoom for each axis
+
+    computes::
+
+        c_j = zoom[j] * (in_coord[j] + 0.5) - 0.5
+
+    """
+    ops = []
+    for j in range(ndim):
+        ops.append(f'''
+    W c_{j} = zoom[{j}] * ((W)in_coord[{j}] + 0.5) - 0.5;''')
+    return ops
+
+
+def _get_coord_shift(ndim, nprepad=0):
     """Compute target coordinate based on a shift.
 
     Notes
@@ -104,9 +154,8 @@ def _get_coord_shift(ndim):
     """
     ops = []
     for j in range(ndim):
-        ops.append(
-            '''
-    W c_{j} = (W)in_coord[{j}] - shift[{j}];'''.format(j=j))
+        ops.append(f'''
+    W c_{j} = (W)in_coord[{j}] - shift[{j}];''')
     return ops
 
 
@@ -133,19 +182,13 @@ def _get_coord_affine(ndim):
     ops = []
     ncol = ndim + 1
     for j in range(ndim):
-        ops.append('''
-            W c_{j} = (W)0.0;
-            '''.format(j=j))
+        ops.append(f'''
+            W c_{j} = (W)0.0;''')
         for k in range(ndim):
-            m_index = ncol * j + k
-            ops.append(
-                '''
-            c_{j} += mat[{m_index}] * (W)in_coord[{k}];'''.format(
-                    j=j, k=k, m_index=m_index))
-        ops.append(
-            '''
-            c_{j} += mat[{m_index}];'''.format(
-                j=j, m_index=ncol * j + ndim))
+            ops.append(f'''
+            c_{j} += mat[{ncol * j + k}] * (W)in_coord[{k}];''')
+        ops.append(f'''
+            c_{j} += mat[{ncol * j + ndim}];''')
     return ops
 
 
@@ -155,16 +198,15 @@ def _unravel_loop_index(shape, uint_t='unsigned int'):
     This code assumes that the array is a C-ordered array.
     """
     ndim = len(shape)
-    code = [
-        '''
+    code = [f'''
         {uint_t} in_coord[{ndim}];
-        {uint_t} s, t, idx = i;'''.format(uint_t=uint_t, ndim=ndim)]
+        {uint_t} s, t, idx = i;''']
     for j in range(ndim - 1, 0, -1):
-        code.append('''
-        s = {size};
+        code.append(f'''
+        s = {shape[j]};
         t = idx / s;
         in_coord[{j}] = idx - t * s;
-        idx = t;'''.format(j=j, size=shape[j]))
+        idx = t;''')
     code.append('''
         in_coord[0] = idx;''')
     return '\n'.join(code)
@@ -413,18 +455,22 @@ def _get_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 @cupy._util.memoize(for_each_device=True)
 def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
-                           integer_output=False):
+                           integer_output=False, grid_mode=False):
     in_params = 'raw X x, raw W shift, raw W zoom'
     out_params = 'Y y'
+    if grid_mode:
+        zoom_shift_func = _get_coord_zoom_and_shift_grid
+    else:
+        zoom_shift_func = _get_coord_zoom_and_shift
     operation, name = _generate_interp_custom(
-        coord_func=_get_coord_zoom_and_shift,
+        coord_func=zoom_shift_func,
         ndim=ndim,
         large_int=large_int,
         yshape=yshape,
         mode=mode,
         cval=cval,
         order=order,
-        name='zoom_shift',
+        name="zoom_shift_grid" if grid_mode else "zoom_shift",
         integer_output=integer_output,
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
@@ -433,18 +479,18 @@ def _get_zoom_shift_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
 
 @cupy._util.memoize(for_each_device=True)
 def _get_zoom_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
-                     integer_output=False):
+                     integer_output=False, grid_mode=False):
     in_params = 'raw X x, raw W zoom'
     out_params = 'Y y'
     operation, name = _generate_interp_custom(
-        coord_func=_get_coord_zoom,
+        coord_func=_get_coord_zoom_grid if grid_mode else _get_coord_zoom,
         ndim=ndim,
         large_int=large_int,
         yshape=yshape,
         mode=mode,
         cval=cval,
         order=order,
-        name='zoom',
+        name="zoom_grid" if grid_mode else "zoom",
         integer_output=integer_output,
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,

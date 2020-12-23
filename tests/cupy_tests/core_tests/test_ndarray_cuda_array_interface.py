@@ -1,4 +1,5 @@
 import unittest
+import pytest
 
 import cupy
 from cupy import core
@@ -35,6 +36,8 @@ class DummyObjectWithCudaArrayInterface(object):
     'ver': (2, 3),
 }))
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestArrayUfunc(unittest.TestCase):
 
     def setUp(self):
@@ -70,6 +73,8 @@ class TestArrayUfunc(unittest.TestCase):
     'ver': (2, 3),
 }))
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestElementwiseKernel(unittest.TestCase):
 
     def setUp(self):
@@ -106,6 +111,8 @@ class TestElementwiseKernel(unittest.TestCase):
     'ver': (2, 3),
 }))
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestSimpleReductionFunction(unittest.TestCase):
 
     def setUp(self):
@@ -144,6 +151,8 @@ class TestSimpleReductionFunction(unittest.TestCase):
     'ver': (2, 3),
 }))
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestReductionKernel(unittest.TestCase):
 
     def setUp(self):
@@ -187,6 +196,8 @@ class TestReductionKernel(unittest.TestCase):
     {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
 )
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestSlicingMemoryPointer(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype'])
@@ -231,6 +242,8 @@ test_cases_with_stream = [
 
 @testing.parameterize(*test_cases_with_stream)
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 
     def setUp(self):
@@ -277,6 +290,8 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
     'stream': ('null', 'new'),
 }))
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestCUDAArrayInterfaceStream(unittest.TestCase):
     def setUp(self):
         if self.stream == 'null':

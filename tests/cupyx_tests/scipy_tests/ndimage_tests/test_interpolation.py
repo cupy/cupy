@@ -579,6 +579,28 @@ class TestZoom:
         return out
 
 
+@testing.parameterize(*testing.product({
+    'shape': [(2, 3), (4, 4)],
+    'zoom': [(1, 1), (3, 5), (8, 2), (8, 8)],
+    'mode': ['nearest', 'reflect', 'mirror', 'grid-wrap', 'grid-constant'],
+}))
+@testing.gpu
+class TestZoomIntegerGrid():
+
+    def test_zoom_grid_by_int_order0(self):
+        # When grid_mode is True,  order 0 zoom should be the same as
+        # replication via a Kronecker product. The only exceptions to this are
+        # the non-grid modes 'constant' and 'wrap'.
+        size = numpy.prod(self.shape)
+        x = cupy.arange(size, dtype=float).reshape(self.shape)
+        testing.assert_array_almost_equal(
+            cupyx.scipy.ndimage.zoom(
+                x, self.zoom, order=0, mode=self.mode, grid_mode=True
+            ),
+            cupy.kron(x, cupy.ones(self.zoom)),
+        )
+
+
 @testing.parameterize(
     {'zoom': 3},
     {'zoom': 0.3},

@@ -73,10 +73,6 @@ _cudnn_records.append(_make_cudnn_record(
     '9.2', '7.6.5',
     'cudnn-9.2-linux-x64-v7.6.5.32.tgz',
     'cudnn-9.2-windows10-x64-v7.6.5.32.zip'))
-_cudnn_records.append(_make_cudnn_record(
-    '9.0', '7.6.5',
-    'cudnn-9.0-linux-x64-v7.6.5.32.tgz',
-    'cudnn-9.0-windows10-x64-v7.6.5.32.zip'))
 
 
 def install_cudnn(cuda, prefix):
