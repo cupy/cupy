@@ -128,9 +128,9 @@ else:
     MODULES.append({
         'name': 'cuda',
         'file': cuda_files + [
-             ('cupy.random._generator',
-              ['cupy/random/cupy_distributions.cu']),
-         ],
+            ('cupy.random._generator',
+             ['cupy/random/cupy_distributions.cu']),
+        ],
         'include': [
             'cublas_v2.h',
             'cuda.h',
@@ -265,6 +265,20 @@ if not use_hip:
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
     })
+
+    MODULES.append({
+        'name': 'random',
+        'file': [
+            ('cupy.random._generator', ['cupy/random/cupy_distributions.cu']),
+        ],
+        'include': [
+        ],
+        'libraries': [
+            'cudart',
+            'curand',
+        ],
+    })
+
 else:
     MODULES.append({
         'name': 'cub',
@@ -327,20 +341,6 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
             'check_method': build.check_thrust_version,
             'version_method': build.get_thrust_version,
         })
-
-
-MODULES.append({
-    'name': 'random',
-    'file': [
-        ('cupy.random._generator', ['cupy/random/cupy_distributions.cu']),
-    ],
-    'include': [
-    ],
-    'libraries': [
-        'cudart',
-        'curand',
-    ],
-})
 
 
 def ensure_module_file(file):
