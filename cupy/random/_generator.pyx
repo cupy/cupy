@@ -12,12 +12,24 @@ _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
 
 cdef extern from 'cupy_distributions.cuh' nogil:
-    void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssize_t size, intptr_t stream)    
-    void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream)
-    void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask)    
-    void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask)    
-    void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b)    
-    void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream)
+    void init_curand_generator(
+        int generator, intptr_t state_ptr, uint64_t seed,
+        ssize_t size, intptr_t stream)
+    void raw(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
+    void interval_32(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, int32_t mx, int32_t mask)
+    void interval_64(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, int64_t mx, int64_t mask)
+    void beta(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, double a, double b)
+    void exponential(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
 
 
 class Generator:
@@ -180,11 +192,11 @@ class Generator:
 
 def init_curand(generator, state, seed, size):
     cdef int generator_enum = <int> generator
-    cdef intptr_t state_ptr = <intptr_t>state 
+    cdef intptr_t state_ptr = <intptr_t>state
     cdef uint64_t c_seed = <uint64_t>seed
     cdef uint64_t c_size = <uint64_t>size
     cdef intptr_t strm = stream.get_current_stream_ptr()
-    init_curand_generator(generator_enum, state_ptr, c_seed, c_size, strm)    
+    init_curand_generator(generator_enum, state_ptr, c_seed, c_size, strm)
 
 
 def random_raw(generator, out):

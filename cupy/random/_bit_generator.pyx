@@ -20,10 +20,10 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     cppclass curandStatePhilox4_32_10_t:
         pass
 
-    cdef enum _RandGenerators 'RandGenerators':    
-        CURAND_XOR_WOW    
-        CURAND_MRG32k3a    
-        CURAND_PHILOX_4x32_10    
+    cdef enum _RandGenerators 'RandGenerators':
+        CURAND_XOR_WOW
+        CURAND_MRG32k3a
+        CURAND_PHILOX_4x32_10
 
 
 class BitGenerator:
