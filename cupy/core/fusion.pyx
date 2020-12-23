@@ -1002,8 +1002,7 @@ def _call_reduction(fusion_op, *args, **kwargs):
     else:
         ndim = 0
     if ndim < 0:
-        mes = 'axis {} is out of bounds for array of dimension {}'
-        raise numpy.AxisError(mes.format(axis, src_ndim))
+        raise numpy.AxisError(axis, src_ndim)
 
     _thread_local.history.ndim = ndim
     if ndim >= 1:
