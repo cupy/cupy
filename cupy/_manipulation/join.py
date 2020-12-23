@@ -129,12 +129,6 @@ def stack(tup, axis=0, out=None):
 
     .. seealso:: :func:`numpy.stack`
     """
-    # TODO(okuta) Remove this if exampd_dims is updated
-    for x in tup:
-        if not (-x.ndim - 1 <= axis <= x.ndim):
-            raise numpy.AxisError(
-                'axis {} out of bounds [{}, {}]'.format(
-                    axis, -x.ndim - 1, x.ndim))
     return concatenate([cupy.expand_dims(x, axis) for x in tup], axis, out)
 
 
