@@ -179,6 +179,9 @@ cdef class ndarray:
 
     @property
     def __cuda_array_interface__(self):
+        if runtime._is_hip_environment:
+            raise RuntimeError(
+                'HIP/ROCm does not support cuda array interface')
         cdef dict desc = {
             'shape': self.shape,
             'typestr': self.dtype.str,
@@ -2443,6 +2446,10 @@ cdef int _cuda_runtime_version = -1
 
 
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
+    if runtime._is_hip_environment:
+        raise RuntimeError(
+            'HIP/ROCm does not support cuda array interface')
+
     cdef Py_ssize_t sh, st
     cdef dict desc = a.__cuda_array_interface__
     cdef tuple shape = desc['shape']
@@ -2471,13 +2478,6 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
     # 1. the stream is not set (ex: from v0 ~ v2) or is None
     # 2. users explicitly overwrite this requirement
     stream_ptr = desc.get('stream')
-    if runtime._is_hip_environment:
-        if stream_ptr == 1:
-            stream_ptr = cuda.cupy.cuda.Stream.null.ptr
-        if stream_ptr == 2:
-            raise RuntimeError(
-                'Per thread default stream'
-                ' is not yet supported in HIP')
     if stream_ptr is not None:
         if _util.CUDA_ARRAY_INTERFACE_SYNC:
             runtime.streamSynchronize(stream_ptr)
