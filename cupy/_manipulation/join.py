@@ -1,5 +1,3 @@
-import numpy
-
 import cupy
 from cupy import core
 
@@ -130,13 +128,3 @@ def stack(tup, axis=0, out=None):
     .. seealso:: :func:`numpy.stack`
     """
     return concatenate([cupy.expand_dims(x, axis) for x in tup], axis, out)
-
-
-def _get_positive_axis(ndim, axis):
-    a = axis
-    if a < 0:
-        a += ndim
-    if a < 0 or a >= ndim:
-        raise numpy.AxisError(
-            'axis {} out of bounds [0, {})'.format(axis, ndim))
-    return a
