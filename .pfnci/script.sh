@@ -70,6 +70,11 @@ main() {
       wget -qO - http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
       echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
 
+      # Uninstall CUDA to ensure it's a clean ROCm environment
+      # https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-tk-and-driver
+      apt-get --purge remove "*cublas*" "*cufft*" "*curand*" "*cusolver*" "*cusparse*" "*npp*" "*nvjpeg*" "cuda*" "nsight*" "*cudnn*" -qqy
+      apt-get autoremove -qqy
+
       apt update -qqy
       apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl -qqy
       export HCC_AMDGPU_TARGET=gfx900
@@ -79,6 +84,11 @@ main() {
       export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ROCM_HOME/lib
       echo $(hipconfig)
       python3.7 -m pip install -v .
+      # Make sure that CuPy is importable.
+      # Note that CuPy cannot be imported from the source directory.
+      pushd /
+      python3.7 -c "import cupy"
+      popd
       ;;
     # Docker builds.
     docker.* )

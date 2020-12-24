@@ -37,6 +37,12 @@ class MatDescriptor(object):
     def set_mat_index_base(self, base):
         _cusparse.setMatIndexBase(self.descriptor, base)
 
+    def set_mat_fill_mode(self, fill_mode):
+        _cusparse.setMatFillMode(self.descriptor, fill_mode)
+
+    def set_mat_diag_type(self, diag_type):
+        _cusparse.setMatDiagType(self.descriptor, diag_type)
+
 
 def _cast_common_type(*xs):
     dtypes = [x.dtype for x in xs if x is not None]
@@ -105,6 +111,7 @@ _available_cusparse_version = {
     'dense2csc': (8000, None),
     'dense2csr': (8000, None),
     'csr2csr_compress': (8000, None),
+    'csrsm2': (9020, None),
 }
 
 
@@ -1405,3 +1412,145 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
                                cuda_dtype, alg, buff.data.ptr)
 
     return c
+
+
+def csrsm2(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False,
+           blocking=True, level_info=False):
+    """Solves a sparse triangular linear system op(a) * x = alpha * b.
+
+    Args:
+        a (cupyx.scipy.sparse.csr_matrix or cupyx.scipy.sparse.csc_matrix):
+            Sparse matrix with dimension ``(M, M)``.
+        b (cupy.ndarray): Dense vector or matrix with dimension ``(M)`` or
+            ``(M, K)``.
+        alpha (float or complex): Coefficent.
+        lower (bool):
+            True: ``a`` is lower triangle matrix.
+            False: ``a`` is upper triangle matrix.
+        unit_diag (bool):
+            True: diagonal part of ``a`` has unit elements.
+            False: diagonal part of ``a`` has non-unit elements.
+        transa (bool or str): True, False, 'N', 'T' or 'H'.
+            'N' or False: op(a) == ``a``.
+            'T' or True: op(a) == ``a.T``.
+            'H': op(a) == ``a.conj().T``.
+        blocking (bool):
+            True: blocking algorithm is used.
+            False: non-blocking algorithm is used.
+        level_info (bool):
+            True: solves it with level infromation.
+            False: solves it without level information.
+
+    Note: ``b`` will be overwritten.
+    """
+    if not check_availability('csrsm2'):
+        raise RuntimeError('csrsm2 is not available.')
+
+    if not (cupyx.scipy.sparse.isspmatrix_csr(a) or
+            cupyx.scipy.sparse.isspmatrix_csc(a)):
+        raise ValueError('a must be CSR or CSC sparse matrix')
+    if not isinstance(b, _cupy.ndarray):
+        raise ValueError('b must be cupy.ndarray')
+    if b.ndim not in (1, 2):
+        raise ValueError('b.ndim must be 1 or 2')
+    if not (a.shape[0] == a.shape[1] == b.shape[0]):
+        raise ValueError('invalid shape')
+    if a.dtype != b.dtype:
+        raise TypeError('dtype mismatch')
+
+    if lower is True:
+        fill_mode = _cusparse.CUSPARSE_FILL_MODE_LOWER
+    elif lower is False:
+        fill_mode = _cusparse.CUSPARSE_FILL_MODE_UPPER
+    else:
+        raise ValueError('Unknown lower (actual: {})'.format(lower))
+
+    if unit_diag is False:
+        diag_type = _cusparse.CUSPARSE_DIAG_TYPE_NON_UNIT
+    elif unit_diag is True:
+        diag_type = _cusparse.CUSPARSE_DIAG_TYPE_UNIT
+    else:
+        raise ValueError('Unknown unit_diag (actual: {})'.format(unit_diag))
+
+    if blocking is False:
+        algo = 0
+    elif blocking is True:
+        algo = 1
+    else:
+        raise ValueError('Unknown blocking (actual: {})'.format(blocking))
+
+    if level_info is False:
+        policy = _cusparse.CUSPARSE_SOLVE_POLICY_NO_LEVEL
+    elif level_info is True:
+        policy = _cusparse.CUSPARSE_SOLVE_POLICY_USE_LEVEL
+    else:
+        raise ValueError('Unknown level_info (actual: {})'.format(level_info))
+
+    dtype = a.dtype
+    if dtype.char == 'f':
+        t = 's'
+    elif dtype.char == 'd':
+        t = 'd'
+    elif dtype.char == 'F':
+        t = 'c'
+    elif dtype.char == 'D':
+        t = 'z'
+    else:
+        raise TypeError('Invalid dtype (actual: {})'.format(dtype))
+    helper = getattr(_cusparse, t + 'csrsm2_bufferSizeExt')
+    analysis = getattr(_cusparse, t + 'csrsm2_analysis')
+    solve = getattr(_cusparse, t + 'csrsm2_solve')
+
+    if transa is False or transa == 'N':
+        transa = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+    elif transa is True or transa == 'T':
+        transa = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
+    elif transa == 'H':
+        if dtype.char in 'fd':
+            transa = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
+        else:
+            transa = _cusparse.CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE
+    else:
+        raise ValueError('Unknown transa (actual: {})'.format(transa))
+
+    if cupyx.scipy.sparse.isspmatrix_csc(a):
+        if transa == _cusparse.CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE:
+            raise ValueError('If matrix is CSC format and complex dtype,'
+                             'transa must not be \'H\'')
+        a = a.T
+        assert cupyx.scipy.sparse.isspmatrix_csr(a)
+        transa = 1 - transa
+        fill_mode = 1 - fill_mode
+
+    m = a.shape[0]
+    nrhs = 1 if b.ndim == 1 else b.shape[1]
+    if b._f_contiguous:
+        transb = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+        ldb = m
+    elif b._c_contiguous:
+        transb = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
+        ldb = nrhs
+    else:
+        raise ValueError('b must be F-contiguous or C-contiguous.')
+
+    handle = _device.get_cusparse_handle()
+    alpha = _numpy.array(alpha, dtype=dtype)
+    a_desc = MatDescriptor.create()
+    a_desc.set_mat_type(_cusparse.CUSPARSE_MATRIX_TYPE_GENERAL)
+    a_desc.set_mat_index_base(_cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    a_desc.set_mat_fill_mode(fill_mode)
+    a_desc.set_mat_diag_type(diag_type)
+    info = _cusparse.createCsrsm2Info()
+    ws_size = helper(handle, algo, transa, transb, m, nrhs, a.nnz,
+                     alpha.ctypes.data, a_desc.descriptor, a.data.data.ptr,
+                     a.indptr.data.ptr, a.indices.data.ptr, b.data.ptr, ldb,
+                     info, policy)
+    ws = _cupy.empty((ws_size,), dtype=_numpy.int8)
+
+    analysis(handle, algo, transa, transb, m, nrhs, a.nnz, alpha.ctypes.data,
+             a_desc.descriptor, a.data.data.ptr, a.indptr.data.ptr,
+             a.indices.data.ptr, b.data.ptr, ldb, info, policy, ws.data.ptr)
+
+    solve(handle, algo, transa, transb, m, nrhs, a.nnz, alpha.ctypes.data,
+          a_desc.descriptor, a.data.data.ptr, a.indptr.data.ptr,
+          a.indices.data.ptr, b.data.ptr, ldb, info, policy, ws.data.ptr)

@@ -248,8 +248,15 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement check_format
 
     def diagonal(self, k=0):
-        # TODO(unno): Implement diagonal
-        raise NotImplementedError
+        rows, cols = self.shape
+        ylen = min(rows + min(k, 0), cols - max(k, 0))
+        if ylen <= 0:
+            return cupy.empty(0, dtype=self.dtype)
+        self.sum_duplicates()
+        y = cupy.empty(ylen, dtype=self.dtype)
+        _cupy_csr_diagonal()(k, rows, cols, self.data, self.indptr,
+                             self.indices, y)
+        return y
 
     def eliminate_zeros(self):
         """Removes zero entories in place."""
@@ -316,6 +323,31 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement prune
 
     # TODO(unno): Implement reshape
+
+    def setdiag(self, values, k=0):
+        """Set diagonal or off-diagonal elements of the array."""
+        rows, cols = self.shape
+        row_st, col_st = max(0, -k), max(0, k)
+        x_len = min(rows - row_st, cols - col_st)
+        if x_len <= 0:
+            raise ValueError('k exceeds matrix dimensions')
+        values = values.astype(self.dtype)
+        if values.ndim == 0:
+            # broadcast
+            x_data = cupy.empty((x_len,), dtype=self.dtype)
+            x_data[...] = values
+        else:
+            x_len = min(x_len, values.size)
+            x_data = values[:x_len]
+        x_indices = cupy.arange(col_st, col_st + x_len, dtype='i')
+        x_indptr = cupy.zeros((rows + 1,), dtype='i')
+        x_indptr[row_st:row_st+x_len+1] = cupy.arange(x_len+1, dtype='i')
+        x_indptr[row_st+x_len+1:] = x_len
+        x_data -= self.diagonal(k=k)[:x_len]
+        y = self + csr_matrix((x_data, x_indices, x_indptr), shape=self.shape)
+        self.data = y.data
+        self.indices = y.indices
+        self.indptr = y.indptr
 
     def sort_indices(self):
         """Sorts the indices of this matrix *in place*.
@@ -588,6 +620,26 @@ __device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
 }
 '''
 
+_FIND_INDEX_HOLDING_COL_IN_ROW_ = '''
+__device__ inline int find_index_holding_col_in_row(
+        int row, int col, const int *indptr, const int *indices) {
+    int j_min = indptr[row];
+    int j_max = indptr[row+1] - 1;
+    while (j_min <= j_max) {
+        int j = (j_min + j_max) / 2;
+        int j_col = indices[j];
+        if (j_col == col) {
+            return j;
+        } else if (j_col < col) {
+            j_min = j + 1;
+        } else {
+            j_max = j - 1;
+        }
+    }
+    return -1;
+}
+'''
+
 
 @cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_dense():
@@ -704,22 +756,8 @@ def cupy_multiply_by_csr_step1():
         if (C_N > B_N && B_N == 1) {
             n_b = 0;
         }
-        int i_b = -1;
-        int j_min = B_INDPTR[m_b];
-        int j_max = B_INDPTR[m_b+1] - 1;
-        while (j_min <= j_max) {
-            int j = (j_min + j_max) / 2;
-            if (n_b < B_INDICES[j]) {
-                j_max = j - 1;
-            }
-            else if (n_b > B_INDICES[j]) {
-                j_min = j + 1;
-            }
-            else {
-                i_b = j;
-                break;
-            }
-        }
+        int i_b = find_index_holding_col_in_row(m_b, n_b,
+            &(B_INDPTR[0]), &(B_INDICES[0]));
         if (i_b >= 0) {
             atomicAdd(&(NNZ_EACH_ROW[m_c+1]), 1);
             FLAGS[i+1] = 1;
@@ -728,7 +766,7 @@ def cupy_multiply_by_csr_step1():
         }
         ''',
         'cupy_multiply_by_csr_step1',
-        preamble=_GET_ROW_ID_
+        preamble=_GET_ROW_ID_ + _FIND_INDEX_HOLDING_COL_IN_ROW_
     )
 
 
@@ -1115,3 +1153,28 @@ def cupy_dense2csr_step2():
         }
         ''',
         'cupy_dense2csr_step2')
+
+
+@cupy._util.memoize(for_each_device=True)
+def _cupy_csr_diagonal():
+    return cupy.ElementwiseKernel(
+        'int32 k, int32 rows, int32 cols, '
+        'raw T data, raw I indptr, raw I indices',
+        'T y',
+        '''
+        int row = i;
+        int col = i;
+        if (k < 0) row -= k;
+        if (k > 0) col += k;
+        if (row >= rows || col >= cols) return;
+        int j = find_index_holding_col_in_row(row, col,
+            &(indptr[0]), &(indices[0]));
+        if (j >= 0) {
+            y = data[j];
+        } else {
+            y = static_cast<T>(0);
+        }
+        ''',
+        '_cupy_csr_diagonal',
+        preamble=_FIND_INDEX_HOLDING_COL_IN_ROW_
+    )

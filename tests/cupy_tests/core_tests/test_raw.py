@@ -2,7 +2,6 @@ import contextlib
 import io
 import os
 import pickle
-import string
 import subprocess
 import sys
 import tempfile
@@ -1121,15 +1120,21 @@ class TestRawGridSync(unittest.TestCase):
 
 _test_script = r'''
 import pickle
+import sys
+
 import cupy as cp
+
 
 N = 100
 a = cp.random.random(N, dtype=cp.float32)
 b = cp.random.random(N, dtype=cp.float32)
 c = cp.empty_like(a)
-with open('${temp_dir}' + '/TestRawPicklable', 'rb') as f:
+with open('raw.pkl', 'rb') as f:
     ker = pickle.load(f)
-${fetch_ker}
+
+if len(sys.argv) == 2:
+    ker = ker.get_function(sys.argv[1])
+
 ker((1,), (100,), (a, b, c, N))
 assert cp.allclose(a + b, c)
 assert ker.enable_cooperative_groups
@@ -1143,6 +1148,9 @@ assert ker.enable_cooperative_groups
     'compile': (False, True),
     'raw': ('ker', 'mod', 'mod_ker'),
 }))
+@unittest.skipUnless(
+    60 <= int(cupy.cuda.device.get_compute_capability()),
+    'Requires compute capability 6.0 or later')
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'HIP does not support enable_cooperative_groups')
 class TestRawPicklable(unittest.TestCase):
@@ -1190,23 +1198,17 @@ class TestRawPicklable(unittest.TestCase):
         elif self.raw == 'mod_ker':
             # pickle the RawKernel fetched from the RawModule
             obj = self.mod.get_function('test_sum')
-        with open(self.temp_dir + '/TestRawPicklable', 'wb') as f:
+        with open(self.temp_dir + '/raw.pkl', 'wb') as f:
             pickle.dump(obj, f)
 
         # dump test script to temp dir
-        if self.raw == 'mod':
-            fetch_ker = "ker = ker.get_function('test_sum')"
-        else:
-            fetch_ker = ''
-        test_ker = string.Template(_test_script).substitute(
-            temp_dir=self.temp_dir,
-            fetch_ker=fetch_ker)
         with open(self.temp_dir + '/TestRawPicklable.py', 'w') as f:
-            f.write(test_ker)
+            f.write(_test_script)
+        test_args = ['test_sum'] if self.raw == 'mod' else []
 
         # run another process to check the pickle
-        s = subprocess.run([sys.executable,
-                            self.temp_dir + '/TestRawPicklable.py'])
+        s = subprocess.run([sys.executable, 'TestRawPicklable.py'] + test_args,
+                           cwd=self.temp_dir)
         s.check_returncode()  # raise if unsuccess
 
 

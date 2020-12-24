@@ -1,7 +1,5 @@
-#ifndef INCLUDE_GUARD_CUPY_CUSOLVER_H
-#define INCLUDE_GUARD_CUPY_CUSOLVER_H
-
-#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#ifndef INCLUDE_GUARD_CUDA_CUPY_CUSOLVER_H
+#define INCLUDE_GUARD_CUDA_CUPY_CUSOLVER_H
 
 #include <cuda.h>
 #include <cusolverDn.h>
@@ -176,8 +174,97 @@ cusolverStatus_t cusolverDnZgesvdaStridedBatched(...) {
 }
 #endif // #if CUDA_VERSION < 10010
 
+#if CUDA_VERSION < 10020
+// Functions added in CUDA 10.2
+cusolverStatus_t cusolverDnZZgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZCgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZKgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCCgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCKgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDDgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDSgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDHgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSSgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSHgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZZgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZCgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZKgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCCgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCKgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDDgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDSgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDHgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSSgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSHgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+#endif // #if CUDA_VERSION < 10020
+
 #if CUDA_VERSION < 11000
 // Functions added in CUDA 11.0
+cusolverStatus_t cusolverDnZYgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCYgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDXgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSXgesv_bufferSize(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnZYgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnCYgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnDXgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+cusolverStatus_t cusolverDnSXgesv(...) {
+    return CUSOLVER_STATUS_SUCCESS;
+}
+
 cusolverStatus_t cusolverDnZZgels_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
@@ -266,14 +353,4 @@ cusolverStatus_t cusolverDnSHgels(...) {
 
 } // extern "C"
 
-#elif defined(CUPY_USE_HIP) // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
-
-#include "hip/cupy_hipsolver.h"
-
-
-#else // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
-
-#include "stub/cupy_cusolver.h"
-
-#endif // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
-#endif // #ifndef INCLUDE_GUARD_CUPY_CUSOLVER_H
+#endif // #ifndef INCLUDE_GUARD_CUDA_CUPY_CUSOLVER_H

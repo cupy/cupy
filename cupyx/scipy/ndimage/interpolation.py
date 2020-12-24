@@ -4,6 +4,7 @@ import warnings
 import cupy
 import numpy
 
+import cupy._util
 from cupy.core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _interp_kernels
@@ -25,31 +26,30 @@ def _check_parameter(func_name, order, mode):
         # instead of ValueError.
         raise NotImplementedError('spline order is not supported')
 
-    if mode in ('reflect', 'wrap'):
-        raise NotImplementedError('\'{}\' mode is not supported. See '
-                                  'https://github.com/scipy/scipy/issues/8465'
-                                  .format(mode))
-    elif mode not in ('constant', 'nearest', 'mirror', 'opencv',
-                      '_opencv_edge'):
-        raise ValueError('boundary mode is not supported')
+    if mode in ['grid-mirror', 'grid-wrap', 'grid-reflect', 'wrap', 'reflect']:
+        cupy._util.experimental(f"mode '{mode}'")
+
+    if mode not in ('constant', 'grid-constant', 'nearest', 'mirror',
+                    'reflect', 'grid-mirror', 'wrap', 'grid-wrap', 'opencv',
+                    '_opencv_edge'):
+        raise ValueError('boundary mode ({}) is not supported'.format(mode))
 
 
-def _get_spline_output(input, output, allow_float32=False):
+def _get_spline_output(input, output):
     """Create workspace array, temp, and the final dtype for the output.
 
-    If allow_float32 is False, temp will always have float64 dtype.
-    If allow_float32 is True, temp will have float32 dtype when ``input`` or
-    ``output`` is single precision.
+    Differs from SciPy by not always forcing the internal floating point dtype
+    to be double precision.
     """
-    complex_data = input.dtype.kind == "c"
+    complex_data = input.dtype.kind == 'c'
     if complex_data:
-        min_float_dtype = cupy.complex64 if allow_float32 else cupy.complex128
+        min_float_dtype = cupy.complex64
     else:
-        min_float_dtype = cupy.float32 if allow_float32 else cupy.float64
+        min_float_dtype = cupy.float32
     if isinstance(output, cupy.ndarray):
-        if complex_data and output.dtype.kind != "c":
+        if complex_data and output.dtype.kind != 'c':
             raise ValueError(
-                "output must have complex dtype for complex inputs"
+                'output must have complex dtype for complex inputs'
             )
         float_dtype = cupy.promote_types(output.dtype, min_float_dtype)
         output_dtype = output.dtype
@@ -75,7 +75,7 @@ def _get_spline_output(input, output, allow_float32=False):
 
 
 def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
-                    mode="mirror", *, allow_float32=False):
+                    mode='mirror'):
     """
     Calculate a 1-D spline filter along the given axis.
 
@@ -94,19 +94,16 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
             ``numpy.float64``.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
-        allow_float32 (bool): If True, single-precision inputs will use
-            single precision computation. If False, double precision is used.
-            This option is not present in SciPy.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
 
     Returns:
         cupy.ndarray: The result of prefiltering the input.
 
     .. seealso:: :func:`scipy.spline_filter1d`
-
     """
     if order < 0 or order > 5:
-        raise RuntimeError("spline order not supported")
+        raise RuntimeError('spline order not supported')
     x = input
     ndim = x.ndim
     axis = internal._normalize_axis_index(axis, ndim)
@@ -119,8 +116,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
         output[...] = x[...]
         return output
 
-    temp, data_dtype, output_dtype = _get_spline_output(x, output,
-                                                        allow_float32)
+    temp, data_dtype, output_dtype = _get_spline_output(x, output)
     data_type = cupy.core._scalar.get_typename(temp.dtype)
     pole_type = cupy.core._scalar.get_typename(temp.real.dtype)
 
@@ -163,8 +159,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
     return temp.astype(output_dtype, copy=False)
 
 
-def spline_filter(input, order=3, output=numpy.float64, mode="mirror", *,
-                  allow_float32=False):
+def spline_filter(input, order=3, output=cupy.float64, mode='mirror'):
     """Multidimensional spline filter.
 
     Args:
@@ -177,29 +172,22 @@ def spline_filter(input, order=3, output=numpy.float64, mode="mirror", *,
             ``numpy.float64``.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
-        allow_float32 (bool): If True, single-precision inputs will use
-            single precision computation. If False, double precision is used.
-            This option is not present in SciPy.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
 
     Returns:
         cupy.ndarray: The result of prefiltering the input.
 
     .. seealso:: :func:`scipy.spline_filter1d`
-
     """
     if order < 2 or order > 5:
-        raise RuntimeError("spline order not supported")
+        raise RuntimeError('spline order not supported')
 
     x = input
-    temp, data_dtype, output_dtype = _get_spline_output(x, output,
-                                                        allow_float32)
+    temp, data_dtype, output_dtype = _get_spline_output(x, output)
     if order not in [0, 1] and input.ndim > 0:
         for axis in range(x.ndim):
-            spline_filter1d(
-                x, order, axis, output=temp, mode=mode,
-                allow_float32=allow_float32
-            )
+            spline_filter1d(x, order, axis, output=temp, mode=mode)
             x = temp
     if isinstance(output, cupy.ndarray):
         output[...] = temp[...]
@@ -233,7 +221,8 @@ def map_coordinates(input, coordinates, output=None, order=None,
             change in the future. Currently it supports only order 0 and 1.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
@@ -309,7 +298,8 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
             change in the future. Currently it supports only order 0 and 1.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
@@ -338,7 +328,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
             offset = matrix[:-1, -1]
             matrix = matrix[:-1, :-1]
         if matrix.shape != (input.ndim, input.ndim):
-            raise RuntimeError("improper affine shape")
+            raise RuntimeError('improper affine shape')
 
     if mode == 'opencv':
         m = cupy.zeros((input.ndim + 1, input.ndim + 1))
@@ -428,7 +418,8 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=None,
             change in the future. Currently it supports only order 0 and 1.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
@@ -523,7 +514,8 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
             change in the future. Currently it supports only order 0 and 1.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
@@ -573,7 +565,7 @@ def shift(input, shift, output=None, order=None, mode='constant', cval=0.0,
 
 
 def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
-         prefilter=True):
+         prefilter=True, *, grid_mode=False):
     """Zoom an array.
 
     The array is zoomed using spline interpolation of the requested order.
@@ -590,12 +582,28 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
             change in the future. Currently it supports only order 0 and 1.
         mode (str): Points outside the boundaries of the input are filled
             according to the given mode (``'constant'``, ``'nearest'``,
-            ``'mirror'`` or ``'opencv'``). Default is ``'constant'``.
+            ``'mirror'``, ``'reflect'``, ``'wrap'``, ``'grid-mirror'``,
+            ``'grid-wrap'``, ``'grid-constant'`` or ``'opencv'``).
         cval (scalar): Value used for points outside the boundaries of
             the input if ``mode='constant'`` or ``mode='opencv'``. Default is
             0.0
         prefilter (bool): It is not used yet. It just exists for compatibility
             with :mod:`scipy.ndimage`.
+        grid_mode (bool, optional): If False, the distance from the pixel
+            centers is zoomed. Otherwise, the distance including the full pixel
+            extent is used. For example, a 1d signal of length 5 is considered
+            to have length 4 when ``grid_mode`` is False, but length 5 when
+            ``grid_mode`` is True. See the following visual illustration:
+
+            .. code-block:: text
+
+                    | pixel 1 | pixel 2 | pixel 3 | pixel 4 | pixel 5 |
+                         |<-------------------------------------->|
+                                            vs.
+                    |<----------------------------------------------->|
+
+            The starting point of the arrow in the diagram above corresponds to
+            coordinate location 0 in each mode.
 
     Returns:
         cupy.ndarray or None:
@@ -640,10 +648,27 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
         if order is None:
             order = 1
 
+        if grid_mode:
+            cupy._util.experimental("grid_mode=True")
+
+            # warn about modes that may have surprising behavior
+            suggest_mode = None
+            if mode == 'constant':
+                suggest_mode = 'grid-constant'
+            elif mode == 'wrap':
+                suggest_mode = 'grid-wrap'
+            if suggest_mode is not None:
+                warnings.warn(
+                    f'It is recommended to use mode = {suggest_mode} instead '
+                    f'of {mode} when grid_mode is True.')
+
         zoom = []
         for in_size, out_size in zip(input.shape, output_shape):
             if out_size > 1:
-                zoom.append(float(in_size - 1) / (out_size - 1))
+                if grid_mode:
+                    zoom.append(in_size / out_size)
+                else:
+                    zoom.append((in_size - 1) / (out_size - 1))
             else:
                 zoom.append(0)
 
@@ -655,7 +680,7 @@ def zoom(input, zoom, output=None, order=None, mode='constant', cval=0.0,
         large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
         kern = _interp_kernels._get_zoom_kernel(
             input.ndim, large_int, output_shape, mode, order=order,
-            integer_output=integer_output)
+            integer_output=integer_output, grid_mode=grid_mode)
         zoom = cupy.asarray(zoom, dtype=cupy.float64)
         kern(input, zoom, output)
     return output

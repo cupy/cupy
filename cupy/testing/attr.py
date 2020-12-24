@@ -1,5 +1,4 @@
 import os
-import unittest
 
 
 try:
@@ -54,7 +53,8 @@ def multi_gpu(gpu_num):
     """
 
     check_available()
-    return unittest.skipIf(
+    # at this point we know pytest is available for sure
+    return pytest.mark.skipif(
         0 <= _gpu_limit < gpu_num,
         reason='{} GPUs required'.format(gpu_num))
 

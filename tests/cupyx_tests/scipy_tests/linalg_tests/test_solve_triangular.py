@@ -25,7 +25,7 @@ except ImportError:
 @testing.with_requires('scipy')
 class TestSolveTriangular(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('fdFD')
     def check_x(self, a_shape, b_shape, dtype):
         a_cpu = numpy.random.randint(1, 10, size=a_shape).astype(dtype)
         b_cpu = numpy.random.randint(1, 10, size=b_shape).astype(dtype)

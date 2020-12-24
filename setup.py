@@ -23,18 +23,6 @@ for submodule in ('cupy/core/include/cupy/cub/',
         sys.exit(1)
 
 
-if sys.version_info[:3] == (3, 5, 0):
-    if not int(os.getenv('CUPY_PYTHON_350_FORCE', '0')):
-        msg = """
-CuPy does not work with Python 3.5.0.
-
-We strongly recommend to use another version of Python.
-If you want to use CuPy with Python 3.5.0 at your own risk,
-set 1 to CUPY_PYTHON_350_FORCE environment variable."""
-        print(msg)
-        sys.exit(1)
-
-
 requirements = {
     'setup': [
         'fastrlock>=0.3',
@@ -61,19 +49,16 @@ requirements = {
         'sphinx==3.0.4',
         'sphinx_rtd_theme',
     ],
-    'travis': [
-        '-r stylecheck',
-        '-r docs',
-    ],
     'appveyor': [
         '-r test',
     ],
     'jenkins': [
         '-r test',
         'pytest-timeout',
-        'pytest-cov',
+        'pytest-cov<2.10',  # pytest-cov 2.10 requires pytest>=4.6
         'coveralls',
         'codecov',
+        'coverage<5',  # Otherwise, Python must be built with sqlite
     ],
 }
 
@@ -145,7 +130,6 @@ Intended Audience :: Developers
 License :: OSI Approved :: MIT License
 Programming Language :: Python
 Programming Language :: Python :: 3
-Programming Language :: Python :: 3.5
 Programming Language :: Python :: 3.6
 Programming Language :: Python :: 3.7
 Programming Language :: Python :: 3.8
@@ -176,7 +160,7 @@ setup(
     packages=find_packages(exclude=['install', 'tests']),
     package_data=package_data,
     zip_safe=False,
-    python_requires='>=3.5.0',
+    python_requires='>=3.6.0',
     setup_requires=setup_requires,
     install_requires=install_requires,
     tests_require=tests_require,

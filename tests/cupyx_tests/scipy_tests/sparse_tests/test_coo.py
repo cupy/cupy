@@ -188,7 +188,7 @@ class TestCooMatrix(unittest.TestCase):
         cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
     def test_has_canonical_format(self):
-        assert not self.m.has_canonical_format
+        assert self.m.has_canonical_format is False
 
     @unittest.skipUnless(scipy_available, 'requires scipy')
     def test_get(self):
@@ -277,6 +277,35 @@ class TestCooMatrixInit(unittest.TestCase):
         cupy.testing.assert_array_equal(n.data, [1, 2, 3])
         cupy.testing.assert_array_equal(n.row, [0, 0, 2])
         cupy.testing.assert_array_equal(n.col, [1, 3, 2])
+
+    def test_init_dense_allzero(self):
+        m = cupy.array([[0, 0, 0, 0],
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0]], dtype=self.dtype)
+        n = sparse.coo_matrix(m)
+        assert n.nnz == 0
+        assert n.shape == (3, 4)
+        cupy.testing.assert_array_equal(n.data, [])
+        cupy.testing.assert_array_equal(n.row, [])
+        cupy.testing.assert_array_equal(n.col, [])
+
+    def test_init_dense_check_if_row_major(self):
+        rows, cols = 10, 9
+        for order in ('C', 'F'):
+            d = testing.shaped_random((rows, cols), dtype=self.dtype,
+                                      order=order)
+            mask = testing.shaped_random((rows, cols), scale=1.0)
+            d[mask > 0.5] = 0
+            s = sparse.coo_matrix(d)
+            for i in range(s.nnz):
+                assert 0 <= s.row[i] < rows
+                assert 0 <= s.col[i] < cols
+                assert s.data[i] == d[s.row[i], s.col[i]]
+                if i == 0:
+                    continue
+                assert ((s.row[i-1] < s.row[i]) or
+                        (s.row[i-1] == s.row[i] and s.col[i-1] < s.col[i]))
+            assert s.has_canonical_format
 
     def test_invalid_format(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
