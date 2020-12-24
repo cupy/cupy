@@ -6,10 +6,13 @@ from libcpp cimport vector
 import numpy
 import threading
 
+# Note: This file will also be cythonized at *runtime* when cuFFT callback
+# is used.  CuPy modules cannot be cimport-ed, as CuPy distribution does
+# not include *.pxd files.
 import cupy
-from cupy_backends.cuda.api cimport driver
-from cupy_backends.cuda.api cimport runtime
-from cupy.cuda cimport stream as stream_module
+from cupy_backends.cuda.api import driver
+from cupy_backends.cuda.api import runtime
+from cupy.cuda import stream as stream_module
 from cupy.cuda.device import Device
 from cupy.cuda.stream import Event, Stream
 
