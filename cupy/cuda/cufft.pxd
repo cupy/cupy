@@ -4,6 +4,9 @@ from cupy.cuda cimport memory
 
 
 cdef extern from *:
+    # Redefine to avoid cimporting driver API
+    ctypedef void* CudaStream 'cudaStream_t'
+
     ctypedef float Float 'cufftReal'
     ctypedef double Double 'cufftDoubleReal'
     ctypedef int Result 'cufftResult_t'

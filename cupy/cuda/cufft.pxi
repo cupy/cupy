@@ -10,7 +10,6 @@ import threading
 # is used.  CuPy modules cannot be cimport-ed, as CuPy distribution does
 # not include *.pxd files.
 import cupy
-from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy.cuda import stream as stream_module
 from cupy.cuda.device import Device
@@ -51,7 +50,7 @@ cdef extern from 'cupy_cufft.h' nogil:
     Result cufftSetWorkArea(Handle plan, void *workArea)
 
     # cuFFT Stream Function
-    Result cufftSetStream(Handle plan, driver.Stream streamId)
+    Result cufftSetStream(Handle plan, CudaStream streamId)
 
     # cuFFT Plan Functions
     Result cufftMakePlan1d(Handle plan, int nx, Type type, int batch,
@@ -476,7 +475,7 @@ cdef class Plan1d:
         cdef int result
 
         with nogil:
-            result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+            result = cufftSetStream(<Handle>plan, <CudaStream>stream)
         check_result(result)
 
         if self.fft_type == CUFFT_C2C:
@@ -807,7 +806,7 @@ cdef class PlanNd:
         cdef int result
 
         with nogil:
-            result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+            result = cufftSetStream(<Handle>plan, <CudaStream>stream)
         check_result(result)
 
         if self.fft_type == CUFFT_C2C:
