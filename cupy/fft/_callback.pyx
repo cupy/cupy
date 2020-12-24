@@ -169,7 +169,7 @@ cdef inline void _cythonize(str tempdir, str mod_name) except*:
                     os.path.join(tempdir, 'cupy_cufft.h'))
     shutil.copyfile(os.path.join(_source_dir, 'cufft.pxd'),
                     os.path.join(tempdir, mod_name + '.pxd'))
-    shutil.copyfile(os.path.join(_source_dir, 'cufft.pyx'),
+    shutil.copyfile(os.path.join(_source_dir, 'cufft.pxi'),
                     os.path.join(tempdir, mod_name + '.pyx'))
     p = subprocess.run(['cython', '-3', '--cplus',
                         '-E', 'use_hip=0',
