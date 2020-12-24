@@ -52,7 +52,7 @@ cdef class _ThreadLocal:
         return self.current_stream
 
 
-cdef intptr_t get_current_stream_ptr():
+cpdef intptr_t get_current_stream_ptr():
     """C API to get current CUDA stream pointer.
 
     Returns:
