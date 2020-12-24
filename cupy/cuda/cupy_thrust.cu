@@ -1,4 +1,3 @@
-#include <cupy/type_dispatcher.cuh>
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 #include <thrust/iterator/zip_iterator.h>
@@ -6,7 +5,9 @@
 #include <thrust/sort.h>
 #include <thrust/tuple.h>
 #include <thrust/execution_policy.h>
+
 #include "cupy_thrust.h"
+#include "type_dispatcher.cuh"
 
 
 using namespace thrust;
