@@ -1862,9 +1862,10 @@ cdef int _cuda_runtime_version = -1
 cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
 
 cdef list _cupy_header_list = [
-    'cupy/complex.cuh',
-    'cupy/carray.cuh',
     'cupy/atomics.cuh',
+    'cupy/carray.cuh',
+    'cupy/complex.cuh',
+    'cupy/cuComplex_bridge.h',
 ]
 if _is_hip:
     _cupy_header_list.append('cupy/math_constants.h')
@@ -1875,26 +1876,26 @@ cdef str _cupy_header = ''.join(
 # This is indirect include header list.
 # These header files are subject to a hash key.
 cdef list _cupy_extra_header_list = [
-    'cupy/complex/complex.h',
-    'cupy/complex/math_private.h',
-    'cupy/complex/complex_inl.h',
     'cupy/complex/arithmetic.h',
-    'cupy/complex/cproj.h',
+    'cupy/complex/catrig.h',
+    'cupy/complex/catrigf.h',
+    'cupy/complex/ccosh.h',
+    'cupy/complex/ccoshf.h',
     'cupy/complex/cexp.h',
     'cupy/complex/cexpf.h',
     'cupy/complex/clog.h',
     'cupy/complex/clogf.h',
+    'cupy/complex/complex.h',
+    'cupy/complex/complex_inl.h',
     'cupy/complex/cpow.h',
-    'cupy/complex/ccosh.h',
-    'cupy/complex/ccoshf.h',
+    'cupy/complex/cproj.h',
     'cupy/complex/csinh.h',
     'cupy/complex/csinhf.h',
-    'cupy/complex/ctanh.h',
-    'cupy/complex/ctanhf.h',
     'cupy/complex/csqrt.h',
     'cupy/complex/csqrtf.h',
-    'cupy/complex/catrig.h',
-    'cupy/complex/catrigf.h',
+    'cupy/complex/ctanh.h',
+    'cupy/complex/ctanhf.h',
+    'cupy/complex/math_private.h',
 ]
 
 cdef str _header_path_cache = None
@@ -1960,7 +1961,6 @@ cpdef function.Module compile_with_cache(
         log_stream=None, bint jitify=False):
     if translate_cucomplex:
         source = _translate_cucomplex_to_thrust(source)
-        _cupy_header_list.append('cupy/cuComplex_bridge.h')
         prepend_cupy_headers = True
 
     if prepend_cupy_headers:
