@@ -343,7 +343,7 @@ cdef class Plan1d:
         cdef vector.vector[void*] work_area_ptr
 
         # some sanity checks
-        if runtime._is_hip_environment:
+        if runtime.is_hip:
             raise RuntimeError('hipFFT/rocFFT does not support multi-GPU FFT')
         if fft_type != CUFFT_C2C and fft_type != CUFFT_Z2Z:
             raise ValueError('Currently for multiple GPUs only C2C and Z2Z are'
