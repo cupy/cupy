@@ -344,7 +344,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
 
     m, lda = a.shape
     w = _cupy.empty(m, inp_w_dtype)
-    dev_info = _cupy.empty((), _numpy.int32)
+    dev_info = _cupy.empty((1,), _cupy.int32)
     handle = _device.Device().cusolver_handle
 
     if with_eigen_vector:
@@ -432,7 +432,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
         a.swapaxes(-2, -1), order='C', copy=True, dtype=inp_v_dtype)
 
     w = _cupy.empty((batch_size, m), inp_w_dtype).swapaxes(-2, 1)
-    dev_info = _cupy.empty((), _numpy.int32)
+    dev_info = _cupy.empty((batch_size,), _cupy.int32)
     handle = _device.Device().cusolver_handle
 
     if with_eigen_vector:
