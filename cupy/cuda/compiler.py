@@ -390,10 +390,8 @@ def _compile_with_cache_cuda(
     options += ('-ftz=true',)
 
     if enable_cooperative_groups:
-        # `cooperative_groups` requires `-rdc=true`.
-        # The three latter flags are to resolve linker error.
-        # (https://devtalk.nvidia.com/default/topic/1023604/linker-error/)
-        options += ('-rdc=true', '-Xcompiler', '-fPIC', '-shared')
+        # `cooperative_groups` requires relocatable device code.
+        options += ('--device-c',)
 
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
