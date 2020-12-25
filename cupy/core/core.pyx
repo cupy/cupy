@@ -1984,8 +1984,7 @@ cpdef function.Module compile_with_cache(
             raise RuntimeError(
                 'Failed to auto-detect CUDA root directory. '
                 'Please specify `CUDA_PATH` environment variable if you '
-                'are using CUDA v9.0, v9.1 or versions not yet supported by '
-                'CuPy.')
+                'are using CUDA versions not yet supported by CuPy.')
 
         if bundled_include is not None:
             options += ('-I' + os.path.join(
