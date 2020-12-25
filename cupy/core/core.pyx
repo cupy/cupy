@@ -2024,8 +2024,7 @@ divmod = create_ufunc(
 
 
 cdef _round_preamble = '''
-#ifdef __HIPCC__
-
+#ifdef __HIP_DEVICE_COMPILE__
 #define round_float llrintf
 #else
 #define round_float __float2ll_rn
