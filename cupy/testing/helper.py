@@ -33,8 +33,8 @@ else:
 def _format_exception(exc):
     if exc is None:
         return None
-    tb = exc.__traceback__
-    return ''.join(traceback.format_tb(tb)) + str(exc)
+    # TODO(kataoka): Use traceback.format_exception(exc) in Python 3.10
+    return ''.join(traceback.TracebackException.from_exception(exc).format())
 
 
 def _call_func(self, impl, args, kw):
