@@ -74,7 +74,7 @@ cdef class _ThreadLocal:
 
 
 @contextlib.contextmanager
-def lock_directory(timeout=10, poll_interval=0.05):
+def lock_directory(cache_dir, timeout=10, poll_interval=0.05):
     """A simple lock to the callback cache directory.
 
     This context manager prevents concurrent writing to the cache directory
@@ -84,6 +84,7 @@ def lock_directory(timeout=10, poll_interval=0.05):
     This is essentially a stripped-down version of py-filelock.
 
     Args:
+        cache_dir (str): path to the directory to be locked
         timeout (float): maximal time in seconds to try to acquire the lock
             before giving up (and raising a RuntimeError).
         poll_interval (float): the time interval in seconds between two
@@ -91,7 +92,7 @@ def lock_directory(timeout=10, poll_interval=0.05):
 
     """
 
-    lock_file = os.path.join(_callback_cache_dir, '.callback_lock')
+    lock_file = os.path.join(cache_dir, '.callback_lock')
 
     def acquire(lock_file):
         try:
@@ -253,7 +254,7 @@ cdef inline str _prune(str cache_dir, str _cufft_ver, str arch):
         cufft_lib_cached = os.path.join(cache_dir,
                                         'lib' + cufft_lib_pruned + '.a')
         if not os.path.isfile(cufft_lib_cached):
-            with lock_directory():
+            with lock_directory(cache_dir):
                 p = subprocess.run([_nvprune, '-arch=sm_' + arch,
                                     cufft_lib_full, '-o', cufft_lib_cached])
             p.check_returncode()
@@ -320,7 +321,7 @@ cdef inline void _nvcc_link(
         cmd.append('-lcufft_static')
     cmd += ['-lculibos', '-lpthread', '-o', path]
 
-    with lock_directory():
+    with lock_directory(cache_dir):
         p = subprocess.run(cmd, env=os.environ)
     p.check_returncode()
 
