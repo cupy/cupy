@@ -1,8 +1,10 @@
-from cupy.cuda import runtime
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda cimport stream as stream_module
+
 import threading
 import weakref
 
-from cupy import util
+from cupy import _util
 
 
 cdef object _thread_local = threading.local()
@@ -22,11 +24,15 @@ cdef class _ThreadLocal:
         return <_ThreadLocal>tls
 
     cdef set_current_stream(self, stream):
-        self.current_stream = <void*><intptr_t>stream.ptr
+        cdef intptr_t ptr = <intptr_t>stream.ptr
+        stream_module.set_current_stream_ptr(ptr)
+        self.current_stream = <void*>ptr
         self.current_stream_ref = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
-        self.current_stream = <void*><intptr_t>stream_ref().ptr
+        cdef intptr_t ptr = <intptr_t>stream_ref().ptr
+        stream_module.set_current_stream_ptr(ptr)
+        self.current_stream = <void*>ptr
         self.current_stream_ref = stream_ref
 
     cdef get_current_stream(self):
@@ -97,7 +103,7 @@ class Event(object):
                 (interprocess and runtime.eventInterprocess))
         self.ptr = runtime.eventCreateWithFlags(flag)
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.ptr:
@@ -181,6 +187,9 @@ class BaseStream(object):
         tls.set_current_stream_ref(prev_stream_ref)
         pass
 
+    def __repr__(self):
+        return '<{} {}>'.format(type(self).__name__, self.ptr)
+
     def use(self):
         """Makes this stream current.
 
@@ -208,10 +217,40 @@ class BaseStream(object):
                 object), and returns nothing.
             arg (object): Argument to the callback.
 
+        .. note::
+            Whenever possible, use the :meth:`launch_host_func` method
+            instead of this one, as it may be deprecated and removed from
+            CUDA at some point.
+
         """
         def f(stream, status, dummy):
             callback(self, status, arg)
+
         runtime.streamAddCallback(self.ptr, f, 0)
+
+    def launch_host_func(self, callback, arg):
+        """Launch a callback on host when all queued work is done.
+
+        Args:
+            callback (function): Callback function. It must take only one
+                argument (user data object), and returns nothing.
+            arg (object): Argument to the callback.
+
+        .. note::
+            Whenever possible, this method is recommended over
+            :meth:`add_callback`, which may be deprecated and removed from
+            CUDA at some point.
+
+        .. seealso:: `cudaLaunchHostFunc()`_
+
+        .. _cudaLaunchHostFunc():
+            https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EXECUTION.html#group__CUDART__EXECUTION_1g05841eaa5f90f27124241baafb3e856f
+
+        """
+        def f(dummy):
+            callback(arg)
+
+        runtime.launchHostFunc(self.ptr, f, 0)
 
     def record(self, event=None):
         """Records an event on the stream.
@@ -272,7 +311,7 @@ class Stream(BaseStream):
         else:
             self.ptr = runtime.streamCreate()
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         cdef intptr_t current_ptr
         if is_shutting_down():
             return

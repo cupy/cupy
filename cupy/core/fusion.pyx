@@ -1,3 +1,6 @@
+from cupy.core cimport _accelerator
+from cupy.core._accelerator cimport ACCELERATOR_CUB
+
 import functools
 import string
 
@@ -508,7 +511,7 @@ class _FusionHistory(object):
                 self.reduce_op = op
                 self.reduce_identity = raw.identity
                 self.reduce_kwargs = kwargs
-                self._add_preamble(raw._preamble)
+                self._add_preamble(raw.preamble)
                 return self._fresh_postmap_param(return_dtype)
         raise TypeError('Type is mismatched. {}(...), {}'.format(
             self.raw._ops.name, arg.dtype.type))
@@ -798,7 +801,7 @@ class _FusionHistory(object):
         else:
             _, reduce_expr, postmap_expr, reduce_ctype = self.reduce_op.routine
             if reduce_ctype is None:
-                reduce_ctype = 'type_in0_raw'
+                reduce_ctype = 'type_out0_raw'
 
             postmap_type, = self.reduce_op.out_types
             postmap_dtype = numpy.dtype(postmap_type)
@@ -815,8 +818,10 @@ class _FusionHistory(object):
                                      for s, t in zip(out_cvars, out_params))
 
             submodule_code += self._emit_premap_code(in_params, operation)
-            submodule_code += 'typedef {} type_in0_raw;\n'.format(
-                postmap_ctype)
+            use_cub = ACCELERATOR_CUB in _accelerator._reduction_accelerators
+            if not use_cub:
+                submodule_code += 'typedef {} type_in0_raw;\n'.format(
+                    postmap_ctype)
             submodule_code += 'typedef {} type_out0_raw;\n'.format(
                 postmap_ctype)
             submodule_code += self._emit_postmap_cast_code(

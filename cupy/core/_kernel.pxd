@@ -35,6 +35,15 @@ cdef class _ArgInfo:
         readonly bint c_contiguous
         readonly bint index_32_bits
 
+    cdef _ArgInfo _init(
+        self,
+        _ArgKind arg_kind,
+        type typ,
+        object dtype,
+        int ndim,
+        bint c_contiguous,
+        bint index_32_bits)
+
     @staticmethod
     cdef _ArgInfo from_arg(object arg)
 
@@ -125,9 +134,9 @@ cdef class _Ops:
     cpdef _Op guess_routine(
         self, str name, dict cache, list in_args, dtype, _Ops out_ops)
 
-    cdef _Op _guess_routine_from_in_types(self, tuple in_types)
+    cpdef _Op _guess_routine_from_in_types(self, tuple in_types)
 
-    cdef _Op _guess_routine_from_dtype(self, object dtype)
+    cpdef _Op _guess_routine_from_dtype(self, object dtype)
 
 
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,

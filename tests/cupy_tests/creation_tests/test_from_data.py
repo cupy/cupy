@@ -105,14 +105,16 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_orders('CFAK', name='src_order')
     @testing.for_orders('CFAK', name='dst_order')
-    @testing.for_all_dtypes()
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
     @testing.numpy_cupy_array_equal(strides_check=True)
-    def test_array_from_list_of_cupy(self, xp, dtype, src_order, dst_order):
+    def test_array_from_list_of_cupy(
+            self, xp, dtype1, dtype2, src_order, dst_order):
         # compares numpy.array(<list of numpy.ndarray>) with
         # cupy.array(<list of cupy.ndarray>)
         a = [
-            testing.shaped_arange((3, 4), xp, dtype, src_order) + (12 * i)
-            for i in range(2)]
+            testing.shaped_arange((3, 4), xp, dtype1, src_order),
+            testing.shaped_arange((3, 4), xp, dtype2, src_order),
+        ]
         return xp.array(a, order=dst_order)
 
     @testing.for_orders('CFAK', name='src_order')
@@ -447,7 +449,7 @@ class TestFromData(unittest.TestCase):
             return xp.fromfile(fh, dtype="u1")
 
 
-max_cuda_array_interface_version = 2
+max_cuda_array_interface_version = 3
 
 
 @testing.gpu
@@ -498,6 +500,14 @@ class TestCudaArrayInterface(unittest.TestCase):
         assert a.data.ptr == 0
         assert a.size == 0
 
+    @testing.for_all_dtypes()
+    def test_asnumpy(self, dtype):
+        a = testing.shaped_arange((2, 3, 4), cupy, dtype)
+        b = DummyObjectWithCudaArrayInterface(a, self.ver, self.strides)
+        a_cpu = cupy.asnumpy(a)
+        b_cpu = cupy.asnumpy(b)
+        testing.assert_array_equal(a_cpu, b_cpu)
+
 
 @testing.gpu
 @testing.parameterize(*testing.product({
@@ -535,12 +545,13 @@ class TestCudaArrayInterfaceBigArray(unittest.TestCase):
 
 
 class DummyObjectWithCudaArrayInterface(object):
-    def __init__(self, a, ver, include_strides=False, mask=None):
+    def __init__(self, a, ver, include_strides=False, mask=None, stream=None):
         assert ver in tuple(range(max_cuda_array_interface_version+1))
         self.a = a
         self.ver = ver
         self.include_strides = include_strides
         self.mask = mask
+        self.stream = stream
 
     @property
     def __cuda_array_interface__(self):
@@ -562,6 +573,15 @@ class DummyObjectWithCudaArrayInterface(object):
             desc['strides'] = self.a.strides
         if self.mask is not None:
             desc['mask'] = self.mask
+        # The stream field is kept here for compliance. However, since the
+        # synchronization is done via calling a cpdef function, which cannot
+        # be mock-tested.
+        if self.stream is not None:
+            # TODO(leofang): how about PTDS?
+            if self.stream is cuda.Stream.null:
+                desc['stream'] = 1  # TODO(leofang): use runtime.streamLegacy
+            else:
+                desc['stream'] = self.stream.ptr
         return desc
 
 

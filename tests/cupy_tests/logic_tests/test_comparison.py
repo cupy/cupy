@@ -46,28 +46,28 @@ class TestComparisonOperator(unittest.TestCase):
     ]
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_binary_npscalar_array(self, xp, dtype):
         a = numpy.int16(3)
         b = testing.shaped_arange((2, 3), xp, dtype)
         return [op(a, b) for op in self.operators]
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_binary_pyscalar_array(self, xp, dtype):
         a = 3.0
         b = testing.shaped_arange((2, 3), xp, dtype)
         return [op(a, b) for op in self.operators]
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_binary_array_npscalar(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = numpy.float32(3.0)
         return [op(a, b) for op in self.operators]
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_binary_array_pyscalar(self, xp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = 3
@@ -96,6 +96,27 @@ class TestArrayEqual(unittest.TestCase):
         a = xp.array([1, 2, 3, 4], dtype=dtype)
         b = xp.array([1, 2, 3], dtype=dtype)
         return xp.array_equal(a, b)
+
+    @testing.with_requires('numpy>=1.19')
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equal_infinite_equal_nan(self, xp, dtype):
+        nan = float('nan')
+        inf = float('inf')
+        ninf = float('-inf')
+        a = xp.array([0, nan, inf, ninf], dtype=dtype)
+        b = xp.array([0, nan, inf, ninf], dtype=dtype)
+        return xp.array_equal(a, b, equal_nan=True)
+
+    @testing.with_requires('numpy>=1.19')
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_equal()
+    def test_array_equal_complex_equal_nan(self, xp, dtype):
+        a = xp.array([1+2j], dtype=dtype)
+        b = a.copy()
+        b.imag = xp.nan
+        a.real = xp.nan
+        return xp.array_equal(a, b, equal_nan=True)
 
     @testing.numpy_cupy_equal()
     def test_array_equal_diff_dtypes_not_equal(self, xp):

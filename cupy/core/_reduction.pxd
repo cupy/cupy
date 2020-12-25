@@ -7,6 +7,12 @@ from cupy.cuda cimport function
 cdef Py_ssize_t _block_size
 
 
+cpdef tuple _get_axis(object axis, Py_ssize_t ndim)
+
+cpdef shape_t _get_out_shape(
+    const shape_t& shape, tuple reduce_axis, tuple out_axis, bint keepdims)
+
+
 cdef class _AbstractReductionKernel:
 
     cdef:
@@ -15,13 +21,14 @@ cdef class _AbstractReductionKernel:
         readonly tuple in_params
         readonly tuple out_params
         readonly tuple _params
+        readonly str __name__
 
     cpdef ndarray _call(
         self,
         list in_args, list out_args,
         const shape_t& a_shape, axis, dtype,
         bint keepdims, bint reduce_dims, int device_id,
-        stream, bint try_use_cub=*)
+        stream, bint try_use_cub=*, bint sort_reduce_axis=*)
 
     cdef void _launch(
         self, out_block_num, block_size, block_stride,
@@ -65,4 +72,5 @@ cdef tuple _get_shape_and_strides(list in_args, list out_args)
 
 cdef _optimizer_copy_arg(a)
 
-cpdef create_reduction_func(name, ops, routine=*, identity=*, preamble=*)
+cpdef create_reduction_func(
+    name, ops, routine=*, identity=*, preamble=*, sort_reduce_axis=*)

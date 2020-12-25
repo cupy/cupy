@@ -38,11 +38,11 @@ class TestIndexing(unittest.TestCase):
     def test_take_index_range_overflow(self, xp, dtype):
         # Skip for too large dimensions
         if numpy.dtype(dtype) in (numpy.int64, numpy.uint64):
-            return xp.array([])
+            pytest.skip()
         # Skip because NumPy actually allocates a contiguous array in the
         # `take` below to require much time.
         if dtype in (numpy.int32, numpy.uint32):
-            return xp.array([])
+            pytest.skip()
         iinfo = numpy.iinfo(dtype)
         a = xp.broadcast_to(xp.ones(1), (iinfo.max + 1,))
         b = xp.array([0], dtype=dtype)
@@ -297,31 +297,31 @@ class TestSelect(unittest.TestCase):
         return xp.select(condlist, choicelist)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_array_almost_equal()
+    @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_select_odd_shaped_broadcastable_complex(self, xp, dtype):
-        a = cupy.arange(10, dtype=dtype)
-        b = cupy.arange(20, dtype=dtype).reshape(2, 10)
+        a = xp.arange(10, dtype=dtype)
+        b = xp.arange(20, dtype=dtype).reshape(2, 10)
         condlist = [a < 3, b > 8]
         choicelist = [a, b**2]
-        return cupy.select(condlist, choicelist)
+        return xp.select(condlist, choicelist)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_select_1D_choicelist(self, xp, dtype):
-        a = cupy.array(1)
-        b = cupy.array(3)
+        a = xp.array(1)
+        b = xp.array(3)
         condlist = [a < 3, b > 8]
         choicelist = [a, b]
-        return cupy.select(condlist, choicelist)
+        return xp.select(condlist, choicelist)
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_select_choicelist_condlist_broadcast(self, xp, dtype):
-        a = cupy.arange(10, dtype=dtype)
-        b = cupy.arange(20, dtype=dtype).reshape(2, 10)
+        a = xp.arange(10, dtype=dtype)
+        b = xp.arange(20, dtype=dtype).reshape(2, 10)
         condlist = [a < 4, b > 8]
-        choicelist = [cupy.repeat(a, 2).reshape(2, 10), b]
-        return cupy.select(condlist, choicelist)
+        choicelist = [xp.repeat(a, 2).reshape(2, 10), b]
+        return xp.select(condlist, choicelist)
 
     @testing.for_all_dtypes(no_bool=True)
     def test_select_length_error(self, dtype):

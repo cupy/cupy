@@ -85,7 +85,7 @@ class TestFlatiterSubscript(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_setitem_ndarray_1d(self, xp, dtype, order):
         if numpy.isscalar(self.index):
-            return xp.array([])  # skip
+            pytest.skip()
         a = xp.zeros(self.shape, dtype=dtype, order=order)
         v = testing.shaped_arange((3,), xp, dtype, order)
         a.flat[self.index] = v
@@ -96,7 +96,7 @@ class TestFlatiterSubscript(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_setitem_ndarray_nd(self, xp, dtype, order):
         if numpy.isscalar(self.index):
-            return xp.array([])  # skip
+            pytest.skip()
         a = xp.zeros(self.shape, dtype=dtype, order=order)
         v = testing.shaped_arange((2, 3), xp, dtype, order)
         a.flat[self.index] = v
@@ -108,7 +108,7 @@ class TestFlatiterSubscript(unittest.TestCase):
     def test_setitem_ndarray_different_types(
             self, xp, a_dtype, v_dtype, order):
         if numpy.isscalar(self.index):
-            return xp.array([])  # skip
+            pytest.skip()
         a = xp.zeros(self.shape, dtype=a_dtype, order=order)
         v = testing.shaped_arange((3,), xp, v_dtype, order)
         with warnings.catch_warnings():

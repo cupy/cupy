@@ -11,6 +11,7 @@ Elementwise bit operations
    :nosignatures:
 
    cupy.bitwise_and
+   cupy.bitwise_not
    cupy.bitwise_or
    cupy.bitwise_xor
    cupy.invert

@@ -89,7 +89,7 @@ class TestRanges(unittest.TestCase):
     def test_linspace_zero_num_no_endopoint_with_retstep(self, xp, dtype):
         x, step = xp.linspace(0, 10, 0, dtype=dtype, endpoint=False,
                               retstep=True)
-        self.assertTrue(math.isnan(step))
+        assert math.isnan(step)
         return x
 
     @testing.with_requires('numpy>=1.18')
@@ -99,7 +99,7 @@ class TestRanges(unittest.TestCase):
         start, stop = 3, 7
         x, step = xp.linspace(start, stop, 1, dtype=dtype, endpoint=False,
                               retstep=True)
-        self.assertEqual(step, stop - start)
+        assert step == stop - start
         return x
 
     @testing.for_all_dtypes(no_bool=True)
@@ -116,7 +116,7 @@ class TestRanges(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_linspace_with_retstep(self, xp, dtype):
         x, step = xp.linspace(0, 10, 5, dtype=dtype, retstep=True)
-        self.assertEqual(step, 2.5)
+        assert step == 2.5
         return x
 
     @testing.numpy_cupy_allclose()
@@ -271,14 +271,14 @@ class TestMeshgrid(unittest.TestCase):
         assert(out == [])
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_meshgrid1(self, xp, dtype):
         x = xp.arange(2).astype(dtype)
         return xp.meshgrid(x, indexing=self.indexing, sparse=self.sparse,
                            copy=self.copy)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_meshgrid2(self, xp, dtype):
         x = xp.arange(2).astype(dtype)
         y = xp.arange(3).astype(dtype)
@@ -286,7 +286,7 @@ class TestMeshgrid(unittest.TestCase):
                            copy=self.copy)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_meshgrid3(self, xp, dtype):
         x = xp.arange(2).astype(dtype)
         y = xp.arange(3).astype(dtype)
@@ -350,12 +350,12 @@ class TestOgrid(unittest.TestCase):
         y = xp.ones(10)[:, None]
         return xp.ogrid[x:y:10j]
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ogrid4(self, xp):
         # check len(keys) > 1
         return xp.ogrid[-10:10:10j, -10:10:10j]
 
-    @testing.numpy_cupy_array_list_equal()
+    @testing.numpy_cupy_array_equal()
     def test_ogrid5(self, xp):
         # check len(keys) > 1
         x = xp.zeros(10)[:, None]

@@ -3,12 +3,13 @@
 import threading
 
 from cupy.core import syncdetect
-from cupy.cuda import cublas
-from cupy.cuda import cusolver
-from cupy.cuda import cusparse
-from cupy.cuda cimport runtime
-from cupy.cuda import runtime as runtime_module
-from cupy import util
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.api import runtime as runtime_module
+from cupy_backends.cuda.libs import cublas
+from cupy_backends.cuda.libs import cusolver
+from cupy_backends.cuda.libs import cusparse
+from cupy import _util
+
 
 # This flag is kept for backward compatibility.
 # It is always True as cuSOLVER library is always available in CUDA 8.0+.
@@ -42,19 +43,19 @@ cdef class Handle:
         self._destroy_func(self.handle)
 
 
-cpdef size_t get_cublas_handle() except? 0:
+cpdef intptr_t get_cublas_handle() except? 0:
     return _get_device().cublas_handle
 
 
-cpdef size_t get_cusolver_handle() except? 0:
+cpdef intptr_t get_cusolver_handle() except? 0:
     return _get_device().cusolver_handle
 
 
-cpdef get_cusolver_sp_handle():
+cpdef intptr_t get_cusolver_sp_handle() except? 0:
     return _get_device().cusolver_sp_handle
 
 
-cpdef size_t get_cusparse_handle() except? 0:
+cpdef intptr_t get_cusparse_handle() except? 0:
     return _get_device().cusparse_handle
 
 
@@ -66,17 +67,23 @@ cpdef str get_compute_capability():
     return Device().compute_capability
 
 
-@util.memoize()
+@_util.memoize()
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""
     d = {}
     for k, v in runtime_module.__dict__.items():
         if k.startswith('cudaDevAttr'):
+            if runtime._is_hip_environment:
+                # On ROCm 3.5.0 + gfx906, accessing these attributes leads to
+                # core dump (stack smashing detected)
+                if k in ('cudaDevAttrPciDeviceId',
+                         'cudaDevAttrTccDriver'):
+                    continue
             try:
                 name = k.replace('cudaDevAttr', '', 1)
                 d[name] = runtime.deviceGetAttribute(v, device_id)
             except runtime_module.CUDARuntimeError as e:
-                if e.status != runtime.cudaErrorInvalidValue:
+                if e.status != runtime.errorInvalidValue:
                     raise
     return d
 
@@ -304,5 +311,7 @@ def from_pointer(ptr):
         Device: The device whose memory the pointer refers to.
 
     """
+    # Initialize a context to workaround a bug in CUDA 10.2+. (#3991)
+    runtime._ensure_context()
     attrs = runtime.pointerGetAttributes(ptr)
     return Device(attrs.device)

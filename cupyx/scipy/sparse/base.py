@@ -1,7 +1,16 @@
 import numpy
 
 import cupy
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
+from cupyx.scipy.sparse import sputils
+
+
+class SparseWarning(Warning):
+    pass
+
+
+class SparseEfficiencyWarning(SparseWarning):
+    pass
 
 
 class spmatrix(object):
@@ -105,6 +114,19 @@ class spmatrix(object):
                 return NotImplemented
             return (self.T * tr).T
 
+    # matmul (@) operator
+    def __matmul__(self, other):
+        if _util.isscalarlike(other):
+            raise ValueError('Scalar operands are not allowed, '
+                             'use \'*\' instead')
+        return self.__mul__(other)
+
+    def __rmatmul__(self, other):
+        if _util.isscalarlike(other):
+            raise ValueError('Scalar operands are not allowed, '
+                             'use \'*\' instead')
+        return self.__rmul__(other)
+
     def __div__(self, other):
         return self.tocsr().__div__(other)
 
@@ -153,7 +175,7 @@ class spmatrix(object):
         if m != n:
             raise TypeError('matrix is not square')
 
-        if util.isintlike(other):
+        if _util.isintlike(other):
             other = int(other)
             if other < 0:
                 raise ValueError('exponent must be >= 0')
@@ -170,7 +192,7 @@ class spmatrix(object):
                     return self * tmp * tmp
                 else:
                     return tmp * tmp
-        elif util.isscalarlike(other):
+        elif _util.isscalarlike(other):
             raise ValueError('exponent must be an integer')
         else:
             return NotImplemented
@@ -330,7 +352,71 @@ class spmatrix(object):
     def maximum(self, other):
         return self.tocsr().maximum(other)
 
-    # TODO(unno): Implement mean
+    def mean(self, axis=None, dtype=None, out=None):
+        """
+        Compute the arithmetic mean along the specified axis.
+
+        Returns the average of the matrix elements. The average is taken
+        over all elements in the matrix by default, otherwise over the
+        specified axis. `float64` intermediate and return values are used
+        for integer inputs.
+
+        Args:
+            axis {-2, -1, 0, 1, None}: optional
+                Axis along which the mean is computed. The default is to
+                compute the mean of all elements in the matrix
+                (i.e., `axis` = `None`).
+            dtype (dtype): optional
+                Type to use in computing the mean. For integer inputs, the
+                default is `float64`; for floating point inputs, it is the same
+                as the input dtype.
+            out (cupy.ndarray): optional
+                Alternative output matrix in which to place the result. It must
+                have the same shape as the expected output, but the type of the
+                output values will be cast if necessary.
+
+        Returns:
+            m (cupy.ndarray) : Output array of means
+
+        .. seealso::
+            :meth:`scipy.sparse.spmatrix.mean`
+
+        """
+        def _is_integral(dtype):
+            return (cupy.issubdtype(dtype, cupy.integer) or
+                    cupy.issubdtype(dtype, cupy.bool_))
+
+        sputils.validateaxis(axis)
+
+        res_dtype = self.dtype.type
+        integral = _is_integral(self.dtype)
+
+        # output dtype
+        if dtype is None:
+            if integral:
+                res_dtype = cupy.float64
+        else:
+            res_dtype = cupy.dtype(dtype).type
+
+        # intermediate dtype for summation
+        inter_dtype = cupy.float64 if integral else res_dtype
+        inter_self = self.astype(inter_dtype)
+
+        if axis is None:
+            return (inter_self / cupy.array(
+                self.shape[0] * self.shape[1]))\
+                .sum(dtype=res_dtype, out=out)
+
+        if axis < 0:
+            axis += 2
+
+        # axis = 0 or 1 now
+        if axis == 0:
+            return (inter_self * (1.0 / self.shape[0])).sum(
+                axis=0, dtype=res_dtype, out=out)
+        else:
+            return (inter_self * (1.0 / self.shape[1])).sum(
+                axis=1, dtype=res_dtype, out=out)
 
     def minimum(self, other):
         return self.tocsr().minimum(other)
@@ -351,7 +437,20 @@ class spmatrix(object):
     def set_shape(self, shape):
         self.reshape(shape)
 
-    # TODO(unno): Implement setdiag
+    def setdiag(self, values, k=0):
+        """Set diagonal or off-diagonal elements of the array.
+
+        Args:
+            values (cupy.ndarray): New values of the diagonal elements.
+                Values may have any length. If the diagonal is longer than
+                values, then the remaining diagonal entries will not be set.
+                If values is longer than the diagonal, then the remaining
+                values are ignored. If a scalar value is given, all of the
+                diagonal is set to it.
+            k (int, optional): Which diagonal to set, corresponding to elements
+                a[i, i+k]. Default: 0 (the main diagonal).
+        """
+        raise NotImplementedError
 
     def sum(self, axis=None, dtype=None, out=None):
         """Sums the matrix elements over a given axis.
@@ -371,7 +470,7 @@ class spmatrix(object):
            :meth:`scipy.sparse.spmatrix.sum`
 
         """
-        util.validateaxis(axis)
+        sputils.validateaxis(axis)
 
         # This implementation uses multiplication, though it is not efficient
         # for some matrix types. These should override this function.
@@ -452,5 +551,5 @@ def issparse(x):
     return isinstance(x, spmatrix)
 
 
-isdense = util.isdense
+isdense = _util.isdense
 isspmatrix = issparse

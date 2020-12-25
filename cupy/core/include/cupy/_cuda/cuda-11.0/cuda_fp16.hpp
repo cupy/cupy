@@ -1675,7 +1675,7 @@ __CUDA_FP16_DECL__ __half __hdiv(__half a, __half b) {
     fa = __half2float(a);
     fb = __half2float(b);
 
-    asm("{rcp.approx.f32 %0, %1;\n}" :"=f"(rcp) : "f"(fb));
+    asm("{rcp.approx.ftz.f32 %0, %1;\n}" :"=f"(rcp) : "f"(fb));
 
     fv = rcp * fa;
 
@@ -2142,16 +2142,14 @@ __CUDA_FP16_DECL__ bool __hisnan(const __half a)
 __CUDA_FP16_DECL__ __half2 __hneg2(const __half2 a)
 {
     __half2 r;
-    // Flip the sign bit, preserve NaN payload
-    asm("{xor.b32 %0,%1,0x80008000;\n}"
+    asm("{neg.f16x2 %0,%1;\n}"
         :"=r"(__HALF2_TO_UI(r)) : "r"(__HALF2_TO_CUI(a)));
     return r;
 }
 __CUDA_FP16_DECL__ __half __hneg(const __half a)
 {
     __half r;
-    // Flip the sign bit, preserve NaN payload
-    asm("{xor.b16 %0,%1,0x8000;\n}"
+    asm("{neg.f16 %0,%1;\n}"
         :"=h"(__HALF_TO_US(r)) : "h"(__HALF_TO_CUS(a)));
     return r;
 }
