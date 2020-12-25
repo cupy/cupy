@@ -6,6 +6,7 @@ from cupy.core.core cimport ndarray
 from cupy.cuda.device cimport get_compute_capability
 
 import contextlib
+import fcntl
 import hashlib
 import importlib
 import os
@@ -16,6 +17,7 @@ import sys
 import sysconfig
 import tempfile
 import threading
+import time
 import warnings
 
 from cupy import __version__ as _cupy_ver
@@ -69,6 +71,53 @@ cdef class _ThreadLocal:
         except AttributeError:
             tls = _callback_thread_local.tls = _ThreadLocal()
         return tls
+
+
+@contextlib.contextmanager
+def lock_directory(timeout=10, poll_interval=0.05):
+    """A simple lock to the callback cache directory.
+
+    This context manager prevents concurrent writing to the cache directory
+    by locking a file ".callback_lock" under the directory. Since the cuFFT
+    callbacks are only available in Linux, we use fcntl to achieve this.
+
+    This is essentially a stripped-down version of py-filelock.
+
+    Args:
+        timeout (float): maximal time in seconds to try to acquire the lock
+            before giving up (and raising a RuntimeError).
+        poll_interval (float): the time interval in seconds between two
+            consecutive attempts to acquire the lock.
+
+    """
+
+    lock_file = os.path.join(_callback_cache_dir, '.callback_lock')
+
+    def acquire(lock_file):
+        try:
+            fd = os.open(lock_file, os.O_RDWR | os.O_CREAT | os.O_TRUNC)
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (IOError, OSError):
+            os.close(fd)
+            fd = None
+        return fd
+
+    def release(fd):
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+    t_start = time.time()
+    while True:
+        fd = acquire(lock_file)
+        if fd is not None:
+            yield
+            break
+        elif time.time() - t_start > timeout:
+            raise RuntimeError('timeout is reached but a file lock still '
+                               'cannot be acquired')
+        else:
+            time.sleep(poll_interval)
+    release(fd)
 
 
 cdef inline void _set_vars() except*:
@@ -204,8 +253,9 @@ cdef inline str _prune(str cache_dir, str _cufft_ver, str arch):
         cufft_lib_cached = os.path.join(cache_dir,
                                         'lib' + cufft_lib_pruned + '.a')
         if not os.path.isfile(cufft_lib_cached):
-            p = subprocess.run([_nvprune, '-arch=sm_' + arch,
-                                cufft_lib_full, '-o', cufft_lib_cached])
+            with lock_directory():
+                p = subprocess.run([_nvprune, '-arch=sm_' + arch,
+                                    cufft_lib_full, '-o', cufft_lib_cached])
             p.check_returncode()
     else:
         # nvprune is not found, just link against the full static lib
@@ -270,7 +320,8 @@ cdef inline void _nvcc_link(
         cmd.append('-lcufft_static')
     cmd += ['-lculibos', '-lpthread', '-o', path]
 
-    p = subprocess.run(cmd, env=os.environ)
+    with lock_directory():
+        p = subprocess.run(cmd, env=os.environ)
     p.check_returncode()
 
 
@@ -280,8 +331,6 @@ cpdef get_current_callback_manager():
     return mgr
 
 
-# TODO(leofang): find a way to implement a lock-free method for
-# cached shared libraries like what's done in cupy/cuda/compiler.py?
 cdef class _CallbackManager:
     cdef:
         readonly str cb_load
@@ -511,12 +560,6 @@ cdef class set_cufft_callbacks:
         load/store callbacks). Due to static linking, however, the file sizes
         can be excessive! The cache position can be changed via setting
         ``CUPY_CACHE_DIR``.
-
-    .. warning::
-        This feature may not be thread- or process-safe. In a concurrent
-        environment, it is advised to first let the main thread/process do the
-        warm-up (compiling), and then unblock all threads/processes to load the
-        compiled module from cache.
 
     .. seealso:: `cuFFT Callback Routines`_
 
