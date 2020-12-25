@@ -269,7 +269,7 @@ class TestGels(unittest.TestCase):
         a = testing.shaped_random(self.shape, numpy, dtype=self.dtype)
         b = testing.shaped_random(b_shape, numpy, dtype=self.dtype)
         tol = self._tol[numpy.dtype(self.dtype).char.lower()]
-        x_lstsq = numpy.linalg.lstsq(a, b)[0]
+        x_lstsq = numpy.linalg.lstsq(a, b, rcond=None)[0]
         x_gels = cusolver.gels(cupy.array(a), cupy.array(b))
         cupy.testing.assert_allclose(x_gels, x_lstsq, rtol=tol, atol=tol)
 
