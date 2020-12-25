@@ -138,6 +138,10 @@ __global__ void ${name}(${params}) {
   if (_array_size > 0) {
       if (_array_size - segment_idx <= _segment_size) {
           _seg_size = _array_size - segment_idx;
+          #ifdef __HIP_DEVICE_COMPILE__
+          // For a mysterious reason this is necessary...We don't understand HIP...
+          __syncthreads();
+          #endif
       }
   }
   #endif
