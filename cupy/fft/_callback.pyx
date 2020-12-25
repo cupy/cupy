@@ -108,17 +108,21 @@ def lock_directory(cache_dir, timeout=10, poll_interval=0.05):
         os.close(fd)
 
     t_start = time.time()
-    while True:
-        fd = acquire(lock_file)
+    fd = None
+    try:
+        while True:
+            fd = acquire(lock_file)
+            if fd is not None:
+                yield
+                break
+            elif time.time() - t_start > timeout:
+                raise RuntimeError('timeout is reached but a file lock still '
+                                   'cannot be acquired')
+            else:
+                time.sleep(poll_interval)
+    finally:  # exceptions can be raised from yield
         if fd is not None:
-            yield
-            break
-        elif time.time() - t_start > timeout:
-            raise RuntimeError('timeout is reached but a file lock still '
-                               'cannot be acquired')
-        else:
-            time.sleep(poll_interval)
-    release(fd)
+            release(fd)
 
 
 cdef inline void _set_vars() except*:
