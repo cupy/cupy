@@ -2024,6 +2024,13 @@ divmod = create_ufunc(
 
 
 cdef _round_preamble = '''
+#ifdef __HIPCC__
+
+#define round_float llrintf
+#else
+#define round_float __float2ll_rn
+#endif
+
 template<typename T> __device__ T pow10(long long n){
   T x = 1, a = 10;
   while (n) {
@@ -2095,7 +2102,7 @@ _round_ufunc = create_ufunc(
         // (4) unscale by `x` above: -123460000
         long long q = in0 / x / 100;
         int r = in0 - q*x*100;
-        out0 = (q*100 + __float2ll_rn(r/(x*10.0f))*10) * x;
+        out0 = (q*100 + round_float(r/(x*10.0f))*10) * x;
     }''', preamble=_round_preamble)
 
 
