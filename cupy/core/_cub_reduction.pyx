@@ -138,11 +138,11 @@ __global__ void ${name}(${params}) {
   if (_array_size > 0) {
       if (_array_size - segment_idx <= _segment_size) {
           _seg_size = _array_size - segment_idx;
-          #ifdef __HIP_DEVICE_COMPILE__
-          // For a mysterious reason this is necessary...We don't understand HIP...
-          __syncthreads();
-          #endif
       }
+      #ifdef __HIP_DEVICE_COMPILE__
+      // For a mysterious reason this is necessary...We don't understand HIP...
+      __syncthreads();
+      #endif
   }
   #endif
 
@@ -381,10 +381,10 @@ cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
     # 2. block size >= segment size: the segment fits in the block
     block_size = (contiguous_size + items_per_thread - 1) // items_per_thread
     block_size = internal.clp2(block_size)
-    if block_size < 32:
-        block_size = 32  # warp size
+    warp_size = 32 if not runtime._is_hip_environment else 64
+    if block_size < warp_size:
+        block_size = warp_size
     elif block_size > _cub_default_block_size:
-        # TODO(leofang): try 1024 as maximum?
         block_size = _cub_default_block_size
 
     return items_per_thread, block_size
