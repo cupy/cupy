@@ -163,6 +163,11 @@ __global__ void _tensordot_core_int_kernel(
     }
     __syncthreads();
 
+    // On CUDA, it's okay that m, n exceed matrix bounds as all work is in
+    // either registers or shared memory, and out-of-bounds rC[n][m] will
+    // not be saved later.
+    // On HIP, however, bound checks must be done to ensure correctness.
+
     for (kk = 0; kk < K - BLK_K; kk += BLK_K)
     {
         offs_dA += BLK_K * M;
@@ -192,12 +197,28 @@ __global__ void _tensordot_core_int_kernel(
         {
             #pragma unroll
             for (m = 0; m < THR_M; m++) {
+                #ifdef __HIP_DEVICE_COMPILE__
+                if (m * DIM_X + idx < BLK_M + 1) {
+                    rA[m] = sA[k][m * DIM_X + idx];
+                } else {
+                    rA[m] = 0;
+                }
+                #else
                 rA[m] = sA[k][m * DIM_X + idx];
+                #endif
             }
 
             #pragma unroll
             for (n = 0; n < THR_N; n++) {
+                #ifdef __HIP_DEVICE_COMPILE__
+                if (n * DIM_Y + idy < BLK_N) {
+                    rB[n] = sB[n * DIM_Y + idy][k];
+                } else {
+                    rB[n] = 0;
+                }
+                #else
                 rB[n] = sB[n * DIM_Y + idy][k];
+                #endif
             }
 
             #pragma unroll
@@ -235,8 +256,6 @@ __global__ void _tensordot_core_int_kernel(
 
     // Multiply last full (BLK_K) or partial block of columns of A and
     // rows of B.
-    // It's okay that m,n exceed matrix bounds as all work is in registers
-    // or shared memory, and out-of-bounds rC[n][m] will not be saved later.
 
     kk = K - kk;
     #pragma unroll
@@ -244,12 +263,28 @@ __global__ void _tensordot_core_int_kernel(
     {
         #pragma unroll
         for (m = 0; m < THR_M; m++) {
+            #ifdef __HIP_DEVICE_COMPILE__
+            if (k < BLK_K && m * DIM_X + idx < BLK_M + 1) {
+                rA[m] = sA[k][m * DIM_X + idx];
+            } else {
+                rA[m] = 0;
+            }
+            #else
             rA[m] = sA[k][m * DIM_X + idx];
+            #endif
         }
 
         #pragma unroll
         for (n = 0; n < THR_N; n++) {
+            #ifdef __HIP_DEVICE_COMPILE__
+            if (n * DIM_Y + idy < BLK_N && k < BLK_K + 1) {
+                rB[n] = sB[n * DIM_Y + idy][k];
+            } else {
+                rB[n] = 0;
+            }
+            #else
             rB[n] = sB[n * DIM_Y + idy][k];
+            #endif
         }
 
         #pragma unroll
@@ -316,10 +351,7 @@ cdef ndarray _integral_tensordot_core(
     args = (m, n, k, a, b, out)
     grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), 1)
     block = (dim_x, dim_y, 1)
-    shared_mem = blk_k * (blk_m + 1) * 4 + blk_n * (blk_k + 1) * 4
-    kern(grid, block, args=args, shared_mem=shared_mem)
-
-    # elementwise_copy(ret, out)
+    kern(grid, block, args=args)
     return out
 
 
