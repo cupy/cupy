@@ -161,31 +161,18 @@ cdef ndarray _ndarray_squeeze(ndarray self, axis):
     elif isinstance(axis, tuple):
         naxes = <Py_ssize_t>len(axis)
         for i in range(naxes):
-            _axis = <Py_ssize_t>axis[i]
-            axis_orig = _axis
-            if _axis < 0:
-                _axis += ndim
-            if _axis < 0 or _axis >= ndim:
-                raise numpy.AxisError(
-                    '\'axis\' entry %d is out of bounds [-%d, %d)' %
-                    (axis_orig, ndim, ndim))
+            _axis = internal._normalize_axis_index(<Py_ssize_t>axis[i], ndim)
             if axis_flags[_axis] == 1:
                 raise ValueError('duplicate value in \'axis\'')
             axis_flags[_axis] = 1
     else:
         _axis = <Py_ssize_t>axis
-        axis_orig = _axis
-        if _axis < 0:
-            _axis += ndim
         if ndim == 0 and (_axis == 0 or _axis == -1):
             # Special case letting axis={-1,0} slip through for scalars,
             # for backwards compatibility reasons.
             pass
         else:
-            if _axis < 0 or _axis >= ndim:
-                raise numpy.AxisError(
-                    '\'axis\' entry %d is out of bounds [-%d, %d)' %
-                    (axis_orig, ndim, ndim))
+            _axis = internal._normalize_axis_index(_axis, ndim)
             axis_flags[_axis] = 1
 
     # Verify that the axes requested are all of size one
@@ -521,20 +508,15 @@ cpdef ndarray _repeat(ndarray a, repeats, axis=None):
         else:
             a = a.ravel()
             axis = 0
-    elif not (-a.ndim <= axis < a.ndim):
-        raise numpy.AxisError(
-            'axis {} is out of bounds for array of dimension {}'.format(
-                axis, a.ndim))
+    else:
+        axis = internal._normalize_axis_index(axis, a.ndim)
 
     if broadcast:
-        repeats = repeats * a._shape[axis % a._shape.size()]
+        repeats = repeats * a._shape[axis]
     elif a.shape[axis] != len(repeats):
         raise ValueError(
             '\'repeats\' and \'axis\' of \'a\' should be same length: {} != {}'
             .format(a.shape[axis], len(repeats)))
-
-    if axis < 0:
-        axis += a.ndim
 
     ret_shape = list(a.shape)
     ret_shape[axis] = sum(repeats)
@@ -574,11 +556,7 @@ cpdef ndarray concatenate_method(tup, int axis, ndarray out=None):
         if ndim == -1:
             ndim = a_ndim
             shape = a._shape
-            if axis < 0:
-                axis += ndim
-            if axis < 0 or axis >= ndim:
-                raise numpy.AxisError(
-                    'axis {} out of bounds [0, {})'.format(axis, ndim))
+            axis = internal._normalize_axis_index(axis, ndim)
             dtype = a.dtype
             continue
 
@@ -737,13 +715,10 @@ cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
         axis = (axis,)
 
     for ax in axis:
-        if ax >= ndim or ax < -ndim:
-            raise numpy.AxisError(
-                'axis {} is out of bounds for array of '
-                'dimension {}'.format(ax, ndim))
+        ax = internal._normalize_axis_index(ax, ndim)
         if _has_element(ret, ax):
             raise numpy.AxisError('repeated axis')
-        ret.push_back(ax % ndim)
+        ret.push_back(ax)
 
 
 cdef ndarray _concatenate_single_kernel(

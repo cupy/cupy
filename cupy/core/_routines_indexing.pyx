@@ -753,15 +753,10 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
         a = a.ravel()
         ndim = 1
 
-    if not (-ndim <= li < ndim and -ndim <= ri < ndim):
-        raise numpy.AxisError('Axis overrun')
+    li = internal._normalize_axis_index(li, ndim)
+    ri = internal._normalize_axis_index(ri, ndim)
 
-    if ndim == 1:
-        li = ri = 0
-    else:
-        li %= ndim
-        ri %= ndim
-        assert 0 <= li <= ri
+    assert li <= ri
 
     if numpy.isscalar(indices):
         indices_shape = ()
