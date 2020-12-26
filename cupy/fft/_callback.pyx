@@ -176,7 +176,7 @@ cdef inline void _cythonize(str tempdir, str mod_name) except*:
                         '-E', 'CUPY_CUFFT_STATIC=True',
                         os.path.join(tempdir, mod_name + '.pyx'),
                         '-o', os.path.join(tempdir, mod_name + '.cpp')],
-                       env=os.environ)
+                       env=os.environ, cwd=tempdir)
     p.check_returncode()
 
 
@@ -190,7 +190,7 @@ cdef inline void _mod_compile(str tempdir, str mod_name, str obj_host) except*:
                        '-fPIC', '-O2', '-std=c++11',
                        '-c', os.path.join(tempdir, mod_name + '.cpp'),
                        '-o', obj_host],
-                       env=os.environ)
+                       env=os.environ, cwd=tempdir)
     p.check_returncode()
 
 
@@ -206,7 +206,8 @@ cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
                                         'lib' + cufft_lib_pruned + '.a')
         if not os.path.isfile(cufft_lib_cached):
             p = subprocess.run([_nvprune, '-arch=sm_' + arch,
-                                cufft_lib_full, '-o', cufft_lib_temp])
+                                cufft_lib_full, '-o', cufft_lib_temp],
+                               env=os.environ, cwd=temp_dir)
             p.check_returncode()
             # atomic move with the destination guaranteed to be overwritten;
             # using os.replace() is also ok here
@@ -244,7 +245,7 @@ cdef inline void _nvcc_compile(
     if cb_store:
         cmd.append('-DHAS_STORE_CALLBACK')
     p = subprocess.run(cmd + ['-o', obj_dev],
-                       env=os.environ,
+                       env=os.environ, cwd=tempdir,
                        stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE)
     try:
@@ -277,7 +278,7 @@ cdef inline void _nvcc_link(
         cmd.append('-lcufft_static')
     cmd += ['-lculibos', '-lpthread', '-o', mod_temp]
 
-    p = subprocess.run(cmd, env=os.environ)
+    p = subprocess.run(cmd, env=os.environ, cwd=tempdir)
     p.check_returncode()
     # atomic move with the destination guaranteed to be overwritten;
     # using os.replace() is also ok here
