@@ -111,6 +111,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'shape': [(4, 16), (4, 16, 16)],
 }))
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='not supported by hipFFT')
 class TestXtPlanNd(unittest.TestCase):
 
     @testing.for_complex_dtypes()

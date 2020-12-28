@@ -111,6 +111,9 @@ cufftResult_t cufftGetVersion(int *version) {
     return hipfftGetVersion(version);
 }
 
+// TODO(leofang): move this header to cupy_backends/ and include hip/cupy_hip_common.h
+typedef enum {} cudaDataType;
+
 // cufftXt functions
 cufftResult_t cufftXtSetGPUs(...) {
     return HIPFFT_NOT_IMPLEMENTED;
