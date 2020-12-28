@@ -187,6 +187,9 @@ class BaseStream(object):
         tls.set_current_stream_ref(prev_stream_ref)
         pass
 
+    def __repr__(self):
+        return '<{} {}>'.format(type(self).__name__, self.ptr)
+
     def use(self):
         """Makes this stream current.
 

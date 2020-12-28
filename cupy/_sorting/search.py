@@ -241,11 +241,30 @@ __device__ bool _isnan(T val) {
 '''
 
 
+_hip_preamble = r'''
+#ifdef __HIP_DEVICE_COMPILE__
+  #define no_thread_divergence(do_work, to_return) \
+    if (!is_done) {                                \
+      do_work;                                     \
+      is_done = true;                              \
+    }
+#else
+  #define no_thread_divergence(do_work, to_return) \
+    do_work;                                       \
+    if (to_return) { return; }
+#endif
+'''
+
+
 _searchsorted_kernel = core.ElementwiseKernel(
     'S x, raw T bins, int64 n_bins, bool side_is_right, '
     'bool assume_increassing',
     'int64 y',
     '''
+    #ifdef __HIP_DEVICE_COMPILE__
+    bool is_done = false;
+    #endif
+
     // Array is assumed to be monotonically
     // increasing unless a check is requested with the
     // `assume_increassing = False` parameter.
@@ -271,8 +290,7 @@ _searchsorted_kernel = core.ElementwiseKernel(
                 }
             }
         }
-        y = pos;
-        return;
+        no_thread_divergence( y = pos , true )
     }
 
     bool greater = false;
@@ -282,8 +300,7 @@ _searchsorted_kernel = core.ElementwiseKernel(
         greater = (inc ? x > bins[n_bins-1] : x <= bins[n_bins-1]);
     }
     if (greater) {
-        y = n_bins;
-        return;
+        no_thread_divergence( y = n_bins , true )
     }
 
     long long left = 0;
@@ -294,14 +311,12 @@ _searchsorted_kernel = core.ElementwiseKernel(
             ++left;
         }
         if (left == n_bins) {
-            y = n_bins;
-            return;
+            no_thread_divergence( y = n_bins , true )
         }
         if (side_is_right
                 && !_isnan<T>(bins[n_bins-1]) && !_isnan<S>(x)
                 && bins[n_bins-1] > x) {
-            y = n_bins;
-            return;
+            no_thread_divergence( y = n_bins , true )
         }
     }
 
@@ -320,8 +335,8 @@ _searchsorted_kernel = core.ElementwiseKernel(
             right = m;
         }
     }
-    y = right;
-    ''', preamble=_preamble)
+    no_thread_divergence( y = right , false )
+    ''', preamble=_preamble+_hip_preamble)
 
 
 def searchsorted(a, v, side='left', sorter=None):
@@ -383,7 +398,7 @@ def _searchsorted(a, v, side, sorter, assume_increasing):
         a = a.astype(v.dtype)
 
     # Numpy does not check if the array is monotonic inside searchsorted
-    # which leds to undefined behavior in such cases.
+    # which leads to undefined behavior in such cases.
     if sorter is not None:
         if sorter.dtype.kind not in ('i', 'u'):
             raise TypeError('sorter must be of integer type')

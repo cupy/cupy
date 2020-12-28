@@ -132,10 +132,9 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
     else:
         axis = axis,
 
-    for dim in axis:
-        if dim < -ndim or dim >= ndim:
-            raise numpy.AxisError('Axis overrun')
-    reduce_axis = tuple(sorted([dim % ndim for dim in axis]))
+    # TODO(kataoka): detect duplicate value
+    reduce_axis = tuple(sorted(
+        [internal._normalize_axis_index(dim, ndim) for dim in axis]))
     out_axis = tuple([dim for dim in range(ndim) if dim not in reduce_axis])
     return reduce_axis, out_axis
 

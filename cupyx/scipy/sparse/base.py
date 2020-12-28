@@ -5,6 +5,14 @@ from cupyx.scipy.sparse import _util
 from cupyx.scipy.sparse import sputils
 
 
+class SparseWarning(Warning):
+    pass
+
+
+class SparseEfficiencyWarning(SparseWarning):
+    pass
+
+
 class spmatrix(object):
 
     """Base class of all sparse matrixes.

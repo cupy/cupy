@@ -92,6 +92,7 @@ _setup_type_dict()
 
 cdef set _python_scalar_type_set = {int, float, bool, complex}
 cdef set _numpy_scalar_type_set = set(_typenames.keys())
+cdef set scalar_type_set = _python_scalar_type_set | _numpy_scalar_type_set
 
 
 _int_iinfo = numpy.iinfo(int)

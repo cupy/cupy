@@ -13,7 +13,7 @@ These components must be installed to use CuPy:
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.0 / v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -29,9 +29,9 @@ Python Dependencies
 
 NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.19 and SciPy 1.5, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.16 / v1.17 / v1.18 / v1.19
+* `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.3 / v1.4 / v1.5
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5
 
     * Required only when using :doc:`reference/scipy` (``cupyx.scipy``).
 
@@ -58,11 +58,11 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.0 / v2.1 / v2.2 / v2.3 / v2.4 / v2.5 / v2.6 / v2.7
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.4 (CUDA 9.2) / v2.6 (CUDA 10.0) / v2.7 (CUDA 10.1+)
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.0 / v7.1 / v7.2 / v7.3 / v7.4 / v7.5 / v7.6 / v8.0
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 (CUDA 9.2 & 10.x) / v8.0 (CUDA 10.1+)
 
     * The library to accelerate deep neural network computations.
 
@@ -70,7 +70,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 Installing CuPy
 ---------------
 
-Wheels (precompiled binary packages) are available for Linux (Python 3.5+) and Windows (Python 3.6+).
+Wheels (precompiled binary packages) are available for Linux and Windows.
 Package names are different depending on your CUDA Toolkit version.
 
 .. list-table::
@@ -78,8 +78,6 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - v9.0
-     - ``$ pip install cupy-cuda90``
    * - v9.2
      - ``$ pip install cupy-cuda92``
    * - v10.0
@@ -100,8 +98,8 @@ Package names are different depending on your CUDA Toolkit version.
    * NCCL library is bundled with these packages.
      You don't have to install it manually.
 
-   * cuDNN library is bundled with these packages except for CUDA 11.0+.
-     For CUDA 11.0+, you need to manually download and install cuDNN v8.0.x library to use cuDNN features.
+   * cuDNN library is bundled with these packages except for CUDA 10.1+.
+     For CUDA 10.1+, you need to manually download and install cuDNN v8.0.x library to use cuDNN features.
 
 .. note::
 
@@ -327,9 +325,9 @@ The followings are error messages commonly observed in such cases.
 * ``error: identifier "__half_raw" is undefined``
 
 Please try setting ``LD_LIBRARY_PATH`` and ``CUDA_PATH`` environment variable.
-For example, if you have CUDA installed at ``/usr/local/cuda-9.0``::
+For example, if you have CUDA installed at ``/usr/local/cuda-9.2``::
 
-  $ export CUDA_PATH=/usr/local/cuda-9.0
+  $ export CUDA_PATH=/usr/local/cuda-9.2
   $ export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
 
 Also see :ref:`install_cuda`.

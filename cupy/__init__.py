@@ -652,6 +652,7 @@ from cupy._math.misc import cbrt  # NOQA
 from cupy._math.misc import clip  # NOQA
 from cupy._math.misc import fmax  # NOQA
 from cupy._math.misc import fmin  # NOQA
+from cupy._math.misc import interp  # NOQA
 from cupy._math.misc import maximum  # NOQA
 from cupy._math.misc import minimum  # NOQA
 from cupy._math.misc import nan_to_num  # NOQA
