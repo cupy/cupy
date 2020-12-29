@@ -2,7 +2,7 @@
     # Setting
     ('CudaVersions', ['11.0']),
     ('Headers', ['cutensor.h']),
-    ('Regexes', {
+    ('Patterns', {
         'func': r'cutensor([A-Z].*)',
         'type': r'cutensor([A-Z].*)_t',
     }),

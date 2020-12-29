@@ -4,32 +4,11 @@ from libc.stdint cimport intptr_t, int64_t
 
 
 ########################################
-# Opaque data structures
+# Opaque pointers
 
 cdef extern from *:
     ctypedef int DataType 'cudaDataType'
-
-
-cdef extern from *:
-{opaque}
-
-
-########################################
-# Enumerators
-
-cdef extern from *:
-{enum_type}
-
-
-{enum_value}
-
-
-########################################
-# Auxiliary structures
-
-{aux_struct}
-
-{wrapper}
+{opaque}{enum}{helper_class}{wrapper}
 
 # Define `gemmEx` by hands for a backward compatibility reason.
 cpdef gemmEx(

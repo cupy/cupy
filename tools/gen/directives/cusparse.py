@@ -2,7 +2,7 @@
     # Setting
     ('CudaVersions', ['11.0', '10.2']),
     ('Headers', ['cusparse.h']),
-    ('Regexes', {
+    ('Patterns', {
         'func': r'cusparse([A-Z].*)',
         'type': r'cusparse([A-Z].*)_t',
     }),

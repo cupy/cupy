@@ -6,14 +6,18 @@ import pycparser.c_ast as c_ast
 import gen
 
 
-def transpile_ffi_decl(env, node, removed):
+# FFI
+
+def transpile_ffi_one(env, node, removed):
     def argaux(env, node):
         name = node.name
         type = gen.transpile_type_name(env, node.type)
         return '{} {}'.format(type, name)
+
     assert isinstance(node.type, c_ast.FuncDecl)
 
     code = []
+
     if removed:
         code.append('# REMOVED')
 
@@ -25,30 +29,31 @@ def transpile_ffi_decl(env, node, removed):
     return '\n'.join(code)
 
 
-def transpile_ffi(env, directive):
-    if gen.is_cuda_versions_directive(directive):
-        return None
-    elif gen.is_headers_directive(directive):
-        return None
-    elif gen.is_regexes_directive(directive):
-        return None
-    elif gen.is_special_types_directive(directive):
-        return None
-    elif gen.is_comment_directive(directive):
-        comment = gen.directive_comment(directive)
-        return '\n# ' + comment
-    elif gen.is_raw_directive(directive):
-        return None
-    elif gen.is_function_directive(directive):
-        head = gen.directive_head(directive)
-        decls, removed = gen.query_func_decls(head, env)
-        return '\n'.join(
-            transpile_ffi_decl(env, decl, removed) for decl in decls)
-    else:
-        assert False
+def transpile_ffi(env, directives):
+    code = []
+    for d in directives:
+        if gen.is_comment_directive(d):
+            comment = gen.directive_comment(d)
+            code.append('')
+            code.append('# ' + comment)
+        elif gen.is_function_directive(d):
+            head = gen.directive_head(d)
+            decls, removed = gen.query_func_decls(head, env)
+            for decl in decls:
+                code.append(transpile_ffi_one(env, decl, removed))
+    return '\n'.join(code)
 
 
-def transpile_aux_struct_decl(env, directive, node, removed):
+# Helper class
+
+def is_helper_class_directive(directive):
+    return (
+        gen.is_function_directive(directive)
+        and gen.is_directive_multi_out(directive)
+    )
+
+
+def transpile_helper_class(env, directive, node, removed):
     def argaux(env, node):
         # dereference node
         name = gen.deref_var_name(node.name)
@@ -60,15 +65,16 @@ def transpile_aux_struct_decl(env, directive, node, removed):
         else:
             assert False
         return '{} {}'.format(type, name)
-
+    
     assert isinstance(node.type, c_ast.FuncDecl)
 
     out_type, out_args = gen.directive_multi_out(directive)
+
     code = []
 
     if removed:
         code.append('# REMOVED')
-
+    
     code.append('cdef class {}:'.format(out_type))
     code.append('')
 
@@ -84,30 +90,27 @@ def transpile_aux_struct_decl(env, directive, node, removed):
 
 
 # Assuming multiple functions do not use the same auxiliary structure.
-def transpile_aux_struct(env, directive):
-    if gen.is_cuda_versions_directive(directive):
-        return None
-    elif gen.is_headers_directive(directive):
-        return None
-    elif gen.is_regexes_directive(directive):
-        return None
-    elif gen.is_special_types_directive(directive):
-        return None
-    elif gen.is_comment_directive(directive):
-        return None
-    elif gen.is_raw_directive(directive):
-        return None
-    elif gen.is_function_directive(directive):
-        if gen.is_directive_multi_out(directive):
-            head = gen.directive_head(directive)
-            decls, removed = gen.query_func_decls(head, env)
-            assert len(decls) == 1  # assuming not type generic
-            return transpile_aux_struct_decl(env, directive, decls[0], removed)
-        else:
-            return None
+def transpile_helper_classes(env, directives):
+    code = []
+    for d in directives:
+        assert is_helper_class_directive(d)
+        if code == []:
+            code.append('')
+            code.append('')
+            code.append('#' * 40)
+            code.append('# Helper classes')
+        head = gen.directive_head(d)
+        decls, removed = gen.query_func_decls(head, env)
+        assert len(decls) == 1  # assuming not type generic
+        code.append('')
+        code.append(transpile_helper_class(env, d, decls[0], removed))
+    if code != []:
+        return '\n'.join(code) + '\n'
     else:
-        assert False
+        return ''
 
+
+# Wrappers
 
 def transpile_wrapper_def(env, directive, node, pass_stream):
     def is_stream_param(node):
@@ -209,7 +212,7 @@ def stream_name(node):
     assert False
 
 
-def transpile_wrapper_decl(env, directive, node, removed):
+def transpile_wrapper(env, directive, node, removed):
     assert isinstance(node.type, c_ast.FuncDecl)
 
     # Get stream configuration for following steps
@@ -317,42 +320,37 @@ def transpile_wrapper_decl(env, directive, node, removed):
     return '\n'.join(code)
 
 
-def transpile_wrapper(env, directive):
-    if gen.is_cuda_versions_directive(directive):
-        return None
-    elif gen.is_headers_directive(directive):
-        return None
-    elif gen.is_regexes_directive(directive):
-        return None
-    elif gen.is_special_types_directive(directive):
-        return None
-    elif gen.is_comment_directive(directive):
-        comment = gen.directive_comment(directive)
-        code = []
-        code.append('')
-        code.append('#' * max(40, len(comment) + 2))
-        code.append('# ' + comment)
-        return '\n'.join(code)
-    elif gen.is_raw_directive(directive):
-        return gen.directive_raw(directive)
-    elif gen.is_function_directive(directive):
-        head = gen.directive_head(directive)
-        decls, removed = gen.query_func_decls(head, env)
-        return '\n\n'.join(
-            transpile_wrapper_decl(
-                env, directive, decl, removed) for decl in decls)
+def transpile_wrappers(env, directives):
+    code = []
+    for d in directives:
+        if gen.is_comment_directive(d):
+            comment = gen.directive_comment(d)
+            code.append('')
+            code.append('')
+            code.append('#' * max(40, len(comment) + 2))
+            code.append('# ' + comment)
+        elif gen.is_function_directive(d):
+            head = gen.directive_head(d)
+            decls, removed = gen.query_func_decls(head, env)
+            for decl in decls:
+                code.append('')
+                code.append(transpile_wrapper(env, d, decl, removed))
+    if code != []:
+        return '\n'.join(code) + '\n'
     else:
-        assert False
+        return ''
 
+
+# Main
 
 def main(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-d', '--directive', required=True, type=str,
-        help='Path to directive file')
+        'directive', type=str,
+        help='Path to directive file for library to generate')
     parser.add_argument(
-        '-t', '--template', required=True, type=str,
-        help='Path to template file')
+        'template', type=str,
+        help='Path to template file for library to generate')
     args = parser.parse_args(args)
 
     directives = gen.read_directives(args.directive)
@@ -361,14 +359,20 @@ def main(args):
 
     template = gen.read_template(args.template)
 
-    maybe_indent = gen.maybe(gen.indent)
-    ffi = '\n'.join(
-        gen.compact(maybe_indent(transpile_ffi(env, d)) for d in directives))
-    aux_struct = '\n\n'.join(
-        gen.compact(transpile_aux_struct(env, d) for d in directives))
-    wrapper = '\n\n'.join(
-        gen.compact(transpile_wrapper(env, d) for d in directives))
-    print(template.format(ffi=ffi, aux_struct=aux_struct, wrapper=wrapper))
+    # FFI
+    ffi_code = gen.indent(transpile_ffi(env, directives))
+
+    # Helper classes
+    directives1 = [d for d in directives if is_helper_class_directive(d)]
+    helper_class_code = transpile_helper_classes(env, directives1)
+
+    # Wrappers
+    wrapper_code = transpile_wrappers(env, directives)
+
+    code = template.format(
+        ffi=ffi_code, helper_class=helper_class_code, wrapper=wrapper_code)
+
+    print(code, end='')
 
 
 if __name__ == '__main__':

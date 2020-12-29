@@ -4,11 +4,10 @@ from libc.stdint cimport intptr_t, int64_t
 
 
 ########################################
-# Opaque data structures
+# Opaque pointers
 
 cdef extern from *:
     ctypedef int DataType 'cudaDataType'
-
 
 cdef extern from *:
     ctypedef void* Handle 'cublasHandle_t'
@@ -29,7 +28,6 @@ cdef extern from *:
     ctypedef int Math 'cublasMath_t'
     ctypedef int ComputeType 'cublasComputeType_t'
 
-
 cpdef enum:
     CUBLAS_STATUS_SUCCESS = 0
     CUBLAS_STATUS_NOT_INITIALIZED = 1
@@ -42,22 +40,18 @@ cpdef enum:
     CUBLAS_STATUS_NOT_SUPPORTED = 15
     CUBLAS_STATUS_LICENSE_ERROR = 16
 
-
 cpdef enum:
     CUBLAS_FILL_MODE_LOWER = 0
     CUBLAS_FILL_MODE_UPPER = 1
     CUBLAS_FILL_MODE_FULL = 2
 
-
 cpdef enum:
     CUBLAS_DIAG_NON_UNIT = 0
     CUBLAS_DIAG_UNIT = 1
 
-
 cpdef enum:
     CUBLAS_SIDE_LEFT = 0
     CUBLAS_SIDE_RIGHT = 1
-
 
 cpdef enum:
     CUBLAS_OP_N = 0
@@ -66,16 +60,13 @@ cpdef enum:
     CUBLAS_OP_HERMITAN = 2
     CUBLAS_OP_CONJG = 3
 
-
 cpdef enum:
     CUBLAS_POINTER_MODE_HOST = 0
     CUBLAS_POINTER_MODE_DEVICE = 1
 
-
 cpdef enum:
     CUBLAS_ATOMICS_NOT_ALLOWED = 0
     CUBLAS_ATOMICS_ALLOWED = 1
-
 
 cpdef enum:
     CUBLAS_GEMM_DFALT = -1
@@ -123,14 +114,12 @@ cpdef enum:
     CUBLAS_GEMM_ALGO14_TENSOR_OP = 114
     CUBLAS_GEMM_ALGO15_TENSOR_OP = 115
 
-
 cpdef enum:
     CUBLAS_DEFAULT_MATH = 0
     CUBLAS_TENSOR_OP_MATH = 1
     CUBLAS_PEDANTIC_MATH = 2
     CUBLAS_TF32_TENSOR_OP_MATH = 3
     CUBLAS_MATH_DISALLOW_REDUCED_PRECISION_REDUCTION = 16
-
 
 cpdef enum:
     CUBLAS_COMPUTE_16F = 64
@@ -144,15 +133,6 @@ cpdef enum:
     CUBLAS_COMPUTE_64F_PEDANTIC = 71
     CUBLAS_COMPUTE_32I = 72
     CUBLAS_COMPUTE_32I_PEDANTIC = 73
-
-
-########################################
-# Auxiliary structures
-
-
-
-
-# TODO: should also expose functions?
 
 
 ########################################
@@ -300,6 +280,7 @@ cpdef strttp(intptr_t handle, int uplo, int n, intptr_t A, int lda, intptr_t AP)
 cpdef dtrttp(intptr_t handle, int uplo, int n, intptr_t A, int lda, intptr_t AP)
 cpdef ctrttp(intptr_t handle, int uplo, int n, intptr_t A, int lda, intptr_t AP)
 cpdef ztrttp(intptr_t handle, int uplo, int n, intptr_t A, int lda, intptr_t AP)
+
 
 # Define `gemmEx` by hands for a backward compatibility reason.
 cpdef gemmEx(

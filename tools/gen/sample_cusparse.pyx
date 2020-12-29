@@ -7,14 +7,14 @@ from cupy_backends.cuda.api.runtime cimport DataType
 from cupy_backends.cuda cimport stream as stream_module
 
 
-cdef extern from '../cupy_cuComplex.h':
+cdef extern from '../../cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from '../cupy_cusparse.h' nogil:
+cdef extern from '../../cupy_sparse.h' nogil:
 
     # cuSPARSE Management Function
     Status cusparseCreate(Handle* handle)
@@ -424,7 +424,7 @@ def get_build_version():
 
 
 ########################################
-# Auxiliary structures
+# Helper classes
 
 cdef class SpVecAttributes:
 

@@ -14,14 +14,14 @@ from cupy_backends.cuda cimport stream as stream_module
 cdef extern from *:
     ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
 
-cdef extern from '../cupy_cuComplex.h':
+cdef extern from '../../cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from '../cupy_cusolver.h' nogil:
+cdef extern from '../../cupy_lapack.h' nogil:
 
     # Library Attributes
     Status cusolverGetProperty(LibraryPropertyType type, int* value)
@@ -346,9 +346,12 @@ cpdef inline check_status(int status):
 
 
 ########################################
-# Auxiliary structures
+# Version
 
-
+cpdef tuple _getVersion():
+    return (getProperty(MAJOR_VERSION),
+            getProperty(MINOR_VERSION),
+            getProperty(PATCH_LEVEL))
 
 
 ########################################
@@ -359,11 +362,6 @@ cpdef int getProperty(int type) except? -1:
     status = cusolverGetProperty(<LibraryPropertyType>type, &value)
     check_status(status)
     return value
-
-cpdef tuple _getVersion():
-    return (getProperty(MAJOR_VERSION),
-            getProperty(MINOR_VERSION),
-            getProperty(PATCH_LEVEL))
 
 
 ##################################################

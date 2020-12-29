@@ -7,7 +7,7 @@ from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
 
-cdef extern from '../cupy_cuComplex.h':
+cdef extern from '../../cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
@@ -15,7 +15,7 @@ cdef extern from '../cupy_cuComplex.h':
         double x, y
 
 
-cdef extern from '../cupy_cublas.h' nogil:
+cdef extern from '../../cupy_blas.h' nogil:
 
     # cuBLAS Helper Function
     Status cublasCreate_v2(Handle* handle)
@@ -79,10 +79,10 @@ cdef extern from '../cupy_cublas.h' nogil:
     Status cublasDgemm_v2(Handle handle, Operation transa, Operation transb, int m, int n, int k, const double* alpha, const double* A, int lda, const double* B, int ldb, const double* beta, double* C, int ldc)
     Status cublasCgemm_v2(Handle handle, Operation transa, Operation transb, int m, int n, int k, const cuComplex* alpha, const cuComplex* A, int lda, const cuComplex* B, int ldb, const cuComplex* beta, cuComplex* C, int ldc)
     Status cublasZgemm_v2(Handle handle, Operation transa, Operation transb, int m, int n, int k, const cuDoubleComplex* alpha, const cuDoubleComplex* A, int lda, const cuDoubleComplex* B, int ldb, const cuDoubleComplex* beta, cuDoubleComplex* C, int ldc)
-    Status cublasSgemmBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const float* alpha, const float** Aarray, int lda, const float** Barray, int ldb, const float* beta, float** Carray, int ldc, int batchCount)
-    Status cublasDgemmBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const double* alpha, const double** Aarray, int lda, const double** Barray, int ldb, const double* beta, double** Carray, int ldc, int batchCount)
-    Status cublasCgemmBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const cuComplex* alpha, const cuComplex** Aarray, int lda, const cuComplex** Barray, int ldb, const cuComplex* beta, cuComplex** Carray, int ldc, int batchCount)
-    Status cublasZgemmBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const cuDoubleComplex* alpha, const cuDoubleComplex** Aarray, int lda, const cuDoubleComplex** Barray, int ldb, const cuDoubleComplex* beta, cuDoubleComplex** Carray, int ldc, int batchCount)
+    Status cublasSgemmBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const float* alpha, const float* const* Aarray, int lda, const float* const* Barray, int ldb, const float* beta, float* const* Carray, int ldc, int batchCount)
+    Status cublasDgemmBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const double* alpha, const double* const* Aarray, int lda, const double* const* Barray, int ldb, const double* beta, double* const* Carray, int ldc, int batchCount)
+    Status cublasCgemmBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const cuComplex* alpha, const cuComplex* const* Aarray, int lda, const cuComplex* const* Barray, int ldb, const cuComplex* beta, cuComplex* const* Carray, int ldc, int batchCount)
+    Status cublasZgemmBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const cuDoubleComplex* alpha, const cuDoubleComplex* const* Aarray, int lda, const cuDoubleComplex* const* Barray, int ldb, const cuDoubleComplex* beta, cuDoubleComplex* const* Carray, int ldc, int batchCount)
     Status cublasSgemmStridedBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const float* alpha, const float* A, int lda, long long int strideA, const float* B, int ldb, long long int strideB, const float* beta, float* C, int ldc, long long int strideC, int batchCount)
     Status cublasDgemmStridedBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const double* alpha, const double* A, int lda, long long int strideA, const double* B, int ldb, long long int strideB, const double* beta, double* C, int ldc, long long int strideC, int batchCount)
     Status cublasCgemmStridedBatched(Handle handle, Operation transa, Operation transb, int m, int n, int k, const cuComplex* alpha, const cuComplex* A, int lda, long long int strideA, const cuComplex* B, int ldb, long long int strideB, const cuComplex* beta, cuComplex* C, int ldc, long long int strideC, int batchCount)
@@ -103,18 +103,18 @@ cdef extern from '../cupy_cublas.h' nogil:
     Status cublasZdgmm(Handle handle, SideMode mode, int m, int n, const cuDoubleComplex* A, int lda, const cuDoubleComplex* x, int incx, cuDoubleComplex* C, int ldc)
     Status cublasSgemmEx(Handle handle, Operation transa, Operation transb, int m, int n, int k, const float* alpha, const void* A, DataType Atype, int lda, const void* B, DataType Btype, int ldb, const float* beta, void* C, DataType Ctype, int ldc)
     Status cublasCgemmEx(Handle handle, Operation transa, Operation transb, int m, int n, int k, const cuComplex* alpha, const void* A, DataType Atype, int lda, const void* B, DataType Btype, int ldb, const cuComplex* beta, void* C, DataType Ctype, int ldc)
-    Status cublasSgetrfBatched(Handle handle, int n, float** A, int lda, int* P, int* info, int batchSize)
-    Status cublasDgetrfBatched(Handle handle, int n, double** A, int lda, int* P, int* info, int batchSize)
-    Status cublasCgetrfBatched(Handle handle, int n, cuComplex** A, int lda, int* P, int* info, int batchSize)
-    Status cublasZgetrfBatched(Handle handle, int n, cuDoubleComplex** A, int lda, int* P, int* info, int batchSize)
-    Status cublasSgetrsBatched(Handle handle, Operation trans, int n, int nrhs, const float** Aarray, int lda, const int* devIpiv, float** Barray, int ldb, int* info, int batchSize)
-    Status cublasDgetrsBatched(Handle handle, Operation trans, int n, int nrhs, const double** Aarray, int lda, const int* devIpiv, double** Barray, int ldb, int* info, int batchSize)
-    Status cublasCgetrsBatched(Handle handle, Operation trans, int n, int nrhs, const cuComplex** Aarray, int lda, const int* devIpiv, cuComplex** Barray, int ldb, int* info, int batchSize)
-    Status cublasZgetrsBatched(Handle handle, Operation trans, int n, int nrhs, const cuDoubleComplex** Aarray, int lda, const int* devIpiv, cuDoubleComplex** Barray, int ldb, int* info, int batchSize)
-    Status cublasSgetriBatched(Handle handle, int n, const float** A, int lda, const int* P, float** C, int ldc, int* info, int batchSize)
-    Status cublasDgetriBatched(Handle handle, int n, const double** A, int lda, const int* P, double** C, int ldc, int* info, int batchSize)
-    Status cublasCgetriBatched(Handle handle, int n, const cuComplex** A, int lda, const int* P, cuComplex** C, int ldc, int* info, int batchSize)
-    Status cublasZgetriBatched(Handle handle, int n, const cuDoubleComplex** A, int lda, const int* P, cuDoubleComplex** C, int ldc, int* info, int batchSize)
+    Status cublasSgetrfBatched(Handle handle, int n, float* const* A, int lda, int* P, int* info, int batchSize)
+    Status cublasDgetrfBatched(Handle handle, int n, double* const* A, int lda, int* P, int* info, int batchSize)
+    Status cublasCgetrfBatched(Handle handle, int n, cuComplex* const* A, int lda, int* P, int* info, int batchSize)
+    Status cublasZgetrfBatched(Handle handle, int n, cuDoubleComplex* const* A, int lda, int* P, int* info, int batchSize)
+    Status cublasSgetrsBatched(Handle handle, Operation trans, int n, int nrhs, const float* const* Aarray, int lda, const int* devIpiv, float* const* Barray, int ldb, int* info, int batchSize)
+    Status cublasDgetrsBatched(Handle handle, Operation trans, int n, int nrhs, const double* const* Aarray, int lda, const int* devIpiv, double* const* Barray, int ldb, int* info, int batchSize)
+    Status cublasCgetrsBatched(Handle handle, Operation trans, int n, int nrhs, const cuComplex* const* Aarray, int lda, const int* devIpiv, cuComplex* const* Barray, int ldb, int* info, int batchSize)
+    Status cublasZgetrsBatched(Handle handle, Operation trans, int n, int nrhs, const cuDoubleComplex* const* Aarray, int lda, const int* devIpiv, cuDoubleComplex* const* Barray, int ldb, int* info, int batchSize)
+    Status cublasSgetriBatched(Handle handle, int n, const float* const* A, int lda, const int* P, float* const* C, int ldc, int* info, int batchSize)
+    Status cublasDgetriBatched(Handle handle, int n, const double* const* A, int lda, const int* P, double* const* C, int ldc, int* info, int batchSize)
+    Status cublasCgetriBatched(Handle handle, int n, const cuComplex* const* A, int lda, const int* P, cuComplex* const* C, int ldc, int* info, int batchSize)
+    Status cublasZgetriBatched(Handle handle, int n, const cuDoubleComplex* const* A, int lda, const int* P, cuDoubleComplex* const* C, int ldc, int* info, int batchSize)
     Status cublasStpttr(Handle handle, FillMode uplo, int n, const float* AP, float* A, int lda)
     Status cublasDtpttr(Handle handle, FillMode uplo, int n, const double* AP, double* A, int lda)
     Status cublasCtpttr(Handle handle, FillMode uplo, int n, const cuComplex* AP, cuComplex* A, int lda)
@@ -214,12 +214,6 @@ class CUBLASError(RuntimeError):
 cpdef inline check_status(int status):
     if status != 0:
         raise CUBLASError(status)
-
-
-########################################
-# Auxiliary structures
-
-
 
 
 ########################################
@@ -562,25 +556,25 @@ cpdef zgemm(intptr_t handle, int transa, int transb, int m, int n, int k, intptr
 cpdef sgemmBatched(intptr_t handle, int transa, int transb, int m, int n, int k, intptr_t alpha, intptr_t Aarray, int lda, intptr_t Barray, int ldb, intptr_t beta, intptr_t Carray, int ldc, int batchCount):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasSgemmBatched(<Handle>handle, <Operation>transa, <Operation>transb, m, n, k, <const float*>alpha, <const float**>Aarray, lda, <const float**>Barray, ldb, <const float*>beta, <float**>Carray, ldc, batchCount)
+    status = cublasSgemmBatched(<Handle>handle, <Operation>transa, <Operation>transb, m, n, k, <const float*>alpha, <const float* const*>Aarray, lda, <const float* const*>Barray, ldb, <const float*>beta, <float* const*>Carray, ldc, batchCount)
     check_status(status)
 
 cpdef dgemmBatched(intptr_t handle, int transa, int transb, int m, int n, int k, intptr_t alpha, intptr_t Aarray, int lda, intptr_t Barray, int ldb, intptr_t beta, intptr_t Carray, int ldc, int batchCount):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasDgemmBatched(<Handle>handle, <Operation>transa, <Operation>transb, m, n, k, <const double*>alpha, <const double**>Aarray, lda, <const double**>Barray, ldb, <const double*>beta, <double**>Carray, ldc, batchCount)
+    status = cublasDgemmBatched(<Handle>handle, <Operation>transa, <Operation>transb, m, n, k, <const double*>alpha, <const double* const*>Aarray, lda, <const double* const*>Barray, ldb, <const double*>beta, <double* const*>Carray, ldc, batchCount)
     check_status(status)
 
 cpdef cgemmBatched(intptr_t handle, int transa, int transb, int m, int n, int k, intptr_t alpha, intptr_t Aarray, int lda, intptr_t Barray, int ldb, intptr_t beta, intptr_t Carray, int ldc, int batchCount):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasCgemmBatched(<Handle>handle, <Operation>transa, <Operation>transb, m, n, k, <const cuComplex*>alpha, <const cuComplex**>Aarray, lda, <const cuComplex**>Barray, ldb, <const cuComplex*>beta, <cuComplex**>Carray, ldc, batchCount)
+    status = cublasCgemmBatched(<Handle>handle, <Operation>transa, <Operation>transb, m, n, k, <const cuComplex*>alpha, <const cuComplex* const*>Aarray, lda, <const cuComplex* const*>Barray, ldb, <const cuComplex*>beta, <cuComplex* const*>Carray, ldc, batchCount)
     check_status(status)
 
 cpdef zgemmBatched(intptr_t handle, int transa, int transb, int m, int n, int k, intptr_t alpha, intptr_t Aarray, int lda, intptr_t Barray, int ldb, intptr_t beta, intptr_t Carray, int ldc, int batchCount):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasZgemmBatched(<Handle>handle, <Operation>transa, <Operation>transb, m, n, k, <const cuDoubleComplex*>alpha, <const cuDoubleComplex**>Aarray, lda, <const cuDoubleComplex**>Barray, ldb, <const cuDoubleComplex*>beta, <cuDoubleComplex**>Carray, ldc, batchCount)
+    status = cublasZgemmBatched(<Handle>handle, <Operation>transa, <Operation>transb, m, n, k, <const cuDoubleComplex*>alpha, <const cuDoubleComplex* const*>Aarray, lda, <const cuDoubleComplex* const*>Barray, ldb, <const cuDoubleComplex*>beta, <cuDoubleComplex* const*>Carray, ldc, batchCount)
     check_status(status)
 
 cpdef sgemmStridedBatched(intptr_t handle, int transa, int transb, int m, int n, int k, intptr_t alpha, intptr_t A, int lda, long long int strideA, intptr_t B, int ldb, long long int strideB, intptr_t beta, intptr_t C, int ldc, long long int strideC, int batchCount):
@@ -698,73 +692,73 @@ cpdef cgemmEx(intptr_t handle, int transa, int transb, int m, int n, int k, intp
 cpdef sgetrfBatched(intptr_t handle, int n, intptr_t A, int lda, intptr_t P, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasSgetrfBatched(<Handle>handle, n, <float**>A, lda, <int*>P, <int*>info, batchSize)
+    status = cublasSgetrfBatched(<Handle>handle, n, <float* const*>A, lda, <int*>P, <int*>info, batchSize)
     check_status(status)
 
 cpdef dgetrfBatched(intptr_t handle, int n, intptr_t A, int lda, intptr_t P, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasDgetrfBatched(<Handle>handle, n, <double**>A, lda, <int*>P, <int*>info, batchSize)
+    status = cublasDgetrfBatched(<Handle>handle, n, <double* const*>A, lda, <int*>P, <int*>info, batchSize)
     check_status(status)
 
 cpdef cgetrfBatched(intptr_t handle, int n, intptr_t A, int lda, intptr_t P, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasCgetrfBatched(<Handle>handle, n, <cuComplex**>A, lda, <int*>P, <int*>info, batchSize)
+    status = cublasCgetrfBatched(<Handle>handle, n, <cuComplex* const*>A, lda, <int*>P, <int*>info, batchSize)
     check_status(status)
 
 cpdef zgetrfBatched(intptr_t handle, int n, intptr_t A, int lda, intptr_t P, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasZgetrfBatched(<Handle>handle, n, <cuDoubleComplex**>A, lda, <int*>P, <int*>info, batchSize)
+    status = cublasZgetrfBatched(<Handle>handle, n, <cuDoubleComplex* const*>A, lda, <int*>P, <int*>info, batchSize)
     check_status(status)
 
 cpdef sgetrsBatched(intptr_t handle, int trans, int n, int nrhs, intptr_t Aarray, int lda, intptr_t devIpiv, intptr_t Barray, int ldb, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasSgetrsBatched(<Handle>handle, <Operation>trans, n, nrhs, <const float**>Aarray, lda, <const int*>devIpiv, <float**>Barray, ldb, <int*>info, batchSize)
+    status = cublasSgetrsBatched(<Handle>handle, <Operation>trans, n, nrhs, <const float* const*>Aarray, lda, <const int*>devIpiv, <float* const*>Barray, ldb, <int*>info, batchSize)
     check_status(status)
 
 cpdef dgetrsBatched(intptr_t handle, int trans, int n, int nrhs, intptr_t Aarray, int lda, intptr_t devIpiv, intptr_t Barray, int ldb, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasDgetrsBatched(<Handle>handle, <Operation>trans, n, nrhs, <const double**>Aarray, lda, <const int*>devIpiv, <double**>Barray, ldb, <int*>info, batchSize)
+    status = cublasDgetrsBatched(<Handle>handle, <Operation>trans, n, nrhs, <const double* const*>Aarray, lda, <const int*>devIpiv, <double* const*>Barray, ldb, <int*>info, batchSize)
     check_status(status)
 
 cpdef cgetrsBatched(intptr_t handle, int trans, int n, int nrhs, intptr_t Aarray, int lda, intptr_t devIpiv, intptr_t Barray, int ldb, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasCgetrsBatched(<Handle>handle, <Operation>trans, n, nrhs, <const cuComplex**>Aarray, lda, <const int*>devIpiv, <cuComplex**>Barray, ldb, <int*>info, batchSize)
+    status = cublasCgetrsBatched(<Handle>handle, <Operation>trans, n, nrhs, <const cuComplex* const*>Aarray, lda, <const int*>devIpiv, <cuComplex* const*>Barray, ldb, <int*>info, batchSize)
     check_status(status)
 
 cpdef zgetrsBatched(intptr_t handle, int trans, int n, int nrhs, intptr_t Aarray, int lda, intptr_t devIpiv, intptr_t Barray, int ldb, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasZgetrsBatched(<Handle>handle, <Operation>trans, n, nrhs, <const cuDoubleComplex**>Aarray, lda, <const int*>devIpiv, <cuDoubleComplex**>Barray, ldb, <int*>info, batchSize)
+    status = cublasZgetrsBatched(<Handle>handle, <Operation>trans, n, nrhs, <const cuDoubleComplex* const*>Aarray, lda, <const int*>devIpiv, <cuDoubleComplex* const*>Barray, ldb, <int*>info, batchSize)
     check_status(status)
 
 cpdef sgetriBatched(intptr_t handle, int n, intptr_t A, int lda, intptr_t P, intptr_t C, int ldc, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasSgetriBatched(<Handle>handle, n, <const float**>A, lda, <const int*>P, <float**>C, ldc, <int*>info, batchSize)
+    status = cublasSgetriBatched(<Handle>handle, n, <const float* const*>A, lda, <const int*>P, <float* const*>C, ldc, <int*>info, batchSize)
     check_status(status)
 
 cpdef dgetriBatched(intptr_t handle, int n, intptr_t A, int lda, intptr_t P, intptr_t C, int ldc, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasDgetriBatched(<Handle>handle, n, <const double**>A, lda, <const int*>P, <double**>C, ldc, <int*>info, batchSize)
+    status = cublasDgetriBatched(<Handle>handle, n, <const double* const*>A, lda, <const int*>P, <double* const*>C, ldc, <int*>info, batchSize)
     check_status(status)
 
 cpdef cgetriBatched(intptr_t handle, int n, intptr_t A, int lda, intptr_t P, intptr_t C, int ldc, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasCgetriBatched(<Handle>handle, n, <const cuComplex**>A, lda, <const int*>P, <cuComplex**>C, ldc, <int*>info, batchSize)
+    status = cublasCgetriBatched(<Handle>handle, n, <const cuComplex* const*>A, lda, <const int*>P, <cuComplex* const*>C, ldc, <int*>info, batchSize)
     check_status(status)
 
 cpdef zgetriBatched(intptr_t handle, int n, intptr_t A, int lda, intptr_t P, intptr_t C, int ldc, intptr_t info, int batchSize):
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cublasZgetriBatched(<Handle>handle, n, <const cuDoubleComplex**>A, lda, <const int*>P, <cuDoubleComplex**>C, ldc, <int*>info, batchSize)
+    status = cublasZgetriBatched(<Handle>handle, n, <const cuDoubleComplex* const*>A, lda, <const int*>P, <cuDoubleComplex* const*>C, ldc, <int*>info, batchSize)
     check_status(status)
 
 cpdef stpttr(intptr_t handle, int uplo, int n, intptr_t AP, intptr_t A, int lda):
@@ -843,4 +837,3 @@ cpdef gemmEx(
                 <void*>C, <runtime.DataType>Ctype, ldc,
                 <runtime.DataType>computeType, <GemmAlgo>algo)
     check_status(status)
-

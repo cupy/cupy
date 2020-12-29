@@ -1,7 +1,8 @@
 [
     # Setting
+    ('CudaVersions', ['11.0', '10.2']),
     ('Headers', ['cusolverDn.h', 'cusolverSp.h']),
-    ('Regexes', {
+    ('Patterns', {
         'func': r'cusolver(?:Dn|Sp|)([A-Z].*)',
         'type': r'(?:cusolver|cublas|cusparse)([A-Z].*)_t',  # uses some enums in cuBLAS and cuSPARSE
     }),
@@ -29,10 +30,6 @@
         'except?': -1,
         'use_stream': False,
     }),
-    ('Raw', '''cpdef tuple _getVersion():
-    return (getProperty(MAJOR_VERSION),
-            getProperty(MINOR_VERSION),
-            getProperty(PATCH_LEVEL))'''),
     # cuSOLVER Dense LAPACK Function - Helper Function
     ('Comment', 'cuSOLVER Dense LAPACK Function - Helper Function'),
     ('cusolverDnCreate', {

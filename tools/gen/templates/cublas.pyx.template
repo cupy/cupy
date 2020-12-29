@@ -7,7 +7,7 @@ from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
 
-cdef extern from '../cupy_cuComplex.h':
+cdef extern from '../../cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
@@ -15,7 +15,7 @@ cdef extern from '../cupy_cuComplex.h':
         double x, y
 
 
-cdef extern from '../cupy_cublas.h' nogil:
+cdef extern from '../../cupy_blas.h' nogil:
 {ffi}
 
     # Define `cublasGemmEx` by hands for a backward compatibility reason.
@@ -108,15 +108,7 @@ class CUBLASError(RuntimeError):
 cpdef inline check_status(int status):
     if status != 0:
         raise CUBLASError(status)
-
-
-########################################
-# Auxiliary structures
-
-{aux_struct}
-
-{wrapper}
-
+{helper_class}{wrapper}
 # Define `gemmEx` by hands for a backward compatibility reason.	
 cpdef gemmEx(
         intptr_t handle, int transa, int transb, int m, int n, int k,

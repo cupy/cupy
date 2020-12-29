@@ -33,13 +33,13 @@ def maybe(fn):
 def read_directives(path):
     with open(path) as f:
         directives = eval(f.read())
-    cuda_versions, headers, regexes, *rest = directives
-    assert is_cuda_versions_directive(cuda_versions)
-    assert is_headers_directive(headers)
-    assert is_regexes_directive(regexes)
+    first, second, third, *rest = directives
+    assert is_cuda_versions_directive(first)
+    assert is_headers_directive(second)
+    assert is_patterns_directive(third)
     assert not any(is_cuda_versions_directive(d) for d in rest)
     assert not any(is_headers_directive(d) for d in rest)
-    assert not any(is_regexes_directive(d) for d in rest)
+    assert not any(is_patterns_directive(d) for d in rest)
     assert not any(is_special_types_directive(d) for d in rest[1:])
     return directives
 
@@ -52,8 +52,8 @@ def is_headers_directive(directive):
     return directive[0] == 'Headers'
 
 
-def is_regexes_directive(directive):
-    return directive[0] == 'Regexes'
+def is_patterns_directive(directive):
+    return directive[0] == 'Patterns'
 
 
 def is_special_types_directive(directive):
@@ -64,19 +64,14 @@ def is_comment_directive(directive):
     return directive[0] == 'Comment'
 
 
-def is_raw_directive(directive):
-    return directive[0] == 'Raw'
-
-
 def is_function_directive(directive):
     return (
         isinstance(directive[0], str)
         and not is_cuda_versions_directive(directive)
         and not is_headers_directive(directive)
-        and not is_regexes_directive(directive)
+        and not is_patterns_directive(directive)
         and not is_special_types_directive(directive)
         and not is_comment_directive(directive)
-        and not is_raw_directive(directive)
     )
 
 
@@ -99,8 +94,8 @@ def directive_headers(directive):
     return directive[1]
 
 
-def directive_regexes(directive):
-    assert is_regexes_directive(directive)
+def directive_patterns(directive):
+    assert is_patterns_directive(directive)
     return directive[1]
 
 
@@ -111,11 +106,6 @@ def directive_special_types(directive):
 
 def directive_comment(directive):
     assert is_comment_directive(directive)
-    return directive[1]
-
-
-def directive_raw(directive):
-    assert is_raw_directive(directive)
     return directive[1]
 
 
@@ -217,8 +207,8 @@ def transpile_func_name(env, directive, node):
     name = directive_transpiled_name(directive)
     if name is not None:
         return name
-    regex = regex_func_name(env)
-    name = regex.fullmatch(node.name)[1]
+    pattern = pattern_func_name(env)
+    name = pattern.fullmatch(node.name)[1]
     return name[0:2].lower() + name[2:]
 
 
@@ -231,16 +221,16 @@ def transpile_type_name(env, node):
             name1 = special_type_transpiled(name, env)
             return ' '.join(quals + [name1])
         elif is_opaque_data_structure(name, env):
-            regex = regex_type_name(env)
-            m = regex.fullmatch(name)
+            pattern = pattern_type_name(env)
+            m = pattern.fullmatch(name)
             if m is not None:
                 return ' '.join(quals + [m[1]])
             else:
                 # Opaque data structures that do not follow the pattern above
                 return ' '.join(quals + [name])
         elif is_enum(name, env):
-            regex = regex_type_name(env)
-            name1 = re.fullmatch(regex, name)[1]
+            pattern = pattern_type_name(env)
+            name1 = pattern.fullmatch(name)[1]
             return ' '.join(quals + [name1])
         else:
             return ' '.join(quals + names)
@@ -249,18 +239,19 @@ def transpile_type_name(env, node):
         quals = node.quals
         return transpile(env, names, quals)
     elif isinstance(node, c_ast.PtrDecl):
+        quals = node.quals
+        assert(len(quals) in [0, 1])  # assuming no qualifier or only 'const'
         # In case a special type as a pointer
         if isinstance(node.type, c_ast.TypeDecl):
             # Currently non-recursive pointer types only
-            assert node.quals == []  # assuming PtrDecl has no qualifiers
             type_names = node.type.type.names
             type_name = type_names[0] + '*'
             if len(type_names) == 1 and is_special_type(type_name, env):
                 # Currently support one-token types only
                 type_name1 = special_type_transpiled(type_name, env)
                 quals = node.type.quals
-                return ' '.join(quals + [type_name1])
-        return transpile_type_name(env, node.type) + '*'
+                return ' '.join(quals + [type_name1]) + (' ' + quals[0] if quals != [] else '')
+        return transpile_type_name(env, node.type) + '*' + (' ' + quals[0] if quals != [] else '')
     elif isinstance(node, c_ast.ArrayDecl):
         return transpile_type_name(env, node.type) + '*'
     elif isinstance(node, c_ast.Typedef):
@@ -341,6 +332,24 @@ def transpile_type_conversion(env, node, var_name):
     elif isinstance(node, c_ast.ArrayDecl):
         cast_type = transpile_type_name(env, node)
         return '<{}>{}'.format(cast_type, var_name)
+    else:
+        assert False
+
+
+def transpile_expression(node):
+    if isinstance(node, c_ast.Constant):
+        value = node.value
+        assert node.type in ['int', 'unsigned int']
+        return value
+    elif isinstance(node, c_ast.UnaryOp):
+        op = node.op
+        expr = transpile_expression(node.expr)
+        return '{}{}'.format(op, expr)
+    elif isinstance(node, c_ast.BinaryOp):
+        op = node.op
+        left = transpile_expression(node.left)
+        right = transpile_expression(node.right)
+        return '({} {} {})'.format(left, op, right)
     else:
         assert False
 
@@ -429,14 +438,9 @@ SPECIAL_TYPES = {
 def make_environment(directives):
     cuda_versions = directive_cuda_versions(directives[0])
     headers = directive_headers(directives[1])
-    nodes_list = [_parse_headers(headers, ver) for ver in cuda_versions]
 
-    # Assuming the letters before the first appearance of `_` or `.` make the
-    # library name.
-    lib_name = re.match(r'^([a-z]+)(:?_|.)', headers[0])[1]
-
-    patterns = directive_regexes(directives[2])
-    regexes = {
+    patterns = directive_patterns(directives[2])
+    compiled_patterns = {
         'func': re.compile(patterns['func']),
         'type': re.compile(patterns['type']),
     }
@@ -447,13 +451,23 @@ def make_environment(directives):
         special_types1 = directive_special_types(directives[3])
         special_types.update(special_types1)
 
-    opaques = _collect_opaque_decls(nodes_list[0])  # assuming no opaques removed
-    enums = _collect_enum_decls(nodes_list[0])  # assuming no enums removed
-    funcs_list = [_collect_func_decls(nodes) for nodes in nodes_list]
-    if len(funcs_list) == 1:
-        funcs_list.append(None)
-    return ('environment', special_types, opaques, enums, funcs_list, regexes,
-            lib_name)
+    nodes_per_version = [_parse_headers(headers, ver) for ver in cuda_versions]
+    # assuming no opaque pointers removed in a newer CUDA version
+    opaques = _collect_opaque_decls(nodes_per_version[0])
+    # assuming no enumerators removed in a newer CUDA version
+    enums = _collect_enum_decls(nodes_per_version[0])
+    funcs_per_version = [
+        _collect_func_decls(nodes) for nodes in nodes_per_version]
+    # FIXME
+    if len(funcs_per_version) == 1:
+        funcs_per_version.append(None)
+
+    # Assuming the letters before the first appearance of `_` or `.` make the
+    # library name.
+    lib_name = re.match(r'^([a-z]+)(:?_|.)', headers[0])[1]
+
+    return ('environment', special_types, opaques, enums, funcs_per_version,
+            compiled_patterns, lib_name)
 
 
 def _environment_specials(env):
@@ -478,7 +492,7 @@ def _environment_funcs(env):
     return env[4]
 
 
-def _environment_regexes(env):
+def _environment_patterns(env):
     assert env[0] == 'environment'
     return env[5]
 
@@ -540,12 +554,12 @@ def special_type_erased(name, env):
     return _environment_specials(env)[name]['erased']
 
 
-def regex_func_name(env):
-    return _environment_regexes(env)['func']
+def pattern_func_name(env):
+    return _environment_patterns(env)['func']
 
 
-def regex_type_name(env):
-    return _environment_regexes(env)['type']
+def pattern_type_name(env):
+    return _environment_patterns(env)['type']
 
 
 # Template

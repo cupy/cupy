@@ -4,11 +4,10 @@ from libc.stdint cimport intptr_t, int64_t
 
 
 ########################################
-# Opaque data structures
+# Opaque pointers
 
 cdef extern from *:
     ctypedef int DataType 'cudaDataType'
-
 
 cdef extern from *:
     ctypedef void* Handle 'cusparseHandle_t'
@@ -57,7 +56,6 @@ cdef extern from *:
     ctypedef int SpMMAlg 'cusparseSpMMAlg_t'
     ctypedef int SpGEMMAlg 'cusparseSpGEMMAlg_t'
 
-
 cpdef enum:
     CUSPARSE_STATUS_SUCCESS = 0
     CUSPARSE_STATUS_NOT_INITIALIZED = 1
@@ -72,16 +70,13 @@ cpdef enum:
     CUSPARSE_STATUS_NOT_SUPPORTED = 10
     CUSPARSE_STATUS_INSUFFICIENT_RESOURCES = 11
 
-
 cpdef enum:
     CUSPARSE_POINTER_MODE_HOST = 0
     CUSPARSE_POINTER_MODE_DEVICE = 1
 
-
 cpdef enum:
     CUSPARSE_ACTION_SYMBOLIC = 0
     CUSPARSE_ACTION_NUMERIC = 1
-
 
 cpdef enum:
     CUSPARSE_MATRIX_TYPE_GENERAL = 0
@@ -89,56 +84,45 @@ cpdef enum:
     CUSPARSE_MATRIX_TYPE_HERMITIAN = 2
     CUSPARSE_MATRIX_TYPE_TRIANGULAR = 3
 
-
 cpdef enum:
     CUSPARSE_FILL_MODE_LOWER = 0
     CUSPARSE_FILL_MODE_UPPER = 1
-
 
 cpdef enum:
     CUSPARSE_DIAG_TYPE_NON_UNIT = 0
     CUSPARSE_DIAG_TYPE_UNIT = 1
 
-
 cpdef enum:
     CUSPARSE_INDEX_BASE_ZERO = 0
     CUSPARSE_INDEX_BASE_ONE = 1
-
 
 cpdef enum:
     CUSPARSE_OPERATION_NON_TRANSPOSE = 0
     CUSPARSE_OPERATION_TRANSPOSE = 1
     CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE = 2
 
-
 cpdef enum:
     CUSPARSE_DIRECTION_ROW = 0
     CUSPARSE_DIRECTION_COLUMN = 1
-
 
 cpdef enum:
     CUSPARSE_SOLVE_POLICY_NO_LEVEL = 0
     CUSPARSE_SOLVE_POLICY_USE_LEVEL = 1
 
-
 cpdef enum:
     CUSPARSE_SIDE_LEFT = 0
     CUSPARSE_SIDE_RIGHT = 1
-
 
 cpdef enum:
     CUSPARSE_COLOR_ALG0 = 0
     CUSPARSE_COLOR_ALG1 = 1
 
-
 cpdef enum:
     CUSPARSE_ALG_MERGE_PATH
-
 
 cpdef enum:
     CUSPARSE_CSR2CSC_ALG1 = 1
     CUSPARSE_CSR2CSC_ALG2 = 2
-
 
 cpdef enum:
     CUSPARSE_FORMAT_CSR = 1
@@ -146,24 +130,20 @@ cpdef enum:
     CUSPARSE_FORMAT_COO = 3
     CUSPARSE_FORMAT_COO_AOS = 4
 
-
 cpdef enum:
     CUSPARSE_ORDER_COL = 1
     CUSPARSE_ORDER_ROW = 2
-
 
 cpdef enum:
     CUSPARSE_INDEX_16U = 1
     CUSPARSE_INDEX_32I = 2
     CUSPARSE_INDEX_64I = 3
 
-
 cpdef enum:
     CUSPARSE_MV_ALG_DEFAULT = 0
     CUSPARSE_COOMV_ALG = 1
     CUSPARSE_CSRMV_ALG1 = 2
     CUSPARSE_CSRMV_ALG2 = 3
-
 
 cpdef enum:
     CUSPARSE_MM_ALG_DEFAULT = 0
@@ -179,13 +159,12 @@ cpdef enum:
     CUSPARSE_SPMM_CSR_ALG1 = 4
     CUSPARSE_SPMM_CSR_ALG2 = 6
 
-
 cpdef enum:
     CUSPARSE_SPGEMM_DEFAULT = 0
 
 
 ########################################
-# Auxiliary structures
+# Helper classes
 
 cdef class SpVecAttributes:
     cdef:
@@ -196,7 +175,6 @@ cdef class SpVecAttributes:
         public IndexType idxType
         public IndexBase idxBase
         public DataType valueType
-
 
 cdef class CooAttributes:
     cdef:
@@ -210,7 +188,6 @@ cdef class CooAttributes:
         public IndexBase idxBase
         public DataType valueType
 
-
 cdef class CooAoSAttributes:
     cdef:
         public int64_t rows
@@ -221,7 +198,6 @@ cdef class CooAoSAttributes:
         public IndexType idxType
         public IndexBase idxBase
         public DataType valueType
-
 
 cdef class CsrAttributes:
     cdef:
@@ -236,13 +212,11 @@ cdef class CsrAttributes:
         public IndexBase idxBase
         public DataType valueType
 
-
 cdef class DnVecAttributes:
     cdef:
         public int64_t size
         public intptr_t values
         public DataType valueType
-
 
 cdef class DnMatAttributes:
     cdef:
@@ -252,7 +226,6 @@ cdef class DnMatAttributes:
         public intptr_t values
         public DataType type
         public Order order
-
 
 cdef class DnMatBatchAttributes:
     cdef:

@@ -7,71 +7,53 @@ import gen
 import gen_pyx
 
 
-def transpile_opaque(env, node):
-    assert isinstance(node, c_ast.Typedef)
-    type_name = node.name
-    type_name1 = gen.transpile_type_name(env, node)
-    # Use `void*` for opaque data structures.
-    return "ctypedef void* {} '{}'".format(type_name1, type_name)
+# Opaque pointers
 
-
-def transpile_enum_type(env, node):
-    assert isinstance(node, c_ast.Typedef)
-    assert isinstance(node.type, c_ast.TypeDecl)
-    assert isinstance(node.type.type, c_ast.Enum)
-    type_name = node.name
-    type_name1 = gen.transpile_type_name(env, node)
-    # Use `int` for enums.
-    return "ctypedef int {} '{}'".format(type_name1, type_name)
-
-
-def transpile_enum_value(node):
-    def aux(enumerator):
-        name = enumerator.name
-        if enumerator.value is not None:
-            value = enumerator.value.value
-            assert enumerator.value.type == 'int'
-            return '{} = {}'.format(name, value)
-        else:
-            return name
-    assert isinstance(node, c_ast.Typedef)
-    assert isinstance(node.type, c_ast.TypeDecl)
-    assert isinstance(node.type.type, c_ast.Enum)
-
+def transpile_opaques(env, opaques):
     code = []
-    code.append('cpdef enum:')
-
-    for e in node.type.type.values.enumerators:
-        # TODO: Recursively resolve expressions
-        name = e.name
-        if e.value is None:
-            code.append('    ' + name)
-        elif isinstance(e.value, c_ast.Constant):
-            value = e.value.value
-            assert e.value.type in ['int', 'unsigned int']
-            code.append('    {} = {}'.format(name, value))
-        elif isinstance(e.value, c_ast.UnaryOp):
-            op = e.value.op
-            expr = e.value.expr
-            assert expr.type in ['int', 'unsigned int']
-            code.append('    {} = {}{}'.format(name, op, expr.value))
-        elif isinstance(e.value, c_ast.BinaryOp):
-            op = e.value.op
-            left = e.value.left
-            assert left.type in ['int', 'unsigned int']
-            right = e.value.right
-            assert right.type in ['int', 'unsigned int']
-            code.append('    {} = ({} {} {})'
-                        ''.format(name, left.value, op, right.value))
-        else:
-            assert False
-    return '\n'.join(code)
+    code.append('')
+    code.append('cdef extern from *:')
+    for o in opaques:
+        type_name = o.name
+        type_name1 = gen.transpile_type_name(env, o)
+        # Use `void*` for opaque data structures.
+        code.append("    ctypedef void* {} '{}'".format(type_name1, type_name))
+    return '\n'.join(code) + '\n'
 
 
-def transpile_aux_struct_decl(env, directive, node, removed):
-    assert isinstance(node.type, c_ast.FuncDecl)
+# Enumerators
 
+def transpile_enums(env, enums):
+    code = []
+    code.append('')
+    code.append('')
+    code.append('#' * 40)
+    code.append('# Enumerators')
+    code.append('')
+    code.append('cdef extern from *:')
+    for e in enums:
+        type_name = e.name
+        type_name1 = gen.transpile_type_name(env, e)
+        # Use `int` for enums.
+        code.append("    ctypedef int {} '{}'".format(type_name1, type_name))
+    for e in enums:
+        code.append('')
+        code.append('cpdef enum:')        
+        for v in e.type.type.values.enumerators:
+            name = v.name
+            if v.value is None:
+                code.append('    ' + name)
+            else:
+                value = gen.transpile_expression(v.value)
+                code.append('    {} = {}'.format(name, value))
+    return '\n'.join(code) + '\n'
+
+
+# Helper classes
+
+def transpile_helper_class_node(env, directive, node, removed):
     out_type, out_args = gen.directive_multi_out(directive)
+
     code = []
 
     if removed:
@@ -95,35 +77,39 @@ def transpile_aux_struct_decl(env, directive, node, removed):
     return '\n'.join(code)
 
 
-# Assuming multiple functions do not use the same auxiliary structure.
-def transpile_aux_struct(env, directive):
-    if gen.is_cuda_versions_directive(directive):
-        return None
-    elif gen.is_headers_directive(directive):
-        return None
-    elif gen.is_regexes_directive(directive):
-        return None
-    elif gen.is_special_types_directive(directive):
-        return None
-    elif gen.is_comment_directive(directive):
-        return None
-    elif gen.is_raw_directive(directive):
-        return None
-    elif gen.is_function_directive(directive):
-        if gen.is_directive_multi_out(directive):
-            head = gen.directive_head(directive)
-            decls, removed = gen.query_func_decls(head, env)
-            assert len(decls) == 1  # assuming not type generic
-            return transpile_aux_struct_decl(env, directive, decls[0], removed)
-        else:
-            return None
+def transpile_helper_class(env, directive):
+    head = gen.directive_head(directive)
+    decls, removed = gen.query_func_decls(head, env)
+    assert len(decls) == 1  # assuming not type generic
+    return transpile_helper_class_node(env, directive, decls[0], removed)
+
+
+def is_helper_class_directive(directive):
+    return (
+    )
+
+
+def transpile_helper_classes(env, directives):
+    # Assuming multiple functions do not use the same helper class.
+    code = []
+    for d in directives:
+        if gen.is_function_directive(d) and gen.is_directive_multi_out(d):
+            if code == []:
+                code.append('')
+                code.append('')
+                code.append('#' * 40)
+                code.append('# Helper classes')
+            code.append('')
+            code.append(transpile_helper_class(env, d))
+    if code != []:
+        return '\n'.join(code) + '\n'
     else:
-        assert False
+        return ''
 
 
-def transpile_wrapper_decl(env, directive, node, removed):
-    assert isinstance(node.type, c_ast.FuncDecl)
+# Wrappers
 
+def transpile_wrapper_node(env, directive, node, removed):
     # Get stream configuration for following steps
     use_stream, fashion, _ = gen.directive_use_stream(directive)
 
@@ -141,68 +127,63 @@ def transpile_wrapper_decl(env, directive, node, removed):
     return '\n'.join(code)
 
 
-def transpile_wrapper(env, directive):
-    if gen.is_cuda_versions_directive(directive):
-        return None
-    elif gen.is_headers_directive(directive):
-        return None
-    elif gen.is_regexes_directive(directive):
-        return None
-    elif gen.is_special_types_directive(directive):
-        return None
-    elif gen.is_comment_directive(directive):
-        comment = gen.directive_comment(directive)
-        code = []
-        code.append('')
-        code.append('#' * max(40, len(comment) + 2))
-        code.append('# ' + comment)
-        return '\n'.join(code)
-    elif gen.is_raw_directive(directive):
-        return None  # planned to be deprecated
-    elif gen.is_function_directive(directive):
-        head = gen.directive_head(directive)
-        decls, removed = gen.query_func_decls(head, env)
-        return '\n'.join(
-            transpile_wrapper_decl(
-                env, directive, decl, removed) for decl in decls)
+def transpile_wrappers(env, directives):
+    code = []
+    for d in directives:
+        if gen.is_comment_directive(d):
+            comment = gen.directive_comment(d)
+            code.append('')
+            code.append('')
+            code.append('#' * max(40, len(comment) + 2))
+            code.append('# ' + comment)
+        elif gen.is_function_directive(d):
+            code.append('')
+            head = gen.directive_head(d)
+            decls, removed = gen.query_func_decls(head, env)
+            for decl in decls:
+                code.append(transpile_wrapper_node(env, d, decl, removed))
+    if code != []:
+        return '\n'.join(code) + '\n'
     else:
-        assert False
+        return ''
 
+
+# Main
 
 def main(args):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-d', '--directive', required=True, type=str,
-        help='Path to directive file')
+        'directive', type=str,
+        help='Path to directive file for library to generate')
     parser.add_argument(
-        '-t', '--template', required=True, type=str,
-        help='Path to template file')
+        'template', type=str,
+        help='Path to template file for library to generate')
     args = parser.parse_args(args)
 
     directives = gen.read_directives(args.directive)
 
-    env  = gen.make_environment(directives)
+    env = gen.make_environment(directives)
 
     template = gen.read_template(args.template)
 
+    # Opaque pointers
     opaques = gen.environment_opaques(env)
-    opaque = '\n'.join(
-        gen.indent(transpile_opaque(env, o)) for o in opaques)
+    opaque_code = transpile_opaques(env, opaques) if opaques != [] else ''
 
+    # Enumerators
     enums = gen.environment_enums(env)
-    enum_type = '\n'.join(
-        gen.indent(transpile_enum_type(env, e)) for e in enums)
-    enum_value = '\n\n\n'.join(transpile_enum_value(e) for e in enums)
+    enum_code = transpile_enums(env, enums) if enums != [] else ''
 
-    aux_struct = '\n\n\n'.join(
-        gen.compact(transpile_aux_struct(env, d) for d in directives))
+    # Helper classes
+    helper_class_code = transpile_helper_classes(env, directives)
 
-    wrapper = '\n\n'.join(
-        gen.compact(transpile_wrapper(env, d) for d in directives))
+    # Wrapper functions
+    wrapper_code = transpile_wrappers(env, directives)
 
-    print(template.format(
-        opaque=opaque, enum_type=enum_type, enum_value=enum_value,
-        aux_struct=aux_struct, wrapper=wrapper))
+    code = template.format(
+        opaque=opaque_code, enum=enum_code, helper_class=helper_class_code,
+        wrapper=wrapper_code)
+    print(code, end='')
 
 
 if __name__ == '__main__':

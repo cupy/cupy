@@ -7,7 +7,7 @@ from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 from cupy_backends.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
 
-cdef extern from '../cupy_cutensor.h' nogil:
+cdef extern from '../../cupy_cutensor.h' nogil:
     ctypedef struct cutensorHandle_t 'cutensorHandle_t':
         int64_t fields[512]
     ctypedef struct cutensorTensorDescriptor_t 'cutensorTensorDescriptor_t':
@@ -24,7 +24,7 @@ cdef extern from '../cupy_cutensor.h' nogil:
     size_t cutensorGetVersion()
 
 
-cdef extern from '../cupy_cublas.h' nogil:
+cdef extern from '../../cupy_cutensor.h' nogil:
 {ffi}
 
 
@@ -132,11 +132,4 @@ class CuTensorError(RuntimeError):
 cdef inline check_status(int status):
     if status != STATUS_SUCCESS:
         raise CuTensorError(status)
-
-
-########################################
-# Auxiliary structures
-
-{aux_struct}
-
-{wrapper}
+{helper_class}{wrapper}

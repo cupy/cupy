@@ -4,14 +4,10 @@ from libc.stdint cimport intptr_t, int64_t
 
 
 ########################################
-# Opaque data structures
+# Opaque pointers
 
 cdef extern from *:
     ctypedef int DataType 'cudaDataType'
-
-
-cdef extern from *:
-
 
 
 ########################################
@@ -27,7 +23,6 @@ cdef extern from *:
     ctypedef int ContractionFindAttributes 'cutensorContractionFindAttributes_t'
     ctypedef int AutotuneMode 'cutensorAutotuneMode_t'
     ctypedef int CacheMode 'cutensorCacheMode_t'
-
 
 cpdef enum:
     CUTENSOR_OP_IDENTITY = 1
@@ -60,7 +55,6 @@ cpdef enum:
     CUTENSOR_OP_MIN = 7
     CUTENSOR_OP_UNKNOWN = 126
 
-
 cpdef enum:
     CUTENSOR_STATUS_SUCCESS = 0
     CUTENSOR_STATUS_NOT_INITIALIZED = 1
@@ -78,19 +72,16 @@ cpdef enum:
     CUTENSOR_STATUS_INSUFFICIENT_DRIVER = 20
     CUTENSOR_STATUS_IO_ERROR = 21
 
-
 cpdef enum:
     CUTENSOR_ALGO_GETT = -4
     CUTENSOR_ALGO_TGETT = -3
     CUTENSOR_ALGO_TTGT = -2
     CUTENSOR_ALGO_DEFAULT = -1
 
-
 cpdef enum:
     CUTENSOR_WORKSPACE_MIN = 1
     CUTENSOR_WORKSPACE_RECOMMENDED = 2
     CUTENSOR_WORKSPACE_MAX = 3
-
 
 cpdef enum:
     CUTENSOR_COMPUTE_16F = (1U << 0U)
@@ -116,31 +107,21 @@ cpdef enum:
     CUTENSOR_R_MIN_TF32 = (1U << 11U)
     CUTENSOR_C_MIN_TF32 = (1U << 12U)
 
-
 cpdef enum:
     CUTENSOR_CONTRACTION_DESCRIPTOR_TAG
-
 
 cpdef enum:
     CUTENSOR_CONTRACTION_FIND_AUTOTUNE_MODE
     CUTENSOR_CONTRACTION_FIND_CACHE_MODE
     CUTENSOR_CONTRACTION_FIND_INCREMENTAL_COUNT
 
-
 cpdef enum:
     CUTENSOR_AUTOTUNE_NONE
     CUTENSOR_AUTOTUNE_INCREMENTAL
 
-
 cpdef enum:
     CUTENSOR_CACHE_MODE_NONE
     CUTENSOR_CACHE_MODE_PEDANTIC
-
-
-########################################
-# Auxiliary structures
-
-
 
 
 ########################################

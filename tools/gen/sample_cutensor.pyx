@@ -7,7 +7,7 @@ from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t, intptr_t
 from cupy_backends.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
 
-cdef extern from '../cupy_cutensor.h' nogil:
+cdef extern from '../../cupy_cutensor.h' nogil:
     ctypedef struct cutensorHandle_t 'cutensorHandle_t':
         int64_t fields[512]
     ctypedef struct cutensorTensorDescriptor_t 'cutensorTensorDescriptor_t':
@@ -24,28 +24,28 @@ cdef extern from '../cupy_cutensor.h' nogil:
     size_t cutensorGetVersion()
 
 
-cdef extern from '../cupy_cublas.h' nogil:
+cdef extern from '../../cupy_cutensor.h' nogil:
 
     # cuTENSOR Helper Functions
     Status cutensorInit(cutensorHandle_t* handle)
-    Status cutensorInitTensorDescriptor(const cutensorHandle_t* handle, cutensorTensorDescriptor_t* desc, const uint32_t numModes, const int64_t* extent, const int64_t* stride, DataType dataType, Operator unaryOp)
-    Status cutensorGetAlignmentRequirement(const cutensorHandle_t* handle, const void* ptr, const cutensorTensorDescriptor_t* desc, uint32_t* alignmentRequirement)
+    Status cutensorInitTensorDescriptor(const cutensorHandle_t* const handle, cutensorTensorDescriptor_t* desc, const uint32_t numModes, const int64_t* extent, const int64_t* stride, DataType dataType, Operator unaryOp)
+    Status cutensorGetAlignmentRequirement(const cutensorHandle_t* const handle, const void* ptr, const cutensorTensorDescriptor_t* const desc, uint32_t* alignmentRequirement)
 
     # cuTENSOR Element-wise Operations
-    Status cutensorElementwiseTrinary(const cutensorHandle_t* handle, const void* alpha, const void* A, const cutensorTensorDescriptor_t* descA, const int32_t* modeA, const void* beta, const void* B, const cutensorTensorDescriptor_t* descB, const int32_t* modeB, const void* gamma, const void* C, const cutensorTensorDescriptor_t* descC, const int32_t* modeC, void* D, const cutensorTensorDescriptor_t* descD, const int32_t* modeD, Operator opAB, Operator opABC, DataType typeScalar, const driver.Stream stream)
-    Status cutensorElementwiseBinary(const cutensorHandle_t* handle, const void* alpha, const void* A, const cutensorTensorDescriptor_t* descA, const int32_t* modeA, const void* gamma, const void* C, const cutensorTensorDescriptor_t* descC, const int32_t* modeC, void* D, const cutensorTensorDescriptor_t* descD, const int32_t* modeD, Operator opAC, DataType typeScalar, driver.Stream stream)
+    Status cutensorElementwiseTrinary(const cutensorHandle_t* const handle, const void* alpha, const void* A, const cutensorTensorDescriptor_t* const descA, const int32_t* modeA, const void* beta, const void* B, const cutensorTensorDescriptor_t* const descB, const int32_t* modeB, const void* gamma, const void* C, const cutensorTensorDescriptor_t* const descC, const int32_t* modeC, void* D, const cutensorTensorDescriptor_t* const descD, const int32_t* modeD, Operator opAB, Operator opABC, DataType typeScalar, const driver.Stream stream)
+    Status cutensorElementwiseBinary(const cutensorHandle_t* const handle, const void* alpha, const void* A, const cutensorTensorDescriptor_t* const descA, const int32_t* modeA, const void* gamma, const void* C, const cutensorTensorDescriptor_t* const descC, const int32_t* modeC, void* D, const cutensorTensorDescriptor_t* const descD, const int32_t* modeD, Operator opAC, DataType typeScalar, driver.Stream stream)
 
     # cuTENSOR Contraction Operations
-    Status cutensorInitContractionDescriptor(const cutensorHandle_t* handle, cutensorContractionDescriptor_t* desc, const cutensorTensorDescriptor_t* descA, const int32_t* modeA, const uint32_t alignmentRequirementA, const cutensorTensorDescriptor_t* descB, const int32_t* modeB, const uint32_t alignmentRequirementB, const cutensorTensorDescriptor_t* descC, const int32_t* modeC, const uint32_t alignmentRequirementC, const cutensorTensorDescriptor_t* descD, const int32_t* modeD, const uint32_t alignmentRequirementD, ComputeType typeCompute)
-    Status cutensorInitContractionFind(const cutensorHandle_t* handle, cutensorContractionFind_t* find, const Algo algo)
-    Status cutensorInitContractionPlan(const cutensorHandle_t* handle, cutensorContractionPlan_t* plan, const cutensorContractionDescriptor_t* desc, const cutensorContractionFind_t* find, const uint64_t workspaceSize)
-    Status cutensorContraction(const cutensorHandle_t* handle, const cutensorContractionPlan_t* plan, const void* alpha, const void* A, const void* B, const void* beta, const void* C, void* D, void* workspace, uint64_t workspaceSize, driver.Stream stream)
-    Status cutensorContractionGetWorkspace(const cutensorHandle_t* handle, const cutensorContractionDescriptor_t* desc, const cutensorContractionFind_t* find, const WorksizePreference pref, uint64_t* workspaceSize)
+    Status cutensorInitContractionDescriptor(const cutensorHandle_t* const handle, cutensorContractionDescriptor_t* desc, const cutensorTensorDescriptor_t* const descA, const int32_t* modeA, const uint32_t alignmentRequirementA, const cutensorTensorDescriptor_t* const descB, const int32_t* modeB, const uint32_t alignmentRequirementB, const cutensorTensorDescriptor_t* const descC, const int32_t* modeC, const uint32_t alignmentRequirementC, const cutensorTensorDescriptor_t* const descD, const int32_t* modeD, const uint32_t alignmentRequirementD, ComputeType typeCompute)
+    Status cutensorInitContractionFind(const cutensorHandle_t* const handle, cutensorContractionFind_t* find, const Algo algo)
+    Status cutensorInitContractionPlan(const cutensorHandle_t* const handle, cutensorContractionPlan_t* plan, const cutensorContractionDescriptor_t* const desc, const cutensorContractionFind_t* const find, const uint64_t workspaceSize)
+    Status cutensorContraction(const cutensorHandle_t* const handle, const cutensorContractionPlan_t* const plan, const void* alpha, const void* A, const void* B, const void* beta, const void* C, void* D, void* workspace, uint64_t workspaceSize, driver.Stream stream)
+    Status cutensorContractionGetWorkspace(const cutensorHandle_t* const handle, const cutensorContractionDescriptor_t* const desc, const cutensorContractionFind_t* const find, const WorksizePreference pref, uint64_t* workspaceSize)
     Status cutensorContractionMaxAlgos(int32_t* maxNumAlgos)
 
     # cuTENSOR Reduction Operations
-    Status cutensorReduction(const cutensorHandle_t* handle, const void* alpha, const void* A, const cutensorTensorDescriptor_t* descA, const int32_t* modeA, const void* beta, const void* C, const cutensorTensorDescriptor_t* descC, const int32_t* modeC, void* D, const cutensorTensorDescriptor_t* descD, const int32_t* modeD, Operator opReduce, ComputeType typeCompute, void* workspace, uint64_t workspaceSize, driver.Stream stream)
-    Status cutensorReductionGetWorkspace(const cutensorHandle_t* handle, const void* A, const cutensorTensorDescriptor_t* descA, const int32_t* modeA, const void* C, const cutensorTensorDescriptor_t* descC, const int32_t* modeC, const void* D, const cutensorTensorDescriptor_t* descD, const int32_t* modeD, Operator opReduce, ComputeType typeCompute, uint64_t* workspaceSize)
+    Status cutensorReduction(const cutensorHandle_t* const handle, const void* alpha, const void* A, const cutensorTensorDescriptor_t* const descA, const int32_t* modeA, const void* beta, const void* C, const cutensorTensorDescriptor_t* const descC, const int32_t* modeC, void* D, const cutensorTensorDescriptor_t* const descD, const int32_t* modeD, Operator opReduce, ComputeType typeCompute, void* workspace, uint64_t workspaceSize, driver.Stream stream)
+    Status cutensorReductionGetWorkspace(const cutensorHandle_t* const handle, const void* A, const cutensorTensorDescriptor_t* const descA, const int32_t* modeA, const void* C, const cutensorTensorDescriptor_t* const descC, const int32_t* modeC, const void* D, const cutensorTensorDescriptor_t* const descD, const int32_t* modeD, Operator opReduce, ComputeType typeCompute, uint64_t* workspaceSize)
 
 
 available = True
@@ -152,12 +152,6 @@ class CuTensorError(RuntimeError):
 cdef inline check_status(int status):
     if status != STATUS_SUCCESS:
         raise CuTensorError(status)
-
-
-########################################
-# Auxiliary structures
-
-
 
 
 ########################################
