@@ -16,7 +16,6 @@ from setuptools.command import build_ext
 from setuptools.command import sdist
 
 from install import build
-from install.build import PLATFORM_DARWIN
 from install.build import PLATFORM_LINUX
 from install.build import PLATFORM_WIN32
 
@@ -530,8 +529,6 @@ def preconfigure_modules(compiler, settings):
 def _rpath_base():
     if PLATFORM_LINUX:
         return '$ORIGIN'
-    elif PLATFORM_DARWIN:
-        return '@loader_path'
     else:
         raise Exception('not supported on this platform')
 
@@ -596,8 +593,7 @@ def make_extensions(options, compiler, use_cython):
             # openmp is required for cusolver
             if use_hip:
                 pass
-            elif compiler.compiler_type == 'unix' and not PLATFORM_DARWIN:
-                # In mac environment, openmp is not required.
+            elif compiler.compiler_type == 'unix':
                 compile_args.append('-fopenmp')
                 link_args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
@@ -634,18 +630,14 @@ def make_extensions(options, compiler, use_cython):
                     '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))
 
             if not PLATFORM_WIN32 and not PLATFORM_LINUX:
-                s_file['runtime_library_dirs'] = rpath
-            if (PLATFORM_LINUX and s_file['library_dirs']) or PLATFORM_DARWIN:
+                assert False, "macOS is no longer supported"
+            if (PLATFORM_LINUX and s_file['library_dirs']):
                 ldflag = '-Wl,'
                 if PLATFORM_LINUX:
                     ldflag += '--disable-new-dtags,'
                 ldflag += ','.join('-rpath,' + p for p in rpath)
                 args = s_file.setdefault('extra_link_args', [])
                 args.append(ldflag)
-                if PLATFORM_DARWIN:
-                    # -rpath is only supported when targeting Mac OS X 10.5 or
-                    # later
-                    args.append('-mmacosx-version-min=10.5')
 
             sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s_file)
@@ -909,7 +901,7 @@ def _nvcc_gencode_options(cuda_version):
                          ('compute_70', 'sm_70'),
                          ('compute_75', 'sm_75'),
                          'compute_70']
-        elif cuda_version >= 9000:
+        elif cuda_version >= 9020:
             arch_list = ['compute_30',
                          'compute_50',
                          ('compute_60', 'sm_60'),

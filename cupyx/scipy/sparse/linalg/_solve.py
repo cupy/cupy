@@ -7,7 +7,7 @@ from cupy.cuda import device
 from cupy.linalg import _util
 from cupyx.scipy import sparse
 
-from warnings import warn
+import warnings
 
 
 def lsqr(A, b):
@@ -115,8 +115,8 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         raise TypeError('unsupported dtype (actual: {})'.format(A.dtype))
 
     if not (sparse.isspmatrix_csr(A) or sparse.isspmatrix_csc(A)):
-        warn('CSR or CSC format is required. Converting to CSR format.',
-             sparse.SparseEfficiencyWarning)
+        warnings.warn('CSR or CSC format is required. Converting to CSR '
+                      'format.', sparse.SparseEfficiencyWarning)
         A = A.tocsr()
     A.sum_duplicates()
 
@@ -133,3 +133,41 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         dtype = numpy.promote_types(x.dtype, 'float64')
         x = x.astype(dtype)
     return x
+
+
+def spsolve(A, b):
+    """Solves a sparse linear system ``A x = b``
+
+    Args:
+        A (cupyx.scipy.sparse.spmatrix):
+            Sparse matrix with dimension ``(M, M)``.
+        b (cupy.ndarray):
+            Dense vector or matrix with dimension ``(M)`` or ``(M, 1)``.
+
+    Returns:
+        cupy.ndarray:
+            Solution to the system ``A x = b``.
+    """
+    if not cupy.cusolver.check_availability('csrlsvqr'):
+        raise NotImplementedError
+    if not sparse.isspmatrix(A):
+        raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
+    if not isinstance(b, cupy.ndarray):
+        raise TypeError('b must be cupy.ndarray')
+    if A.shape[0] != A.shape[1]:
+        raise ValueError('A must be a square matrix (A.shape: {})'.
+                         format(A.shape))
+    if not (b.ndim == 1 or (b.ndim == 2 and b.shape[1] == 1)):
+        raise ValueError('Invalid b.shape (b.shape: {})'.format(b.shape))
+    if A.shape[0] != b.shape[0]:
+        raise ValueError('matrix dimension mismatch (A.shape: {}, b.shape: {})'
+                         .format(A.shape, b.shape))
+
+    if not sparse.isspmatrix_csr(A):
+        warnings.warn('CSR format is required. Converting to CSR format.',
+                      sparse.SparseEfficiencyWarning)
+        A = A.tocsr()
+    A.sum_duplicates()
+    b = b.astype(A.dtype, copy=False).ravel()
+
+    return cupy.cusolver.csrlsvqr(A, b)

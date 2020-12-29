@@ -12,14 +12,14 @@ from cupy_backends.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from '../cupy_cuComplex.h':
+cdef extern from '../../cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from '../cupy_cublas.h' nogil:
+cdef extern from '../../cupy_blas.h' nogil:
     # Context
     int cublasCreate(Handle* handle)
     int cublasDestroy(Handle handle)

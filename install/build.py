@@ -10,12 +10,11 @@ import tempfile
 from install import utils
 
 
-PLATFORM_DARWIN = sys.platform.startswith('darwin')
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 9000
-minimum_cudnn_version = 7000
+minimum_cuda_version = 9020
+minimum_cudnn_version = 7600
 maximum_cudnn_version = 8099
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
@@ -155,12 +154,6 @@ def get_compiler_setting(use_hip):
 
     if use_hip:
         extra_compile_args.append('-std=c++11')
-
-    if PLATFORM_DARWIN:
-        if cuda_path:
-            library_dirs.append('/usr/local/cuda/lib')
-        elif rocm_path:
-            library_dirs.append('/opt/rocm/lib')
 
     if PLATFORM_WIN32:
         nvtoolsext_path = os.environ.get('NVTOOLSEXT_PATH', '')
@@ -312,7 +305,7 @@ def check_cuda_version(compiler, settings):
     if _cuda_version < minimum_cuda_version:
         utils.print_warning(
             'CUDA version is too old: %d' % _cuda_version,
-            'CUDA 9.0 or newer is required')
+            'CUDA 9.2 or newer is required')
         return False
 
     return True

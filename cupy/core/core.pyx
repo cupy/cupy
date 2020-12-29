@@ -179,12 +179,35 @@ cdef class ndarray:
 
     @property
     def __cuda_array_interface__(self):
-        desc = {
+        if runtime._is_hip_environment:
+            raise RuntimeError(
+                'HIP/ROCm does not support cuda array interface')
+        cdef dict desc = {
             'shape': self.shape,
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
-            'version': 2,
         }
+        cdef int ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
+        cdef intptr_t stream_ptr
+
+        if ver == 3:
+            stream_ptr = stream_module.get_current_stream_ptr()
+            # TODO(leofang): check if we're using PTDS
+            # CAI v3 says setting the stream field to 0 is disallowed
+            if stream_ptr == 0:
+                stream_ptr = 1  # TODO(leofang): use runtime.streamLegacy
+            desc['stream'] = stream_ptr
+        elif ver == 2:
+            # Old behavior (prior to CAI v3): stream sync is explicitly handled
+            # by users. To restore this behavior, we do not export any stream
+            # if CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION is set to 2 (so that
+            # other participating libraries lacking a finer control over sync
+            # behavior can avoid syncing).
+            pass
+        else:
+            raise ValueError('CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION can '
+                             'only be set to 3 (default) or 2')
+        desc['version'] = ver
         if self._c_contiguous:
             desc['strides'] = None
         else:
@@ -1929,38 +1952,36 @@ cpdef function.Module compile_with_cache(
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if _cuda_runtime_version >= 9000:
-        if 9020 <= _cuda_runtime_version < 9030:
-            bundled_include = 'cuda-9.2'
-        elif 10000 <= _cuda_runtime_version < 10010:
-            bundled_include = 'cuda-10.0'
-        elif 10010 <= _cuda_runtime_version < 10020:
-            bundled_include = 'cuda-10.1'
-        elif 10020 <= _cuda_runtime_version < 10030:
-            bundled_include = 'cuda-10.2'
-        elif 11000 <= _cuda_runtime_version < 11010:
-            bundled_include = 'cuda-11.0'
-        elif 11010 <= _cuda_runtime_version < 11020:
-            bundled_include = 'cuda-11.1'
-        else:
-            # CUDA v9.0, v9.1 or versions not yet supported.
-            bundled_include = None
+    if 9020 <= _cuda_runtime_version < 9030:
+        bundled_include = 'cuda-9.2'
+    elif 10000 <= _cuda_runtime_version < 10010:
+        bundled_include = 'cuda-10.0'
+    elif 10010 <= _cuda_runtime_version < 10020:
+        bundled_include = 'cuda-10.1'
+    elif 10020 <= _cuda_runtime_version < 10030:
+        bundled_include = 'cuda-10.2'
+    elif 11000 <= _cuda_runtime_version < 11010:
+        bundled_include = 'cuda-11.0'
+    elif 11010 <= _cuda_runtime_version < 11020:
+        bundled_include = 'cuda-11.1'
+    else:
+        # CUDA versions not yet supported.
+        bundled_include = None
 
-        cuda_path = cuda.get_cuda_path()
+    cuda_path = cuda.get_cuda_path()
 
-        if bundled_include is None and cuda_path is None:
-            raise RuntimeError(
-                'Failed to auto-detect CUDA root directory. '
-                'Please specify `CUDA_PATH` environment variable if you '
-                'are using CUDA v9.0, v9.1 or versions not yet supported by '
-                'CuPy.')
+    if bundled_include is None and cuda_path is None:
+        raise RuntimeError(
+            'Failed to auto-detect CUDA root directory. '
+            'Please specify `CUDA_PATH` environment variable if you '
+            'are using CUDA versions not yet supported by CuPy.')
 
-        if bundled_include is not None:
-            options += ('-I' + os.path.join(
-                _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
+    if bundled_include is not None:
+        options += ('-I' + os.path.join(
+            _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
 
-        if cuda_path is not None:
-            options += ('-I' + os.path.join(cuda_path, 'include'),)
+    if cuda_path is not None:
+        options += ('-I' + os.path.join(cuda_path, 'include'),)
 
     return cuda.compile_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
@@ -2423,8 +2444,12 @@ cdef int _cuda_runtime_version = -1
 
 
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
+    if runtime._is_hip_environment:
+        raise RuntimeError(
+            'HIP/ROCm does not support cuda array interface')
+
     cdef Py_ssize_t sh, st
-    cdef object desc = a.__cuda_array_interface__
+    cdef dict desc = a.__cuda_array_interface__
     cdef tuple shape = desc['shape']
     cdef int dev_id = -1
     cdef size_t nbytes
@@ -2447,6 +2472,13 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
         dev_id = device.get_device_id()
     mem = memory_module.UnownedMemory(ptr, nbytes, a, dev_id)
     memptr = memory.MemoryPointer(mem, 0)
+    # the v3 protocol requires an immediate synchronization, unless
+    # 1. the stream is not set (ex: from v0 ~ v2) or is None
+    # 2. users explicitly overwrite this requirement
+    stream_ptr = desc.get('stream')
+    if stream_ptr is not None:
+        if _util.CUDA_ARRAY_INTERFACE_SYNC:
+            runtime.streamSynchronize(stream_ptr)
     return ndarray(shape, dtype, memptr, strides)
 
 

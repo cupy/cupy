@@ -1,7 +1,23 @@
-#ifndef INCLUDE_GUARD_CUDA_CUPY_CUDNN_H
-#define INCLUDE_GUARD_CUDA_CUPY_CUDNN_H
+// This file is a stub header file of cudnn for Read the Docs.
+
+#ifndef INCLUDE_GUARD_CUPY_CUDNN_H
+#define INCLUDE_GUARD_CUPY_CUDNN_H
+
+#ifndef CUPY_NO_CUDA
 
 #include <cudnn.h>
+
+#elif defined(CUPY_NO_CUDA)
+
+#include "stub/cupy_cuda_common.h"
+#include "stub/cupy_cudnn.h"
+
+#else
+
+#include "hip/cupy_hip_common.h"
+#include "stub/cupy_cudnn.h"
+
+#endif // #ifdef CUPY_NO_CUDA
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -422,4 +438,4 @@ cudnnStatus_t cudnnSetRNNDescriptor_v5(...) {
 
 } // extern "C"
 
-#endif // #ifndef INCLUDE_GUARD_CUDA_CUPY_CUDNN_H
+#endif // #ifndef INCLUDE_GUARD_CUPY_CUDNN_H
