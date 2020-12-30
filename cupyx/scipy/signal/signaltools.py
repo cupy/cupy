@@ -258,7 +258,6 @@ def oaconvolve(in1, in2, mode="full", axes=None):
 
     # Fall back to fftconvolve if there is only one block in every dimension
     if in1_step == s1 and in2_step == s2:
-        print(axes)
         return fftconvolve(in1, in2, mode=mode, axes=axes)
 
     # Pad and reshape the inputs for overlapping and adding

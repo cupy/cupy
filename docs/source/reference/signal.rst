@@ -15,6 +15,8 @@ Convolution
     cupyx.scipy.signal.convolve2d
     cupyx.scipy.signal.correlate
     cupyx.scipy.signal.correlate2d
+    cupyx.scipy.signal.fftconvolve
+    cupyx.scipy.signal.oaconvolve
 
 
 Filtering
