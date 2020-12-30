@@ -200,6 +200,11 @@ __global__ void _tensordot_core_int_kernel(
                 rB[n] = sB[n * DIM_Y + idy][k];
             }
 
+            // HIP is strange...
+            #ifdef __HIP_DEVICE_COMPILE__
+            __syncthreads();
+            #endif
+
             #pragma unroll
             for (n = 0; n < THR_N; n++) {
                 #pragma unroll
@@ -251,6 +256,11 @@ __global__ void _tensordot_core_int_kernel(
         for (n = 0; n < THR_N; n++) {
             rB[n] = sB[n * DIM_Y + idy][k];
         }
+
+        // HIP is strange...
+        #ifdef __HIP_DEVICE_COMPILE__
+        __syncthreads();
+        #endif
 
         #pragma unroll
         for (n = 0; n < THR_N; n++) {
