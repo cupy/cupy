@@ -229,6 +229,7 @@ def oaconvolve(in1, in2, mode="full", axes=None):
                            every dimension.
             - ``'same'``: output is the same size as ``in1``, centered \
                           with respect to the ``'full'`` output
+
         axes (scalar or tuple of scalar or None): Axes over which to compute
             the convolution. The default is over all axes.
 
