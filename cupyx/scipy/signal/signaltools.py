@@ -220,7 +220,7 @@ def oaconvolve(in1, in2, mode="full", axes=None):
         in2 (cupy.ndarray): Second input. Should have the same number of
             dimensions as ``in1``.
         mode (str): Indicates the size of the output:
-            
+
             - ``'full'``: output is the full discrete linear \
                           cross-correlation (default)
             - ``'valid'``: output consists only of those elements that do \
