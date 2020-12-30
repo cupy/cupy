@@ -148,14 +148,16 @@ def fftconvolve(in1, in2, mode='full', axes=None):
         in2 (cupy.ndarray): Second input. Should have the same number of
             dimensions as ``in1``.
         mode (str): Indicates the size of the output:
-            ``'full'``: output is the full discrete linear cross-correlation
-                        (default)
-            ``'valid'``: output consists only of those elements that do not
-                         rely on the zero-padding. Either ``in1`` or ``in2``
-                         must be at least as large as the other in every
-                         dimension.
-            ``'same'``: output is the same size as ``in1``, centered
-                        with respect to the 'full' output
+
+            - ``'full'``: output is the full discrete linear \
+                          cross-correlation (default)
+            - ``'valid'``: output consists only of those elements that do \
+                           not rely on the zero-padding. Either ``in1`` or \
+                           ``in2`` must be at least as large as the other in \
+                           every dimension.
+            - ``'same'``: output is the same size as ``in1``, centered \
+                          with respect to the 'full' output
+
         axes (scalar or tuple of scalar or None): Axes over which to compute
             the convolution. The default is over all axes.
 
@@ -218,14 +220,15 @@ def oaconvolve(in1, in2, mode="full", axes=None):
         in2 (cupy.ndarray): Second input. Should have the same number of
             dimensions as ``in1``.
         mode (str): Indicates the size of the output:
-            ``'full'``: output is the full discrete linear cross-correlation
-                        (default)
-            ``'valid'``: output consists only of those elements that do not
-                         rely on the zero-padding. Either ``in1`` or ``in2``
-                         must be at least as large as the other in every
-                         dimension.
-            ``'same'``: output is the same size as ``in1``, centered
-                        with respect to the ``'full'`` output
+            
+            - ``'full'``: output is the full discrete linear \
+                          cross-correlation (default)
+            - ``'valid'``: output consists only of those elements that do \
+                           not rely on the zero-padding. Either ``in1`` or \
+                           ``in2`` must be at least as large as the other in \
+                           every dimension.
+            - ``'same'``: output is the same size as ``in1``, centered \
+                          with respect to the ``'full'`` output
         axes (scalar or tuple of scalar or None): Axes over which to compute
             the convolution. The default is over all axes.
 
