@@ -328,10 +328,7 @@ cdef ndarray _integral_tensordot_core(
     args = (m, n, k, a, b, out)
     grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), 1)
     block = (dim_x, dim_y, 1)
-    shared_mem = blk_k * (blk_m + 1) * 4 + blk_n * (blk_k + 1) * 4
-    kern(grid, block, args=args, shared_mem=shared_mem)
-
-    # elementwise_copy(ret, out)
+    kern(grid, block, args=args)
     return out
 
 
