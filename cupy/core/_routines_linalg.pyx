@@ -308,6 +308,8 @@ cdef ndarray _integral_tensordot_core(
         ndarray a, ndarray b, ndarray out, Py_ssize_t m, Py_ssize_t n,
         Py_ssize_t k, str dtype, const shape_t& ret_shape):
 
+    # TODO(leofang): autotune the tuning parameters here? See the discussion
+    # in this thread: https://groups.google.com/a/icl.utk.edu/g/magma-user/c/igc66uduTfI  # NOQA
     dim_x=16
     dim_y=16
     blk_m=64
