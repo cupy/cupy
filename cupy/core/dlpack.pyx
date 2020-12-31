@@ -8,9 +8,11 @@ from libc.stdint cimport uint64_t
 from libc.stdint cimport intptr_t
 from libcpp.vector cimport vector
 
-import cupy
+from cupy_backends.cuda.api cimport runtime
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
+
+import cupy
 
 
 cdef extern from './include/cupy/dlpack/include/dlpack/dlpack.h' nogil:
@@ -98,7 +100,10 @@ cpdef object toDlpack(ndarray array) except +:
     dl_tensor.byte_offset = 0
 
     cdef DLContext* ctx = &dl_tensor.ctx
-    ctx.device_type = DLDeviceType.kDLGPU
+    if not runtime._is_hip_environment:
+        ctx.device_type = kDLGPU
+    else:
+        ctx.device_type = kDLROCM
     ctx.device_id = array.data.device_id
 
     cdef DLDataType* dtype = &dl_tensor.dtype
