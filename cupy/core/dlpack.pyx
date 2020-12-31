@@ -5,6 +5,7 @@ from libc.stdint cimport uint8_t
 from libc.stdint cimport uint16_t
 from libc.stdint cimport int64_t
 from libc.stdint cimport uint64_t
+from libc.stdint cimport intptr_t
 from libcpp.vector cimport vector
 
 import cupy
@@ -12,47 +13,45 @@ from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
 
 
-cdef enum DLDeviceType:
-    kDLCPU = 1
-    kDLGPU = 2
-    kDLCPUPinned = 3
-    kDLOpenCL = 4
-    kDLMetal = 8
-    kDLVPI = 9
-    kDLROCM = 10
+cdef extern from './include/cupy/dlpack/include/dlpack/dlpack.h' nogil:
+    cdef enum DLDeviceType:
+        kDLCPU
+        kDLGPU
+        kDLCPUPinned
+        kDLOpenCL
+        kDLVulkan
+        kDLMetal
+        kDLVPI
+        kDLROCM
 
+    ctypedef struct DLContext:
+        DLDeviceType device_type
+        int device_id
 
-cdef struct DLContext:
-    DLDeviceType device_type
-    int device_id
+    cdef enum DLDataTypeCode:
+        kDLInt
+        kDLUInt
+        kDLFloat
+        kDLBfloat
 
+    ctypedef struct DLDataType:
+        uint8_t code
+        uint8_t bits
+        uint16_t lanes
 
-cdef enum DLDataTypeCode:
-    kDLInt = <unsigned int>0
-    kDLUInt = <unsigned int>1
-    kDLFloat = <unsigned int>2
+    ctypedef struct DLTensor:
+        void* data
+        DLContext ctx
+        int ndim
+        DLDataType dtype
+        int64_t* shape
+        int64_t* strides
+        uint64_t byte_offset
 
-
-cdef struct DLDataType:
-    uint8_t code
-    uint8_t bits
-    uint16_t lanes
-
-
-cdef struct DLTensor:
-    size_t data  # Safer than "void *"
-    DLContext ctx
-    int ndim
-    DLDataType dtype
-    int64_t* shape
-    int64_t* strides
-    uint64_t byte_offset
-
-
-cdef struct DLManagedTensor:
-    DLTensor dl_tensor
-    void* manager_ctx
-    void(*deleter)(DLManagedTensor*)
+    ctypedef struct DLManagedTensor:
+        DLTensor dl_tensor
+        void* manager_ctx
+        void (*deleter)(DLManagedTensor*)
 
 
 cdef void pycapsule_deleter(object dltensor):
@@ -84,7 +83,7 @@ cpdef object toDlpack(ndarray array) except +:
 
     cdef size_t ndim = array._shape.size()
     cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
-    dl_tensor.data = array.data.ptr
+    dl_tensor.data = <void*>array.data.ptr
     dl_tensor.ndim = ndim
 
     cdef int64_t* shape_strides = \
@@ -137,7 +136,7 @@ cdef class DLPackMemory(memory.BaseMemory):
         self.dlm_tensor = <DLManagedTensor *>cpython.PyCapsule_GetPointer(
             dltensor, 'dltensor')
         self.device_id = self.dlm_tensor.dl_tensor.ctx.device_id
-        self.ptr = self.dlm_tensor.dl_tensor.data
+        self.ptr = <intptr_t>self.dlm_tensor.dl_tensor.data
         cdef int n = 0
         cdef int ndim = self.dlm_tensor.dl_tensor.ndim
         cdef int64_t* shape = self.dlm_tensor.dl_tensor.shape
