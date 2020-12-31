@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 import cupy
 from cupy import testing
 
@@ -23,11 +25,17 @@ class TestDLPackConversion(unittest.TestCase):
             self.array = cupy.random.rand(
                 2, 3).astype(self.dtype)
 
+    def tearDown(self):
+        pool = cupy.get_default_memory_pool()
+        pool.free_all_blocks()
+
     def test_conversion(self):
         tensor = self.array.toDlpack()
         array = cupy.fromDlpack(tensor)
         testing.assert_array_equal(self.array, array)
         testing.assert_array_equal(self.array.data.ptr, array.data.ptr)
+        del array
+        del tensor
 
 
 class TestDLTensorMemory(unittest.TestCase):
@@ -38,9 +46,11 @@ class TestDLTensorMemory(unittest.TestCase):
         cupy.cuda.set_allocator(self.pool.malloc)
 
     def tearDown(self):
+        self.pool.free_all_blocks()
         cupy.cuda.set_allocator(self.old_pool.malloc)
 
     def test_deleter(self):
+        # memory is freed when tensor is deleted, as it's not consumed
         array = cupy.empty(10)
         tensor = array.toDlpack()
         assert self.pool.n_free_blocks() == 0
@@ -48,3 +58,25 @@ class TestDLTensorMemory(unittest.TestCase):
         assert self.pool.n_free_blocks() == 0
         del tensor
         assert self.pool.n_free_blocks() == 1
+
+    def test_deleter2(self):
+        # memory is freed when array2 is deleted, as tensor is consumed
+        array = cupy.empty(10)
+        tensor = array.toDlpack()
+        array2 = cupy.fromDlpack(tensor)
+        assert self.pool.n_free_blocks() == 0
+        del array
+        assert self.pool.n_free_blocks() == 0
+        del array2
+        assert self.pool.n_free_blocks() == 1
+        del tensor
+        assert self.pool.n_free_blocks() == 1
+
+    def test_multiple_consumption_error(self):
+        # Prevent segfault, see #3611
+        array = cupy.empty(10)
+        tensor = array.toDlpack()
+        array2 = cupy.fromDlpack(tensor)
+        with pytest.raises(ValueError) as e:
+            array3 = cupy.fromDlpack(tensor)
+        assert 'consumed multiple times' in str(e.value)

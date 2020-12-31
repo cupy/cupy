@@ -58,14 +58,11 @@ cdef extern from './include/cupy/dlpack/include/dlpack/dlpack.h' nogil:
 
 cdef void pycapsule_deleter(object dltensor):
     cdef DLManagedTensor* dlm_tensor
-    try:
-        dlm_tensor = <DLManagedTensor *>cpython.PyCapsule_GetPointer(
-            dltensor, 'used_dltensor')
-        return             # we do not call a used capsule's deleter
-    except Exception:
-        dlm_tensor = <DLManagedTensor *>cpython.PyCapsule_GetPointer(
+    # Do not invoke the deleter on a used capsule
+    if cpython.PyCapsule_IsValid(dltensor, 'dltensor'):
+        dlm_tensor = <DLManagedTensor*>cpython.PyCapsule_GetPointer(
             dltensor, 'dltensor')
-    deleter(dlm_tensor)
+        deleter(dlm_tensor)
 
 
 cdef void deleter(DLManagedTensor* tensor) with gil:
@@ -108,21 +105,24 @@ cpdef object toDlpack(ndarray array) except +:
 
     cdef DLDataType* dtype = &dl_tensor.dtype
     if array.dtype.kind == 'u':
-        dtype.code = <uint8_t>DLDataTypeCode.kDLUInt
+        dtype.code = <uint8_t>kDLUInt
     elif array.dtype.kind == 'i':
-        dtype.code = <uint8_t>DLDataTypeCode.kDLInt
+        dtype.code = <uint8_t>kDLInt
     elif array.dtype.kind == 'f':
-        dtype.code = <uint8_t>DLDataTypeCode.kDLFloat
+        dtype.code = <uint8_t>kDLFloat
     else:
         raise ValueError('Unknown dtype')
     dtype.bits = <uint8_t>(array.dtype.itemsize * 8)
     dtype.lanes = <uint16_t>1
 
-    dlm_tensor.manager_ctx = <void *>array
+    dlm_tensor.manager_ctx = <void*>array
     cpython.Py_INCREF(array)
     dlm_tensor.deleter = deleter
 
     return cpython.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
+
+
+# TODO(leofang): Implement DLPackPinnedMemory for kDLCPUPinned
 
 
 cdef class DLPackMemory(memory.BaseMemory):
@@ -137,23 +137,41 @@ cdef class DLPackMemory(memory.BaseMemory):
     cdef object dltensor
 
     def __init__(self, object dltensor):
-        self.dltensor = dltensor
-        self.dlm_tensor = <DLManagedTensor *>cpython.PyCapsule_GetPointer(
+        cdef DLManagedTensor* dlm_tensor
+
+        # sanity checks
+        if not cpython.PyCapsule_IsValid(dltensor, 'dltensor'):
+            raise ValueError('A DLPack tensor object cannot be consumed '
+                             'multiple times')
+        dlm_tensor = <DLManagedTensor*>cpython.PyCapsule_GetPointer(
             dltensor, 'dltensor')
-        self.device_id = self.dlm_tensor.dl_tensor.ctx.device_id
-        self.ptr = <intptr_t>self.dlm_tensor.dl_tensor.data
-        cdef int n = 0
-        cdef int ndim = self.dlm_tensor.dl_tensor.ndim
-        cdef int64_t* shape = self.dlm_tensor.dl_tensor.shape
+        if runtime._is_hip_environment:
+            if dlm_tensor.dl_tensor.ctx.device_type != kDLROCM:
+                raise RuntimeError('CuPy is built against ROCm/HIP, different '
+                                   'from the backend that backs the incoming '
+                                   'DLPack tensor')
+        else:
+            if dlm_tensor.dl_tensor.ctx.device_type != kDLGPU:
+                raise RuntimeError('CuPy is built against CUDA, different '
+                                   'from the backend that backs the incoming '
+                                   'DLPack tensor')
+
+        self.dltensor = dltensor
+        self.dlm_tensor = dlm_tensor
+        self.device_id = dlm_tensor.dl_tensor.ctx.device_id
+        self.ptr = <intptr_t>dlm_tensor.dl_tensor.data
+        cdef int n = 0, s = 0
+        cdef int ndim = dlm_tensor.dl_tensor.ndim
+        cdef int64_t* shape = dlm_tensor.dl_tensor.shape
         for s in shape[:ndim]:
             n += s
-        self.size = self.dlm_tensor.dl_tensor.dtype.bits * n // 8
-
-        # Make sure this capsule will never be used again.
-        cpython.PyCapsule_SetName(dltensor, 'used_dltensor')
+        self.size = dlm_tensor.dl_tensor.dtype.bits * n // 8
 
     def __dealloc__(self):
-        self.dlm_tensor.deleter(self.dlm_tensor)
+        cdef DLManagedTensor* dlm_tensor = self.dlm_tensor
+        # dlm_tensor could be uninitialized if an error is raised in __init__
+        if dlm_tensor != NULL:
+            deleter(dlm_tensor)
 
 
 # The name of this function is following the framework integration guide of
@@ -192,11 +210,10 @@ cpdef ndarray fromDlpack(object dltensor) except +:
         >>> cupy.testing.assert_array_equal(array1, array2)
 
     """
-    mem = DLPackMemory(dltensor)
-
+    cdef DLPackMemory mem = DLPackMemory(dltensor)
     cdef DLDataType dtype = mem.dlm_tensor.dl_tensor.dtype
     cdef int bits = dtype.bits
-    if dtype.code == DLDataTypeCode.kDLUInt:
+    if dtype.code == kDLUInt:
         if bits == 8:
             cp_dtype = cupy.uint8
         elif bits == 16:
@@ -207,7 +224,7 @@ cpdef ndarray fromDlpack(object dltensor) except +:
             cp_dtype = cupy.uint64
         else:
             raise TypeError('uint{} is not supported.'.format(bits))
-    elif dtype.code == DLDataTypeCode.kDLInt:
+    elif dtype.code == kDLInt:
         if bits == 8:
             cp_dtype = cupy.int8
         elif bits == 16:
@@ -218,7 +235,7 @@ cpdef ndarray fromDlpack(object dltensor) except +:
             cp_dtype = cupy.int64
         else:
             raise TypeError('int{} is not supported.'.format(bits))
-    elif dtype.code == DLDataTypeCode.kDLFloat:
+    elif dtype.code == kDLFloat:
         if bits == 16:
             cp_dtype = cupy.float16
         elif bits == 32:
@@ -227,6 +244,8 @@ cpdef ndarray fromDlpack(object dltensor) except +:
             cp_dtype = cupy.float64
         else:
             raise TypeError('float{} is not supported.'.format(bits))
+    elif dtype.code == kDLBfloat:
+        raise NotImplementedError('CuPy does not support bfloat16 yet')
     else:
         raise TypeError('Unsupported dtype. dtype code: {}'.format(dtype.code))
 
@@ -238,10 +257,14 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     shape_vec.assign(shape, shape + ndim)
 
     if mem.dlm_tensor.dl_tensor.strides is NULL:
+        # Make sure this capsule will never be used again.
+        cpython.PyCapsule_SetName(mem.dltensor, 'used_dltensor')
         return ndarray(shape_vec, cp_dtype, mem_ptr, strides=None)
     cdef int64_t* strides = mem.dlm_tensor.dl_tensor.strides
     cdef vector[Py_ssize_t] strides_vec
     for i in range(ndim):
         strides_vec.push_back(strides[i] * (bits // 8))
 
+    # Make sure this capsule will never be used again.
+    cpython.PyCapsule_SetName(mem.dltensor, 'used_dltensor')
     return ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
