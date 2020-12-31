@@ -76,7 +76,7 @@ class TestDLTensorMemory(unittest.TestCase):
         # Prevent segfault, see #3611
         array = cupy.empty(10)
         tensor = array.toDlpack()
-        array2 = cupy.fromDlpack(tensor)
+        array2 = cupy.fromDlpack(tensor)  # noqa
         with pytest.raises(ValueError) as e:
-            array3 = cupy.fromDlpack(tensor)
+            array3 = cupy.fromDlpack(tensor)  # noqa
         assert 'consumed multiple times' in str(e.value)
