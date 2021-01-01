@@ -62,7 +62,7 @@ cdef void pycapsule_deleter(object dltensor):
     if cpython.PyCapsule_IsValid(dltensor, 'dltensor'):
         dlm_tensor = <DLManagedTensor*>cpython.PyCapsule_GetPointer(
             dltensor, 'dltensor')
-        deleter(dlm_tensor)
+        dlm_tensor.deleter(dlm_tensor)
 
 
 cdef void deleter(DLManagedTensor* tensor) with gil:
@@ -70,8 +70,8 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
         return
     stdlib.free(tensor.dl_tensor.shape)
     cpython.Py_DECREF(<ndarray>tensor.manager_ctx)
-    stdlib.free(tensor)
     tensor.manager_ctx = NULL
+    stdlib.free(tensor)
 
 
 # The name of this function is following the framework integration guide of
@@ -171,7 +171,7 @@ cdef class DLPackMemory(memory.BaseMemory):
         cdef DLManagedTensor* dlm_tensor = self.dlm_tensor
         # dlm_tensor could be uninitialized if an error is raised in __init__
         if dlm_tensor != NULL:
-            deleter(dlm_tensor)
+            dlm_tensor.deleter(dlm_tensor)
 
 
 # The name of this function is following the framework integration guide of
