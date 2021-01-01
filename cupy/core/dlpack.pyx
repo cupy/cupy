@@ -53,7 +53,7 @@ cdef extern from './include/cupy/dlpack/include/dlpack/dlpack.h' nogil:
     ctypedef struct DLManagedTensor:
         DLTensor dl_tensor
         void* manager_ctx
-        void (*deleter)(DLManagedTensor*)
+        void (*deleter)(DLManagedTensor*)  # noqa: E211
 
 
 cdef void pycapsule_deleter(object dltensor):
