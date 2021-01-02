@@ -325,7 +325,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
 MODULES.append({
     'name': 'dlpack',
     'file': [
-       'cupy.core.dlpack',
+        'cupy.core.dlpack',
     ],
     'include': [
         'cupy/dlpack/include/dlpack/dlpack.h',
