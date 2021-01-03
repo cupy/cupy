@@ -25,17 +25,11 @@ class TestDLPackConversion(unittest.TestCase):
             self.array = cupy.random.rand(
                 2, 3).astype(self.dtype)
 
-    def tearDown(self):
-        pool = cupy.get_default_memory_pool()
-        pool.free_all_blocks()
-
     def test_conversion(self):
         tensor = self.array.toDlpack()
         array = cupy.fromDlpack(tensor)
         testing.assert_array_equal(self.array, array)
         testing.assert_array_equal(self.array.data.ptr, array.data.ptr)
-        del array
-        del tensor
 
 
 class TestDLTensorMemory(unittest.TestCase):
