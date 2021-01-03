@@ -1781,6 +1781,13 @@ cdef class ndarray:
             a DLPack tensor (which is encapsulated in a :class:`PyCapsule`
             object) to a :class:`ndarray`
 
+        .. warning::
+
+            As of the DLPack v0.3 specification, it is (implicitly) assumed
+            that the user is responsible to ensure the Producer and the
+            Consumer are operating on the same stream. This requirement might
+            be relaxed/changed in a future DLPack version.
+
         .. admonition:: Example
 
             >>> import cupy
