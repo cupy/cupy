@@ -53,6 +53,8 @@ class TestDLTensorMemory(unittest.TestCase):
         # memory is freed when tensor is deleted, as it's not consumed
         array = cupy.empty(10)
         tensor = array.toDlpack()
+        # str(tensor): <capsule object "dltensor" at 0x7f7c4c835330>
+        assert "\"dltensor\"" in str(tensor)
         assert self.pool.n_free_blocks() == 0
         del array
         assert self.pool.n_free_blocks() == 0
@@ -63,7 +65,9 @@ class TestDLTensorMemory(unittest.TestCase):
         # memory is freed when array2 is deleted, as tensor is consumed
         array = cupy.empty(10)
         tensor = array.toDlpack()
+        assert "\"dltensor\"" in str(tensor)
         array2 = cupy.fromDlpack(tensor)
+        assert "\"used_dltensor\"" in str(tensor)
         assert self.pool.n_free_blocks() == 0
         del array
         assert self.pool.n_free_blocks() == 0
