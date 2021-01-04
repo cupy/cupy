@@ -20,10 +20,9 @@ def default_rng(seed=None):  # NOQA  avoid redefinition of seed
     """Construct a new Generator with the default BitGenerator (XORWOW).
 
     Args:
-        seed (int, array_like[ints], numpy.random.SeedSequence, cupy.random.BitGenerator, cupy.random.Generator, optional):
-            A seed to initialize the :class:`cupy.random.BitGenerator`. If 
-            ``None``, then unpredictable entropy will be pulled from the OS.
-            If an ``int`` or ``array_like[ints]`` is passed, then it will be
+        seed (None, int, array_like[ints], numpy.random.SeedSequence, cupy.random.BitGenerator, cupy.random.Generator, optional):
+            A seed to initialize the :class:`cupy.random.BitGenerator`. If an
+            ``int`` or ``array_like[ints]`` or None is passed, then it will be
             passed to :class:`numpy.random.SeedSequence` to detive the initial
             :class:`BitGenerator` state. One may also pass in a `SeedSequence
             instance. Adiditionally, when passed :class:`BitGenerator`, it will

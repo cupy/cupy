@@ -49,8 +49,7 @@ class BitGenerator:
             if isinstance(seed, cupy.ndarray):
                 seed = cupy.asnumpy(seed)
             self._seed_seq = numpy.random.SeedSequence(seed)
-        dev = cupy.cuda.Device()
-        self._current_device = dev.id
+        self._current_device_id = cupy.cuda.get_device_id()
 
     def random_raw(self, size=None, output=True):
         raise NotImplementedError(
@@ -62,7 +61,7 @@ class BitGenerator:
         return 0
 
     def _check_device(self):
-        if cupy.cuda.Device().id != self._current_device:
+        if cupy.cuda.get_device_id() != self._current_device_id:
             raise RuntimeError(
                 'This Generator state is allocated in a different device')
 
@@ -77,8 +76,6 @@ class _cuRANDGenerator(BitGenerator):
         cdef uint64_t b_size = self._type_size() * size
         self._state = cupy.zeros(b_size, dtype=numpy.int8)
         ptr = self._state.data.ptr
-        cdef intptr_t state_ptr = <intptr_t>ptr
-        cdef uint64_t c_seed = <uint64_t>self._seed
         # Initialize the state
         init_curand(self.generator, ptr, self._seed, size)
 

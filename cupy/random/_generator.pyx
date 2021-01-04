@@ -119,7 +119,7 @@ class Generator:
             _launch_dist(self.bit_generator, interval_32, y, (diff, mask))
         else:
             _launch_dist(self.bit_generator, interval_64, y, (diff, mask))
-        return (lo + y).astype(dtype)
+        return cupy.add(lo, y, dtype=dtype)
 
     def beta(self, a, b, size=None, dtype=numpy.float64):
         """Beta distribution.
@@ -148,7 +148,8 @@ class Generator:
         cdef ndarray y
         y = ndarray(size if size is not None else (), numpy.float64)
         _launch_dist(self.bit_generator, beta, y, (a, b))
-        return y.astype(dtype)
+        to_return = y
+        return (<object>y).astype(dtype, copy=False)
 
     def standard_exponential(
             self, size=None, dtype=numpy.float64,
@@ -187,16 +188,17 @@ class Generator:
         if out is not None:
             out[...] = y
             y = out
-        return y.astype(dtype)
+        return (<object>y).astype(dtype, copy=False)
 
 
 def init_curand(generator, state, seed, size):
-    cdef int generator_enum = <int> generator
-    cdef intptr_t state_ptr = <intptr_t>state
-    cdef uint64_t c_seed = <uint64_t>seed
-    cdef uint64_t c_size = <uint64_t>size
-    cdef intptr_t strm = stream.get_current_stream_ptr()
-    init_curand_generator(generator_enum, state_ptr, c_seed, c_size, strm)
+    init_curand_generator(
+        <int>generator,
+        <intptr_t>state,
+        <uint64_t>seed,
+        <uint64_t>size,
+        <intptr_t>stream.get_current_stream_ptr()
+    )
 
 
 def random_raw(generator, out):
