@@ -159,23 +159,6 @@ class TestSVD(unittest.TestCase):
         cupy.testing.assert_allclose(s_gpu, s_cpu, atol=1e-4)
 
         k, = s_cpu.shape
-        for j in range(k):
-            # assert corresponding vectors are equal up to rotation (`sign`)
-            uj_cpu = u_cpu[:, j]
-            vj_cpu = vh_cpu[j, :].conj()
-            uj_gpu = cupy.asnumpy(u_gpu[:, j])
-            vj_gpu = cupy.asnumpy(vh_gpu[j, :]).conj()
-            # Use least-squares estimation to compute rotation from cpu result
-            # to gpu result. We know norms of uj_cpu, vj_cpu are 1.
-            u_sign = numpy.vdot(uj_cpu, uj_gpu)
-            v_sign = numpy.vdot(vj_cpu, vj_gpu)
-            numpy.testing.assert_allclose(uj_gpu, u_sign * uj_cpu, atol=1e-4)
-            numpy.testing.assert_allclose(vj_gpu, v_sign * vj_cpu, atol=1e-4)
-            numpy.testing.assert_allclose(abs(u_sign), 1, atol=1e-4)
-            numpy.testing.assert_allclose(abs(v_sign), 1, atol=1e-4)
-            # we don't compare u_sign with v_sign directly, as the sign
-            # convention is implementation dependent
-
         # reconstruct the matrix
         if self.full_matrices:
             a_gpu_usv = cupy.dot(u_gpu[:, :k] * s_gpu, vh_gpu[:k, :])
