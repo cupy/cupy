@@ -21,9 +21,6 @@ def _check_parameter(func_name, order, mode):
     elif order < 0 or 5 < order:
         raise ValueError('spline order is not supported')
 
-    if mode in ['grid-mirror', 'grid-wrap', 'grid-reflect', 'wrap', 'reflect']:
-        cupy._util.experimental(f"mode '{mode}'")
-
     if mode not in ('constant', 'grid-constant', 'nearest', 'mirror',
                     'reflect', 'grid-mirror', 'wrap', 'grid-wrap', 'opencv',
                     '_opencv_edge'):
@@ -695,7 +692,6 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
         )
     else:
         if grid_mode:
-            cupy._util.experimental("grid_mode=True")
 
             # warn about modes that may have surprising behavior
             suggest_mode = None
