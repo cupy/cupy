@@ -1,5 +1,4 @@
 import cupy
-import cupy._util
 
 
 def _is_integer_output(output, input):
