@@ -56,8 +56,6 @@ def _convert_1d_args(ndim, weights, origin, axis):
 
 
 def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
-    if input.dtype.kind == 'c':
-        raise TypeError('Complex type not supported')
     _util._check_mode(mode)
     # Weights must always be less than 2 GiB
     if weights.nbytes >= (1 << 31):
@@ -127,13 +125,15 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     dtype conversion will occur. The input and output are never converted.
     """
     args = [input]
+    complex_output = input.dtype.kind == 'c'
     if weights is not None:
         weights = cupy.ascontiguousarray(weights, weights_dtype)
+        complex_output = complex_output or weights.dtype.kind == 'c'
         args.append(weights)
     if structure is not None:
         structure = cupy.ascontiguousarray(structure, structure_dtype)
         args.append(structure)
-    output = _util._get_output(output, input)
+    output = _util._get_output(output, input, None, complex_output)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
         output, temp = _util._get_output(output.dtype, input), output
@@ -172,8 +172,7 @@ typename std::enable_if<(std::is_floating_point<A>::value
 cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
 
 template <class T>
-__device__ __forceinline__ bool nonzero(T x) { return x!=0; }
-
+__device__ __forceinline__ bool nonzero(T x) { return x != static_cast<T>(0); }
 """
 
 

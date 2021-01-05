@@ -224,7 +224,8 @@ def _unravel_loop_index(shape, uint_t='unsigned int'):
 
 
 def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
-                            order, name='', integer_output=False, nprepad=0):
+                            order, name='', integer_output=False, nprepad=0,
+                            omit_in_coord=False):
     """
     Args:
         coord_func (function): generates code to do the coordinate
@@ -246,7 +247,8 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     """
 
     ops = []
-    ops.append('double out = 0.0;')
+    internal_dtype = 'double' if integer_output else 'Y'
+    ops.append(f'{internal_dtype} out = 0.0;')
 
     if large_int:
         uint_t = 'size_t'
@@ -262,20 +264,21 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     for j in range(ndim - 1, 0, -1):
         ops.append(f'const {uint_t} sx_{j - 1} = sx_{j} * xsize_{j};')
 
-    # create in_coords array to store the unraveled indices
-    ops.append(_unravel_loop_index(yshape, uint_t))
+    if not omit_in_coord:
+        # create in_coords array to store the unraveled indices
+        ops.append(_unravel_loop_index(yshape, uint_t))
 
     # compute the transformed (target) coordinates, c_j
     ops = ops + coord_func(ndim, nprepad)
 
     if cval is numpy.nan:
-        cval = 'CUDART_NAN'
+        cval = '(Y)CUDART_NAN'
     elif cval == numpy.inf:
-        cval = 'CUDART_INF'
+        cval = '(Y)CUDART_INF'
     elif cval == -numpy.inf:
-        cval = '-CUDART_INF'
+        cval = '(Y)(-CUDART_INF)'
     else:
-        cval = f'(double){cval}'
+        cval = f'({internal_dtype}){cval}'
 
     if mode == 'constant':
         # use cval if coordinate is outside the bounds of x
@@ -290,7 +293,8 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
         {{''')
 
     if order == 0:
-        ops.append('double dcoord;')  # mode 'wrap' requires this to work
+        if mode == 'wrap':
+            ops.append('double dcoord;')  # mode 'wrap' requires this to work
         for j in range(ndim):
             # determine nearest neighbor
             if mode == 'wrap':
@@ -323,13 +327,13 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
             _cond = ' || '.join([f'(ic_{j} < 0)' for j in range(ndim)])
             ops.append(f'''
             if ({_cond}) {{
-                out = (double){cval};
+                out = {cval};
             }} else {{
-                out = x[{_coord_idx}];
+                out = ({internal_dtype})x[{_coord_idx}];
             }}''')
         else:
             ops.append(f'''
-            out = x[{_coord_idx}];''')
+            out = ({internal_dtype})x[{_coord_idx}];''')
 
     elif order == 1:
         for j in range(ndim):
@@ -454,15 +458,15 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
             _cond = ' || '.join([f'(ic_{j} < 0)' for j in range(ndim)])
             ops.append(f'''
             if ({_cond}) {{
-                out += (X){cval} * ({_weight});
+                out += {cval} * ({internal_dtype})({_weight});
             }} else {{
-                X val = x[{_coord_idx}];
-                out += val * ({_weight});
+                {internal_dtype} val = ({internal_dtype})x[{_coord_idx}];
+                out += val * ({internal_dtype})({_weight});
             }}''')
         else:
             ops.append(f'''
-            X val = x[{_coord_idx}];
-            out += val * ({_weight});''')
+            {internal_dtype} val = ({internal_dtype})x[{_coord_idx}];
+            out += val * ({internal_dtype})({_weight});''')
 
         ops.append('}' * ndim)
 
@@ -500,6 +504,7 @@ def _get_map_kernel(ndim, large_int, yshape, mode, cval=0.0, order=1,
         name='shift',
         integer_output=integer_output,
         nprepad=nprepad,
+        omit_in_coord=True,  # input image coordinates are not needed
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   preamble=math_constants_preamble)
