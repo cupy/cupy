@@ -7,7 +7,6 @@ import pytest
 import cupy
 import cupy.core._accelerator as _acc
 from cupy.core import _cub_reduction
-from cupy.core import internal
 from cupy import testing
 
 
@@ -893,23 +892,30 @@ class TestDiff(unittest.TestCase):
 
 
 # This class compares CUB results against NumPy's
-@testing.parameterize(*testing.product({
-    'shape': [(33,), (10, 20), (10, 20, 30)],
-    'spacing': ((), (1.2,), 'sequence of int', 'arrays', 'mixed'),
-    'edge_order': [1, 2],
-    'axis': [None, 0, -1, 'tuple'],
-}))
+@testing.parameterize(*testing.product_dict(
+    testing.product({
+        'shape': [(33,)],
+        'axis': [None, 0, -1, (0,)],
+    })
+    + testing.product({
+        'shape': [(10, 20), (10, 20, 30)],
+        'axis': [None, 0, -1, (0, -1), (1, 0)],
+    }),
+    testing.product({
+        'spacing': ((), (1.2,), 'sequence of int', 'arrays', 'mixed'),
+        'edge_order': [1, 2],
+    }),
+))
 @testing.gpu
 class TestGradient(unittest.TestCase):
 
     def _gradient(self, xp, dtype, shape, spacing, axis, edge_order):
         x = testing.shaped_random(shape, xp, dtype=dtype)
-        if axis == 'tuple':
-            if x.ndim == 1:
-                axis = (0,)
-            else:
-                axis = (0, -1)
-        normalized_axes = internal._normalize_axis_indices(axis, x.ndim)
+        if axis is None:
+            normalized_axes = tuple(range(x.ndim))
+        else:
+            normalized_axes = numpy.core.numeric.normalize_axis_tuple(
+                axis, x.ndim)
         if spacing == 'sequence of int':
             # one scalar per axis
             spacing = tuple((ax + 1) / x.ndim for ax in normalized_axes)
