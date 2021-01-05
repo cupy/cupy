@@ -159,9 +159,11 @@ CUresult cuTexRefSetMaxAnisotropy (...) {
 
 // Occupancy
 typedef size_t (*CUoccupancyB2DSize)(int);
+typedef hipFunction_t CUfunction;
 
-CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...) {
-    return hipErrorUnknown;
+CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(int* numBlocks, CUfunction func, int  blockSize, size_t dynamicSMemSize) {
+    hipOccupancyMaxActiveBlocksPerMultiprocessor(numBlocks, func, blockSize, dynamicSMemSize);
+    return CUDA_SUCCESS;
 }
 
 CUresult cuOccupancyMaxPotentialBlockSize(...) {

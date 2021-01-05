@@ -356,11 +356,15 @@ cdef class FusedKernel:
         block_strides, block_size, shared_mem = (
             self._get_kernel_size(ndarray_list))
 
-        # TODO(asi1024): Optimize kernel size perameter.
-        kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
-            kern.ptr, block_size, shared_mem) * block_size
-        kargs = inout_args + block_strides
+        # TODO(asi1024): Optimize kernel size parameter.
+        if not runtime.is_hip:
+            kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
+                kern.ptr, block_size, shared_mem) * block_size
+        else:
+            # In HIP sometimes the occupancy calc seems to be broken
+            kern_size = block_size * 512
 
+        kargs = inout_args + block_strides
         kern.linear_launch(
             kern_size, kargs, shared_mem, block_size,
             enable_cooperative_groups=self._use_grid_sync)
