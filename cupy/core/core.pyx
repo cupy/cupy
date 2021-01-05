@@ -510,7 +510,15 @@ cdef class ndarray:
         newarray._strides = x._strides
         newarray._c_contiguous = x._c_contiguous
         newarray._f_contiguous = x._f_contiguous
+        if runtime._is_hip_environment:
+            # HIP requires changing the active device to the one where
+            # src data is before the copy. From the docs:
+            # it is recommended to set the current device to the device
+            # where the src data is physically located.
+            runtime.setDevice(self.data.device_id)
         newarray.data.copy_from_device(x.data, x.nbytes)
+        if runtime._is_hip_environment:
+            runtime.setDevice(dev_id)
         return newarray
 
     cpdef ndarray view(self, dtype=None):
