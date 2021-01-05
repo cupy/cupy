@@ -15,7 +15,7 @@ from cupy.cuda cimport memory
 import cupy
 
 
-cdef extern from './include/cupy/dlpack/include/dlpack/dlpack.h' nogil:
+cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
     cdef enum DLDeviceType:
         kDLCPU
         kDLGPU

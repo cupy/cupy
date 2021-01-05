@@ -328,7 +328,7 @@ MODULES.append({
         'cupy.core.dlpack',
     ],
     'include': [
-        'cupy/dlpack/include/dlpack/dlpack.h',
+        'cupy/dlpack/dlpack.h',
     ],
     'libraries': [],
 })
@@ -617,8 +617,7 @@ def make_extensions(options, compiler, use_cython):
 
         if module['name'] == 'dlpack':
             # if any change is made to the DLPack header, we force recompiling
-            s['depends'] = ['./cupy/core/include/cupy/dlpack/include/dlpack/'
-                            'dlpack.h']
+            s['depends'] = ['./cupy/core/include/cupy/dlpack/dlpack.h']
 
         for f in module['file']:
             s_file = copy.deepcopy(s)
