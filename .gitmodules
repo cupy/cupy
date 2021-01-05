@@ -5,6 +5,3 @@
 [submodule "cupy/core/include/cupy/jitify"]
 	path = cupy/core/include/cupy/jitify
 	url = https://github.com/NVIDIA/jitify.git
-[submodule "cupy/core/include/cupy/dlpack"]
-	path = cupy/core/include/cupy/dlpack
-	url = https://github.com/dmlc/dlpack.git

@@ -9,8 +9,7 @@ import cupy_setup_build
 
 
 for submodule in ('cupy/core/include/cupy/cub/',
-                  'cupy/core/include/cupy/jitify',
-                  'cupy/core/include/cupy/dlpack'):
+                  'cupy/core/include/cupy/jitify'):
     if len(os.listdir(submodule)) == 0:
         msg = '''
         The folder %s is a git submodule but is
