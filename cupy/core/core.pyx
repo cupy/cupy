@@ -180,7 +180,7 @@ cdef class ndarray:
     @property
     def __cuda_array_interface__(self):
         if runtime._is_hip_environment:
-            raise RuntimeError(
+            raise AttributeError(
                 'HIP/ROCm does not support cuda array interface')
         cdef dict desc = {
             'shape': self.shape,
@@ -1439,11 +1439,12 @@ cdef class ndarray:
                 # implicit host-to-device conversion.
                 # Except for numpy.ndarray, types should be supported by
                 # `_kernel._preprocess_args`.
-                if (
-                        not hasattr(x, '__cuda_array_interface__')
+                check = hasattr(x, '__cuda_array_interface__')
+                if runtime._is_hip_environment and isinstance(x, ndarray):
+                    check = True
+                if (not check
                         and not type(x) in _scalar.scalar_type_set
-                        and not isinstance(x, numpy.ndarray)
-                ):
+                        and not isinstance(x, numpy.ndarray)):
                     return NotImplemented
             if name in [
                     'greater', 'greater_equal', 'less', 'less_equal',
