@@ -357,7 +357,7 @@ cdef class FusedKernel:
             self._get_kernel_size(ndarray_list))
 
         # TODO(asi1024): Optimize kernel size parameter.
-        if not runtime.is_hip:
+        if not runtime._is_hip_environment:
             kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
                 kern.ptr, block_size, shared_mem) * block_size
         else:
