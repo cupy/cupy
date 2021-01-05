@@ -15,16 +15,16 @@ class TestStream(unittest.TestCase):
         null2 = cuda.Stream(True)
         null3 = cuda.Stream()
 
-        self.assertEqual(null0, null1)
-        self.assertEqual(null1, null2)
-        self.assertNotEqual(null2, null3)
+        assert null0 == null1
+        assert null1 == null2
+        assert null2 != null3
 
     def check_del(self, null):
         stream = cuda.Stream(null=null).use()
         stream_ptr = stream.ptr
         x = from_data.array([1, 2, 3])
         del stream
-        self.assertEqual(cuda.Stream.null, cuda.get_current_stream())
+        assert cuda.Stream.null == cuda.get_current_stream()
         # Want to test cudaStreamDestory is issued, but
         # runtime.streamQuery(stream_ptr) causes SEGV. We cannot test...
         del stream_ptr
@@ -57,26 +57,45 @@ class TestStream(unittest.TestCase):
                 (i, numpy_array))
 
         stream.synchronize()
-        self.assertEqual(out, list(range(N)))
+        assert out == list(range(N))
+
+    @attr.gpu
+    @unittest.skipIf(cuda.runtime.is_hip, 'HIP does not support this')
+    @unittest.skipIf(cuda.driver.get_build_version() < 10000,
+                     'Only CUDA 10.0+ supports this')
+    def test_launch_host_func(self):
+        N = 100
+        cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
+
+        stream = cuda.Stream.null
+
+        out = []
+        for i in range(N):
+            numpy_array = cupy_arrays[i].get(stream=stream)
+            stream.launch_host_func(
+                lambda t: out.append(t[0]), (i, numpy_array))
+
+        stream.synchronize()
+        assert out == list(range(N))
 
     @attr.gpu
     def test_with_statement(self):
         stream1 = cuda.Stream()
         stream2 = cuda.Stream()
-        self.assertEqual(cuda.Stream.null, cuda.get_current_stream())
+        assert cuda.Stream.null == cuda.get_current_stream()
         with stream1:
-            self.assertEqual(stream1, cuda.get_current_stream())
+            assert stream1 == cuda.get_current_stream()
             with stream2:
-                self.assertEqual(stream2, cuda.get_current_stream())
-            self.assertEqual(stream1, cuda.get_current_stream())
-        self.assertEqual(cuda.Stream.null, cuda.get_current_stream())
+                assert stream2 == cuda.get_current_stream()
+            assert stream1 == cuda.get_current_stream()
+        assert cuda.Stream.null == cuda.get_current_stream()
 
     @attr.gpu
     def test_use(self):
         stream1 = cuda.Stream().use()
-        self.assertEqual(stream1, cuda.get_current_stream())
+        assert stream1 == cuda.get_current_stream()
         cuda.Stream.null.use()
-        self.assertEqual(cuda.Stream.null, cuda.get_current_stream())
+        assert cuda.Stream.null == cuda.get_current_stream()
 
 
 class TestExternalStream(unittest.TestCase):
@@ -93,11 +112,7 @@ class TestExternalStream(unittest.TestCase):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
 
-        if not cuda.runtime.is_hip:
-            stream = cuda.Stream.null
-        else:
-            # adding callbacks to the null stream in HIP would segfault...
-            stream = cuda.Stream()
+        stream = self.stream
 
         out = []
         for i in range(N):
@@ -107,4 +122,23 @@ class TestExternalStream(unittest.TestCase):
                 (i, numpy_array))
 
         stream.synchronize()
-        self.assertEqual(out, list(range(N)))
+        assert out == list(range(N))
+
+    @attr.gpu
+    @unittest.skipIf(cuda.runtime.is_hip, 'HIP does not support this')
+    @unittest.skipIf(cuda.driver.get_build_version() < 10000,
+                     'Only CUDA 10.0+ supports this')
+    def test_launch_host_func(self):
+        N = 100
+        cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
+
+        stream = self.stream
+
+        out = []
+        for i in range(N):
+            numpy_array = cupy_arrays[i].get(stream=stream)
+            stream.launch_host_func(
+                lambda t: out.append(t[0]), (i, numpy_array))
+
+        stream.synchronize()
+        assert out == list(range(N))

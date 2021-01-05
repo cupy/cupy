@@ -1,13 +1,5 @@
-// This file is a stub header file of cuda for Read the Docs.
-
-#ifndef INCLUDE_GUARD_CUPY_CUDA_H
-#define INCLUDE_GUARD_CUPY_CUDA_H
-
-#if CUPY_USE_HIP
-
-#include "hip/cupy_cuda.h"
-
-#elif !defined(CUPY_NO_CUDA)
+#ifndef INCLUDE_GUARD_CUDA_CUPY_CUDA_H
+#define INCLUDE_GUARD_CUDA_CUPY_CUDA_H
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -38,9 +30,4 @@ CUresult cuLaunchCooperativeKernel(...) {
 
 } // extern "C"
 
-#else // #ifndef CUPY_NO_CUDA
-
-#include "stub/cupy_cuda.h"
-
-#endif // #ifndef CUPY_NO_CUDA
-#endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_H
+#endif // #ifndef INCLUDE_GUARD_CUDA_CUPY_CUDA_H

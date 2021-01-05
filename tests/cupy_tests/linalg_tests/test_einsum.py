@@ -469,7 +469,7 @@ class TestEinSumTernaryOperation(unittest.TestCase):
         try:
             out = xp.einsum(self.subscripts, a, b, c, optimize=False)
         except TypeError:
-            self.assertIs(xp, numpy)
+            assert xp is numpy
             out = xp.einsum(self.subscripts, a, b, c)
 
         if xp is not numpy:  # Avoid numpy issues #11059, #11060
@@ -530,7 +530,7 @@ class TestEinSumLarge(unittest.TestCase):
             if xp is not numpy and \
                     isinstance(self.opt, tuple):  # with memory limit
                 for w in ws:
-                    self.assertIn('memory', str(w.message))
+                    assert 'memory' in str(w.message)
             else:
-                self.assertEqual(len(ws), 0)
+                assert len(ws) == 0
         return out

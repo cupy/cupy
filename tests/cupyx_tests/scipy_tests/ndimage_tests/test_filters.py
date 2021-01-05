@@ -1,6 +1,5 @@
-import unittest
-
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -12,7 +11,7 @@ except ImportError:
     pass
 
 
-class FilterTestCaseBase(unittest.TestCase):
+class FilterTestCaseBase:
     """
     Add some utility methods for the parameterized tests for filters. these
     assume there are the "parameters" self.filter, self.wdtype or self.dtype,
@@ -155,7 +154,7 @@ COMMON_FLOAT_PARAMS['dtype'] = [numpy.float32, numpy.float64]
 
 # The bulk of the tests are done with this class
 @testing.parameterize(*(
-    testing.product([
+    testing.product_dict(
         # Filter-function specific params
         testing.product({
             'filter': ['convolve', 'correlate'],
@@ -188,7 +187,7 @@ COMMON_FLOAT_PARAMS['dtype'] = [numpy.float32, numpy.float64]
             'shape': [(4, 5), (3, 4, 5)],  # no (1,3,4,5) due to scipy bug
             'mode': ['mirror'],
         })
-    ])
+    )
 ))
 @testing.gpu
 @testing.with_requires('scipy')
@@ -196,7 +195,7 @@ class TestFilter(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         if self.dtype == getattr(self, 'output', None):
-            raise unittest.SkipTest("redundant")
+            pytest.skip("redundant")
         return self._filter(xp, scp)
 
 
@@ -214,7 +213,7 @@ def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
 # This tests filters that are very similar to other filters so we only check
 # the basics with them.
 @testing.parameterize(*(
-    testing.product([
+    testing.product_dict(
         testing.product({
             'filter': ['maximum_filter1d', 'maximum_filter'],
         }) + testing.product({
@@ -225,7 +224,7 @@ def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
             'rank': [0, 1, -1],
         }),
         testing.product(COMMON_PARAMS)
-    ]) + testing.product([
+    ) + testing.product_dict(
         # All of these filters have no ksize and evoke undef behavior
         # outputting to uint8
         testing.product({
@@ -249,7 +248,7 @@ def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
             'dtype': [numpy.uint8, numpy.float64],
             'output': [numpy.float64],
         })
-    ]) + testing.product([
+    ) + testing.product_dict(
         # These take derivative functions to compute part of the process
         testing.product({
             'filter': ['generic_laplace'],
@@ -262,7 +261,7 @@ def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
             'shape': [(4, 5), (3, 4, 5), (1, 3, 4, 5)],
             'dtype': [numpy.uint8, numpy.float64],
         })
-    ])
+    )
 ))
 @testing.gpu
 @testing.with_requires('scipy')
@@ -304,7 +303,7 @@ def lt_pyfunc(x):
 
 # This tests generic_filter.
 @testing.parameterize(*(
-    testing.product([
+    testing.product_dict(
         testing.product({
             'filter': ['generic_filter'],
             'func_or_kernel': [(rms_raw, rms_pyfunc), (lt_red, lt_pyfunc)],
@@ -329,7 +328,7 @@ def lt_pyfunc(x):
             'shape': [(4, 5), (3, 4, 5)],
             'mode': ['mirror'],
         })
-    ]) + testing.product({
+    ) + testing.product({
         'filter': ['generic_filter'],
         'func_or_kernel': [(rms_red, rms_pyfunc), (lt_raw, lt_pyfunc)],
         'footprint': [False, True],
@@ -362,7 +361,7 @@ void shift(const double* in, ptrdiff_t in_length,
 
 # This tests generic_filter1d.
 @testing.parameterize(*(
-    testing.product([
+    testing.product_dict(
         testing.product({
             'filter': ['generic_filter1d'],
             'func_or_kernel': [(shift_raw, shift_pyfunc)],
@@ -387,7 +386,7 @@ void shift(const double* in, ptrdiff_t in_length,
             'shape': [(4, 5), (3, 4, 5)],
             'mode': ['mirror'],
         })
-    ])
+    )
 ))
 @testing.gpu
 @testing.with_requires('scipy')
@@ -402,7 +401,7 @@ class TestGeneric1DFilter(FilterTestCaseBase):
 
 # Tests things requiring scipy >= 1.5.0
 @testing.parameterize(*(
-    testing.product([
+    testing.product_dict(
         # Filter-function specific params
         testing.product({
             'filter': ['convolve', 'correlate',
@@ -419,7 +418,7 @@ class TestGeneric1DFilter(FilterTestCaseBase):
             'shape': [(1, 3, 4, 5)],
             'mode': ['mirror'],
         })
-    ])
+    )
 ))
 @testing.gpu
 # SciPy behavior fixed in 1.5.0: https://github.com/scipy/scipy/issues/11661
@@ -432,7 +431,7 @@ class TestMirrorWithDim1(FilterTestCaseBase):
 
 # Tests kernels large enough to trigger shell sort in rank-based filters
 @testing.parameterize(*(
-    testing.product([
+    testing.product_dict(
         testing.product({
             'filter': ['median_filter'],
         }) + testing.product({
@@ -447,7 +446,7 @@ class TestMirrorWithDim1(FilterTestCaseBase):
             'ksize': [16, 17],
             'shape': [(20, 21)],
         })
-    ])
+    )
 ))
 @testing.gpu
 @testing.with_requires('scipy')
@@ -459,7 +458,7 @@ class TestShellSort(FilterTestCaseBase):
 
 # Tests with Fortran-ordered arrays
 @testing.parameterize(*(
-    testing.product([
+    testing.product_dict(
         testing.product({
             'filter': ['convolve', 'correlate',
                        'minimum_filter', 'maximum_filter'],
@@ -473,7 +472,7 @@ class TestShellSort(FilterTestCaseBase):
             'shape': [(4, 5), (3, 4, 5)],
             'order': ['F'],
         })
-    ])
+    )
 ))
 @testing.gpu
 @testing.with_requires('scipy')
@@ -485,7 +484,7 @@ class TestFortranOrder(FilterTestCaseBase):
 
 # Tests with weight dtypes that are distinct from the input and output dtypes
 @testing.parameterize(*(
-    testing.product([
+    testing.product_dict(
         testing.product({
             'filter': ['convolve', 'correlate'],
         }) + testing.product({
@@ -500,7 +499,7 @@ class TestFortranOrder(FilterTestCaseBase):
                       numpy.float32, numpy.float64],
             'wdtype': [numpy.uint8, numpy.float64],
         })
-    ])
+    )
 ))
 @testing.gpu
 @testing.with_requires('scipy')
@@ -508,7 +507,7 @@ class TestWeightDtype(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
         if self.dtype == self.wdtype:
-            raise unittest.SkipTest("redundant")
+            pytest.skip("redundant")
         return self._filter(xp, scp)
 
 

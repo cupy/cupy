@@ -1,4 +1,6 @@
 import cupy
+from cupy.core import internal
+from cupyx.scipy import fft
 from cupyx.scipy.ndimage import filters
 from cupyx.scipy.ndimage import _util
 
@@ -7,11 +9,11 @@ def _check_conv_inputs(in1, in2, mode, convolution=True):
     if in1.ndim == in2.ndim == 0:
         return in1 * (in2 if convolution else in2.conj())
     if in1.ndim != in2.ndim:
-        raise ValueError("in1 and in2 should have the same dimensionality")
+        raise ValueError('in1 and in2 should have the same dimensionality')
     if in1.size == 0 or in2.size == 0:
         return cupy.array([], dtype=in1.dtype)
     if mode not in ('full', 'same', 'valid'):
-        raise ValueError("acceptable modes are 'valid', 'same', or 'full'")
+        raise ValueError('acceptable modes are "valid", "same", or "full"')
     return None
 
 
@@ -60,7 +62,7 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
     if not isinstance(output, cupy.ndarray):
         output = cupy.empty(out_shape, output)
     elif output.shape != out_shape:
-        raise ValueError("out has wrong shape")
+        raise ValueError('out has wrong shape')
 
     # Get and run the CuPy kernel
     int_type = _util._get_inttype(in1)
@@ -92,6 +94,68 @@ def _inputs_swap_needed(mode, shape1, shape2, axes=None):
     not_ok1 = any(shape1[i] < shape2[i] for i in axes)
     not_ok2 = any(shape1[i] > shape2[i] for i in axes)
     if not_ok1 and not_ok2:
-        raise ValueError("For 'valid' mode, one must be at least "
-                         "as large as the other in every dimension")
+        raise ValueError('For "valid" mode, one must be at least '
+                         'as large as the other in every dimension')
     return not_ok1
+
+
+def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
+    # See scipy's documentation in scipy.signal.signaltools
+    s1, s2 = in1.shape, in2.shape
+    axes = _init_nd_and_axes(in1, axes)
+    # Length-1 axes can rely on broadcasting rules, no fft needed
+    axes = [ax for ax in axes if s1[ax] != 1 and s2[ax] != 1]
+    if sorted_axes:
+        axes.sort()
+
+    # Check that unused axes are either 1 (broadcast) or the same length
+    for ax, (dim1, dim2) in enumerate(zip(s1, s2)):
+        if ax not in axes and dim1 != dim2 and dim1 != 1 and dim2 != 1:
+            raise ValueError('incompatible shapes for in1 and in2:'
+                             ' {} and {}'.format(s1, s2))
+
+    # Check that input sizes are compatible with 'valid' mode.
+    if _inputs_swap_needed(mode, s1, s2, axes=axes):
+        # Convolution is commutative
+        in1, in2 = in2, in1
+
+    return in1, in2, axes
+
+
+def _init_nd_and_axes(x, axes):
+    # See documentation in scipy.fft._helper._init_nd_shape_and_axes
+    # except shape argument is always None and doesn't return new shape
+    axes = internal._normalize_axis_indices(axes, x.ndim, sort_axes=False)
+    if not len(axes):
+        raise ValueError('when provided, axes cannot be empty')
+    if any(x.shape[ax] < 1 for ax in axes):
+        raise ValueError('invalid number of data points specified')
+    return axes
+
+
+def _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=False):
+    # See scipy's documentation in scipy.signal.signaltools
+    real = (in1.dtype.kind != 'c' and in2.dtype.kind != 'c')
+    fshape = ([fft.next_fast_len(shape[a], real) for a in axes]
+              if calc_fast_len else shape)
+    fftn, ifftn = (fft.rfftn, fft.irfftn) if real else (fft.fftn, fft.ifftn)
+
+    # Perform the convolution
+    sp1 = fftn(in1, fshape, axes=axes)
+    sp2 = fftn(in2, fshape, axes=axes)
+    out = ifftn(sp1 * sp2, fshape, axes=axes)
+
+    return out[tuple(slice(x) for x in shape)] if calc_fast_len else out
+
+
+def _apply_conv_mode(full, s1, s2, mode, axes):
+    # See scipy's documentation in scipy.signal.signaltools
+    if mode == 'full':
+        return cupy.ascontiguousarray(full)
+    if mode == 'valid':
+        s1 = [full.shape[a] if a not in axes else s1[a] - s2[a] + 1
+              for a in range(full.ndim)]
+    starts = [(cur-new)//2 for cur, new in zip(full.shape, s1)]
+    slices = tuple(slice(start, start+length)
+                   for start, length in zip(starts, s1))
+    return cupy.ascontiguousarray(full[slices])

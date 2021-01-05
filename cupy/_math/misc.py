@@ -1,13 +1,9 @@
-import contextlib
-
 import cupy
 import cupyx.scipy.fft
 
 from cupy import core
 from cupy.core import _routines_math as _math
 from cupy.core import fusion
-from cupy.cuda import cufft
-from cupy.fft._fft import _output_dtype
 from cupy.lib import stride_tricks
 
 
@@ -89,39 +85,15 @@ def _fft_convolve(a1, a2, mode):
     # if either of them is complex, the dtype after multiplication will also be
     if a1.dtype.kind == 'c' or a2.dtype.kind == 'c':
         fft, ifft = cupy.fft.fft, cupy.fft.ifft
-        is_c2c = True
     else:
         fft, ifft = cupy.fft.rfft, cupy.fft.irfft
-        is_c2c = False
 
-    # hack to work around NumPy/CuPy FFT dtype incompatibility:
-    # CuPy internally converts fp16 to fp32 before doing FFT (whereas Numpy
-    # converts both fp16 and fp32 to fp64), so here we do the cast early and
-    # explicitly, and make sure a correct cuFFT plan can be generated. After
-    # the fft-ifft round trip, we cast the output dtype to the correct one.
-    out_dtype = cupy.result_type(a1, a2)
-    dtype = _output_dtype(out_dtype, 'C2C' if is_c2c else 'R2C')
-    a1 = a1.astype(dtype, copy=False)
-    a2 = a2.astype(dtype, copy=False)
-
+    dtype = cupy.result_type(a1, a2)
     n1, n2 = a1.size, a2.size
     out_size = cupyx.scipy.fft.next_fast_len(n1 + n2 - 1)
-    # skip calling get_fft_plan() as we know the args exactly
-    if is_c2c:
-        fft_t = cufft.CUFFT_C2C if dtype == cupy.complex64 else cufft.CUFFT_Z2Z
-        fft_plan = cufft.Plan1d(out_size, fft_t, 1)
-        ifft_plan = fft_plan
-    else:
-        fft_t = cufft.CUFFT_R2C if dtype == cupy.float32 else cufft.CUFFT_D2Z
-        fft_plan = cufft.Plan1d(out_size, fft_t, 1)
-        # this is a no-op context manager
-        # TODO(leofang): use contextlib.nullcontext() for PY37+?
-        ifft_plan = contextlib.suppress()
-    with fft_plan:
-        fa1 = fft(a1, out_size)
-        fa2 = fft(a2, out_size)
-    with ifft_plan:
-        out = ifft(fa1 * fa2, out_size)
+    fa1 = fft(a1, out_size)
+    fa2 = fft(a2, out_size)
+    out = ifft(fa1 * fa2, out_size)
 
     if mode == 'full':
         start, end = 0, n1 + n2 - 1
@@ -136,10 +108,10 @@ def _fft_convolve(a1, a2, mode):
 
     out = out[start:end]
 
-    if out.dtype.kind in 'iu':
+    if dtype.kind in 'iu':
         out = cupy.around(out)
 
-    return out.astype(out_dtype, copy=False)
+    return out.astype(dtype, copy=False)
 
 
 def _dot_convolve(a1, a2, mode):
@@ -387,4 +359,123 @@ nan_to_num = core.create_ufunc(
 # TODO(okuta): Implement real_if_close
 
 
-# TODO(okuta): Implement interp
+@cupy._util.memoize(for_each_device=True)
+def _get_interp_kernel(is_complex):
+    in_params = 'raw V x, raw U idx, '
+    in_params += 'raw W fx, raw Y fy, U len, raw Y left, raw Y right'
+    out_params = 'Z y'  # output dtype follows NumPy's
+
+    if is_complex:
+        preamble = 'typedef double real_t;\n'
+    else:
+        preamble = 'typedef Z real_t;\n'
+    preamble += 'typedef Z value_t;\n'
+    preamble += cupy._sorting.search._preamble  # for _isnan
+
+    code = r'''
+        U x_idx = idx[i] - 1;
+
+        if ( _isnan<V>(x[i]) ) { y = x[i]; }
+        else if (x_idx < 0) { y = left[0]; }
+        else if (x[i] == fx[len - 1]) {
+            // searchsorted cannot handle both of the boundary points,
+            // so we must detect and correct ourselves...
+            y = fy[len - 1];
+        }
+        else if (x_idx >= len - 1) { y = right[0]; }
+        else {
+            const Z slope = (value_t)(fy[x_idx+1] - fy[x_idx]) / \
+                            ((real_t)fx[x_idx+1] - (real_t)fx[x_idx]);
+            Z out = slope * ((real_t)x[i] - (real_t)fx[x_idx]) \
+                    + (value_t)fy[x_idx];
+            if (_isnan<Z>(out)) {
+                out = slope * ((real_t)x[i] - (real_t)fx[x_idx+1]) \
+                      + (value_t)fy[x_idx+1];
+                if (_isnan<Z>(out) && (fy[x_idx] == fy[x_idx+1])) {
+                    out = fy[x_idx];
+                }
+            }
+            y = out;
+        }
+    '''
+    return cupy.ElementwiseKernel(
+        in_params, out_params, code, 'cupy_interp', preamble=preamble)
+
+
+def interp(x, xp, fp, left=None, right=None, period=None):
+    """ One-dimensional linear interpolation.
+
+    Args:
+        x (cupy.ndarray): a 1D array of points on which the interpolation
+            is performed.
+        xp (cupy.ndarray): a 1D array of points on which the function values
+            (``fp``) are known.
+        fp (cupy.ndarray): a 1D array containing the function values at the
+            the points ``xp``.
+        left (float or complex): value to return if ``x < xp[0]``. Default is
+            ``fp[0]``.
+        right (float or complex): value to return if ``x > xp[-1]``. Default is
+            ``fp[-1]``.
+        period (None or float): a period for the x-coordinates. Parameters
+            ``left`` and ``right`` are ignored if ``period`` is specified.
+            Default is ``None``.
+
+    Returns:
+        cupy.ndarray: The interpolated values, same shape as ``x``.
+
+    .. note::
+        This function may synchronize if ``left`` or ``right`` is not already
+        on the device.
+
+    .. seealso:: :func:`numpy.interp`
+
+    """
+
+    if xp.ndim != 1 or fp.ndim != 1:
+        raise ValueError('xp and fp must be 1D arrays')
+    if xp.size != fp.size:
+        raise ValueError('fp and xp are not of the same length')
+    if xp.size == 0:
+        raise ValueError('array of sample points is empty')
+    if not x.flags.c_contiguous:
+        raise NotImplementedError('Non-C-contiguous x is currently not '
+                                  'supported')
+    x_dtype = cupy.common_type(x, xp)
+    if not cupy.can_cast(x_dtype, cupy.float64):
+        raise TypeError('Cannot cast array data from'
+                        ' {} to {} according to the rule \'safe\''
+                        .format(x_dtype, cupy.float64))
+
+    if period is not None:
+        # The handling of "period" below is modified from NumPy's
+
+        if period == 0:
+            raise ValueError("period must be a non-zero value")
+        period = abs(period)
+        left = None
+        right = None
+
+        x = x.astype(cupy.float64)
+        xp = xp.astype(cupy.float64)
+
+        # normalizing periodic boundaries
+        x %= period
+        xp %= period
+        asort_xp = cupy.argsort(xp)
+        xp = xp[asort_xp]
+        fp = fp[asort_xp]
+        xp = cupy.concatenate((xp[-1:]-period, xp, xp[0:1]+period))
+        fp = cupy.concatenate((fp[-1:], fp, fp[0:1]))
+        assert xp.flags.c_contiguous
+        assert fp.flags.c_contiguous
+
+    # NumPy always returns float64 or complex128, so we upcast all values
+    # on the fly in the kernel
+    out_dtype = 'D' if fp.dtype.kind == 'c' else 'd'
+    output = cupy.empty(x.shape, dtype=out_dtype)
+    idx = cupy.searchsorted(xp, x, side='right')
+    left = fp[0] if left is None else cupy.array(left, fp.dtype)
+    right = fp[-1] if right is None else cupy.array(right, fp.dtype)
+    kern = _get_interp_kernel(out_dtype == 'D')
+    kern(x, idx, xp, fp, xp.size, left, right, output)
+    return output

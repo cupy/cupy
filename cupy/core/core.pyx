@@ -42,6 +42,7 @@ from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core cimport _routines_math as _math
 from cupy.core cimport _routines_sorting as _sorting
 from cupy.core cimport _routines_statistics as _statistics
+from cupy.core cimport _scalar
 from cupy.core cimport dlpack
 from cupy.core cimport internal
 from cupy.cuda cimport device
@@ -53,11 +54,36 @@ from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cublas
 
 
+# If rop of cupy.ndarray is called, cupy's op is the last chance.
+# If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
+# it is safe to call cupy's op.
+# Otherwise, use this function `_should_use_rop` to choose
+# * [True] return NotImplemented to defer rhs, or
+# * [False] call NumPy's ufunc to try all `__array_ufunc__`.
+# Note that extension types (`cdef class`) in Cython 0.x shares
+# implementations of op and rop. (i.e. `__radd__(self, other)` is
+# `__add__(other, self)`.)
+#
+# It follows NEP 13 except that cupy also implements the fallback to
+# `__array_priority__`, which seems fair and necessary because of the
+# following facts:
+# * `numpy` : `scipy.sparse` = `cupy` : `cupyx.scipy.sparse`;
+# * NumPy ignores `__array_priority__` attributes of arguments if NumPy finds
+#   `__array_function__` of `cupy.ndarray`;
+# * SciPy sparse classes don't implement `__array_function__` and they even
+#   don't set `__array_function__ = None` to opt-out the feature; and
+# * `__array_priority__` of SciPy sparse classes is respected because
+#   `numpy.ndarray.__array_function__` does not disable `__array_priority__`.
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    xp = getattr(x, '__array_priority__', 0)
-    yp = getattr(y, '__array_priority__', 0)
-    return xp < yp and not isinstance(y, ndarray)
+    try:
+        y_ufunc = y.__array_ufunc__
+    except AttributeError:
+        # NEP 13's recommendation is `return False`.
+        xp = getattr(x, '__array_priority__', 0)
+        yp = getattr(y, '__array_priority__', 0)
+        return xp < yp
+    return y_ufunc is None
 
 
 cdef tuple _HANDLED_TYPES
@@ -153,12 +179,35 @@ cdef class ndarray:
 
     @property
     def __cuda_array_interface__(self):
-        desc = {
+        if runtime._is_hip_environment:
+            raise RuntimeError(
+                'HIP/ROCm does not support cuda array interface')
+        cdef dict desc = {
             'shape': self.shape,
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
-            'version': 2,
         }
+        cdef int ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
+        cdef intptr_t stream_ptr
+
+        if ver == 3:
+            stream_ptr = stream_module.get_current_stream_ptr()
+            # TODO(leofang): check if we're using PTDS
+            # CAI v3 says setting the stream field to 0 is disallowed
+            if stream_ptr == 0:
+                stream_ptr = 1  # TODO(leofang): use runtime.streamLegacy
+            desc['stream'] = stream_ptr
+        elif ver == 2:
+            # Old behavior (prior to CAI v3): stream sync is explicitly handled
+            # by users. To restore this behavior, we do not export any stream
+            # if CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION is set to 2 (so that
+            # other participating libraries lacking a finer control over sync
+            # behavior can avoid syncing).
+            pass
+        else:
+            raise ValueError('CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION can '
+                             'only be set to 3 (default) or 2')
+        desc['version'] = ver
         if self._c_contiguous:
             desc['strides'] = None
         else:
@@ -944,26 +993,44 @@ cdef class ndarray:
     # Comparison operators:
 
     def __richcmp__(object self, object other, int op):
-        if isinstance(other, numpy.ndarray) and other.ndim == 0:
-            other = other.item()  # Workaround for numpy<1.13
-        if op == 0:
-            return _logic._ndarray_less(self, other)
-        if op == 1:
-            return _logic._ndarray_less_equal(self, other)
-        if op == 2:
-            return _logic._ndarray_equal(self, other)
-        if op == 3:
-            return _logic._ndarray_not_equal(self, other)
-        if op == 4:
-            return _logic._ndarray_greater(self, other)
-        if op == 5:
-            return _logic._ndarray_greater_equal(self, other)
+        if isinstance(other, ndarray):
+            if op == 0:
+                return _logic._ndarray_less(self, other)
+            if op == 1:
+                return _logic._ndarray_less_equal(self, other)
+            if op == 2:
+                return _logic._ndarray_equal(self, other)
+            if op == 3:
+                return _logic._ndarray_not_equal(self, other)
+            if op == 4:
+                return _logic._ndarray_greater(self, other)
+            if op == 5:
+                return _logic._ndarray_greater_equal(self, other)
+        elif not _should_use_rop(self, other):
+            if isinstance(other, numpy.ndarray) and other.ndim == 0:
+                other = other.item()  # Workaround for numpy<1.13
+            if op == 0:
+                return numpy.less(self, other)
+            if op == 1:
+                return numpy.less_equal(self, other)
+            if op == 2:
+                return numpy.equal(self, other)
+            if op == 3:
+                return numpy.not_equal(self, other)
+            if op == 4:
+                return numpy.greater(self, other)
+            if op == 5:
+                return numpy.greater_equal(self, other)
         return NotImplemented
 
     # Truth value of an array (bool):
 
     def __nonzero__(self):
         if self.size == 0:
+            msg = ('The truth value of an empty array is ambiguous. Returning '
+                   'False, but in future this will result in an error. Use '
+                   '`array.size > 0` to check that an array is not empty.')
+            warnings.warn(msg, DeprecationWarning)
             return False
         elif self.size == 1:
             return bool(self.get())
@@ -989,95 +1056,124 @@ cdef class ndarray:
     # Arithmetic:
 
     def __add__(x, y):
-        if _should_use_rop(x, y):
-            return y.__radd__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._add(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.add(x, y)
 
     def __sub__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rsub__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._subtract(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.subtract(x, y)
 
     def __mul__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rmul__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._multiply(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.multiply(x, y)
 
     def __matmul__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rmatmul__(x)
+        # TODO(kataoka): Support matmul (gufunc) in __array_ufunc__
+        if not isinstance(y, ndarray) and _should_use_rop(x, y):
+            return NotImplemented
         else:
             return _linalg.matmul(x, y)
 
     def __div__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rdiv__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.divide(x, y)
 
     def __truediv__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rtruediv__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._true_divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.true_divide(x, y)
 
     def __floordiv__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rfloordiv__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._floor_divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.floor_divide(x, y)
 
     def __mod__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rmod__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._remainder(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.remainder(x, y)
 
     def __divmod__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rdivmod__(x)
-        else:
+        if isinstance(y, ndarray):
             return divmod(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.divmod(x, y)
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
-        if _should_use_rop(x, y):
-            return y.__rpow__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._power(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.power(x, y)
 
     def __lshift__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rlshift__(x)
-        else:
+        if isinstance(y, ndarray):
             return _binary._left_shift(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.left_shift(x, y)
 
     def __rshift__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rrshift__(x)
-        else:
+        if isinstance(y, ndarray):
             return _binary._right_shift(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.right_shift(x, y)
 
     def __and__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rand__(x)
-        else:
+        if isinstance(y, ndarray):
             return _binary._bitwise_and(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.bitwise_and(x, y)
 
     def __or__(x, y):
-        if _should_use_rop(x, y):
-            return y.__ror__(x)
-        else:
+        if isinstance(y, ndarray):
             return _binary._bitwise_or(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.bitwise_or(x, y)
 
     def __xor__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rxor__(x)
-        else:
+        if isinstance(y, ndarray):
             return _binary._bitwise_xor(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.bitwise_xor(x, y)
 
     # Arithmetic, in-place:
 
@@ -1319,12 +1415,14 @@ cdef class ndarray:
         numpy array.
         """
         import cupy  # top-level ufuncs
+        inout = inputs
         if 'out' in kwargs:
             # need to unfold tuple argument in kwargs
             out = kwargs['out']
             if len(out) != 1:
                 raise ValueError('The \'out\' parameter must have exactly one '
                                  'array value')
+            inout += out
             kwargs['out'] = out[0]
 
         if method == '__call__':
@@ -1336,6 +1434,17 @@ cdef class ndarray:
                 cp_ufunc = getattr(cupy, name)
             except AttributeError:
                 return NotImplemented
+            for x in inout:
+                # numpy.ndarray is handled and then TypeError is raised due to
+                # implicit host-to-device conversion.
+                # Except for numpy.ndarray, types should be supported by
+                # `_kernel._preprocess_args`.
+                if (
+                        not hasattr(x, '__cuda_array_interface__')
+                        and not type(x) in _scalar.scalar_type_set
+                        and not isinstance(x, numpy.ndarray)
+                ):
+                    return NotImplemented
             if name in [
                     'greater', 'greater_equal', 'less', 'less_equal',
                     'equal', 'not_equal']:
@@ -1735,6 +1844,9 @@ cdef list _cupy_header_list = [
     'cupy/carray.cuh',
     'cupy/atomics.cuh',
 ]
+if runtime._is_hip_environment:
+    _cupy_header_list.append('cupy/math_constants.h')
+
 cdef str _cupy_header = ''.join(
     ['#include <%s>\n' % i for i in _cupy_header_list])
 
@@ -1765,6 +1877,7 @@ cdef list _cupy_extra_header_list = [
 
 cdef str _header_path_cache = None
 cdef str _header_source = None
+cdef dict _header_source_map = {}
 
 
 cpdef str _get_header_dir_path():
@@ -1778,15 +1891,28 @@ cpdef str _get_header_dir_path():
 
 cpdef str _get_header_source():
     global _header_source
-    if _header_source is None:
+    global _header_source_map
+    cdef str header_path, base_path, file_path, header
+    cdef list source
+
+    if _header_source is None or not _header_source_map:
         source = []
         base_path = _get_header_dir_path()
         for file_path in _cupy_extra_header_list + _cupy_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
-                source.append(header_file.read())
+                header = header_file.read()
+            source.append(header)
+            _header_source_map[file_path.encode()] = header.encode()
         _header_source = '\n'.join(source)
     return _header_source
+
+
+cpdef dict _get_header_source_map():
+    global _header_source_map
+    if not _header_source_map:
+        _get_header_source()
+    return _header_source_map
 
 
 # added at the module level for precompiling the regex
@@ -1809,7 +1935,7 @@ cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None):
+        log_stream=None, bint jitify=False):
     if translate_cucomplex:
         source = _translate_cucomplex_to_thrust(source)
         _cupy_header_list.append('cupy/cuComplex_bridge.h')
@@ -1826,43 +1952,42 @@ cpdef function.Module compile_with_cache(
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if _cuda_runtime_version >= 9000:
-        if 9020 <= _cuda_runtime_version < 9030:
-            bundled_include = 'cuda-9.2'
-        elif 10000 <= _cuda_runtime_version < 10010:
-            bundled_include = 'cuda-10.0'
-        elif 10010 <= _cuda_runtime_version < 10020:
-            bundled_include = 'cuda-10.1'
-        elif 10020 <= _cuda_runtime_version < 10030:
-            bundled_include = 'cuda-10.2'
-        elif 11000 <= _cuda_runtime_version < 11010:
-            bundled_include = 'cuda-11.0'
-        elif 11010 <= _cuda_runtime_version < 11020:
-            bundled_include = 'cuda-11.1'
-        else:
-            # CUDA v9.0, v9.1 or versions not yet supported.
-            bundled_include = None
+    if 9020 <= _cuda_runtime_version < 9030:
+        bundled_include = 'cuda-9.2'
+    elif 10000 <= _cuda_runtime_version < 10010:
+        bundled_include = 'cuda-10.0'
+    elif 10010 <= _cuda_runtime_version < 10020:
+        bundled_include = 'cuda-10.1'
+    elif 10020 <= _cuda_runtime_version < 10030:
+        bundled_include = 'cuda-10.2'
+    elif 11000 <= _cuda_runtime_version < 11010:
+        bundled_include = 'cuda-11.0'
+    elif 11010 <= _cuda_runtime_version < 11020:
+        bundled_include = 'cuda-11.1'
+    else:
+        # CUDA versions not yet supported.
+        bundled_include = None
 
-        cuda_path = cuda.get_cuda_path()
+    cuda_path = cuda.get_cuda_path()
 
-        if bundled_include is None and cuda_path is None:
-            raise RuntimeError(
-                'Failed to auto-detect CUDA root directory. '
-                'Please specify `CUDA_PATH` environment variable if you '
-                'are using CUDA v9.0, v9.1 or versions not yet supported by '
-                'CuPy.')
+    if bundled_include is None and cuda_path is None:
+        raise RuntimeError(
+            'Failed to auto-detect CUDA root directory. '
+            'Please specify `CUDA_PATH` environment variable if you '
+            'are using CUDA versions not yet supported by CuPy.')
 
-        if bundled_include is not None:
-            options += ('-I ' + os.path.join(
-                _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
+    if bundled_include is not None:
+        options += ('-I' + os.path.join(
+            _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
 
-        if cuda_path is not None:
-            options += ('-I ' + os.path.join(cuda_path, 'include'),)
+    if cuda_path is not None:
+        options += ('-I' + os.path.join(cuda_path, 'include'),)
 
     return cuda.compile_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
         enable_cooperative_groups=enable_cooperative_groups,
-        name_expressions=name_expressions, log_stream=log_stream)
+        name_expressions=name_expressions, log_stream=log_stream,
+        jitify=jitify)
 
 
 # =============================================================================
@@ -2247,20 +2372,22 @@ cpdef ndarray _internal_asfortranarray(ndarray a):
             (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
         m, n = a.shape
         handle = device.get_cublas_handle()
+        one = numpy.array(1, dtype=a.dtype)
+        zero = numpy.array(0, dtype=a.dtype)
         if a.dtype == numpy.float32:
             cublas.sgeam(
                 handle,
                 1,  # transpose a
                 1,  # transpose newarray
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                newarray.data.ptr, m)
+                m, n, one.ctypes.data, a.data.ptr, n,
+                zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
         elif a.dtype == numpy.float64:
             cublas.dgeam(
                 handle,
                 1,  # transpose a
                 1,  # transpose newarray
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                newarray.data.ptr, m)
+                m, n, one.ctypes.data, a.data.ptr, n,
+                zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
     else:
         elementwise_copy(a, newarray)
     return newarray
@@ -2317,8 +2444,12 @@ cdef int _cuda_runtime_version = -1
 
 
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
+    if runtime._is_hip_environment:
+        raise RuntimeError(
+            'HIP/ROCm does not support cuda array interface')
+
     cdef Py_ssize_t sh, st
-    cdef object desc = a.__cuda_array_interface__
+    cdef dict desc = a.__cuda_array_interface__
     cdef tuple shape = desc['shape']
     cdef int dev_id = -1
     cdef size_t nbytes
@@ -2341,6 +2472,13 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
         dev_id = device.get_device_id()
     mem = memory_module.UnownedMemory(ptr, nbytes, a, dev_id)
     memptr = memory.MemoryPointer(mem, 0)
+    # the v3 protocol requires an immediate synchronization, unless
+    # 1. the stream is not set (ex: from v0 ~ v2) or is None
+    # 2. users explicitly overwrite this requirement
+    stream_ptr = desc.get('stream')
+    if stream_ptr is not None:
+        if _util.CUDA_ARRAY_INTERFACE_SYNC:
+            runtime.streamSynchronize(stream_ptr)
     return ndarray(shape, dtype, memptr, strides)
 
 

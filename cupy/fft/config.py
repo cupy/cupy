@@ -9,6 +9,19 @@ from cupy.fft._cache import get_plan_cache_max_memsize  # NOQA
 from cupy.fft._cache import set_plan_cache_max_memsize  # NOQA
 from cupy.fft._cache import show_plan_cache_info  # NOQA
 
+# on Linux, expose callback handles to this module
+import sys as _sys
+if _sys.platform.startswith('linux'):
+    from cupy.fft._callback import get_current_callback_manager  # NOQA
+    from cupy.fft._callback import set_cufft_callbacks  # NOQA
+else:
+    def get_current_callback_manager(*args, **kwargs):
+        return None
+
+    class set_cufft_callbacks:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError('cuFFT callback is only available on Linux')
+
 
 enable_nd_planning = True
 use_multi_gpus = False

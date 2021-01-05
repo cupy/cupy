@@ -11,7 +11,7 @@ class TestCArray(unittest.TestCase):
         y = cupy.ElementwiseKernel(
             'raw int32 x', 'int32 y', 'y = x.size()', 'test_carray_size',
         )(x, size=1)
-        self.assertEqual(int(y[0]), 3)
+        assert int(y[0]) == 3
 
     def test_shape(self):
         x = cupy.arange(6).reshape((2, 3)).astype('i')
@@ -67,6 +67,8 @@ class TestCArray32BitBoundary(unittest.TestCase):
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
 
+    # HIP is known to fail with sizes > 2**32-1024
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP does not support this')
     def test(self):
         # Elementwise
         a = cupy.full((1, self.size), 7, dtype=cupy.int8)

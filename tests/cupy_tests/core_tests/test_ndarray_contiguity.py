@@ -8,10 +8,10 @@ class TestArrayContiguity(unittest.TestCase):
 
     def test_is_contiguous(self):
         a = testing.shaped_arange((2, 3, 4))
-        self.assertTrue(a.flags.c_contiguous)
+        assert a.flags.c_contiguous is True
         b = a.transpose(2, 0, 1)
-        self.assertFalse(b.flags.c_contiguous)
+        assert b.flags.c_contiguous is False
         c = a[::-1]
-        self.assertFalse(c.flags.c_contiguous)
+        assert c.flags.c_contiguous is False
         d = a[:, :, ::2]
-        self.assertFalse(d.flags.c_contiguous)
+        assert d.flags.c_contiguous is False

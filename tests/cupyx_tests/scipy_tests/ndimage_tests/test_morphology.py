@@ -1,7 +1,5 @@
-
-import unittest
-
 import numpy
+import pytest
 
 from cupy import testing
 import cupyx.scipy.ndimage  # NOQA
@@ -26,7 +24,7 @@ except ImportError:
     {'rank': 3, 'connectivity': 500})
 @testing.gpu
 @testing.with_requires('scipy')
-class TestGenerateBinaryStructure(unittest.TestCase):
+class TestGenerateBinaryStructure:
 
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_generate_binary_structure(self, xp, scp):
@@ -36,7 +34,7 @@ class TestGenerateBinaryStructure(unittest.TestCase):
 
 @testing.gpu
 @testing.with_requires('scipy')
-class TestIterateStructure(unittest.TestCase):
+class TestIterateStructure:
 
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_iterate_structure1(self, xp, scp):
@@ -71,17 +69,23 @@ class TestIterateStructure(unittest.TestCase):
         'origin': [-1, 0, 1],
         'data': [[], [1, 1, 0, 1, 1]],
         'filter': ['binary_erosion', 'binary_dilation'],
-        'output': [None, numpy.float32, numpy.int8]}
+        'output': [None, numpy.float32, numpy.int8, 'array']}
     ))
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryErosionAndDilation1d(unittest.TestCase):
+class TestBinaryErosionAndDilation1d:
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
         structure = self.structure
         if structure is not None:
             structure = xp.asarray(structure)
+        if self.output == 'array':
+            output = xp.zeros_like(x)
+            filter(x, structure, iterations=1, mask=None,
+                   output=output, border_value=self.border_value,
+                   origin=self.origin, brute_force=True)
+            return output
         return filter(x, structure, iterations=1, mask=None,
                       output=self.output, border_value=self.border_value,
                       origin=self.origin, brute_force=True)
@@ -89,7 +93,7 @@ class BinaryErosionAndDilation1d(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_erosion_and_dilation_1d(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest('redundant')
+            pytest.skip('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -124,7 +128,7 @@ class BinaryErosionAndDilation1d(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy>=1.1.0')
-class BinaryOpeningAndClosing(unittest.TestCase):
+class TestBinaryOpeningAndClosing:
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
         structure = scp.ndimage.generate_binary_structure(x.ndim,
@@ -136,7 +140,7 @@ class BinaryOpeningAndClosing(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_opening_and_closing(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest('redundant')
+            pytest.skip('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -175,7 +179,7 @@ class BinaryOpeningAndClosing(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryFillHoles(unittest.TestCase):
+class TestBinaryFillHoles:
     def _filter(self, xp, scp, x):
         filter = scp.ndimage.binary_fill_holes
         structure = scp.ndimage.generate_binary_structure(x.ndim,
@@ -185,7 +189,7 @@ class BinaryFillHoles(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_fill_holes(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest('redundant')
+            pytest.skip('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -224,7 +228,7 @@ class BinaryFillHoles(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryHitOrMiss(unittest.TestCase):
+class TestBinaryHitOrMiss:
     def _filter(self, xp, scp, x):
         filter = scp.ndimage.binary_hit_or_miss
         if self.struct == 'same':
@@ -245,7 +249,7 @@ class BinaryHitOrMiss(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_hit_or_miss(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest('redundant')
+            pytest.skip('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -297,7 +301,7 @@ class BinaryHitOrMiss(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryPropagation(unittest.TestCase):
+class TestBinaryPropagation:
     def _filter(self, xp, scp, x):
         filter = scp.ndimage.binary_propagation
         structure = scp.ndimage.generate_binary_structure(x.ndim,
@@ -309,7 +313,7 @@ class BinaryPropagation(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_propagation(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest('redundant')
+            pytest.skip('redundant')
         x = xp.asarray(self.data, dtype=self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -324,17 +328,23 @@ class BinaryPropagation(unittest.TestCase):
         'density': [0.1, 0.5, 0.9],
         'filter': ['binary_erosion', 'binary_dilation'],
         'iterations': [1, 2, 0],
-        'output': [None, numpy.float32]}
+        'output': [None, numpy.float32, 'array']}
     ))
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryErosionAndDilation(unittest.TestCase):
+class TestBinaryErosionAndDilation:
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
         ndim = len(self.shape)
         structure = scp.ndimage.generate_binary_structure(ndim,
                                                           self.connectivity)
+        if self.output == 'array':
+            output = xp.zeros_like(x)
+            filter(x, structure, iterations=self.iterations, mask=None,
+                   output=output, border_value=self.border_value,
+                   origin=self.origin, brute_force=True)
+            return output
         return filter(x, structure, iterations=self.iterations, mask=None,
                       output=self.output, border_value=self.border_value,
                       origin=self.origin, brute_force=True)
@@ -342,7 +352,7 @@ class BinaryErosionAndDilation(unittest.TestCase):
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_binary_erosion_and_dilation(self, xp, scp):
         if self.x_dtype == self.output:
-            raise unittest.SkipTest('redundant')
+            pytest.skip('redundant')
         rstate = numpy.random.RandomState(5)
         x = rstate.randn(*self.shape) > self.density
         x = xp.asarray(x, dtype=self.x_dtype)
@@ -360,7 +370,7 @@ class BinaryErosionAndDilation(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class BinaryErosionAndDilationContiguity(unittest.TestCase):
+class TestBinaryErosionAndDilationContiguity:
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
         ndim = len(self.shape)
@@ -419,7 +429,7 @@ class BinaryErosionAndDilationContiguity(unittest.TestCase):
 ))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestGreyErosionAndDilation(unittest.TestCase):
+class TestGreyErosionAndDilation:
 
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
@@ -447,9 +457,9 @@ class TestGreyErosionAndDilation(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_grey_erosion_and_dilation(self, xp, scp):
         if self.mode == 'mirror' and 1 in self.shape:
-            raise unittest.SkipTest('not testable against scipy')
+            pytest.skip('not testable against scipy')
         if self.x_dtype == self.output:
-            raise unittest.SkipTest('redundant')
+            pytest.skip('redundant')
         x = testing.shaped_random(self.shape, xp, self.x_dtype)
         return self._filter(xp, scp, x)
 
@@ -465,7 +475,7 @@ class TestGreyErosionAndDilation(unittest.TestCase):
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestGreyClosingAndOpening(unittest.TestCase):
+class TestGreyClosingAndOpening:
 
     shape = (4, 5)
     footprint = None
@@ -515,7 +525,7 @@ class TestGreyClosingAndOpening(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class MorphologicalGradientAndLaplace(unittest.TestCase):
+class TestMorphologicalGradientAndLaplace:
 
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
@@ -549,7 +559,7 @@ class MorphologicalGradientAndLaplace(unittest.TestCase):
         x[4, 4] = 2
         x[2, 3] = 3
         if self.x_dtype == self.output:
-            raise unittest.SkipTest('redundant')
+            pytest.skip('redundant')
         return self._filter(xp, scp, x)
 
 
@@ -578,7 +588,7 @@ class MorphologicalGradientAndLaplace(unittest.TestCase):
 )
 @testing.gpu
 @testing.with_requires('scipy')
-class WhiteTophatAndBlackTopHat(unittest.TestCase):
+class TestWhiteTophatAndBlackTopHat:
 
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
@@ -609,5 +619,5 @@ class WhiteTophatAndBlackTopHat(unittest.TestCase):
     def test_white_tophat_and_black_tophat(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.x_dtype)
         if self.x_dtype == self.output:
-            raise unittest.SkipTest('redundant')
+            pytest.skip('redundant')
         return self._filter(xp, scp, x)

@@ -69,7 +69,7 @@ def take_along_axis(a, indices, axis):
             ind_shape = (1,) * i + (-1,) + (1,) * (ndim - i - 1)
             fancy_index.append(cupy.arange(n).reshape(ind_shape))
 
-    return a[fancy_index]
+    return a[tuple(fancy_index)]
 
 
 def choose(a, choices, out=None, mode='raise'):
