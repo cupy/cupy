@@ -56,6 +56,12 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
         void (*deleter)(DLManagedTensor*)  # noqa: E211
 
 
+def get_build_version():
+    # We use the commit ID here because DLPACK_VERSION is not reliable...
+    # The commit ID is from the latest change made to dlpack.h.
+    return '3efc489'
+
+
 cdef void pycapsule_deleter(object dltensor):
     cdef DLManagedTensor* dlm_tensor
     # Do not invoke the deleter on a used capsule
