@@ -614,7 +614,6 @@ class TestWeightComplexDtype(FilterTestCaseBase):
             output = xp.empty(self.shape, dtype=numpy.float64)
             with pytest.raises(RuntimeError):
                 func(arr, weights, output=output)
-        return
 
     @testing.with_requires('scipy>=1.6.0')
     def test_filter_complex_output_dtype_warns(self):
@@ -625,7 +624,6 @@ class TestWeightComplexDtype(FilterTestCaseBase):
             arr, weights = self._get_array_and_weights(xp)
             with pytest.warns(UserWarning):
                 func(arr, weights, output=numpy.float64)
-        return
 
 
 # Tests special weights (ND)
