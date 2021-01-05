@@ -148,7 +148,9 @@ class Generator:
         cdef ndarray y
         y = ndarray(size if size is not None else (), numpy.float64)
         _launch_dist(self.bit_generator, beta, y, (a, b))
-        to_return = y
+        # we cast the array to a python object because
+        # cython cant call astype with the default values for
+        # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
     def standard_exponential(
@@ -188,6 +190,9 @@ class Generator:
         if out is not None:
             out[...] = y
             y = out
+        # we cast the array to a python object because
+        # cython cant call astype with the default values for
+        # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
 
