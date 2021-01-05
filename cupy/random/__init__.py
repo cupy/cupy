@@ -95,6 +95,9 @@ from cupy.random._sample import random_sample as random  # NOQA
 from cupy.random._sample import random_sample as ranf  # NOQA
 from cupy.random._sample import random_sample as sample  # NOQA
 if not runtime.is_hip:
+    # This is disabled for HIP due to a problem when using
+    # dynamic dispatching of kernels
+    # see https://github.com/ROCm-Developer-Tools/HIP/issues/2186
     from cupy.random._bit_generator import BitGenerator  # NOQA
     from cupy.random._bit_generator import XORWOW  # NOQA
     from cupy.random._bit_generator import MRG32k3a  # NOQA
