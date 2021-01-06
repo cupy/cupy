@@ -396,7 +396,7 @@ class TestGemmAndGeam(unittest.TestCase):
     'orderc': ['C', 'F'],
 }))
 @attr.gpu
-class TestGdmm(unittest.TestCase):
+class TestDgmm(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
     def _setup(self, dtype, xdim=1):

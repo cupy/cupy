@@ -461,7 +461,8 @@ def svd(a, full_matrices=True, compute_uv=True):
     buffersize = gesvd_bufferSize(handle, m, n)
     workspace = cupy.empty(buffersize, dtype=a_dtype)
     if not runtime.is_hip:
-        # TODO(leofang): WHY????
+        # rwork can be NULL if the information from supperdiagonal isn't needed
+        # https://docs.nvidia.com/cuda/cusolver/index.html#cuSolverDN-lt-t-gt-gesvd  # noqa
         rwork_ptr = 0
     else:
         rwork = cupy.empty(min(m, n)-1, dtype=s_dtype)
