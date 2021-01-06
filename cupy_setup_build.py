@@ -86,8 +86,6 @@ cuda_files = [
     'cupy.fft._cache',
     'cupy.fft._callback',
     'cupy.lib._polynomial',
-    'cupy.random._bit_generator',
-    'cupy.random._generator_api',
     'cupy._util'
 ]
 
@@ -127,10 +125,7 @@ if use_hip:
 else:
     MODULES.append({
         'name': 'cuda',
-        'file': cuda_files + [
-            ('cupy.random._generator_api',
-             ['cupy/random/cupy_distributions.cu']),
-        ],
+        'file': cuda_files,
         'include': [
             'cublas_v2.h',
             'cuda.h',
@@ -269,6 +264,7 @@ if not use_hip:
     MODULES.append({
         'name': 'random',
         'file': [
+            'cupy.random._bit_generator',
             ('cupy.random._generator_api',
              ['cupy/random/cupy_distributions.cu']),
         ],
@@ -489,7 +485,7 @@ def preconfigure_modules(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
-        elif (module['name'] in ('thrust', 'cub')
+        elif (module['name'] in ('thrust', 'cub', 'random')
                 and (nvcc_path is None and hipcc_path is None)):
             installed = True
             cmd = 'nvcc' if not use_hip else 'hipcc'
