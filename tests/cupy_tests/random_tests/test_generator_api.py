@@ -6,7 +6,7 @@ import pytest
 import numpy
 
 import cupy
-from cupy.random import _generator
+from cupy.random import _generator_api
 from cupy.random import _bit_generator
 from cupy import testing
 from cupy.testing import attr
@@ -84,7 +84,7 @@ class GeneratorTestCase(unittest.TestCase):
     def setUp(self):
         self.__seed = testing.generate_seed()
         # TODO(ecastill) test it with other generators?
-        self.rs = _generator.Generator(
+        self.rs = _generator_api.Generator(
             _bit_generator.Philox4x3210(seed=self.__seed))
 
     def _get_generator_func(self, *args, **kwargs):

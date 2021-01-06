@@ -1,5 +1,5 @@
 import cupy
-from cupy.random import _random_state
+from cupy.random import _generator
 from cupy import _util
 
 
@@ -29,7 +29,7 @@ def beta(a, b, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.beta`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.beta(a, b, size, dtype)
 
 
@@ -56,7 +56,7 @@ def binomial(n, p, size=None, dtype=int):
     .. seealso::
         :func:`numpy.random.binomial`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.binomial(n, p, size, dtype)
 
 
@@ -82,7 +82,7 @@ def chisquare(df, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.chisquare`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.chisquare(df, size, dtype)
 
 
@@ -111,7 +111,7 @@ def dirichlet(alpha, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.dirichlet`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.dirichlet(alpha, size, dtype)
 
 
@@ -138,7 +138,7 @@ def exponential(scale, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.exponential`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.exponential(scale, size, dtype)
 
 
@@ -171,7 +171,7 @@ def f(dfnum, dfden, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.f`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.f(dfnum, dfden, size, dtype)
 
 
@@ -197,7 +197,7 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.gamma`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.gamma(shape, scale, size, dtype)
 
 
@@ -223,7 +223,7 @@ def geometric(p, size=None, dtype=int):
     .. seealso::
         :func:`numpy.random.geometric`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.geometric(p, size, dtype)
 
 
@@ -256,7 +256,7 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.gumbel`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.gumbel(loc, scale, size, dtype)
 
 
@@ -287,7 +287,7 @@ def hypergeometric(ngood, nbad, nsample, size=None, dtype=int):
     .. seealso::
         :func:`numpy.random.hypergeometric`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.hypergeometric(ngood, nbad, nsample, size, dtype)
 
 
@@ -314,7 +314,7 @@ def logistic(loc=0.0, scale=1.0, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.logistic`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.logistic(loc, scale, size, dtype)
 
 
@@ -341,7 +341,7 @@ def laplace(loc=0.0, scale=1.0, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.laplace`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.laplace(loc, scale, size, dtype)
 
 
@@ -365,7 +365,7 @@ def lognormal(mean=0.0, sigma=1.0, size=None, dtype=float):
     .. seealso:: :func:`numpy.random.lognormal`
 
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.lognormal(mean, sigma, size=size, dtype=dtype)
 
 
@@ -391,7 +391,7 @@ def logseries(p, size=None, dtype=int):
     .. seealso:: :func:`numpy.random.logseries`
 
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.logseries(p, size=size, dtype=dtype)
 
 
@@ -418,7 +418,7 @@ def negative_binomial(n, p, size=None, dtype=int):
     .. seealso::
         :func:`numpy.random.negative_binomial`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.negative_binomial(n, p, size=size, dtype=dtype)
 
 
@@ -475,7 +475,7 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore',
 
     """
     _util.experimental('cupy.random.multivariate_normal')
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     x = rs.multivariate_normal(mean, cov, size, check_valid, tol, method,
                                dtype)
     return x
@@ -499,7 +499,7 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     .. seealso:: :func:`numpy.random.normal`
 
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     if size is None and any(isinstance(arg, cupy.ndarray)
                             for arg in [scale, loc]):
         size = cupy.broadcast_arrays(loc, scale)[0].shape
@@ -531,7 +531,7 @@ def pareto(a, size=None, dtype=float):
 
     .. seealso:: :func:`numpy.random.pareto`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     x = rs.pareto(a, size, dtype)
     return x
 
@@ -565,7 +565,7 @@ def noncentral_chisquare(df, nonc, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.noncentral_chisquare`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.noncentral_chisquare(df, nonc, size=size, dtype=dtype)
 
 
@@ -592,7 +592,7 @@ def noncentral_f(dfnum, dfden, nonc, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.noncentral_f`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.noncentral_f(dfnum, dfden, nonc, size=size, dtype=dtype)
 
 
@@ -618,7 +618,7 @@ def poisson(lam=1.0, size=None, dtype=int):
 
     .. seealso:: :func:`numpy.random.poisson`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     x = rs.poisson(lam, size, dtype)
     return x
 
@@ -645,7 +645,7 @@ def power(a, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.power`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.power(a, size, dtype)
 
 
@@ -670,7 +670,7 @@ def rayleigh(scale=1.0, size=None, dtype=float):
 
     .. seealso:: :func:`numpy.random.rayleigh`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     x = rs.rayleigh(scale, size, dtype)
     return x
 
@@ -695,7 +695,7 @@ def standard_cauchy(size=None, dtype=float):
 
     .. seealso:: :func:`numpy.random.standard_cauchy`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     x = rs.standard_cauchy(size, dtype)
     return x
 
@@ -720,7 +720,7 @@ def standard_exponential(size=None, dtype=float):
 
     .. seealso:: :func:`numpy.random.standard_exponential`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.standard_exponential(size, dtype)
 
 
@@ -746,7 +746,7 @@ def standard_gamma(shape, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.standard_gamma`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.standard_gamma(shape, size, dtype)
 
 
@@ -793,7 +793,7 @@ def standard_t(df, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.standard_t`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.standard_t(df, size, dtype)
 
 
@@ -826,7 +826,7 @@ def triangular(left, mode, right, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.triangular`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.triangular(left, mode, right, size, dtype)
 
 
@@ -849,7 +849,7 @@ def uniform(low=0.0, high=1.0, size=None, dtype=float):
     .. seealso:: :func:`numpy.random.uniform`
 
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.uniform(low, high, size=size, dtype=dtype)
 
 
@@ -876,7 +876,7 @@ def vonmises(mu, kappa, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.vonmises`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.vonmises(mu, kappa, size=size, dtype=dtype)
 
 
@@ -904,7 +904,7 @@ def wald(mean, scale, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.wald`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.wald(mean, scale, size, dtype)
 
 
@@ -930,7 +930,7 @@ def weibull(a, size=None, dtype=float):
     .. seealso::
         :func:`numpy.random.weibull`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.weibull(a, size=size, dtype=dtype)
 
 
@@ -958,5 +958,5 @@ def zipf(a, size=None, dtype=int):
     .. seealso::
         :func:`numpy.random.zipf`
     """
-    rs = _random_state.get_random_state()
+    rs = _generator.get_random_state()
     return rs.zipf(a, size=size, dtype=dtype)

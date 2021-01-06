@@ -8,7 +8,7 @@ from libc.stdint cimport intptr_t, uint64_t, uint32_t
 import cupy
 from cupy.cuda cimport stream
 from cupy.core.core cimport ndarray
-from cupy.random._generator import init_curand, random_raw
+from cupy.random._generator_api import init_curand, random_raw
 
 # We need access to the sizes here, so this is why we have this header
 # in here instead of cupy backends

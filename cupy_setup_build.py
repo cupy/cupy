@@ -87,7 +87,7 @@ cuda_files = [
     'cupy.fft._callback',
     'cupy.lib._polynomial',
     'cupy.random._bit_generator',
-    'cupy.random._generator',
+    'cupy.random._generator_api',
     'cupy._util'
 ]
 
@@ -128,7 +128,7 @@ else:
     MODULES.append({
         'name': 'cuda',
         'file': cuda_files + [
-            ('cupy.random._generator',
+            ('cupy.random._generator_api',
              ['cupy/random/cupy_distributions.cu']),
         ],
         'include': [
@@ -269,7 +269,8 @@ if not use_hip:
     MODULES.append({
         'name': 'random',
         'file': [
-            ('cupy.random._generator', ['cupy/random/cupy_distributions.cu']),
+            ('cupy.random._generator_api',
+             ['cupy/random/cupy_distributions.cu']),
         ],
         'include': [
         ],

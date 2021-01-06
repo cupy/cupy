@@ -9,7 +9,7 @@ import pytest
 import cupy
 from cupy import core
 from cupy import cuda
-from cupy.random import _random_state
+from cupy.random import _generator
 from cupy import testing
 from cupy.testing import attr
 from cupy.testing import condition
@@ -84,7 +84,7 @@ class RandomGeneratorTestCase(unittest.TestCase):
 
     def setUp(self):
         self.__seed = testing.generate_seed()
-        self.rs = _random_state.RandomState(seed=self.__seed)
+        self.rs = _generator.RandomState(seed=self.__seed)
 
     def _get_generator_func(self, *args, **kwargs):
         assert isinstance(self.target_method, str), (
@@ -184,7 +184,7 @@ def _xp_random(xp, method_name):
 class TestRandomState(unittest.TestCase):
 
     def setUp(self):
-        self.rs = _random_state.RandomState(seed=testing.generate_seed())
+        self.rs = _generator.RandomState(seed=testing.generate_seed())
 
     def check_seed(self, seed):
         rs = self.rs
@@ -737,7 +737,7 @@ class TestStandardT(RandomGeneratorTestCase):
 class TestRandomSample(unittest.TestCase):
 
     def setUp(self):
-        self.rs = _random_state.RandomState(seed=testing.generate_seed())
+        self.rs = _generator.RandomState(seed=testing.generate_seed())
 
     def check_random_sample(self, dtype):
         vals = [self.rs.random_sample(self.size, dtype) for _ in range(10)]
@@ -772,7 +772,7 @@ class TestRandomSampleDistrib(unittest.TestCase):
 class TestRandAndRandN(unittest.TestCase):
 
     def setUp(self):
-        self.rs = _random_state.RandomState(seed=testing.generate_seed())
+        self.rs = _generator.RandomState(seed=testing.generate_seed())
 
     def test_rand_invalid_argument(self):
         with self.assertRaises(TypeError):
@@ -1104,7 +1104,7 @@ class TestChoiceMultinomial(unittest.TestCase):
 class TestChoiceFailure(unittest.TestCase):
 
     def setUp(self):
-        self.rs = _random_state.RandomState(seed=testing.generate_seed())
+        self.rs = _generator.RandomState(seed=testing.generate_seed())
 
     def test_choice_invalid_value(self):
         with self.assertRaises(ValueError):
@@ -1328,9 +1328,9 @@ class TestChoiceReplaceFalseFailure(unittest.TestCase):
 class TestResetStates(unittest.TestCase):
 
     def test_reset_states(self):
-        _random_state._random_states = 'dummy'
-        _random_state.reset_states()
-        assert {} == _random_state._random_states
+        _generator._random_states = 'dummy'
+        _generator.reset_states()
+        assert {} == _generator._random_states
 
 
 @testing.gpu
@@ -1338,22 +1338,22 @@ class TestGetRandomState(unittest.TestCase):
 
     def setUp(self):
         self.device_id = cuda.Device().id
-        self.rs_tmp = _random_state._random_states
+        self.rs_tmp = _generator._random_states
 
     def tearDown(self, *args):
-        _random_state._random_states = self.rs_tmp
+        _generator._random_states = self.rs_tmp
 
     def test_get_random_state_initialize(self):
-        _random_state._random_states = {}
-        rs = _random_state.get_random_state()
-        assert _random_state._random_states[self.device_id] == rs
+        _generator._random_states = {}
+        rs = _generator.get_random_state()
+        assert _generator._random_states[self.device_id] == rs
 
     def test_get_random_state_memoized(self):
-        _random_state._random_states = {self.device_id: 'expected',
-                                        self.device_id + 1: 'dummy'}
-        rs = _random_state.get_random_state()
-        assert 'expected' == _random_state._random_states[self.device_id]
-        assert 'dummy' == _random_state._random_states[self.device_id + 1]
+        _generator._random_states = {self.device_id: 'expected',
+                                     self.device_id + 1: 'dummy'}
+        rs = _generator.get_random_state()
+        assert 'expected' == _generator._random_states[self.device_id]
+        assert 'dummy' == _generator._random_states[self.device_id + 1]
         assert 'expected' == rs
 
 
@@ -1361,21 +1361,21 @@ class TestGetRandomState(unittest.TestCase):
 class TestSetRandomState(unittest.TestCase):
 
     def setUp(self):
-        self.rs_tmp = _random_state._random_states
+        self.rs_tmp = _generator._random_states
 
     def tearDown(self, *args):
-        _random_state._random_states = self.rs_tmp
+        _generator._random_states = self.rs_tmp
 
     def test_set_random_state(self):
-        rs = _random_state.RandomState()
-        _random_state.set_random_state(rs)
-        assert _random_state.get_random_state() is rs
+        rs = _generator.RandomState()
+        _generator.set_random_state(rs)
+        assert _generator.get_random_state() is rs
 
     def test_set_random_state_call_multiple_times(self):
-        _random_state.set_random_state(_random_state.RandomState())
-        rs = _random_state.RandomState()
-        _random_state.set_random_state(rs)
-        assert _random_state.get_random_state() is rs
+        _generator.set_random_state(_generator.RandomState())
+        rs = _generator.RandomState()
+        _generator.set_random_state(rs)
+        assert _generator.get_random_state() is rs
 
 
 @testing.gpu
@@ -1461,12 +1461,12 @@ class TestRandomStateThreadSafe(unittest.TestCase):
 class TestGetRandomState2(unittest.TestCase):
 
     def setUp(self):
-        self.rs_dict = _random_state._random_states
-        _random_state._random_states = {}
+        self.rs_dict = _generator._random_states
+        _generator._random_states = {}
         self.cupy_seed = os.getenv('CUPY_SEED')
 
     def tearDown(self, *args):
-        _random_state._random_states = self.rs_dict
+        _generator._random_states = self.rs_dict
         if self.cupy_seed is None:
             os.environ.pop('CUPY_SEED', None)
         else:
@@ -1480,7 +1480,7 @@ class TestGetRandomState2(unittest.TestCase):
         self._check_different(rvs0, rvs1)
 
     def test_get_random_state_with_cupy(self):
-        rvs0 = self._get_rvs(_random_state.RandomState(6))
+        rvs0 = self._get_rvs(_generator.RandomState(6))
 
         os.environ['CUPY_SEED'] = '6'
         rvs1 = self._get_rvs_reset()
@@ -1493,8 +1493,8 @@ class TestGetRandomState2(unittest.TestCase):
         return rvu, rvn
 
     def _get_rvs_reset(self):
-        _random_state.reset_states()
-        return self._get_rvs(_random_state.get_random_state())
+        _generator.reset_states()
+        return self._get_rvs(_generator.get_random_state())
 
     def _check_same(self, rvs0, rvs1):
         for rv0, rv1 in zip(rvs0, rvs1):
@@ -1510,13 +1510,13 @@ class TestCheckAndGetDtype(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     def test_float32_64_type(self, dtype):
-        assert _random_state._check_and_get_dtype(dtype) == numpy.dtype(dtype)
+        assert _generator._check_and_get_dtype(dtype) == numpy.dtype(dtype)
 
     def test_float16(self):
         with self.assertRaises(TypeError):
-            _random_state._check_and_get_dtype(numpy.float16)
+            _generator._check_and_get_dtype(numpy.float16)
 
     @testing.for_int_dtypes()
     def test_int_type(self, dtype):
         with self.assertRaises(TypeError):
-            _random_state._check_and_get_dtype(dtype)
+            _generator._check_and_get_dtype(dtype)
