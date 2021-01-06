@@ -31,15 +31,13 @@ class TestConvolveCorrelate(unittest.TestCase):
     tols = {np.float32: 1e-5, np.complex64: 1e-5,
             np.float16: 1e-3, 'default': 1e-10}
 
-    # TODO: support complex
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_convolve(self, xp, scp, dtype):
         return self._filter('convolve', dtype, xp, scp)
 
-    # TODO: support complex
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_correlate(self, xp, scp, dtype):
@@ -119,7 +117,7 @@ class TestOAConvolve(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestConvolveCorrelate2D(unittest.TestCase):
     def _filter(self, func, dtype, xp, scp):
-        if self.mode == 'full' and self.boundary != 'constant':
+        if self.mode == 'full' and self.boundary != 'fill':
             # See https://github.com/scipy/scipy/issues/12685
             raise unittest.SkipTest('broken in scipy')
         in1 = testing.shaped_random(self.size1, xp, dtype)
@@ -127,18 +125,16 @@ class TestConvolveCorrelate2D(unittest.TestCase):
         return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary,
                                          self.fillvalue)
 
-    tols = {np.float32: 1e-5, np.complex64: 1e-5,
+    tols = {np.float32: 5e-4, np.complex64: 5e-4,
             np.float16: 1e-3, 'default': 1e-10}
 
-    # TODO: support complex
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_convolve2d(self, xp, scp, dtype):
         return self._filter('convolve2d', dtype, xp, scp)
 
-    # TODO: support complex
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
                                  accept_error=ValueError)
     def test_correlate2d(self, xp, scp, dtype):
@@ -198,8 +194,7 @@ class TestWiener(unittest.TestCase):
     tols = {np.float32: 1e-5, np.complex64: 1e-5,
             np.float16: 1e-3, 'default': 1e-10}
 
-    # TODO: support complex
-    @testing.for_all_dtypes(no_complex=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp')
     def test_wiener(self, xp, scp, dtype):
         im = testing.shaped_random(self.im, xp, dtype)
@@ -209,10 +204,11 @@ class TestWiener(unittest.TestCase):
         noise = (testing.shaped_random(self.im, xp, dtype)
                  if self.noise else None)
         out = scp.signal.wiener(im, mysize, noise)
-        # Always returns float64 data in both scipy and cupyx.scipy
-        # Per-datatype tolerances are based on the output data type
-        # But quality is based on input data type (if floating point)
-        assert out.dtype == np.float64
+        # Always returns float64 or complex128 data  in both scipy and
+        # cupyx.scipy. Per-datatype tolerances are based on the output
+        # data type but quality is based on input data type (if floating point)
+        assert out.dtype == (np.complex128 if out.dtype.kind == 'c' else
+                             np.float64)
         return out.astype(dtype, copy=False) if dtype in self.tols else out
 
 
