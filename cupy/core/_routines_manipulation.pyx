@@ -574,22 +574,24 @@ cpdef ndarray concatenate_method(tup, int axis, ndarray out=None):
     if ndim == -1:
         raise ValueError('Cannot concatenate from empty tuple')
 
-    if not have_same_types:
-        dtype = functools.reduce(numpy.promote_types,
-                                 set([a.dtype for a in arrays]))
-
     shape_t = tuple(shape)
     if out is None:
+        if not have_same_types:
+            dtype = functools.reduce(numpy.promote_types,
+                                     set([a.dtype for a in arrays]))
         out = ndarray(shape_t, dtype=dtype)
     else:
         if len(out.shape) != len(shape_t):
             raise ValueError('Output array has wrong dimensionality')
         if out.shape != shape_t:
             raise ValueError('Output array is the wrong shape')
-        if out.dtype.kind != dtype.kind:
-            raise TypeError('Cannot cast scalar from dtype(\'{}\')'
-                            ' to dtype(\'{}\') according to the'
-                            ' rule \'same_kind\''.format(dtype, out.dtype))
+        if not (have_same_types and out.dtype.kind == dtype.kind):
+            for dtype in set([a.dtype for a in arrays]):
+                if not numpy.can_cast(dtype, out.dtype, 'same_kind'):
+                    raise TypeError(
+                        'Cannot cast scalar from dtype(\'{}\')'
+                        ' to dtype(\'{}\') according to the'
+                        ' rule \'same_kind\''.format(dtype, out.dtype))
 
     return _concatenate(arrays, axis, shape_t, out)
 
