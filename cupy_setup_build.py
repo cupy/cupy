@@ -260,6 +260,22 @@ if not use_hip:
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
     })
+
+    MODULES.append({
+        'name': 'random',
+        'file': [
+            'cupy.random._bit_generator',
+            ('cupy.random._generator_api',
+             ['cupy/random/cupy_distributions.cu']),
+        ],
+        'include': [
+        ],
+        'libraries': [
+            'cudart',
+            'curand',
+        ],
+    })
+
 else:
     MODULES.append({
         'name': 'cub',
@@ -469,7 +485,7 @@ def preconfigure_modules(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
-        elif (module['name'] in ('thrust', 'cub')
+        elif (module['name'] in ('thrust', 'cub', 'random')
                 and (nvcc_path is None and hipcc_path is None)):
             installed = True
             cmd = 'nvcc' if not use_hip else 'hipcc'
