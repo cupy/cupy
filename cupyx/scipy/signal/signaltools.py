@@ -201,7 +201,7 @@ def choose_conv_method(in1, in2, mode='full', measure=False):
 
     Returns:
         str: A string indicating which convolution method is fastest,
-        either ``direct`` or ``fft1``.
+            either ``direct`` or ``fft1``.
         dict: A dictionary containing the times (in seconds) needed for each
             method. This is only returned if ``measure=True``.
 
