@@ -101,6 +101,7 @@ cupy_package_data = [
     'cupy/cuda/cufft.pxd',  # for cuFFT callback
     'cupy/cuda/cufft.pyx',  # for cuFFT callback
     'cupy/random/cupy_distributions.cu',
+    'cupy/random/cupy_distributions.cuh',
 ] + [
     x for x in glob.glob('cupy/core/include/cupy/**', recursive=True)
     if os.path.isfile(x)
