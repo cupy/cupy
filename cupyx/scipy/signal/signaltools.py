@@ -511,7 +511,6 @@ def medfilt(volume, kernel_size=None):
     """
     if volume.dtype.kind == 'c':
         # scipy doesn't support complex
-        # (and filters.rank_filter raise TypeError)
         raise ValueError("complex types not supported")
     # output is forced to float64 to match scipy
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
