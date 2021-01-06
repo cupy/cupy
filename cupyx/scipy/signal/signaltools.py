@@ -1,11 +1,14 @@
 import warnings
+import math
 
 import cupy
 from cupy.core import internal
 
+import cupyx
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import filters
 from cupyx.scipy.signal import _signaltools_core as _st_core
+from cupyx.scipy.signal._convolve_choose import COEFFICIENTS
 
 
 def convolve(in1, in2, mode='full', method='auto'):
@@ -181,27 +184,91 @@ def fftconvolve(in1, in2, mode='full', axes=None):
     return _st_core._apply_conv_mode(out, in1.shape, in2.shape, mode, axes)
 
 
-def choose_conv_method(in1, in2, mode='full'):
+def choose_conv_method(in1, in2, mode='full', measure=False):
     """Find the fastest convolution/correlation method.
+
+    This supports timing the convolution to adapt the value of ``method`` to a
+    particular set of inputs and/or hardware.
 
     Args:
         in1 (cupy.ndarray): first input.
         in2 (cupy.ndarray): second input.
         mode (str, optional): ``valid``, ``same``, ``full``.
+        measure (bool, optional): If ``True``, run and time the convolution of
+            ``in1`` and ``in2`` with both methods and return the fastest. If
+            ``False`` (default), predict the fastest method using precomputed
+            values.
 
     Returns:
         str: A string indicating which convolution method is fastest,
         either ``direct`` or ``fft1``.
+        dict: A dictionary containing the times (in seconds) needed for each
+            method. This is only returned if ``measure=True``.
 
     .. warning::
-        This function currently doesn't support measure option,
-        nor multidimensional inputs. It does not guarantee
-        the compatibility of the return value to SciPy's one.
+        This function does not guarantee the compatibility of the return value
+        to SciPy's one.
 
     .. seealso:: :func:`scipy.signal.choose_conv_method`
-
+    .. seealso:: :func:`cupyx.scipy.signal.convolve`
+    .. seealso:: :func:`cupyx.scipy.signal.correlate`
     """
-    return cupy._math.misc._choose_conv_method(in1, in2, mode)
+    if measure:
+        # Actually measure the times
+        times = {}
+        for method in ('fft', 'direct'):
+            def _timeit(repeats):
+                for _ in range(repeats):
+                    convolve(in1, in2, mode, method)
+            _timeit(1)
+            for p in range(0, 10):
+                n = 10**p
+                time = cupyx.time.repeat(
+                    _timeit, (n,), 1, n_warmup=0).cpu_times.min()
+                if time >= 5e-3 / 10:
+                    break
+            if time < 1:  # second
+                time = cupyx.time.repeat(
+                    _timeit, (n*10,), 3, n_warmup=1).cpu_times.min()
+            times[method] = time
+        chosen_method = 'fft' if times['fft'] < times['direct'] else 'direct'
+        return chosen_method, times
+
+    # Direct method doesn't support smaller array having more than 2 GiB items
+    if min(in1.size, in2.size) >= (1 << 31):
+        return 'fft'
+
+    # For integer input, catch when more precision required than float provides
+    # (representing an integer as float loses precision if larger than 2**52)
+    if in1.dtype.kind in 'ui' or in2.dtype.kind in 'ui':
+        max_value = abs(in1).max() * abs(in2).max() * min(in1.size, in2.size)
+        if max_value > 2**cupy.finfo('float').nmant - 1:
+            return 'direct'
+    if in1.dtype.kind in 'b' and in2.dtype.kind in 'b':
+        return 'direct'
+
+    # Try to guess which will be faster
+    return 'fft' if _fftconv_faster(in1, in2, mode) else 'direct'
+
+
+def _fftconv_faster(in1, in2, mode, coeffs=None):
+    """
+    .. seealso:: :func:`scipy.signal.signaltools._fftconv_faster`
+    """
+    # This uses a different approach for determining which is expected to be
+    # faster than scipy does. This still does use precomputed values for it.
+    if in1.size < in2.size:
+        in1, in2 = in2, in1
+    if coeffs is None:
+        coeffs = COEFFICIENTS
+    coeffs = coeffs[mode]
+    dtype = cupy.result_type(in1, in2)
+    if dtype.name not in coeffs:
+        # don't have data for that dtype, use defaults for each type
+        return 'direct' if dtype.kind in 'biu' else 'fft'
+    coeffs = coeffs[dtype.name]
+    a, b, c = coeffs[min(len(coeffs)-1, in1.ndim-1)]
+    return in2.size < b * math.exp(a * in1.size) + c
 
 
 def oaconvolve(in1, in2, mode="full", axes=None):
