@@ -170,9 +170,10 @@ def get_compiler_setting(use_hip):
     # Note that starting CuPy v8 we no longer use CUB_PATH
 
     # for <cupy/complex.cuh>
-    global cupy_header
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                '../cupy/core/include')
+    global _jitify_path
+    _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:
         cuda_cub_path = os.path.join(cuda_path, 'include', 'cub')
         if not os.path.exists(cuda_cub_path):
@@ -279,9 +280,9 @@ _thrust_version = None
 _cudnn_version = None
 _nccl_version = None
 _cutensor_version = None
-cupy_header = None
 _cub_path = None
 _cub_version = None
+_jitify_path = None
 _jitify_version = None
 _compute_capabilities = None
 
@@ -623,7 +624,7 @@ def check_jitify_version(compiler, settings):
     global _jitify_version
 
     try:
-        cupy_jitify_include = os.path.join(cupy_header, 'cupy/jitify')
+        cupy_jitify_include = _jitify_path
         # Unfortunately Jitify does not have any identifiable name (branch,
         # tag, etc), so we must use the commit here
         a = subprocess.run(' '.join(['git', 'rev-parse', '--short', 'HEAD']),
