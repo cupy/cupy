@@ -205,7 +205,7 @@ class TestJoin(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
-    def test_concatenate_out_invalid_dtype(self, xp, dtype1, dtype2):
+    def test_concatenate_out_different_dtype(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((3, 4), xp, dtype1)
         b = testing.shaped_arange((3, 4), xp, dtype1)
         out = xp.zeros((6, 4), dtype=dtype2)
