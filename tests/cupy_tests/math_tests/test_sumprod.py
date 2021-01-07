@@ -894,6 +894,11 @@ class TestDiff(unittest.TestCase):
 # This class compares CUB results against NumPy's
 @testing.parameterize(*testing.product_dict(
     testing.product({
+        'shape': [()],
+        'axis': [None, ()],
+        'spacing': [(), (1.2,)],
+    })
+    + testing.product({
         'shape': [(33,)],
         'axis': [None, 0, -1, (0,)],
         'spacing': [(), (1.2,), 'sequence of int', 'arrays'],
