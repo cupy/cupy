@@ -1,5 +1,4 @@
 import numpy
-import numpy.core.numeric as nx
 
 import cupy
 from cupy.core import _routines_math as _math
@@ -338,11 +337,7 @@ def gradient(f, *varargs, axis=None, edge_order=1):
     """
     f = cupy.asanyarray(f)
     ndim = f.ndim  # number of dimensions
-
-    if axis is None:
-        axes = tuple(range(ndim))
-    else:
-        axes = nx.normalize_axis_tuple(axis, ndim)
+    axes = internal._normalize_axis_indices(axis, ndim, sort_axes=False)
 
     len_axes = len(axes)
     n = len(varargs)

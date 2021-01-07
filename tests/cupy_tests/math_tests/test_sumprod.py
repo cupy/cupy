@@ -914,8 +914,7 @@ class TestGradient(unittest.TestCase):
         if axis is None:
             normalized_axes = tuple(range(x.ndim))
         else:
-            normalized_axes = numpy.core.numeric.normalize_axis_tuple(
-                axis, x.ndim)
+            normalized_axes = tuple(ax % x.ndim for ax in axis)
         if spacing == 'sequence of int':
             # one scalar per axis
             spacing = tuple((ax + 1) / x.ndim for ax in normalized_axes)
