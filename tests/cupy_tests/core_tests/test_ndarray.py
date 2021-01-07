@@ -452,8 +452,9 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (0,), 'indices': (0,)},
-    {'shape': (0,), 'indices': (0, 1)},
+    {'shape': (0,), 'indices': (0,), 'axis': None},
+    {'shape': (0,), 'indices': (0, 1), 'axis': None},
+    {'shape': (3, 0), 'indices': (2,), 'axis': 0},
 )
 @testing.gpu
 class TestZeroSizedNdarrayTake(unittest.TestCase):
@@ -462,7 +463,7 @@ class TestZeroSizedNdarrayTake(unittest.TestCase):
     def test_output_type_mismatch(self, xp):
         a = testing.shaped_arange(self.shape, xp, numpy.int32)
         i = testing.shaped_arange(self.indices, xp, numpy.int32)
-        return wrap_take(a, i)
+        return wrap_take(a, i, axis=self.axis)
 
 
 @testing.parameterize(
