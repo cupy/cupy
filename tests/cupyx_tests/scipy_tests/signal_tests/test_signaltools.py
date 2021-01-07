@@ -87,7 +87,7 @@ class TestFFTConvolve(unittest.TestCase):
     'mode': ['full', 'same', 'valid'],
 }))
 @testing.gpu
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.4')
 class TestOAConvolve(unittest.TestCase):
     tols = {np.float32: 1e-3, np.complex64: 1e-3,
             np.float16: 1e-3, 'default': 1e-8}
