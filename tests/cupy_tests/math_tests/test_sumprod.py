@@ -896,13 +896,14 @@ class TestDiff(unittest.TestCase):
     testing.product({
         'shape': [(33,)],
         'axis': [None, 0, -1, (0,)],
+        'spacing': [(), (1.2,), 'sequence of int', 'arrays'],
     })
     + testing.product({
         'shape': [(10, 20), (10, 20, 30)],
         'axis': [None, 0, -1, (0, -1), (1, 0)],
+        'spacing': [(), (1.2,), 'sequence of int', 'arrays', 'mixed'],
     }),
     testing.product({
-        'spacing': ((), (1.2,), 'sequence of int', 'arrays', 'mixed'),
         'edge_order': [1, 2],
     }),
 ))
