@@ -123,7 +123,7 @@ class TestEigsh:
     n = 30
     density = 0.33
     tol = {numpy.float32: 1e-5, numpy.complex64: 1e-5, 'default': 1e-12}
-    res_tol = {'f': 1e-5, 'd': 1e-12}
+    res_tol = {'f': 1e-5, 'd': 1e-12, 'F': 1e-2}
 
     def _make_matrix(self, dtype, xp):
         shape = (self.n, self.n)
@@ -229,6 +229,9 @@ class TestSvds:
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
     def test_dense(self, dtype, xp, sp):
+        if (dtype == numpy.complex64
+                and numpy.lib.NumpyVersion(scipy.__version__) < '1.4.0'):
+            pytest.skip('Complex types have tolerance issues in scipy<1.4')
         a = self._make_matrix(dtype, xp)
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
