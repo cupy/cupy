@@ -1,0 +1,107 @@
+import argparse
+import sys
+
+import gen
+
+
+# Opaque pointers
+
+def transpile_opaques(opaques):
+    if opaques != []:
+        return '\n\n' + '\n'.join('typedef void* {};'.format(o.name) for o in opaques)
+    else:
+        return ''
+
+
+# Enumerators
+
+def is_status_enum(env, enum):
+    status_enum = gen.environment_status_enum(env)
+    return enum.name == status_enum
+
+
+def transpile_status_enum(env, enum):
+    success_name, success_expr = gen.environment_status_enum_success(env)
+    code = []
+    code.append('typedef enum {')
+    code.append('  {} = {}'.format(success_name, success_expr))
+    code.append('}} {};'.format(enum.name))
+    return '\n'.join(code)
+
+
+def transpile_enums(env, enums):
+    code = []
+    if enums != []:
+        code.append('')
+        code.append('')
+        for e in enums:
+            if is_status_enum(env, e):
+                code.append(transpile_status_enum(env, e))
+            else:
+                code.append('typedef enum {{}} {};'.format(e.name))
+        return '\n'.join(code)
+    else:
+        return ''
+
+
+
+# Functions
+
+def transpile_functions(env, directives):
+    status_type = gen.environment_status_enum(env)
+    status_success, _ = gen.environment_status_enum_success(env)
+    code = []
+    code.append('')
+    for d in directives:
+        if gen.is_function_directive(d):
+            head = gen.directive_head(d)
+            decls, removed = gen.query_func_decls(head, env)
+            if removed:
+                continue
+            for decl in decls:
+                code.append('')
+                code.append('{} {}(...) {{'.format(status_type, decl.name))
+                code.append('  return {};'.format(status_success))
+                code.append('}')
+    return '\n'.join(code)
+
+
+def main(args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'directive', type=str,
+        help='Path to directive file for library to generate')
+    parser.add_argument(
+        'template', type=str,
+        help='Path to template file for library to generate')
+    args = parser.parse_args(args)
+
+    directives = gen.read_directives(args.directive)
+
+    env = gen.make_environment(directives)
+
+    template = gen.read_template(args.template)
+
+    # Opaque pointers
+    opaques = gen.environment_opaques(env)
+    opaque_code = transpile_opaques(opaques)
+
+    # Enumerators
+    enums = gen.environment_enums(env)
+    enum_code = transpile_enums(env, enums)
+
+    # Functions
+    function_code = transpile_functions(env, directives)
+
+    # Include guard name
+    lib_name = gen.environment_lib_name(env)
+    include_guard_name = 'INCLUDE_GUARD_STUB_CUPY_{}_H'.format(lib_name.upper())
+
+    code = template.format(
+        include_guard_name=include_guard_name, opaque=opaque_code,
+        enum=enum_code, function=function_code)
+    print(code, end='')
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

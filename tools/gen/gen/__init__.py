@@ -487,6 +487,21 @@ def environment_enums(env):
     return [n for n in env[3] if lib_name in str(n.coord)]
 
 
+def environment_status_enum(env):
+    lib_name = environment_lib_name(env)
+    return lib_name + 'Status_t'
+
+
+def environment_status_enum_success(env):
+    status_enum = environment_status_enum(env)
+    for e in environment_enums(env):
+        if e.name == status_enum:
+            for e1 in e.type.type.values.enumerators:
+                if 'STATUS_SUCCESS' in e1.name:
+                    return e1.name, transpile_expression(e1.value)
+    assert False
+
+
 def _environment_funcs(env):
     assert env[0] == 'environment'
     return env[4]
@@ -495,6 +510,11 @@ def _environment_funcs(env):
 def _environment_patterns(env):
     assert env[0] == 'environment'
     return env[5]
+
+
+def environment_lib_name(env):
+    assert env[0] == 'environment'
+    return env[6]
 
 
 def is_special_type(name, env):

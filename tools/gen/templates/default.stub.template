@@ -1,0 +1,11 @@
+// This file is a stub header file for Read the Docs. It was automatically
+// generated. Do not modify it directly.
+
+#ifndef {include_guard_name}
+#define {include_guard_name}
+
+extern "C" {{{opaque}{enum}{function}
+
+}}  // extern "C"
+
+#endif  // {include_guard_name}
