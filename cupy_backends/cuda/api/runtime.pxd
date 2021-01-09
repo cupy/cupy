@@ -674,12 +674,14 @@ cpdef intptr_t malloc3DArray(intptr_t desc, size_t width, size_t height,
                              size_t depth, unsigned int flags=*) except? 0
 cpdef intptr_t mallocArray(intptr_t desc, size_t width, size_t height,
                            unsigned int flags=*) except? 0
+cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
 cpdef free(intptr_t ptr)
 cpdef freeHost(intptr_t ptr)
 cpdef freeArray(intptr_t ptr)
+cpdef freeAsync(intptr_t ptr, intptr_t stream)
 cpdef memGetInfo()
 cpdef memcpy(intptr_t dst, intptr_t src, size_t size, int kind)
 cpdef memcpyAsync(intptr_t dst, intptr_t src, size_t size, int kind,

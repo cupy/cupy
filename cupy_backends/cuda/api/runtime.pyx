@@ -114,12 +114,14 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
                           Extent extent, unsigned int flags)
     int cudaMallocArray(Array* array, const ChannelFormatDesc* desc,
                         size_t width, size_t height, unsigned int flags)
+    int cudaMallocAsync(void**, size_t, driver.Stream)
     int cudaHostAlloc(void** ptr, size_t size, unsigned int flags)
     int cudaHostRegister(void *ptr, size_t size, unsigned int flags)
     int cudaHostUnregister(void *ptr)
     int cudaFree(void* devPtr)
     int cudaFreeHost(void* ptr)
     int cudaFreeArray(Array array)
+    int cudaFreeAsync(void*, driver.Stream)
     int cudaMemGetInfo(size_t* free, size_t* total)
     int cudaMemcpy(void* dst, const void* src, size_t count,
                    MemoryKind kind)
@@ -585,6 +587,14 @@ cpdef intptr_t mallocArray(intptr_t descPtr, size_t width, size_t height,
     return <intptr_t>ptr
 
 
+cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
+    cdef void* ptr
+    with nogil:
+        status = cudaMallocAsync(&ptr, size, <driver.Stream>stream)
+    check_status(status)
+    return <intptr_t>ptr
+
+
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0:
     cdef void* ptr
     with nogil:
@@ -620,6 +630,12 @@ cpdef freeHost(intptr_t ptr):
 cpdef freeArray(intptr_t ptr):
     with nogil:
         status = cudaFreeArray(<Array>ptr)
+    check_status(status)
+
+
+cpdef freeAsync(intptr_t ptr, intptr_t stream):
+    with nogil:
+        status = cudaFreeAsync(<void*>ptr, <driver.Stream>stream)
     check_status(status)
 
 

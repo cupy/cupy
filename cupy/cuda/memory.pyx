@@ -105,6 +105,30 @@ cdef class Memory(BaseMemory):
             runtime.free(self.ptr)
 
 
+@cython.no_gc
+cdef class MemoryAsync(BaseMemory):
+    """Memory allocation on a CUDA device.
+
+    This class provides an RAII interface of the CUDA memory allocation.
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+        stream (intptr_t): Pointer to the stream.
+    """
+
+    def __init__(self, size_t size, intptr_t stream):
+        self.size = size
+        self.device_id = device.get_device_id()
+        self.ptr = 0
+        self.stream = stream
+        if size > 0:
+            self.ptr = runtime.mallocAsync(size, stream)
+
+    def __dealloc__(self):
+        if self.ptr:
+            runtime.freeAsync(self.ptr, self.stream)
+
+
 cdef class UnownedMemory(BaseMemory):
     """CUDA memory that is not owned by CuPy.
 
@@ -519,6 +543,14 @@ cdef class MemoryPointer:
 # cpdef because unit-tested
 cpdef MemoryPointer _malloc(size_t size):
     mem = Memory(size)
+    return MemoryPointer(mem, 0)
+
+
+cpdef MemoryPointer malloc_async(size_t size):
+    """TODO: write docstring"""
+    cdef intptr_t stream_ptr
+    stream_ptr = stream_module.get_current_stream_ptr()
+    mem = MemoryAsync(size, stream_ptr)
     return MemoryPointer(mem, 0)
 
 
