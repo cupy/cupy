@@ -19,7 +19,6 @@ from libc.stdint cimport intptr_t
 from libcpp cimport algorithm
 
 from cupy.cuda cimport device
-from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory_hook
 from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport runtime
@@ -121,12 +120,30 @@ cdef class MemoryAsync(BaseMemory):
         self.device_id = device.get_device_id()
         self.ptr = 0
         self.stream = stream
-        if size > 0:
+        if self.is_async_alloc_supported() and size > 0:
             self.ptr = runtime.mallocAsync(size, stream)
 
     def __dealloc__(self):
         if self.ptr:
             runtime.freeAsync(self.ptr, self.stream)
+
+    cdef inline bint is_async_alloc_supported(self) except*:
+        cdef list support
+        cdef bint is_supported
+
+        if not hasattr(_thread_local, 'device_support_async_alloc'):
+            # "None" for uninitialized
+            support = [None for i in range(runtime.getDeviceCount())]
+            _thread_local.device_support_async_alloc = support
+        else:
+            support = _thread_local.device_support_async_alloc
+        if support[self.device_id] is None:
+            is_supported = runtime.deviceGetAttribute(
+                runtime.cudaDevAttrMemoryPoolsSupported, self.device_id)
+            support[self.device_id] = is_supported
+        else:
+            is_supported = support[self.device_id]
+        return is_supported
 
 
 cdef class UnownedMemory(BaseMemory):
@@ -193,15 +210,15 @@ cdef class ManagedMemory(BaseMemory):
         runtime.memPrefetchAsync(self.ptr, self.size, self.device_id,
                                  stream.ptr)
 
-    def advise(self, int advise, device_mod.Device device):
+    def advise(self, int advise, device.Device dev):
         """(experimental) Advise about the usage of this memory.
 
         Args:
             advics (int): Advise to be applied for this memory.
-            device (cupy.cuda.Device): Device to apply the advice for.
+            dev (cupy.cuda.Device): Device to apply the advice for.
 
         """
-        runtime.memAdvise(self.ptr, self.size, advise, device.id)
+        runtime.memAdvise(self.ptr, self.size, advise, dev.id)
 
     def __dealloc__(self):
         if self.ptr:
@@ -547,7 +564,7 @@ cpdef MemoryPointer _malloc(size_t size):
 
 
 cpdef MemoryPointer malloc_async(size_t size):
-    """TODO: write docstring"""
+    """Stream Ordered Memory Allocator"""
     cdef intptr_t stream_ptr
     stream_ptr = stream_module.get_current_stream_ptr()
     mem = MemoryAsync(size, stream_ptr)
