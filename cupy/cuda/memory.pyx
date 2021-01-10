@@ -144,8 +144,15 @@ cdef class MemoryAsync(BaseMemory):
         self.size = size
         self.device_id = device.get_device_id()
         self.ptr = 0
+        # TODO(leofang): it's unclear from the documentation if CUDA is ok with
+        # the stream being destroyed before the memory is freed or not. If not,
+        # we will need to hold a reference to the associated Stream, not just
+        # its pointer, to ensure lifetime.
         self.stream = stream
-        if is_async_alloc_supported(self.device_id) and size > 0:
+        if not is_async_alloc_supported(self.device_id):
+            raise RuntimeError('Device {} does not support '
+                               'malloc_async'.format(self.device_id))
+        if size > 0:
             self.ptr = runtime.mallocAsync(size, stream)
 
     def __dealloc__(self):
@@ -571,7 +578,33 @@ cpdef MemoryPointer _malloc(size_t size):
 
 
 cpdef MemoryPointer malloc_async(size_t size):
-    """Stream Ordered Memory Allocator"""
+    """(Experimental) Allocate memory from Stream Ordered Memory Allocator.
+
+    This method can be used as a CuPy memory allocator. The simplest way to
+    use CUDA's Stream Ordered Memory Allocator as the default allocator is
+    the following code::
+
+        set_allocator(malloc_async)
+
+    Using this feature requires CUDA >= 11.2 with a supported GPU and platform.
+    If it is not supported, an error will be raised.
+
+    The current CuPy stream is used to allocate/free the memory.
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+
+    Returns:
+        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+
+    .. warning::
+        This feature is currently experimental and subject to change.
+
+    .. seealso:: `Stream Ordered Memory Allocator`_
+
+    .. _Stream Ordered Memory Allocator:
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY__POOLS.html
+    """
     cdef intptr_t stream_ptr
     stream_ptr = stream_module.get_current_stream_ptr()
     mem = MemoryAsync(size, stream_ptr)
