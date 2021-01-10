@@ -589,6 +589,8 @@ cpdef intptr_t mallocArray(intptr_t descPtr, size_t width, size_t height,
 
 cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
     cdef void* ptr
+    IF CUDA_VERSION < 11020:
+        raise RuntimeError('mallocAsync is supported since CUDA 11.2')
     with nogil:
         status = cudaMallocAsync(&ptr, size, <driver.Stream>stream)
     check_status(status)
@@ -634,6 +636,8 @@ cpdef freeArray(intptr_t ptr):
 
 
 cpdef freeAsync(intptr_t ptr, intptr_t stream):
+    IF CUDA_VERSION < 11020:
+        raise RuntimeError('freeAsync is supported since CUDA 11.2')
     with nogil:
         status = cudaFreeAsync(<void*>ptr, <driver.Stream>stream)
     check_status(status)
