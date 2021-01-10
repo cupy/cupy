@@ -104,6 +104,25 @@ cdef class Memory(BaseMemory):
             runtime.free(self.ptr)
 
 
+cdef inline bint is_async_alloc_supported(int device_id) except*:
+    cdef list support
+    cdef bint is_supported
+
+    if not hasattr(_thread_local, 'device_support_async_alloc'):
+        # "None" for uninitialized
+        support = [None for i in range(runtime.getDeviceCount())]
+        _thread_local.device_support_async_alloc = support
+    else:
+        support = _thread_local.device_support_async_alloc
+    if support[device_id] is None:
+        is_supported = runtime.deviceGetAttribute(
+            runtime.cudaDevAttrMemoryPoolsSupported, device_id)
+        support[device_id] = is_supported
+    else:
+        is_supported = support[device_id]
+    return is_supported
+
+
 @cython.no_gc
 cdef class MemoryAsync(BaseMemory):
     """Memory allocation on a CUDA device.
@@ -120,30 +139,12 @@ cdef class MemoryAsync(BaseMemory):
         self.device_id = device.get_device_id()
         self.ptr = 0
         self.stream = stream
-        if self.is_async_alloc_supported() and size > 0:
+        if is_async_alloc_supported(self.device_id) and size > 0:
             self.ptr = runtime.mallocAsync(size, stream)
 
     def __dealloc__(self):
         if self.ptr:
             runtime.freeAsync(self.ptr, self.stream)
-
-    cdef inline bint is_async_alloc_supported(self) except*:
-        cdef list support
-        cdef bint is_supported
-
-        if not hasattr(_thread_local, 'device_support_async_alloc'):
-            # "None" for uninitialized
-            support = [None for i in range(runtime.getDeviceCount())]
-            _thread_local.device_support_async_alloc = support
-        else:
-            support = _thread_local.device_support_async_alloc
-        if support[self.device_id] is None:
-            is_supported = runtime.deviceGetAttribute(
-                runtime.cudaDevAttrMemoryPoolsSupported, self.device_id)
-            support[self.device_id] = is_supported
-        else:
-            is_supported = support[self.device_id]
-        return is_supported
 
 
 cdef class UnownedMemory(BaseMemory):
