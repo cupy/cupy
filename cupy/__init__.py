@@ -880,4 +880,6 @@ def show_config():
     _sys.stdout.flush()
 
 
+s = cuda.Stream()
+s.use()
 cuda.set_allocator(cuda.memory.malloc_async)

@@ -106,7 +106,7 @@ cdef extern from *:
         # We can't use IF in the middle of structs declaration
         # to add or ignore fields in compile time so we have to
         # replicate the struct definition
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             cudaUUID     uuid
             char         luid[8]
@@ -188,7 +188,7 @@ cdef extern from *:
             int          accessPolicyMaxWindowSize  # CUDA 11.0 field
             size_t       reservedSharedMemPerBlock  # CUDA 11.0 field
     ELIF CUDA_VERSION >= 10000:
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             cudaUUID     uuid
             char         luid[8]
@@ -266,7 +266,7 @@ cdef extern from *:
             int          pageableMemoryAccessUsesHostPageTables
             int          directManagedMemAccessFromHost
     ELIF CUDA_VERSION == 9020:
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             size_t       totalGlobalMem
             size_t       sharedMemPerBlock
@@ -365,7 +365,7 @@ cdef extern from *:
             unsigned has3dGrid
             unsigned hasDynamicParallelism
 
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char name[256]
             size_t totalGlobalMem
             size_t sharedMemPerBlock
@@ -414,7 +414,7 @@ cdef extern from *:
             int cooperativeMultiDeviceUnmatchedSharedMem
             int isLargeBar
     ELSE:  # for RTD
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
 
 
@@ -570,6 +570,15 @@ cpdef enum:
     cudaDevAttrHostRegisterSupported = 99
     cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
     cudaDevAttrDirectManagedMemAccessFromHost = 101
+    # added since CUDA 11.0
+    cudaDevAttrMaxBlocksPerMultiprocessor = 106
+    cudaDevAttrReservedSharedMemoryPerBlock = 111
+    # added since CUDA 11.1
+    cudaDevAttrSparseCudaArraySupported = 112
+    cudaDevAttrHostRegisterReadOnlySupported = 113
+    # added since CUDA 11.2
+    cudaDevAttrMaxTimelineSemaphoreInteropSupported = 114
+    cudaDevAttrMemoryPoolsSupported = 115
 
     # CUDA Limits
     cudaLimitStackSize = 0x00
