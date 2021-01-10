@@ -878,8 +878,3 @@ def show_config():
     """Prints the current runtime configuration to standard output."""
     _sys.stdout.write(str(_cupyx.get_runtime_info()))
     _sys.stdout.flush()
-
-
-s = cuda.Stream()
-s.use()
-cuda.set_allocator(cuda.memory.malloc_async)

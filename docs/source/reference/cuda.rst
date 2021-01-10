@@ -21,10 +21,13 @@ Memory management
    cupy.get_default_memory_pool
    cupy.get_default_pinned_memory_pool
    cupy.cuda.Memory
+   cupy.cuda.MemoryAsync
    cupy.cuda.UnownedMemory
    cupy.cuda.PinnedMemory
    cupy.cuda.MemoryPointer
    cupy.cuda.PinnedMemoryPointer
+   cupy.cuda.malloc_managed
+   cupy.cuda.malloc_async
    cupy.cuda.alloc
    cupy.cuda.alloc_pinned_memory
    cupy.cuda.get_allocator
