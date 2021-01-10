@@ -70,7 +70,13 @@ cdef class BaseMemory:
         ~Memory.size (int): Size of the memory allocation in bytes.
         ~Memory.device (~cupy.cuda.Device): Device whose memory the pointer
             refers to.
+        ~Memory.stream (intptr_t): Pointer to the stream that the memory was
+            allocated on. Default to -1 unless the memory is allocated from
+            CUDA's Stream Ordered Memory Allocator.
     """
+
+    def __cinit__(self):
+        self.stream = -1
 
     def __int__(self):
         """Returns the pointer value to the head of the allocation."""
