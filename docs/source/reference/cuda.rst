@@ -144,12 +144,14 @@ to use these functions.
    cupy.cuda.runtime.mallocManaged
    cupy.cuda.runtime.malloc3DArray
    cupy.cuda.runtime.mallocArray
+   cupy.cuda.runtime.mallocAsync
    cupy.cuda.runtime.hostAlloc
    cupy.cuda.runtime.hostRegister
    cupy.cuda.runtime.hostUnregister
    cupy.cuda.runtime.free
    cupy.cuda.runtime.freeHost
    cupy.cuda.runtime.freeArray
+   cupy.cuda.runtime.freeAsync
    cupy.cuda.runtime.memGetInfo
    cupy.cuda.runtime.memcpy
    cupy.cuda.runtime.memcpyAsync

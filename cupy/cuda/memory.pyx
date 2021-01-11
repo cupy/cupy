@@ -114,18 +114,19 @@ cdef inline bint is_async_alloc_supported(int device_id) except*:
     cdef list support
     cdef bint is_supported
 
+    if CUDA_VERSION < 11020:
+        return False
     if not hasattr(_thread_local, 'device_support_async_alloc'):
         # "None" for uninitialized
         support = [None for i in range(runtime.getDeviceCount())]
         _thread_local.device_support_async_alloc = support
     else:
         support = _thread_local.device_support_async_alloc
-    if support[device_id] is None:
+    is_supported = support[device_id]
+    if is_supported is None:
         is_supported = runtime.deviceGetAttribute(
             runtime.cudaDevAttrMemoryPoolsSupported, device_id)
         support[device_id] = is_supported
-    else:
-        is_supported = support[device_id]
     return is_supported
 
 
