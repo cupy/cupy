@@ -580,12 +580,12 @@ from cupy._math.hyperbolic import sinh  # NOQA
 from cupy._math.hyperbolic import tanh  # NOQA
 
 from cupy._math.rounding import around  # NOQA
-from cupy._math.rounding import around as round # NOQA
 from cupy._math.rounding import ceil  # NOQA
 from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
 from cupy._math.rounding import round_  # NOQA
+from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA

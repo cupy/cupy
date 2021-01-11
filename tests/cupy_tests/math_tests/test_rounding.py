@@ -71,7 +71,7 @@ class TestRounding(unittest.TestCase):
 
     def test_round_(self):
         self.check_unary('round_')
-        self.check_unary_complex('around')
+        self.check_unary_complex('round_')
 
     def test_round(self):
         self.check_unary('round')
