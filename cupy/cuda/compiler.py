@@ -364,7 +364,7 @@ def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
         options += ('-arch=compute_{}'.format(arch),)
 
-        prog = _NVRTCProgram(source, '')
+        prog = _NVRTCProgram(source)
         try:
             result, _ = prog.compile(options)
         except CompileException as e:
@@ -699,7 +699,7 @@ def _preprocess_hiprtc(source, options):
         // hiprtc segfaults if the input code is empty
         #include <hip/hip_runtime.h>
         __global__ void _cupy_preprocess_dummy_kernel_() { }
-        ''', '')
+        ''')
     try:
         result, _ = prog.compile(options)
     except CompileException as e:
