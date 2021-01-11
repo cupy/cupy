@@ -70,13 +70,7 @@ cdef class BaseMemory:
         ~Memory.size (int): Size of the memory allocation in bytes.
         ~Memory.device (~cupy.cuda.Device): Device whose memory the pointer
             refers to.
-        ~Memory.stream (intptr_t): Pointer to the stream that the memory was
-            allocated on. Default to -1 unless the memory is allocated from
-            CUDA's Stream Ordered Memory Allocator.
     """
-
-    def __cinit__(self):
-        self.stream = -1
 
     def __int__(self):
         """Returns the pointer value to the head of the allocation."""
@@ -112,7 +106,6 @@ cdef class Memory(BaseMemory):
 
 cdef inline bint is_async_alloc_supported(int device_id) except*:
     cdef list support
-    cdef bint is_supported
 
     if CUDA_VERSION < 11020:
         return False
@@ -138,13 +131,15 @@ cdef class MemoryAsync(BaseMemory):
 
     Args:
         size (int): Size of the memory allocation in bytes.
-        stream (intptr_t): Pointer to the stream.
+        stream (intptr_t): Pointer to the stream on which the memory is
+            allocated and freed.
     """
+    cdef:
+        readonly intptr_t stream
 
     def __init__(self, size_t size, intptr_t stream):
         self.size = size
         self.device_id = device.get_device_id()
-        self.ptr = 0
         # TODO(leofang): it's unclear from the documentation if CUDA is ok with
         # the stream being destroyed before the memory is freed or not. If not,
         # we will need to hold a reference to the associated Stream, not just

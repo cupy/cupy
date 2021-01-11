@@ -14,7 +14,6 @@ cdef class BaseMemory:
         public intptr_t ptr
         public size_t size
         public int device_id
-        readonly intptr_t stream
 
 
 @cython.final
