@@ -39,7 +39,7 @@ class TestUnownedMemoryClass(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'allocator': [memory._malloc, memory.malloc_managed],
+    'allocator': [memory._malloc, memory.malloc_managed, memory.malloc_async],
     'specify_device_id': [True, False],
 }))
 @testing.gpu
