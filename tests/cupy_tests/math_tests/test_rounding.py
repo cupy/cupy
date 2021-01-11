@@ -73,6 +73,10 @@ class TestRounding(unittest.TestCase):
         self.check_unary('round_')
         self.check_unary_complex('around')
 
+    def test_round(self):
+        self.check_unary('round')
+        self.check_unary_complex('round')
+
 
 @testing.parameterize(*testing.product({
     'decimals': [-2, -1, 0, 1, 2],

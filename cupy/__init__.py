@@ -580,6 +580,7 @@ from cupy._math.hyperbolic import sinh  # NOQA
 from cupy._math.hyperbolic import tanh  # NOQA
 
 from cupy._math.rounding import around  # NOQA
+from cupy._math.rounding import around as round # NOQA
 from cupy._math.rounding import ceil  # NOQA
 from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
