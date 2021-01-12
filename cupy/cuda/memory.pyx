@@ -23,6 +23,8 @@ from cupy.cuda cimport memory_hook
 from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport runtime
 
+from cupy import _util
+
 
 cdef bint _exit_mode = False
 
@@ -701,6 +703,8 @@ cpdef set_allocator(allocator=None):
     if getattr(_thread_local, 'allocator', None) is not None:
         raise ValueError('Can\'t change the global allocator inside '
                          '`using_allocator` context manager')
+    if allocator is malloc_async:
+        _util.experimental('cupy.cuda.malloc_async')
     _current_allocator = allocator
 
 
