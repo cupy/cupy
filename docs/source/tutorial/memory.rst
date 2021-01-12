@@ -14,7 +14,7 @@ There are two different memory pools in CuPy:
    When you monitor the memory usage (e.g., using ``nvidia-smi`` for GPU memory or ``ps`` for CPU memory), you may notice that memory not being freed even after the array instance become out of scope.
    This is an expected behavior, as the default memory pool "caches" the allocated memory blocks.
 
-See :doc:`cuda` for the details of memory management APIs.
+See :doc:`../reference/cuda` for the details of memory management APIs.
 
 Memory Pool Operations
 ----------------------
@@ -73,7 +73,7 @@ See :class:`cupy.cuda.MemoryPool` and :class:`cupy.cuda.PinnedMemoryPool` for de
 Limiting GPU Memory Usage
 -------------------------
 
-You can hard-limit the amount of GPU memory that can be allocated by using ``CUPY_GPU_MEMORY_LIMIT`` environment variable (see :doc:`environment` for details).
+You can hard-limit the amount of GPU memory that can be allocated by using ``CUPY_GPU_MEMORY_LIMIT`` environment variable (see :doc:`../reference/environment` for details).
 
 .. code-block:: py
 

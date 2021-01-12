@@ -43,7 +43,7 @@ Here are the environment variables CuPy uses.
 |                                                | The value can be specified in absolute bytes or    |
 |                                                | fraction (e.g., ``"90%"``) of the total memory of  |
 |                                                | each GPU.                                          |
-|                                                | See :doc:`memory` for details.                     |
+|                                                | See :doc:`../tutorial/memory` for details.         |
 |                                                | ``0`` (unlimited) is used by default.              |
 +------------------------------------------------+----------------------------------------------------+
 | ``CUPY_SEED``                                  | Set the seed for random number generators.         |
