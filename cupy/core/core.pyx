@@ -1508,6 +1508,9 @@ cdef class ndarray:
     def __str__(self):
         return str(self.get())
 
+    def __format__(self, format_spec):
+        return self.get().__format__(format_spec)
+
     # -------------------------------------------------------------------------
     # Methods outside of the ndarray main documentation
     # -------------------------------------------------------------------------
