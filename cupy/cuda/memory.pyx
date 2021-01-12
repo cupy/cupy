@@ -106,23 +106,26 @@ cdef class Memory(BaseMemory):
             runtime.free(self.ptr)
 
 
-cdef inline bint is_async_alloc_supported(int device_id) except*:
-    cdef list support
+cdef inline void async_alloc_check() except*:
+    cdef int dev_id
+    cdef list support = [runtime.deviceGetAttribute(
+        runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
+        for dev_id in range(runtime.getDeviceCount())]
+    _thread_local.device_support_async_alloc = support
 
-    if CUDA_VERSION < 11020:
-        return False
-    if not hasattr(_thread_local, 'device_support_async_alloc'):
-        # "None" for uninitialized
-        support = [None for i in range(runtime.getDeviceCount())]
-        _thread_local.device_support_async_alloc = support
-    else:
-        support = _thread_local.device_support_async_alloc
-    is_supported = support[device_id]
-    if is_supported is None:
-        is_supported = runtime.deviceGetAttribute(
-            runtime.cudaDevAttrMemoryPoolsSupported, device_id)
-        support[device_id] = is_supported
-    return is_supported
+
+cdef inline bint is_async_alloc_supported(int device_id) except*:
+     if CUDA_VERSION < 11020:
+         return False
+     global is_async_alloc_support_checked
+     if not is_async_alloc_support_checked:
+         async_alloc_check()
+         is_async_alloc_support_checked = True
+     is_supported = _thread_local.device_support_async_alloc[device_id]
+     return is_supported
+
+
+cdef bint is_async_alloc_support_checked = False
 
 
 @cython.no_gc
@@ -152,30 +155,30 @@ cdef class MemoryAsync(BaseMemory):
             self.ptr = runtime.mallocAsync(size, stream)
 
     def __dealloc__(self):
+        # Free is attempted in the following order until success:
+        # 1. Free on the stream on which this memory was allocated
+        # 2. Free on the current stream, as self.stream is likely
+        #    destroyed by now. To enable this we trust the user
+        #    has established a correct stream order.
+        # 3. Free synchronously (unlikely to happen)
         # Note: Cannot raise in the destructor! (cython/cython#1613)
-        cdef intptr_t curr_stream
-        cdef tuple ok_errors = (runtime.errorContextIsDestroyed,
-                                runtime.errorInvalidResourceHandle)
+
+        cdef intptr_t curr_stream = self.stream
+        cdef tuple ok_errors = (runtime.errorInvalidResourceHandle,
+                                runtime.errorContextIsDestroyed,)
 
         if self.ptr:
             try:
-                # Free on the stream on which this memory was allocated
-                runtime.freeAsync(self.ptr, self.stream)
+                runtime.freeAsync(self.ptr, curr_stream)
             except runtime.CUDARuntimeError as e:
                 if e.status not in ok_errors:
                     raise
                 try:
-                    # Free on the current stream, as self.stream is likely
-                    # destroyed by now. To enable this we trust the user
-                    # has established a correct stream order.
                     curr_stream = stream_module.get_current_stream_ptr()
                     runtime.freeAsync(self.ptr, curr_stream)
                 except runtime.CUDARuntimeError as e:
                     if e.status not in ok_errors:
                         raise
-                    # This synchronizes!
-                    # TODO(leofang): If PTDS is enabled, we can call freeAsync
-                    # on PTDS?
                     runtime.free(self.ptr)
 
 
