@@ -340,23 +340,6 @@ cdef extern from '../../cupy_blas.h' nogil:
         Handle handle, FillMode uplo, int n, const double *A, int lda,
         double *AP)
 
-###############################################################################
-# Util
-###############################################################################
-
-cdef cuComplex get_cu_complex(float complex a):
-    cdef cuComplex ret
-    ret.x = a.real
-    ret.y = a.imag
-    return ret
-
-
-cdef cuDoubleComplex get_cu_double_complex(double complex a):
-    cdef cuDoubleComplex ret
-    ret.x = a.real
-    ret.y = a.imag
-    return ret
-
 
 ###############################################################################
 # Error handling

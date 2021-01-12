@@ -425,7 +425,7 @@ cpdef ndarray tensordot_core(
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode
     cdef intptr_t handle
-    cdef bint use_sgemmEx
+    cdef bint use_sgemmEx = True
     cdef str dtype = a.dtype.char
     cdef int compute_capability = int(device.get_compute_capability())
     if dtype != b.dtype.char:
@@ -506,6 +506,16 @@ cpdef ndarray tensordot_core(
         coef_dtype = dtype
     one = numpy.array(1.0, dtype=coef_dtype)
     zero = numpy.array(0.0, dtype=coef_dtype)
+    if runtime._is_hip_environment and dtype == 'e':
+        # On HIP, SgemmEx does not work for half precision
+        dtype = 'f'
+        a = a.astype(dtype, order='K', casting=None, subok=None, copy=True)
+        b = b.astype(dtype, order='K', casting=None, subok=None, copy=True)
+        c = _ndarray_init(ret_shape, dtype)
+        use_sgemmEx = False
+        warnings.warn('On ROCm/HIP, there is no specialized API to handle '
+                      'half precision floating numbers, so the computation '
+                      'will be done by casting to single precision')
     if dtype == 'e':
         use_tensor_core = (_cuda_runtime_version >= 9000 and
                            compute_capability >= 70)
@@ -547,7 +557,8 @@ cpdef ndarray tensordot_core(
             zero.ctypes.data, c.data.ptr, <int>m)
     else:
         raise ValueError('Invalid dtype: %s' % str(dtype))
-
+    if not use_sgemmEx:
+        out[...] = c
     return out
 
 

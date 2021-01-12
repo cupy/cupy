@@ -114,6 +114,10 @@ class TestGels(unittest.TestCase):
 @attr.gpu
 class TestPosv(unittest.TestCase):
 
+    def setUp(self):
+        if not cupy.cusolver.check_availability('potrsBatched'):
+            pytest.skip('potrsBatched is not available')
+
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_posv(self, xp, dtype):

@@ -285,6 +285,10 @@ class TestCsrlsvqr(unittest.TestCase):
     density = 0.75
     _test_tol = {'f': 1e-5, 'd': 1e-12}
 
+    def setUp(self):
+        if not cusolver.check_availability('csrlsvqr'):
+            pytest.skip('csrlsvqr is not available')
+
     def _setup(self, dtype):
         dtype = numpy.dtype(dtype)
         a_shape = (self.n, self.n)
@@ -299,8 +303,6 @@ class TestCsrlsvqr(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_csrlsvqr(self, dtype):
-        if not cusolver.check_availability('csrlsvqr'):
-            unittest.SkipTest('csrlsvqr is not available')
         a, b, test_tol = self._setup(dtype)
         ref_x = numpy.linalg.solve(a, b)
         cp_a = cupy.array(a)
