@@ -570,6 +570,11 @@ class TestPythonInterface(unittest.TestCase):
         x = xp.array(3, dtype)
         return bytes(x)
 
+    @testing.numpy_cupy_equal()
+    def test_format(self, xp):
+        x = xp.array(1.12345)
+        return x.__format__('.2f')
+
 
 @testing.gpu
 class TestNdarrayImplicitConversion(unittest.TestCase):
