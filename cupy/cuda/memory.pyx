@@ -130,7 +130,7 @@ cdef bint is_async_alloc_support_checked = False
 
 @cython.no_gc
 cdef class MemoryAsync(BaseMemory):
-    """Memory allocation on a CUDA device.
+    """Asynchronous memory allocation on a CUDA device.
 
     This class provides an RAII interface of the CUDA memory allocation.
 

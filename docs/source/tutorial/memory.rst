@@ -125,7 +125,7 @@ set to :func:`~cupy.cuda.malloc_managed` as follows
     import cupy
 
     # Use managed memory
-    cupy.cuda.set_allocator(MemoryPool(cupy.cuda.malloc_managed).malloc)
+    cupy.cuda.set_allocator(cupy.cuda.MemoryPool(cupy.cuda.malloc_managed).malloc)
 
 Note that if you pass :func:`~cupy.cuda.malloc_managed` directly to :func:`~cupy.cuda.set_allocator` without constructing
 a :class:`~cupy.cuda.MemoryPool` instance, when the memory is freed it will be released back to the system immediately,
