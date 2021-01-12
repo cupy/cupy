@@ -518,7 +518,7 @@ def kron(A, B, format=None):
 
     if A.nnz == 0 or B.nnz == 0:
         # kronecker product is the zero matrix
-        return coo.coo_matrix(out_shape)
+        return coo.coo_matrix(out_shape).asformat(format)
 
     if max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
         dtype = cupy.int64

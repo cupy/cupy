@@ -401,7 +401,7 @@ arrs = [[[0]],
     'arrA': arrs,
     'arrB': arrs,
 }))
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.6')
 class TestKron(unittest.TestCase):
 
     def _make_sp_mat(self, xp, sp, arr, dtype):
