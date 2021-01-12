@@ -99,8 +99,8 @@ cdef class Memory(BaseMemory):
             self.ptr = runtime.malloc(size)
 
     def __dealloc__(self):
+        # Note: Cannot raise in the destructor! (cython/cython#1613)
         if self.ptr:
-            syncdetect._declare_synchronize()
             runtime.free(self.ptr)
 
 
@@ -140,10 +140,8 @@ cdef class MemoryAsync(BaseMemory):
     def __init__(self, size_t size, intptr_t stream):
         self.size = size
         self.device_id = device.get_device_id()
-        # TODO(leofang): it's unclear from the documentation if CUDA is ok with
-        # the stream being destroyed before the memory is freed or not. If not,
-        # we will need to hold a reference to the associated Stream, not just
-        # its pointer, to ensure lifetime.
+        # The stream is allowed to be destroyed before the memory is freed, so
+        # we don't need to hold a reference to the stream.
         self.stream = stream
         if not is_async_alloc_supported(self.device_id):
             raise RuntimeError('Device {} does not support '
@@ -152,8 +150,31 @@ cdef class MemoryAsync(BaseMemory):
             self.ptr = runtime.mallocAsync(size, stream)
 
     def __dealloc__(self):
+        # Note: Cannot raise in the destructor! (cython/cython#1613)
+        cdef intptr_t curr_stream
+        cdef tuple ok_errors = (runtime.errorContextIsDestroyed,
+                                runtime.errorInvalidResourceHandle)
+
         if self.ptr:
-            runtime.freeAsync(self.ptr, self.stream)
+            try:
+                # Free on the stream on which this memory was allocated
+                runtime.freeAsync(self.ptr, self.stream)
+            except runtime.CUDARuntimeError as e:
+                if e.status not in ok_errors:
+                    raise
+                try:
+                    # Free on the current stream, as self.stream is likely
+                    # destroyed by now. To enable this we trust the user
+                    # has established a correct stream order.
+                    curr_stream = stream_module.get_current_stream_ptr()
+                    runtime.freeAsync(self.ptr, curr_stream)
+                except runtime.CUDARuntimeError as e:
+                    if e.status not in ok_errors:
+                        raise
+                    # This synchronizes!
+                    # TODO(leofang): If PTDS is enabled, we can call freeAsync
+                    # on PTDS?
+                    runtime.free(self.ptr)
 
 
 cdef class UnownedMemory(BaseMemory):
@@ -231,8 +252,8 @@ cdef class ManagedMemory(BaseMemory):
         runtime.memAdvise(self.ptr, self.size, advise, dev.id)
 
     def __dealloc__(self):
+        # Note: Cannot raise in the destructor! (cython/cython#1613)
         if self.ptr:
-            syncdetect._declare_synchronize()
             runtime.free(self.ptr)
 
 

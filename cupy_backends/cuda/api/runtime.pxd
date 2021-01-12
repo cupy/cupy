@@ -628,6 +628,8 @@ cpdef enum:
 cdef int errorMemoryAllocation
 cdef int errorInvalidValue
 cdef int errorPeerAccessAlreadyEnabled
+cdef int errorContextIsDestroyed
+cdef int errorInvalidResourceHandle
 
 
 ###############################################################################

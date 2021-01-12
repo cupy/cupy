@@ -211,6 +211,8 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaErrorMemoryAllocation
     int cudaErrorInvalidValue
     int cudaErrorPeerAccessAlreadyEnabled
+    int cudaErrorContextIsDestroyed
+    int cudaErrorInvalidResourceHandle
 
 
 _is_hip_environment = hip_environment  # for runtime being cimport'd
@@ -226,6 +228,8 @@ deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 errorInvalidValue = cudaErrorInvalidValue
 errorMemoryAllocation = cudaErrorMemoryAllocation
 errorPeerAccessAlreadyEnabled = cudaErrorPeerAccessAlreadyEnabled
+errorContextIsDestroyed = cudaErrorContextIsDestroyed
+errorInvalidResourceHandle = cudaErrorInvalidResourceHandle
 
 
 ###############################################################################
