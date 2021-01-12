@@ -115,14 +115,14 @@ cdef inline void async_alloc_check() except*:
 
 
 cdef inline bint is_async_alloc_supported(int device_id) except*:
-     if CUDA_VERSION < 11020:
-         return False
-     global is_async_alloc_support_checked
-     if not is_async_alloc_support_checked:
-         async_alloc_check()
-         is_async_alloc_support_checked = True
-     is_supported = _thread_local.device_support_async_alloc[device_id]
-     return is_supported
+    if CUDA_VERSION < 11020:
+        return False
+    global is_async_alloc_support_checked
+    if not is_async_alloc_support_checked:
+        async_alloc_check()
+        is_async_alloc_support_checked = True
+    is_supported = _thread_local.device_support_async_alloc[device_id]
+    return is_supported
 
 
 cdef bint is_async_alloc_support_checked = False
