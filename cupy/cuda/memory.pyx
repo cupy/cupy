@@ -114,15 +114,19 @@ cdef inline void async_alloc_check() except*:
     _thread_local.device_support_async_alloc = support
 
 
-cdef inline bint is_async_alloc_supported(int device_id) except*:
+cdef inline void is_async_alloc_supported(int device_id) except*:
     if CUDA_VERSION < 11020:
-        return False
+        raise RuntimeError("memory_async is supported since CUDA 11.2")
+    if runtime._is_hip_environment:
+        raise RuntimeError('HIP does not support memory_async')
     global is_async_alloc_support_checked
     if not is_async_alloc_support_checked:
         async_alloc_check()
         is_async_alloc_support_checked = True
     is_supported = _thread_local.device_support_async_alloc[device_id]
-    return is_supported
+    if not is_supported:
+        raise RuntimeError('Device {} does not support '
+                           'malloc_async'.format(device_id))
 
 
 cdef bint is_async_alloc_support_checked = False
@@ -143,14 +147,14 @@ cdef class MemoryAsync(BaseMemory):
         readonly intptr_t stream
 
     def __init__(self, size_t size, intptr_t stream):
+        # TODO(leofang): perhaps we should align the memory ourselves?
+        # size = _round_size(size)
         self.size = size
         self.device_id = device.get_device_id()
         # The stream is allowed to be destroyed before the memory is freed, so
         # we don't need to hold a reference to the stream.
         self.stream = stream
-        if not is_async_alloc_supported(self.device_id):
-            raise RuntimeError('Device {} does not support '
-                               'malloc_async'.format(self.device_id))
+        is_async_alloc_supported(self.device_id)
         if size > 0:
             self.ptr = runtime.mallocAsync(size, stream)
 
