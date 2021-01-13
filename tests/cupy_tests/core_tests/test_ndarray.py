@@ -573,7 +573,7 @@ class TestPythonInterface(unittest.TestCase):
     @testing.numpy_cupy_equal()
     def test_format(self, xp):
         x = xp.array(1.12345)
-        return x.__format__('.2f')
+        return format(x, '.2f')
 
 
 @testing.gpu
