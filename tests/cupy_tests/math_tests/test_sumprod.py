@@ -920,7 +920,10 @@ class TestGradient(unittest.TestCase):
         if axis is None:
             normalized_axes = tuple(range(x.ndim))
         else:
-            normalized_axes = tuple(ax % x.ndim for ax in axis)
+            normalized_axes = axis
+            if not isinstance(normalized_axes, tuple):
+                normalized_axes = normalized_axes,
+            normalized_axes = tuple(ax % x.ndim for ax in normalized_axes)
         if spacing == 'sequence of int':
             # one scalar per axis
             spacing = tuple((ax + 1) / x.ndim for ax in normalized_axes)
