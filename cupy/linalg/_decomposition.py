@@ -1,6 +1,7 @@
 import numpy
 
 import cupy
+from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
@@ -459,9 +460,17 @@ def svd(a, full_matrices=True, compute_uv=True):
 
     buffersize = gesvd_bufferSize(handle, m, n)
     workspace = cupy.empty(buffersize, dtype=a_dtype)
+    if not runtime.is_hip:
+        # rwork can be NULL if the information from supperdiagonal isn't needed
+        # https://docs.nvidia.com/cuda/cusolver/index.html#cuSolverDN-lt-t-gt-gesvd  # noqa
+        rwork_ptr = 0
+    else:
+        rwork = cupy.empty(min(m, n)-1, dtype=s_dtype)
+        rwork_ptr = rwork.data.ptr
     gesvd(
         handle, job_u, job_vt, m, n, x.data.ptr, m, s.data.ptr, u_ptr, m,
-        vt_ptr, n, workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
+        vt_ptr, n, workspace.data.ptr, buffersize, rwork_ptr,
+        dev_info.data.ptr)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvd, dev_info)
 

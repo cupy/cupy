@@ -68,7 +68,6 @@ cuda_files = [
     'cupy.core._routines_statistics',
     'cupy.core._scalar',
     'cupy.core.core',
-    'cupy.core.dlpack',
     'cupy.core.flags',
     'cupy.core.internal',
     'cupy.core.fusion',
@@ -260,6 +259,22 @@ if not use_hip:
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
     })
+
+    MODULES.append({
+        'name': 'random',
+        'file': [
+            'cupy.random._bit_generator',
+            ('cupy.random._generator_api',
+             ['cupy/random/cupy_distributions.cu']),
+        ],
+        'include': [
+        ],
+        'libraries': [
+            'cudart',
+            'curand',
+        ],
+    })
+
 else:
     MODULES.append({
         'name': 'cub',
@@ -322,6 +337,17 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
             'check_method': build.check_thrust_version,
             'version_method': build.get_thrust_version,
         })
+
+MODULES.append({
+    'name': 'dlpack',
+    'file': [
+        'cupy.core.dlpack',
+    ],
+    'include': [
+        'cupy/dlpack/dlpack.h',
+    ],
+    'libraries': [],
+})
 
 
 def ensure_module_file(file):
@@ -469,7 +495,7 @@ def preconfigure_modules(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
-        elif (module['name'] in ('thrust', 'cub')
+        elif (module['name'] in ('thrust', 'cub', 'random')
                 and (nvcc_path is None and hipcc_path is None)):
             installed = True
             cmd = 'nvcc' if not use_hip else 'hipcc'
@@ -604,6 +630,10 @@ def make_extensions(options, compiler, use_cython):
             compile_args.append('--std=c++11')
             # if any change is made to the Jitify header, we force recompiling
             s['depends'] = ['./cupy/core/include/cupy/jitify/jitify.hpp']
+
+        if module['name'] == 'dlpack':
+            # if any change is made to the DLPack header, we force recompiling
+            s['depends'] = ['./cupy/core/include/cupy/dlpack/dlpack.h']
 
         for f in module['file']:
             s_file = copy.deepcopy(s)

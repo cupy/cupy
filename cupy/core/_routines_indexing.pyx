@@ -745,7 +745,9 @@ cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
 
 
 cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
-    # When li + 1 == ri this function behaves similarly to np.take
+    # Take along (flattened) axes from li to ri *inclusive*.
+    # When li == ri this function behaves similarly to np.take
+    # TODO(kataoka): Use half-open interval [li, ri)
     cdef tuple out_shape, ind_shape, indices_shape
     cdef int i, ndim = a._shape.size()
     cdef Py_ssize_t ldim, cdim, rdim, index_range
@@ -782,7 +784,9 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
             ldim *= a._shape[i]
         for i in range(ri + 1, ndim):
             rdim *= a._shape[i]
-        index_range = a.size // (ldim * rdim)
+        index_range = 1
+        for i in range(li, ri + 1):
+            index_range *= a._shape[i]
 
     if out is None:
         out = ndarray(out_shape, dtype=a.dtype)

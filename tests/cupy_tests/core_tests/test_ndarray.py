@@ -315,6 +315,22 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
             assert iface['stream'] == 1 if stream.ptr == 0 else stream.ptr
 
 
+@pytest.mark.skipif(not cupy.cuda.runtime.is_hip,
+                    reason='This is supported on CUDA')
+class TestNdarrayCudaInterfaceNoneCUDA(unittest.TestCase):
+
+    def setUp(self):
+        self.arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
+
+    def test_cuda_array_interface_hasattr(self):
+        assert not hasattr(self.arr, '__cuda_array_interface__')
+
+    def test_cuda_array_interface_getattr(self):
+        with pytest.raises(AttributeError) as e:
+            getattr(self.arr, '__cuda_array_interface__')
+        assert 'HIP' in str(e.value)
+
+
 @testing.parameterize(
     *testing.product({
         'indices_shape': [(2,), (2, 3)],
@@ -452,8 +468,9 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (0,), 'indices': (0,)},
-    {'shape': (0,), 'indices': (0, 1)},
+    {'shape': (0,), 'indices': (0,), 'axis': None},
+    {'shape': (0,), 'indices': (0, 1), 'axis': None},
+    {'shape': (3, 0), 'indices': (2,), 'axis': 0},
 )
 @testing.gpu
 class TestZeroSizedNdarrayTake(unittest.TestCase):
@@ -462,7 +479,7 @@ class TestZeroSizedNdarrayTake(unittest.TestCase):
     def test_output_type_mismatch(self, xp):
         a = testing.shaped_arange(self.shape, xp, numpy.int32)
         i = testing.shaped_arange(self.indices, xp, numpy.int32)
-        return wrap_take(a, i)
+        return wrap_take(a, i, axis=self.axis)
 
 
 @testing.parameterize(
