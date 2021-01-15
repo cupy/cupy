@@ -1191,7 +1191,7 @@ class TestCscMatrixData(unittest.TestCase):
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_count_nonzero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
-        return m.count_nonzero()
+        return int(m.count_nonzero())
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_power(self, xp, sp):

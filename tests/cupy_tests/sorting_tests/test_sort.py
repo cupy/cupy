@@ -470,7 +470,7 @@ class TestPartition(unittest.TestCase):
                 self.partition(a, kth)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_partition_one_dim(self, xp, dtype):
         a = testing.shaped_random((self.length,), xp, dtype)
         kth = 2
@@ -491,7 +491,7 @@ class TestPartition(unittest.TestCase):
 
     # Test non-contiguous array
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_partition_non_contiguous(self, xp):
         a = testing.shaped_random((self.length,), xp)[::-1]
         kth = 2
@@ -508,14 +508,14 @@ class TestPartition(unittest.TestCase):
 
     # Test kth
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_partition_sequence_kth(self, xp):
         a = testing.shaped_random((self.length,), xp)
         kth = (2, 4)
         x = self.partition(a, kth)
         return x[kth[0]], x[kth[1]]
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_partition_negative_kth(self, xp):
         a = testing.shaped_random((self.length,), xp)
         kth = -3
@@ -554,16 +554,15 @@ class TestPartition(unittest.TestCase):
         x = self.partition(a, kth, axis=axis)
         return x[:, :, kth]
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_partition_none_axis(self, xp):
-        if self.external:
-            a = testing.shaped_random((2, self.length), xp)
-            kth = 2
-            axis = None
-            x = self.partition(a, kth, axis=axis)
-            return x[kth]
-        else:
-            return None
+        if not self.external:
+            raise unittest.SkipTest()
+        a = testing.shaped_random((2, self.length), xp)
+        kth = 2
+        axis = None
+        x = self.partition(a, kth, axis=axis)
+        return x[kth]
 
     def test_partition_invalid_axis1(self):
         for xp in (numpy, cupy):
@@ -619,7 +618,7 @@ class TestArgpartition(unittest.TestCase):
                 self.argpartition(a, kth)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_argpartition_one_dim(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype, 100)
         kth = 2
@@ -646,7 +645,7 @@ class TestArgpartition(unittest.TestCase):
 
     # Test non-contiguous array
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_argpartition_non_contiguous(self, xp):
         a = testing.shaped_random((10,), xp, 'i', 100)[::2]
         kth = 2
@@ -657,7 +656,7 @@ class TestArgpartition(unittest.TestCase):
 
     # Test kth
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_argpartition_sequence_kth(self, xp):
         a = testing.shaped_random((10,), xp, scale=100)
         kth = (2, 4)
@@ -667,7 +666,7 @@ class TestArgpartition(unittest.TestCase):
             assert (a[idx[_kth]] < a[idx[_kth + 1:]]).all()
         return (idx[2], idx[4])
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_argpartition_negative_kth(self, xp):
         a = testing.shaped_random((10,), xp, scale=100)
         kth = -3
@@ -720,7 +719,7 @@ class TestArgpartition(unittest.TestCase):
                 a[rows, cols, idx[:, :, kth + 1:]]).all()
         return idx[:, :, kth:kth + 1]
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_argpartition_none_axis(self, xp):
         a = testing.shaped_random((2, 2), xp, scale=100)
         kth = 2

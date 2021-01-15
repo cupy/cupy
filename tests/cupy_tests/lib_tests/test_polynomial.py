@@ -140,7 +140,7 @@ class TestPoly1d(unittest.TestCase):
             return xp.poly1d(a)[-1]
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_poly1d_getitem2(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
         with cupyx.allow_synchronize(False):
@@ -154,7 +154,7 @@ class TestPoly1d(unittest.TestCase):
             return xp.poly1d(a)[100]
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_array_equal()
     def test_poly1d_getitem4(self, xp, dtype):
         a = xp.array([0, 0, 1, 2, 3, 0], dtype)
         with cupyx.allow_synchronize(False):
