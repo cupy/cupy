@@ -96,6 +96,8 @@ cdef extern from '../../cupy_backend.h' nogil:
 
     # Build-time version
     int CUDA_VERSION
+    int HIP_VERSION
+    bint hip_environment
 
 
 ###############################################################################
@@ -138,6 +140,8 @@ cdef inline void check_attribute_status(int status, int* pi) except *:
 ###############################################################################
 
 cpdef get_build_version():
+    if hip_environment:
+        return HIP_VERSION
     return CUDA_VERSION
 
 

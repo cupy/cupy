@@ -365,54 +365,115 @@ cdef extern from *:
             unsigned has3dGrid
             unsigned hasDynamicParallelism
 
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
-            char name[256]
-            size_t totalGlobalMem
-            size_t sharedMemPerBlock
-            int regsPerBlock
-            int warpSize
-            int maxThreadsPerBlock
-            int maxThreadsDim[3]
-            int maxGridSize[3]
-            int clockRate
-            int memoryClockRate
-            int memoryBusWidth
-            size_t totalConstMem
-            int major
-            int minor
-            int multiProcessorCount
-            int l2CacheSize
-            int maxThreadsPerMultiProcessor
-            int computeMode
-            int clockInstructionRate
-            deviceArch arch
-            int concurrentKernels
-            int pciDomainID
-            int pciBusID
-            int pciDeviceID
-            size_t maxSharedMemoryPerMultiProcessor
-            int isMultiGpuBoard
-            int canMapHostMemory
-            int gcnArch
-            int integrated
-            int cooperativeLaunch
-            int cooperativeMultiDeviceLaunch
-            int maxTexture1D
-            int maxTexture2D[2]
-            int maxTexture3D[3]
-            unsigned int* hdpMemFlushCntl
-            unsigned int* hdpRegFlushCntl
-            size_t memPitch
-            size_t textureAlignment
-            size_t texturePitchAlignment
-            int kernelExecTimeoutEnabled
-            int ECCEnabled
-            int tccDriver
-            int cooperativeMultiDeviceUnmatchedFunc
-            int cooperativeMultiDeviceUnmatchedGridDim
-            int cooperativeMultiDeviceUnmatchedBlockDim
-            int cooperativeMultiDeviceUnmatchedSharedMem
-            int isLargeBar
+        IF HIP_VERSION >= 310:
+            ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+                char name[256]
+                size_t totalGlobalMem
+                size_t sharedMemPerBlock
+                int regsPerBlock
+                int warpSize
+                int maxThreadsPerBlock
+                int maxThreadsDim[3]
+                int maxGridSize[3]
+                int clockRate
+                int memoryClockRate
+                int memoryBusWidth
+                size_t totalConstMem
+                int major
+                int minor
+                int multiProcessorCount
+                int l2CacheSize
+                int maxThreadsPerMultiProcessor
+                int computeMode
+                int clockInstructionRate
+                deviceArch arch
+                int concurrentKernels
+                int pciDomainID
+                int pciBusID
+                int pciDeviceID
+                size_t maxSharedMemoryPerMultiProcessor
+                int isMultiGpuBoard
+                int canMapHostMemory
+                int gcnArch
+                # gcnArchName is added since ROCm 3.6, but given it's just
+                # 'gfx'+str(gcnArch), in order not to duplicate another struct
+                # we add it here
+                char gcnArchName[256]
+                int integrated
+                int cooperativeLaunch
+                int cooperativeMultiDeviceLaunch
+                int maxTexture1D
+                int maxTexture2D[2]
+                int maxTexture3D[3]
+                unsigned int* hdpMemFlushCntl
+                unsigned int* hdpRegFlushCntl
+                size_t memPitch
+                size_t textureAlignment
+                size_t texturePitchAlignment
+                int kernelExecTimeoutEnabled
+                int ECCEnabled
+                int tccDriver
+                int cooperativeMultiDeviceUnmatchedFunc
+                int cooperativeMultiDeviceUnmatchedGridDim
+                int cooperativeMultiDeviceUnmatchedBlockDim
+                int cooperativeMultiDeviceUnmatchedSharedMem
+                int isLargeBar
+                # New since ROCm 3.10.0
+                int asicRevision
+                int managedMemory
+                int directManagedMemAccessFromHost
+                int concurrentManagedAccess
+                int pageableMemoryAccess
+                int pageableMemoryAccessUsesHostPageTables
+        ELSE:
+            ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+                char name[256]
+                size_t totalGlobalMem
+                size_t sharedMemPerBlock
+                int regsPerBlock
+                int warpSize
+                int maxThreadsPerBlock
+                int maxThreadsDim[3]
+                int maxGridSize[3]
+                int clockRate
+                int memoryClockRate
+                int memoryBusWidth
+                size_t totalConstMem
+                int major
+                int minor
+                int multiProcessorCount
+                int l2CacheSize
+                int maxThreadsPerMultiProcessor
+                int computeMode
+                int clockInstructionRate
+                deviceArch arch
+                int concurrentKernels
+                int pciDomainID
+                int pciBusID
+                int pciDeviceID
+                size_t maxSharedMemoryPerMultiProcessor
+                int isMultiGpuBoard
+                int canMapHostMemory
+                int gcnArch
+                int integrated
+                int cooperativeLaunch
+                int cooperativeMultiDeviceLaunch
+                int maxTexture1D
+                int maxTexture2D[2]
+                int maxTexture3D[3]
+                unsigned int* hdpMemFlushCntl
+                unsigned int* hdpRegFlushCntl
+                size_t memPitch
+                size_t textureAlignment
+                size_t texturePitchAlignment
+                int kernelExecTimeoutEnabled
+                int ECCEnabled
+                int tccDriver
+                int cooperativeMultiDeviceUnmatchedFunc
+                int cooperativeMultiDeviceUnmatchedGridDim
+                int cooperativeMultiDeviceUnmatchedBlockDim
+                int cooperativeMultiDeviceUnmatchedSharedMem
+                int isLargeBar
     ELSE:  # for RTD
         ctypedef struct cudaDeviceProp 'cudaDeviceProp':
             char         name[256]

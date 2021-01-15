@@ -6,8 +6,6 @@
 
 extern "C" {
 
-bool hip_environment = true;
-
 // Error handling
 const char* cudaGetErrorName(cudaError_t hipError) {
     return hipGetErrorName(hipError);

@@ -391,7 +391,7 @@ cpdef getDeviceProperties(int device):
             props.accessPolicyMaxWindowSize)
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
-    IF use_hip:
+    IF use_hip:  # HIP-only props
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
             props.maxSharedMemoryPerMultiProcessor)
@@ -411,6 +411,7 @@ cpdef getDeviceProperties(int device):
 
         # flatten "hipDeviceArch_t" into properties
         # TODO(leofang): this might not be desired in some occasions?
+        cdef dict arch = {}
         properties['hasGlobalInt32Atomics'] = props.arch.hasGlobalInt32Atomics
         properties['hasGlobalFloatAtomicExch'] = (
             props.arch.hasGlobalFloatAtomicExch)
@@ -430,6 +431,16 @@ cpdef getDeviceProperties(int device):
         properties['hasSurfaceFuncs'] = props.arch.hasSurfaceFuncs
         properties['has3dGrid'] = props.arch.has3dGrid
         properties['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
+    IF use_hip and HIP_VERSION >= 310:
+        properties['gcnArchName'] = props.gcnArchName
+        properties['asicRevision'] = props.asicRevision
+        properties['managedMemory'] = props.managedMemory
+        properties['directManagedMemAccessFromHost'] = (
+            props.directManagedMemAccessFromHost)
+        properties['concurrentManagedAccess'] = props.concurrentManagedAccess
+        properties['pageableMemoryAccess'] = props.pageableMemoryAccess
+        properties['pageableMemoryAccessUsesHostPageTables'] = (
+            props.pageableMemoryAccessUsesHostPageTables)
     return properties
 
 cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
