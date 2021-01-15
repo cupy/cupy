@@ -22,7 +22,7 @@ def _bmat(list_obj):
         final_shape[1] += list_obj[0][j].shape[1]
     # obtaining result's datatype
     dtype = cupy.result_type(*[arr.dtype for
-                             list_iter in list_obj for arr in list_iter])
+                               list_iter in list_obj for arr in list_iter])
     # checking order
     F_order = all(arr.flags['F_CONTIGUOUS'] for list_iter
                   in list_obj for arr in list_iter)

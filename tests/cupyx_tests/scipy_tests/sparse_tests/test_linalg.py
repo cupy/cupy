@@ -1021,11 +1021,7 @@ class TestLOBPCG:
             lvals, lvecs = sp.linalg.lobpcg(A, X, largest=True, maxiter=100)
             eval_list.append(lvals)
             eval_list.append(xp.absolute(lvecs))
-            try:  # cupyx.sparse.linalg.eigsh might not converge!
-                vals, _ = sp.linalg.eigsh(A, k=2)
-            except Exception as e:
-                print("Exception: {} \n".format(e))
-                continue
+            vals, _ = sp.linalg.eigsh(A, k=2)
             self._check_eigen(A, lvals, lvecs, xp, sp, atol=_atol, rtol=0)
             cupy.testing.assert_allclose(xp.sort(vals), xp.sort(lvals),
                                          atol=1e-14)
