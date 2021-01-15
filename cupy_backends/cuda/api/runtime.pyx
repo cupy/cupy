@@ -810,11 +810,13 @@ cdef _streamCallbackFunc(driver.Stream hStream, int status,
     cpython.Py_DECREF(obj)
 
 
-cdef _HostFnFunc(void* func_arg) with gil:
-    obj = <object>func_arg
-    func, arg = obj
-    func(arg)
-    cpython.Py_DECREF(obj)
+# Use Cython macro to suppress compiler warning
+IF CUDA_VERSION >= 10000:
+    cdef _HostFnFunc(void* func_arg) with gil:
+        obj = <object>func_arg
+        func, arg = obj
+        func(arg)
+        cpython.Py_DECREF(obj)
 
 
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
