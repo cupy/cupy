@@ -409,28 +409,25 @@ cpdef getDeviceProperties(int device):
             props.cooperativeMultiDeviceUnmatchedSharedMem)
         properties['isLargeBar'] = props.isLargeBar
 
-        # flatten "hipDeviceArch_t" into properties
-        # TODO(leofang): this might not be desired in some occasions?
-        cdef dict arch = {}
-        properties['hasGlobalInt32Atomics'] = props.arch.hasGlobalInt32Atomics
-        properties['hasGlobalFloatAtomicExch'] = (
-            props.arch.hasGlobalFloatAtomicExch)
-        properties['hasSharedInt32Atomics'] = props.arch.hasSharedInt32Atomics
-        properties['hasSharedFloatAtomicExch'] = (
-            props.arch.hasSharedFloatAtomicExch)
-        properties['hasFloatAtomicAdd'] = props.arch.hasFloatAtomicAdd
-        properties['hasGlobalInt64Atomics'] = props.arch.hasGlobalInt64Atomics
-        properties['hasSharedInt64Atomics'] = props.arch.hasSharedInt64Atomics
-        properties['hasDoubles'] = props.arch.hasDoubles
-        properties['hasWarpVote'] = props.arch.hasWarpVote
-        properties['hasWarpBallot'] = props.arch.hasWarpBallot
-        properties['hasWarpShuffle'] = props.arch.hasWarpShuffle
-        properties['hasFunnelShift'] = props.arch.hasFunnelShift
-        properties['hasThreadFenceSystem'] = props.arch.hasThreadFenceSystem
-        properties['hasSyncThreadsExt'] = props.arch.hasSyncThreadsExt
-        properties['hasSurfaceFuncs'] = props.arch.hasSurfaceFuncs
-        properties['has3dGrid'] = props.arch.has3dGrid
-        properties['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
+        cdef dict arch = {}  # for hipDeviceArch_t
+        arch['hasGlobalInt32Atomics'] = props.arch.hasGlobalInt32Atomics
+        arch['hasGlobalFloatAtomicExch'] = props.arch.hasGlobalFloatAtomicExch
+        arch['hasSharedInt32Atomics'] = props.arch.hasSharedInt32Atomics
+        arch['hasSharedFloatAtomicExch'] = props.arch.hasSharedFloatAtomicExch
+        arch['hasFloatAtomicAdd'] = props.arch.hasFloatAtomicAdd
+        arch['hasGlobalInt64Atomics'] = props.arch.hasGlobalInt64Atomics
+        arch['hasSharedInt64Atomics'] = props.arch.hasSharedInt64Atomics
+        arch['hasDoubles'] = props.arch.hasDoubles
+        arch['hasWarpVote'] = props.arch.hasWarpVote
+        arch['hasWarpBallot'] = props.arch.hasWarpBallot
+        arch['hasWarpShuffle'] = props.arch.hasWarpShuffle
+        arch['hasFunnelShift'] = props.arch.hasFunnelShift
+        arch['hasThreadFenceSystem'] = props.arch.hasThreadFenceSystem
+        arch['hasSyncThreadsExt'] = props.arch.hasSyncThreadsExt
+        arch['hasSurfaceFuncs'] = props.arch.hasSurfaceFuncs
+        arch['has3dGrid'] = props.arch.has3dGrid
+        arch['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
+        properties['arch'] = arch
     IF use_hip and HIP_VERSION >= 310:
         properties['gcnArchName'] = props.gcnArchName
         properties['asicRevision'] = props.asicRevision
