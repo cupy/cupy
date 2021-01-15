@@ -6,28 +6,45 @@ import cupy.linalg as linalg
 from cupyx.scipy.sparse import linalg as splinalg
 
 
+# TODO: This helper function can be replaced after cupy.block is supported
 def _bmat(list_obj):
     """
     Helper function to create a block matrix in cupy from a list
     of smaller 2D dense arrays
     """
-    arr_rows = cupy.array([])
-    for row in list_obj:  # row & list_obj are a list of cupy arrays
-        arr_cols = cupy.array([])
-        for col in row:  # col is a cupy ndarray
-            if col.ndim == 0:
-                col = cupy.array([col])
-            if(arr_cols.size == 0):
-                arr_cols = col
-                continue
+    n_rows = len(list_obj)
+    n_cols = len(list_obj[0])
+    final_shape = [0, 0]
+    # calculating expected size of output
+    for i in range(n_rows):
+        final_shape[0] += list_obj[i][0].shape[0]
+    for j in range(n_cols):
+        final_shape[1] += list_obj[0][j].shape[1]
+    # obtaining result's datatype
+    dtype = cupy.result_type(*[arr.dtype for
+                             list_iter in list_obj for arr in list_iter])
+    # checking order
+    F_order = all(arr.flags['F_CONTIGUOUS'] for list_iter
+                  in list_obj for arr in list_iter)
+    C_order = all(arr.flags['C_CONTIGUOUS'] for list_iter
+                  in list_obj for arr in list_iter)
+    order = 'F' if F_order and not C_order else 'C'
+    result = cupy.empty(tuple(final_shape), dtype=dtype, order=order)
 
-            arr_cols = cupy.hstack((arr_cols, col))
-        if(arr_rows.size == 0):
-            arr_rows = arr_cols
-            continue
-        arr_rows = cupy.vstack((arr_rows, arr_cols))
-
-    return arr_rows
+    start_idx_row = 0
+    start_idx_col = 0
+    end_idx_row = 0
+    end_idx_col = 0
+    for i in range(n_rows):
+        end_idx_row = start_idx_row + list_obj[i][0].shape[0]
+        start_idx_col = 0
+        for j in range(n_cols):
+            end_idx_col = start_idx_col + list_obj[i][j].shape[1]
+            result[start_idx_row:end_idx_row,
+                   start_idx_col: end_idx_col] = list_obj[i][j]
+            start_idx_col = end_idx_col
+        start_idx_row = end_idx_row
+    return result
 
 
 def _report_nonhermitian(M, name):
@@ -39,7 +56,7 @@ def _report_nonhermitian(M, name):
 
     nmd = linalg.norm(md, 1)
     tol = 10 * cupy.finfo(M.dtype).eps
-    tol = max(tol, tol * linalg.norm(M, 1))
+    tol *= max(1, float(linalg.norm(M, 1)))
     if nmd > tol:
         print('matrix %s of the type %s is not sufficiently Hermitian:'
               % (name, M.dtype))
@@ -81,7 +98,6 @@ def _applyConstraints(blockVectorV, YBY, blockVectorBY, blockVectorY):
     # awaiting the implementation of cho_solve in PR #4172
     # tmp = cho_solve(factYBY, YBV)
     tmp = linalg.solve(YBY, YBV)
-    assert(not isinstance(tmp, type(None)))
     blockVectorV -= cupy.dot(blockVectorY, tmp)
 
 
@@ -131,6 +147,8 @@ def _get_indx(_lambda, num, largest):
     return ii
 
 
+# TODO: This helper function can be replaced after cupy.eigh
+#       supports generalized eigen value problems.
 def _genEigh(A, B=None):
     """
     Helper function for converting a generalized eigenvalue problem

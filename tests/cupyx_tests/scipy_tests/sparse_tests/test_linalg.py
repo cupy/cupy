@@ -782,7 +782,8 @@ class TestCsrlsvqr(unittest.TestCase):
     def _setup(self, dtype):
         dtype = numpy.dtype(dtype)
         a_shape = (self.n, self.n)
-        a = testing.shaped_random(a_shape, numpy, dtype=dtype, scale=2/self.n)
+        a = testing.shaped_random(
+            a_shape, numpy, dtype=dtype, scale=2 / self.n)
         a_mask = testing.shaped_random(a_shape, numpy, dtype='f', scale=1)
         a[a_mask > self.density] = 0
         a_diag = numpy.diag(numpy.ones((self.n,), dtype=dtype))
@@ -811,73 +812,73 @@ class TestCsrlsvqr(unittest.TestCase):
 # tests adapted from scipy's tests of lobpcg
 class TestLOBPCG:
 
-    def _elasticRod(self, n, xp):
+    def _elastic_rod(self, n, xp):
         """Build the matrices for the generalized eigenvalue problem of the
         fixed-free elastic rod vibration model.
         """
         L = 1.0
-        le = L/n
+        le = L / n
         rho = 7.85e3
         S = 1.e-4
         E = 2.1e11
-        mass = rho*S*le/6.
-        k = E*S/le
-        A = k*(xp.diag(xp.r_[2.*xp.ones(n-1), 1])-xp.diag(xp.ones(n-1), 1) -
-               xp.diag(xp.ones(n-1), -1))
-        B = mass*(xp.diag(xp.r_[4.*xp.ones(n-1), 2])+xp.diag(xp.ones(n-1), 1)
-                  + xp.diag(xp.ones(n-1), -1))
+        mass = rho * S * le / 6.
+        k = E * S / le
+        A = k * (xp.diag(xp.r_[2. * xp.ones(n - 1), 1]) -
+                 xp.diag(xp.ones(n - 1), 1) - xp.diag(xp.ones(n - 1), -1))
+        B = mass * (xp.diag(xp.r_[4. * xp.ones(n - 1), 2]) +
+                    xp.diag(xp.ones(n - 1), 1) + xp.diag(xp.ones(n - 1), -1))
         return A, B
 
-    def _mikotaPair(self, n, xp):
+    def _mikota_pair(self, n, xp):
         """Build a pair of full diagonal matrices for the generalized eigenvalue
         problem. The Mikota pair acts as a nice test since the eigenvalues are
         the squares of the integers n, n=1,2,...
         """
-        x = xp.arange(1, n+1)
-        B = xp.diag(1./x)
-        y = xp.arange(n-1, 0, -1)
-        z = xp.arange(2*n-1, 0, -2)
-        A = xp.diag(z)-xp.diag(y, -1)-xp.diag(y, 1)
+        x = xp.arange(1, n + 1)
+        B = xp.diag(1. / x)
+        y = xp.arange(n - 1, 0, -1)
+        z = xp.arange(2 * n - 1, 0, -2)
+        A = xp.diag(z) - xp.diag(y, -1) - xp.diag(y, 1)
         return A, B
 
     def _compare_solutions(self, A, B, m, xp, sp):
         """Check eig vs. lobpcg consistency.
         """
         n = A.shape[0]
-        numpy.random.seed(0)  # seeding is different in numpy and cupy!
-        V = numpy.random.rand(n, m)
+        V = testing.shaped_random((n, m), xp=numpy)
         X = scipy.linalg.orth(V)
-        eigvals, _ = sp.linalg.lobpcg(A, xp.asarray(X), B=B, tol=1e-5,
-                                      maxiter=30, largest=False)
-        eigvals.sort()
-        # converting to numpy below as there is no cupy general eigen value
-        # in cupy at the moment
-        w, _ = scipy.linalg.eig(cupy.asnumpy(A), b=cupy.asnumpy(B))
-        w.sort()
-        cupy.testing.assert_array_almost_equal(
-            w[:int(m/2)], cupy.asnumpy(eigvals[:int(m/2)]), decimal=2)
-        return eigvals
+        eigvals, eigvecs = sp.linalg.lobpcg(A,
+                                            xp.asarray(X), B=B,
+                                            tol=1e-5, maxiter=30,
+                                            largest=False)
+        return eigvals, xp.absolute(eigvecs)
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_Small(self, xp, sp):
-        eval_list = []
-        A, B = self._elasticRod(10, xp)
-        eval_list.append(self._compare_solutions(A, B, 10, xp, sp))
-        A, B = self._mikotaPair(10, xp)
-        eval_list.append(self._compare_solutions(A, B, 10, xp, sp))
-        return eval_list
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
+    def test_small_elastic_rod(self, xp, sp):
+        A, B = self._elastic_rod(10, xp)
+        return self._compare_solutions(A, B, 10, xp, sp)
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_ElasticRod(self, xp, sp):
-        A, B = self._elasticRod(100, xp)
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
+    def test_small_mikota_pair(self, xp, sp):
+        A, B = self._mikota_pair(10, xp)
+        return self._compare_solutions(A, B, 10, xp, sp)
+
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
+    def test_elastic_rod(self, xp, sp):
+        A, B = self._elastic_rod(100, xp)
         return self._compare_solutions(A, B, 20, xp, sp)
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_MikotaPair(self, xp, sp):
-        A, B = self._mikotaPair(100, xp)
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
+    def test_mikota_pair(self, xp, sp):
+        A, B = self._mikota_pair(100, xp)
         return self._compare_solutions(A, B, 20, xp, sp)
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
     def test_regression(self, xp, sp):
         """Check the eigenvalue of the identity matrix is one.
         """
@@ -888,11 +889,11 @@ class TestLOBPCG:
         cupy.testing.assert_allclose(w, xp.array([1]))
         return w
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
     def test_diagonal(self, xp, sp):
         """Check for diagonal matrices.
         """
-        numpy.random.seed(1234)
         # The system of interest is of size n x n.
         n = 100
         # We care about only m eigenpairs.
@@ -901,13 +902,13 @@ class TestLOBPCG:
         # where (c, v) is a generalized eigenpair,
         # We choose A to be the diagonal matrix whose entries are 1..n
         # and where B is chosen to be the identity matrix.
-        vals = xp.arange(1, n+1, dtype=float)
+        vals = xp.arange(1, n + 1, dtype=float)
         A = sp.diags([vals], [0], (n, n))
         B = sp.eye(n)
         # Let the preconditioner M be the inverse of A.
-        M = sp.diags([1./vals], [0], (n, n))
+        M = sp.diags([1. / vals], [0], (n, n))
         # Pick random initial vectors.
-        X = xp.asarray(numpy.random.rand(n, m))
+        X = testing.shaped_random((n, m), xp=xp, seed=1234)
         # Require that the returned eigenvectors be in the orthogonal
         # complement of the first few standard basis vectors (Y)
         m_excluded = 3
@@ -916,10 +917,10 @@ class TestLOBPCG:
         eigvals, vecs = sp.linalg.lobpcg(A, X, B, M=M, Y=Y, tol=1e-4,
                                          maxiter=40, largest=False)
 
-        cupy.testing.assert_allclose(eigvals, xp.arange(1+m_excluded,
-                                                        1+m_excluded+m))
+        cupy.testing.assert_allclose(eigvals, xp.arange(1 + m_excluded,
+                                                        1 + m_excluded + m))
         self._check_eigen(A, eigvals, vecs, xp, sp, rtol=1e-3, atol=1e-3)
-        return eigvals
+        return eigvals, xp.absolute(vecs)
 
     def _check_eigen(self, M, w, V, xp, sp, rtol=1e-8, atol=1e-14):
         """Check if the eigenvalue residual is small.
@@ -932,7 +933,6 @@ class TestLOBPCG:
         """Check the Fiedler vector computation.
         """
         eval_list = []
-        numpy.random.seed(1234)
         col = numpy.zeros(n)
         col[1] = 1
         A = scipy.linalg.toeplitz(col)
@@ -942,7 +942,7 @@ class TestLOBPCG:
         # http://www.cs.yale.edu/homes/spielman/561/2009/lect02-09.pdf
         tmp = numpy.pi * numpy.arange(n) / n
         analytic_w = 2 * (1 - numpy.cos(tmp))
-        analytic_V = numpy.cos(numpy.outer(numpy.arange(n) + 1/2, tmp))
+        analytic_V = numpy.cos(numpy.outer(numpy.arange(n) + 1 / 2, tmp))
         self._check_eigen(L, analytic_w, analytic_V, numpy, scipy.sparse)
         # Compute the full eigendecomposition using eigh.
         eigh_w, eigh_V = scipy.linalg.eigh(L)
@@ -957,6 +957,7 @@ class TestLOBPCG:
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
                                               largest=False)
         eval_list.append(lobpcg_w)
+        eval_list.append(xp.absolute(lobpcg_V))
         cupy.testing.assert_array_equal(lobpcg_w.shape, (p,))
         cupy.testing.assert_array_equal(lobpcg_V.shape, (n, p))
         self._check_eigen(xp.asarray(L), lobpcg_w, lobpcg_V, xp, sp)
@@ -970,40 +971,43 @@ class TestLOBPCG:
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
                                               largest=True)
         eval_list.append(lobpcg_w)
+        eval_list.append(xp.absolute(lobpcg_V))
         cupy.testing.assert_array_equal(lobpcg_w.shape, (p,))
         cupy.testing.assert_array_equal(lobpcg_V.shape, (n, p))
         self._check_eigen(xp.asarray(L), lobpcg_w, lobpcg_V, xp, sp)
         cupy.testing.assert_allclose(xp.sort(lobpcg_w),
                                      xp.asarray(analytic_w[-p:]))
 
-        fiedler_guess = numpy.concatenate((numpy.ones(n//2),
-                                           -numpy.ones(n-n//2)))
+        fiedler_guess = numpy.concatenate((numpy.ones(n // 2),
+                                           -numpy.ones(n - n // 2)))
         X = numpy.vstack((numpy.ones(n), fiedler_guess)).T
-        lobpcg_w, _ = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
-                                       largest=False)
-        # Mathematically, the smaller eigenvalue should be zero
-        # and the larger should be the algebraic connectivity.
-        lobpcg_w = xp.sort(lobpcg_w)
+        lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
+                                              largest=False)
+        lobpcg_V = xp.absolute(lobpcg_V)
         eval_list.append(lobpcg_w)
+        eval_list.append(lobpcg_V)
         cupy.testing.assert_allclose(lobpcg_w, xp.asarray(analytic_w[:2]),
                                      atol=1e-14)
         return eval_list
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
     def test_fiedler_small_8(self, xp, sp):
         """Check the dense workaround path for small matrices.
         """
         # This triggers the dense path because 8 < 2*5.
         return self._check_fiedler(8, 2, xp, sp)
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
     def test_fiedler_large_12(self, xp, sp):
         """Check the dense workaround path avoided for non-small matrices.
         """
         # This does not trigger the dense path, because 2*5 <= 12.
         return self._check_fiedler(12, 2, xp, sp)
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
     def test_eigs_consistency(self, xp, sp):
         """Check eigs vs. lobpcg consistency.
         """
@@ -1011,12 +1015,12 @@ class TestLOBPCG:
         param_arr = [(20, 1e-3), (5, 1e-8)]
         eval_list = []
         for n, _atol in param_arr:
-            vals = xp.arange(1, n+1, dtype=xp.float64)
+            vals = xp.arange(1, n + 1, dtype=xp.float64)
             A = sp.spdiags(vals, 0, n, n)
-            numpy.random.seed(345678)
-            X = xp.asarray(numpy.random.rand(n, 2))
+            X = testing.shaped_random((n, 2), xp=xp, seed=345678)
             lvals, lvecs = sp.linalg.lobpcg(A, X, largest=True, maxiter=100)
             eval_list.append(lvals)
+            eval_list.append(xp.absolute(lvecs))
             try:  # cupyx.sparse.linalg.eigsh might not converge!
                 vals, _ = sp.linalg.eigsh(A, k=2)
             except Exception as e:
@@ -1030,56 +1034,53 @@ class TestLOBPCG:
     def test_verbosity(self):
         """Check that nonzero verbosity level code runs.
         """
-        A, B = self._elasticRod(100, cupy)
+        A, B = self._elastic_rod(100, cupy)
         n = A.shape[0]
         m = 20
-        cupy.random.seed(0)
-        V = numpy.random.rand(n, m)
+        V = testing.shaped_random((n, m), xp=numpy, seed=0)
         X = scipy.linalg.orth(V)
         _, _ = sparse.linalg.lobpcg(A, cupy.asarray(X), B=B, tol=1e-5,
                                     maxiter=30, largest=False,
                                     verbosityLevel=9)
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-3, sp_name='sp',
+                                 contiguous_check=False)
     def test_random_initial_float32(self, xp, sp):
         """Check lobpcg in float32 for specific initial.
         """
-        numpy.random.seed(3)
         n = 50
         m = 4
         vals = -xp.arange(1, n + 1)
         A = sp.diags([vals], [0], (n, n))
         A = A.astype(xp.float32)
-        X = xp.asarray(numpy.random.rand(n, m))
-        X = X.astype(xp.float32)
-        eigvals, _ = sp.linalg.lobpcg(A, X, tol=1e-3, maxiter=50,
-                                      verbosityLevel=1)
+        X = testing.shaped_random((n, m), xp=xp, seed=3)
+        eigvals, vecs = sp.linalg.lobpcg(A, X, tol=1e-3, maxiter=50,
+                                         verbosityLevel=1)
+        vecs = xp.absolute(vecs)
         cupy.testing.assert_allclose(eigvals, -xp.arange(1, 1 + m), atol=1e-2)
-        return eigvals
+        return eigvals, vecs
 
     def test_maxit_None(self):
         """Check lobpcg if maxit=None runs 20 iterations (the default)
         by checking the size of the iteration history output, which should
         be the number of iterations plus 2 (initial and final values).
         """
-        cupy.random.seed(1566950023)
         n = 50
         m = 4
         vals = -cupy.arange(1, n + 1)
         A = sparse.diags([vals], [0], (n, n))
         A = A.astype(cupy.float32)
-        X = cupy.random.randn(n, m)
-        X = X.astype(cupy.float32)
+        X = testing.shaped_random((n, m), xp=cupy, seed=1566950023)
         _, _, l_h = sparse.linalg.lobpcg(A, X, tol=1e-8, maxiter=20,
                                          retLambdaHistory=True)
-        cupy.testing.assert_allclose(cupy.array(len(l_h)), cupy.array(20+2))
+        cupy.testing.assert_allclose(cupy.array(len(l_h)), cupy.array(20 + 2))
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
     @pytest.mark.slow
     def test_diagonal_data_types(self, xp, sp):
         """Check lobpcg for diagonal matrices for all matrix types.
         """
-        numpy.random.seed(1234)
         n = 40
         m = 4
         # Define the generalized eigenvalue problem Av = cBv
@@ -1103,7 +1104,7 @@ class TestLOBPCG:
             listB = [Bf64, Bs64]
 
             # Define the preconditioner function as LinearOperator.
-            Ms64 = sp.diags([1./vals], [0], (n, n), format=s_f)
+            Ms64 = sp.diags([1. / vals], [0], (n, n), format=s_f)
 
             def Ms64precond(x):
                 return Ms64 @ x
@@ -1138,7 +1139,8 @@ class TestLOBPCG:
 
             # Setup matrix of the initial approximation to the eigenvectors
             # (cannot be sparse array).
-            Xf64 = xp.asarray(numpy.random.rand(n, m))
+            Xf64 = testing.shaped_random((n, m), xp=xp, dtype=xp.float64,
+                                         seed=1234)
             Xf32 = Xf64.astype(xp.float32)
             listX = [Xf64, Xf32]
 
@@ -1156,13 +1158,12 @@ class TestLOBPCG:
             #  then for one additional sparse format. this takes 2/7=30% as
             # long as testing all configurations for all sparse formats.
             if s_f_i > 0:
-                tests = tests[s_f_i - 1::sparse_formats-1]
+                tests = tests[s_f_i - 1::sparse_formats - 1]
 
             for A, B, M, X, Y in tests:
-                eigvals, _ = sp.linalg.lobpcg(A, X, B=B, M=M, Y=Y, tol=1e-4,
-                                              maxiter=100, largest=False)
+                eigvals, eigvecs = sp.linalg.lobpcg(A, X, B=B, M=M, Y=Y,
+                                                    tol=1e-4, maxiter=100,
+                                                    largest=False)
                 eval_list.append(eigvals)
-                cupy.testing.assert_allclose(eigvals,
-                                             xp.arange(1 + m_excluded,
-                                                       1 + m_excluded + m))
+                eval_list.append(xp.absolute(eigvecs))
         return eval_list
