@@ -293,7 +293,7 @@ cpdef getDeviceProperties(int device):
     cdef dict properties = {'name': 'UNAVAILABLE'}  # for RTD
 
     # Common properties to CUDA 9.0, 9.2, 10.x, 11.x, and HIP
-    IF CUDA_VERSION > 0 or use_hip:
+    IF CUDA_VERSION > 0 or HIP_VERSION > 0:
         properties = {
             'name': props.name,
             'totalGlobalMem': props.totalGlobalMem,
@@ -391,7 +391,7 @@ cpdef getDeviceProperties(int device):
             props.accessPolicyMaxWindowSize)
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
-    IF use_hip:  # HIP-only props
+    IF HIP_VERSION > 0:  # HIP-only props
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
             props.maxSharedMemoryPerMultiProcessor)
@@ -428,7 +428,7 @@ cpdef getDeviceProperties(int device):
         arch['has3dGrid'] = props.arch.has3dGrid
         arch['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
         properties['arch'] = arch
-    IF use_hip and HIP_VERSION >= 310:
+    IF HIP_VERSION >= 310:
         properties['gcnArchName'] = props.gcnArchName
         properties['asicRevision'] = props.asicRevision
         properties['managedMemory'] = props.managedMemory

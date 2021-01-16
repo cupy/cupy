@@ -340,7 +340,7 @@ cdef extern from *:
             size_t       sharedMemPerBlockOptin
             int          pageableMemoryAccessUsesHostPageTables
             int          directManagedMemAccessFromHost
-    ELIF use_hip:
+    ELIF HIP_VERSION > 0:
         ctypedef struct deviceArch 'hipDeviceArch_t':
             unsigned hasGlobalInt32Atomics
             unsigned hasGlobalFloatAtomicExch
@@ -575,8 +575,8 @@ cpdef enum:
 # This was a legacy mistake: the prefix "cuda" should have been removed
 # so that we can directly assign their C counterparts here. Now because
 # of backward compatibility and no flexible Cython macro (IF/ELSE), we
-# have to duplicate the enum. (CUDA and HIP use different values.)
-IF use_hip:
+# have to duplicate the enum. (CUDA and HIP use different values!)
+IF HIP_VERSION > 0:
     # separate in groups of 10 for easier counting...
     cpdef enum:
         cudaDevAttrMaxThreadsPerBlock = 0

@@ -828,7 +828,6 @@ def cythonize(extensions, arg_options):
     if compile_time_env is None:
         compile_time_env = {}
         cythonize_options['compile_time_env'] = compile_time_env
-    compile_time_env['use_hip'] = arg_options['use_hip']
     compile_time_env['CUPY_CUFFT_STATIC'] = False
     compile_time_env['cython_version'] = str(cython_version)
     if arg_options['no_cuda']:  # on RTD
