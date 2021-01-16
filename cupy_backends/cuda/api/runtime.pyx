@@ -87,7 +87,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device)
     int cudaDeviceGetByPCIBusId(int* device, const char* pciBusId)
     int cudaDeviceGetPCIBusId(char* pciBusId, int len, int device)
-    int cudaGetDeviceProperties(cudaDeviceProp* prop, int device)
+    int cudaGetDeviceProperties(DeviceProp* prop, int device)
     int cudaGetDeviceCount(int* count)
     int cudaSetDevice(int device)
     int cudaDeviceSynchronize()
@@ -286,7 +286,7 @@ cpdef int deviceGetAttribute(int attrib, int device) except? -1:
     return ret
 
 cpdef getDeviceProperties(int device):
-    cdef cudaDeviceProp props
+    cdef DeviceProp props
     cdef int status = cudaGetDeviceProperties(&props, device)
     check_status(status)
 
