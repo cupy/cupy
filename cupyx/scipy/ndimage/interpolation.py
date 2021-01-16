@@ -4,7 +4,6 @@ import warnings
 import cupy
 import numpy
 
-import cupy._util
 from cupy.core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _interp_kernels
