@@ -49,7 +49,6 @@ Rounding
 
    cupy.around
    cupy.round_
-   cupy.round
    cupy.rint
    cupy.fix
    cupy.floor
