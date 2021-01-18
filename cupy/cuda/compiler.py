@@ -235,7 +235,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
     if not arch:
         arch = _get_arch()
 
-    options += ('-arch=compute_{}'.format(arch),)
+    options += ('-arch=sm_{}'.format(arch),)
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
@@ -362,7 +362,7 @@ def compile_using_nvcc(source, options=(), arch=None,
 
 def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
-        options += ('-arch=compute_{}'.format(arch),)
+        options += ('-arch=sm_{}'.format(arch),)
 
         prog = _NVRTCProgram(source, '')
         try:
@@ -627,7 +627,7 @@ class _NVRTCProgram(object):
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
             if log_stream is not None:
                 log_stream.write(nvrtc.getProgramLog(self.ptr))
-            return nvrtc.getPTX(self.ptr), mapping
+            return nvrtc.getCUBIN(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
             raise CompileException(log, self.src, self.name, options,
