@@ -142,16 +142,17 @@ cpdef bytes getPTX(intptr_t prog):
 
 
 cpdef bytes getCUBIN(intptr_t prog):
-    cdef size_t cubinSizeRet
+    cdef size_t cubinSizeRet = 0
     cdef vector.vector[char] cubin
     cdef char* cubin_ptr = NULL
     with nogil:
         status = nvrtcGetCUBINSize(<Program>prog, &cubinSizeRet)
     check_status(status)
-    if cubinSizeRet == 0:
-        # TODO(leofang): should we raise here instead? When size=0 it means
-        # the virtual arch was used, but probably it's not what's intented?
-        return b''
+    if cubinSizeRet <= 1:
+        # On CUDA 11.1, cubinSizeRet=1 if -arch=compute_XX is used, but the
+        # spec says it should be 0 in this case...
+        raise RuntimeError('cubin is requested, but the real arch (sm_XX) is '
+                           'not provided')
     cubin.resize(cubinSizeRet)
     cubin_ptr = cubin.data()
     with nogil:
@@ -159,7 +160,6 @@ cpdef bytes getCUBIN(intptr_t prog):
     check_status(status)
 
     # Strip the trailing NULL.
-    # TODO(leofang): check if this is also necessary for cubins
     return cubin_ptr[:cubinSizeRet-1]
 
 
