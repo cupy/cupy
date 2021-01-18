@@ -20,6 +20,7 @@ import urllib.request
 
 
 _cudnn_records = []
+_cutensor_records = []
 
 
 def _make_cudnn_url(public_version, filename):
@@ -111,6 +112,84 @@ Remove the directory first if you want to reinstall.'''.format(destination))
     print('Done!')
 
 
+def _make_cutensor_url(public_version, filename):
+    # https://developer.download.nvidia.com/compute/cutensor/1.2.2/local_installers/libcutensor-linux-x86_64-1.2.2.5.tar.gz
+    return (
+        'https://developer.download.nvidia.com/compute/cutensor/' +
+        '{}/local_installers/{}'.format(public_version, filename))
+
+
+def _make_cutensor_record(
+        cuda_version, public_version, filename_linux, filename_windows=''):
+    # TODO(leofang): Support Windows when a public link becomes available
+    major_version = public_version.split('.')[0]
+    return {
+        'cuda': cuda_version,
+        'cutensor': public_version,
+        'assets': {
+            'Linux': {
+                'url': _make_cutensor_url(public_version, filename_linux),
+                'filename': 'libcutensor.so.{}'.format(public_version),
+            },
+        }
+    }
+
+
+_cutensor_records.append(_make_cutensor_record(
+    '11.1', '1.2.2',
+    'libcutensor-linux-x86_64-1.2.2.5.tar.gz', ''))
+_cutensor_records.append(_make_cutensor_record(
+    '11.0', '1.2.2',
+    'libcutensor-linux-x86_64-1.2.2.5.tar.gz', ''))
+_cutensor_records.append(_make_cutensor_record(
+    '10.2', '1.2.2',
+    'libcutensor-linux-x86_64-1.2.2.5.tar.gz', ''))
+_cutensor_records.append(_make_cutensor_record(
+    '10.1', '1.2.2',
+    'libcutensor-linux-x86_64-1.2.2.5.tar.gz', ''))
+
+
+def install_cutensor(cuda, prefix):
+    record = None
+    for record in _cutensor_records:
+        if record['cuda'] == cuda:
+            break
+    else:
+        raise RuntimeError('''
+The CUDA version specified is not supported.
+Should be one of {}.'''.format(str([x['cuda'] for x in _cutensor_records])))
+    if prefix is None:
+        prefix = os.path.expanduser('~/.cupy/cuda_lib')
+    destination = calculate_destination(prefix, cuda, 'cutensor', record['cutensor'])
+
+    if os.path.exists(destination):
+        raise RuntimeError('''
+The destination directory {} already exists.
+Remove the directory first if you want to reinstall.'''.format(destination))
+    asset = record['assets'][platform.system()]
+
+    print('Installing cuTENSOR {} for CUDA {} to: {}'.format(
+        record['cutensor'], record['cuda'], destination))
+
+    url = asset['url']
+    print('Downloading {}...'.format(url))
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(os.path.join(tmpdir, os.path.basename(url)), 'wb') as f:
+            with urllib.request.urlopen(url) as response:
+                f.write(response.read())
+        print('Extracting...')
+        shutil.unpack_archive(f.name, tmpdir)
+        print('Installing...')
+        include = os.path.join(destination, 'include')
+        lib = os.path.join(destination, 'lib')
+        shutil.move(os.path.join(tmpdir, 'libcutensor/include'), include)
+        if cuda.startswith('11'):
+            cuda = '11'
+        shutil.move(os.path.join(tmpdir, 'libcutensor/lib', cuda), lib)
+        print('Cleaning up...')
+    print('Done!')
+
+
 def calculate_destination(prefix, cuda, lib, lib_ver):
     """Calculates the installation directory.
 
@@ -122,8 +201,10 @@ def calculate_destination(prefix, cuda, lib, lib_ver):
 def main(args):
     parser = argparse.ArgumentParser()
 
-    # TODO(kmaehashi) support cuTENSOR and NCCL
-    parser.add_argument('--library', choices=['cudnn'], required=True,
+    # TODO(kmaehashi) support NCCL
+    parser.add_argument('--library',
+                        choices=['cudnn', 'cutensor'],
+                        required=True,
                         help='Library to install')
     parser.add_argument('--cuda', type=str, required=True,
                         help='CUDA version')
@@ -142,6 +223,13 @@ def main(args):
             install_cudnn(params.cuda, params.prefix)
         elif params.action == 'dump':
             print(json.dumps(_cudnn_records, indent=4))
+        else:
+            assert False
+    elif params.library == 'cutensor':
+        if params.action == 'install':
+            install_cutensor(params.cuda, params.prefix)
+        elif params.action == 'dump':
+            print(json.dumps(_cutensor_records, indent=4))
         else:
             assert False
     else:
