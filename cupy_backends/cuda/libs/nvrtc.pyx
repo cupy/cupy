@@ -30,6 +30,8 @@ cdef extern from '../../cupy_rtc.h' nogil:
                             const char** options)
     int nvrtcGetPTXSize(Program prog, size_t *ptxSizeRet)
     int nvrtcGetPTX(Program prog, char *ptx)
+    int nvrtcGetCUBINSize(Program prog, size_t *cubinSizeRet)
+    int nvrtcGetCUBIN(Program prog, char *cubin)
     int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
     int nvrtcGetProgramLog(Program prog, char* log)
     int nvrtcAddNameExpression(Program, const char*)
@@ -137,6 +139,28 @@ cpdef bytes getPTX(intptr_t prog):
 
     # Strip the trailing NULL.
     return ptx_ptr[:ptxSizeRet-1]
+
+
+cpdef bytes getCUBIN(intptr_t prog):
+    cdef size_t cubinSizeRet
+    cdef vector.vector[char] cubin
+    cdef char* cubin_ptr = NULL
+    with nogil:
+        status = nvrtcGetCUBINSize(<Program>prog, &cubinSizeRet)
+    check_status(status)
+    if cubinSizeRet == 0:
+        # TODO(leofang): should we raise here instead? When size=0 it means
+        # the virtual arch was used, but probably it's not what's intented?
+        return b''
+    cubin.resize(cubinSizeRet)
+    cubin_ptr = cubin.data()
+    with nogil:
+        status = nvrtcGetCUBIN(<Program>prog, cubin_ptr)
+    check_status(status)
+
+    # Strip the trailing NULL.
+    # TODO(leofang): check if this is also necessary for cubins
+    return cubin_ptr[:cubinSizeRet-1]
 
 
 cpdef unicode getProgramLog(intptr_t prog):
