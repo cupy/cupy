@@ -249,7 +249,7 @@ class _RuntimeInfo(object):
                     arch = ('Device {} Arch'.format(device_id), arch)
                 else:
                     arch = ('Device {} Compute Capability'.format(device_id),
-                            device.compute_capability),
+                            device.compute_capability)
                 records += [name, arch]
 
         width = max([len(r[0]) for r in records]) + 2
