@@ -88,7 +88,6 @@ def _make_cutensor_url(public_version, filename):
 def _make_cutensor_record(
         cuda_version, public_version, filename_linux, filename_windows=''):
     # TODO(leofang): Support Windows when a public link becomes available
-    major_version = public_version.split('.')[0]
     return {
         'cuda': cuda_version,
         'cutensor': public_version,
@@ -118,13 +117,14 @@ library_records['cutensor'] = _cutensor_records
 
 def install_lib(cuda, prefix, library):
     record = None
-    for record in library_records[library]:
+    lib_records = library_records
+    for record in lib_records[library]:
         if record['cuda'] == cuda:
             break
     else:
         raise RuntimeError('''
 The CUDA version specified is not supported.
-Should be one of {}.'''.format(str([x['cuda'] for x in library_records[library]])))
+Should be one of {}.'''.format(str([x['cuda'] for x in lib_records[library]])))
     if prefix is None:
         prefix = os.path.expanduser('~/.cupy/cuda_lib')
     destination = calculate_destination(prefix, cuda, library, record[library])
