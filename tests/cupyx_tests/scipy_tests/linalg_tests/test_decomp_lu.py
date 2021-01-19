@@ -60,6 +60,17 @@ class TestLUFactor(unittest.TestCase):
 
 
 @testing.gpu
+@testing.with_requires('scipy')
+class TestLUFactorSingular:
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_lu_factor_singular(self, xp, scp, dtype):
+        a = xp.array([[0, 1], [0, 0]], dtype=dtype)
+        return scp.linalg.lu_factor(a)
+
+
+@testing.gpu
 @testing.parameterize(*testing.product({
     'shape': [(1, 1), (2, 2), (3, 3), (5, 5), (1, 5), (5, 1), (2, 5), (5, 2)],
     'permute_l': [False, True],
