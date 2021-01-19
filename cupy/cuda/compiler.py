@@ -238,7 +238,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
             if _cuda_version >= 11010 and jitify:
                 # Convert the virtual arch to a real arch
                 options = [f'-arch=sm_{arch}' if opt.startswith('-arch=')
-                    else opt for opt in options]
+                           else opt for opt in options]
                 options = tuple(options)
             ptx, mapping = prog.compile(options, log_stream)
         except CompileException as e:
