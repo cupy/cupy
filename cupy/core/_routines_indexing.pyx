@@ -1,6 +1,7 @@
 # distutils: language = c++
 import sys
 import warnings
+import string
 
 import numpy
 
@@ -10,6 +11,7 @@ from cupy.core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
 
+from cupy_backends.cuda.api cimport runtime
 from cupy.core._carray cimport shape_t
 from cupy.core._carray cimport strides_t
 from cupy.core cimport core
@@ -87,22 +89,37 @@ cpdef ndarray _ndarray_argwhere(ndarray self):
             scan_dtype = numpy.int32
         else:
             scan_dtype = numpy_int64
-        scan_index = _math.scan(nonzero, op=_math.scan_op.SCAN_SUM,
-                                dtype=scan_dtype)
+
+        chunk_size = 512
+
+        # TODO(anaruse): Use Optuna to automatically tune the threshold
+        # that determines whether "incomplete scan" is enabled or not.
+        # Basically, "incomplete scan" is fast when the array size is large,
+        # but for small arrays, it is better to use the normal method.
+        incomplete_scan = nonzero.size > chunk_size
+
+        scan_index = _math.scan(
+            nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
+            incomplete=incomplete_scan, chunk_size=chunk_size)
         count_nonzero = int(scan_index[-1])  # synchronize!
+
     ndim = self._shape.size()
     dst = ndarray((count_nonzero, ndim), dtype=numpy_int64)
     if dst.size == 0:
         return dst
 
-    if ndim == 1:
-        _nonzero_kernel_1d(nonzero, scan_index, dst)
-        return dst
+    nonzero.shape = self.shape
+    if incomplete_scan:
+        warp_size = 64 if runtime._is_hip_environment else 32
+        size = scan_index.size * chunk_size
+        _nonzero_kernel_incomplete_scan(chunk_size, warp_size)(
+            nonzero, scan_index, dst,
+            size=size, block_size=chunk_size)
     else:
-        nonzero.shape = self.shape
         scan_index.shape = self.shape
         _nonzero_kernel(nonzero, scan_index, dst)
-        return dst
+
+    return dst
 
 
 cdef _ndarray_scatter_add(ndarray self, slices, value):
@@ -412,10 +429,63 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
     return v
 
 
-_nonzero_kernel_1d = ElementwiseKernel(
-    'T src, S index', 'raw U dst',
-    'if (src != 0) dst[index - 1] = i',
-    'nonzero_kernel_1d')
+_preamble = '' if not runtime._is_hip_environment else r'''
+    // ignore mask
+    #define __shfl_up_sync(m, x, y, z) __shfl_up(x, y, z)
+    '''
+
+
+@cupy._util.memoize(for_each_device=True)
+def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
+    in_params = 'raw T a, raw S b'
+    out_params = 'raw O dst'
+    loop_prep = string.Template("""
+        __shared__ S smem[${warp_size}];
+        const int n_warp = ${block_size} / ${warp_size};
+        const int warp_id = threadIdx.x / ${warp_size};
+        const int lane_id = threadIdx.x % ${warp_size};
+    """).substitute(block_size=block_size, warp_size=warp_size)
+    loop_body = string.Template("""
+        S x = 0;
+        if (i < a.size()) x = a[i];
+        for (int j = 1; j < ${warp_size}; j *= 2) {
+            S tmp = __shfl_up_sync(0xffffffff, x, j, ${warp_size});
+            if (lane_id - j >= 0) x += tmp;
+        }
+        if (lane_id == ${warp_size} - 1) smem[warp_id] = x;
+        __syncthreads();
+        if (warp_id == 0) {
+            S y = 0;
+            if (lane_id < n_warp) y = smem[lane_id];
+            for (int j = 1; j < n_warp; j *= 2) {
+                S tmp = __shfl_up_sync(0xffffffff, y, j, ${warp_size});
+                if (lane_id - j >= 0) y += tmp;
+            }
+            int block_id = i / ${block_size};
+            S base = 0;
+            if (block_id > 0) base = b[block_id - 1];
+            if (lane_id == ${warp_size} - 1) y = 0;
+            smem[(lane_id + 1) % ${warp_size}] = y + base;
+        }
+        __syncthreads();
+        x += smem[warp_id];
+        S x0 = __shfl_up_sync(0xffffffff, x, 1, ${warp_size});
+        if (lane_id == 0) {
+            x0 = smem[warp_id];
+        }
+        if (x0 < x && i < a.size()) {
+            O j = i;
+            for (int d = a.ndim - 1; d >= 0; d--) {
+                ptrdiff_t ind[] = {x0, d};
+                O j_next = j / a.shape()[d];
+                dst[ind] = j - j_next * a.shape()[d];
+                j = j_next;
+            }
+        }
+    """).substitute(block_size=block_size, warp_size=warp_size)
+    return cupy.ElementwiseKernel(in_params, out_params, loop_body,
+                                  'nonzero_kernel_incomplete_scan',
+                                  loop_prep=loop_prep, preamble=_preamble)
 
 
 _nonzero_kernel = ElementwiseKernel(
@@ -675,7 +745,9 @@ cpdef ndarray _getitem_mask_single(ndarray a, ndarray mask, int axis):
 
 
 cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
-    # When li + 1 == ri this function behaves similarly to np.take
+    # Take along (flattened) axes from li to ri *inclusive*.
+    # When li == ri this function behaves similarly to np.take
+    # TODO(kataoka): Use half-open interval [li, ri)
     cdef tuple out_shape, ind_shape, indices_shape
     cdef int i, ndim = a._shape.size()
     cdef Py_ssize_t ldim, cdim, rdim, index_range
@@ -683,15 +755,10 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
         a = a.ravel()
         ndim = 1
 
-    if not (-ndim <= li < ndim and -ndim <= ri < ndim):
-        raise numpy.AxisError('Axis overrun')
+    li = internal._normalize_axis_index(li, ndim)
+    ri = internal._normalize_axis_index(ri, ndim)
 
-    if ndim == 1:
-        li = ri = 0
-    else:
-        li %= ndim
-        ri %= ndim
-        assert 0 <= li <= ri
+    assert li <= ri
 
     if numpy.isscalar(indices):
         indices_shape = ()
@@ -717,7 +784,9 @@ cdef ndarray _take(ndarray a, indices, int li, int ri, ndarray out=None):
             ldim *= a._shape[i]
         for i in range(ri + 1, ndim):
             rdim *= a._shape[i]
-        index_range = a.size // (ldim * rdim)
+        index_range = 1
+        for i in range(li, ri + 1):
+            index_range *= a._shape[i]
 
     if out is None:
         out = ndarray(out_shape, dtype=a.dtype)

@@ -80,3 +80,19 @@ cdef class PlanNd:
 
         # TODO(leofang): support multi-GPU transforms
         readonly list gpus
+
+
+cdef class XtPlanNd:
+    cdef:
+        readonly intptr_t handle
+        readonly memory.MemoryPointer work_area
+        readonly tuple shape
+        readonly int itype
+        readonly int otype
+        readonly int etype
+        readonly str order
+        readonly int last_axis
+        readonly object last_size
+
+        # TODO(leofang): support multi-GPU transforms
+        readonly list gpus

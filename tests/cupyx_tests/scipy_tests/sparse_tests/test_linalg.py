@@ -1,5 +1,6 @@
 import cupy
 import unittest
+import warnings
 
 import numpy
 import pytest
@@ -411,6 +412,15 @@ class TestGmres:
     n = 30
     density = 0.2
     _atol = {'f': 1e-5, 'd': 1e-12}
+
+    # TODO(kataoka): Fix the `lstsq` call in CuPy's `gmres`
+    @pytest.fixture(autouse=True)
+    def ignore_futurewarning(self):
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                'ignore', '`rcond` parameter will change', FutureWarning,
+            )
+            yield
 
     def _make_matrix(self, dtype, xp):
         dtype = numpy.dtype(dtype)
