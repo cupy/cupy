@@ -14,7 +14,7 @@ class TestInstallLibrary(unittest.TestCase):
         for rec in install_library._cudnn_records:
             cuda = rec['cuda']
             with tempfile.TemporaryDirectory() as d:
-                install_library.install_cudnn(cuda, d)
+                install_library.install_lib(cuda, d, 'cudnn')
 
     def test_cudnn(self):
         assets = [r['assets'] for r in install_library._cudnn_records]
