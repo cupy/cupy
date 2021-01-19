@@ -453,8 +453,8 @@ cdef class MemoryPointer:
         """Copies a memory sequence to the host memory asynchronously.
 
         Args:
-            mem (ctypes.c_void_p): Target memory pointer. It must be a pinned
-                memory.
+            mem (int or ctypes.c_void_p): Target memory pointer. It must point
+                to pinned memory.
             size (int): Size of the sequence in bytes.
             stream (cupy.cuda.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
@@ -465,7 +465,8 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            runtime.memcpyAsync(mem.value, self.ptr, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpyAsync(ptr, self.ptr, size,
                                 runtime.memcpyDeviceToHost, stream_ptr)
 
     cpdef memset(self, int value, size_t size):
