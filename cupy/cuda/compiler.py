@@ -15,8 +15,10 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
-if not runtime.is_hip and driver.get_build_version() > 0:
-    from cupy.cuda.jitify import jitify
+if not runtime.is_hip:
+    _cuda_version = driver.get_build_version()
+    if _cuda_version > 0:
+        from cupy.cuda.jitify import jitify
 
 
 _nvrtc_version = None
@@ -115,30 +117,10 @@ def _get_nvrtc_version():
     return _nvrtc_version
 
 
-# Known archs for Tegra/Jetson/Xavier/etc
-_tegra_archs = ('53', '62', '72')
-
-
 @_util.memoize(for_each_device=True)
 def _get_arch():
-    # See Supported Compile Options section of NVRTC User Guide for
-    # the maximum value allowed for `--gpu-architecture`.
-    major, minor = _get_nvrtc_version()
-    if major < 10 or (major == 10 and minor == 0):
-        # CUDA 9.x / 10.0
-        _nvrtc_max_compute_capability = '70'
-    elif major < 11:
-        # CUDA 10.1 / 10.2
-        _nvrtc_max_compute_capability = '75'
-    else:
-        # CUDA 11.0 / 11.1
-        _nvrtc_max_compute_capability = '80'
-
     arch = device.Device().compute_capability
-    if arch in _tegra_archs:
-        return arch
-    else:
-        return min(arch, _nvrtc_max_compute_capability)
+    return arch
 
 
 def _is_cudadevrt_needed(options):
@@ -235,7 +217,12 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
     if not arch:
         arch = _get_arch()
 
-    options += ('-arch=sm_{}'.format(arch),)
+    if _cuda_version >= 11010 and not jitify:
+        options += ('-arch=sm_{}'.format(arch),)
+    else:
+        # Jitify internally calls nvrtcGetPTX, so we must use virtual archs,
+        # or there'd be errors due to unresolved errors
+        options += ('-arch=compute_{}'.format(arch),)
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
@@ -248,6 +235,11 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions)
         try:
+            if _cuda_version >= 11010 and jitify:
+                # Convert the virtual arch to a real arch
+                options = [f'-arch=sm_{arch}' if opt.startswith('-arch=')
+                    else opt for opt in options]
+                options = tuple(options)
             ptx, mapping = prog.compile(options, log_stream)
         except CompileException as e:
             dump = _get_bool_env_variable(
@@ -362,7 +354,10 @@ def compile_using_nvcc(source, options=(), arch=None,
 
 def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
-        options += ('-arch=sm_{}'.format(arch),)
+        if _cuda_version >= 11010:
+            options += ('-arch=sm_{}'.format(arch),)
+        else:
+            options += ('-arch=compute_{}'.format(arch),)
 
         prog = _NVRTCProgram(source, '')
         try:
@@ -627,7 +622,10 @@ class _NVRTCProgram(object):
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
             if log_stream is not None:
                 log_stream.write(nvrtc.getProgramLog(self.ptr))
-            return nvrtc.getCUBIN(self.ptr), mapping
+            if _cuda_version >= 11010:
+                return nvrtc.getCUBIN(self.ptr), mapping
+            else:
+                return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
             raise CompileException(log, self.src, self.name, options,
