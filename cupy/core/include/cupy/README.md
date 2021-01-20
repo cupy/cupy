@@ -11,11 +11,6 @@ Including the CUB headers as a submodule enables not only building the `cupy.cud
 but also easier maintenance.
 For further information on CUB, see the [CUB Project Website](http://nvlabs.github.com/cub).
 
-## Jitify
-The `Jitify` folder is a git submodule for the Jitify project.
-Including the Jitify header as a submodule for building the `cupy.cuda.jitify` module.
-For further information on Jitify, see the [Jitify repo](https://github.com/NVIDIA/jitify).
-
 ## DLPack
 The `dlpack` folder stores the DLPack header for building the `cupy.core.dlpack` module,
 see `README.md` therein.
