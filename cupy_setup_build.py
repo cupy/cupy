@@ -69,7 +69,6 @@ cuda_files = [
     'cupy.core._routines_statistics',
     'cupy.core._scalar',
     'cupy.core.core',
-    'cupy.core.dlpack',
     'cupy.core.flags',
     'cupy.core.internal',
     'cupy.core.fusion',
@@ -283,6 +282,17 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
             'check_method': build.check_thrust_version,
             'version_method': build.get_thrust_version,
         })
+
+MODULES.append({
+    'name': 'dlpack',
+    'file': [
+        'cupy.core.dlpack',
+    ],
+    'include': [
+        'cupy/dlpack/dlpack.h',
+    ],
+    'libraries': [],
+})
 
 
 def ensure_module_file(file):
@@ -560,6 +570,10 @@ def make_extensions(options, compiler, use_cython):
                 link_args.append('-fopenmp')
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
+
+        if module['name'] == 'dlpack':
+            # if any change is made to the DLPack header, we force recompiling
+            s['depends'] = ['./cupy/core/include/cupy/dlpack/dlpack.h']
 
         for f in module['file']:
             s_file = copy.deepcopy(s)

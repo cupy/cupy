@@ -10,3 +10,8 @@ The `cub` folder is a git submodule for the CUB project.
 Including the CUB headers as a submodule enables not only building the `cupy.cuda.cub` module,
 but also easier maintenance.
 For further information on CUB, see the [CUB Project Website](http://nvlabs.github.com/cub).
+
+## DLPack
+The `dlpack` folder stores the DLPack header for building the `cupy.core.dlpack` module,
+see `README.md` therein.
+For further information on DLPack, see the [DLPack repo](https://github.com/dmlc/dlpack).
