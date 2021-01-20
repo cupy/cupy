@@ -219,6 +219,8 @@ class TestNdarrayShape(unittest.TestCase):
         return xp.array(arr.shape)
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestNdarrayCudaInterface(unittest.TestCase):
 
     def test_cuda_array_interface(self):
@@ -280,6 +282,8 @@ class TestNdarrayCudaInterface(unittest.TestCase):
     'stream': ('null', 'new'),
     'ver': (2, 3),
 }))
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestNdarrayCudaInterfaceStream(unittest.TestCase):
     def setUp(self):
         if self.stream == 'null':
@@ -313,6 +317,22 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         assert iface['strides'] is None
         if self.ver == 3:
             assert iface['stream'] == 1 if stream.ptr == 0 else stream.ptr
+
+
+@pytest.mark.skipif(not cupy.cuda.runtime.is_hip,
+                    reason='This is supported on CUDA')
+class TestNdarrayCudaInterfaceNoneCUDA(unittest.TestCase):
+
+    def setUp(self):
+        self.arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
+
+    def test_cuda_array_interface_hasattr(self):
+        assert not hasattr(self.arr, '__cuda_array_interface__')
+
+    def test_cuda_array_interface_getattr(self):
+        with pytest.raises(AttributeError) as e:
+            getattr(self.arr, '__cuda_array_interface__')
+        assert 'HIP' in str(e.value)
 
 
 @testing.parameterize(
@@ -452,8 +472,9 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (0,), 'indices': (0,)},
-    {'shape': (0,), 'indices': (0, 1)},
+    {'shape': (0,), 'indices': (0,), 'axis': None},
+    {'shape': (0,), 'indices': (0, 1), 'axis': None},
+    {'shape': (3, 0), 'indices': (2,), 'axis': 0},
 )
 @testing.gpu
 class TestZeroSizedNdarrayTake(unittest.TestCase):
@@ -462,7 +483,7 @@ class TestZeroSizedNdarrayTake(unittest.TestCase):
     def test_output_type_mismatch(self, xp):
         a = testing.shaped_arange(self.shape, xp, numpy.int32)
         i = testing.shaped_arange(self.indices, xp, numpy.int32)
-        return wrap_take(a, i)
+        return wrap_take(a, i, axis=self.axis)
 
 
 @testing.parameterize(
@@ -552,6 +573,11 @@ class TestPythonInterface(unittest.TestCase):
     def test_bytes_tobytes_scalar_array(self, xp, dtype):
         x = xp.array(3, dtype)
         return bytes(x)
+
+    @testing.numpy_cupy_equal()
+    def test_format(self, xp):
+        x = xp.array(1.12345)
+        return format(x, '.2f')
 
 
 @testing.gpu

@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 import cupy
 from cupy import testing
 
@@ -38,13 +40,41 @@ class TestDLTensorMemory(unittest.TestCase):
         cupy.cuda.set_allocator(self.pool.malloc)
 
     def tearDown(self):
+        self.pool.free_all_blocks()
         cupy.cuda.set_allocator(self.old_pool.malloc)
 
     def test_deleter(self):
+        # memory is freed when tensor is deleted, as it's not consumed
         array = cupy.empty(10)
         tensor = array.toDlpack()
+        # str(tensor): <capsule object "dltensor" at 0x7f7c4c835330>
+        assert "\"dltensor\"" in str(tensor)
         assert self.pool.n_free_blocks() == 0
         del array
         assert self.pool.n_free_blocks() == 0
         del tensor
         assert self.pool.n_free_blocks() == 1
+
+    def test_deleter2(self):
+        # memory is freed when array2 is deleted, as tensor is consumed
+        array = cupy.empty(10)
+        tensor = array.toDlpack()
+        assert "\"dltensor\"" in str(tensor)
+        array2 = cupy.fromDlpack(tensor)
+        assert "\"used_dltensor\"" in str(tensor)
+        assert self.pool.n_free_blocks() == 0
+        del array
+        assert self.pool.n_free_blocks() == 0
+        del array2
+        assert self.pool.n_free_blocks() == 1
+        del tensor
+        assert self.pool.n_free_blocks() == 1
+
+    def test_multiple_consumption_error(self):
+        # Prevent segfault, see #3611
+        array = cupy.empty(10)
+        tensor = array.toDlpack()
+        array2 = cupy.fromDlpack(tensor)  # noqa
+        with pytest.raises(ValueError) as e:
+            array3 = cupy.fromDlpack(tensor)  # noqa
+        assert 'consumed multiple times' in str(e.value)

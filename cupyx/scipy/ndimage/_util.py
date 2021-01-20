@@ -1,5 +1,8 @@
+import warnings
+
+import numpy
+
 import cupy
-import cupy._util
 
 
 def _is_integer_output(output, input):
@@ -16,11 +19,37 @@ def _check_cval(mode, cval, integer_output):
                                   "outputs with integer dtype.")
 
 
-def _get_output(output, input, shape=None):
-    if not isinstance(output, cupy.ndarray):
-        return cupy.zeros_like(input, shape=shape, dtype=output, order='C')
-    if output.shape != (input.shape if shape is None else tuple(shape)):
-        raise ValueError('output shape is not correct')
+def _get_weights_dtype(input, weights):
+    if weights.dtype.kind == "c" or input.dtype.kind == "c":
+        return cupy.promote_types(input.real.dtype, cupy.complex64)
+    elif weights.dtype.kind in 'iub':
+        # convert integer dtype weights to double as in SciPy
+        return cupy.float64
+    return cupy.promote_types(input.real.dtype, cupy.float32)
+
+
+def _get_output(output, input, shape=None, complex_output=False):
+    shape = input.shape if shape is None else shape
+    if output is None:
+        if complex_output:
+            _dtype = cupy.promote_types(input.dtype, cupy.complex64)
+        else:
+            _dtype = input.dtype
+        output = cupy.zeros(shape, dtype=_dtype)
+    elif isinstance(output, (type, cupy.dtype)):
+        if complex_output and cupy.dtype(output).kind != 'c':
+            warnings.warn("promoting specified output dtype to complex")
+            output = cupy.promote_types(output, cupy.complex64)
+        output = cupy.zeros(shape, dtype=output)
+    elif isinstance(output, str):
+        output = numpy.typeDict[output]
+        if complex_output and cupy.dtype(output).kind != 'c':
+            raise RuntimeError("output must have complex dtype")
+        output = cupy.zeros(shape, dtype=output)
+    elif output.shape != shape:
+        raise RuntimeError("output shape not correct")
+    elif complex_output and output.dtype.kind != 'c':
+        raise RuntimeError("output must have complex dtype")
     return output
 
 
@@ -46,8 +75,6 @@ def _check_origin(origin, width):
 
 
 def _check_mode(mode):
-    if mode in ['grid-mirror', 'grid-wrap', 'grid-reflect']:
-        cupy._util.experimental(f"mode '{mode}'")
     if mode not in ('reflect', 'constant', 'nearest', 'mirror', 'wrap',
                     'grid-mirror', 'grid-wrap', 'grid-reflect'):
         msg = f'boundary mode not supported (actual: {mode})'

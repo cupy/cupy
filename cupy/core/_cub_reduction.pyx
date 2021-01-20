@@ -140,8 +140,8 @@ __global__ void ${name}(${params}) {
           _seg_size = _array_size - segment_idx;
       }
       #ifdef __HIP_DEVICE_COMPILE__
-      // For a mysterious reason this is necessary...We don't understand HIP...
-      __syncthreads();
+      // We don't understand HIP...
+      __syncthreads();  // Propagate the new value back to memory
       #endif
   }
   #endif

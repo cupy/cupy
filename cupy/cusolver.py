@@ -11,6 +11,7 @@ from cupy import _util
 
 import cupyx as _cupyx
 
+
 _available_cuda_version = {
     'gesvdj': (9000, None),
     'gesvda': (10010, None),
@@ -22,6 +23,19 @@ _available_cuda_version = {
     'csrlsvqr': (9000, None),
 }
 
+_available_hip_version = {
+    'potrfBatched': (306, None),
+    # Below are APIs supported by CUDA but not yet by HIP. We need them here
+    # so that our test suite can cover both platforms.
+    'gesvdj': (_numpy.inf, None),
+    'gesvda': (_numpy.inf, None),
+    'potrsBatched': (_numpy.inf, None),
+    'syevj': (_numpy.inf, None),
+    'gesv': (_numpy.inf, None),
+    'gels': (_numpy.inf, None),
+    'csrlsvqr': (_numpy.inf, None),
+}
+
 _available_compute_capability = {
     'gesv': 70,
     'gels': 70,
@@ -30,15 +44,23 @@ _available_compute_capability = {
 
 @_util.memoize()
 def check_availability(name):
-    if name not in _available_cuda_version:
+    if not _runtime.is_hip:
+        available_version = _available_cuda_version
+        version = _runtime.runtimeGetVersion()
+    else:
+        available_version = _available_hip_version
+        # TODO(leofang): use HIP_VERSION instead?
+        version = _cusolver._getVersion()
+        version = version[0] * 100 + version[1]
+    if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
-    version_added, version_removed = _available_cuda_version[name]
-    cuda_version = _runtime.runtimeGetVersion()
-    if version_added is not None and cuda_version < version_added:
+    version_added, version_removed = available_version[name]
+    if version_added is not None and version < version_added:
         return False
-    if version_removed is not None and cuda_version >= version_removed:
+    if version_removed is not None and version >= version_removed:
         return False
+    # CUDA specific stuff
     if name in _available_compute_capability:
         compute_capability = int(_device.get_compute_capability())
         if compute_capability < _available_compute_capability[name]:
@@ -344,7 +366,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
 
     m, lda = a.shape
     w = _cupy.empty(m, inp_w_dtype)
-    dev_info = _cupy.empty((), _numpy.int32)
+    dev_info = _cupy.empty((1,), _cupy.int32)
     handle = _device.Device().cusolver_handle
 
     if with_eigen_vector:
@@ -432,7 +454,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
         a.swapaxes(-2, -1), order='C', copy=True, dtype=inp_v_dtype)
 
     w = _cupy.empty((batch_size, m), inp_w_dtype).swapaxes(-2, 1)
-    dev_info = _cupy.empty((), _numpy.int32)
+    dev_info = _cupy.empty((batch_size,), _cupy.int32)
     handle = _device.Device().cusolver_handle
 
     if with_eigen_vector:

@@ -393,10 +393,10 @@ cpdef Py_ssize_t _normalize_axis_index(
             The normalized axis index, such that `0 <= normalized_axis < ndim`
 
     """
+    if not (-ndim <= axis < ndim):
+        raise numpy.AxisError(axis, ndim)
     if axis < 0:
         axis += ndim
-    if not (0 <= axis < ndim):
-        raise numpy.AxisError('axis out of bounds')
     return axis
 
 
