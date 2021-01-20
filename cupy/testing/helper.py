@@ -1,3 +1,4 @@
+import collections.abc
 import contextlib
 import functools
 import inspect
@@ -706,15 +707,31 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
                            accept_error, sp_name, scipy_name)
 
 
-def _has_ndarray(x):
-    if isinstance(x, (numpy.ndarray, cupy.ndarray)):
-        return True
-    if isinstance(x, (tuple, list)):
-        return any([_has_ndarray(elem) for elem in x])
-    return False
+def _check_equality(cupy_result, numpy_result, scalar_on_gpu):
+    if scalar_on_gpu and isinstance(cupy_result, cupy.ndarray):
+        assert cupy_result.ndim == 0
+        cupy_result = cupy_result.item()
+    if type(numpy_result) is not type(cupy_result):
+        raise AssertionError(
+            'Type is different: {} != {}'.format(
+                type(numpy_result), type(cupy_result)))
+    if isinstance(numpy_result, (numpy.ndarray, cupy.ndarray)):
+        raise AssertionError(
+            'ndarrays are not allowed as return values. '
+            'Please use `testing.numpy_cupy_array_equal` instead.')
+    if isinstance(cupy_result, collections.abc.Iterable):
+        assert len(cupy_result) == len(numpy_result)
+        for x, y in zip(cupy_result, numpy_result):
+            _check_equality(x, y, scalar_on_gpu)
+    elif cupy_result != numpy_result:
+        message = '''Results are not equal:
+cupy: %s
+numpy: %s''' % (str(cupy_result), str(numpy_result))
+        raise AssertionError(message)
 
 
-def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
+def numpy_cupy_equal(
+        name='xp', sp_name=None, scipy_name=None, *, scalar_on_gpu=False):
     """Decorator that checks NumPy results are equal to CuPy ones.
 
     Args:
@@ -726,6 +743,8 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
          scipy_name(str or None): Argument name whose value is either ``scipy``
              or ``cupyx.scipy`` module. If ``None``, no argument is given for
              the modules.
+         scalar_on_gpu(bool): If ``True``, allows to accept 0-dim ndarray as
+             a result from CuPy's routines.
 
     Decorated test fixture is required to return the same results
     even if ``xp`` is ``numpy`` or ``cupy``.
@@ -746,16 +765,7 @@ def numpy_cupy_equal(name='xp', sp_name=None, scipy_name=None):
                     accept_error=False)
                 return
 
-            if _has_ndarray(cupy_result) or _has_ndarray(numpy_result):
-                raise AssertionError(
-                    'ndarrays are not allowed as return values. '
-                    'Please use `testing.numpy_cupy_array_equal` instead.')
-
-            if cupy_result != numpy_result:
-                message = '''Results are not equal:
-cupy: %s
-numpy: %s''' % (str(cupy_result), str(numpy_result))
-                raise AssertionError(message)
+            _check_equality(cupy_result, numpy_result, scalar_on_gpu)
         return test_func
     return decorator
 
