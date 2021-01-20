@@ -833,7 +833,7 @@ class TestLOBPCG:
                 # checking if the element qualifies as 'non-zero'
                 # based on a low tolerance
                 if(not xp.allclose(1+block_vec[i, j], 1.0,
-                   atol=1e-20, rtol=1e-5)):
+                                   atol=1e-20, rtol=1e-5)):
                     if(block_vec[i, j] < 0):
                         is_first_nonzero_negative = 1
                     break
