@@ -1,6 +1,7 @@
 import numpy
 import cupy
 import cupy.linalg as linalg
+import scipy
 # waiting implementation of the following modules in PR #4172
 # from cupyx.scipy.linalg import (cho_factor, cho_solve)
 from cupyx.scipy.sparse import linalg as splinalg
@@ -60,6 +61,7 @@ def _report_nonhermitian(M, name):
     if nmd > tol:
         print('matrix %s of the type %s is not sufficiently Hermitian:'
               % (name, M.dtype))
+        print('matrix: %s'%(M))
         print('condition: %.e < %e' % (nmd, tol))
 
 
@@ -125,8 +127,8 @@ def _b_orthonormalize(B, blockVectorV, blockVectorBV=None, retInvR=False):
             blockVectorBV = cupy.matmul(blockVectorBV, VBV)
         else:
             blockVectorBV = None
-    except Exception as e:
-        print("Exception: {}, cholesky has failed".format(e))
+    except Exception:
+        # print("Exception: {}, cholesky has failed".format(e))
         blockVectorV = None
         blockVectorBV = None
         VBV = None
@@ -394,7 +396,6 @@ def lobpcg(A, X,
 
         if verbosityLevel > 0:
             print('current block size:', currentBlockSize)
-            print('tolerance: ', residualTolerance)
             print('eigenvalue:', _lambda)
             print('residual norms:', residualNorms)
         if verbosityLevel > 10:
@@ -532,8 +533,8 @@ def lobpcg(A, X,
 
             try:
                 _lambda, eigBlockVector = _genEigh(gramA, gramB)
-            except Exception as e:
-                print("{} occured, restarting...\n\n".format(e))
+            except Exception:
+                print("restarting...\n")
                 # try again after dropping the direction vectors P from RR
                 restart = True
 

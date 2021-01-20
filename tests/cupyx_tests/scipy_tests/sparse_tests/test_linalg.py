@@ -1,4 +1,7 @@
+import contextlib
+import re
 import cupy
+import io
 import itertools
 import unittest
 import warnings
@@ -812,6 +815,33 @@ class TestCsrlsvqr(unittest.TestCase):
 # tests adapted from scipy's tests of lobpcg
 class TestLOBPCG:
 
+    def _eigen_vec_transform(self, block_vec, xp):
+        """Helper to swap sign of each eigen vector based on the first
+        non-zero element. ie, to standardize the first non-zero element
+        of eigen vector as positive. This helps in comparing equivalence
+        of eigen vectors"""
+        vec_len, num_vecs = block_vec.shape
+        # flag is 1 if the first nonzero element of
+        # eigenvector is negative
+        is_first_nonzero_negative = 0
+        # Naively using `xp.nonzero()` didn't work as extremely small values
+        # that ought to be zeros are handled differently in numpy and cupy.
+        # Therefore, we find the first non-zero element of each eigen vector
+        # based on some tolerance.
+        for j in range(num_vecs):
+            for i in range(vec_len):
+                # checking if the element qualifies as 'non-zero'
+                # based on a low tolerance
+                if(not xp.allclose(1+block_vec[i, j], 1.0,
+                   atol=1e-20, rtol=1e-5)):
+                    if(block_vec[i, j] < 0):
+                        is_first_nonzero_negative = 1
+                    break
+            if(is_first_nonzero_negative == 1):
+                block_vec[:, j] = -block_vec[:, j]
+                is_first_nonzero_negative = 0
+        return block_vec
+
     def _elastic_rod(self, n, xp):
         """Build the matrices for the generalized eigenvalue problem of the
         fixed-free elastic rod vibration model.
@@ -841,41 +871,57 @@ class TestLOBPCG:
         A = xp.diag(z) - xp.diag(y, -1) - xp.diag(y, 1)
         return A, B
 
-    def _compare_solutions(self, A, B, m, xp, sp):
-        """Check eig vs. lobpcg consistency.
-        """
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
+    def test_small_elastic_rod(self, xp, sp):
+        A, B = self._elastic_rod(10, xp)
         n = A.shape[0]
-        V = testing.shaped_random((n, m), xp=numpy)
+        V = testing.shaped_random((n, 10), xp=numpy)
         X = scipy.linalg.orth(V)
         eigvals, eigvecs = sp.linalg.lobpcg(A,
                                             xp.asarray(X), B=B,
                                             tol=1e-5, maxiter=30,
                                             largest=False)
-        return eigvals, xp.absolute(eigvecs)
-
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
-                                 contiguous_check=False)
-    def test_small_elastic_rod(self, xp, sp):
-        A, B = self._elastic_rod(10, xp)
-        return self._compare_solutions(A, B, 10, xp, sp)
+        return eigvals, self._eigen_vec_transform(eigvecs, xp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_small_mikota_pair(self, xp, sp):
         A, B = self._mikota_pair(10, xp)
-        return self._compare_solutions(A, B, 10, xp, sp)
+        n = A.shape[0]
+        V = testing.shaped_random((n, 10), xp=numpy)
+        X = scipy.linalg.orth(V)
+        eigvals, eigvecs = sp.linalg.lobpcg(A,
+                                            xp.asarray(X), B=B,
+                                            tol=1e-5, maxiter=30,
+                                            largest=False)
+        return eigvals, self._eigen_vec_transform(eigvecs, xp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_elastic_rod(self, xp, sp):
         A, B = self._elastic_rod(100, xp)
-        return self._compare_solutions(A, B, 20, xp, sp)
+        n = A.shape[0]
+        V = testing.shaped_random((n, 20), xp=numpy)
+        X = scipy.linalg.orth(V)
+        eigvals, eigvecs = sp.linalg.lobpcg(A,
+                                            xp.asarray(X), B=B,
+                                            tol=1e-5, maxiter=30,
+                                            largest=False)
+        return eigvals, self._eigen_vec_transform(eigvecs, xp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_mikota_pair(self, xp, sp):
         A, B = self._mikota_pair(100, xp)
-        return self._compare_solutions(A, B, 20, xp, sp)
+        n = A.shape[0]
+        V = testing.shaped_random((n, 20), xp=numpy)
+        X = scipy.linalg.orth(V)
+        eigvals, eigvecs = sp.linalg.lobpcg(A,
+                                            xp.asarray(X), B=B,
+                                            tol=1e-5, maxiter=30,
+                                            largest=False)
+        return eigvals, self._eigen_vec_transform(eigvecs, xp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
@@ -885,9 +931,8 @@ class TestLOBPCG:
         n = 10
         X = xp.ones((n, 1))
         A = xp.identity(n)
-        w, _ = sp.linalg.lobpcg(A, X)
-        cupy.testing.assert_allclose(w, xp.array([1]))
-        return w
+        w, v = sp.linalg.lobpcg(A, X)
+        return w, self._eigen_vec_transform(v, xp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
@@ -913,14 +958,11 @@ class TestLOBPCG:
         # complement of the first few standard basis vectors (Y)
         m_excluded = 3
         Y = xp.eye(n, m_excluded)
-
         eigvals, vecs = sp.linalg.lobpcg(A, X, B, M=M, Y=Y, tol=1e-4,
                                          maxiter=40, largest=False)
-
-        cupy.testing.assert_allclose(eigvals, xp.arange(1 + m_excluded,
-                                                        1 + m_excluded + m))
+        # eigenvalue residue smallness check
         self._check_eigen(A, eigvals, vecs, xp, sp, rtol=1e-3, atol=1e-3)
-        return eigvals, xp.absolute(vecs)
+        return eigvals, self._eigen_vec_transform(vecs, xp)
 
     def _check_eigen(self, M, w, V, xp, sp, rtol=1e-8, atol=1e-14):
         """Check if the eigenvalue residual is small.
@@ -951,30 +993,30 @@ class TestLOBPCG:
         cupy.testing.assert_array_less(numpy.abs([eigh_w[0], analytic_w[0]]),
                                        1e-14)
         cupy.testing.assert_allclose(eigh_w[1:], analytic_w[1:])
-
         # Check small lobpcg eigenvalues.
         X = analytic_V[:, :p]
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
                                               largest=False)
         eval_list.append(lobpcg_w)
-        eval_list.append(xp.absolute(lobpcg_V))
+        eval_list.append(self._eigen_vec_transform(lobpcg_V, xp))
         cupy.testing.assert_array_equal(lobpcg_w.shape, (p,))
         cupy.testing.assert_array_equal(lobpcg_V.shape, (n, p))
         self._check_eigen(xp.asarray(L), lobpcg_w, lobpcg_V, xp, sp)
         cupy.testing.assert_array_less(xp.abs(xp.min(lobpcg_w)),
                                        xp.array(1e-14))
+        # checking closeness of eigenvalues with analytical solution
         cupy.testing.assert_allclose(xp.sort(lobpcg_w)[1:],
                                      xp.asarray(analytic_w[1:p]))
-
         # Check large lobpcg eigenvalues.
         X = analytic_V[:, -p:]
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
                                               largest=True)
         eval_list.append(lobpcg_w)
-        eval_list.append(xp.absolute(lobpcg_V))
+        eval_list.append(self._eigen_vec_transform(lobpcg_V, xp))
         cupy.testing.assert_array_equal(lobpcg_w.shape, (p,))
         cupy.testing.assert_array_equal(lobpcg_V.shape, (n, p))
         self._check_eigen(xp.asarray(L), lobpcg_w, lobpcg_V, xp, sp)
+        # checking closeness of eigenvalues with analytical solution
         cupy.testing.assert_allclose(xp.sort(lobpcg_w),
                                      xp.asarray(analytic_w[-p:]))
 
@@ -983,9 +1025,10 @@ class TestLOBPCG:
         X = numpy.vstack((numpy.ones(n), fiedler_guess)).T
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
                                               largest=False)
-        lobpcg_V = xp.absolute(lobpcg_V)
+        lobpcg_V = self._eigen_vec_transform(lobpcg_V, xp)
         eval_list.append(lobpcg_w)
         eval_list.append(lobpcg_V)
+        # checking closeness of eigenvalues with analytical solution
         cupy.testing.assert_allclose(lobpcg_w, xp.asarray(analytic_w[:2]),
                                      atol=1e-14)
         return eval_list
@@ -1020,24 +1063,44 @@ class TestLOBPCG:
             X = testing.shaped_random((n, 2), xp=xp, seed=345678)
             lvals, lvecs = sp.linalg.lobpcg(A, X, largest=True, maxiter=100)
             eval_list.append(lvals)
-            eval_list.append(xp.absolute(lvecs))
+            eval_list.append(self._eigen_vec_transform(lvecs, xp))
             vals, _ = sp.linalg.eigsh(A, k=2)
             self._check_eigen(A, lvals, lvecs, xp, sp, atol=_atol, rtol=0)
             cupy.testing.assert_allclose(xp.sort(vals), xp.sort(lvals),
                                          atol=1e-14)
         return eval_list
 
-    def test_verbosity(self):
-        """Check that nonzero verbosity level code runs.
+    def _verbosity_helper(self, xp, sp):
+        """Helper to capture the verbose output from stdout
         """
-        A, B = self._elastic_rod(100, cupy)
+        A, B = self._elastic_rod(100, xp)
         n = A.shape[0]
         m = 20
         V = testing.shaped_random((n, m), xp=numpy, seed=0)
         X = scipy.linalg.orth(V)
-        _, _ = sparse.linalg.lobpcg(A, cupy.asarray(X), B=B, tol=1e-5,
+        saved_stdout = io.StringIO()
+        with contextlib.redirect_stdout(saved_stdout):
+            _, _ = sp.linalg.lobpcg(A, xp.asarray(X), B=B, tol=1e-5,
                                     maxiter=30, largest=False,
                                     verbosityLevel=9)
+        output = saved_stdout.getvalue().strip()
+        return output
+
+    def test_verbosity(self):
+        """Check that nonzero verbosity level code runs
+           and is identical to scipy's output format.
+        """
+        stdout_cupy = self._verbosity_helper(cupy, cupyx.scipy.sparse)
+        stdout_numpy = self._verbosity_helper(numpy, scipy.sparse)
+        # getting rid of the numbers and whitespaces, we care only about
+        # format of printed output.
+        # also, due to the fact that there are unpredictable (but minor)
+        # differences in decimal digits between scipy and cupy verbose output
+        stdout_cupy = re.sub(r'[0-9\.\-\+ \t]+', '', stdout_cupy)
+        stdout_numpy = re.sub(r'[0-9\.\-\+ \t]+', '', stdout_numpy)
+        assert stdout_numpy == stdout_cupy, '''numpy: %s
+                                               cupy: %s''' % (stdout_numpy,
+                                                              stdout_cupy)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-3, sp_name='sp',
                                  contiguous_check=False)
@@ -1052,7 +1115,7 @@ class TestLOBPCG:
         X = testing.shaped_random((n, m), xp=xp, seed=3)
         eigvals, vecs = sp.linalg.lobpcg(A, X, tol=1e-3, maxiter=50,
                                          verbosityLevel=1)
-        vecs = xp.absolute(vecs)
+        vecs = self._eigen_vec_transform(vecs, xp)
         cupy.testing.assert_allclose(eigvals, -xp.arange(1, 1 + m), atol=1e-2)
         return eigvals, vecs
 
@@ -1161,5 +1224,5 @@ class TestLOBPCG:
                                                     tol=1e-4, maxiter=100,
                                                     largest=False)
                 eval_list.append(eigvals)
-                eval_list.append(xp.absolute(eigvecs))
+                eval_list.append(self._eigen_vec_transform(eigvecs, xp))
         return eval_list
