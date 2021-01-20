@@ -1,7 +1,6 @@
 import numpy
 import cupy
 import cupy.linalg as linalg
-import scipy
 # waiting implementation of the following modules in PR #4172
 # from cupyx.scipy.linalg import (cho_factor, cho_solve)
 from cupyx.scipy.sparse import linalg as splinalg
@@ -61,7 +60,6 @@ def _report_nonhermitian(M, name):
     if nmd > tol:
         print('matrix %s of the type %s is not sufficiently Hermitian:'
               % (name, M.dtype))
-        print('matrix: %s'%(M))
         print('condition: %.e < %e' % (nmd, tol))
 
 
