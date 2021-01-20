@@ -23,6 +23,7 @@ This enables NumPy ufuncs to be directly operated on CuPy arrays.
 This enables code using NumPy to be directly operated on CuPy arrays.
 ``__array_function__`` feature requires NumPy 1.16 or later; note that this is currently defined as an experimental feature of NumPy and you need to specify the environment variable (``NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1``) to enable it.
 
+
 Numba
 -----
 
@@ -66,6 +67,7 @@ In addition, :func:`cupy.asarray` supports zero-copy conversion from Numba CUDA 
     x_numba = numba.cuda.to_device(x)  # type: numba.cuda.cudadrv.devicearray.DeviceNDArray
     x_cupy = cupy.asarray(x_numba)  # type: cupy.ndarray
 
+
 mpi4py
 ------
 
@@ -93,6 +95,7 @@ With the aforementioned ``__cuda_array_interface__`` standard implemented in CuP
     assert cupy.allclose(recvbuf, sendbuf*size)
 
 This new feature will be officially released in mpi4py 3.1.0. To try it out, please build mpi4py from source for the time being. See the `mpi4py website <https://mpi4py.readthedocs.io/en/latest/>`_ for more information.
+
 
 DLPack
 ------
@@ -143,3 +146,5 @@ Here is an example of converting PyTorch tensor into :class:`cupy.ndarray`.
 
 	# Convert it back to a PyTorch tensor.
 	tx2 = from_dlpack(cx.toDlpack())
+
+Note that as of DLPack v0.3 for correctness it (implicitly) requires users to ensure that such conversion (both importing and exporting a CuPy array) must happen on the same CUDA/HIP stream. If in doubt, the current CuPy stream in use can be fetched by, for example, calling :func:`cupy.cuda.get_current_stream`. Please consult the other framework's documentation for how to access and control the streams. This requirement might be relaxed/changed in a future DLPack version.

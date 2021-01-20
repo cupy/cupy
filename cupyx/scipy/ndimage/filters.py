@@ -143,13 +143,10 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    weights = weights[::-1]
-    origin = -origin
-    if not len(weights) & 1:
-        origin -= 1
     weights, origins = _filters_core._convert_1d_args(input.ndim, weights,
                                                       origin, axis)
-    return _correlate_or_convolve(input, weights, output, mode, cval, origins)
+    return _correlate_or_convolve(input, weights, output, mode, cval, origins,
+                                  True)
 
 
 def _correlate_or_convolve(input, weights, output, mode, cval, origin,
@@ -169,10 +166,15 @@ def _correlate_or_convolve(input, weights, output, mode, cval, origin,
             if wsize % 2 == 0:
                 origins[i] -= 1
         origins = tuple(origins)
+    elif weights.dtype.kind == "c":
+        # numpy.correlate conjugates weights rather than input.
+        weights = weights.conj()
+    weights_dtype = _util._get_weights_dtype(input, weights)
     offsets = _filters_core._origins_to_offsets(origins, weights.shape)
     kernel = _get_correlate_kernel(mode, weights.shape, int_type,
                                    offsets, cval)
-    output = _filters_core._call_kernel(kernel, input, weights, output)
+    output = _filters_core._call_kernel(kernel, input, weights, output,
+                                        weights_dtype=weights_dtype)
     return output
 
 
@@ -1057,6 +1059,10 @@ def _get_shell_gap(filter_size):
 def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
                      int_type):
     s_rank = min(rank, filter_size - rank - 1)
+    # The threshold was set based on the measurements on a V100
+    # TODO(leofang, anaruse): Use Optuna to automatically tune the threshold,
+    # as it may vary depending on the GPU in use, compiler version, dtype,
+    # filter size, etc.
     if s_rank <= 80:
         # When s_rank is small and register usage is low, this partial
         # selection sort approach is faster than general sorting approach
@@ -1065,7 +1071,7 @@ def _get_rank_kernel(filter_size, rank, mode, w_shape, offsets, cval,
             comp_op = '<'
         else:
             comp_op = '>'
-        array_size = s_rank + 1
+        array_size = s_rank + 2
         found_post = '''
             if (iv > {rank} + 1) {{{{
                 int target_iv = 0;

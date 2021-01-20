@@ -138,6 +138,7 @@ __global__ void ${name}(${params}) {
       if (_array_size - segment_idx <= _segment_size) {
           _segment_size = _array_size - segment_idx;
       }
+      __syncthreads();  // Propagate the new value back to memory
   }
   #endif
 

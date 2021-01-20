@@ -12,14 +12,14 @@ from cupy_backends.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from '../cupy_cuComplex.h':
+cdef extern from '../../cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from '../cupy_cublas.h' nogil:
+cdef extern from '../../cupy_blas.h' nogil:
     # Context
     int cublasCreate(Handle* handle)
     int cublasDestroy(Handle handle)
@@ -339,23 +339,6 @@ cdef extern from '../cupy_cublas.h' nogil:
     int cublasDtrttp(
         Handle handle, FillMode uplo, int n, const double *A, int lda,
         double *AP)
-
-###############################################################################
-# Util
-###############################################################################
-
-cdef cuComplex get_cu_complex(float complex a):
-    cdef cuComplex ret
-    ret.x = a.real
-    ret.y = a.imag
-    return ret
-
-
-cdef cuDoubleComplex get_cu_double_complex(double complex a):
-    cdef cuDoubleComplex ret
-    ret.x = a.real
-    ret.y = a.imag
-    return ret
 
 
 ###############################################################################

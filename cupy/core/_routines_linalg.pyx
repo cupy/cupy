@@ -28,7 +28,7 @@ from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cublas
 
 
-cdef extern from '../../cupy_backends/cuda/cupy_cuComplex.h':
+cdef extern from '../../cupy_backends/cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
@@ -200,6 +200,11 @@ __global__ void _tensordot_core_int_kernel(
                 rB[n] = sB[n * DIM_Y + idy][k];
             }
 
+            // HIP is strange...
+            #ifdef __HIP_DEVICE_COMPILE__
+            __syncthreads();
+            #endif
+
             #pragma unroll
             for (n = 0; n < THR_N; n++) {
                 #pragma unroll
@@ -252,6 +257,11 @@ __global__ void _tensordot_core_int_kernel(
             rB[n] = sB[n * DIM_Y + idy][k];
         }
 
+        // HIP is strange...
+        #ifdef __HIP_DEVICE_COMPILE__
+        __syncthreads();
+        #endif
+
         #pragma unroll
         for (n = 0; n < THR_N; n++) {
             #pragma unroll
@@ -298,6 +308,8 @@ cdef ndarray _integral_tensordot_core(
         ndarray a, ndarray b, ndarray out, Py_ssize_t m, Py_ssize_t n,
         Py_ssize_t k, str dtype, const shape_t& ret_shape):
 
+    # TODO(leofang): autotune the tuning parameters here? See the discussion
+    # in this thread: https://groups.google.com/a/icl.utk.edu/g/magma-user/c/igc66uduTfI  # NOQA
     dim_x=16
     dim_y=16
     blk_m=64
@@ -316,10 +328,7 @@ cdef ndarray _integral_tensordot_core(
     args = (m, n, k, a, b, out)
     grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), 1)
     block = (dim_x, dim_y, 1)
-    shared_mem = blk_k * (blk_m + 1) * 4 + blk_n * (blk_k + 1) * 4
-    kern(grid, block, args=args, shared_mem=shared_mem)
-
-    # elementwise_copy(ret, out)
+    kern(grid, block, args=args)
     return out
 
 
@@ -425,7 +434,7 @@ cpdef ndarray tensordot_core(
     cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
     cdef Py_ssize_t mode
     cdef intptr_t handle
-    cdef bint use_sgemmEx
+    cdef bint use_sgemmEx = True
     cdef str dtype = a.dtype.char
     cdef int compute_capability = int(device.get_compute_capability())
     if dtype != b.dtype.char:
@@ -506,6 +515,16 @@ cpdef ndarray tensordot_core(
         coef_dtype = dtype
     one = numpy.array(1.0, dtype=coef_dtype)
     zero = numpy.array(0.0, dtype=coef_dtype)
+    if runtime._is_hip_environment and dtype == 'e':
+        # On HIP, SgemmEx does not work for half precision
+        dtype = 'f'
+        a = a.astype(dtype, order='K', casting=None, subok=None, copy=True)
+        b = b.astype(dtype, order='K', casting=None, subok=None, copy=True)
+        c = _ndarray_init(ret_shape, dtype)
+        use_sgemmEx = False
+        warnings.warn('On ROCm/HIP, there is no specialized API to handle '
+                      'half precision floating numbers, so the computation '
+                      'will be done by casting to single precision')
     if dtype == 'e':
         use_tensor_core = (_cuda_runtime_version >= 9000 and
                            compute_capability >= 70)
@@ -547,7 +566,8 @@ cpdef ndarray tensordot_core(
             zero.ctypes.data, c.data.ptr, <int>m)
     else:
         raise ValueError('Invalid dtype: %s' % str(dtype))
-
+    if not use_sgemmEx:
+        out[...] = c
     return out
 
 

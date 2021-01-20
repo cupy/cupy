@@ -31,13 +31,13 @@ from cupyx.scipy.sparse.construct import kron  # NOQA
 # TODO(unno): implement kronsum
 # TODO(unno): implement diags
 # TODO(unno): implement block_diag
-# TODO(unno): implement tril
-# TODO(unno): implement triu
+
+from cupyx.scipy.sparse.extract import find  # NOQA
+from cupyx.scipy.sparse.extract import tril  # NOQA
+from cupyx.scipy.sparse.extract import triu  # NOQA
 
 # TODO(unno): implement save_npz
 # TODO(unno): implement load_npz
-
-# TODO(unno): implement find
 
 # TODO(unno): implement isspmatrix_bsr(x)
 # TODO(unno): implement isspmatrix_lil(x)

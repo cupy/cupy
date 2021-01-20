@@ -173,6 +173,7 @@ Miscellaneous
    cupy.fmax
    cupy.fmin
    cupy.nan_to_num
+   cupy.interp
    cupy.bartlett
    cupy.blackman
    cupy.hamming
