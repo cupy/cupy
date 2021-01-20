@@ -510,7 +510,15 @@ cdef class ndarray:
         newarray._strides = x._strides
         newarray._c_contiguous = x._c_contiguous
         newarray._f_contiguous = x._f_contiguous
+        if runtime._is_hip_environment:
+            # HIP requires changing the active device to the one where
+            # src data is before the copy. From the docs:
+            # it is recommended to set the current device to the device
+            # where the src data is physically located.
+            runtime.setDevice(self.data.device_id)
         newarray.data.copy_from_device(x.data, x.nbytes)
+        if runtime._is_hip_environment:
+            runtime.setDevice(dev_id)
         return newarray
 
     cpdef ndarray view(self, dtype=None):
@@ -2049,6 +2057,12 @@ divmod = create_ufunc(
 
 
 cdef _round_preamble = '''
+#ifdef __HIP_DEVICE_COMPILE__
+#define round_float llrintf
+#else
+#define round_float __float2ll_rn
+#endif
+
 template<typename T> __device__ T pow10(long long n){
   T x = 1, a = 10;
   while (n) {
@@ -2120,7 +2134,7 @@ _round_ufunc = create_ufunc(
         // (4) unscale by `x` above: -123460000
         long long q = in0 / x / 100;
         int r = in0 - q*x*100;
-        out0 = (q*100 + __float2ll_rn(r/(x*10.0f))*10) * x;
+        out0 = (q*100 + round_float(r/(x*10.0f))*10) * x;
     }''', preamble=_round_preamble)
 
 
