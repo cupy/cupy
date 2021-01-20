@@ -45,6 +45,8 @@ typedef enum {} cusparseCsr2CscAlg_t;
 typedef enum {} cusparseFormat_t;
 typedef enum {} cusparseOrder_t;
 typedef enum {} cusparseIndexType_t;
+typedef enum {} cusparseSparseToDenseAlg_t;
+typedef enum {} cusparseDenseToSparseAlg_t;
 typedef enum {} cusparseSpMVAlg_t;
 typedef enum {} cusparseSpMMAlg_t;
 typedef enum {} cusparseSpGEMMAlg_t;

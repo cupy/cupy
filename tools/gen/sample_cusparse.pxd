@@ -29,6 +29,8 @@ cdef extern from *:
     ctypedef void* SpMatDescr 'cusparseSpMatDescr_t'
     ctypedef void* DnMatDescr 'cusparseDnMatDescr_t'
     ctypedef void* SpGEMMDescr 'cusparseSpGEMMDescr_t'
+    ctypedef void* SolveAnalysisInfo 'cusparseSolveAnalysisInfo_t'
+    ctypedef void* HybMat 'cusparseHybMat_t'
 
 
 ########################################
@@ -52,9 +54,12 @@ cdef extern from *:
     ctypedef int Format 'cusparseFormat_t'
     ctypedef int Order 'cusparseOrder_t'
     ctypedef int IndexType 'cusparseIndexType_t'
+    ctypedef int SparseToDenseAlg 'cusparseSparseToDenseAlg_t'
+    ctypedef int DenseToSparseAlg 'cusparseDenseToSparseAlg_t'
     ctypedef int SpMVAlg 'cusparseSpMVAlg_t'
     ctypedef int SpMMAlg 'cusparseSpMMAlg_t'
     ctypedef int SpGEMMAlg 'cusparseSpGEMMAlg_t'
+    ctypedef int HybPartition 'cusparseHybPartition_t'
 
 cpdef enum:
     CUSPARSE_STATUS_SUCCESS = 0
@@ -140,6 +145,12 @@ cpdef enum:
     CUSPARSE_INDEX_64I = 3
 
 cpdef enum:
+    CUSPARSE_SPARSETODENSE_ALG_DEFAULT = 0
+
+cpdef enum:
+    CUSPARSE_DENSETOSPARSE_ALG_DEFAULT = 0
+
+cpdef enum:
     CUSPARSE_MV_ALG_DEFAULT = 0
     CUSPARSE_COOMV_ALG = 1
     CUSPARSE_CSRMV_ALG1 = 2
@@ -158,9 +169,19 @@ cpdef enum:
     CUSPARSE_SPMM_COO_ALG4 = 5
     CUSPARSE_SPMM_CSR_ALG1 = 4
     CUSPARSE_SPMM_CSR_ALG2 = 6
+    CUSPARSE_SPMMA_PREPROCESS = 7
+    CUSPARSE_SPMMA_ALG1 = 8
+    CUSPARSE_SPMMA_ALG2 = 9
+    CUSPARSE_SPMMA_ALG3 = 10
+    CUSPARSE_SPMMA_ALG4 = 11
 
 cpdef enum:
     CUSPARSE_SPGEMM_DEFAULT = 0
+
+cpdef enum:
+    CUSPARSE_HYB_PARTITION_AUTO = 0
+    CUSPARSE_HYB_PARTITION_USER = 1
+    CUSPARSE_HYB_PARTITION_MAX = 2
 
 
 ########################################

@@ -16,12 +16,12 @@ def transpile_opaques(opaques):
 # Enumerators
 
 def is_status_enum(env, enum):
-    status_enum = gen.environment_status_enum(env)
-    return enum.name == status_enum
+    status_type = gen.environment_status_type(env)
+    return enum.name == status_type
 
 
 def transpile_status_enum(env, enum):
-    success_name, success_expr = gen.environment_status_enum_success(env)
+    success_name, success_expr = gen.environment_status_success(env)
     code = []
     code.append('typedef enum {')
     code.append('  {} = {}'.format(success_name, success_expr))
@@ -44,12 +44,11 @@ def transpile_enums(env, enums):
         return ''
 
 
-
 # Functions
 
 def transpile_functions(env, directives):
-    status_type = gen.environment_status_enum(env)
-    status_success, _ = gen.environment_status_enum_success(env)
+    status_type = gen.environment_status_type(env)
+    status_success, _ = gen.environment_status_success(env)
     code = []
     code.append('')
     for d in directives:
@@ -82,12 +81,15 @@ def main(args):
 
     template = gen.read_template(args.template)
 
+    cuda_versions = gen.environment_cuda_versions(env)
+    latest = cuda_versions[0]
+
     # Opaque pointers
-    opaques = gen.environment_opaques(env)
+    opaques = gen.environment_opaques(env, latest)
     opaque_code = transpile_opaques(opaques)
 
     # Enumerators
-    enums = gen.environment_enums(env)
+    enums = gen.environment_enums(env, latest)
     enum_code = transpile_enums(env, enums)
 
     # Functions

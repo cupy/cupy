@@ -82,10 +82,9 @@ def directive_head(directive):
 def directive_cuda_versions(directive):
     assert is_cuda_versions_directive(directive)
     versions = directive[1]
-    assert len(versions) in [1, 2]
     assert all(isinstance(v, str) for v in versions)
-    if len(versions) == 2:
-        assert versions[0] > versions[1]
+    assert [float(v) for v in versions] == \
+        sorted([float(v) for v in versions], reverse=True)
     return versions
 
 
@@ -395,7 +394,6 @@ def _collect_func_decls(nodes):
 
 
 def _parse_headers(headers, version):
-    assert version in ['11.0', '10.2']
     cuda_path = '/usr/local/cuda-{}/'.format(version)
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_c_path = os.path.join(temp_dir, 'temp.c')
@@ -451,23 +449,25 @@ def make_environment(directives):
         special_types1 = directive_special_types(directives[3])
         special_types.update(special_types1)
 
-    nodes_per_version = [_parse_headers(headers, ver) for ver in cuda_versions]
-    # assuming no opaque pointers removed in a newer CUDA version
-    opaques = _collect_opaque_decls(nodes_per_version[0])
-    # assuming no enumerators removed in a newer CUDA version
-    enums = _collect_enum_decls(nodes_per_version[0])
-    funcs_per_version = [
-        _collect_func_decls(nodes) for nodes in nodes_per_version]
-    # FIXME
-    if len(funcs_per_version) == 1:
-        funcs_per_version.append(None)
+
+    opaques, enums, funcs = {}, {}, {}
+    for v in cuda_versions:
+        nodes = _parse_headers(headers, v)
+        opaques[v] = _collect_opaque_decls(nodes)
+        enums[v] = _collect_enum_decls(nodes)
+        funcs[v] = _collect_func_decls(nodes)
 
     # Assuming the letters before the first appearance of `_` or `.` make the
     # library name.
     lib_name = re.match(r'^([a-z]+)(:?_|.)', headers[0])[1]
 
-    return ('environment', special_types, opaques, enums, funcs_per_version,
-            compiled_patterns, lib_name)
+    return ('environment', special_types, opaques, enums, funcs,
+            compiled_patterns, lib_name, cuda_versions)
+
+
+def environment_cuda_versions(env):
+    assert env[0] == 'environment'
+    return env[7]
 
 
 def _environment_specials(env):
@@ -475,41 +475,64 @@ def _environment_specials(env):
     return env[1]
 
 
-def environment_opaques(env):
+def environment_opaques(env, version=None):
     assert env[0] == 'environment'
+    opaques = env[2]
     lib_name = env[6]
-    return [n for n in env[2] if lib_name in str(n.coord)]
+    if version is not None:
+        return [n for n in opaques[version] if lib_name in str(n.coord)]
+    else:
+        ret, index = [], set()
+        cuda_versions = environment_cuda_versions(env)
+        for ver in cuda_versions:
+            for n in opaques[ver]:
+                if lib_name in str(n.coord) and n.name not in index:
+                    ret.append(n)
+                    index.add(n.name)
+        return ret
 
 
-def environment_enums(env):
+def environment_enums(env, version=None):
     assert env[0] == 'environment'
+    enums = env[3]
     lib_name = env[6]
-    return [n for n in env[3] if lib_name in str(n.coord)]
+    if version is not None:
+        return [n for n in enums[version] if lib_name in str(n.coord)]
+    else:
+        ret, index = [], set()
+        cuda_versions = environment_cuda_versions(env)
+        for ver in cuda_versions:
+            for n in enums[ver]:
+                if lib_name in str(n.coord) and n.name not in index:
+                    ret.append(n)
+                    index.add(n.name)
+        return ret
 
 
-def environment_status_enum(env):
-    lib_name = environment_lib_name(env)
-    return lib_name + 'Status_t'
-
-
-def environment_status_enum_success(env):
-    status_enum = environment_status_enum(env)
-    for e in environment_enums(env):
-        if e.name == status_enum:
-            for e1 in e.type.type.values.enumerators:
-                if 'STATUS_SUCCESS' in e1.name:
-                    return e1.name, transpile_expression(e1.value)
-    assert False
-
-
-def _environment_funcs(env):
+def environment_functions(env, version):
     assert env[0] == 'environment'
-    return env[4]
+    return env[4][version]
 
 
 def _environment_patterns(env):
     assert env[0] == 'environment'
     return env[5]
+
+
+def environment_status_type(env):
+    lib_name = environment_lib_name(env)
+    return lib_name + 'Status_t'
+
+
+def environment_status_success(env):
+    ver = environment_cuda_versions(env)[0]  # latest CUDA is enough
+    status_type = environment_status_type(env)
+    for e in environment_enums(env, ver):
+        if e.name == status_type:
+            for e1 in e.type.type.values.enumerators:
+                if 'STATUS_SUCCESS' in e1.name:
+                    return e1.name, transpile_expression(e1.value)
+    assert False
 
 
 def environment_lib_name(env):
@@ -523,17 +546,26 @@ def is_special_type(name, env):
 
 def is_opaque_data_structure(name, env):
     assert env[0] == 'environment'
-    return name in (n.name for n in env[2])
+    cuda_versions = environment_cuda_versions(env)
+    for ver in cuda_versions:
+        if name in (n.name for n in env[2][ver]):
+            return True
+    return False
 
 
 def is_enum(name, env):
     assert env[0] == 'environment'
-    return name in (n.name for n in env[3])
+    cuda_versions = environment_cuda_versions(env)
+    for ver in cuda_versions:
+        if name in (n.name for n in env[3][ver]):
+            return True
+    return False
 
 
 def query_func_decls(name, env):
     def compile_pattern(string):
-        p = re.sub(r'<t\d?>', r'[ZCKEYDSHBX]', string)
+        p = re.sub('<t>', '[ZCDS]', string)
+        p = re.sub(r'<t\d>', '[ZCKEYDSHBX]', p)
         p = p.replace('{', '(|').replace(',', '|').replace('}', ')')
         return p, p != string
 
@@ -548,16 +580,12 @@ def query_func_decls(name, env):
             except StopIteration:
                 return []
 
-    nodes0, nodes1 = _environment_funcs(env)
-
-    decls = query(nodes0)
-    if decls != []:
-        return decls, False
-
-    if nodes1 is not None:
-        decls = query(nodes1)
+    cuda_versions = environment_cuda_versions(env)
+    for ver in cuda_versions:
+        funcs = environment_functions(env, ver)
+        decls = query(funcs)
         if decls != []:
-            return decls, True
+            return decls, ver != cuda_versions[0]
 
     assert False, '`{}` not found'.format(name)
 

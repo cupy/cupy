@@ -1,6 +1,6 @@
 [
     # Setting
-    ('CudaVersions', ['11.0', '10.2']),
+    ('CudaVersions', ['11.2', '11.1', '11.0', '10.2', '10.0', '9.2']),
     ('Headers', ['cublas_v2.h']),
     ('Patterns', {
         'func': r'cublas([A-Z][^_]*)(:?_v2|)',

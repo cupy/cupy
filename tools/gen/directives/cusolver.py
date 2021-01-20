@@ -1,6 +1,6 @@
 [
     # Setting
-    ('CudaVersions', ['11.0', '10.2']),
+    ('CudaVersions', ['11.2', '11.1', '11.0', '10.2', '10.0', '9.2']),
     ('Headers', ['cusolverDn.h', 'cusolverSp.h']),
     ('Patterns', {
         'func': r'cusolver(?:Dn|Sp|)([A-Z].*)',
