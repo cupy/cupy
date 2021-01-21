@@ -711,23 +711,24 @@ def _check_equality(cupy_result, numpy_result, scalar_on_gpu):
     if scalar_on_gpu and isinstance(cupy_result, cupy.ndarray):
         assert cupy_result.ndim == 0
         cupy_result = cupy_result.item()
-    if type(numpy_result) is not type(cupy_result):
-        raise AssertionError(
-            'Type is different: {} != {}'.format(
-                type(numpy_result), type(cupy_result)))
-    if isinstance(numpy_result, (numpy.ndarray, cupy.ndarray)):
-        raise AssertionError(
-            'ndarrays are not allowed as return values. '
-            'Please use `testing.numpy_cupy_array_equal` instead.')
-    if isinstance(cupy_result, collections.abc.Iterable):
-        assert len(cupy_result) == len(numpy_result)
-        for x, y in zip(cupy_result, numpy_result):
-            _check_equality(x, y, scalar_on_gpu)
-    elif cupy_result != numpy_result:
-        message = '''Results are not equal:
-cupy: %s
-numpy: %s''' % (str(cupy_result), str(numpy_result))
-        raise AssertionError(message)
+
+    if type(numpy_result) is type(cupy_result):
+        if isinstance(numpy_result, (numpy.ndarray, cupy.ndarray)):
+            raise AssertionError(
+                'ndarrays are not allowed as return values. '
+                'Please use `testing.numpy_cupy_array_equal` instead.')
+        if isinstance(cupy_result, (tuple, list)):
+            assert len(cupy_result) == len(numpy_result)
+            for x, y in zip(cupy_result, numpy_result):
+                _check_equality(x, y, scalar_on_gpu)
+            return
+        if cupy_result == numpy_result:
+            return
+
+    message = f'''Results are not equal:
+cupy: {cupy_result} ({type(cupy_result)})
+numpy: {numpy_result} ({type(numpy_result)})'''
+    raise AssertionError(message)
 
 
 def numpy_cupy_equal(
