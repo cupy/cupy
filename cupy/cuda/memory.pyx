@@ -121,10 +121,10 @@ cdef inline void is_async_alloc_supported(int device_id) except*:
         raise RuntimeError("memory_async is supported since CUDA 11.2")
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
-    if not hasattr(_thread_local, 'is_async_alloc_support_checked'):
-        is_supported = async_alloc_check(device_id)
-    else:
+    try:
         is_supported = _thread_local.device_support_async_alloc[device_id]
+    except AttributeError:
+        is_supported = async_alloc_check(device_id)
     if not is_supported:
         raise RuntimeError('Device {} does not support '
                            'malloc_async'.format(device_id))
