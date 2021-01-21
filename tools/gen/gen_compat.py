@@ -16,15 +16,6 @@ def version_info(env, version):
         return 'CUDA_VERSION', str(int(major * 1000 + minor * 100))
 
 
-def join_or_none(x):
-    if x is None:
-        return None
-    x = list(gen.compact(x))
-    if x == []:
-        return None
-    return '\n'.join(x)
-
-
 def compute_diff_opaques(new_ver, old_ver, env):
     new_opaques = gen.environment_opaques(env, new_ver)
     old_opaques = gen.environment_opaques(env, old_ver)
@@ -190,7 +181,7 @@ def transpile_diff_added(env, diff, ver):
     code.append('')
     code.append('#endif  // #if {} < {}'.format(version_macro, version))
 
-    return join_or_none(code)
+    return gen.join_or_none('\n', code)
 
 
 def transpile_diff_removed(env, diff, ver):
@@ -245,7 +236,7 @@ def transpile_diff_removed(env, diff, ver):
     code.append('')
     code.append('#endif  // #if {} >= {}'.format(version_macro, version))
 
-    return join_or_none(code)
+    return gen.join_or_none('\n', code)
 
 
 def transpile_diff(env, diff):
@@ -255,7 +246,7 @@ def transpile_diff(env, diff):
         code.append(transpile_diff_added(env, diff, ver))
     for ver in cuda_versions[1:]:
         code.append(transpile_diff_removed(env, diff, ver))
-    return '\n'.join(gen.compact(code))
+    return gen.join_or_none('\n', code)
 
 
 def main(args):
@@ -275,7 +266,7 @@ def main(args):
     template = gen.read_template(args.template)
 
     diff = compute_diff(env, directives)
-    diff_code = transpile_diff(env, diff)
+    diff_code = transpile_diff(env, diff) or ''
     code = template.format(code=diff_code)
     print(code, end='')
 

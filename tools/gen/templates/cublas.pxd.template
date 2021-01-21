@@ -8,7 +8,10 @@ from libc.stdint cimport intptr_t, int64_t
 
 cdef extern from *:
     ctypedef int DataType 'cudaDataType'
-{opaque}{enum}{helper_class}{wrapper}
+{opaque}
+{enum}
+{helper_class}
+{wrapper}
 
 # Define `gemmEx` by hands for a backward compatibility reason.
 cpdef gemmEx(

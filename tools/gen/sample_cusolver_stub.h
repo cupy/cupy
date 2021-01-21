@@ -29,6 +29,7 @@ typedef enum {} cusolverAlgMode_t;
 typedef enum {} cusolverStorevMode_t;
 typedef enum {} cusolverDirectMode_t;
 
+
 cusolverStatus_t cusolverGetProperty(...) {
   return CUSOLVER_STATUS_SUCCESS;
 }

@@ -1,13 +1,19 @@
 # This code was automatically generated. Do not modify it directly.
 
-from libc.stdint cimport intptr_t, int64_t
+from libc.stdint cimport intptr_t
 
 
 ########################################
-# Opaque pointers
+# Types
 
 cdef extern from *:
     ctypedef int DataType 'cudaDataType'
+
+    ctypedef int Operation 'cublasOperation_t'
+    ctypedef int SideMode 'cublasSideMode_t'
+    ctypedef int FillMode 'cublasFillMode_t'
+
+    ctypedef void* MatDescr 'cusparseMatDescr_t'
 
 cdef extern from *:
     ctypedef void* DnHandle 'cusolverDnHandle_t'
@@ -127,6 +133,7 @@ cpdef enum:
 cpdef enum:
     CUBLAS_DIRECT_FORWARD = 0
     CUBLAS_DIRECT_BACKWARD = 1
+
 
 
 ########################################
@@ -277,24 +284,24 @@ cpdef size_t shgesv_bufferSize(intptr_t handle, int n, int nrhs, intptr_t dA, in
 cpdef size_t sbgesv_bufferSize(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace) except? 0
 cpdef size_t sxgesv_bufferSize(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace) except? 0
 
-cpdef zzgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef zcgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef zkgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef zegesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef zygesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef ccgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef cegesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef ckgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef cygesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef ddgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef dsgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef dhgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef dbgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef dxgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef ssgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef shgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef sbgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef sxgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
+cpdef int zzgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int zcgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int zkgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int zegesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int zygesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int ccgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int cegesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int ckgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int cygesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int ddgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int dsgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int dhgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int dbgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int dxgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int ssgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int shgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int sbgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int sxgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
 
 cpdef size_t zzgels_bufferSize(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace) except? 0
 cpdef size_t zcgels_bufferSize(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace) except? 0
@@ -315,24 +322,24 @@ cpdef size_t shgels_bufferSize(intptr_t handle, int m, int n, int nrhs, intptr_t
 cpdef size_t sbgels_bufferSize(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace) except? 0
 cpdef size_t sxgels_bufferSize(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace) except? 0
 
-cpdef zzgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef zcgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef zkgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef zegels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef zygels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef ccgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef ckgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef cegels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef cygels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef ddgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef dsgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef dhgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef dbgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef dxgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef ssgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef shgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef sbgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
-cpdef sxgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info)
+cpdef int zzgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int zcgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int zkgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int zegels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int zygels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int ccgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int ckgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int cegels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int cygels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int ddgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int dsgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int dhgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int dbgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int dxgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int ssgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int shgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int sbgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
+cpdef int sxgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0
 
 
 ##########################################################

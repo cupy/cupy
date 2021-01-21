@@ -4,10 +4,6 @@ cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.libs.cublas cimport FillMode
-from cupy_backends.cuda.libs.cublas cimport Operation
-from cupy_backends.cuda.libs.cublas cimport SideMode
-from cupy_backends.cuda.libs.cusparse cimport MatDescr
 from cupy_backends.cuda cimport stream as stream_module
 
 
@@ -1035,113 +1031,149 @@ cpdef size_t sxgesv_bufferSize(intptr_t handle, int n, int nrhs, intptr_t dA, in
     check_status(status)
     return lwork_bytes
 
-cpdef zzgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int zzgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnZZgesv(<DnHandle>handle, n, nrhs, <cuDoubleComplex*>dA, ldda, <int*>dipiv, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnZZgesv(<DnHandle>handle, n, nrhs, <cuDoubleComplex*>dA, ldda, <int*>dipiv, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef zcgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int zcgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnZCgesv(<DnHandle>handle, n, nrhs, <cuDoubleComplex*>dA, ldda, <int*>dipiv, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnZCgesv(<DnHandle>handle, n, nrhs, <cuDoubleComplex*>dA, ldda, <int*>dipiv, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef zkgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int zkgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnZKgesv(<DnHandle>handle, n, nrhs, <cuDoubleComplex*>dA, ldda, <int*>dipiv, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnZKgesv(<DnHandle>handle, n, nrhs, <cuDoubleComplex*>dA, ldda, <int*>dipiv, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef zegesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int zegesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnZEgesv(<DnHandle>handle, n, nrhs, <cuDoubleComplex*>dA, ldda, <int*>dipiv, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnZEgesv(<DnHandle>handle, n, nrhs, <cuDoubleComplex*>dA, ldda, <int*>dipiv, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef zygesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int zygesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnZYgesv(<DnHandle>handle, n, nrhs, <cuDoubleComplex*>dA, ldda, <int*>dipiv, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnZYgesv(<DnHandle>handle, n, nrhs, <cuDoubleComplex*>dA, ldda, <int*>dipiv, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef ccgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int ccgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnCCgesv(<DnHandle>handle, n, nrhs, <cuComplex*>dA, ldda, <int*>dipiv, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnCCgesv(<DnHandle>handle, n, nrhs, <cuComplex*>dA, ldda, <int*>dipiv, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef cegesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int cegesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnCEgesv(<DnHandle>handle, n, nrhs, <cuComplex*>dA, ldda, <int*>dipiv, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnCEgesv(<DnHandle>handle, n, nrhs, <cuComplex*>dA, ldda, <int*>dipiv, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef ckgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int ckgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnCKgesv(<DnHandle>handle, n, nrhs, <cuComplex*>dA, ldda, <int*>dipiv, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnCKgesv(<DnHandle>handle, n, nrhs, <cuComplex*>dA, ldda, <int*>dipiv, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef cygesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int cygesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnCYgesv(<DnHandle>handle, n, nrhs, <cuComplex*>dA, ldda, <int*>dipiv, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnCYgesv(<DnHandle>handle, n, nrhs, <cuComplex*>dA, ldda, <int*>dipiv, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef ddgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int ddgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnDDgesv(<DnHandle>handle, n, nrhs, <double*>dA, ldda, <int*>dipiv, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnDDgesv(<DnHandle>handle, n, nrhs, <double*>dA, ldda, <int*>dipiv, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef dsgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int dsgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnDSgesv(<DnHandle>handle, n, nrhs, <double*>dA, ldda, <int*>dipiv, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnDSgesv(<DnHandle>handle, n, nrhs, <double*>dA, ldda, <int*>dipiv, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef dhgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int dhgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnDHgesv(<DnHandle>handle, n, nrhs, <double*>dA, ldda, <int*>dipiv, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnDHgesv(<DnHandle>handle, n, nrhs, <double*>dA, ldda, <int*>dipiv, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef dbgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int dbgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnDBgesv(<DnHandle>handle, n, nrhs, <double*>dA, ldda, <int*>dipiv, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnDBgesv(<DnHandle>handle, n, nrhs, <double*>dA, ldda, <int*>dipiv, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef dxgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int dxgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnDXgesv(<DnHandle>handle, n, nrhs, <double*>dA, ldda, <int*>dipiv, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnDXgesv(<DnHandle>handle, n, nrhs, <double*>dA, ldda, <int*>dipiv, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef ssgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int ssgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnSSgesv(<DnHandle>handle, n, nrhs, <float*>dA, ldda, <int*>dipiv, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnSSgesv(<DnHandle>handle, n, nrhs, <float*>dA, ldda, <int*>dipiv, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef shgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int shgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnSHgesv(<DnHandle>handle, n, nrhs, <float*>dA, ldda, <int*>dipiv, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnSHgesv(<DnHandle>handle, n, nrhs, <float*>dA, ldda, <int*>dipiv, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef sbgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int sbgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnSBgesv(<DnHandle>handle, n, nrhs, <float*>dA, ldda, <int*>dipiv, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnSBgesv(<DnHandle>handle, n, nrhs, <float*>dA, ldda, <int*>dipiv, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef sxgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int sxgesv(intptr_t handle, int n, int nrhs, intptr_t dA, int ldda, intptr_t dipiv, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnSXgesv(<DnHandle>handle, n, nrhs, <float*>dA, ldda, <int*>dipiv, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnSXgesv(<DnHandle>handle, n, nrhs, <float*>dA, ldda, <int*>dipiv, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
 cpdef size_t zzgels_bufferSize(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace) except? 0:
     cdef size_t lwork_bytes
@@ -1287,113 +1319,149 @@ cpdef size_t sxgels_bufferSize(intptr_t handle, int m, int n, int nrhs, intptr_t
     check_status(status)
     return lwork_bytes
 
-cpdef zzgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int zzgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnZZgels(<DnHandle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnZZgels(<DnHandle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef zcgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int zcgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnZCgels(<DnHandle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnZCgels(<DnHandle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef zkgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int zkgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnZKgels(<DnHandle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnZKgels(<DnHandle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef zegels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int zegels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnZEgels(<DnHandle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnZEgels(<DnHandle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef zygels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int zygels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnZYgels(<DnHandle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnZYgels(<DnHandle>handle, m, n, nrhs, <cuDoubleComplex*>dA, ldda, <cuDoubleComplex*>dB, lddb, <cuDoubleComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef ccgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int ccgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnCCgels(<DnHandle>handle, m, n, nrhs, <cuComplex*>dA, ldda, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnCCgels(<DnHandle>handle, m, n, nrhs, <cuComplex*>dA, ldda, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef ckgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int ckgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnCKgels(<DnHandle>handle, m, n, nrhs, <cuComplex*>dA, ldda, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnCKgels(<DnHandle>handle, m, n, nrhs, <cuComplex*>dA, ldda, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef cegels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int cegels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnCEgels(<DnHandle>handle, m, n, nrhs, <cuComplex*>dA, ldda, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnCEgels(<DnHandle>handle, m, n, nrhs, <cuComplex*>dA, ldda, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef cygels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int cygels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnCYgels(<DnHandle>handle, m, n, nrhs, <cuComplex*>dA, ldda, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnCYgels(<DnHandle>handle, m, n, nrhs, <cuComplex*>dA, ldda, <cuComplex*>dB, lddb, <cuComplex*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef ddgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int ddgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnDDgels(<DnHandle>handle, m, n, nrhs, <double*>dA, ldda, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnDDgels(<DnHandle>handle, m, n, nrhs, <double*>dA, ldda, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef dsgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int dsgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnDSgels(<DnHandle>handle, m, n, nrhs, <double*>dA, ldda, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnDSgels(<DnHandle>handle, m, n, nrhs, <double*>dA, ldda, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef dhgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int dhgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnDHgels(<DnHandle>handle, m, n, nrhs, <double*>dA, ldda, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnDHgels(<DnHandle>handle, m, n, nrhs, <double*>dA, ldda, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef dbgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int dbgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnDBgels(<DnHandle>handle, m, n, nrhs, <double*>dA, ldda, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnDBgels(<DnHandle>handle, m, n, nrhs, <double*>dA, ldda, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef dxgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int dxgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnDXgels(<DnHandle>handle, m, n, nrhs, <double*>dA, ldda, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnDXgels(<DnHandle>handle, m, n, nrhs, <double*>dA, ldda, <double*>dB, lddb, <double*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef ssgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int ssgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnSSgels(<DnHandle>handle, m, n, nrhs, <float*>dA, ldda, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnSSgels(<DnHandle>handle, m, n, nrhs, <float*>dA, ldda, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef shgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int shgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnSHgels(<DnHandle>handle, m, n, nrhs, <float*>dA, ldda, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnSHgels(<DnHandle>handle, m, n, nrhs, <float*>dA, ldda, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef sbgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int sbgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnSBgels(<DnHandle>handle, m, n, nrhs, <float*>dA, ldda, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnSBgels(<DnHandle>handle, m, n, nrhs, <float*>dA, ldda, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
-cpdef sxgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t iter, intptr_t d_info):
+cpdef int sxgels(intptr_t handle, int m, int n, int nrhs, intptr_t dA, int ldda, intptr_t dB, int lddb, intptr_t dX, int lddx, intptr_t dWorkspace, size_t lwork_bytes, intptr_t d_info) except? 0:
+    cdef int iter
     if stream_module.enable_current_stream:
         setStream(handle, stream_module.get_current_stream_ptr())
-    status = cusolverDnSXgels(<DnHandle>handle, m, n, nrhs, <float*>dA, ldda, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, <int*>iter, <int*>d_info)
+    status = cusolverDnSXgels(<DnHandle>handle, m, n, nrhs, <float*>dA, ldda, <float*>dB, lddb, <float*>dX, lddx, <void*>dWorkspace, lwork_bytes, &iter, <int*>d_info)
     check_status(status)
+    return <int>iter
 
 
 ##########################################################

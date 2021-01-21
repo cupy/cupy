@@ -135,6 +135,7 @@ cpdef enum:
     CUBLAS_COMPUTE_32I_PEDANTIC = 73
 
 
+
 ########################################
 # cuBLAS Helper Function
 
@@ -280,7 +281,6 @@ cpdef strttp(intptr_t handle, int uplo, int n, intptr_t A, int lda, intptr_t AP)
 cpdef dtrttp(intptr_t handle, int uplo, int n, intptr_t A, int lda, intptr_t AP)
 cpdef ctrttp(intptr_t handle, int uplo, int n, intptr_t A, int lda, intptr_t AP)
 cpdef ztrttp(intptr_t handle, int uplo, int n, intptr_t A, int lda, intptr_t AP)
-
 
 # Define `gemmEx` by hands for a backward compatibility reason.
 cpdef gemmEx(

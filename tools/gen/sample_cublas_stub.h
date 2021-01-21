@@ -21,6 +21,7 @@ typedef enum {} cublasGemmAlgo_t;
 typedef enum {} cublasMath_t;
 typedef enum {} cublasComputeType_t;
 
+
 cublasStatus_t cublasCreate_v2(...) {
   return CUBLAS_STATUS_SUCCESS;
 }

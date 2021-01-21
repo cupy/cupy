@@ -4,10 +4,6 @@ cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda.libs.cublas cimport FillMode
-from cupy_backends.cuda.libs.cublas cimport Operation
-from cupy_backends.cuda.libs.cublas cimport SideMode
-from cupy_backends.cuda.libs.cusparse cimport MatDescr
 from cupy_backends.cuda cimport stream as stream_module
 
 

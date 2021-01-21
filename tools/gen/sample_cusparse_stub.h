@@ -51,6 +51,7 @@ typedef enum {} cusparseSpMVAlg_t;
 typedef enum {} cusparseSpMMAlg_t;
 typedef enum {} cusparseSpGEMMAlg_t;
 
+
 cusparseStatus_t cusparseCreate(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }

@@ -26,7 +26,7 @@ def transpile_ffi_one(env, node, removed):
     args = [argaux(env, p) for p in node.type.args.params]
     code.append('{} {}({})'.format(ret_type, name, ', '.join(args)))
 
-    return '\n'.join(code)
+    return gen.join_or_none('\n', code)
 
 
 def transpile_ffi(env, directives):
@@ -41,7 +41,7 @@ def transpile_ffi(env, directives):
             decls, removed = gen.query_func_decls(head, env)
             for decl in decls:
                 code.append(transpile_ffi_one(env, decl, removed))
-    return '\n'.join(code)
+    return gen.join_or_none('\n', code)
 
 
 # Helper class
@@ -49,8 +49,7 @@ def transpile_ffi(env, directives):
 def is_helper_class_directive(directive):
     return (
         gen.is_function_directive(directive)
-        and gen.is_directive_multi_out(directive)
-    )
+        and gen.is_directive_multi_out(directive))
 
 
 def transpile_helper_class(env, directive, node, removed):
@@ -86,7 +85,7 @@ def transpile_helper_class(env, directive, node, removed):
         attr = gen.deref_var_name(p.name)
         code.append('        self.{attr} = {attr}'.format(attr=attr))
 
-    return '\n'.join(code)
+    return gen.join_or_none('\n', code)
 
 
 # Assuming multiple functions do not use the same auxiliary structure.
@@ -104,10 +103,7 @@ def transpile_helper_classes(env, directives):
         assert len(decls) == 1  # assuming not type generic
         code.append('')
         code.append(transpile_helper_class(env, d, decls[0], removed))
-    if code != []:
-        return '\n'.join(code) + '\n'
-    else:
-        return ''
+    return gen.join_or_none('\n', code)
 
 
 # Wrappers
@@ -317,7 +313,7 @@ def transpile_wrapper(env, directive, node, removed):
     else:
         assert False
 
-    return '\n'.join(code)
+    return gen.join_or_none('\n', code)
 
 
 def transpile_wrappers(env, directives):
@@ -335,10 +331,7 @@ def transpile_wrappers(env, directives):
             for decl in decls:
                 code.append('')
                 code.append(transpile_wrapper(env, d, decl, removed))
-    if code != []:
-        return '\n'.join(code) + '\n'
-    else:
-        return ''
+    return gen.join_or_none('\n', code)
 
 
 # Main
@@ -360,18 +353,17 @@ def main(args):
     template = gen.read_template(args.template)
 
     # FFI
-    ffi_code = gen.indent(transpile_ffi(env, directives))
+    ffi_code = gen.indent(transpile_ffi(env, directives) or '')
 
     # Helper classes
     directives1 = [d for d in directives if is_helper_class_directive(d)]
-    helper_class_code = transpile_helper_classes(env, directives1)
+    helper_class_code = transpile_helper_classes(env, directives1) or ''
 
     # Wrappers
-    wrapper_code = transpile_wrappers(env, directives)
+    wrapper_code = transpile_wrappers(env, directives) or ''
 
     code = template.format(
         ffi=ffi_code, helper_class=helper_class_code, wrapper=wrapper_code)
-
     print(code, end='')
 
 

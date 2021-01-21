@@ -194,7 +194,8 @@
         'use_stream': 'set',
     }),
     ('cusolverDn<t1><t2>gesv', {
-        'out': None,
+        'out': 'iter',
+        'except?': 0,
         'use_stream': 'set',
     }),
     ('cusolverDn<t1><t2>gels_bufferSize', {
@@ -203,7 +204,8 @@
         'use_stream': 'set',
     }),
     ('cusolverDn<t1><t2>gels', {
-        'out': None,
+        'out': 'iter',
+        'except?': 0,
         'use_stream': 'set',
     }),
     # cuSOLVER Dense LAPACK Function - Dense Eigenvalue Solver

@@ -4,7 +4,13 @@
 #ifndef {include_guard_name}
 #define {include_guard_name}
 
-extern "C" {{{opaque}{enum}{function}
+extern "C" {{
+
+{opaque}
+
+{enum}
+
+{function}
 
 }}  // extern "C"
 

@@ -28,6 +28,15 @@ def maybe(fn):
     return lambda x: fn(x) if x is not None else None
 
 
+def join_or_none(sep, x):
+    if x is None:
+        return None
+    x = list(compact(x))
+    if x == []:
+        return None
+    return sep.join(x)
+
+
 # Directive
 
 def read_directives(path):
@@ -566,7 +575,7 @@ def query_func_decls(name, env):
     def compile_pattern(string):
         p = re.sub('<t>', '[ZCDS]', string)
         p = re.sub(r'<t\d>', '[ZCKEYDSHBX]', p)
-        p = p.replace('{', '(|').replace(',', '|').replace('}', ')')
+        p = p.replace('{', '(').replace(',', '|').replace('}', ')')
         return p, p != string
 
     def query(nodes):

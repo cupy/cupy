@@ -18,7 +18,7 @@ def transpile_opaques(env, opaques):
         type_name1 = gen.transpile_type_name(env, o)
         # Use `void*` for opaque data structures.
         code.append("    ctypedef void* {} '{}'".format(type_name1, type_name))
-    return '\n'.join(code) + '\n'
+    return gen.join_or_none('\n', code)
 
 
 # Enumerators
@@ -46,7 +46,7 @@ def transpile_enums(env, enums):
             else:
                 value = gen.transpile_expression(v.value)
                 code.append('    {} = {}'.format(name, value))
-    return '\n'.join(code) + '\n'
+    return gen.join_or_none('\n', code)
 
 
 # Helper classes
@@ -74,7 +74,7 @@ def transpile_helper_class_node(env, directive, node, removed):
         attr = gen.deref_var_name(p.name)
         code.append('        public {} {}'.format(type_name, attr))
 
-    return '\n'.join(code)
+    return gen.join_or_none('\n', code)
 
 
 def transpile_helper_class(env, directive):
@@ -82,11 +82,6 @@ def transpile_helper_class(env, directive):
     decls, removed = gen.query_func_decls(head, env)
     assert len(decls) == 1  # assuming not type generic
     return transpile_helper_class_node(env, directive, decls[0], removed)
-
-
-def is_helper_class_directive(directive):
-    return (
-    )
 
 
 def transpile_helper_classes(env, directives):
@@ -101,10 +96,7 @@ def transpile_helper_classes(env, directives):
                 code.append('# Helper classes')
             code.append('')
             code.append(transpile_helper_class(env, d))
-    if code != []:
-        return '\n'.join(code) + '\n'
-    else:
-        return ''
+    return gen.join_or_none('\n', code)
 
 
 # Wrappers
@@ -124,7 +116,7 @@ def transpile_wrapper_node(env, directive, node, removed):
         env, directive, node, use_stream and fashion == 'pass')
     code.append('cpdef {}'.format(decl))
 
-    return '\n'.join(code)
+    return gen.join_or_none('\n', code)
 
 
 def transpile_wrappers(env, directives):
@@ -142,10 +134,7 @@ def transpile_wrappers(env, directives):
             decls, removed = gen.query_func_decls(head, env)
             for decl in decls:
                 code.append(transpile_wrapper_node(env, d, decl, removed))
-    if code != []:
-        return '\n'.join(code) + '\n'
-    else:
-        return ''
+    return gen.join_or_none('\n', code)
 
 
 # Main
@@ -168,17 +157,17 @@ def main(args):
 
     # Opaque pointers
     opaques = gen.environment_opaques(env)
-    opaque_code = transpile_opaques(env, opaques) if opaques != [] else ''
+    opaque_code = transpile_opaques(env, opaques) or ''
 
     # Enumerators
     enums = gen.environment_enums(env)
-    enum_code = transpile_enums(env, enums) if enums != [] else ''
+    enum_code = transpile_enums(env, enums) or ''
 
     # Helper classes
-    helper_class_code = transpile_helper_classes(env, directives)
+    helper_class_code = transpile_helper_classes(env, directives) or ''
 
     # Wrapper functions
-    wrapper_code = transpile_wrappers(env, directives)
+    wrapper_code = transpile_wrappers(env, directives) or ''
 
     code = template.format(
         opaque=opaque_code, enum=enum_code, helper_class=helper_class_code,

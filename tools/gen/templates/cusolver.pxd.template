@@ -1,14 +1,24 @@
 # This code was automatically generated. Do not modify it directly.
 
-from libc.stdint cimport intptr_t, int64_t
+from libc.stdint cimport intptr_t
 
 
 ########################################
-# Opaque pointers
+# Types
 
 cdef extern from *:
     ctypedef int DataType 'cudaDataType'
-{opaque}{enum}{helper_class}{wrapper}
+
+    ctypedef int Operation 'cublasOperation_t'
+    ctypedef int SideMode 'cublasSideMode_t'
+    ctypedef int FillMode 'cublasFillMode_t'
+
+    ctypedef void* MatDescr 'cusparseMatDescr_t'
+{opaque}
+{enum}
+{helper_class}
+{wrapper}
+
 
 ########################################
 # Version

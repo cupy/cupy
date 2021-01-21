@@ -59,7 +59,7 @@
         'out': None,
         'use_stream': 'set',
     }),
-    ('cublas<t>{c,z}asum_v2', {
+    ('cublas<t>{,c,z}asum_v2', {
         'out': None,
         'use_stream': 'set',
     }),
@@ -67,15 +67,15 @@
         'out': None,
         'use_stream': 'set',
     }),
-    ('cublas<t>dot{u,c}_v2', {
+    ('cublas<t>dot{,u,c}_v2', {
         'out': None,
         'use_stream': 'set',
     }),
-    ('cublas<t>{c,z}nrm2_v2', {
+    ('cublas<t>{,c,z}nrm2_v2', {
         'out': None,
         'use_stream': 'set',
     }),
-    ('cublas<t>{s,d}scal_v2', {
+    ('cublas<t>{,s,d}scal_v2', {
         'out': None,
         'use_stream': 'set',
     }),
@@ -85,7 +85,7 @@
         'out': None,
         'use_stream': 'set',
     }),
-    ('cublas<t>ger{u,c}_v2', {
+    ('cublas<t>ger{,u,c}_v2', {
         'out': None,
         'use_stream': 'set',
     }),

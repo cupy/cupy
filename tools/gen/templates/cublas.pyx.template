@@ -109,6 +109,7 @@ cpdef inline check_status(int status):
     if status != 0:
         raise CUBLASError(status)
 {helper_class}{wrapper}
+
 # Define `gemmEx` by hands for a backward compatibility reason.	
 cpdef gemmEx(
         intptr_t handle, int transa, int transb, int m, int n, int k,

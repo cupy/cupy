@@ -7,10 +7,10 @@ import gen
 # Opaque pointers
 
 def transpile_opaques(opaques):
-    if opaques != []:
-        return '\n\n' + '\n'.join('typedef void* {};'.format(o.name) for o in opaques)
-    else:
-        return ''
+    code = []
+    for o in opaques:
+        code.append('typedef void* {};'.format(o.name))
+    return gen.join_or_none('\n', code)
 
 
 # Enumerators
@@ -26,22 +26,17 @@ def transpile_status_enum(env, enum):
     code.append('typedef enum {')
     code.append('  {} = {}'.format(success_name, success_expr))
     code.append('}} {};'.format(enum.name))
-    return '\n'.join(code)
+    return gen.join_or_none('\n', code)
 
 
 def transpile_enums(env, enums):
     code = []
-    if enums != []:
-        code.append('')
-        code.append('')
-        for e in enums:
-            if is_status_enum(env, e):
-                code.append(transpile_status_enum(env, e))
-            else:
-                code.append('typedef enum {{}} {};'.format(e.name))
-        return '\n'.join(code)
-    else:
-        return ''
+    for e in enums:
+        if is_status_enum(env, e):
+            code.append(transpile_status_enum(env, e))
+        else:
+            code.append('typedef enum {{}} {};'.format(e.name))
+    return gen.join_or_none('\n', code)
 
 
 # Functions
@@ -50,7 +45,6 @@ def transpile_functions(env, directives):
     status_type = gen.environment_status_type(env)
     status_success, _ = gen.environment_status_success(env)
     code = []
-    code.append('')
     for d in directives:
         if gen.is_function_directive(d):
             head = gen.directive_head(d)
@@ -62,7 +56,7 @@ def transpile_functions(env, directives):
                 code.append('{} {}(...) {{'.format(status_type, decl.name))
                 code.append('  return {};'.format(status_success))
                 code.append('}')
-    return '\n'.join(code)
+    return gen.join_or_none('\n', code)
 
 
 def main(args):
@@ -86,18 +80,19 @@ def main(args):
 
     # Opaque pointers
     opaques = gen.environment_opaques(env, latest)
-    opaque_code = transpile_opaques(opaques)
+    opaque_code = transpile_opaques(opaques) or ''
 
     # Enumerators
     enums = gen.environment_enums(env, latest)
-    enum_code = transpile_enums(env, enums)
+    enum_code = transpile_enums(env, enums) or ''
 
     # Functions
-    function_code = transpile_functions(env, directives)
+    function_code = transpile_functions(env, directives) or ''
 
     # Include guard name
     lib_name = gen.environment_lib_name(env)
-    include_guard_name = 'INCLUDE_GUARD_STUB_CUPY_{}_H'.format(lib_name.upper())
+    include_guard_name = 'INCLUDE_GUARD_STUB_CUPY_{}_H'.format(
+        lib_name.upper())
 
     code = template.format(
         include_guard_name=include_guard_name, opaque=opaque_code,
