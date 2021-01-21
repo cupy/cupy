@@ -50,9 +50,9 @@ class OutOfMemoryError(MemoryError):
         self._limit = limit
 
         if limit == 0:
-            msg = (
-                'Out of memory allocating {:,} bytes '
-                '(allocated so far: {:,} bytes).'.format(size, total))
+            msg = 'Out of memory allocating {:,} bytes'.format(size)
+            if total != -1:
+                msg += ' (allocated so far: {:,} bytes).'.format(total)
         else:
             msg = (
                 'Out of memory allocating {:,} bytes '
@@ -145,8 +145,6 @@ cdef class MemoryAsync(BaseMemory):
         readonly intptr_t stream
 
     def __init__(self, size_t size, intptr_t stream):
-        # TODO(leofang): perhaps we should align the memory ourselves?
-        # size = _round_size(size)
         self.size = size
         self.device_id = device.get_device_id()
         # The stream is allowed to be destroyed before the memory is freed, so
@@ -807,7 +805,7 @@ DEF ALLOCATION_UNIT_SIZE = 512
 _allocation_unit_size = ALLOCATION_UNIT_SIZE
 
 
-cpdef size_t _round_size(size_t size):
+cpdef inline size_t _round_size(size_t size):
     """Rounds up the memory size to fit memory alignment of cudaMalloc."""
     # avoid 0 div checking
     size = (size + ALLOCATION_UNIT_SIZE - 1) // ALLOCATION_UNIT_SIZE
@@ -1570,7 +1568,34 @@ cdef class MemoryAsyncPool(object):
 
         """
         _util.experimental('cupy.cuda.MemoryAsyncPool.malloc')
-        return malloc_async(size)
+        cdef size_t rounded_size = _round_size(size)
+        mem = None
+        oom_error = False
+        try:
+            mem = malloc_async(rounded_size)
+        except CUDARuntimeError as e:
+            if e.status != runtime.errorMemoryAllocation:
+                raise
+            self.free_all_blocks()  # synchronize!
+            try:
+                mem = malloc_async(rounded_size)
+            except CUDARuntimeError as e:
+                if e.status != runtime.errorMemoryAllocation:
+                    raise
+                self.free_all_blocks()  # synchronize!
+                try:
+                    mem = malloc_async(rounded_size)
+                except CUDARuntimeError as e:
+                    if e.status != runtime.errorMemoryAllocation:
+                        raise
+                    oom_error = True
+        finally:
+            if mem is None:
+                assert oom_error
+                # Set total to -1 as we currently do not keep track of the
+                # usage of the async mempool
+                raise OutOfMemoryError(size, -1, 0)
+        return mem
 
     cpdef free_all_blocks(self, stream=None):
         # We don't have access to the mempool internal, but if there are
