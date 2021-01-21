@@ -1504,6 +1504,12 @@ cdef class MemoryAsyncPool(object):
             visible devices so that the mempools for each device can be set
             independently.
 
+    .. warning::
+        This feature is currently experimental and subject to change.
+
+    .. note::
+        :class:`MemoryAsyncPool` currently cannot work with memory hooks.
+
     """
     # This is an analogous to SingleDeviceMemoryPool + MemoryPool, but for
     # CUDA's async allocator. The main purpose is to provide a memory pool
