@@ -148,6 +148,19 @@ def _check_cupy_numpy_error(cupy_error, numpy_error,
                 'Both numpy and cupy were skipped but with different causes.')
         raise numpy_error  # reraise SkipTest
 
+    # Check if the error was not raised from test code.
+    if cupy_error is not None:
+        frame = traceback.extract_tb(cupy_error.__traceback__)[-1]
+        filename = os.path.basename(frame.filename)
+        if filename == 'test_helper.py':
+            # Allows errors from the test code for testing helpers.
+            pass
+        elif filename.startswith('test_'):
+            _fail_test_with_unexpected_errors(
+                cupy_error.__traceback__,
+                'Error was raised from test code.\n\n{cupy_error}',
+                cupy_error, None)
+
     # For backward compatibility
     if accept_error is True:
         accept_error = Exception
