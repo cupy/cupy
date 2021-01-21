@@ -1,5 +1,5 @@
 # distutils: language = c++
-cimport cpython
+cimport cpython  # NOQA
 cimport cython  # NOQA
 
 import atexit
@@ -1525,11 +1525,11 @@ cdef class MemoryAsyncPool(object):
         if cpython.PySequence_Check(pool_handles):
             # allow different kinds of handles on each device
             self._pools = [self.set_pool(pool_handles[dev_id], dev_id)
-                for dev_id in range(runtime.getDeviceCount())]
+                           for dev_id in range(runtime.getDeviceCount())]
         else:
             # use the same argument for all devices
             self._pools = [self.set_pool(pool_handles, dev_id)
-                for dev_id in range(runtime.getDeviceCount())]
+                           for dev_id in range(runtime.getDeviceCount())]
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         # TODO(leofang): Support cudaMemPoolCreate
