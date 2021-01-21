@@ -11,7 +11,7 @@ import threading
 import warnings
 import weakref
 
-from cupy_backends.cuda.api import runtime
+from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy.core import syncdetect
 
 from fastrlock cimport rlock
@@ -175,13 +175,13 @@ cdef class MemoryAsync(BaseMemory):
         if self.ptr:
             try:
                 runtime.freeAsync(self.ptr, curr_stream)
-            except runtime.CUDARuntimeError as e:
+            except CUDARuntimeError as e:
                 if e.status not in ok_errors:
                     raise
                 try:
                     curr_stream = stream_module.get_current_stream_ptr()
                     runtime.freeAsync(self.ptr, curr_stream)
-                except runtime.CUDARuntimeError as e:
+                except CUDARuntimeError as e:
                     if e.status not in ok_errors:
                         raise
                     runtime.free(self.ptr)
@@ -591,7 +591,7 @@ cdef class MemoryPointer:
         try:
             runtime.deviceEnablePeerAccess(peer)
         # peer access could already be set by external libraries at this point
-        except runtime.CUDARuntimeError as e:
+        except CUDARuntimeError as e:
             if e.status != runtime.errorPeerAccessAlreadyEnabled:
                 raise
         finally:
@@ -1305,20 +1305,20 @@ cdef class SingleDeviceMemoryPool:
         oom_error = False
         try:
             mem = self._alloc(size).mem
-        except runtime.CUDARuntimeError as e:
+        except CUDARuntimeError as e:
             if e.status != runtime.errorMemoryAllocation:
                 raise
             self.free_all_blocks()
             try:
                 mem = self._alloc(size).mem
-            except runtime.CUDARuntimeError as e:
+            except CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
                 gc.collect()
                 self.free_all_blocks()
                 try:
                     mem = self._alloc(size).mem
-                except runtime.CUDARuntimeError as e:
+                except CUDARuntimeError as e:
                     if e.status != runtime.errorMemoryAllocation:
                         raise
                     oom_error = True
@@ -1569,7 +1569,10 @@ cdef class MemoryAsyncPool(object):
         return malloc_async(size)
 
     cpdef free_all_blocks(self, stream=None):
-        raise NotImplementedError
+        # We don't have access to the mempool internal, but if there are
+        # any memory asynchronously freed, a synchonization will make sure
+        # they become visible (to both cudaMalloc and cudaMallocAsync).
+        runtime.deviceSynchronize()
 
     cpdef size_t n_free_blocks(self):
         raise NotImplementedError
