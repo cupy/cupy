@@ -1328,7 +1328,7 @@ cdef class SingleDeviceMemoryPool:
         return mem
 
 
-cdef class MemoryPool(object):
+cdef class MemoryPool:
 
     """Memory pool for all GPU devices on the host.
 
@@ -1485,7 +1485,7 @@ cdef class MemoryPool(object):
         return mp.get_limit()
 
 
-cdef class MemoryAsyncPool(object):
+cdef class MemoryAsyncPool:
     """(Experimental) CUDA memory pool for all GPU devices on the host.
 
     A memory pool preserves any allocations even if they are freed by the user.
@@ -1576,13 +1576,14 @@ cdef class MemoryAsyncPool(object):
         except CUDARuntimeError as e:
             if e.status != runtime.errorMemoryAllocation:
                 raise
-            self.free_all_blocks()  # synchronize!
+            stream = stream_module.get_current_stream()
+            stream.synchronize()
             try:
                 mem = malloc_async(rounded_size)
             except CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
-                self.free_all_blocks()  # synchronize!
+                stream.synchronize()
                 try:
                     mem = malloc_async(rounded_size)
                 except CUDARuntimeError as e:
