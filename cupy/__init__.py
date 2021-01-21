@@ -837,7 +837,7 @@ disable_experimental_feature_warning = False
 
 
 # set default allocator
-_default_memory_pool = cuda.MemoryAsyncPool()
+_default_memory_pool = cuda.MemoryPool()
 _default_pinned_memory_pool = cuda.PinnedMemoryPool()
 
 cuda.set_allocator(_default_memory_pool.malloc)
