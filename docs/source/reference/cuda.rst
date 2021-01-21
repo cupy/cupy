@@ -35,6 +35,7 @@ Memory management
    cupy.cuda.using_allocator
    cupy.cuda.set_pinned_memory_allocator
    cupy.cuda.MemoryPool
+   cupy.cuda.MemoryAsyncPool
    cupy.cuda.PinnedMemoryPool
    cupy.cuda.PythonFunctionAllocator
 
