@@ -1,5 +1,6 @@
 # distutils: language = c++
 cimport cython  # NOQA
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
 import atexit
 import collections
@@ -24,6 +25,11 @@ from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport runtime
 
 from cupy import _util
+
+
+# For cudaMemPool_t
+cdef extern from '../../cupy_backends/cupy_backend_runtime.h':
+    pass
 
 
 cdef bint _exit_mode = False
@@ -940,6 +946,21 @@ cdef class _Arena:
         return False
 
 
+# cpdef because uint-tested
+# module-level function can be inlined
+cpdef inline dict _parse_limit_string(limit=None):
+    if limit is None:
+        limit = os.environ.get('CUPY_GPU_MEMORY_LIMIT')
+    size = None
+    fraction = None
+    if limit is not None:
+        if limit.endswith('%'):
+            fraction = float(limit[:-1]) / 100.0
+        else:
+            size = int(limit)
+    return {'size': size, 'fraction': fraction}
+
+
 @cython.final
 cdef class SingleDeviceMemoryPool:
     """Memory pool implementation for single device.
@@ -992,7 +1013,7 @@ cdef class SingleDeviceMemoryPool:
         self._in_use_lock = rlock.create_fastrlock()
         self._total_bytes_lock = rlock.create_fastrlock()
 
-        self.set_limit(**(self._parse_limit_string()))
+        self.set_limit(**(_parse_limit_string()))
 
     cdef _Arena _arena(self, intptr_t stream_ptr):
         """Returns appropriate arena of a given stream.
@@ -1208,19 +1229,6 @@ cdef class SingleDeviceMemoryPool:
     cpdef size_t get_limit(self):
         with LockAndNoGc(self._total_bytes_lock):
             return self._total_bytes_limit
-
-    # cpdef because uint-tested
-    cpdef dict _parse_limit_string(self, limit=None):
-        if limit is None:
-            limit = os.environ.get('CUPY_GPU_MEMORY_LIMIT')
-        size = None
-        fraction = None
-        if limit is not None:
-            if limit.endswith('%'):
-                fraction = float(limit[:-1]) / 100.0
-            else:
-                size = int(limit)
-        return {'size': size, 'fraction': fraction}
 
     cdef _compact_index(self, intptr_t stream_ptr, bint free):
         # need self._free_lock
@@ -1485,6 +1493,170 @@ cdef class MemoryPool(object):
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.get_limit()
+
+
+cdef class MemoryAsyncPool(object):
+    # This is an analogous to SingleDeviceMemoryPool but for CUDA's async
+    # allocator. The main purpose is to provide a memory pool interface, but
+    # given that cudaMemPool_t is implemented at the driver level, the same
+    # handle (ex: to the default pool) can be shared by many applications in
+    # the same process, so we can't collect meaningful statistics like used
+    # bytes for this pool.
+
+    """Memory pool for all GPU devices on the host.
+
+    A memory pool preserves any allocations even if they are freed by the user.
+    Freed memory buffers are held by the memory pool as *free blocks*, and they
+    are reused for further memory allocations of the same sizes. The allocated
+    blocks are managed for each device, so one instance of this class can be
+    used for multiple devices.
+
+    Args:
+        allocator (function): The base CuPy memory allocator. It is used for
+            allocating new blocks when the blocks of the required size are all
+            in use.
+
+    """
+    cdef:
+        object _allocator
+
+        # A cudaMemPool_t handle to the device's mempool
+        readonly intptr_t pool
+
+        # Upper limit of the amount to be allocated by this pool.
+        # `_total_bytes_lock` must be acquired to access it.
+        size_t _total_bytes_limit
+        object _total_bytes_lock
+
+        readonly int _device_id
+
+    def __init__(self, pool_handle=None):
+        self._allocator = malloc_async
+        self._device_id = device.get_device_id()
+
+        if pool_handle is None:
+            # Use the device's default pool
+            self.pool = <intptr_t>PyMem_Malloc(sizeof(runtime.MemPool))
+            runtime.deviceGetDefaultMemPool(self.pool, self._device_id)
+        #elif pool_handle is True:
+        #    # Use the device's current pool
+        #    self.pool = runtime.deviceGetMemPool()
+        #elif isinstance(pool_handle, int):
+        #    # Use an existing pool (likely from other applications?)
+        #    self.pool = <intptr_t>(pool_handle)
+        else:
+            raise ValueError("pool_handle must be "
+                             "None (for the device's default pool), "
+                             "True (for the device's current pool), "
+                             "or int (a pointer to cudaMemPool_t)")
+        runtime.deviceSetMemPool(self._device_id, self.pool)
+
+        self._total_bytes_lock = rlock.create_fastrlock()
+        self.set_limit(**(_parse_limit_string()))
+
+    cpdef MemoryPointer malloc(self, size_t size):
+        """Allocates memory from the pool on the current stream.
+
+        This method can be used as a CuPy memory allocator. The simplest way to
+        use a memory pool as the default allocator is the following code::
+
+            set_allocator(MemoryAsyncPool().malloc)
+
+        Args:
+            size (int): Size of the memory buffer to allocate in bytes.
+
+        Returns:
+            ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+
+        """
+        return self._allocator(size)
+
+    cpdef free_all_blocks(self, stream=None):
+        raise NotImplementedError
+
+    cpdef size_t n_free_blocks(self):
+        raise NotImplementedError
+
+    cpdef size_t used_bytes(self):
+        raise NotImplementedError
+
+    cpdef size_t free_bytes(self):
+        raise NotImplementedError
+
+    cpdef size_t total_bytes(self):
+        raise NotImplementedError
+
+    cpdef set_limit(self, size=None, fraction=None):
+        """Sets the upper limit of memory allocation of the current device.
+
+        When `fraction` is specified, its value will become a fraction of the
+        amount of GPU memory that is available for allocation.
+        For example, if you have a GPU with 2 GiB memory, you can either use
+        ``set_limit(fraction=0.5)`` or ``set_limit(size=1024**3)`` to limit
+        the memory size to 1 GiB.
+
+        ``size`` and ``fraction`` cannot be specified at one time.
+        If both of them are **not** specified or ``0`` is specified, the
+        limit will be disabled.
+
+        .. note::
+            You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
+            environment variable.
+            See :ref:`environment` for the details.
+            The limit set by this method supersedes the value specified in
+            the environment variable.
+
+            Also note that this method only changes the limit for the current
+            device, whereas the environment variable sets the default limit for
+            all devices.
+
+        .. warning::
+            Since the memory pool is implemented at the driver level, the
+            actual limit could be overridden by other processes using the
+            same pool, which CuPy would not be able to know.
+
+        Args:
+            size (int): Limit size in bytes.
+            fraction (float): Fraction in the range of ``[0, 1]``.
+        """
+        if size is None:
+            if fraction is None:
+                size = 0
+            else:
+                if not 0 <= fraction <= 1:
+                    raise ValueError(
+                        'memory limit fraction out of range: {}'.format(
+                            fraction))
+                _, total = runtime.memGetInfo()
+                size = fraction * total
+            self.set_limit(size=size)
+            return
+
+        if fraction is not None:
+            raise ValueError('size and fraction cannot be specified at '
+                             'one time')
+        if size < 0:
+            raise ValueError(
+                'memory limit size out of range: {}'.format(size))
+
+        with LockAndNoGc(self._total_bytes_lock):
+            self._total_bytes_limit = size
+            if size > 0:
+                runtime.memPoolTrimTo(<intptr_t>self.pool, size)
+
+    cpdef size_t get_limit(self):
+        """Gets the upper limit of memory allocation of the current device.
+
+        .. warning::
+            Since the memory pool is implemented at the driver level, the
+            actual limit could be overridden by other processes using the
+            same pool, which CuPy would not be able to know.
+
+        Returns:
+            int: The number of bytes
+        """
+        with LockAndNoGc(self._total_bytes_lock):
+            return self._total_bytes_limit
 
 
 ctypedef void*(*malloc_func_type)(void*, size_t, int)

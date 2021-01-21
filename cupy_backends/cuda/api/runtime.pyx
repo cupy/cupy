@@ -13,6 +13,7 @@ import threading
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
+from cython.operator cimport dereference as deref
 
 from cupy_backends.cuda.api cimport driver
 
@@ -161,6 +162,10 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
                              driver.Stream stream)
     int cudaMemAdvise(const void *devPtr, size_t count,
                       MemoryAdvise advice, int device)
+    int cudaDeviceGetDefaultMemPool(MemPool*, int)
+    int cudaDeviceGetMemPool(MemPool*, int)
+    int cudaDeviceSetMemPool(int, MemPool)
+    int cudaMemPoolTrimTo(MemPool, size_t)
     int cudaPointerGetAttributes(_PointerAttributes* attributes,
                                  const void* ptr)
     Extent make_cudaExtent(size_t w, size_t h, size_t d)
@@ -787,6 +792,44 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
         attrs.device,
         <intptr_t>attrs.devicePointer,
         <intptr_t>attrs.hostPointer)
+
+
+cpdef deviceGetDefaultMemPool(intptr_t pool, int device):
+    '''Get the default mempool on the current device.'''
+    if CUDA_VERSION < 11020:
+        raise RuntimeError('deviceGetDefaultMemPool is supported since '
+                           'CUDA 11.2')
+    with nogil:
+        status = cudaDeviceGetDefaultMemPool(<MemPool*>pool, device)
+    check_status(status)
+
+
+cpdef deviceGetMemPool(intptr_t pool, int device):
+    '''Get the current mempool on the current device.'''
+    if CUDA_VERSION < 11020:
+        raise RuntimeError('deviceGetMemPool is supported since '
+                           'CUDA 11.2')
+    with nogil:
+        status = cudaDeviceGetMemPool(<MemPool*>pool, device)
+    check_status(status)
+
+
+cpdef deviceSetMemPool(int device, intptr_t pool):
+    '''Set the current mempool on the current device to pool.'''
+    if CUDA_VERSION < 11020:
+        raise RuntimeError('deviceSetMemPool is supported since '
+                           'CUDA 11.2')
+    with nogil:
+        status = cudaDeviceSetMemPool(device, deref(<MemPool*>pool))
+    check_status(status)
+
+
+cpdef memPoolTrimTo(intptr_t pool, size_t size):
+    if CUDA_VERSION < 11020:
+        raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
+    with nogil:
+        status = cudaMemPoolTrimTo(deref(<MemPool*>pool), size)
+    check_status(status)
 
 
 ###############################################################################

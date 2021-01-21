@@ -102,6 +102,9 @@ cdef extern from *:
     ctypedef struct cudaUUID 'cudaUUID_t':
         char bytes[16]
 
+    ctypedef struct MemPool 'cudaMemPool_t':
+        pass
+
     IF CUDA_VERSION >= 11000:
         # We can't use IF in the middle of structs declaration
         # to add or ignore fields in compile time so we have to
@@ -727,6 +730,10 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream)
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
+cpdef deviceGetDefaultMemPool(intptr_t, int)
+cpdef deviceGetMemPool(intptr_t, int)
+cpdef deviceSetMemPool(int, intptr_t)
+cpdef memPoolTrimTo(intptr_t, size_t)
 
 
 ###############################################################################
