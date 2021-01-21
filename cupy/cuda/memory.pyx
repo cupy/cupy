@@ -1,6 +1,6 @@
 # distutils: language = c++
+cimport cpython
 cimport cython  # NOQA
-from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
 import atexit
 import collections
@@ -25,11 +25,6 @@ from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport runtime
 
 from cupy import _util
-
-
-# For cudaMemPool_t
-cdef extern from '../../cupy_backends/cupy_backend_runtime.h':
-    pass
 
 
 cdef bint _exit_mode = False
@@ -1520,39 +1515,48 @@ cdef class MemoryAsyncPool(object):
     cdef:
         object _allocator
 
-        # A cudaMemPool_t handle to the device's mempool
-        readonly intptr_t pool
+        # A cudaMemPool_t handle to each device's mempool
+        readonly list _pools
 
         # Upper limit of the amount to be allocated by this pool.
         # `_total_bytes_lock` must be acquired to access it.
         size_t _total_bytes_limit
         object _total_bytes_lock
 
-        readonly int _device_id
-
-    def __init__(self, pool_handle=None):
+    def __init__(self, pool_handles=None):
         self._allocator = malloc_async
-        self._device_id = device.get_device_id()
 
-        if pool_handle is None:
-            # Use the device's default pool
-            self.pool = <intptr_t>PyMem_Malloc(sizeof(runtime.MemPool))
-            runtime.deviceGetDefaultMemPool(self.pool, self._device_id)
-        #elif pool_handle is True:
-        #    # Use the device's current pool
-        #    self.pool = runtime.deviceGetMemPool()
-        #elif isinstance(pool_handle, int):
-        #    # Use an existing pool (likely from other applications?)
-        #    self.pool = <intptr_t>(pool_handle)
+        cdef int dev_id
+        if cpython.PySequence_Check(pool_handles):
+            # allow different kinds of handles on each device
+            self._pools = [self.set_pool(pool_handles[dev_id], dev_id)
+                for dev_id in range(runtime.getDeviceCount())]
         else:
-            raise ValueError("pool_handle must be "
-                             "None (for the device's default pool), "
-                             "True (for the device's current pool), "
-                             "or int (a pointer to cudaMemPool_t)")
-        runtime.deviceSetMemPool(self._device_id, self.pool)
+            # use the same argument for all devices
+            self._pools = [self.set_pool(pool_handles, dev_id)
+                for dev_id in range(runtime.getDeviceCount())]
 
         self._total_bytes_lock = rlock.create_fastrlock()
         self.set_limit(**(_parse_limit_string()))
+
+    cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
+        cdef intptr_t pool
+        if handle is None:
+            # Use the device's default pool
+            pool = runtime.deviceGetDefaultMemPool(dev_id)
+        elif handle is True:
+            # Use the device's current pool
+            pool = runtime.deviceGetMemPool(dev_id)
+        elif isinstance(handle, int):
+            # Use an existing pool (likely from other applications?)
+            pool = <intptr_t>(handle)
+        else:
+            raise ValueError("handle must be "
+                             "None (for the device's default pool), "
+                             "True (for the device's current pool), "
+                             "or int (a pointer to cudaMemPool_t)")
+        runtime.deviceSetMemPool(dev_id, pool)
+        return pool
 
     cpdef MemoryPointer malloc(self, size_t size):
         """Allocates memory from the pool on the current stream.

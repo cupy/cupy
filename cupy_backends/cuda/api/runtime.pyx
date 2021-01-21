@@ -13,7 +13,6 @@ import threading
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
-from cython.operator cimport dereference as deref
 
 from cupy_backends.cuda.api cimport driver
 
@@ -794,24 +793,28 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
         <intptr_t>attrs.hostPointer)
 
 
-cpdef deviceGetDefaultMemPool(intptr_t pool, int device):
+cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
     '''Get the default mempool on the current device.'''
     if CUDA_VERSION < 11020:
         raise RuntimeError('deviceGetDefaultMemPool is supported since '
                            'CUDA 11.2')
+    cdef MemPool pool
     with nogil:
-        status = cudaDeviceGetDefaultMemPool(<MemPool*>pool, device)
+        status = cudaDeviceGetDefaultMemPool(&pool, device)
     check_status(status)
+    return <intptr_t>(pool)
 
 
-cpdef deviceGetMemPool(intptr_t pool, int device):
+cpdef intptr_t deviceGetMemPool(int device) except? 0:
     '''Get the current mempool on the current device.'''
     if CUDA_VERSION < 11020:
         raise RuntimeError('deviceGetMemPool is supported since '
                            'CUDA 11.2')
+    cdef MemPool pool
     with nogil:
-        status = cudaDeviceGetMemPool(<MemPool*>pool, device)
+        status = cudaDeviceGetMemPool(&pool, device)
     check_status(status)
+    return <intptr_t>(pool)
 
 
 cpdef deviceSetMemPool(int device, intptr_t pool):
@@ -820,7 +823,7 @@ cpdef deviceSetMemPool(int device, intptr_t pool):
         raise RuntimeError('deviceSetMemPool is supported since '
                            'CUDA 11.2')
     with nogil:
-        status = cudaDeviceSetMemPool(device, deref(<MemPool*>pool))
+        status = cudaDeviceSetMemPool(device, <MemPool>pool)
     check_status(status)
 
 
@@ -828,7 +831,7 @@ cpdef memPoolTrimTo(intptr_t pool, size_t size):
     if CUDA_VERSION < 11020:
         raise RuntimeError('memPoolTrimTo is supported since CUDA 11.2')
     with nogil:
-        status = cudaMemPoolTrimTo(deref(<MemPool*>pool), size)
+        status = cudaMemPoolTrimTo(<MemPool>pool, size)
     check_status(status)
 
 
