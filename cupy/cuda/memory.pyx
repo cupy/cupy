@@ -1491,41 +1491,35 @@ cdef class MemoryPool(object):
 
 
 cdef class MemoryAsyncPool(object):
-    # This is an analogous to SingleDeviceMemoryPool but for CUDA's async
-    # allocator. The main purpose is to provide a memory pool interface, but
-    # given that cudaMemPool_t is implemented at the driver level, the same
-    # handle (ex: to the default pool) can be shared by many applications in
-    # the same process, so we can't collect meaningful statistics like used
-    # bytes for this pool.
-
-    """Memory pool for all GPU devices on the host.
+    """(Experimental) CUDA memory pool for all GPU devices on the host.
 
     A memory pool preserves any allocations even if they are freed by the user.
-    Freed memory buffers are held by the memory pool as *free blocks*, and they
-    are reused for further memory allocations of the same sizes. The allocated
-    blocks are managed for each device, so one instance of this class can be
-    used for multiple devices.
+    One instance of this class can be used for multiple devices. This class
+    uses CUDA's Stream Ordered Memory Allocator (supported on CUDA 11.2+).
 
     Args:
-        allocator (function): The base CuPy memory allocator. It is used for
-            allocating new blocks when the blocks of the required size are all
-            in use.
+        pool_handles (None or True or int): A flag to indicate which mempool
+            to use. None is for the device's default mempool, True is for the
+            current mempool (which could be the default one), and an int that
+            represents ``cudaMemPool_t`` created from elsewhere for an external
+            mempool. A list consisting of these flags can also be accepted, in
+            which case the list length must equal to the total number of
+            visible devices so that the mempools for each device can be set
+            independently.
 
     """
-    cdef:
-        object _allocator
+    # This is an analogous to SingleDeviceMemoryPool + MemoryPool, but for
+    # CUDA's async allocator. The main purpose is to provide a memory pool
+    # interface for multiple devices, but given that CUDA's mempool is
+    # implemented at the driver level, the same pool could be shared by many
+    # applications in the same process, so we can't collect meaningful
+    # statistics like used bytes for this pool...
 
-        # A cudaMemPool_t handle to each device's mempool
+    cdef:
+        # A list of cudaMemPool_t to each device's mempool
         readonly list _pools
 
-        # Upper limit of the amount to be allocated by this pool.
-        # `_total_bytes_lock` must be acquired to access it.
-        size_t _total_bytes_limit
-        object _total_bytes_lock
-
     def __init__(self, pool_handles=None):
-        self._allocator = malloc_async
-
         cdef int dev_id
         if cpython.PySequence_Check(pool_handles):
             # allow different kinds of handles on each device
@@ -1535,9 +1529,6 @@ cdef class MemoryAsyncPool(object):
             # use the same argument for all devices
             self._pools = [self.set_pool(pool_handles, dev_id)
                 for dev_id in range(runtime.getDeviceCount())]
-
-        self._total_bytes_lock = rlock.create_fastrlock()
-        self.set_limit(**(_parse_limit_string()))
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool
@@ -1559,7 +1550,8 @@ cdef class MemoryAsyncPool(object):
         return pool
 
     cpdef MemoryPointer malloc(self, size_t size):
-        """Allocates memory from the pool on the current stream.
+        """Allocate memory from the current device's pool on the current
+        stream.
 
         This method can be used as a CuPy memory allocator. The simplest way to
         use a memory pool as the default allocator is the following code::
@@ -1573,7 +1565,8 @@ cdef class MemoryAsyncPool(object):
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
-        return self._allocator(size)
+        _util.experimental('cupy.cuda.MemoryAsyncPool.malloc')
+        return malloc_async(size)
 
     cpdef free_all_blocks(self, stream=None):
         raise NotImplementedError
@@ -1591,76 +1584,10 @@ cdef class MemoryAsyncPool(object):
         raise NotImplementedError
 
     cpdef set_limit(self, size=None, fraction=None):
-        """Sets the upper limit of memory allocation of the current device.
-
-        When `fraction` is specified, its value will become a fraction of the
-        amount of GPU memory that is available for allocation.
-        For example, if you have a GPU with 2 GiB memory, you can either use
-        ``set_limit(fraction=0.5)`` or ``set_limit(size=1024**3)`` to limit
-        the memory size to 1 GiB.
-
-        ``size`` and ``fraction`` cannot be specified at one time.
-        If both of them are **not** specified or ``0`` is specified, the
-        limit will be disabled.
-
-        .. note::
-            You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
-            environment variable.
-            See :ref:`environment` for the details.
-            The limit set by this method supersedes the value specified in
-            the environment variable.
-
-            Also note that this method only changes the limit for the current
-            device, whereas the environment variable sets the default limit for
-            all devices.
-
-        .. warning::
-            Since the memory pool is implemented at the driver level, the
-            actual limit could be overridden by other processes using the
-            same pool, which CuPy would not be able to know.
-
-        Args:
-            size (int): Limit size in bytes.
-            fraction (float): Fraction in the range of ``[0, 1]``.
-        """
-        if size is None:
-            if fraction is None:
-                size = 0
-            else:
-                if not 0 <= fraction <= 1:
-                    raise ValueError(
-                        'memory limit fraction out of range: {}'.format(
-                            fraction))
-                _, total = runtime.memGetInfo()
-                size = fraction * total
-            self.set_limit(size=size)
-            return
-
-        if fraction is not None:
-            raise ValueError('size and fraction cannot be specified at '
-                             'one time')
-        if size < 0:
-            raise ValueError(
-                'memory limit size out of range: {}'.format(size))
-
-        with LockAndNoGc(self._total_bytes_lock):
-            self._total_bytes_limit = size
-            if size > 0:
-                runtime.memPoolTrimTo(<intptr_t>self.pool, size)
+        raise NotImplementedError
 
     cpdef size_t get_limit(self):
-        """Gets the upper limit of memory allocation of the current device.
-
-        .. warning::
-            Since the memory pool is implemented at the driver level, the
-            actual limit could be overridden by other processes using the
-            same pool, which CuPy would not be able to know.
-
-        Returns:
-            int: The number of bytes
-        """
-        with LockAndNoGc(self._total_bytes_lock):
-            return self._total_bytes_limit
+        raise NotImplementedError
 
 
 ctypedef void*(*malloc_func_type)(void*, size_t, int)
