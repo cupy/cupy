@@ -107,12 +107,13 @@ cdef class Memory(BaseMemory):
             runtime.free(self.ptr)
 
 
-cdef inline void async_alloc_check() except*:
+cdef inline async_alloc_check(int curr_dev):
     cdef int dev_id
     cdef list support = [runtime.deviceGetAttribute(
         runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
         for dev_id in range(runtime.getDeviceCount())]
     _thread_local.device_support_async_alloc = support
+    return support[curr_dev]
 
 
 cdef inline void is_async_alloc_supported(int device_id) except*:
@@ -120,17 +121,13 @@ cdef inline void is_async_alloc_supported(int device_id) except*:
         raise RuntimeError("memory_async is supported since CUDA 11.2")
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
-    global is_async_alloc_support_checked
-    if not is_async_alloc_support_checked:
-        async_alloc_check()
-        is_async_alloc_support_checked = True
-    is_supported = _thread_local.device_support_async_alloc[device_id]
+    if not hasattr(_thread_local, 'is_async_alloc_support_checked'):
+        is_supported = async_alloc_check(device_id)
+    else:
+        is_supported = _thread_local.device_support_async_alloc[device_id]
     if not is_supported:
         raise RuntimeError('Device {} does not support '
                            'malloc_async'.format(device_id))
-
-
-cdef bint is_async_alloc_support_checked = False
 
 
 @cython.no_gc
