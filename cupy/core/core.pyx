@@ -7,7 +7,6 @@ import re
 import sys
 import warnings
 
-import ctypes
 import numpy
 
 import cupy
@@ -1369,7 +1368,7 @@ cdef class ndarray:
                     and (self._f_contiguous or self._c_contiguous)):
                 order = 'F' if self._f_contiguous else 'C'
                 tmp = value.ravel(order)
-                ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
+                ptr = tmp.ctypes.data
                 stream_ptr = stream_module.get_current_stream_ptr()
                 if stream_ptr == 0:
                     self.data.copy_from_host(ptr, self.nbytes)
@@ -1608,7 +1607,7 @@ cdef class ndarray:
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
 
         syncdetect._declare_synchronize()
-        ptr = ctypes.c_void_p(a_cpu.__array_interface__['data'][0])
+        ptr = a_cpu.ctypes.data
         with self.device:
             if stream is not None:
                 a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
@@ -1646,7 +1645,7 @@ cdef class ndarray:
         else:
             raise RuntimeError('Cannot set to non-contiguous array')
 
-        ptr = ctypes.c_void_p(arr.__array_interface__['data'][0])
+        ptr = arr.ctypes.data
         with self.device:
             if stream is not None:
                 self.data.copy_from_host_async(ptr, self.nbytes, stream)
@@ -2307,12 +2306,10 @@ cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
     if mem is not None:
         src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
         src_cpu[:] = a_cpu.ravel(order)
-        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
+        a.data.copy_from_host_async(mem.ptr, nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
-        a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]),
-            nbytes)
+        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
 
     return a
 
@@ -2345,7 +2342,7 @@ cdef ndarray _send_numpy_array_list_to_gpu(
             a_dtype,
             src_cpu)
         a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
+        a.data.copy_from_host_async(mem.ptr, nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
         # fallback to numpy array and send it to GPU
@@ -2353,9 +2350,7 @@ cdef ndarray _send_numpy_array_list_to_gpu(
         a_cpu = numpy.array(arrays, dtype=a_dtype, copy=False, order=order,
                             ndmin=ndmin)
         a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]),
-            nbytes)
+        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
 
     return a
 
