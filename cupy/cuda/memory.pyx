@@ -1534,6 +1534,7 @@ cdef class MemoryAsyncPool(object):
                 for dev_id in range(runtime.getDeviceCount())]
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
+        # TODO(leofang): Support cudaMemPoolCreate
         cdef intptr_t pool
         if handle is None:
             # Use the device's default pool
@@ -1574,7 +1575,8 @@ cdef class MemoryAsyncPool(object):
     cpdef free_all_blocks(self, stream=None):
         # We don't have access to the mempool internal, but if there are
         # any memory asynchronously freed, a synchonization will make sure
-        # they become visible (to both cudaMalloc and cudaMallocAsync).
+        # they become visible (to both cudaMalloc and cudaMallocAsync). See
+        # https://github.com/cupy/cupy/issues/3777#issuecomment-758890450
         runtime.deviceSynchronize()
 
     cpdef size_t n_free_blocks(self):
@@ -1590,6 +1592,7 @@ cdef class MemoryAsyncPool(object):
         raise NotImplementedError
 
     cpdef set_limit(self, size=None, fraction=None):
+        # TODO(leofang): Support cudaMemPoolTrimTo?
         raise NotImplementedError
 
     cpdef size_t get_limit(self):
