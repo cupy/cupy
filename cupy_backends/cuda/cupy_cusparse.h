@@ -1,8 +1,12 @@
+// This code was automatically generated. Do not modify it directly.
+
 #ifndef INCLUDE_GUARD_CUDA_CUPY_CUSPARSE_H
 #define INCLUDE_GUARD_CUDA_CUPY_CUSPARSE_H
 
 #include <cuda.h>
 #include <cusparse.h>
+
+extern "C" {
 
 #if !defined(CUSPARSE_VERSION)
 #if CUDA_VERSION < 10000
@@ -12,21 +16,28 @@
 #endif
 #endif // #if !defined(CUSPARSE_VERSION)
 
-#if (CUSPARSE_VERSION < 10200) || (CUSPARSE_VERSION < 11000 && defined(_WIN32))
-// Types, macro and functions added in cuSparse 10.2
-// Windows support added in cuSparse 11.0
+#if CUSPARSE_VERSION < 10200
+// Added in 10.2
 
-// cuSPARSE generic API
 typedef void* cusparseSpVecDescr_t;
 typedef void* cusparseDnVecDescr_t;
 typedef void* cusparseSpMatDescr_t;
 typedef void* cusparseDnMatDescr_t;
 
-typedef enum {} cusparseIndexType_t;
+typedef enum {} cusparseCsr2CscAlg_t;
 typedef enum {} cusparseFormat_t;
 typedef enum {} cusparseOrder_t;
 typedef enum {} cusparseSpMVAlg_t;
 typedef enum {} cusparseSpMMAlg_t;
+typedef enum {} cusparseIndexType_t;
+
+cusparseStatus_t cusparseCsr2cscEx2_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCsr2cscEx2(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
 
 cusparseStatus_t cusparseCreateSpVec(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -184,27 +195,33 @@ cusparseStatus_t cusparseConstrainedGeMM(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-#endif // #if CUSPARSE_VERSION < 10200
+#endif  // #if CUSPARSE_VERSION < 10200
 
-#if CUSPARSE_VERSION < 10200
-// Functions added in cuSparse 10.2
+#if CUSPARSE_VERSION < 11000
+// Added in 11.0
 
-// CSR2CSC
-typedef enum {} cusparseCsr2CscAlg_t;
+typedef void* cusparseSpGEMMDescr_t;
 
-cusparseStatus_t cusparseCsr2cscEx2_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
+typedef enum {} cusparseSpGEMMAlg_t;
 
-cusparseStatus_t cusparseCsr2cscEx2(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-#endif // #if CUSPARSE_VERSION < 10200
+#endif  // #if CUSPARSE_VERSION < 11000
+
+#if CUSPARSE_VERSION < 11100
+// Added in 11.1
+
+typedef enum {} cusparseSparseToDenseAlg_t;
+typedef enum {} cusparseDenseToSparseAlg_t;
+
+#endif  // #if CUSPARSE_VERSION < 11100
 
 #if CUSPARSE_VERSION >= 11000
-// Functions deleted in cuSparse 11.0
+// Removed in 11.0
 
-// cuSPARSE Level2 Function
+typedef void* cusparseSolveAnalysisInfo_t;
+typedef void* cusparseHybMat_t;
+
+typedef enum {} cusparseHybPartition_t;
+
 cusparseStatus_t cusparseScsrmv(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -221,7 +238,6 @@ cusparseStatus_t cusparseZcsrmv(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-// cuSPARSE Level3 Function
 cusparseStatus_t cusparseScsrmm(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -254,7 +270,6 @@ cusparseStatus_t cusparseZcsrmm2(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-// cuSPARSE Extra Function
 cusparseStatus_t cusparseXcsrgeamNnz(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -274,7 +289,6 @@ cusparseStatus_t cusparseCcsrgeam(...) {
 cusparseStatus_t cusparseZcsrgeam(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
-
 
 cusparseStatus_t cusparseXcsrgemmNnz(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -296,11 +310,6 @@ cusparseStatus_t cusparseZcsrgemm(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-// cuSPARSE Format Convrsion
-cusparseStatus_t cusparseXcsr2coo(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
 cusparseStatus_t cusparseScsr2csc(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -316,6 +325,9 @@ cusparseStatus_t cusparseCcsr2csc(...) {
 cusparseStatus_t cusparseZcsr2csc(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
-#endif // #if CUSPARSE_VERSION >= 11000
+
+#endif  // #if CUSPARSE_VERSION >= 11000
+
+}  // extern "C"
 
 #endif  // INCLUDE_GUARD_CUDA_CUPY_CUSPARSE_H
