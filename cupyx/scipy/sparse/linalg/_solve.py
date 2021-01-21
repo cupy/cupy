@@ -8,8 +8,12 @@ from cupy.linalg import _util
 from cupyx.scipy import sparse
 
 import warnings
-import scipy.sparse
-import scipy.sparse.linalg
+try:
+    import scipy.sparse
+    import scipy.sparse.linalg
+    scipy_available = True
+except ImportError:
+    scipy_available = False
 
 
 def lsqr(A, b):
@@ -184,6 +188,8 @@ class SuperLU():
             obj (scipy.sparse.linalg.SuperLU): LU factorization of a sparse
                 matrix, computed by `scipy.sparse.linalg.splu`, etc.
         """
+        if not scipy_available:
+            raise RuntimeError('scipy is not available')
         if not isinstance(obj, scipy.sparse.linalg.SuperLU):
             raise TypeError('obj must be scipy.sparse.linalg.SuperLU')
 
@@ -254,6 +260,8 @@ class CusparseLU(SuperLU):
             a (cupyx.scipy.sparse.csr_matrix): Incomplete LU factorization of a
                 sparse matrix, computed by `cusparse.csrilu02`.
         """
+        if not scipy_available:
+            raise RuntimeError('scipy is not available')
         if not sparse.isspmatrix_csr(a):
             raise TypeError('a must be cupyx.scipy.sparse.csr_matrix')
 
@@ -318,6 +326,8 @@ def splu(A, permc_spec=None, diag_pivot_thresh=None, relax=None,
 
     .. seealso:: :func:`scipy.sparse.linalg.splu`
     """
+    if not scipy_available:
+        raise RuntimeError('scipy is not available')
     if not sparse.isspmatrix(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if A.shape[0] != A.shape[1]:
@@ -367,6 +377,8 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
 
     .. seealso:: :func:`scipy.sparse.linalg.spilu`
     """
+    if not scipy_available:
+        raise RuntimeError('scipy is not available')
     if not sparse.isspmatrix(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if A.shape[0] != A.shape[1]:
