@@ -1491,6 +1491,15 @@ cdef class MemoryAsyncPool:
     A memory pool preserves any allocations even if they are freed by the user.
     One instance of this class can be used for multiple devices. This class
     uses CUDA's Stream Ordered Memory Allocator (supported on CUDA 11.2+).
+    The simplest way to use this pool as CuPy's default allocator is the
+    following code::
+
+        set_allocator(MemoryAsyncPool().malloc)
+
+    Using this feature requires CUDA >= 11.2 with a supported GPU and platform.
+    If it is not supported, an error will be raised.
+
+    The current CuPy stream is used to allocate/free the memory.
 
     Args:
         pool_handles (None or True or int): A flag to indicate which mempool
@@ -1508,6 +1517,10 @@ cdef class MemoryAsyncPool:
     .. note::
         :class:`MemoryAsyncPool` currently cannot work with memory hooks.
 
+    .. seealso:: `Stream Ordered Memory Allocator`_
+
+    .. _Stream Ordered Memory Allocator:
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY__POOLS.html
     """
     # This is an analogous to SingleDeviceMemoryPool + MemoryPool, but for
     # CUDA's async allocator. The main purpose is to provide a memory pool
