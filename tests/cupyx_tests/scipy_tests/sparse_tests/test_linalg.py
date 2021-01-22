@@ -820,7 +820,7 @@ class TestCsrlsvqr(unittest.TestCase):
     'X_dtype': [cupy.float32, cupy.float64],
     'Y_dtype': [cupy.float32, cupy.float64],
     'sparse_format': ['coo', 'csr', 'csc']
-    }))
+}))
 # tests adapted from scipy's tests of lobpcg
 class TestLOBPCG(unittest.TestCase):
 
