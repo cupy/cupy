@@ -149,7 +149,7 @@ def _check_cupy_numpy_error(cupy_error, numpy_error,
         raise numpy_error  # reraise SkipTest
 
     # Check if the error was not raised from test code.
-    if cupy_error is not None:
+    if os.environ.get('CUPY_CI', '') != '' and cupy_error is not None:
         frame = traceback.extract_tb(cupy_error.__traceback__)[-1]
         filename = os.path.basename(frame.filename)
         if filename == 'test_helper.py':
