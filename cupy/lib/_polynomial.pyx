@@ -193,7 +193,7 @@ cdef class poly1d:
             raise NotImplementedError
         if self.coeffs.shape != other.coeffs.shape:
             return False
-        return numpy.bool_((self.coeffs == other.coeffs).all().item())
+        return (self.coeffs == other.coeffs).all().get()[()]
 
     def __ne__(self, other):
         if not isinstance(other, poly1d):
