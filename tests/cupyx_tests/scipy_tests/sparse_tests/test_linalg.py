@@ -2,7 +2,6 @@ import contextlib
 import re
 import cupy
 import io
-import itertools
 import unittest
 import warnings
 
@@ -812,8 +811,18 @@ class TestCsrlsvqr(unittest.TestCase):
 
 @testing.with_requires('scipy>=1.4')
 @testing.gpu
+@testing.parameterize(*testing.product({
+    'A_sparsity': [True, False],
+    'B_sparsity': [True, False],
+    'A_dtype': [cupy.float32, cupy.float64],
+    'preconditioner_sparsity': [True, False],
+    'preconditioner_dtype': [None, cupy.float32, cupy.float64],
+    'X_dtype': [cupy.float32, cupy.float64],
+    'Y_dtype': [cupy.float32, cupy.float64],
+    'sparse_format': ['coo', 'csr', 'csc']
+    }))
 # tests adapted from scipy's tests of lobpcg
-class TestLOBPCG:
+class TestLOBPCG(unittest.TestCase):
 
     def _eigen_vec_transform(self, block_vec, xp):
         """Helper to swap sign of each eigen vector based on the first
@@ -821,25 +830,11 @@ class TestLOBPCG:
         of eigen vector as positive. This helps in comparing equivalence
         of eigen vectors"""
         vec_len, num_vecs = block_vec.shape
-        # flag is 1 if the first nonzero element of
-        # eigenvector is negative
-        is_first_nonzero_negative = 0
-        # Naively using `xp.nonzero()` didn't work as extremely small values
-        # that ought to be zeros are handled differently in numpy and cupy.
-        # Therefore, we find the first non-zero element of each eigen vector
-        # based on some tolerance.
         for j in range(num_vecs):
-            for i in range(vec_len):
-                # checking if the element qualifies as 'non-zero'
-                # based on a low tolerance
-                if(not xp.allclose(1+block_vec[i, j], 1.0,
-                                   atol=1e-20, rtol=1e-5)):
-                    if(block_vec[i, j] < 0):
-                        is_first_nonzero_negative = 1
-                    break
-            if(is_first_nonzero_negative == 1):
-                block_vec[:, j] = -block_vec[:, j]
-                is_first_nonzero_negative = 0
+            direction = testing.shaped_random((vec_len, 1), xp=xp, seed=123)
+            eigvec = block_vec[:, j].T
+            eigvec *= xp.where(eigvec.dot(direction) >= 0, 1, -1)
+            block_vec[:, j] = eigvec.T
         return block_vec
 
     def _elastic_rod(self, n, xp):
@@ -960,21 +955,14 @@ class TestLOBPCG:
         Y = xp.eye(n, m_excluded)
         eigvals, vecs = sp.linalg.lobpcg(A, X, B, M=M, Y=Y, tol=1e-4,
                                          maxiter=40, largest=False)
-        # eigenvalue residue smallness check
-        self._check_eigen(A, eigvals, vecs, xp, sp, rtol=1e-3, atol=1e-3)
         return eigvals, self._eigen_vec_transform(vecs, xp)
 
-    def _check_eigen(self, M, w, V, xp, sp, rtol=1e-8, atol=1e-14):
-        """Check if the eigenvalue residual is small.
+    def _check_fiedler_small(self, n, p, xp, sp):
+        """Check the Fiedler vector computation
+           for small eigen values and vectors
         """
-        mult_wV = xp.multiply(w, V)
-        dot_MV = M.dot(V)
-        cupy.testing.assert_allclose(mult_wV, dot_MV, rtol=rtol, atol=atol)
-
-    def _check_fiedler(self, n, p, xp, sp):
-        """Check the Fiedler vector computation.
-        """
-        eval_list = []
+        # fiedler vector computation based on scipy's tests
+        # https://github.com/scipy/scipy/blob/ab1c0907fe9255582397db04592d6066745018d3/scipy/sparse/linalg/eigen/lobpcg/tests/test_lobpcg.py#L140
         col = numpy.zeros(n)
         col[1] = 1
         A = scipy.linalg.toeplitz(col)
@@ -983,92 +971,106 @@ class TestLOBPCG:
         # Compute the full eigendecomposition using tricks, e.g.
         # http://www.cs.yale.edu/homes/spielman/561/2009/lect02-09.pdf
         tmp = numpy.pi * numpy.arange(n) / n
-        analytic_w = 2 * (1 - numpy.cos(tmp))
         analytic_V = numpy.cos(numpy.outer(numpy.arange(n) + 1 / 2, tmp))
-        self._check_eigen(L, analytic_w, analytic_V, numpy, scipy.sparse)
-        # Compute the full eigendecomposition using eigh.
-        eigh_w, eigh_V = scipy.linalg.eigh(L)
-        self._check_eigen(L, eigh_w, eigh_V, numpy, scipy.sparse)
-        # Check that the first eigenvalue is near zero and that the rest agree.
-        cupy.testing.assert_array_less(numpy.abs([eigh_w[0], analytic_w[0]]),
-                                       1e-14)
-        cupy.testing.assert_allclose(eigh_w[1:], analytic_w[1:])
         # Check small lobpcg eigenvalues.
         X = analytic_V[:, :p]
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
                                               largest=False)
-        eval_list.append(lobpcg_w)
-        eval_list.append(self._eigen_vec_transform(lobpcg_V, xp))
         cupy.testing.assert_array_equal(lobpcg_w.shape, (p,))
         cupy.testing.assert_array_equal(lobpcg_V.shape, (n, p))
-        self._check_eigen(xp.asarray(L), lobpcg_w, lobpcg_V, xp, sp)
-        cupy.testing.assert_array_less(xp.abs(xp.min(lobpcg_w)),
-                                       xp.array(1e-14))
-        # checking closeness of eigenvalues with analytical solution
-        cupy.testing.assert_allclose(xp.sort(lobpcg_w)[1:],
-                                     xp.asarray(analytic_w[1:p]))
-        # Check large lobpcg eigenvalues.
+        return lobpcg_w, self._eigen_vec_transform(lobpcg_V, xp)
+
+    def _check_fiedler_large(self, n, p, xp, sp):
+        """Check the Fiedler vector computation
+           For large eigen values and vectors
+        """
+        # fiedler vector computation based on scipy's tests
+        # https://github.com/scipy/scipy/blob/ab1c0907fe9255582397db04592d6066745018d3/scipy/sparse/linalg/eigen/lobpcg/tests/test_lobpcg.py#L140
+        col = numpy.zeros(n)
+        col[1] = 1
+        A = scipy.linalg.toeplitz(col)
+        D = numpy.diag(A.sum(axis=1))
+        L = D - A
+        # Compute the full eigendecomposition using tricks, e.g.
+        # http://www.cs.yale.edu/homes/spielman/561/2009/lect02-09.pdf
+        tmp = numpy.pi * numpy.arange(n) / n
+        analytic_V = numpy.cos(numpy.outer(numpy.arange(n) + 1 / 2, tmp))
         X = analytic_V[:, -p:]
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
                                               largest=True)
-        eval_list.append(lobpcg_w)
-        eval_list.append(self._eigen_vec_transform(lobpcg_V, xp))
         cupy.testing.assert_array_equal(lobpcg_w.shape, (p,))
         cupy.testing.assert_array_equal(lobpcg_V.shape, (n, p))
-        self._check_eigen(xp.asarray(L), lobpcg_w, lobpcg_V, xp, sp)
-        # checking closeness of eigenvalues with analytical solution
-        cupy.testing.assert_allclose(xp.sort(lobpcg_w),
-                                     xp.asarray(analytic_w[-p:]))
+        return lobpcg_w, self._eigen_vec_transform(lobpcg_V, xp)
 
+    def _check_fiedler_approximate(self, n, p, xp, sp):
+        """
+           Check for Fiedler vector using good but not exactly
+           correct guesses
+        """
+        # fiedler vector computation based on scipy's tests
+        # https://github.com/scipy/scipy/blob/ab1c0907fe9255582397db04592d6066745018d3/scipy/sparse/linalg/eigen/lobpcg/tests/test_lobpcg.py#L140
+        col = numpy.zeros(n)
+        col[1] = 1
+        A = scipy.linalg.toeplitz(col)
+        D = numpy.diag(A.sum(axis=1))
+        L = D - A
         fiedler_guess = numpy.concatenate((numpy.ones(n // 2),
                                            -numpy.ones(n - n // 2)))
         X = numpy.vstack((numpy.ones(n), fiedler_guess)).T
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
                                               largest=False)
-        lobpcg_V = self._eigen_vec_transform(lobpcg_V, xp)
-        eval_list.append(lobpcg_w)
-        eval_list.append(lobpcg_V)
-        # checking closeness of eigenvalues with analytical solution
-        cupy.testing.assert_allclose(lobpcg_w, xp.asarray(analytic_w[:2]),
-                                     atol=1e-14)
-        return eval_list
+        return lobpcg_w, self._eigen_vec_transform(lobpcg_V, xp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_fiedler_small_8(self, xp, sp):
-        """Check the dense workaround path for small matrices.
+        """Check the dense workaround path for small matrices
+           for small fiedler eigen values and vectors
         """
         # This triggers the dense path because 8 < 2*5.
-        return self._check_fiedler(8, 2, xp, sp)
+        return self._check_fiedler_small(8, 2, xp, sp)
+
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
+    def test_fiedler_large_8(self, xp, sp):
+        """Check the dense workaround path for small matrices
+           for large fiedler eigen values and vectors
+        """
+        # This triggers the dense path because 8 < 2*5.
+        return self._check_fiedler_large(8, 2, xp, sp)
+
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
+    def test_fiedler_approximate_8(self, xp, sp):
+        """Check the dense workaround path for small matrices
+           for approximately-formed fiedler eigen values and vectors
+        """
+        # This triggers the dense path because 8 < 2*5.
+        return self._check_fiedler_approximate(8, 2, xp, sp)
+
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 contiguous_check=False)
+    def test_fiedler_small_12(self, xp, sp):
+        """Check the dense workaround path is avoided for non-small
+           fiedler matrices and small eigen values and vectors
+        """
+        return self._check_fiedler_small(12, 2, xp, sp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     def test_fiedler_large_12(self, xp, sp):
-        """Check the dense workaround path avoided for non-small matrices.
+        """Check the dense workaround path is avoided for non-small
+           fiedler matrices and large eigen values and vectors
         """
-        # This does not trigger the dense path, because 2*5 <= 12.
-        return self._check_fiedler(12, 2, xp, sp)
+        return self._check_fiedler_large(12, 2, xp, sp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
-    def test_eigs_consistency(self, xp, sp):
-        """Check eigs vs. lobpcg consistency.
+    def test_fiedler_approximate_12(self, xp, sp):
+        """Check the dense workaround path is avoided for non-small,
+           approximately generated fiedler matrices
         """
-        # The n=5 case tests the alternative small matrix code path
-        param_arr = [(20, 1e-3), (5, 1e-8)]
-        eval_list = []
-        for n, _atol in param_arr:
-            vals = xp.arange(1, n + 1, dtype=xp.float64)
-            A = sp.spdiags(vals, 0, n, n)
-            X = testing.shaped_random((n, 2), xp=xp, seed=345678)
-            lvals, lvecs = sp.linalg.lobpcg(A, X, largest=True, maxiter=100)
-            eval_list.append(lvals)
-            eval_list.append(self._eigen_vec_transform(lvecs, xp))
-            vals, _ = sp.linalg.eigsh(A, k=2)
-            self._check_eigen(A, lvals, lvecs, xp, sp, atol=_atol, rtol=0)
-            cupy.testing.assert_allclose(xp.sort(vals), xp.sort(lvals),
-                                         atol=1e-14)
-        return eval_list
+        return self._check_fiedler_approximate(12, 2, xp, sp)
 
     def _verbosity_helper(self, xp, sp):
         """Helper to capture the verbose output from stdout
@@ -1096,8 +1098,8 @@ class TestLOBPCG:
         # format of printed output.
         # also, due to the fact that there are unpredictable (but minor)
         # differences in decimal digits between scipy and cupy verbose output
-        stdout_cupy = re.sub(r'[0-9\.\-\+ \t]+', '', stdout_cupy)
-        stdout_numpy = re.sub(r'[0-9\.\-\+ \t]+', '', stdout_numpy)
+        stdout_cupy = re.sub(r'[-+]?\d+\.?\d*[ ]*', '{number}', stdout_cupy)
+        stdout_numpy = re.sub(r'[-+]?\d+\.?\d*[ ]*', '{number}', stdout_numpy)
         assert stdout_numpy == stdout_cupy, '''numpy: %s
                                                cupy: %s''' % (stdout_numpy,
                                                               stdout_cupy)
@@ -1116,7 +1118,6 @@ class TestLOBPCG:
         eigvals, vecs = sp.linalg.lobpcg(A, X, tol=1e-3, maxiter=50,
                                          verbosityLevel=1)
         vecs = self._eigen_vec_transform(vecs, xp)
-        cupy.testing.assert_allclose(eigvals, -xp.arange(1, 1 + m), atol=1e-2)
         return eigvals, vecs
 
     def test_maxit_None(self):
@@ -1132,7 +1133,7 @@ class TestLOBPCG:
         X = testing.shaped_random((n, m), xp=cupy, seed=1566950023)
         _, _, l_h = sparse.linalg.lobpcg(A, X, tol=1e-8, maxiter=20,
                                          retLambdaHistory=True)
-        cupy.testing.assert_allclose(cupy.array(len(l_h)), cupy.array(20 + 2))
+        assert len(l_h) == 22
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
@@ -1146,83 +1147,38 @@ class TestLOBPCG:
         # where (c, v) is a generalized eigenpair,
         # and where we choose A  and B to be diagonal.
         vals = xp.arange(1, n + 1)
-        eval_list = []
+        # A and B matrices based on parametrization
+        A = sp.diags([vals*vals], [0], (n, n), format=self.sparse_format)
+        A = A.astype(xp.dtype(self.A_dtype))
+        A = A if self.A_sparsity is True else A.toarray()
 
-        list_sparse_format = ['coo', 'csc', 'csr']
-        sparse_formats = len(list_sparse_format)
-        for s_f_i, s_f in enumerate(list_sparse_format):
+        B = sp.diags([vals], [0], (n, n), format=self.sparse_format)
+        B = B if self.B_sparsity is True else B.toarray()
 
-            As64 = sp.diags([vals * vals], [0], (n, n), format=s_f)
-            As32 = As64.astype(xp.float32)
-            Af64 = As64.toarray()
-            Af32 = Af64.astype(xp.float32)
-            listA = [Af64, As64, Af32, As32]
+        M_LO = None
+        if(self.preconditioner_dtype is not None):
+            M = sp.diags([1. / vals], [0], (n, n), format=self.sparse_format)
+            M = M if self.preconditioner_sparsity else M.toarray()
 
-            Bs64 = sp.diags([vals], [0], (n, n), format=s_f)
-            Bf64 = Bs64.toarray()
-            listB = [Bf64, Bs64]
+            def fun(x):
+                return M @ x
+            # Define Preconditioner function as Linear Operator
+            M_LO = sp.linalg.LinearOperator(matvec=fun,
+                                            matmat=fun,
+                                            shape=(n, n),
+                                            dtype=xp.dtype(self.preconditioner_dtype))  # NOQA
 
-            # Define the preconditioner function as LinearOperator.
-            Ms64 = sp.diags([1. / vals], [0], (n, n), format=s_f)
+        # Cannot be sparse array
+        X = testing.shaped_random((n, m), xp=xp, dtype=xp.dtype(self.X_dtype),
+                                  seed=1234)
 
-            def Ms64precond(x):
-                return Ms64 @ x
-            Ms64precondLO = sp.linalg.LinearOperator(matvec=Ms64precond,
-                                                     matmat=Ms64precond,
-                                                     shape=(n, n), dtype=float)
-            Mf64 = Ms64.toarray()
-
-            def Mf64precond(x):
-                return Mf64 @ x
-            Mf64precondLO = sp.linalg.LinearOperator(matvec=Mf64precond,
-                                                     matmat=Mf64precond,
-                                                     shape=(n, n), dtype=float)
-            Ms32 = Ms64.astype(xp.float32)
-
-            def Ms32precond(x):
-                return Ms32 @ x
-            Ms32precondLO = sp.linalg.LinearOperator(matvec=Ms32precond,
-                                                     matmat=Ms32precond,
-                                                     shape=(n, n),
-                                                     dtype=xp.float32)
-            Mf32 = Ms32.toarray()
-
-            def Mf32precond(x):
-                return Mf32 @ x
-            Mf32precondLO = sp.linalg.LinearOperator(matvec=Mf32precond,
-                                                     matmat=Mf32precond,
-                                                     shape=(n, n),
-                                                     dtype=xp.float32)
-            listM = [None, Ms64precondLO, Mf64precondLO,
-                     Ms32precondLO, Mf32precondLO]
-
-            # Setup matrix of the initial approximation to the eigenvectors
-            # (cannot be sparse array).
-            Xf64 = testing.shaped_random((n, m), xp=xp, dtype=xp.float64,
-                                         seed=1234)
-            Xf32 = Xf64.astype(xp.float32)
-            listX = [Xf64, Xf32]
-
-            # Require that returned eigenvectors be in the orthogonal
-            # complement
-            # of the first few standard basis vectors (cannot be sparse array).
-            m_excluded = 3
-            Yf64 = xp.eye(n, m_excluded, dtype=float)
-            Yf32 = xp.eye(n, m_excluded, dtype=xp.float32)
-            listY = [Yf64, Yf32]
-
-            tests = list(itertools.product(listA, listB, listM, listX, listY))
-            # to test here, instead of checking product of all input, output
-            # types test each configuration for the first sparse format, and
-            #  then for one additional sparse format. this takes 2/7=30% as
-            # long as testing all configurations for all sparse formats.
-            if s_f_i > 0:
-                tests = tests[s_f_i - 1::sparse_formats - 1]
-
-            for A, B, M, X, Y in tests:
-                eigvals, eigvecs = sp.linalg.lobpcg(A, X, B=B, M=M, Y=Y,
-                                                    tol=1e-4, maxiter=100,
-                                                    largest=False)
-                eval_list.append(eigvals)
-                eval_list.append(self._eigen_vec_transform(eigvecs, xp))
-        return eval_list
+        # Require tht returned eigenvectors be in the orthogonal
+        # complement of the first few standard basis vectors
+        # (Cannot be sparse array)
+        m_excluded = 3
+        Y = xp.eye(n, m_excluded, dtype=xp.dtype(self.Y_dtype))
+        # core call to lobpcg solver
+        eigvals, eigvecs = sp.linalg.lobpcg(A, X, B=B, M=M_LO, Y=Y,
+                                            tol=1e-4, maxiter=100,
+                                            largest=False)
+        return eigvals, self._eigen_vec_transform(eigvecs, xp)
