@@ -53,13 +53,24 @@ class CudaObject:
         self.code = code
         self.ctype = ctype
 
+    @property
+    def obj(self):
+        raise ValueError(f'Constant value is requried: {self.code}')
+
     def __repr__(self):
         return f'<CudaObject code = "{self.code}", type = {self.ctype}>'
 
 
 class Constant:
     def __init__(self, obj):
-        self.obj = obj
+        self._obj = obj
+
+    @property
+    def obj(self):
+        return self._obj
+
+    def __repr__(self):
+        return f'<Constant obj = "{self.obj}">'
 
 
 def is_constants(values):
@@ -152,18 +163,24 @@ def _transpile_function(
     return '\n'.join([function_decl + ' {'] + local_vars + body + ['}']), env
 
 
-def _eval_operand(op, args, env, dtype=None):
+def _eval_operand(op, args, env):
     if is_constants(args):
         pyfunc = _typerules.get_pyfunc(type(op))
         return Constant(pyfunc(*[x.obj for x in args]))
 
     ufunc = _typerules.get_ufunc(env.mode, type(op))
-    return _call_ufunc(ufunc, args, env, dtype)
+    return _call_ufunc(ufunc, args, {}, env)
 
 
-def _call_ufunc(ufunc, args, env, dtype):
-    assert ufunc.nin == len(args)
-    assert ufunc.nout == 1
+def _call_ufunc(ufunc, args, kwargs, env):
+    if len(args) != ufunc.nin:
+        raise ValueError('invalid number of arguments')
+
+    dtype = kwargs.pop('dtype', Constant(None)).obj
+
+    if len(kwargs) > 0:
+        name = next(iter(kwargs))
+        raise TypeError("'{name}' is an invalid keyword to ufunc {ufunc.name}")
 
     args = [_to_cuda_object(x, env) for x in args]
 
@@ -180,7 +197,8 @@ def _call_ufunc(ufunc, args, env, dtype):
     if op is None:
         raise TypeError(
             f'"{ufunc.name}" does not support for the input types: {in_types}')
-    if op.routine is None:
+
+    if op.error_func is not None:
         op.error_func()
 
     if ufunc.nout == 1 and op.routine.startswith('out0 = '):
@@ -294,7 +312,7 @@ def _transpile_stmt(stmt, env):
         raise ValueError('Cannot use global/nonlocal in the target functions.')
     if isinstance(stmt, ast.Expr):
         value = _transpile_expr(stmt.value, env)
-        return ';' if is_constants([value]) else value
+        return ';' if is_constants([value]) else value + ';'
     if isinstance(stmt, ast.Pass):
         return ';'
     if isinstance(stmt, ast.Break):
@@ -347,18 +365,18 @@ def _transpile_expr(expr, env):
             raise TypeError(
                 'Type mismatch in conditional expression.: '
                 f'{x.ctype.dtype} != {y.ctype.dtype}')
-        cond = _astype_scalar(cond, _types.Scalar(numpy.bool_))
+        cond = _astype_scalar(cond, _types.Scalar(numpy.bool_), unsafe=True)
         return CudaObject(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
     if isinstance(expr, ast.Call):
         func = _transpile_expr(expr.func, env)
         args = [_transpile_expr(x, env) for x in expr.args]
-        if len(expr.keywords) > 0:
-            raise NotImplementedError('Not implemented: keyword arguments')
-        if is_constants([func]):
-            func = func.obj
-            if isinstance(func, _kernel.ufunc):
-                return _call_ufunc(func, args, env, dtype=None)
-        raise NotImplementedError('Not implemented: function call')
+        kwargs = dict([(kw.arg, _transpile_expr(kw.value, env))
+                       for kw in expr.keywords])
+        func = func.obj
+        if isinstance(func, _kernel.ufunc):
+            return _call_ufunc(func, args, kwargs, env)
+        raise NotImplementedError('non-ufunc function call is not implemented')
+
     if isinstance(expr, ast.Constant):
         return Constant(expr.value)
     if isinstance(expr, ast.Num):
@@ -385,9 +403,23 @@ def _transpile_expr(expr, env):
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
-def _astype_scalar(x, ctype):
-    if x.ctype.dtype == ctype.dtype:
+_scalar_kind_score = {
+    'b': 0,
+    'u': 1,
+    'i': 1,
+    'f': 2,
+    'c': 3,
+}
+
+
+def _astype_scalar(x, ctype, unsafe=False):
+    from_t = x.ctype.dtype
+    to_t = ctype.dtype
+    if from_t == to_t:
         return x
+    if not unsafe:
+        if _scalar_kind_score[from_t.kind] > _scalar_kind_score[to_t.kind]:
+            raise TypeError(f"Cannot cast from '{from_t}' to {to_t}.")
     return CudaObject(f'({ctype})({x.code})', ctype)
 
 
