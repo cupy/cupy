@@ -1,6 +1,8 @@
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
+from cupy.cuda cimport graph
+
 import threading
 import weakref
 
@@ -280,6 +282,12 @@ class BaseStream(object):
 
         """
         runtime.streamWaitEvent(self.ptr, event.ptr)
+
+    def begin_capture(self):
+        runtime.streamBeginCapture(self.ptr)
+
+    def end_capture(self):
+        return graph.Graph.from_stream(self.ptr)
 
 
 class Stream(BaseStream):
