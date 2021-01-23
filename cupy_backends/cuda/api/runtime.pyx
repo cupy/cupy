@@ -63,6 +63,7 @@ cdef extern from *:
 
     ctypedef void HostFnDef(void* userData)
     ctypedef HostFnDef* HostFn 'cudaHostFn_t'
+    ctypedef int StreamCaptureMode 'cudaStreamCaptureMode'
 
 
 cdef extern from '../../cupy_backend_runtime.h' nogil:
@@ -177,6 +178,8 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaStreamQuery(driver.Stream stream)
     int cudaStreamWaitEvent(driver.Stream stream, driver.Event event,
                             unsigned int flags)
+    int cudaStreamBeginCapture(driver.Stream stream, StreamCaptureMode mode)
+    int cudaStreamEndCapture(driver.Stream stream, Graph*)
     int cudaEventCreate(driver.Event* event)
     int cudaEventCreateWithFlags(driver.Event* event, unsigned int flags)
     int cudaEventDestroy(driver.Event event)
@@ -847,6 +850,27 @@ cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
         status = cudaStreamWaitEvent(<driver.Stream>stream,
                                      <driver.Event>event, flags)
     check_status(status)
+
+
+cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
+    # TODO(leofang): check and raise if stream == 0?
+    if CUDA_VERSION < 10010:
+        raise RuntimeError('streamBeginCapture is supported since CUDA 10.0+')
+    with nogil:
+        status = cudaStreamBeginCapture(<driver.Stream>stream,
+                                        <StreamCaptureMode>mode)
+    check_status(status)
+
+
+cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
+    # TODO(leofang): check and raise if stream == 0?
+    cdef Graph g
+    if CUDA_VERSION < 10010:
+        raise RuntimeError('streamEndCapture is supported since CUDA 10.0+')
+    with nogil:
+        status = cudaStreamEndCapture(<driver.Stream>stream, &g)
+    check_status(status)
+    return <intptr_t>g
 
 
 cpdef intptr_t eventCreate() except? 0:

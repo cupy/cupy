@@ -39,6 +39,7 @@ cdef extern from *:
     ctypedef void* MipmappedArray 'cudaMipmappedArray_t'
 
     ctypedef int Limit 'cudaLimit'
+    ctypedef void* Graph 'cudaGraph_t'
 
     # This is for the annoying nested struct cudaResourceDesc, which is not
     # perfectly supprted in Cython
@@ -458,6 +459,11 @@ cpdef enum:
     eventDisableTiming = 2
     eventInterprocess = 4
 
+    # cudaStreamCaptureMode
+    streamCaptureModeGlobal = 0
+    streamCaptureModeThreadLocal = 1
+    streamCaptureModeRelaxed = 2
+
     CUDA_R_32F = 0  # 32 bit real
     CUDA_R_64F = 1  # 64 bit real
     CUDA_R_16F = 2  # 16 bit real
@@ -729,6 +735,8 @@ cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg)
 cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
+cpdef streamBeginCapture(intptr_t stream, int mode=*)
+cpdef intptr_t streamEndCapture(intptr_t stream) except? 0
 cpdef intptr_t eventCreate() except? 0
 cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0
 cpdef eventDestroy(intptr_t event)
