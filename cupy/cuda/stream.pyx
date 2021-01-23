@@ -283,8 +283,13 @@ class BaseStream(object):
         """
         runtime.streamWaitEvent(self.ptr, event.ptr)
 
-    def begin_capture(self):
-        runtime.streamBeginCapture(self.ptr)
+    def begin_capture(self, mode=None):
+        if self.ptr == 0 or self.ptr == 1:
+            raise RuntimeError('cannot capture on the default (legacy) stream')
+        # TODO(leofang): do we wanna check if the stream is nonblocking?
+        if mode is None:
+            mode = runtime.streamCaptureModeRelaxed
+        runtime.streamBeginCapture(self.ptr, mode)
 
     def end_capture(self):
         return graph.Graph.from_stream(self.ptr)
