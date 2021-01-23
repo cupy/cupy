@@ -40,6 +40,7 @@ cdef extern from *:
 
     ctypedef int Limit 'cudaLimit'
     ctypedef void* Graph 'cudaGraph_t'
+    ctypedef void* GraphExec 'cudaGraphExec_t'
 
     # This is for the annoying nested struct cudaResourceDesc, which is not
     # perfectly supprted in Cython
@@ -769,3 +770,13 @@ cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz)
 cpdef uintmax_t createSurfaceObject(intptr_t ResDesc)
 cpdef destroySurfaceObject(uintmax_t surfObject)
 # TODO(leofang): add cudaGetSurfaceObjectResourceDesc
+
+
+##############################################################################
+# Graph
+##############################################################################
+
+cpdef graphDestroy(intptr_t graph)
+cpdef graphExecDestroy(intptr_t graphExec)
+cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
+cpdef graphLaunch(intptr_t graphExec, intptr_t stream)

@@ -14,7 +14,7 @@ import threading
 cimport cpython  # NOQA
 cimport cython  # NOQA
 
-from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport driver  # NOQA
 
 
 cdef class PointerAttributes:
@@ -53,6 +53,7 @@ cdef class _ThreadLocal:
 ###############################################################################
 # Extern
 ###############################################################################
+
 cdef extern from *:
     ctypedef int DeviceAttr 'cudaDeviceAttr'
     ctypedef int MemoryAdvise 'cudaMemoryAdvise'
@@ -64,6 +65,7 @@ cdef extern from *:
     ctypedef void HostFnDef(void* userData)
     ctypedef HostFnDef* HostFn 'cudaHostFn_t'
     ctypedef int StreamCaptureMode 'cudaStreamCaptureMode'
+    ctypedef void* GraphNode 'cudaGraphNode_t'
 
 
 cdef extern from '../../cupy_backend_runtime.h' nogil:
@@ -203,6 +205,12 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaCreateSurfaceObject(SurfaceObject* pSurObject,
                                 const ResourceDesc* pResDesc)
     int cudaDestroySurfaceObject(SurfaceObject surObject)
+
+    # Graph
+    int cudaGraphDestroy(Graph graph)
+    int cudaGraphExecDestroy(GraphExec graph)
+    int cudaGraphInstantiate(GraphExec*, Graph, GraphNode*, char*, size_t)
+    int cudaGraphLaunch(GraphExec, driver.Stream)
 
     bint hip_environment
     int cudaDevAttrComputeCapabilityMajor
@@ -855,7 +863,7 @@ cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
 cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
     # TODO(leofang): check and raise if stream == 0?
     if CUDA_VERSION < 10010:
-        raise RuntimeError('streamBeginCapture is supported since CUDA 10.0+')
+        raise RuntimeError('streamBeginCapture is supported since CUDA 10.1+')
     with nogil:
         status = cudaStreamBeginCapture(<driver.Stream>stream,
                                         <StreamCaptureMode>mode)
@@ -866,7 +874,7 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     # TODO(leofang): check and raise if stream == 0?
     cdef Graph g
     if CUDA_VERSION < 10010:
-        raise RuntimeError('streamEndCapture is supported since CUDA 10.0+')
+        raise RuntimeError('streamEndCapture is supported since CUDA 10.1+')
     with nogil:
         status = cudaStreamEndCapture(<driver.Stream>stream, &g)
     check_status(status)
@@ -991,3 +999,40 @@ cdef Pos make_Pos(size_t x, size_t y, size_t z):
 
 cdef PitchedPtr make_PitchedPtr(intptr_t d, size_t p, size_t xsz, size_t ysz):
     return make_cudaPitchedPtr(<void*>d, p, xsz, ysz)
+
+
+##############################################################################
+# Graph
+##############################################################################
+
+cpdef graphDestroy(intptr_t graph):
+    if CUDA_VERSION < 10010:
+        raise RuntimeError('graphDestroy is supported since CUDA 10.1+')
+    with nogil:
+        status = cudaGraphDestroy(<Graph>graph)
+    check_status(status)
+
+cpdef graphExecDestroy(intptr_t graphExec):
+    if CUDA_VERSION < 10010:
+        raise RuntimeError('graphExecDestroy is supported since CUDA 10.1+')
+    with nogil:
+        status = cudaGraphExecDestroy(<GraphExec>graphExec)
+    check_status(status)
+
+cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
+    # TODO(leofang): support reporting error log?
+    if CUDA_VERSION < 10010:
+        raise RuntimeError('graphInstantiate is supported since CUDA 10.1+')
+    cdef GraphExec ge
+    with nogil:
+        status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
+                                      NULL, NULL, 0)
+    check_status(status)
+    return <intptr_t>ge
+
+cpdef graphLaunch(intptr_t graphExec, intptr_t stream):
+    if CUDA_VERSION < 10010:
+        raise RuntimeError('graphLaunch is supported since CUDA 10.1+')
+    with nogil:
+        status = cudaGraphLaunch(<GraphExec>(graphExec), <driver.Stream>stream)
+    check_status(status)
