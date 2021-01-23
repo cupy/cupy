@@ -705,11 +705,10 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
 
         zoom = []
         for in_size, out_size in zip(input.shape, output_shape):
-            if out_size > 1:
-                if grid_mode:
-                    zoom.append(in_size / out_size)
-                else:
-                    zoom.append((in_size - 1) / (out_size - 1))
+            if grid_mode and out_size > 0:
+                zoom.append(in_size / out_size)
+            elif out_size > 1:
+                zoom.append((in_size - 1) / (out_size - 1))
             else:
                 zoom.append(0)
 
