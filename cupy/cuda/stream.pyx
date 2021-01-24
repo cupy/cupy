@@ -292,7 +292,8 @@ class BaseStream(object):
         runtime.streamBeginCapture(self.ptr, mode)
 
     def end_capture(self):
-        return graph.Graph.from_stream(self.ptr)
+        cdef intptr_t g = runtime.streamEndCapture(self.ptr)
+        return graph.Graph.from_stream(g, self)
 
 
 class Stream(BaseStream):

@@ -3,10 +3,11 @@ from cupy_backends.cuda.api cimport runtime
 
 cdef class Graph:
 
-    cdef _init(self, intptr_t g, intptr_t ge, intptr_t s):
+    cdef void _init(self, intptr_t g, intptr_t ge, stream):
         self.graph = g
         self.graphExec = ge
-        self.stream = s
+        self.stream_ptr = <intptr_t>(stream.ptr)
+        self.stream = stream  # hold the reference to keep it alive
 
     def __dealloc__(self):
         if self.graph > 0:
@@ -15,15 +16,13 @@ cdef class Graph:
             runtime.graphExecDestroy(self.graphExec)
 
     @staticmethod
-    cdef Graph from_stream(intptr_t s):
-        # TODO(leofang): hold a weak ref of s?
-        cdef intptr_t g = runtime.streamEndCapture(s)
+    cdef Graph from_stream(intptr_t g, stream):
+        # TODO(leofang): optionally print out the error log?
         cdef intptr_t ge = runtime.graphInstantiate(g)
         cdef Graph graph = Graph.__new__(Graph)
-        graph._init(g, ge, s)
+        graph._init(g, ge, stream)
         return graph
 
     cpdef launch(self):
         # TODO(leofang): can we take a different stream here?
-        # TODO(leofang): optionally print out the error log?
-        runtime.graphLaunch(self.graphExec, self.stream)
+        runtime.graphLaunch(self.graphExec, self.stream_ptr)
