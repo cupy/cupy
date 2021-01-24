@@ -97,3 +97,71 @@ class TestGraph(unittest.TestCase):
         g.launch()
         s.synchronize()
         testing.assert_array_equal(b, a + 4)
+
+    def test_stream_capture_failure1(self):
+        s = cupy.cuda.Stream(non_blocking=True)
+        with s:
+            s.begin_capture()
+            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
+                s.synchronize()
+            assert 'cudaErrorStreamCaptureUnsupported' in str(e.value)
+            # invalid operation causes the capture sequence to be invalidated
+            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
+                g = s.end_capture()  # noqa
+            assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+
+        # check s left the capture mode and permits normal usage
+        assert not s.is_capturing()
+        s.synchronize()
+
+    def test_stream_capture_failure2(self):
+        s1 = cupy.cuda.Stream(non_blocking=True)
+        s2 = cupy.cuda.Stream(non_blocking=True)
+        e2 = cupy.cuda.Event()
+        a = cupy.random.random((100,))
+
+        with s1:
+            s1.begin_capture()
+            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
+                g = s2.end_capture()
+            assert 'cudaErrorIllegalState' in str(e.value)
+            e2.record(s1)
+            s2.wait_event(e2)
+            with s2:
+                b = a**3  # noqa
+            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
+                g = s2.end_capture()
+            assert 'cudaErrorStreamCaptureUnmatched' in str(e.value)
+            # invalid operation causes the capture sequence to be invalidated
+            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
+                g = s1.end_capture()  # noqa
+            assert 'cudaErrorStreamCaptureInvalidated' in str(e.value)
+
+        # check both s1 and s2 left the capture mode and permit normal usage
+        assert not s1.is_capturing()
+        assert not s2.is_capturing()
+        s1.synchronize()
+        s2.synchronize()
+
+    def test_stream_capture_failure3(self):
+        s1 = cupy.cuda.Stream(non_blocking=True)
+        s2 = cupy.cuda.Stream(non_blocking=True)
+        e2 = cupy.cuda.Event()
+        a = cupy.random.random((100,))
+
+        with s1:
+            s1.begin_capture()
+            e2.record(s1)
+            s2.wait_event(e2)
+            with s2:
+                b = cupy.where(a > 0.5)  # noqa
+            # invalid operation causes the capture sequence to be invalidated
+            with pytest.raises(cuda.runtime.CUDARuntimeError) as e:
+                g = s1.end_capture()  # noqa
+            assert 'cudaErrorStreamCaptureUnjoined' in str(e.value)
+
+        # check both s1 and s2 left the capture mode and permit normal usage
+        assert not s1.is_capturing()
+        assert not s2.is_capturing()
+        s1.synchronize()
+        s2.synchronize()
