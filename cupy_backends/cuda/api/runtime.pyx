@@ -64,7 +64,8 @@ cdef extern from *:
 
     ctypedef void HostFnDef(void* userData)
     ctypedef HostFnDef* HostFn 'cudaHostFn_t'
-    ctypedef int StreamCaptureMode 'cudaStreamCaptureMode'
+
+    ctypedef void* StreamCaptureStatus 'cudaStreamCaptureStatus'
     ctypedef void* GraphNode 'cudaGraphNode_t'
 
 
@@ -182,6 +183,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
                             unsigned int flags)
     int cudaStreamBeginCapture(driver.Stream stream, StreamCaptureMode mode)
     int cudaStreamEndCapture(driver.Stream stream, Graph*)
+    int cudaStreamIsCapturing(driver.Stream stream, StreamCaptureStatus*)
     int cudaEventCreate(driver.Event* event)
     int cudaEventCreateWithFlags(driver.Event* event, unsigned int flags)
     int cudaEventDestroy(driver.Event event)
@@ -211,6 +213,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaGraphExecDestroy(GraphExec graph)
     int cudaGraphInstantiate(GraphExec*, Graph, GraphNode*, char*, size_t)
     int cudaGraphLaunch(GraphExec, driver.Stream)
+    int cudaGraphUpload(GraphExec, driver.Stream)
 
     bint hip_environment
     int cudaDevAttrComputeCapabilityMajor
@@ -881,6 +884,19 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     return <intptr_t>g
 
 
+cpdef bint streamIsCapturing(intptr_t stream) except? 0:
+    cdef StreamCaptureStatus s
+    if CUDA_VERSION < 10010:
+        raise RuntimeError('streamIsCapturing is supported since CUDA 10.1+')
+    with nogil:
+        status = cudaStreamIsCapturing(<driver.Stream>stream, &s)
+    check_status(status)  # cudaErrorStreamCaptureImplicit could be raised here
+    if s == <StreamCaptureStatus>streamCaptureStatusInvalidated:
+        raise RuntimeError('the stream was capturing, but an error has '
+                           'invalidated the capture sequence')
+    return <bint>s
+
+
 cpdef intptr_t eventCreate() except? 0:
     cdef driver.Event event
     status = cudaEventCreate(&event)
@@ -1035,4 +1051,11 @@ cpdef graphLaunch(intptr_t graphExec, intptr_t stream):
         raise RuntimeError('graphLaunch is supported since CUDA 10.1+')
     with nogil:
         status = cudaGraphLaunch(<GraphExec>(graphExec), <driver.Stream>stream)
+    check_status(status)
+
+cpdef graphUpload(intptr_t graphExec, intptr_t stream):
+    if CUDA_VERSION < 10010:
+        raise RuntimeError('graphUpload is supported since CUDA 10.1+')
+    with nogil:
+        status = cudaGraphUpload(<GraphExec>(graphExec), <driver.Stream>stream)
     check_status(status)

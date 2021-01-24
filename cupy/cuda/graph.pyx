@@ -26,3 +26,10 @@ cdef class Graph:
     cpdef launch(self):
         # TODO(leofang): can we take a different stream here?
         runtime.graphLaunch(self.graphExec, self.stream_ptr)
+
+    cpdef upload(self):
+        # TODO(leofang): I actually don't understand the purpose of this API
+        # and did not find a meaningful way to test it, so let's disable it.
+        raise NotImplementedError('this function is currently disabled')
+        # TODO(leofang): can we take a different stream here?
+        # runtime.graphUpload(self.graphExec, self.stream_ptr)

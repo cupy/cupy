@@ -39,6 +39,8 @@ cdef extern from *:
     ctypedef void* MipmappedArray 'cudaMipmappedArray_t'
 
     ctypedef int Limit 'cudaLimit'
+
+    ctypedef int StreamCaptureMode 'cudaStreamCaptureMode'
     ctypedef void* Graph 'cudaGraph_t'
     ctypedef void* GraphExec 'cudaGraphExec_t'
 
@@ -465,6 +467,11 @@ cpdef enum:
     streamCaptureModeThreadLocal = 1
     streamCaptureModeRelaxed = 2
 
+    # cudaStreamCaptureStatus
+    streamCaptureStatusNone = 0
+    streamCaptureStatusActive = 1
+    streamCaptureStatusInvalidated = 2
+
     CUDA_R_32F = 0  # 32 bit real
     CUDA_R_64F = 1  # 64 bit real
     CUDA_R_16F = 2  # 16 bit real
@@ -738,6 +745,7 @@ cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
 cpdef streamBeginCapture(intptr_t stream, int mode=*)
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0
+cpdef bint streamIsCapturing(intptr_t stream) except? 0
 cpdef intptr_t eventCreate() except? 0
 cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0
 cpdef eventDestroy(intptr_t event)
@@ -780,3 +788,4 @@ cpdef graphDestroy(intptr_t graph)
 cpdef graphExecDestroy(intptr_t graphExec)
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
 cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
+cpdef graphUpload(intptr_t graphExec, intptr_t stream)

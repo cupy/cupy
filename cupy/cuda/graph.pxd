@@ -14,3 +14,4 @@ cdef class Graph:
     cdef Graph from_stream(intptr_t g, stream)
 
     cpdef launch(self)
+    cpdef upload(self)
