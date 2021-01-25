@@ -293,7 +293,7 @@ class BaseStream(object):
 
     def end_capture(self):
         cdef intptr_t g = runtime.streamEndCapture(self.ptr)
-        return graph.Graph.from_stream(g, self)
+        return graph.Graph.from_stream(g)
 
     def is_capturing(self):
         # TODO(leofang): is it better to be a property?

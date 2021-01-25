@@ -42,7 +42,7 @@ class TestGraph(unittest.TestCase):
             result += 2
         return result
 
-    def test_stream_capture(self):
+    def test_capture_run_on_same_stream(self):
         s = cupy.cuda.Stream(non_blocking=True)
 
         for n in range(4):
@@ -53,8 +53,27 @@ class TestGraph(unittest.TestCase):
                 s.begin_capture()
                 out1 = func(a)
                 g = s.end_capture()
-            g.launch()
+                g.launch()
             s.synchronize()
+
+            out2 = func(a)
+            testing.assert_array_equal(out1, out2)
+
+    def test_capture_run_on_different_streams(self):
+        s1 = cupy.cuda.Stream(non_blocking=True)
+        s2 = cupy.cuda.Stream(non_blocking=True)
+
+        for n in range(4):
+            func = getattr(self, '_helper{}'.format(n+1))
+            a = cupy.random.random((100,))
+
+            with s1:
+                s1.begin_capture()
+                out1 = func(a)
+                g = s1.end_capture()
+            with s2:
+                g.launch()
+            s2.synchronize()
 
             out2 = func(a)
             testing.assert_array_equal(out1, out2)
@@ -72,10 +91,47 @@ class TestGraph(unittest.TestCase):
         assert not s.is_capturing()
         assert not cuda.Stream.null.is_capturing()
 
-        # check the graph integraty
+        # check the graph integrity
         g.launch()
         s.synchronize()
         testing.assert_array_equal(b, 3 * a)
+
+    def test_stream_fork_join(self):
+        # TODO(leofang): this is problematic when using nonzero()
+        s1 = cupy.cuda.Stream(non_blocking=True)
+        s2 = cupy.cuda.Stream(non_blocking=True)
+        e1 = cupy.cuda.Event()
+        e2 = cupy.cuda.Event()
+        a = cupy.random.random((100,))
+
+        def func(x):
+            #return cupy.nonzero(x)
+            return x+1
+
+        with s1:
+            s1.begin_capture()
+            e1.record(s1)
+            s2.wait_event(e1)
+            with s2:
+                #out1 = cupy.where(a > 0.5)
+                #out1 = a * 100 + 2
+                #out1 = cupy.nonzero(a)
+                out1 = func(a)
+            e2.record(s2)
+            s1.wait_event(e2)
+            g = s1.end_capture()
+
+        # check integrity
+        assert not s1.is_capturing()
+        assert not s2.is_capturing()
+        g.launch()
+        s1.synchronize()
+        #out2 = cupy.where(a > 0.5)
+        #out2 = a * 100 + 2
+        #out2 = cupy.nonzero(a)
+        out2 = func(a)
+        #testing.assert_array_list_equal(out1, out2)
+        testing.assert_array_equal(out1, out2)
 
     def test_null_stream_cannot_capture(self):
         s = cupy.cuda.Stream(non_blocking=False)
@@ -93,7 +149,7 @@ class TestGraph(unittest.TestCase):
         assert not s.is_capturing()
         assert not cuda.Stream.null.is_capturing()
 
-        # check the graph integraty
+        # check the graph integrity
         g.launch()
         s.synchronize()
         testing.assert_array_equal(b, a + 4)

@@ -1,13 +1,12 @@
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda cimport stream as stream_module
 
 
 cdef class Graph:
 
-    cdef void _init(self, intptr_t g, intptr_t ge, stream):
-        self.graph = g
-        self.graphExec = ge
-        self.stream_ptr = <intptr_t>(stream.ptr)
-        self.stream = stream  # hold the reference to keep it alive
+    cdef void _init(self, intptr_t graph, intptr_t graphExec):
+        self.graph = graph
+        self.graphExec = graphExec
 
     def __dealloc__(self):
         if self.graph > 0:
@@ -16,20 +15,19 @@ cdef class Graph:
             runtime.graphExecDestroy(self.graphExec)
 
     @staticmethod
-    cdef Graph from_stream(intptr_t g, stream):
+    cdef Graph from_stream(intptr_t g):
         # TODO(leofang): optionally print out the error log?
         cdef intptr_t ge = runtime.graphInstantiate(g)
         cdef Graph graph = Graph.__new__(Graph)
-        graph._init(g, ge, stream)
+        graph._init(g, ge)
         return graph
 
     cpdef launch(self):
-        # TODO(leofang): can we take a different stream here?
-        runtime.graphLaunch(self.graphExec, self.stream_ptr)
+        cdef intptr_t stream = stream_module.get_current_stream_ptr()
+        runtime.graphLaunch(self.graphExec, stream)
 
     cpdef upload(self):
         # TODO(leofang): I actually don't understand the purpose of this API
         # and did not find a meaningful way to test it, so let's disable it.
         raise NotImplementedError('this function is currently disabled')
-        # TODO(leofang): can we take a different stream here?
         # runtime.graphUpload(self.graphExec, self.stream_ptr)
