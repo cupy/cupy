@@ -169,18 +169,12 @@ def _eval_operand(op, args, env):
         return Constant(pyfunc(*[x.obj for x in args]))
 
     ufunc = _typerules.get_ufunc(env.mode, type(op))
-    return _call_ufunc(ufunc, args, {}, env)
+    return _call_ufunc(ufunc, args, None, env)
 
 
-def _call_ufunc(ufunc, args, kwargs, env):
+def _call_ufunc(ufunc, args, dtype, env):
     if len(args) != ufunc.nin:
         raise ValueError('invalid number of arguments')
-
-    dtype = kwargs.pop('dtype', Constant(None)).obj
-
-    if len(kwargs) > 0:
-        name = next(iter(kwargs))
-        raise TypeError("'{name}' is an invalid keyword to ufunc {ufunc.name}")
 
     args = [_to_cuda_object(x, env) for x in args]
 
@@ -368,13 +362,17 @@ def _transpile_expr(expr, env):
         cond = _astype_scalar(cond, _types.Scalar(numpy.bool_), unsafe=True)
         return CudaObject(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
     if isinstance(expr, ast.Call):
-        func = _transpile_expr(expr.func, env)
+        func = _transpile_expr(expr.func, env).obj
         args = [_transpile_expr(x, env) for x in expr.args]
         kwargs = dict([(kw.arg, _transpile_expr(kw.value, env))
                        for kw in expr.keywords])
-        func = func.obj
         if isinstance(func, _kernel.ufunc):
-            return _call_ufunc(func, args, kwargs, env)
+            dtype = kwargs.pop('dtype', Constant(None)).obj
+            if len(kwargs) > 0:
+                name = next(iter(kwargs))
+                raise TypeError(
+                    f"'{name}' is an invalid keyword to ufunc {func.name}")
+            return _call_ufunc(func, args, dtype, env)
         raise NotImplementedError('non-ufunc function call is not implemented')
 
     if isinstance(expr, ast.Constant):
