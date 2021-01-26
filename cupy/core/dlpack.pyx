@@ -16,6 +16,16 @@ import cupy
 
 
 cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
+    '''
+    // stringification is currently needed as the version is "030"...
+    #define _stringify_(s) #s
+    #define _xstringify_(s) _stringify_(s)
+    const char* DLPACK_VER_STR = _xstringify_(DLPACK_VERSION);
+    #undef _xstringify_
+    #undef _stringify_
+    '''
+    const char* DLPACK_VER_STR
+
     cdef enum DLDeviceType:
         kDLCPU
         kDLGPU
@@ -57,9 +67,7 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
 
 
 def get_build_version():
-    # We use the commit ID here because DLPACK_VERSION is not reliable...
-    # The commit ID is from the latest change made to dlpack.h.
-    return '3efc489'
+    return DLPACK_VER_STR.decode()
 
 
 cdef void pycapsule_deleter(object dltensor):
