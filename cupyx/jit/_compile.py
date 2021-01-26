@@ -198,7 +198,7 @@ def _call_ufunc(ufunc, args, dtype, env):
     if ufunc.nout == 1 and op.routine.startswith('out0 = '):
         out_type = _types.Scalar(op.out_types[0])
         expr = op.routine.replace('out0 = ', '')
-        args = [_astype_scalar(x, _types.Scalar(t))
+        args = [_astype_scalar(x, _types.Scalar(t), 'same_kind')
                 for x, t in zip(args, op.in_types)]
 
         can_use_inline_expansion = True
@@ -359,7 +359,7 @@ def _transpile_expr(expr, env):
             raise TypeError(
                 'Type mismatch in conditional expression.: '
                 f'{x.ctype.dtype} != {y.ctype.dtype}')
-        cond = _astype_scalar(cond, _types.Scalar(numpy.bool_), unsafe=True)
+        cond = _astype_scalar(cond, _types.Scalar(numpy.bool_), 'unsafe')
         return CudaObject(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
     if isinstance(expr, ast.Call):
         func = _transpile_expr(expr.func, env).obj
@@ -401,23 +401,16 @@ def _transpile_expr(expr, env):
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
-_scalar_kind_score = {
-    'b': 0,
-    'u': 1,
-    'i': 1,
-    'f': 2,
-    'c': 3,
-}
-
-
-def _astype_scalar(x, ctype, unsafe=False):
+def _astype_scalar(x, ctype, casting):
     from_t = x.ctype.dtype
     to_t = ctype.dtype
     if from_t == to_t:
         return x
-    if not unsafe:
-        if _scalar_kind_score[from_t.kind] > _scalar_kind_score[to_t.kind]:
-            raise TypeError(f"Cannot cast from '{from_t}' to {to_t}.")
+    # Uses casting rules for scalar values.
+    if not numpy.can_cast(from_t.type(0), to_t.type(0), casting):
+        raise TypeError(
+            f"Cannot cast from '{from_t}' to {to_t} "
+            f"with casting rule {casting}.")
     return CudaObject(f'({ctype})({x.code})', ctype)
 
 
