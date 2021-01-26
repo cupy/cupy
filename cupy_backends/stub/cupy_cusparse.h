@@ -972,6 +972,8 @@ typedef enum {} cusparseFormat_t;
 typedef enum {} cusparseOrder_t;
 typedef enum {} cusparseSpMVAlg_t;
 typedef enum {} cusparseSpMMAlg_t;
+typedef enum {} cusparseSparseToDenseAlg_t;
+typedef enum {} cusparseDenseToSparseAlg_t;
 
 cusparseStatus_t cusparseCreateSpVec(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -1126,6 +1128,26 @@ cusparseStatus_t cusparseConstrainedGeMM_bufferSize(...) {
 }
 
 cusparseStatus_t cusparseConstrainedGeMM(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSparseToDense_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSparseToDense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_convert(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 

@@ -1325,6 +1325,23 @@ cdef extern from '../../cupy_sparse.h' nogil:
         DnMatDescr matA, DnMatDescr matB, void* beta, SpMatDescr matC,
         DataType computeType, void* externalBuffer)
 
+    Status cusparseSparseToDense_bufferSize(
+        Handle handle, SpMatDescr matA, DnMatDescr matB,
+        cusparseSparseToDenseAlg_t alg, size_t* bufferSize)
+    Status cusparseSparseToDense(
+        Handle handle, SpMatDescr matA, DnMatDescr matB,
+        cusparseSparseToDenseAlg_t alg, void* buffer)
+
+    Status cusparseDenseToSparse_bufferSize(
+        Handle handle, DnMatDescr matA, SpMatDescr matB,
+        cusparseDenseToSparseAlg_t alg, size_t* bufferSize)
+    Status cusparseDenseToSparse_analysis(
+        Handle handle, DnMatDescr matA, SpMatDescr matB,
+        cusparseDenseToSparseAlg_t alg, void* buffer)
+    Status cusparseDenseToSparse_convert(
+        Handle handle, DnMatDescr matA, SpMatDescr matB,
+        cusparseDenseToSparseAlg_t alg, void* buffer)
+
     # CSR2CSC
     Status cusparseCsr2cscEx2_bufferSize(
         Handle handle, int m, int n, int nnz, const void* csrVal,
@@ -4771,6 +4788,45 @@ cpdef constrainedGeMM(intptr_t handle, Operation opA, Operation opB,
         <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
         <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,
         <void*>externalBuffer)
+    check_status(status)
+
+cpdef size_t sparseToDense_bufferSize(intptr_t handle, size_t matA,
+                                      size_t matB, int alg):
+    cpdef size_t bufferSize
+    status = cusparseSparseToDense_bufferSize(
+        <Handle>handle, <SpMatDescr>matA, <DnMatDescr>matB,
+        <cusparseSparseToDenseAlg_t>alg, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef sparseToDense(intptr_t handle, size_t matA, size_t matB, int alg,
+                    intptr_t buffer):
+    status = cusparseSparseToDense(
+        <Handle>handle, <SpMatDescr>matA, <DnMatDescr>matB,
+        <cusparseSparseToDenseAlg_t>alg, <void*>buffer)
+    check_status(status)
+
+cpdef size_t denseToSparse_bufferSize(intptr_t handle, size_t matA,
+                                      size_t matB, int alg):
+    cpdef size_t bufferSize
+    status = cusparseDenseToSparse_bufferSize(
+        <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
+        <cusparseDenseToSparseAlg_t>alg, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef denseToSparse_analysis(intptr_t handle, size_t matA, size_t matB,
+                             int alg, intptr_t buffer):
+    status = cusparseDenseToSparse_analysis(
+        <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
+        <cusparseDenseToSparseAlg_t>alg, <void*>buffer)
+    check_status(status)
+
+cpdef denseToSparse_convert(intptr_t handle, size_t matA, size_t matB,
+                            int alg, intptr_t buffer):
+    status = cusparseDenseToSparse_convert(
+        <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
+        <cusparseDenseToSparseAlg_t>alg, <void*>buffer)
     check_status(status)
 
 # CSR2CSC
