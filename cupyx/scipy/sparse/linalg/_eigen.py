@@ -7,6 +7,7 @@ from cupy.cuda import device
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupyx.scipy.sparse import csr
+from cupyx.scipy.sparse.linalg import _interface
 
 
 def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
@@ -17,8 +18,10 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     with corresponding eigenvectors ``x``.
 
     Args:
-        a (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): A symmetric square
-            matrix with dimension ``(n, n)``.
+        a (ndarray, spmatrix or LinearOperator): A symmetric square matrix with
+            dimension ``(n, n)``. ``a`` must :class:`cupy.ndarray`,
+            :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         k (int): The number of eigenvalues and eigenvectors to compute. Must be
             ``1 <= k < n``.
         which (str): 'LM' or 'LA'. 'LM': finds ``k`` largest (in magnitude)
@@ -66,17 +69,24 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     if tol == 0:
         tol = numpy.finfo(a.dtype).eps
 
-    alpha = cupy.zeros((ncv, ), dtype=a.dtype)
-    beta = cupy.zeros((ncv, ), dtype=a.dtype.char.lower())
+    alpha = cupy.zeros((ncv,), dtype=a.dtype)
+    beta = cupy.zeros((ncv,), dtype=a.dtype.char.lower())
     V = cupy.empty((ncv, n), dtype=a.dtype)
-    lanczos = _EigshLanczos(a, V, alpha, beta, update_impl='fast')
 
     # Set initial vector
-    u = cupy.random.random((n, )).astype(a.dtype)
+    u = cupy.random.random((n,)).astype(a.dtype)
     V[0] = u / cublas.nrm2(u)
 
+    # Choose Lanczos implementation, unconditionally use 'fast' for now
+    upadte_impl = 'fast'
+    if upadte_impl == 'fast':
+        lanczos = _lanczos_fast(a, n, ncv)
+    else:
+        lanczos = _lanczos_asis
+
     # Lanczos iteration
-    u = lanczos.update(0, ncv)
+    lanczos(a, V, u, alpha, beta, 0, ncv)
+
     iter = ncv
     w, s = _eigsh_solve_ritz(alpha, beta, None, k, which)
     x = V.T @ s
@@ -94,7 +104,7 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         u -= u.T @ V[:k].conj().T @ V[:k]
         V[k] = u / cublas.nrm2(u)
 
-        u = a @ V[k]
+        u[...] = a @ V[k]
         cublas.dotc(V[k], u, out=alpha[k])
         u -= alpha[k] * V[k]
         u -= V[:k].T @ beta_k
@@ -102,7 +112,8 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         V[k+1] = u / beta[k]
 
         # Lanczos iteration
-        u = lanczos.update(k+1, ncv)
+        lanczos(a, V, u, alpha, beta, k + 1, ncv)
+
         iter += ncv - k
         w, s = _eigsh_solve_ritz(alpha, beta, beta_k, k, which)
         x = V.T @ s
@@ -118,161 +129,121 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
         return cupy.sort(w)
 
 
-class _EigshLanczos():
+def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
+    for i in range(i_start, i_end):
+        u[...] = a @ V[i]
+        cublas.dotc(V[i], u, out=alpha[i])
+        u -= u.T @ V[:i+1].conj().T @ V[:i+1]
+        cublas.nrm2(u, out=beta[i])
+        if i >= i_end - 1:
+            break
+        V[i+1] = u / beta[i]
 
-    def __init__(self, A, V, alpha, beta, update_impl='fast'):
-        assert A.ndim == V.ndim == 2
-        assert alpha.ndim == beta.ndim == 1
-        assert A.dtype == V.dtype == alpha.dtype
-        assert A.dtype.char.lower() == beta.dtype.char
-        assert A.shape[0] == A.shape[1] == V.shape[1]
-        assert V.shape[0] == alpha.shape[0] == beta.shape[0]
 
-        self.A = A
-        self.V = V
-        self.alpha = alpha
-        self.beta = beta
-        self.n = V.shape[1]
-        self.ncv = V.shape[0]
-        self.update_impl = update_impl
-        if self.update_impl != 'fast':
-            return
+def _lanczos_fast(A, n, ncv):
+    cublas_handle = device.get_cublas_handle()
+    cublas_pointer_mode = _cublas.getPointerMode(cublas_handle)
+    if A.dtype.char == 'f':
+        dotc = _cublas.sdot
+        nrm2 = _cublas.snrm2
+        gemm = _cublas.sgemm
+    elif A.dtype.char == 'd':
+        dotc = _cublas.ddot
+        nrm2 = _cublas.dnrm2
+        gemm = _cublas.dgemm
+    elif A.dtype.char == 'F':
+        dotc = _cublas.cdotc
+        nrm2 = _cublas.scnrm2
+        gemm = _cublas.cgemm
+    elif A.dtype.char == 'D':
+        dotc = _cublas.zdotc
+        nrm2 = _cublas.dznrm2
+        gemm = _cublas.zgemm
+    else:
+        raise TypeError('invalid dtype ({})'.format(A.dtype))
 
-        self.cublas_handle = device.get_cublas_handle()
-        self.cublas_pointer_mode = _cublas.getPointerMode(self.cublas_handle)
-        if A.dtype.char == 'f':
-            self.dotc = _cublas.sdot
-            self.nrm2 = _cublas.snrm2
-            self.gemm = _cublas.sgemm
-        elif A.dtype.char == 'd':
-            self.dotc = _cublas.ddot
-            self.nrm2 = _cublas.dnrm2
-            self.gemm = _cublas.dgemm
-        elif A.dtype.char == 'F':
-            self.dotc = _cublas.cdotc
-            self.nrm2 = _cublas.scnrm2
-            self.gemm = _cublas.cgemm
-        elif A.dtype.char == 'D':
-            self.dotc = _cublas.zdotc
-            self.nrm2 = _cublas.dznrm2
-            self.gemm = _cublas.zgemm
-        else:
-            raise TypeError('invalid dtype ({})'.format(A.dtype))
-        if csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
-            self.cusparse_handle = device.get_cusparse_handle()
-            self.spmv_op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
-            self.spmv_alpha = numpy.array(1.0, A.dtype)
-            self.spmv_beta = numpy.array(0.0, A.dtype)
-            self.spmv_cuda_dtype = cusparse._dtype_to_DataType(A.dtype)
-            self.spmv_alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
-        else:
-            self.cusparse_handle = None
-        self.v = cupy.empty((self.n,), dtype=A.dtype)
-        self.u = cupy.empty((self.n,), dtype=A.dtype)
-        self.uu = cupy.empty((self.ncv,), dtype=A.dtype)
+    cusparse_handle = None
+    if csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
+        cusparse_handle = device.get_cusparse_handle()
+        spmv_op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+        spmv_alpha = numpy.array(1.0, A.dtype)
+        spmv_beta = numpy.array(0.0, A.dtype)
+        spmv_cuda_dtype = cusparse._dtype_to_DataType(A.dtype)
+        spmv_alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
 
-    def update(self, i_start, i_end):
-        assert 0 <= i_start and i_end <= self.ncv
-        if self.update_impl == 'fast':
-            return self._update_fast(i_start, i_end)
-        else:
-            return self._update_asis(i_start, i_end)
+    v = cupy.empty((n,), dtype=A.dtype)
+    uu = cupy.empty((ncv,), dtype=A.dtype)
+    one = numpy.array(1.0, dtype=A.dtype)
+    zero = numpy.array(0.0, dtype=A.dtype)
+    mone = numpy.array(-1.0, dtype=A.dtype)
 
-    def _update_asis(self, i_start, i_end):
+    outer_A = A
+
+    def aux(A, V, u, alpha, beta, i_start, i_end):
+        assert A is outer_A
+
+        # Get ready for spmv if enabled
+        if cusparse_handle is not None:
+            # Note: I would like to reuse descriptors and working buffer
+            # on the next update, but I gave it up because it sometimes
+            # caused illegal memory access error.
+            spmv_desc_A = cusparse.SpMatDescriptor.create(A)
+            spmv_desc_v = cusparse.DnVecDescriptor.create(v)
+            spmv_desc_u = cusparse.DnVecDescriptor.create(u)
+            buff_size = _cusparse.spMV_bufferSize(
+                cusparse_handle, spmv_op_a, spmv_alpha.ctypes.data,
+                spmv_desc_A.desc, spmv_desc_v.desc, spmv_beta.ctypes.data,
+                spmv_desc_u.desc, spmv_cuda_dtype, spmv_alg)
+            spmv_buff = cupy.empty(buff_size, cupy.int8)
+
+        v[...] = V[i_start]
         for i in range(i_start, i_end):
-            u = self.A @ self.V[i]
-            cublas.dotc(self.V[i], u, out=self.alpha[i])
-            u -= u.T @ self.V[:i+1].conj().T @ self.V[:i+1]
-            cublas.nrm2(u, out=self.beta[i])
+            # Matrix-vector multiplication
+            if cusparse_handle is None:
+                u[...] = A @ v
+            else:
+                _cusparse.spMV(
+                    cusparse_handle, spmv_op_a, spmv_alpha.ctypes.data,
+                    spmv_desc_A.desc, spmv_desc_v.desc,
+                    spmv_beta.ctypes.data, spmv_desc_u.desc,
+                    spmv_cuda_dtype, spmv_alg, spmv_buff.data.ptr)
+
+            # Call dotc
+            _cublas.setPointerMode(
+                cublas_handle, _cublas.CUBLAS_POINTER_MODE_DEVICE)
+            try:
+                dotc(cublas_handle, n, v.data.ptr, 1, u.data.ptr, 1,
+                     alpha.data.ptr + i * alpha.itemsize)
+            finally:
+                _cublas.setPointerMode(cublas_handle, cublas_pointer_mode)
+
+            # Orthogonalize
+            gemm(cublas_handle, _cublas.CUBLAS_OP_C, _cublas.CUBLAS_OP_N,
+                 1, i + 1, n,
+                 one.ctypes.data, u.data.ptr, n, V.data.ptr, n,
+                 zero.ctypes.data, uu.data.ptr, 1)
+            gemm(cublas_handle, _cublas.CUBLAS_OP_N, _cublas.CUBLAS_OP_C,
+                 n, 1, i + 1,
+                 mone.ctypes.data, V.data.ptr, n, uu.data.ptr, 1,
+                 one.ctypes.data, u.data.ptr, n)
+
+            # Call nrm2
+            _cublas.setPointerMode(
+                cublas_handle, _cublas.CUBLAS_POINTER_MODE_DEVICE)
+            try:
+                nrm2(cublas_handle, n, u.data.ptr, 1,
+                     beta.data.ptr + i * beta.itemsize)
+            finally:
+                _cublas.setPointerMode(cublas_handle, cublas_pointer_mode)
+
+            # Break here as the normalization below touches V[i+1]
             if i >= i_end - 1:
                 break
-            self.V[i+1] = u / self.beta[i]
-        return u
 
-    def _update_fast(self, i_start, i_end):
-        self._spmv_init()
-        self.v[...] = self.V[i_start]
-        for i in range(i_start, i_end):
-            self._spmv(i)
-            self._dotc(i)
-            self._orthogonalize(i)
-            self._norm(i)
-            if i >= i_end - 1:
-                break
-            self._normalize(i)
-        self._spmv_fin()
-        return self.u.copy()
+            # Normalize
+            _kernel_normalize(u, beta, i, n, v, V)
 
-    def _spmv(self, i):
-        if self.cusparse_handle is None:
-            self.u[...] = self.A @ self.v
-        else:
-            _cusparse.spMV(
-                self.cusparse_handle, self.spmv_op_a,
-                self.spmv_alpha.ctypes.data, self.spmv_desc_A.desc,
-                self.spmv_desc_v.desc, self.spmv_beta.ctypes.data,
-                self.spmv_desc_u.desc, self.spmv_cuda_dtype,
-                self.spmv_alg, self.spmv_buff.data.ptr)
-
-    def _spmv_init(self):
-        if self.cusparse_handle is None:
-            return
-        self.spmv_desc_A = cusparse.SpMatDescriptor.create(self.A)
-        self.spmv_desc_v = cusparse.DnVecDescriptor.create(self.v)
-        self.spmv_desc_u = cusparse.DnVecDescriptor.create(self.u)
-        buff_size = _cusparse.spMV_bufferSize(
-            self.cusparse_handle, self.spmv_op_a,
-            self.spmv_alpha.ctypes.data, self.spmv_desc_A.desc,
-            self.spmv_desc_v.desc, self.spmv_beta.ctypes.data,
-            self.spmv_desc_u.desc, self.spmv_cuda_dtype, self.spmv_alg)
-        self.spmv_buff = cupy.empty(buff_size, cupy.int8)
-
-    def _spmv_fin(self):
-        if self.cusparse_handle is None:
-            return
-        # Note: I would like to reuse descriptors and working buffer on the
-        # next update, but I gave it up because it sometimes caused illegal
-        # memory access error.
-        del self.spmv_desc_A
-        del self.spmv_desc_v
-        del self.spmv_desc_u
-        del self.spmv_buff
-
-    def _dotc(self, i):
-        _cublas.setPointerMode(self.cublas_handle,
-                               _cublas.CUBLAS_POINTER_MODE_DEVICE)
-        try:
-            self.dotc(self.cublas_handle, self.n, self.v.data.ptr, 1,
-                      self.u.data.ptr, 1,
-                      self.alpha.data.ptr + i * self.alpha.itemsize)
-        finally:
-            _cublas.setPointerMode(self.cublas_handle,
-                                   self.cublas_pointer_mode)
-
-    def _orthogonalize(self, i):
-        self.gemm(self.cublas_handle,
-                  _cublas.CUBLAS_OP_C, _cublas.CUBLAS_OP_N,
-                  1, i+1, self.n,
-                  1.0, self.u.data.ptr, self.n, self.V.data.ptr, self.n,
-                  0.0, self.uu.data.ptr, 1)
-        self.gemm(self.cublas_handle,
-                  _cublas.CUBLAS_OP_N, _cublas.CUBLAS_OP_C,
-                  self.n, 1, i+1,
-                  -1.0, self.V.data.ptr, self.n, self.uu.data.ptr, 1,
-                  1.0, self.u.data.ptr, self.n)
-
-    def _norm(self, i):
-        _cublas.setPointerMode(self.cublas_handle,
-                               _cublas.CUBLAS_POINTER_MODE_DEVICE)
-        try:
-            self.nrm2(self.cublas_handle, self.n, self.u.data.ptr, 1,
-                      self.beta.data.ptr + i * self.beta.itemsize)
-        finally:
-            _cublas.setPointerMode(self.cublas_handle,
-                                   self.cublas_pointer_mode)
-
-    def _normalize(self, i):
-        _kernel_normalize(self.u, self.beta, i, self.n, self.v, self.V)
+    return aux
 
 
 _kernel_normalize = cupy.ElementwiseKernel(
@@ -311,8 +282,10 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
     """Finds the largest ``k`` singular values/vectors for a sparse matrix.
 
     Args:
-        a (cupy.ndarray or cupyx.scipy.sparse.csr_matrix): A real or complex
-            array with dimension ``(m, n)``
+        a (ndarray, spmatrix or LinearOperator): A real or complex array with
+            dimension ``(m, n)``. ``a`` must :class:`cupy.ndarray`,
+            :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         k (int): The number of singular values/vectors to compute. Must be
             ``1 <= k < min(m, n)``.
         ncv (int): The number of Lanczos vectors generated. Must be
@@ -351,17 +324,17 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
         raise ValueError('k must be smaller than min(m, n) (actual: {})'
                          ''.format(k))
 
-    aH = a.conj().T
+    a = _interface.aslinearoperator(a)
     if m >= n:
-        aa = aH @ a
+        aH, a = a.H, a
     else:
-        aa = a @ aH
+        aH, a = a, a.H
 
     if return_singular_vectors:
-        w, x = eigsh(aa, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
-                     return_eigenvectors=True)
+        w, x = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter,
+                     tol=tol, return_eigenvectors=True)
     else:
-        w = eigsh(aa, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
+        w = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
                   return_eigenvectors=False)
 
     w = cupy.maximum(w, 0)
@@ -382,7 +355,7 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
         u = a @ v / s[:n_large]
     else:
         u = x
-        v = aH @ u / s[:n_large]
+        v = a @ u / s[:n_large]
     u = _augmented_orthnormal_cols(u, k - n_large)
     v = _augmented_orthnormal_cols(v, k - n_large)
 

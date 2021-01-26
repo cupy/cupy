@@ -457,7 +457,7 @@ class TestDistributionsNoncentralF(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })

@@ -61,7 +61,6 @@ from cupy import random  # NOQA
 # `cupy.sparse` is deprecated in v8
 from cupy import sparse  # NOQA
 from cupy import testing  # NOQA  # NOQA
-from cupy import lib  # NOQA
 
 
 # import class and function
@@ -280,7 +279,7 @@ from cupy._creation.matrix import triu  # NOQA
 # -----------------------------------------------------------------------------
 from cupy._functional.piecewise import piecewise  # NOQA
 from cupy._functional.vectorize import vectorize  # NOQA
-from cupy.lib.shape_base import apply_along_axis  # NOQA
+from cupy.lib._shape_base import apply_along_axis  # NOQA
 
 # -----------------------------------------------------------------------------
 # Array manipulation routines
@@ -548,13 +547,13 @@ from cupy._logic.truth import any  # NOQA
 # ------------------------------------------------------------------------------
 # Polynomial functions
 # ------------------------------------------------------------------------------
-from cupy.lib import poly1d  # NOQA
-from cupy.lib import polyadd  # NOQA
-from cupy.lib import polysub  # NOQA
-from cupy.lib import polymul  # NOQA
-from cupy.lib import polyfit  # NOQA
-from cupy.lib import polyval  # NOQA
-from cupy.lib import roots  # NOQA
+from cupy.lib._polynomial import poly1d  # NOQA
+from cupy.lib._routines_poly import polyadd  # NOQA
+from cupy.lib._routines_poly import polysub  # NOQA
+from cupy.lib._routines_poly import polymul  # NOQA
+from cupy.lib._routines_poly import polyfit  # NOQA
+from cupy.lib._routines_poly import polyval  # NOQA
+from cupy.lib._routines_poly import roots  # NOQA
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -586,6 +585,7 @@ from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
 from cupy._math.rounding import round_  # NOQA
+from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
@@ -653,6 +653,7 @@ from cupy._math.misc import cbrt  # NOQA
 from cupy._math.misc import clip  # NOQA
 from cupy._math.misc import fmax  # NOQA
 from cupy._math.misc import fmin  # NOQA
+from cupy._math.misc import interp  # NOQA
 from cupy._math.misc import maximum  # NOQA
 from cupy._math.misc import minimum  # NOQA
 from cupy._math.misc import nan_to_num  # NOQA
@@ -713,6 +714,7 @@ from cupy._statistics.order import nanmax  # NOQA
 from cupy._statistics.order import nanmin  # NOQA
 from cupy._statistics.order import percentile  # NOQA
 from cupy._statistics.order import ptp  # NOQA
+from cupy._statistics.order import quantile  # NOQA
 
 from cupy._statistics.meanvar import median  # NOQA
 from cupy._statistics.meanvar import average  # NOQA

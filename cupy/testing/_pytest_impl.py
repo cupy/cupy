@@ -54,7 +54,9 @@ def parameterize(*params):
         assert not issubclass(cls, unittest.TestCase)
         if issubclass(cls, _TestingParameterizeMixin):
             raise RuntimeError('do not `@testing.parameterize` twice')
+        module_name = cls.__module__
         cls = type(cls.__name__, (_TestingParameterizeMixin, cls), {})
+        cls.__module__ = module_name
         cls = pytest.mark.parametrize('_cupy_testing_param', params)(cls)
         return cls
     return f

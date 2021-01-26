@@ -1,8 +1,10 @@
+import warnings
+
 import numpy
 from numpy import linalg
 
 import cupy
-from cupy import core
+from cupy.core import internal
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
@@ -50,22 +52,25 @@ def solve(a, b):
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
 
-    # Cast to float32 or float64
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
-        dtype = a.dtype
-    else:
-        dtype = numpy.promote_types(a.dtype.char, 'f')
-
-    a = a.astype(dtype)
-    b = b.astype(dtype)
+    dtype = numpy.promote_types(a.dtype, b.dtype)
+    dtype = numpy.promote_types(dtype, 'f')
     if a.ndim == 2:
-        return cupyx.lapack.gesv(a, b)
+        # prevent 'a' and 'b' to be overwritten
+        a = a.astype(dtype, copy=True, order='F')
+        b = b.astype(dtype, copy=True, order='F')
+        cupyx.lapack.gesv(a, b)
+        return b
 
+    # prevent 'a' to be overwritten
+    a = a.astype(dtype, copy=True, order='C')
     x = cupy.empty_like(b)
     shape = a.shape[:-2]
     for i in range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
-        x[index] = cupyx.lapack.gesv(a[index], b[index])
+        # prevent 'b' to be overwritten
+        bi = b[index].astype(dtype, copy=True, order='F')
+        cupyx.lapack.gesv(a[index], bi)
+        x[index] = bi
     return x
 
 
@@ -133,10 +138,11 @@ def _solve(a, b, cublas_handle, cusolver_handle):
     # Explicitly free the space allocated by ormqr
     del workspace
     # 3. trsm (X = R^{-1} * (Q^T * B))
+    one = numpy.array(1, dtype=dtype)
     trsm(
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_FILL_MODE_UPPER,
         cublas.CUBLAS_OP_N, cublas.CUBLAS_DIAG_NON_UNIT,
-        m, k, 1, a.data.ptr, m, b.data.ptr, m)
+        m, k, one.ctypes.data, a.data.ptr, m, b.data.ptr, m)
     return b
 
 
@@ -173,7 +179,7 @@ def tensorsolve(a, b, axes=None):
         a = a.transpose(allaxes)
 
     oldshape = a.shape[-(a.ndim - b.ndim):]
-    prod = cupy.core.internal.prod(oldshape)
+    prod = internal.prod(oldshape)
 
     a = a.reshape(-1, prod)
     b = b.ravel()
@@ -181,7 +187,13 @@ def tensorsolve(a, b, axes=None):
     return result.reshape(oldshape)
 
 
-def lstsq(a, b, rcond=1e-15):
+def _nrm2_last_axis(x):
+    real_dtype = x.dtype.char.lower()
+    x = cupy.ascontiguousarray(x)
+    return cupy.sum(cupy.square(x.view(real_dtype)), axis=-1)
+
+
+def lstsq(a, b, rcond='warn'):
     """Return the least-squares solution to a linear matrix equation.
 
     Solves the equation `a x = b` by computing a vector `x` that
@@ -220,6 +232,17 @@ def lstsq(a, b, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.lstsq`
     """
+    if rcond == 'warn':
+        warnings.warn(
+            '`rcond` parameter will change to the default of '
+            'machine precision times ``max(M, N)`` where M and N '
+            'are the input matrix dimensions.\n'
+            'To use the future default and silence this warning '
+            'we advise to pass `rcond=None`, to keep using the old, '
+            'explicitly pass `rcond=-1`.',
+            FutureWarning)
+        rcond = -1
+
     _util._assert_cupy_array(a, b)
     _util._assert_rank2(a)
     if b.ndim > 2:
@@ -230,28 +253,31 @@ def lstsq(a, b, rcond=1e-15):
     if m != m2:
         raise linalg.LinAlgError('Incompatible dimensions')
 
-    u, s, vt = cupy.linalg.svd(a, full_matrices=False)
+    u, s, vh = cupy.linalg.svd(a, full_matrices=False)
+
+    if rcond is None:
+        rcond = numpy.finfo(s.dtype).eps * max(m, n)
+    elif rcond <= 0 or rcond >= 1:
+        # some doc of gelss/gelsd says "rcond < 0", but it's not true!
+        rcond = numpy.finfo(s.dtype).eps
+
     # number of singular values and matrix rank
     cutoff = rcond * s.max()
     s1 = 1 / s
     sing_vals = s <= cutoff
     s1[sing_vals] = 0
-    rank = s.size - sing_vals.sum()
+    rank = s.size - sing_vals.sum(dtype=numpy.int32)
 
-    if b.ndim == 2:
-        s1 = cupy.repeat(s1.reshape(-1, 1), b.shape[1], axis=1)
     # Solve the least-squares solution
-    z = core.dot(u.transpose(), b) * s1
-    x = core.dot(vt.transpose(), z)
+    # x = vh.T.conj() @ diag(s1) @ u.T.conj() @ b
+    z = (cupy.dot(b.T, u.conj()) * s1).T
+    x = cupy.dot(vh.T.conj(), z)
     # Calculate squared Euclidean 2-norm for each column in b - a*x
-    if rank != n or m <= n:
-        resids = cupy.array([], dtype=a.dtype)
-    elif b.ndim == 2:
-        e = b - core.dot(a, x)
-        resids = cupy.sum(cupy.square(e), axis=0)
+    if m <= n or rank != n:
+        resids = cupy.empty((0,), dtype=s.dtype)
     else:
-        e = b - cupy.dot(a, x)
-        resids = cupy.dot(e.T, e).reshape(-1)
+        e = b - a.dot(x)
+        resids = cupy.atleast_1d(_nrm2_last_axis(e.T))
     return x, resids, rank, s
 
 
@@ -279,66 +305,19 @@ def inv(a):
     if a.ndim >= 3:
         return _batched_inv(a)
 
-    # to prevent `a` to be overwritten
-    a = a.copy()
-
     _util._assert_cupy_array(a)
     _util._assert_rank2(a)
     _util._assert_nd_squareness(a)
 
-    # support float32, float64, complex64, and complex128
-    if a.dtype.char in 'fdFD':
-        dtype = a.dtype.char
+    dtype = numpy.promote_types(a.dtype, 'f')
+    order = 'F' if a._f_contiguous else 'C'
+    # prevent 'a' to be overwritten
+    a = a.astype(dtype, copy=True, order=order)
+    b = cupy.eye(a.shape[0], dtype=dtype, order=order)
+    if order == 'F':
+        cupyx.lapack.gesv(a, b)
     else:
-        dtype = numpy.promote_types(a.dtype.char, 'f')
-
-    cusolver_handle = device.get_cusolver_handle()
-    dev_info = cupy.empty(1, dtype=numpy.int32)
-
-    ipiv = cupy.empty((a.shape[0], 1), dtype=numpy.intc)
-
-    if dtype == 'f':
-        getrf = cusolver.sgetrf
-        getrf_bufferSize = cusolver.sgetrf_bufferSize
-        getrs = cusolver.sgetrs
-    elif dtype == 'd':
-        getrf = cusolver.dgetrf
-        getrf_bufferSize = cusolver.dgetrf_bufferSize
-        getrs = cusolver.dgetrs
-    elif dtype == 'F':
-        getrf = cusolver.cgetrf
-        getrf_bufferSize = cusolver.cgetrf_bufferSize
-        getrs = cusolver.cgetrs
-    elif dtype == 'D':
-        getrf = cusolver.zgetrf
-        getrf_bufferSize = cusolver.zgetrf_bufferSize
-        getrs = cusolver.zgetrs
-    else:
-        msg = ('dtype must be float32, float64, complex64 or complex128'
-               ' (actual: {})'.format(a.dtype))
-        raise ValueError(msg)
-
-    m = a.shape[0]
-
-    buffersize = getrf_bufferSize(cusolver_handle, m, m, a.data.ptr, m)
-    workspace = cupy.empty(buffersize, dtype=dtype)
-
-    # LU factorization
-    getrf(
-        cusolver_handle, m, m, a.data.ptr, m, workspace.data.ptr,
-        ipiv.data.ptr, dev_info.data.ptr)
-    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrf, dev_info)
-
-    b = cupy.eye(m, dtype=dtype)
-
-    # solve for the inverse
-    getrs(
-        cusolver_handle, 0, m, m, a.data.ptr, m, ipiv.data.ptr, b.data.ptr, m,
-        dev_info.data.ptr)
-    cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        getrs, dev_info)
-
+        cupyx.lapack.gesv(a.T, b.T)
     return b
 
 
@@ -432,7 +411,7 @@ def pinv(a, rcond=1e-15):
     cutoff = rcond * s.max()
     s1 = 1 / s
     s1[s <= cutoff] = 0
-    return core.dot(vt.T, s1[:, None] * u.T)
+    return cupy.dot(vt.T, s1[:, None] * u.T)
 
 
 def tensorinv(a, ind=2):
@@ -468,7 +447,7 @@ def tensorinv(a, ind=2):
         raise ValueError('Invalid ind argument')
     oldshape = a.shape
     invshape = oldshape[ind:] + oldshape[:ind]
-    prod = cupy.core.internal.prod(oldshape[ind:])
+    prod = internal.prod(oldshape[ind:])
     a = a.reshape(prod, -1)
     a_inv = inv(a)
     return a_inv.reshape(*invshape)

@@ -23,18 +23,6 @@ for submodule in ('cupy/core/include/cupy/cub/',
         sys.exit(1)
 
 
-if sys.version_info[:3] == (3, 5, 0):
-    if not int(os.getenv('CUPY_PYTHON_350_FORCE', '0')):
-        msg = """
-CuPy does not work with Python 3.5.0.
-
-We strongly recommend to use another version of Python.
-If you want to use CuPy with Python 3.5.0 at your own risk,
-set 1 to CUPY_PYTHON_350_FORCE environment variable."""
-        print(msg)
-        sys.exit(1)
-
-
 requirements = {
     'setup': [
         'fastrlock>=0.3',
@@ -50,8 +38,8 @@ requirements = {
         'pycodestyle==2.5.0',
     ],
     'test': [
-        'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.
-        'attrs<19.2.0',  # pytest 4.1.1 does not run with attrs==19.2.0
+        # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
+        'pytest>=6.2',
     ],
     'doctest': [
         'matplotlib',
@@ -60,10 +48,6 @@ requirements = {
     'docs': [
         'sphinx==3.0.4',
         'sphinx_rtd_theme',
-    ],
-    'travis': [
-        '-r stylecheck',
-        '-r docs',
     ],
     'appveyor': [
         '-r test',
@@ -74,6 +58,7 @@ requirements = {
         'pytest-cov',
         'coveralls',
         'codecov',
+        'coverage<5',  # Otherwise, Python must be built with sqlite
     ],
 }
 
@@ -115,6 +100,8 @@ cupy_package_data = [
     'cupy/cuda/cupy_cufft.h',  # for cuFFT callback
     'cupy/cuda/cufft.pxd',  # for cuFFT callback
     'cupy/cuda/cufft.pyx',  # for cuFFT callback
+    'cupy/random/cupy_distributions.cu',
+    'cupy/random/cupy_distributions.cuh',
 ] + [
     x for x in glob.glob('cupy/core/include/cupy/**', recursive=True)
     if os.path.isfile(x)
@@ -145,7 +132,6 @@ Intended Audience :: Developers
 License :: OSI Approved :: MIT License
 Programming Language :: Python
 Programming Language :: Python :: 3
-Programming Language :: Python :: 3.5
 Programming Language :: Python :: 3.6
 Programming Language :: Python :: 3.7
 Programming Language :: Python :: 3.8
@@ -176,7 +162,7 @@ setup(
     packages=find_packages(exclude=['install', 'tests']),
     package_data=package_data,
     zip_safe=False,
-    python_requires='>=3.5.0',
+    python_requires='>=3.6.0',
     setup_requires=setup_requires,
     install_requires=install_requires,
     tests_require=tests_require,

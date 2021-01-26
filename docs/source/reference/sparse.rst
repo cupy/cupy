@@ -41,6 +41,7 @@ Sparse matrix classes
    cupyx.scipy.sparse.csr_matrix
    cupyx.scipy.sparse.dia_matrix
    cupyx.scipy.sparse.spmatrix
+   cupyx.scipy.sparse.linalg.LinearOperator
 
 
 Functions
@@ -60,9 +61,21 @@ Building sparse matrices
    cupyx.scipy.sparse.identity
    cupyx.scipy.sparse.kron
    cupyx.scipy.sparse.spdiags
+   cupyx.scipy.sparse.tril
+   cupyx.scipy.sparse.triu
    cupyx.scipy.sparse.rand
    cupyx.scipy.sparse.random
    cupyx.scipy.sparse.vstack
+
+
+Sparse matrix tools
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.scipy.sparse.find
 
 
 Identifying sparse matrices
@@ -90,7 +103,11 @@ Linear Algebra
    :nosignatures:
 
    cupyx.scipy.sparse.linalg.norm
+   cupyx.scipy.sparse.linalg.spsolve
+   cupyx.scipy.sparse.linalg.spsolve_triangular
    cupyx.scipy.sparse.linalg.cg
+   cupyx.scipy.sparse.linalg.gmres
    cupyx.scipy.sparse.linalg.lsqr
    cupyx.scipy.sparse.linalg.eigsh
    cupyx.scipy.sparse.linalg.svds
+   cupyx.scipy.sparse.linalg.aslinearoperator

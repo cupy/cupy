@@ -393,14 +393,15 @@ cpdef Py_ssize_t _normalize_axis_index(
             The normalized axis index, such that `0 <= normalized_axis < ndim`
 
     """
+    if not (-ndim <= axis < ndim):
+        raise numpy.AxisError(axis, ndim)
     if axis < 0:
         axis += ndim
-    if not (0 <= axis < ndim):
-        raise numpy.AxisError('axis out of bounds')
     return axis
 
 
-cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim):
+cpdef tuple _normalize_axis_indices(
+        axes, Py_ssize_t ndim, cpp_bool sort_axes=True):
     """Normalize axis indices.
 
     Args:
@@ -409,6 +410,9 @@ cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim):
         ndim (int):
             The number of dimensions of the array that ``axis`` should be
             normalized against
+        sort_axes (bool):
+            If provided as False will not sort the axes, default is to return
+            the sorted values.
 
     Returns:
         tuple of int:
@@ -426,4 +430,4 @@ cpdef tuple _normalize_axis_indices(axes, Py_ssize_t ndim):
             raise ValueError('Duplicate value in \'axis\'')
         res.append(axis)
 
-    return tuple(sorted(res))
+    return tuple(sorted(res) if sort_axes else res)

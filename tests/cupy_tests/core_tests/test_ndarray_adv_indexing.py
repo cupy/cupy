@@ -108,6 +108,8 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     {'shape': (), 'indexes': numpy.zeros((), dtype=numpy.bool_)},
     {'shape': (0,), 'indexes': None},
     {'shape': (0,), 'indexes': ()},
+    {'shape': (2, 0), 'indexes': ([1],)},
+    {'shape': (0, 3), 'indexes': (slice(None), [1])},
     # TODO(niboshi): pass the following commented out tests
     # {'shape': (0,), 'indexes': (False, True, True)},
 )

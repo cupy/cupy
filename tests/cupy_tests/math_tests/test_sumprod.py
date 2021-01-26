@@ -7,7 +7,6 @@ import pytest
 import cupy
 import cupy.core._accelerator as _acc
 from cupy.core import _cub_reduction
-from cupy.core import internal
 from cupy import testing
 
 
@@ -560,18 +559,24 @@ axes = [0, 1, 2]
 @testing.gpu
 class TestCumsum(unittest.TestCase):
 
+    def _cumsum(self, xp, a, *args, **kwargs):
+        b = a.copy()
+        res = xp.cumsum(a, *args, **kwargs)
+        testing.assert_array_equal(a, b)  # Check if input array is overwritten
+        return res
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumsum(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        return xp.cumsum(a)
+        return self._cumsum(xp, a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumsum_out(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         out = xp.zeros((5,), dtype=dtype)
-        xp.cumsum(a, out=out)
+        self._cumsum(xp, a, out=out)
         return out
 
     @testing.for_all_dtypes()
@@ -579,21 +584,21 @@ class TestCumsum(unittest.TestCase):
     def test_cumsum_out_noncontiguous(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         out = xp.zeros((10,), dtype=dtype)[::2]  # Non contiguous view
-        xp.cumsum(a, out=out)
+        self._cumsum(xp, a, out=out)
         return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumsum_2dim(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumsum(a)
+        return self._cumsum(xp, a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_cumsum_axis(self, xp, dtype):
         n = len(axes)
         a = testing.shaped_arange(tuple(range(4, 4 + n)), xp, dtype)
-        return xp.cumsum(a, axis=self.axis)
+        return self._cumsum(xp, a, axis=self.axis)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -602,7 +607,7 @@ class TestCumsum(unittest.TestCase):
         shape = tuple(range(4, 4 + n))
         a = testing.shaped_arange(shape, xp, dtype)
         out = xp.zeros(shape, dtype=dtype)
-        xp.cumsum(a, axis=self.axis, out=out)
+        self._cumsum(xp, a, axis=self.axis, out=out)
         return out
 
     @testing.for_all_dtypes()
@@ -612,7 +617,7 @@ class TestCumsum(unittest.TestCase):
         shape = tuple(range(4, 4 + n))
         a = testing.shaped_arange(shape, xp, dtype)
         out = xp.zeros((8,)+shape[1:], dtype=dtype)[::2]  # Non contiguous view
-        xp.cumsum(a, axis=self.axis, out=out)
+        self._cumsum(xp, a, axis=self.axis, out=out)
         return out
 
     @testing.for_all_dtypes()
@@ -627,7 +632,7 @@ class TestCumsum(unittest.TestCase):
     def test_cumsum_axis_empty(self, xp, dtype):
         n = len(axes)
         a = testing.shaped_arange(tuple(range(0, n)), xp, dtype)
-        return xp.cumsum(a, axis=self.axis)
+        return self._cumsum(xp, a, axis=self.axis)
 
     @testing.for_all_dtypes()
     def test_invalid_axis_lower1(self, dtype):
@@ -669,18 +674,24 @@ class TestCumsum(unittest.TestCase):
 @testing.gpu
 class TestCumprod(unittest.TestCase):
 
+    def _cumprod(self, xp, a, *args, **kwargs):
+        b = a.copy()
+        res = xp.cumprod(a, *args, **kwargs)
+        testing.assert_array_equal(a, b)  # Check if input array is overwritten
+        return res
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumprod_1dim(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
-        return xp.cumprod(a)
+        return self._cumprod(xp, a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumprod_out(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         out = xp.zeros((5,), dtype=dtype)
-        xp.cumprod(a, out=out)
+        self._cumprod(xp, a, out=out)
         return out
 
     @testing.for_all_dtypes()
@@ -688,20 +699,20 @@ class TestCumprod(unittest.TestCase):
     def test_cumprod_out_noncontiguous(self, xp, dtype):
         a = testing.shaped_arange((5,), xp, dtype)
         out = xp.zeros((10,), dtype=dtype)[::2]  # Non contiguous view
-        xp.cumprod(a, out=out)
+        self._cumprod(xp, a, out=out)
         return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_cumprod_2dim_without_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumprod(a)
+        return self._cumprod(xp, a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_cumprod_2dim_with_axis(self, xp, dtype):
         a = testing.shaped_arange((4, 5), xp, dtype)
-        return xp.cumprod(a, axis=1)
+        return self._cumprod(xp, a, axis=1)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -881,23 +892,38 @@ class TestDiff(unittest.TestCase):
 
 
 # This class compares CUB results against NumPy's
-@testing.parameterize(*testing.product({
-    'shape': [(33,), (10, 20), (10, 20, 30)],
-    'spacing': ((), (1.2,), 'sequence of int', 'arrays', 'mixed'),
-    'edge_order': [1, 2],
-    'axis': [None, 0, -1, 'tuple'],
-}))
+@testing.parameterize(*testing.product_dict(
+    testing.product({
+        'shape': [()],
+        'axis': [None, ()],
+        'spacing': [(), (1.2,)],
+    })
+    + testing.product({
+        'shape': [(33,)],
+        'axis': [None, 0, -1, (0,)],
+        'spacing': [(), (1.2,), 'sequence of int', 'arrays'],
+    })
+    + testing.product({
+        'shape': [(10, 20), (10, 20, 30)],
+        'axis': [None, 0, -1, (0, -1), (1, 0)],
+        'spacing': [(), (1.2,), 'sequence of int', 'arrays', 'mixed'],
+    }),
+    testing.product({
+        'edge_order': [1, 2],
+    }),
+))
 @testing.gpu
 class TestGradient(unittest.TestCase):
 
     def _gradient(self, xp, dtype, shape, spacing, axis, edge_order):
         x = testing.shaped_random(shape, xp, dtype=dtype)
-        if axis == 'tuple':
-            if x.ndim == 1:
-                axis = (0,)
-            else:
-                axis = (0, -1)
-        normalized_axes = internal._normalize_axis_indices(axis, x.ndim)
+        if axis is None:
+            normalized_axes = tuple(range(x.ndim))
+        else:
+            normalized_axes = axis
+            if not isinstance(normalized_axes, tuple):
+                normalized_axes = normalized_axes,
+            normalized_axes = tuple(ax % x.ndim for ax in normalized_axes)
         if spacing == 'sequence of int':
             # one scalar per axis
             spacing = tuple((ax + 1) / x.ndim for ax in normalized_axes)

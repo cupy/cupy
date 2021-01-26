@@ -6,7 +6,7 @@ from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 @testing.gpu
 @testing.slow
-class FusionExampleTest(unittest.TestCase):
+class TestFusionExample(unittest.TestCase):
     def generate_inputs(self, xp):
         shape = (8, 64, 112, 112)
         _, chan, _, _ = shape

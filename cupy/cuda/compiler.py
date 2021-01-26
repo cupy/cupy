@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import math
 import os
@@ -40,7 +41,22 @@ class JitifyException(Exception):
 def _run_cc(cmd, cwd, backend, log_stream=None):
     # backend in ('nvcc', 'hipcc')
     try:
-        env = os.environ if backend == 'hipcc' else None
+        # Inherit the environment variable as NVCC refers to PATH, TMPDIR/TMP,
+        # NVCC_PREPEND_FLAGS, NVCC_APPEND_FLAGS.
+        env = os.environ
+        if _win32:
+            # Adds the extra PATH for NVCC invocation.
+            # When running NVCC, a host compiler must be available in PATH,
+            # but this is not true in general Windows environment unless
+            # running inside the SDK Tools command prompt.
+            # To mitigate the situation CuPy automatically adds a path to
+            # the VC++ compiler used to build Python / CuPy to the PATH, if
+            # VC++ is not available in PATH.
+            extra_path = _get_extra_path_for_msvc()
+            if extra_path is not None:
+                path = extra_path + os.pathsep + os.environ.get('PATH', '')
+                env = copy.deepcopy(env)
+                env['PATH'] = path
         log = subprocess.check_output(cmd, cwd=cwd, env=env,
                                       stderr=subprocess.STDOUT,
                                       universal_newlines=True)
@@ -67,6 +83,28 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
               'Check PATH environment variable: ' \
               + str(e)
         raise OSError(msg.format(backend))
+
+
+@_util.memoize()
+def _get_extra_path_for_msvc():
+    import distutils.spawn
+    cl_exe = distutils.spawn.find_executable('cl.exe')
+    if cl_exe:
+        # The compiler is already on PATH, no extra path needed.
+        return None
+
+    from distutils import msvc9compiler
+    vcvarsall_bat = msvc9compiler.find_vcvarsall(
+        msvc9compiler.get_build_version())
+    if not vcvarsall_bat:
+        # Failed to find VC.
+        return None
+
+    path = os.path.join(os.path.dirname(vcvarsall_bat), 'bin')
+    if not distutils.spawn.find_executable('cl.exe', path):
+        # The compiler could not be found.
+        return None
+    return path
 
 
 def _get_nvrtc_version():
@@ -410,10 +448,8 @@ def _compile_with_cache_cuda(
     options += ('-ftz=true',)
 
     if enable_cooperative_groups:
-        # `cooperative_groups` requires `-rdc=true`.
-        # The three latter flags are to resolve linker error.
-        # (https://devtalk.nvidia.com/default/topic/1023604/linker-error/)
-        options += ('-rdc=true', '-Xcompiler', '-fPIC', '-shared')
+        # `cooperative_groups` requires relocatable device code.
+        options += ('--device-c',)
 
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
@@ -433,7 +469,7 @@ def _compile_with_cache_cuda(
     env = (arch, options, _get_nvrtc_version(), backend)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
-        # This is checking of NVRTC compiler internal version
+        # This is for checking NVRTC/NVCC compiler internal version
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
@@ -602,17 +638,6 @@ def is_valid_kernel_name(name):
     return re.match('^[a-zA-Z_][a-zA-Z_0-9]*$', name) is not None
 
 
-_hipcc_version = None
-
-
-def _get_hipcc_version():
-    global _hipcc_version
-    if _hipcc_version is None:
-        cmd = ['hipcc', '--version']
-        _hipcc_version = _run_cc(cmd, '.', 'hipcc')
-    return _hipcc_version
-
-
 def compile_using_hipcc(source, options, arch, log_stream=None):
     assert len(arch) > 0
     # pass HCC_AMDGPU_TARGET same as arch
@@ -650,6 +675,8 @@ def compile_using_hipcc(source, options, arch, log_stream=None):
             return f.read()
 
 
+# TODO(leofang): consider merge _preprocess_hipcc with _preprocess_hiprtc,
+# perhaps also with _preprocess?
 def _preprocess_hipcc(source, options):
     cmd = ['hipcc', '--preprocess'] + list(options)
     with tempfile.TemporaryDirectory() as root_dir:
@@ -665,18 +692,30 @@ def _preprocess_hipcc(source, options):
         return re.sub('(?m)^#.*$', '', pp_src)
 
 
+def _preprocess_hiprtc(source, options):
+    # source is ignored
+    prog = _NVRTCProgram(
+        '''
+        // hiprtc segfaults if the input code is empty
+        #include <hip/hip_runtime.h>
+        __global__ void _cupy_preprocess_dummy_kernel_() { }
+        ''', '')
+    try:
+        result, _ = prog.compile(options)
+    except CompileException as e:
+        dump = _get_bool_env_variable(
+            'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+        if dump:
+            e.dump(sys.stderr)
+        raise
+    assert isinstance(result, bytes)
+    return result
+
+
 _hip_extra_source = None
 
 
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
-    table = [
-        ('threadIdx.', 'hipThreadIdx_'),
-        ('blockIdx.', 'hipBlockIdx_'),
-        ('blockDim.', 'hipBlockDim_'),
-        ('gridDim.', 'hipGridDim_'),
-    ]
-    for i, j in table:
-        source = source.replace(i, j)
     if not is_hiprtc:
         return '#include <hip/hip_runtime.h>\n' + source
 
@@ -723,11 +762,14 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         source = _convert_to_hip_source(source, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))
 
-    env = (arch, options, _get_hipcc_version())
+    env = (arch, options, _get_nvrtc_version(), backend)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
-        # This is checking of HIPCC compiler internal version
-        base = _preprocess_hipcc('', options)
+        # This is for checking HIPRTC/HIPCC compiler internal version
+        if backend == 'hiprtc':
+            base = _preprocess_hiprtc('', options)
+        else:
+            base = _preprocess_hipcc('', options)
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)

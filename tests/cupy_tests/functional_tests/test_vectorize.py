@@ -289,6 +289,42 @@ class TestVectorizeConstants(unittest.TestCase):
         return f(x1, x2)
 
 
+class TestVectorizeBroadcast(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_vectorize_broadcast(self, xp, dtype):
+        def my_func(x1, x2):
+            return x1 + x2
+
+        f = xp.vectorize(my_func)
+        x1 = testing.shaped_random((20, 30), xp, dtype, seed=1)
+        x2 = testing.shaped_random((30,), xp, dtype, seed=2)
+        return f(x1, x2)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_vectorize_python_scalar_input(self, xp, dtype):
+        def my_func(x1, x2):
+            return x1 + x2
+
+        f = xp.vectorize(my_func)
+        x1 = testing.shaped_random((20, 30), xp, dtype, seed=1)
+        x2 = 1
+        return f(x1, x2)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-5)
+    def test_vectorize_numpy_scalar_input(self, xp, dtype):
+        def my_func(x1, x2):
+            return x1 + x2
+
+        f = xp.vectorize(my_func)
+        x1 = testing.shaped_random((20, 30), xp, dtype, seed=1)
+        x2 = dtype(1)
+        return f(x1, x2)
+
+
 class TestVectorize(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)

@@ -161,6 +161,13 @@ class TestSearch(unittest.TestCase):
         return a.argmin(axis=1)
 
 
+# TODO(leofang): remove this once CUDA 9.0 is dropped
+def _skip_cuda90(dtype):
+    ver = cupy.cuda.runtime.runtimeGetVersion()
+    if dtype == cupy.float16 and ver == 9000:
+        pytest.skip('CUB does not support fp16 on CUDA 9.0')
+
+
 # This class compares CUB results against NumPy's
 # TODO(leofang): test axis after support is added
 @testing.parameterize(*testing.product({
@@ -192,6 +199,7 @@ class TestCubReduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cub_argmin(self, xp, dtype):
+        _skip_cuda90(dtype)
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order == 'C':
             a = xp.ascontiguousarray(a)
@@ -226,6 +234,7 @@ class TestCubReduction(unittest.TestCase):
     @testing.for_dtypes('bhilBHILefdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cub_argmax(self, xp, dtype):
+        _skip_cuda90(dtype)
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.order == 'C':
             a = xp.ascontiguousarray(a)

@@ -5,7 +5,6 @@ from cupy_backends.cuda.api.runtime cimport _is_hip_environment
 from cupy.core.core cimport ndarray
 from cupy.cuda.device cimport get_compute_capability
 
-import contextlib
 import hashlib
 import importlib
 import os
@@ -32,26 +31,22 @@ from cupy.cuda.cufft import getVersion as get_cufft_version
 
 
 # information needed for building an external module
-cdef list _cc = sysconfig.get_config_var('CXX').split(' ')
-cdef str _python_include = sysconfig.get_path('include')
+cdef list _cc = []
+cdef str _python_include = None
 cdef list _nvcc = []
-cdef str _cuda_path = get_cuda_path()
-cdef str _cuda_include = None  # workaround for Read the Docs...
+cdef str _cuda_path = None
+cdef str _cuda_include = None
 cdef str _nvprune = None
-if _cuda_path is not None:
-    _cuda_include = _cuda_path + '/include/'
-    _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
-    if not os.path.isfile(_nvprune):
-        _nvprune = None
-cdef str _build_ver = str(get_build_version())
-cdef int _cufft_ver = get_cufft_version()
+cdef str _build_ver = None
+cdef int _cufft_ver = 0
 cdef str _cupy_root = None
 cdef str _cupy_include = None
 cdef str _source_dir = None
-cdef str _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
+cdef str _ext_suffix = None
 
 
 # callback related stuff
+cdef bint _is_init = False
 cdef str _callback_dev_code = None
 cdef str _callback_cache_dir = os.environ.get(
     'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/callback_cache')) + '/'
@@ -73,6 +68,36 @@ cdef class _ThreadLocal:
         except AttributeError:
             tls = _callback_thread_local.tls = _ThreadLocal()
         return tls
+
+
+cdef inline void _set_vars() except*:
+    global _cc, _python_include, _cuda_path, _cuda_include, _nvprune
+    global _build_ver, _cufft_ver, _ext_suffix, _is_init
+
+    cdef str cxx = sysconfig.get_config_var('CXX')
+    if cxx is not None:
+        _cc = cxx.split(' ')
+    elif 'CXX' in os.environ:
+        _cc = os.environ.get('CXX').split(' ')
+    else:
+        _cc = None
+
+    _python_include = sysconfig.get_path('include')
+
+    _cuda_path = get_cuda_path()
+    if _cuda_path is not None:
+        _cuda_include = os.path.join(_cuda_path, 'include')
+        _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
+        if not os.path.isfile(_nvprune):
+            _nvprune = None
+
+    _build_ver = str(get_build_version())
+    _cufft_ver = get_cufft_version()
+    _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
+
+    _set_cupy_paths()
+    _set_nvcc_path()
+    _is_init = True
 
 
 cdef inline void _set_cupy_paths() except*:
@@ -123,6 +148,9 @@ cdef inline void _sanity_checks(
         raise ValueError('need to specify d_loadCallbackPtr in cb_load')
     if cb_store and 'd_storeCallbackPtr' not in cb_store:
         raise ValueError('need to specify d_storeCallbackPtr in cb_store')
+    if _cc is None:
+        raise RuntimeError('a C++ compiler is required but not found, '
+                           'please set the environment variable CXX')
     if _nvcc is None:
         raise RuntimeError('nvcc is required but not found')
     if _nvprune is None:
@@ -148,7 +176,7 @@ cdef inline void _cythonize(str tempdir, str mod_name) except*:
                         '-E', 'CUPY_CUFFT_STATIC=True',
                         os.path.join(tempdir, mod_name + '.pyx'),
                         '-o', os.path.join(tempdir, mod_name + '.cpp')],
-                       env=os.environ)
+                       env=os.environ, cwd=tempdir)
     p.check_returncode()
 
 
@@ -162,22 +190,28 @@ cdef inline void _mod_compile(str tempdir, str mod_name, str obj_host) except*:
                        '-fPIC', '-O2', '-std=c++11',
                        '-c', os.path.join(tempdir, mod_name + '.cpp'),
                        '-o', obj_host],
-                       env=os.environ)
+                       env=os.environ, cwd=tempdir)
     p.check_returncode()
 
 
-cdef inline str _prune(str cache_dir, str _cufft_ver, str arch):
-    cdef str cufft_lib_full, cufft_lib_pruned, cufft_lib_cached
+cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
+    cdef str cufft_lib_full, cufft_lib_pruned, cufft_lib_temp, cufft_lib_cached
 
     if _nvprune:
         cufft_lib_full = os.path.join(_cuda_path, 'lib64/libcufft_static.a')
         cufft_lib_pruned = 'cufft_static_' + _cufft_ver + '_sm' + arch
+        cufft_lib_temp = os.path.join(temp_dir,
+                                      'lib' + cufft_lib_pruned + '.a')
         cufft_lib_cached = os.path.join(cache_dir,
                                         'lib' + cufft_lib_pruned + '.a')
         if not os.path.isfile(cufft_lib_cached):
             p = subprocess.run([_nvprune, '-arch=sm_' + arch,
-                                cufft_lib_full, '-o', cufft_lib_cached])
+                                cufft_lib_full, '-o', cufft_lib_temp],
+                               env=os.environ, cwd=temp_dir)
             p.check_returncode()
+            # atomic move with the destination guaranteed to be overwritten;
+            # using os.replace() is also ok here
+            os.rename(cufft_lib_temp, cufft_lib_cached)
     else:
         # nvprune is not found, just link against the full static lib
         cufft_lib_pruned = None
@@ -211,7 +245,7 @@ cdef inline void _nvcc_compile(
     if cb_store:
         cmd.append('-DHAS_STORE_CALLBACK')
     p = subprocess.run(cmd + ['-o', obj_dev],
-                       env=os.environ,
+                       env=os.environ, cwd=tempdir,
                        stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE)
     try:
@@ -229,20 +263,26 @@ cdef inline void _nvcc_compile(
 
 
 cdef inline void _nvcc_link(
-        str tempdir, str obj_host, str obj_dev, str arch, str path,
+        str tempdir, str obj_host, str obj_dev, str arch, str mod_filename,
         str cache_dir, str cufft_lib_pruned) except*:
     # WARNING: CANNOT use host compiler to link!
     cdef list cmd
+    cdef str mod_temp, mod_cached
 
+    mod_temp = os.path.join(tempdir, mod_filename)
+    mod_cached = os.path.join(cache_dir, mod_filename)
     cmd = _nvcc + ['-shared', '-arch=sm_'+arch, obj_dev, obj_host]
     if cufft_lib_pruned:
         cmd += ['-L'+cache_dir, '-l'+cufft_lib_pruned]
     else:
         cmd.append('-lcufft_static')
-    cmd += ['-lculibos', '-lpthread', '-o', path]
+    cmd += ['-lculibos', '-lpthread', '-o', mod_temp]
 
-    p = subprocess.run(cmd, env=os.environ)
+    p = subprocess.run(cmd, env=os.environ, cwd=tempdir)
     p.check_returncode()
+    # atomic move with the destination guaranteed to be overwritten;
+    # using os.replace() is also ok here
+    os.rename(mod_temp, mod_cached)
 
 
 cpdef get_current_callback_manager():
@@ -251,8 +291,6 @@ cpdef get_current_callback_manager():
     return mgr
 
 
-# TODO(leofang): find a way to implement a lock-free method for
-# cached shared libraries like what's done in cupy/cuda/compiler.py?
 cdef class _CallbackManager:
     cdef:
         readonly str cb_load
@@ -266,9 +304,8 @@ cdef class _CallbackManager:
                  str cb_store='',
                  ndarray cb_load_aux_arr=None,
                  ndarray cb_store_aux_arr=None):
-        # Sanity checks
-        _set_nvcc_path()
-        _set_cupy_paths()
+        if not _is_init:
+            _set_vars()
         _sanity_checks(cb_load, cb_store,
                        cb_load_aux_arr, cb_store_aux_arr)
 
@@ -309,8 +346,9 @@ cdef class _CallbackManager:
             os.makedirs(cache_dir, exist_ok=True)
         path = os.path.join(cache_dir, mod_filename)
         if not os.path.isfile(path):
-            # Set up temp directory
-            tempdir_obj = tempfile.TemporaryDirectory()
+            # Set up temp directory; it must be under the cache directory so
+            # that atomic moves within the same filesystem can be guaranteed
+            tempdir_obj = tempfile.TemporaryDirectory(dir=cache_dir)
             tempdir = tempdir_obj.name
 
             # Cythonize the Cython code to produce a c++ source file
@@ -321,7 +359,8 @@ cdef class _CallbackManager:
             _mod_compile(tempdir, mod_name, obj_host)
 
             # Prune libcufft_static.a for the target arch and cache it
-            cufft_lib_pruned = _prune(cache_dir, str(_cufft_ver), arch)
+            cufft_lib_pruned = _prune(
+                tempdir, cache_dir, str(_cufft_ver), arch)
 
             # Dump and compile device code using nvcc
             obj_dev = os.path.join(tempdir, mod_name + '_dev.o')
@@ -329,7 +368,7 @@ cdef class _CallbackManager:
 
             # Use nvcc to link and generate a shared library, and place it in
             # the disk cache
-            _nvcc_link(tempdir, obj_host, obj_dev, arch, path,
+            _nvcc_link(tempdir, obj_host, obj_dev, arch, mod_filename,
                        cache_dir, cufft_lib_pruned)
 
             # Clean up build directory
@@ -483,12 +522,6 @@ cdef class set_cufft_callbacks:
         load/store callbacks). Due to static linking, however, the file sizes
         can be excessive! The cache position can be changed via setting
         ``CUPY_CACHE_DIR``.
-
-    .. warning::
-        This feature may not be thread- or process-safe. In a concurrent
-        environment, it is advised to first let the main thread/process do the
-        warm-up (compiling), and then unblock all threads/processes to load the
-        compiled module from cache.
 
     .. seealso:: `cuFFT Callback Routines`_
 

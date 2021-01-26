@@ -130,6 +130,11 @@ Note that raw arguments are not involved in the broadcasting.
 If you want to mark all arguments as ``raw``, you must specify the ``size`` argument on invocation, which defines the value of ``_ind.size()``.
 
 
+Texture memory
+--------------
+Texture objects (:class:`~cupy.cuda.texture.TextureObject`) can be passed to :class:`~cupy.ElementwiseKernel` with their type marked by a unique type placeholder distinct from any other types used in the same kernel, as its actual datatype is determined when populating the texture memory. The texture coordinates can be computed in the kernel by the per-thread loop index ``i``.
+
+
 Reduction kernels
 -----------------
 
@@ -166,6 +171,9 @@ For example, L2 norm along specified axes can be written as follows:
 .. note::
    ``raw`` specifier is restricted for usages that the axes to be reduced are put at the head of the shape.
    It means, if you want to use ``raw`` specifier for at least one argument, the ``axis`` argument must be ``0`` or a contiguous increasing sequence of integers starting from ``0``, like ``(0, 1)``, ``(0, 1, 2)``, etc.
+
+.. note::
+   Texture memory is not yet supported in :class:`~cupy.ReductionKernel`.
 
 
 Raw kernels
