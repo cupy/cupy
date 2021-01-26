@@ -693,6 +693,26 @@ class TestZoomOrder0IntegerGrid():
         )
 
 
+@testing.parameterize(*testing.product({
+    'shape': [(5, 5, 2)],
+    'zoom': [(2, 2, 0.5)],  # selected to give output.shape[-1] == 1
+    'mode': legacy_modes + scipy16_modes,
+    'order': [0, 1, 2, 3, 4, 5],
+    'grid_mode': [False, True],
+}))
+@testing.gpu
+class TestZoomOutputSize1():
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.with_requires('scipy>=1.6.0')
+    def test_zoom_output_size1(self, xp, scp, dtype):
+        x = xp.zeros(self.shape, dtype=dtype)
+        x[1, 1, 1] = 1
+        return scp.ndimage.zoom(x, self.zoom, order=self.order, mode=self.mode,
+                                grid_mode=self.grid_mode)
+
+
 @testing.parameterize(
     {'zoom': 3},
     {'zoom': 0.3},
