@@ -12,7 +12,7 @@ cdef object _thread_local = threading.local()
 
 
 cdef class _ThreadLocal:
-    cdef void* current_stream
+    cdef intptr_t current_stream
     cdef object current_stream_ref
     cdef list prev_stream_ref_stack
 
@@ -27,13 +27,13 @@ cdef class _ThreadLocal:
     cdef set_current_stream(self, stream):
         cdef intptr_t ptr = <intptr_t>stream.ptr
         stream_module.set_current_stream_ptr(ptr)
-        self.current_stream = <void*>ptr
+        self.current_stream = <intptr_t>ptr
         self.current_stream_ref = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
         cdef intptr_t ptr = <intptr_t>stream_ref().ptr
         stream_module.set_current_stream_ptr(ptr)
-        self.current_stream = <void*>ptr
+        self.current_stream = <intptr_t>ptr
         self.current_stream_ref = stream_ref
 
     cdef get_current_stream(self):
@@ -52,13 +52,13 @@ cdef class _ThreadLocal:
                 self.current_stream_ref = weakref.ref(Stream.null)
         return self.current_stream_ref
 
-    cdef void* get_current_stream_ptr(self):
+    cdef intptr_t get_current_stream_ptr(self):
         # Returns the stream previously set, otherwise returns
         # nullptr or runtime.streamPerThread when
         # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
         if (stream_module.is_ptds_enabled() and
-                self.current_stream == <void*>0):
-            return <void*>runtime.streamPerThread
+                self.current_stream == <intptr_t>0):
+            return <intptr_t>runtime.streamPerThread
         return self.current_stream
 
 
