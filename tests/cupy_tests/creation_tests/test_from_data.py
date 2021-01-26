@@ -157,7 +157,7 @@ class TestFromData(unittest.TestCase):
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(strides_check=True)
+    @testing.numpy_cupy_array_equal()
     def test_array_from_nested_list_of_cupy_scalar(self, xp, dtype, order):
         # compares numpy.array(<list of numpy.ndarray>) with
         # cupy.array(<list of cupy.ndarray>)
