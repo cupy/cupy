@@ -145,12 +145,15 @@ use_scm_version = {
     'write_to_template': "__version__ = '{version}'",
 }
 if os.environ.get('CUPY_RELEASE_BUILD', False):
-    # setuptools-scm assumes that sdist/wheels are built *after* git-tagging, but
-    # that conflicts with our workflow that builds release assets before the tagging.
-    # The sdist/wheel build process must be done with this environment variable
-    # to disable setuptools-scm and generate sdist/wheels versioned without commit hash.
-    # Note that when a user is installing an sdist, verseion in PKG-INFO file (which is
-    # bundled with the sdist tarball) is used and setuptools-scm does nothing.
+    # setuptools-scm assumes that sdist/wheels are built *after* git-tagging,
+    # but that conflicts with our workflow that builds release assets before
+    # the tagging.
+    # The sdist/wheel build process must be done with CUPY_RELEASE_BUILD
+    # environment variable to disable setuptools-scm and generate sdist/wheels
+    # versioned without commit hash.  Note that when a user is installing an
+    # sdist, version in PKG-INFO file (which is bundled with the sdist tarball)
+    # is used.
+    # See also: https://github.com/pypa/setuptools_scm/
     with open(use_scm_version['write_to'], 'w') as f:
         f.write(use_scm_version['write_to_template'].format(version=version))
     use_scm_version = None
