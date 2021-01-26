@@ -2069,9 +2069,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
         # obj is Seq[cupy.ndarray]
         assert issubclass(elem_type, ndarray), elem_type
         lst = _flatten_list(obj)
-        if len(shape) == 1:
-            # convert each scalar (0-dim) ndarray to 1-dim
-            lst = [cupy.expand_dims(x, 0) for x in lst]
+
+        # convert each scalar (0-dim) ndarray to 1-dim
+        lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
 
         a =_manipulation.concatenate_method(lst, 0)
         a = a.reshape(shape)
