@@ -158,6 +158,15 @@ class TestFromData(unittest.TestCase):
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_array_from_nested_list_of_cupy_scalar(self, xp, dtype, order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of cupy.ndarray>)
+        a = [[xp.array(i, dtype=dtype)] for i in range(2)]
+        return xp.array(a, order=order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_array_copy(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.array(a, order=order)
