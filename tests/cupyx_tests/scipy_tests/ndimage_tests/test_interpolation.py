@@ -89,15 +89,14 @@ class TestMapCoordinates(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'order': [0, 1, 2, 3, 4, 5],
-    'mode': ['constant', 'nearest', 'mirror'] + scipy16_modes,
+    'order': [0, 1],
+    'mode': ['constant', 'nearest', 'mirror'],
 }))
 @testing.gpu
 @testing.with_requires('scipy')
-class TestMapCoordinatesHalfInteger:
+class TestMapCoordinatesHalfInteger(unittest.TestCase):
 
     def _map_coordinates(self, xp, scp, a, coordinates):
-        _conditional_scipy_version_skip(self.mode, self.order)
         map_coordinates = scp.ndimage.map_coordinates
         return map_coordinates(a, coordinates, None, self.order, self.mode)
 
