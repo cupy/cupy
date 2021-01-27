@@ -8,12 +8,6 @@
 #include "cupy_distributions.cuh"
 
 
-#if defined(_MSC_VER)
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-#endif
-
-
 struct rk_state {
 
     __device__ virtual uint32_t rk_int() {
