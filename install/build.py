@@ -419,7 +419,7 @@ def check_cudnn_version(compiler, settings):
         utils.print_warning(
             'Unsupported cuDNN version: {}'.format(
                 str(_cudnn_version)),
-            'cuDNN v{}= and <=v{} is required'.format(min_major, max_major))
+            'cuDNN >=v{} and <=v{} is required'.format(min_major, max_major))
         return False
 
     return True
