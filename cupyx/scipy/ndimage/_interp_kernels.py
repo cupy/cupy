@@ -243,7 +243,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
         for j in range(ndim):
             # determine nearest neighbor
             ops.append("""
-            {int_t} cf_{j} = ({int_t})lrint((double)c_{j});
+            {int_t} cf_{j} = ({int_t})floor((double)c_{j} + 0.5);
             """.format(int_t=int_t, j=j))
 
             # handle boundary

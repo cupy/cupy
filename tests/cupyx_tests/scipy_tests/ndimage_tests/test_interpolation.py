@@ -89,6 +89,28 @@ class TestMapCoordinates(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
+    'order': [0, 1],
+    'mode': ['constant', 'nearest', 'mirror'],
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestMapCoordinatesHalfInteger(unittest.TestCase):
+
+    def _map_coordinates(self, xp, scp, a, coordinates):
+        map_coordinates = scp.ndimage.map_coordinates
+        return map_coordinates(a, coordinates, None, self.order, self.mode)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
+    def test_map_coordinates_float(self, xp, scp, dtype):
+        # Half integer coordinate rounding test case from:
+        # https://github.com/cupy/cupy/issues/4550
+        a = testing.shaped_arange((4, 3), xp, dtype)
+        coordinates = xp.array([[0.5, 2], [0.5, 1]])
+        return self._map_coordinates(xp, scp, a, coordinates)
+
+
+@testing.parameterize(*testing.product({
     'matrix_shape': [(2,), (2, 2), (2, 3), (3, 3)],
     'offset': [0.3, [-1.3, 1.3]],
     'output_shape': [None],
