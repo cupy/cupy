@@ -217,12 +217,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
     if not arch:
         arch = _get_arch()
 
-    if _cuda_version >= 11010 and not jitify:
-        options += ('-arch=sm_{}'.format(arch),)
-    else:
-        # Jitify internally calls nvrtcGetPTX, so we must use virtual archs,
-        # or there'd be errors due to unresolved errors
-        options += ('-arch=compute_{}'.format(arch),)
+    options += ('-arch=compute_{}'.format(arch),)
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
@@ -235,11 +230,6 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions)
         try:
-            if _cuda_version >= 11010 and jitify:
-                # Convert the virtual arch to a real arch
-                options = [f'-arch=sm_{arch}' if opt.startswith('-arch=')
-                           else opt for opt in options]
-                options = tuple(options)
             ptx, mapping = prog.compile(options, log_stream)
         except CompileException as e:
             dump = _get_bool_env_variable(
@@ -354,10 +344,7 @@ def compile_using_nvcc(source, options=(), arch=None,
 
 def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
-        if _cuda_version >= 11010:
-            options += ('-arch=sm_{}'.format(arch),)
-        else:
-            options += ('-arch=compute_{}'.format(arch),)
+        options += ('-arch=compute_{}'.format(arch),)
 
         prog = _NVRTCProgram(source, '')
         try:
@@ -622,10 +609,8 @@ class _NVRTCProgram(object):
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
             if log_stream is not None:
                 log_stream.write(nvrtc.getProgramLog(self.ptr))
-            if _cuda_version >= 11010:
-                return nvrtc.getCUBIN(self.ptr), mapping
-            else:
-                return nvrtc.getPTX(self.ptr), mapping
+            # TODO(leofang): use getCUBIN() for _cuda_version >= 11010?
+            return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
             raise CompileException(log, self.src, self.name, options,

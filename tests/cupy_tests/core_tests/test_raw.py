@@ -16,7 +16,6 @@ from cupy import _util
 from cupy.core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
-from cupy_backends.cuda.api import driver
 
 
 _test_source1 = r'''
@@ -633,13 +632,10 @@ class TestRaw(unittest.TestCase):
         N = 10
         inner_chunk = 2
         x = cupy.zeros((N,), dtype=cupy.float32)
-        if (self.backend == 'nvrtc'
-                and not cupy.cuda.runtime.is_hip
-                and driver.get_build_version() < 11010):
+        if self.backend == 'nvrtc' and not cupy.cuda.runtime.is_hip:
             # raised when calling ls.complete()
             error = cupy.cuda.driver.CUDADriverError
-        else:  # nvcc, hipcc, hiprtc, or nvrtc on CUDA 11.1+
-            # On CUDA 11.1+, nvrtc fails due to unresolved symbols
+        else:  # nvcc, hipcc, hiprtc
             error = cupy.cuda.compiler.CompileException
         with pytest.raises(error):
             ker((1,), (N//inner_chunk,), (x, N, inner_chunk))
