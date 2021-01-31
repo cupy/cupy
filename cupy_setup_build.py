@@ -1007,7 +1007,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         use_hipcc = False
         if use_hip:
             for i in objects:
-                if any([obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')]):
+                if any(obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')):
                     use_hipcc = True
         if use_hipcc:
             _compiler_cxx = self.compiler_cxx

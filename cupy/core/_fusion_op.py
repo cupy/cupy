@@ -202,7 +202,7 @@ class _ReductionTraceOp:
         assert isinstance(in_param, _TraceArray)
         assert isinstance(out_param, _TraceArray)
         assert isinstance(axis, tuple)
-        assert all([0 <= x < in_param.ndim for x in axis])
+        assert all(0 <= x < in_param.ndim for x in axis)
 
         self.name = name
         self.preamble = reduce_func.preamble

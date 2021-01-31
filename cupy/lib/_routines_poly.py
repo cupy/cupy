@@ -24,7 +24,7 @@ def _wraps_polyroutine(func):
         coeffs = [_get_coeffs(x) for x in args]
         out = func(*coeffs)
 
-        if all([not isinstance(x, cupy.poly1d) for x in args]):
+        if all(not isinstance(x, cupy.poly1d) for x in args):
             return out
         if isinstance(out, cupy.ndarray):
             return cupy.poly1d(out)
