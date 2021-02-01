@@ -824,22 +824,10 @@ class TestLOBPCG(unittest.TestCase):
         of eigen vector as positive. This helps in comparing equivalence
         of eigen vectors"""
         vec_len, num_vecs = block_vec.shape
-        #n_cores = multiprocessing.cpu_count()
-
         for j in range(num_vecs):
             direction = testing.shaped_random((vec_len, 1), xp=xp, seed=123)
             eigvec = block_vec[:, j].T
             eigvec *= xp.where(eigvec.dot(direction) >= 0, 1, -1)
-            # block_vec[:, j] = eigvec.T
-
-        """
-        def per_vec_transform(j):
-            direction = testing.shaped_random((vec_len, 1), xp=xp, seed=123)
-            eigvec = block_vec[:, j].T
-            eigvec *= xp.where(eigvec.dot(direction) >= 0, 1, -1)
-            #block_vec[:, j] = eigvec.T
-        Parallel(n_jobs=n_cores)(delayed(per_vec_transform)(j) for j in range(num_vecs))
-        """
         return block_vec
 
     def _generate_input_for_elastic_rod(self, n, xp):
