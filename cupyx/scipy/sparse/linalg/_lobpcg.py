@@ -117,16 +117,15 @@ def _b_orthonormalize(B, blockVectorV, blockVectorBV=None, retInvR=False):
         # VBV is a Cholesky factor
         VBV = linalg.cholesky(VBV).T
         VBV = cupy.asarray(VBV)
-        assert not isinstance(VBV, type(None))
         VBV = linalg.inv(VBV)
-        assert not isinstance(VBV, type(None))
         blockVectorV = cupy.matmul(blockVectorV, VBV)
         if B is not None:
             blockVectorBV = cupy.matmul(blockVectorBV, VBV)
         else:
             blockVectorBV = None
-    except Exception:
-        # print("Exception: {}, cholesky has failed".format(e))
+    except Exception as e:
+        # LinAlg Error: cholesky transformation might fail in rare cases
+        print("Exception: {}, cholesky has failed".format(e))
         blockVectorV = None
         blockVectorBV = None
         VBV = None

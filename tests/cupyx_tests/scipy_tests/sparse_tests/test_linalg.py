@@ -4,6 +4,9 @@ import cupy
 import io
 import unittest
 import warnings
+# import multiprocessing
+# import joblib
+
 
 import numpy
 import pytest
@@ -18,6 +21,7 @@ except ImportError:
 from cupy import testing
 from cupy.testing import condition
 from cupyx.scipy import sparse
+# from joblib import Parallel, delayed
 import cupyx.scipy.sparse.linalg  # NOQA
 
 
@@ -811,16 +815,6 @@ class TestCsrlsvqr(unittest.TestCase):
 
 @testing.with_requires('scipy>=1.4')
 @testing.gpu
-@testing.parameterize(*testing.product({
-    'A_sparsity': [True, False],
-    'B_sparsity': [True, False],
-    'A_dtype': [cupy.float32, cupy.float64],
-    'preconditioner_sparsity': [True, False],
-    'preconditioner_dtype': [None, cupy.float32, cupy.float64],
-    'X_dtype': [cupy.float32, cupy.float64],
-    'Y_dtype': [cupy.float32, cupy.float64],
-    'sparse_format': ['coo', 'csr', 'csc']
-}))
 # tests adapted from scipy's tests of lobpcg
 class TestLOBPCG(unittest.TestCase):
 
@@ -830,14 +824,25 @@ class TestLOBPCG(unittest.TestCase):
         of eigen vector as positive. This helps in comparing equivalence
         of eigen vectors"""
         vec_len, num_vecs = block_vec.shape
+        #n_cores = multiprocessing.cpu_count()
+
         for j in range(num_vecs):
             direction = testing.shaped_random((vec_len, 1), xp=xp, seed=123)
             eigvec = block_vec[:, j].T
             eigvec *= xp.where(eigvec.dot(direction) >= 0, 1, -1)
-            block_vec[:, j] = eigvec.T
+            # block_vec[:, j] = eigvec.T
+
+        """
+        def per_vec_transform(j):
+            direction = testing.shaped_random((vec_len, 1), xp=xp, seed=123)
+            eigvec = block_vec[:, j].T
+            eigvec *= xp.where(eigvec.dot(direction) >= 0, 1, -1)
+            #block_vec[:, j] = eigvec.T
+        Parallel(n_jobs=n_cores)(delayed(per_vec_transform)(j) for j in range(num_vecs))
+        """
         return block_vec
 
-    def _elastic_rod(self, n, xp):
+    def _generate_input_for_elastic_rod(self, n, xp):
         """Build the matrices for the generalized eigenvalue problem of the
         fixed-free elastic rod vibration model.
         """
@@ -854,7 +859,7 @@ class TestLOBPCG(unittest.TestCase):
                     xp.diag(xp.ones(n - 1), 1) + xp.diag(xp.ones(n - 1), -1))
         return A, B
 
-    def _mikota_pair(self, n, xp):
+    def _generate_input_for_mikota_pair(self, n, xp):
         """Build a pair of full diagonal matrices for the generalized eigenvalue
         problem. The Mikota pair acts as a nice test since the eigenvalues are
         the squares of the integers n, n=1,2,...
@@ -866,54 +871,61 @@ class TestLOBPCG(unittest.TestCase):
         A = xp.diag(z) - xp.diag(y, -1) - xp.diag(y, 1)
         return A, B
 
+    def _generate_random_initial_ortho_eigvec(self, m, n, xp=numpy, seed=0):
+        """helper to generate orthogonal, random initial approximation for
+        eigen vectors.
+        """
+        V = testing.shaped_random((m, n), xp=numpy, seed=seed)
+        # TODO : use cupy's native linalg.orth() once implemented
+        X = scipy.linalg.orth(V)
+        if(xp == cupy):
+            return cupy.asarray(X)
+        return X
+
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
-    def test_small_elastic_rod(self, xp, sp):
-        A, B = self._elastic_rod(10, xp)
+    def test_small_generate_input_for_elastic_rod(self, xp, sp):
+        A, B = self._generate_input_for_elastic_rod(10, xp)
         n = A.shape[0]
-        V = testing.shaped_random((n, 10), xp=numpy)
-        X = scipy.linalg.orth(V)
+        X = self._generate_random_initial_ortho_eigvec(n, 10, xp)
         eigvals, eigvecs = sp.linalg.lobpcg(A,
-                                            xp.asarray(X), B=B,
+                                            X, B=B,
                                             tol=1e-5, maxiter=30,
                                             largest=False)
         return eigvals, self._eigen_vec_transform(eigvecs, xp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
-    def test_small_mikota_pair(self, xp, sp):
-        A, B = self._mikota_pair(10, xp)
+    def test_small_generate_input_for_mikota_pair(self, xp, sp):
+        A, B = self._generate_input_for_mikota_pair(10, xp)
         n = A.shape[0]
-        V = testing.shaped_random((n, 10), xp=numpy)
-        X = scipy.linalg.orth(V)
+        X = self._generate_random_initial_ortho_eigvec(n, 10, xp)
         eigvals, eigvecs = sp.linalg.lobpcg(A,
-                                            xp.asarray(X), B=B,
+                                            X, B=B,
                                             tol=1e-5, maxiter=30,
                                             largest=False)
         return eigvals, self._eigen_vec_transform(eigvecs, xp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
-    def test_elastic_rod(self, xp, sp):
-        A, B = self._elastic_rod(100, xp)
+    def test_generate_input_for_elastic_rod(self, xp, sp):
+        A, B = self._generate_input_for_elastic_rod(100, xp)
         n = A.shape[0]
-        V = testing.shaped_random((n, 20), xp=numpy)
-        X = scipy.linalg.orth(V)
+        X = self._generate_random_initial_ortho_eigvec(n, 20, xp)
         eigvals, eigvecs = sp.linalg.lobpcg(A,
-                                            xp.asarray(X), B=B,
+                                            X, B=B,
                                             tol=1e-5, maxiter=30,
                                             largest=False)
         return eigvals, self._eigen_vec_transform(eigvecs, xp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
-    def test_mikota_pair(self, xp, sp):
-        A, B = self._mikota_pair(100, xp)
+    def test_generate_input_for_mikota_pair(self, xp, sp):
+        A, B = self._generate_input_for_mikota_pair(100, xp)
         n = A.shape[0]
-        V = testing.shaped_random((n, 20), xp=numpy)
-        X = scipy.linalg.orth(V)
+        X = self._generate_random_initial_ortho_eigvec(n, 20, xp)
         eigvals, eigvecs = sp.linalg.lobpcg(A,
-                                            xp.asarray(X), B=B,
+                                            X, B=B,
                                             tol=1e-5, maxiter=30,
                                             largest=False)
         return eigvals, self._eigen_vec_transform(eigvecs, xp)
@@ -957,10 +969,8 @@ class TestLOBPCG(unittest.TestCase):
                                          maxiter=40, largest=False)
         return eigvals, self._eigen_vec_transform(vecs, xp)
 
-    def _check_fiedler_small(self, n, p, xp, sp):
-        """Check the Fiedler vector computation
-           for small eigen values and vectors
-        """
+    def _check_fiedler(self, type_str, n, p, xp, sp):
+        """Check for fiedler vector computation"""
         # fiedler vector computation based on scipy's tests
         # https://github.com/scipy/scipy/blob/ab1c0907fe9255582397db04592d6066745018d3/scipy/sparse/linalg/eigen/lobpcg/tests/test_lobpcg.py#L140
         col = numpy.zeros(n)
@@ -968,55 +978,22 @@ class TestLOBPCG(unittest.TestCase):
         A = scipy.linalg.toeplitz(col)
         D = numpy.diag(A.sum(axis=1))
         L = D - A
-        # Compute the full eigendecomposition using tricks, e.g.
-        # http://www.cs.yale.edu/homes/spielman/561/2009/lect02-09.pdf
-        tmp = numpy.pi * numpy.arange(n) / n
-        analytic_V = numpy.cos(numpy.outer(numpy.arange(n) + 1 / 2, tmp))
-        # Check small lobpcg eigenvalues.
-        X = analytic_V[:, :p]
-        lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
-                                              largest=False)
-        cupy.testing.assert_array_equal(lobpcg_w.shape, (p,))
-        cupy.testing.assert_array_equal(lobpcg_V.shape, (n, p))
-        return lobpcg_w, self._eigen_vec_transform(lobpcg_V, xp)
-
-    def _check_fiedler_large(self, n, p, xp, sp):
-        """Check the Fiedler vector computation
-           For large eigen values and vectors
-        """
-        # fiedler vector computation based on scipy's tests
-        # https://github.com/scipy/scipy/blob/ab1c0907fe9255582397db04592d6066745018d3/scipy/sparse/linalg/eigen/lobpcg/tests/test_lobpcg.py#L140
-        col = numpy.zeros(n)
-        col[1] = 1
-        A = scipy.linalg.toeplitz(col)
-        D = numpy.diag(A.sum(axis=1))
-        L = D - A
-        # Compute the full eigendecomposition using tricks, e.g.
-        # http://www.cs.yale.edu/homes/spielman/561/2009/lect02-09.pdf
-        tmp = numpy.pi * numpy.arange(n) / n
-        analytic_V = numpy.cos(numpy.outer(numpy.arange(n) + 1 / 2, tmp))
-        X = analytic_V[:, -p:]
-        lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
-                                              largest=True)
-        cupy.testing.assert_array_equal(lobpcg_w.shape, (p,))
-        cupy.testing.assert_array_equal(lobpcg_V.shape, (n, p))
-        return lobpcg_w, self._eigen_vec_transform(lobpcg_V, xp)
-
-    def _check_fiedler_approximate(self, n, p, xp, sp):
-        """
-           Check for Fiedler vector using good but not exactly
-           correct guesses
-        """
-        # fiedler vector computation based on scipy's tests
-        # https://github.com/scipy/scipy/blob/ab1c0907fe9255582397db04592d6066745018d3/scipy/sparse/linalg/eigen/lobpcg/tests/test_lobpcg.py#L140
-        col = numpy.zeros(n)
-        col[1] = 1
-        A = scipy.linalg.toeplitz(col)
-        D = numpy.diag(A.sum(axis=1))
-        L = D - A
-        fiedler_guess = numpy.concatenate((numpy.ones(n // 2),
-                                           -numpy.ones(n - n // 2)))
-        X = numpy.vstack((numpy.ones(n), fiedler_guess)).T
+        X = None
+        if type_str == "small":
+            tmp = numpy.pi * numpy.arange(n) / n
+            analytic_V = numpy.cos(numpy.outer(numpy.arange(n) + 1 / 2, tmp))
+            X = analytic_V[:, :p]
+        elif type_str == "large":
+            tmp = numpy.pi * numpy.arange(n) / n
+            analytic_V = numpy.cos(numpy.outer(numpy.arange(n) + 1 / 2, tmp))
+            X = analytic_V[:, -p:]
+        elif type_str == "approximate":
+            fiedler_guess = numpy.concatenate((numpy.ones(n // 2),
+                                              -numpy.ones(n - n // 2)))
+            X = numpy.vstack((numpy.ones(n), fiedler_guess)).T
+        else:
+            raise ValueError('''type string must be either "small", "large",
+                             or "approximate"''')
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(xp.asarray(L), xp.asarray(X),
                                               largest=False)
         return lobpcg_w, self._eigen_vec_transform(lobpcg_V, xp)
@@ -1028,7 +1005,7 @@ class TestLOBPCG(unittest.TestCase):
            for small fiedler eigen values and vectors
         """
         # This triggers the dense path because 8 < 2*5.
-        return self._check_fiedler_small(8, 2, xp, sp)
+        return self._check_fiedler("small", 8, 2, xp, sp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
@@ -1037,7 +1014,7 @@ class TestLOBPCG(unittest.TestCase):
            for large fiedler eigen values and vectors
         """
         # This triggers the dense path because 8 < 2*5.
-        return self._check_fiedler_large(8, 2, xp, sp)
+        return self._check_fiedler("large", 8, 2, xp, sp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
@@ -1046,7 +1023,7 @@ class TestLOBPCG(unittest.TestCase):
            for approximately-formed fiedler eigen values and vectors
         """
         # This triggers the dense path because 8 < 2*5.
-        return self._check_fiedler_approximate(8, 2, xp, sp)
+        return self._check_fiedler("approximate", 8, 2, xp, sp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
@@ -1054,7 +1031,7 @@ class TestLOBPCG(unittest.TestCase):
         """Check the dense workaround path is avoided for non-small
            fiedler matrices and small eigen values and vectors
         """
-        return self._check_fiedler_small(12, 2, xp, sp)
+        return self._check_fiedler("small", 12, 2, xp, sp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
@@ -1062,7 +1039,7 @@ class TestLOBPCG(unittest.TestCase):
         """Check the dense workaround path is avoided for non-small
            fiedler matrices and large eigen values and vectors
         """
-        return self._check_fiedler_large(12, 2, xp, sp)
+        return self._check_fiedler("large", 12, 2, xp, sp)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
@@ -1070,19 +1047,18 @@ class TestLOBPCG(unittest.TestCase):
         """Check the dense workaround path is avoided for non-small,
            approximately generated fiedler matrices
         """
-        return self._check_fiedler_approximate(12, 2, xp, sp)
+        return self._check_fiedler("approximate", 12, 2, xp, sp)
 
     def _verbosity_helper(self, xp, sp):
         """Helper to capture the verbose output from stdout
         """
-        A, B = self._elastic_rod(100, xp)
+        A, B = self._generate_input_for_elastic_rod(100, xp)
         n = A.shape[0]
         m = 20
-        V = testing.shaped_random((n, m), xp=numpy, seed=0)
-        X = scipy.linalg.orth(V)
+        X = self._generate_random_initial_ortho_eigvec(n, m, xp)
         saved_stdout = io.StringIO()
         with contextlib.redirect_stdout(saved_stdout):
-            _, _ = sp.linalg.lobpcg(A, xp.asarray(X), B=B, tol=1e-5,
+            _, _ = sp.linalg.lobpcg(A, X, B=B, tol=1e-5,
                                     maxiter=30, largest=False,
                                     verbosityLevel=9)
         output = saved_stdout.getvalue().strip()
@@ -1135,6 +1111,22 @@ class TestLOBPCG(unittest.TestCase):
                                          retLambdaHistory=True)
         assert len(l_h) == 22
 
+
+@testing.with_requires('scipy>=1.4')
+@testing.gpu
+@testing.parameterize(*testing.product({
+    'A_sparsity': [True, False],
+    'B_sparsity': [True, False],
+    'A_dtype': [cupy.float32, cupy.float64],
+    'preconditioner_sparsity': [True, False],
+    'preconditioner_dtype': [None, cupy.float32, cupy.float64],
+    'X_dtype': [cupy.float32, cupy.float64],
+    'Y_dtype': [cupy.float32, cupy.float64],
+    'sparse_format': ['coo', 'csr', 'csc']
+}))
+# test class for testing against diagonal matrices overall various data types
+class TestLOBPCGForDiagInput(unittest.TestCase):
+
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
     @pytest.mark.slow
@@ -1181,4 +1173,4 @@ class TestLOBPCG(unittest.TestCase):
         eigvals, eigvecs = sp.linalg.lobpcg(A, X, B=B, M=M_LO, Y=Y,
                                             tol=1e-4, maxiter=100,
                                             largest=False)
-        return eigvals, self._eigen_vec_transform(eigvecs, xp)
+        return eigvals, TestLOBPCG._eigen_vec_transform(self, eigvecs, xp)
