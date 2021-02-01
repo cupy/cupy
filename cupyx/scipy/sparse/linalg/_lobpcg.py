@@ -103,7 +103,8 @@ def _applyConstraints(blockVectorV, YBY, blockVectorBY, blockVectorY):
 
 def _b_orthonormalize(B, blockVectorV, blockVectorBV=None, retInvR=False):
     """B-orthonormalize the given block vector using Cholesky."""
-    normalization = blockVectorV.max(axis=0)+cupy.finfo(blockVectorV.dtype).eps
+    normalization = blockVectorV.max(
+        axis=0) + cupy.finfo(blockVectorV.dtype).eps
     blockVectorV = blockVectorV / normalization
     if blockVectorBV is None:
         if B is not None:
@@ -140,7 +141,7 @@ def _get_indx(_lambda, num, largest):
     """Get `num` indices into `_lambda` depending on `largest` option."""
     ii = cupy.argsort(_lambda)
     if largest:
-        ii = ii[:-num-1:-1]
+        ii = ii[:-num - 1:-1]
     else:
         ii = ii[:num]
     return ii
@@ -480,9 +481,9 @@ def lobpcg(A, X,
         gramRAR = cupy.dot(activeBlockVectorR.T.conj(), activeBlockVectorAR)
 
         if explicitGramFlag:
-            gramRAR = (gramRAR + gramRAR.T.conj())/2
+            gramRAR = (gramRAR + gramRAR.T.conj()) / 2
             gramXAX = cupy.dot(blockVectorX.T.conj(), blockVectorAX)
-            gramXAX = (gramXAX + gramXAX.T.conj())/2
+            gramXAX = (gramXAX + gramXAX.T.conj()) / 2
             gramXBX = cupy.dot(blockVectorX.T.conj(), blockVectorBX)
             gramRBR = cupy.dot(activeBlockVectorR.T.conj(),
                                activeBlockVectorBR)
@@ -513,7 +514,7 @@ def lobpcg(A, X,
             gramRBP = cupy.dot(activeBlockVectorR.T.conj(),
                                activeBlockVectorBP)
             if explicitGramFlag:
-                gramPAP = (gramPAP + gramPAP.T.conj())/2
+                gramPAP = (gramPAP + gramPAP.T.conj()) / 2
                 gramPBP = cupy.dot(activeBlockVectorP.T.conj(),
                                    activeBlockVectorBP)
             else:
@@ -569,8 +570,9 @@ def lobpcg(A, X,
         if B is not None:
             if not restart:
                 eigBlockVectorX = eigBlockVector[:sizeX]
-                eigBlockVectorR = eigBlockVector[sizeX:sizeX+currentBlockSize]
-                eigBlockVectorP = eigBlockVector[sizeX+currentBlockSize:]
+                eigBlockVectorR = eigBlockVector[sizeX:sizeX +
+                                                 currentBlockSize]
+                eigBlockVectorP = eigBlockVector[sizeX + currentBlockSize:]
 
                 pp = cupy.dot(activeBlockVectorR, eigBlockVectorR)
                 pp += cupy.dot(activeBlockVectorP, eigBlockVectorP)
@@ -602,8 +604,9 @@ def lobpcg(A, X,
         else:
             if not restart:
                 eigBlockVectorX = eigBlockVector[:sizeX]
-                eigBlockVectorR = eigBlockVector[sizeX:sizeX+currentBlockSize]
-                eigBlockVectorP = eigBlockVector[sizeX+currentBlockSize:]
+                eigBlockVectorR = eigBlockVector[sizeX:sizeX +
+                                                 currentBlockSize]
+                eigBlockVectorP = eigBlockVector[sizeX + currentBlockSize:]
 
                 pp = cupy.dot(activeBlockVectorR, eigBlockVectorR)
                 pp += cupy.dot(activeBlockVectorP, eigBlockVectorP)

@@ -989,7 +989,7 @@ class TestLOBPCG(unittest.TestCase):
             X = analytic_V[:, -p:]
         elif type_str == "approximate":
             fiedler_guess = numpy.concatenate((numpy.ones(n // 2),
-                                              -numpy.ones(n - n // 2)))
+                                               -numpy.ones(n - n // 2)))
             X = numpy.vstack((numpy.ones(n), fiedler_guess)).T
         else:
             raise ValueError('''type string must be either "small", "large",
@@ -1140,7 +1140,7 @@ class TestLOBPCGForDiagInput(unittest.TestCase):
         # and where we choose A  and B to be diagonal.
         vals = xp.arange(1, n + 1)
         # A and B matrices based on parametrization
-        A = sp.diags([vals*vals], [0], (n, n), format=self.sparse_format)
+        A = sp.diags([vals * vals], [0], (n, n), format=self.sparse_format)
         A = A.astype(xp.dtype(self.A_dtype))
         A = A if self.A_sparsity is True else A.toarray()
 
