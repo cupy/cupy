@@ -5,7 +5,6 @@ import platform as _platform
 
 import cupy as _cupy
 from cupy_backends.cuda.libs import cusparse as _cusparse
-from cupy_backends.cuda.api import runtime as _runtime
 from cupy.core import _dtype
 from cupy.cuda import device as _device
 from cupy import _util
