@@ -219,21 +219,27 @@ class TestVectorizeExprs(unittest.TestCase):
         x = testing.shaped_random((20, 30), xp, dtype, seed=0)
         return f(x)
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
-    def test_vectorize_ufunc_call(self, xp, dtype1, dtype2):
+    def test_vectorize_ufunc_call(self, xp, dtype):
         def my_ufunc_add(x, y):
             return xp.add(x, y)
 
-        return self._run(my_ufunc_add, xp, [dtype1, dtype2])
+        f = xp.vectorize(my_ufunc_add)
+        x = testing.shaped_random((20, 30), xp, dtype, seed=1)
+        y = testing.shaped_random((20, 30), xp, dtype, seed=2)
+        return f(x, y)
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    @testing.numpy_cupy_allclose(accept_error=TypeError)
     def test_vectorize_ufunc_call_dtype(self, xp, dtype1, dtype2):
         def my_ufunc_add(x, y):
             return xp.add(x, y, dtype=dtype2)
 
-        return self._run(my_ufunc_add, xp, [dtype1, dtype1])
+        f = xp.vectorize(my_ufunc_add)
+        x = testing.shaped_random((20, 30), xp, dtype1, seed=1)
+        y = testing.shaped_random((20, 30), xp, dtype1, seed=2)
+        return f(x, y)
 
 
 class TestVectorizeInstructions(unittest.TestCase):
