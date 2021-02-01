@@ -47,9 +47,14 @@ class TestUnownedMemoryClass(unittest.TestCase):
 class TestUnownedMemory(unittest.TestCase):
 
     def check(self, device_id):
-        if (cupy.cuda.runtime.is_hip
-                and self.allocator is memory.malloc_managed):
-            raise unittest.SkipTest('HIP does not support managed memory')
+        if cupy.cuda.runtime.is_hip:
+            if self.allocator is memory.malloc_managed:
+                raise unittest.SkipTest('HIP does not support managed memory')
+            if self.allocator is memory.malloc_async:
+                raise unittest.SkipTest('HIP does not support async mempool')
+        elif cupy.cuda.driver.get_build_version() < 11020:
+            raise unittest.SkipTest('malloc_async is supported since '
+                                    'CUDA 11.2')
 
         size = 24
         shape = (2, 3)
@@ -812,9 +817,9 @@ class TestExceptionPicklable(unittest.TestCase):
 
 
 @testing.gpu
-@pytest.mark.skipIf(cupy.cuda.runtime.is_hip,
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support async allocator')
-@pytest.mark.skipIf(cupy.cuda.driver.get_build_version() < 11020,
+@pytest.mark.skipif(cupy.cuda.driver.get_build_version() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
 class TestMallocAsync(unittest.TestCase):
 
