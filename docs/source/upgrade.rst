@@ -6,6 +6,31 @@ Upgrade Guide
 
 This is a list of changes introduced in each release that users should be aware of when migrating from older versions.
 
+CuPy v9
+=======
+
+Dropping Support of CUDA 9.0
+----------------------------
+
+CUDA 9.0 is no longer supported.
+Use CUDA 9.2 or later.
+
+Dropping Support of cuDNN v7.5 and NCCL v2.3
+--------------------------------------------
+
+cuDNN v7.5 (or earlier) and NCCL v2.3 (or earlier) are no longer supported.
+
+Dropping Support of NumPy 1.16 and SciPy 1.3
+--------------------------------------------
+
+NumPy 1.16 and SciPy 1.3 are no longer supported.
+
+Dropping Support of Python 3.5
+------------------------------
+
+Python 3.5 is no longer supported in CuPy v9.
+
+
 CuPy v8
 =======
 

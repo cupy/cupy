@@ -67,16 +67,16 @@ main() {
       apt install python3.7-dev python3-apt python3-pip python3-setuptools -qqy
       python3.7 -m pip install cython numpy
 
-      # We lock to ROCm v3.5.0 to focus on improving CuPy's support, because many
-      # symlinks (such as libhiprtc.so) are missing in newer versions...
-      wget -qO - http://repo.radeon.com/rocm/apt/3.5/rocm.gpg.key | apt-key add -
-      echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/3.5/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
-      # TODO(leofang): revisit this when supporting newer ROCm
-      #wget -qO - http://repo.radeon.com/rocm/apt/debian/rocm.gpg.key | apt-key add -
-      #echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
+      wget -qO - http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
+      echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
+
+      # Uninstall CUDA to ensure it's a clean ROCm environment
+      # https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-tk-and-driver
+      apt-get --purge remove "*cublas*" "*cufft*" "*curand*" "*cusolver*" "*cusparse*" "*npp*" "*nvjpeg*" "cuda*" "nsight*" "*cudnn*" -qqy
+      apt-get autoremove -qqy
 
       apt update -qqy
-      apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver -qqy
+      apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl -qqy
       export HCC_AMDGPU_TARGET=gfx900
       export ROCM_HOME=/opt/rocm
       export CUPY_INSTALL_USE_HIP=1
@@ -84,6 +84,11 @@ main() {
       export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ROCM_HOME/lib
       echo $(hipconfig)
       python3.7 -m pip install -v .
+      # Make sure that CuPy is importable.
+      # Note that CuPy cannot be imported from the source directory.
+      pushd /
+      python3.7 -c "import cupy"
+      popd
       ;;
     # Docker builds.
     docker.* )
@@ -147,7 +152,7 @@ prepare_docker() {
 # base development branch.
 is_known_base_branch() {
   local branch="${1##refs/heads/}"
-  for BASE_BRANCH in master v7; do
+  for BASE_BRANCH in master v7 v8; do
     if [ "${branch}" = "${BASE_BRANCH}" ]; then
       return 0
     fi
@@ -157,7 +162,7 @@ is_known_base_branch() {
 
 # get_base_branch returns the base development branch for the current HEAD.
 get_base_branch() {
-  for BASE_BRANCH in master v7; do
+  for BASE_BRANCH in master v7 v8; do
     git merge-base --is-ancestor "origin/${BASE_BRANCH}" HEAD && echo "${BASE_BRANCH}" && return 0
   done
   echo "Base branch of HEAD is not valid." >&2

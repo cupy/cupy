@@ -30,8 +30,8 @@ class TestEigenvalue(unittest.TestCase):
         a = cupy.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], 'e')
         w, v = cupy.linalg.eigh(a, UPLO=self.UPLO)
 
-        self.assertEqual(w.dtype, numpy.float16)
-        self.assertEqual(v.dtype, numpy.float16)
+        assert w.dtype == numpy.float16
+        assert v.dtype == numpy.float16
 
         na = numpy.array([[1, 0, 3], [0, 5, 0], [7, 0, 9]], 'f')
         nw, nv = numpy.linalg.eigh(na, UPLO=self.UPLO)

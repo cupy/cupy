@@ -3,7 +3,9 @@ import unittest
 import numpy
 
 import cupy
+from cupy.core import _routines_linalg as _linalg
 from cupy import testing
+from cupy.cuda import device
 
 from cupy.cuda import cutensor as ct
 
@@ -120,6 +122,10 @@ class TestCuTensor(unittest.TestCase):
         )
 
     def test_contraction(self):
+        compute_capability = int(device.get_compute_capability())
+        if compute_capability < 70 and self.dtype == numpy.float16:
+            self.skipTest('Not supported.')
+
         desc_a = cutensor.create_tensor_descriptor(self.a)
         desc_b = cutensor.create_tensor_descriptor(self.b)
         desc_c = cutensor.create_tensor_descriptor(self.c)
@@ -239,3 +245,77 @@ class TestCuTensorDescriptor(unittest.TestCase):
             d,
             rtol=1e-6, atol=1e-6
         )
+
+
+@testing.parameterize(*testing.product({
+    'dtype_combo': ['eee', 'fff', 'ddd', 'FFF', 'DDD', 'dDD', 'DdD'],
+    'compute_type_hint': [None, 'down-convert', 'TF32'],
+    'shape': [(40, 30, 20)],
+    'alpha': [1.0],
+    'beta': [0.0, 1.0],
+}))
+@unittest.skipUnless(ct.available, 'cuTensor is unavailable')
+class TestCuTensorContraction(unittest.TestCase):
+    _tol = {'e': 1e-3, 'f': 1e-6, 'd': 1e-12}
+
+    def make_random_array(self, shape, dtype):
+        return testing.shaped_random(shape, cupy, dtype=dtype, scale=1)
+
+    def make_matrix(self, shape, dtype):
+        r_dtype = dtype
+        if dtype == numpy.complex64:
+            r_dtype = numpy.float32
+        elif dtype == numpy.complex128:
+            r_dtype = numpy.float64
+        a = self.make_random_array(shape, r_dtype)
+        if dtype.char in 'FD':
+            a = a + 1j * self.make_random_array(shape, r_dtype)
+        return a
+
+    def setUp(self):
+        compute_capability = int(device.get_compute_capability())
+        if compute_capability < 70 and 'e' in self.dtype_combo:
+            self.skipTest("Not supported")
+        dtype_chars = list(self.dtype_combo)
+        self.a_dtype = numpy.dtype(dtype_chars[0])
+        self.b_dtype = numpy.dtype(dtype_chars[1])
+        self.c_dtype = numpy.dtype(dtype_chars[2])
+        self.tol = self._tol[dtype_chars[2].lower()]
+        self.compute_type = _linalg.COMPUTE_TYPE_DEFAULT
+        if self.compute_type_hint == 'down-convert':
+            if self.c_dtype.char in 'fF':
+                self.compute_type = _linalg.COMPUTE_TYPE_FP16
+                self.tol = self._tol['e']
+            elif self.c_dtype.char in 'dD':
+                self.compute_type = _linalg.COMPUTE_TYPE_FP32
+                self.tol = self._tol['f']
+        elif self.compute_type_hint == 'TF32':
+            if self.c_dtype.char in 'fF':
+                self.compute_type = _linalg.COMPUTE_TYPE_TF32
+                self.tol = self._tol['e']
+        m, n, k = self.shape
+        self.a = self.make_matrix((m, k), self.a_dtype)
+        self.b = self.make_matrix((k, n), self.b_dtype)
+        self.c = self.make_matrix((m, n), self.c_dtype)
+        self.c_ref = self.alpha * cupy.matmul(self.a, self.b)
+        self.c_ref += self.beta * self.c
+        self.old_compute_type = cupy.core.get_compute_type(self.c_dtype)
+        cupy.core.set_compute_type(self.c_dtype, self.compute_type)
+
+    def tearDown(self):
+        cupy.core.set_compute_type(self.c_dtype, self.old_compute_type)
+
+    def test_contraction(self):
+        desc_a = cutensor.create_tensor_descriptor(self.a)
+        desc_b = cutensor.create_tensor_descriptor(self.b)
+        desc_c = cutensor.create_tensor_descriptor(self.c)
+        mode_a = cutensor.create_mode('m', 'k')
+        mode_b = cutensor.create_mode('k', 'n')
+        mode_c = cutensor.create_mode('m', 'n')
+        cutensor.contraction(self.alpha,
+                             self.a, desc_a, mode_a,
+                             self.b, desc_b, mode_b,
+                             self.beta,
+                             self.c, desc_c, mode_c)
+        cupy.testing.assert_allclose(self.c, self.c_ref,
+                                     rtol=self.tol, atol=self.tol)

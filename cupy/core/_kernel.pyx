@@ -3,7 +3,7 @@ import string
 import numpy
 
 from cupy.cuda import compiler
-from cupy import util
+from cupy import _util
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -13,6 +13,7 @@ from libcpp cimport vector
 from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
+from cupy.cuda cimport texture
 from cupy.core cimport _carray
 from cupy.core cimport _scalar
 from cupy.core._dtype cimport get_dtype
@@ -91,21 +92,22 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     cdef list ret = []
 
     for arg in args:
-        if type(arg) is not ndarray:
+        if isinstance(arg, ndarray):
+            s = arg
+            _check_array_device_id(<ndarray>s, dev_id)
+        elif isinstance(arg, texture.TextureObject):
+            s = arg
+        elif hasattr(arg, '__cuda_array_interface__'):
+            s = _convert_object_with_cuda_array_interface(arg)
+            _check_array_device_id(<ndarray>s, dev_id)
+        else:  # scalars or invalid args
             if use_c_scalar:
                 s = _scalar.scalar_to_c_scalar(arg)
             else:
                 s = _scalar.scalar_to_numpy_scalar(arg)
-
-            if s is not None:
-                ret.append(s)
-                continue
-            if not hasattr(arg, '__cuda_array_interface__'):
+            if s is None:
                 raise TypeError('Unsupported type %s' % type(arg))
-            arg = _convert_object_with_cuda_array_interface(arg)
-
-        _check_array_device_id(<ndarray>arg, dev_id)
-        ret.append(arg)
+        ret.append(s)
 
     return ret
 
@@ -144,6 +146,8 @@ cdef class _ArgInfo:
             return _ArgInfo.from_indexer(arg)
         if typ is memory.MemoryPointer:
             return _ArgInfo.from_memptr(arg)
+        if typ is texture.TextureObject:
+            return _ArgInfo.from_texture(arg)
         assert False, typ
 
     @staticmethod
@@ -177,6 +181,13 @@ cdef class _ArgInfo:
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         ret._init(
             ARG_KIND_POINTER, memory.MemoryPointer, None, 0, True, True)
+        return ret
+
+    @staticmethod
+    cdef _ArgInfo from_texture(texture.TextureObject arg):
+        cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
+        ret._init(
+            ARG_KIND_TEXTURE, texture.TextureObject, None, 0, True, True)
         return ret
 
     def __hash__(self):
@@ -232,6 +243,8 @@ cdef class _ArgInfo:
             return _get_typename(self.dtype)
         if self.arg_kind == ARG_KIND_INDEXER:
             return 'CIndexer<%d>' % self.ndim
+        if self.arg_kind == ARG_KIND_TEXTURE:
+            return 'cudaTextureObject_t'
         assert False
 
     cdef str get_param_c_type(self, ParameterInfo p):
@@ -426,14 +439,14 @@ cdef class ParameterInfo:
             ]))
 
 
-@util.memoize()
+@_util.memoize()
 def _get_param_info(str s, is_const):
     if len(s) == 0:
         return ()
     return tuple([ParameterInfo(i, is_const) for i in s.strip().split(',')])
 
 
-@util.memoize()
+@_util.memoize()
 def _decide_params_type(in_params, out_params, in_args_dtype, out_args_dtype):
     return _decide_params_type_core(in_params, out_params, in_args_dtype,
                                     out_args_dtype)
@@ -485,7 +498,7 @@ cdef tuple _decide_params_type_core(
                 type_dict[p.ctype] = a
 
     assert len(in_params) == len(in_args_dtype)
-    unknown_ctype = []
+    unknown_ctype = []  # TODO(leofang): remove this as it's unused?
     for p, a in zip(in_params, in_args_dtype):
         if a is None:
             if p.dtype is None:
@@ -620,7 +633,7 @@ cdef list _get_out_args_with_params(
     return out_args
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_elementwise_kernel(
         tuple arginfos, _TypeMap type_map, tuple params, operation, name,
         preamble, **kwargs):
@@ -758,7 +771,6 @@ cdef class ElementwiseKernel:
         cdef tuple in_types, out_types, types
         cdef shape_t shape
 
-        size = -1
         size = kwargs.pop('size', -1)
         stream = kwargs.pop('stream', None)
         block_size = kwargs.pop('block_size', 128)
@@ -781,9 +793,16 @@ cdef class ElementwiseKernel:
         in_args = _broadcast(
             arg_list, self.params, size != -1, shape)[:self.nin]
 
-        in_ndarray_types = tuple(
-            [a.dtype.type if isinstance(a, ndarray) else None
-             for a in in_args])
+        in_ndarray_types = []
+        for a in in_args:
+            if isinstance(a, ndarray):
+                t = a.dtype.type
+            elif isinstance(a, texture.TextureObject):
+                t = 'cudaTextureObject_t'
+            else:
+                t = None
+            in_ndarray_types.append(t)
+        in_ndarray_types = tuple(in_ndarray_types)
         out_ndarray_types = tuple([a.dtype.type for a in out_args])
 
         in_types, out_types, type_map = self._decide_params_type(
@@ -1223,7 +1242,7 @@ cdef class _Ops:
         raise TypeError('Wrong type (%s) of arguments for %s' %
                         (dtype, name))
 
-    cdef _Op _guess_routine_from_in_types(self, tuple in_types):
+    cpdef _Op _guess_routine_from_in_types(self, tuple in_types):
         cdef _Op op
         cdef tuple op_types
         cdef Py_ssize_t n = len(in_types)
@@ -1243,7 +1262,7 @@ cdef class _Ops:
                 return op
         return None
 
-    cdef _Op _guess_routine_from_dtype(self, object dtype):
+    cpdef _Op _guess_routine_from_dtype(self, object dtype):
         cdef _Op op
         cdef tuple op_types
         for op in self.ops:

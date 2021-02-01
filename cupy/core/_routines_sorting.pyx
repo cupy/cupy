@@ -5,12 +5,13 @@ import numpy
 import cupy
 from cupy.core._scalar import get_typename as _get_typename
 from cupy.core._ufuncs import elementwise_copy
-from cupy import util
+from cupy import _util
 from cupy.cuda import thrust
 
 from cupy.core cimport _routines_manipulation as _manipulation
 from cupy.core.core cimport compile_with_cache
 from cupy.core.core cimport ndarray
+from cupy.core cimport internal
 
 
 cdef _ndarray_sort(ndarray self, int axis):
@@ -31,10 +32,7 @@ cdef _ndarray_sort(ndarray self, int axis):
         raise NotImplementedError('Sorting non-contiguous array is not '
                                   'supported.')
 
-    if axis < 0:
-        axis += ndim
-    if not (0 <= axis < ndim):
-        raise numpy.AxisError('Axis out of range')
+    axis = internal._normalize_axis_index(axis, ndim)
 
     if axis == ndim - 1:
         data = self
@@ -74,10 +72,7 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
         data = self
         _axis = axis
 
-    if _axis < 0:
-        _axis += ndim
-    if not (0 <= _axis < ndim):
-        raise numpy.AxisError('Axis out of range')
+    _axis = internal._normalize_axis_index(_axis, ndim)
 
     if _axis == ndim - 1:
         data = data.copy()
@@ -130,10 +125,7 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
         raise NotImplementedError('Sorting non-contiguous array is not '
                                   'supported.')
 
-    if axis < 0:
-        axis += ndim
-    if not (0 <= axis < ndim):
-        raise numpy.AxisError('Axis out of range')
+    axis = internal._normalize_axis_index(axis, ndim)
 
     if axis == ndim - 1:
         data = self
@@ -227,10 +219,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
         _axis = axis
 
     ndim = data._shape.size()
-    if _axis < 0:
-        _axis += ndim
-    if not (0 <= _axis < ndim):
-        raise numpy.AxisError('Axis out of range')
+    _axis = internal._normalize_axis_index(_axis, ndim)
 
     length = data._shape[_axis]
     if isinstance(kth, int):
@@ -249,7 +238,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
     return data.argsort(_axis)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _partition_kernel(dtype):
     name = 'partition_kernel'
     merge_kernel = 'partition_merge_kernel'

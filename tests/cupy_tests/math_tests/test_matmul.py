@@ -5,6 +5,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.core import _routines_linalg as _linalg
 from cupy import testing
 
 
@@ -111,7 +112,7 @@ class TestMatmulLarge(unittest.TestCase):
     def test_operator_matmul(self, xp, dtype1, dtype2):
         if ((dtype1, dtype2) in self.skip_dtypes or
                 (dtype2, dtype1) in self.skip_dtypes):
-            return xp.array([])
+            pytest.skip()
         x1 = testing.shaped_random(self.shape_pair[0], xp, dtype1)
         x2 = testing.shaped_random(self.shape_pair[1], xp, dtype2)
         return operator.matmul(x1, x2)
@@ -122,11 +123,22 @@ class TestMatmulLarge(unittest.TestCase):
     def test_cupy_matmul(self, xp, dtype1, dtype2):
         if ((dtype1, dtype2) in self.skip_dtypes or
                 (dtype2, dtype1) in self.skip_dtypes):
-            return xp.array([])
+            pytest.skip()
         shape1, shape2 = self.shape_pair
         x1 = testing.shaped_random(shape1, xp, dtype1)
         x2 = testing.shaped_random(shape2, xp, dtype2)
         return xp.matmul(x1, x2)
+
+
+class TestMatmulOverflow(unittest.TestCase):
+
+    @testing.for_int_dtypes(name='dtype', no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
+    def test_overflow(self, xp, dtype):
+        value = numpy.iinfo(dtype).max
+        a = xp.array([value - 10]).astype(dtype)
+        b = xp.array([value - 10]).astype(dtype)
+        return xp.matmul(a, b)
 
 
 class _TestMatmulComputeTypes(unittest.TestCase):
@@ -147,8 +159,8 @@ class _TestMatmulComputeTypes(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'compute_type': [
-            cupy.core.core.COMPUTE_TYPE_DEFAULT,
-            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
         ],
         'shape_pair': [
             ((32, 64), (64, 96)),
@@ -174,9 +186,9 @@ class TestMatmulFp16ComputeTypes(_TestMatmulComputeTypes):
 @testing.parameterize(
     *testing.product({
         'compute_type': [
-            cupy.core.core.COMPUTE_TYPE_DEFAULT,
-            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
-            cupy.core.core.COMPUTE_TYPE_TF32,
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
+            _linalg.COMPUTE_TYPE_TF32,
         ],
         'shape_pair': [
             ((100, 200), (200, 300)),
@@ -209,8 +221,8 @@ class TestMatmulFp32ComputeTypes(_TestMatmulComputeTypes):
 @testing.parameterize(
     *testing.product({
         'compute_type': [
-            cupy.core.core.COMPUTE_TYPE_DEFAULT,
-            cupy.core.core.COMPUTE_TYPE_PEDANTIC,
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
         ],
         'shape_pair': [
             ((100, 200), (200, 300)),

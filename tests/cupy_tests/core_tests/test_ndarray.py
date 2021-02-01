@@ -5,6 +5,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy import _util
 from cupy import core
 from cupy import cuda
 from cupy import get_array_module
@@ -218,57 +219,120 @@ class TestNdarrayShape(unittest.TestCase):
         return xp.array(arr.shape)
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestNdarrayCudaInterface(unittest.TestCase):
 
     def test_cuda_array_interface(self):
         arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
         iface = arr.__cuda_array_interface__
+        assert iface['version'] == 3
         assert (set(iface.keys()) ==
                 set(['shape', 'typestr', 'data', 'version', 'descr',
-                     'strides']))
+                     'stream', 'strides']))
         assert iface['shape'] == (2, 3)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
-        assert iface['version'] == 2
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
+        assert iface['stream'] == 1
 
     def test_cuda_array_interface_view(self):
         arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
         view = arr[::2, ::5]
         iface = view.__cuda_array_interface__
+        assert iface['version'] == 3
         assert (set(iface.keys()) ==
-                set(['shape', 'typestr', 'data', 'version',
-                     'strides', 'descr']))
+                set(['shape', 'typestr', 'data', 'version', 'descr',
+                     'stream', 'strides']))
         assert iface['shape'] == (5, 4)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
         assert iface['data'][0] == arr.data.ptr
         assert not iface['data'][1]
-        assert iface['version'] == 2
         assert iface['strides'] == (320, 40)
         assert iface['descr'] == [('', '<f8')]
+        assert iface['stream'] == 1
 
     def test_cuda_array_interface_zero_size(self):
         arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
         view = arr[0:3:-1]
         iface = view.__cuda_array_interface__
+        assert iface['version'] == 3
         assert (set(iface.keys()) ==
-                set(['shape', 'typestr', 'data', 'version',
-                     'strides', 'descr']))
+                set(['shape', 'typestr', 'data', 'version', 'descr',
+                     'stream', 'strides']))
         assert iface['shape'] == (0,)
         assert iface['typestr'] == '<f8'
         assert isinstance(iface['data'], tuple)
         assert len(iface['data']) == 2
         assert iface['data'][0] == 0
         assert not iface['data'][1]
-        assert iface['version'] == 2
         assert iface['strides'] is None
         assert iface['descr'] == [('', '<f8')]
+        assert iface['stream'] == 1
+
+
+# TODO(leofang): test PTDS
+@testing.parameterize(*testing.product({
+    'stream': ('null', 'new'),
+    'ver': (2, 3),
+}))
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
+class TestNdarrayCudaInterfaceStream(unittest.TestCase):
+    def setUp(self):
+        if self.stream == 'null':
+            self.stream = cuda.Stream.null
+        elif self.stream == 'new':
+            self.stream = cuda.Stream()
+
+        self.old_ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.ver
+
+    def tearDown(self):
+        _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.old_ver
+
+    def test_cuda_array_interface_stream(self):
+        # this tests exporting CAI with a given stream
+        arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
+        stream = self.stream
+        with stream:
+            iface = arr.__cuda_array_interface__
+        assert iface['version'] == self.ver
+        attrs = ['shape', 'typestr', 'data', 'version', 'descr', 'strides']
+        if self.ver == 3:
+            attrs.append('stream')
+        assert set(iface.keys()) == set(attrs)
+        assert iface['shape'] == (10,)
+        assert iface['typestr'] == '<f8'
+        assert isinstance(iface['data'], tuple)
+        assert len(iface['data']) == 2
+        assert iface['data'] == (arr.data.ptr, False)
+        assert iface['descr'] == [('', '<f8')]
+        assert iface['strides'] is None
+        if self.ver == 3:
+            assert iface['stream'] == 1 if stream.ptr == 0 else stream.ptr
+
+
+@pytest.mark.skipif(not cupy.cuda.runtime.is_hip,
+                    reason='This is supported on CUDA')
+class TestNdarrayCudaInterfaceNoneCUDA(unittest.TestCase):
+
+    def setUp(self):
+        self.arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
+
+    def test_cuda_array_interface_hasattr(self):
+        assert not hasattr(self.arr, '__cuda_array_interface__')
+
+    def test_cuda_array_interface_getattr(self):
+        with pytest.raises(AttributeError) as e:
+            getattr(self.arr, '__cuda_array_interface__')
+        assert 'HIP' in str(e.value)
 
 
 @testing.parameterize(
@@ -408,8 +472,9 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (0,), 'indices': (0,)},
-    {'shape': (0,), 'indices': (0, 1)},
+    {'shape': (0,), 'indices': (0,), 'axis': None},
+    {'shape': (0,), 'indices': (0, 1), 'axis': None},
+    {'shape': (3, 0), 'indices': (2,), 'axis': 0},
 )
 @testing.gpu
 class TestZeroSizedNdarrayTake(unittest.TestCase):
@@ -418,7 +483,7 @@ class TestZeroSizedNdarrayTake(unittest.TestCase):
     def test_output_type_mismatch(self, xp):
         a = testing.shaped_arange(self.shape, xp, numpy.int32)
         i = testing.shaped_arange(self.indices, xp, numpy.int32)
-        return wrap_take(a, i)
+        return wrap_take(a, i, axis=self.axis)
 
 
 @testing.parameterize(
@@ -490,20 +555,29 @@ class TestPythonInterface(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_bytes_tobytes_empty(self, xp, dtype):
-        x = xp.empty((3, 4, 5), dtype)
+        x = xp.empty((0,), dtype)
         return bytes(x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
     def test_bytes_tobytes_empty2(self, xp, dtype):
-        x = xp.empty((), dtype)
+        x = xp.empty((3, 0, 4), dtype)
         return bytes(x)
 
-    @testing.for_all_dtypes()
+    # The result of bytes(numpy.array(scalar)) is the same as bytes(scalar)
+    # if scalar is of an integer dtype including bool_. It's spec is
+    # bytes(int): bytes object of size given by the parameter initialized with
+    # null bytes.
+    @testing.for_float_dtypes()
     @testing.numpy_cupy_equal()
-    def test_bytes_tobytes_scalar(self, xp, dtype):
-        x = xp.array([3], dtype).item()
+    def test_bytes_tobytes_scalar_array(self, xp, dtype):
+        x = xp.array(3, dtype)
         return bytes(x)
+
+    @testing.numpy_cupy_equal()
+    def test_format(self, xp):
+        x = xp.array(1.12345)
+        return format(x, '.2f')
 
 
 @testing.gpu

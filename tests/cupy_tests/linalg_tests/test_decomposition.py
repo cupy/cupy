@@ -107,10 +107,10 @@ class TestQRDecomposition(unittest.TestCase):
         result_gpu = cupy.linalg.qr(a_gpu, mode=mode)
         if isinstance(result_cpu, tuple):
             for b_cpu, b_gpu in zip(result_cpu, result_gpu):
-                self.assertEqual(b_cpu.dtype, b_gpu.dtype)
+                assert b_cpu.dtype == b_gpu.dtype
                 cupy.testing.assert_allclose(b_cpu, b_gpu, atol=1e-4)
         else:
-            self.assertEqual(result_cpu.dtype, result_gpu.dtype)
+            assert result_cpu.dtype == result_gpu.dtype
             cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
     @testing.fix_random()
@@ -159,21 +159,12 @@ class TestSVD(unittest.TestCase):
         cupy.testing.assert_allclose(s_gpu, s_cpu, atol=1e-4)
 
         k, = s_cpu.shape
-        for j in range(k):
-            # assert corresponding vectors are equal up to rotation (`sign`)
-            uj_cpu = u_cpu[:, j]
-            vj_cpu = vh_cpu[j, :].conj()
-            uj_gpu = cupy.asnumpy(u_gpu[:, j])
-            vj_gpu = cupy.asnumpy(vh_gpu[j, :]).conj()
-            # Use least-squares estimation to compute rotation from cpu result
-            # to gpu result. We know norms of uj_cpu, vj_cpu are 1.
-            u_sign = numpy.vdot(uj_cpu, uj_gpu)
-            v_sign = numpy.vdot(vj_cpu, vj_gpu)
-            numpy.testing.assert_allclose(uj_gpu, u_sign * uj_cpu, atol=1e-4)
-            numpy.testing.assert_allclose(vj_gpu, v_sign * vj_cpu, atol=1e-4)
-            numpy.testing.assert_allclose(abs(u_sign), 1, atol=1e-4)
-            numpy.testing.assert_allclose(abs(v_sign), 1, atol=1e-4)
-            numpy.testing.assert_allclose(u_sign, v_sign, atol=1e-4)
+        # reconstruct the matrix
+        if self.full_matrices:
+            a_gpu_usv = cupy.dot(u_gpu[:, :k] * s_gpu, vh_gpu[:k, :])
+        else:
+            a_gpu_usv = cupy.dot(u_gpu * s_gpu, vh_gpu)
+        cupy.testing.assert_allclose(a_gpu, a_gpu_usv, atol=1e-4)
 
         # assert unitary
         cupy.testing.assert_allclose(

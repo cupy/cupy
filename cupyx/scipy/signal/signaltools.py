@@ -1,6 +1,7 @@
 import warnings
 
 import cupy
+from cupy.core import internal
 
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import filters
@@ -18,21 +19,23 @@ def convolve(in1, in2, mode='full', method='auto'):
         in2 (cupy.ndarray): Second input. Should have the same number of
             dimensions as `in1`.
         mode (str): Indicates the size of the output:
-            ``'full'``: output is the full discrete linear convolution
-                        (default)
-            ``'valid'``: output consists only of those elements that do not
-                         rely on the zero-padding. Either ``in1`` or ``in2``
-                         must be at least as large as the other in every
-                         dimension.
-            ``'same'``: output is the same size as ``in1``, centered
-                        with respect to the ``'full'`` output
+
+            - ``'full'``: output is the full discrete linear convolution \
+                (default)
+            - ``'valid'``: output consists only of those elements that do \
+                not rely on the zero-padding. Either ``in1`` or ``in2`` must \
+                be at least as large as the other in every dimension.
+            - ``'same'``: - output is the same size as ``in1``, centered with \
+                respect to the ``'full'`` output
+
         method (str): Indicates which method to use for the computations:
-            ``'direct'``: The convolution is determined directly from sums, the
-                          definition of convolution
-            ``'fft'``: The Fourier Transform is used to perform the convolution
-                       by calling `fftconvolve`.
-            ``'auto'``: Automatically choose direct of FFT based on an estimate
-                        of which is faster for the arguments (default).
+
+            - ``'direct'``: The convolution is determined directly from sums, \
+                the definition of convolution
+            - ``'fft'``: The Fourier Transform is used to perform the \
+                convolution by calling ``fftconvolve``.
+            - ``'auto'``: Automatically choose direct of FFT based on an \
+                estimate of which is faster for the arguments (default).
 
     Returns:
         cupy.ndarray: the result of convolution.
@@ -63,21 +66,23 @@ def correlate(in1, in2, mode='full', method='auto'):
         in2 (cupy.ndarray): Second input. Should have the same number of
             dimensions as ``in1``.
         mode (str): Indicates the size of the output:
-            ``'full'``: output is the full discrete linear cross-correlation
-                        (default)
-            ``'valid'``: output consists only of those elements that do not
-                         rely on the zero-padding. Either ``in1`` or ``in2``
-                         must be at least as large as the other in every
-                         dimension.
-            ``'same'``: output is the same size as ``in1``, centered
-                        with respect to the ``'full'`` output
+
+            - ``'full'``: output is the full discrete linear convolution \
+                (default)
+            - ``'valid'``: output consists only of those elements that do \
+                not rely on the zero-padding. Either ``in1`` or ``in2`` must \
+                be at least as large as the other in every dimension.
+            - ``'same'``: - output is the same size as ``in1``, centered with \
+                respect to the ``'full'`` output
+
         method (str): Indicates which method to use for the computations:
-            ``'direct'``: The correlation is determined directly from sums, the
-                          definition of correlation
-            ``'fft'``: The Fourier Transform is used to perform the correlation
-                       by calling ``fftconvolve``.
-            ``'auto'``: Automatically choose direct of FFT based on an estimate
-                        of which is faster for the arguments (default).
+
+            - ``'direct'``: The convolution is determined directly from sums, \
+                the definition of convolution
+            - ``'fft'``: The Fourier Transform is used to perform the \
+                convolution by calling ``fftconvolve``.
+            - ``'auto'``: Automatically choose direct of FFT based on an \
+                estimate of which is faster for the arguments (default).
 
     Returns:
         cupy.ndarray: the result of correlation.
@@ -102,7 +107,7 @@ def _correlate(in1, in2, mode='full', method='auto', convolution=False):
     if quick_out is not None:
         return quick_out
     if method not in ('auto', 'direct', 'fft'):
-        raise ValueError("acceptable methods are 'auto', 'direct', or 'fft'")
+        raise ValueError('acceptable methods are "auto", "direct", or "fft"')
 
     if method == 'auto':
         method = choose_conv_method(in1, in2, mode=mode)
@@ -112,7 +117,68 @@ def _correlate(in1, in2, mode='full', method='auto', convolution=False):
                                           convolution)
 
     # if method == 'fft':
-    raise ValueError('fftconvolve currently not supported')
+    inputs_swapped = _st_core._inputs_swap_needed(mode, in1.shape, in2.shape)
+    if inputs_swapped:
+        in1, in2 = in2, in1
+    if not convolution:
+        in2 = _st_core._reverse(in2).conj()
+    out = fftconvolve(in1, in2, mode)
+    result_type = cupy.result_type(in1, in2)
+    if result_type.kind in 'ui':
+        out = out.round()
+    out = out.astype(result_type, copy=False)
+    if not convolution and inputs_swapped:
+        out = cupy.ascontiguousarray(_st_core._reverse(out).conj())
+    return out
+
+
+def fftconvolve(in1, in2, mode='full', axes=None):
+    """Convolve two N-dimensional arrays using FFT.
+
+    Convolve ``in1`` and ``in2`` using the fast Fourier transform method, with
+    the output size determined by the ``mode`` argument.
+
+    This is generally much faster than the ``'direct'`` method of ``convolve``
+    for large arrays, but can be slower when only a few output values are
+    needed, and can only output float arrays (int or object array inputs will
+    be cast to float).
+
+    Args:
+        in1 (cupy.ndarray): First input.
+        in2 (cupy.ndarray): Second input. Should have the same number of
+            dimensions as ``in1``.
+        mode (str): Indicates the size of the output:
+
+            - ``'full'``: output is the full discrete linear \
+                          cross-correlation (default)
+            - ``'valid'``: output consists only of those elements that do \
+                           not rely on the zero-padding. Either ``in1`` or \
+                           ``in2`` must be at least as large as the other in \
+                           every dimension.
+            - ``'same'``: output is the same size as ``in1``, centered \
+                          with respect to the 'full' output
+
+        axes (scalar or tuple of scalar or None): Axes over which to compute
+            the convolution. The default is over all axes.
+
+    Returns:
+        cupy.ndarray: the result of convolution
+
+    .. seealso:: :func:`cupyx.scipy.signal.choose_conv_method`
+    .. seealso:: :func:`cupyx.scipy.signal.correlation`
+    .. seealso:: :func:`cupyx.scipy.signal.convolve`
+    .. seealso:: :func:`cupyx.scipy.signal.oaconvolve`
+    .. seealso:: :func:`cupyx.scipy.ndimage.convolve`
+    .. seealso:: :func:`scipy.signal.correlation`
+    """
+    out = _st_core._check_conv_inputs(in1, in2, mode)
+    if out is not None:
+        return out
+    in1, in2, axes = _st_core._init_freq_conv_axes(in1, in2, mode, axes, False)
+    shape = [max(x1, x2) if a not in axes else x1 + x2 - 1
+             for a, (x1, x2) in enumerate(zip(in1.shape, in2.shape))]
+    out = _st_core._freq_domain_conv(in1, in2, axes, shape, calc_fast_len=True)
+    return _st_core._apply_conv_mode(out, in1.shape, in2.shape, mode, axes)
 
 
 def choose_conv_method(in1, in2, mode='full'):
@@ -135,7 +201,108 @@ def choose_conv_method(in1, in2, mode='full'):
     .. seealso:: :func:`scipy.signal.choose_conv_method`
 
     """
-    return cupy.math.misc._choose_conv_method(in1, in2, mode)
+    return cupy._math.misc._choose_conv_method(in1, in2, mode)
+
+
+def oaconvolve(in1, in2, mode="full", axes=None):
+    """Convolve two N-dimensional arrays using the overlap-add method.
+
+    Convolve ``in1`` and ``in2`` using the overlap-add method, with the output
+    size determined by the ``mode`` argument. This is generally faster than
+    ``convolve`` for large arrays, and generally faster than ``fftconvolve``
+    when one array is much larger than the other, but can be slower when only a
+    few output values are needed or when the arrays are very similar in shape,
+    and can only output float arrays (int or object array inputs will be cast
+    to float).
+
+    Args:
+        in1 (cupy.ndarray): First input.
+        in2 (cupy.ndarray): Second input. Should have the same number of
+            dimensions as ``in1``.
+        mode (str): Indicates the size of the output:
+
+            - ``'full'``: output is the full discrete linear \
+                          cross-correlation (default)
+            - ``'valid'``: output consists only of those elements that do \
+                           not rely on the zero-padding. Either ``in1`` or \
+                           ``in2`` must be at least as large as the other in \
+                           every dimension.
+            - ``'same'``: output is the same size as ``in1``, centered \
+                          with respect to the ``'full'`` output
+
+        axes (scalar or tuple of scalar or None): Axes over which to compute
+            the convolution. The default is over all axes.
+
+    Returns:
+        cupy.ndarray: the result of convolution
+
+    .. seealso:: :func:`cupyx.scipy.signal.convolve`
+    .. seealso:: :func:`cupyx.scipy.signal.fftconvolve`
+    .. seealso:: :func:`cupyx.scipy.ndimage.convolve`
+    .. seealso:: :func:`scipy.signal.oaconvolve`
+    """
+    out = _st_core._check_conv_inputs(in1, in2, mode)
+    if out is not None:
+        return out
+    if in1.shape == in2.shape:  # Equivalent to fftconvolve
+        return fftconvolve(in1, in2, mode=mode, axes=axes)
+
+    in1, in2, axes = _st_core._init_freq_conv_axes(in1, in2, mode, axes,
+                                                   sorted_axes=True)
+    s1, s2 = in1.shape, in2.shape
+    if not axes:
+        return _st_core._apply_conv_mode(in1*in2, s1, s2, mode, axes)
+
+    # Calculate the block sizes for the output, steps, first and second inputs.
+    # It is simpler to calculate them all together than doing them in separate
+    # loops due to all the special cases that need to be handled.
+    optimal_sizes = (_st_core._calc_oa_lens(s1[i], s2[i]) if i in axes else
+                     (-1, -1, s1[i], s2[i]) for i in range(in1.ndim))
+    block_size, overlaps, in1_step, in2_step = zip(*optimal_sizes)
+
+    # Fall back to fftconvolve if there is only one block in every dimension
+    if in1_step == s1 and in2_step == s2:
+        return fftconvolve(in1, in2, mode=mode, axes=axes)
+
+    # Pad and reshape the inputs for overlapping and adding
+    shape_final = [s1[i]+s2[i]-1 if i in axes else None
+                   for i in range(in1.ndim)]
+    in1, in2 = _st_core._oa_reshape_inputs(in1, in2, axes, shape_final,
+                                           block_size, overlaps,
+                                           in1_step, in2_step)
+
+    # Reshape the overlap-add parts to input block sizes
+    split_axes = [iax+i for i, iax in enumerate(axes)]
+    fft_axes = [iax+1 for iax in split_axes]
+
+    # Do the convolution
+    fft_shape = [block_size[i] for i in axes]
+    ret = _st_core._freq_domain_conv(in1, in2, fft_axes, fft_shape,
+                                     calc_fast_len=False)
+
+    # Do the overlap-add
+    for ax, ax_fft, ax_split in zip(axes, fft_axes, split_axes):
+        overlap = overlaps[ax]
+        if overlap is None:
+            continue
+
+        ret, overpart = cupy.split(ret, [-overlap], ax_fft)
+        overpart = cupy.split(overpart, [-1], ax_split)[0]
+
+        ret_overpart = cupy.split(ret, [overlap], ax_fft)[0]
+        ret_overpart = cupy.split(ret_overpart, [1], ax_split)[1]
+        ret_overpart += overpart
+
+    # Reshape back to the correct dimensionality
+    shape_ret = [ret.shape[i] if i not in fft_axes else
+                 ret.shape[i]*ret.shape[i-1]
+                 for i in range(ret.ndim) if i not in split_axes]
+    ret = ret.reshape(*shape_ret)
+
+    # Slice to the correct size
+    ret = ret[tuple([slice(islice) for islice in shape_final])]
+
+    return _st_core._apply_conv_mode(ret, s1, s2, mode, axes)
 
 
 def convolve2d(in1, in2, mode='full', boundary='fill', fillvalue=0):
@@ -149,18 +316,21 @@ def convolve2d(in1, in2, mode='full', boundary='fill', fillvalue=0):
         in2 (cupy.ndarray): Second input. Should have the same number of
             dimensions as ``in1``.
         mode (str): Indicates the size of the output:
-            ``'full'``: output is the full discrete linear cross-correlation
-                       (default)
-            ``'valid'``: output consists only of those elements that do not
-                         rely on the zero-padding. Either ``in1`` or ``in2``
-                         must be at least as large as the other in every
-                         dimension.
-            ``'same'``: output is the same size as ``in1``, centered
-                        with respect to the ``'full'`` output
+
+            - ``'full'``: output is the full discrete linear convolution \
+                (default)
+            - ``'valid'``: output consists only of those elements that do \
+                not rely on the zero-padding. Either ``in1`` or ``in2`` must \
+                be at least as large as the other in every dimension.
+            - ``'same'``: - output is the same size as ``in1``, centered with \
+                respect to the ``'full'`` output
+
         boundary (str): Indicates how to handle boundaries:
-            ``fill``: pad input arrays with fillvalue (default)
-            ``wrap``: circular boundary conditions
-            ``symm``: symmetrical boundary conditions
+
+            - ``fill``: pad input arrays with fillvalue (default)
+            - ``wrap``: circular boundary conditions
+            - ``symm``: symmetrical boundary conditions
+
         fillvalue (scalar): Value to fill pad input arrays with. Default is 0.
 
     Returns:
@@ -189,18 +359,21 @@ def correlate2d(in1, in2, mode='full', boundary='fill', fillvalue=0):
         in2 (cupy.ndarray): Second input. Should have the same number of
             dimensions as ``in1``.
         mode (str): Indicates the size of the output:
-            ``'full'``: output is the full discrete linear cross-correlation
-                        (default)
-            ``'valid'``: output consists only of those elements that do not
-                         rely on the zero-padding. Either ``in1`` or ``in2``
-                         must be at least as large as the other in every
-                         dimension.
-            ``'same'``: output is the same size as ``in1``, centered
-                        with respect to the 'full' output
+
+            - ``'full'``: output is the full discrete linear convolution \
+                (default)
+            - ``'valid'``: output consists only of those elements that do \
+                not rely on the zero-padding. Either ``in1`` or ``in2`` must \
+                be at least as large as the other in every dimension.
+            - ``'same'``: - output is the same size as ``in1``, centered with \
+                respect to the ``'full'`` output
+
         boundary (str): Indicates how to handle boundaries:
-            ``fill``: pad input arrays with fillvalue (default)
-            ``wrap``: circular boundary conditions
-            ``symm``: symmetrical boundary conditions
+
+            - ``fill``: pad input arrays with fillvalue (default)
+            - ``wrap``: circular boundary conditions
+            - ``symm``: symmetrical boundary conditions
+
         fillvalue (scalar): Value to fill pad input arrays with. Default is 0.
 
     Returns:
@@ -231,9 +404,9 @@ def _correlate2d(in1, in2, mode, boundary, fillvalue, convolution=False):
     }
     boundary = _boundaries.get(boundary)
     if boundary is None:
-        raise ValueError("Acceptable boundary flags are 'fill' (or 'pad'), "
-                         "'circular' (or 'wrap'), 'symmetric' (or 'symm'), "
-                         "and 'reflect'.")
+        raise ValueError('Acceptable boundary flags are "fill" (or "pad"), '
+                         '"circular" (or "wrap"), and '
+                         '"symmetric" (or "symm").')
     quick_out = _st_core._check_conv_inputs(in1, in2, mode, convolution)
     if quick_out is not None:
         return quick_out
@@ -260,16 +433,11 @@ def wiener(im, mysize=None, noise=None):
 
     .. seealso:: :func:`scipy.signal.wiener`
     """
-    if im.dtype.kind == 'c':
-        # TODO: adding support for complex types requires ndimage filters
-        # to support complex types (which they could easily if not for the
-        # scipy compatibility requirement of forbidding complex and using
-        # float64 intermediates)
-        raise TypeError("complex types not currently supported")
     if mysize is None:
         mysize = 3
     mysize = _util._fix_sequence_arg(mysize, im.ndim, 'mysize', int)
-    im = im.astype(float, copy=False)
+    im = im.astype(cupy.complex128 if im.dtype.kind == 'c' else cupy.float64,
+                   copy=False)
 
     # Estimate the local mean
     local_mean = filters.uniform_filter(im, mysize, mode='constant')
@@ -284,7 +452,7 @@ def wiener(im, mysize=None, noise=None):
 
     # Perform the filtering
     res = im - local_mean
-    res *= (1 - noise / local_var)
+    res *= 1 - noise / local_var
     res += local_mean
     return cupy.where(local_var < noise, local_mean, res)
 
@@ -343,7 +511,6 @@ def medfilt(volume, kernel_size=None):
     """
     if volume.dtype.kind == 'c':
         # scipy doesn't support complex
-        # (and filters.rank_filter raise TypeError)
         raise ValueError("complex types not supported")
     # output is forced to float64 to match scipy
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
@@ -351,7 +518,7 @@ def medfilt(volume, kernel_size=None):
         warnings.warn('kernel_size exceeds volume extent: '
                       'volume will be zero-padded')
 
-    size = cupy.core.internal.prod(kernel_size)
+    size = internal.prod(kernel_size)
     return filters.rank_filter(volume, size // 2, size=kernel_size,
                                output=float, mode='constant')
 

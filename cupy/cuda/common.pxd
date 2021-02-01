@@ -19,4 +19,4 @@ cdef enum:
 
 
 cpdef int _get_dtype_id(dtype) except -1
-cpdef int _is_fp16_supported() except -1
+cpdef int _is_fp16_supported() except -2

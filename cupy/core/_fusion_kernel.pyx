@@ -16,7 +16,7 @@ from cupy_backends.cuda.api cimport runtime
 from cupy.core cimport _reduction
 
 from cupy.core import _dtype
-from cupy import util
+from cupy import _util
 from cupy.core import _fusion_emit_code
 from cupy.core import _fusion_op
 from cupy.core._fusion_variable import _AbstractDim
@@ -29,7 +29,7 @@ cdef Py_ssize_t _default_block_size = (
     256 if runtime._is_hip_environment else 512)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
     template = (
         '${preamble}\n\n'
@@ -356,11 +356,15 @@ cdef class FusedKernel:
         block_strides, block_size, shared_mem = (
             self._get_kernel_size(ndarray_list))
 
-        # TODO(asi1024): Optimize kernel size perameter.
-        kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
-            kern.ptr, block_size, shared_mem) * block_size
-        kargs = inout_args + block_strides
+        # TODO(asi1024): Optimize kernel size parameter.
+        if not runtime._is_hip_environment:
+            kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
+                kern.ptr, block_size, shared_mem) * block_size
+        else:
+            # In HIP sometimes the occupancy calc seems to be broken
+            kern_size = block_size * 512
 
+        kargs = inout_args + block_strides
         kern.linear_launch(
             kern_size, kargs, shared_mem, block_size,
             enable_cooperative_groups=self._use_grid_sync)

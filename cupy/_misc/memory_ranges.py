@@ -1,6 +1,6 @@
 from cupy.core import _kernel
 from cupy.core import _memory_range
-from cupy.manipulation import join
+from cupy._manipulation import join
 from cupy._sorting import search
 
 
@@ -28,6 +28,8 @@ def _get_memory_ptrs(x):
 
 
 def shares_memory(a, b, max_work=None):
+    if a is b and a.size != 0:
+        return True
     if max_work == 'MAY_SHARE_BOUNDS':
         return _memory_range.may_share_bounds(a, b)
 

@@ -8,7 +8,7 @@ from cupy_backends.cuda.api import runtime as runtime_module
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy_backends.cuda.libs import cusparse
-from cupy import util
+from cupy import _util
 
 
 # This flag is kept for backward compatibility.
@@ -67,12 +67,18 @@ cpdef str get_compute_capability():
     return Device().compute_capability
 
 
-@util.memoize()
+@_util.memoize()
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""
     d = {}
     for k, v in runtime_module.__dict__.items():
         if k.startswith('cudaDevAttr'):
+            if runtime._is_hip_environment:
+                # On ROCm 3.5.0 + gfx906, accessing these attributes leads to
+                # core dump (stack smashing detected)
+                if k in ('cudaDevAttrPciDeviceId',
+                         'cudaDevAttrTccDriver'):
+                    continue
             try:
                 name = k.replace('cudaDevAttr', '', 1)
                 d[name] = runtime.deviceGetAttribute(v, device_id)
@@ -299,11 +305,13 @@ def from_pointer(ptr):
     """Extracts a Device object from a device pointer.
 
     Args:
-        ptr (ctypes.c_void_p): Pointer to the device memory.
+        ptr (int): Pointer to the device memory.
 
     Returns:
         Device: The device whose memory the pointer refers to.
 
     """
+    # Initialize a context to workaround a bug in CUDA 10.2+. (#3991)
+    runtime._ensure_context()
     attrs = runtime.pointerGetAttributes(ptr)
     return Device(attrs.device)

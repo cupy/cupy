@@ -1,6 +1,5 @@
-import numpy
-
 import cupy
+from cupy.core import internal
 
 
 def take(a, indices, axis=None, out=None):
@@ -52,10 +51,7 @@ def take_along_axis(a, indices, axis):
 
     ndim = a.ndim
 
-    if not (-ndim <= axis < ndim):
-        raise numpy.AxisError('Axis overrun')
-
-    axis %= a.ndim
+    axis = internal._normalize_axis_index(axis, ndim)
 
     if ndim != indices.ndim:
         raise ValueError(
@@ -69,7 +65,7 @@ def take_along_axis(a, indices, axis):
             ind_shape = (1,) * i + (-1,) + (1,) * (ndim - i - 1)
             fancy_index.append(cupy.arange(n).reshape(ind_shape))
 
-    return a[fancy_index]
+    return a[tuple(fancy_index)]
 
 
 def choose(a, choices, out=None, mode='raise'):

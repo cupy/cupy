@@ -7,6 +7,8 @@ import cupy
 from cupy import cusolver
 from cupy import testing
 from cupy.testing import attr
+from cupy.core import _routines_linalg as _linalg
+import cupyx
 
 
 @testing.parameterize(*testing.product({
@@ -175,5 +177,138 @@ class TestSyevj(unittest.TestCase):
 
         w, v = cusolver.syevj(a, UPLO=self.UPLO, with_eigen_vector=True)
 
-        self.assertEqual(v.shape, a.shape)
-        self.assertEqual(w.shape, a.shape[:-1])
+        assert v.shape == a.shape
+        assert w.shape == a.shape[:-1]
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'n': [10, 100],
+    'nrhs': [None, 1, 10],
+    'compute_type': [None,
+                     _linalg.COMPUTE_TYPE_FP16,
+                     _linalg.COMPUTE_TYPE_TF32,
+                     _linalg.COMPUTE_TYPE_FP32],
+}))
+@attr.gpu
+class TestGesv(unittest.TestCase):
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_random_matrix(self, shape, xp):
+        a = testing.shaped_random(shape, xp, dtype=self.r_dtype, scale=1)
+        if self.dtype.char in 'FD':
+            a = a + 1j * testing.shaped_random(
+                shape, xp, dtype=self.r_dtype, scale=1)
+        return a
+
+    def _make_well_conditioned_matrix(self, shape):
+        a = self._make_random_matrix(shape, numpy)
+        u, s, vh = numpy.linalg.svd(a)
+        s = testing.shaped_random(s.shape, numpy, dtype=self.r_dtype,
+                                  scale=1) + 1
+        a = numpy.einsum('...ik,...k,...kj->...ij', u, s, vh)
+        return cupy.array(a)
+
+    def setUp(self):
+        if not cusolver.check_availability('gesv'):
+            pytest.skip('gesv is not available')
+        self.dtype = numpy.dtype(self.dtype)
+        self.r_dtype = self.dtype.char.lower()
+        a = self._make_well_conditioned_matrix((self.n, self.n))
+        if self.nrhs is None:
+            x_shape = (self.n, )
+        else:
+            x_shape = (self.n, self.nrhs)
+        self.x_ref = self._make_random_matrix(x_shape, cupy)
+        b = numpy.dot(a, self.x_ref)
+        self.tol = self._tol[self.r_dtype]
+        self.a = cupy.array(a)
+        self.b = cupy.array(b)
+        if self.compute_type is not None:
+            self.old_compute_type = _linalg.get_compute_type(self.dtype)
+            _linalg.set_compute_type(self.dtype, self.compute_type)
+
+    def tearDown(self):
+        if self.compute_type is not None:
+            _linalg.set_compute_type(self.dtype, self.old_compute_type)
+
+    def test_gesv(self):
+        x = cusolver.gesv(self.a, self.b)
+        cupy.testing.assert_allclose(x, self.x_ref,
+                                     rtol=self.tol, atol=self.tol)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'shape': [(32, 32), (37, 32)],
+    'nrhs': [None, 1, 4],
+    'compute_type': [None,
+                     _linalg.COMPUTE_TYPE_FP16,
+                     _linalg.COMPUTE_TYPE_TF32,
+                     _linalg.COMPUTE_TYPE_FP32],
+}))
+@attr.gpu
+class TestGels(unittest.TestCase):
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def setUp(self):
+        if not cusolver.check_availability('gels'):
+            pytest.skip('gels is not available')
+        if self.compute_type is not None:
+            self.old_compute_type = _linalg.get_compute_type(self.dtype)
+            _linalg.set_compute_type(self.dtype, self.compute_type)
+
+    def tearDown(self):
+        if self.compute_type is not None:
+            _linalg.set_compute_type(self.dtype, self.old_compute_type)
+
+    def test_gels(self):
+        b_shape = [self.shape[0]]
+        if self.nrhs is not None:
+            b_shape.append(self.nrhs)
+        a = testing.shaped_random(self.shape, numpy, dtype=self.dtype)
+        b = testing.shaped_random(b_shape, numpy, dtype=self.dtype)
+        tol = self._tol[numpy.dtype(self.dtype).char.lower()]
+        x_lstsq = numpy.linalg.lstsq(a, b, rcond=None)[0]
+        x_gels = cusolver.gels(cupy.array(a), cupy.array(b))
+        cupy.testing.assert_allclose(x_gels, x_lstsq, rtol=tol, atol=tol)
+
+
+@testing.parameterize(*testing.product({
+    'tol': [0, 1e-5],
+    'reorder': [0, 1, 2, 3],
+}))
+@testing.with_requires('scipy')
+class TestCsrlsvqr(unittest.TestCase):
+
+    n = 8
+    density = 0.75
+    _test_tol = {'f': 1e-5, 'd': 1e-12}
+
+    def setUp(self):
+        if not cusolver.check_availability('csrlsvqr'):
+            pytest.skip('csrlsvqr is not available')
+
+    def _setup(self, dtype):
+        dtype = numpy.dtype(dtype)
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, numpy, dtype=dtype, scale=2/self.n)
+        a_mask = testing.shaped_random(a_shape, numpy, dtype='f', scale=1)
+        a[a_mask > self.density] = 0
+        a_diag = numpy.diag(numpy.ones((self.n,), dtype=dtype))
+        a = a + a_diag
+        b = testing.shaped_random((self.n,), numpy, dtype=dtype)
+        test_tol = self._test_tol[dtype.char.lower()]
+        return a, b, test_tol
+
+    @testing.for_dtypes('fdFD')
+    def test_csrlsvqr(self, dtype):
+        a, b, test_tol = self._setup(dtype)
+        ref_x = numpy.linalg.solve(a, b)
+        cp_a = cupy.array(a)
+        sp_a = cupyx.scipy.sparse.csr_matrix(cp_a)
+        cp_b = cupy.array(b)
+        x = cupy.cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
+                                   reorder=self.reorder)
+        cupy.testing.assert_allclose(x, ref_x, rtol=test_tol,
+                                     atol=test_tol)

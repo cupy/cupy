@@ -12,14 +12,17 @@ from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import csr
 from cupyx.scipy.sparse import data as sparse_data
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 
 
 class coo_matrix(sparse_data._data_matrix):
 
     """COOrdinate format sparse matrix.
 
-    Now it has only one initializer format below:
+    This can be instantiated in several ways.
+
+    ``coo_matrix(D)``
+        ``D`` is a rank-2 :class:`cupy.ndarray`.
 
     ``coo_matrix(S)``
         ``S`` is another sparse matrix. It is equivalent to ``S.tocoo()``.
@@ -76,7 +79,7 @@ class coo_matrix(sparse_data._data_matrix):
 
             self.has_canonical_format = x.has_canonical_format
 
-        elif util.isshape(arg1):
+        elif _util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
             data = cupy.zeros(0, dtype if dtype else 'd')
@@ -116,8 +119,17 @@ class coo_matrix(sparse_data._data_matrix):
 
             self.has_canonical_format = False
 
+        elif base.isdense(arg1):
+            if arg1.ndim > 2:
+                raise TypeError('expected dimension <= 2 array or matrix')
+            dense = cupy.atleast_2d(arg1)
+            row, col = dense.nonzero()
+            data = dense[row, col]
+            shape = dense.shape
+
+            self.has_canonical_format = True
+
         else:
-            # TODO(leofang): support constructing from a dense matrix
             raise TypeError('invalid input format')
 
         if dtype is None:
@@ -153,7 +165,7 @@ class coo_matrix(sparse_data._data_matrix):
         sparse_data._data_matrix.__init__(self, data)
         self.row = row
         self.col = col
-        if not util.isshape(shape):
+        if not _util.isshape(shape):
             raise ValueError('invalid shape (must be a 2-tuple of int)')
         self._shape = int(shape[0]), int(shape[1])
 

@@ -142,7 +142,7 @@ class TestAxisConcatenator(unittest.TestCase):
 
     def test_len(self):
         a = generate.AxisConcatenator()
-        self.assertEqual(len(a), 0)
+        assert len(a) == 0
 
 
 @testing.gpu

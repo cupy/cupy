@@ -5,6 +5,7 @@ from cupy.core cimport _scalar
 from cupy.core._carray cimport shape_t
 from cupy.core.core cimport ndarray
 from cupy.cuda cimport memory
+from cupy.cuda cimport texture
 
 
 cdef class ParameterInfo:
@@ -21,6 +22,7 @@ cdef enum _ArgKind:
     ARG_KIND_INDEXER
     ARG_KIND_SCALAR
     ARG_KIND_POINTER
+    ARG_KIND_TEXTURE
 
 
 cdef class _ArgInfo:
@@ -58,6 +60,9 @@ cdef class _ArgInfo:
 
     @staticmethod
     cdef _ArgInfo from_memptr(memory.MemoryPointer arg)
+
+    @staticmethod
+    cdef _ArgInfo from_texture(texture.TextureObject arg)
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim)
 
@@ -134,9 +139,9 @@ cdef class _Ops:
     cpdef _Op guess_routine(
         self, str name, dict cache, list in_args, dtype, _Ops out_ops)
 
-    cdef _Op _guess_routine_from_in_types(self, tuple in_types)
+    cpdef _Op _guess_routine_from_in_types(self, tuple in_types)
 
-    cdef _Op _guess_routine_from_dtype(self, object dtype)
+    cpdef _Op _guess_routine_from_dtype(self, object dtype)
 
 
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,

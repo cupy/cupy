@@ -129,6 +129,8 @@ cdef class UnownedMemory(BaseMemory):
             if ptr == 0:
                 raise RuntimeError('UnownedMemory requires explicit'
                                    ' device ID for a null pointer.')
+            # Initialize a context to workaround a bug in CUDA 10.2+. (#3991)
+            runtime._ensure_context()
             ptr_attrs = runtime.pointerGetAttributes(ptr)
             device_id = ptr_attrs.device
         self.size = size
@@ -150,6 +152,8 @@ cdef class ManagedMemory(BaseMemory):
     """
 
     def __init__(self, size_t size):
+        if runtime._is_hip_environment:
+            raise RuntimeError('HIP does not support managed memory')
         self.size = size
         self.device_id = device.get_device_id()
         self.ptr = 0
@@ -174,6 +178,11 @@ cdef class ManagedMemory(BaseMemory):
 
         """
         runtime.memAdvise(self.ptr, self.size, advise, device.id)
+
+    def __dealloc__(self):
+        if self.ptr:
+            syncdetect._declare_synchronize()
+            runtime.free(self.ptr)
 
 
 cdef set _peer_access_checked = set()
@@ -360,31 +369,33 @@ cdef class MemoryPointer:
         """Copies a memory sequence from the host memory.
 
         Args:
-            mem (ctypes.c_void_p): Source memory pointer.
+            mem (int or ctypes.c_void_p): Source memory pointer.
             size (int): Size of the sequence in bytes.
 
         """
         if size > 0:
-            runtime.memcpy(self.ptr, mem.value, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpy(self.ptr, ptr, size,
                            runtime.memcpyHostToDevice)
 
     cpdef copy_from_host_async(self, mem, size_t size, stream=None):
         """Copies a memory sequence from the host memory asynchronously.
 
         Args:
-            mem (ctypes.c_void_p): Source memory pointer. It must be a pinned
-                memory.
+            mem (int or ctypes.c_void_p): Source memory pointer. It must point
+                to pinned memory.
             size (int): Size of the sequence in bytes.
             stream (cupy.cuda.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
 
         """
         if stream is None:
+            ptr = mem if isinstance(mem, int) else mem.value
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            runtime.memcpyAsync(self.ptr, mem.value, size,
+            runtime.memcpyAsync(self.ptr, ptr, size,
                                 runtime.memcpyHostToDevice, stream_ptr)
 
     cpdef copy_from(self, mem, size_t size):
@@ -395,8 +406,8 @@ cdef class MemoryPointer:
         :meth:`~cupy.cuda.MemoryPointer.copy_from_host`.
 
         Args:
-            mem (ctypes.c_void_p or cupy.cuda.MemoryPointer): Source memory
-                pointer.
+            mem (int or ctypes.c_void_p or cupy.cuda.MemoryPointer):
+                Source memory pointer.
             size (int): Size of the sequence in bytes.
 
         """
@@ -413,8 +424,8 @@ cdef class MemoryPointer:
         :meth:`~cupy.cuda.MemoryPointer.copy_from_host_async`.
 
         Args:
-            mem (ctypes.c_void_p or cupy.cuda.MemoryPointer): Source memory
-                pointer.
+            mem (int or ctypes.c_void_p or cupy.cuda.MemoryPointer):
+                Source memory pointer.
             size (int): Size of the sequence in bytes.
             stream (cupy.cuda.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
@@ -429,20 +440,21 @@ cdef class MemoryPointer:
         """Copies a memory sequence to the host memory.
 
         Args:
-            mem (ctypes.c_void_p): Target memory pointer.
+            mem (int or ctypes.c_void_p): Target memory pointer.
             size (int): Size of the sequence in bytes.
 
         """
         if size > 0:
-            runtime.memcpy(mem.value, self.ptr, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpy(ptr, self.ptr, size,
                            runtime.memcpyDeviceToHost)
 
     cpdef copy_to_host_async(self, mem, size_t size, stream=None):
         """Copies a memory sequence to the host memory asynchronously.
 
         Args:
-            mem (ctypes.c_void_p): Target memory pointer. It must be a pinned
-                memory.
+            mem (int or ctypes.c_void_p): Target memory pointer. It must point
+                to pinned memory.
             size (int): Size of the sequence in bytes.
             stream (cupy.cuda.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
@@ -453,7 +465,8 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            runtime.memcpyAsync(mem.value, self.ptr, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpyAsync(ptr, self.ptr, size,
                                 runtime.memcpyDeviceToHost, stream_ptr)
 
     cpdef memset(self, int value, size_t size):
@@ -1268,6 +1281,11 @@ cdef class MemoryPool(object):
             stream (cupy.cuda.Stream): Release free blocks in the arena
                 of the given stream. The default releases blocks in all
                 arenas.
+
+        .. note::
+            A memory pool may split a free block for space efficiency. A split
+            block is not released until all its parts are merged back into one
+            even if :meth:`free_all_blocks` is called.
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         mp.free_all_blocks(stream=stream)
@@ -1360,9 +1378,9 @@ ctypedef void*(*malloc_func_type)(void*, size_t, int)
 ctypedef void(*free_func_type)(void*, void*, int)
 
 
-cdef size_t _call_malloc(
+cdef intptr_t _call_malloc(
         intptr_t param, intptr_t malloc_func, Py_ssize_t size, int device_id):
-    return <size_t>(
+    return <intptr_t>(
         (<malloc_func_type>malloc_func)(<void*>param, size, device_id))
 
 

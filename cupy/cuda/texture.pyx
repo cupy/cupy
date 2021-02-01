@@ -13,7 +13,10 @@ from cupy_backends.cuda.api.runtime cimport Array,\
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
 
 
-cdef extern from '../../cupy_backends/cuda/cupy_cuda.h':
+cdef extern from '../../cupy_backends/cupy_backend.h':
+    pass
+
+cdef extern from '../../cupy_backends/cupy_backend_runtime.h':
     pass
 
 
@@ -486,7 +489,8 @@ cdef class CUDAarray:
 cdef class TextureObject:
     '''A class that holds a texture object. Equivalent to
     ``cudaTextureObject_t``. The returned :class:`TextureObject` instance can
-    be passed as a argument when launching :class:`~cupy.RawKernel`.
+    be passed as a argument when launching :class:`~cupy.RawKernel` or
+    :class:`~cupy.ElementwiseKernel`.
 
     Args:
         ResDesc (ResourceDescriptor): an intance of the resource descriptor.
