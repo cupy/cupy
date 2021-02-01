@@ -13,11 +13,11 @@ complex_types = [numpy.complex, numpy.complex64, numpy.complex128]
 signed_int_types = [numpy.int8, numpy.int16, numpy.int32, numpy.int64]
 unsigned_int_types = [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]
 int_types = signed_int_types + unsigned_int_types
-all_types = [numpy.bool] + float_types + int_types + complex_types
+all_types = [numpy.bool_] + float_types + int_types + complex_types
 negative_types = (
-    [numpy.bool] + float_types + signed_int_types + complex_types)
-negative_no_complex_types = [numpy.bool] + float_types + signed_int_types
-no_complex_types = [numpy.bool] + float_types + int_types
+    [numpy.bool_] + float_types + signed_int_types + complex_types)
+negative_no_complex_types = [numpy.bool_] + float_types + signed_int_types
+no_complex_types = [numpy.bool_] + float_types + int_types
 
 
 @testing.gpu
