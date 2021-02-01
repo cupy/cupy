@@ -15,8 +15,10 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
-if not runtime.is_hip and driver.get_build_version() > 0:
-    from cupy.cuda.jitify import jitify
+if not runtime.is_hip:
+    _cuda_version = driver.get_build_version()
+    if _cuda_version > 0:
+        from cupy.cuda.jitify import jitify
 
 
 _nvrtc_version = None
@@ -115,30 +117,10 @@ def _get_nvrtc_version():
     return _nvrtc_version
 
 
-# Known archs for Tegra/Jetson/Xavier/etc
-_tegra_archs = ('53', '62', '72')
-
-
 @_util.memoize(for_each_device=True)
 def _get_arch():
-    # See Supported Compile Options section of NVRTC User Guide for
-    # the maximum value allowed for `--gpu-architecture`.
-    major, minor = _get_nvrtc_version()
-    if major < 10 or (major == 10 and minor == 0):
-        # CUDA 9.x / 10.0
-        _nvrtc_max_compute_capability = '70'
-    elif major < 11:
-        # CUDA 10.1 / 10.2
-        _nvrtc_max_compute_capability = '75'
-    else:
-        # CUDA 11.0 / 11.1
-        _nvrtc_max_compute_capability = '80'
-
     arch = device.Device().compute_capability
-    if arch in _tegra_archs:
-        return arch
-    else:
-        return min(arch, _nvrtc_max_compute_capability)
+    return arch
 
 
 def _is_cudadevrt_needed(options):
@@ -627,6 +609,7 @@ class _NVRTCProgram(object):
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
             if log_stream is not None:
                 log_stream.write(nvrtc.getProgramLog(self.ptr))
+            # TODO(leofang): use getCUBIN() for _cuda_version >= 11010?
             return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
