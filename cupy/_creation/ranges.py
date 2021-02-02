@@ -197,6 +197,9 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
     if axis != 0:
         ret = cupy.moveaxis(ret, 0, axis)
 
+    if cupy.issubdtype(dtype, cupy.integer):
+        cupy.floor(ret, out=ret)
+
     if retstep:
         return ret.astype(dtype, copy=False), step
     else:
