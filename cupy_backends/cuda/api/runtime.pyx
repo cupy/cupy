@@ -290,7 +290,7 @@ cpdef getDeviceProperties(int device):
     cdef int status = cudaGetDeviceProperties(&props, device)
     check_status(status)
 
-    cdef dict properties = {'name': 'UNAVAILABLE'}  # for RTD
+    cdef dict properties = {'name': b'UNAVAILABLE'}  # for RTD
 
     # Common properties to CUDA 9.0, 9.2, 10.x, 11.x, and HIP
     IF CUDA_VERSION > 0 or use_hip:
