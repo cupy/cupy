@@ -8,25 +8,16 @@ from install.gen import _gen
 
 # FFI
 
-def transpile_ffi_one(env, node, removed):
+def transpile_ffi_one(env, node):
     def argaux(env, node):
         name = node.name
         type = _gen.transpile_type_name(env, node.type)
         return '{} {}'.format(type, name)
-
     assert isinstance(node.type, c_ast.FuncDecl)
-
-    code = []
-
-    if removed:
-        code.append('# REMOVED')
-
     ret_type = _gen.transpile_type_name(env, node.type.type)
     name = node.name
     args = [argaux(env, p) for p in node.type.args.params]
-    code.append('{} {}({})'.format(ret_type, name, ', '.join(args)))
-
-    return _gen.join_or_none('\n', code)
+    return '{} {}({})'.format(ret_type, name, ', '.join(args))
 
 
 def transpile_ffi(env, directives):
@@ -38,9 +29,11 @@ def transpile_ffi(env, directives):
             code.append('# ' + comment)
         elif _gen.is_function_directive(d):
             head = _gen.directive_head(d)
-            decls, removed = _gen.query_func_decls(head, env)
-            for decl in decls:
-                code.append(transpile_ffi_one(env, decl, removed))
+            decls = _gen.query_func_decls(head, env)
+            if decls is not None:
+                assert decls != []
+                for decl in decls:
+                    code.append(transpile_ffi_one(env, decl))
     return _gen.join_or_none('\n', code)
 
 
@@ -52,7 +45,7 @@ def is_helper_class_directive(directive):
         and _gen.is_directive_multi_out(directive))
 
 
-def transpile_helper_class(env, directive, node, removed):
+def transpile_helper_class(env, directive, node):
     def argaux(env, node):
         # dereference node
         name = _gen.deref_var_name(node.name)
@@ -71,9 +64,6 @@ def transpile_helper_class(env, directive, node, removed):
 
     code = []
 
-    if removed:
-        code.append('# REMOVED')
-    
     code.append('cdef class {}:'.format(out_type))
     code.append('')
 
@@ -99,10 +89,11 @@ def transpile_helper_classes(env, directives):
             code.append('#' * 40)
             code.append('# Helper classes')
         head = _gen.directive_head(d)
-        decls, removed = _gen.query_func_decls(head, env)
-        assert len(decls) == 1  # assuming not type generic
-        code.append('')
-        code.append(transpile_helper_class(env, d, decls[0], removed))
+        decls = _gen.query_func_decls(head, env)
+        if decls is not None:
+            assert len(decls) == 1  # assuming not type generic
+            code.append('')
+            code.append(transpile_helper_class(env, d, decls[0]))
     return _gen.join_or_none('\n', code)
 
 
@@ -208,17 +199,13 @@ def stream_name(node):
     assert False
 
 
-def transpile_wrapper(env, directive, node, removed):
+def transpile_wrapper(env, directive, node):
     assert isinstance(node.type, c_ast.FuncDecl)
 
     # Get stream configuration for following steps
     use_stream, fashion, func_name = _gen.directive_use_stream(directive)
 
     code = []
-
-    # Comment if removed
-    if removed:
-        code.append('# REMOVED')
 
     # Function definition
     def_ = transpile_wrapper_def(
@@ -327,18 +314,20 @@ def transpile_wrappers(env, directives):
             code.append('# ' + comment)
         elif _gen.is_function_directive(d):
             head = _gen.directive_head(d)
-            decls, removed = _gen.query_func_decls(head, env)
-            for decl in decls:
-                code.append('')
-                code.append(transpile_wrapper(env, d, decl, removed))
+            decls = _gen.query_func_decls(head, env)
+            if decls is not None:
+                assert decls != []
+                for decl in decls:
+                    code.append('')
+                    code.append(transpile_wrapper(env, d, decl))
     return _gen.join_or_none('\n', code)
 
 
 # Main
 
-def gen_pyx(directive, template):
+def gen_pyx(cuda_path, directive, template):
     directives = _gen.read_directives(directive)
-    env = _gen.make_environment(directives)
+    env = _gen.make_environment(cuda_path, directives)
     template = _gen.read_template(template)
 
     # FFI

@@ -556,6 +556,7 @@ def generate_module_sources(is_cusolver_available):
     """Generates Cython sources for specific CUDA-related libraries"""
     from install import gen
 
+    cuda_path = build.get_cuda_path()
     libs_dir = 'cupy_backends/cuda/libs/'
     directive_dir = 'install/gen/directives/'
     template_dir = 'install/gen/templates/'
@@ -593,7 +594,7 @@ def generate_module_sources(is_cusolver_available):
             template_path = os.path.join(
                 template_dir, module['templates'][ext])
             with open(path, 'w') as f:
-                f.write(gen_func(directive_path, template_path))
+                f.write(gen_func(cuda_path, directive_path, template_path))
 
 
 def _rpath_base():

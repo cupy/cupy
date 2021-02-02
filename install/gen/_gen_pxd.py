@@ -51,13 +51,10 @@ def transpile_enums(env, enums):
 
 # Helper classes
 
-def transpile_helper_class_node(env, directive, node, removed):
+def transpile_helper_class_node(env, directive, node):
     out_type, out_args = _gen.directive_multi_out(directive)
 
     code = []
-
-    if removed:
-        code.append('# REMOVED')
 
     code.append('cdef class {}:'.format(out_type))
     code.append('    cdef:')
@@ -79,9 +76,9 @@ def transpile_helper_class_node(env, directive, node, removed):
 
 def transpile_helper_class(env, directive):
     head = _gen.directive_head(directive)
-    decls, removed = _gen.query_func_decls(head, env)
+    decls = _gen.query_func_decls(head, env)
     assert len(decls) == 1  # assuming not type generic
-    return transpile_helper_class_node(env, directive, decls[0], removed)
+    return transpile_helper_class_node(env, directive, decls[0])
 
 
 def transpile_helper_classes(env, directives):
@@ -101,22 +98,14 @@ def transpile_helper_classes(env, directives):
 
 # Wrappers
 
-def transpile_wrapper_node(env, directive, node, removed):
+def transpile_wrapper_node(env, directive, node):
     # Get stream configuration for following steps
     use_stream, fashion, _ = _gen.directive_use_stream(directive)
-
-    code = []
-
-    # Comment if removed
-    if removed:
-        code.append('# REMOVED')
 
     # Function declaration
     decl = _gen_pyx.transpile_wrapper_def(
         env, directive, node, use_stream and fashion == 'pass')
-    code.append('cpdef {}'.format(decl))
-
-    return _gen.join_or_none('\n', code)
+    return 'cpdef {}'.format(decl)
 
 
 def transpile_wrappers(env, directives):
@@ -131,17 +120,19 @@ def transpile_wrappers(env, directives):
         elif _gen.is_function_directive(d):
             code.append('')
             head = _gen.directive_head(d)
-            decls, removed = _gen.query_func_decls(head, env)
-            for decl in decls:
-                code.append(transpile_wrapper_node(env, d, decl, removed))
+            decls = _gen.query_func_decls(head, env)
+            if decls is not None:
+                assert decls != []
+                for decl in decls:
+                    code.append(transpile_wrapper_node(env, d, decl))
     return _gen.join_or_none('\n', code)
 
 
 # Main
 
-def gen_pxd(directive, template):
+def gen_pxd(cuda_path, directive, template):
     directives = _gen.read_directives(directive)
-    env = _gen.make_environment(directives)
+    env = _gen.make_environment(cuda_path, directives)
     template = _gen.read_template(template)
 
     # Opaque pointers
