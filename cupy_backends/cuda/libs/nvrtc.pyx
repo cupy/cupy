@@ -76,7 +76,11 @@ cpdef intptr_t createProgram(unicode src, unicode name, headers,
     cdef bytes b_src = src.encode()
     cdef const char* src_ptr = b_src
     cdef bytes b_name = name.encode()
-    cdef const char* name_ptr = b_name
+    cdef const char* name_ptr
+    if len(name) > 0:
+        name_ptr = b_name
+    else:
+        name_ptr = NULL
     cdef int num_headers = len(headers)
     cdef vector.vector[const char*] header_vec
     cdef vector.vector[const char*] include_name_vec

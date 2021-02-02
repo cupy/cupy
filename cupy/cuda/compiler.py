@@ -306,7 +306,7 @@ def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
         options += ('-arch=compute_{}'.format(arch),)
 
-        prog = _NVRTCProgram(source, '')
+        prog = _NVRTCProgram(source)
         try:
             result, _ = prog.compile(options)
         except CompileException as e:
