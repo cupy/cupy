@@ -42,7 +42,7 @@ class TestPlaceRaises(unittest.TestCase):
     def test_place_empty_value_error(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange(self.shape, xp, dtype)
-            mask = testing.shaped_arange(self.shape, xp, numpy.int) % 2 == 0
+            mask = testing.shaped_arange(self.shape, xp, int) % 2 == 0
             vals = testing.shaped_random((0,), xp, dtype)
             with pytest.raises(ValueError):
                 xp.place(a, mask, vals)
