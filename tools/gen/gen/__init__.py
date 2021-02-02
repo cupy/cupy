@@ -404,6 +404,7 @@ def _collect_func_decls(nodes):
 
 def _parse_headers(headers, version):
     cuda_path = '/usr/local/cuda-{}/'.format(version)
+    gen_path = __path__[0]
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_c_path = os.path.join(temp_dir, 'temp.c')
         with open(temp_c_path, 'w') as f:
@@ -412,7 +413,7 @@ def _parse_headers(headers, version):
         ast = pycparser.parse_file(temp_c_path, use_cpp=True, cpp_args=[
             os.path.expandvars('$CFLAGS'),  # use CFLAGS as CuPy does
             '-I{}include/'.format(cuda_path),
-            '-I/home/ext-mtakagi/pycparser/utils/fake_libc_include',
+            '-I{}/../include/'.format(gen_path),  # for fake libc headers
             '-D __attribute__(n)=',
             '-D __inline__='])
     return ast.ext
