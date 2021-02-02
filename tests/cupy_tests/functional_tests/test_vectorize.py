@@ -244,6 +244,19 @@ class TestVectorizeExprs(unittest.TestCase):
         y = testing.shaped_random((20, 30), xp, dtype1, seed=2)
         return f(x, y)
 
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.numpy_cupy_array_equal(
+        accept_error=(TypeError, numpy.ComplexWarning))
+    def test_vectorize_typecast(self, xp, dtype1, dtype2):
+        typecast = xp.dtype(dtype2).type
+
+        def my_typecast(x):
+            return typecast(x)
+
+        f = xp.vectorize(my_typecast)
+        x = testing.shaped_random((20, 30), xp, dtype1, seed=1)
+        return f(x)
+
 
 class TestVectorizeInstructions(unittest.TestCase):
 
