@@ -552,6 +552,50 @@ def preconfigure_modules(compiler, settings):
     return ret, settings
 
 
+def generate_module_sources(is_cusolver_available):
+    """Generates Cython sources for specific CUDA-related libraries"""
+    from install import gen
+
+    libs_dir = 'cupy_backends/cuda/libs/'
+    directive_dir = 'install/gen/directives/'
+    template_dir = 'install/gen/templates/'
+
+    modules = [{  # cuBLAS
+        'name': 'cublas',
+        'directive': 'cublas.py',
+        'templates': {
+            'pyx': 'cublas.pyx.template',
+            'pxd': 'cublas.pxd.template',
+        },
+    }, {  # cuSPARSE
+        'name': 'cusparse',
+        'directive': 'cusparse.py',
+        'templates': {
+            'pyx': 'cusparse.pyx.template',
+            'pxd': 'default.pxd.template',
+        },
+    }, {  # cuSOLVER
+        'name': 'cusolver',
+        'directive': 'cusolver.py',
+        'templates': {
+            'pyx': 'cusolver.pyx.template',
+            'pxd': 'cusolver.pxd.template',
+        },
+    }]
+
+    for module in modules:
+        name = module['name']
+        if name == 'cusolver' and not is_cusolver_available:
+            continue
+        directive_path = os.path.join(directive_dir, module['directive'])
+        for ext, gen_func in [('pyx', gen.gen_pyx), ('pxd', gen.gen_pxd)]:
+            path = os.path.join(libs_dir, name + '.' + ext)
+            template_path = os.path.join(
+                template_dir, module['templates'][ext])
+            with open(path, 'w') as f:
+                f.write(gen_func(directive_path, template_path))
+
+
 def _rpath_base():
     if PLATFORM_LINUX:
         return '$ORIGIN'
@@ -602,6 +646,8 @@ def make_extensions(options, compiler, use_cython):
         if 'cuda' not in available_modules:
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
+
+    generate_module_sources('cusolver' in available_modules)
 
     ret = []
     for module in MODULES:
