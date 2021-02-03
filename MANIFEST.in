@@ -3,12 +3,17 @@ recursive-include cupy *.h *.hpp
 recursive-include cupy *.pyx *.pxd *.pxi
 recursive-include cupy_backends *.h *.hpp
 recursive-include cupy_backends *.pyx *.pxd *.pxi
+
+# Fail-safe to avoid including Cythoinzed sources in sdist.
+recursive-exclude cupy *.cpp
+recursive-exclude cupy_backends *.cpp
+
+# Installers
 include cupy_setup_build.py
 recursive-include install *.py
 recursive-include tests *.py
+
+# Licenses
 include LICENSE
 include docs/LICENSE_THIRD_PARTY
 include docs/source/license.rst
-include cupy/cuda/cupy_cufftXt.cu  # for cuFFT callback
-include cupy/cuda/cufft.pxd  # for cuFFT callback
-include cupy/cuda/cufft.pyx  # for cuFFT callback
