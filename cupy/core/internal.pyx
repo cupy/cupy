@@ -437,3 +437,30 @@ cpdef tuple _normalize_axis_indices(
         res.append(axis)
 
     return tuple(sorted(res) if sort_axes else res)
+
+
+cpdef tuple _broadcast_shapes(shapes):
+    """Broadcast shapes together.
+
+    Args:
+        shapes (list of tuples of int):
+            shapes that will be broadcasted together.
+
+    Returns:
+        tuple of int:
+            Resulting shape of broadcasting shapes together.
+    """
+    out_ndim = max([len(shape) for shape in shapes])
+    shapes = [(1,) * (out_ndim - len(shape)) + shape for shape in shapes]
+
+    result_shape = []
+    for dims in zip(*shapes):
+        dims = [dim for dim in dims if dim != 1]
+        out_dim = 1 if len(dims) == 0 else dims[0]
+        if any([dim != out_dim for dim in dims]):
+            raise ValueError(
+                'Operands could not be broadcast together with shapes' +
+                ' '.join([str(shape) for shape in shapes]))
+        result_shape.append(out_dim)
+
+    return tuple(result_shape)
