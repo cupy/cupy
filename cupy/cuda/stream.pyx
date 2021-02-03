@@ -302,17 +302,17 @@ class Stream(BaseStream):
     Args:
         null (bool): If ``True``, the stream is a null stream (i.e. the default
             stream that synchronizes with all streams). Note that you can also
-            use ``Stream.null`` singleton object instead of creating new null
-            stream object.
+            use the ``Stream.null`` singleton object instead of creating a new
+            null stream object.
         ptds (bool): If ``True`` and ``null`` is ``False``, the per-thread
-            default stream is used. Note that you can also use ``Stream.ptds``
-            singleton object instead of creating new per-thread default stream
-            object.
+            default stream is used. Note that you can also use the
+            ``Stream.ptds`` singleton object instead of creating a new
+            per-thread default stream object.
         non_blocking (bool): If ``True`` and both ``null`` and ``ptds`` are
             ``False``, the stream does not synchronize with the NULL stream.
 
-        Note that if all arguments above are ``False``, a plain new stream
-        is created.
+        Note that if both ``null`` and ``ptds`` are ``False``, a plain new
+        stream is created.
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle. It can be passed to
