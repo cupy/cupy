@@ -476,9 +476,8 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore',
     """
     _util.experimental('cupy.random.multivariate_normal')
     rs = _generator.get_random_state()
-    x = rs.multivariate_normal(mean, cov, size, check_valid, tol, method,
-                               dtype)
-    return x
+    return rs.multivariate_normal(
+        mean, cov, size, check_valid, tol, method, dtype)
 
 
 def normal(loc=0.0, scale=1.0, size=None, dtype=float):
@@ -526,8 +525,7 @@ def pareto(a, size=None, dtype=float):
     .. seealso:: :func:`numpy.random.pareto`
     """
     rs = _generator.get_random_state()
-    x = rs.pareto(a, size, dtype)
-    return x
+    return rs.pareto(a, size, dtype)
 
 
 def noncentral_chisquare(df, nonc, size=None, dtype=float):
@@ -613,8 +611,7 @@ def poisson(lam=1.0, size=None, dtype=int):
     .. seealso:: :func:`numpy.random.poisson`
     """
     rs = _generator.get_random_state()
-    x = rs.poisson(lam, size, dtype)
-    return x
+    return rs.poisson(lam, size, dtype)
 
 
 def power(a, size=None, dtype=float):
@@ -665,8 +662,7 @@ def rayleigh(scale=1.0, size=None, dtype=float):
     .. seealso:: :func:`numpy.random.rayleigh`
     """
     rs = _generator.get_random_state()
-    x = rs.rayleigh(scale, size, dtype)
-    return x
+    return rs.rayleigh(scale, size, dtype)
 
 
 def standard_cauchy(size=None, dtype=float):
@@ -690,8 +686,7 @@ def standard_cauchy(size=None, dtype=float):
     .. seealso:: :func:`numpy.random.standard_cauchy`
     """
     rs = _generator.get_random_state()
-    x = rs.standard_cauchy(size, dtype)
-    return x
+    return rs.standard_cauchy(size, dtype)
 
 
 def standard_exponential(size=None, dtype=float):

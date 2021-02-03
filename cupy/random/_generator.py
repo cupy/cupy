@@ -75,7 +75,7 @@ class RandomState(object):
         # * curand.generateLogNormal
         # * curand.generateLogNormalDouble
         size = core.get_size(size)
-        element_size = functools.reduce(operator.mul, size, 1)
+        element_size = core.internal.prod(size)
         if element_size % 2 == 0:
             out = cupy.empty(size, dtype=dtype)
             func(self._generator, out.data.ptr, out.size, *args)
