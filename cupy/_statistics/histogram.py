@@ -217,7 +217,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                 # the CUB call and the correction later
                 assert isinstance(bin_edges, cupy.ndarray)
                 if numpy.issubdtype(x.dtype, numpy.integer):
-                    bin_type = numpy.float
+                    bin_type = float
                 else:
                     bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
                     if (bin_type == numpy.float16 and
