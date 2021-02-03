@@ -25,6 +25,7 @@ for submodule in ('cupy/core/include/cupy/cub/',
 
 requirements = {
     'setup': [
+        'Cython>=0.28.0',
         'fastrlock>=0.5',
     ],
     'install': [
