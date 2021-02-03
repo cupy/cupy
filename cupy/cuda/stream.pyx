@@ -304,6 +304,10 @@ class Stream(BaseStream):
             stream that synchronizes with all streams). Otherwise, a plain new
             stream is created. Note that you can also use ``Stream.null``
             singleton object instead of creating new null stream object.
+        ptds (bool): If ``True`` and ``null`` is ``False``, the per-thread
+            default stream is used. Note that you can also use ``Stream.ptds``
+            singleton object instead of creating new per-thread default stream
+            object.
         non_blocking (bool): If ``True``, the stream does not synchronize with
             the NULL stream.
 
