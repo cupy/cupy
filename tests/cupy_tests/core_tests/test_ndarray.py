@@ -45,7 +45,8 @@ def wrap_take(array, *args, **kwargs):
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape_none(self):
-        a = cupy.ndarray(None)
+        with testing.assert_warns(DeprecationWarning):
+            a = cupy.ndarray(None)
         assert a.shape == ()
 
     def test_shape_int(self):

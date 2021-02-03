@@ -33,7 +33,8 @@ class TestProdSequence(unittest.TestCase):
 class TestGetSize(unittest.TestCase):
 
     def test_none(self):
-        assert internal.get_size(None) == ()
+        with testing.assert_warns(DeprecationWarning):
+            assert internal.get_size(None) == ()
 
     def check_collection(self, a):
         assert internal.get_size(a) == tuple(a)
