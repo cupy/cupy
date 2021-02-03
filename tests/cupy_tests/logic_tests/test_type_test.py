@@ -19,7 +19,8 @@ class TestIsScalar(testing.NumpyAliasBasicTestBase):
         'value': [
             0, 0.0, True,
             numpy.int32(1), numpy.array([1, 2], numpy.int32),
-            numpy.complex(1), numpy.complex(1j), numpy.complex(1 + 1j),
+            numpy.complex128(1), numpy.complex128(1j),
+            numpy.complex128(1 + 1j),
             None, object(), 'abc', '', int, numpy.int32]}))
 class TestIsScalarValues(testing.NumpyAliasValuesTestBase):
 

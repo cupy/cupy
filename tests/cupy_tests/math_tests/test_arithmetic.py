@@ -9,7 +9,7 @@ from cupy import testing
 
 
 float_types = [numpy.float16, numpy.float32, numpy.float64]
-complex_types = [numpy.complex, numpy.complex64, numpy.complex128]
+complex_types = [numpy.complex64, numpy.complex128]
 signed_int_types = [numpy.int8, numpy.int16, numpy.int32, numpy.int64]
 unsigned_int_types = [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]
 int_types = signed_int_types + unsigned_int_types
