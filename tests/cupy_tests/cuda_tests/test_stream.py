@@ -30,7 +30,7 @@ class TestStream(unittest.TestCase):
         assert null2 != null3
         assert null2 != null4
 
-    def check_del(self, test_stream, null, ptds):
+    def check_del(self, null, ptds):
         stream = cuda.Stream(null=null, ptds=ptds).use()
         stream_ptr = stream.ptr
         x = from_data.array([1, 2, 3])
@@ -43,13 +43,13 @@ class TestStream(unittest.TestCase):
 
     @attr.gpu
     def test_del_default(self):
-        self.check_del(cuda.Stream.null, null=False, ptds=False)
+        self.check_del(null=False, ptds=False)
 
     @attr.gpu
     def test_del(self):
         null = self.stream == cuda.Stream.null
         ptds = self.stream == cuda.Stream.ptds
-        self.check_del(self.stream, null=null, ptds=ptds)
+        self.check_del(null=null, ptds=ptds)
 
     @attr.gpu
     def test_get_and_add_callback(self):
