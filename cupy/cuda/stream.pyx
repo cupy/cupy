@@ -57,7 +57,7 @@ cdef class _ThreadLocal:
         # nullptr or runtime.streamPerThread when
         # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
         if (stream_module.is_ptds_enabled() and
-                self.current_stream == <intptr_t>0):
+                self.current_stream == 0):
             return <intptr_t>runtime.streamPerThread
         return self.current_stream
 
