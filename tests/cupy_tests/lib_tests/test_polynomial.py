@@ -78,6 +78,7 @@ class TestPoly1dInit(unittest.TestCase):
         assert out.variable == (self.variable or 'z')
         return out
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_zero_dim(self, xp, dtype):
@@ -87,6 +88,7 @@ class TestPoly1dInit(unittest.TestCase):
         assert out.variable == (self.variable or 'x')
         return out
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_zero_size(self, xp, dtype):
@@ -239,6 +241,7 @@ class TestPoly1d(unittest.TestCase):
 }))
 class TestPoly1dPow(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-1)
     def test_poly1d_pow_scalar(self, xp, dtype):
@@ -301,6 +304,7 @@ class Poly1dTestBase(unittest.TestCase):
 }))
 class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
@@ -360,6 +364,7 @@ class TestPoly1dArithmeticInvalid(Poly1dTestBase):
 }))
 class TestPoly1dRoutines(Poly1dTestBase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_routine(self, xp, dtype):
@@ -419,6 +424,7 @@ class TestPoly1dEquality(unittest.TestCase):
 }))
 class TestPolyArithmeticShapeCombination(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyroutine(self, xp, dtype):
