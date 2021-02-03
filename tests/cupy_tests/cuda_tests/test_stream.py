@@ -49,7 +49,6 @@ class TestStream(unittest.TestCase):
     def test_del(self):
         null = self.stream == cuda.Stream.null
         ptds = self.stream == cuda.Stream.ptds
-        print(null, ptds)
         self.check_del(self.stream, null=null, ptds=ptds)
 
     @attr.gpu
