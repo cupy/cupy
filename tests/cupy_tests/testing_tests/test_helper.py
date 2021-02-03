@@ -29,7 +29,7 @@ class TestContainsSignedAndUnsigned(unittest.TestCase):
         kw = {'x': numpy.int32}
         assert not helper._contains_signed_and_unsigned(kw)
 
-        kw = {'x': numpy.float}
+        kw = {'x': numpy.float32}
         assert not helper._contains_signed_and_unsigned(kw)
 
     def test_unsigned_only(self):
