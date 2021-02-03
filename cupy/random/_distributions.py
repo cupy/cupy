@@ -500,13 +500,7 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
 
     """
     rs = _generator.get_random_state()
-    if size is None and any(isinstance(arg, cupy.ndarray)
-                            for arg in [scale, loc]):
-        size = cupy.broadcast_arrays(loc, scale)[0].shape
-    x = rs.normal(0, 1, size, dtype)
-    cupy.multiply(x, scale, out=x)
-    cupy.add(x, loc, out=x)
-    return x
+    return rs.normal(loc, scale, size, dtype)
 
 
 def pareto(a, size=None, dtype=float):
@@ -766,7 +760,8 @@ def standard_normal(size=None, dtype=float):
     .. seealso:: :func:`numpy.random.standard_normal`
 
     """
-    return normal(size=size, dtype=dtype)
+    rs = _generator.get_random_state()
+    return rs.standard_normal(size, dtype)
 
 
 def standard_t(df, size=None, dtype=float):
