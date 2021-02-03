@@ -149,22 +149,23 @@ class TestOrder(unittest.TestCase):
         assert not cupy.any(cupy.isnan(percentiles))
 
     # See gh-4607
-    @testing.for_float_dtypes()
-    def test_percentile_monotonic(self, dtype):
-        a = testing.shaped_random((5,), cupy, dtype)
-
-        # Value found by Hypothesis to trigger floating point error that
-        # results in non-monotonicity for less accurate linear interpolation
-        # formulas
-        magic_value = -207
+    # "Magic" values used in this test were empirically found to result in
+    # non-monotonicity for less accurate linear interpolation formulas
+    @testing.for_orders((-29, -53, -207, -16373, -99999,), name='magic_value')
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_percentile_monotonic(self, magic_value, dtype, xp):
+        a = testing.shaped_random((5,), xp, dtype)
 
         a[0] = magic_value
         a[1] = magic_value
-        q = cupy.linspace(0, 100, 21)
-        percentiles = cupy.percentile(a, q, interpolation='linear')
+        q = xp.linspace(0, 100, 21)
+        percentiles = xp.percentile(a, q, interpolation='linear')
 
         # Assert that percentile output increases monotonically
-        assert cupy.all(cupy.diff(percentiles) >= 0)
+        assert xp.all(xp.diff(percentiles) >= 0)
+
+        return percentiles
 
     @testing.for_all_dtypes()
     @for_all_interpolations()
