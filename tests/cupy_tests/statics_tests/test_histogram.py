@@ -456,8 +456,8 @@ class TestDigitizeInvalid(unittest.TestCase):
 
     def test_digitize_complex(self):
         for xp in (numpy, cupy):
-            x = testing.shaped_arange((14,), xp, xp.complex)
-            bins = xp.array([1.0, 3.0, 5.0, 8.0, 12.0], xp.complex)
+            x = testing.shaped_arange((14,), xp, complex)
+            bins = xp.array([1.0, 3.0, 5.0, 8.0, 12.0], complex)
             with pytest.raises(TypeError):
                 xp.digitize(x, bins)
 
