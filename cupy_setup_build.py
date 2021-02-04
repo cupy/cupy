@@ -807,7 +807,8 @@ def cythonize(extensions, arg_options):
     cython_version = pkg_resources.parse_version(Cython.__version__)
     if (cython_version < required_cython_version or
             cython_version in ignore_cython_versions):
-        raise AssertionError('Unsupported Cython version: {}'.format(cython_version))
+        raise AssertionError(
+            'Unsupported Cython version: {}'.format(cython_version))
 
     directive_keys = ('linetrace', 'profile')
     directives = {key: arg_options[key] for key in directive_keys}
