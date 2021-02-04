@@ -5,7 +5,7 @@ import io
 import unittest
 import warnings
 # import multiprocessing
-# import joblib
+import joblib
 
 
 import numpy
@@ -21,7 +21,7 @@ except ImportError:
 from cupy import testing
 from cupy.testing import condition
 from cupyx.scipy import sparse
-# from joblib import Parallel, delayed
+from joblib import Parallel, delayed
 import cupyx.scipy.sparse.linalg  # NOQA
 
 
@@ -824,10 +824,22 @@ class TestLOBPCG(unittest.TestCase):
         of eigen vector as positive. This helps in comparing equivalence
         of eigen vectors"""
         vec_len, num_vecs = block_vec.shape
+        temp_block_vec = block_vec.copy()
         for j in range(num_vecs):
             direction = testing.shaped_random((vec_len, 1), xp=xp, seed=123)
-            eigvec = block_vec[:, j].T
+            eigvec = temp_block_vec[:, j].T
             eigvec *= xp.where(eigvec.dot(direction) >= 0, 1, -1)
+
+        def per_eigvec(eigvec):
+            direction = testing.shaped_random((vec_len, 1), xp=xp, seed=123)
+            eigvec *= xp.where(eigvec.dot(direction) >= 0, 1, -1)
+            return eigvec
+        # each eigen vector in parallel
+        n_jobs = joblib.cpu_count()
+        block_vec = Parallel(n_jobs=n_jobs)(
+            delayed(per_eigvec)(eigvec) for eigvec in block_vec.T
+        )
+        block_vec = xp.array(block_vec).T
         return block_vec
 
     def _generate_input_for_elastic_rod(self, n, xp):
