@@ -157,7 +157,7 @@ class TestRanges(unittest.TestCase):
         stop = xp.array([100, 0], dtype=dtype_range)
         return xp.linspace(start, stop, num=50, dtype=dtype_out)
 
-    @testing.with_requires('numpy>=1.16')
+    @testing.with_requires('numpy>=1.16<1.20')
     @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -169,7 +169,7 @@ class TestRanges(unittest.TestCase):
             stop = xp.array([100, -100], dtype=dtype_range)
         return xp.linspace(start, stop, num=50, dtype=dtype_out)
 
-    @testing.with_requires('numpy>=1.16')
+    @testing.with_requires('numpy>=1.16<1.20')
     @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
