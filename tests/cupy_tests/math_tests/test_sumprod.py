@@ -1020,6 +1020,6 @@ class TestGradientErrors(unittest.TestCase):
         # axis out of range
         shape = (4, 16)
         for xp in [numpy, cupy]:
-            x = testing.shaped_random(shape, xp, dtype=numpy.bool)
+            x = testing.shaped_random(shape, xp, dtype=numpy.bool_)
             with pytest.raises(TypeError):
                 xp.gradient(x)

@@ -27,7 +27,7 @@ Wheel packages are built against specific versions of CUDA libraries
 To avoid loading wrong version, these shared libraries are manually
 preloaded.
 
-# TODO(kmaehashi) Currently cuDNN only. Support cuTENSOR and NCCL.
+# TODO(kmaehashi): Support NCCL
 
 Example of `_preload_config` is as follows:
 
@@ -53,7 +53,7 @@ _preload_config = None
 _preload_libs = {
     'cudnn': None,
     # 'nccl': None,
-    # 'cutensor': None,
+    'cutensor': None,
 }
 
 _preload_logs = []

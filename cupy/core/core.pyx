@@ -1341,7 +1341,7 @@ cdef class ndarray:
             >>> import cupy
             >>> a = cupy.zeros((2,))
             >>> i = cupy.arange(10000) % 2
-            >>> v = cupy.arange(10000).astype(cupy.float)
+            >>> v = cupy.arange(10000).astype(cupy.float_)
             >>> a[i] = v
             >>> a  # doctest: +SKIP
             array([9150., 9151.])
@@ -1352,7 +1352,7 @@ cdef class ndarray:
             >>> import numpy
             >>> a_cpu = numpy.zeros((2,))
             >>> i_cpu = numpy.arange(10000) % 2
-            >>> v_cpu = numpy.arange(10000).astype(numpy.float)
+            >>> v_cpu = numpy.arange(10000).astype(numpy.float_)
             >>> a_cpu[i_cpu] = v_cpu
             >>> a_cpu
             array([9998., 9999.])
@@ -2202,9 +2202,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
         # obj is Seq[cupy.ndarray]
         assert issubclass(elem_type, ndarray), elem_type
         lst = _flatten_list(obj)
-        if len(shape) == 1:
-            # convert each scalar (0-dim) ndarray to 1-dim
-            lst = [cupy.expand_dims(x, 0) for x in lst]
+
+        # convert each scalar (0-dim) ndarray to 1-dim
+        lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
 
         a =_manipulation.concatenate_method(lst, 0)
         a = a.reshape(shape)
