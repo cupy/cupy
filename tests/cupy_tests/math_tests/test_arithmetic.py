@@ -85,9 +85,9 @@ class TestArithmeticUnary:
 
             # TODO(niboshi): Fix this
             # numpy.real and numpy.imag return Python int if the input is
-            # Python bool. CuPy should return an array of dtype.int32 or
-            # dtype.int64 (depending on the platform) in such cases, instead
-            # of an array of dtype.bool.
+            # Python bool. CuPy should return an array of dtype=int32 or
+            # dtype=int64 (depending on the platform) in such cases, instead
+            # of an array of dtype=bool.
             if xp is cupy and isinstance(arg1, bool):
                 y = y.astype(int)
 
