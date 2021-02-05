@@ -7,6 +7,8 @@ function ActivatePython($version) {
         $pydir = "Python37"
     } elseif ($version -eq "3.8") {
         $pydir = "Python38"
+    } elseif ($version -eq "3.9") {
+        $pydir = "Python39"
     } else {
         throw "Unsupported Python version: $version"
     }
@@ -32,6 +34,8 @@ function ActivateCUDA($version) {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V11_0
     } elseif ($version -eq "11.1") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V11_1
+    } elseif ($version -eq "11.2") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_2
     } else {
         throw "Unsupported CUDA version: $version"
     }
