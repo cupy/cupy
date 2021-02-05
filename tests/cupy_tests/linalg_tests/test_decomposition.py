@@ -137,10 +137,11 @@ class TestSVD(unittest.TestCase):
     def setUp(self):
         self.seed = testing.generate_seed()
 
-    @testing.for_dtypes([
-        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
-        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
-    ])
+    #@testing.for_dtypes([
+    #    numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+    #    numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    #])
+    @testing.for_dtypes([numpy.float32])
     def check_usv(self, shape, dtype):
         array = testing.shaped_random(
             shape, numpy, dtype=dtype, seed=self.seed)
@@ -207,10 +208,11 @@ class TestSVD(unittest.TestCase):
                 cupy.matmul(vh_gpu, cupy.moveaxis(vh_gpu, -1, -2).conj()),
                 id_vh_cpu, atol=1e-4)
 
-    @testing.for_dtypes([
-        numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
-        numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
-    ])
+    #@testing.for_dtypes([
+    #    numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
+    #    numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
+    #])
+    @testing.for_dtypes([numpy.float32])
     @testing.numpy_cupy_allclose(atol=1e-4)
     def check_singular(self, shape, xp, dtype):
         array = testing.shaped_random(shape, xp, dtype=dtype, seed=self.seed)

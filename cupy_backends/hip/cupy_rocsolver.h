@@ -944,6 +944,11 @@ cusolverStatus_t cusolverDnZgesvd(cusolverDnHandle_t handle,
 
 /* ---------- batched gesvd ---------- */
 // Because rocSOLVER provides no counterpart for gesvdjBatched, we wrap its batched version directly.
+typedef enum {
+    CUSOLVER_EIG_MODE_NOVECTOR=0,
+    CUSOLVER_EIG_MODE_VECTOR=1
+} cusolverEigMode_t;
+typedef void* gesvdjInfo_t;
 
 cusolverStatus_t cusolverDnCreateGesvdjInfo(...) {
     // should always success as rocSOLVER does not need it
@@ -972,7 +977,7 @@ cusolverStatus_t cusolverDnSgesvdjBatched_bufferSize(
         int batchSize) {
     // rocSOLVER does not need extra workspace, but it computes the bidiagonal matrix B
     // assocated with A, which we don't need, so we use the workspace to store B
-    *lwork = batchSize * (m<n?m:n) * sizeof(float);
+    *lwork = batchSize * (m<n?m:n) * (m<n?m:n) * sizeof(float);  // TODO: CHECK
     return rocblas_status_success;
 }
 
@@ -1059,19 +1064,21 @@ cusolverStatus_t cusolverDnSgesvdjBatched(
     #if HIP_VERSION < 309
     return rocblas_status_not_implemented;
     #else
+    rocblas_svect leftv, rightv;
+    rocblas_stride stU, stV;
     if (jobz == CUSOLVER_EIG_MODE_NOVECTOR) {
-        rocblas_svect leftv = rocblas_svect_singular;
-        rocblas_svect rightv = rocblas_svect_singular;
-        rocblas_stride stU = ldu * (m<n?m:n);
-        rocblas_stride stV = ldv * n;
+        leftv = rocblas_svect_singular;
+        rightv = rocblas_svect_singular;
+        stU = ldu * (m<n?m:n);
+        stV = ldv * n;
     } else {  // CUSOLVER_EIG_MODE_VECTOR
-        rocblas_svect leftv = rocblas_svect_all;
-        rocblas_svect rightv = rocblas_svect_all;
-        rocblas_stride stU = ldu * m;
-        rocblas_stride stV = ldv * n;
+        leftv = rocblas_svect_all;
+        rightv = rocblas_svect_all;
+        stU = ldu * m;
+        stV = ldv * n;
     }
     return rocsolver_sgesvd_batched(handle, leftv, rightv,
-                                    m, n, A, lda,
+                                    m, n, reinterpret_cast<float* const*>(A), lda,
                                     S, m<n?m:n,
                                     U, ldu, stU,
                                     V, ldv, stV,
@@ -1087,18 +1094,24 @@ cusolverStatus_t cusolverDnDgesvdjBatched(...) {
     #if HIP_VERSION < 309
     return rocblas_status_not_implemented;
     #else
+    return rocblas_status_not_implemented;
+    #endif
 }
 
 cusolverStatus_t cusolverDnCgesvdjBatched(...) {
     #if HIP_VERSION < 309
     return rocblas_status_not_implemented;
     #else
+    return rocblas_status_not_implemented;
+    #endif
 }
 
 cusolverStatus_t cusolverDnZgesvdjBatched(...) {
     #if HIP_VERSION < 309
     return rocblas_status_not_implemented;
     #else
+    return rocblas_status_not_implemented;
+    #endif
 }
 
 
@@ -1227,10 +1240,8 @@ cusolverStatus_t cusolverDnZgebrd(cusolverDnHandle_t handle,
 /* all of the stubs below are unsupported functions; the supported ones are moved to above */
 
 typedef enum{} cusolverEigType_t;
-typedef enum{} cusolverEigMode_t;
 typedef void* cusolverSpHandle_t;
 typedef void* cusparseMatDescr_t;
-typedef void* gesvdjInfo_t;
 typedef void* syevjInfo_t;
 
 cusolverStatus_t cusolverSpGetStream(...) {

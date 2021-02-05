@@ -14,6 +14,7 @@ import cupyx as _cupyx
 
 _available_cuda_version = {
     'gesvdj': (9000, None),
+    'gesvdjBatched': (9000, None),  # TODO(leofang): CHECK!
     'gesvda': (10010, None),
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
@@ -25,6 +26,7 @@ _available_cuda_version = {
 
 _available_hip_version = {
     'potrfBatched': (306, None),
+    'gesvdjBatched': (309, None),
     # Below are APIs supported by CUDA but not yet by HIP. We need them here
     # so that our test suite can cover both platforms.
     'gesvdj': (_numpy.inf, None),
@@ -87,11 +89,11 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
         tuple of :class:`cupy.ndarray`:
             A tuple of ``(u, s, v)``.
     """
-    if not check_availability('gesvdj'):
-        raise RuntimeError('gesvdj is not available.')
-
     if a.ndim == 3:
         return _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a)
+
+    if not check_availability('gesvdj'):
+        raise RuntimeError('gesvdj is not available.')
 
     assert a.ndim == 2
 
@@ -154,6 +156,9 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
 
 
 def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
+    if not check_availability('gesvdjBatched'):
+        raise RuntimeError('gesvdj is not available.')
+
     if a.dtype == 'f':
         helper = _cusolver.sgesvdjBatched_bufferSize
         solver = _cusolver.sgesvdjBatched
