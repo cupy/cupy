@@ -302,7 +302,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                 dcoord = c_{j};''')
             else:
                 ops.append(f'''
-                {int_t} cf_{j} = ({int_t})lrint((double)c_{j});''')
+                {int_t} cf_{j} = ({int_t})floor((double)c_{j} + 0.5);''')
 
             # handle boundary
             if mode != 'constant':

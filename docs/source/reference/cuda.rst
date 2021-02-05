@@ -21,10 +21,13 @@ Memory management
    cupy.get_default_memory_pool
    cupy.get_default_pinned_memory_pool
    cupy.cuda.Memory
+   cupy.cuda.MemoryAsync
    cupy.cuda.UnownedMemory
    cupy.cuda.PinnedMemory
    cupy.cuda.MemoryPointer
    cupy.cuda.PinnedMemoryPointer
+   cupy.cuda.malloc_managed
+   cupy.cuda.malloc_async
    cupy.cuda.alloc
    cupy.cuda.alloc_pinned_memory
    cupy.cuda.get_allocator
@@ -141,12 +144,14 @@ to use these functions.
    cupy.cuda.runtime.mallocManaged
    cupy.cuda.runtime.malloc3DArray
    cupy.cuda.runtime.mallocArray
+   cupy.cuda.runtime.mallocAsync
    cupy.cuda.runtime.hostAlloc
    cupy.cuda.runtime.hostRegister
    cupy.cuda.runtime.hostUnregister
    cupy.cuda.runtime.free
    cupy.cuda.runtime.freeHost
    cupy.cuda.runtime.freeArray
+   cupy.cuda.runtime.freeAsync
    cupy.cuda.runtime.memGetInfo
    cupy.cuda.runtime.memcpy
    cupy.cuda.runtime.memcpyAsync

@@ -299,7 +299,7 @@ def from_pointer(ptr):
     """Extracts a Device object from a device pointer.
 
     Args:
-        ptr (ctypes.c_void_p): Pointer to the device memory.
+        ptr (int): Pointer to the device memory.
 
     Returns:
         Device: The device whose memory the pointer refers to.

@@ -6,6 +6,7 @@ from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
 import sys
+import warnings
 
 import numpy
 
@@ -48,6 +49,11 @@ cpdef inline bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x):
 @cython.profile(False)
 cpdef inline tuple get_size(object size):
     if size is None:
+        warnings.warn(
+            'Passing None into shape arguments as an alias for () is '
+            'deprecated.',
+            DeprecationWarning,
+        )
         return ()
     if cpython.PySequence_Check(size):
         return tuple(size)
