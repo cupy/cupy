@@ -1067,9 +1067,10 @@ cusolverStatus_t cusolverDnSgesvdjBatched(
     rocblas_svect leftv, rightv;
     rocblas_stride stU, stV;
     if (jobz == CUSOLVER_EIG_MODE_NOVECTOR) {
-        leftv = rocblas_svect_singular;
-        rightv = rocblas_svect_singular;
+        leftv = rocblas_svect_none;
+        rightv = rocblas_svect_none;
         stU = ldu * (m<n?m:n);
+        //stU = ldu * m;
         stV = ldv * n;
     } else {  // CUSOLVER_EIG_MODE_VECTOR
         leftv = rocblas_svect_all;
@@ -1078,7 +1079,7 @@ cusolverStatus_t cusolverDnSgesvdjBatched(
         stV = ldv * n;
     }
     return rocsolver_sgesvd_batched(handle, leftv, rightv,
-                                    m, n, reinterpret_cast<float* const*>(A), lda,
+                                    m, n, reinterpret_cast<float* const*>((void*)A), lda,
                                     S, m<n?m:n,
                                     U, ldu, stU,
                                     V, ldv, stV,

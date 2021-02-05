@@ -181,6 +181,11 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     handle = _device.get_cusolver_handle()
     batch_size, m, n = a.shape
     a = _cupy.array(a.swapaxes(-2, -1), order='C', copy=not overwrite_a)
+    if _runtime.is_hip:
+        # rocsolver_<t>gesvd_batched has a different signature...
+        ap = _linalg._mat_ptrs(a)
+    else:
+        ap = a
     lda = m
     mn = min(m, n)
     s = _cupy.empty((batch_size, mn), dtype=s_dtype)
@@ -195,11 +200,11 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     u = _cupy.empty((batch_size, m, ldu), dtype=a.dtype).swapaxes(-2, -1)
     v = _cupy.empty((batch_size, n, ldv), dtype=a.dtype).swapaxes(-2, -1)
     params = _cusolver.createGesvdjInfo()
-    lwork = helper(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
+    lwork = helper(handle, jobz, m, n, ap.data.ptr, lda, s.data.ptr,
                    u.data.ptr, ldu, v.data.ptr, ldv, params, batch_size)
     work = _cupy.empty(lwork, dtype=a.dtype)
-    info = _cupy.empty(1, dtype=_numpy.int32)
-    solver(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
+    info = _cupy.empty(batch_size, dtype=_numpy.int32)
+    solver(handle, jobz, m, n, ap.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params, batch_size)
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
