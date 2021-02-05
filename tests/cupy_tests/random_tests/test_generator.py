@@ -7,7 +7,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy import core
 from cupy import cuda
 from cupy.random import _generator
 from cupy import testing
@@ -76,6 +75,14 @@ def two_sample_Kolmogorov_Smirnov_test(observed1, observed2):
     # Approximate p = special.kolmogorov(d * numpy.sqrt(n1 * n2 / (n1 + n2)))
     p = min(1.0, 2.0 * numpy.exp(-2.0 * d**2 * n1 * n2 / (n1 + n2)))
     return d_plus, d_minus, p
+
+
+def _get_size(size):
+    # CuPy returns an ndarray of shape () even if size=None.
+    # cf. NumPy returns a Python scalar if size=None.
+    if size is None:
+        return ()
+    return cupy.core.get_size(size)
 
 
 class RandomGeneratorTestCase(unittest.TestCase):
@@ -497,7 +504,7 @@ class TestLogNormal(RandomGeneratorTestCase):
         vals = self.generate_many(
             self.args[0], self.args[1], self.size, dtype, _count=10)
 
-        shape = core.get_size(self.size)
+        shape = _get_size(self.size)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype == dtype
@@ -558,7 +565,7 @@ class TestMultivariateNormal(RandomGeneratorTestCase):
             mean=self.args[0], cov=self.args[1], size=self.size, tol=self.tol,
             dtype=dtype, _count=10)
 
-        shape = core.get_size(self.size)
+        shape = _get_size(self.size)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype == dtype
@@ -647,7 +654,7 @@ class TestNormal(RandomGeneratorTestCase):
         vals = self.generate_many(
             self.args[0], self.args[1], self.size, dtype, _count=10)
 
-        shape = core.get_size(self.size)
+        shape = _get_size(self.size)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype == dtype
@@ -742,7 +749,7 @@ class TestRandomSample(unittest.TestCase):
     def check_random_sample(self, dtype):
         vals = [self.rs.random_sample(self.size, dtype) for _ in range(10)]
 
-        shape = core.get_size(self.size)
+        shape = _get_size(self.size)
         for val in vals:
             assert isinstance(val, cupy.ndarray)
             assert val.dtype == dtype
@@ -1092,9 +1099,10 @@ class TestChoiceMultinomial(unittest.TestCase):
     {'a': 3.1, 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': None, 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': -3, 'size': 1, 'p': [0.1, 0.1, 0.8]},
-    {'a': [[0, 1], [2]], 'size': 1, 'p': [0.1, 0.1, 0.8]},
+    {'a': [[0, 1], [2, 3]], 'size': 1, 'p': [[0.1, 0.2], [0.3, 0.4]]},
+    {'a': [[0, 1], [2, 3]], 'size': 1, 'p': [0.3, 0.7]},
     {'a': [], 'size': 1, 'p': [0.1, 0.1, 0.8]},
-    {'a': 3, 'size': 1, 'p': [[0.1, 0.1], [0.8]]},
+    {'a': 4, 'size': 1, 'p': [[0.1, 0.2], [0.3, 0.4]]},
     {'a': 2, 'size': 1, 'p': [0.1, 0.1, 0.8]},
     {'a': 3, 'size': 1, 'p': [-0.1, 0.3, 0.8]},
     {'a': 3, 'size': 1, 'p': [0.1, 0.1, 0.7]},

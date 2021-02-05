@@ -47,9 +47,14 @@ class TestUnownedMemoryClass(unittest.TestCase):
 class TestUnownedMemory(unittest.TestCase):
 
     def check(self, device_id):
-        if (cupy.cuda.runtime.is_hip
-                and self.allocator is memory.malloc_managed):
-            raise unittest.SkipTest('HIP does not support managed memory')
+        if cupy.cuda.runtime.is_hip:
+            if self.allocator is memory.malloc_managed:
+                raise unittest.SkipTest('HIP does not support managed memory')
+            if self.allocator is memory.malloc_async:
+                raise unittest.SkipTest('HIP does not support async mempool')
+        elif cupy.cuda.driver.get_build_version() < 11020:
+            raise unittest.SkipTest('malloc_async is supported since '
+                                    'CUDA 11.2')
 
         size = 24
         shape = (2, 3)
@@ -125,6 +130,7 @@ class TestMemoryPointer(unittest.TestCase):
         a_gpu = memory.alloc(4)
         a_cpu = ctypes.c_int(100)
         a_gpu.copy_from(ctypes.cast(ctypes.byref(a_cpu), ctypes.c_void_p), 4)
+
         b_cpu = ctypes.c_int()
         a_gpu.copy_to_host(
             ctypes.cast(ctypes.byref(b_cpu), ctypes.c_void_p), 4)
@@ -140,6 +146,30 @@ class TestMemoryPointer(unittest.TestCase):
         b_cpu = ctypes.c_int()
         b_gpu.copy_to_host(
             ctypes.cast(ctypes.byref(b_cpu), ctypes.c_void_p), 4)
+        assert b_cpu.value == a_cpu.value
+
+    def test_copy_to_and_from_host_using_raw_ptr(self):
+        a_gpu = memory.alloc(4)
+        a_cpu = ctypes.c_int(100)
+        a_cpu_ptr = ctypes.cast(ctypes.byref(a_cpu), ctypes.c_void_p)
+        a_gpu.copy_from(a_cpu_ptr.value, 4)
+
+        b_cpu = ctypes.c_int()
+        b_cpu_ptr = ctypes.cast(ctypes.byref(b_cpu), ctypes.c_void_p)
+        a_gpu.copy_to_host(b_cpu_ptr.value, 4)
+        assert b_cpu.value == a_cpu.value
+
+    def test_copy_from_device_using_raw_ptr(self):
+        a_gpu = memory.alloc(4)
+        a_cpu = ctypes.c_int(100)
+        a_cpu_ptr = ctypes.cast(ctypes.byref(a_cpu), ctypes.c_void_p)
+        a_gpu.copy_from(a_cpu_ptr.value, 4)
+
+        b_gpu = memory.alloc(4)
+        b_gpu.copy_from(a_gpu, 4)
+        b_cpu = ctypes.c_int()
+        b_cpu_ptr = ctypes.cast(ctypes.byref(b_cpu), ctypes.c_void_p)
+        b_gpu.copy_to_host(b_cpu_ptr.value, 4)
         assert b_cpu.value == a_cpu.value
 
     def test_memset(self):
@@ -812,9 +842,9 @@ class TestExceptionPicklable(unittest.TestCase):
 
 
 @testing.gpu
-@pytest.mark.skipIf(cupy.cuda.runtime.is_hip,
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support async allocator')
-@pytest.mark.skipIf(cupy.cuda.driver.get_build_version() < 11020,
+@pytest.mark.skipif(cupy.cuda.driver.get_build_version() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
 class TestMallocAsync(unittest.TestCase):
 

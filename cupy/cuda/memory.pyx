@@ -446,31 +446,33 @@ cdef class MemoryPointer:
         """Copies a memory sequence from the host memory.
 
         Args:
-            mem (ctypes.c_void_p): Source memory pointer.
+            mem (int or ctypes.c_void_p): Source memory pointer.
             size (int): Size of the sequence in bytes.
 
         """
         if size > 0:
-            runtime.memcpy(self.ptr, mem.value, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpy(self.ptr, ptr, size,
                            runtime.memcpyHostToDevice)
 
     cpdef copy_from_host_async(self, mem, size_t size, stream=None):
         """Copies a memory sequence from the host memory asynchronously.
 
         Args:
-            mem (ctypes.c_void_p): Source memory pointer. It must be a pinned
-                memory.
+            mem (int or ctypes.c_void_p): Source memory pointer. It must point
+                to pinned memory.
             size (int): Size of the sequence in bytes.
             stream (cupy.cuda.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
 
         """
         if stream is None:
+            ptr = mem if isinstance(mem, int) else mem.value
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            runtime.memcpyAsync(self.ptr, mem.value, size,
+            runtime.memcpyAsync(self.ptr, ptr, size,
                                 runtime.memcpyHostToDevice, stream_ptr)
 
     cpdef copy_from(self, mem, size_t size):
@@ -481,8 +483,8 @@ cdef class MemoryPointer:
         :meth:`~cupy.cuda.MemoryPointer.copy_from_host`.
 
         Args:
-            mem (ctypes.c_void_p or cupy.cuda.MemoryPointer): Source memory
-                pointer.
+            mem (int or ctypes.c_void_p or cupy.cuda.MemoryPointer):
+                Source memory pointer.
             size (int): Size of the sequence in bytes.
 
         """
@@ -499,8 +501,8 @@ cdef class MemoryPointer:
         :meth:`~cupy.cuda.MemoryPointer.copy_from_host_async`.
 
         Args:
-            mem (ctypes.c_void_p or cupy.cuda.MemoryPointer): Source memory
-                pointer.
+            mem (int or ctypes.c_void_p or cupy.cuda.MemoryPointer):
+                Source memory pointer.
             size (int): Size of the sequence in bytes.
             stream (cupy.cuda.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
@@ -515,20 +517,21 @@ cdef class MemoryPointer:
         """Copies a memory sequence to the host memory.
 
         Args:
-            mem (ctypes.c_void_p): Target memory pointer.
+            mem (int or ctypes.c_void_p): Target memory pointer.
             size (int): Size of the sequence in bytes.
 
         """
         if size > 0:
-            runtime.memcpy(mem.value, self.ptr, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpy(ptr, self.ptr, size,
                            runtime.memcpyDeviceToHost)
 
     cpdef copy_to_host_async(self, mem, size_t size, stream=None):
         """Copies a memory sequence to the host memory asynchronously.
 
         Args:
-            mem (ctypes.c_void_p): Target memory pointer. It must be a pinned
-                memory.
+            mem (int or ctypes.c_void_p): Target memory pointer. It must point
+                to pinned memory.
             size (int): Size of the sequence in bytes.
             stream (cupy.cuda.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
@@ -539,7 +542,8 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            runtime.memcpyAsync(mem.value, self.ptr, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpyAsync(ptr, self.ptr, size,
                                 runtime.memcpyDeviceToHost, stream_ptr)
 
     cpdef memset(self, int value, size_t size):

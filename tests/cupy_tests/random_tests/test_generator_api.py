@@ -6,8 +6,7 @@ import pytest
 import numpy
 
 import cupy
-from cupy.random import _generator_api
-from cupy.random import _bit_generator
+from cupy import random
 from cupy import testing
 from cupy.testing import attr
 from cupy.testing import condition
@@ -84,8 +83,8 @@ class GeneratorTestCase(unittest.TestCase):
     def setUp(self):
         self.__seed = testing.generate_seed()
         # TODO(ecastill) test it with other generators?
-        self.rs = _generator_api.Generator(
-            _bit_generator.Philox4x3210(seed=self.__seed))
+        self.rs = random._generator_api.Generator(
+            random._bit_generator.Philox4x3210(seed=self.__seed))
 
     def _get_generator_func(self, *args, **kwargs):
         assert isinstance(self.target_method, str), (
@@ -95,9 +94,9 @@ class GeneratorTestCase(unittest.TestCase):
 
     def _generate_check_repro(self, func, seed):
         # Sample a random array while checking reproducibility
-        self.rs.bit_generator = _bit_generator.Philox4x3210(seed=seed)
+        self.rs.bit_generator = random._bit_generator.Philox4x3210(seed=seed)
         x = func()
-        self.rs.bit_generator = _bit_generator.Philox4x3210(seed=seed)
+        self.rs.bit_generator = random._bit_generator.Philox4x3210(seed=seed)
         y = func()
         testing.assert_array_equal(
             x, y,
