@@ -27,8 +27,8 @@ function UploadCache {
     python .pfnci\trim_cupy_kernel_cache.py --expiry 259200 --rm
 
     pushd $Env:USERPROFILE
-    // -mx=0 ... no compression
-    // -mtc=on ... preserve timestamp
+    # -mx=0 ... no compression
+    # -mtc=on ... preserve timestamp
     RunOrDie 7z a -tzip -mx=0 -mtc=on $cupy_kernel_cache_file .cupy
     RunOrDie gsutil -m cp $cupy_kernel_cache_file gs://tmp-asia-pfn-public-ci/cupy-ci/
     popd
