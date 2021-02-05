@@ -111,8 +111,10 @@ from cupy.cuda.function import Module  # NOQA
 from cupy.cuda.memory import alloc  # NOQA
 from cupy.cuda.memory import BaseMemory  # NOQA
 from cupy.cuda.memory import malloc_managed  # NOQA
+from cupy.cuda.memory import malloc_async  # NOQA
 from cupy.cuda.memory import ManagedMemory  # NOQA
 from cupy.cuda.memory import Memory  # NOQA
+from cupy.cuda.memory import MemoryAsync  # NOQA
 from cupy.cuda.memory import MemoryPointer  # NOQA
 from cupy.cuda.memory import MemoryPool  # NOQA
 from cupy.cuda.memory import PythonFunctionAllocator  # NOQA
