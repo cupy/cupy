@@ -803,3 +803,67 @@ class TestCsrlsvqr(unittest.TestCase):
                                    reorder=self.reorder)
         cupy.testing.assert_allclose(x, ref_x, rtol=test_tol,
                                      atol=test_tol)
+
+
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc', 'coo'],
+    'nrhs': [None, 1, 4],
+    'order': ['C', 'F']
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.gpu
+class TestSplu(unittest.TestCase):
+
+    n = 10
+    density = 0.5
+
+    def _make_matrix(self, dtype, xp, sp, density=None):
+        if density is None:
+            density = self.density
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=2 / self.n)
+        mask = testing.shaped_random(a_shape, xp, dtype='f', scale=1)
+        a[mask > density] = 0
+        diag = xp.diag(xp.ones((self.n,), dtype=dtype))
+        a = a + diag
+        if self.format == 'csr':
+            a = sp.csr_matrix(a)
+        elif self.format == 'csc':
+            a = sp.csc_matrix(a)
+        elif self.format == 'coo':
+            a = sp.coo_matrix(a)
+        b_shape = (self.n,) if self.nrhs is None else (self.n, self.nrhs)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, order=self.order)
+        return a, b
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_splu(self, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp, sp)
+        return sp.linalg.splu(a).solve(b)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_factorized(self, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp, sp)
+        return sp.linalg.factorized(a)(b)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_spilu(self, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp, sp)
+        return sp.linalg.spilu(a).solve(b)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_spilu_0(self, dtype, xp, sp):
+        # Note: We don't know how to compute ILU(0) with
+        # scipy.sprase.linalg.spilu, so in this test we use a matrix where the
+        # format is a sparse matrix but is actually a dense matrix.
+        a, b = self._make_matrix(dtype, xp, sp, density=1.0)
+        if xp == cupy:
+            # Set fill_factor=1 to computes ILU(0) using cuSparse
+            ainv = sp.linalg.spilu(a, fill_factor=1)
+        else:
+            ainv = sp.linalg.spilu(a)
+        return ainv.solve(b)
