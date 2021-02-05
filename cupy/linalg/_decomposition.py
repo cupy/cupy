@@ -4,6 +4,7 @@ import cupy
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
+from cupy.core import internal
 from cupy.cuda import device
 from cupy.cusolver import check_availability
 from cupy.cusolver import _gesvdj_batched
@@ -135,7 +136,7 @@ def _potrf_batched(a):
     n = x.shape[-1]
     ldx = x.strides[-2] // x.dtype.itemsize
     handle = device.get_cusolver_handle()
-    batch_size = cupy.core.internal.prod(x.shape[:-2])
+    batch_size = internal.prod(x.shape[:-2])
     dev_info = cupy.empty(batch_size, dtype=numpy.int32)
 
     potrfBatched(
@@ -353,6 +354,58 @@ def qr(a, mode='reduced'):
     return q, _util._triu(r)
 
 
+def _svd_batched(a, a_dtype, full_matrices, compute_uv):
+    batch_shape = a.shape[:-2]
+    batch_size = internal.prod(batch_shape)
+    n, m = a.shape[-2:]
+    s_dtype = a_dtype.lower()
+
+    # first handle any 0-size inputs
+    if batch_size == 0:
+        k = min(m, n)
+        s = cupy.empty(batch_shape + (k,), s_dtype)
+        if compute_uv:
+            if full_matrices:
+                u = cupy.empty(batch_shape + (n, n), dtype=a_dtype)
+                vt = cupy.empty(batch_shape + (m, m), dtype=a_dtype)
+            else:
+                u = cupy.empty(batch_shape + (n, k), dtype=a_dtype)
+                vt = cupy.empty(batch_shape + (k, m), dtype=a_dtype)
+            return u, s, vt
+        else:
+            return s
+    elif m == 0 or n == 0:
+        s = cupy.empty(batch_shape + (0,), s_dtype)
+        if compute_uv:
+            if full_matrices:
+                u = [cupy.eye(n, dtype=a_dtype) for _ in range(batch_size)]
+                u = cupy.stack(u, axis=0).reshape(*batch_shape, n, n)
+                vt = [cupy.eye(m, dtype=a_dtype) for _ in range(batch_size)]
+                vt = cupy.stack(vt, axis=0).reshape(*batch_shape, m, m)
+            else:
+                u = cupy.empty(batch_shape + (n, 0), dtype=a_dtype)
+                vt = cupy.empty(batch_shape + (0, m), dtype=a_dtype)
+            return u, s, vt
+        else:
+            return s
+
+    # ...then delegate real computation to cuSOLVER
+    a = a.reshape(-1, *(a.shape[-2:]))
+    # copy is done in _gesvdj_batched, so let's try not to do it here
+    a = a.astype(a_dtype, order='C', copy=False)
+    out = _gesvdj_batched(a, full_matrices, compute_uv, False)
+    if compute_uv:
+        u, s, v = out
+        u = u.reshape(*batch_shape, *(u.shape[-2:]))
+        s = s.reshape(*batch_shape, *(s.shape[-1:]))
+        v = v.reshape(*batch_shape, *(v.shape[-2:]))
+        return u, s, v.swapaxes(-2, -1).conjugate()
+    else:
+        s = out
+        s = s.reshape(*batch_shape, *(s.shape[-1:]))
+        return s
+
+
 def svd(a, full_matrices=True, compute_uv=True):
     """Singular Value Decomposition.
 
@@ -396,20 +449,7 @@ def svd(a, full_matrices=True, compute_uv=True):
         s_dtype = 'd'
 
     if a.ndim > 2:
-        batch_shape = a.shape[:-2]
-        a = a.reshape(-1, *(a.shape[-2:]))
-        a = a.astype(a_dtype, order='C', copy=False)  # TODO(leofang): can we not copy here?
-        out = _gesvdj_batched(a, full_matrices, compute_uv, False)
-        if compute_uv:
-            u, s, v = out
-            u = u.reshape(*batch_shape, *(u.shape[-2:]))
-            s = s.reshape(*batch_shape, *(s.shape[-1:]))
-            v = v.reshape(*batch_shape, *(v.shape[-2:]))
-            return u, s, v.swapaxes(-2, -1).conjugate()
-        else:
-            s = out
-            s = s.reshape(*batch_shape, *(s.shape[-1:]))
-            return s
+        return _svd_batched(a, a_dtype, full_matrices, compute_uv)
 
     # Remark 1: gesvd only supports m >= n (WHAT?)
     # Remark 2: gesvd only supports jobu = 'A' and jobvt = 'A'

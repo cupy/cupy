@@ -189,16 +189,20 @@ class TestSVD(unittest.TestCase):
             u_len = u_gpu.shape[-1]
             vh_len = vh_gpu.shape[-2]
 
-            id_u_cpu = [numpy.eye(u_len) for _ in range(batch)]
-            id_u_cpu = numpy.stack(id_u_cpu, axis=0).reshape(
-                *(shape[:-2]), u_len, u_len)
+            if batch == 0:
+                id_u_cpu = numpy.empty(shape[:-2] + (u_len, u_len))
+                id_vh_cpu = numpy.empty(shape[:-2] + (vh_len, vh_len))
+            else:
+                id_u_cpu = [numpy.eye(u_len) for _ in range(batch)]
+                id_u_cpu = numpy.stack(id_u_cpu, axis=0).reshape(
+                    *(shape[:-2]), u_len, u_len)
+                id_vh_cpu = [numpy.eye(vh_len) for _ in range(batch)]
+                id_vh_cpu = numpy.stack(id_vh_cpu, axis=0).reshape(
+                    *(shape[:-2]), vh_len, vh_len)
+
             cupy.testing.assert_allclose(
                 cupy.matmul(cupy.moveaxis(u_gpu, -1, -2).conj(), u_gpu),
                 id_u_cpu, atol=1e-4)
-
-            id_vh_cpu = [numpy.eye(vh_len) for _ in range(batch)]
-            id_vh_cpu = numpy.stack(id_vh_cpu, axis=0).reshape(
-                *(shape[:-2]), vh_len, vh_len)
             cupy.testing.assert_allclose(
                 cupy.matmul(vh_gpu, cupy.moveaxis(vh_gpu, -1, -2).conj()),
                 id_vh_cpu, atol=1e-4)
@@ -230,6 +234,19 @@ class TestSVD(unittest.TestCase):
         self.check_singular((2, 2))
         self.check_singular((7, 3))
 
+    @testing.with_requires('numpy>=1.16')
+    def test_svd_rank2_empty_array(self):
+        self.check_usv((0, 3))
+        self.check_usv((3, 0))
+        self.check_usv((1, 0))
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_svd_rank2_empty_array_compute_uv_false(self, xp):
+        array = xp.empty((3, 0))
+        return xp.linalg.svd(
+            array, full_matrices=self.full_matrices, compute_uv=False)
+
     @condition.repeat(3, 10)
     def test_svd_rank3(self):
         self.check_usv((2, 3, 4))
@@ -245,6 +262,29 @@ class TestSVD(unittest.TestCase):
         self.check_singular((2, 4, 4))
         self.check_singular((2, 7, 3))
         self.check_singular((2, 4, 3))
+
+    @testing.with_requires('numpy>=1.16')
+    def test_svd_rank3_empty_array(self):
+        self.check_usv((0, 3, 4))
+        self.check_usv((3, 0, 4))
+        self.check_usv((3, 4, 0))
+        self.check_usv((3, 0, 0))
+        self.check_usv((0, 3, 0))
+        self.check_usv((0, 0, 3))
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_svd_rank3_empty_array_compute_uv_false1(self, xp):
+        array = xp.empty((3, 0, 4))
+        return xp.linalg.svd(
+            array, full_matrices=self.full_matrices, compute_uv=False)
+
+    @testing.with_requires('numpy>=1.16')
+    @testing.numpy_cupy_array_equal()
+    def test_svd_rank3_empty_array_compute_uv_false2(self, xp):
+        array = xp.empty((0, 3, 4))
+        return xp.linalg.svd(
+            array, full_matrices=self.full_matrices, compute_uv=False)
 
     @condition.repeat(3, 10)
     def test_svd_rank4(self):
@@ -263,14 +303,7 @@ class TestSVD(unittest.TestCase):
         self.check_singular((5, 2, 4, 3))
 
     @testing.with_requires('numpy>=1.16')
-    def test_empty_array(self):
-        self.check_usv((0, 3))
-        self.check_usv((3, 0))
-        self.check_usv((1, 0))
-
-    @testing.with_requires('numpy>=1.16')
-    @testing.numpy_cupy_array_equal()
-    def test_empty_array_compute_uv_false(self, xp):
-        array = xp.empty((3, 0))
-        return xp.linalg.svd(
-            array, full_matrices=self.full_matrices, compute_uv=False)
+    def test_svd_rank4_empty_array(self):
+        self.check_usv((0, 2, 3, 4))
+        self.check_usv((1, 2, 0, 4))
+        self.check_usv((1, 2, 3, 0))
