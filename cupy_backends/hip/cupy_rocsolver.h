@@ -942,6 +942,166 @@ cusolverStatus_t cusolverDnZgesvd(cusolverDnHandle_t handle,
 }
 
 
+/* ---------- batched gesvd ---------- */
+// Because rocSOLVER provides no counterpart for gesvdjBatched, we wrap its batched version directly.
+
+cusolverStatus_t cusolverDnCreateGesvdjInfo(...) {
+    // should always success as rocSOLVER does not need it
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnDestroyGesvdjInfo(...) {
+    // should always success as rocSOLVER does not need it
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnSgesvdjBatched_bufferSize(
+        cusolverDnHandle_t handle,
+        cusolverEigMode_t jobz,
+        int m,                
+        int n,                
+        const float *A,    
+        int lda,           
+        const float *S, 
+        const float *U,   
+        int ldu, 
+        const float *V,
+        int ldv,  
+        int *lwork,
+        gesvdjInfo_t params,
+        int batchSize) {
+    // rocSOLVER does not need extra workspace, but it computes the bidiagonal matrix B
+    // assocated with A, which we don't need, so we use the workspace to store B
+    *lwork = batchSize * (m<n?m:n) * sizeof(float);
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnDgesvdjBatched_bufferSize(
+        cusolverDnHandle_t handle,
+        cusolverEigMode_t jobz,
+        int m,
+        int n,
+        const double *A, 
+        int lda,
+        const double *S,
+        const double *U,
+        int ldu,
+        const double *V,
+        int ldv,
+        int *lwork,
+        gesvdjInfo_t params,
+        int batchSize) {
+    // rocSOLVER does not need extra workspace, but it computes the bidiagonal matrix B
+    // assocated with A, which we don't need, so we use the workspace to store B
+    *lwork = batchSize * (m<n?m:n) * sizeof(double);
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnCgesvdjBatched_bufferSize(
+        cusolverDnHandle_t handle,
+        cusolverEigMode_t jobz,
+        int m,
+        int n,
+        const cuComplex *A,
+        int lda,
+        const float *S,
+        const cuComplex *U,
+        int ldu,
+        const cuComplex *V,
+        int ldv,
+        int *lwork,
+        gesvdjInfo_t params,
+        int batchSize) {
+    // rocSOLVER does not need extra workspace, but it computes the bidiagonal matrix B
+    // assocated with A, which we don't need, so we use the workspace to store B
+    *lwork = batchSize * (m<n?m:n) * sizeof(float);
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(
+        cusolverDnHandle_t handle,
+        cusolverEigMode_t jobz, 
+        int m, 
+        int n, 
+        const cuDoubleComplex *A,
+        int lda,
+        const double *S,
+        const cuDoubleComplex *U,
+        int ldu, 
+        const cuDoubleComplex *V,
+        int ldv,
+        int *lwork,
+        gesvdjInfo_t params,
+        int batchSize) {
+    // rocSOLVER does not need extra workspace, but it computes the bidiagonal matrix B
+    // assocated with A, which we don't need, so we use the workspace to store B
+    *lwork = batchSize * (m<n?m:n) * (m<n?m:n) * sizeof(double);
+    return rocblas_status_success;
+}
+
+cusolverStatus_t cusolverDnSgesvdjBatched(
+        cusolverDnHandle_t handle,
+        cusolverEigMode_t jobz, 
+        int m, 
+        int n, 
+        float *A, 
+        int lda, 
+        float *S, 
+        float *U,
+        int ldu,
+        float *V,
+        int ldv, 
+        float *work,
+        int lwork,
+        int *info,
+        gesvdjInfo_t params,
+        int batchSize) {
+    #if HIP_VERSION < 309
+    return rocblas_status_not_implemented;
+    #else
+    if (jobz == CUSOLVER_EIG_MODE_NOVECTOR) {
+        rocblas_svect leftv = rocblas_svect_singular;
+        rocblas_svect rightv = rocblas_svect_singular;
+        rocblas_stride stU = ldu * (m<n?m:n);
+        rocblas_stride stV = ldv * n;
+    } else {  // CUSOLVER_EIG_MODE_VECTOR
+        rocblas_svect leftv = rocblas_svect_all;
+        rocblas_svect rightv = rocblas_svect_all;
+        rocblas_stride stU = ldu * m;
+        rocblas_stride stV = ldv * n;
+    }
+    return rocsolver_sgesvd_batched(handle, leftv, rightv,
+                                    m, n, A, lda,
+                                    S, m<n?m:n,
+                                    U, ldu, stU,
+                                    V, ldv, stV,
+                                    // since we can't pass in another array through the API, and work is unused,
+                                    // we use it to store the temporary E array, to be discarded after calculation
+                                    work, (m<n?m:n)-1,
+                                    rocblas_outofplace, // always out-of-place
+                                    info, batchSize);
+    #endif
+}
+
+cusolverStatus_t cusolverDnDgesvdjBatched(...) {
+    #if HIP_VERSION < 309
+    return rocblas_status_not_implemented;
+    #else
+}
+
+cusolverStatus_t cusolverDnCgesvdjBatched(...) {
+    #if HIP_VERSION < 309
+    return rocblas_status_not_implemented;
+    #else
+}
+
+cusolverStatus_t cusolverDnZgesvdjBatched(...) {
+    #if HIP_VERSION < 309
+    return rocblas_status_not_implemented;
+    #else
+}
+
+
 /* ---------- gebrd ---------- */
 cusolverStatus_t cusolverDnSgebrd_bufferSize(cusolverDnHandle_t handle,
                                              int m,
@@ -1149,15 +1309,6 @@ cusolverStatus_t cusolverDnZsytrf(...) {
     return rocblas_status_not_implemented;
 }
 
-
-cusolverStatus_t cusolverDnCreateGesvdjInfo(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnDestroyGesvdjInfo(...) {
-    return rocblas_status_not_implemented;
-}
-
 cusolverStatus_t cusolverDnXgesvdjSetTolerance(...) {
     return rocblas_status_not_implemented;
 }
@@ -1210,37 +1361,6 @@ cusolverStatus_t cusolverDnZgesvdj(...) {
     return rocblas_status_not_implemented;
 }
 
-cusolverStatus_t cusolverDnSgesvdjBatched_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnDgesvdjBatched_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnCgesvdjBatched_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnSgesvdjBatched(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnDgesvdjBatched(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnCgesvdjBatched(...) {
-    return rocblas_status_not_implemented;
-}
-
-cusolverStatus_t cusolverDnZgesvdjBatched(...) {
-    return rocblas_status_not_implemented;
-}
 
 cusolverStatus_t cusolverDnSgesvdaStridedBatched_bufferSize(...) {
     return rocblas_status_not_implemented;
