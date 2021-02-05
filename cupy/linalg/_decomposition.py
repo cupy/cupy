@@ -6,6 +6,7 @@ from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
 from cupy.cusolver import check_availability
+from cupy.cusolver import _gesvdj_batched
 from cupy.linalg import _util
 
 
@@ -380,9 +381,22 @@ def svd(a, full_matrices=True, compute_uv=True):
 
     .. seealso:: :func:`numpy.linalg.svd`
     """
-    # TODO(Saito): Current implementation only accepts two-dimensional arrays
     _util._assert_cupy_array(a)
-    _util._assert_rank2(a)
+
+    if a.ndim > 2:
+        batch_shape = a.shape[:-2]
+        a = a.reshape(-1, *(a.shape[-2:]))
+        out = _gesvdj_batched(a, full_matrices, compute_uv, False)
+        if compute_uv:
+            u, s, v = out
+            u = u.reshape(*batch_shape, *(u.shape[-2:]))
+            s = s.reshape(*batch_shape, *(s.shape[-1:]))
+            v = v.reshape(*batch_shape, *(v.shape[-2:]))
+            return u, s, v.swapaxes(-2, -1).conjugate()
+        else:
+            s = out
+            s = s.reshape(*batch_shape, *(s.shape[-1:]))
+            return s
 
     # Cast to float32 or float64
     a_dtype = numpy.promote_types(a.dtype.char, 'f').char
