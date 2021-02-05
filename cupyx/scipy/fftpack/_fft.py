@@ -42,7 +42,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
 
         .. code-block:: python
 
-            x = cupy.random.random(16).reshape(4, 4).astype(cupy.complex)
+            x = cupy.random.random(16).reshape(4, 4).astype(complex)
             plan = cupyx.scipy.fftpack.get_fft_plan(x)
             with plan:
                 y = cupy.fft.fftn(x)
