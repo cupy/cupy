@@ -1,6 +1,5 @@
 import functools as _functools
 import sys as _sys
-import warnings as _warnings
 
 import numpy as _numpy
 
