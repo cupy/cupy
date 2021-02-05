@@ -28,9 +28,14 @@ requirements = {
         'fastrlock>=0.3',
     ],
     'install': [
-        'numpy>=1.15',
+        'numpy>=1.17',
         'fastrlock>=0.3',
     ],
+    'all': [
+        'scipy>=1.4',
+        'optuna>=2.0',
+    ],
+
     'stylecheck': [
         'autopep8==1.4.4',
         'flake8==3.7.9',
