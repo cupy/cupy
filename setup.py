@@ -41,14 +41,6 @@ requirements = {
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
     ],
-    'doctest': [
-        'matplotlib',
-        'optuna',
-    ],
-    'docs': [
-        'sphinx==3.0.4',
-        'sphinx_rtd_theme',
-    ],
     'appveyor': [
         '-r test',
     ],
