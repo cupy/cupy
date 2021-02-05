@@ -14,8 +14,12 @@ $cupy_kernel_cache_file = "cupy_kernel_cache_windows.zip"
 
 function DownloadCache {
     pushd $Env:USERPROFILE
-    RunOrDie gsutil -m cp gs://tmp-asia-pfn-public-ci/cupy-ci/$cupy_kernel_cache_file .
-    RunOrDie 7z x $cupy_kernel_cache_file
+    gsutil -m cp gs://tmp-asia-pfn-public-ci/cupy-ci/$cupy_kernel_cache_file .
+    if (-not $?) {
+        echo "*** Kernel cache unavailable"
+    } else {
+        RunOrDie 7z x $cupy_kernel_cache_file
+    }
     popd
 }
 
