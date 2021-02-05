@@ -1,5 +1,7 @@
 import unittest
 
+import numpy
+
 from cupy import testing
 
 
@@ -231,7 +233,8 @@ class TestVectorizeExprs(unittest.TestCase):
         return f(x, y)
 
     @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
-    @testing.numpy_cupy_allclose(accept_error=TypeError)
+    @testing.numpy_cupy_allclose(
+        rtol={numpy.float16: 1e3, 'default': 1e-7}, accept_error=TypeError)
     def test_vectorize_ufunc_call_dtype(self, xp, dtype1, dtype2):
         def my_ufunc_add(x, y):
             return xp.add(x, y, dtype=dtype2)
