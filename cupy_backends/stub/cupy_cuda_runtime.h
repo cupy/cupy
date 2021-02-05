@@ -116,6 +116,10 @@ cudaError_t cudaMallocArray(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaMallocAsync(...) {
+    return cudaSuccess;
+}
+
 cudaError_t cudaHostAlloc(...) {
     return cudaSuccess;
 }
@@ -141,6 +145,10 @@ cudaError_t cudaFreeArray(...) {
 }
 
 cudaError_t cudaFreeHost(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaFreeAsync(...) {
     return cudaSuccess;
 }
 

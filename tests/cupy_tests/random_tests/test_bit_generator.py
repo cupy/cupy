@@ -4,7 +4,7 @@ import pytest
 import numpy
 
 import cupy
-from cupy.random import _bit_generator
+from cupy import random
 from cupy import testing
 
 
@@ -53,7 +53,7 @@ class BitGeneratorTestCase:
 class TestBitGeneratorXORWOW(BitGeneratorTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()
-        self.bg = _bit_generator.XORWOW
+        self.bg = random._bit_generator.XORWOW
 
 
 @testing.with_requires('numpy>=1.17.0')
@@ -64,7 +64,7 @@ class TestBitGeneratorXORWOW(BitGeneratorTestCase, unittest.TestCase):
 class TestBitGeneratorMRG32k3a(BitGeneratorTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()
-        self.bg = _bit_generator.MRG32k3a
+        self.bg = random._bit_generator.MRG32k3a
 
 
 @testing.with_requires('numpy>=1.17.0')
@@ -75,4 +75,4 @@ class TestBitGeneratorMRG32k3a(BitGeneratorTestCase, unittest.TestCase):
 class TestBitGeneratorPhilox4x3210(BitGeneratorTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()
-        self.bg = _bit_generator.Philox4x3210
+        self.bg = random._bit_generator.Philox4x3210

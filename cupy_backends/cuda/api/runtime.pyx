@@ -87,7 +87,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device)
     int cudaDeviceGetByPCIBusId(int* device, const char* pciBusId)
     int cudaDeviceGetPCIBusId(char* pciBusId, int len, int device)
-    int cudaGetDeviceProperties(cudaDeviceProp* prop, int device)
+    int cudaGetDeviceProperties(DeviceProp* prop, int device)
     int cudaGetDeviceCount(int* count)
     int cudaSetDevice(int device)
     int cudaDeviceSynchronize()
@@ -114,12 +114,14 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
                           Extent extent, unsigned int flags)
     int cudaMallocArray(Array* array, const ChannelFormatDesc* desc,
                         size_t width, size_t height, unsigned int flags)
+    int cudaMallocAsync(void**, size_t, driver.Stream)
     int cudaHostAlloc(void** ptr, size_t size, unsigned int flags)
     int cudaHostRegister(void *ptr, size_t size, unsigned int flags)
     int cudaHostUnregister(void *ptr)
     int cudaFree(void* devPtr)
     int cudaFreeHost(void* ptr)
     int cudaFreeArray(Array array)
+    int cudaFreeAsync(void*, driver.Stream)
     int cudaMemGetInfo(size_t* free, size_t* total)
     int cudaMemcpy(void* dst, const void* src, size_t count,
                    MemoryKind kind)
@@ -209,6 +211,8 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaErrorMemoryAllocation
     int cudaErrorInvalidValue
     int cudaErrorPeerAccessAlreadyEnabled
+    int cudaErrorContextIsDestroyed
+    int cudaErrorInvalidResourceHandle
 
 
 _is_hip_environment = hip_environment  # for runtime being cimport'd
@@ -224,6 +228,8 @@ deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 errorInvalidValue = cudaErrorInvalidValue
 errorMemoryAllocation = cudaErrorMemoryAllocation
 errorPeerAccessAlreadyEnabled = cudaErrorPeerAccessAlreadyEnabled
+errorContextIsDestroyed = cudaErrorContextIsDestroyed
+errorInvalidResourceHandle = cudaErrorInvalidResourceHandle
 
 
 ###############################################################################
@@ -286,11 +292,11 @@ cpdef int deviceGetAttribute(int attrib, int device) except? -1:
     return ret
 
 cpdef getDeviceProperties(int device):
-    cdef cudaDeviceProp props
+    cdef DeviceProp props
     cdef int status = cudaGetDeviceProperties(&props, device)
     check_status(status)
 
-    cdef dict properties = {'name': 'UNAVAILABLE'}  # for RTD
+    cdef dict properties = {'name': b'UNAVAILABLE'}  # for RTD
 
     # Common properties to CUDA 9.0, 9.2, 10.x, 11.x, and HIP
     IF CUDA_VERSION > 0 or use_hip:
@@ -585,6 +591,16 @@ cpdef intptr_t mallocArray(intptr_t descPtr, size_t width, size_t height,
     return <intptr_t>ptr
 
 
+cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
+    cdef void* ptr
+    if CUDA_VERSION < 11020:
+        raise RuntimeError('mallocAsync is supported since CUDA 11.2')
+    with nogil:
+        status = cudaMallocAsync(&ptr, size, <driver.Stream>stream)
+    check_status(status)
+    return <intptr_t>ptr
+
+
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0:
     cdef void* ptr
     with nogil:
@@ -620,6 +636,14 @@ cpdef freeHost(intptr_t ptr):
 cpdef freeArray(intptr_t ptr):
     with nogil:
         status = cudaFreeArray(<Array>ptr)
+    check_status(status)
+
+
+cpdef freeAsync(intptr_t ptr, intptr_t stream):
+    if CUDA_VERSION < 11020:
+        raise RuntimeError('freeAsync is supported since CUDA 11.2')
+    with nogil:
+        status = cudaFreeAsync(<void*>ptr, <driver.Stream>stream)
     check_status(status)
 
 

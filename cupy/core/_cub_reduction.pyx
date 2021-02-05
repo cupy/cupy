@@ -131,21 +131,26 @@ __global__ void ${name}(${params}) {
   int tile_size = (BLOCK_SIZE * ITEMS_PER_THREAD < _segment_size ?
                    BLOCK_SIZE * ITEMS_PER_THREAD :
                    _segment_size);
+  sizeT _seg_size = _segment_size;
 
   #if defined FIRST_PASS
   // for two-pass reduction only: "last segment" is special
   if (_array_size > 0) {
       if (_array_size - segment_idx <= _segment_size) {
-          _segment_size = _array_size - segment_idx;
+          _seg_size = _array_size - segment_idx;
       }
+      #ifdef __HIP_DEVICE_COMPILE__
+      // We don't understand HIP...
+      __syncthreads();  // Propagate the new value back to memory
+      #endif
   }
   #endif
 
   // loop over tiles within 1 segment
   _type_reduce aggregate = _type_reduce(${identity});
-  for (i = 0; i < _segment_size; i += BLOCK_SIZE * ITEMS_PER_THREAD) {
+  for (i = 0; i < _seg_size; i += BLOCK_SIZE * ITEMS_PER_THREAD) {
       // for the last tile
-      if (_segment_size - i <= tile_size) { tile_size = _segment_size - i; }
+      if (_seg_size - i <= tile_size) { tile_size = _seg_size - i; }
 '''
 
     if pre_map_expr == 'in0':
@@ -166,7 +171,7 @@ __global__ void ${name}(${params}) {
           #if defined FIRST_PASS
           int _J = (segment_idx + i + e_idx);
           #else  // only one pass
-          int _J = (segment_idx + i + e_idx) % _segment_size;
+          int _J = (segment_idx + i + e_idx) % _seg_size;
           #endif
 
           if (e_idx < tile_size) {
@@ -376,10 +381,10 @@ cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
     # 2. block size >= segment size: the segment fits in the block
     block_size = (contiguous_size + items_per_thread - 1) // items_per_thread
     block_size = internal.clp2(block_size)
-    if block_size < 32:
-        block_size = 32  # warp size
+    warp_size = 32 if not runtime._is_hip_environment else 64
+    if block_size < warp_size:
+        block_size = warp_size
     elif block_size > _cub_default_block_size:
-        # TODO(leofang): try 1024 as maximum?
         block_size = _cub_default_block_size
 
     return items_per_thread, block_size
@@ -633,13 +638,13 @@ cdef bint _try_to_call_cub_reduction(
                 '_out_ind.size()', '1.0')
 
     if contiguous_size > 0x7fffffff:  # INT_MAX
-        size_type = 'uint64 '
+        size_type = 'uint64'
     else:
-        size_type = 'int32 '
+        size_type = 'int32'
+    type_map = _kernel._TypeMap(type_map._pairs + (('sizeT', size_type),))
     params = (self._params[0:2]
-              + _get_param_info(
-                  size_type + '_segment_size', not full_reduction)
-              + _get_param_info(size_type + '_array_size', True))
+              + _get_param_info(size_type + ' _segment_size', True)
+              + _get_param_info(size_type + ' _array_size', True))
 
     # HACK for ReductionKernel:
     # 1. input/output arguments might not be named as in0/out0

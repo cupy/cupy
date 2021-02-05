@@ -93,9 +93,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             data = cupy.asarray(other, dtype=self.dtype).reshape(1)
             if numpy.isnan(data[0]):
                 if op_name == '_ne_':
-                    return csr_matrix(cupy.ones(self.shape, dtype=numpy.bool))
+                    return csr_matrix(cupy.ones(self.shape, dtype=numpy.bool_))
                 else:
-                    return csr_matrix(self.shape, dtype=numpy.bool)
+                    return csr_matrix(self.shape, dtype=numpy.bool_)
             indices = cupy.zeros((1,), dtype=numpy.int32)
             indptr = cupy.arange(2, dtype=numpy.int32)
             other = csr_matrix((data, indices, indptr), shape=(1, 1))
@@ -853,22 +853,22 @@ def binopt_csr(a, b, op_name):
         out_dtype = in_dtype
     elif op_name == '_eq_':
         funcs += _BINOPT_EQ_
-        out_dtype = numpy.bool
+        out_dtype = numpy.bool_
     elif op_name == '_ne_':
         funcs += _BINOPT_NE_
-        out_dtype = numpy.bool
+        out_dtype = numpy.bool_
     elif op_name == '_lt_':
         funcs += _BINOPT_LT_
-        out_dtype = numpy.bool
+        out_dtype = numpy.bool_
     elif op_name == '_gt_':
         funcs += _BINOPT_GT_
-        out_dtype = numpy.bool
+        out_dtype = numpy.bool_
     elif op_name == '_le_':
         funcs += _BINOPT_LE_
-        out_dtype = numpy.bool
+        out_dtype = numpy.bool_
     elif op_name == '_ge_':
         funcs += _BINOPT_GE_
-        out_dtype = numpy.bool
+        out_dtype = numpy.bool_
     else:
         raise ValueError('invalid op_name: {}'.format(op_name))
     a_tmp_data = cupy.empty(a_nnz, dtype=out_dtype)

@@ -81,10 +81,10 @@ class TestArrayUfunc:
         assert x @ y == ('matmul', (x, y), {})
         assert y @ x == ('matmul', (y, x), {})
         y2 = y
-        y2 @= x
+        y2 @ = x
         assert y2 == ('matmul', (y, x), {'out': y})
         with pytest.raises(TypeError):
-            x @= y
+            x @ = y
 
     def test_lt(self):
         x = cupy.array([3, 7])

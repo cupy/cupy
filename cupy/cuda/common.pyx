@@ -33,7 +33,7 @@ cpdef int _get_dtype_id(dtype) except -1:
         ret = CUPY_TYPE_COMPLEX64
     elif dtype == numpy.complex128:
         ret = CUPY_TYPE_COMPLEX128
-    elif dtype == numpy.bool:
+    elif dtype == numpy.bool_:
         ret = CUPY_TYPE_BOOL
     else:
         raise ValueError('Unsupported dtype ({})'.format(dtype))

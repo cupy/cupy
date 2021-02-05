@@ -14,10 +14,20 @@ class TestInstallLibrary(unittest.TestCase):
         for rec in install_library._cudnn_records:
             cuda = rec['cuda']
             with tempfile.TemporaryDirectory() as d:
-                install_library.install_cudnn(cuda, d)
+                install_library.install_lib(cuda, d, 'cudnn')
 
-    def test_cudnn(self):
-        assets = [r['assets'] for r in install_library._cudnn_records]
+    @testing.slow
+    def test_install_cutensor(self):
+        # Try installing cuTENSOR for all supported CUDA versions
+        for rec in install_library._cutensor_records:
+            cuda = rec['cuda']
+            with tempfile.TemporaryDirectory() as d:
+                install_library.install_lib(cuda, d, 'cutensor')
+
+    def test_urls(self):
+        assets = [r['assets'] for r in (
+            install_library._cudnn_records
+            + install_library._cutensor_records)]
         for asset in assets:
             for platform in asset.keys():
                 url = asset[platform]['url']
@@ -28,3 +38,5 @@ class TestInstallLibrary(unittest.TestCase):
     def test_main(self):
         install_library.main(
             ['--library', 'cudnn', '--action', 'dump', '--cuda', 'null'])
+        install_library.main(
+            ['--library', 'cutensor', '--action', 'dump', '--cuda', 'null'])

@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import numpy
 import cupy
@@ -31,10 +32,8 @@ class TestLUFactor(unittest.TestCase):
         cupy.testing.assert_allclose(result_cpu[0], result_gpu[0], atol=1e-5)
         cupy.testing.assert_array_equal(result_cpu[1], result_gpu[1])
 
-    @testing.for_dtypes('fdFD')
-    def test_lu_factor_reconstruction(self, dtype):
+    def check_lu_factor_reconstruction(self, A):
         m, n = self.shape
-        A = testing.shaped_random(self.shape, cupy, dtype=dtype)
         lu, piv = cupyx.scipy.linalg.lu_factor(A)
         # extract ``L`` and ``U`` from ``lu``
         L = cupy.tril(lu, k=-1)
@@ -57,6 +56,22 @@ class TestLUFactor(unittest.TestCase):
         # check that reconstruction is close to original
         LU = L.dot(U)
         cupy.testing.assert_allclose(LU, PA, atol=1e-5)
+
+    @testing.for_dtypes('fdFD')
+    def test_lu_factor_reconstruction(self, dtype):
+        A = testing.shaped_random(self.shape, cupy, dtype=dtype)
+        self.check_lu_factor_reconstruction(A)
+
+    @testing.for_dtypes('fdFD')
+    def test_lu_factor_reconstruction_singular(self, dtype):
+        if self.shape[0] != self.shape[1]:
+            return unittest.SkipTest()
+        A = testing.shaped_random(self.shape, cupy, dtype=dtype)
+        A -= A.mean(axis=0, keepdims=True)
+        A -= A.mean(axis=1, keepdims=True)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            self.check_lu_factor_reconstruction(A)
 
 
 @testing.gpu
