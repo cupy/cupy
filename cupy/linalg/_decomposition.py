@@ -383,21 +383,6 @@ def svd(a, full_matrices=True, compute_uv=True):
     """
     _util._assert_cupy_array(a)
 
-    if a.ndim > 2:
-        batch_shape = a.shape[:-2]
-        a = a.reshape(-1, *(a.shape[-2:]))
-        out = _gesvdj_batched(a, full_matrices, compute_uv, False)
-        if compute_uv:
-            u, s, v = out
-            u = u.reshape(*batch_shape, *(u.shape[-2:]))
-            s = s.reshape(*batch_shape, *(s.shape[-1:]))
-            v = v.reshape(*batch_shape, *(v.shape[-2:]))
-            return u, s, v.swapaxes(-2, -1).conjugate()
-        else:
-            s = out
-            s = s.reshape(*batch_shape, *(s.shape[-1:]))
-            return s
-
     # Cast to float32 or float64
     a_dtype = numpy.promote_types(a.dtype.char, 'f').char
     if a_dtype == 'f':
@@ -409,6 +394,22 @@ def svd(a, full_matrices=True, compute_uv=True):
     else:  # a_dtype == 'D':
         a_dtype = 'D'
         s_dtype = 'd'
+
+    if a.ndim > 2:
+        batch_shape = a.shape[:-2]
+        a = a.reshape(-1, *(a.shape[-2:]))
+        a = a.astype(a_dtype, order='C', copy=False)  # TODO(leofang): can we not copy here?
+        out = _gesvdj_batched(a, full_matrices, compute_uv, False)
+        if compute_uv:
+            u, s, v = out
+            u = u.reshape(*batch_shape, *(u.shape[-2:]))
+            s = s.reshape(*batch_shape, *(s.shape[-1:]))
+            v = v.reshape(*batch_shape, *(v.shape[-2:]))
+            return u, s, v.swapaxes(-2, -1).conjugate()
+        else:
+            s = out
+            s = s.reshape(*batch_shape, *(s.shape[-1:]))
+            return s
 
     # Remark 1: gesvd only supports m >= n (WHAT?)
     # Remark 2: gesvd only supports jobu = 'A' and jobvt = 'A'

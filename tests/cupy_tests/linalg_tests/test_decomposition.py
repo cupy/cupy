@@ -142,8 +142,6 @@ class TestSVD(unittest.TestCase):
         numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
     ])
     def check_usv(self, shape, dtype):
-        if len(shape)>2 and dtype not in (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,):
-            self.skipTest('TODO: support int dtypes')
         array = testing.shaped_random(
             shape, numpy, dtype=dtype, seed=self.seed)
         a_cpu = numpy.asarray(array, dtype=dtype)
@@ -211,8 +209,6 @@ class TestSVD(unittest.TestCase):
     ])
     @testing.numpy_cupy_allclose(atol=1e-4)
     def check_singular(self, shape, xp, dtype):
-        if len(shape)>2 and dtype not in (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,):
-            self.skipTest('TODO: support int dtypes')
         array = testing.shaped_random(shape, xp, dtype=dtype, seed=self.seed)
         a = xp.asarray(array, dtype=dtype)
         a_copy = a.copy()
