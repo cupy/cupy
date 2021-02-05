@@ -1,7 +1,7 @@
 import numpy
 
 
-_typenames = {
+dtype_to_ctype = {
     numpy.dtype('float64'): 'double',
     numpy.dtype('float32'): 'float',
     numpy.dtype('float16'): 'float16',
@@ -43,4 +43,4 @@ class Scalar(TypeBase):
         if dtype == numpy.float16:
             # For the performance
             dtype = numpy.dtype('float32')
-        return _typenames[dtype]
+        return dtype_to_ctype[dtype]

@@ -1,25 +1,4 @@
-import numpy
-
-
-_dtype_to_ctype = {
-    numpy.dtype('float64'): 'double',
-    numpy.dtype('float32'): 'float',
-    numpy.dtype('float16'): 'float16',
-    numpy.dtype('complex128'): 'complex<double>',
-    numpy.dtype('complex64'): 'complex<float>',
-    numpy.dtype('int64'): 'long long',
-    numpy.dtype('int32'): 'int',
-    numpy.dtype('int16'): 'short',
-    numpy.dtype('int8'): 'signed char',
-    numpy.dtype('uint64'): 'unsigned long long',
-    numpy.dtype('uint32'): 'unsigned int',
-    numpy.dtype('uint16'): 'unsigned short',
-    numpy.dtype('uint8'): 'unsigned char',
-    numpy.dtype('bool'): 'bool',
-}
-
-
-class _CodeBlock:
+class CodeBlock:
     """Code fragment for the readable format.
     """
 
@@ -34,7 +13,7 @@ class _CodeBlock:
             next_indent_width = indent_width + 2
             if isinstance(code, str):
                 codes.append(' ' * next_indent_width + code)
-            elif isinstance(code, _CodeBlock):
+            elif isinstance(code, CodeBlock):
                 codes += code._to_str_list(indent_width=next_indent_width)
             else:
                 assert False

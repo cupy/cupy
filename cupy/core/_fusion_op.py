@@ -6,12 +6,10 @@ from cupy.core._fusion_variable import _TraceVariable
 from cupy.core._fusion_variable import _TraceArray
 from cupy.core._fusion_variable import _VariableSet
 from cupy.core import _fusion_thread_local
-from cupy.core import _fusion_emit_code
 from cupy.core import _kernel
 from cupy.core import _reduction
-
-
-_dtype_to_ctype = _fusion_emit_code._dtype_to_ctype
+from cupyx.jit._types import dtype_to_ctype
+from cupyx.jit import _codeblock
 
 
 class _UfuncRoutine:
@@ -59,11 +57,11 @@ class _UfuncRoutine:
         dtypes = self.compute_dtypes
         assert len(self.in_params) == len(self.compute_dtypes[:nin])
         in_params = [
-            (_dtype_to_ctype[p.dtype], _dtype_to_ctype[t], 'in{}'.format(i))
+            (dtype_to_ctype[p.dtype], dtype_to_ctype[t], 'in{}'.format(i))
             for i, (p, t) in enumerate(zip(self.in_params, dtypes[:nin]))
         ]
         out_params = [
-            (_dtype_to_ctype[p.dtype], _dtype_to_ctype[t], 'out{}'.format(i))
+            (dtype_to_ctype[p.dtype], dtype_to_ctype[t], 'out{}'.format(i))
             for i, (p, t) in enumerate(zip(self.out_params, dtypes[nin:]))
         ]
         params = in_params + out_params
@@ -73,7 +71,7 @@ class _UfuncRoutine:
         read = ['{} {} = ({}) {}_;'.format(t, s, t, s) for _, t, s in params]
         write = ['{}_ = {};'.format(s, s, s) for _, _, s in out_params]
 
-        return _fusion_emit_code._CodeBlock(
+        return _codeblock.CodeBlock(
             '__device__ void {}({})'.format(self.name, params_code),
             typedef + read + [self.routine_code + ';'] + write)
 
@@ -181,7 +179,7 @@ class _ElementwiseTraceOp:
         indexer_name = next(iter(indexed_array)).indexer_name
         indexer_setup = self._emit_set_index(indexed_array, index_name)
 
-        return _fusion_emit_code._CodeBlock(
+        return _codeblock.CodeBlock(
             'CUPY_FOR({}, {}.size())'.format(index_name, indexer_name),
             indexer_setup + declaration + operation + after_operation)
 
@@ -219,7 +217,7 @@ class _ReductionTraceOp:
         _, self.expr, self.postmap_cast_code, self.reduce_ctype = expr
         if self.reduce_ctype is None:
             out_param, = self.out_params
-            self.reduce_ctype = _dtype_to_ctype[out_param.dtype]
+            self.reduce_ctype = dtype_to_ctype[out_param.dtype]
 
         self.premap_op = None
         self.postmap_op = None
@@ -307,8 +305,8 @@ __device__ void ${name}(
             name=self.name,
             op_name=op_name,
             postmap_name=postmap_name,
-            in_type=_dtype_to_ctype[in_param.dtype],
-            out_type=_dtype_to_ctype[out_param.dtype],
+            in_type=dtype_to_ctype[in_param.dtype],
+            out_type=dtype_to_ctype[out_param.dtype],
             reduce_ctype=self.reduce_ctype,
             reduce_expr=self.expr,
             identity=self.identity,
