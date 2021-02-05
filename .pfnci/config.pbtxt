@@ -54,7 +54,7 @@ configs {
     }
     environment_variables { key: "GPU" value: "2" }
     environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
-    command: ".pfnci\\windows\\main.bat 10.0 3.7"
+    command: ".pfnci\\windows\\run.bat 10.0 3.7 test"
   }
 }
 
