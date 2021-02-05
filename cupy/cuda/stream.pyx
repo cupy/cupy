@@ -325,7 +325,7 @@ class Stream(BaseStream):
             # TODO(pentschev): move to streamLegacy. This wasn't possible
             # because of a NCCL bug that should be fixed in the version
             # following 2.8.3-1.
-            self.ptr = runtime.streamDefault
+            self.ptr = 0
         elif ptds:
             self.ptr = runtime.streamPerThread
         elif non_blocking:
