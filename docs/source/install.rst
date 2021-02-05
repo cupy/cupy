@@ -135,7 +135,8 @@ the installation of a particular CUDA version (say 10.0) for driver compatibilit
 
     $ conda install -c conda-forge cupy cutensor cudatoolkit=10.2
 
-    ``cupy`` and ``cutensor`` must coexist in order for the ``conda`` solver to pick the right package.
+    Note that ``cupy`` and ``cutensor`` must be installed at the same time (as shown above) in order for the ``conda`` solver to pick up the right package;
+    otherwise, the cuTENSOR support is disabled.
 
 .. note::
 
