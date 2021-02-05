@@ -211,6 +211,8 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
         gesvdj, info)
 
     _cusolver.destroyGesvdjInfo(params)
+    if _runtime.is_hip:
+        v = v.swapaxes(-1, -2)
     if not full_matrices:
         u = u[..., :mn]
         v = v[..., :mn]
