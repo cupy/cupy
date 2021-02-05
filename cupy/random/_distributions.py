@@ -1,4 +1,3 @@
-import cupy
 from cupy.random import _generator
 from cupy import _util
 
