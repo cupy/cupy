@@ -6,6 +6,7 @@ import pytest
 import cupy
 from cupy import cusolver
 from cupy import testing
+from cupy.core.internal import prod
 from cupy.testing import condition
 import cupyx
 
@@ -154,7 +155,6 @@ class TestSVD(unittest.TestCase):
 
         assert len(result_gpu) == 3
         for i in range(3):
-            print(i)
             assert result_gpu[i].shape == result_cpu[i].shape
             assert result_gpu[i].dtype == result_cpu[i].dtype
         u_cpu, s_cpu, vh_cpu = result_cpu
@@ -162,16 +162,16 @@ class TestSVD(unittest.TestCase):
         cupy.testing.assert_allclose(s_gpu, s_cpu, atol=1e-4)
 
         # reconstruct the matrix
+        k = s_cpu.shape[-1]
         if len(shape) == 2:
-            k = s_cpu.shape[-1]
             if self.full_matrices:
                 a_gpu_usv = cupy.dot(u_gpu[:, :k] * s_gpu, vh_gpu[:k, :])
             else:
                 a_gpu_usv = cupy.dot(u_gpu * s_gpu, vh_gpu)
         else:
-            k = min(u_gpu.shape[-1], vh_gpu.shape[-1])
             if self.full_matrices:
-                a_gpu_usv = cupy.matmul(u_gpu[..., :k] * s_gpu[..., None, :], vh_gpu[..., :k, :])
+                a_gpu_usv = cupy.matmul(u_gpu[..., :k] * s_gpu[..., None, :],
+                                        vh_gpu[..., :k, :])
             else:
                 a_gpu_usv = cupy.matmul(u_gpu*s_gpu[..., None, :], vh_gpu)
         cupy.testing.assert_allclose(a_gpu, a_gpu_usv, atol=1e-4)
@@ -187,18 +187,20 @@ class TestSVD(unittest.TestCase):
                 numpy.eye(vh_gpu.shape[0]),
                 atol=1e-4)
         else:
-            batch = 1
-            for i in range(len(shape)-2):
-                batch *= shape[i]
+            batch = prod(shape[:-2])
+            u_len = u_gpu.shape[-1]
+            vh_len = vh_gpu.shape[-2]
 
-            id_u_cpu = [numpy.eye(u_gpu.shape[-1]) for _ in range(batch)]
-            id_u_cpu = numpy.stack(id_u_cpu, axis=0).reshape(*(shape[:-2]), u_gpu.shape[-1], u_gpu.shape[-1])
+            id_u_cpu = [numpy.eye(u_len) for _ in range(batch)]
+            id_u_cpu = numpy.stack(id_u_cpu, axis=0).reshape(
+                *(shape[:-2]), u_len, u_len)
             cupy.testing.assert_allclose(
                 cupy.matmul(cupy.moveaxis(u_gpu, -1, -2).conj(), u_gpu),
                 id_u_cpu, atol=1e-4)
 
-            id_vh_cpu = [numpy.eye(vh_gpu.shape[-2]) for _ in range(batch)]
-            id_vh_cpu = numpy.stack(id_vh_cpu, axis=0).reshape(*(shape[:-2]), vh_gpu.shape[-2], vh_gpu.shape[-2])
+            id_vh_cpu = [numpy.eye(vh_len) for _ in range(batch)]
+            id_vh_cpu = numpy.stack(id_vh_cpu, axis=0).reshape(
+                *(shape[:-2]), vh_len, vh_len)
             cupy.testing.assert_allclose(
                 cupy.matmul(vh_gpu, cupy.moveaxis(vh_gpu, -1, -2).conj()),
                 id_vh_cpu, atol=1e-4)
