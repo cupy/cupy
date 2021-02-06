@@ -1044,7 +1044,7 @@ cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(
     // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
     // the bidiagonal matrix B associated with A, which we don't need, so we use this workspace
     // to store it
-    *lwork = batchSize * (m<n?m:n)* sizeof(double);
+    *lwork = batchSize * (m<n?m:n) * sizeof(double);
     return rocblas_status_success;
 }
 
@@ -1074,7 +1074,6 @@ cusolverStatus_t cusolverDnSgesvdjBatched(
         leftv = rocblas_svect_none;
         rightv = rocblas_svect_none;
         stU = ldu * (m<n?m:n);
-        //stU = ldu * m;
         stV = ldv * n;
     } else {  // CUSOLVER_EIG_MODE_VECTOR
         leftv = rocblas_svect_all;

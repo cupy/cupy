@@ -14,7 +14,7 @@ import cupyx as _cupyx
 
 _available_cuda_version = {
     'gesvdj': (9000, None),
-    'gesvdjBatched': (9000, None),  # TODO(leofang): CHECK!
+    'gesvdjBatched': (9000, None),
     'gesvda': (10010, None),
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
