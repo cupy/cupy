@@ -975,9 +975,10 @@ cusolverStatus_t cusolverDnSgesvdjBatched_bufferSize(
         int *lwork,
         gesvdjInfo_t params,
         int batchSize) {
-    // rocSOLVER does not need extra workspace, but it computes the bidiagonal matrix B
-    // assocated with A, which we don't need, so we use the workspace to store B
-    *lwork = batchSize * (m<n?m:n) * (m<n?m:n) * sizeof(float);  // TODO: CHECK
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the bidiagonal matrix B associated with A, which we don't need, so we use this workspace
+    // to store it
+    *lwork = batchSize * (m<n?m:n) * sizeof(float);
     return rocblas_status_success;
 }
 
@@ -996,8 +997,9 @@ cusolverStatus_t cusolverDnDgesvdjBatched_bufferSize(
         int *lwork,
         gesvdjInfo_t params,
         int batchSize) {
-    // rocSOLVER does not need extra workspace, but it computes the bidiagonal matrix B
-    // assocated with A, which we don't need, so we use the workspace to store B
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the bidiagonal matrix B associated with A, which we don't need, so we use this workspace
+    // to store it
     *lwork = batchSize * (m<n?m:n) * sizeof(double);
     return rocblas_status_success;
 }
@@ -1017,8 +1019,9 @@ cusolverStatus_t cusolverDnCgesvdjBatched_bufferSize(
         int *lwork,
         gesvdjInfo_t params,
         int batchSize) {
-    // rocSOLVER does not need extra workspace, but it computes the bidiagonal matrix B
-    // assocated with A, which we don't need, so we use the workspace to store B
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the bidiagonal matrix B associated with A, which we don't need, so we use this workspace
+    // to store it
     *lwork = batchSize * (m<n?m:n) * sizeof(float);
     return rocblas_status_success;
 }
@@ -1038,9 +1041,10 @@ cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(
         int *lwork,
         gesvdjInfo_t params,
         int batchSize) {
-    // rocSOLVER does not need extra workspace, but it computes the bidiagonal matrix B
-    // assocated with A, which we don't need, so we use the workspace to store B
-    *lwork = batchSize * (m<n?m:n) * (m<n?m:n) * sizeof(double);
+    // rocSOLVER does not need extra workspace, but it needs to allocate memory for storing
+    // the bidiagonal matrix B associated with A, which we don't need, so we use this workspace
+    // to store it
+    *lwork = batchSize * (m<n?m:n)* sizeof(double);
     return rocblas_status_success;
 }
 
@@ -1079,7 +1083,7 @@ cusolverStatus_t cusolverDnSgesvdjBatched(
         stV = ldv * n;
     }
     return rocsolver_sgesvd_batched(handle, leftv, rightv,
-                                    m, n, reinterpret_cast<float* const*>((void*)A), lda,
+                                    m, n, reinterpret_cast<float* const*>(A), lda,
                                     S, m<n?m:n,
                                     U, ldu, stU,
                                     V, ldv, stV,
@@ -1091,27 +1095,141 @@ cusolverStatus_t cusolverDnSgesvdjBatched(
     #endif
 }
 
-cusolverStatus_t cusolverDnDgesvdjBatched(...) {
+cusolverStatus_t cusolverDnDgesvdjBatched(
+        cusolverDnHandle_t handle,
+        cusolverEigMode_t jobz,
+        int m,
+        int n,
+        double *A,
+        int lda,
+        double *S,
+        double *U,
+        int ldu,
+        double *V,
+        int ldv,
+        double *work,
+        int lwork,
+        int *info,
+        gesvdjInfo_t params,
+        int batchSize) { 
     #if HIP_VERSION < 309
     return rocblas_status_not_implemented;
     #else
-    return rocblas_status_not_implemented;
+    rocblas_svect leftv, rightv;
+    rocblas_stride stU, stV;
+    if (jobz == CUSOLVER_EIG_MODE_NOVECTOR) {
+        leftv = rocblas_svect_none;
+        rightv = rocblas_svect_none;
+        stU = ldu * (m<n?m:n);
+        stV = ldv * n;
+    } else {  // CUSOLVER_EIG_MODE_VECTOR
+        leftv = rocblas_svect_all;
+        rightv = rocblas_svect_all;
+        stU = ldu * m;
+        stV = ldv * n;
+    }
+    return rocsolver_dgesvd_batched(handle, leftv, rightv,
+                                    m, n, reinterpret_cast<double* const*>(A), lda,
+                                    S, m<n?m:n,
+                                    U, ldu, stU,
+                                    V, ldv, stV,
+                                    // since we can't pass in another array through the API, and work is unused,
+                                    // we use it to store the temporary E array, to be discarded after calculation
+                                    work, (m<n?m:n)-1,
+                                    rocblas_outofplace, // always out-of-place
+                                    info, batchSize);
     #endif
 }
 
-cusolverStatus_t cusolverDnCgesvdjBatched(...) {
+cusolverStatus_t cusolverDnCgesvdjBatched(
+        cusolverDnHandle_t handle,
+        cusolverEigMode_t jobz,
+        int m,
+        int n,
+        cuComplex *A,
+        int lda,
+        float *S,
+        cuComplex *U,
+        int ldu,
+        cuComplex *V,
+        int ldv,
+        cuComplex *work,
+        int lwork,
+        int *info,
+        gesvdjInfo_t params,
+        int batchSize) {
     #if HIP_VERSION < 309
     return rocblas_status_not_implemented;
     #else
-    return rocblas_status_not_implemented;
+    rocblas_svect leftv, rightv;
+    rocblas_stride stU, stV;
+    if (jobz == CUSOLVER_EIG_MODE_NOVECTOR) {
+        leftv = rocblas_svect_none;
+        rightv = rocblas_svect_none;
+        stU = ldu * (m<n?m:n);
+        stV = ldv * n;
+    } else {  // CUSOLVER_EIG_MODE_VECTOR
+        leftv = rocblas_svect_all;
+        rightv = rocblas_svect_all;
+        stU = ldu * m;
+        stV = ldv * n;
+    }
+    return rocsolver_cgesvd_batched(handle, leftv, rightv,
+                                    m, n, reinterpret_cast<rocblas_float_complex* const*>(A), lda,
+                                    S, m<n?m:n,
+                                    reinterpret_cast<rocblas_float_complex*>(U), ldu, stU,
+                                    reinterpret_cast<rocblas_float_complex*>(V), ldv, stV,
+                                    // since we can't pass in another array through the API, and work is unused,
+                                    // we use it to store the temporary E array, to be discarded after calculation
+                                    reinterpret_cast<float*>(work), (m<n?m:n)-1,
+                                    rocblas_outofplace, // always out-of-place
+                                    info, batchSize);
     #endif
 }
 
-cusolverStatus_t cusolverDnZgesvdjBatched(...) {
+cusolverStatus_t cusolverDnZgesvdjBatched(
+        cusolverDnHandle_t handle,
+        cusolverEigMode_t jobz,
+        int m,
+        int n,
+        cuDoubleComplex *A,
+        int lda,
+        double *S,
+        cuDoubleComplex *U,
+        int ldu,
+        cuDoubleComplex *V,
+        int ldv,
+        cuDoubleComplex *work,
+        int lwork,
+        int *info,
+        gesvdjInfo_t params,
+        int batchSize) {
     #if HIP_VERSION < 309
     return rocblas_status_not_implemented;
     #else
-    return rocblas_status_not_implemented;
+    rocblas_svect leftv, rightv;
+    rocblas_stride stU, stV;
+    if (jobz == CUSOLVER_EIG_MODE_NOVECTOR) {
+        leftv = rocblas_svect_none;
+        rightv = rocblas_svect_none;
+        stU = ldu * (m<n?m:n);
+        stV = ldv * n;
+    } else {  // CUSOLVER_EIG_MODE_VECTOR
+        leftv = rocblas_svect_all;
+        rightv = rocblas_svect_all;
+        stU = ldu * m;
+        stV = ldv * n;
+    }
+    return rocsolver_zgesvd_batched(handle, leftv, rightv,
+                                    m, n, reinterpret_cast<rocblas_double_complex* const*>(A), lda,
+                                    S, m<n?m:n,
+                                    reinterpret_cast<rocblas_double_complex*>(U), ldu, stU,
+                                    reinterpret_cast<rocblas_double_complex*>(V), ldv, stV,
+                                    // since we can't pass in another array through the API, and work is unused,
+                                    // we use it to store the temporary E array, to be discarded after calculation
+                                    reinterpret_cast<double*>(work), (m<n?m:n)-1,
+                                    rocblas_outofplace, // always out-of-place
+                                    info, batchSize);
     #endif
 }
 
