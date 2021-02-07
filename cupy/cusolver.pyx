@@ -9,6 +9,7 @@ from cupy_backends.cuda.libs.cusolver cimport (
     sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize,
     sgesvd, dgesvd, cgesvd, zgesvd)
 from cupy.cuda cimport memory
+from cupy.core.core cimport _ndarray_init
 
 import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
@@ -286,13 +287,13 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     k = n  # = min(m, n) where m >= n is ensured above
     if compute_uv:
         if full_matrices:
-            u = _cupy.empty((batch_size, m, m), dtype=a_dtype)
+            u = _ndarray_init((batch_size, m, m), a_dtype)
             vt = x[..., :n]
             job_u = ord('A')
             job_vt = ord('O')
         else:
             u = x
-            vt = _cupy.empty((batch_size, k, n), dtype=a_dtype)
+            vt = _ndarray_init((batch_size, k, n), a_dtype)
             job_u = ord('O')
             job_vt = ord('S')
         u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
@@ -300,10 +301,10 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
         u_ptr, vt_ptr = 0, 0  # Use nullptr
         job_u = ord('N')
         job_vt = ord('N')
-    s = _cupy.empty((batch_size, k), dtype=s_dtype)
+    s = _ndarray_init((batch_size, k), s_dtype)
     s_ptr = s.data.ptr
     cdef intptr_t handle = _device.get_cusolver_handle()
-    dev_info = _cupy.empty((batch_size,), dtype=_numpy.int32)
+    dev_info = _ndarray_init((batch_size,), _numpy.int32)
     info_ptr = dev_info.data.ptr
 
     buffersize = gesvd_bufferSize(handle, m, n)
