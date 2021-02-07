@@ -8,7 +8,7 @@ from cupy.core._fusion_variable import _VariableSet
 from cupy.core import _fusion_thread_local
 from cupy.core import _kernel
 from cupy.core import _reduction
-from cupyx.jit._types import dtype_to_ctype
+from cupy.core._scalar import get_typename
 from cupyx.jit import _codeblock
 
 
@@ -57,11 +57,11 @@ class _UfuncRoutine:
         dtypes = self.compute_dtypes
         assert len(self.in_params) == len(self.compute_dtypes[:nin])
         in_params = [
-            (dtype_to_ctype[p.dtype], dtype_to_ctype[t], 'in{}'.format(i))
+            (get_typename(p.dtype), get_typename(t), 'in{}'.format(i))
             for i, (p, t) in enumerate(zip(self.in_params, dtypes[:nin]))
         ]
         out_params = [
-            (dtype_to_ctype[p.dtype], dtype_to_ctype[t], 'out{}'.format(i))
+            (get_typename(p.dtype), get_typename(t), 'out{}'.format(i))
             for i, (p, t) in enumerate(zip(self.out_params, dtypes[nin:]))
         ]
         params = in_params + out_params
@@ -217,7 +217,7 @@ class _ReductionTraceOp:
         _, self.expr, self.postmap_cast_code, self.reduce_ctype = expr
         if self.reduce_ctype is None:
             out_param, = self.out_params
-            self.reduce_ctype = dtype_to_ctype[out_param.dtype]
+            self.reduce_ctype = get_typename(out_param.dtype)
 
         self.premap_op = None
         self.postmap_op = None
@@ -305,8 +305,8 @@ __device__ void ${name}(
             name=self.name,
             op_name=op_name,
             postmap_name=postmap_name,
-            in_type=dtype_to_ctype[in_param.dtype],
-            out_type=dtype_to_ctype[out_param.dtype],
+            in_type=get_typename(in_param.dtype),
+            out_type=get_typename(out_param.dtype),
             reduce_ctype=self.reduce_ctype,
             reduce_expr=self.expr,
             identity=self.identity,

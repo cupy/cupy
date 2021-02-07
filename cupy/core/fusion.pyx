@@ -1,5 +1,6 @@
 from cupy.core cimport _accelerator
 from cupy.core._accelerator cimport ACCELERATOR_CUB
+from cupy.core._scalar cimport get_typename
 
 import functools
 import string
@@ -15,6 +16,7 @@ from cupy.core import core
 from cupy.core import new_fusion
 
 
+
 _is_fusing = _fusion_thread_local.is_fusing  # NOQA
 _thread_local = _fusion_thread_local.thread_local
 
@@ -24,23 +26,6 @@ cdef dict _kind_score = {
     'i': 1,
     'f': 2,
     'c': 2,
-}
-
-cdef dict _dtype_to_ctype = {
-    numpy.dtype('float64'): 'double',
-    numpy.dtype('float32'): 'float',
-    numpy.dtype('float16'): 'float16',
-    numpy.dtype('complex128'): 'complex<double>',
-    numpy.dtype('complex64'): 'complex<float>',
-    numpy.dtype('int64'): 'long long',
-    numpy.dtype('int32'): 'int',
-    numpy.dtype('int16'): 'short',
-    numpy.dtype('int8'): 'signed char',
-    numpy.dtype('uint64'): 'unsigned long long',
-    numpy.dtype('uint32'): 'unsigned int',
-    numpy.dtype('uint16'): 'unsigned short',
-    numpy.dtype('uint8'): 'unsigned char',
-    numpy.dtype('bool'): 'bool',
 }
 
 cdef list _dtype_list = [numpy.dtype(_) for _ in '?bhilqBHILQefdFD']
@@ -82,9 +67,9 @@ class _Submodule(object):
         return (self.name, tuple(self.dtypes))
 
     def code(self):
-        params = ', '.join('{} &{}'.format(_dtype_to_ctype[t], s)
+        params = ', '.join('{} &{}'.format(get_typename(t), s)
                            for t, s in self.in_params + self.out_params)
-        typedef = ''.join('typedef {} {}_type;\n'.format(_dtype_to_ctype[t], s)
+        typedef = ''.join('typedef {} {}_type;\n'.format(get_typename(t), s)
                           for t, s in self.in_params + self.out_params)
         module_code = string.Template('''
         __device__ void ${name}(${parameters}) {
@@ -124,7 +109,7 @@ class _FusionVarCUDA(object):
     def declaration(self):
         c = self.const_value
         val = c.item() if hasattr(c, 'dtype') else c
-        ctype = _dtype_to_ctype[self.dtype]
+        ctype = get_typename(self.dtype)
 
         if self.const_value is None:
             return '{} v{};\n'.format(ctype, self.index)
@@ -169,20 +154,20 @@ class _FusionOp(object):
             self.index, self.submodule.name, ', '.join(map(str, self.dtypes)))
 
     def declaration_args(self):
-        return ' '.join('{} v{}_{};'.format(_dtype_to_ctype[t], self.index, j)
+        return ' '.join('{} v{}_{};'.format(get_typename(t), self.index, j)
                         for j, t in enumerate(self.dtypes)) + '\n'
 
     def code(self):
         args_sub = ['v{}_{}'.format(self.index, i)
                     for i in range(len(self.args))]
-        ctypes = [_dtype_to_ctype[t] for t in self.dtypes]
+        ctypes = [get_typename(t) for t in self.dtypes]
         args_list = list(zip(self.args, args_sub, ctypes))
         code = '// op  # {}\n'.format(self.index)
         code += ''.join('{} = static_cast< {} >(v{});\n'.format(s, t, v.index)
                         for v, s, t in args_list)
         code += self.submodule.fcall(args_sub)
         code += ''.join('v{} = static_cast< {} >({});\n'.format(
-            v.index, _dtype_to_ctype[v.dtype], s)
+            v.index, get_typename(v.dtype), s)
             for v, s, _ in
             args_list[len(self.submodule.in_params):])
         return code
@@ -681,8 +666,8 @@ class _FusionHistory(object):
         return ${return_var};
         }
         ''').substitute(
-            return_ctype=_dtype_to_ctype[return_var.dtype],
-            in_params=', '.join('{} v{}'.format(_dtype_to_ctype[v.dtype],
+            return_ctype=get_typename(return_var.dtype),
+            in_params=', '.join('{} v{}'.format(get_typename(v.dtype),
                                                 v.index)
                                 for v in in_params),
             operation=operation,
@@ -691,7 +676,7 @@ class _FusionHistory(object):
 
     def _emit_postmap_code(self, out_params, operation):
         in_param = self.postmap_param
-        in_ctype = _dtype_to_ctype[in_param.dtype]
+        in_ctype = get_typename(in_param.dtype)
         module_code = string.Template('''
         __device__ void _post_map(${in_ctype} in, ${out_params}) {
         ${in_param} = in;
@@ -700,7 +685,7 @@ class _FusionHistory(object):
         ''').substitute(
             in_ctype=in_ctype,
             in_param='{} v{}'.format(in_ctype, in_param.index),
-            out_params=', '.join('{} &v{}'.format(_dtype_to_ctype[v.dtype],
+            out_params=', '.join('{} &v{}'.format(get_typename(v.dtype),
                                                   v.index)
                                  for v in out_params),
             operation=operation)
@@ -715,7 +700,7 @@ class _FusionHistory(object):
         }
         ''').substitute(
             reduce_ctype=reduce_ctype,
-            postmap_ctype=_dtype_to_ctype[postmap_dtype],
+            postmap_ctype=get_typename(postmap_dtype),
             operation=operation)
         return module_code
 
@@ -805,7 +790,7 @@ class _FusionHistory(object):
 
             postmap_type, = self.reduce_op.out_types
             postmap_dtype = numpy.dtype(postmap_type)
-            postmap_ctype = _dtype_to_ctype[postmap_dtype]
+            postmap_ctype = get_typename(postmap_dtype)
 
             postmap_code = '// {} operations\n'.format(
                 len(self.postmap_op_list))
@@ -1015,7 +1000,7 @@ def _create_astype_ufunc(dtype):
     name = 'astype_{}'.format(dtype)
     rules = tuple(['{}->{}'.format(cast_from.char, dtype.char)
                    for cast_from in _dtype_list])
-    command = 'out0 = static_cast< {} >(in0)'.format(_dtype_to_ctype[dtype])
+    command = 'out0 = static_cast< {} >(in0)'.format(get_typename(dtype))
     return core.create_ufunc(name, rules, command)
 
 

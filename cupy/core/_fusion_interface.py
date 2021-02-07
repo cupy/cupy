@@ -4,7 +4,7 @@ from cupy.core._dtype import get_dtype
 import cupy
 from cupy.core import _fusion_thread_local
 from cupy.core import core
-from cupyx.jit._types import dtype_to_ctype
+from cupy.core._scalar import get_typename
 
 
 _thread_local = _fusion_thread_local.thread_local
@@ -28,7 +28,7 @@ def _set_dtype_to_astype_dict():
     for t in dtype_list:
         name = 'astype_{}'.format(t)
         rules = tuple(['{}->{}'.format(s.char, t.char) for s in dtype_list])
-        command = 'out0 = static_cast< {} >(in0)'.format(dtype_to_ctype[t])
+        command = 'out0 = static_cast< {} >(in0)'.format(get_typename(t))
         _dtype_to_astype_dict[t] = core.create_ufunc(name, rules, command)
 
 

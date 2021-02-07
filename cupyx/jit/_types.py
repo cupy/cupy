@@ -1,22 +1,5 @@
 import numpy
-
-
-dtype_to_ctype = {
-    numpy.dtype('float64'): 'double',
-    numpy.dtype('float32'): 'float',
-    numpy.dtype('float16'): 'float16',
-    numpy.dtype('complex128'): 'complex<double>',
-    numpy.dtype('complex64'): 'complex<float>',
-    numpy.dtype('int64'): 'long long',
-    numpy.dtype('int32'): 'int',
-    numpy.dtype('int16'): 'short',
-    numpy.dtype('int8'): 'signed char',
-    numpy.dtype('uint64'): 'unsigned long long',
-    numpy.dtype('uint32'): 'unsigned int',
-    numpy.dtype('uint16'): 'unsigned short',
-    numpy.dtype('uint8'): 'unsigned char',
-    numpy.dtype('bool'): 'bool',
-}
+from cupy.core._scalar import get_typename
 
 
 # Base class for cuda types.
@@ -43,4 +26,4 @@ class Scalar(TypeBase):
         if dtype == numpy.float16:
             # For the performance
             dtype = numpy.dtype('float32')
-        return dtype_to_ctype[dtype]
+        return get_typename(dtype)
