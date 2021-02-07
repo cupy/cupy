@@ -300,7 +300,14 @@ def _transpile_stmt(stmt, env):
     if isinstance(stmt, ast.While):
         raise NotImplementedError('Not implemented.')
     if isinstance(stmt, ast.If):
-        raise NotImplementedError('Not implemented.')
+        condition = _transpile_expr(stmt.test, env)
+        if is_constants([condition]):
+            stmts = stmt.body if condition.obj else stmt.orelse
+            return _transpile_stmts(stmts, env)
+        head = f'if ({condition.code})'
+        then_body = _transpile_stmts(stmt.body, env)
+        else_body = _transpile_stmts(stmt.orelse, env)
+        return [CodeBlock(head, then_body), CodeBlock('else', else_body)]
     if isinstance(stmt, (ast.With, ast.AsyncWith)):
         raise ValueError('Switching contexts are not allowed.')
     if isinstance(stmt, (ast.Raise, ast.Try)):
