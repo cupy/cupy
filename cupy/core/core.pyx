@@ -7,7 +7,6 @@ import re
 import sys
 import warnings
 
-import ctypes
 import numpy
 
 import cupy
@@ -180,7 +179,7 @@ cdef class ndarray:
     @property
     def __cuda_array_interface__(self):
         if runtime._is_hip_environment:
-            raise RuntimeError(
+            raise AttributeError(
                 'HIP/ROCm does not support cuda array interface')
         cdef dict desc = {
             'shape': self.shape,
@@ -510,7 +509,15 @@ cdef class ndarray:
         newarray._strides = x._strides
         newarray._c_contiguous = x._c_contiguous
         newarray._f_contiguous = x._f_contiguous
+        if runtime._is_hip_environment:
+            # HIP requires changing the active device to the one where
+            # src data is before the copy. From the docs:
+            # it is recommended to set the current device to the device
+            # where the src data is physically located.
+            runtime.setDevice(self.data.device_id)
         newarray.data.copy_from_device(x.data, x.nbytes)
+        if runtime._is_hip_environment:
+            runtime.setDevice(dev_id)
         return newarray
 
     cpdef ndarray view(self, dtype=None):
@@ -1334,7 +1341,7 @@ cdef class ndarray:
             >>> import cupy
             >>> a = cupy.zeros((2,))
             >>> i = cupy.arange(10000) % 2
-            >>> v = cupy.arange(10000).astype(cupy.float)
+            >>> v = cupy.arange(10000).astype(cupy.float_)
             >>> a[i] = v
             >>> a  # doctest: +SKIP
             array([9150., 9151.])
@@ -1345,7 +1352,7 @@ cdef class ndarray:
             >>> import numpy
             >>> a_cpu = numpy.zeros((2,))
             >>> i_cpu = numpy.arange(10000) % 2
-            >>> v_cpu = numpy.arange(10000).astype(numpy.float)
+            >>> v_cpu = numpy.arange(10000).astype(numpy.float_)
             >>> a_cpu[i_cpu] = v_cpu
             >>> a_cpu
             array([9998., 9999.])
@@ -1361,7 +1368,7 @@ cdef class ndarray:
                     and (self._f_contiguous or self._c_contiguous)):
                 order = 'F' if self._f_contiguous else 'C'
                 tmp = value.ravel(order)
-                ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
+                ptr = tmp.ctypes.data
                 stream_ptr = stream_module.get_current_stream_ptr()
                 if stream_ptr == 0:
                     self.data.copy_from_host(ptr, self.nbytes)
@@ -1439,11 +1446,12 @@ cdef class ndarray:
                 # implicit host-to-device conversion.
                 # Except for numpy.ndarray, types should be supported by
                 # `_kernel._preprocess_args`.
-                if (
-                        not hasattr(x, '__cuda_array_interface__')
+                check = hasattr(x, '__cuda_array_interface__')
+                if runtime._is_hip_environment and isinstance(x, ndarray):
+                    check = True
+                if (not check
                         and not type(x) in _scalar.scalar_type_set
-                        and not isinstance(x, numpy.ndarray)
-                ):
+                        and not isinstance(x, numpy.ndarray)):
                     return NotImplemented
             if name in [
                     'greater', 'greater_equal', 'less', 'less_equal',
@@ -1506,6 +1514,9 @@ cdef class ndarray:
 
     def __str__(self):
         return str(self.get())
+
+    def __format__(self, format_spec):
+        return format(self.get(), format_spec)
 
     # -------------------------------------------------------------------------
     # Methods outside of the ndarray main documentation
@@ -1596,7 +1607,7 @@ cdef class ndarray:
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
 
         syncdetect._declare_synchronize()
-        ptr = ctypes.c_void_p(a_cpu.__array_interface__['data'][0])
+        ptr = a_cpu.ctypes.data
         with self.device:
             if stream is not None:
                 a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
@@ -1634,7 +1645,7 @@ cdef class ndarray:
         else:
             raise RuntimeError('Cannot set to non-contiguous array')
 
-        ptr = ctypes.c_void_p(arr.__array_interface__['data'][0])
+        ptr = arr.ctypes.data
         with self.device:
             if stream is not None:
                 self.data.copy_from_host_async(ptr, self.nbytes, stream)
@@ -2045,6 +2056,12 @@ divmod = create_ufunc(
 
 
 cdef _round_preamble = '''
+#ifdef __HIP_DEVICE_COMPILE__
+#define round_float llrintf
+#else
+#define round_float __float2ll_rn
+#endif
+
 template<typename T> __device__ T pow10(long long n){
   T x = 1, a = 10;
   while (n) {
@@ -2116,7 +2133,7 @@ _round_ufunc = create_ufunc(
         // (4) unscale by `x` above: -123460000
         long long q = in0 / x / 100;
         int r = in0 - q*x*100;
-        out0 = (q*100 + __float2ll_rn(r/(x*10.0f))*10) * x;
+        out0 = (q*100 + round_float(r/(x*10.0f))*10) * x;
     }''', preamble=_round_preamble)
 
 
@@ -2185,9 +2202,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
         # obj is Seq[cupy.ndarray]
         assert issubclass(elem_type, ndarray), elem_type
         lst = _flatten_list(obj)
-        if len(shape) == 1:
-            # convert each scalar (0-dim) ndarray to 1-dim
-            lst = [cupy.expand_dims(x, 0) for x in lst]
+
+        # convert each scalar (0-dim) ndarray to 1-dim
+        lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
 
         a =_manipulation.concatenate_method(lst, 0)
         a = a.reshape(shape)
@@ -2289,12 +2306,10 @@ cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
     if mem is not None:
         src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
         src_cpu[:] = a_cpu.ravel(order)
-        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
+        a.data.copy_from_host_async(mem.ptr, nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
-        a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]),
-            nbytes)
+        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
 
     return a
 
@@ -2327,7 +2342,7 @@ cdef ndarray _send_numpy_array_list_to_gpu(
             a_dtype,
             src_cpu)
         a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
+        a.data.copy_from_host_async(mem.ptr, nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
         # fallback to numpy array and send it to GPU
@@ -2335,9 +2350,7 @@ cdef ndarray _send_numpy_array_list_to_gpu(
         a_cpu = numpy.array(arrays, dtype=a_dtype, copy=False, order=order,
                             ndmin=ndmin)
         a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]),
-            nbytes)
+        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
 
     return a
 

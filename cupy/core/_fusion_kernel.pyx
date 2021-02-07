@@ -49,12 +49,8 @@ def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
     # by uncommenting the following line.
     # print(code)
 
-    if use_grid_sync:
-        module = compile_with_cache(
-            code, (), None, None, True, 'nvcc', False, True)
-    else:
-        module = compile_with_cache(code)
-
+    module = compile_with_cache(
+        code, (), None, None, True, 'nvrtc', False, use_grid_sync)
     return module.get_function(name)
 
 
@@ -356,11 +352,15 @@ cdef class FusedKernel:
         block_strides, block_size, shared_mem = (
             self._get_kernel_size(ndarray_list))
 
-        # TODO(asi1024): Optimize kernel size perameter.
-        kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
-            kern.ptr, block_size, shared_mem) * block_size
-        kargs = inout_args + block_strides
+        # TODO(asi1024): Optimize kernel size parameter.
+        if not runtime._is_hip_environment:
+            kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
+                kern.ptr, block_size, shared_mem) * block_size
+        else:
+            # In HIP sometimes the occupancy calc seems to be broken
+            kern_size = block_size * 512
 
+        kargs = inout_args + block_strides
         kern.linear_launch(
             kern_size, kargs, shared_mem, block_size,
             enable_cooperative_groups=self._use_grid_sync)
