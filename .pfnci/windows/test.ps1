@@ -19,12 +19,13 @@ function DownloadCache {
         echo "*** Kernel cache unavailable"
     } else {
         RunOrDie 7z x $cupy_kernel_cache_file
+        rm $cupy_kernel_cache_file
     }
     popd
 }
 
 function UploadCache {
-    python .pfnci\trim_cupy_kernel_cache.py --expiry 259200 --rm
+    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --expiry 259200 --rm
 
     pushd $Env:USERPROFILE
     # -mx=0 ... no compression
