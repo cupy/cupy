@@ -14,7 +14,7 @@ $cupy_kernel_cache_file = "cupy_kernel_cache_windows.zip"
 
 function DownloadCache {
     pushd $Env:USERPROFILE
-    gsutil -m cp gs://tmp-asia-pfn-public-ci/cupy-ci/$cupy_kernel_cache_file .
+    gsutil -m -q cp gs://tmp-asia-pfn-public-ci/cupy-ci/$cupy_kernel_cache_file .
     if (-not $?) {
         echo "*** Kernel cache unavailable"
     } else {
@@ -31,7 +31,7 @@ function UploadCache {
     # -mx=0 ... no compression
     # -mtc=on ... preserve timestamp
     RunOrDie 7z a -tzip -mx=0 -mtc=on $cupy_kernel_cache_file .cupy
-    RunOrDie gsutil -m cp $cupy_kernel_cache_file gs://tmp-asia-pfn-public-ci/cupy-ci/
+    RunOrDie gsutil -m -q cp $cupy_kernel_cache_file gs://tmp-asia-pfn-public-ci/cupy-ci/
     popd
 }
 
@@ -43,11 +43,14 @@ function Main {
     # Setup build environment variables
     $Env:CUPY_NUM_BUILD_JOBS = "16"
     $Env:CUPY_NVCC_GENERATE_CODE = "current"
-    dir env:
+    echo "Environment:"
+    RunOrDie cmd.exe /C set
 
     # Build
+    RunOrDie python -V
     RunOrDie python -m pip install Cython scipy optuna
-    RunOrDie python -m pip install -e ".[all,jenkins]" -vvv
+    RunOrDie python -m pip freeze
+    RunOrDie python -m pip install -e ".[all,jenkins]" -vvv > cupy_build.log
 
     # Import test
     RunOrDie python -c "import cupy; cupy.show_config()"
@@ -69,13 +72,20 @@ function Main {
     if ($use_cache) {
         DownloadCache
     }
-    python -m pytest -rfEX $Env:PYTEST_OPTS tests
+    python -m pytest -rfEX $Env:PYTEST_OPTS tests > cupy_test.log
     if (-not $?) {
         $test_retval = $LastExitCode
     }
     if ($use_cache) {
         UploadCache
     }
+
+    # Upload test results
+    echo "Uploading test results..."
+    $artifact_id = ("cupy-ci-" + $Env:CI_JOB_ID)
+    RunOrDie gsutil -m -q cp cupy_build.log cupy_test.log "gs://chainer-artifacts-pfn-public-ci/$artifact_id/"
+    echo "Build Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/$artifact_id/cupy_build.log"
+    echo "Test Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/$artifact_id/cupy_test.log"
 
     if ($test_retval -ne 0) {
         throw "Test failed with status $test_retval"
