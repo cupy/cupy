@@ -588,6 +588,7 @@ def generate_module_sources(is_cusolver_available):
         name = module['name']
         if name == 'cusolver' and not is_cusolver_available:
             continue
+        print('Generating Cython files for {}...'.format(name))
         directive_path = os.path.join(directive_dir, module['directive'])
         for ext, gen_func in [('pyx', gen.gen_pyx), ('pxd', gen.gen_pxd)]:
             path = os.path.join(libs_dir, name + '.' + ext)

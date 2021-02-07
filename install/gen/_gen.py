@@ -3,8 +3,8 @@ import os.path
 import re
 import tempfile
 
-import pycparser
-import pycparser.c_ast as c_ast
+from install.gen import pycparser
+from install.gen.pycparser import c_ast
 
 
 # Utilities

@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-import pycparser.c_ast as c_ast
+from install.gen.pycparser import c_ast
 
 from install.gen import _gen
 
