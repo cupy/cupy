@@ -7,7 +7,7 @@ from cupy_backends.cuda.libs import cusolver
 from cupy.core import internal
 from cupy.cuda import device
 from cupy.cusolver import check_availability
-from cupy.cusolver import _gesvdj_batched
+from cupy.cusolver import _gesvdj_batched, _gesvd_batched
 from cupy.linalg import _util
 
 
@@ -391,9 +391,13 @@ def _svd_batched(a, a_dtype, full_matrices, compute_uv):
 
     # ...then delegate real computation to cuSOLVER
     a = a.reshape(-1, *(a.shape[-2:]))
-    # copy is done in _gesvdj_batched, so let's try not to do it here
-    a = a.astype(a_dtype, order='C', copy=False)
-    out = _gesvdj_batched(a, full_matrices, compute_uv, False)
+    if runtime.is_hip or (m <= 32 and n <= 32):
+        # copy is done in _gesvdj_batched, so let's try not to do it here
+        a = a.astype(a_dtype, order='C', copy=False)
+        out = _gesvdj_batched(a, full_matrices, compute_uv, False)
+    else:
+        # manually loop over cusolverDn<t>gesvd()
+        out = _gesvd_batched(a, full_matrices, compute_uv, False)
     if compute_uv:
         u, s, v = out
         u = u.reshape(*batch_shape, *(u.shape[-2:]))

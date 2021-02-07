@@ -1,5 +1,8 @@
-import numpy as _numpy
+from libc.stdint cimport intptr_t
+
 import warnings as _warnings
+
+import numpy as _numpy
 
 import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
@@ -218,6 +221,98 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
         v = v[..., :mn]
     if compute_uv:
         return u, s, v
+    else:
+        return s
+
+
+cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
+    """A loop-based gesvd wrapper to support batched SVD."""
+    # This function follows more closely with gesvd() in
+    # cupy/linalg/_decomposition.py.
+
+    # TODO(leofang): if cuSOLVER implements a batched version of gesvd, wrap
+    # it here and unify with rocSOLVER's counterpart (it's currently wrapped
+    # as gesvdj, not gesvd).
+
+    cdef int n, m, k, batch_size, i, buffersize
+    cdef intptr_t u_ptr, vt_ptr, rwork_ptr
+    cdef bint trans_flag
+
+    assert a.ndim > 2
+    assert not overwrite_a  # TODO(leofang): handle this?
+    batch_size, n, m = a.shape
+    a_dtype = a.dtype.char
+    s_dtype = a_dtype.lower()
+
+    # `a` must be copied because xgesvd destroys the matrix
+    if m >= n:
+        x = a.astype(a_dtype, order='C', copy=True)
+        trans_flag = False
+    else:
+        m, n = a.shape[-2:]
+        x = a.swapaxes(-2, -1).astype(a_dtype, order='C', copy=True)
+        trans_flag = True
+
+    # TODO(leofang): use cimport'd version
+    if a_dtype == 'f':
+        gesvd_bufferSize = _cusolver.sgesvd_bufferSize
+        gesvd = _cusolver.sgesvd
+    elif a_dtype == 'd':
+        gesvd_bufferSize = _cusolver.dgesvd_bufferSize
+        gesvd = _cusolver.dgesvd
+    elif a_dtype == 'F':
+        gesvd_bufferSize = _cusolver.cgesvd_bufferSize
+        gesvd = _cusolver.cgesvd
+    elif a_dtype == 'D':
+        gesvd_bufferSize = _cusolver.zgesvd_bufferSize
+        gesvd = _cusolver.zgesvd
+    else:
+        raise TypeError
+
+    k = n  # = min(m, n) where m >= n is ensured above
+    if compute_uv:
+        if full_matrices:
+            u = _cupy.empty((batch_size, m, m), dtype=a_dtype)
+            vt = x[..., :n]
+            job_u = ord('A')
+            job_vt = ord('O')
+        else:
+            u = x
+            vt = _cupy.empty((batch_size, k, n), dtype=a_dtype)
+            job_u = ord('O')
+            job_vt = ord('S')
+        u_ptr, vt_ptr = 1, 1  # Just a flag
+    else:
+        u_ptr, vt_ptr = 0, 0  # Use nullptr
+        job_u = ord('N')
+        job_vt = ord('N')
+    s = _cupy.empty((batch_size, k), dtype=s_dtype)
+    handle = _device.get_cusolver_handle()
+    dev_info = _cupy.empty((batch_size,), dtype=_numpy.int32)
+
+    buffersize = gesvd_bufferSize(handle, m, n)
+    workspace = _cupy.empty((batch_size, buffersize), dtype=a_dtype)
+    # rwork can be NULL if the information from supperdiagonal isn't needed
+    # https://docs.nvidia.com/cuda/cusolver/index.html#cuSolverDN-lt-t-gt-gesvd  # noqa
+    rwork_ptr = 0
+    # TODO(leofang): it'd be better to move the whole loop under "with nogil"...
+    for i in range(batch_size):
+        gesvd(handle, job_u, job_vt, m, n, x[i].data.ptr,
+            m, s[i].data.ptr,
+            u_ptr if u_ptr == 0 else u[i].data.ptr, m,
+            vt_ptr if vt_ptr == 0 else vt[i].data.ptr, n,
+            workspace[i].data.ptr, buffersize,
+            rwork_ptr, dev_info[i].data.ptr)
+        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+            gesvd, dev_info[i])
+
+    # Note that the returned array may need to be transposed
+    # depending on the structure of an input
+    if compute_uv:
+        if trans_flag:
+            return u.swapaxes(-2, -1), s, vt
+        else:
+            return vt, s, u.swapaxes(-2, -1)
     else:
         return s
 
