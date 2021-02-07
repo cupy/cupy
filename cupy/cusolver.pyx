@@ -36,8 +36,8 @@ _available_cuda_version = {
 }
 
 _available_hip_version = {
+    'gesvdjBatched': (309, None),  # = rocsolver_<t>gesvd_batched
     'potrfBatched': (306, None),
-    'gesvdjBatched': (309, None),
     # Below are APIs supported by CUDA but not yet by HIP. We need them here
     # so that our test suite can cover both platforms.
     'gesvdj': (_numpy.inf, None),
@@ -241,6 +241,8 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     # TODO(leofang): if cuSOLVER implements a batched version of gesvd, wrap
     # it here and unify with rocSOLVER's counterpart (it's currently wrapped
     # as gesvdj, not gesvd).
+    # TODO(leofang): try overlapping using a small stream pool? Or use stream
+    # capture (cupy/cupy#4567) to further reduce kernel launch overhead?
 
     cdef ndarray x, s, u, vt, dev_info
     cdef int n, m, k, batch_size, i, buffersize, rd_size, d_size
@@ -317,7 +319,8 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     # rwork can be NULL if the information from supperdiagonal isn't needed
     # https://docs.nvidia.com/cuda/cusolver/index.html#cuSolverDN-lt-t-gt-gesvd  # noqa
     rwork_ptr = 0
-    # TODO(leofang): it'd be better to move the whole loop under "with nogil"...
+    # we are on the same stream, so the workspace can be reused between iterations
+    # TODO(leofang): it'd be better to move the whole loop under "with nogil"...?
     for i in range(batch_size):
         gesvd(handle, job_u, job_vt, m, n, a_ptr, m, s_ptr,
               u_ptr, m, vt_ptr, n,
