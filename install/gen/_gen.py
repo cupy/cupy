@@ -411,7 +411,6 @@ def _parse_headers(cuda_path, headers):
             for h in headers:
                 f.write('#include "{}"\n'.format(h))
         ast = pycparser.parse_file(temp_c_path, use_cpp=True, cpp_args=[
-            os.path.expandvars('$CFLAGS'),  # use CFLAGS as CuPy does
             '-I{}/include/'.format(cuda_path),
             '-I{}/include/'.format(gen_path),  # for fake libc headers
             '-D __attribute__(n)=',
