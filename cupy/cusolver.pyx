@@ -8,8 +8,9 @@ import numpy as _numpy
 from cupy_backends.cuda.libs.cusolver cimport (
     sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize,
     sgesvd, dgesvd, cgesvd, zgesvd)
+
 from cupy.cuda cimport memory
-from cupy.core.core cimport _ndarray_init
+from cupy.core.core cimport _ndarray_init, ndarray
 
 import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
@@ -241,8 +242,11 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     # it here and unify with rocSOLVER's counterpart (it's currently wrapped
     # as gesvdj, not gesvd).
 
+    cdef ndarray x, s, u, vt, dev_info
     cdef int n, m, k, batch_size, i, buffersize, rd_size, d_size
     cdef intptr_t a_ptr, s_ptr, u_ptr, vt_ptr, rwork_ptr, w_ptr, info_ptr
+    cdef str a_dtype, s_dtype
+    cdef char job_u, job_vt
     cdef bint trans_flag
 
     assert a.ndim > 2
@@ -250,16 +254,6 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     batch_size, n, m = a.shape
     a_dtype = a.dtype.char
     s_dtype = a_dtype.lower()
-
-    # `a` must be copied because xgesvd destroys the matrix
-    if m >= n:
-        x = a.astype(a_dtype, order='C', copy=True)
-        trans_flag = False
-    else:
-        m, n = a.shape[-2:]
-        x = a.swapaxes(-2, -1).astype(a_dtype, order='C', copy=True)
-        trans_flag = True
-    a_ptr = x.data.ptr
 
     if a_dtype == 'f':
         gesvd_bufferSize = sgesvd_bufferSize
@@ -284,23 +278,33 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     else:
         raise TypeError
 
+    # `a` must be copied because xgesvd destroys the matrix
+    if m >= n:
+        x = a.astype(a_dtype, order='C', copy=True)
+        trans_flag = False
+    else:
+        m, n = a.shape[-2:]
+        x = a.swapaxes(-2, -1).astype(a_dtype, order='C', copy=True)
+        trans_flag = True
+    a_ptr = x.data.ptr
+
     k = n  # = min(m, n) where m >= n is ensured above
     if compute_uv:
         if full_matrices:
             u = _ndarray_init((batch_size, m, m), a_dtype)
             vt = x[..., :n]
-            job_u = ord('A')
-            job_vt = ord('O')
+            job_u = b'A'
+            job_vt = b'O'
         else:
             u = x
             vt = _ndarray_init((batch_size, k, n), a_dtype)
-            job_u = ord('O')
-            job_vt = ord('S')
+            job_u = b'O'
+            job_vt = b'S'
         u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
     else:
         u_ptr, vt_ptr = 0, 0  # Use nullptr
-        job_u = ord('N')
-        job_vt = ord('N')
+        job_u = b'N'
+        job_vt = b'N'
     s = _ndarray_init((batch_size, k), s_dtype)
     s_ptr = s.data.ptr
     cdef intptr_t handle = _device.get_cusolver_handle()
