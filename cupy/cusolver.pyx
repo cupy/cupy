@@ -4,6 +4,11 @@ import warnings as _warnings
 
 import numpy as _numpy
 
+# due to a Cython bug (cython/cython#4000) we cannot just cimport the module
+from cupy_backends.cuda.libs.cusolver cimport (
+    sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize,
+    sgesvd, dgesvd, cgesvd, zgesvd)
+
 import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cublas as _cublas
@@ -253,19 +258,18 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
         x = a.swapaxes(-2, -1).astype(a_dtype, order='C', copy=True)
         trans_flag = True
 
-    # TODO(leofang): use cimport'd version
     if a_dtype == 'f':
-        gesvd_bufferSize = _cusolver.sgesvd_bufferSize
-        gesvd = _cusolver.sgesvd
+        gesvd_bufferSize = sgesvd_bufferSize
+        gesvd = sgesvd
     elif a_dtype == 'd':
-        gesvd_bufferSize = _cusolver.dgesvd_bufferSize
-        gesvd = _cusolver.dgesvd
+        gesvd_bufferSize = dgesvd_bufferSize
+        gesvd = dgesvd
     elif a_dtype == 'F':
-        gesvd_bufferSize = _cusolver.cgesvd_bufferSize
-        gesvd = _cusolver.cgesvd
+        gesvd_bufferSize = cgesvd_bufferSize
+        gesvd = cgesvd
     elif a_dtype == 'D':
-        gesvd_bufferSize = _cusolver.zgesvd_bufferSize
-        gesvd = _cusolver.zgesvd
+        gesvd_bufferSize = zgesvd_bufferSize
+        gesvd = zgesvd
     else:
         raise TypeError
 
@@ -304,7 +308,7 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
             workspace[i].data.ptr, buffersize,
             rwork_ptr, dev_info[i].data.ptr)
         _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-            gesvd, dev_info[i])
+            'gesvd', dev_info[i])
 
     # Note that the returned array may need to be transposed
     # depending on the structure of an input
