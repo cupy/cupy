@@ -82,10 +82,10 @@ function Main {
 
     # Upload test results
     echo "Uploading test results..."
-    $artifact_id = ("cupy-ci-" + $Env:CI_JOB_ID)
-    RunOrDie gsutil -m -q cp cupy_build.log cupy_test.log "gs://chainer-artifacts-pfn-public-ci/$artifact_id/"
-    echo "Build Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/$artifact_id/cupy_build.log"
-    echo "Test Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/$artifact_id/cupy_test.log"
+    $artifact_id = $Env:CI_JOB_ID
+    RunOrDie gsutil -m -q cp cupy_build.log cupy_test.log "gs://chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/"
+    echo "Build Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_build.log"
+    echo "Test Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_test.log"
 
     if ($test_retval -ne 0) {
         throw "Test failed with status $test_retval"
