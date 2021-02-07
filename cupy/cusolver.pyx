@@ -8,6 +8,7 @@ import numpy as _numpy
 from cupy_backends.cuda.libs.cusolver cimport (
     sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize,
     sgesvd, dgesvd, cgesvd, zgesvd)
+from cupy.cuda cimport memory
 
 import cupy as _cupy
 from cupy_backends.cuda.api import runtime as _runtime
@@ -239,8 +240,8 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     # it here and unify with rocSOLVER's counterpart (it's currently wrapped
     # as gesvdj, not gesvd).
 
-    cdef int n, m, k, batch_size, i, buffersize
-    cdef intptr_t u_ptr, vt_ptr, rwork_ptr
+    cdef int n, m, k, batch_size, i, buffersize, rd_size, d_size
+    cdef intptr_t a_ptr, s_ptr, u_ptr, vt_ptr, rwork_ptr, w_ptr, info_ptr
     cdef bint trans_flag
 
     assert a.ndim > 2
@@ -257,19 +258,28 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
         m, n = a.shape[-2:]
         x = a.swapaxes(-2, -1).astype(a_dtype, order='C', copy=True)
         trans_flag = True
+    a_ptr = x.data.ptr
 
     if a_dtype == 'f':
         gesvd_bufferSize = sgesvd_bufferSize
         gesvd = sgesvd
+        rd_size = 4
+        d_size = 4
     elif a_dtype == 'd':
         gesvd_bufferSize = dgesvd_bufferSize
         gesvd = dgesvd
+        rd_size = 8
+        d_size = 8
     elif a_dtype == 'F':
         gesvd_bufferSize = cgesvd_bufferSize
         gesvd = cgesvd
+        rd_size = 4
+        d_size = 8
     elif a_dtype == 'D':
         gesvd_bufferSize = zgesvd_bufferSize
         gesvd = zgesvd
+        rd_size = 8
+        d_size = 16
     else:
         raise TypeError
 
@@ -285,30 +295,36 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
             vt = _cupy.empty((batch_size, k, n), dtype=a_dtype)
             job_u = ord('O')
             job_vt = ord('S')
-        u_ptr, vt_ptr = 1, 1  # Just a flag
+        u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
     else:
         u_ptr, vt_ptr = 0, 0  # Use nullptr
         job_u = ord('N')
         job_vt = ord('N')
     s = _cupy.empty((batch_size, k), dtype=s_dtype)
-    handle = _device.get_cusolver_handle()
+    s_ptr = s.data.ptr
+    cdef intptr_t handle = _device.get_cusolver_handle()
     dev_info = _cupy.empty((batch_size,), dtype=_numpy.int32)
+    info_ptr = dev_info.data.ptr
 
     buffersize = gesvd_bufferSize(handle, m, n)
-    workspace = _cupy.empty((batch_size, buffersize), dtype=a_dtype)
+    workspace = memory.alloc(buffersize * d_size)
+    w_ptr = workspace.ptr
     # rwork can be NULL if the information from supperdiagonal isn't needed
     # https://docs.nvidia.com/cuda/cusolver/index.html#cuSolverDN-lt-t-gt-gesvd  # noqa
     rwork_ptr = 0
     # TODO(leofang): it'd be better to move the whole loop under "with nogil"...
     for i in range(batch_size):
-        gesvd(handle, job_u, job_vt, m, n, x[i].data.ptr,
-            m, s[i].data.ptr,
-            u_ptr if u_ptr == 0 else u[i].data.ptr, m,
-            vt_ptr if vt_ptr == 0 else vt[i].data.ptr, n,
-            workspace[i].data.ptr, buffersize,
-            rwork_ptr, dev_info[i].data.ptr)
-        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-            'gesvd', dev_info[i])
+        gesvd(handle, job_u, job_vt, m, n, a_ptr, m, s_ptr,
+              u_ptr, m, vt_ptr, n,
+              w_ptr, buffersize, rwork_ptr, info_ptr)
+        a_ptr += m * n * d_size
+        s_ptr += k * rd_size
+        u_ptr += m * m * d_size
+        vt_ptr += n * n * d_size
+        info_ptr += 4
+    # check the full info array
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        'gesvd', dev_info)
 
     # Note that the returned array may need to be transposed
     # depending on the structure of an input
