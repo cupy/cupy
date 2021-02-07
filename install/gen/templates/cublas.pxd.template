@@ -10,12 +10,24 @@ cdef extern from *:
     ctypedef int DataType 'cudaDataType'
 {opaque}
 {enum}
+
+# Define `ComputeType` for backward compatibility to make use of tensordot
+IF CUDA_VERSION < 11000:
+    cdef extern from *:
+        ctypedef int ComputeType 'cublasComputeType_t'
+
+    cpdef enum:
+        CUBLAS_COMPUTE_16F = 64
+        CUBLAS_COMPUTE_16F_PEDANTIC = 65
+        CUBLAS_COMPUTE_32F = 68
+        CUBLAS_COMPUTE_32F_PEDANTIC = 69
+        CUBLAS_COMPUTE_32F_FAST_16F = 74
+        CUBLAS_COMPUTE_32F_FAST_16BF = 75
+        CUBLAS_COMPUTE_32F_FAST_TF32 = 77
+        CUBLAS_COMPUTE_64F = 70
+        CUBLAS_COMPUTE_64F_PEDANTIC = 71
+        CUBLAS_COMPUTE_32I = 72
+        CUBLAS_COMPUTE_32I_PEDANTIC = 73
+
 {helper_class}
 {wrapper}
-
-# Define `gemmEx` by hands for a backward compatibility reason.
-cpdef gemmEx(
-        intptr_t handle, int transa, int transb, int m, int n, int k,
-        size_t alpha, size_t A, int Atype, int lda, size_t B,
-        int Btype, int ldb, size_t beta, size_t C, int Ctype,
-        int ldc, int computeType, int algo)

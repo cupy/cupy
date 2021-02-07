@@ -121,9 +121,6 @@
         'out': None,
         'use_stream': 'set',
     }),
-
-    # cublasGemmEx is defined by hands in templates/cublas.pyx.template.
-
     ('cublas<t>getrfBatched', {
         'out': None,
         'use_stream': 'set',
@@ -133,6 +130,10 @@
         'use_stream': 'set',
     }),
     ('cublas<t>getriBatched', {
+        'out': None,
+        'use_stream': 'set',
+    }),
+    ('cublasGemmEx', {
         'out': None,
         'use_stream': 'set',
     }),

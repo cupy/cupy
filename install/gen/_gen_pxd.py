@@ -77,6 +77,8 @@ def transpile_helper_class_node(env, directive, node):
 def transpile_helper_class(env, directive):
     head = _gen.directive_head(directive)
     decls = _gen.query_func_decls(head, env)
+    if decls is None:
+        return None
     assert len(decls) == 1  # assuming not type generic
     return transpile_helper_class_node(env, directive, decls[0])
 

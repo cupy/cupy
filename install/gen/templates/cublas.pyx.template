@@ -18,26 +18,6 @@ cdef extern from '../../cupy_complex.h':
 cdef extern from '../../cupy_blas.h' nogil:
 {ffi}
 
-    # Define `cublasGemmEx` by hands for a backward compatibility reason.
-    int cublasGemmEx(
-        Handle handle, Operation transa, Operation transb,
-        int m, int n, int k,
-        const void *alpha,
-        const void *A, runtime.DataType Atype, int lda,
-        const void *B, runtime.DataType Btype, int ldb,
-        const void *beta,
-        void *C, runtime.DataType Ctype, int ldc,
-        runtime.DataType computetype, GemmAlgo algo)
-    int cublasGemmEx_v11(
-        Handle handle, Operation transa, Operation transb,
-        int m, int n, int k,
-        const void *alpha,
-        const void *A, runtime.DataType Atype, int lda,
-        const void *B, runtime.DataType Btype, int ldb,
-        const void *beta,
-        void *C, runtime.DataType Ctype, int ldc,
-        ComputeType computetype, GemmAlgo algo)
-
 
 ###############################################################################
 # Util
@@ -109,32 +89,3 @@ cpdef inline check_status(int status):
     if status != 0:
         raise CUBLASError(status)
 {helper_class}{wrapper}
-
-# Define `gemmEx` by hands for a backward compatibility reason.	
-cpdef gemmEx(
-        intptr_t handle, int transa, int transb, int m, int n, int k,
-        size_t alpha, size_t A, int Atype, int lda, size_t B,
-        int Btype, int ldb, size_t beta, size_t C, int Ctype,
-        int ldc, int computeType, int algo):
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
-    with nogil:
-        if computeType >= CUBLAS_COMPUTE_16F:
-            status = cublasGemmEx_v11(
-                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-                <const void*>alpha,
-                <const void*>A, <runtime.DataType>Atype, lda,
-                <const void*>B, <runtime.DataType>Btype, ldb,
-                <const void*>beta,
-                <void*>C, <runtime.DataType>Ctype, ldc,
-                <ComputeType>computeType, <GemmAlgo>algo)
-        else:
-            status = cublasGemmEx(
-                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-                <const void*>alpha,
-                <const void*>A, <runtime.DataType>Atype, lda,
-                <const void*>B, <runtime.DataType>Btype, ldb,
-                <const void*>beta,
-                <void*>C, <runtime.DataType>Ctype, ldc,
-                <runtime.DataType>computeType, <GemmAlgo>algo)
-    check_status(status)
