@@ -470,6 +470,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.pareto`
         """
         a = cupy.asarray(a)
+        if size is None:
+            size = a.shape
         x = self._random_sample_raw(size, dtype)
         cupy.log(x, out=x)
         cupy.exp(-x/a, out=x)
@@ -613,6 +615,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.random_sample`
 
         """
+        if size is None:
+            size = ()
         out = self._random_sample_raw(size, dtype)
         RandomState._mod1_kernel(out)
         return out
@@ -780,6 +784,8 @@ class RandomState(object):
             - :func:`cupy.random.standard_exponential` for full documentation
             - :meth:`numpy.random.RandomState.standard_exponential`
         """
+        if size is None:
+            size = ()
         x = self._random_sample_raw(size, dtype)
         return -cupy.log(x, out=x)
 
@@ -1144,11 +1150,13 @@ class RandomState(object):
             - :func:`cupy.random.gumbel` for full documentation
             - :meth:`numpy.random.RandomState.gumbel`
         """
-        x = self._random_sample_raw(size=size, dtype=dtype)
         if not numpy.isscalar(loc):
             loc = cupy.asarray(loc, dtype)
         if not numpy.isscalar(scale):
             scale = cupy.asarray(scale, dtype)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
+        x = self._random_sample_raw(size=size, dtype=dtype)
         RandomState._gumbel_kernel(x, loc, scale, x)
         return x
 
