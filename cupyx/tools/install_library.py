@@ -60,7 +60,7 @@ _cudnn_records.append(_make_cudnn_record(
 _cudnn_records.append(_make_cudnn_record(
     '10.2', '8.1.0',
     'cudnn-10.2-linux-x64-v8.1.0.77.tgz',
-    'cudnn-10.2-windows-x64-v8.1.0.77.zip'))
+    'cudnn-10.2-windows10-x64-v8.1.0.77.zip'))
 _cudnn_records.append(_make_cudnn_record(
     '10.1', '8.0.5',
     'cudnn-10.1-linux-x64-v8.0.5.39.tgz',
