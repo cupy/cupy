@@ -325,26 +325,22 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
     if a_dtype == 'f':
         gesvd_bufferSize = sgesvd_bufferSize
         gesvd = gesvd_loop[float]
-        d_size = 4
     elif a_dtype == 'd':
         gesvd_bufferSize = dgesvd_bufferSize
         gesvd = gesvd_loop[double]
-        d_size = 8
     elif a_dtype == 'F':
         gesvd_bufferSize = cgesvd_bufferSize
         gesvd = gesvd_loop[cuComplex]
-        d_size = 8
     elif a_dtype == 'D':
         gesvd_bufferSize = zgesvd_bufferSize
         gesvd = gesvd_loop[cuDoubleComplex]
-        d_size = 16
     else:
         raise TypeError
 
     # this wrapper also sets the stream for us
     buffersize = gesvd_bufferSize(handle, m, n)
     # we are on the same stream, so the workspace can be reused in the loop
-    workspace = memory.alloc(buffersize * d_size)
+    workspace = memory.alloc(buffersize)
     w_ptr = workspace.ptr
 
     # the loop starts here, with gil released to reduce overhead
