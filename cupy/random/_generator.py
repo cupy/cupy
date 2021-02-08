@@ -77,7 +77,7 @@ class RandomState(object):
         if size is None:
             size = ()  # TODO(kataoka): Remove this after #4615 is merged
         size = core.get_size(size)
-        element_size = functools.reduce(operator.mul, size, 1)
+        element_size = core.internal.prod(size)
         if element_size % 2 == 0:
             out = cupy.empty(size, dtype=dtype)
             func(self._generator, out.data.ptr, out.size, *args)
@@ -281,6 +281,12 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.lognormal`
 
         """
+        if any(isinstance(arg, cupy.ndarray) for arg in (mean, sigma)):
+            x = self.normal(mean, sigma, size, dtype)
+            cupy.exp(x, out=x)
+            return x
+        if size is None:
+            size = ()
         dtype = _check_and_get_dtype(dtype)
         if dtype.char == 'f':
             func = curand.generateLogNormal
@@ -439,11 +445,22 @@ class RandomState(object):
 
         """
         dtype = _check_and_get_dtype(dtype)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
         if dtype.char == 'f':
             func = curand.generateNormal
         else:
             func = curand.generateNormalDouble
-        return self._generate_normal(func, size, dtype, loc, scale)
+        if isinstance(scale, cupy.ndarray):
+            x = self._generate_normal(func, size, dtype, 0.0, 1.0)
+            cupy.multiply(x, scale, out=x)
+            cupy.add(x, loc, out=x)
+        elif isinstance(loc, cupy.ndarray):
+            x = self._generate_normal(func, size, dtype, 0.0, scale)
+            cupy.add(x, loc, out=x)
+        else:
+            x = self._generate_normal(func, size, dtype, loc, scale)
+        return x
 
     def pareto(self, a, size=None, dtype=float):
         """Returns an array of samples drawn from the pareto II distribution.
