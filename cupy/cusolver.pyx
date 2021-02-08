@@ -7,6 +7,7 @@ import warnings as _warnings
 import numpy as _numpy
 
 from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cusolver
 # due to a Cython bug (cython/cython#4000) we cannot just cimport the module
 from cupy_backends.cuda.libs.cusolver cimport (  # noqa
@@ -266,7 +267,12 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
 
     # TODO(leofang): if cuSOLVER implements a batched version of gesvd, wrap
     # it here and unify with rocSOLVER's counterpart (it's currently wrapped
-    # as gesvdj, not gesvd).
+    # as gesvdj, not gesvd) here.
+    if runtime._is_hip_environment:
+        # we never arrive here, so just raise
+        raise RuntimeError("This function is disabled on HIP as "
+                           "it is not needed")
+
     # TODO(leofang): try overlapping using a small stream pool? Or use stream
     # capture (cupy/cupy#4567) to further reduce kernel launch overhead?
 

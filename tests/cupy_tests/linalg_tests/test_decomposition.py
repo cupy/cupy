@@ -141,7 +141,6 @@ class TestSVD(unittest.TestCase):
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
         numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
     ])
-    #@testing.for_dtypes([numpy.float32])
     def check_usv(self, shape, dtype):
         array = testing.shaped_random(
             shape, numpy, dtype=dtype, seed=self.seed)
@@ -158,7 +157,7 @@ class TestSVD(unittest.TestCase):
             assert result_gpu[i].dtype == result_cpu[i].dtype
         u_cpu, s_cpu, vh_cpu = result_cpu
         u_gpu, s_gpu, vh_gpu = result_gpu
-        cupy.testing.assert_allclose(s_gpu, s_cpu, atol=1e-4)
+        cupy.testing.assert_allclose(s_gpu, s_cpu, rtol=1e-5, atol=1e-4)
 
         # reconstruct the matrix
         k = s_cpu.shape[-1]
@@ -173,7 +172,7 @@ class TestSVD(unittest.TestCase):
                                         vh_gpu[..., :k, :])
             else:
                 a_gpu_usv = cupy.matmul(u_gpu*s_gpu[..., None, :], vh_gpu)
-        cupy.testing.assert_allclose(a_gpu, a_gpu_usv, atol=1e-4)
+        cupy.testing.assert_allclose(a_gpu, a_gpu_usv, rtol=1e-4, atol=1e-4)
 
         # assert unitary
         if len(shape) == 2:
@@ -212,8 +211,7 @@ class TestSVD(unittest.TestCase):
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
         numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
     ])
-    #@testing.for_dtypes([numpy.float32])
-    @testing.numpy_cupy_allclose(atol=1e-4)
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-4)
     def check_singular(self, shape, xp, dtype):
         array = testing.shaped_random(shape, xp, dtype=dtype, seed=self.seed)
         a = xp.asarray(array, dtype=dtype)
@@ -300,11 +298,11 @@ class TestSVD(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_svd_rank4(self):
-        self.check_usv((5, 2, 3, 4))
-        self.check_usv((5, 2, 3, 7))
-        self.check_usv((5, 2, 4, 4))
-        self.check_usv((5, 2, 7, 3))
-        self.check_usv((5, 2, 4, 3))
+        self.check_usv((2, 2, 3, 4))
+        self.check_usv((2, 2, 3, 7))
+        self.check_usv((2, 2, 4, 4))
+        self.check_usv((2, 2, 7, 3))
+        self.check_usv((2, 2, 4, 3))
 
     @condition.repeat(3, 10)
     def test_svd_rank4_loop(self):
@@ -313,11 +311,11 @@ class TestSVD(unittest.TestCase):
 
     @condition.repeat(3, 10)
     def test_svd_rank4_no_uv(self):
-        self.check_singular((5, 2, 3, 4))
-        self.check_singular((5, 2, 3, 7))
-        self.check_singular((5, 2, 4, 4))
-        self.check_singular((5, 2, 7, 3))
-        self.check_singular((5, 2, 4, 3))
+        self.check_singular((2, 2, 3, 4))
+        self.check_singular((2, 2, 3, 7))
+        self.check_singular((2, 2, 4, 4))
+        self.check_singular((2, 2, 7, 3))
+        self.check_singular((2, 2, 4, 3))
 
     @condition.repeat(3, 10)
     def test_svd_rank4_no_uv_loop(self):
