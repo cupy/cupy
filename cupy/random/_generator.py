@@ -74,8 +74,6 @@ class RandomState(object):
         # * curand.generateNormalDouble
         # * curand.generateLogNormal
         # * curand.generateLogNormalDouble
-        if size is None:
-            size = ()  # TODO(kataoka): Remove this after #4615 is merged
         size = core.get_size(size)
         element_size = core.internal.prod(size)
         if element_size % 2 == 0:
@@ -597,8 +595,6 @@ class RandomState(object):
 
     def _random_sample_raw(self, size, dtype):
         dtype = _check_and_get_dtype(dtype)
-        if size is None:
-            size = ()  # TODO(kataoka): Remove this after #4615 is merged
         out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
             func = curand.generateUniform
