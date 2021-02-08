@@ -49,12 +49,8 @@ def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
     # by uncommenting the following line.
     # print(code)
 
-    if use_grid_sync:
-        module = compile_with_cache(
-            code, (), None, None, True, 'nvcc', False, True)
-    else:
-        module = compile_with_cache(code)
-
+    module = compile_with_cache(
+        code, (), None, None, True, 'nvrtc', False, use_grid_sync)
     return module.get_function(name)
 
 
