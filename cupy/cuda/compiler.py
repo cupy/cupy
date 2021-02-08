@@ -348,9 +348,6 @@ def compile_with_cache(
         name_expressions=None, log_stream=None):
 
     if enable_cooperative_groups:
-        if backend != 'nvcc':
-            raise ValueError(
-                'Cooperative groups is supported only in NVCC backend.')
         if runtime.is_hip:
             raise ValueError(
                 'Cooperative groups is not supported in HIP.')
