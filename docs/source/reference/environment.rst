@@ -85,6 +85,15 @@ Here are the environment variables CuPy uses.
 |                                                | RawKernels/RawModules with ``nvcc`` backend or     |
 |                                                | when using ``cub`` as the accelerator.             |
 +------------------------------------------------+----------------------------------------------------+
+| ``CUPY_CUDA_PER_THREAD_DEFAULT_STREAM``        | If set to 1, CuPy will use the CUDA per-thread     |
+|                                                | default stream, effectively causing each host      |
+|                                                | thread to automatically execute in its own stream, |
+|                                                | unless the CUDA default (``null``) stream or       |
+|                                                | a user-created stream is specified. If set to 0    |
+|                                                | (default), the CUDA default (``null``) stream is   |
+|                                                | used, unless the per-thread default stream         |
+|                                                | (``ptds``) or a user-created stream is specified.  |
++------------------------------------------------+----------------------------------------------------+
 
 Moreover, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit
 Documentation`_ will also be honored. When ``CUPY_ACCELERATORS`` or ``NVCC`` environment variables
