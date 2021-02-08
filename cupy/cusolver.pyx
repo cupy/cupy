@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 from libc.stdint cimport intptr_t
 
 import warnings as _warnings

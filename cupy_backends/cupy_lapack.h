@@ -1,6 +1,8 @@
 #ifndef INCLUDE_GUARD_CUPY_CUSOLVER_H
 #define INCLUDE_GUARD_CUPY_CUSOLVER_H
 
+#include <type_traits>
+
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #include "cuda/cupy_cusolver.h"
