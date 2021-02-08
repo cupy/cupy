@@ -4,10 +4,11 @@ import warnings as _warnings
 
 import numpy as _numpy
 
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.libs cimport cusolver
 # due to a Cython bug (cython/cython#4000) we cannot just cimport the module
 from cupy_backends.cuda.libs.cusolver cimport (
-    sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize,
-    sgesvd, dgesvd, cgesvd, zgesvd)
+    sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize)
 
 from cupy.cuda cimport memory
 from cupy.core.core cimport _ndarray_init, ndarray
@@ -21,6 +22,48 @@ from cupy.core import _routines_linalg as _linalg
 from cupy import _util
 
 import cupyx as _cupyx
+
+
+###############################################################################
+# Extern
+###############################################################################
+
+cdef extern from '../cupy_backends/cupy_complex.h':
+    ctypedef struct cuComplex 'cuComplex':
+        float x, y
+
+    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
+        double x, y
+
+cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
+    int cusolverDnSgesvd(cusolver.Handle handle, char jobu, char jobvt,
+                         int m, int n,
+                         float* A, int lda, float* S,
+                         float* U, int ldu,
+                         float* VT, int ldvt,
+                         float* Work, int lwork,
+                         float* rwork, int* devInfo)
+    int cusolverDnDgesvd(cusolver.Handle handle, char jobu, char jobvt,
+                         int m, int n,
+                         double* A, int lda, double* S,
+                         double* U, int ldu,
+                         double* VT, int ldvt,
+                         double* Work, int lwork,
+                         double* rwork, int* devInfo)
+    int cusolverDnCgesvd(cusolver.Handle handle, char jobu, char jobvt,
+                         int m, int n,
+                         cuComplex* A, int lda, float* S,
+                         cuComplex* U, int ldu,
+                         cuComplex* VT, int ldvt,
+                         cuComplex* Work, int lwork,
+                         float* rwork, int* devInfo)
+    int cusolverDnZgesvd(cusolver.Handle handle, char jobu, char jobvt,
+                         int m, int n,
+                         cuDoubleComplex* A, int lda, double* S,
+                         cuDoubleComplex* U, int ldu,
+                         cuDoubleComplex* VT, int ldvt,
+                         cuDoubleComplex* Work, int lwork,
+                         double* rwork, int* devInfo)
 
 
 _available_cuda_version = {
@@ -233,6 +276,120 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
         return s
 
 
+# Unfortunately Cython's fused types are not powerful enough for us to make
+# this function templated, so we have to duplicate code here...
+cdef inline int sgesvd_loop(
+        intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t a_ptr,
+        int lda, intptr_t s_ptr, intptr_t u_ptr, int ldu, intptr_t vt_ptr,
+        int ldvt, intptr_t w_ptr, int buffersize, intptr_t info_ptr,
+        int batch_size) nogil:
+    cdef int i, k, status
+    cdef float* A = <float*>a_ptr
+    cdef float* S = <float*>s_ptr
+    cdef float* U = <float*>u_ptr
+    cdef float* VT = <float*>vt_ptr
+    cdef float* Work = <float*>w_ptr
+    cdef int* devInfo = <int*>info_ptr
+
+    k = min(m, n)
+    for i in range(batch_size):
+        # setting rwork to NULL as we don't need it
+        status = cusolverDnSgesvd(
+            <cusolver.Handle>handle, jobu, jobvt, m, n, A, lda,
+            S, U, ldu, VT, ldvt, Work, buffersize, NULL, devInfo)
+        if status != 0:
+            break
+        A += m * n
+        S += k
+        U += m * m
+        VT += n * n
+        devInfo += 1
+    return status
+
+cdef inline int dgesvd_loop(
+        intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t a_ptr,
+        int lda, intptr_t s_ptr, intptr_t u_ptr, int ldu, intptr_t vt_ptr,
+        int ldvt, intptr_t w_ptr, int buffersize, intptr_t info_ptr,
+        int batch_size) nogil:
+    cdef int i, k, status
+    cdef double* A = <double*>a_ptr
+    cdef double* S = <double*>s_ptr
+    cdef double* U = <double*>u_ptr
+    cdef double* VT = <double*>vt_ptr
+    cdef double* Work = <double*>w_ptr
+    cdef int* devInfo = <int*>info_ptr
+
+    k = min(m, n)
+    for i in range(batch_size):
+        # setting rwork to NULL as we don't need it
+        status = cusolverDnDgesvd(
+            <cusolver.Handle>handle, jobu, jobvt, m, n, A, lda,
+            S, U, ldu, VT, ldvt, Work, buffersize, NULL, devInfo)
+        if status != 0:
+            break
+        A += m * n
+        S += k
+        U += m * m
+        VT += n * n
+        devInfo += 1
+    return status
+
+cdef inline int cgesvd_loop(
+        intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t a_ptr,
+        int lda, intptr_t s_ptr, intptr_t u_ptr, int ldu, intptr_t vt_ptr,
+        int ldvt, intptr_t w_ptr, int buffersize, intptr_t info_ptr,
+        int batch_size) nogil:
+    cdef int i, k, status
+    cdef cuComplex* A = <cuComplex*>a_ptr
+    cdef float* S = <float*>s_ptr
+    cdef cuComplex* U = <cuComplex*>u_ptr
+    cdef cuComplex* VT = <cuComplex*>vt_ptr
+    cdef cuComplex* Work = <cuComplex*>w_ptr
+    cdef int* devInfo = <int*>info_ptr
+
+    k = min(m, n)
+    for i in range(batch_size):
+        # setting rwork to NULL as we don't need it
+        status = cusolverDnCgesvd(
+            <cusolver.Handle>handle, jobu, jobvt, m, n, A, lda,
+            S, U, ldu, VT, ldvt, Work, buffersize, NULL, devInfo)
+        if status != 0:
+            break
+        A += m * n
+        S += k
+        U += m * m
+        VT += n * n
+        devInfo += 1
+    return status
+
+cdef inline int zgesvd_loop(
+        intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t a_ptr,
+        int lda, intptr_t s_ptr, intptr_t u_ptr, int ldu, intptr_t vt_ptr,
+        int ldvt, intptr_t w_ptr, int buffersize, intptr_t info_ptr,
+        int batch_size) nogil:
+    cdef int i, k, status
+    cdef cuDoubleComplex* A = <cuDoubleComplex*>a_ptr
+    cdef double* S = <double*>s_ptr
+    cdef cuDoubleComplex* U = <cuDoubleComplex*>u_ptr
+    cdef cuDoubleComplex* VT = <cuDoubleComplex*>vt_ptr
+    cdef cuDoubleComplex* Work = <cuDoubleComplex*>w_ptr
+    cdef int* devInfo = <int*>info_ptr
+
+    k = min(m, n)
+    for i in range(batch_size):
+        # setting rwork to NULL as we don't need it
+        status = cusolverDnZgesvd(
+            <cusolver.Handle>handle, jobu, jobvt, m, n, A, lda,
+            S, U, ldu, VT, ldvt, Work, buffersize, NULL, devInfo)
+        if status != 0:
+            break
+        A += m * n
+        S += k
+        U += m * m
+        VT += n * n
+        devInfo += 1
+    return status
+
 cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     """A loop-based gesvd wrapper to support batched SVD."""
     # This function follows more closely with gesvd() in
@@ -245,7 +402,8 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     # capture (cupy/cupy#4567) to further reduce kernel launch overhead?
 
     cdef ndarray x, s, u, vt, dev_info
-    cdef int n, m, k, batch_size, i, buffersize, rd_size, d_size
+    cdef int n, m, k, batch_size, i, buffersize, d_size
+    cdef int status, gesvd
     cdef intptr_t a_ptr, s_ptr, u_ptr, vt_ptr, rwork_ptr, w_ptr, info_ptr
     cdef str a_dtype, s_dtype
     cdef char job_u, job_vt
@@ -259,23 +417,19 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
 
     if a_dtype == 'f':
         gesvd_bufferSize = sgesvd_bufferSize
-        gesvd = sgesvd
-        rd_size = 4
+        gesvd = 0
         d_size = 4
     elif a_dtype == 'd':
         gesvd_bufferSize = dgesvd_bufferSize
-        gesvd = dgesvd
-        rd_size = 8
+        gesvd = 1
         d_size = 8
     elif a_dtype == 'F':
         gesvd_bufferSize = cgesvd_bufferSize
-        gesvd = cgesvd
-        rd_size = 4
+        gesvd = 2
         d_size = 8
     elif a_dtype == 'D':
         gesvd_bufferSize = zgesvd_bufferSize
-        gesvd = zgesvd
-        rd_size = 8
+        gesvd = 3
         d_size = 16
     else:
         raise TypeError
@@ -313,23 +467,39 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     dev_info = _ndarray_init((batch_size,), _numpy.int32)
     info_ptr = dev_info.data.ptr
 
+    # this wrapper also sets the stream for us
     buffersize = gesvd_bufferSize(handle, m, n)
+    # we are on the same stream, so the workspace can be reused in the loop
     workspace = memory.alloc(buffersize * d_size)
     w_ptr = workspace.ptr
-    # rwork can be NULL if the information from supperdiagonal isn't needed
-    # https://docs.nvidia.com/cuda/cusolver/index.html#cuSolverDN-lt-t-gt-gesvd  # noqa
-    rwork_ptr = 0
-    # we are on the same stream, so the workspace can be reused between iterations
-    # TODO(leofang): it'd be better to move the whole loop under "with nogil"...?
-    for i in range(batch_size):
-        gesvd(handle, job_u, job_vt, m, n, a_ptr, m, s_ptr,
-              u_ptr, m, vt_ptr, n,
-              w_ptr, buffersize, rwork_ptr, info_ptr)
-        a_ptr += m * n * d_size
-        s_ptr += k * rd_size
-        u_ptr += m * m * d_size
-        vt_ptr += n * n * d_size
-        info_ptr += 4
+
+    # the loop starts here, with gil released to reduce overhead
+    with nogil:
+        if gesvd == 0:
+            status = sgesvd_loop(
+                handle, job_u, job_vt, m, n, a_ptr, m, s_ptr,
+                u_ptr, m, vt_ptr, n,
+                w_ptr, buffersize, info_ptr, batch_size)
+        elif gesvd == 1:
+            status = dgesvd_loop(
+                handle, job_u, job_vt, m, n, a_ptr, m, s_ptr,
+                u_ptr, m, vt_ptr, n,
+                w_ptr, buffersize, info_ptr, batch_size)
+        elif gesvd == 2:
+            status = cgesvd_loop(
+                handle, job_u, job_vt, m, n, a_ptr, m, s_ptr,
+                u_ptr, m, vt_ptr, n,
+                w_ptr, buffersize, info_ptr, batch_size)
+        elif gesvd == 3:
+            status = zgesvd_loop(
+                handle, job_u, job_vt, m, n, a_ptr, m, s_ptr,
+                u_ptr, m, vt_ptr, n,
+                w_ptr, buffersize, info_ptr, batch_size)
+        else:
+            status = -1  # unreachable
+    if status != 0:
+        raise _cusolver.CUSOLVERError(status)
+
     # check the full info array
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         'gesvd', dev_info)
