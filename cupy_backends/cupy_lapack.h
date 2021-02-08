@@ -16,54 +16,43 @@
 #endif // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 
-
+/*
+ * loop-based batched gesvd (only used on CUDA)
+ */
 template<typename T1, typename T2>
 using gesvd = cusolverStatus_t (*)(cusolverDnHandle_t, signed char, signed char, int, int, T1*, int, T2*, T1*, int, T1*, int, T1*, int, T2*, int*);
 
-template<typename T1, typename T2>
-struct gesvd_func {
-    gesvd<T1, T2> ptr;
-};
-
-template<>
-struct gesvd_func<float, float> {
-    gesvd<float, float> ptr = cusolverDnSgesvd;
-};
-
-template<>
-struct gesvd_func<double, double> {
-    gesvd<double, double> ptr = cusolverDnDgesvd;
-};
-
-template<>
-struct gesvd_func<cuComplex, float> {
-    gesvd<cuComplex, float> ptr = cusolverDnCgesvd;
-};
-
-template<>
-struct gesvd_func<cuDoubleComplex, double> {
-    gesvd<cuDoubleComplex, double> ptr = cusolverDnZgesvd;
-};
+template<typename T1, typename T2> struct gesvd_func { gesvd<T1, T2> ptr; };
+template<> struct gesvd_func<float, float> { gesvd<float, float> ptr = cusolverDnSgesvd; };
+template<> struct gesvd_func<double, double> { gesvd<double, double> ptr = cusolverDnDgesvd; };
+template<> struct gesvd_func<cuComplex, float> { gesvd<cuComplex, float> ptr = cusolverDnCgesvd; };
+template<> struct gesvd_func<cuDoubleComplex, double> { gesvd<cuDoubleComplex, double> ptr = cusolverDnZgesvd; };
 
 template<typename T>
 int gesvd_loop(
-        intptr_t handle, char jobu, char jobvt, int m, int n, T* A,
+        intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t a_ptr,
         int lda, intptr_t s_ptr, intptr_t u_ptr, int ldu, intptr_t vt_ptr,
         int ldvt, intptr_t w_ptr, int buffersize, intptr_t info_ptr,
         int batch_size) {
+    /*
+     * Assumptions:
+     * 1. the stream is set prior to calling this function
+     * 2. the workspace is reused in the loop
+     */
+
     cusolverStatus_t status;
     int k = (m<n?m:n);
     typedef typename std::conditional<(std::is_same<T, float>::value) || (std::is_same<T, cuComplex>::value), float,
                                       /* double or cuDoubleComplex */ double>::type real_type;
+    T* A = reinterpret_cast<T*>(a_ptr);
     real_type* S = reinterpret_cast<real_type*>(s_ptr);
     T* U = reinterpret_cast<T*>(u_ptr);
     T* VT = reinterpret_cast<T*>(vt_ptr);
     T* Work = reinterpret_cast<T*>(w_ptr);
     int* devInfo = reinterpret_cast<int*>(info_ptr);
 
-    // it's too bad that we can't use if constexpr from C++17 to do a compile-time if,
+    // we can't use "if constexpr" to do a compile-time branch selection as it's C++17 only,
     // so we use custom traits instead
-    // cusolverStatus_t (*gesvd)(cusolverDnHandle_t, signed char, signed char, int, int, T*, int, real_type*, T*, int, T*, int, T*, int, real_type*, int*);
     gesvd<T, real_type> func = gesvd_func<T, real_type>().ptr;
 
     for (int i=0; i<batch_size; i++) {

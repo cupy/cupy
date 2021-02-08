@@ -7,7 +7,7 @@ import numpy as _numpy
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.libs cimport cusolver
 # due to a Cython bug (cython/cython#4000) we cannot just cimport the module
-from cupy_backends.cuda.libs.cusolver cimport (
+from cupy_backends.cuda.libs.cusolver cimport (  # noqa
     sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize)
 
 from cupy.cuda cimport memory
@@ -37,10 +37,14 @@ cdef extern from '../cupy_backends/cupy_complex.h':
 
 cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
     int gesvd_loop[T](
-        intptr_t handle, char jobu, char jobvt, int m, int n, T* A,
+        intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t A,
         int lda, intptr_t s_ptr, intptr_t u_ptr, int ldu, intptr_t vt_ptr,
         int ldvt, intptr_t w_ptr, int buffersize, intptr_t info_ptr,
         int batch_size)
+
+ctypedef int (*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,  # noqa
+                          int, intptr_t, intptr_t, int, intptr_t,
+                          int, intptr_t, int, intptr_t, int) nogil
 
 
 _available_cuda_version = {
@@ -253,7 +257,7 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
         return s
 
 
-cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
+cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
     """A loop-based gesvd wrapper to support batched SVD."""
     # This function follows more closely with gesvd() in
     # cupy/linalg/_decomposition.py.
@@ -265,37 +269,17 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     # capture (cupy/cupy#4567) to further reduce kernel launch overhead?
 
     cdef ndarray x, s, u, vt, dev_info
-    cdef int n, m, k, batch_size, i, buffersize, d_size
-    cdef int status, gesvd
+    cdef int n, m, k, batch_size, i, buffersize, d_size, status
     cdef intptr_t a_ptr, s_ptr, u_ptr, vt_ptr, rwork_ptr, w_ptr, info_ptr
-    cdef str a_dtype, s_dtype
+    cdef str s_dtype
     cdef char job_u, job_vt
     cdef bint trans_flag
+    cdef gesvd_ptr gesvd
 
     assert a.ndim > 2
     assert not overwrite_a  # TODO(leofang): handle this?
     batch_size, n, m = a.shape
-    a_dtype = a.dtype.char
     s_dtype = a_dtype.lower()
-
-    if a_dtype == 'f':
-        gesvd_bufferSize = sgesvd_bufferSize
-        gesvd = 0
-        d_size = 4
-    elif a_dtype == 'd':
-        gesvd_bufferSize = dgesvd_bufferSize
-        gesvd = 1
-        d_size = 8
-    elif a_dtype == 'F':
-        gesvd_bufferSize = cgesvd_bufferSize
-        gesvd = 2
-        d_size = 8
-    elif a_dtype == 'D':
-        gesvd_bufferSize = zgesvd_bufferSize
-        gesvd = 3
-        d_size = 16
-    else:
-        raise TypeError
 
     # `a` must be copied because xgesvd destroys the matrix
     if m >= n:
@@ -330,6 +314,25 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     dev_info = _ndarray_init((batch_size,), _numpy.int32)
     info_ptr = dev_info.data.ptr
 
+    if a_dtype == 'f':
+        gesvd_bufferSize = sgesvd_bufferSize
+        gesvd = gesvd_loop[float]
+        d_size = 4
+    elif a_dtype == 'd':
+        gesvd_bufferSize = dgesvd_bufferSize
+        gesvd = gesvd_loop[double]
+        d_size = 8
+    elif a_dtype == 'F':
+        gesvd_bufferSize = cgesvd_bufferSize
+        gesvd = gesvd_loop[cuComplex]
+        d_size = 8
+    elif a_dtype == 'D':
+        gesvd_bufferSize = zgesvd_bufferSize
+        gesvd = gesvd_loop[cuDoubleComplex]
+        d_size = 16
+    else:
+        raise TypeError
+
     # this wrapper also sets the stream for us
     buffersize = gesvd_bufferSize(handle, m, n)
     # we are on the same stream, so the workspace can be reused in the loop
@@ -338,28 +341,10 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
 
     # the loop starts here, with gil released to reduce overhead
     with nogil:
-        if gesvd == 0:
-            status = gesvd_loop[float](
-                handle, job_u, job_vt, m, n, <float*>a_ptr, m, s_ptr,
-                u_ptr, m, vt_ptr, n,
-                w_ptr, buffersize, info_ptr, batch_size)
-        elif gesvd == 1:
-            status = gesvd_loop[double](
-                handle, job_u, job_vt, m, n, <double*>a_ptr, m, s_ptr,
-                u_ptr, m, vt_ptr, n,
-                w_ptr, buffersize, info_ptr, batch_size)
-        elif gesvd == 2:
-            status = gesvd_loop[cuComplex](
-                handle, job_u, job_vt, m, n, <cuComplex*>a_ptr, m, s_ptr,
-                u_ptr, m, vt_ptr, n,
-                w_ptr, buffersize, info_ptr, batch_size)
-        elif gesvd == 3:
-            status = gesvd_loop[cuDoubleComplex](
-                handle, job_u, job_vt, m, n, <cuDoubleComplex*>a_ptr, m, s_ptr,
-                u_ptr, m, vt_ptr, n,
-                w_ptr, buffersize, info_ptr, batch_size)
-        else:
-            status = -1  # unreachable
+        status = gesvd(
+            handle, job_u, job_vt, m, n, a_ptr, m, s_ptr,
+            u_ptr, m, vt_ptr, n,
+            w_ptr, buffersize, info_ptr, batch_size)
     if status != 0:
         raise _cusolver.CUSOLVERError(status)
 
@@ -371,9 +356,9 @@ cpdef _gesvd_batched(a, full_matrices, compute_uv, overwrite_a):
     # depending on the structure of an input
     if compute_uv:
         if trans_flag:
-            return u.swapaxes(-2, -1), s, vt
+            return u.swapaxes(-2, -1).conj(), s, vt
         else:
-            return vt, s, u.swapaxes(-2, -1)
+            return vt, s, u.swapaxes(-2, -1).conj()
     else:
         return s
 

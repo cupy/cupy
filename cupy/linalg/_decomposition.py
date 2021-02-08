@@ -397,7 +397,8 @@ def _svd_batched(a, a_dtype, full_matrices, compute_uv):
         out = _gesvdj_batched(a, full_matrices, compute_uv, False)
     else:
         # manually loop over cusolverDn<t>gesvd()
-        out = _gesvd_batched(a, full_matrices, compute_uv, False)
+        # copy (via possible type casting) is done in _gesvd_batched
+        out = _gesvd_batched(a, a_dtype, full_matrices, compute_uv, False)
     if compute_uv:
         u, s, v = out
         u = u.reshape(*batch_shape, *(u.shape[-2:]))
