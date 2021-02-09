@@ -205,7 +205,7 @@ class _ReductionTraceOp:
         assert all([0 <= x < in_param.ndim for x in axis])
 
         self.name = name
-        self.preamble = reduce_func._preamble
+        self.preamble = reduce_func.preamble
         self.in_params = _VariableSet(in_param)
         self.out_params = _VariableSet(out_param)
         self.block_stride_name = 'block_stride_' + name

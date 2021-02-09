@@ -56,8 +56,6 @@ def _convert_1d_args(ndim, weights, origin, axis):
 
 
 def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
-    if input.dtype.kind == 'c':
-        raise TypeError('Complex type not supported')
     _util._check_mode(mode)
     # Weights must always be less than 2 GiB
     if weights.nbytes >= (1 << 31):
@@ -82,6 +80,8 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     output = _util._get_output(output, input)
     modes = _util._fix_sequence_arg(mode, input.ndim, 'mode',
                                     _util._check_mode)
+    # for filters, "wrap" is a synonym for "grid-wrap".
+    modes = ['grid-wrap' if m == 'wrap' else m for m in modes]
     origins = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
@@ -125,13 +125,15 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     dtype conversion will occur. The input and output are never converted.
     """
     args = [input]
+    complex_output = input.dtype.kind == 'c'
     if weights is not None:
         weights = cupy.ascontiguousarray(weights, weights_dtype)
+        complex_output = complex_output or weights.dtype.kind == 'c'
         args.append(weights)
     if structure is not None:
         structure = cupy.ascontiguousarray(structure, structure_dtype)
         args.append(structure)
-    output = _util._get_output(output, input)
+    output = _util._get_output(output, input, None, complex_output)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
         output, temp = _util._get_output(output.dtype, input), output
@@ -143,8 +145,9 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     return output
 
 
-math_constants_preamble = r'''
+includes = r'''
 // workaround for HIP: line begins with #include
+#include <type_traits>  // let Jitify handle this
 #include <cupy/math_constants.h>
 '''
 
@@ -152,51 +155,24 @@ math_constants_preamble = r'''
 _CAST_FUNCTION = """
 // Implements a casting function to make it compatible with scipy
 // Use like cast<to_type>(value)
-// It's actually really simple - most of this is <type_traits>
-
-// Small bit of <type_traits> which cannot be imported in NVRTC
-// Requires compiling with --std=c++11 or higher
-template<bool B, class T=void> struct enable_if {};
-template<class T> struct enable_if<true, T> { typedef T type; };
-template<class T> struct remove_const          { typedef T type; };
-template<class T> struct remove_const<const T> { typedef T type; };
-template<class T> struct remove_volatile             { typedef T type; };
-template<class T> struct remove_volatile<volatile T> { typedef T type; };
-template<class T> struct remove_cv {
-  typedef typename remove_volatile<typename remove_const<T>::type>::type type;
-};
-template<class T, T v>
-struct integral_constant { static constexpr T value = v; };
-typedef integral_constant<bool, true> true_type;
-typedef integral_constant<bool, false> false_type;
-template<class T> struct __is_fp : public false_type {};
-template<>        struct __is_fp<float16> : public true_type {};
-template<>        struct __is_fp<float> : public true_type {};
-template<>        struct __is_fp<double> : public true_type {};
-template<>        struct __is_fp<long double> : public true_type {};
-template<class T> struct is_floating_point
-    : public __is_fp<typename remove_cv<T>::type> {};
-template<class T> struct is_signed
-    : public integral_constant<bool, (T)(-1)<0> {};
-template<> struct is_signed<float16> : public true_type {};
-template<class T> struct is_signed<complex<T>> : public is_signed<T> {};
+template<> struct std::is_floating_point<float16> : std::true_type {};
+template<> struct std::is_signed<float16> : std::true_type {};
+template<class T> struct std::is_signed<complex<T>> : std::is_signed<T> {};
 
 template <class B, class A>
-__device__
-typename enable_if<!is_floating_point<A>::value||is_signed<B>::value, B>::type
+__device__ __forceinline__
+typename std::enable_if<(!std::is_floating_point<A>::value
+                         || std::is_signed<B>::value), B>::type
 cast(A a) { return (B)a; }
 
 template <class B, class A>
-__device__
-typename enable_if<is_floating_point<A>::value&&!is_signed<B>::value, B>::type
+__device__ __forceinline__
+typename std::enable_if<(std::is_floating_point<A>::value
+                         && (!std::is_signed<B>::value)), B>::type
 cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
 
 template <class T>
-__device__ bool nonzero(T x) { return (bool)x; }
-
-template <typename T>
-__device__ bool nonzero(complex<T> x) { return x.real() || x.imag(); }
-
+__device__ __forceinline__ bool nonzero(T x) { return x != static_cast<T>(0); }
 """
 
 
@@ -218,6 +194,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     if has_mask:
         in_params += ', raw M mask'
     out_params = 'Y y'
+
+    # for filters, "wrap" is a synonym for "grid-wrap"
+    mode = 'grid-wrap' if mode == 'wrap' else mode
 
     # CArray: remove xstride_{j}=... from string
     size = ('%s xsize_{j}=x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
@@ -298,8 +277,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                ws_init=ws_init, ws_pre=ws_pre, ws_post=ws_post,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
+    mode_str = mode.replace('-', '_')  # avoid potential hyphen in kernel name
     name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
-        name, ndim, mode, '_'.join(['{}'.format(x) for x in w_shape]))
+        name, ndim, mode_str, '_'.join(['{}'.format(x) for x in w_shape]))
     if all_weights_nonzero:
         name += '_all_nonzero'
     if int_type == 'ptrdiff_t':
@@ -308,7 +288,8 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
         name += '_with_structure'
     if has_mask:
         name += '_with_mask'
-    preamble = math_constants_preamble + _CAST_FUNCTION + preamble
+    preamble = includes + _CAST_FUNCTION + preamble
+    options += ('--std=c++11', '-DCUPY_USE_JITIFY')
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
-                                  options=('--std=c++11',) + options)
+                                  options=options)

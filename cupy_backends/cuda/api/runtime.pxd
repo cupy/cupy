@@ -106,7 +106,7 @@ cdef extern from *:
         # We can't use IF in the middle of structs declaration
         # to add or ignore fields in compile time so we have to
         # replicate the struct definition
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             cudaUUID     uuid
             char         luid[8]
@@ -188,7 +188,7 @@ cdef extern from *:
             int          accessPolicyMaxWindowSize  # CUDA 11.0 field
             size_t       reservedSharedMemPerBlock  # CUDA 11.0 field
     ELIF CUDA_VERSION >= 10000:
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             cudaUUID     uuid
             char         luid[8]
@@ -266,7 +266,7 @@ cdef extern from *:
             int          pageableMemoryAccessUsesHostPageTables
             int          directManagedMemAccessFromHost
     ELIF CUDA_VERSION == 9020:
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             size_t       totalGlobalMem
             size_t       sharedMemPerBlock
@@ -340,80 +340,6 @@ cdef extern from *:
             size_t       sharedMemPerBlockOptin
             int          pageableMemoryAccessUsesHostPageTables
             int          directManagedMemAccessFromHost
-    ELIF CUDA_VERSION == 9000:
-        # CUDA 9.0
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
-            char         name[256]
-            size_t       totalGlobalMem
-            size_t       sharedMemPerBlock
-            int          regsPerBlock
-            int          warpSize
-            size_t       memPitch
-            int          maxThreadsPerBlock
-            int          maxThreadsDim[3]
-            int          maxGridSize[3]
-            int          clockRate
-            size_t       totalConstMem
-            int          major
-            int          minor
-            size_t       textureAlignment
-            size_t       texturePitchAlignment
-            int          deviceOverlap
-            int          multiProcessorCount
-            int          kernelExecTimeoutEnabled
-            int          integrated
-            int          canMapHostMemory
-            int          computeMode
-            int          maxTexture1D
-            int          maxTexture1DMipmap
-            int          maxTexture1DLinear
-            int          maxTexture2D[2]
-            int          maxTexture2DMipmap[2]
-            int          maxTexture2DLinear[3]
-            int          maxTexture2DGather[2]
-            int          maxTexture3D[3]
-            int          maxTexture3DAlt[3]
-            int          maxTextureCubemap
-            int          maxTexture1DLayered[2]
-            int          maxTexture2DLayered[3]
-            int          maxTextureCubemapLayered[2]
-            int          maxSurface1D
-            int          maxSurface2D[2]
-            int          maxSurface3D[3]
-            int          maxSurface1DLayered[2]
-            int          maxSurface2DLayered[3]
-            int          maxSurfaceCubemap
-            int          maxSurfaceCubemapLayered[2]
-            size_t       surfaceAlignment
-            int          concurrentKernels
-            int          ECCEnabled
-            int          pciBusID
-            int          pciDeviceID
-            int          pciDomainID
-            int          tccDriver
-            int          asyncEngineCount
-            int          unifiedAddressing
-            int          memoryClockRate
-            int          memoryBusWidth
-            int          l2CacheSize
-            int          maxThreadsPerMultiProcessor
-            int          streamPrioritiesSupported
-            int          globalL1CacheSupported
-            int          localL1CacheSupported
-            size_t       sharedMemPerMultiprocessor
-            int          regsPerMultiprocessor
-            int          managedMemory
-            int          isMultiGpuBoard
-            int          multiGpuBoardGroupID
-            int          hostNativeAtomicSupported
-            int          singleToDoublePrecisionPerfRatio
-            int          pageableMemoryAccess
-            int          concurrentManagedAccess
-            int          computePreemptionSupported
-            int          canUseHostPointerForRegisteredMem
-            int          cooperativeLaunch
-            int          cooperativeMultiDeviceLaunch
-            size_t       sharedMemPerBlockOptin
     ELIF use_hip:
         ctypedef struct deviceArch 'hipDeviceArch_t':
             unsigned hasGlobalInt32Atomics
@@ -439,7 +365,7 @@ cdef extern from *:
             unsigned has3dGrid
             unsigned hasDynamicParallelism
 
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char name[256]
             size_t totalGlobalMem
             size_t sharedMemPerBlock
@@ -488,7 +414,7 @@ cdef extern from *:
             int cooperativeMultiDeviceUnmatchedSharedMem
             int isLargeBar
     ELSE:  # for RTD
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
 
 
@@ -524,8 +450,13 @@ cpdef enum:
     cudaMemAdviseSetAccessedBy = 5
     cudaMemAdviseUnsetAccessedBy = 6
 
+    # cudaStream flags
     streamDefault = 0
     streamNonBlocking = 1
+
+    # cudaStream handles
+    streamLegacy = 1
+    streamPerThread = 2
 
     eventDefault = 0
     eventBlockingSync = 1
@@ -644,6 +575,15 @@ cpdef enum:
     cudaDevAttrHostRegisterSupported = 99
     cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
     cudaDevAttrDirectManagedMemAccessFromHost = 101
+    # added since CUDA 11.0
+    cudaDevAttrMaxBlocksPerMultiprocessor = 106
+    cudaDevAttrReservedSharedMemoryPerBlock = 111
+    # added since CUDA 11.1
+    cudaDevAttrSparseCudaArraySupported = 112
+    cudaDevAttrHostRegisterReadOnlySupported = 113
+    # added since CUDA 11.2
+    cudaDevAttrMaxTimelineSemaphoreInteropSupported = 114
+    cudaDevAttrMemoryPoolsSupported = 115
 
     # CUDA Limits
     cudaLimitStackSize = 0x00
@@ -693,6 +633,8 @@ cpdef enum:
 cdef int errorMemoryAllocation
 cdef int errorInvalidValue
 cdef int errorPeerAccessAlreadyEnabled
+cdef int errorContextIsDestroyed
+cdef int errorInvalidResourceHandle
 
 
 ###############################################################################
@@ -748,12 +690,14 @@ cpdef intptr_t malloc3DArray(intptr_t desc, size_t width, size_t height,
                              size_t depth, unsigned int flags=*) except? 0
 cpdef intptr_t mallocArray(intptr_t desc, size_t width, size_t height,
                            unsigned int flags=*) except? 0
+cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
 cpdef free(intptr_t ptr)
 cpdef freeHost(intptr_t ptr)
 cpdef freeArray(intptr_t ptr)
+cpdef freeAsync(intptr_t ptr, intptr_t stream)
 cpdef memGetInfo()
 cpdef memcpy(intptr_t dst, intptr_t src, size_t size, int kind)
 cpdef memcpyAsync(intptr_t dst, intptr_t src, size_t size, int kind,
@@ -800,6 +744,7 @@ cpdef streamDestroy(intptr_t stream)
 cpdef streamSynchronize(intptr_t stream)
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=*)
+cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg)
 cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
 cpdef intptr_t eventCreate() except? 0

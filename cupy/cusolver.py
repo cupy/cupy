@@ -9,6 +9,9 @@ from cupy.cuda import device as _device
 from cupy.core import _routines_linalg as _linalg
 from cupy import _util
 
+import cupyx as _cupyx
+
+
 _available_cuda_version = {
     'gesvdj': (9000, None),
     'gesvda': (10010, None),
@@ -17,6 +20,20 @@ _available_cuda_version = {
     'syevj': (9000, None),
     'gesv': (10020, None),
     'gels': (11000, None),
+    'csrlsvqr': (9000, None),
+}
+
+_available_hip_version = {
+    'potrfBatched': (306, None),
+    # Below are APIs supported by CUDA but not yet by HIP. We need them here
+    # so that our test suite can cover both platforms.
+    'gesvdj': (_numpy.inf, None),
+    'gesvda': (_numpy.inf, None),
+    'potrsBatched': (_numpy.inf, None),
+    'syevj': (_numpy.inf, None),
+    'gesv': (_numpy.inf, None),
+    'gels': (_numpy.inf, None),
+    'csrlsvqr': (_numpy.inf, None),
 }
 
 _available_compute_capability = {
@@ -27,15 +44,23 @@ _available_compute_capability = {
 
 @_util.memoize()
 def check_availability(name):
-    if name not in _available_cuda_version:
+    if not _runtime.is_hip:
+        available_version = _available_cuda_version
+        version = _runtime.runtimeGetVersion()
+    else:
+        available_version = _available_hip_version
+        # TODO(leofang): use HIP_VERSION instead?
+        version = _cusolver._getVersion()
+        version = version[0] * 100 + version[1]
+    if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
-    version_added, version_removed = _available_cuda_version[name]
-    cuda_version = _runtime.runtimeGetVersion()
-    if version_added is not None and cuda_version < version_added:
+    version_added, version_removed = available_version[name]
+    if version_added is not None and version < version_added:
         return False
-    if version_removed is not None and cuda_version >= version_removed:
+    if version_removed is not None and version >= version_removed:
         return False
+    # CUDA specific stuff
     if name in _available_compute_capability:
         compute_capability = int(_device.get_compute_capability())
         if compute_capability < _available_compute_capability[name]:
@@ -317,7 +342,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
 
     m, lda = a.shape
     w = _cupy.empty(m, real_dtype)
-    dev_info = _cupy.empty((), _numpy.int32)
+    dev_info = _cupy.empty((1,), _cupy.int32)
     handle = _device.Device().cusolver_handle
 
     if with_eigen_vector:
@@ -381,7 +406,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
         a.swapaxes(-2, -1), order='C', copy=True, dtype=dtype)
 
     w = _cupy.empty((batch_size, m), real_dtype).swapaxes(-2, 1)
-    dev_info = _cupy.empty((), _numpy.int32)
+    dev_info = _cupy.empty((batch_size,), _cupy.int32)
     handle = _device.Device().cusolver_handle
 
     if with_eigen_vector:
@@ -606,4 +631,62 @@ def gels(a, b):
         x = x[:, :org_nrhs]
     if b_ndim == 1:
         x = x.reshape(n)
+    return x
+
+
+def csrlsvqr(A, b, tol=0, reorder=1):
+    """Solves the linear system ``Ax = b`` using QR factorization.
+
+    Args:
+        A (cupyx.scipy.sparse.csr_matrix): Sparse matrix with dimension
+            ``(M, M)``.
+        b (cupy.ndarray): Dense vector with dimension ``(M,)``.
+        tol (float): Tolerance to decide if singular or not.
+        reorder (int): Reordering scheme to reduce zero fill-in.
+            1: symrcm is used.
+            2: symamd is used.
+            3: csrmetisnd is used.
+            else: no reordering.
+    """
+    if not check_availability('csrlsvqr'):
+        raise RuntimeError('csrlsvqr is not available.')
+
+    if not _cupyx.scipy.sparse.isspmatrix_csr(A):
+        raise ValueError('A must be CSR sparse matrix')
+    if not isinstance(b, _cupy.ndarray):
+        raise ValueError('b must be cupy.ndarray')
+    if b.ndim != 1:
+        raise ValueError('b.ndim must be 1 (actual: {})'.format(b.ndim))
+    if not (A.shape[0] == A.shape[1] == b.shape[0]):
+        raise ValueError('invalid shape')
+    if A.dtype != b.dtype:
+        raise TypeError('dtype mismatch')
+
+    dtype = A.dtype
+    if dtype.char == 'f':
+        t = 's'
+    elif dtype.char == 'd':
+        t = 'd'
+    elif dtype.char == 'F':
+        t = 'c'
+    elif dtype.char == 'D':
+        t = 'z'
+    else:
+        raise TypeError('Invalid dtype (actual: {})'.format(dtype))
+    solve = getattr(_cusolver, t + 'csrlsvqr')
+
+    tol = max(tol, 0)
+    m = A.shape[0]
+    x = _cupy.empty((m,), dtype=dtype)
+    singularity = _numpy.empty((1,), _numpy.int32)
+
+    handle = _device.get_cusolver_sp_handle()
+    solve(handle, m, A.nnz, A._descr.descriptor, A.data.data.ptr,
+          A.indptr.data.ptr, A.indices.data.ptr, b.data.ptr, tol, reorder,
+          x.data.ptr, singularity.ctypes.data)
+
+    if singularity[0] >= 0:
+        _warnings.warn('A is not positive definite or near singular under '
+                       'tolerance {} (singularity: {})'.
+                       format(tol, singularity))
     return x

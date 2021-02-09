@@ -28,9 +28,14 @@ requirements = {
         'fastrlock>=0.3',
     ],
     'install': [
-        'numpy>=1.15',
+        'numpy>=1.17',
         'fastrlock>=0.3',
     ],
+    'all': [
+        'scipy>=1.4',
+        'optuna>=2.0',
+    ],
+
     'stylecheck': [
         'autopep8==1.4.4',
         'flake8==3.7.9',
@@ -38,20 +43,8 @@ requirements = {
         'pycodestyle==2.5.0',
     ],
     'test': [
-        'pytest<4.2.0',  # 4.2.0 is slow collecting tests and times out on CI.
-        'attrs<19.2.0',  # pytest 4.1.1 does not run with attrs==19.2.0
-    ],
-    'doctest': [
-        'matplotlib',
-        'optuna',
-    ],
-    'docs': [
-        'sphinx==3.0.4',
-        'sphinx_rtd_theme',
-    ],
-    'travis': [
-        '-r stylecheck',
-        '-r docs',
+        # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
+        'pytest>=6.2',
     ],
     'appveyor': [
         '-r test',
@@ -62,6 +55,7 @@ requirements = {
         'pytest-cov',
         'coveralls',
         'codecov',
+        'coverage<5',  # Otherwise, Python must be built with sqlite
     ],
 }
 
@@ -103,6 +97,8 @@ cupy_package_data = [
     'cupy/cuda/cupy_cufft.h',  # for cuFFT callback
     'cupy/cuda/cufft.pxd',  # for cuFFT callback
     'cupy/cuda/cufft.pyx',  # for cuFFT callback
+    'cupy/random/cupy_distributions.cu',
+    'cupy/random/cupy_distributions.cuh',
 ] + [
     x for x in glob.glob('cupy/core/include/cupy/**', recursive=True)
     if os.path.isfile(x)

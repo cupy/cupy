@@ -7,18 +7,15 @@ from cupy.core.core cimport ndarray
 import cupy
 from cupy.lib import _routines_poly
 
-cimport cython  # NOQA
-
-
-@cython.profile(False)
-cdef inline _should_use_rop(x, y):
-    xp = getattr(x, '__array_priority__', 0)
-    yp = getattr(y, '__array_priority__', 0)
-    return xp < yp and not isinstance(y, poly1d)
-
 
 cdef class poly1d:
     """A one-dimensional polynomial class.
+
+    .. note::
+        This is a counterpart of an old polynomial class in NumPy.
+        Note that the new NumPy polynomial API
+        (:mod:`numpy.polynomial.polynomial`)
+        has different convention, e.g. order of coefficients is reversed.
 
     Args:
         c_or_r (array_like): The polynomial's
@@ -28,11 +25,10 @@ cdef class poly1d:
         variable (str, optional): Changes the variable used when
             printing the polynomial from ``x`` to ``variable``
 
-    .. seealso:: :func:`numpy.poly1d`
+    .. seealso:: :class:`numpy.poly1d`
 
     """
     __hash__ = None
-    __array_priority__ = 100
 
     cdef:
         readonly ndarray _coeffs
@@ -45,7 +41,7 @@ cdef class poly1d:
             return self._coeffs
         self._coeffs = cupy.trim_zeros(self._coeffs, trim='f')
         if self._coeffs.size == 0:
-            self._coeffs = cupy.array([0.])
+            self._coeffs = cupy.array([0.], self._coeffs.dtype)
         self._trimmed = True
         return self._coeffs
 
@@ -133,9 +129,8 @@ cdef class poly1d:
     def __pos__(self):
         return self
 
+    # TODO(kataoka): Rename `self`. It is misleading for cdef class.
     def __mul__(self, other):
-        if _should_use_rop(self, other):
-            return other.__rmul__(self)
         if cupy.isscalar(other):
             # case: poly1d * python scalar
             # the return type of cupy.polymul output is
@@ -157,8 +152,6 @@ cdef class poly1d:
         return _routines_poly.polymul(self, other)
 
     def __add__(self, other):
-        if _should_use_rop(self, other):
-            return other.__radd__(self)
         if isinstance(self, numpy.generic):
             # for the case: numpy scalar + poly1d
             raise TypeError('Numpy scalar and poly1d '
@@ -183,8 +176,6 @@ cdef class poly1d:
         return poly1d(_routines_poly._polypow(base, val))
 
     def __sub__(self, other):
-        if _should_use_rop(self, other):
-            return other.__rsub__(self)
         if isinstance(self, numpy.generic):
             # for the case: numpy scalar - poly1d
             raise TypeError('Numpy scalar and poly1d '
@@ -202,7 +193,7 @@ cdef class poly1d:
             raise NotImplementedError
         if self.coeffs.shape != other.coeffs.shape:
             return False
-        return (self.coeffs == other.coeffs).all().get()
+        return (self.coeffs == other.coeffs).all().get()[()]
 
     def __ne__(self, other):
         if not isinstance(other, poly1d):

@@ -311,15 +311,15 @@ def variance(input, labels=None, index=None):
                         "".format(input.dtype.type))
 
     use_kern = False
-    # There is constraints on types because of atomicAdd() in CUDA.
+    # There are constraints on types because of atomicAdd() in CUDA.
     if input.dtype not in [cupy.int32, cupy.float16, cupy.float32,
                            cupy.float64, cupy.uint32, cupy.uint64,
                            cupy.ulonglong]:
         warnings.warn(
-            'Using the slower implmentation as '
+            'Using the slower implementation as '
             'cupyx.scipy.ndimage.sum supports int32, float16, '
             'float32, float64, uint32, uint64 as data types'
-            'for the fast implmentation', _util.PerformanceWarning)
+            'for the fast implementation', _util.PerformanceWarning)
         use_kern = True
 
     def calc_var_with_intermediate_float(input):
@@ -655,7 +655,7 @@ def _select(input, labels=None, index=None, find_min=False, find_max=False,
         found = unique_labels[idxs] == index
     else:
         # Labels are an integer type, and there aren't too many
-        idxs = cupy.asanyarray(index, cupy.int).copy()
+        idxs = cupy.asanyarray(index, int).copy()
         found = (idxs >= 0) & (idxs <= max_label)
 
     idxs[~found] = max_label + 1
@@ -720,9 +720,9 @@ def _select(input, labels=None, index=None, find_min=False, find_max=False,
         result += [maxpos[idxs]]
     if find_median:
         locs = cupy.arange(len(labels))
-        lo = cupy.zeros(int(labels.max()) + 2, cupy.int)
+        lo = cupy.zeros(int(labels.max()) + 2, int)
         lo[labels[min_index]] = locs[min_index]
-        hi = cupy.zeros(int(labels.max()) + 2, cupy.int)
+        hi = cupy.zeros(int(labels.max()) + 2, int)
         hi[labels[max_index]] = locs[max_index]
         lo = lo[idxs]
         hi = hi[idxs]
@@ -1003,3 +1003,208 @@ def extrema(input, labels=None, index=None):
     ]
 
     return minimums, maximums, min_positions, max_positions
+
+
+def center_of_mass(input, labels=None, index=None):
+    """
+    Calculate the center of mass of the values of an array at labels.
+
+    Args:
+        input (cupy.ndarray): Data from which to calculate center-of-mass. The
+            masses can either be positive or negative.
+        labels (cupy.ndarray, optional): Labels for objects in `input`, as
+            enerated by `ndimage.label`. Only used with `index`. Dimensions
+            must be the same as `input`.
+        index (int or sequence of ints, optional): Labels for which to
+            calculate centers-of-mass. If not specified, all labels greater
+            than zero are used. Only used with `labels`.
+
+    Returns:
+        tuple or list of tuples: Coordinates of centers-of-mass.
+
+    .. seealso:: :func:`scipy.ndimage.center_of_mass`
+    """
+    normalizer = sum(input, labels, index)
+    grids = cupy.ogrid[[slice(0, i) for i in input.shape]]
+
+    results = [
+        sum(input * grids[dir].astype(float), labels, index) / normalizer
+        for dir in range(input.ndim)
+    ]
+
+    # have to transfer 0-dim array back to CPU?
+    # may want to modify to avoid this
+    is_0dim_array = (
+        isinstance(results[0], cupy.ndarray) and results[0].ndim == 0
+    )
+    if is_0dim_array:
+        # tuple of 0-dimensional cupy arrays
+        return tuple(res for res in results)
+    # list of cupy coordinate arrays
+    return [v for v in cupy.stack(results, axis=-1)]
+
+
+def labeled_comprehension(
+    input, labels, index, func, out_dtype, default, pass_positions=False
+):
+    """Array resulting from applying ``func`` to each labeled region.
+
+    Roughly equivalent to [func(input[labels == i]) for i in index].
+
+    Sequentially applies an arbitrary function (that works on array_like input)
+    to subsets of an N-D image array specified by `labels` and `index`.
+    The option exists to provide the function with positional parameters as the
+    second argument.
+
+    Args:
+        input (cupy.ndarray): Data from which to select `labels` to process.
+        labels (cupy.ndarray or None):  Labels to objects in `input`. If not
+            None, array must be same shape as `input`. If None, `func` is
+            applied to raveled `input`.
+        index (int, sequence of ints or None): Subset of `labels` to which to
+            apply `func`. If a scalar, a single value is returned. If None,
+            `func` is applied to all non-zero values of `labels`.
+        func (callable): Python function to apply to `labels` from `input`.
+        out_dtype (dtype): Dtype to use for `result`.
+        default (int, float or None): Default return value when a element of
+            `index` does not exist in `labels`.
+        pass_positions (bool, optional): If True, pass linear indices to `func`
+            as a second argument.
+
+    Returns:
+        cupy.ndarray: Result of applying `func` to each of `labels` to `input`
+        in `index`.
+
+    .. seealso:: :func:`scipy.ndimage.labeled_comprehension`
+    """
+    as_scalar = cupy.isscalar(index)
+    input = cupy.asarray(input)
+
+    if pass_positions:
+        positions = cupy.arange(input.size).reshape(input.shape)
+
+    if labels is None:
+        if index is not None:
+            raise ValueError('index without defined labels')
+        if not pass_positions:
+            return func(input.ravel())
+        else:
+            return func(input.ravel(), positions.ravel())
+
+    try:
+        input, labels = cupy.broadcast_arrays(input, labels)
+    except ValueError:
+        raise ValueError(
+            'input and labels must have the same shape '
+            '(excepting dimensions with width 1)'
+        )
+
+    if index is None:
+        if not pass_positions:
+            return func(input[labels > 0])
+        else:
+            return func(input[labels > 0], positions[labels > 0])
+
+    index = cupy.atleast_1d(index)
+    if cupy.any(index.astype(labels.dtype).astype(index.dtype) != index):
+        raise ValueError(
+            'Cannot convert index values from <%s> to <%s> '
+            '(labels.dtype) without loss of precision'
+            % (index.dtype, labels.dtype)
+        )
+
+    index = index.astype(labels.dtype)
+
+    # optimization: find min/max in index, and select those parts of labels,
+    #               input, and positions
+    lo = index.min()
+    hi = index.max()
+    mask = (labels >= lo) & (labels <= hi)
+
+    # this also ravels the arrays
+    labels = labels[mask]
+    input = input[mask]
+    if pass_positions:
+        positions = positions[mask]
+
+    # sort everything by labels
+    label_order = labels.argsort()
+    labels = labels[label_order]
+    input = input[label_order]
+    if pass_positions:
+        positions = positions[label_order]
+
+    index_order = index.argsort()
+    sorted_index = index[index_order]
+
+    def do_map(inputs, output):
+        """labels must be sorted"""
+        nidx = sorted_index.size
+
+        # Find boundaries for each stretch of constant labels
+        # This could be faster, but we already paid N log N to sort labels.
+        lo = cupy.searchsorted(labels, sorted_index, side='left')
+        hi = cupy.searchsorted(labels, sorted_index, side='right')
+
+        for i, low, high in zip(range(nidx), lo, hi):
+            if low == high:
+                continue
+            output[i] = func(*[inp[low:high] for inp in inputs])
+
+    if out_dtype == object:
+        temp = {i: default for i in range(index.size)}
+    else:
+        temp = cupy.empty(index.shape, out_dtype)
+        if default is None and temp.dtype.kind in 'fc':
+            default = numpy.nan  # match NumPy floating-point None behavior
+        temp[:] = default
+
+    if not pass_positions:
+        do_map([input], temp)
+    else:
+        do_map([input, positions], temp)
+
+    if out_dtype == object:
+        # use a list of arrays since object arrays are not supported
+        index_order = cupy.asnumpy(index_order)
+        output = [temp[i] for i in index_order.argsort()]
+    else:
+        output = cupy.zeros(index.shape, out_dtype)
+        output[cupy.asnumpy(index_order)] = temp
+    if as_scalar:
+        output = output[0]
+    return output
+
+
+def histogram(input, min, max, bins, labels=None, index=None):
+    """Calculate the histogram of the values of an array, optionally at labels.
+
+    Histogram calculates the frequency of values in an array within bins
+    determined by `min`, `max`, and `bins`. The `labels` and `index`
+    keywords can limit the scope of the histogram to specified sub-regions
+    within the array.
+
+    Args:
+        input (cupy.ndarray): Data for which to calculate histogram.
+        min (int): Minimum values of range of histogram bins.
+        max (int): Maximum values of range of histogram bins.
+        bins (int): Number of bins.
+        labels (cupy.ndarray, optional): Labels for objects in `input`. If not
+            None, must be same shape as `input`.
+        index (int or sequence of ints, optional): Label or labels for which to
+            calculate histogram. If None, all values where label is greater
+            than zero are used.
+
+    Returns:
+        cupy.ndarray: Histogram counts.
+
+    .. seealso:: :func:`scipy.ndimage.histogram`
+    """
+    _bins = cupy.linspace(min, max, bins + 1)
+
+    def _hist(vals):
+        return cupy.histogram(vals, _bins)[0]
+
+    return labeled_comprehension(
+        input, labels, index, _hist, object, None, pass_positions=False
+    )

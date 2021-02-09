@@ -1,4 +1,6 @@
+import cupy
 import unittest
+import warnings
 
 import numpy
 import pytest
@@ -10,7 +12,6 @@ try:
 except ImportError:
     scipy_available = False
 
-import cupy
 from cupy import testing
 from cupy.testing import condition
 from cupyx.scipy import sparse
@@ -20,7 +21,7 @@ import cupyx.scipy.sparse.linalg  # NOQA
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 class TestLsqr(unittest.TestCase):
 
     def setUp(self):
@@ -69,7 +70,7 @@ class TestLsqr(unittest.TestCase):
     ],
     'axis': [None, (0, 1), (1, -2)],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 @testing.gpu
 class TestMatrixNorm(unittest.TestCase):
 
@@ -95,7 +96,7 @@ class TestMatrixNorm(unittest.TestCase):
     'axis': [0, (1,), (-2,), -1],
 })
 )
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 @testing.gpu
 class TestVectorNorm(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
@@ -115,12 +116,14 @@ class TestVectorNorm(unittest.TestCase):
     'which': ['LM', 'LA'],
     'k': [3, 6, 12],
     'return_eigenvectors': [True, False],
+    'use_linear_operator': [True, False],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
-class TestEigsh(unittest.TestCase):
+@testing.with_requires('scipy')
+class TestEigsh:
     n = 30
     density = 0.33
-    _tol = {'f': 1e-5, 'd': 1e-12}
+    tol = {numpy.float32: 1e-5, numpy.complex64: 1e-5, 'default': 1e-12}
+    res_tol = {'f': 1e-5, 'd': 1e-12}
 
     def _make_matrix(self, dtype, xp):
         shape = (self.n, self.n)
@@ -138,26 +141,33 @@ class TestEigsh(unittest.TestCase):
             # Check the residuals to see if eigenvectors are correct.
             ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
             res = xp.linalg.norm(ax_xw) / xp.linalg.norm(w)
-            tol = self._tol[numpy.dtype(a.dtype).char.lower()]
+            tol = self.res_tol[numpy.dtype(a.dtype).char.lower()]
             assert(res < tol)
         else:
             w = ret
         return xp.sort(w)
 
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_sparse(self, dtype, xp, sp):
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_sparse(self, format, dtype, xp, sp):
         a = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
+        a = sp.coo_matrix(a).asformat(format)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
 
     @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
     def test_dense(self, dtype, xp, sp):
         a = self._make_matrix(dtype, xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
 
     def test_invalid(self):
+        if self.use_linear_operator is True:
+            raise unittest.SkipTest
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a = xp.diag(xp.ones((self.n, ), dtype='f'))
             with pytest.raises(ValueError):
@@ -182,10 +192,12 @@ class TestEigsh(unittest.TestCase):
     'shape': [(30, 29), (29, 29), (29, 30)],
     'k': [3, 6, 12],
     'return_vectors': [True, False],
+    'use_linear_operator': [True, False],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
-class TestSvds(unittest.TestCase):
+@testing.with_requires('scipy')
+class TestSvds:
     density = 0.33
+    tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-12}
 
     def _make_matrix(self, dtype, xp):
         a = testing.shaped_random(self.shape, xp, dtype=dtype)
@@ -204,33 +216,27 @@ class TestSvds(unittest.TestCase):
         else:
             return xp.sort(ret)
 
-    @testing.for_dtypes('fF')
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-4, sp_name='sp')
-    def test_sparse_f(self, dtype, xp, sp):
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_sparse(self, format, dtype, xp, sp):
         a = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
+        a = sp.coo_matrix(a).asformat(format)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
         return self._test_svds(a, xp, sp)
 
-    @testing.for_dtypes('fF')
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-4, sp_name='sp')
-    def test_dense_f(self, dtype, xp, sp):
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_dense(self, dtype, xp, sp):
         a = self._make_matrix(dtype, xp)
-        return self._test_svds(a, xp, sp)
-
-    @testing.for_dtypes('dD')
-    @testing.numpy_cupy_allclose(rtol=1e-12, atol=1e-12, sp_name='sp')
-    def test_sparse_d(self, dtype, xp, sp):
-        a = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
-        return self._test_svds(a, xp, sp)
-
-    @testing.for_dtypes('dD')
-    @testing.numpy_cupy_allclose(rtol=1e-12, atol=1e-12, sp_name='sp')
-    def test_dense_d(self, dtype, xp, sp):
-        a = self._make_matrix(dtype, xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
         return self._test_svds(a, xp, sp)
 
     def test_invalid(self):
+        if self.use_linear_operator is True:
+            raise unittest.SkipTest
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a = xp.diag(xp.ones(self.shape, dtype='f'))
             with pytest.raises(ValueError):
@@ -252,10 +258,11 @@ class TestSvds(unittest.TestCase):
     'M': [None, 'jacobi'],
     'atol': [None, 'select-by-dtype'],
     'b_ndim': [1, 2],
+    'use_linear_operator': [False, True],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy')
 @testing.gpu
-class TestCg(unittest.TestCase):
+class TestCg:
     n = 30
     density = 0.33
     _atol = {'f': 1e-5, 'd': 1e-12}
@@ -303,39 +310,31 @@ class TestCg(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_dense(self, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+            if M is not None:
+                M = sp.linalg.aslinearoperator(M)
         return self._test_cg(dtype, xp, sp, a, M)
 
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csr(self, dtype, xp, sp):
+    def test_sparse(self, format, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
+        a = sp.coo_matrix(a).asformat(format)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
         if M is not None:
-            M = sp.csr_matrix(M)
-        return self._test_cg(dtype, xp, sp, a, M)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csc(self, dtype, xp, sp):
-        a, M = self._make_matrix(dtype, xp)
-        a = sp.csc_matrix(a)
-        if M is not None:
-            M = sp.csc_matrix(M)
-        return self._test_cg(dtype, xp, sp, a, M)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_coo(self, dtype, xp, sp):
-        a, M = self._make_matrix(dtype, xp)
-        a = sp.coo_matrix(a)
-        if M is not None:
-            M = sp.coo_matrix(M)
+            M = sp.coo_matrix(M).asformat(format)
+            if self.use_linear_operator:
+                M = sp.linalg.aslinearoperator(M)
         return self._test_cg(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):
-        if self.x0 is not None or self.M is not None or self.atol is not None:
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.use_linear_operator is False):
             raise unittest.SkipTest
         a = xp.empty((0, 0), dtype=dtype)
         b = xp.empty((0,), dtype=dtype)
@@ -349,7 +348,8 @@ class TestCg(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_callback(self, dtype):
-        if self.x0 is not None or self.M is not None or self.atol is not None:
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.use_linear_operator is False):
             raise unittest.SkipTest
         xp, sp = cupy, sparse
         a, M = self._make_matrix(dtype, xp)
@@ -364,7 +364,8 @@ class TestCg(unittest.TestCase):
         assert is_called
 
     def test_invalid(self):
-        if self.x0 is not None or self.M is not None or self.atol is not None:
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.use_linear_operator is False):
             raise unittest.SkipTest
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a, M = self._make_matrix('f', xp)
@@ -403,13 +404,23 @@ class TestCg(unittest.TestCase):
     'atol': [None, 'select-by-dtype'],
     'b_ndim': [1, 2],
     'restart': [None, 10],
+    'use_linear_operator': [False, True],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.with_requires('scipy>=1.4')
 @testing.gpu
-class TestGmres(unittest.TestCase):
+class TestGmres:
     n = 30
     density = 0.2
     _atol = {'f': 1e-5, 'd': 1e-12}
+
+    # TODO(kataoka): Fix the `lstsq` call in CuPy's `gmres`
+    @pytest.fixture(autouse=True)
+    def ignore_futurewarning(self):
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                'ignore', '`rcond` parameter will change', FutureWarning,
+            )
+            yield
 
     def _make_matrix(self, dtype, xp):
         dtype = numpy.dtype(dtype)
@@ -455,40 +466,31 @@ class TestGmres(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_dense(self, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+            if M is not None:
+                M = sp.linalg.aslinearoperator(M)
         return self._test_gmres(dtype, xp, sp, a, M)
 
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csr(self, dtype, xp, sp):
+    def test_sparse(self, format, dtype, xp, sp):
         a, M = self._make_matrix(dtype, xp)
-        a = sp.csr_matrix(a)
+        a = sp.coo_matrix(a).asformat(format)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
         if M is not None:
-            M = sp.csr_matrix(M)
-        return self._test_gmres(dtype, xp, sp, a, M)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_csc(self, dtype, xp, sp):
-        a, M = self._make_matrix(dtype, xp)
-        a = sp.csc_matrix(a)
-        if M is not None:
-            M = sp.csc_matrix(M)
-        return self._test_gmres(dtype, xp, sp, a, M)
-
-    @testing.for_dtypes('fdFD')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
-    def test_coo(self, dtype, xp, sp):
-        a, M = self._make_matrix(dtype, xp)
-        a = sp.coo_matrix(a)
-        if M is not None:
-            M = sp.coo_matrix(M)
+            M = sp.coo_matrix(M).asformat(format)
+            if self.use_linear_operator:
+                M = sp.linalg.aslinearoperator(M)
         return self._test_gmres(dtype, xp, sp, a, M)
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):
-        if (self.x0 is not None or self.M is not None or self.atol is not None
-                or self.restart is not None):
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.restart is None and self.use_linear_operator is False):
             raise unittest.SkipTest
         a = xp.empty((0, 0), dtype=dtype)
         b = xp.empty((0,), dtype=dtype)
@@ -502,8 +504,8 @@ class TestGmres(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_callback(self, dtype):
-        if (self.x0 is not None or self.M is not None or self.atol is not None
-                or self.restart is not None):
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.restart is None and self.use_linear_operator is False):
             raise unittest.SkipTest
         xp, sp = cupy, sparse
         a, M = self._make_matrix(dtype, xp)
@@ -526,8 +528,8 @@ class TestGmres(unittest.TestCase):
         assert is_called
 
     def test_invalid(self):
-        if (self.x0 is not None or self.M is not None or self.atol is not None
-                or self.restart is not None):
+        if not (self.x0 is None and self.M is None and self.atol is None and
+                self.restart is None and self.use_linear_operator is False):
             raise unittest.SkipTest
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             a, M = self._make_matrix('f', xp)
@@ -561,3 +563,307 @@ class TestGmres(unittest.TestCase):
         ng_a = xp.ones((self.n, self.n), dtype='i')
         with pytest.raises(TypeError):
             sp.linalg.gmres(ng_a, b)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'outer_modification': [
+        'normal', 'transpose', 'hermitian'],
+    'inner_modification': [
+        'normal', 'sparse', 'linear_operator', 'class_matvec', 'class_matmat'],
+    'M': [1, 6],
+    'N': [1, 7],
+}))
+@testing.gpu
+@testing.with_requires('scipy>=1.4')
+class TestLinearOperator(unittest.TestCase):
+
+    # modified from scipy
+    # class that defines parametrized custom cases
+    # adapted from scipy's analogous tests
+    def _inner_cases(self, xp, sp, A):
+        # creating base-matrix-like class with default
+        # matrix-vector and adjoint-matrix-vector impl
+
+        def mv(x):
+            return A.dot(x)
+
+        def rmv(x):
+            return A.T.conj().dot(x)
+
+        # defining the user-defined classes
+        class BaseMatlike(sp.linalg.LinearOperator):
+
+            def __init__(self):
+                self.dtype = A.dtype
+                self.shape = A.shape
+
+            def _adjoint(self):
+                shape = self.shape[1], self.shape[0]
+                return sp.linalg.LinearOperator(
+                    matvec=rmv, rmatvec=mv, dtype=self.dtype, shape=shape)
+
+        class HasMatvec(BaseMatlike):
+
+            def _matvec(self, x):
+                return mv(x)
+
+        class HasMatmat(BaseMatlike):
+
+            def _matmat(self, x):
+                return mv(x)
+
+        if self.inner_modification == 'normal':
+            return sp.linalg.aslinearoperator(A)
+        if self.inner_modification == 'sparse':
+            # TODO(asi1024): Fix to return contiguous matrix.
+            return sp.linalg.aslinearoperator(sp.csr_matrix(A))
+        if self.inner_modification == 'linear_operator':
+            return sp.linalg.LinearOperator(
+                matvec=mv, rmatvec=rmv, dtype=A.dtype, shape=A.shape)
+        if self.inner_modification == 'class_matvec':
+            return HasMatvec()
+        if self.inner_modification == 'class_matmat':
+            return HasMatmat()
+        assert False
+
+    def _generate_linear_operator(self, xp, sp):
+        A = testing.shaped_random((self.M, self.N), xp, self.dtype)
+
+        if self.outer_modification == 'normal':
+            return self._inner_cases(xp, sp, A)
+        if self.outer_modification == 'transpose':
+            # From SciPy 1.4 (scipy/scipy#9064)
+            return self._inner_cases(xp, sp, A.T).T
+        if self.outer_modification == 'hermitian':
+            return self._inner_cases(xp, sp, A.T.conj()).H
+        assert False
+
+    @testing.numpy_cupy_allclose(sp_name='sp', rtol=1e-6)
+    def test_matvec(self, xp, sp):
+        linop = self._generate_linear_operator(xp, sp)
+        x_1dim = testing.shaped_random((self.N,), xp, self.dtype)
+        x_2dim = testing.shaped_random((self.N, 1), xp, self.dtype)
+        return linop.matvec(x_1dim), linop.matvec(x_2dim)
+
+    @testing.numpy_cupy_allclose(
+        sp_name='sp', rtol=1e-6, contiguous_check=False)
+    def test_matmat(self, xp, sp):
+        linop = self._generate_linear_operator(xp, sp)
+        x = testing.shaped_random((self.N, 8), xp, self.dtype)
+        return linop.matmat(x)
+
+    @testing.numpy_cupy_allclose(sp_name='sp', rtol=1e-6)
+    def test_rmatvec(self, xp, sp):
+        linop = self._generate_linear_operator(xp, sp)
+        x_1dim = testing.shaped_random((self.M,), xp, self.dtype)
+        x_2dim = testing.shaped_random((self.M, 1), xp, self.dtype)
+        return linop.rmatvec(x_1dim), linop.rmatvec(x_2dim)
+
+    @testing.numpy_cupy_allclose(
+        sp_name='sp', rtol=1e-6, contiguous_check=False)
+    def test_rmatmat(self, xp, sp):
+        linop = self._generate_linear_operator(xp, sp)
+        x = testing.shaped_random((self.M, 8), xp, self.dtype)
+        return linop.rmatmat(x)
+
+    @testing.numpy_cupy_allclose(
+        sp_name='sp', rtol=1e-6, contiguous_check=False)
+    def test_dot(self, xp, sp):
+        linop = self._generate_linear_operator(xp, sp)
+        x0 = testing.shaped_random((self.N,), xp, self.dtype)
+        x1 = testing.shaped_random((self.N, 1), xp, self.dtype)
+        x2 = testing.shaped_random((self.N, 8), xp, self.dtype)
+        return linop.dot(x0), linop.dot(x1), linop.dot(x2)
+
+    @testing.numpy_cupy_allclose(
+        sp_name='sp', rtol=1e-6, contiguous_check=False)
+    def test_mul(self, xp, sp):
+        linop = self._generate_linear_operator(xp, sp)
+        x0 = testing.shaped_random((self.N,), xp, self.dtype)
+        x1 = testing.shaped_random((self.N, 1), xp, self.dtype)
+        x2 = testing.shaped_random((self.N, 8), xp, self.dtype)
+        return linop * x0, linop * x1, linop * x2
+
+
+@testing.parameterize(*testing.product({
+    'lower': [True, False],
+    'unit_diagonal': [True, False],
+    'nrhs': [None, 1, 4],
+    'order': ['C', 'F']
+}))
+@testing.with_requires('scipy>=1.4.0')
+@testing.gpu
+class TestSpsolveTriangular:
+
+    n = 10
+    density = 0.5
+
+    def _make_matrix(self, dtype, xp):
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=1)
+        mask = testing.shaped_random(a_shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        diag = xp.diag(xp.ones((self.n,), dtype=dtype))
+        a = a + diag
+        if self.lower:
+            a = xp.tril(a)
+        else:
+            a = xp.triu(a)
+        b_shape = (self.n,) if self.nrhs is None else (self.n, self.nrhs)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, order=self.order)
+        return a, b
+
+    def _test_spsolve_triangular(self, sp, a, b):
+        return sp.linalg.spsolve_triangular(a, b, lower=self.lower,
+                                            unit_diagonal=self.unit_diagonal)
+
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_sparse(self, format, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp)
+        a = sp.coo_matrix(a).asformat(format)
+        return self._test_spsolve_triangular(sp, a, b)
+
+    def test_invalid_cases(self):
+        dtype = 'float64'
+        if not (self.lower and self.unit_diagonal and self.nrhs == 4 and
+                self.order == 'C'):
+            raise unittest.SkipTest
+
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            a, b = self._make_matrix(dtype, xp)
+            a = sp.csr_matrix(a)
+
+            # a is not a square matrix
+            ng_a = sp.csr_matrix(xp.ones((self.n + 1, self.n), dtype=dtype))
+            with pytest.raises(ValueError):
+                self._test_spsolve_triangular(sp, ng_a, b)
+            # b is not a 1D/2D matrix
+            ng_b = xp.ones((1, self.n, self.nrhs), dtype=dtype)
+            with pytest.raises(ValueError):
+                self._test_spsolve_triangular(sp, a, ng_b)
+            # mismatched shape
+            ng_b = xp.ones((self.n + 1, self.nrhs), dtype=dtype)
+            with pytest.raises(ValueError):
+                self._test_spsolve_triangular(sp, a, ng_b)
+
+        xp, sp = cupy, sparse
+        a, b = self._make_matrix(dtype, xp)
+        a = sp.csr_matrix(a)
+
+        # unsupported dtype
+        ng_a = sp.csr_matrix(xp.ones((self.n, self.n), dtype='bool'))
+        with pytest.raises(TypeError):
+            self._test_spsolve_triangular(sp, ng_a, b)
+        # a is not spmatrix
+        ng_a = xp.ones((self.n, self.n), dtype=dtype)
+        with pytest.raises(TypeError):
+            self._test_spsolve_triangular(sp, ng_a, b)
+        # b is not cupy ndarray
+        ng_b = numpy.ones((self.n, self.nrhs), dtype=dtype)
+        with pytest.raises(TypeError):
+            self._test_spsolve_triangular(sp, a, ng_b)
+
+
+@testing.parameterize(*testing.product({
+    'tol': [0, 1e-5],
+    'reorder': [0, 1, 2, 3],
+}))
+@testing.with_requires('scipy')
+class TestCsrlsvqr(unittest.TestCase):
+
+    n = 8
+    density = 0.75
+    _test_tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _setup(self, dtype):
+        dtype = numpy.dtype(dtype)
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, numpy, dtype=dtype, scale=2/self.n)
+        a_mask = testing.shaped_random(a_shape, numpy, dtype='f', scale=1)
+        a[a_mask > self.density] = 0
+        a_diag = numpy.diag(numpy.ones((self.n,), dtype=dtype))
+        a = a + a_diag
+        b = testing.shaped_random((self.n,), numpy, dtype=dtype)
+        test_tol = self._test_tol[dtype.char.lower()]
+        return a, b, test_tol
+
+    @testing.for_dtypes('fdFD')
+    def test_csrlsvqr(self, dtype):
+        if not cupy.cusolver.check_availability('csrlsvqr'):
+            unittest.SkipTest('csrlsvqr is not available')
+        a, b, test_tol = self._setup(dtype)
+        ref_x = numpy.linalg.solve(a, b)
+        cp_a = cupy.array(a)
+        sp_a = cupyx.scipy.sparse.csr_matrix(cp_a)
+        cp_b = cupy.array(b)
+        x = cupy.cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
+                                   reorder=self.reorder)
+        cupy.testing.assert_allclose(x, ref_x, rtol=test_tol,
+                                     atol=test_tol)
+
+
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc', 'coo'],
+    'nrhs': [None, 1, 4],
+    'order': ['C', 'F']
+}))
+@unittest.skipUnless(scipy_available, 'requires scipy')
+@testing.gpu
+class TestSplu(unittest.TestCase):
+
+    n = 10
+    density = 0.5
+
+    def _make_matrix(self, dtype, xp, sp, density=None):
+        if density is None:
+            density = self.density
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, scale=2 / self.n)
+        mask = testing.shaped_random(a_shape, xp, dtype='f', scale=1)
+        a[mask > density] = 0
+        diag = xp.diag(xp.ones((self.n,), dtype=dtype))
+        a = a + diag
+        if self.format == 'csr':
+            a = sp.csr_matrix(a)
+        elif self.format == 'csc':
+            a = sp.csc_matrix(a)
+        elif self.format == 'coo':
+            a = sp.coo_matrix(a)
+        b_shape = (self.n,) if self.nrhs is None else (self.n, self.nrhs)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, order=self.order)
+        return a, b
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_splu(self, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp, sp)
+        return sp.linalg.splu(a).solve(b)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_factorized(self, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp, sp)
+        return sp.linalg.factorized(a)(b)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_spilu(self, dtype, xp, sp):
+        a, b = self._make_matrix(dtype, xp, sp)
+        return sp.linalg.spilu(a).solve(b)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_spilu_0(self, dtype, xp, sp):
+        # Note: We don't know how to compute ILU(0) with
+        # scipy.sprase.linalg.spilu, so in this test we use a matrix where the
+        # format is a sparse matrix but is actually a dense matrix.
+        a, b = self._make_matrix(dtype, xp, sp, density=1.0)
+        if xp == cupy:
+            # Set fill_factor=1 to computes ILU(0) using cuSparse
+            ainv = sp.linalg.spilu(a, fill_factor=1)
+        else:
+            ainv = sp.linalg.spilu(a)
+        return ainv.solve(b)

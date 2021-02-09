@@ -61,8 +61,11 @@ cdef extern from *:
         driver.Stream stream, Error status, void* userData)
     ctypedef StreamCallbackDef* StreamCallback 'cudaStreamCallback_t'
 
+    ctypedef void HostFnDef(void* userData)
+    ctypedef HostFnDef* HostFn 'cudaHostFn_t'
 
-cdef extern from '../cupy_cuda_runtime.h' nogil:
+
+cdef extern from '../../cupy_backend_runtime.h' nogil:
 
     # Types
     ctypedef struct _PointerAttributes 'cudaPointerAttributes':
@@ -84,7 +87,7 @@ cdef extern from '../cupy_cuda_runtime.h' nogil:
     int cudaDeviceGetAttribute(int* value, DeviceAttr attr, int device)
     int cudaDeviceGetByPCIBusId(int* device, const char* pciBusId)
     int cudaDeviceGetPCIBusId(char* pciBusId, int len, int device)
-    int cudaGetDeviceProperties(cudaDeviceProp* prop, int device)
+    int cudaGetDeviceProperties(DeviceProp* prop, int device)
     int cudaGetDeviceCount(int* count)
     int cudaSetDevice(int device)
     int cudaDeviceSynchronize()
@@ -111,12 +114,14 @@ cdef extern from '../cupy_cuda_runtime.h' nogil:
                           Extent extent, unsigned int flags)
     int cudaMallocArray(Array* array, const ChannelFormatDesc* desc,
                         size_t width, size_t height, unsigned int flags)
+    int cudaMallocAsync(void**, size_t, driver.Stream)
     int cudaHostAlloc(void** ptr, size_t size, unsigned int flags)
     int cudaHostRegister(void *ptr, size_t size, unsigned int flags)
     int cudaHostUnregister(void *ptr)
     int cudaFree(void* devPtr)
     int cudaFreeHost(void* ptr)
     int cudaFreeArray(Array array)
+    int cudaFreeAsync(void*, driver.Stream)
     int cudaMemGetInfo(size_t* free, size_t* total)
     int cudaMemcpy(void* dst, const void* src, size_t count,
                    MemoryKind kind)
@@ -170,6 +175,7 @@ cdef extern from '../cupy_cuda_runtime.h' nogil:
     int cudaStreamSynchronize(driver.Stream stream)
     int cudaStreamAddCallback(driver.Stream stream, StreamCallback callback,
                               void* userData, unsigned int flags)
+    int cudaLaunchHostFunc(driver.Stream stream, HostFn fn, void* userData)
     int cudaStreamQuery(driver.Stream stream)
     int cudaStreamWaitEvent(driver.Stream stream, driver.Event event,
                             unsigned int flags)
@@ -205,6 +211,8 @@ cdef extern from '../cupy_cuda_runtime.h' nogil:
     int cudaErrorMemoryAllocation
     int cudaErrorInvalidValue
     int cudaErrorPeerAccessAlreadyEnabled
+    int cudaErrorContextIsDestroyed
+    int cudaErrorInvalidResourceHandle
 
 
 _is_hip_environment = hip_environment  # for runtime being cimport'd
@@ -220,6 +228,8 @@ deviceAttributeComputeCapabilityMinor = cudaDevAttrComputeCapabilityMinor
 errorInvalidValue = cudaErrorInvalidValue
 errorMemoryAllocation = cudaErrorMemoryAllocation
 errorPeerAccessAlreadyEnabled = cudaErrorPeerAccessAlreadyEnabled
+errorContextIsDestroyed = cudaErrorContextIsDestroyed
+errorInvalidResourceHandle = cudaErrorInvalidResourceHandle
 
 
 ###############################################################################
@@ -282,11 +292,11 @@ cpdef int deviceGetAttribute(int attrib, int device) except? -1:
     return ret
 
 cpdef getDeviceProperties(int device):
-    cdef cudaDeviceProp props
+    cdef DeviceProp props
     cdef int status = cudaGetDeviceProperties(&props, device)
     check_status(status)
 
-    cdef dict properties = {'name': 'UNAVAILABLE'}  # for RTD
+    cdef dict properties = {'name': b'UNAVAILABLE'}  # for RTD
 
     # Common properties to CUDA 9.0, 9.2, 10.x, 11.x, and HIP
     IF CUDA_VERSION > 0 or use_hip:
@@ -581,6 +591,16 @@ cpdef intptr_t mallocArray(intptr_t descPtr, size_t width, size_t height,
     return <intptr_t>ptr
 
 
+cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0:
+    cdef void* ptr
+    if CUDA_VERSION < 11020:
+        raise RuntimeError('mallocAsync is supported since CUDA 11.2')
+    with nogil:
+        status = cudaMallocAsync(&ptr, size, <driver.Stream>stream)
+    check_status(status)
+    return <intptr_t>ptr
+
+
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0:
     cdef void* ptr
     with nogil:
@@ -616,6 +636,14 @@ cpdef freeHost(intptr_t ptr):
 cpdef freeArray(intptr_t ptr):
     with nogil:
         status = cudaFreeArray(<Array>ptr)
+    check_status(status)
+
+
+cpdef freeAsync(intptr_t ptr, intptr_t stream):
+    if CUDA_VERSION < 11020:
+        raise RuntimeError('freeAsync is supported since CUDA 11.2')
+    with nogil:
+        status = cudaFreeAsync(<void*>ptr, <driver.Stream>stream)
     check_status(status)
 
 
@@ -798,14 +826,39 @@ cdef _streamCallbackFunc(driver.Stream hStream, int status,
     cpython.Py_DECREF(obj)
 
 
+cdef _HostFnFunc(void* func_arg) with gil:
+    obj = <object>func_arg
+    func, arg = obj
+    func(arg)
+    cpython.Py_DECREF(obj)
+
+
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=0):
+    if _is_hip_environment and stream == 0:
+        raise RuntimeError('HIP does not allow adding callbacks to the '
+                           'default (null) stream')
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
     with nogil:
         status = cudaStreamAddCallback(
             <driver.Stream>stream, <StreamCallback>_streamCallbackFunc,
             <void*>func_arg, flags)
+    check_status(status)
+
+
+cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
+    if _is_hip_environment:
+        raise RuntimeError('This feature is not supported on HIP')
+    if CUDA_VERSION < 10000:
+        raise RuntimeError('This feature is only supported on CUDA 10.0+')
+
+    func_arg = (callback, arg)
+    cpython.Py_INCREF(func_arg)
+    with nogil:
+        status = cudaLaunchHostFunc(
+            <driver.Stream>stream, <HostFn>_HostFnFunc,
+            <void*>func_arg)
     check_status(status)
 
 

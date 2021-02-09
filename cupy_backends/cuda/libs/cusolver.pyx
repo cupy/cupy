@@ -6,18 +6,19 @@ from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
+
 ###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from '../cupy_cuComplex.h':
+cdef extern from '../../cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from '../cupy_cusolver.h' nogil:
+cdef extern from '../../cupy_lapack.h' nogil:
     # Context
     int cusolverDnCreate(Handle* handle)
     int cusolverSpCreate(SpHandle* handle)
@@ -1132,17 +1133,13 @@ cpdef size_t spGetStream(intptr_t handle) except *:
 
 
 cdef _setStream(intptr_t handle):
-    """Set current stream when enable_current_stream is True
-    """
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
+    """Set current stream"""
+    setStream(handle, stream_module.get_current_stream_ptr())
 
 
 cdef _spSetStream(intptr_t handle):
-    """Set current stream when enable_current_stream is True
-    """
-    if stream_module.enable_current_stream:
-        spSetStream(handle, stream_module.get_current_stream_ptr())
+    """Set current stream"""
+    spSetStream(handle, stream_module.get_current_stream_ptr())
 
 ###########################################################################
 # Dense LAPACK Functions (Linear Solver)

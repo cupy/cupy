@@ -18,7 +18,7 @@ except ImportError:
 @testing.gpu
 @testing.with_requires('scipy')
 class TestSepFIR2d(unittest.TestCase):
-    @testing.for_all_dtypes(no_complex=True)  # TODO: support complex
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_sepfir2d(self, xp, scp, dtype):
         input = testing.shaped_random(self.input, xp, dtype)

@@ -282,9 +282,9 @@ class TestDistributionsLogistic(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
-    'mean_shape': [()],
-    'sigma_shape': [()],
+    'shape': [(4, 3, 2), (3, 2), None],
+    'mean_shape': [(), (3, 2)],
+    'sigma_shape': [(), (3, 2)],
 })
 )
 @testing.gpu
@@ -457,7 +457,7 @@ class TestDistributionsNoncentralF(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })
@@ -612,7 +612,7 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
 })
 )
 @testing.gpu

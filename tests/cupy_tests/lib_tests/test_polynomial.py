@@ -78,6 +78,7 @@ class TestPoly1dInit(unittest.TestCase):
         assert out.variable == (self.variable or 'z')
         return out
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_zero_dim(self, xp, dtype):
@@ -87,6 +88,7 @@ class TestPoly1dInit(unittest.TestCase):
         assert out.variable == (self.variable or 'x')
         return out
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_zero_size(self, xp, dtype):
@@ -239,6 +241,7 @@ class TestPoly1d(unittest.TestCase):
 }))
 class TestPoly1dPow(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-1)
     def test_poly1d_pow_scalar(self, xp, dtype):
@@ -301,6 +304,7 @@ class Poly1dTestBase(unittest.TestCase):
 }))
 class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
@@ -360,6 +364,7 @@ class TestPoly1dArithmeticInvalid(Poly1dTestBase):
 }))
 class TestPoly1dRoutines(Poly1dTestBase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_routine(self, xp, dtype):
@@ -367,54 +372,6 @@ class TestPoly1dRoutines(Poly1dTestBase):
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
         return func(a1, a2)
-
-
-class UserDefinedArray:
-
-    __array_priority__ = cupy.poly1d.__array_priority__ + 10
-
-    def __init__(self):
-        self.op_count = 0
-        self.rop_count = 0
-
-    def __add__(self, other):
-        self.op_count += 1
-
-    def __radd__(self, other):
-        self.rop_count += 1
-
-    def __sub__(self, other):
-        self.op_count += 1
-
-    def __rsub__(self, other):
-        self.rop_count += 1
-
-    def __mul__(self, other):
-        self.op_count += 1
-
-    def __rmul__(self, other):
-        self.rop_count += 1
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': [
-        lambda x, y: x + y,
-        lambda x, y: x - y,
-        lambda x, y: x * y,
-    ],
-}))
-class TestPoly1dArrayPriority(Poly1dTestBase):
-
-    def test_poly1d_array_priority_greator(self):
-        a1 = self._get_input(cupy, 'poly1d', 'int64')
-        a2 = UserDefinedArray()
-        self.func(a1, a2)
-        assert a2.op_count == 0
-        assert a2.rop_count == 1
-        self.func(a2, a1)
-        assert a2.op_count == 1
-        assert a2.rop_count == 1
 
 
 @testing.gpu
@@ -467,6 +424,7 @@ class TestPoly1dEquality(unittest.TestCase):
 }))
 class TestPolyArithmeticShapeCombination(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyroutine(self, xp, dtype):

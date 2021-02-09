@@ -1,13 +1,5 @@
-// This file is a stub header file of cuda for Read the Docs.
-
-#ifndef INCLUDE_GUARD_CUPY_CUBLAS_H
-#define INCLUDE_GUARD_CUPY_CUBLAS_H
-
-#if CUPY_USE_HIP
-
-#include "hip/cupy_hipblas.h"
-
-#elif !defined(CUPY_NO_CUDA)
+#ifndef INCLUDE_GUARD_CUDA_CUPY_CUBLAS_H
+#define INCLUDE_GUARD_CUDA_CUPY_CUBLAS_H
 
 #include <cuda.h>
 #include <cublas_v2.h>
@@ -25,9 +17,4 @@ cublasStatus_t cublasGemmEx_v11(...) {
 
 #endif // if CUDA_VERSION >= 11000
 
-#else // #ifndef CUPY_NO_CUDA
-
-#include "stub/cupy_cublas.h"
-
-#endif // #ifndef CUPY_NO_CUDA
-#endif // #ifndef INCLUDE_GUARD_CUPY_CUBLAS_H
+#endif // #ifndef INCLUDE_GUARD_CUDA_CUPY_CUBLAS_H
