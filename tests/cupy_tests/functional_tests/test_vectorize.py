@@ -297,7 +297,7 @@ class TestVectorizeInstructions(unittest.TestCase):
 class TestVectorizeStmts(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
-    def test_if_stmt(self, xp):
+    def test_if(self, xp):
         def func_if(x):
             if x % 2 == 0:
                 y = x
@@ -307,6 +307,32 @@ class TestVectorizeStmts(unittest.TestCase):
 
         f = xp.vectorize(func_if)
         x = xp.array([1, 2, 3, 4, 5])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_if_no_orlese(self, xp):
+        def func_if(x):
+            y = 0
+            if x % 2 == 0:
+                y = x
+            return y
+
+        f = xp.vectorize(func_if)
+        x = xp.array([1, 2, 3, 4, 5])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_elif(self, xp):
+        def func_if(x):
+            y = 0
+            if x % 2 == 0:
+                y = x
+            elif x % 3 == 0:
+                y = -x
+            return y
+
+        f = xp.vectorize(func_if)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         return f(x)
 
 
