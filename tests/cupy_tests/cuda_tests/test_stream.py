@@ -3,17 +3,26 @@ import unittest
 from cupy._creation import from_data
 from cupy import cuda
 from cupy import testing
-from cupy.testing import attr
 
 
 @testing.parameterize(
     *testing.product({
-        'stream': [cuda.Stream.null, cuda.Stream.ptds],
+        'stream_name': ['null', 'ptds'],
     }))
+@testing.gpu
 class TestStream(unittest.TestCase):
 
-    @attr.gpu
-    def test_eq(self):
+    def setUp(self):
+        if cuda.runtime.is_hip and self.stream_name == 'ptds':
+            self.skipTest('HIP does not support PTDS')
+
+        if self.stream_name == 'null':
+            self.stream = cuda.Stream.null
+        elif self.stream_name == 'ptds':
+            self.stream = cuda.Stream.ptds
+
+    @unittest.skipIf(cuda.runtime.is_hip, 'This test is only for CUDA')
+    def test_eq_cuda(self):
         null0 = self.stream
         if self.stream == cuda.Stream.null:
             null1 = cuda.Stream(True)
@@ -30,6 +39,17 @@ class TestStream(unittest.TestCase):
         assert null2 != null3
         assert null2 != null4
 
+    @unittest.skipIf(not cuda.runtime.is_hip, 'This test is only for HIP')
+    def test_eq_hip(self):
+        null0 = self.stream
+        null1 = cuda.Stream(True)
+        null2 = cuda.Stream(True)
+        null3 = cuda.Stream()
+
+        assert null0 == null1
+        assert null1 == null2
+        assert null2 != null3
+
     def check_del(self, null, ptds):
         stream = cuda.Stream(null=null, ptds=ptds).use()
         stream_ptr = stream.ptr
@@ -41,17 +61,18 @@ class TestStream(unittest.TestCase):
         del stream_ptr
         del x
 
-    @attr.gpu
     def test_del_default(self):
         self.check_del(null=False, ptds=False)
 
-    @attr.gpu
     def test_del(self):
         null = self.stream == cuda.Stream.null
-        ptds = self.stream == cuda.Stream.ptds
+        if cuda.runtime.is_hip:
+            ptds = False
+        else:
+            ptds = self.stream == cuda.Stream.ptds
+
         self.check_del(null=null, ptds=ptds)
 
-    @attr.gpu
     def test_get_and_add_callback(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
@@ -79,8 +100,8 @@ class TestStream(unittest.TestCase):
         assert out == list(range(N))
         assert all(s == stream.ptr for s in stream_list)
 
-    @attr.gpu
-    @unittest.skipIf(cuda.runtime.is_hip, 'HIP does not support this')
+    @unittest.skipIf(cuda.runtime.is_hip,
+                     'HIP does not support launch_host_func')
     @unittest.skipIf(cuda.driver.get_build_version() < 10000,
                      'Only CUDA 10.0+ supports this')
     def test_launch_host_func(self):
@@ -98,7 +119,6 @@ class TestStream(unittest.TestCase):
         stream.synchronize()
         assert out == list(range(N))
 
-    @attr.gpu
     def test_with_statement(self):
         stream1 = cuda.Stream()
         stream2 = cuda.Stream()
@@ -110,7 +130,6 @@ class TestStream(unittest.TestCase):
             assert stream1 == cuda.get_current_stream()
         assert self.stream == cuda.get_current_stream()
 
-    @attr.gpu
     def test_use(self):
         stream1 = cuda.Stream().use()
         assert stream1 == cuda.get_current_stream()
@@ -118,6 +137,7 @@ class TestStream(unittest.TestCase):
         assert self.stream == cuda.get_current_stream()
 
 
+@testing.gpu
 class TestExternalStream(unittest.TestCase):
 
     def setUp(self):
@@ -127,7 +147,6 @@ class TestExternalStream(unittest.TestCase):
     def tearDown(self):
         cuda.runtime.streamDestroy(self.stream_ptr)
 
-    @attr.gpu
     def test_get_and_add_callback(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
@@ -144,8 +163,8 @@ class TestExternalStream(unittest.TestCase):
         stream.synchronize()
         assert out == list(range(N))
 
-    @attr.gpu
-    @unittest.skipIf(cuda.runtime.is_hip, 'HIP does not support this')
+    @unittest.skipIf(cuda.runtime.is_hip,
+                     'HIP does not support launch_host_func')
     @unittest.skipIf(cuda.driver.get_build_version() < 10000,
                      'Only CUDA 10.0+ supports this')
     def test_launch_host_func(self):
