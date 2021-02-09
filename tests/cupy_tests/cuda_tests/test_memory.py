@@ -5,6 +5,7 @@ import threading
 import unittest
 
 import fastrlock
+import pytest
 
 import cupy.cuda
 from cupy.cuda import device
@@ -39,16 +40,21 @@ class TestUnownedMemoryClass(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'allocator': [memory._malloc, memory.malloc_managed],
+    'allocator': [memory._malloc, memory.malloc_managed, memory.malloc_async],
     'specify_device_id': [True, False],
 }))
 @testing.gpu
 class TestUnownedMemory(unittest.TestCase):
 
     def check(self, device_id):
-        if (cupy.cuda.runtime.is_hip
-                and self.allocator is memory.malloc_managed):
-            raise unittest.SkipTest('HIP does not support managed memory')
+        if cupy.cuda.runtime.is_hip:
+            if self.allocator is memory.malloc_managed:
+                raise unittest.SkipTest('HIP does not support managed memory')
+            if self.allocator is memory.malloc_async:
+                raise unittest.SkipTest('HIP does not support async mempool')
+        elif cupy.cuda.driver.get_build_version() < 11020:
+            raise unittest.SkipTest('malloc_async is supported since '
+                                    'CUDA 11.2')
 
         size = 24
         shape = (2, 3)
@@ -833,3 +839,69 @@ class TestExceptionPicklable(unittest.TestCase):
         e2 = pickle.loads(pickle.dumps(e1))
         assert e1.args == e2.args
         assert str(e1) == str(e2)
+
+
+@testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support async allocator')
+@pytest.mark.skipif(cupy.cuda.driver.get_build_version() < 11020,
+                    reason='malloc_async is supported since CUDA 11.2')
+class TestMallocAsync(unittest.TestCase):
+
+    def setUp(self):
+        self.old_pool = cupy.get_default_memory_pool()
+        memory.set_allocator(memory.malloc_async)
+
+    def tearDown(self):
+        memory.set_allocator(self.old_pool.malloc)
+
+    def _check_pool_not_used(self):
+        used_bytes = self.old_pool.used_bytes()
+        with cupy.cuda.Device(0):
+            arr = cupy.arange(128, dtype=cupy.int64)
+            assert 0 == self.old_pool.used_bytes() - used_bytes
+            del arr
+
+    def test(self):
+        self._check_pool_not_used()
+
+    def test_stream1(self):
+        # Check: pool is not used when on a stream
+        s = cupy.cuda.Stream()
+        with s:
+            self._check_pool_not_used()
+
+    def test_stream2(self):
+        # Check: the memory was allocated on the right stream
+        s = cupy.cuda.Stream()
+        with s:
+            memptr = memory.alloc(100)
+            assert memptr.mem.stream == s.ptr
+
+    def test_stream3(self):
+        # Check: destory stream does not affect memory deallocation
+        s = cupy.cuda.Stream()
+        with s:
+            memptr = memory.alloc(100)
+
+        del s
+        gc.collect()
+        del memptr
+
+    def test_stream4(self):
+        # Check: free on the same stream
+        s = cupy.cuda.Stream()
+        with s:
+            memptr = memory.alloc(100)
+            del memptr
+
+    def test_stream5(self):
+        # Check: free on another stream
+        s1 = cupy.cuda.Stream()
+        with s1:
+            memptr = memory.alloc(100)
+        del s1
+
+        s2 = cupy.cuda.Stream()
+        with s2:
+            del memptr

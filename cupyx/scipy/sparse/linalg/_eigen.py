@@ -3,6 +3,7 @@ import cupy
 
 from cupy import cublas
 from cupy import cusparse
+from cupy.core import _dtype
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusparse as _cusparse
@@ -168,7 +169,7 @@ def _lanczos_fast(A, n, ncv):
         spmv_op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
         spmv_alpha = numpy.array(1.0, A.dtype)
         spmv_beta = numpy.array(0.0, A.dtype)
-        spmv_cuda_dtype = cusparse._dtype_to_DataType(A.dtype)
+        spmv_cuda_dtype = _dtype.to_cuda_dtype(A.dtype)
         spmv_alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
 
     v = cupy.empty((n,), dtype=A.dtype)

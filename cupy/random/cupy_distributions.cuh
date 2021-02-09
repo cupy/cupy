@@ -2,6 +2,12 @@
 #define _CUPY_TEST_H
 
 
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
+
 // This enum holds the generators, we can't fully templatize the generators
 // because the dynamic design of BitGenerators in the python side does not allow us
 // to determine the correct type at compile time

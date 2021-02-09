@@ -110,7 +110,7 @@ cdef extern from *:
         # We can't use IF in the middle of structs declaration
         # to add or ignore fields in compile time so we have to
         # replicate the struct definition
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             cudaUUID     uuid
             char         luid[8]
@@ -192,7 +192,7 @@ cdef extern from *:
             int          accessPolicyMaxWindowSize  # CUDA 11.0 field
             size_t       reservedSharedMemPerBlock  # CUDA 11.0 field
     ELIF CUDA_VERSION >= 10000:
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             cudaUUID     uuid
             char         luid[8]
@@ -270,7 +270,7 @@ cdef extern from *:
             int          pageableMemoryAccessUsesHostPageTables
             int          directManagedMemAccessFromHost
     ELIF CUDA_VERSION == 9020:
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
             size_t       totalGlobalMem
             size_t       sharedMemPerBlock
@@ -369,7 +369,7 @@ cdef extern from *:
             unsigned has3dGrid
             unsigned hasDynamicParallelism
 
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char name[256]
             size_t totalGlobalMem
             size_t sharedMemPerBlock
@@ -418,7 +418,7 @@ cdef extern from *:
             int cooperativeMultiDeviceUnmatchedSharedMem
             int isLargeBar
     ELSE:  # for RTD
-        ctypedef struct cudaDeviceProp 'cudaDeviceProp':
+        ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
 
 
@@ -454,8 +454,13 @@ cpdef enum:
     cudaMemAdviseSetAccessedBy = 5
     cudaMemAdviseUnsetAccessedBy = 6
 
+    # cudaStream flags
     streamDefault = 0
     streamNonBlocking = 1
+
+    # cudaStream handles
+    streamLegacy = 1
+    streamPerThread = 2
 
     eventDefault = 0
     eventBlockingSync = 1
@@ -584,6 +589,15 @@ cpdef enum:
     cudaDevAttrHostRegisterSupported = 99
     cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
     cudaDevAttrDirectManagedMemAccessFromHost = 101
+    # added since CUDA 11.0
+    cudaDevAttrMaxBlocksPerMultiprocessor = 106
+    cudaDevAttrReservedSharedMemoryPerBlock = 111
+    # added since CUDA 11.1
+    cudaDevAttrSparseCudaArraySupported = 112
+    cudaDevAttrHostRegisterReadOnlySupported = 113
+    # added since CUDA 11.2
+    cudaDevAttrMaxTimelineSemaphoreInteropSupported = 114
+    cudaDevAttrMemoryPoolsSupported = 115
 
     # CUDA Limits
     cudaLimitStackSize = 0x00
@@ -633,6 +647,8 @@ cpdef enum:
 cdef int errorMemoryAllocation
 cdef int errorInvalidValue
 cdef int errorPeerAccessAlreadyEnabled
+cdef int errorContextIsDestroyed
+cdef int errorInvalidResourceHandle
 
 
 ###############################################################################
@@ -688,12 +704,14 @@ cpdef intptr_t malloc3DArray(intptr_t desc, size_t width, size_t height,
                              size_t depth, unsigned int flags=*) except? 0
 cpdef intptr_t mallocArray(intptr_t desc, size_t width, size_t height,
                            unsigned int flags=*) except? 0
+cpdef intptr_t mallocAsync(size_t size, intptr_t stream) except? 0
 cpdef intptr_t hostAlloc(size_t size, unsigned int flags) except? 0
 cpdef hostRegister(intptr_t ptr, size_t size, unsigned int flags)
 cpdef hostUnregister(intptr_t ptr)
 cpdef free(intptr_t ptr)
 cpdef freeHost(intptr_t ptr)
 cpdef freeArray(intptr_t ptr)
+cpdef freeAsync(intptr_t ptr, intptr_t stream)
 cpdef memGetInfo()
 cpdef memcpy(intptr_t dst, intptr_t src, size_t size, int kind)
 cpdef memcpyAsync(intptr_t dst, intptr_t src, size_t size, int kind,

@@ -1,6 +1,5 @@
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
-
 from cupy.cuda cimport graph
 
 import threading
@@ -13,7 +12,7 @@ cdef object _thread_local = threading.local()
 
 
 cdef class _ThreadLocal:
-    cdef void* current_stream
+    cdef intptr_t current_stream
     cdef object current_stream_ref
     cdef list prev_stream_ref_stack
 
@@ -28,29 +27,38 @@ cdef class _ThreadLocal:
     cdef set_current_stream(self, stream):
         cdef intptr_t ptr = <intptr_t>stream.ptr
         stream_module.set_current_stream_ptr(ptr)
-        self.current_stream = <void*>ptr
+        self.current_stream = <intptr_t>ptr
         self.current_stream_ref = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
         cdef intptr_t ptr = <intptr_t>stream_ref().ptr
         stream_module.set_current_stream_ptr(ptr)
-        self.current_stream = <void*>ptr
+        self.current_stream = <intptr_t>ptr
         self.current_stream_ref = stream_ref
 
     cdef get_current_stream(self):
         if self.current_stream_ref is None:
-            self.current_stream_ref = weakref.ref(Stream.null)
-            return Stream.null
+            if stream_module.is_ptds_enabled():
+                self.current_stream_ref = weakref.ref(Stream.ptds)
+            else:
+                self.current_stream_ref = weakref.ref(Stream.null)
         return self.current_stream_ref()
 
     cdef get_current_stream_ref(self):
         if self.current_stream_ref is None:
-            self.current_stream_ref = weakref.ref(Stream.null)
+            if stream_module.is_ptds_enabled():
+                self.current_stream_ref = weakref.ref(Stream.ptds)
+            else:
+                self.current_stream_ref = weakref.ref(Stream.null)
         return self.current_stream_ref
 
-    cdef void* get_current_stream_ptr(self):
-        # Returns nullptr if not set, which is equivalent to the default
-        # stream.
+    cdef intptr_t get_current_stream_ptr(self):
+        # Returns the stream previously set, otherwise returns
+        # nullptr or runtime.streamPerThread when
+        # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
+        if (stream_module.is_ptds_enabled() and
+                self.current_stream == 0):
+            return <intptr_t>runtime.streamPerThread
         return self.current_stream
 
 
@@ -309,11 +317,18 @@ class Stream(BaseStream):
 
     Args:
         null (bool): If ``True``, the stream is a null stream (i.e. the default
-            stream that synchronizes with all streams). Otherwise, a plain new
-            stream is created. Note that you can also use ``Stream.null``
-            singleton object instead of creating new null stream object.
-        non_blocking (bool): If ``True``, the stream does not synchronize with
-            the NULL stream.
+            stream that synchronizes with all streams). Note that you can also
+            use the ``Stream.null`` singleton object instead of creating a new
+            null stream object.
+        ptds (bool): If ``True`` and ``null`` is ``False``, the per-thread
+            default stream is used. Note that you can also use the
+            ``Stream.ptds`` singleton object instead of creating a new
+            per-thread default stream object.
+        non_blocking (bool): If ``True`` and both ``null`` and ``ptds`` are
+            ``False``, the stream does not synchronize with the NULL stream.
+
+        Note that if both ``null`` and ``ptds`` are ``False``, a plain new
+        stream is created.
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle. It can be passed to
@@ -321,11 +336,17 @@ class Stream(BaseStream):
 
     """
 
-    def __init__(self, null=False, non_blocking=False):
+    def __init__(self, null=False, non_blocking=False, ptds=False):
         if null:
+            # TODO(pentschev): move to streamLegacy. This wasn't possible
+            # because of a NCCL bug that should be fixed in the version
+            # following 2.8.3-1.
             self.ptr = 0
+        elif ptds:
+            self.ptr = runtime.streamPerThread
         elif non_blocking:
-            self.ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)
+            self.ptr = runtime.streamCreateWithFlags(
+                runtime.streamNonBlocking)
         else:
             self.ptr = runtime.streamCreate()
 
@@ -369,3 +390,4 @@ class ExternalStream(BaseStream):
 
 
 Stream.null = Stream(null=True)
+Stream.ptds = Stream(ptds=True)

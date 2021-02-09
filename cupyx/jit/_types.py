@@ -19,6 +19,7 @@ _typenames = {
 }
 
 
+# Base class for cuda types.
 class TypeBase:
     pass
 

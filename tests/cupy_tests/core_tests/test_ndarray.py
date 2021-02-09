@@ -12,28 +12,6 @@ from cupy import get_array_module
 from cupy import testing
 
 
-class TestGetSize(unittest.TestCase):
-
-    def test_none(self):
-        assert core.get_size(None) == ()
-
-    def check_collection(self, a):
-        assert core.get_size(a) == tuple(a)
-
-    def test_list(self):
-        self.check_collection([1, 2, 3])
-
-    def test_tuple(self):
-        self.check_collection((1, 2, 3))
-
-    def test_int(self):
-        assert core.get_size(1) == (1,)
-
-    def test_float(self):
-        with pytest.raises(ValueError):
-            core.get_size(1.0)
-
-
 def wrap_take(array, *args, **kwargs):
     if get_array_module(array) == numpy:
         kwargs['mode'] = 'wrap'
@@ -45,7 +23,8 @@ def wrap_take(array, *args, **kwargs):
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape_none(self):
-        a = cupy.ndarray(None)
+        with testing.assert_warns(DeprecationWarning):
+            a = cupy.ndarray(None)
         assert a.shape == ()
 
     def test_shape_int(self):
