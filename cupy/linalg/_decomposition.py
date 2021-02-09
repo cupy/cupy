@@ -115,7 +115,7 @@ def _potrf_batched(a):
     if not check_availability('potrfBatched'):
         raise RuntimeError('potrfBatched is not available')
 
-    dtype, out_dtype = _util.common_type(a)
+    dtype, out_dtype = _util.linalg_common_type(a)
 
     if dtype == 'f':
         potrfBatched = cusolver.spotrfBatched
@@ -171,7 +171,7 @@ def cholesky(a):
     if a.ndim > 2:
         return _potrf_batched(a)
 
-    dtype, out_dtype = _util.common_type(a)
+    dtype, out_dtype = _util.linalg_common_type(a)
 
     x = a.astype(dtype, order='C', copy=True)
     n = len(a)
@@ -245,7 +245,7 @@ def qr(a, mode='reduced'):
             raise ValueError('Unrecognized mode \'{}\''.format(mode))
 
     # support float32, float64, complex64, and complex128
-    dtype, out_dtype = _util.common_type(a)
+    dtype, out_dtype = _util.linalg_common_type(a)
     if mode == 'raw':
         # compatibility with numpy.linalg.qr
         out_dtype = numpy.promote_types(out_dtype, 'd')
@@ -372,7 +372,7 @@ def svd(a, full_matrices=True, compute_uv=True):
     _util._assert_rank2(a)
 
     # Cast to float32 or float64
-    dtype, uv_dtype = _util.common_type(a)
+    dtype, uv_dtype = _util.linalg_common_type(a)
     real_dtype = dtype.char.lower()
     s_dtype = uv_dtype.char.lower()
 

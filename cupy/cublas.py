@@ -44,7 +44,7 @@ def batched_gesv(a, b):
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
 
-    dtype, out_dtype = _util.common_type(a, b)
+    dtype, out_dtype = _util.linalg_common_type(a, b)
     if dtype == 'f':
         t = 's'
     elif dtype == 'd':

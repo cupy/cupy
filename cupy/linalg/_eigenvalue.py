@@ -11,11 +11,8 @@ def _syevd(a, UPLO, with_eigen_vector):
     if UPLO not in ('L', 'U'):
         raise ValueError('UPLO argument must be \'L\' or \'U\'')
 
-    if a.dtype == 'e':
-        # For backward compatibility
-        dtype, v_dtype = numpy.dtype('f'), numpy.dtype('e')
-    else:
-        dtype, v_dtype = _util.common_type(a)
+    # reject_float16=False for backward compatibility
+    dtype, v_dtype = _util.linalg_common_type(a, reject_float16=False)
     real_dtype = dtype.char.lower()
     w_dtype = v_dtype.char.lower()
 

@@ -240,7 +240,7 @@ def slogdet(a):
         raise linalg.LinAlgError(msg)
     _util._assert_nd_squareness(a)
 
-    dtype, sign_dtype = _util.common_type(a)
+    dtype, sign_dtype = _util.linalg_common_type(a)
     logdet_dtype = numpy.dtype(sign_dtype.char.lower())
 
     a_shape = a.shape

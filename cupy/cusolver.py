@@ -329,11 +329,8 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
 
     assert a.ndim == 2
 
-    if a.dtype == 'e':
-        # For backward compatibility
-        dtype, v_dtype = _numpy.dtype('f'), _numpy.dtype('e')
-    else:
-        dtype, v_dtype = _util.common_type(a)
+    # reject_float16=False for backward compatibility
+    dtype, v_dtype = _util.linalg_common_type(a, reject_float16=False)
     real_dtype = dtype.char.lower()
     w_dtype = v_dtype.char.lower()
 
@@ -391,11 +388,8 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
 
 
 def _syevj_batched(a, UPLO, with_eigen_vector):
-    if a.dtype == 'e':
-        # For backward compatibility
-        dtype, v_dtype = _numpy.dtype('f'), _numpy.dtype('e')
-    else:
-        dtype, v_dtype = _util.common_type(a)
+    # reject_float16=False for backward compatibility
+    dtype, v_dtype = _util.linalg_common_type(a, reject_float16=False)
     real_dtype = dtype.char.lower()
     w_dtype = v_dtype.char.lower()
 

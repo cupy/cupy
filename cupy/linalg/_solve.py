@@ -52,7 +52,7 @@ def solve(a, b):
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
 
-    dtype, out_dtype = _util.common_type(a, b)
+    dtype, out_dtype = _util.linalg_common_type(a, b)
     if a.ndim == 2:
         # prevent 'a' and 'b' to be overwritten
         a = a.astype(dtype, copy=True, order='F')
@@ -308,7 +308,7 @@ def inv(a):
     _util._assert_rank2(a)
     _util._assert_nd_squareness(a)
 
-    dtype, out_dtype = _util.common_type(a)
+    dtype, out_dtype = _util.linalg_common_type(a)
     order = 'F' if a._f_contiguous else 'C'
     # prevent 'a' to be overwritten
     a = a.astype(dtype, copy=True, order=order)
@@ -325,7 +325,7 @@ def _batched_inv(a):
     assert(a.ndim >= 3)
     _util._assert_cupy_array(a)
     _util._assert_nd_squareness(a)
-    dtype, out_dtype = _util.common_type(a)
+    dtype, out_dtype = _util.linalg_common_type(a)
 
     if dtype == cupy.float32:
         getrf = cupy.cuda.cublas.sgetrfBatched
