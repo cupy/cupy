@@ -1,9 +1,15 @@
+import os
+
 import numpy
 from numpy import linalg
 
 import cupy
+import cupy._util
 from cupy import core
 import cupyx
+
+
+_default_precision = os.getenv('CUPY_DEFAULT_PRECISION')
 
 
 def _assert_cupy_array(*arrays):
@@ -49,13 +55,32 @@ def linalg_common_type(*arrays, reject_float16=True):
     dtypes = [arr.dtype for arr in arrays]
     if reject_float16 and 'float16' in dtypes:
         raise TypeError('float16 is unsupported in linalg')
-    compute_dtype = numpy.result_type('float32', *dtypes)
+
+    if _default_precision is not None:
+        cupy._util.experimental('CUPY_DEFAULT_PRECISION')
+        if _default_precision not in ('32', '64'):
+            raise ValueError(
+                'invalid CUPY_DEFAULT_PRECISION: {}'.format(
+                    _default_precision))
+        default = 'float' + _default_precision
+    else:
+        default = 'float64'
+    compute_dtype = _common_type_internal(default, *dtypes)
+    # No fp16 cuSOLVER routines
+    if compute_dtype == 'float16':
+        compute_dtype = numpy.dtype('float32')
+
     # numpy casts integer types to float64
-    inexact_dtypes = [
-        dtype if dtype.kind in 'fc' else 'float64'
-        for dtype in dtypes]
-    result_dtype = numpy.result_type(*inexact_dtypes)
+    result_dtype = _common_type_internal('float64', *dtypes)
+
     return compute_dtype, result_dtype
+
+
+def _common_type_internal(default_dtype, *dtypes):
+    inexact_dtypes = [
+        dtype if dtype.kind in 'fc' else default_dtype
+        for dtype in dtypes]
+    return numpy.result_type(*inexact_dtypes)
 
 
 def _check_cusolver_dev_info_if_synchronization_allowed(routine, dev_info):
