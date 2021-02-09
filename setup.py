@@ -28,9 +28,14 @@ requirements = {
         'fastrlock>=0.3',
     ],
     'install': [
-        'numpy>=1.15',
+        'numpy>=1.17',
         'fastrlock>=0.3',
     ],
+    'all': [
+        'scipy>=1.4',
+        'optuna>=2.0',
+    ],
+
     'stylecheck': [
         'autopep8==1.4.4',
         'flake8==3.7.9',
@@ -40,14 +45,6 @@ requirements = {
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
-    ],
-    'doctest': [
-        'matplotlib',
-        'optuna',
-    ],
-    'docs': [
-        'sphinx==3.0.4',
-        'sphinx_rtd_theme',
     ],
     'appveyor': [
         '-r test',

@@ -1,12 +1,17 @@
 import ast
 import inspect
+import numbers
 import re
+import warnings
 
 import numpy
 
 from cupy.core import _kernel
 from cupyx.jit import _types
 from cupyx.jit import _typerules
+
+
+_typeclasses = (bool, numpy.bool_, numbers.Number)
 
 
 def transpile(func, attributes, mode, in_types, ret_type):
@@ -361,19 +366,37 @@ def _transpile_expr(expr, env):
                 f'{x.ctype.dtype} != {y.ctype.dtype}')
         cond = _astype_scalar(cond, _types.Scalar(numpy.bool_), 'unsafe')
         return CudaObject(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
+
     if isinstance(expr, ast.Call):
         func = _transpile_expr(expr.func, env).obj
         args = [_transpile_expr(x, env) for x in expr.args]
         kwargs = dict([(kw.arg, _transpile_expr(kw.value, env))
                        for kw in expr.keywords])
+
+        if is_constants(args) and is_constants(kwargs.values()):
+            # compile-time function call
+            args = [x.obj for x in args]
+            kwargs = dict([(k, v.obj) for k, v in kwargs.items()])
+            return Constant(func(*args, **kwargs))
+
         if isinstance(func, _kernel.ufunc):
+            # ufunc call
             dtype = kwargs.pop('dtype', Constant(None)).obj
             if len(kwargs) > 0:
                 name = next(iter(kwargs))
                 raise TypeError(
                     f"'{name}' is an invalid keyword to ufunc {func.name}")
             return _call_ufunc(func, args, dtype, env)
-        raise NotImplementedError('non-ufunc function call is not implemented')
+
+        if inspect.isclass(func) and issubclass(func, _typeclasses):
+            # explicit typecast
+            if len(args) != 1:
+                raise TypeError(
+                    f'function takes {func} invalid number of argument')
+            return _astype_scalar(args[0], _types.Scalar(func), 'unsafe')
+
+        raise NotImplementedError(
+            f'function call of `{func.__name__}` is not implemented')
 
     if isinstance(expr, ast.Constant):
         return Constant(expr.value)
@@ -401,7 +424,7 @@ def _transpile_expr(expr, env):
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
-def _astype_scalar(x, ctype, casting):
+def _astype_scalar(x, ctype, casting, env=None):
     from_t = x.ctype.dtype
     to_t = ctype.dtype
     if from_t == to_t:
@@ -411,6 +434,15 @@ def _astype_scalar(x, ctype, casting):
         raise TypeError(
             f"Cannot cast from '{from_t}' to {to_t} "
             f"with casting rule {casting}.")
+    if from_t.kind == 'c' and to_t.kind == 'b':
+        assert env is not None
+        return _call_ufunc(
+            _typerules._numpy_scalar_logical_not, (x,), None, env)
+    if from_t.kind == 'c' and to_t.kind != 'c':
+        warnings.warn(
+            'Casting complex values to real discards the imaginary part',
+            numpy.ComplexWarning)
+        return CudaObject(f'({ctype})({x.code}.real())', ctype)
     return CudaObject(f'({ctype})({x.code})', ctype)
 
 

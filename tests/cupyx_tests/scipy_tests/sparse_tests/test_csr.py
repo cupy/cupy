@@ -1,5 +1,7 @@
+import contextlib
 import pickle
 import unittest
+import warnings
 
 import numpy
 import pytest
@@ -1882,11 +1884,35 @@ class TestCsrMatrixComparison(unittest.TestCase):
         elif self.opt == '_ge_':
             return a >= b
 
+    @contextlib.contextmanager
+    def _ignore_efficiency_warning(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
+            yield
+
+    @contextlib.contextmanager
+    def _assert_warns_efficiency(self, sp, scalar_rhs=None):
+        if scalar_rhs is None and self._compare(0, 0):
+            with testing.assert_warns(sp.SparseEfficiencyWarning):
+                yield
+        elif scalar_rhs is not None and self._compare(0, scalar_rhs):
+            if sp is sparse:  # cupy
+                # TODO(kataoka): Test it, too. But, it seems the current
+                # implementation does not depend on the scalar value.
+                with self._ignore_efficiency_warning():
+                    yield
+            else:  # scipy
+                with testing.assert_warns(sp.SparseEfficiencyWarning):
+                    yield
+        else:
+            yield
+
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_sparse(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         b = self._make_sp_matrix(self.b_dtype, xp, sp)
-        return self._compare(a, b)
+        with self._assert_warns_efficiency(sp):
+            return self._compare(a, b)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_sparse_row(self, xp, sp):
@@ -1896,7 +1922,8 @@ class TestCsrMatrixComparison(unittest.TestCase):
             # SciPy does not support sparse broadcasting
             return self._compare(a, b.toarray())
         else:
-            return self._compare(a, b).toarray()
+            with self._assert_warns_efficiency(sp):
+                return self._compare(a, b).toarray()
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_sparse_col(self, xp, sp):
@@ -1906,7 +1933,8 @@ class TestCsrMatrixComparison(unittest.TestCase):
             # SciPy does not support sparse broadcasting
             return self._compare(a, b.toarray())
         else:
-            return self._compare(a, b).toarray()
+            with self._assert_warns_efficiency(sp):
+                return self._compare(a, b).toarray()
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_dense(self, xp, sp):
@@ -1929,12 +1957,14 @@ class TestCsrMatrixComparison(unittest.TestCase):
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_plus(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
-        return self._compare(a, 0.5)
+        with self._assert_warns_efficiency(sp, 0.5):
+            return self._compare(a, 0.5)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_minus(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
-        return self._compare(a, -0.5)
+        with self._assert_warns_efficiency(sp, -0.5):
+            return self._compare(a, -0.5)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_zero(self, xp, sp):
@@ -1942,12 +1972,14 @@ class TestCsrMatrixComparison(unittest.TestCase):
             # <= and >= with 0 are not supported by SciPy
             pytest.skip()
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
-        return self._compare(a, 0)
+        with self._assert_warns_efficiency(sp, 0):
+            return self._compare(a, 0)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_nan(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
-        return self._compare(a, numpy.nan)
+        with self._assert_warns_efficiency(sp, numpy.nan):
+            return self._compare(a, numpy.nan)
 
     def test_ng_shape(self):
         xp, sp = cupy, sparse
@@ -1956,7 +1988,8 @@ class TestCsrMatrixComparison(unittest.TestCase):
             shape = self.shape[0] + i, self.shape[1] + j
             b = self._make_sp_matrix_shape(shape, self.b_dtype, xp, sp)
             with self.assertRaises(ValueError):
-                self._compare(a, b)
+                with self._ignore_efficiency_warning():
+                    self._compare(a, b)
 
 
 @testing.parameterize(*testing.product({
