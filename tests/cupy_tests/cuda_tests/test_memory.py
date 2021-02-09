@@ -908,9 +908,9 @@ class TestMallocAsync(unittest.TestCase):
 
 
 @testing.gpu
-@pytest.mark.skipIf(cupy.cuda.runtime.is_hip,
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support async allocator')
-@pytest.mark.skipIf(cupy.cuda.driver.get_build_version() < 11020,
+@pytest.mark.skipif(cupy.cuda.driver.get_build_version() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
 class TestMemoryAsyncPool(unittest.TestCase):
 
