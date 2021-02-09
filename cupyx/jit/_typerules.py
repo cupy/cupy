@@ -115,6 +115,8 @@ def get_ctype_from_scalar(mode, x):
         return _types.Scalar(x.dtype)
 
     if mode == 'numpy':
+        if isinstance(x, bool):
+            return _types.Scalar(numpy.bool_)
         if isinstance(x, int):
             return _types.Scalar(numpy.int64)
         if isinstance(x, float):
@@ -123,6 +125,8 @@ def get_ctype_from_scalar(mode, x):
             return _types.Scalar(numpy.complex128)
 
     if mode == 'cuda':
+        if isinstance(x, bool):
+            return _types.Scalar(numpy.bool_)
         if isinstance(x, int):
             if -(1 << 31) <= x < (1 << 31):
                 return _types.Scalar(numpy.int32)
@@ -132,4 +136,29 @@ def get_ctype_from_scalar(mode, x):
         if isinstance(x, complex):
             return _types.Scalar(numpy.complex64)
 
-    raise NotImplementedError(f'{x} is not supported as a constant.')
+    raise NotImplementedError(f'{x} is not scalar object.')
+
+
+_suffix_literals_dict = {
+    numpy.dtype('float64'): '',
+    numpy.dtype('float32'): 'f',
+    numpy.dtype('int64'): 'll',
+    numpy.dtype('int32'): '',
+    numpy.dtype('uint64'): 'ull',
+    numpy.dtype('uint32'): 'u',
+    numpy.dtype('bool'): '',
+}
+
+
+def get_cuda_code_from_constant(x, ctype):
+    dtype = ctype.dtype
+    suffix_literal = _suffix_literals_dict.get(dtype)
+    if suffix_literal is not None:
+        s = str(x).lower()
+        return f'{s}{suffix_literal}'
+    ctype = str(ctype)
+    if dtype.kind == 'c':
+        return f'{ctype}({x.real}, {x.imag})'
+    if ' ' in ctype:
+        return f'({ctype}){x}'
+    return f'{ctype}({x})'
