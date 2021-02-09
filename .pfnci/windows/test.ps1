@@ -79,6 +79,7 @@ function Main {
     }
 
     $use_cache = ($Env:CUPY_CI_CACHE_KERNEL -eq "1")
+    $upload_cache = -Not (IsPullRequestTest)
 
     if ($use_cache) {
         DownloadCache
@@ -88,7 +89,7 @@ function Main {
     if (-not $?) {
         $test_retval = $LastExitCode
     }
-    if ($use_cache) {
+    if ($use_cache -And $upload_cache) {
         UploadCache
     }
 
