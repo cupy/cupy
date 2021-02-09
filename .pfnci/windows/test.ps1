@@ -49,7 +49,7 @@ function Main {
 
     # Setup build environment variables
     $Env:CUPY_NUM_BUILD_JOBS = "16"
-    $Env:CUPY_NVCC_GENERATE_CODE = "current"
+    $Env:CUPY_NVCC_GENERATE_CODE = "arch=compute_75,code=sm_75"
     echo "Environment:"
     RunOrDie cmd.exe /C set
 
