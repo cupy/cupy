@@ -4,8 +4,6 @@ import cupy
 import io
 import unittest
 import warnings
-# import multiprocessing
-import joblib
 
 
 import numpy
@@ -21,7 +19,6 @@ except ImportError:
 from cupy import testing
 from cupy.testing import condition
 from cupyx.scipy import sparse
-from joblib import Parallel, delayed
 import cupyx.scipy.sparse.linalg  # NOQA
 
 
@@ -823,23 +820,13 @@ class TestLOBPCG(unittest.TestCase):
         non-zero element. ie, to standardize the first non-zero element
         of eigen vector as positive. This helps in comparing equivalence
         of eigen vectors"""
-        vec_len, num_vecs = block_vec.shape
-        temp_block_vec = block_vec.copy()
-        for j in range(num_vecs):
-            direction = testing.shaped_random((vec_len, 1), xp=xp, seed=123)
-            eigvec = temp_block_vec[:, j].T
-            eigvec *= xp.where(eigvec.dot(direction) >= 0, 1, -1)
-
-        def per_eigvec(eigvec):
-            direction = testing.shaped_random((vec_len, 1), xp=xp, seed=123)
-            eigvec *= xp.where(eigvec.dot(direction) >= 0, 1, -1)
-            return eigvec
-        # each eigen vector in parallel
-        n_jobs = joblib.cpu_count()
-        block_vec = Parallel(n_jobs=n_jobs)(
-            delayed(per_eigvec)(eigvec) for eigvec in block_vec.T
-        )
-        block_vec = xp.array(block_vec).T
+        direction = testing.shaped_random((block_vec.shape[0], 1),
+                                          xp=xp, seed=123)
+        mask = xp.where(block_vec.T.dot(direction) >= 0, 1, -1)
+        # shape of mask: (block_vec.shape[0], 1)
+        # each eigenvector is multiplied by a 1 or -1 (scalar)
+        # this is done by broadcasting mask
+        block_vec = block_vec*mask.T
         return block_vec
 
     def _generate_input_for_elastic_rod(self, n, xp):
