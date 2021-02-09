@@ -390,13 +390,14 @@ def pinv(a, rcond=1e-15):
     Note that it automatically removes small singular values for stability.
 
     Args:
-        a (cupy.ndarray): The matrix with dimension ``(M, N)``
+        a (cupy.ndarray): The matrix with dimension ``(..., M, N)``
         rcond (float): Cutoff parameter for small singular values.
             For stability it computes the largest singular value denoted by
             ``s``, and sets all singular values smaller than ``s`` to zero.
 
     Returns:
-        cupy.ndarray: The pseudoinverse of ``a`` with dimension ``(N, M)``.
+        cupy.ndarray: The pseudoinverse of ``a`` with dimension
+            ``(..., N, M)``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield
@@ -411,7 +412,7 @@ def pinv(a, rcond=1e-15):
     cutoff = rcond * s.max()
     s1 = 1 / s
     s1[s <= cutoff] = 0
-    return cupy.dot(vt.T, s1[:, None] * u.T)
+    return cupy.dot(vt.swapaxis(-2, -1), s1[..., None] * u.swapaxis(-2, -1))
 
 
 def tensorinv(a, ind=2):
