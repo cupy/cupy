@@ -84,7 +84,8 @@ function Main {
         DownloadCache
     }
     echo "Running test..."
-    python -m pytest -rfEX $Env:PYTEST_OPTS tests > cupy_test_log.txt
+    python -c "import cupy; cupy.show_config()" > cupy_test_log.txt
+    python -m pytest -rfEX $Env:PYTEST_OPTS tests >> cupy_test_log.txt
     if (-not $?) {
         $test_retval = $LastExitCode
     }
