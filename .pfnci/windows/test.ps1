@@ -60,7 +60,7 @@ function Main {
     RunOrDie python -m pip freeze
 
     echo "Building..."
-    RunOrDie python -m pip install -e ".[all,jenkins]" -vvv > cupy_build_log.txt
+    RunOrDie python -m pip install -e ".[jenkins]" -vvv > cupy_build_log.txt
 
     # Import test
     echo "CuPy Configuration:"
