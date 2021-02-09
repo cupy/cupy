@@ -40,9 +40,6 @@ requirements = {
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
-        # numpy < 1.20 demonstrates non-monotonic output in percentile results
-        # that disrupts the cupy monotonicity test. See gh-4607.
-        'numpy>=1.20',
     ],
     'doctest': [
         'matplotlib',
