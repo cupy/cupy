@@ -4,6 +4,7 @@ import pytest
 import numpy
 
 import cupy
+from cupy.cuda import runtime
 import cupyx
 from cupy import testing
 
@@ -319,6 +320,8 @@ class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
     'type_r': ['poly1d'],
 }))
+@pytest.mark.xfail(runtime.is_hip,
+                   reason='HIP/ROCm does not support cuda array interface')
 class TestPoly1dMathArithmetic(Poly1dTestBase):
 
     @testing.for_all_dtypes()
