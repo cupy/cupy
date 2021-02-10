@@ -293,6 +293,16 @@ class TestVectorizeInstructions(unittest.TestCase):
         x = testing.shaped_random((20, 30), xp, dtype, seed=1)
         return f(x)
 
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_const_assign(self, xp):
+        def my_typecast(x):
+            typecast = xp.dtype('f').type
+            return typecast(x)
+
+        f = xp.vectorize(my_typecast)
+        x = testing.shaped_random((20, 30), xp, numpy.int32, seed=1)
+        return f(x)
+
 
 class TestVectorizeStmts(unittest.TestCase):
 

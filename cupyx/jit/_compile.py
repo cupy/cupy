@@ -88,8 +88,8 @@ class Environment:
 
     Attributes:
         mode ('numpy' or 'cuda'): The rule for typecast.
-        globals (dict): The dictionary with keys as the variable names and
-            the values as the data stored at the global scopes.
+        consts (dict): The dictionary with keys as the variable names and
+            the values as the data that is determined at compile-time.
         params (dict): The dictionary of function arguments with keys as
             the variable names and the values as the CudaObject.
         locals (dict): The dictionary with keys as the variable names and the
@@ -99,9 +99,9 @@ class Environment:
             inferred until the end of transpilation of the function.
     """
 
-    def __init__(self, mode, globals, params, ret_type):
+    def __init__(self, mode, consts, params, ret_type):
         self.mode = mode
-        self.globals = globals
+        self.consts = consts
         self.params = params
         self.locals = {}
         self.ret_type = ret_type
@@ -112,8 +112,8 @@ class Environment:
             return self.locals[key]
         if key in self.params:
             return self.params[key]
-        if key in self.globals:
-            return self.globals[key]
+        if key in self.consts:
+            return self.consts[key]
         return None
 
     def __setitem__(self, key, value):
@@ -164,7 +164,7 @@ def _transpile_function(
         dict([(k, Constant(v)) for k, v, in consts.items()]),
         dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)]),
         ret_type)
-    body = _transpile_stmts(func.body, env)
+    body = _transpile_stmts(func.body, True, env)
     params = ', '.join([f'{env[a].ctype} {a}' for a in args])
     local_vars = [f'{v.ctype} {n};' for n, v in env.locals.items()]
     head = f'{attributes} {env.ret_type} {func.name}({params})'
@@ -244,14 +244,14 @@ __device__ {out_type} {ufunc_name}({params}) {{
     raise NotImplementedError(f'ufunc `{ufunc.name}` is not supported.')
 
 
-def _transpile_stmts(stmts, env):
+def _transpile_stmts(stmts, is_toplevel, env):
     codeblocks = []
     for stmt in stmts:
-        codeblocks.extend(_transpile_stmt(stmt, env))
+        codeblocks.extend(_transpile_stmt(stmt, is_toplevel, env))
     return codeblocks
 
 
-def _transpile_stmt(stmt, env):
+def _transpile_stmt(stmt, is_toplevel, env):
     """Transpile the statement.
 
     Returns (list of [CodeBlock or str]): The generated CUDA code.
@@ -274,20 +274,38 @@ def _transpile_stmt(stmt, env):
         return [f'return {value.code};']
     if isinstance(stmt, ast.Delete):
         raise NotImplementedError('`del` is not supported currently.')
+
     if isinstance(stmt, ast.Assign):
         if len(stmt.targets) != 1:
             raise NotImplementedError('Not implemented.')
         target = stmt.targets[0]
+        if not isinstance(target, ast.Name):
+            raise NotImplementedError('Tuple is not supported.')
         name = target.id
         value = _transpile_expr(stmt.value, env)
-        value = _to_cuda_object(value, env)
-        if isinstance(target, ast.Name):
-            if env[name] is None:
-                env[name] = CudaObject(target.id, value.ctype)
-            elif env[name].ctype.dtype != value.ctype.dtype:
-                raise TypeError('dtype mismatch.')
-            return [f'{target.id} = {value.code};']
-        raise NotImplementedError('Not implemented')
+
+        if is_constants([value]):
+            if not isinstance(value.obj, _typeclasses):
+                if is_toplevel:
+                    if env[name] is not None and not is_constants([env[name]]):
+                        raise TypeError(f'Type mismatch of variable: `{name}`')
+                    env.consts[name] = value
+                    return []
+                else:
+                    raise TypeError(
+                        'Cannot assign constant value not at top-level.')
+            value = _to_cuda_object(value, env)
+
+        if env[name] is None:
+            env[name] = CudaObject(target.id, value.ctype)
+        elif is_constants([env[name]]):
+            raise TypeError('Type mismatch of variable: `{name}`')
+        elif env[name].ctype.dtype != value.ctype.dtype:
+            raise TypeError(
+                f'Data type mismatch of variable: `{name}`: '
+                f'{env[name].ctype.dtype} != {value.ctype.dtype}')
+        return [f'{target.id} = {value.code};']
+
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
         target = _transpile_expr(stmt.target, env)
@@ -308,10 +326,10 @@ def _transpile_stmt(stmt, env):
         condition = _transpile_expr(stmt.test, env)
         if is_constants([condition]):
             stmts = stmt.body if condition.obj else stmt.orelse
-            return _transpile_stmts(stmts, env)
+            return _transpile_stmts(stmts, is_toplevel, env)
         head = f'if ({condition.code})'
-        then_body = _transpile_stmts(stmt.body, env)
-        else_body = _transpile_stmts(stmt.orelse, env)
+        then_body = _transpile_stmts(stmt.body, False, env)
+        else_body = _transpile_stmts(stmt.orelse, False, env)
         return [CodeBlock(head, then_body), CodeBlock('else', else_body)]
     if isinstance(stmt, (ast.With, ast.AsyncWith)):
         raise ValueError('Switching contexts are not allowed.')
