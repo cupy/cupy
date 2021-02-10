@@ -49,6 +49,7 @@ from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
+from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cublas
 
@@ -191,10 +192,12 @@ cdef class ndarray:
 
         if ver == 3:
             stream_ptr = stream_module.get_current_stream_ptr()
-            # TODO(leofang): check if we're using PTDS
             # CAI v3 says setting the stream field to 0 is disallowed
             if stream_ptr == 0:
-                stream_ptr = 1  # TODO(leofang): use runtime.streamLegacy
+                if _stream_module.is_ptds_enabled():
+                    stream_ptr = runtime.streamPerThread
+                else:
+                    stream_ptr = runtime.streamLegacy
             desc['stream'] = stream_ptr
         elif ver == 2:
             # Old behavior (prior to CAI v3): stream sync is explicitly handled

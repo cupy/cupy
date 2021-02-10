@@ -1,6 +1,7 @@
 import unittest
 import pytest
 
+from cupy_backends.cuda import stream as stream_module
 import cupy
 from cupy import core
 from cupy import testing
@@ -287,7 +288,7 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'stream': ('null', 'new'),
+    'stream': ('null', 'new', 'ptds'),
 }))
 @testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -298,6 +299,8 @@ class TestCUDAArrayInterfaceStream(unittest.TestCase):
             self.stream = cupy.cuda.Stream.null
         elif self.stream == 'new':
             self.stream = cupy.cuda.Stream()
+        elif self.stream == 'ptds':
+            self.stream = cupy.cuda.Stream.ptds
 
     def test_stream_export(self):
         a = cupy.empty(100)
@@ -307,10 +310,12 @@ class TestCUDAArrayInterfaceStream(unittest.TestCase):
             stream_ptr = a.__cuda_array_interface__['stream']
 
         if self.stream is cupy.cuda.Stream.null:
-            assert stream_ptr == 1
+            assert stream_ptr == 2 if stream_module.is_ptds_enabled() else 1
+        elif self.stream is cupy.cuda.Stream.ptds:
+            assert stream_ptr == 2
         else:
             assert stream_ptr == self.stream.ptr
 
         # without a stream context, it's always the default stream
         stream_ptr = a.__cuda_array_interface__['stream']
-        assert stream_ptr == 1
+        assert stream_ptr == 2 if stream_module.is_ptds_enabled() else 1
