@@ -53,5 +53,8 @@ cdef set_current_stream_ptr(intptr_t ptr):
 
 # cpdef for unit testing
 cpdef bint is_ptds_enabled():
+    if runtime._is_hip_environment:
+        # HIP does not support PTDS, just ignore the env var
+        return False
     ptds = int(os.environ.get('CUPY_CUDA_PER_THREAD_DEFAULT_STREAM', '0'))
     return bool(ptds != 0)
