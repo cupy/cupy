@@ -468,8 +468,9 @@ class TestDgmm(unittest.TestCase):
     def test_dgmm_incx_minus_one(self, dtype):
         if self.orderc != 'F':
             raise unittest.SkipTest()
-        if self._check_dgmm_incx_minus_one_hip_skip_condition():
-            pytest.xfail('HIP dgmm may have a bug')
+        if cupy.cuda.runtime.is_hip:
+            if self._check_dgmm_incx_minus_one_hip_skip_condition():
+                pytest.xfail('HIP dgmm may have a bug')
         self._setup(dtype)
         if self.side == 'L':
             ref = cupy.diag(self.x[::-1]) @ self.a
