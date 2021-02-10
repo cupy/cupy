@@ -1,7 +1,9 @@
 import unittest
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -300,6 +302,38 @@ class TestVectorizeInstructions(unittest.TestCase):
             return typecast(x)
 
         f = xp.vectorize(my_typecast)
+        x = testing.shaped_random((20, 30), xp, numpy.int32, seed=1)
+        return f(x)
+
+    def test_vectorize_const_typeerror(self):
+        def my_invalid_type(x):
+            x = numpy.dtype('f').type
+            return 0
+
+        f = cupy.vectorize(my_invalid_type)
+        x = testing.shaped_random((20, 30), cupy, numpy.int32, seed=1)
+        with pytest.raises(TypeError):
+            f(x)
+
+    def test_vectorize_const_non_toplevel(self):
+        def my_invalid_type(x):
+            if x == 3:
+                typecast = numpy.dtype('f').type
+            return x
+
+        f = cupy.vectorize(my_invalid_type)
+        x = cupy.array([1, 2, 3, 4, 5])
+        with pytest.raises(TypeError):
+            f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_nonconst_for_value(self, xp):
+        def my_nonconst_result(x):
+            result = numpy.int32(0)
+            result = x
+            return result
+
+        f = xp.vectorize(my_nonconst_result)
         x = testing.shaped_random((20, 30), xp, numpy.int32, seed=1)
         return f(x)
 
