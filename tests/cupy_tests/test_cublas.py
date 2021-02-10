@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import cublas
@@ -452,6 +453,8 @@ class TestDgmm(unittest.TestCase):
         cublas.dgmm(self.side, self.a, self.x, out=self.a)
         cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason="HIP fails for some condition")
     @testing.for_dtypes('fdFD')
     def test_dgmm_incx_minus_one(self, dtype):
         if self.orderc != 'F':
