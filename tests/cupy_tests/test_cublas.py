@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import cublas
@@ -468,7 +469,7 @@ class TestDgmm(unittest.TestCase):
         if self.orderc != 'F':
             raise unittest.SkipTest()
         if self._check_dgmm_incx_minus_one_hip_skip_condition():
-            raise unittest.SkipTest()
+            pytest.xfail('HIP dgmm may have a bug')
         self._setup(dtype)
         if self.side == 'L':
             ref = cupy.diag(self.x[::-1]) @ self.a
