@@ -96,8 +96,9 @@ class TestArrayIndexingParameterized(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_getitem(self, xp, dtype):
-        if self._check_getitem_hip_skip_condition():
-            pytest.xfail('HIP may have a bug')
+        if cupy.cuda.runtime.is_hip:
+            if self._check_getitem_hip_skip_condition():
+                pytest.xfail('HIP may have a bug')
         a = testing.shaped_arange(self.shape, xp, dtype)
         if self.transpose:
             a = a.transpose(self.transpose)
