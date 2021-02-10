@@ -4,6 +4,7 @@ import pytest
 import numpy
 
 import cupy
+from cupy.cuda import runtime
 import cupyx
 from cupy import testing
 
@@ -441,24 +442,35 @@ class TestPolyArithmeticShapeCombination(unittest.TestCase):
 class TestPolyArithmeticDiffTypes(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
-    @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
-    def test_polyroutine_diff_types_array(self, xp, dtype1, dtype2):
-        func = getattr(xp, self.fname)
-        a = testing.shaped_arange((10,), xp, dtype1)
-        b = testing.shaped_arange((5,), xp, dtype2)
-        return func(a, b)
+    def test_polyroutine_diff_types_array(self, dtype1, dtype2):
+        def f(xp):
+            func = getattr(xp, self.fname)
+            a = testing.shaped_arange((10,), xp, dtype1)
+            b = testing.shaped_arange((5,), xp, dtype2)
+            return func(a, b)
+        rtol = 1e-5
+        if runtime.is_hip and self.fname == 'polymul':
+            rtol = 1e-4
+        testing.assert_allclose(f(cupy), f(numpy), rtol=rtol)
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
-    @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
-    def test_polyroutine_diff_types_poly1d(self, xp, dtype1, dtype2):
-        func = getattr(xp, self.fname)
-        a = testing.shaped_arange((10,), xp, dtype1)
-        b = testing.shaped_arange((5,), xp, dtype2)
-        a = xp.poly1d(a, variable='z')
-        b = xp.poly1d(b, variable='y')
-        out = func(a, b)
-        assert out.variable == 'x'
-        return out
+    def test_polyroutine_diff_types_poly1d(self, dtype1, dtype2):
+        def f(xp):
+            func = getattr(xp, self.fname)
+            a = testing.shaped_arange((10,), xp, dtype1)
+            b = testing.shaped_arange((5,), xp, dtype2)
+            a = xp.poly1d(a, variable='z')
+            b = xp.poly1d(b, variable='y')
+            out = func(a, b)
+            assert out.variable == 'x'
+            return out
+        rtol = 1e-5
+        if runtime.is_hip and self.fname == 'polymul':
+            rtol = 1e-4
+        try:
+            testing.assert_allclose(f(cupy), f(numpy), rtol=rtol)
+        except TypeError:
+            pass
 
 
 @testing.gpu
