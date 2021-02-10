@@ -419,11 +419,11 @@ def svd(a, full_matrices=True, compute_uv=True):
     singular values.
 
     Args:
-        a (cupy.ndarray): The input matrix with dimension ``(M, N)``.
+        a (cupy.ndarray): The input matrix with dimension ``(..., M, N)``.
         full_matrices (bool): If True, it returns u and v with dimensions
-            ``(M, M)`` and ``(N, N)``. Otherwise, the dimensions of u and v
-            are respectively ``(M, K)`` and ``(K, N)``, where
-            ``K = min(M, N)``.
+            ``(..., M, M)`` and ``(..., N, N)``. Otherwise, the dimensions
+            of u and v are ``(..., M, K)`` and ``(..., K, N)``, respectively,
+            where ``K = min(M, N)``.
         compute_uv (bool): If ``False``, it only returns singular values.
 
     Returns:
@@ -436,6 +436,14 @@ def svd(a, full_matrices=True, compute_uv=True):
         To detect these invalid results, you can set the `linalg`
         configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
+
+    .. note::
+        On CUDA, when ``a.ndim > 2`` and the matrix dimensions <= 32, a fast
+        code path based on Jacobian method (``gesvdj``) is taken. Otherwise,
+        a QR method (``gesvd``) is used.
+
+        On ROCm, there is no such a fast code path that switches the underlying
+        algorithm.
 
     .. seealso:: :func:`numpy.linalg.svd`
     """
