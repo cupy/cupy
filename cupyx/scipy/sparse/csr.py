@@ -1,5 +1,7 @@
-import numpy
 import operator
+import warnings
+
+import numpy
 
 try:
     import scipy.sparse
@@ -14,6 +16,7 @@ from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
 from cupyx.scipy.sparse import csc
+from cupyx.scipy.sparse import SparseEfficiencyWarning
 from cupyx.scipy.sparse import _util
 
 
@@ -108,6 +111,10 @@ class csr_matrix(compressed._compressed_sparse_matrix):
             if op_name in ('_ne_', '_lt_', '_gt_'):
                 return binopt_csr(self, other, op_name)
 
+            warnings.warn(
+                "Comparing sparse matrices using ==, <=, and >= is "
+                "inefficient, try using !=, <, or > instead.",
+                SparseEfficiencyWarning)
             if op_name == '_eq_':
                 opposite_op_name = '_ne_'
             elif op_name == '_le_':
