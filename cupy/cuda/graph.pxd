@@ -11,5 +11,5 @@ cdef class Graph:
     @staticmethod
     cdef Graph from_stream(intptr_t g)
 
-    cpdef launch(self)
-    cpdef upload(self)
+    cpdef launch(self, stream=*)
+    cpdef upload(self, stream=*)

@@ -22,11 +22,15 @@ cdef class Graph:
         graph._init(g, ge)
         return graph
 
-    cpdef launch(self):
-        cdef intptr_t stream = stream_module.get_current_stream_ptr()
-        runtime.graphLaunch(self.graphExec, stream)
+    cpdef launch(self, stream=None):
+        cdef intptr_t stream_ptr
+        if stream is None:
+            stream_ptr = stream_module.get_current_stream_ptr()
+        else:
+            stream_ptr = stream.ptr
+        runtime.graphLaunch(self.graphExec, stream_ptr)
 
-    cpdef upload(self):
+    cpdef upload(self, stream=None):
         # TODO(leofang): I actually don't understand the purpose of this API
         # and did not find a meaningful way to test it, so let's disable it.
         raise NotImplementedError('this function is currently disabled')
