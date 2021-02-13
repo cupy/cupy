@@ -273,8 +273,7 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
         raise RuntimeError("This function is disabled on HIP as "
                            "it is not needed")
 
-    # TODO(leofang): try overlapping using a small stream pool? Or use stream
-    # capture (cupy/cupy#4567) to further reduce kernel launch overhead?
+    # TODO(leofang): try overlapping using a small stream pool?
 
     cdef ndarray x, s, u, vt, dev_info
     cdef int n, m, k, batch_size, i, buffersize, d_size, status
