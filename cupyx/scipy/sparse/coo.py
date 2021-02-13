@@ -197,7 +197,7 @@ class coo_matrix(sparse_data._data_matrix):
         if k <= -rows or k >= cols:
             return cupy.empty(0, dtype=self.data.dtype)
         diag = cupy.zeros(min(rows + min(k, 0), cols - max(k, 0)),
-                        dtype=self.dtype)
+                          dtype=self.dtype)
         diag_mask = (self.row + k) == self.col
 
         if self.has_canonical_format:
