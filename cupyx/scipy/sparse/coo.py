@@ -183,6 +183,34 @@ class coo_matrix(sparse_data._data_matrix):
                 (data, (self.row, self.col)), shape=self.shape,
                 dtype=data.dtype)
 
+    def diagonal(self, k=0):
+        """Returns the k-th diagonal of the matrix.
+
+        Args:
+            k (int, optional): Which diagonal to get, corresponding to elements
+            a[i, i+k]. Default: 0 (the main diagonal).
+
+        Returns:
+            cupy.ndarray : The k-th diagonal.
+        """
+        rows, cols = self.shape
+        if k <= -rows or k >= cols:
+            return cupy.empty(0, dtype=self.data.dtype)
+        diag = cupy.zeros(min(rows + min(k, 0), cols - max(k, 0)),
+                        dtype=self.dtype)
+        diag_mask = (self.row + k) == self.col
+
+        if self.has_canonical_format:
+            row = self.row[diag_mask]
+            data = self.data[diag_mask]
+        else:
+            row, _, data = self._sum_duplicates(self.row[diag_mask],
+                                                self.col[diag_mask],
+                                                self.data[diag_mask])
+        diag[row + min(k, 0)] = data
+
+        return diag
+
     def setdiag(self, values, k=0):
         """Set diagonal or off-diagonal elements of the array.
 
