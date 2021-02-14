@@ -434,13 +434,11 @@ def _astype_scalar(x, ctype, casting, env):
         raise TypeError(
             f"Cannot cast from '{from_t}' to {to_t} "
             f"with casting rule {casting}.")
-    if from_t.kind == 'c' and to_t.kind == 'b':
-        return _call_ufunc(
-            _typerules._numpy_scalar_logical_not, (x,), None, env)
     if from_t.kind == 'c' and to_t.kind != 'c':
-        warnings.warn(
-            'Casting complex values to real discards the imaginary part',
-            numpy.ComplexWarning)
+        if to_t.kind != 'b':
+            warnings.warn(
+                'Casting complex values to real discards the imaginary part',
+                numpy.ComplexWarning)
         return CudaObject(f'({ctype})({x.code}.real())', ctype)
     return CudaObject(f'({ctype})({x.code})', ctype)
 
