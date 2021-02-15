@@ -203,7 +203,7 @@ def _call_ufunc(ufunc, args, dtype, env):
     if ufunc.nout == 1 and op.routine.startswith('out0 = '):
         out_type = _types.Scalar(op.out_types[0])
         expr = op.routine.replace('out0 = ', '')
-        args = [_astype_scalar(x, _types.Scalar(t), 'same_kind')
+        args = [_astype_scalar(x, _types.Scalar(t), 'same_kind', env)
                 for x, t in zip(args, op.in_types)]
 
         can_use_inline_expansion = True
@@ -364,7 +364,7 @@ def _transpile_expr(expr, env):
             raise TypeError(
                 'Type mismatch in conditional expression.: '
                 f'{x.ctype.dtype} != {y.ctype.dtype}')
-        cond = _astype_scalar(cond, _types.Scalar(numpy.bool_), 'unsafe')
+        cond = _astype_scalar(cond, _types.Scalar(numpy.bool_), 'unsafe', env)
         return CudaObject(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
 
     if isinstance(expr, ast.Call):
@@ -393,7 +393,7 @@ def _transpile_expr(expr, env):
             if len(args) != 1:
                 raise TypeError(
                     f'function takes {func} invalid number of argument')
-            return _astype_scalar(args[0], _types.Scalar(func), 'unsafe')
+            return _astype_scalar(args[0], _types.Scalar(func), 'unsafe', env)
 
         raise NotImplementedError(
             f'function call of `{func.__name__}` is not implemented')
@@ -424,7 +424,7 @@ def _transpile_expr(expr, env):
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
-def _astype_scalar(x, ctype, casting, env=None):
+def _astype_scalar(x, ctype, casting, env):
     from_t = x.ctype.dtype
     to_t = ctype.dtype
     if from_t == to_t:
@@ -434,14 +434,11 @@ def _astype_scalar(x, ctype, casting, env=None):
         raise TypeError(
             f"Cannot cast from '{from_t}' to {to_t} "
             f"with casting rule {casting}.")
-    if from_t.kind == 'c' and to_t.kind == 'b':
-        assert env is not None
-        return _call_ufunc(
-            _typerules._numpy_scalar_logical_not, (x,), None, env)
     if from_t.kind == 'c' and to_t.kind != 'c':
-        warnings.warn(
-            'Casting complex values to real discards the imaginary part',
-            numpy.ComplexWarning)
+        if to_t.kind != 'b':
+            warnings.warn(
+                'Casting complex values to real discards the imaginary part',
+                numpy.ComplexWarning)
         return CudaObject(f'({ctype})({x.code}.real())', ctype)
     return CudaObject(f'({ctype})({x.code})', ctype)
 
