@@ -143,8 +143,10 @@ _suffix_literals_dict = {
     numpy.dtype('float64'): '',
     numpy.dtype('float32'): 'f',
     numpy.dtype('int64'): 'll',
+    numpy.dtype('longlong'): 'll',
     numpy.dtype('int32'): '',
     numpy.dtype('uint64'): 'ull',
+    numpy.dtype('ulonglong'): 'ull',
     numpy.dtype('uint32'): 'u',
     numpy.dtype('bool'): '',
 }
