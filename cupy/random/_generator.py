@@ -74,8 +74,6 @@ class RandomState(object):
         # * curand.generateNormalDouble
         # * curand.generateLogNormal
         # * curand.generateLogNormalDouble
-        if size is None:
-            size = ()  # TODO(kataoka): Remove this after #4615 is merged
         size = core.get_size(size)
         element_size = core.internal.prod(size)
         if element_size % 2 == 0:
@@ -470,6 +468,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.pareto`
         """
         a = cupy.asarray(a)
+        if size is None:
+            size = a.shape
         x = self._random_sample_raw(size, dtype)
         cupy.log(x, out=x)
         cupy.exp(-x/a, out=x)
@@ -595,8 +595,6 @@ class RandomState(object):
 
     def _random_sample_raw(self, size, dtype):
         dtype = _check_and_get_dtype(dtype)
-        if size is None:
-            size = ()  # TODO(kataoka): Remove this after #4615 is merged
         out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
             func = curand.generateUniform
@@ -613,6 +611,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.random_sample`
 
         """
+        if size is None:
+            size = ()
         out = self._random_sample_raw(size, dtype)
         RandomState._mod1_kernel(out)
         return out
@@ -758,6 +758,8 @@ class RandomState(object):
             - :func:`cupy.random.standard_exponential` for full documentation
             - :meth:`numpy.random.RandomState.standard_exponential`
         """
+        if size is None:
+            size = ()
         x = self._random_sample_raw(size, dtype)
         return -cupy.log(x, out=x)
 
@@ -1122,11 +1124,13 @@ class RandomState(object):
             - :func:`cupy.random.gumbel` for full documentation
             - :meth:`numpy.random.RandomState.gumbel`
         """
-        x = self._random_sample_raw(size=size, dtype=dtype)
         if not numpy.isscalar(loc):
             loc = cupy.asarray(loc, dtype)
         if not numpy.isscalar(scale):
             scale = cupy.asarray(scale, dtype)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
+        x = self._random_sample_raw(size=size, dtype=dtype)
         RandomState._gumbel_kernel(x, loc, scale, x)
         return x
 
