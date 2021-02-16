@@ -7,7 +7,7 @@
 
 #elif !defined(CUPY_NO_CUDA)
 
-#include <nvrtc.h>
+#include "cuda/cupy_nvrtc.h"
 
 #else
 

@@ -1,8 +1,10 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 
 
@@ -10,6 +12,7 @@ from cupy import testing
     'UPLO': ['U', 'L'],
 }))
 @testing.gpu
+@pytest.mark.xfail(runtime.is_hip, reason='dsyevd not implemented')
 class TestEigenvalue(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True, no_complex=True)

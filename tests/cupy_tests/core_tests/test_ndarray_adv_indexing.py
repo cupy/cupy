@@ -85,10 +85,10 @@ class TestArrayAdvancedIndexingGetitemPerm(unittest.TestCase):
     {'shape': (2, 3, 4), 'indexes': (slice(None), [])},
     {'shape': (2, 3, 4), 'indexes': ([], [])},
     {'shape': (2, 3, 4), 'indexes': ([[]],)},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool)},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool_)},
     {'shape': (2, 3, 4),
-     'indexes': (slice(None), numpy.array([], dtype=numpy.bool))},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool)},
+     'indexes': (slice(None), numpy.array([], dtype=numpy.bool_))},
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool_)},
     # TODO(okuta): pass the following commented out tests
     # {'shape': (2, 3, 4), 'indexes': (True, [True, False])},
     # {'shape': (2, 3, 4), 'indexes': (False, [True, False])},
@@ -308,7 +308,7 @@ class TestArrayAdvancedIndexingOverflow(unittest.TestCase):
     {'shape': (0,), 'indexes': numpy.array([False, True, True])},
     {'shape': (0, 1), 'indexes': (0, Ellipsis)},
     {'shape': (2, 3), 'indexes': (slice(None), [1, 2], slice(None))},
-    {'shape': (2, 3), 'indexes': numpy.array([], dtype=numpy.float)},
+    {'shape': (2, 3), 'indexes': numpy.array([], dtype=numpy.float64)},
 )
 @testing.gpu
 class TestArrayInvalidIndexAdvGetitem(unittest.TestCase):
@@ -443,12 +443,12 @@ class TestArrayInvalidValueAdvGetitem(unittest.TestCase):
      'value': 1},
     {'shape': (2, 3, 4), 'indexes': ([], []),
      'value': 1},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool),
+    {'shape': (2, 3, 4), 'indexes': numpy.array([], dtype=numpy.bool_),
      'value': 1},
     {'shape': (2, 3, 4),
-     'indexes': (slice(None), numpy.array([], dtype=numpy.bool)),
+     'indexes': (slice(None), numpy.array([], dtype=numpy.bool_)),
      'value': 1},
-    {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool),
+    {'shape': (2, 3, 4), 'indexes': numpy.array([[], []], dtype=numpy.bool_),
      'value': numpy.random.uniform(size=(4,))},
     # zero-dim and zero-sized arrays
     {'shape': (), 'indexes': Ellipsis, 'value': 1},

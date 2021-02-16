@@ -59,6 +59,8 @@ typedef hipError_t cudaError_t;
 const CUresult cudaSuccess = static_cast<CUresult>(0);
 const CUresult cudaErrorInvalidValue = hipErrorInvalidValue;
 const CUresult cudaErrorMemoryAllocation = hipErrorMemoryAllocation;
+const CUresult cudaErrorInvalidResourceHandle = hipErrorInvalidResourceHandle;
+const CUresult cudaErrorContextIsDestroyed = hipErrorUnknown;  // no counterpart in HIP
 const CUresult cudaErrorPeerAccessAlreadyEnabled = hipErrorPeerAccessAlreadyEnabled;
 typedef enum {} cudaDataType;
 typedef hipDeviceAttribute_t cudaDeviceAttr;

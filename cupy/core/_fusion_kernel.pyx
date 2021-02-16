@@ -17,12 +17,12 @@ from cupy.core cimport _reduction
 
 from cupy.core import _dtype
 from cupy import _util
-from cupy.core import _fusion_emit_code
 from cupy.core import _fusion_op
 from cupy.core._fusion_variable import _AbstractDim
 from cupy.core._fusion_variable import _TraceVariable
 from cupy.core._fusion_variable import _TraceScalar
 from cupy.core._fusion_variable import _TraceArray
+from cupyx.jit import _codeblock
 
 
 cdef Py_ssize_t _default_block_size = (
@@ -49,12 +49,8 @@ def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
     # by uncommenting the following line.
     # print(code)
 
-    if use_grid_sync:
-        module = compile_with_cache(
-            code, (), None, None, True, 'nvcc', False, True)
-    else:
-        module = compile_with_cache(code)
-
+    module = compile_with_cache(
+        code, (), None, None, True, 'nvrtc', False, use_grid_sync)
     return module.get_function(name)
 
 
@@ -110,7 +106,7 @@ cdef class FusedKernel:
             codes.append(op.emit_code())
 
         self._submodule_code = submodule_code
-        self._cuda_body = str(_fusion_emit_code._CodeBlock('', codes))
+        self._cuda_body = str(_codeblock.CodeBlock('', codes))
 
         # Check the format of the return value.
         if return_size == 'none':

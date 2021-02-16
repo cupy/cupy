@@ -113,7 +113,7 @@ Please make sure that only one CuPy package (``cupy`` or ``cupy-cudaXX`` where X
   $ pip freeze | grep cupy
 
 
-Installing CuPy from conda-forge
+Installing CuPy from Conda-Forge
 --------------------------------
 
 Conda/Anaconda is a cross-platform package management solution widely used in scientific computing and other fields.
@@ -130,7 +130,13 @@ the installation of a particular CUDA version (say 10.0) for driver compatibilit
 
 .. note::
 
-    Currently cuTENSOR is not yet available on ``conda-forge``.
+    cuTENSOR is available on ``conda-forge`` for CUDA 10.1+ and is an optional dependency. To install CuPy with the cuTENSOR
+    support enabled, you can do::
+
+    $ conda install -c conda-forge cupy cutensor cudatoolkit=10.2
+
+    Note that ``cupy`` and ``cutensor`` must be installed at the same time (as shown above) in order for the ``conda`` solver to pick up the right package;
+    otherwise, the cuTENSOR support is disabled.
 
 .. note::
 

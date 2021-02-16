@@ -43,7 +43,7 @@ Here are the environment variables CuPy uses.
 |                                                | The value can be specified in absolute bytes or    |
 |                                                | fraction (e.g., ``"90%"``) of the total memory of  |
 |                                                | each GPU.                                          |
-|                                                | See :doc:`memory` for details.                     |
+|                                                | See :doc:`../tutorial/memory` for details.         |
 |                                                | ``0`` (unlimited) is used by default.              |
 +------------------------------------------------+----------------------------------------------------+
 | ``CUPY_SEED``                                  | Set the seed for random number generators.         |
@@ -84,6 +84,15 @@ Here are the environment variables CuPy uses.
 |                                                | NVRTC; this environment is only effective for      |
 |                                                | RawKernels/RawModules with ``nvcc`` backend or     |
 |                                                | when using ``cub`` as the accelerator.             |
++------------------------------------------------+----------------------------------------------------+
+| ``CUPY_CUDA_PER_THREAD_DEFAULT_STREAM``        | If set to 1, CuPy will use the CUDA per-thread     |
+|                                                | default stream, effectively causing each host      |
+|                                                | thread to automatically execute in its own stream, |
+|                                                | unless the CUDA default (``null``) stream or       |
+|                                                | a user-created stream is specified. If set to 0    |
+|                                                | (default), the CUDA default (``null``) stream is   |
+|                                                | used, unless the per-thread default stream         |
+|                                                | (``ptds``) or a user-created stream is specified.  |
 +------------------------------------------------+----------------------------------------------------+
 
 Moreover, as in any CUDA programs, all of the CUDA environment variables listed in the `CUDA Toolkit
