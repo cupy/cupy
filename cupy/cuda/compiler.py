@@ -217,10 +217,14 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
     if not arch:
         arch = _get_arch()
 
-    options += ('-arch=compute_{}'.format(arch),)
+    if not runtime.is_hip:
+        options += ('-arch=compute_{}'.format(arch),)
+    else:
+        options += ('-arch={}'.format(arch),)
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
+
         if jitify:
             options, headers, include_names = _jitify_prep(
                 source, options, cu_path)
@@ -619,9 +623,12 @@ def is_valid_kernel_name(name):
 
 
 def compile_using_hipcc(source, options, arch, log_stream=None):
+    # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
+    # pick up the right arch without needing HCC_AMDGPU_TARGET. Perhaps we just
+    # don't bother passing arch to hiprtc/hipcc?
     assert len(arch) > 0
     # pass HCC_AMDGPU_TARGET same as arch
-    cmd = ['hipcc', '--genco'] + list(options)
+    cmd = ['hipcc', '--genco', '-arch='+arch] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
@@ -732,8 +739,8 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     if cache_dir is None:
         cache_dir = get_cache_dir()
     # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
-    # pick up the right arch without needing HCC_AMDGPU_TARGET. Check the
-    # earliest ROCm version in which this happened.
+    # pick up the right arch without needing HCC_AMDGPU_TARGET. Perhaps we just
+    # don't bother passing arch to hiprtc/hipcc?
     if arch is None:
         arch = os.environ.get('HCC_AMDGPU_TARGET')
         if arch is None:
