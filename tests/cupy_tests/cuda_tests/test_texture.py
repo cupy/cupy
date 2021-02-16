@@ -11,7 +11,9 @@ from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
                                TextureObject, TextureReference,
                                SurfaceObject)
 
-
+if cupy.cuda.runtime.is_hip:
+    pytest.skip('HIP texture support is not yet ready',
+                allow_module_level=True)
 dev = cupy.cuda.Device(runtime.getDevice())
 
 
