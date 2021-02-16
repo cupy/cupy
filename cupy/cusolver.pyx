@@ -17,6 +17,7 @@ from cupy.cuda cimport memory
 from cupy.core.core cimport _ndarray_init, ndarray
 
 import cupy as _cupy
+from cupy_backends.cuda.api import driver as _driver
 from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusolver as _cusolver
@@ -89,9 +90,7 @@ def check_availability(name):
         version = _runtime.runtimeGetVersion()
     else:
         available_version = _available_hip_version
-        # TODO(leofang): use HIP_VERSION instead?
-        version = _cusolver._getVersion()
-        version = version[0] * 100 + version[1]
+        version = _driver.get_build_version()  # = HIP_VERSION
     if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)

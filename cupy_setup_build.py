@@ -830,13 +830,17 @@ def cythonize(extensions, arg_options):
     if compile_time_env is None:
         compile_time_env = {}
         cythonize_options['compile_time_env'] = compile_time_env
-    compile_time_env['use_hip'] = arg_options['use_hip']
     compile_time_env['CUPY_CUFFT_STATIC'] = False
     compile_time_env['cython_version'] = str(cython_version)
-    if use_hip or arg_options['no_cuda']:
+    if arg_options['no_cuda']:  # on RTD
         compile_time_env['CUDA_VERSION'] = 0
-    else:
+        compile_time_env['HIP_VERSION'] = 0
+    elif use_hip:  # on ROCm/HIP
+        compile_time_env['CUDA_VERSION'] = 0
+        compile_time_env['HIP_VERSION'] = build.get_hip_version()
+    else:  # on CUDA
         compile_time_env['CUDA_VERSION'] = build.get_cuda_version()
+        compile_time_env['HIP_VERSION'] = 0
 
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,

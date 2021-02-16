@@ -6,6 +6,7 @@ import warnings
 
 import numpy
 
+from cupyx.jit._codeblock import CodeBlock
 from cupy.core import _kernel
 from cupyx.jit import _types
 from cupyx.jit import _typerules
@@ -131,8 +132,10 @@ def _transpile_function(
         in_types (list of _types.TypeBase): The types of arguments.
         ret_type (_types.TypeBase): The type of return value.
 
-    Returns (str):
-        The generated CUDA code.
+    Returns:
+        code (str): The generated CUDA code.
+        env (Environment): More details of analysis result of the function,
+            which includes preambles, estimated return type and more.
     """
     if not isinstance(func, ast.FunctionDef):
         # TODO(asi1024): Support for `ast.ClassDef`.
@@ -161,11 +164,12 @@ def _transpile_function(
         dict([(k, Constant(v)) for k, v, in consts.items()]),
         dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)]),
         ret_type)
-    params = ', '.join([f'{env[a].ctype} {a}' for a in args])
     body = _transpile_stmts(func.body, env)
-    function_decl = f'{attributes} {env.ret_type} {func.name}({params})'
-    local_vars = _indent([f'{v.ctype} {n};' for n, v in env.locals.items()])
-    return '\n'.join([function_decl + ' {'] + local_vars + body + ['}']), env
+    params = ', '.join([f'{env[a].ctype} {a}' for a in args])
+    local_vars = [f'{v.ctype} {n};' for n, v in env.locals.items()]
+    head = f'{attributes} {env.ret_type} {func.name}({params})'
+    code = CodeBlock(head, local_vars + body)
+    return str(code), env
 
 
 def _eval_operand(op, args, env):
@@ -203,7 +207,7 @@ def _call_ufunc(ufunc, args, dtype, env):
     if ufunc.nout == 1 and op.routine.startswith('out0 = '):
         out_type = _types.Scalar(op.out_types[0])
         expr = op.routine.replace('out0 = ', '')
-        args = [_astype_scalar(x, _types.Scalar(t), 'same_kind')
+        args = [_astype_scalar(x, _types.Scalar(t), 'same_kind', env)
                 for x, t in zip(args, op.in_types)]
 
         can_use_inline_expansion = True
@@ -236,13 +240,16 @@ __device__ {out_type} {ufunc_name}({params}) {{
 
 
 def _transpile_stmts(stmts, env):
-    return _indent([_transpile_stmt(stmt, env) for stmt in stmts])
+    codeblocks = []
+    for stmt in stmts:
+        codeblocks.extend(_transpile_stmt(stmt, env))
+    return codeblocks
 
 
 def _transpile_stmt(stmt, env):
     """Transpile the statement.
 
-    Returns (str): The generated CUDA code.
+    Returns (list of [CodeBlock or str]): The generated CUDA code.
     """
 
     if isinstance(stmt, ast.ClassDef):
@@ -259,7 +266,7 @@ def _transpile_stmt(stmt, env):
         elif env.ret_type != t:
             raise ValueError(
                 f'Failed to infer the return type: {env.ret_type} or {t}')
-        return f'return {value.code};'
+        return [f'return {value.code};']
     if isinstance(stmt, ast.Delete):
         raise NotImplementedError('`del` is not supported currently.')
     if isinstance(stmt, ast.Assign):
@@ -274,7 +281,7 @@ def _transpile_stmt(stmt, env):
                 env[name] = CudaObject(target.id, value.ctype)
             elif env[name].ctype.dtype != value.ctype.dtype:
                 raise TypeError('dtype mismatch.')
-            return f'{target.id} = {value.code};'
+            return [f'{target.id} = {value.code};']
         raise NotImplementedError('Not implemented')
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
@@ -285,7 +292,7 @@ def _transpile_stmt(stmt, env):
         if not numpy.can_cast(
                 result.ctype.dtype, target.ctype.dtype, 'same_kind'):
             raise TypeError('dtype mismatch')
-        return f'{target.code} = {result.code};'
+        return [f'{target.code} = {result.code};']
     if isinstance(stmt, ast.For):
         raise NotImplementedError('Not implemented.')
     if isinstance(stmt, ast.AsyncFor):
@@ -302,22 +309,22 @@ def _transpile_stmt(stmt, env):
         value = _transpile_expr(stmt.test, env)
         if is_constants([value]):
             assert value.obj
-            return ';'
+            return [';']
         else:
-            return 'assert(' + value + ');'
+            return ['assert(' + value + ');']
     if isinstance(stmt, (ast.Import, ast.ImportFrom)):
         raise ValueError('Cannot import modules from the target functions.')
     if isinstance(stmt, (ast.Global, ast.Nonlocal)):
         raise ValueError('Cannot use global/nonlocal in the target functions.')
     if isinstance(stmt, ast.Expr):
         value = _transpile_expr(stmt.value, env)
-        return ';' if is_constants([value]) else value + ';'
+        return [';'] if is_constants([value]) else [value + ';']
     if isinstance(stmt, ast.Pass):
-        return ';'
+        return [';']
     if isinstance(stmt, ast.Break):
-        return NotImplementedError('Not implemented.')
+        raise NotImplementedError('Not implemented.')
     if isinstance(stmt, ast.Continue):
-        return NotImplementedError('Not implemented.')
+        raise NotImplementedError('Not implemented.')
     assert False
 
 
@@ -364,7 +371,7 @@ def _transpile_expr(expr, env):
             raise TypeError(
                 'Type mismatch in conditional expression.: '
                 f'{x.ctype.dtype} != {y.ctype.dtype}')
-        cond = _astype_scalar(cond, _types.Scalar(numpy.bool_), 'unsafe')
+        cond = _astype_scalar(cond, _types.Scalar(numpy.bool_), 'unsafe', env)
         return CudaObject(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
 
     if isinstance(expr, ast.Call):
@@ -393,7 +400,7 @@ def _transpile_expr(expr, env):
             if len(args) != 1:
                 raise TypeError(
                     f'function takes {func} invalid number of argument')
-            return _astype_scalar(args[0], _types.Scalar(func), 'unsafe')
+            return _astype_scalar(args[0], _types.Scalar(func), 'unsafe', env)
 
         raise NotImplementedError(
             f'function call of `{func.__name__}` is not implemented')
@@ -424,7 +431,7 @@ def _transpile_expr(expr, env):
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
-def _astype_scalar(x, ctype, casting, env=None):
+def _astype_scalar(x, ctype, casting, env):
     from_t = x.ctype.dtype
     to_t = ctype.dtype
     if from_t == to_t:
@@ -434,14 +441,11 @@ def _astype_scalar(x, ctype, casting, env=None):
         raise TypeError(
             f"Cannot cast from '{from_t}' to {to_t} "
             f"with casting rule {casting}.")
-    if from_t.kind == 'c' and to_t.kind == 'b':
-        assert env is not None
-        return _call_ufunc(
-            _typerules._numpy_scalar_logical_not, (x,), None, env)
     if from_t.kind == 'c' and to_t.kind != 'c':
-        warnings.warn(
-            'Casting complex values to real discards the imaginary part',
-            numpy.ComplexWarning)
+        if to_t.kind != 'b':
+            warnings.warn(
+                'Casting complex values to real discards the imaginary part',
+                numpy.ComplexWarning)
         return CudaObject(f'({ctype})({x.code}.real())', ctype)
     return CudaObject(f'({ctype})({x.code})', ctype)
 
