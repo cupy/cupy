@@ -379,6 +379,19 @@ class TestVectorizeStmts(unittest.TestCase):
         x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         return f(x)
 
+    @testing.numpy_cupy_array_equal()
+    def test_while(self, xp):
+        def func_while(x):
+            y = 0
+            while x > 0:
+                y += x
+                x -= 1
+            return y
+
+        f = xp.vectorize(func_while)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
+
 
 class _MyClass:
 

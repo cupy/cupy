@@ -321,7 +321,14 @@ def _transpile_stmt(stmt, is_toplevel, env):
     if isinstance(stmt, ast.AsyncFor):
         raise ValueError('`async for` is not allowed.')
     if isinstance(stmt, ast.While):
-        raise NotImplementedError('Not implemented.')
+        if len(stmt.orelse) > 0:
+            raise NotImplementedError('while-else is not supported.')
+        condition = _transpile_expr(stmt.test, env)
+        condition = _astype_scalar(condition, _types.bool_, 'unsafe', env)
+        condition = _to_cuda_object(condition, env)
+        body = _transpile_stmts(stmt.body, False, env)
+        head = f'while ({condition.code})'
+        return [CodeBlock(head, body)]
     if isinstance(stmt, ast.If):
         condition = _transpile_expr(stmt.test, env)
         if is_constants([condition]):
