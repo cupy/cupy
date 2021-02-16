@@ -25,11 +25,11 @@ for submodule in ('cupy/core/include/cupy/cub/',
 
 requirements = {
     'setup': [
-        'fastrlock>=0.3',
+        'fastrlock>=0.5',
     ],
     'install': [
         'numpy>=1.17',
-        'fastrlock>=0.3',
+        'fastrlock>=0.5',
     ],
     'all': [
         'scipy>=1.4',
