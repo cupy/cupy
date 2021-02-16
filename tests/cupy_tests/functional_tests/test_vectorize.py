@@ -308,7 +308,7 @@ class TestVectorizeInstructions(unittest.TestCase):
     def test_vectorize_const_typeerror(self):
         def my_invalid_type(x):
             x = numpy.dtype('f').type
-            return 0
+            return x
 
         f = cupy.vectorize(my_invalid_type)
         x = testing.shaped_random((20, 30), cupy, numpy.int32, seed=1)
@@ -318,7 +318,7 @@ class TestVectorizeInstructions(unittest.TestCase):
     def test_vectorize_const_non_toplevel(self):
         def my_invalid_type(x):
             if x == 3:
-                typecast = numpy.dtype('f').type
+                typecast = numpy.dtype('f').type  # NOQA
             return x
 
         f = cupy.vectorize(my_invalid_type)
