@@ -392,6 +392,43 @@ class TestVectorizeStmts(unittest.TestCase):
         x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         return f(x)
 
+    @testing.numpy_cupy_array_equal()
+    def test_for(self, xp):
+        def func_for(x):
+            y = 0
+            for i in range(x):
+                y += i
+            return y
+
+        f = xp.vectorize(func_for)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_const_range(self, xp):
+        def func_for(x):
+            for i in range(3, 10):
+                x += i
+            return x
+
+        f = xp.vectorize(func_for)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_range_step(self, xp):
+        def func_for(x, y, z):
+            res = 0
+            for i in range(x, y, z):
+                res += i * i
+            return x
+
+        f = xp.vectorize(func_for)
+        start = xp.array([0, 1, 2, 3, 4, 5])
+        stop = xp.array([-21, -23, -19, 17, 27, 24])
+        step = xp.array([-3, -2, -1, 1, 2, 3])
+        return f(start, stop, step)
+
 
 class _MyClass:
 

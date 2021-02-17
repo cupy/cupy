@@ -1,4 +1,5 @@
 import ast
+import builtins
 import inspect
 import numbers
 import re
@@ -40,7 +41,7 @@ def transpile(func, attributes, mode, in_types, ret_type):
 
     global_mems = dict(inspect.getclosurevars(func).globals)
     nonlocals = dict(inspect.getclosurevars(func).nonlocals)
-    consts = dict(**global_mems, **nonlocals)
+    consts = dict(**global_mems, **nonlocals, **builtins.__dict__)
     tree = ast.parse(source)
     assert isinstance(tree, ast.Module)
     assert len(tree.body) == 1
@@ -77,6 +78,23 @@ class Constant:
 
     def __repr__(self):
         return f'<Constant obj = "{self.obj}">'
+
+
+class Range:
+
+    def __init__(self, start, stop, step, step_is_positive):
+        self.start = start
+        self.stop = stop
+        self.step = step
+        self.ctype = stop.ctype
+        self.step_is_positive = step_is_positive  # True, False or None
+
+        if self.ctype.dtype.kind not in 'iu':
+            raise TypeError('range supports only for integer type.')
+        if self.ctype.dtype != start.ctype.dtype:
+            raise TypeError(f'dtype mismatch: {self.ctype} != {start.ctype}')
+        if self.ctype.dtype != step.ctype.dtype:
+            raise TypeError(f'dtype mismatch: {self.ctype} != {step.ctype}')
 
 
 def is_constants(values):
@@ -316,8 +334,38 @@ def _transpile_stmt(stmt, is_toplevel, env):
                 result.ctype.dtype, target.ctype.dtype, 'same_kind'):
             raise TypeError('dtype mismatch')
         return [f'{target.code} = {result.code};']
+
     if isinstance(stmt, ast.For):
-        raise NotImplementedError('Not implemented.')
+        if len(stmt.orelse) > 0:
+            raise NotImplementedError('while-else is not supported.')
+        name = stmt.target.id
+        iters = _transpile_expr(stmt.iter, env)
+
+        if env[name] is None:
+            env[name] = CudaObject(stmt.target.id, iters.ctype)
+        elif env[name].ctype.dtype != iters.ctype.dtype:
+            raise TypeError(
+                f'Data type mismatch of variable: `{name}`: '
+                f'{env[name].ctype.dtype} != {iters.ctype.dtype}')
+
+        body = _transpile_stmts(stmt.body, False, env)
+
+        if not isinstance(iters, Range):
+            raise NotImplementedError(
+                'for-loop is supported only for range iterator.')
+
+        start = iters.start.code
+        stop = iters.stop.code
+        step = iters.step.code
+        cond = f'{step} >= 0 ? {name} < {stop} : {name} > {stop}'
+        if iters.step_is_positive is True:
+            cond = f'{name} < {stop}'
+        elif iters.step_is_positive is False:
+            cond = f'{name} > {stop}'
+
+        head = f'for ({name} = {start}; {cond}; {name} += {step})'
+        return [CodeBlock(head, body)]
+
     if isinstance(stmt, ast.AsyncFor):
         raise ValueError('`async for` is not allowed.')
     if isinstance(stmt, ast.While):
@@ -417,6 +465,24 @@ def _transpile_expr(expr, env):
         kwargs = dict([(kw.arg, _transpile_expr(kw.value, env))
                        for kw in expr.keywords])
 
+        if func is range:
+            if len(args) == 0:
+                raise TypeError('range expected at least 1 argument, got 0')
+            elif len(args) == 1:
+                start, stop, step = Constant(0), args[0], Constant(1)
+            elif len(args) == 2:
+                start, stop, step = args[0], args[1], Constant(1)
+            elif len(args) == 3:
+                start, stop, step = args
+            else:
+                raise TypeError(
+                    f'range expected at most 3 argument, got {len(args)}')
+            step_is_positive = step.obj >= 0 if is_constants([step]) else None
+            start = _to_cuda_object(start, env)
+            stop = _to_cuda_object(stop, env)
+            step = _to_cuda_object(step, env)
+            return Range(start, stop, step, step_is_positive)
+
         if is_constants(args) and is_constants(kwargs.values()):
             # compile-time function call
             args = [x.obj for x in args]
@@ -462,7 +528,7 @@ def _transpile_expr(expr, env):
         value = env[expr.id]
         if value is None:
             raise NameError(
-                'Unbound name: {} in L{}'.format(expr.id, expr.lineno))
+                f'Unbound name: {expr.id} in line {expr.lineno}')
         return env[expr.id]
     if isinstance(expr, ast.Attribute):
         value = _transpile_expr(expr.value, env)
@@ -501,4 +567,6 @@ def _to_cuda_object(x, env):
         ctype = _typerules.get_ctype_from_scalar(env.mode, x.obj)
         code = _typerules.get_cuda_code_from_constant(x.obj, ctype)
         return CudaObject(code, ctype)
+    if isinstance(x, Range):
+        raise TypeError('range object cannot be interpreted as a cuda object.')
     assert False
