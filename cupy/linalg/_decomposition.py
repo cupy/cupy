@@ -378,10 +378,10 @@ def _svd_batched(a, a_dtype, full_matrices, compute_uv):
         s = cupy.empty(batch_shape + (0,), s_dtype)
         if compute_uv:
             if full_matrices:
-                u = [cupy.eye(n, dtype=a_dtype) for _ in range(batch_size)]
-                u = cupy.stack(u, axis=0).reshape(*batch_shape, n, n)
-                vt = [cupy.eye(m, dtype=a_dtype) for _ in range(batch_size)]
-                vt = cupy.stack(vt, axis=0).reshape(*batch_shape, m, m)
+                u = cupy.empty(batch_shape + (n, n), dtype=a_dtype)
+                u[...] = cupy.identity(n, dtype=a_dtype)
+                vt = cupy.empty(batch_shape + (m, m), dtype=a_dtype)
+                vt[...] = cupy.identity(m, dtype=a_dtype)
             else:
                 u = cupy.empty(batch_shape + (n, 0), dtype=a_dtype)
                 vt = cupy.empty(batch_shape + (0, m), dtype=a_dtype)
