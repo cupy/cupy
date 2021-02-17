@@ -124,9 +124,9 @@ def _b_orthonormalize(B, blockVectorV, blockVectorBV=None, retInvR=False):
             blockVectorBV = cupy.matmul(blockVectorBV, VBV)
         else:
             blockVectorBV = None
-    except Exception as e:
+    except linalg.LinAlgError:
         # LinAlg Error: cholesky transformation might fail in rare cases
-        print("Exception: {}, cholesky has failed".format(e))
+        # raise ValueError("cholesky has failed")
         blockVectorV = None
         blockVectorBV = None
         VBV = None
@@ -318,9 +318,8 @@ def lobpcg(A, X,
         # try:
         #    gramYBY is a Cholesky factor from now on...
         #    gramYBY = cho_factor(gramYBY)
-        # except Exception as e:
-        #    raise ValueError('''cannot handle linearly dependent constraints,
-        #                     {} occurred'''.format(e))
+        # except linalg.LinAlgError:
+        #    raise ValueError("cannot handle linearly dependent constraints")
 
         _applyConstraints(blockVectorX, gramYBY, blockVectorBY, blockVectorY)
 
@@ -328,7 +327,6 @@ def lobpcg(A, X,
     blockVectorX, blockVectorBX = _b_orthonormalize(B, blockVectorX)
 
     # Compute the initial Ritz vectors: solve the eigenproblem.
-    assert(not isinstance(blockVectorX, type(None)))
     blockVectorAX = A(blockVectorX)
     gramXAX = cupy.dot(blockVectorX.T.conj(), blockVectorAX)
 
@@ -531,8 +529,7 @@ def lobpcg(A, X,
 
             try:
                 _lambda, eigBlockVector = _genEigh(gramA, gramB)
-            except Exception:
-                print("restarting...\n")
+            except linalg.LinAlgError:
                 # try again after dropping the direction vectors P from RR
                 restart = True
 
@@ -546,9 +543,8 @@ def lobpcg(A, X,
 
             try:
                 _lambda, eigBlockVector = _genEigh(gramA, gramB)
-            except Exception:
-                raise ValueError('eigh has failed in lobpcg iterations'
-                                 'even after restart...')
+            except linalg.LinAlgError:
+                raise ValueError('eigh has failed in lobpcg iterations')
 
         ii = _get_indx(_lambda, sizeX, largest)
         if verbosityLevel > 10:

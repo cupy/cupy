@@ -865,9 +865,7 @@ class TestLOBPCG(unittest.TestCase):
         V = testing.shaped_random((m, n), xp=numpy, seed=seed)
         # TODO : use cupy's native linalg.orth() once implemented
         X = scipy.linalg.orth(V)
-        if(xp == cupy):
-            return cupy.asarray(X)
-        return X
+        return xp.asarray(X)
 
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
                                  contiguous_check=False)
