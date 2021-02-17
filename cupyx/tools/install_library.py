@@ -102,6 +102,7 @@ def _make_cutensor_record(
         }
     }
 
+
 _cutensor_records.append(_make_cutensor_record(
     '11.1', '1.2.2',
     'libcutensor-linux-x86_64-1.2.2.5.tar.gz',
