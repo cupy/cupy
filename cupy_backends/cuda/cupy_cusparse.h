@@ -26,10 +26,8 @@
 
 /*
  * Generic APIs are not suppoted in CUDA 10.1/10.2 on Windows.
- * These APIs are available in headers in CUDA 10.1 and 10.1 Update 1, but hidden in
- * 10.1 Update 2 and 10.2 on Windows. Implementations are not exposed from DLL in either
- * versions of CUDA, so we have to provide a stub implementation using the full signature
- * declared in the header, instead of using (...).
+ * These APIs are available in headers in CUDA 10.1 and 10.1 Update 1,
+ * but hidden in 10.1 Update 2 and 10.2 on Windows.
  */
 
 #if defined(_WIN32) && (CUSPARSE_VERSION < 11000)
@@ -89,6 +87,13 @@ typedef enum {} cusparseSpMVAlg_t;
 
 #if CUSPARSE_VERSION < 10200 || WIN32_EXPOSE_SPMM_STUB_IMPL
 // Generic APIs added in cuSPARSE 10.2 (CUDA 10.1.168)
+
+/*
+ * On Windows, implementations are not exposed from DLL in CUDA 10.1/10.2
+ * although it is declared in the header. So we have to provide a stub
+ * implementation using the full signature to match with the signature
+ * declared in cusparse.h, instead of using (...).
+ */
 
 cusparseStatus_t cusparseCreateSpVec(
     cusparseSpVecDescr_t* spVecDescr,
