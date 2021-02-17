@@ -185,15 +185,16 @@ def _call_ufunc(ufunc, args, dtype, env):
     if len(args) != ufunc.nin:
         raise ValueError('invalid number of arguments')
 
-    args = [_to_cuda_object(x, env) for x in args]
-
+    in_types = []
     for x in args:
-        if not isinstance(x.ctype, _types.Scalar):
-            raise NotImplementedError
+        if is_constants([x]):
+            t = _typerules.get_ctype_from_scalar(env.mode, x.obj).dtype
+        else:
+            t = x.ctype.dtype
+        in_types.append(t)
 
-    in_types = tuple([x.ctype.dtype for x in args])
     if dtype is None:
-        op = ufunc._ops._guess_routine_from_in_types(in_types)
+        op = ufunc._ops._guess_routine_from_in_types(tuple(in_types))
     else:
         op = ufunc._ops._guess_routine_from_dtype(dtype)
 
@@ -207,8 +208,12 @@ def _call_ufunc(ufunc, args, dtype, env):
     if ufunc.nout == 1 and op.routine.startswith('out0 = '):
         out_type = _types.Scalar(op.out_types[0])
         expr = op.routine.replace('out0 = ', '')
-        args = [_astype_scalar(x, _types.Scalar(t), 'same_kind', env)
-                for x, t in zip(args, op.in_types)]
+
+        in_params = []
+        for x, t in zip(args, op.in_types):
+            x = _astype_scalar(x, _types.Scalar(t), 'same_kind', env)
+            x = _to_cuda_object(x, env)
+            in_params.append(x)
 
         can_use_inline_expansion = True
         for i in range(ufunc.nin):
@@ -217,7 +222,7 @@ def _call_ufunc(ufunc, args, dtype, env):
 
         if can_use_inline_expansion:
             # Code pass for readable generated code
-            for i, x in enumerate(args):
+            for i, x in enumerate(in_params):
                 expr = expr.replace(f'in{i}', x.code)
             expr = '(' + expr.replace('out0_type', str(out_type)) + ')'
             env.preambles.add(ufunc._preamble)
@@ -232,7 +237,7 @@ __device__ {out_type} {ufunc_name}({params}) {{
 }}
 """
             env.preambles.add(ufunc_code)
-            in_params = ', '.join([a.code for a in args])
+            in_params = ', '.join([a.code for a in in_params])
             expr = f'{ufunc_name}({in_params})'
         return CudaObject(expr, out_type)
 
@@ -300,7 +305,14 @@ def _transpile_stmt(stmt, env):
     if isinstance(stmt, ast.While):
         raise NotImplementedError('Not implemented.')
     if isinstance(stmt, ast.If):
-        raise NotImplementedError('Not implemented.')
+        condition = _transpile_expr(stmt.test, env)
+        if is_constants([condition]):
+            stmts = stmt.body if condition.obj else stmt.orelse
+            return _transpile_stmts(stmts, env)
+        head = f'if ({condition.code})'
+        then_body = _transpile_stmts(stmt.body, env)
+        else_body = _transpile_stmts(stmt.orelse, env)
+        return [CodeBlock(head, then_body), CodeBlock('else', else_body)]
     if isinstance(stmt, (ast.With, ast.AsyncWith)):
         raise ValueError('Switching contexts are not allowed.')
     if isinstance(stmt, (ast.Raise, ast.Try)):
@@ -432,6 +444,9 @@ def _transpile_expr(expr, env):
 
 
 def _astype_scalar(x, ctype, casting, env):
+    if is_constants([x]):
+        return Constant(ctype.dtype.type(x.obj))
+
     from_t = x.ctype.dtype
     to_t = ctype.dtype
     if from_t == to_t:
@@ -455,5 +470,6 @@ def _to_cuda_object(x, env):
         return x
     if isinstance(x, Constant):
         ctype = _typerules.get_ctype_from_scalar(env.mode, x.obj)
-        return CudaObject(str(x.obj).lower(), ctype)
+        code = _typerules.get_cuda_code_from_constant(x.obj, ctype)
+        return CudaObject(code, ctype)
     assert False
