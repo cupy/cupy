@@ -398,13 +398,14 @@ def _svd_batched(a, a_dtype, full_matrices, compute_uv):
     else:
         # manually loop over cusolverDn<t>gesvd()
         # copy (via possible type casting) is done in _gesvd_batched
+        # note: _gesvd_batched returns V, not V^H
         out = _gesvd_batched(a, a_dtype, full_matrices, compute_uv, False)
     if compute_uv:
         u, s, v = out
         u = u.reshape(*batch_shape, *(u.shape[-2:]))
         s = s.reshape(*batch_shape, *(s.shape[-1:]))
         v = v.reshape(*batch_shape, *(v.shape[-2:]))
-        return u, s, v.swapaxes(-2, -1).conjugate()
+        return u, s, v.swapaxes(-2, -1).conj()
     else:
         s = out
         s = s.reshape(*batch_shape, *(s.shape[-1:]))
@@ -465,9 +466,7 @@ def svd(a, full_matrices=True, compute_uv=True):
         return _svd_batched(a, a_dtype, full_matrices, compute_uv)
 
     # Remark 1: gesvd only supports m >= n (WHAT?)
-    # Remark 2: gesvd only supports jobu = 'A' and jobvt = 'A'
-    # Remark 3: gesvd returns matrix U and V^H
-    # Remark 4: Remark 2 is removed since cuda 8.0 (new!)
+    # Remark 2: gesvd returns matrix U and V^H
     n, m = a.shape
 
     if m == 0 or n == 0:

@@ -362,7 +362,7 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
     # depending on the structure of an input
     if compute_uv:
         if trans_flag:
-            return u.swapaxes(-2, -1).conj(), s, vt
+            return u.swapaxes(-2, -1), s, vt.conj()
         else:
             return vt, s, u.swapaxes(-2, -1).conj()
     else:
