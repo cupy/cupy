@@ -33,8 +33,8 @@ template<> struct gesvd_func<cuDoubleComplex, double> { gesvd<cuDoubleComplex, d
 template<typename T>
 int gesvd_loop(
         intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t a_ptr,
-        int lda, intptr_t s_ptr, intptr_t u_ptr, int ldu, intptr_t vt_ptr,
-        int ldvt, intptr_t w_ptr, int buffersize, intptr_t info_ptr,
+        intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
+        intptr_t w_ptr, int buffersize, intptr_t info_ptr,
         int batch_size) {
     /*
      * Assumptions:
@@ -60,8 +60,8 @@ int gesvd_loop(
     for (int i=0; i<batch_size; i++) {
         // setting rwork to NULL as we don't need it
         status = func(
-            reinterpret_cast<cusolverDnHandle_t>(handle), jobu, jobvt, m, n, A, lda,
-            S, U, ldu, VT, ldvt, Work, buffersize, NULL, devInfo);
+            reinterpret_cast<cusolverDnHandle_t>(handle), jobu, jobvt, m, n, A, m,
+            S, U, m, VT, n, Work, buffersize, NULL, devInfo);
         if (status != 0) break;
         A += m * n;
         S += k;

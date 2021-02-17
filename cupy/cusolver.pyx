@@ -42,13 +42,13 @@ cdef extern from '../cupy_backends/cupy_complex.h':
 cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
     int gesvd_loop[T](
         intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t A,
-        int lda, intptr_t s_ptr, intptr_t u_ptr, int ldu, intptr_t vt_ptr,
-        int ldvt, intptr_t w_ptr, int buffersize, intptr_t info_ptr,
+        intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
+        intptr_t w_ptr, int buffersize, intptr_t info_ptr,
         int batch_size)
 
-ctypedef int (*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,  # noqa
-                          int, intptr_t, intptr_t, int, intptr_t,
-                          int, intptr_t, int, intptr_t, int) nogil
+ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
+                         intptr_t, intptr_t, intptr_t,
+                         intptr_t, int, intptr_t, int) nogil
 
 
 _available_cuda_version = {
@@ -272,6 +272,10 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
         raise RuntimeError("This function is disabled on HIP as "
                            "it is not needed")
 
+    if runtime.runtimeGetVersion() == 10000:
+        # see https://github.com/cupy/cupy/pull/4628#issuecomment-780311925
+        raise RuntimeError("batched gesvd is buggy on CUDA 10.0")
+
     # TODO(leofang): try overlapping using a small stream pool?
 
     cdef ndarray x, s, u, vt, dev_info
@@ -344,8 +348,8 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
     # the loop starts here, with gil released to reduce overhead
     with nogil:
         status = gesvd(
-            handle, job_u, job_vt, m, n, a_ptr, m, s_ptr,
-            u_ptr, m, vt_ptr, n,
+            handle, job_u, job_vt, m, n, a_ptr,
+            s_ptr, u_ptr, vt_ptr,
             w_ptr, buffersize, info_ptr, batch_size)
     if status != 0:
         raise _cusolver.CUSOLVERError(status)
