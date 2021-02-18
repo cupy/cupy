@@ -1,4 +1,9 @@
+import numpy
+
+import cupy
 from cupyx.jit import _compile
+from cupyx.jit import _typerules
+from cupyx.jit import _types
 
 
 class _CudaFunction:
@@ -26,3 +31,50 @@ class _CudaFunction:
     def _emit_code_from_types(self, in_types, ret_type=None):
         return _compile.transpile(
             self.func, self.attributes, self.mode, in_types, ret_type)
+
+
+class _JitRawKernel:
+
+    def __init__(self, func, mode):
+        self._func = func
+        self._mode = mode
+        self._cache = {}
+
+    def __call__(self, grid, block, args):
+        in_types = []
+        for x in args:
+            if isinstance(x, cupy.ndarray):
+                t = _types.Array.from_ndarray(x)
+            elif numpy.isscalar(x):
+                t = _typerules.get_ctype_from_scalar(self._mode, x)
+            else:
+                raise TypeError(f'{type(x)} is not supported for RawKernel')
+            in_types.append(t)
+        in_types = tuple(in_types)
+
+        kern = self._cache.get(in_types)
+        if kern is None:
+            result = _compile.transpile(
+                self._func,
+                ['extern "C"', '__global__'],
+                self._mode,
+                in_types,
+                _types.Void(),
+            )
+            fname = result.func_name
+            module = cupy.core.core.compile_with_cache(result.code)
+            kern = module.get_function(fname)
+            self._cache[in_types] = kern
+        kern(grid, block, args)
+
+    # def __getitem__(self, grid, block):
+    #     if not isinstance(grid, tuple):
+    #         grid = (grid, 1, 1)
+    #     if not isinstance(block, tuple):
+    #         block = (block, 1, 1)
+
+
+def rawkernel(mode='cuda'):
+    def wrapper(func):
+        return _JitRawKernel(func, mode)
+    return wrapper

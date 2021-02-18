@@ -106,7 +106,7 @@ def get_ufunc(mode, op_type):
     if mode == 'numpy':
         return _numpy_ops[op_type]
     if mode == 'cuda':
-        raise NotImplementedError
+        return _numpy_ops[op_type]
     assert False
 
 
