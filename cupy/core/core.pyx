@@ -1876,6 +1876,7 @@ cdef str _cupy_header = ''.join(
 # This is indirect include header list.
 # These header files are subject to a hash key.
 cdef list _cupy_extra_header_list = [
+    'cupy/complex/complex.h',  # This is due HIPRTC needing it to be first
     'cupy/complex/arithmetic.h',
     'cupy/complex/catrig.h',
     'cupy/complex/catrigf.h',
@@ -1885,7 +1886,6 @@ cdef list _cupy_extra_header_list = [
     'cupy/complex/cexpf.h',
     'cupy/complex/clog.h',
     'cupy/complex/clogf.h',
-    'cupy/complex/complex.h',
     'cupy/complex/complex_inl.h',
     'cupy/complex/cpow.h',
     'cupy/complex/cproj.h',
