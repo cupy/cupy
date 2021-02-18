@@ -440,6 +440,10 @@ def _transpile_expr(expr, env):
     if isinstance(expr, ast.Num):
         # Deprecated since py3.8
         return Constant(expr.n)
+    if isinstance(expr, ast.Str):
+        # Deprecated since py3.8
+        return Constant(expr.s)
+
     if isinstance(expr, ast.Subscript):
         # # TODO(asi1024): Fix.
         # value = _transpile_expr(expr.value, env)
