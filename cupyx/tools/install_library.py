@@ -50,6 +50,10 @@ def _make_cudnn_record(
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
 _cudnn_records.append(_make_cudnn_record(
+    '11.2', '8.1.0',
+    'cudnn-11.2-linux-x64-v8.1.0.77.tgz',
+    'cudnn-11.2-windows-x64-v8.1.0.77.zip'))
+_cudnn_records.append(_make_cudnn_record(
     '11.1', '8.1.0',
     'cudnn-11.2-linux-x64-v8.1.0.77.tgz',
     'cudnn-11.2-windows-x64-v8.1.0.77.zip'))
