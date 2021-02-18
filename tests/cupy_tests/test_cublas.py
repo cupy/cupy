@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import cublas
@@ -452,10 +453,24 @@ class TestDgmm(unittest.TestCase):
         cublas.dgmm(self.side, self.a, self.x, out=self.a)
         cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
 
+    _dgmm_incx_minus_one_hip_skip_condition = [
+        ('C', 'F', (9, 10), 'R'),
+        ('C', 'F', (10, 9), 'R'),
+        ('F', 'F', (9, 10), 'L'),
+        ('F', 'F', (10, 9), 'L'),
+    ]
+
+    def _check_dgmm_incx_minus_one_hip_skip_condition(self):
+        return (self.ordera, self.orderc, self.shape, self.side) in \
+            self._dgmm_incx_minus_one_hip_skip_condition
+
     @testing.for_dtypes('fdFD')
     def test_dgmm_incx_minus_one(self, dtype):
         if self.orderc != 'F':
             raise unittest.SkipTest()
+        if cupy.cuda.runtime.is_hip:
+            if self._check_dgmm_incx_minus_one_hip_skip_condition():
+                pytest.xfail('HIP dgmm may have a bug')
         self._setup(dtype)
         if self.side == 'L':
             ref = cupy.diag(self.x[::-1]) @ self.a

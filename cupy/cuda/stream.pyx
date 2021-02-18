@@ -327,6 +327,9 @@ class Stream(BaseStream):
             # following 2.8.3-1.
             self.ptr = 0
         elif ptds:
+            if runtime._is_hip_environment:
+                raise ValueError('HIP does not support per-thread '
+                                 'default stream (ptds)')
             self.ptr = runtime.streamPerThread
         elif non_blocking:
             self.ptr = runtime.streamCreateWithFlags(
@@ -374,4 +377,5 @@ class ExternalStream(BaseStream):
 
 
 Stream.null = Stream(null=True)
-Stream.ptds = Stream(ptds=True)
+if not runtime._is_hip_environment:
+    Stream.ptds = Stream(ptds=True)
