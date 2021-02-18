@@ -357,14 +357,15 @@ def _transpile_stmt(stmt, is_toplevel, env):
         start = iters.start.code
         stop = iters.stop.code
         step = iters.step.code
-        cond = f'{step} >= 0 ? {name} < {stop} : {name} > {stop}'
+        lc = '__lc'  # loop counter name
+        cond = f'{step} >= 0 ? {lc} < {stop} : {lc} > {stop}'
         if iters.step_is_positive is True:
-            cond = f'{name} < {stop}'
+            cond = f'{lc} < {stop}'
         elif iters.step_is_positive is False:
-            cond = f'{name} > {stop}'
+            cond = f'{lc} > {stop}'
 
-        head = f'for ({name} = {start}; {cond}; {name} += {step})'
-        return [CodeBlock(head, body)]
+        head = f'for ({iters.ctype} {lc} = {start}; {cond}; {lc} += {step})'
+        return [CodeBlock(head, [f'{name} = {lc};'] + body)]
 
     if isinstance(stmt, ast.AsyncFor):
         raise ValueError('`async for` is not allowed.')

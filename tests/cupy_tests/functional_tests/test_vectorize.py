@@ -429,6 +429,29 @@ class TestVectorizeStmts(unittest.TestCase):
         step = xp.array([-3, -2, -1, 1, 2, 3])
         return f(start, stop, step)
 
+    @testing.numpy_cupy_array_equal()
+    def test_for_update_counter(self, xp):
+        def func_for(x):
+            for i in range(10):
+                x += i
+                i += 1
+            return x
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_counter_after_loop(self, xp):
+        def func_for(x):
+            for i in range(10):
+                pass
+            return x + i
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x)
+
 
 class _MyClass:
 
