@@ -794,7 +794,7 @@ class TestRootsComplex(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_roots_poly1d(self, xp, dtype):
         if runtime.is_hip and self.input == [3j, 1.5j, -3j]:
-            pytest.xfail('rocBLAS not implemted')
+            pytest.xfail('rocBLAS not implemented')
         a = xp.array(self.input, dtype)
         out = xp.roots(xp.poly1d(a))
         return xp.sort(out)
