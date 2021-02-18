@@ -310,7 +310,7 @@ class TestCUDAArrayInterfaceStream(unittest.TestCase):
             stream_ptr = a.__cuda_array_interface__['stream']
 
         if self.stream is cupy.cuda.Stream.null:
-            assert stream_ptr == 2 if stream_module.is_ptds_enabled() else 1
+            assert stream_ptr == stream_module.get_default_stream_ptr()
         elif self.stream is cupy.cuda.Stream.ptds:
             assert stream_ptr == 2
         else:
@@ -318,4 +318,4 @@ class TestCUDAArrayInterfaceStream(unittest.TestCase):
 
         # without a stream context, it's always the default stream
         stream_ptr = a.__cuda_array_interface__['stream']
-        assert stream_ptr == 2 if stream_module.is_ptds_enabled() else 1
+        assert stream_ptr == stream_module.get_default_stream_ptr()

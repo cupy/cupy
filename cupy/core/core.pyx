@@ -194,10 +194,7 @@ cdef class ndarray:
             stream_ptr = stream_module.get_current_stream_ptr()
             # CAI v3 says setting the stream field to 0 is disallowed
             if stream_ptr == 0:
-                if _stream_module.is_ptds_enabled():
-                    stream_ptr = runtime.streamPerThread
-                else:
-                    stream_ptr = runtime.streamLegacy
+                stream_ptr = _stream_module.get_default_stream_ptr()
             desc['stream'] = stream_ptr
         elif ver == 2:
             # Old behavior (prior to CAI v3): stream sync is explicitly handled

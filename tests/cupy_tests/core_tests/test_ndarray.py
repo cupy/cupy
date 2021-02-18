@@ -218,7 +218,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert not iface['data'][1]
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
-        assert iface['stream'] == 2 if stream_module.is_ptds_enabled() else 1
+        assert iface['stream'] == stream_module.get_default_stream_ptr()
 
     def test_cuda_array_interface_view(self):
         arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
@@ -236,7 +236,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert not iface['data'][1]
         assert iface['strides'] == (320, 40)
         assert iface['descr'] == [('', '<f8')]
-        assert iface['stream'] == 2 if stream_module.is_ptds_enabled() else 1
+        assert iface['stream'] == stream_module.get_default_stream_ptr()
 
     def test_cuda_array_interface_zero_size(self):
         arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
@@ -254,7 +254,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert not iface['data'][1]
         assert iface['strides'] is None
         assert iface['descr'] == [('', '<f8')]
-        assert iface['stream'] == 2 if stream_module.is_ptds_enabled() else 1
+        assert iface['stream'] == stream_module.get_default_stream_ptr()
 
 
 @testing.parameterize(*testing.product({
@@ -298,10 +298,8 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         assert iface['strides'] is None
         if self.ver == 3:
             if stream.ptr == 0:
-                if stream_module.is_ptds_enabled():
-                    assert iface['stream'] == 2
-                else:
-                    assert iface['stream'] == 1
+                ptr = stream_module.get_default_stream_ptr()
+                assert iface['stream'] == ptr
             else:
                 assert iface['stream'] == stream.ptr
 
