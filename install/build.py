@@ -15,7 +15,7 @@ PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 minimum_cuda_version = 9000
 minimum_cudnn_version = 7000
-maximum_cudnn_version = 8099
+maximum_cudnn_version = 8199
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
 
