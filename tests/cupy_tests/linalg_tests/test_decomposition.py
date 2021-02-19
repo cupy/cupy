@@ -257,8 +257,6 @@ class TestSVD(unittest.TestCase):
         self.check_usv((2, 32, 32))  # still use _gesvdj_batched
 
     @condition.repeat(3, 10)
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() == 10000,
-                        reason='cuSOLVER bug')
     def test_svd_rank3_loop(self):
         # This tests the loop-based batched gesvd on CUDA (_gesvd_batched)
         self.check_usv((2, 64, 64))
@@ -274,8 +272,6 @@ class TestSVD(unittest.TestCase):
         self.check_singular((2, 4, 3))
 
     @condition.repeat(3, 10)
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() == 10000,
-                        reason='cuSOLVER bug')
     def test_svd_rank3_no_uv_loop(self):
         # This tests the loop-based batched gesvd on CUDA (_gesvd_batched)
         self.check_singular((2, 64, 64))
@@ -315,8 +311,6 @@ class TestSVD(unittest.TestCase):
         self.check_usv((2, 2, 32, 32))  # still use _gesvdj_batched
 
     @condition.repeat(3, 10)
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() == 10000,
-                        reason='cuSOLVER bug')
     def test_svd_rank4_loop(self):
         # This tests the loop-based batched gesvd on CUDA (_gesvd_batched)
         self.check_usv((3, 2, 64, 64))
@@ -332,8 +326,6 @@ class TestSVD(unittest.TestCase):
         self.check_singular((2, 2, 4, 3))
 
     @condition.repeat(3, 10)
-    @pytest.mark.skipif(cupy.cuda.runtime.runtimeGetVersion() == 10000,
-                        reason='cuSOLVER bug')
     def test_svd_rank4_no_uv_loop(self):
         # This tests the loop-based batched gesvd on CUDA (_gesvd_batched)
         self.check_singular((3, 2, 64, 64))
