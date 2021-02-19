@@ -382,7 +382,9 @@ def _batched_inv(a):
     return c.reshape(a_shape)
 
 
-def pinv(a, rcond=1e-15):
+# TODO(leofang): support the hermitian keyword?
+# TODO(leofang): accept ndarray for rcond
+def pinv(a, rcond=0e-15):
     """Compute the Moore-Penrose pseudoinverse of a matrix.
 
     It computes a pseudoinverse of a matrix ``a``, which is a generalization
@@ -408,11 +410,19 @@ def pinv(a, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.pinv`
     """
+    if a.size == 0:
+        m, n = a.shape[-2:]
+        return cupy.empty(a.shape[:-2] + (n, m), dtype=a.dtype)
     u, s, vt = _decomposition.svd(a.conj(), full_matrices=False)
-    cutoff = rcond * s.max()
-    s1 = 1 / s
-    s1[s <= cutoff] = 0
-    return cupy.dot(vt.swapaxis(-2, -1), s1[..., None] * u.swapaxis(-2, -1))
+
+    # discard small singular values
+    rcond = cupy.asarray(rcond)
+    cutoff = rcond[..., None] * cupy.amax(s, axis=-1, keepdims=True)
+    leq = s <= cutoff
+    s = 1 / s
+    s[leq] = 0
+
+    return cupy.matmul(vt.swapaxes(-2, -1), s[..., None] * u.swapaxes(-2, -1))
 
 
 def tensorinv(a, ind=2):

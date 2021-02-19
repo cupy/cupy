@@ -412,6 +412,7 @@ def _svd_batched(a, a_dtype, full_matrices, compute_uv):
         return s
 
 
+# TODO(leofang): support the hermitian keyword?
 def svd(a, full_matrices=True, compute_uv=True):
     """Singular Value Decomposition.
 

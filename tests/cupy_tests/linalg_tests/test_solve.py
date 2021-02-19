@@ -163,11 +163,6 @@ class TestPinv(unittest.TestCase):
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
 
-    def check_shape(self, a_shape):
-        a = cupy.random.rand(*a_shape)
-        with self.assertRaises(ValueError):
-            cupy.linalg.pinv(a)
-
     def test_pinv(self):
         self.check_x((3, 3), rcond=1e-15)
         self.check_x((2, 4), rcond=1e-15)
@@ -177,11 +172,9 @@ class TestPinv(unittest.TestCase):
         self.check_x((2, 5), rcond=0.5)
         self.check_x((5, 3), rcond=0.6)
 
-    def test_invalid_shape(self):
-        # TODO(leofang): NumPy supports batched pinv. Since we now support
-        # batched svd (which is behind pinv), this should not raise
-        self.check_shape((2, 3, 4))
-        self.check_shape((4, 3, 2, 1))
+    def test_pinv_batched(self):
+        self.check_x((2, 3, 4), rcond=1e-15)
+        self.check_x((2, 3, 4, 5), rcond=1e-15)
 
 
 @testing.gpu
