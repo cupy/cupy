@@ -262,7 +262,8 @@ def get_preload_config():
             get_cupy_install_path(), 'cupy', '.data', '_wheel.json')
         if not os.path.exists(config_path):
             return None
-        _preload_config = json.load(open(config_path))
+        with open(config_path) as f:
+            _preload_config = json.load(f)
     return _preload_config
 
 

@@ -118,7 +118,8 @@ sdist = cupy_setup_build.sdist_with_cython
 
 here = os.path.abspath(os.path.dirname(__file__))
 # Get __version__ variable
-exec(open(os.path.join(here, 'cupy', '_version.py')).read())
+with open(os.path.join(here, 'cupy', '_version.py')) as f:
+    exec(f.read())
 
 CLASSIFIERS = """\
 Development Status :: 5 - Production/Stable
