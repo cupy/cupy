@@ -4,6 +4,7 @@ import unittest
 import numpy
 import pytest
 
+from cupy_backends.cuda import stream as stream_module
 import cupy
 from cupy import _util
 from cupy import core
@@ -217,7 +218,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert not iface['data'][1]
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
-        assert iface['stream'] == 1
+        assert iface['stream'] == stream_module.get_default_stream_ptr()
 
     def test_cuda_array_interface_view(self):
         arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
@@ -235,7 +236,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert not iface['data'][1]
         assert iface['strides'] == (320, 40)
         assert iface['descr'] == [('', '<f8')]
-        assert iface['stream'] == 1
+        assert iface['stream'] == stream_module.get_default_stream_ptr()
 
     def test_cuda_array_interface_zero_size(self):
         arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
@@ -253,12 +254,11 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert not iface['data'][1]
         assert iface['strides'] is None
         assert iface['descr'] == [('', '<f8')]
-        assert iface['stream'] == 1
+        assert iface['stream'] == stream_module.get_default_stream_ptr()
 
 
-# TODO(leofang): test PTDS
 @testing.parameterize(*testing.product({
-    'stream': ('null', 'new'),
+    'stream': ('null', 'new', 'ptds'),
     'ver': (2, 3),
 }))
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -269,6 +269,8 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
             self.stream = cuda.Stream.null
         elif self.stream == 'new':
             self.stream = cuda.Stream()
+        elif self.stream == 'ptds':
+            self.stream = cuda.Stream.ptds
 
         self.old_ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
         _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.ver
@@ -295,7 +297,11 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
         if self.ver == 3:
-            assert iface['stream'] == 1 if stream.ptr == 0 else stream.ptr
+            if stream.ptr == 0:
+                ptr = stream_module.get_default_stream_ptr()
+                assert iface['stream'] == ptr
+            else:
+                assert iface['stream'] == stream.ptr
 
 
 @pytest.mark.skipif(not cupy.cuda.runtime.is_hip,

@@ -594,9 +594,10 @@ class DummyObjectWithCudaArrayInterface(object):
         # synchronization is done via calling a cpdef function, which cannot
         # be mock-tested.
         if self.stream is not None:
-            # TODO(leofang): how about PTDS?
             if self.stream is cuda.Stream.null:
-                desc['stream'] = 1  # TODO(leofang): use runtime.streamLegacy
+                desc['stream'] = cuda.runtime.streamLegacy
+            elif (not cuda.runtime.is_hip) and self.stream is cuda.Stream.ptds:
+                desc['stream'] = cuda.runtime.streamPerThread
             else:
                 desc['stream'] = self.stream.ptr
         return desc
