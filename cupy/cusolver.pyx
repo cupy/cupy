@@ -272,6 +272,10 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
         raise RuntimeError("This function is disabled on HIP as "
                            "it is not needed")
 
+    if runtime.runtimeGetVersion() == 10000:
+        # see https://github.com/cupy/cupy/pull/4628#issuecomment-780311925
+        raise RuntimeError("batched gesvd is buggy on CUDA 10.0")
+
     # TODO(leofang): try overlapping using a small stream pool?
 
     cdef ndarray x, s, u, vt, dev_info
@@ -337,8 +341,8 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
 
     # this wrapper also sets the stream for us
     buffersize = gesvd_bufferSize(handle, m, n)
-    # allocate workspace for each matrix to avoid race condition
-    workspace = memory.alloc(buffersize * batch_size)
+    # we are on the same stream, so the workspace can be reused in the loop
+    workspace = memory.alloc(buffersize)
     w_ptr = workspace.ptr
 
     # the loop starts here, with gil released to reduce overhead

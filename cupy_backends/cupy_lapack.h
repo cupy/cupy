@@ -39,7 +39,7 @@ int gesvd_loop(
     /*
      * Assumptions:
      * 1. the stream is set prior to calling this function
-     * 2. each matrix in the batch has its own workspace
+     * 2. the workspace is reused in the loop
      */
 
     cusolverStatus_t status;
@@ -67,8 +67,6 @@ int gesvd_loop(
         S += k;
         U += m * m;
         VT += n * n;
-        w_ptr += buffersize;
-        Work = reinterpret_cast<T*>(w_ptr);
         devInfo += 1;
     }
     return status;
