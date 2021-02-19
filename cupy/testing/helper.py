@@ -1404,21 +1404,23 @@ def generate_matrix(
     r"""Returns a matrix with specified singular values.
 
     Generates a random matrix with given singular values.
-    This function generates a random NumPy matrix  that
+    This function generates a random NumPy matrix (or a stack of matrices) that
     has specified singular values. It can be used to generate the inputs for a
     test that can be instable when the input value behaves bad.
     Notation: denote the shape of the generated array by :math:`(B..., M, N)`,
     and :math:`K = min\{M, N\}`. :math:`B...` may be an empty sequence.
+
     Args:
         shape (tuple of int): Shape of the generated array, i.e.,
             :math:`(B..., M, N)`.
-        xp(numpy or cupy): Array module to use.
+        xp (numpy or cupy): Array module to use.
         dtype: Dtype of the generated array.
         singular_values (array-like): Singular values of the generated
             matrices. It must be broadcastable to shape :math:`(B..., K)`.
+
     Returns:
-         numpy.ndarray or cupy.ndarray: A random matrix that has specifiec
-         singular values.
+        numpy.ndarray or cupy.ndarray: A random matrix that has specifiec
+        singular values.
     """
 
     if len(shape) <= 1:

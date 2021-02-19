@@ -99,6 +99,7 @@ if use_hip:
         'file': cuda_files + [
             'cupy.cuda.nvtx',
             'cupy_backends.cuda.libs.cusolver',
+            'cupy.cusolver',
         ],
         'include': [
             'hip/hip_runtime_api.h',
@@ -153,6 +154,7 @@ if not use_hip:
         'name': 'cusolver',
         'file': [
             'cupy_backends.cuda.libs.cusolver',
+            'cupy.cusolver',
         ],
         'include': [
             'cusolverDn.h',

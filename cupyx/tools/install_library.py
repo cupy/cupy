@@ -52,6 +52,10 @@ def _make_cudnn_record(
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
 _cudnn_records.append(_make_cudnn_record(
+    '11.2', '8.1.0',
+    'cudnn-11.2-linux-x64-v8.1.0.77.tgz',
+    'cudnn-11.2-windows-x64-v8.1.0.77.zip'))
+_cudnn_records.append(_make_cudnn_record(
     '11.1', '8.1.0',
     'cudnn-11.2-linux-x64-v8.1.0.77.tgz',
     'cudnn-11.2-windows-x64-v8.1.0.77.zip'))
@@ -86,8 +90,7 @@ def _make_cutensor_url(public_version, filename):
 
 
 def _make_cutensor_record(
-        cuda_version, public_version, filename_linux, filename_windows=''):
-    # TODO(leofang): Support Windows when a public link becomes available
+        cuda_version, public_version, filename_linux, filename_windows):
     return {
         'cuda': cuda_version,
         'cutensor': public_version,
@@ -96,22 +99,34 @@ def _make_cutensor_record(
                 'url': _make_cutensor_url(public_version, filename_linux),
                 'filename': 'libcutensor.so.{}'.format(public_version),
             },
+            'Windows': {
+                'url': _make_cutensor_url(public_version, filename_windows),
+                'filename': 'cutensor.dll',
+            },
         }
     }
 
 
 _cutensor_records.append(_make_cutensor_record(
+    '11.2', '1.2.2',
+    'libcutensor-linux-x86_64-1.2.2.5.tar.gz',
+    'libcutensor-windows-x86_64-1.2.2.5.zip'))
+_cutensor_records.append(_make_cutensor_record(
     '11.1', '1.2.2',
-    'libcutensor-linux-x86_64-1.2.2.5.tar.gz', ''))
+    'libcutensor-linux-x86_64-1.2.2.5.tar.gz',
+    'libcutensor-windows-x86_64-1.2.2.5.zip'))
 _cutensor_records.append(_make_cutensor_record(
     '11.0', '1.2.2',
-    'libcutensor-linux-x86_64-1.2.2.5.tar.gz', ''))
+    'libcutensor-linux-x86_64-1.2.2.5.tar.gz',
+    'libcutensor-windows-x86_64-1.2.2.5.zip'))
 _cutensor_records.append(_make_cutensor_record(
     '10.2', '1.2.2',
-    'libcutensor-linux-x86_64-1.2.2.5.tar.gz', ''))
+    'libcutensor-linux-x86_64-1.2.2.5.tar.gz',
+    'libcutensor-windows-x86_64-1.2.2.5.zip'))
 _cutensor_records.append(_make_cutensor_record(
     '10.1', '1.2.2',
-    'libcutensor-linux-x86_64-1.2.2.5.tar.gz', ''))
+    'libcutensor-linux-x86_64-1.2.2.5.tar.gz',
+    'libcutensor-windows-x86_64-1.2.2.5.zip'))
 library_records['cutensor'] = _cutensor_records
 
 
