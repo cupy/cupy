@@ -505,7 +505,7 @@ class TestGenerateMatrixInvalid(unittest.TestCase):
                 (2, 2), singular_values=numpy.ones(3))
 
     def test_shape_mismatch_2(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(numpy.linalg.LinAlgError):
             testing.generate_matrix(
                 (0, 2, 2), singular_values=numpy.ones(3))
 

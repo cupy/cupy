@@ -353,81 +353,19 @@ cusolverStatus_t cusolverDnZgesvd_bufferSize(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-// The function signatures are explicitly spelled out because we need to
-// fetch the function pointers.
-cusolverStatus_t cusolverDnSgesvd(cusolverDnHandle_t handle,
-                                  signed char jobu,
-                                  signed char jobvt,
-                                  int m,
-                                  int n,
-                                  float *A,
-                                  int lda,
-                                  float *S,
-                                  float *U,
-                                  int ldu,
-                                  float *VT,
-                                  int ldvt,
-                                  float *work,
-                                  int lwork,
-                                  float *rwork,
-                                  int *info) {
+cusolverStatus_t cusolverDnSgesvd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnDgesvd(cusolverDnHandle_t handle,
-                                  signed char jobu,
-                                  signed char jobvt,
-                                  int m,
-                                  int n,
-                                  double *A,
-                                  int lda,
-                                  double *S,
-                                  double *U,
-                                  int ldu,
-                                  double *VT,
-                                  int ldvt,
-                                  double *work,
-                                  int lwork,
-                                  double *rwork,
-                                  int *info) {
+cusolverStatus_t cusolverDnDgesvd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnCgesvd(cusolverDnHandle_t handle,
-                                  signed char jobu,
-                                  signed char jobvt,
-                                  int m,
-                                  int n,
-                                  cuComplex *A,
-                                  int lda,
-                                  float *S,
-                                  cuComplex *U,
-                                  int ldu,
-                                  cuComplex *VT,
-                                  int ldvt,
-                                  cuComplex *work,
-                                  int lwork,
-                                  float *rwork,
-                                  int *info) {
+cusolverStatus_t cusolverDnCgesvd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 
-cusolverStatus_t cusolverDnZgesvd(cusolverDnHandle_t handle,
-                                  signed char jobu,
-                                  signed char jobvt,
-                                  int m,
-                                  int n,
-                                  cuDoubleComplex *A,
-                                  int lda,
-                                  double *S,
-                                  cuDoubleComplex *U,
-                                  int ldu,
-                                  cuDoubleComplex *VT,
-                                  int ldvt,
-                                  cuDoubleComplex *work,
-                                  int lwork,
-                                  double *rwork,
-                                  int *info) {
+cusolverStatus_t cusolverDnZgesvd(...) {
     return CUSOLVER_STATUS_SUCCESS;
 }
 

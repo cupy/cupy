@@ -37,17 +37,12 @@ def _check_cusolver_dev_info_if_synchronization_allowed(routine, dev_info):
     if config_linalg == 'ignore':
         return
 
-    try:
-        name = routine.__name__
-    except AttributeError:
-        name = routine  # routine is a str
-
     assert config_linalg == 'raise'
     if (dev_info != 0).any():
         raise linalg.LinAlgError(
             'Error reported by {} in cuSOLVER. devInfo = {}. Please refer'
             ' to the cuSOLVER documentation.'.format(
-                name, dev_info))
+                routine.__name__, dev_info))
 
 
 def _check_cublas_info_array_if_synchronization_allowed(routine, info_array):
