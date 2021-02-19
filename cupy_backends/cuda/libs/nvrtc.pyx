@@ -39,7 +39,7 @@ cdef extern from '../../cupy_rtc.h' nogil:
     int nvrtcAddNameExpression(Program, const char*)
     int nvrtcGetLoweredName(Program, const char*, const char**)
     int nvrtcGetNumSupportedArchs(int* numArchs)
-    int nvrtcGetSupportedArchs (int* supportedArchs)
+    int nvrtcGetSupportedArchs(int* supportedArchs)
 
 
 ###############################################################################
@@ -80,8 +80,8 @@ cpdef tuple getSupportedArchs():
 
     with nogil:
         status = nvrtcGetNumSupportedArchs(&num_archs)
-        archs.resize(num_archs)
         if status == 0:
+            archs.resize(num_archs)
             status = nvrtcGetSupportedArchs(archs.data())
     check_status(status)
     return tuple(archs)
