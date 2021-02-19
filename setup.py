@@ -24,10 +24,13 @@ for submodule in ('cupy/core/include/cupy/cub/',
 
 
 requirements = {
+    # setup_requires remains here for pip v18 or earlier.
+    # Keep in sync with pyproject.yaml.
     'setup': [
         'Cython>=0.28.0',
         'fastrlock>=0.5',
     ],
+
     'install': [
         'numpy>=1.17',
         'fastrlock>=0.5',
