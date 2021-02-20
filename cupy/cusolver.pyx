@@ -272,10 +272,6 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
         raise RuntimeError("This function is disabled on HIP as "
                            "it is not needed")
 
-    if runtime.runtimeGetVersion() == 10000:
-        # see https://github.com/cupy/cupy/pull/4628#issuecomment-780311925
-        raise RuntimeError("batched gesvd is buggy on CUDA 10.0")
-
     # TODO(leofang): try overlapping using a small stream pool?
 
     cdef ndarray x, s, u, vt, dev_info
@@ -303,15 +299,17 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
 
     k = n  # = min(m, n) where m >= n is ensured above
     if compute_uv:
+        # TODO(leofang): the current approach may be memory hungry, try
+        # setting either job_u or job_vt to 'O' to overwrite the input?
         if full_matrices:
             u = _ndarray_init((batch_size, m, m), a_dtype)
-            vt = x[..., :n]
+            vt = _ndarray_init((batch_size, n, n), a_dtype)
             job_u = b'A'
-            job_vt = b'O'
+            job_vt = b'A'
         else:
-            u = x
+            u = _ndarray_init((batch_size, k, m), a_dtype)
             vt = _ndarray_init((batch_size, k, n), a_dtype)
-            job_u = b'O'
+            job_u = b'S'
             job_vt = b'S'
         u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
     else:
