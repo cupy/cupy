@@ -68,8 +68,8 @@ int gesvd_loop(
         if (status != 0) break;
         A += m * n;
         S += k;
-        U += (jobu=='A' ? m*m : m*k);
-        VT += (jobvt=='A'? n*n : n*k);
+        U += (jobu=='A' ? m*m : (jobu=='S' ? m*k : /* 'N' */ 0));
+        VT += (jobvt=='A'? n*n : (jobvt=='S' ? n*k : /* 'N' */ 0));
         w_ptr += buffersize;
         Work = reinterpret_cast<T*>(w_ptr);
         devInfo += 1;
