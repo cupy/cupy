@@ -12,6 +12,7 @@ from cupy_backends.cuda.libs cimport cusolver
 # due to a Cython bug (cython/cython#4000) we cannot just cimport the module
 from cupy_backends.cuda.libs.cusolver cimport (  # noqa
     sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize)
+from cupy_backends.cuda cimport stream as stream_module
 
 from cupy.cuda cimport memory
 from cupy.core.core cimport _ndarray_init, ndarray
@@ -44,11 +45,11 @@ cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
         intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t A,
         intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
         intptr_t w_ptr, int buffersize, intptr_t info_ptr,
-        int batch_size)
+        int batch_size, intptr_t stream_ptr)
 
 ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
                          intptr_t, intptr_t, intptr_t,
-                         intptr_t, int, intptr_t, int) nogil
+                         intptr_t, int, intptr_t, int, intptr_t) nogil
 
 
 _available_cuda_version = {
@@ -277,6 +278,7 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
     cdef ndarray x, s, u, vt, dev_info
     cdef int n, m, k, batch_size, i, buffersize, d_size, status
     cdef intptr_t a_ptr, s_ptr, u_ptr, vt_ptr, rwork_ptr, w_ptr, info_ptr
+    cdef intptr_t stream_ptr
     cdef str s_dtype
     cdef char job_u, job_vt
     cdef bint trans_flag
@@ -337,18 +339,18 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
     else:
         raise TypeError
 
-    # this wrapper also sets the stream for us
     buffersize = gesvd_bufferSize(handle, m, n)
     # allocate workspace for each matrix to avoid race condition
     workspace = memory.alloc(buffersize * batch_size)
     w_ptr = workspace.ptr
+    stream_ptr = stream_module.get_current_stream_ptr()
 
     # the loop starts here, with gil released to reduce overhead
     with nogil:
         status = gesvd(
             handle, job_u, job_vt, m, n, a_ptr,
             s_ptr, u_ptr, vt_ptr,
-            w_ptr, buffersize, info_ptr, batch_size)
+            w_ptr, buffersize, info_ptr, batch_size, stream_ptr)
     if status != 0:
         raise _cusolver.CUSOLVERError(status)
 
