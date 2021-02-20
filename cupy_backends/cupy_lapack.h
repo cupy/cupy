@@ -35,11 +35,11 @@ int gesvd_loop(
         intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t a_ptr,
         intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
         intptr_t w_ptr, int buffersize, intptr_t info_ptr,
-        int batch_size, intptr_t stream) {
+        int batch_size) {
     /*
      * Assumptions:
      * 1. the stream is set prior to calling this function
-     * 2. each matrix in the batch has its own workspace
+     * 2. the workspace is reused in the loop
      */
 
     cusolverStatus_t status;
@@ -58,9 +58,6 @@ int gesvd_loop(
     gesvd<T, real_type> func = gesvd_func<T, real_type>().ptr;
 
     for (int i=0; i<batch_size; i++) {
-        status = cusolverDnSetStream(reinterpret_cast<cusolverDnHandle_t>(handle),
-                                     reinterpret_cast<cudaStream_t>(stream));
-        if (status != 0) break;
         // setting rwork to NULL as we don't need it
         status = func(
             reinterpret_cast<cusolverDnHandle_t>(handle), jobu, jobvt, m, n, A, m,
@@ -70,7 +67,6 @@ int gesvd_loop(
         S += k;
         U += (jobu=='A' ? m*m : (jobu=='S' ? m*k : /* 'N' */ 0));
         VT += (jobvt=='A'? n*n : (jobvt=='S' ? n*k : /* 'N' */ 0));
-        Work += buffersize;
         devInfo += 1;
     }
     return status;
