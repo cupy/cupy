@@ -38,9 +38,9 @@ requirements = {
 
     'stylecheck': [
         'autopep8==1.4.4',
-        'flake8==3.7.9',
+        'flake8==3.8.4',
         'pbr==4.0.4',
-        'pycodestyle==2.5.0',
+        'pycodestyle==2.6.0',
     ],
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
