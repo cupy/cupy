@@ -339,8 +339,8 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
 
     # this wrapper also sets the stream for us
     buffersize = gesvd_bufferSize(handle, m, n)
-    # we are on the same stream, so the workspace can be reused in the loop
-    workspace = memory.alloc(buffersize)
+    # allocate workspace for each matrix to avoid race condition
+    workspace = memory.alloc(buffersize * batch_size)
     w_ptr = workspace.ptr
 
     # the loop starts here, with gil released to reduce overhead
