@@ -341,7 +341,7 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
 
     buffersize = gesvd_bufferSize(handle, m, n)
     # allocate workspace for each matrix to avoid race condition
-    workspace = memory.alloc(buffersize * batch_size)
+    workspace = memory.alloc(buffersize * x.dtype.itemsize * batch_size)
     w_ptr = workspace.ptr
     stream_ptr = stream_module.get_current_stream_ptr()
 
