@@ -452,6 +452,18 @@ class TestVectorizeStmts(unittest.TestCase):
         x = xp.array([0, 1, 2, 3, 4])
         return f(x)
 
+    @testing.numpy_cupy_array_equal()
+    def test_for_compound_expression_param(self, xp):
+        def func_for(x, y):
+            res = 0
+            for i in range(x * y):
+                res += i
+            return res
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x, x)
+
 
 class _MyClass:
 
