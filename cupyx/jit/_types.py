@@ -27,3 +27,6 @@ class Scalar(TypeBase):
             # For the performance
             dtype = numpy.dtype('float32')
         return get_typename(dtype)
+
+
+bool_ = Scalar(numpy.bool_)
