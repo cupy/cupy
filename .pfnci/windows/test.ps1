@@ -79,16 +79,18 @@ function Main {
     }
 
     $use_cache = ($Env:CUPY_CI_CACHE_KERNEL -eq "1")
+    $upload_cache = -Not (IsPullRequestTest)
 
     if ($use_cache) {
         DownloadCache
     }
     echo "Running test..."
+    $test_retval = 0
     python -m pytest -rfEX $Env:PYTEST_OPTS tests > cupy_test_log.txt
     if (-not $?) {
         $test_retval = $LastExitCode
     }
-    if ($use_cache) {
+    if ($use_cache -And $upload_cache) {
         UploadCache
     }
 
