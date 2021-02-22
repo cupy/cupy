@@ -383,8 +383,7 @@ def _batched_inv(a):
 
 
 # TODO(leofang): support the hermitian keyword?
-# TODO(leofang): accept ndarray for rcond
-def pinv(a, rcond=0e-15):
+def pinv(a, rcond=1e-15):
     """Compute the Moore-Penrose pseudoinverse of a matrix.
 
     It computes a pseudoinverse of a matrix ``a``, which is a generalization
@@ -393,9 +392,10 @@ def pinv(a, rcond=0e-15):
 
     Args:
         a (cupy.ndarray): The matrix with dimension ``(..., M, N)``
-        rcond (float): Cutoff parameter for small singular values.
-            For stability it computes the largest singular value denoted by
-            ``s``, and sets all singular values smaller than ``s`` to zero.
+        rcond (float or cupy.ndarray): Cutoff parameter for small singular
+            values. For stability it computes the largest singular value
+            denoted by ``s``, and sets all singular values smaller than
+            ``s`` to zero. Broadcasts against the stack of matrices.
 
     Returns:
         cupy.ndarray: The pseudoinverse of ``a`` with dimension
@@ -416,7 +416,8 @@ def pinv(a, rcond=0e-15):
     u, s, vt = _decomposition.svd(a.conj(), full_matrices=False)
 
     # discard small singular values
-    rcond = cupy.asarray(rcond)
+    if cupy.isscalar(rcond):
+        rcond = cupy.asarray(rcond)
     cutoff = rcond[..., None] * cupy.amax(s, axis=-1, keepdims=True)
     leq = s <= cutoff
     s = 1 / s

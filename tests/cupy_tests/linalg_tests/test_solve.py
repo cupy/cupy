@@ -156,7 +156,11 @@ class TestPinv(unittest.TestCase):
         a_gpu = testing.shaped_random(a_shape, dtype=dtype)
         a_cpu = cupy.asnumpy(a_gpu)
         a_gpu_copy = a_gpu.copy()
+        if not isinstance(rcond, float):
+            rcond = numpy.asarray(rcond)
         result_cpu = numpy.linalg.pinv(a_cpu, rcond=rcond)
+        if not isinstance(rcond, float):
+            rcond = cupy.asarray(rcond)
         result_gpu = cupy.linalg.pinv(a_gpu, rcond=rcond)
 
         assert result_cpu.dtype == result_gpu.dtype
@@ -175,6 +179,19 @@ class TestPinv(unittest.TestCase):
     def test_pinv_batched(self):
         self.check_x((2, 3, 4), rcond=1e-15)
         self.check_x((2, 3, 4, 5), rcond=1e-15)
+
+    def test_pinv_batched_vector_rcond(self):
+        self.check_x((2, 3, 4), rcond=[0.5, 0.5])
+        self.check_x((2, 3, 4, 5),
+                     rcond=[[0.2, 0.2, 0.2],
+                            [0.2, 0.2, 0.2]])
+
+    def test_pinv_size_0(self):
+        self.check_x((3, 0), rcond=1e-15)
+        self.check_x((0, 3), rcond=1e-15)
+        self.check_x((0, 0), rcond=1e-15)
+        self.check_x((0, 2, 3), rcond=1e-15)
+        self.check_x((2, 0, 3), rcond=1e-15)
 
 
 @testing.gpu
