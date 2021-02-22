@@ -20,7 +20,7 @@ from install.build import PLATFORM_LINUX
 from install.build import PLATFORM_WIN32
 
 
-required_cython_version = pkg_resources.parse_version('0.28.0')
+required_cython_version = pkg_resources.parse_version('0.29.22')
 ignore_cython_versions = [
 ]
 use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
