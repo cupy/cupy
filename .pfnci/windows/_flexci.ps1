@@ -41,3 +41,7 @@ function ActivateCUDA($version) {
     }
     $Env:PATH = "$Env:CUDA_PATH\bin;$Env:ProgramFiles\NVIDIA Corporation\NvToolsExt\bin\x64;" + $Env:PATH
 }
+
+function IsPullRequestTest() {
+    return ${Env:FLEXCI_BRANCH}.StartsWith("refs/pull/")
+}
