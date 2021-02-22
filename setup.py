@@ -39,7 +39,7 @@ requirements = {
     'stylecheck': [
         'autopep8==1.5.5',
         'flake8==3.8.4',
-        'pbr==4.0.4',
+        'pbr==5.5.1',
         'pycodestyle==2.6.0',
     ],
     'test': [
