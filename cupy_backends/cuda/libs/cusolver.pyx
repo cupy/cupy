@@ -1,5 +1,6 @@
-"""Thin wrapper of CUSOLVER."""
 # distutils: language = c++
+
+"""Thin wrapper of CUSOLVER."""
 
 cimport cython  # NOQA
 

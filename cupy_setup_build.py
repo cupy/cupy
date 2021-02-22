@@ -618,6 +618,8 @@ def make_extensions(options, compiler, use_cython):
         link_args = s.setdefault('extra_link_args', [])
 
         if module['name'] == 'cusolver':
+            # cupy_backends/cupy_lapack.h has C++ template code
+            compile_args.append('--std=c++11')
             # openmp is required for cusolver
             if use_hip:
                 pass
