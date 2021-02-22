@@ -4,3 +4,4 @@ sphinx_rtd_theme==0.5.1
 Cython==0.29.*
 numpy==1.19.*
 scipy==1.6.*
+setuptools_scm>=5.0.0

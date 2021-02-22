@@ -143,7 +143,7 @@ with open('VERSION') as f:
 
 use_scm_version = {
     'write_to': 'cupy/_version.py',
-    'write_to_template': "__version__ = '{version}'",
+    'write_to_template': "__version__ = '{version}'\n",
 }
 if os.environ.get('CUPY_RELEASE_BUILD', False):
     # setuptools-scm assumes that sdist/wheels are built *after* git-tagging,
