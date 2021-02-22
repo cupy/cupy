@@ -354,18 +354,18 @@ def _transpile_stmt(stmt, is_toplevel, env):
             raise NotImplementedError(
                 'for-loop is supported only for range iterator.')
 
-        start = iters.start.code
-        stop = iters.stop.code
-        step = iters.step.code
-        lc = '__lc'  # loop counter name
-        cond = f'{step} >= 0 ? {lc} < {stop} : {lc} > {stop}'
+        init_code = (f'{iters.ctype} '
+                     f'__it = {iters.start.code}, '
+                     f'__stop = {iters.stop.code}, '
+                     f'__step = {iters.step.code}')
+        cond = f'__step >= 0 ? __it < __stop : __it > __stop'
         if iters.step_is_positive is True:
-            cond = f'{lc} < {stop}'
+            cond = f'__it < __stop'
         elif iters.step_is_positive is False:
-            cond = f'{lc} > {stop}'
+            cond = f'__it > __stop'
 
-        head = f'for ({iters.ctype} {lc} = {start}; {cond}; {lc} += {step})'
-        return [CodeBlock(head, [f'{name} = {lc};'] + body)]
+        head = f'for ({init_code}; {cond}; __it += __step)'
+        return [CodeBlock(head, [f'{name} = __it;'] + body)]
 
     if isinstance(stmt, ast.AsyncFor):
         raise ValueError('`async for` is not allowed.')

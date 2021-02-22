@@ -464,6 +464,19 @@ class TestVectorizeStmts(unittest.TestCase):
         x = xp.array([0, 1, 2, 3, 4])
         return f(x, x)
 
+    @testing.numpy_cupy_array_equal()
+    def test_for_update_loop_condition(self, xp):
+        def func_for(x):
+            res = 0
+            for i in range(x):
+                res += i
+                x -= 1
+            return res
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x)
+
 
 class _MyClass:
 
