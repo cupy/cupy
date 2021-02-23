@@ -159,10 +159,10 @@ def _genEigh(A, B=None):
     if(B is None):  # use cupy's eigh in standard case
         vals, vecs = linalg.eigh(A)
         return vals, vecs
-    # Cuda 10.0 cusolver sometimes fails and spits NaNs
-    # reverting to CPU implementatin of cholesky solver (temporary workaround)
-    # TODO: to fix `cupy.linalg.cholesky` behavior for cuda <= 10.0
-    if(cupy.cuda.runtime.runtimeGetVersion() <= 10025):
+    # Cuda <= 10.2 cusolver sometimes fails and spits NaNs
+    # reverting to CPU implementation of cholesky solver
+    # TODO: to fix `cupy.linalg.cholesky` behavior for cuda <= 10.2
+    if(cupy.cuda.runtime.runtimeGetVersion() <= 10020):
         R = scipy.linalg.cholesky(cupy.asnumpy(B), lower=True).T
         R = cupy.asarray(R)
     else:
