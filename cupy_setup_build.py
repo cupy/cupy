@@ -1049,6 +1049,9 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
         postargs += ['-Xcompiler', '/MD']
+        # This is to compile thrust with MSVC2015
+        if cuda_version >= 11020:
+            postargs += ['--std=c++14']
         print('NVCC options:', postargs)
 
         for obj in objects:

@@ -126,7 +126,11 @@ __host__ __device__ __forceinline__ bool _cmp_less(const T& lhs, const T& rhs) {
 
 // specialize thrust::less for single complex
 template <>
-__host__ __device__ __forceinline__ bool less<complex<float>>::operator() (
+__host__ __device__ __forceinline__ \
+#if (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2) 
+constexpr \
+#endif
+bool less<complex<float>>::operator() (
     const complex<float>& lhs, const complex<float>& rhs) const {
 
     return _cmp_less<complex<float>>(lhs, rhs);
@@ -134,7 +138,11 @@ __host__ __device__ __forceinline__ bool less<complex<float>>::operator() (
 
 // specialize thrust::less for double complex
 template <>
-__host__ __device__ __forceinline__ bool less<complex<double>>::operator() (
+__host__ __device__ __forceinline__ \
+#if (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2) 
+constexpr \
+#endif
+bool less<complex<double>>::operator() (
     const complex<double>& lhs, const complex<double>& rhs) const {
 
     return _cmp_less<complex<double>>(lhs, rhs);
@@ -142,7 +150,11 @@ __host__ __device__ __forceinline__ bool less<complex<double>>::operator() (
 
 // specialize thrust::less for tuple<size_t, complex<float>>
 template <>
-__host__ __device__ __forceinline__ bool less< tuple<size_t, complex<float>> >::operator() (
+__host__ __device__ __forceinline__ \
+#if (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2) 
+constexpr \
+#endif
+bool less< tuple<size_t, complex<float>> >::operator() (
     const tuple<size_t, complex<float>>& lhs, const tuple<size_t, complex<float>>& rhs) const {
 
     return _tuple_less<complex<float>>(lhs, rhs);
@@ -150,7 +162,11 @@ __host__ __device__ __forceinline__ bool less< tuple<size_t, complex<float>> >::
 
 // specialize thrust::less for tuple<size_t, complex<double>>
 template <>
-__host__ __device__ __forceinline__ bool less< tuple<size_t, complex<double>> >::operator() (
+__host__ __device__ __forceinline__ \
+#if (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2) 
+constexpr \
+#endif
+bool less< tuple<size_t, complex<double>> >::operator() (
     const tuple<size_t, complex<double>>& lhs, const tuple<size_t, complex<double>>& rhs) const {
 
     return _tuple_less<complex<double>>(lhs, rhs);
@@ -178,7 +194,11 @@ __host__ __device__ __forceinline__ bool _real_less(const T& lhs, const T& rhs) 
 
 // specialize thrust::less for float
 template <>
-__host__ __device__ __forceinline__ bool less<float>::operator() (
+__host__ __device__ __forceinline__ \
+#if (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2) 
+constexpr \
+#endif
+bool less<float>::operator() (
     const float& lhs, const float& rhs) const {
 
     return _real_less<float>(lhs, rhs);
@@ -186,7 +206,11 @@ __host__ __device__ __forceinline__ bool less<float>::operator() (
 
 // specialize thrust::less for double
 template <>
-__host__ __device__ __forceinline__ bool less<double>::operator() (
+__host__ __device__ __forceinline__ \
+#if (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2) 
+constexpr \
+#endif
+bool less<double>::operator() (
     const double& lhs, const double& rhs) const {
 
     return _real_less<double>(lhs, rhs);
@@ -194,7 +218,11 @@ __host__ __device__ __forceinline__ bool less<double>::operator() (
 
 // specialize thrust::less for tuple<size_t, float>
 template <>
-__host__ __device__ __forceinline__ bool less< tuple<size_t, float> >::operator() (
+__host__ __device__ __forceinline__ \
+#if (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2) 
+constexpr \
+#endif
+bool less< tuple<size_t, float> >::operator() (
     const tuple<size_t, float>& lhs, const tuple<size_t, float>& rhs) const {
 
     return _tuple_less<float>(lhs, rhs);
@@ -202,7 +230,11 @@ __host__ __device__ __forceinline__ bool less< tuple<size_t, float> >::operator(
 
 // specialize thrust::less for tuple<size_t, double>
 template <>
-__host__ __device__ __forceinline__ bool less< tuple<size_t, double> >::operator() (
+__host__ __device__ __forceinline__ \
+#if (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2) 
+constexpr \
+#endif
+bool less< tuple<size_t, double> >::operator() (
     const tuple<size_t, double>& lhs, const tuple<size_t, double>& rhs) const {
 
     return _tuple_less<double>(lhs, rhs);
@@ -216,19 +248,27 @@ __host__ __device__ __forceinline__ bool less< tuple<size_t, double> >::operator
      && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 
 // it seems Thrust doesn't care the code path on host, so we just need a wrapper for device
-__device__ __forceinline__ bool isnan(const __half& x) {
+__host__ __device__ __forceinline__ bool isnan(const __half& x) {
     return __hisnan(x);
 }
 
 // specialize thrust::less for __half
 template <>
-__host__ __device__ __forceinline__ bool less<__half>::operator() (const __half& lhs, const __half& rhs) const {
+__host__ __device__ __forceinline__ \
+#if (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2) 
+constexpr \
+#endif
+bool less<__half>::operator() (const __half& lhs, const __half& rhs) const {
     return _real_less<__half>(lhs, rhs);
 }
 
 // specialize thrust::less for tuple<size_t, __half>
 template <>
-__host__ __device__ __forceinline__ bool less< tuple<size_t, __half> >::operator() (
+__host__ __device__ __forceinline__ \
+#if (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2) 
+constexpr \
+#endif
+bool less< tuple<size_t, __half> >::operator() (
     const tuple<size_t, __half>& lhs, const tuple<size_t, __half>& rhs) const {
 
     return _tuple_less<__half>(lhs, rhs);
