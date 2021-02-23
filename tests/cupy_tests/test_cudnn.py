@@ -254,9 +254,9 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
         elif deterministic and (
                 (self.dilate > 1 and version < 7000) or
                 (ndim > 2 and version < 6000) or
-                (ndim > 2 and self.dtype == numpy.float64)):
+                (ndim > 2 and self.dtype == numpy.float64 and version < 8100)):
             self.err = libcudnn.CuDNNError
-        elif (8000 <= version and
+        elif (8000 <= version < 8100 and
               self.max_workspace_size == 0 and
               int(cupy.cuda.device.get_compute_capability()) < 70 and
               self.groups > 1 and ndim > 2 and
@@ -334,11 +334,12 @@ class TestConvolutionBackwardData(unittest.TestCase):
                 (self.groups > 1 and version < 7000)):
             self.err = ValueError
         elif deterministic and (
-                (self.dilate > 1 and (ndim != 2 or version < 7300)) or
+                (self.dilate > 1 and
+                 (ndim != 2 and version < 8100 or version < 7300)) or
                 (ndim > 2 and version < 6000) or
-                (ndim > 2 and self.dtype == numpy.float64)):
+                (ndim > 2 and self.dtype == numpy.float64 and version < 8100)):
             self.err = libcudnn.CuDNNError
-        elif (8000 <= version and
+        elif (8000 <= version < 8100 and
               int(cupy.cuda.device.get_compute_capability()) < 70 and
               self.dilate > 1 and self.groups > 1 and ndim > 2 and
               self.dtype == numpy.float16):
