@@ -18,20 +18,16 @@ These components must be installed to use CuPy:
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
 
-* `Python <https://python.org/>`_: v3.6.0+ / v3.7.0+ / v3.8.0+
-
-.. note::
-
-   On Windows, CuPy only supports Python 3.6.0 or later.
+* `Python <https://python.org/>`_: v3.6.0+ / v3.7.0+ / v3.8.0+ / v3.9.0+
 
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.19 and SciPy 1.5, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.20 and SciPy 1.6, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19
+* `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19 / v1.20
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6
 
     * Required only when using :doc:`reference/scipy` (``cupyx.scipy``).
 
