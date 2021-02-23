@@ -4,6 +4,7 @@ import cupy.linalg as linalg
 # waiting implementation of the following modules in PR #4172
 # from cupyx.scipy.linalg import (cho_factor, cho_solve)
 from cupyx.scipy.sparse import linalg as splinalg
+import scipy
 
 
 # TODO: This helper function can be replaced after cupy.block is supported
@@ -124,7 +125,7 @@ def _b_orthonormalize(B, blockVectorV, blockVectorBV=None, retInvR=False):
             blockVectorBV = cupy.matmul(blockVectorBV, VBV)
         else:
             blockVectorBV = None
-    except linalg.LinAlgError:
+    except numpy.linalg.LinAlgError:
         # LinAlg Error: cholesky transformation might fail in rare cases
         # raise ValueError("cholesky has failed")
         blockVectorV = None
@@ -158,7 +159,14 @@ def _genEigh(A, B=None):
     if(B is None):  # use cupy's eigh in standard case
         vals, vecs = linalg.eigh(A)
         return vals, vecs
-    R = linalg.cholesky(B).T  # cholesky might fail
+    # Cuda 10.0 cusolver sometimes fails and spits NaNs
+    # reverting to CPU implementatin of cholesky solver (temporary workaround)
+    # TODO: to fix `cupy.linalg.cholesky` behavior for cuda <= 10.0
+    if(cupy.cuda.runtime.runtimeGetVersion() <= 10025):
+        R = scipy.linalg.cholesky(cupy.asnumpy(B), lower=True).T
+        R = cupy.asarray(R)
+    else:
+        R = linalg.cholesky(B).T
     RTi = linalg.inv(cupy.transpose(R))
     Ri = linalg.inv(R)
     F = cupy.matmul(RTi, cupy.matmul(A, Ri))
@@ -318,7 +326,7 @@ def lobpcg(A, X,
         # try:
         #    gramYBY is a Cholesky factor from now on...
         #    gramYBY = cho_factor(gramYBY)
-        # except linalg.LinAlgError:
+        # except numpy.linalg.LinAlgError:
         #    raise ValueError("cannot handle linearly dependent constraints")
 
         _applyConstraints(blockVectorX, gramYBY, blockVectorBY, blockVectorY)
@@ -529,7 +537,7 @@ def lobpcg(A, X,
 
             try:
                 _lambda, eigBlockVector = _genEigh(gramA, gramB)
-            except linalg.LinAlgError:
+            except numpy.linalg.LinAlgError:
                 # try again after dropping the direction vectors P from RR
                 restart = True
 
@@ -543,7 +551,7 @@ def lobpcg(A, X,
 
             try:
                 _lambda, eigBlockVector = _genEigh(gramA, gramB)
-            except linalg.LinAlgError:
+            except numpy.linalg.LinAlgError:
                 raise ValueError('eigh has failed in lobpcg iterations')
 
         ii = _get_indx(_lambda, sizeX, largest)
