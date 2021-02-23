@@ -967,6 +967,11 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
+        if cuda_version >= 11020:
+            # MSVC 14.0 (2015) is deprecated for CUDA 11.2 but we need it
+            # to build CuPy because some Python versions were built using it.
+            # REF: https://wiki.python.org/moin/WindowsCompilers
+            postargs += ['-allow-unsupported-compiler']
         postargs += ['-Xcompiler', '/MD']
         print('NVCC options:', postargs)
 
