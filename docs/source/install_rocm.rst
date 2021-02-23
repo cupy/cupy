@@ -27,7 +27,6 @@ Currently, you need to build CuPy from source to run on AMD GPU.
 ::
 
   $ export HCC_AMDGPU_TARGET=gfx900  # This value should be changed based on your GPU
-  $ export __HIP_PLATFORM_HCC__
   $ export CUPY_INSTALL_USE_HIP=1
   $ pip install cupy
 
