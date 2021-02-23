@@ -13,7 +13,7 @@ These components must be installed to use CuPy:
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.0 / v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.0 / v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1 / v11.2
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -92,6 +92,8 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda110``
    * - v11.1
      - ``$ pip install cupy-cuda111``
+   * - v11.2
+     - ``$ pip install cupy-cuda112`` (see `#4704 <https://github.com/cupy/cupy/issues/4704>` for Linux instructions)
 
 .. note::
 
