@@ -248,7 +248,7 @@ bool less< tuple<size_t, double> >::operator() (
      && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 
 // it seems Thrust doesn't care the code path on host, so we just need a wrapper for device
-__host__ __device__ __forceinline__ bool isnan(const __half& x) {
+__device__ __forceinline__ bool isnan(const __half& x) {
     return __hisnan(x);
 }
 
