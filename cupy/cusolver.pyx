@@ -299,17 +299,15 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
 
     k = n  # = min(m, n) where m >= n is ensured above
     if compute_uv:
-        # TODO(leofang): the current approach may be memory hungry, try
-        # setting either job_u or job_vt to 'O' to overwrite the input?
         if full_matrices:
             u = _ndarray_init((batch_size, m, m), a_dtype)
-            vt = _ndarray_init((batch_size, n, n), a_dtype)
+            vt = x[..., :n]
             job_u = b'A'
-            job_vt = b'A'
+            job_vt = b'O'
         else:
-            u = _ndarray_init((batch_size, k, m), a_dtype)
+            u = x
             vt = _ndarray_init((batch_size, k, n), a_dtype)
-            job_u = b'S'
+            job_u = b'O'
             job_vt = b'S'
         u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
     else:
