@@ -94,13 +94,20 @@ tests_require = requirements['test']
 # - Files only needed in sdist should be added to `MANIFEST.in`.
 # - The following glob (`**`) ignores items starting with `.`.
 cupy_package_data = [
+    'cupy_backends/cuda/api/__init__.pxd',  # for cuFFT callback
+    'cupy_backends/cuda/api/driver.pxd',  # for cuFFT callback
+    'cupy_backends/cuda/api/runtime.pxd',  # for cuFFT callback
     'cupy/cuda/cupy_thrust.cu',
     'cupy/cuda/cupy_cub.cu',
+    'cupy/cuda/__init__.pxd',  # for cuFFT callback
     'cupy/cuda/cupy_cufftXt.cu',  # for cuFFT callback
     'cupy/cuda/cupy_cufftXt.h',  # for cuFFT callback
     'cupy/cuda/cupy_cufft.h',  # for cuFFT callback
     'cupy/cuda/cufft.pxd',  # for cuFFT callback
     'cupy/cuda/cufft.pyx',  # for cuFFT callback
+    'cupy/cuda/device.pxd',  # for cuFFT callback
+    'cupy/cuda/memory.pxd',  # for cuFFT callback
+    'cupy/cuda/stream.pxd',  # for cuFFT callback
     'cupy/random/cupy_distributions.cu',
     'cupy/random/cupy_distributions.cuh',
 ] + [
