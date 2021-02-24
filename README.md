@@ -21,7 +21,7 @@ CuPy consists of the core multi-dimensional array class, `cupy.ndarray`, and [ma
 
 ## Installation
 
-Wheels (precompiled binary packages) are available for Linux (Python 3.5+) and Windows (Python 3.6+).
+Wheels (precompiled binary packages) are available for Linux (x86_64, Python 3.5+) and Windows (amd64, Python 3.6+).
 Choose the right package for your CUDA Toolkit version.
 
 | CUDA  | Command                        |
