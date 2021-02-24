@@ -304,12 +304,13 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
             vt = x[..., :n]
             job_u = b'A'
             job_vt = b'O'
+            u_ptr, vt_ptr = u.data.ptr, 0
         else:
             u = x
             vt = _ndarray_init((batch_size, k, n), a_dtype)
             job_u = b'O'
             job_vt = b'S'
-        u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
+            u_ptr, vt_ptr = 0, vt.data.ptr
     else:
         u_ptr, vt_ptr = 0, 0  # Use nullptr
         job_u = b'N'
