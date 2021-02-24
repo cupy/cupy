@@ -59,7 +59,11 @@ public:
  */
 
 template <typename T>
-__host__ __device__ __forceinline__ bool _tuple_less(const tuple<size_t, T>& lhs,
+__host__ __device__ __forceinline__ 
+#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+constexpr
+#endif
+bool _tuple_less(const tuple<size_t, T>& lhs,
                                                      const tuple<size_t, T>& rhs) {
     const size_t& lhs_k = lhs.template get<0>();
     const size_t& rhs_k = rhs.template get<0>();
@@ -87,7 +91,11 @@ __host__ __device__ __forceinline__ bool _tuple_less(const tuple<size_t, T>& lhs
  */
 
 template <typename T>
-__host__ __device__ __forceinline__ bool _cmp_less(const T& lhs, const T& rhs) {
+__host__ __device__ __forceinline__
+#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+constexpr
+#endif
+bool _cmp_less(const T& lhs, const T& rhs) {
     bool lhsRe = isnan(lhs.real());
     bool lhsIm = isnan(lhs.imag());
     bool rhsRe = isnan(rhs.real());
@@ -178,7 +186,12 @@ bool less< tuple<size_t, complex<double>> >::operator() (
  */
 
 template <typename T>
-__host__ __device__ __forceinline__ bool _real_less(const T& lhs, const T& rhs) {
+__host__ __device__ __forceinline__
+#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+constexpr
+#endif
+bool _real_less(const T& lhs, const T& rhs) {
+    #ifdef  __CUDA_ARCH__
     if (isnan(lhs)) {
         return false;
     } else if (isnan(rhs)) {
@@ -186,6 +199,9 @@ __host__ __device__ __forceinline__ bool _real_less(const T& lhs, const T& rhs) 
     } else {
         return lhs < rhs;
     }
+    #else
+    return false;  // This will be never executed in the host
+    #endif
 }
 
 /*
@@ -248,8 +264,12 @@ bool less< tuple<size_t, double> >::operator() (
      && (__CUDA_ARCH__ >= 530 || !defined(__CUDA_ARCH__))) || (defined(__HIPCC__) || defined(CUPY_USE_HIP))
 
 // it seems Thrust doesn't care the code path on host, so we just need a wrapper for device
-__device__ __forceinline__ bool isnan(const __half& x) {
+__host__ __device__ __forceinline__ bool isnan(const __half& x) {
+    #ifdef  __CUDA_ARCH__
     return __hisnan(x);
+    #else
+    return false;  // This will never be called on the host
+    #endif
 }
 
 // specialize thrust::less for __half
