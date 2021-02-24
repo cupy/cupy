@@ -31,7 +31,6 @@ def convolve(in1, in2, mode='full', method='auto'):
             - ``'same'``: - output is the same size as ``in1``, centered with \
                 respect to the ``'full'`` output
 
-        method (str): Indicates which method to use for the computations:
 
             - ``'direct'``: The convolution is determined directly from sums, \
                 the definition of convolution
