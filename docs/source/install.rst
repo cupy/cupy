@@ -185,7 +185,7 @@ If you want to install the latest development version of CuPy from a cloned Git 
 
 .. note::
 
-   To build the source tree downloaded from GitHub, you need to install Cython 0.28.0 or later (``pip install cython``).
+   To build the source tree downloaded from GitHub, you need to install Cython 0.29.22 or later (``pip install cython``).
    You don't have to install Cython to build source packages hosted on PyPI as they include pre-generated C++ source files.
 
 
