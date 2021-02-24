@@ -59,7 +59,11 @@ public:
  */
 
 template <typename T>
-__host__ __device__ __forceinline__ bool _tuple_less(const tuple<size_t, T>& lhs,
+__host__ __device__ __forceinline__ 
+#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+constexpr
+#endif
+bool _tuple_less(const tuple<size_t, T>& lhs,
                                                      const tuple<size_t, T>& rhs) {
     const size_t& lhs_k = lhs.template get<0>();
     const size_t& rhs_k = rhs.template get<0>();
@@ -182,7 +186,11 @@ bool less< tuple<size_t, complex<double>> >::operator() (
  */
 
 template <typename T>
-__host__ __device__ __forceinline__ bool _real_less(const T& lhs, const T& rhs) {
+__host__ __device__ __forceinline__
+#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+constexpr
+#endif
+bool _real_less(const T& lhs, const T& rhs) {
     if (isnan(lhs)) {
         return false;
     } else if (isnan(rhs)) {
