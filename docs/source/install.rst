@@ -62,7 +62,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.0 / v7.1 / v7.2 / v7.3 / v7.4 / v7.5 / v7.6 / v8.0
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.0 / v7.1 / v7.2 / v7.3 / v7.4 / v7.5 / v7.6 / v8.0 / v8.1
 
     * The library to accelerate deep neural network computations.
 
@@ -102,8 +102,8 @@ Package names are different depending on your CUDA Toolkit version.
    * NCCL library is bundled with these packages.
      You don't have to install it manually.
 
-   * cuDNN library is bundled with these packages except for CUDA 11.0+.
-     For CUDA 11.0+, you need to manually download and install cuDNN v8.0.x library to use cuDNN features.
+   * cuDNN library is bundled with these packages except for CUDA 10.1+.
+     For CUDA 10.1+, you need to manually download and install cuDNN v8.x library to use cuDNN features.
 
 .. note::
 
