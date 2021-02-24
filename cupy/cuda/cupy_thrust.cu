@@ -61,7 +61,9 @@ public:
 template <typename T>
 __host__ __device__ __forceinline__ 
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+#ifndef _WIN32
 constexpr
+#endif
 #endif
 bool _tuple_less(const tuple<size_t, T>& lhs,
                                                      const tuple<size_t, T>& rhs) {
@@ -93,7 +95,9 @@ bool _tuple_less(const tuple<size_t, T>& lhs,
 template <typename T>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+#ifndef _WIN32
 constexpr
+#endif
 #endif
 bool _cmp_less(const T& lhs, const T& rhs) {
     bool lhsRe = isnan(lhs.real());
@@ -188,7 +192,9 @@ bool less< tuple<size_t, complex<double>> >::operator() (
 template <typename T>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+#ifndef _WIN32
 constexpr
+#endif
 #endif
 bool _real_less(const T& lhs, const T& rhs) {
     #ifdef  __CUDA_ARCH__
