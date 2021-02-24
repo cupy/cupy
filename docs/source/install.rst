@@ -70,7 +70,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 Installing CuPy
 ---------------
 
-Wheels (precompiled binary packages) are available for Linux and Windows.
+Wheels (precompiled binary packages) are available for Linux (x86_64) and Windows (amd64).
 Package names are different depending on your CUDA Toolkit version.
 
 .. list-table::
