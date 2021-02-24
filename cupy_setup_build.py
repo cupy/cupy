@@ -982,7 +982,11 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
 
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + [
-            '-O2', '--compiler-options="-fPIC"', '--std=c++11']
+            '-O2', '--compiler-options="-fPIC"']
+        if cuda_version >= 11020:
+            postargs += ['--std=c++14']
+        else:
+            postargs += ['--std=c++11']
         print('NVCC options:', postargs)
         try:
             self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
