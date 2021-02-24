@@ -24,7 +24,7 @@ for submodule in ('cupy/core/include/cupy/cub/',
 
 
 requirements = {
-    # TODO(kmaehashi): migrate to pyproject.yaml (see #4727, #4619)
+    # TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
     'setup': [
         'Cython>=0.28.0',
         'fastrlock>=0.5',
