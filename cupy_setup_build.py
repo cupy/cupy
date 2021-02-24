@@ -966,6 +966,9 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
             # REF: https://wiki.python.org/moin/WindowsCompilers
             postargs += ['-allow-unsupported-compiler']
         postargs += ['-Xcompiler', '/MD']
+        # This is to compile thrust with MSVC2015
+        if cuda_version >= 11020:
+            postargs += ['--std=c++14']
         print('NVCC options:', postargs)
 
         for obj in objects:
