@@ -659,7 +659,7 @@ def make_extensions(options, compiler, use_cython):
 
             if not PLATFORM_WIN32 and not PLATFORM_LINUX:
                 assert False, "macOS is no longer supported"
-            if (PLATFORM_LINUX and s_file['library_dirs']):
+            if (PLATFORM_LINUX and len(rpath) != 0):
                 ldflag = '-Wl,'
                 if PLATFORM_LINUX:
                     ldflag += '--disable-new-dtags,'
