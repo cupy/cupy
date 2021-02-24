@@ -24,9 +24,13 @@ for submodule in ('cupy/core/include/cupy/cub/',
 
 
 requirements = {
+    # setup_requires remains here for pip v18 or earlier.
+    # Keep in sync with pyproject.yaml.
     'setup': [
+        'Cython>=0.28.0',
         'fastrlock>=0.5',
     ],
+
     'install': [
         'numpy>=1.17',
         'fastrlock>=0.5',
@@ -116,7 +120,6 @@ package_name = cupy_setup_build.get_package_name()
 long_description = cupy_setup_build.get_long_description()
 ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
-sdist = cupy_setup_build.sdist_with_cython
 
 here = os.path.abspath(os.path.dirname(__file__))
 # Get __version__ variable
@@ -166,6 +169,5 @@ setup(
     tests_require=tests_require,
     extras_require=extras_require,
     ext_modules=ext_modules,
-    cmdclass={'build_ext': build_ext,
-              'sdist': sdist},
+    cmdclass={'build_ext': build_ext},
 )
