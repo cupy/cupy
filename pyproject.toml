@@ -1,2 +1,2 @@
 [build-system]
-requires = ["setuptools", "wheel", "Cython>=0.28.0", "fastrlock>=0.5"]
+requires = ["setuptools", "wheel", "Cython>=0.28.0", "fastrlock>=0.3"]
