@@ -87,7 +87,11 @@ __host__ __device__ __forceinline__ bool _tuple_less(const tuple<size_t, T>& lhs
  */
 
 template <typename T>
-__host__ __device__ __forceinline__ bool _cmp_less(const T& lhs, const T& rhs) {
+__host__ __device__ __forceinline__
+#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+constexpr
+#endif
+bool _cmp_less(const T& lhs, const T& rhs) {
     bool lhsRe = isnan(lhs.real());
     bool lhsIm = isnan(lhs.imag());
     bool rhsRe = isnan(rhs.real());
