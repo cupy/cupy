@@ -13,7 +13,7 @@ These components must be installed to use CuPy:
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1 / v11.2
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -62,7 +62,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 (CUDA 9.2 & 10.x) / v8.0 (CUDA 10.1+)
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 (CUDA 9.2 & 10.0) / v8.0 (CUDA 10.1) / v8.1 (CUDA 10.2+)
 
     * The library to accelerate deep neural network computations.
 
@@ -70,7 +70,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 Installing CuPy
 ---------------
 
-Wheels (precompiled binary packages) are available for Linux and Windows.
+Wheels (precompiled binary packages) are available for Linux (x86_64) and Windows (amd64).
 Package names are different depending on your CUDA Toolkit version.
 
 .. list-table::
@@ -90,6 +90,8 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda110``
    * - v11.1
      - ``$ pip install cupy-cuda111``
+   * - v11.2
+     - ``$ pip install cupy-cuda112`` (see `#4704 <https://github.com/cupy/cupy/issues/4704>` for Linux instructions)
 
 .. note::
 
@@ -99,7 +101,7 @@ Package names are different depending on your CUDA Toolkit version.
      You don't have to install it manually.
 
    * cuDNN library is bundled with these packages except for CUDA 10.1+.
-     For CUDA 10.1+, you need to manually download and install cuDNN v8.0.x library to use cuDNN features.
+     For CUDA 10.1+, you need to manually download and install cuDNN v8.x library to use cuDNN features.
 
 .. note::
 

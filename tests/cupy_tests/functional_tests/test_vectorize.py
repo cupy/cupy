@@ -379,6 +379,104 @@ class TestVectorizeStmts(unittest.TestCase):
         x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         return f(x)
 
+    @testing.numpy_cupy_array_equal()
+    def test_while(self, xp):
+        def func_while(x):
+            y = 0
+            while x > 0:
+                y += x
+                x -= 1
+            return y
+
+        f = xp.vectorize(func_while)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for(self, xp):
+        def func_for(x):
+            y = 0
+            for i in range(x):
+                y += i
+            return y
+
+        f = xp.vectorize(func_for)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_const_range(self, xp):
+        def func_for(x):
+            for i in range(3, 10):
+                x += i
+            return x
+
+        f = xp.vectorize(func_for)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_range_step(self, xp):
+        def func_for(x, y, z):
+            res = 0
+            for i in range(x, y, z):
+                res += i * i
+            return x
+
+        f = xp.vectorize(func_for)
+        start = xp.array([0, 1, 2, 3, 4, 5])
+        stop = xp.array([-21, -23, -19, 17, 27, 24])
+        step = xp.array([-3, -2, -1, 1, 2, 3])
+        return f(start, stop, step)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_update_counter(self, xp):
+        def func_for(x):
+            for i in range(10):
+                x += i
+                i += 1
+            return x
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_counter_after_loop(self, xp):
+        def func_for(x):
+            for i in range(10):
+                pass
+            return x + i
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_compound_expression_param(self, xp):
+        def func_for(x, y):
+            res = 0
+            for i in range(x * y):
+                res += i
+            return res
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x, x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_update_loop_condition(self, xp):
+        def func_for(x):
+            res = 0
+            for i in range(x):
+                res += i
+                x -= 1
+            return res
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x)
+
 
 class _MyClass:
 
