@@ -13,13 +13,14 @@ import sys
 import pkg_resources
 import setuptools
 from setuptools.command import build_ext
-from setuptools.command import sdist
 
 from install import build
 from install.build import PLATFORM_LINUX
 from install.build import PLATFORM_WIN32
 
 
+# Cython requirements (minimum version and versions known to be broken).
+# Note: this must be in sync with setup_requires defined in setup.py.
 required_cython_version = pkg_resources.parse_version('0.28.0')
 ignore_cython_versions = [
 ]
@@ -308,14 +309,7 @@ def module_extension_name(file):
 def module_extension_sources(file, use_cython, no_cuda):
     pyx, others = ensure_module_file(file)
     base = path.join(*pyx.split('.'))
-    if use_cython:
-        pyx = base + '.pyx'
-        if not os.path.exists(pyx):
-            use_cython = False
-            print(
-                'NOTICE: Skipping cythonize as {} does not exist.'.format(pyx))
-    if not use_cython:
-        pyx = base + '.cpp'
+    pyx = base + ('.pyx' if use_cython else '.cpp')
 
     # If CUDA SDK is not available, remove CUDA C files from extension sources
     # and use stubs defined in header files.
@@ -734,18 +728,17 @@ def prepare_wheel_libs():
     return [os.path.relpath(x[1], 'cupy') for x in files_to_copy]
 
 
-try:
+def cythonize(extensions, arg_options):
+    # Delay importing Cython as it may be installed via setup_requires if
+    # the user does not have Cython installed.
     import Cython
     import Cython.Build
     cython_version = pkg_resources.parse_version(Cython.__version__)
-    cython_available = (
-        cython_version >= required_cython_version and
-        cython_version not in ignore_cython_versions)
-except ImportError:
-    cython_available = False
+    if (cython_version < required_cython_version or
+            cython_version in ignore_cython_versions):
+        raise AssertionError(
+            'Unsupported Cython version: {}'.format(cython_version))
 
-
-def cythonize(extensions, arg_options):
     directive_keys = ('linetrace', 'profile')
     directives = {key: arg_options[key] for key in directive_keys}
 
@@ -1011,18 +1004,6 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         return other_objects + cu_objects
 
 
-class sdist_with_cython(sdist.sdist):
-
-    """Custom `sdist` command with cyhonizing."""
-
-    def __init__(self, *args, **kwargs):
-        if not cython_available:
-            raise RuntimeError('Cython is required to make sdist.')
-        ext_modules = get_ext_modules(True)  # get .pyx modules
-        cythonize(ext_modules, cupy_setup_options)
-        sdist.sdist.__init__(self, *args, **kwargs)
-
-
 class custom_build_ext(build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
@@ -1046,9 +1027,8 @@ class custom_build_ext(build_ext.build_ext):
             # Intentionally causes DistutilsPlatformError in
             # ccompiler.new_compiler() function to hook.
             self.compiler = 'nvidia'
-        if cython_available:
-            ext_modules = get_ext_modules(True)  # get .pyx modules
-            cythonize(ext_modules, cupy_setup_options)
+        ext_modules = get_ext_modules(True)  # get .pyx modules
+        cythonize(ext_modules, cupy_setup_options)
         check_extensions(self.extensions)
         build_ext.build_ext.run(self)
 
