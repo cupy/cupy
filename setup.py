@@ -34,8 +34,7 @@ set 1 to CUPY_PYTHON_350_FORCE environment variable."""
 
 
 requirements = {
-    # setup_requires remains here for pip v18 or earlier.
-    # Keep in sync with pyproject.yaml.
+    # TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
     'setup': [
         'Cython>=0.28.0',
         'fastrlock>=0.3',
