@@ -27,7 +27,7 @@ requirements = {
     # setup_requires remains here for pip v18 or earlier.
     # Keep in sync with pyproject.yaml.
     'setup': [
-        'Cython>=0.28.0',
+        'Cython>=0.29.22',
         'fastrlock>=0.5',
     ],
 
