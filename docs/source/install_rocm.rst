@@ -24,7 +24,7 @@ When running CuPy for ROCm, the following environment variables need to be set.
 
 * ``HCC_AMDGPU_TARGET``: ISA name supported by your GPU.
   Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx900``).
-  You can specify comma-separated list of ISAs if you have multiple GPUs of different architecture.
+  You can specify a comma-separated list of ISAs if you have multiple GPUs of different architectures.
 
 * ``ROCM_HOME``: directory containing the ROCm software (e.g., ``/opt/rocm``).
 
