@@ -5,6 +5,30 @@ import cupy.linalg as linalg
 # from cupyx.scipy.linalg import (cho_factor, cho_solve)
 from cupyx.scipy.sparse import linalg as splinalg
 import scipy
+import warnings
+
+
+# TODO: this wrapper would not be needed if cholesky in cusolver
+#  (for CUDA<=10.2)
+# is stable for fp32 arithmetic
+def _cholesky(B):
+    """
+    Helper function to revert to scipy's cholesky implementation
+    and warn user if NaNs are encountered in the output.
+    """
+    R = cupy.linalg.cholesky(B)
+    # check if there are NaNs in R
+    isnan_bools = cupy.isnan(R)
+    if(cupy.any(isnan_bools)):
+        # revert to scipy's stable cholesky implementation
+        # This code-path is expected when dtype is cupy.float32 and CUDA<=10.2
+        R = scipy.linalg.cholesky(B.get(), lower=True)
+        warnings.warn('''NaNs encountered in output of cholesky implementation
+                         CuSOLVER\'s cholesky is found to be unstable for
+                         CUDA<=10.2 and single precision input.
+                         Reverting to CPU (scipy) implementation of cholesky.
+                         Note: Reverting to CPU can cause performance drop''')
+    return R
 
 
 # TODO: This helper function can be replaced after cupy.block is supported
@@ -117,9 +141,8 @@ def _b_orthonormalize(B, blockVectorV, blockVectorBV=None, retInvR=False):
     VBV = cupy.matmul(blockVectorV.T.conj(), blockVectorBV)
     try:
         # VBV is a Cholesky factor
-        VBV = linalg.cholesky(VBV).T
-        VBV = cupy.asarray(VBV)
-        VBV = linalg.inv(VBV)
+        VBV = _cholesky(VBV)
+        VBV = linalg.inv(VBV.T)
         blockVectorV = cupy.matmul(blockVectorV, VBV)
         if B is not None:
             blockVectorBV = cupy.matmul(blockVectorBV, VBV)
@@ -150,7 +173,7 @@ def _get_indx(_lambda, num, largest):
 
 # TODO: This helper function can be replaced after cupy.eigh
 #       supports generalized eigen value problems.
-def _genEigh(A, B=None):
+def _eigh(A, B=None):
     """
     Helper function for converting a generalized eigenvalue problem
     A(X) = lambda(B(X)) to standard eigen value problem using cholesky
@@ -159,16 +182,9 @@ def _genEigh(A, B=None):
     if(B is None):  # use cupy's eigh in standard case
         vals, vecs = linalg.eigh(A)
         return vals, vecs
-    # Cuda <= 10.2 cusolver sometimes fails and spits NaNs
-    # reverting to CPU implementation of cholesky solver
-    # TODO: to fix `cupy.linalg.cholesky` behavior for cuda <= 10.2
-    if(cupy.cuda.runtime.runtimeGetVersion() <= 10020):
-        R = scipy.linalg.cholesky(cupy.asnumpy(B), lower=True).T
-        R = cupy.asarray(R)
-    else:
-        R = linalg.cholesky(B).T
-    RTi = linalg.inv(cupy.transpose(R))
-    Ri = linalg.inv(R)
+    R = _cholesky(B)
+    RTi = linalg.inv(R)
+    Ri = linalg.inv(R.T)
     F = cupy.matmul(RTi, cupy.matmul(A, Ri))
     vals, vecs = linalg.eigh(F)
     eigVec = cupy.matmul(Ri, vecs)
@@ -297,7 +313,7 @@ def lobpcg(A, X,
         B_dense = None if B is None else B(cupy.eye(n, dtype=B.dtype))
 
         # call numerically unstable general eigen solver
-        vals, vecs = _genEigh(A_dense, B_dense)
+        vals, vecs = _eigh(A_dense, B_dense)
         if largest:
             # Reverse order to be compatible with eigs() in 'LM' mode.
             vals = vals[::-1]
@@ -338,7 +354,7 @@ def lobpcg(A, X,
     blockVectorAX = A(blockVectorX)
     gramXAX = cupy.dot(blockVectorX.T.conj(), blockVectorAX)
 
-    _lambda, eigBlockVector = _genEigh(gramXAX)
+    _lambda, eigBlockVector = _eigh(gramXAX)
     ii = _get_indx(_lambda, sizeX, largest)
     _lambda = _lambda[ii]
 
@@ -536,7 +552,7 @@ def lobpcg(A, X,
             _handle_gramA_gramB_verbosity(gramA, gramB)
 
             try:
-                _lambda, eigBlockVector = _genEigh(gramA, gramB)
+                _lambda, eigBlockVector = _eigh(gramA, gramB)
             except numpy.linalg.LinAlgError:
                 # try again after dropping the direction vectors P from RR
                 restart = True
@@ -550,7 +566,7 @@ def lobpcg(A, X,
             _handle_gramA_gramB_verbosity(gramA, gramB)
 
             try:
-                _lambda, eigBlockVector = _genEigh(gramA, gramB)
+                _lambda, eigBlockVector = _eigh(gramA, gramB)
             except numpy.linalg.LinAlgError:
                 raise ValueError('eigh has failed in lobpcg iterations')
 
