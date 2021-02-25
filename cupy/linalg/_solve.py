@@ -395,7 +395,7 @@ def pinv(a, rcond=1e-15):
         rcond (float or cupy.ndarray): Cutoff parameter for small singular
             values. For stability it computes the largest singular value
             denoted by ``s``, and sets all singular values smaller than
-            ``s`` to zero. Broadcasts against the stack of matrices.
+            ``rcond * s`` to zero. Broadcasts against the stack of matrices.
 
     Returns:
         cupy.ndarray: The pseudoinverse of ``a`` with dimension
@@ -416,11 +416,9 @@ def pinv(a, rcond=1e-15):
     u, s, vt = _decomposition.svd(a.conj(), full_matrices=False)
 
     # discard small singular values
-    if cupy.isscalar(rcond):
-        rcond = cupy.asarray(rcond)
-    cutoff = rcond[..., None] * cupy.amax(s, axis=-1, keepdims=True)
-    leq = s <= cutoff
-    s = 1 / s
+    cutoff = rcond * cupy.amax(s, axis=-1)
+    leq = s <= cutoff[..., None]
+    cupy.reciprocal(s, out=s)
     s[leq] = 0
 
     return cupy.matmul(vt.swapaxes(-2, -1), s[..., None] * u.swapaxes(-2, -1))
