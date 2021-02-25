@@ -21,7 +21,7 @@ from install.build import PLATFORM_WIN32
 
 # Cython requirements (minimum version and versions known to be broken).
 # Note: this must be in sync with setup_requires defined in setup.py.
-required_cython_version = pkg_resources.parse_version('0.28.0')
+required_cython_version = pkg_resources.parse_version('0.29.22')
 ignore_cython_versions = [
 ]
 use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
