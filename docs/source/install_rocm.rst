@@ -17,20 +17,52 @@ The following ROCm libraries are required:
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl
 
+Environment Variables
+---------------------
+
+When running CuPy for ROCm, the following environment variables need to be set.
+
+* ``HCC_AMDGPU_TARGET``: ISA name supported by your GPU.
+  Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx900``).
+  You can specify comma-separated list of ISAs if you have multiple GPUs of different architecture.
+
+* ``ROCM_HOME``: directory containing the ROCm software (e.g., ``/opt/rocm``).
+
+Exmaple:
+
+::
+
+  $ export HCC_AMDGPU_TARGET=gfx900
+  $ export ROCM_HOME=/opt/rocm
+
+Docker
+------
+
+You can try running CuPy for ROCm using Docker.
+
+::
+
+  $ docker run -it --device=/dev/kfd --device=/dev/dri --group-add video --env HCC_AMDGPU_TARGET=gfx900 cupy/cupy-rocm
+
 .. _install_hip:
+
+Installing Binary Packages
+--------------------------
+
+Wheels (precompiled binary packages) are available for Linux (x86_64).
+
+Currently we only offer wheels for ROCm v4.0.x.
+
+::
+
+  $ pip install --pre cupy-rocm-4-0
 
 Building CuPy for ROCm
 -----------------------
 
-Currently, you need to build CuPy from source to run on AMD GPU.
+To build CuPy from source, set ``CUPY_INSTALL_USE_HIP`` environment variable.
 
 ::
 
-  $ export HCC_AMDGPU_TARGET=gfx900  # This value should be changed based on your GPU
   $ export CUPY_INSTALL_USE_HIP=1
-  $ pip install cupy
-
-Note that ``HCC_AMDGPU_TARGET`` must be set to the ISA name supported by your GPU.
-Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx900``).
-
-You may also need to set ``ROCM_HOME`` (e.g., ``ROCM_HOME=/opt/rocm``).
+  $ pip install --pre cupy
