@@ -20,7 +20,7 @@ The following ROCm libraries are required:
 Environment Variables
 ---------------------
 
-When running CuPy for ROCm, the following environment variables need to be set.
+When building or running CuPy for ROCm, the following environment variables are effective.
 
 * ``HCC_AMDGPU_TARGET``: ISA name supported by your GPU.
   Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx900``).
@@ -28,12 +28,10 @@ When running CuPy for ROCm, the following environment variables need to be set.
 
 * ``ROCM_HOME``: directory containing the ROCm software (e.g., ``/opt/rocm``).
 
-Exmaple:
+.. note::
 
-::
-
-  $ export HCC_AMDGPU_TARGET=gfx900
-  $ export ROCM_HOME=/opt/rocm
+  In this version of CuPy, you must specify ``HCC_AMDGPU_TARGET`` at runtime.
+  This restriction will be removed in the future release.
 
 Docker
 ------
@@ -56,13 +54,20 @@ Currently we only offer wheels for ROCm v4.0.x.
 ::
 
   $ pip install --pre cupy-rocm-4-0
+  $ export HCC_AMDGPU_TARGET=gfx900
 
 Building CuPy for ROCm
 -----------------------
 
-To build CuPy from source, set ``CUPY_INSTALL_USE_HIP`` environment variable.
+To build CuPy from source, set ``CUPY_INSTALL_USE_HIP`` and ``ROCM_HOME`` environment variables.
 
 ::
 
   $ export CUPY_INSTALL_USE_HIP=1
+  $ export ROCM_HOME=/opt/rocm
   $ pip install --pre cupy
+
+.. note::
+
+  If you don't specify ``HCC_AMDGPU_TARGET`` environment variable, CuPy will be built for architectures of GPUs available on the build host.
+  This behavior is specific to ROCm build; when building CuPy for NVIDIA CUDA, the build result will not be affected by the host configuration.
