@@ -808,7 +808,16 @@ ELSE:
         cudaDevAttrCanFlushRemoteWrites
         cudaDevAttrHostRegisterSupported
         cudaDevAttrPageableMemoryAccessUsesHostPageTables
-        cudaDevAttrDirectManagedMemAccessFromHost
+        cudaDevAttrDirectManagedMemAccessFromHost  # = 101
+        # added since CUDA 11.0
+        cudaDevAttrMaxBlocksPerMultiprocessor = 106
+        cudaDevAttrReservedSharedMemoryPerBlock = 111
+        # added since CUDA 11.1
+        cudaDevAttrSparseCudaArraySupported = 112
+        cudaDevAttrHostRegisterReadOnlySupported = 113
+        # added since CUDA 11.2
+        cudaDevAttrMaxTimelineSemaphoreInteropSupported = 114
+        cudaDevAttrMemoryPoolsSupported = 115
 
 
 ###############################################################################
