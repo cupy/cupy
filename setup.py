@@ -28,6 +28,7 @@ requirements = {
     'setup': [
         'Cython>=0.29.22',
         'fastrlock>=0.5',
+        'setuptools_scm>=5.0.0',
     ],
 
     'install': [
@@ -120,11 +121,6 @@ long_description = cupy_setup_build.get_long_description()
 ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
 
-here = os.path.abspath(os.path.dirname(__file__))
-# Get __version__ variable
-with open(os.path.join(here, 'cupy', '_version.py')) as f:
-    exec(f.read())
-
 CLASSIFIERS = """\
 Development Status :: 5 - Production/Stable
 Intended Audience :: Science/Research
@@ -145,9 +141,32 @@ Operating System :: Microsoft :: Windows
 """
 
 
+with open('VERSION') as f:
+    version = f.read()
+
+use_scm_version = {
+    'write_to': 'cupy/_version.py',
+    'write_to_template': "__version__ = '{version}'\n",
+}
+if os.environ.get('CUPY_RELEASE_BUILD', False):
+    # setuptools-scm assumes that sdist/wheels are built *after* git-tagging,
+    # but that conflicts with our workflow that builds release assets before
+    # the tagging.
+    # The sdist/wheel build process must be done with CUPY_RELEASE_BUILD
+    # environment variable to disable setuptools-scm and generate sdist/wheels
+    # versioned without commit hash.  Note that when a user is installing an
+    # sdist, version in PKG-INFO file (which is bundled with the sdist tarball)
+    # is used.
+    # See also: https://github.com/pypa/setuptools_scm/
+    with open(use_scm_version['write_to'], 'w') as f:
+        f.write(use_scm_version['write_to_template'].format(version=version))
+    use_scm_version = None
+
+
 setup(
     name=package_name,
-    version=__version__,  # NOQA
+    version=version,
+    use_scm_version=use_scm_version,
     description='CuPy: A NumPy-compatible array library accelerated by CUDA',
     long_description=long_description,
     author='Seiya Tokui',
