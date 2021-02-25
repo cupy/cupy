@@ -155,7 +155,7 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     lwork = helper(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
                    u.data.ptr, ldu, v.data.ptr, ldv, params, batch_size)
     work = _cupy.empty(lwork, dtype=a.dtype)
-    info = _cupy.empty(1, dtype=_numpy.int32)
+    info = _cupy.empty(batch_size, dtype=_numpy.int32)
     solver(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params, batch_size)
