@@ -24,8 +24,7 @@ for submodule in ('cupy/core/include/cupy/cub/',
 
 
 requirements = {
-    # setup_requires remains here for pip v18 or earlier.
-    # Keep in sync with pyproject.yaml.
+    # TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
     'setup': [
         'Cython>=0.29.22',
         'fastrlock>=0.5',
