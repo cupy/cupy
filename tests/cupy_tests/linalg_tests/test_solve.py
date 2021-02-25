@@ -181,10 +181,10 @@ class TestPinv(unittest.TestCase):
         self.check_x((2, 3, 4, 5), rcond=1e-15)
 
     def test_pinv_batched_vector_rcond(self):
-        self.check_x((2, 3, 4), rcond=[0.5, 0.5])
+        self.check_x((2, 3, 4), rcond=[0.2, 0.8])
         self.check_x((2, 3, 4, 5),
-                     rcond=[[0.2, 0.2, 0.2],
-                            [0.2, 0.2, 0.2]])
+                     rcond=[[0.2, 0.9, 0.1],
+                            [0.7, 0.2, 0.5]])
 
     def test_pinv_size_0(self):
         self.check_x((3, 0), rcond=1e-15)
