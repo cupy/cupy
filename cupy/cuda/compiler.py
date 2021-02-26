@@ -759,12 +759,10 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     # to tell the compiler which arch we are targeting. But, we still
     # need to know arch as part of the cache key:
     if arch is None:
-        arch = os.environ.get('HCC_AMDGPU_TARGET')
         if arch is None:
             # On HIP, gcnArch is computed from "compute capability":
             # https://github.com/ROCm-Developer-Tools/HIP/blob/2080cc113a2d767352b512b9d24c0620b6dee790/rocclr/hip_device.cpp#L202
-            arch = int(device.Device().compute_capability)
-            arch = (arch // 100) * 100 + (arch % 100)
+            arch = device.Device().compute_capability
     if use_converter:
         source = _convert_to_hip_source(source, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))
