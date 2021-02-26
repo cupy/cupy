@@ -9,4 +9,4 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN pip3 install --no-cache-dir -U install setuptools pip
-RUN pip3 install --no-cache-dir cupy-cuda111==9.0.0b2 scipy optuna
+RUN pip3 install --no-cache-dir "cupy-cuda111[all]==9.0.0b3"
