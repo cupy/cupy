@@ -234,13 +234,11 @@ def _jitify_prep(source, options, cu_path):
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
-    if not arch:
-        arch = _get_arch()
-
+    # For hipRTC, arch is ignored
     if not runtime.is_hip:
+        if not arch:
+            arch = _get_arch()
         options += ('-arch=compute_{}'.format(arch),)
-    else:
-        options += ('-arch={}'.format(arch),)
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
@@ -643,12 +641,10 @@ def is_valid_kernel_name(name):
 
 
 def compile_using_hipcc(source, options, arch, log_stream=None):
-    # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
-    # pick up the right arch without needing HCC_AMDGPU_TARGET. Perhaps we just
-    # don't bother passing arch to hiprtc/hipcc?
-    assert len(arch) > 0
-    # pass HCC_AMDGPU_TARGET same as arch
-    cmd = ['hipcc', '--genco', '-arch='+arch] + list(options)
+    # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
+    # right arch without setting HCC_AMDGPU_TARGET, so we don't need
+    # to set arch here
+    cmd = ['hipcc', '--genco'] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
@@ -758,13 +754,17 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if cache_dir is None:
         cache_dir = get_cache_dir()
-    # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
-    # pick up the right arch without needing HCC_AMDGPU_TARGET. Perhaps we just
-    # don't bother passing arch to hiprtc/hipcc?
+    # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
+    # right arch without setting HCC_AMDGPU_TARGET, so we don't need
+    # to tell the compiler which arch we are targeting. But, we still
+    # need to know arch as part of the cache key:
     if arch is None:
         arch = os.environ.get('HCC_AMDGPU_TARGET')
         if arch is None:
-            raise RuntimeError('HCC_AMDGPU_TARGET is not set')
+            # On HIP, gcnArch is computed from "compute capability":
+            # https://github.com/ROCm-Developer-Tools/HIP/blob/2080cc113a2d767352b512b9d24c0620b6dee790/rocclr/hip_device.cpp#L202
+            arch = int(device.Device().compute_capability)
+            arch = (arch // 100) * 100 + (arch % 100)
     if use_converter:
         source = _convert_to_hip_source(source, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))
