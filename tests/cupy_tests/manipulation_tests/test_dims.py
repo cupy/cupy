@@ -299,20 +299,18 @@ class TestBroadcast(unittest.TestCase):
         assert broadcast_np.size == broadcast_cp.size
         assert broadcast_np.nd == broadcast_cp.nd
 
-    _broadcast_arrays_hip_skip_condition= [
-        [(1,), (1,)],
-        [(2,), (2,)],
-    ]
-
-    def _check_broadcast_arrays_hip_skip_condition(self):
-        return self.shapes in self._broadcast_arrays_hip_skip_condition
+    def _hip_skip_invalid_broadcast(self):
+        invalid_shapes = [
+            [(1,), (1,)],
+            [(2,), (2,)],
+        ]
+        if runtime.is_hip and self.shapes in invalid_shapes:
+            pytest.xfail('HIP/ROCm may have a bug')
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_broadcast_arrays(self, xp, dtype):
-        if runtime.is_hip:
-            if self._check_broadcast_arrays_hip_skip_condition():
-                pytest.xfail('HIP/ROCm may have a bug')
+        self._hip_skip_invalid_broadcast()
         arrays = [
             testing.shaped_arange(s, xp, dtype) for s in self.shapes]
         return xp.broadcast_arrays(*arrays)
