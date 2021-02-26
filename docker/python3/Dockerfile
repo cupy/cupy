@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.1-cudnn7-devel
+FROM nvidia/cuda:11.1.1-cudnn8-devel
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
