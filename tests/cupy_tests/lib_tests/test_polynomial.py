@@ -484,6 +484,8 @@ class TestPolyfitParametersCombinations(unittest.TestCase):
     @testing.numpy_cupy_allclose(
         atol=1e-9, accept_error=TypeError, contiguous_check=False)
     def test_polyfit_default(self, xp, dtype):
+        if runtime.is_hip and self.deg == 0:
+            pytest.xfail('ROCm/HIP may have a bug')
         x = testing.shaped_arange(self.shape1, xp, dtype)
         y = testing.shaped_arange(self.shape2, xp, dtype)
         w = x if self.weighted else None
@@ -491,6 +493,9 @@ class TestPolyfitParametersCombinations(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_full(self, dtype):
+        if runtime.is_hip and self.deg == 0:
+            pytest.xfail('ROCm/HIP may have a bug')
+
         cp_c, cp_resids, cp_rank, cp_s, cp_rcond = self._full_fit(cupy, dtype)
         np_c, np_resids, np_rank, np_s, np_rcond = self._full_fit(numpy, dtype)
 
