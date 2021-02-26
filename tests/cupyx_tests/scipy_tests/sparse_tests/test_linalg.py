@@ -1106,7 +1106,7 @@ class TestLOBPCG(unittest.TestCase):
         A = A.astype(cupy.float32)
         X = testing.shaped_random((n, m), xp=cupy, seed=1566950023)
         _, _, l_h = sparse.linalg.lobpcg(A, X, tol=1e-8, maxiter=None,
-                                         retLambdaHistory=True, verbosityLevel=1)
+                                         retLambdaHistory=True)
         assert len(l_h) == 22
 
 
