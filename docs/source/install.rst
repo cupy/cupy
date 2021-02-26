@@ -92,8 +92,6 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda110``
    * - v11.1
      - ``$ pip install cupy-cuda111``
-   * - v11.2
-     - ``$ pip install cupy-cuda112`` (see `#4704 <https://github.com/cupy/cupy/issues/4704>`_ for Linux instructions)
 
 .. note::
 
