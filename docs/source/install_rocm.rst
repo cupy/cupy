@@ -69,5 +69,5 @@ To build CuPy from source, set ``CUPY_INSTALL_USE_HIP`` and ``ROCM_HOME`` enviro
 
 .. note::
 
-  If you don't specify ``HCC_AMDGPU_TARGET`` environment variable, CuPy will be built for architectures of GPUs available on the build host.
-  This behavior is specific to ROCm build; when building CuPy for NVIDIA CUDA, the build result will not be affected by the host configuration.
+  If you don't specify the ``HCC_AMDGPU_TARGET`` environment variable, CuPy will be built for the GPU architectures available on the build host.
+  This behavior is specific to ROCm builds; when building CuPy for NVIDIA CUDA, the build result is not affected by the host configuration.
