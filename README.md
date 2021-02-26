@@ -33,7 +33,6 @@ Choose the right package for your CUDA Toolkit version.
 | v10.2 | `pip install cupy-cuda102`     |
 | v11.0 | `pip install cupy-cuda110`     |
 | v11.1 | `pip install cupy-cuda111`     |
-| v11.2 | `pip install cupy-cuda112` (see [#4704](https://github.com/cupy/cupy/issues/4704) for Linux instructions)     |
 
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or to build from source.
 
