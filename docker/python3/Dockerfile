@@ -1,5 +1,4 @@
-FROM nvidia/cuda:11.2.1-cudnn8-devel
-LABEL maintainer="CuPy Team"
+FROM nvidia/cuda:11.1.1-cudnn8-devel
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
@@ -10,4 +9,4 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN pip3 install --no-cache-dir -U install setuptools pip
-RUN pip3 install --no-cache-dir "cupy-cuda112[all]==9.0.0b3"
+RUN pip3 install --no-cache-dir "cupy-cuda111[all]==9.0.0b3"
