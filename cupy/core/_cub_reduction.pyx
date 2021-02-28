@@ -14,6 +14,7 @@ from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
+import sys
 from cupy import _environment
 from cupy.core._kernel import _get_param_info
 from cupy.cuda import driver
@@ -43,6 +44,10 @@ cdef function.Function _create_cub_reduction_function(
         # compile_with_cache()?
         options += ('-DCUPY_USE_JITIFY',)
         backend = 'nvrtc'
+
+    # WIP: attempt to fix
+    if sys.platform.startswith('win32'):
+        options += ('-DCUB_NS_PREFIX', '-DCUB_NS_POSTFIX')
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
