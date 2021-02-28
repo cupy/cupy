@@ -47,7 +47,7 @@ cdef function.Function _create_cub_reduction_function(
 
     # WIP: attempt to fix
     if sys.platform.startswith('win32'):
-        options += ('-DCUB_NS_PREFIX', '-DCUB_NS_POSTFIX')
+        options += ('-DCUB_NS_PREFIX=', '-DCUB_NS_POSTFIX=')
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
