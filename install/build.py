@@ -15,7 +15,6 @@ PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 minimum_cuda_version = 9020
 minimum_cudnn_version = 7600
-maximum_cudnn_version = 8099
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
 
@@ -450,13 +449,11 @@ def check_cudnn_version(compiler, settings):
 
     _cudnn_version = int(out)
 
-    if not minimum_cudnn_version <= _cudnn_version <= maximum_cudnn_version:
+    if not minimum_cudnn_version <= _cudnn_version:
         min_major = str(minimum_cudnn_version)
-        max_major = str(maximum_cudnn_version)
         utils.print_warning(
-            'Unsupported cuDNN version: {}'.format(
-                str(_cudnn_version)),
-            'cuDNN >=v{} and <=v{} is required'.format(min_major, max_major))
+            'Unsupported cuDNN version: {}'.format(str(_cudnn_version)),
+            'cuDNN >=v{} is required'.format(min_major))
         return False
 
     return True

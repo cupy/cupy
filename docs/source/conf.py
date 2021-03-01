@@ -369,36 +369,30 @@ def _import_object_from_name(module_name, fullname):
     return obj
 
 
-def _is_egg_directory(path):
-    return (path.endswith('.egg') and
-            os.path.isdir(os.path.join(path, 'EGG-INFO')))
-
-
-def _is_git_root(path):
-    return os.path.isdir(os.path.join(path, '.git'))
-
-
+# note: cupy_backends is excluded as it is undocumented
+_top_modules = ['cupy', 'cupyx']
 _source_root = None
 
 
 def _find_source_root(source_abs_path):
     # Note that READTHEDOCS* environment variable cannot be used, because they
-    # are not set under docker environment.
+    # are not set under the CI environment.
     global _source_root
-    if _source_root is None:
-        dir = os.path.dirname(source_abs_path)
-        while True:
-            if _is_egg_directory(dir) or _is_git_root(dir):
-                # Reached the root directory
-                _source_root = dir
-                break
+    if _source_root is not None:
+        return _source_root
 
-            dir_ = os.path.dirname(dir)
-            if len(dir_) == len(dir):
-                raise RuntimeError('Couldn\'t parse root directory from '
-                                   'source file: {}'.format(source_abs_path))
-            dir = dir_
-    return _source_root
+    assert os.path.isfile(source_abs_path)
+    dirname = os.path.dirname(source_abs_path)
+    while True:
+        parent = os.path.dirname(dirname)
+        if os.path.basename(dirname) in _top_modules:
+            _source_root = parent
+            return _source_root
+        if len(parent) == len(dirname):
+            raise RuntimeError(
+                'Couldn\'t parse root directory from '
+                'source file: {}'.format(source_abs_path))
+        dirname = parent
 
 
 def _get_source_relative_path(source_abs_path):
@@ -416,7 +410,7 @@ def linkcode_resolve(domain, info):
     mod = inspect.getmodule(obj)
     if mod is None:
         return None
-    if not (mod.__name__ == 'cupy' or mod.__name__.startswith('cupy.')):
+    if not mod.__name__.split('.')[0] in _top_modules:
         return None
 
     # Get the source file name and line number at which obj is defined.

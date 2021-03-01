@@ -30,6 +30,7 @@ class TestExceptionPicklable(unittest.TestCase):
     'shape': [(64,), (4, 16), (128,), (8, 32)],
 }))
 @testing.multi_gpu(2)
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='not supported by hipFFT')
 class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])

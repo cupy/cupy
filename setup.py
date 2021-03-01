@@ -24,13 +24,21 @@ for submodule in ('cupy/core/include/cupy/cub/',
 
 
 requirements = {
+    # TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
     'setup': [
-        'fastrlock>=0.3',
+        'Cython>=0.29.22',
+        'fastrlock>=0.5',
     ],
+
     'install': [
-        'numpy>=1.15',
-        'fastrlock>=0.3',
+        'numpy>=1.17',
+        'fastrlock>=0.5',
     ],
+    'all': [
+        'scipy>=1.4',
+        'optuna>=2.0',
+    ],
+
     'stylecheck': [
         'autopep8==1.4.4',
         'flake8==3.7.9',
@@ -40,14 +48,6 @@ requirements = {
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
-    ],
-    'doctest': [
-        'matplotlib',
-        'optuna',
-    ],
-    'docs': [
-        'sphinx==3.0.4',
-        'sphinx_rtd_theme',
     ],
     'appveyor': [
         '-r test',
@@ -119,11 +119,11 @@ package_name = cupy_setup_build.get_package_name()
 long_description = cupy_setup_build.get_long_description()
 ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
-sdist = cupy_setup_build.sdist_with_cython
 
 here = os.path.abspath(os.path.dirname(__file__))
 # Get __version__ variable
-exec(open(os.path.join(here, 'cupy', '_version.py')).read())
+with open(os.path.join(here, 'cupy', '_version.py')) as f:
+    exec(f.read())
 
 CLASSIFIERS = """\
 Development Status :: 5 - Production/Stable
@@ -135,6 +135,7 @@ Programming Language :: Python :: 3
 Programming Language :: Python :: 3.6
 Programming Language :: Python :: 3.7
 Programming Language :: Python :: 3.8
+Programming Language :: Python :: 3.9
 Programming Language :: Python :: 3 :: Only
 Programming Language :: Cython
 Topic :: Software Development
@@ -168,6 +169,5 @@ setup(
     tests_require=tests_require,
     extras_require=extras_require,
     ext_modules=ext_modules,
-    cmdclass={'build_ext': build_ext,
-              'sdist': sdist},
+    cmdclass={'build_ext': build_ext},
 )

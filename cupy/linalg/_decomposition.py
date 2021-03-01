@@ -4,8 +4,10 @@ import cupy
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
+from cupy.core import internal
 from cupy.cuda import device
 from cupy.cusolver import check_availability
+from cupy.cusolver import _gesvdj_batched, _gesvd_batched
 from cupy.linalg import _util
 
 
@@ -134,7 +136,7 @@ def _potrf_batched(a):
     n = x.shape[-1]
     ldx = x.strides[-2] // x.dtype.itemsize
     handle = device.get_cusolver_handle()
-    batch_size = cupy.core.internal.prod(x.shape[:-2])
+    batch_size = internal.prod(x.shape[:-2])
     dev_info = cupy.empty(batch_size, dtype=numpy.int32)
 
     potrfBatched(
@@ -352,6 +354,64 @@ def qr(a, mode='reduced'):
     return q, _util._triu(r)
 
 
+def _svd_batched(a, a_dtype, full_matrices, compute_uv):
+    batch_shape = a.shape[:-2]
+    batch_size = internal.prod(batch_shape)
+    n, m = a.shape[-2:]
+    s_dtype = a_dtype.lower()
+
+    # first handle any 0-size inputs
+    if batch_size == 0:
+        k = min(m, n)
+        s = cupy.empty(batch_shape + (k,), s_dtype)
+        if compute_uv:
+            if full_matrices:
+                u = cupy.empty(batch_shape + (n, n), dtype=a_dtype)
+                vt = cupy.empty(batch_shape + (m, m), dtype=a_dtype)
+            else:
+                u = cupy.empty(batch_shape + (n, k), dtype=a_dtype)
+                vt = cupy.empty(batch_shape + (k, m), dtype=a_dtype)
+            return u, s, vt
+        else:
+            return s
+    elif m == 0 or n == 0:
+        s = cupy.empty(batch_shape + (0,), s_dtype)
+        if compute_uv:
+            if full_matrices:
+                u = cupy.empty(batch_shape + (n, n), dtype=a_dtype)
+                u[...] = cupy.identity(n, dtype=a_dtype)
+                vt = cupy.empty(batch_shape + (m, m), dtype=a_dtype)
+                vt[...] = cupy.identity(m, dtype=a_dtype)
+            else:
+                u = cupy.empty(batch_shape + (n, 0), dtype=a_dtype)
+                vt = cupy.empty(batch_shape + (0, m), dtype=a_dtype)
+            return u, s, vt
+        else:
+            return s
+
+    # ...then delegate real computation to cuSOLVER
+    a = a.reshape(-1, *(a.shape[-2:]))
+    if runtime.is_hip or (m <= 32 and n <= 32):
+        # copy is done in _gesvdj_batched, so let's try not to do it here
+        a = a.astype(a_dtype, order='C', copy=False)
+        out = _gesvdj_batched(a, full_matrices, compute_uv, False)
+    else:
+        # manually loop over cusolverDn<t>gesvd()
+        # copy (via possible type casting) is done in _gesvd_batched
+        # note: _gesvd_batched returns V, not V^H
+        out = _gesvd_batched(a, a_dtype, full_matrices, compute_uv, False)
+    if compute_uv:
+        u, s, v = out
+        u = u.reshape(*batch_shape, *(u.shape[-2:]))
+        s = s.reshape(*batch_shape, *(s.shape[-1:]))
+        v = v.reshape(*batch_shape, *(v.shape[-2:]))
+        return u, s, v.swapaxes(-2, -1).conj()
+    else:
+        s = out
+        s = s.reshape(*batch_shape, *(s.shape[-1:]))
+        return s
+
+
 def svd(a, full_matrices=True, compute_uv=True):
     """Singular Value Decomposition.
 
@@ -360,11 +420,11 @@ def svd(a, full_matrices=True, compute_uv=True):
     singular values.
 
     Args:
-        a (cupy.ndarray): The input matrix with dimension ``(M, N)``.
+        a (cupy.ndarray): The input matrix with dimension ``(..., M, N)``.
         full_matrices (bool): If True, it returns u and v with dimensions
-            ``(M, M)`` and ``(N, N)``. Otherwise, the dimensions of u and v
-            are respectively ``(M, K)`` and ``(K, N)``, where
-            ``K = min(M, N)``.
+            ``(..., M, M)`` and ``(..., N, N)``. Otherwise, the dimensions
+            of u and v are ``(..., M, K)`` and ``(..., K, N)``, respectively,
+            where ``K = min(M, N)``.
         compute_uv (bool): If ``False``, it only returns singular values.
 
     Returns:
@@ -378,11 +438,17 @@ def svd(a, full_matrices=True, compute_uv=True):
         configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
+    .. note::
+        On CUDA, when ``a.ndim > 2`` and the matrix dimensions <= 32, a fast
+        code path based on Jacobian method (``gesvdj``) is taken. Otherwise,
+        a QR method (``gesvd``) is used.
+
+        On ROCm, there is no such a fast code path that switches the underlying
+        algorithm.
+
     .. seealso:: :func:`numpy.linalg.svd`
     """
-    # TODO(Saito): Current implementation only accepts two-dimensional arrays
     _util._assert_cupy_array(a)
-    _util._assert_rank2(a)
 
     # Cast to float32 or float64
     a_dtype = numpy.promote_types(a.dtype.char, 'f').char
@@ -396,10 +462,11 @@ def svd(a, full_matrices=True, compute_uv=True):
         a_dtype = 'D'
         s_dtype = 'd'
 
+    if a.ndim > 2:
+        return _svd_batched(a, a_dtype, full_matrices, compute_uv)
+
     # Remark 1: gesvd only supports m >= n (WHAT?)
-    # Remark 2: gesvd only supports jobu = 'A' and jobvt = 'A'
-    # Remark 3: gesvd returns matrix U and V^H
-    # Remark 4: Remark 2 is removed since cuda 8.0 (new!)
+    # Remark 2: gesvd returns matrix U and V^H
     n, m = a.shape
 
     if m == 0 or n == 0:

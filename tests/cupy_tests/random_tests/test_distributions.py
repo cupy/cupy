@@ -197,7 +197,7 @@ class TestDistributionsGeometric(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })
@@ -244,7 +244,7 @@ class TestDistributionsHyperGeometric(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })
@@ -282,9 +282,9 @@ class TestDistributionsLogistic(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
-    'mean_shape': [()],
-    'sigma_shape': [()],
+    'shape': [(4, 3, 2), (3, 2), None],
+    'mean_shape': [(), (3, 2)],
+    'sigma_shape': [(), (3, 2)],
 })
 )
 @testing.gpu
@@ -476,7 +476,7 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'a_shape': [(), (3, 2)],
 })
 )
@@ -486,7 +486,8 @@ class TestDistributionsPareto(unittest.TestCase):
     def check_distribution(self, dist_func, a_dtype, dtype):
         a = cupy.ones(self.a_shape, dtype=a_dtype)
         out = dist_func(a, self.shape, dtype)
-        assert self.shape == out.shape
+        if self.shape is not None:
+            assert self.shape == out.shape
         assert out.dtype == dtype
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -541,7 +542,7 @@ class TestDistributionsPower(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'scale_shape': [(), (3, 2)],
 })
 )
@@ -584,7 +585,7 @@ class TestDistributionsStandardCauchy(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
 })
 )
 @testing.gpu
@@ -612,7 +613,7 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
 })
 )
 @testing.gpu

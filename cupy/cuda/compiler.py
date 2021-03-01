@@ -117,10 +117,30 @@ def _get_nvrtc_version():
     return _nvrtc_version
 
 
+# Known archs for Tegra/Jetson/Xavier/etc
+_tegra_archs = ('53', '62', '72')
+
+
 @_util.memoize(for_each_device=True)
 def _get_arch():
+    # See Supported Compile Options section of NVRTC User Guide for
+    # the maximum value allowed for `--gpu-architecture`.
+    major, minor = _get_nvrtc_version()
+    if major < 10 or (major == 10 and minor == 0):
+        # CUDA 9.x / 10.0
+        _nvrtc_max_compute_capability = '70'
+    elif major < 11:
+        # CUDA 10.1 / 10.2
+        _nvrtc_max_compute_capability = '75'
+    else:
+        # CUDA 11.0 / 11.1 / 11.2
+        _nvrtc_max_compute_capability = '80'
+
     arch = device.Device().compute_capability
-    return arch
+    if arch in _tegra_archs:
+        return arch
+    else:
+        return min(arch, _nvrtc_max_compute_capability)
 
 
 def _is_cudadevrt_needed(options):
@@ -217,10 +237,14 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
     if not arch:
         arch = _get_arch()
 
-    options += ('-arch=compute_{}'.format(arch),)
+    if not runtime.is_hip:
+        options += ('-arch=compute_{}'.format(arch),)
+    else:
+        options += ('-arch={}'.format(arch),)
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
+
         if jitify:
             options, headers, include_names = _jitify_prep(
                 source, options, cu_path)
@@ -388,9 +412,6 @@ def compile_with_cache(
         name_expressions=None, log_stream=None, jitify=False):
 
     if enable_cooperative_groups:
-        if backend != 'nvcc':
-            raise ValueError(
-                'Cooperative groups is supported only in NVCC backend.')
         if runtime.is_hip:
             raise ValueError(
                 'Cooperative groups is not supported in HIP.')
@@ -622,9 +643,12 @@ def is_valid_kernel_name(name):
 
 
 def compile_using_hipcc(source, options, arch, log_stream=None):
+    # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
+    # pick up the right arch without needing HCC_AMDGPU_TARGET. Perhaps we just
+    # don't bother passing arch to hiprtc/hipcc?
     assert len(arch) > 0
     # pass HCC_AMDGPU_TARGET same as arch
-    cmd = ['hipcc', '--genco'] + list(options)
+    cmd = ['hipcc', '--genco', '-arch='+arch] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
@@ -735,8 +759,8 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     if cache_dir is None:
         cache_dir = get_cache_dir()
     # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
-    # pick up the right arch without needing HCC_AMDGPU_TARGET. Check the
-    # earliest ROCm version in which this happened.
+    # pick up the right arch without needing HCC_AMDGPU_TARGET. Perhaps we just
+    # don't bother passing arch to hiprtc/hipcc?
     if arch is None:
         arch = os.environ.get('HCC_AMDGPU_TARGET')
         if arch is None:
