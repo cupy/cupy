@@ -29,6 +29,25 @@ class Scalar(TypeBase):
         return get_typename(dtype)
 
 
+class Array(TypeBase):
+
+    def __init__(self, dtype, ndim, is_c_contiguous, index_32_bits):
+        self.dtype = dtype
+        self.ndim = ndim
+        self.is_c_contiguous = is_c_contiguous
+        self.index_32_bits = index_32_bits
+
+    @classmethod
+    def from_ndarray(cls, x):
+        return Array(x.dtype, x.ndim, x._c_contiguous, x._index_32_bits)
+
+    def __str__(self):
+        ctype = get_typename(self.dtype)
+        c_contiguous = get_cuda_code_from_constant(self.is_c_contiguous, bool_)
+        index_32_bits = get_cuda_code_from_constant(self.index_32_bits, bool_)
+        return f'CArray<{ctype}, {self.ndim}, {c_contiguous}, {index_32_bits}>'
+
+
 bool_ = Scalar(numpy.bool_)
 
 
