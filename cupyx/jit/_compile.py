@@ -312,11 +312,15 @@ def _transpile_stmt(stmt, is_toplevel, env):
     if isinstance(stmt, ast.Assign):
         if len(stmt.targets) != 1:
             raise NotImplementedError('Not implemented.')
-        target = stmt.targets[0]
-        if not isinstance(target, ast.Name):
-            raise NotImplementedError('Tuple is not supported.')
-        name = target.id
+
         value = _transpile_expr(stmt.value, env)
+        target = stmt.targets[0]
+
+        if not isinstance(target, ast.Name):
+            target = _transpile_expr(target, env)
+            return [f'{target.code} = {value.code};']
+
+        name = target.id
 
         if is_constants([value]):
             if not isinstance(value.obj, _typeclasses):
@@ -331,14 +335,14 @@ def _transpile_stmt(stmt, is_toplevel, env):
             value = _to_cuda_object(value, env)
 
         if env[name] is None:
-            env[name] = CudaObject(target.id, value.ctype)
+            env[name] = CudaObject(name, value.ctype)
         elif is_constants([env[name]]):
             raise TypeError('Type mismatch of variable: `{name}`')
         elif env[name].ctype.dtype != value.ctype.dtype:
             raise TypeError(
                 f'Data type mismatch of variable: `{name}`: '
                 f'{env[name].ctype.dtype} != {value.ctype.dtype}')
-        return [f'{target.id} = {value.code};']
+        return [f'{name} = {value.code};']
 
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
@@ -535,12 +539,21 @@ def _transpile_expr(expr, env):
         return Constant(expr.s)
 
     if isinstance(expr, ast.Subscript):
-        # # TODO(asi1024): Fix.
-        # value = _transpile_expr(expr.value, env)
-        # if isinstance(expr.slice, ast.Index):
-        #     index = _transpile_expr(expr.slice.value, env)
-        #     return value + '[' + index + ']'
-        raise NotImplementedError('Not implemented.')
+        value = _transpile_expr(expr.value, env)
+        index = _transpile_expr(expr.slice, env)
+        if is_constants([value, index]):
+            return Constant(value[index])
+        value = _to_cuda_object(value, env)
+        index = _to_cuda_object(index, env)
+
+        if not isinstance(value.ctype, _types.Array):
+            raise ValueError(f'{value.code} must be Array type.')
+        if value.ctype.ndim != 1:
+            raise NotImplementedError('Not implemented for ndim > 1.')
+        return CudaObject(
+            f'{value.code}[{index.code}]',
+            _types.Scalar(value.ctype.dtype))
+
     if isinstance(expr, ast.Name):
         value = env[expr.id]
         if value is None:
@@ -552,6 +565,10 @@ def _transpile_expr(expr, env):
         if is_constants([value]):
             return Constant(getattr(value.obj, expr.attr))
         raise NotImplementedError('Not implemented: __getattr__')
+
+    if isinstance(expr, ast.Index):
+        return _transpile_expr(expr.value, env)
+
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
