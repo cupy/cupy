@@ -38,16 +38,15 @@ cdef function.Function _create_cub_reduction_function(
         # hiprtc as of ROCm 3.5.0, so we must use hipcc.
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
+    elif sys.platform.startswith('win32'):
+        # options += ('-DCUB_NS_PREFIX=', '-DCUB_NS_POSTFIX=')
+        backend = 'nvcc'
     else:
         # use jitify + nvrtc
         # TODO(leofang): how about simply specifying jitify=True when calling
         # compile_with_cache()?
         options += ('-DCUPY_USE_JITIFY',)
         backend = 'nvrtc'
-
-    # WIP: attempt to fix
-    if sys.platform.startswith('win32'):
-        options += ('-DCUB_NS_PREFIX=', '-DCUB_NS_POSTFIX=')
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
