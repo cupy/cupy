@@ -227,7 +227,7 @@ class TestCubReduction(unittest.TestCase):
 
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
-    @testing.for_dtypes('lLfdFD')
+    @testing.for_dtypes('qQfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_sum(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
@@ -265,7 +265,7 @@ class TestCubReduction(unittest.TestCase):
         return a.sum(axis=axis)
 
     # sum supports less dtypes; don't test float16 as it's not as accurate?
-    @testing.for_dtypes('lLfdFD')
+    @testing.for_dtypes('qQfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5, contiguous_check=False)
     def test_cub_sum_empty_axis(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
@@ -277,7 +277,7 @@ class TestCubReduction(unittest.TestCase):
 
     @testing.for_contiguous_axes()
     # prod supports less dtypes; don't test float16 as it's not as accurate?
-    @testing.for_dtypes('lLfdFD')
+    @testing.for_dtypes('qQfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-5)
     def test_cub_prod(self, xp, dtype, axis):
         a = testing.shaped_random(self.shape, xp, dtype)
