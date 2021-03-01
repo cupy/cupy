@@ -1,5 +1,6 @@
 import ast
 import builtins
+import collections
 import inspect
 import numbers
 import re
@@ -14,6 +15,8 @@ from cupyx.jit import _typerules
 
 
 _typeclasses = (bool, numpy.bool_, numbers.Number)
+
+Result = collections.namedtuple('Result', ['func_name', 'code', 'return_type'])
 
 
 def transpile(func, attributes, mode, in_types, ret_type):
@@ -48,7 +51,11 @@ def transpile(func, attributes, mode, in_types, ret_type):
     cuda_code, env = _transpile_function(
         tree.body[0], attributes, mode, consts, in_types, ret_type)
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
-    return cuda_code, env.ret_type
+    return Result(
+        func_name=func.__name__,
+        code=cuda_code,
+        return_type=env.ret_type,
+    )
 
 
 def _indent(lines, spaces='  '):
