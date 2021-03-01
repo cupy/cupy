@@ -1,5 +1,4 @@
 import ast
-import builtins
 import collections
 import inspect
 import numbers
@@ -42,9 +41,8 @@ def transpile(func, attributes, mode, in_types, ret_type):
     source = '\n'.join([
         line.replace(' ' * num_indent, '', 1) for line in lines])
 
-    global_mems = dict(inspect.getclosurevars(func).globals)
-    nonlocals = dict(inspect.getclosurevars(func).nonlocals)
-    consts = dict(**global_mems, **nonlocals, **builtins.__dict__)
+    cvars = inspect.getclosurevars(func)
+    consts = dict(**cvars.globals, **cvars.nonlocals, **cvars.builtins)
     tree = ast.parse(source)
     assert isinstance(tree, ast.Module)
     assert len(tree.body) == 1
@@ -162,6 +160,8 @@ def _transpile_function(
         env (Environment): More details of analysis result of the function,
             which includes preambles, estimated return type and more.
     """
+    consts = dict([(k, Constant(v)) for k, v, in consts.items()])
+
     if not isinstance(func, ast.FunctionDef):
         # TODO(asi1024): Support for `ast.ClassDef`.
         raise NotImplementedError('Not supported: {}'.format(type(func)))
@@ -184,11 +184,8 @@ def _transpile_function(
         raise TypeError(
             f'{func.name}() takes {len(args)} positional arguments '
             'but {len(in_types)} were given.')
-    env = Environment(
-        mode,
-        dict([(k, Constant(v)) for k, v, in consts.items()]),
-        dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)]),
-        ret_type)
+    params = dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)])
+    env = Environment(mode, consts, params, ret_type)
     body = _transpile_stmts(func.body, True, env)
     params = ', '.join([f'{env[a].ctype} {a}' for a in args])
     local_vars = [f'{v.ctype} {n};' for n, v in env.locals.items()]
@@ -365,11 +362,11 @@ def _transpile_stmt(stmt, is_toplevel, env):
                      f'__it = {iters.start.code}, '
                      f'__stop = {iters.stop.code}, '
                      f'__step = {iters.step.code}')
-        cond = f'__step >= 0 ? __it < __stop : __it > __stop'
+        cond = '__step >= 0 ? __it < __stop : __it > __stop'
         if iters.step_is_positive is True:
-            cond = f'__it < __stop'
+            cond = '__it < __stop'
         elif iters.step_is_positive is False:
-            cond = f'__it > __stop'
+            cond = '__it > __stop'
 
         head = f'for ({init_code}; {cond}; __it += __step)'
         return [CodeBlock(head, [f'{name} = __it;'] + body)]
