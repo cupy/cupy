@@ -578,7 +578,7 @@ def _to_cuda_object(x, env):
         return x
     if isinstance(x, Constant):
         ctype = _typerules.get_ctype_from_scalar(env.mode, x.obj)
-        code = _typerules.get_cuda_code_from_constant(x.obj, ctype)
+        code = _types.get_cuda_code_from_constant(x.obj, ctype)
         return CudaObject(code, ctype)
     if isinstance(x, Range):
         raise TypeError('range object cannot be interpreted as a cuda object.')
