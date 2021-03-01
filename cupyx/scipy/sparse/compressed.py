@@ -750,6 +750,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             (self.indices, self.indptr), maxval=(
                 self.nnz + x.size))
 
+        # This is very strange. scatter_add below does not support int64, and
+        # currently CuPy's sparse matrix does not either, but for some reason
+        # on Windows a lot of failures are generated due to the use of int64.
+        # Need to trace back to what caused it.
+        assert idx_dtype == cupy.int32
+
         self.indptr = self.indptr.astype(idx_dtype)
         self.indices = self.indices.astype(idx_dtype)
         self.data = self.data.astype(self.dtype)
