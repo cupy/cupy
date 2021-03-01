@@ -197,6 +197,10 @@ def _transpile_function(
     body = _transpile_stmts(func.body, True, env)
     params = ', '.join([f'{env[a].ctype} {a}' for a in args])
     local_vars = [f'{v.ctype} {n};' for n, v in env.locals.items()]
+
+    if env.ret_type is None:
+        env.ret_type = _types.Void()
+
     head = f'{attributes} {env.ret_type} {func.name}({params})'
     code = CodeBlock(head, local_vars + body)
     return str(code), env
