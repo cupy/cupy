@@ -916,6 +916,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
     def setUp(self):
         self.pool = memory.MemoryAsyncPool()
+        cupy.get_default_memory_pool().free_all_blocks()
 
     def test_zero_size_alloc(self):
         with cupy.cuda.Device(0):

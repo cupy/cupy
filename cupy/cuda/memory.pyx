@@ -1506,14 +1506,14 @@ cdef class MemoryAsyncPool:
     The current CuPy stream is used to allocate/free the memory.
 
     Args:
-        pool_handles (None or True or int): A flag to indicate which mempool
-            to use. None is for the device's default mempool, True is for the
-            current mempool (which could be the default one), and an int that
-            represents ``cudaMemPool_t`` created from elsewhere for an external
-            mempool. A list consisting of these flags can also be accepted, in
-            which case the list length must equal to the total number of
-            visible devices so that the mempools for each device can be set
-            independently.
+        pool_handles (str or int): A flag to indicate which mempool to use.
+            `'default'` is for the device's default mempool, `'current'` is for
+            the current mempool (which could be the default one), and an `int`
+            that represents ``cudaMemPool_t`` created from elsewhere for an
+            external mempool. A list consisting of these flags can also be
+            accepted, in which case the list length must equal to the total
+            number of visible devices so that the mempools for each device can
+            be set independently.
 
     .. warning::
         This feature is currently experimental and subject to change.
@@ -1537,9 +1537,10 @@ cdef class MemoryAsyncPool:
         # A list of cudaMemPool_t to each device's mempool
         readonly list _pools
 
-    def __init__(self, pool_handles=None):
+    def __init__(self, pool_handles='default'):
         cdef int dev_id
-        if cpython.PySequence_Check(pool_handles):
+        if (cpython.PySequence_Check(pool_handles)
+                and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
             self._pools = [self.set_pool(pool_handles[dev_id], dev_id)
                            for dev_id in range(runtime.getDeviceCount())]
@@ -1549,21 +1550,23 @@ cdef class MemoryAsyncPool:
                            for dev_id in range(runtime.getDeviceCount())]
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
-        # TODO(leofang): Support cudaMemPoolCreate
         cdef intptr_t pool
-        if handle is None:
+        if handle == 'default':
             # Use the device's default pool
             pool = runtime.deviceGetDefaultMemPool(dev_id)
-        elif handle is True:
+        elif handle == 'current':
             # Use the device's current pool
             pool = runtime.deviceGetMemPool(dev_id)
+        elif handle == 'create':
+            # TODO(leofang): Support cudaMemPoolCreate
+            raise NotImplementedError('cudaMemPoolCreate is not yet supported')
         elif isinstance(handle, int):
             # Use an existing pool (likely from other applications?)
             pool = <intptr_t>(handle)
         else:
             raise ValueError("handle must be "
-                             "None (for the device's default pool), "
-                             "True (for the device's current pool), "
+                             "'default' (for the device's default pool), "
+                             "'current' (for the device's current pool), "
                              "or int (a pointer to cudaMemPool_t)")
         runtime.deviceSetMemPool(dev_id, pool)
         return pool
