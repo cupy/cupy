@@ -3,6 +3,7 @@ import collections
 import inspect
 import numbers
 import re
+import sys
 import warnings
 
 import numpy
@@ -166,7 +167,14 @@ def _transpile_function(
         # TODO(asi1024): Support for `ast.ClassDef`.
         raise NotImplementedError('Not supported: {}'.format(type(func)))
     if len(func.decorator_list) > 0:
-        raise NotImplementedError('Decorator is not supported')
+        if sys.version_info >= (3, 9):
+            # Code path for Python versions that support `ast.unparse`.
+            for deco in func.decorator_list:
+                deco_code = ast.unparse(deco)
+                if deco_code not in ['rawkernel', 'vectorize']:
+                    warnings.warn(
+                        f'Decorator {deco_code} may not supported in JIT.',
+                        RuntimeWarning)
     arguments = func.args
     if arguments.vararg is not None:
         raise NotImplementedError('`*args` is not supported currently.')
