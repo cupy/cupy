@@ -4,30 +4,16 @@ import cupy.linalg as linalg
 # waiting implementation of the following modules in PR #4172
 # from cupyx.scipy.linalg import (cho_factor, cho_solve)
 from cupyx.scipy.sparse import linalg as splinalg
-import scipy
-import warnings
 
 
-# TODO: this wrapper would not be needed if cholesky in cusolver
-#  (for CUDA<=10.2)
-# is stable for fp32 arithmetic
 def _cholesky(B):
     """
-    Helper function to revert to scipy's cholesky implementation
-    and warn user if NaNs are encountered in the output.
+    Wrapper around `cupy.linalg.cholesky` that raises LinAlgError if there are
+    NaNs in the output
     """
     R = cupy.linalg.cholesky(B)
-    # check if there are NaNs in R
-    isnan_bools = cupy.isnan(R)
-    if(cupy.any(isnan_bools)):
-        # revert to scipy's stable cholesky implementation
-        # This code-path is expected when dtype is cupy.float32 and CUDA<=10.2
-        R = scipy.linalg.cholesky(B.get(), lower=True)
-        warnings.warn('''NaNs encountered in output of cholesky implementation
-                         CuSOLVER\'s cholesky is found to be unstable for
-                         CUDA<=10.2 and single precision input.
-                         Reverting to CPU (scipy) implementation of cholesky.
-                         Note: Reverting to CPU can cause performance drop''')
+    if cupy.any(cupy.isnan(R)):
+        raise numpy.linalg.LinAlgError
     return R
 
 
