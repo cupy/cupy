@@ -39,7 +39,12 @@ cdef function.Function _create_cub_reduction_function(
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
     elif sys.platform.startswith('win32'):
-        # options += ('-DCUB_NS_PREFIX=', '-DCUB_NS_POSTFIX=')
+        # See #4771. NVRTC on Windows seems to have problems in handling empty
+        # macros, so any usage like this:
+        #     #ifndef CUB_NS_PREFIX
+        #     #define CUB_NS_PREFIX
+        #     #endif
+        # will drive NVRTC nuts. We need to work around before it's fixed.
         backend = 'nvcc'
     else:
         # use jitify + nvrtc
