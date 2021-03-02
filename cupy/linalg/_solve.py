@@ -436,7 +436,8 @@ def pinv(a, rcond=1e-15):
         a (cupy.ndarray): The matrix with dimension ``(M, N)``
         rcond (float): Cutoff parameter for small singular values.
             For stability it computes the largest singular value denoted by
-            ``s``, and sets all singular values smaller than ``s`` to zero.
+            ``rcond * s``, and sets all singular values smaller than ``s``
+            to zero.
 
     Returns:
         cupy.ndarray: The pseudoinverse of ``a`` with dimension ``(N, M)``.
