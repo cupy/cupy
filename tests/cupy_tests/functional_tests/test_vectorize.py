@@ -554,11 +554,11 @@ class TestVectorizeBroadcast(unittest.TestCase):
 
 class TestVectorize(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_dtypes('qQhfdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_vectorize_arithmetic_ops(self, xp, dtype):
         def my_func(x1, x2, x3):
-            y = x1 + x2 * x3
+            y = x1 + x2 * x3 ** x1
             x2 = y + x3 * x1
             return x1 + x2 + x3
 
