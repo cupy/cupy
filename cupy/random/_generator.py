@@ -143,7 +143,7 @@ class RandomState(object):
         if size is None:
             size = alpha.shape
         elif isinstance(size, (int, cupy.integer)):
-            size = [size]
+            size = [size] + alpha.shape
         else:
             size += alpha.shape
         y = cupy.empty(shape=size, dtype=dtype)
