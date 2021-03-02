@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy._indexing import generate
 from cupy import testing
 
@@ -39,6 +40,7 @@ class TestIX_(unittest.TestCase):
     def test_ix_list(self, xp):
         return xp.ix_([0, 1], [2, 4])
 
+    @pytest.mark.xfail(runtime.is_hip, reason='HIP may have a bug')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_ix_ndarray(self, xp, dtype):

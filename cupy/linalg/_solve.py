@@ -382,6 +382,7 @@ def _batched_inv(a):
     return c.reshape(a_shape).astype(out_dtype, copy=False)
 
 
+# TODO(leofang): support the hermitian keyword?
 def pinv(a, rcond=1e-15):
     """Compute the Moore-Penrose pseudoinverse of a matrix.
 
@@ -390,13 +391,15 @@ def pinv(a, rcond=1e-15):
     Note that it automatically removes small singular values for stability.
 
     Args:
-        a (cupy.ndarray): The matrix with dimension ``(M, N)``
-        rcond (float): Cutoff parameter for small singular values.
-            For stability it computes the largest singular value denoted by
-            ``s``, and sets all singular values smaller than ``s`` to zero.
+        a (cupy.ndarray): The matrix with dimension ``(..., M, N)``
+        rcond (float or cupy.ndarray): Cutoff parameter for small singular
+            values. For stability it computes the largest singular value
+            denoted by ``s``, and sets all singular values smaller than
+            ``rcond * s`` to zero. Broadcasts against the stack of matrices.
 
     Returns:
-        cupy.ndarray: The pseudoinverse of ``a`` with dimension ``(N, M)``.
+        cupy.ndarray: The pseudoinverse of ``a`` with dimension
+            ``(..., N, M)``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield
@@ -407,11 +410,18 @@ def pinv(a, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.pinv`
     """
+    if a.size == 0:
+        m, n = a.shape[-2:]
+        return cupy.empty(a.shape[:-2] + (n, m), dtype=a.dtype)
     u, s, vt = _decomposition.svd(a.conj(), full_matrices=False)
-    cutoff = rcond * s.max()
-    s1 = 1 / s
-    s1[s <= cutoff] = 0
-    return cupy.dot(vt.T, s1[:, None] * u.T)
+
+    # discard small singular values
+    cutoff = rcond * cupy.amax(s, axis=-1)
+    leq = s <= cutoff[..., None]
+    cupy.reciprocal(s, out=s)
+    s[leq] = 0
+
+    return cupy.matmul(vt.swapaxes(-2, -1), s[..., None] * u.swapaxes(-2, -1))
 
 
 def tensorinv(a, ind=2):

@@ -299,7 +299,7 @@ cpdef getDeviceProperties(int device):
     cdef dict properties = {'name': b'UNAVAILABLE'}  # for RTD
 
     # Common properties to CUDA 9.0, 9.2, 10.x, 11.x, and HIP
-    IF CUDA_VERSION > 0 or use_hip:
+    IF CUDA_VERSION > 0 or HIP_VERSION > 0:
         properties = {
             'name': props.name,
             'totalGlobalMem': props.totalGlobalMem,
@@ -397,7 +397,7 @@ cpdef getDeviceProperties(int device):
             props.accessPolicyMaxWindowSize)
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
-    IF use_hip:
+    IF HIP_VERSION > 0:  # HIP-only props
         properties['clockInstructionRate'] = props.clockInstructionRate
         properties['maxSharedMemoryPerMultiProcessor'] = (
             props.maxSharedMemoryPerMultiProcessor)
@@ -415,27 +415,35 @@ cpdef getDeviceProperties(int device):
             props.cooperativeMultiDeviceUnmatchedSharedMem)
         properties['isLargeBar'] = props.isLargeBar
 
-        # flatten "hipDeviceArch_t" into properties
-        # TODO(leofang): this might not be desired in some occasions?
-        properties['hasGlobalInt32Atomics'] = props.arch.hasGlobalInt32Atomics
-        properties['hasGlobalFloatAtomicExch'] = (
-            props.arch.hasGlobalFloatAtomicExch)
-        properties['hasSharedInt32Atomics'] = props.arch.hasSharedInt32Atomics
-        properties['hasSharedFloatAtomicExch'] = (
-            props.arch.hasSharedFloatAtomicExch)
-        properties['hasFloatAtomicAdd'] = props.arch.hasFloatAtomicAdd
-        properties['hasGlobalInt64Atomics'] = props.arch.hasGlobalInt64Atomics
-        properties['hasSharedInt64Atomics'] = props.arch.hasSharedInt64Atomics
-        properties['hasDoubles'] = props.arch.hasDoubles
-        properties['hasWarpVote'] = props.arch.hasWarpVote
-        properties['hasWarpBallot'] = props.arch.hasWarpBallot
-        properties['hasWarpShuffle'] = props.arch.hasWarpShuffle
-        properties['hasFunnelShift'] = props.arch.hasFunnelShift
-        properties['hasThreadFenceSystem'] = props.arch.hasThreadFenceSystem
-        properties['hasSyncThreadsExt'] = props.arch.hasSyncThreadsExt
-        properties['hasSurfaceFuncs'] = props.arch.hasSurfaceFuncs
-        properties['has3dGrid'] = props.arch.has3dGrid
-        properties['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
+        cdef dict arch = {}  # for hipDeviceArch_t
+        arch['hasGlobalInt32Atomics'] = props.arch.hasGlobalInt32Atomics
+        arch['hasGlobalFloatAtomicExch'] = props.arch.hasGlobalFloatAtomicExch
+        arch['hasSharedInt32Atomics'] = props.arch.hasSharedInt32Atomics
+        arch['hasSharedFloatAtomicExch'] = props.arch.hasSharedFloatAtomicExch
+        arch['hasFloatAtomicAdd'] = props.arch.hasFloatAtomicAdd
+        arch['hasGlobalInt64Atomics'] = props.arch.hasGlobalInt64Atomics
+        arch['hasSharedInt64Atomics'] = props.arch.hasSharedInt64Atomics
+        arch['hasDoubles'] = props.arch.hasDoubles
+        arch['hasWarpVote'] = props.arch.hasWarpVote
+        arch['hasWarpBallot'] = props.arch.hasWarpBallot
+        arch['hasWarpShuffle'] = props.arch.hasWarpShuffle
+        arch['hasFunnelShift'] = props.arch.hasFunnelShift
+        arch['hasThreadFenceSystem'] = props.arch.hasThreadFenceSystem
+        arch['hasSyncThreadsExt'] = props.arch.hasSyncThreadsExt
+        arch['hasSurfaceFuncs'] = props.arch.hasSurfaceFuncs
+        arch['has3dGrid'] = props.arch.has3dGrid
+        arch['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
+        properties['arch'] = arch
+    IF HIP_VERSION >= 310:
+        properties['gcnArchName'] = props.gcnArchName
+        properties['asicRevision'] = props.asicRevision
+        properties['managedMemory'] = props.managedMemory
+        properties['directManagedMemAccessFromHost'] = (
+            props.directManagedMemAccessFromHost)
+        properties['concurrentManagedAccess'] = props.concurrentManagedAccess
+        properties['pageableMemoryAccess'] = props.pageableMemoryAccess
+        properties['pageableMemoryAccessUsesHostPageTables'] = (
+            props.pageableMemoryAccessUsesHostPageTables)
     return properties
 
 cpdef int deviceGetByPCIBusId(str pci_bus_id) except? -1:
@@ -826,11 +834,13 @@ cdef _streamCallbackFunc(driver.Stream hStream, int status,
     cpython.Py_DECREF(obj)
 
 
-cdef _HostFnFunc(void* func_arg) with gil:
-    obj = <object>func_arg
-    func, arg = obj
-    func(arg)
-    cpython.Py_DECREF(obj)
+# Use Cython macro to suppress compiler warning
+IF CUDA_VERSION >= 10000:
+    cdef _HostFnFunc(void* func_arg) with gil:
+        obj = <object>func_arg
+        func, arg = obj
+        func(arg)
+        cpython.Py_DECREF(obj)
 
 
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,

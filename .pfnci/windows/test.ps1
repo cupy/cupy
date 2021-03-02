@@ -41,6 +41,15 @@ function UploadCache {
     popd
 }
 
+function PublishTestResults {
+    # Upload test results
+    echo "Uploading test results..."
+    $artifact_id = $Env:CI_JOB_ID
+    RunOrDie gsutil -m -q cp cupy_build_log.txt cupy_test_log.txt "gs://chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/"
+    echo "Build Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_build_log.txt"
+    echo "Test Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_test_log.txt"
+}
+
 function Main {
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
@@ -60,7 +69,19 @@ function Main {
     RunOrDie python -m pip freeze
 
     echo "Building..."
-    RunOrDie python -m pip install -e ".[all,jenkins]" -vvv > cupy_build_log.txt
+    $build_retval = 0
+    python -m pip install -e ".[all,jenkins]" -vvv > cupy_build_log.txt
+    if (-not $?) {
+        $build_retval = $LastExitCode
+    }
+    echo "Last 10 lines from the build output:"
+    Get-Content cupy_build_log.txt -Tail 10
+
+    if ($build_retval -ne 0) {
+        echo "n/a" > cupy_test_log.txt
+        PublishTestResults
+        throw "Build failed with status $build_retval"
+    }
 
     # Import test
     echo "CuPy Configuration:"
@@ -79,29 +100,25 @@ function Main {
     }
 
     $use_cache = ($Env:CUPY_CI_CACHE_KERNEL -eq "1")
+    $upload_cache = -Not (IsPullRequestTest)
 
     if ($use_cache) {
         DownloadCache
     }
     echo "Running test..."
+    $test_retval = 0
     python -m pytest -rfEX $Env:PYTEST_OPTS tests > cupy_test_log.txt
     if (-not $?) {
         $test_retval = $LastExitCode
     }
-    if ($use_cache) {
+    if ($use_cache -And $upload_cache) {
         UploadCache
     }
-
-    # Upload test results
-    echo "Uploading test results..."
-    $artifact_id = $Env:CI_JOB_ID
-    RunOrDie gsutil -m -q cp cupy_build_log.txt cupy_test_log.txt "gs://chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/"
-    echo "Build Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_build_log.txt"
-    echo "Test Log: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/$artifact_id/cupy_test_log.txt"
 
     echo "Last 10 lines from the test output:"
     Get-Content cupy_test_log.txt -Tail 10
 
+    PublishTestResults
     if ($test_retval -ne 0) {
         throw "Test failed with status $test_retval"
     }

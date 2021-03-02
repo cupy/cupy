@@ -1,7 +1,23 @@
-import numpy as _numpy
+# distutils: language = c++
+
+from libc.stdint cimport intptr_t
+
 import warnings as _warnings
 
+import numpy as _numpy
+
+from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.libs cimport cusolver
+# due to a Cython bug (cython/cython#4000) we cannot just cimport the module
+from cupy_backends.cuda.libs.cusolver cimport (  # noqa
+    sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize)
+
+from cupy.cuda cimport memory
+from cupy.core.core cimport _ndarray_init, ndarray
+
 import cupy as _cupy
+from cupy_backends.cuda.api import driver as _driver
 from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusolver as _cusolver
@@ -12,8 +28,32 @@ from cupy import _util
 import cupyx as _cupyx
 
 
+###############################################################################
+# Extern
+###############################################################################
+
+cdef extern from '../cupy_backends/cupy_complex.h':
+    ctypedef struct cuComplex 'cuComplex':
+        float x, y
+
+    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
+        double x, y
+
+cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
+    int gesvd_loop[T](
+        intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t A,
+        intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
+        intptr_t w_ptr, int buffersize, intptr_t info_ptr,
+        int batch_size)
+
+ctypedef int(*gesvd_ptr)(intptr_t, char, char, int, int, intptr_t,
+                         intptr_t, intptr_t, intptr_t,
+                         intptr_t, int, intptr_t, int) nogil
+
+
 _available_cuda_version = {
     'gesvdj': (9000, None),
+    'gesvdjBatched': (9000, None),
     'gesvda': (10010, None),
     'potrfBatched': (9010, None),
     'potrsBatched': (9010, None),
@@ -24,6 +64,7 @@ _available_cuda_version = {
 }
 
 _available_hip_version = {
+    'gesvdjBatched': (309, None),  # = rocsolver_<t>gesvd_batched
     'potrfBatched': (306, None),
     # Below are APIs supported by CUDA but not yet by HIP. We need them here
     # so that our test suite can cover both platforms.
@@ -49,9 +90,7 @@ def check_availability(name):
         version = _runtime.runtimeGetVersion()
     else:
         available_version = _available_hip_version
-        # TODO(leofang): use HIP_VERSION instead?
-        version = _cusolver._getVersion()
-        version = version[0] * 100 + version[1]
+        version = _driver.get_build_version()  # = HIP_VERSION
     if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
@@ -87,11 +126,11 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
         tuple of :class:`cupy.ndarray`:
             A tuple of ``(u, s, v)``.
     """
-    if not check_availability('gesvdj'):
-        raise RuntimeError('gesvdj is not available.')
-
     if a.ndim == 3:
         return _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a)
+
+    if not check_availability('gesvdj'):
+        raise RuntimeError('gesvdj is not available.')
 
     assert a.ndim == 2
 
@@ -154,6 +193,9 @@ def gesvdj(a, full_matrices=True, compute_uv=True, overwrite_a=False):
 
 
 def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
+    if not check_availability('gesvdjBatched'):
+        raise RuntimeError('gesvdj is not available.')
+
     if a.dtype == 'f':
         helper = _cusolver.sgesvdjBatched_bufferSize
         solver = _cusolver.sgesvdjBatched
@@ -176,6 +218,11 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     handle = _device.get_cusolver_handle()
     batch_size, m, n = a.shape
     a = _cupy.array(a.swapaxes(-2, -1), order='C', copy=not overwrite_a)
+    if _runtime.is_hip:
+        # rocsolver_<t>gesvd_batched has a different signature...
+        ap = _linalg._mat_ptrs(a)
+    else:
+        ap = a
     lda = m
     mn = min(m, n)
     s = _cupy.empty((batch_size, mn), dtype=s_dtype)
@@ -190,22 +237,132 @@ def _gesvdj_batched(a, full_matrices, compute_uv, overwrite_a):
     u = _cupy.empty((batch_size, m, ldu), dtype=a.dtype).swapaxes(-2, -1)
     v = _cupy.empty((batch_size, n, ldv), dtype=a.dtype).swapaxes(-2, -1)
     params = _cusolver.createGesvdjInfo()
-    lwork = helper(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
+    lwork = helper(handle, jobz, m, n, ap.data.ptr, lda, s.data.ptr,
                    u.data.ptr, ldu, v.data.ptr, ldv, params, batch_size)
     work = _cupy.empty(lwork, dtype=a.dtype)
-    info = _cupy.empty(1, dtype=_numpy.int32)
-    solver(handle, jobz, m, n, a.data.ptr, lda, s.data.ptr,
+    info = _cupy.empty(batch_size, dtype=_numpy.int32)
+    solver(handle, jobz, m, n, ap.data.ptr, lda, s.data.ptr,
            u.data.ptr, ldu, v.data.ptr, ldv, work.data.ptr, lwork,
            info.data.ptr, params, batch_size)
     _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvdj, info)
 
     _cusolver.destroyGesvdjInfo(params)
+    if _runtime.is_hip:
+        v = v.swapaxes(-1, -2).conj()
     if not full_matrices:
         u = u[..., :mn]
         v = v[..., :mn]
     if compute_uv:
         return u, s, v
+    else:
+        return s
+
+
+cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
+    """A loop-based gesvd wrapper to support batched SVD."""
+    # This function follows more closely with gesvd() in
+    # cupy/linalg/_decomposition.py.
+
+    # TODO(leofang): if cuSOLVER implements a batched version of gesvd, wrap
+    # it here and unify with rocSOLVER's counterpart (it's currently wrapped
+    # as gesvdj, not gesvd) here.
+    if runtime._is_hip_environment:
+        # we never arrive here, so just raise
+        raise RuntimeError("This function is disabled on HIP as "
+                           "it is not needed")
+
+    # TODO(leofang): try overlapping using a small stream pool?
+
+    cdef ndarray x, s, u, vt, dev_info
+    cdef int n, m, k, batch_size, i, buffersize, d_size, status
+    cdef intptr_t a_ptr, s_ptr, u_ptr, vt_ptr, rwork_ptr, w_ptr, info_ptr
+    cdef str s_dtype
+    cdef char job_u, job_vt
+    cdef bint trans_flag
+    cdef gesvd_ptr gesvd
+
+    assert a.ndim > 2
+    assert not overwrite_a  # TODO(leofang): handle this?
+    batch_size, n, m = a.shape
+    s_dtype = a_dtype.lower()
+
+    # `a` must be copied because xgesvd destroys the matrix
+    if m >= n:
+        x = a.astype(a_dtype, order='C', copy=True)
+        trans_flag = False
+    else:
+        m, n = a.shape[-2:]
+        x = a.swapaxes(-2, -1).astype(a_dtype, order='C', copy=True)
+        trans_flag = True
+    a_ptr = x.data.ptr
+
+    k = n  # = min(m, n) where m >= n is ensured above
+    if compute_uv:
+        # TODO(leofang): the current approach may be memory hungry, try
+        # setting either job_u or job_vt to 'O' to overwrite the input?
+        if full_matrices:
+            u = _ndarray_init((batch_size, m, m), a_dtype)
+            vt = _ndarray_init((batch_size, n, n), a_dtype)
+            job_u = b'A'
+            job_vt = b'A'
+        else:
+            u = _ndarray_init((batch_size, k, m), a_dtype)
+            vt = _ndarray_init((batch_size, k, n), a_dtype)
+            job_u = b'S'
+            job_vt = b'S'
+        u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
+    else:
+        u_ptr, vt_ptr = 0, 0  # Use nullptr
+        job_u = b'N'
+        job_vt = b'N'
+    s = _ndarray_init((batch_size, k), s_dtype)
+    s_ptr = s.data.ptr
+    cdef intptr_t handle = _device.get_cusolver_handle()
+    dev_info = _ndarray_init((batch_size,), _numpy.int32)
+    info_ptr = dev_info.data.ptr
+
+    if a_dtype == 'f':
+        gesvd_bufferSize = sgesvd_bufferSize
+        gesvd = gesvd_loop[float]
+    elif a_dtype == 'd':
+        gesvd_bufferSize = dgesvd_bufferSize
+        gesvd = gesvd_loop[double]
+    elif a_dtype == 'F':
+        gesvd_bufferSize = cgesvd_bufferSize
+        gesvd = gesvd_loop[cuComplex]
+    elif a_dtype == 'D':
+        gesvd_bufferSize = zgesvd_bufferSize
+        gesvd = gesvd_loop[cuDoubleComplex]
+    else:
+        raise TypeError
+
+    # this wrapper also sets the stream for us
+    buffersize = gesvd_bufferSize(handle, m, n)
+    # we are on the same stream, so the workspace can be reused in the loop
+    workspace = memory.alloc(buffersize * x.dtype.itemsize)
+    w_ptr = workspace.ptr
+
+    # the loop starts here, with gil released to reduce overhead
+    with nogil:
+        status = gesvd(
+            handle, job_u, job_vt, m, n, a_ptr,
+            s_ptr, u_ptr, vt_ptr,
+            w_ptr, buffersize, info_ptr, batch_size)
+    if status != 0:
+        raise _cusolver.CUSOLVERError(status)
+
+    # check the full info array
+    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+        'gesvd', dev_info)
+
+    # Note that the returned array may need to be transposed
+    # depending on the structure of an input
+    if compute_uv:
+        if trans_flag:
+            return u.swapaxes(-2, -1), s, vt.conj()
+        else:
+            return vt, s, u.swapaxes(-2, -1).conj()
     else:
         return s
 
