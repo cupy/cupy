@@ -316,6 +316,9 @@ class TestDirichlet(RandomGeneratorTestCase):
     def test_dirichlet(self):
         self.generate(alpha=self.alpha, size=(3, 2, 3))
 
+    def test_dirichlet_int_shape(self):
+        self.generate(alpha=self.alpha, size=5)
+
     # TODO(kataoka): add distribution test
 
 
