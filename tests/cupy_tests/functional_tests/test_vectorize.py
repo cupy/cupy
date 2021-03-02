@@ -350,7 +350,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_if)
-        x = xp.array([1, 2, 3, 4, 5])
+        x = xp.array([1, 2, 3, 4, 5], dtype=xp.int64)
         return f(x)
 
     @testing.numpy_cupy_array_equal()
@@ -362,7 +362,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_if)
-        x = xp.array([1, 2, 3, 4, 5])
+        x = xp.array([1, 2, 3, 4, 5], dtype=xp.int64)
         return f(x)
 
     @testing.numpy_cupy_array_equal()
@@ -376,7 +376,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_if)
-        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=xp.int64)
         return f(x)
 
     @testing.numpy_cupy_array_equal()
@@ -389,7 +389,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_while)
-        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=xp.int64)
         return f(x)
 
     @testing.numpy_cupy_array_equal()
@@ -401,7 +401,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_for)
-        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=xp.int64)
         return f(x)
 
     @testing.numpy_cupy_array_equal()
@@ -449,7 +449,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return x + i
 
         f = xp.vectorize(func_for)
-        x = xp.array([0, 1, 2, 3, 4])
+        x = xp.array([0, 1, 2, 3, 4], dtype=xp.int64)
         return f(x)
 
     @testing.numpy_cupy_array_equal()
@@ -461,7 +461,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return res
 
         f = xp.vectorize(func_for)
-        x = xp.array([0, 1, 2, 3, 4])
+        x = xp.array([0, 1, 2, 3, 4], dtype=xp.int64)
         return f(x, x)
 
     @testing.numpy_cupy_array_equal()
@@ -474,7 +474,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return res
 
         f = xp.vectorize(func_for)
-        x = xp.array([0, 1, 2, 3, 4])
+        x = xp.array([0, 1, 2, 3, 4], dtype=xp.int64)
         return f(x)
 
 
@@ -553,7 +553,7 @@ class TestVectorize(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_vectorize_arithmetic_ops(self, xp, dtype):
         def my_func(x1, x2, x3):
-            y = x1 + x2 * x3 ** x1
+            y = x1 + x2 * x3
             x2 = y + x3 * x1
             return x1 + x2 + x3
 
