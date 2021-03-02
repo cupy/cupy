@@ -410,9 +410,14 @@ def pinv(a, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.pinv`
     """
+    _util._assert_cupy_array(a)
     if a.size == 0:
+        _, out_dtype = _util.linalg_common_type(a)
         m, n = a.shape[-2:]
-        return cupy.empty(a.shape[:-2] + (n, m), dtype=a.dtype)
+        if m == 0 or n == 0:
+            out_dtype = a.dtype  # NumPy bug?
+        return cupy.empty(a.shape[:-2] + (n, m), dtype=out_dtype)
+
     u, s, vt = _decomposition.svd(a.conj(), full_matrices=False)
 
     # discard small singular values
