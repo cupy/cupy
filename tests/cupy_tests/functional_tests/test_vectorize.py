@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 import numpy
@@ -221,7 +222,11 @@ class TestVectorizeExprs(unittest.TestCase):
 
         f = xp.vectorize(my_incr)
         x = testing.shaped_random((20, 30), xp, dtype, seed=0)
-        return f(x)
+        out = f(x)
+        # On Windows, NumPy's default int type is int32, not int64
+        if sys.platform.startswith('win32') and out.dtype == xp.int32:
+            out = out.astype(xp.int64)
+        return out
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
