@@ -41,3 +41,16 @@ class TestRaw(unittest.TestCase):
         y = testing.shaped_random((1024,), dtype=numpy.int32, seed=1)
         f((5,), (6,), (x, y, numpy.uint32(1024)))
         assert bool((x == y).all())
+
+    def test_raw_grid_block_interface(self):
+        @jit.rawkernel()
+        def f(x, y, size):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            ntid = jit.blockDim.x * jit.gridDim.x
+            for i in range(tid, size, ntid):
+                y[i] = x[i]
+
+        x = testing.shaped_random((1024,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((1024,), dtype=numpy.int32, seed=1)
+        f[5, 6](x, y, numpy.uint32(1024))
+        assert bool((x == y).all())

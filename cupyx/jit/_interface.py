@@ -69,11 +69,13 @@ class _JitRawKernel:
             self._cache[in_types] = kern
         kern(grid, block, args)
 
-    # def __getitem__(self, grid, block):
-    #     if not isinstance(grid, tuple):
-    #         grid = (grid, 1, 1)
-    #     if not isinstance(block, tuple):
-    #         block = (block, 1, 1)
+    def __getitem__(self, grid_and_block):
+        grid, block = grid_and_block
+        if not isinstance(grid, tuple):
+            grid = (grid, 1, 1)
+        if not isinstance(block, tuple):
+            block = (block, 1, 1)
+        return lambda *args: self(grid, block, args)
 
 
 def rawkernel(mode='cuda'):
