@@ -197,10 +197,17 @@ class TestLstsq(unittest.TestCase):
     @testing.numpy_cupy_allclose(atol=1e-3)
     def check_lstsq_solution(self, a_shape, b_shape, seed, rcond, xp, dtype,
                              singular=False):
-        a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=seed)
         if singular:
-            a -= a.mean(axis=0, keepdims=True)
-            a -= a.mean(axis=1, keepdims=True)
+            m, n = a_shape
+            rank = min(m, n) - 1
+            a = xp.matmul(
+                testing.shaped_random(
+                    (m, rank), xp, dtype=dtype, scale=3, seed=seed),
+                testing.shaped_random(
+                    (rank, n), xp, dtype=dtype, scale=3, seed=seed+42),
+            )
+        else:
+            a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=seed)
         b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=seed+37)
         a_copy = a.copy()
         b_copy = b.copy()
