@@ -107,24 +107,21 @@ cdef class Memory(BaseMemory):
             runtime.free(self.ptr)
 
 
-cdef inline async_alloc_check(int curr_dev):
-    cdef int dev_id
-    cdef list support = [runtime.deviceGetAttribute(
-        runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
-        for dev_id in range(runtime.getDeviceCount())]
-    _thread_local.device_support_async_alloc = support
-    return support[curr_dev]
-
-
 cdef inline void is_async_alloc_supported(int device_id) except*:
     if CUDA_VERSION < 11020:
         raise RuntimeError("memory_async is supported since CUDA 11.2")
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
+    cdef int dev_id
+    cdef list support
     try:
         is_supported = _thread_local.device_support_async_alloc[device_id]
     except AttributeError:
-        is_supported = async_alloc_check(device_id)
+        support = [runtime.deviceGetAttribute(
+            runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
+            for dev_id in range(runtime.getDeviceCount())]
+        _thread_local.device_support_async_alloc = support
+        is_supported = support[device_id]
     if not is_supported:
         raise RuntimeError('Device {} does not support '
                            'malloc_async'.format(device_id))
