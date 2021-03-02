@@ -341,11 +341,13 @@ def qr(a, mode='reduced'):
         _util._triu(r).astype(out_dtype, copy=False))
 
 
-def _svd_batched(a, a_dtype, full_matrices, compute_uv):
+def _svd_batched(a, full_matrices, compute_uv):
     batch_shape = a.shape[:-2]
     batch_size = internal.prod(batch_shape)
     n, m = a.shape[-2:]
-    s_dtype = a_dtype.lower()
+
+    dtype, uv_dtype = _util.linalg_common_type(a)
+    s_dtype = uv_dtype.char.lower()
 
     # first handle any 0-size inputs
     if batch_size == 0:
@@ -353,11 +355,11 @@ def _svd_batched(a, a_dtype, full_matrices, compute_uv):
         s = cupy.empty(batch_shape + (k,), s_dtype)
         if compute_uv:
             if full_matrices:
-                u = cupy.empty(batch_shape + (n, n), dtype=a_dtype)
-                vt = cupy.empty(batch_shape + (m, m), dtype=a_dtype)
+                u = cupy.empty(batch_shape + (n, n), dtype=uv_dtype)
+                vt = cupy.empty(batch_shape + (m, m), dtype=uv_dtype)
             else:
-                u = cupy.empty(batch_shape + (n, k), dtype=a_dtype)
-                vt = cupy.empty(batch_shape + (k, m), dtype=a_dtype)
+                u = cupy.empty(batch_shape + (n, k), dtype=uv_dtype)
+                vt = cupy.empty(batch_shape + (k, m), dtype=uv_dtype)
             return u, s, vt
         else:
             return s
@@ -365,13 +367,13 @@ def _svd_batched(a, a_dtype, full_matrices, compute_uv):
         s = cupy.empty(batch_shape + (0,), s_dtype)
         if compute_uv:
             if full_matrices:
-                u = cupy.empty(batch_shape + (n, n), dtype=a_dtype)
-                u[...] = cupy.identity(n, dtype=a_dtype)
-                vt = cupy.empty(batch_shape + (m, m), dtype=a_dtype)
-                vt[...] = cupy.identity(m, dtype=a_dtype)
+                u = cupy.empty(batch_shape + (n, n), dtype=uv_dtype)
+                u[...] = cupy.identity(n, dtype=uv_dtype)
+                vt = cupy.empty(batch_shape + (m, m), dtype=uv_dtype)
+                vt[...] = cupy.identity(m, dtype=uv_dtype)
             else:
-                u = cupy.empty(batch_shape + (n, 0), dtype=a_dtype)
-                vt = cupy.empty(batch_shape + (0, m), dtype=a_dtype)
+                u = cupy.empty(batch_shape + (n, 0), dtype=uv_dtype)
+                vt = cupy.empty(batch_shape + (0, m), dtype=uv_dtype)
             return u, s, vt
         else:
             return s
@@ -380,21 +382,25 @@ def _svd_batched(a, a_dtype, full_matrices, compute_uv):
     a = a.reshape(-1, *(a.shape[-2:]))
     if runtime.is_hip or (m <= 32 and n <= 32):
         # copy is done in _gesvdj_batched, so let's try not to do it here
-        a = a.astype(a_dtype, order='C', copy=False)
+        a = a.astype(dtype, order='C', copy=False)
         out = _gesvdj_batched(a, full_matrices, compute_uv, False)
     else:
         # manually loop over cusolverDn<t>gesvd()
         # copy (via possible type casting) is done in _gesvd_batched
         # note: _gesvd_batched returns V, not V^H
-        out = _gesvd_batched(a, a_dtype, full_matrices, compute_uv, False)
+        out = _gesvd_batched(a, dtype.char, full_matrices, compute_uv, False)
     if compute_uv:
         u, s, v = out
+        u = u.astype(uv_dtype, copy=False)
         u = u.reshape(*batch_shape, *(u.shape[-2:]))
+        s = s.astype(s_dtype, copy=False)
         s = s.reshape(*batch_shape, *(s.shape[-1:]))
+        v = v.astype(uv_dtype, copy=False)
         v = v.reshape(*batch_shape, *(v.shape[-2:]))
         return u, s, v.swapaxes(-2, -1).conj()
     else:
         s = out
+        s = s.astype(s_dtype, copy=False)
         s = s.reshape(*batch_shape, *(s.shape[-1:]))
         return s
 
@@ -437,14 +443,13 @@ def svd(a, full_matrices=True, compute_uv=True):
     .. seealso:: :func:`numpy.linalg.svd`
     """
     _util._assert_cupy_array(a)
+    if a.ndim > 2:
+        return _svd_batched(a, full_matrices, compute_uv)
 
     # Cast to float32 or float64
     dtype, uv_dtype = _util.linalg_common_type(a)
     real_dtype = dtype.char.lower()
     s_dtype = uv_dtype.char.lower()
-
-    if a.ndim > 2:
-        return _svd_batched(a, a_dtype, full_matrices, compute_uv)
 
     # Remark 1: gesvd only supports m >= n (WHAT?)
     # Remark 2: gesvd returns matrix U and V^H
