@@ -1,5 +1,6 @@
 import functools as _functools
 import sys as _sys
+import warnings as _warnings
 
 import numpy as _numpy
 
@@ -211,22 +212,6 @@ from numpy import complex128  # NOQA
 # -----------------------------------------------------------------------------
 # Built-in Python types
 # -----------------------------------------------------------------------------
-
-# After NumPy 1.20 is released, CuPy should mimic the DeprecationWarning
-# behavior for these types
-
-from builtins import int  # NOQA
-
-from builtins import bool  # NOQA
-
-from builtins import float  # NOQA
-
-from builtins import complex  # NOQA
-
-# Not supported by CuPy:
-# from numpy import object
-# from numpy import unicode
-# from numpy import str
 
 # =============================================================================
 # Routines
@@ -874,3 +859,24 @@ def show_config():
     """Prints the current runtime configuration to standard output."""
     _sys.stdout.write(str(_cupyx.get_runtime_info()))
     _sys.stdout.flush()
+
+
+_deprecated_attrs = {
+    'int': (int, 'cupy.int_'),
+    'bool': (bool, 'cupy.bool_'),
+    'float': (float, 'cupy.float_'),
+    'complex': (complex, 'cupy.complex_')
+}
+
+
+def __getattr__(attr_name):
+    value = _deprecated_attrs.get(attr_name)
+    if value is None:
+        raise AttributeError(
+            f"module 'cupy' has no attribute '{attr_name}'")
+    attr, eq_attr = value
+    _warnings.warn(
+        f'`cupy.{attr_name}` is deprecated. Please use `{eq_attr}` instead.',
+        DeprecationWarning, stacklevel=2
+    )
+    return attr
