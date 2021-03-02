@@ -142,8 +142,9 @@ class RandomState(object):
         alpha = cupy.asarray(alpha)
         if size is None:
             size = alpha.shape
+        elif isinstance(size, (int, cupy.integer)):
+            size = [size]
         else:
-            size = list(size)  # In case size is an int
             size += alpha.shape
         y = cupy.empty(shape=size, dtype=dtype)
         _kernels.standard_gamma_kernel(alpha, self._rk_seed, y)
