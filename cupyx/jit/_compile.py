@@ -439,7 +439,15 @@ def _transpile_expr(expr, env):
 
     Returns (CudaObject): The CUDA code and its type of the expression.
     """
+    res = _transpile_expr_internal(expr, env)
 
+    if isinstance(res, Constant) and isinstance(res.obj, CudaObject):
+        return res.obj
+    else:
+        return res
+
+
+def _transpile_expr_internal(expr, env):
     if isinstance(expr, ast.BoolOp):
         values = [_transpile_expr(e, env) for e in expr.values]
         value = values[0]

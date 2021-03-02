@@ -49,6 +49,7 @@ class Array(TypeBase):
 
 
 bool_ = Scalar(numpy.bool_)
+uint32 = Scalar(numpy.uint32)
 
 
 _suffix_literals_dict = {

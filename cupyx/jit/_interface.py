@@ -1,3 +1,5 @@
+import collections
+
 import numpy
 
 import cupy
@@ -78,3 +80,20 @@ def rawkernel(mode='cuda'):
     def wrapper(func):
         return _JitRawKernel(func, mode)
     return wrapper
+
+
+Dim3 = collections.namedtuple('dim3', ['x', 'y', 'z'])
+
+
+def _create_dim3(name):
+    return Dim3(
+        _compile.CudaObject(f'{name}.x', _types.uint32),
+        _compile.CudaObject(f'{name}.y', _types.uint32),
+        _compile.CudaObject(f'{name}.z', _types.uint32),
+    )
+
+
+threadIdx = _create_dim3('threadIdx')
+blockDim = _create_dim3('blockDim')
+blockIdx = _create_dim3('blockIdx')
+gridDim = _create_dim3('gridDim')
