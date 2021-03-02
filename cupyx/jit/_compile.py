@@ -191,7 +191,7 @@ def _transpile_function(
     if len(args) != len(in_types):
         raise TypeError(
             f'{func.name}() takes {len(args)} positional arguments '
-            'but {len(in_types)} were given.')
+            f'but {len(in_types)} were given.')
     params = dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)])
     env = Environment(mode, consts, params, ret_type)
     body = _transpile_stmts(func.body, True, env)
