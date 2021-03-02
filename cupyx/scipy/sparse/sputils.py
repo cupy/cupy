@@ -41,7 +41,6 @@ def get_index_dtype(arrays=(), maxval=None, check_contents=False):
     if maxval is not None:
         if maxval > int32max:
             dtype = cupy.int64
-            raise RuntimeError
 
     if isinstance(arrays, cupy.ndarray):
         arrays = (arrays,)
@@ -61,7 +60,6 @@ def get_index_dtype(arrays=(), maxval=None, check_contents=False):
                         continue
 
             dtype = cupy.int64
-            raise RuntimeError
             break
 
     return dtype
