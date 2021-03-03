@@ -207,7 +207,7 @@ class TestMultiGpuFft:
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -226,7 +226,7 @@ class TestMultiGpuFft:
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -257,7 +257,7 @@ class TestMultiGpuFftOrder:
             a = xp.asfortranarray(a)
         out = xp.fft.fft(a, axis=self.axis)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -275,7 +275,7 @@ class TestMultiGpuFftOrder:
             a = xp.asfortranarray(a)
         out = xp.fft.ifft(a, axis=self.axis)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -769,7 +769,7 @@ class TestMultiGpuPlanCtxManagerFft:
         else:
             out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
@@ -1346,6 +1346,7 @@ class TestHfft:
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
+
         return out
 
 
