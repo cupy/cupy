@@ -127,6 +127,7 @@ class TestPoly1d(unittest.TestCase):
         a = xp.array([0, 0, 1, 2, 3, 0], dtype)
         return xp.poly1d(a).order
 
+    @pytest.mark.xfail(runtime.is_hip, reason='rocBLAS not implemented')
     @testing.for_signed_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_poly1d_roots(self, xp, dtype):
@@ -758,6 +759,7 @@ class TestPolyRoutinesNdim(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'input': [[2, -1, -2], [-4, 10, 4]],
 }))
+@pytest.mark.xfail(runtime.is_hip, reason='rocBLAS not implemented')
 class TestRootsReal(unittest.TestCase):
 
     @testing.for_signed_dtypes()
@@ -784,6 +786,8 @@ class TestRootsComplex(unittest.TestCase):
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_roots_array(self, xp, dtype):
+        if runtime.is_hip and self.input == [3j, 1.5j, -3j]:
+            pytest.xfail('rocBLAS not implemented')
         a = xp.array(self.input, dtype)
         out = xp.roots(a)
         return xp.sort(out)
@@ -791,6 +795,8 @@ class TestRootsComplex(unittest.TestCase):
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_roots_poly1d(self, xp, dtype):
+        if runtime.is_hip and self.input == [3j, 1.5j, -3j]:
+            pytest.xfail('rocBLAS not implemented')
         a = xp.array(self.input, dtype)
         out = xp.roots(xp.poly1d(a))
         return xp.sort(out)
