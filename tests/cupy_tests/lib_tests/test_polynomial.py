@@ -4,6 +4,7 @@ import pytest
 import numpy
 
 import cupy
+from cupy.cuda import runtime
 import cupyx
 from cupy import testing
 
@@ -78,6 +79,7 @@ class TestPoly1dInit(unittest.TestCase):
         assert out.variable == (self.variable or 'z')
         return out
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_zero_dim(self, xp, dtype):
@@ -87,6 +89,7 @@ class TestPoly1dInit(unittest.TestCase):
         assert out.variable == (self.variable or 'x')
         return out
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_zero_size(self, xp, dtype):
@@ -239,6 +242,7 @@ class TestPoly1d(unittest.TestCase):
 }))
 class TestPoly1dPow(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-1)
     def test_poly1d_pow_scalar(self, xp, dtype):
@@ -301,6 +305,7 @@ class Poly1dTestBase(unittest.TestCase):
 }))
 class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
@@ -315,6 +320,8 @@ class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
     'type_r': ['poly1d'],
 }))
+@pytest.mark.xfail(runtime.is_hip,
+                   reason='HIP/ROCm does not support cuda array interface')
 class TestPoly1dMathArithmetic(Poly1dTestBase):
 
     @testing.for_all_dtypes()
@@ -360,6 +367,7 @@ class TestPoly1dArithmeticInvalid(Poly1dTestBase):
 }))
 class TestPoly1dRoutines(Poly1dTestBase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_routine(self, xp, dtype):
@@ -419,6 +427,7 @@ class TestPoly1dEquality(unittest.TestCase):
 }))
 class TestPolyArithmeticShapeCombination(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyroutine(self, xp, dtype):

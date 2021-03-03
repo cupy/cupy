@@ -10,13 +10,11 @@ import tempfile
 from install import utils
 
 
-PLATFORM_DARWIN = sys.platform.startswith('darwin')
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 9000
-minimum_cudnn_version = 7000
-maximum_cudnn_version = 8099
+minimum_cuda_version = 9020
+minimum_cudnn_version = 7600
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
 
@@ -150,17 +148,12 @@ def get_compiler_setting(use_hip):
         include_dirs.append(os.path.join(rocm_path, 'include'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'rocrand'))
+        include_dirs.append(os.path.join(rocm_path, 'include', 'hiprand'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'roctracer'))
         library_dirs.append(os.path.join(rocm_path, 'lib'))
 
     if use_hip:
         extra_compile_args.append('-std=c++11')
-
-    if PLATFORM_DARWIN:
-        if cuda_path:
-            library_dirs.append('/usr/local/cuda/lib')
-        elif rocm_path:
-            library_dirs.append('/opt/rocm/lib')
 
     if PLATFORM_WIN32:
         nvtoolsext_path = os.environ.get('NVTOOLSEXT_PATH', '')
@@ -179,6 +172,8 @@ def get_compiler_setting(use_hip):
     # for <cupy/complex.cuh>
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                '../cupy/core/include')
+    global _jitify_path
+    _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:
         cuda_cub_path = os.path.join(cuda_path, 'include', 'cub')
         if not os.path.exists(cuda_cub_path):
@@ -287,6 +282,7 @@ _nccl_version = None
 _cutensor_version = None
 _cub_path = None
 _cub_version = None
+_jitify_path = None
 _jitify_version = None
 _compute_capabilities = None
 
@@ -312,7 +308,7 @@ def check_cuda_version(compiler, settings):
     if _cuda_version < minimum_cuda_version:
         utils.print_warning(
             'CUDA version is too old: %d' % _cuda_version,
-            'CUDA 9.0 or newer is required')
+            'CUDA 9.2 or newer is required')
         return False
 
     return True
@@ -453,13 +449,11 @@ def check_cudnn_version(compiler, settings):
 
     _cudnn_version = int(out)
 
-    if not minimum_cudnn_version <= _cudnn_version <= maximum_cudnn_version:
+    if not minimum_cudnn_version <= _cudnn_version:
         min_major = str(minimum_cudnn_version)
-        max_major = str(maximum_cudnn_version)
         utils.print_warning(
-            'Unsupported cuDNN version: {}'.format(
-                str(_cudnn_version)),
-            'cuDNN v{}= and <=v{} is required'.format(min_major, max_major))
+            'Unsupported cuDNN version: {}'.format(str(_cudnn_version)),
+            'cuDNN >=v{} is required'.format(min_major))
         return False
 
     return True
@@ -628,8 +622,7 @@ def check_jitify_version(compiler, settings):
     global _jitify_version
 
     try:
-        # CuPy's bundle: by the time we arrive here, _cub_path is known
-        cupy_jitify_include = os.path.join(_cub_path, '../jitify')
+        cupy_jitify_include = _jitify_path
         # Unfortunately Jitify does not have any identifiable name (branch,
         # tag, etc), so we must use the commit here
         a = subprocess.run(' '.join(['git', 'rev-parse', '--short', 'HEAD']),

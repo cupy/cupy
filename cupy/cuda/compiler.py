@@ -15,8 +15,10 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
-if not runtime.is_hip and driver.get_build_version() > 0:
-    from cupy.cuda.jitify import jitify
+if not runtime.is_hip:
+    _cuda_version = driver.get_build_version()
+    if _cuda_version > 0:
+        from cupy.cuda.jitify import jitify
 
 
 _nvrtc_version = None
@@ -131,7 +133,7 @@ def _get_arch():
         # CUDA 10.1 / 10.2
         _nvrtc_max_compute_capability = '75'
     else:
-        # CUDA 11.0 / 11.1
+        # CUDA 11.0 / 11.1 / 11.2
         _nvrtc_max_compute_capability = '80'
 
     arch = device.Device().compute_capability
@@ -235,10 +237,14 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
     if not arch:
         arch = _get_arch()
 
-    options += ('-arch=compute_{}'.format(arch),)
+    if not runtime.is_hip:
+        options += ('-arch=compute_{}'.format(arch),)
+    else:
+        options += ('-arch={}'.format(arch),)
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
+
         if jitify:
             options, headers, include_names = _jitify_prep(
                 source, options, cu_path)
@@ -364,7 +370,7 @@ def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
         options += ('-arch=compute_{}'.format(arch),)
 
-        prog = _NVRTCProgram(source, '')
+        prog = _NVRTCProgram(source)
         try:
             result, _ = prog.compile(options)
         except CompileException as e:
@@ -406,9 +412,6 @@ def compile_with_cache(
         name_expressions=None, log_stream=None, jitify=False):
 
     if enable_cooperative_groups:
-        if backend != 'nvcc':
-            raise ValueError(
-                'Cooperative groups is supported only in NVCC backend.')
         if runtime.is_hip:
             raise ValueError(
                 'Cooperative groups is not supported in HIP.')
@@ -448,10 +451,8 @@ def _compile_with_cache_cuda(
     options += ('-ftz=true',)
 
     if enable_cooperative_groups:
-        # `cooperative_groups` requires `-rdc=true`.
-        # The three latter flags are to resolve linker error.
-        # (https://devtalk.nvidia.com/default/topic/1023604/linker-error/)
-        options += ('-rdc=true', '-Xcompiler', '-fPIC', '-shared')
+        # `cooperative_groups` requires relocatable device code.
+        options += ('--device-c',)
 
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
@@ -471,7 +472,7 @@ def _compile_with_cache_cuda(
     env = (arch, options, _get_nvrtc_version(), backend)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
-        # This is checking of NVRTC compiler internal version
+        # This is for checking NVRTC/NVCC compiler internal version
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
@@ -629,6 +630,7 @@ class _NVRTCProgram(object):
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
             if log_stream is not None:
                 log_stream.write(nvrtc.getProgramLog(self.ptr))
+            # TODO(leofang): use getCUBIN() for _cuda_version >= 11010?
             return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
@@ -640,21 +642,13 @@ def is_valid_kernel_name(name):
     return re.match('^[a-zA-Z_][a-zA-Z_0-9]*$', name) is not None
 
 
-_hipcc_version = None
-
-
-def _get_hipcc_version():
-    global _hipcc_version
-    if _hipcc_version is None:
-        cmd = ['hipcc', '--version']
-        _hipcc_version = _run_cc(cmd, '.', 'hipcc')
-    return _hipcc_version
-
-
 def compile_using_hipcc(source, options, arch, log_stream=None):
+    # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
+    # pick up the right arch without needing HCC_AMDGPU_TARGET. Perhaps we just
+    # don't bother passing arch to hiprtc/hipcc?
     assert len(arch) > 0
     # pass HCC_AMDGPU_TARGET same as arch
-    cmd = ['hipcc', '--genco'] + list(options)
+    cmd = ['hipcc', '--genco', '-arch='+arch] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
@@ -688,6 +682,8 @@ def compile_using_hipcc(source, options, arch, log_stream=None):
             return f.read()
 
 
+# TODO(leofang): consider merge _preprocess_hipcc with _preprocess_hiprtc,
+# perhaps also with _preprocess?
 def _preprocess_hipcc(source, options):
     cmd = ['hipcc', '--preprocess'] + list(options)
     with tempfile.TemporaryDirectory() as root_dir:
@@ -703,18 +699,30 @@ def _preprocess_hipcc(source, options):
         return re.sub('(?m)^#.*$', '', pp_src)
 
 
+def _preprocess_hiprtc(source, options):
+    # source is ignored
+    prog = _NVRTCProgram(
+        '''
+        // hiprtc segfaults if the input code is empty
+        #include <hip/hip_runtime.h>
+        __global__ void _cupy_preprocess_dummy_kernel_() { }
+        ''')
+    try:
+        result, _ = prog.compile(options)
+    except CompileException as e:
+        dump = _get_bool_env_variable(
+            'CUPY_DUMP_CUDA_SOURCE_ON_ERROR', False)
+        if dump:
+            e.dump(sys.stderr)
+        raise
+    assert isinstance(result, bytes)
+    return result
+
+
 _hip_extra_source = None
 
 
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
-    table = [
-        ('threadIdx.', 'hipThreadIdx_'),
-        ('blockIdx.', 'hipBlockIdx_'),
-        ('blockDim.', 'hipBlockDim_'),
-        ('gridDim.', 'hipGridDim_'),
-    ]
-    for i, j in table:
-        source = source.replace(i, j)
     if not is_hiprtc:
         return '#include <hip/hip_runtime.h>\n' + source
 
@@ -751,8 +759,8 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     if cache_dir is None:
         cache_dir = get_cache_dir()
     # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
-    # pick up the right arch without needing HCC_AMDGPU_TARGET. Check the
-    # earliest ROCm version in which this happened.
+    # pick up the right arch without needing HCC_AMDGPU_TARGET. Perhaps we just
+    # don't bother passing arch to hiprtc/hipcc?
     if arch is None:
         arch = os.environ.get('HCC_AMDGPU_TARGET')
         if arch is None:
@@ -761,11 +769,14 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         source = _convert_to_hip_source(source, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))
 
-    env = (arch, options, _get_hipcc_version())
+    env = (arch, options, _get_nvrtc_version(), backend)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
-        # This is checking of HIPCC compiler internal version
-        base = _preprocess_hipcc('', options)
+        # This is for checking HIPRTC/HIPCC compiler internal version
+        if backend == 'hiprtc':
+            base = _preprocess_hiprtc('', options)
+        else:
+            base = _preprocess_hipcc('', options)
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)

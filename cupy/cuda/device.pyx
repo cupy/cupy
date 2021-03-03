@@ -73,12 +73,6 @@ def _get_attributes(device_id):
     d = {}
     for k, v in runtime_module.__dict__.items():
         if k.startswith('cudaDevAttr'):
-            if runtime._is_hip_environment:
-                # On ROCm 3.5.0 + gfx906, accessing these attributes leads to
-                # core dump (stack smashing detected)
-                if k in ('cudaDevAttrPciDeviceId',
-                         'cudaDevAttrTccDriver'):
-                    continue
             try:
                 name = k.replace('cudaDevAttr', '', 1)
                 d[name] = runtime.deviceGetAttribute(v, device_id)
@@ -305,7 +299,7 @@ def from_pointer(ptr):
     """Extracts a Device object from a device pointer.
 
     Args:
-        ptr (ctypes.c_void_p): Pointer to the device memory.
+        ptr (int): Pointer to the device memory.
 
     Returns:
         Device: The device whose memory the pointer refers to.

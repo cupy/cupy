@@ -41,7 +41,7 @@ cdef class poly1d:
             return self._coeffs
         self._coeffs = cupy.trim_zeros(self._coeffs, trim='f')
         if self._coeffs.size == 0:
-            self._coeffs = cupy.array([0.])
+            self._coeffs = cupy.array([0.], self._coeffs.dtype)
         self._trimmed = True
         return self._coeffs
 
@@ -193,7 +193,7 @@ cdef class poly1d:
             raise NotImplementedError
         if self.coeffs.shape != other.coeffs.shape:
             return False
-        return (self.coeffs == other.coeffs).all().get()
+        return (self.coeffs == other.coeffs).all().get()[()]
 
     def __ne__(self, other):
         if not isinstance(other, poly1d):

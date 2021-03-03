@@ -1,6 +1,5 @@
 import functools as _functools
 import sys as _sys
-import warnings as _warnings
 
 import numpy as _numpy
 
@@ -13,11 +12,7 @@ _environment._preload_libraries()  # NOQA
 
 
 try:
-    with _warnings.catch_warnings():
-        _warnings.filterwarnings(
-            'ignore', category=ImportWarning,
-            message='can\'t resolve package from __spec__')
-        from cupy import core  # NOQA
+    from cupy import core  # NOQA
 except ImportError as e:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
@@ -585,6 +580,7 @@ from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
 from cupy._math.rounding import round_  # NOQA
+from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA

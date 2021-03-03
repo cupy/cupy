@@ -17,12 +17,12 @@ from cupy.core cimport _reduction
 
 from cupy.core import _dtype
 from cupy import _util
-from cupy.core import _fusion_emit_code
 from cupy.core import _fusion_op
 from cupy.core._fusion_variable import _AbstractDim
 from cupy.core._fusion_variable import _TraceVariable
 from cupy.core._fusion_variable import _TraceScalar
 from cupy.core._fusion_variable import _TraceArray
+from cupyx.jit import _codeblock
 
 
 cdef Py_ssize_t _default_block_size = (
@@ -49,12 +49,8 @@ def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
     # by uncommenting the following line.
     # print(code)
 
-    if use_grid_sync:
-        module = compile_with_cache(
-            code, (), None, None, True, 'nvcc', False, True)
-    else:
-        module = compile_with_cache(code)
-
+    module = compile_with_cache(
+        code, (), None, None, True, 'nvrtc', False, use_grid_sync)
     return module.get_function(name)
 
 
@@ -110,7 +106,7 @@ cdef class FusedKernel:
             codes.append(op.emit_code())
 
         self._submodule_code = submodule_code
-        self._cuda_body = str(_fusion_emit_code._CodeBlock('', codes))
+        self._cuda_body = str(_codeblock.CodeBlock('', codes))
 
         # Check the format of the return value.
         if return_size == 'none':
@@ -356,11 +352,15 @@ cdef class FusedKernel:
         block_strides, block_size, shared_mem = (
             self._get_kernel_size(ndarray_list))
 
-        # TODO(asi1024): Optimize kernel size perameter.
-        kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
-            kern.ptr, block_size, shared_mem) * block_size
-        kargs = inout_args + block_strides
+        # TODO(asi1024): Optimize kernel size parameter.
+        if not runtime._is_hip_environment:
+            kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
+                kern.ptr, block_size, shared_mem) * block_size
+        else:
+            # In HIP sometimes the occupancy calc seems to be broken
+            kern_size = block_size * 512
 
+        kargs = inout_args + block_strides
         kern.linear_launch(
             kern_size, kargs, shared_mem, block_size,
             enable_cooperative_groups=self._use_grid_sync)

@@ -56,8 +56,6 @@ def _convert_1d_args(ndim, weights, origin, axis):
 
 
 def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights'):
-    if input.dtype.kind == 'c':
-        raise TypeError('Complex type not supported')
     _util._check_mode(mode)
     # Weights must always be less than 2 GiB
     if weights.nbytes >= (1 << 31):
@@ -82,6 +80,8 @@ def _run_1d_filters(filters, input, args, output, mode, cval, origin=0):
     output = _util._get_output(output, input)
     modes = _util._fix_sequence_arg(mode, input.ndim, 'mode',
                                     _util._check_mode)
+    # for filters, "wrap" is a synonym for "grid-wrap".
+    modes = ['grid-wrap' if m == 'wrap' else m for m in modes]
     origins = _util._fix_sequence_arg(origin, input.ndim, 'origin', int)
     n_filters = sum(filter is not None for filter in filters)
     if n_filters == 0:
@@ -125,13 +125,15 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     dtype conversion will occur. The input and output are never converted.
     """
     args = [input]
+    complex_output = input.dtype.kind == 'c'
     if weights is not None:
         weights = cupy.ascontiguousarray(weights, weights_dtype)
+        complex_output = complex_output or weights.dtype.kind == 'c'
         args.append(weights)
     if structure is not None:
         structure = cupy.ascontiguousarray(structure, structure_dtype)
         args.append(structure)
-    output = _util._get_output(output, input)
+    output = _util._get_output(output, input, None, complex_output)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
         output, temp = _util._get_output(output.dtype, input), output
@@ -170,8 +172,7 @@ typename std::enable_if<(std::is_floating_point<A>::value
 cast(A a) { return (a >= 0) ? (B)a : -(B)(-a); }
 
 template <class T>
-__device__ __forceinline__ bool nonzero(T x) { return x!=0; }
-
+__device__ __forceinline__ bool nonzero(T x) { return x != static_cast<T>(0); }
 """
 
 
@@ -193,6 +194,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
     if has_mask:
         in_params += ', raw M mask'
     out_params = 'Y y'
+
+    # for filters, "wrap" is a synonym for "grid-wrap"
+    mode = 'grid-wrap' if mode == 'wrap' else mode
 
     # CArray: remove xstride_{j}=... from string
     size = ('%s xsize_{j}=x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
@@ -273,8 +277,9 @@ def _generate_nd_kernel(name, pre, found, post, mode, w_shape, int_type,
                ws_init=ws_init, ws_pre=ws_pre, ws_post=ws_post,
                loops='\n'.join(loops), found=found, end_loops='}'*ndim)
 
+    mode_str = mode.replace('-', '_')  # avoid potential hyphen in kernel name
     name = 'cupy_ndimage_{}_{}d_{}_w{}'.format(
-        name, ndim, mode, '_'.join(['{}'.format(x) for x in w_shape]))
+        name, ndim, mode_str, '_'.join(['{}'.format(x) for x in w_shape]))
     if all_weights_nonzero:
         name += '_all_nonzero'
     if int_type == 'ptrdiff_t':

@@ -8,15 +8,15 @@ from cupy import testing
 
 
 float_types = [numpy.float16, numpy.float32, numpy.float64]
-complex_types = [numpy.complex, numpy.complex64, numpy.complex128]
+complex_types = [numpy.complex64, numpy.complex128]
 signed_int_types = [numpy.int8, numpy.int16, numpy.int32, numpy.int64]
 unsigned_int_types = [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]
 int_types = signed_int_types + unsigned_int_types
-all_types = [numpy.bool] + float_types + int_types + complex_types
+all_types = [numpy.bool_] + float_types + int_types + complex_types
 negative_types = (
-    [numpy.bool] + float_types + signed_int_types + complex_types)
-negative_no_complex_types = [numpy.bool] + float_types + signed_int_types
-no_complex_types = [numpy.bool] + float_types + int_types
+    [numpy.bool_] + float_types + signed_int_types + complex_types)
+negative_no_complex_types = [numpy.bool_] + float_types + signed_int_types
+no_complex_types = [numpy.bool_] + float_types + int_types
 
 
 @testing.gpu
@@ -85,9 +85,9 @@ class TestArithmeticUnary:
 
             # TODO(niboshi): Fix this
             # numpy.real and numpy.imag return Python int if the input is
-            # Python bool. CuPy should return an array of dtype.int32 or
-            # dtype.int64 (depending on the platform) in such cases, instead
-            # of an array of dtype.bool.
+            # Python bool. CuPy should return an array of dtype=int32 or
+            # dtype=int64 (depending on the platform) in such cases, instead
+            # of an array of dtype=bool.
             if xp is cupy and isinstance(arg1, bool):
                 y = y.astype(int)
 

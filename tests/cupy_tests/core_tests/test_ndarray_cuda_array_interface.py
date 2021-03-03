@@ -1,5 +1,7 @@
 import unittest
+import pytest
 
+from cupy_backends.cuda import stream as stream_module
 import cupy
 from cupy import core
 from cupy import testing
@@ -35,6 +37,8 @@ class DummyObjectWithCudaArrayInterface(object):
     'ver': (2, 3),
 }))
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestArrayUfunc(unittest.TestCase):
 
     def setUp(self):
@@ -70,6 +74,8 @@ class TestArrayUfunc(unittest.TestCase):
     'ver': (2, 3),
 }))
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestElementwiseKernel(unittest.TestCase):
 
     def setUp(self):
@@ -106,6 +112,8 @@ class TestElementwiseKernel(unittest.TestCase):
     'ver': (2, 3),
 }))
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestSimpleReductionFunction(unittest.TestCase):
 
     def setUp(self):
@@ -144,6 +152,8 @@ class TestSimpleReductionFunction(unittest.TestCase):
     'ver': (2, 3),
 }))
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestReductionKernel(unittest.TestCase):
 
     def setUp(self):
@@ -187,6 +197,8 @@ class TestReductionKernel(unittest.TestCase):
     {'shape': (10, 10), 'slices': (slice(2, None), slice(4, None))},
 )
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestSlicingMemoryPointer(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype'])
@@ -231,6 +243,8 @@ test_cases_with_stream = [
 
 @testing.parameterize(*test_cases_with_stream)
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 
     def setUp(self):
@@ -274,15 +288,19 @@ class TestCUDAArrayInterfaceCompliance(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'stream': ('null', 'new'),
+    'stream': ('null', 'new', 'ptds'),
 }))
 @testing.gpu
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestCUDAArrayInterfaceStream(unittest.TestCase):
     def setUp(self):
         if self.stream == 'null':
             self.stream = cupy.cuda.Stream.null
         elif self.stream == 'new':
             self.stream = cupy.cuda.Stream()
+        elif self.stream == 'ptds':
+            self.stream = cupy.cuda.Stream.ptds
 
     def test_stream_export(self):
         a = cupy.empty(100)
@@ -292,10 +310,12 @@ class TestCUDAArrayInterfaceStream(unittest.TestCase):
             stream_ptr = a.__cuda_array_interface__['stream']
 
         if self.stream is cupy.cuda.Stream.null:
-            assert stream_ptr == 1
+            assert stream_ptr == stream_module.get_default_stream_ptr()
+        elif self.stream is cupy.cuda.Stream.ptds:
+            assert stream_ptr == 2
         else:
             assert stream_ptr == self.stream.ptr
 
         # without a stream context, it's always the default stream
         stream_ptr = a.__cuda_array_interface__['stream']
-        assert stream_ptr == 1
+        assert stream_ptr == stream_module.get_default_stream_ptr()

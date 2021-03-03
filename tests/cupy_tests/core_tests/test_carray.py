@@ -67,6 +67,8 @@ class TestCArray32BitBoundary(unittest.TestCase):
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
 
+    # HIP is known to fail with sizes > 2**32-1024
+    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'HIP does not support this')
     def test(self):
         # Elementwise
         a = cupy.full((1, self.size), 7, dtype=cupy.int8)

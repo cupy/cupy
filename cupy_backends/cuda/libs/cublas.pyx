@@ -12,14 +12,14 @@ from cupy_backends.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from '../cupy_cuComplex.h':
+cdef extern from '../../cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from '../cupy_cublas.h' nogil:
+cdef extern from '../../cupy_blas.h' nogil:
     # Context
     int cublasCreate(Handle* handle)
     int cublasDestroy(Handle handle)
@@ -340,23 +340,6 @@ cdef extern from '../cupy_cublas.h' nogil:
         Handle handle, FillMode uplo, int n, const double *A, int lda,
         double *AP)
 
-###############################################################################
-# Util
-###############################################################################
-
-cdef cuComplex get_cu_complex(float complex a):
-    cdef cuComplex ret
-    ret.x = a.real
-    ret.y = a.imag
-    return ret
-
-
-cdef cuDoubleComplex get_cu_double_complex(double complex a):
-    cdef cuDoubleComplex ret
-    ret.x = a.real
-    ret.y = a.imag
-    return ret
-
 
 ###############################################################################
 # Error handling
@@ -470,10 +453,8 @@ cpdef size_t getStream(intptr_t handle) except? 0:
 
 
 cdef _setStream(intptr_t handle):
-    """Set current stream when enable_current_stream is True
-    """
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
+    """Set current stream"""
+    setStream(handle, stream_module.get_current_stream_ptr())
 
 ###############################################################################
 # Math Mode

@@ -655,7 +655,7 @@ def _select(input, labels=None, index=None, find_min=False, find_max=False,
         found = unique_labels[idxs] == index
     else:
         # Labels are an integer type, and there aren't too many
-        idxs = cupy.asanyarray(index, cupy.int).copy()
+        idxs = cupy.asanyarray(index, int).copy()
         found = (idxs >= 0) & (idxs <= max_label)
 
     idxs[~found] = max_label + 1
@@ -720,9 +720,9 @@ def _select(input, labels=None, index=None, find_min=False, find_max=False,
         result += [maxpos[idxs]]
     if find_median:
         locs = cupy.arange(len(labels))
-        lo = cupy.zeros(int(labels.max()) + 2, cupy.int)
+        lo = cupy.zeros(int(labels.max()) + 2, int)
         lo[labels[min_index]] = locs[min_index]
-        hi = cupy.zeros(int(labels.max()) + 2, cupy.int)
+        hi = cupy.zeros(int(labels.max()) + 2, int)
         hi[labels[max_index]] = locs[max_index]
         lo = lo[idxs]
         hi = hi[idxs]

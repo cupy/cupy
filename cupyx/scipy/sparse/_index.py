@@ -19,7 +19,7 @@ except ImportError:
     scipy_available = False
 
 _int_scalar_types = (int, numpy.integer, numpy.int_)
-_bool_scalar_types = (bool, numpy.bool, numpy.bool_)
+_bool_scalar_types = (bool, numpy.bool_)
 
 
 _compress_getitem_kern = core.ElementwiseKernel(
