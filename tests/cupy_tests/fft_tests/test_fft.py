@@ -191,6 +191,12 @@ def _skip_multi_gpu_bug(shape, gpus):
                     reason='hipFFT does not support multi-GPU FFT')
 class TestMultiGpuFft:
 
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
+
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -393,6 +399,12 @@ class TestFftAllocate:
 @testing.gpu
 class TestFft2:
 
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
+
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes()
@@ -445,6 +457,14 @@ class TestFft2:
     {'shape': (3, 4), 's': None, 'axes': [-1, -2], 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
     {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
+    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'forward'},
+    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': 'forward'},
+    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': 'forward'},
+    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': 'forward'},
+    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': 'forward'},
+    {'shape': (3, 4), 's': None, 'axes': [-1, -2], 'norm': 'forward'},
+    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': 'forward'},
+    {'shape': (3, 4), 's': None, 'axes': (), 'norm': 'forward'},
     {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
     {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
     {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
@@ -464,6 +484,12 @@ class TestFft2:
 )
 @testing.gpu
 class TestFftn:
+
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
 
     @nd_planning_states()
     @testing.for_orders('CF')
@@ -538,6 +564,12 @@ class TestPlanCtxManagerFftn:
                 pytest.skip("hipFFT's PlanNd for this case "
                             "is buggy, so Plan1d is generated "
                             "instead")
+
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
 
     @nd_planning_states()
     @testing.for_complex_dtypes()
@@ -621,6 +653,12 @@ class TestPlanCtxManagerFftn:
 @testing.gpu
 class TestPlanCtxManagerFft:
 
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
+
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -693,6 +731,13 @@ class TestPlanCtxManagerFft:
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='hipFFT does not support multi-GPU FFT')
 class TestMultiGpuPlanCtxManagerFft:
+
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
+
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -777,6 +822,12 @@ class TestMultiGpuPlanCtxManagerFft:
 @testing.gpu
 class TestFftnContiguity:
 
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
+
     @nd_planning_states([True])
     @testing.for_all_dtypes()
     def test_fftn_orders(self, dtype, enable_nd):
@@ -823,6 +874,12 @@ class TestFftnContiguity:
 @testing.gpu
 class TestRfft:
 
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
+
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft(self, xp, dtype):
@@ -853,6 +910,12 @@ class TestRfft:
 }))
 @testing.gpu
 class TestPlanCtxManagerRfft:
+
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -936,6 +999,12 @@ class TestPlanCtxManagerRfft:
 @testing.gpu
 class TestRfft2:
 
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
+
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes(no_complex=True)
@@ -1018,6 +1087,12 @@ class TestRfft2EmptyAxes:
 @testing.gpu
 class TestRfftn:
 
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
+
     @nd_planning_states()
     @testing.for_orders('CF')
     @testing.for_all_dtypes(no_complex=True)
@@ -1077,6 +1152,12 @@ class TestRfftn:
 )
 @testing.gpu
 class TestPlanCtxManagerRfftn:
+
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
 
     @pytest.fixture(autouse=True)
     def skip_buggy(self):
@@ -1151,6 +1232,12 @@ class TestPlanCtxManagerRfftn:
 @testing.gpu
 class TestRfftnContiguity:
 
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
+
     @nd_planning_states([True])
     @testing.for_float_dtypes()
     def test_rfftn_orders(self, dtype, enable_nd):
@@ -1221,12 +1308,16 @@ class TestRfftnEmptyAxes:
 @testing.gpu
 class TestHfft:
 
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_hfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is np and self.norm == 'forward':
-            self.norm = None
         out = xp.fft.hfft(a, n=self.n, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
