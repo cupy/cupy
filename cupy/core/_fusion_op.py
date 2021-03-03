@@ -69,7 +69,7 @@ class _UfuncRoutine:
         params_code = ', '.join(['{} &{}_'.format(t, s) for t, _, s in params])
         typedef = ['typedef {} {}_type;'.format(t, s) for _, t, s in params]
         read = ['{} {} = ({}) {}_;'.format(t, s, t, s) for _, t, s in params]
-        write = ['{}_ = {};'.format(s, s, s) for _, _, s in out_params]
+        write = ['{}_ = {};'.format(s, s) for _, _, s in out_params]
 
         return _codeblock.CodeBlock(
             '__device__ void {}({})'.format(self.name, params_code),
@@ -257,7 +257,7 @@ class _ReductionTraceOp:
         op_name = '{}_op'.format(self.name)
         postmap_name = '{}_postmap'.format(self.name)
 
-        code = string.Template('''
+        template = string.Template('''
 #define ${op_name}(a, b) (${reduce_expr})
 #define ${postmap_name}(a, out0) (${postmap_cast})
 
@@ -300,8 +300,8 @@ __device__ void ${name}(
         }
         __syncthreads();
     }
-}'''  # NOQA
-        ).substitute(
+}''')  # NOQA
+        code = template.substitute(
             name=self.name,
             op_name=op_name,
             postmap_name=postmap_name,
@@ -310,6 +310,7 @@ __device__ void ${name}(
             reduce_ctype=self.reduce_ctype,
             reduce_expr=self.expr,
             identity=self.identity,
-            postmap_cast=self.postmap_cast_code)
+            postmap_cast=self.postmap_cast_code
+        )
 
         return [code]
