@@ -144,7 +144,7 @@ def product(parameter):
         # list of lists of dicts
         if not all(isinstance(_, list) for _ in parameter):
             raise TypeError('parameter must be list of lists of dicts')
-        if not all(isinstance(_, dict) for l in parameter for _ in l):
+        if not all(isinstance(_, dict) for p in parameter for _ in p):
             raise TypeError('parameter must be list of lists of dicts')
         return product_dict(*parameter)
 
