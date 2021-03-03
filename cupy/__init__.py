@@ -861,22 +861,28 @@ def show_config():
     _sys.stdout.flush()
 
 
-_deprecated_attrs = {
-    'int': (int, 'cupy.int_'),
-    'bool': (bool, 'cupy.bool_'),
-    'float': (float, 'cupy.float_'),
-    'complex': (complex, 'cupy.complex_')
-}
+if _sys.version_info >= (3, 7):
+    _deprecated_attrs = {
+        'int': (int, 'cupy.int_'),
+        'bool': (bool, 'cupy.bool_'),
+        'float': (float, 'cupy.float_'),
+        'complex': (complex, 'cupy.complex_'),
+    }
 
-
-def __getattr__(attr_name):
-    value = _deprecated_attrs.get(attr_name)
-    if value is None:
-        raise AttributeError(
-            f"module 'cupy' has no attribute '{attr_name}'")
-    attr, eq_attr = value
-    _warnings.warn(
-        f'`cupy.{attr_name}` is deprecated. Please use `{eq_attr}` instead.',
-        DeprecationWarning, stacklevel=2
-    )
-    return attr
+    def __getattr__(name):
+        value = _deprecated_attrs.get(name)
+        if value is None:
+            raise AttributeError(
+                f"module 'cupy' has no attribute '{name}'")
+        attr, eq_attr = value
+        _warnings.warn(
+            f'`cupy.{name}` is deprecated. Please use `{eq_attr}` instead.',
+            DeprecationWarning, stacklevel=2
+        )
+        return attr
+else:
+    # Does not emit warnings.
+    from builtins import int
+    from builtins import bool
+    from builtins import float
+    from builtins import complex
