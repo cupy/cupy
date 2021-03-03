@@ -876,7 +876,9 @@ if _sys.version_info >= (3, 7):
                 f"module 'cupy' has no attribute '{name}'")
         attr, eq_attr = value
         _warnings.warn(
-            f'`cupy.{name}` is deprecated. Please use `{eq_attr}` instead.',
+            f'`cupy.{name}` is a deprecated alias for the Python scalar type '
+            f'`{name}`. Please use the builtin `{name}` or its corresponding '
+            f'NumPy scalar type `{eq_attr}` instead.',
             DeprecationWarning, stacklevel=2
         )
         return attr
