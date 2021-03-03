@@ -1,4 +1,5 @@
 import pickle
+import sys
 import unittest
 
 import numpy
@@ -1157,7 +1158,10 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
         if self.axis is None:
             pytest.skip()
         data = self._make_data_min(xp, sp, dense=self.dense)
-        return data.argmin(axis=self.axis)
+        out = data.argmin(axis=self.axis)
+        if sys.platform.startswith('win32'):
+            out = out.astype(xp.int32)
+        return out
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_argmax(self, xp, sp):
@@ -1165,7 +1169,10 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
         if self.axis is None:
             pytest.skip()
         data = self._make_data_max(xp, sp, dense=self.dense)
-        return data.argmax(axis=self.axis)
+        out = data.argmax(axis=self.axis)
+        if sys.platform.startswith('win32'):
+            out = out.astype(xp.int32)
+        return out
 
 
 @testing.parameterize(*testing.product({
