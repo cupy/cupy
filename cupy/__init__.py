@@ -873,7 +873,7 @@ if _sys.version_info >= (3, 7):
         value = _deprecated_attrs.get(name)
         if value is None:
             raise AttributeError(
-                f"module 'cupy' has no attribute '{name}'")
+                f"module 'cupy' has no attribute {name!r}")
         attr, eq_attr = value
         _warnings.warn(
             f'`cupy.{name}` is a deprecated alias for the Python scalar type '
