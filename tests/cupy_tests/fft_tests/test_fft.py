@@ -89,20 +89,22 @@ def multi_gpu_config(gpu_configs=None):
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(0,), (10, 0), (10,), (10, 10)],
-    'norm': [None, 'ortho', 'unnormalize', ''],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
 class TestFft:
+
+    @pytest.fixture(autouse=True)
+    def skip_forward_backward(self):
+        if self.norm in ('backward', 'forward'):
+            if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+                pytest.skip('forward/backward is supported by NumPy 1.20+')
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-
-        if xp is np and self.norm == 'unnormalize':
-            self.norm = None  # numpy does not support 'unnormalize'
-
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
         # np.fft.fft always returns np.complex128
@@ -119,18 +121,10 @@ class TestFft:
     @testing.with_requires('numpy!=1.17.1')
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        running_unnormalize = False
-        if xp is np and self.norm == 'unnormalize':
-            self.norm = None  # numpy does not support 'unnormalize'
-            running_unnormalize = True
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
-
-        if xp is np and running_unnormalize:
-            sz = out.shape[-1]
-            out *= sz
 
         return out
 
@@ -190,7 +184,7 @@ def _skip_multi_gpu_bug(shape, gpus):
 @testing.parameterize(*testing.product({
     'n': [None, 0, 64],
     'shape': [(0,), (0, 10), (64,), (4, 64)],
-    'norm': [None, 'ortho', 'unnormalize', ''],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.multi_gpu(2)
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -541,9 +535,9 @@ class TestPlanCtxManagerFftn:
         if cupy.cuda.runtime.is_hip:
             # TODO(leofang): test newer ROCm versions
             if (self.axes == (0, 1) and self.shape == (2, 3, 4)):
-                raise pytest.skip("hipFFT's PlanNd for this case "
-                                  "is buggy, so Plan1d is generated "
-                                  "instead")
+                pytest.skip("hipFFT's PlanNd for this case "
+                            "is buggy, so Plan1d is generated "
+                            "instead")
 
     @nd_planning_states()
     @testing.for_complex_dtypes()
@@ -622,7 +616,7 @@ class TestPlanCtxManagerFftn:
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), ],
-    'norm': [None, 'ortho', 'unnormalize'],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.gpu
 class TestPlanCtxManagerFft:
@@ -632,10 +626,6 @@ class TestPlanCtxManagerFft:
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-
-        if xp is np and self.norm == 'unnormalize':
-            self.norm = None  # numpy does not support 'unnormalize'
-
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
@@ -657,10 +647,6 @@ class TestPlanCtxManagerFft:
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        running_unnormalize = False
-        if xp is np and self.norm == 'unnormalize':
-            self.norm = None  # numpy does not support 'unnormalize'
-            running_unnormalize = True
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
@@ -673,10 +659,6 @@ class TestPlanCtxManagerFft:
 
         if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
-
-        if xp is np and running_unnormalize:
-            sz = out.shape[-1]
-            out *= sz
 
         return out
 
@@ -705,7 +687,7 @@ class TestPlanCtxManagerFft:
 @testing.parameterize(*testing.product({
     'n': [None, 64],
     'shape': [(64,), (128,)],
-    'norm': [None, 'ortho', 'unnormalize'],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.multi_gpu(2)
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -836,7 +818,7 @@ class TestFftnContiguity:
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'ortho', 'unnormalize'],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.gpu
 class TestRfft:
@@ -845,8 +827,6 @@ class TestRfft:
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_rfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is np and self.norm == 'unnormalize':
-            self.norm = None  # numpy does not support 'unnormalize'
         out = xp.fft.rfft(a, n=self.n, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
@@ -858,25 +838,18 @@ class TestRfft:
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_irfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        running_unnormalize = False
-        if xp is np and self.norm == 'unnormalize':
-            self.norm = None  # numpy does not support 'unnormalize'
-            running_unnormalize = True
         out = xp.fft.irfft(a, n=self.n, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
 
-        if xp is np and running_unnormalize:
-            sz = out.shape[-1]
-            out *= sz
         return out
 
 
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,)],
-    'norm': [None, 'ortho', 'unnormalize'],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.gpu
 class TestPlanCtxManagerRfft:
@@ -886,6 +859,7 @@ class TestPlanCtxManagerRfft:
                                  contiguous_check=False)
     def test_rfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
+
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
@@ -894,8 +868,6 @@ class TestPlanCtxManagerRfft:
             with plan:
                 out = xp.fft.rfft(a, n=self.n, norm=self.norm)
         else:
-            if self.norm == 'unnormalize':
-                self.norm = None
             out = xp.fft.rfft(a, n=self.n, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
@@ -908,7 +880,7 @@ class TestPlanCtxManagerRfft:
                                  contiguous_check=False)
     def test_irfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        running_unnormalize = False
+
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
@@ -917,17 +889,11 @@ class TestPlanCtxManagerRfft:
             with plan:
                 out = xp.fft.irfft(a, n=self.n, norm=self.norm)
         else:
-            if self.norm == 'unnormalize':
-                self.norm = None  # numpy does not support 'unnormalize'
-                running_unnormalize = True
             out = xp.fft.irfft(a, n=self.n, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.float32)
 
-        if xp is np and running_unnormalize:
-            sz = out.shape[-1]
-            out *= sz
         return out
 
     @testing.for_all_dtypes(no_complex=True)
@@ -1250,7 +1216,7 @@ class TestRfftnEmptyAxes:
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.gpu
 class TestHfft:
@@ -1259,7 +1225,7 @@ class TestHfft:
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_hfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        if xp is np and self.norm == 'unnormalize':
+        if xp is np and self.norm == 'forward':
             self.norm = None
         out = xp.fft.hfft(a, n=self.n, norm=self.norm)
 
@@ -1272,22 +1238,10 @@ class TestHfft:
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
     def test_ihfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
-        # running_unnormalize = False
-        # if xp is np and self.norm == 'unnormalize':
-        #     self.norm = None
-        #     running_unnormalize = True
         out = xp.fft.ihfft(a, n=self.n, norm=self.norm)
 
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
-
-        # if xp is np and running_unnormalize:
-        #     # if self.n is None:
-        #     sz = out.shape[-1]
-        #     # else:
-        #     #     sz = out.shape[self.n]
-        #     out *= (sz-1)*2
-
         return out
 
 
