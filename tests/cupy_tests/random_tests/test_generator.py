@@ -1,5 +1,6 @@
 import functools
 import os
+import sys
 import threading
 import unittest
 
@@ -1215,6 +1216,13 @@ class TestRandint(RandomGeneratorTestCase):
     def test_randint_float2(self):
         self.generate(6.7, size=(2, 3))
 
+    @pytest.mark.skip(not sys.platform.startswith('win32'),
+                      reason='default int is 64 bits')
+    def test_randint_int32_1(self):
+        self.generate(2**16, 2**28, 3)
+
+    @pytest.mark.skip(sys.platform.startswith('win32'),
+                      reason='default int is 32 bits')
     def test_randint_int64_1(self):
         self.generate(2**34, 2**40, 3)
 
