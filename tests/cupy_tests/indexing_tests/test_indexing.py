@@ -34,7 +34,8 @@ class TestIndexing(unittest.TestCase):
 
     # see cupy#3017
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_array_equal()
+    # NumPy could go OOM on the Windows CI
+    @testing.numpy_cupy_array_equal(accept_error=MemoryError)
     def test_take_index_range_overflow(self, xp, dtype):
         # Skip for too large dimensions
         if numpy.dtype(dtype) in (numpy.int64, numpy.uint64):

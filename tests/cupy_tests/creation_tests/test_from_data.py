@@ -551,7 +551,9 @@ class TestCudaArrayInterfaceBigArray(unittest.TestCase):
             a = testing.shaped_random((size,), cupy, cupy.float64)
             b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, 2, None))
             testing.assert_array_equal(a, b)
-        except cupy.cuda.memory.OutOfMemoryError:
+        # either numpy (np.core._exceptions._ArrayMemoryError) or cupy
+        # (cupy.cuda.memory.OutOfMemoryError) can raise
+        except MemoryError:
             pass
         else:
             del b, a
