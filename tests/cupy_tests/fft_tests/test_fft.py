@@ -369,44 +369,35 @@ class TestFftAllocate:
 
 
 @pytest.mark.usefixtures('skip_forward_backward')
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'forward'},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': 'forward'},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': 'forward'},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': 'forward'},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': 'forward'},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': 'forward'},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'forward'},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': 'forward'},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': 'forward'},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': 'forward'},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': 'forward'},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': 'forward'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'forward'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (0, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 0), 'axes': None, 'norm': None},
-)
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': ()},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': ()},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {'shape': (0, 5), 's': None, 'axes': None},
+        {'shape': (2, 0, 5), 's': None, 'axes': None},
+        {'shape': (0, 0, 5), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (0, 5), 'axes': None},
+        {'shape': (3, 4), 's': (1, 0), 'axes': None},
+        ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
 @testing.gpu
 class TestFft2:
 
@@ -454,40 +445,36 @@ class TestFft2:
 
 
 @pytest.mark.usefixtures('skip_forward_backward')
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': [-1, -2], 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'forward'},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': 'forward'},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': 'forward'},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': 'forward'},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': 'forward'},
-    {'shape': (3, 4), 's': None, 'axes': [-1, -2], 'norm': 'forward'},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': 'forward'},
-    {'shape': (3, 4), 's': None, 'axes': (), 'norm': 'forward'},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (4, 3, 2), 'axes': (2, 0, 1), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
-)
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': [-1, -2]},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': ()},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': ()},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4), 's': (4, 3, 2), 'axes': (2, 0, 1)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {'shape': (0, 5), 's': None, 'axes': None},
+        {'shape': (2, 0, 5), 's': None, 'axes': None},
+        {'shape': (0, 0, 5), 's': None, 'axes': None},
+        ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
 @testing.gpu
 class TestFftn:
 
@@ -535,25 +522,29 @@ class TestFftn:
 
 
 @pytest.mark.usefixtures('skip_forward_backward')
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
-)
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (0, 5), 's': None, 'axes': None},
+        {'shape': (2, 0, 5), 's': None, 'axes': None},
+        {'shape': (0, 0, 5), 's': None, 'axes': None},
+        ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
 @testing.gpu
 class TestPlanCtxManagerFftn:
 
@@ -791,20 +782,24 @@ class TestMultiGpuPlanCtxManagerFft:
 
 
 @pytest.mark.usefixtures('skip_forward_backward')
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-)
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': (-3, -2, -1)},
+        ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
 @testing.gpu
 class TestFftnContiguity:
 
@@ -949,24 +944,28 @@ class TestPlanCtxManagerRfft:
 
 
 @pytest.mark.usefixtures('skip_forward_backward')
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
 @testing.gpu
 class TestRfft2:
 
@@ -1032,24 +1031,28 @@ class TestRfft2EmptyAxes:
 
 
 @pytest.mark.usefixtures('skip_forward_backward')
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
 @testing.gpu
 class TestRfftn:
 
@@ -1096,21 +1099,25 @@ class TestRfftn:
 
 # Only those tests in which a legit plan can be obtained are kept
 @pytest.mark.usefixtures('skip_forward_backward')
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-)
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
 @testing.gpu
 class TestPlanCtxManagerRfftn:
 
@@ -1170,21 +1177,25 @@ class TestPlanCtxManagerRfftn:
 
 
 @pytest.mark.usefixtures('skip_forward_backward')
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
 @testing.gpu
 class TestRfftnContiguity:
 
