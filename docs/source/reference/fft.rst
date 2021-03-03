@@ -65,9 +65,10 @@ Helper routines
 
 Normalization
 -------------
-The default normalization has the direct transforms unscaled and the inverse transforms are scaled by :math:`1/n`.
-If the keyword argument ``norm`` is ``"ortho"``, both transforms will be scaled by :math:`1/\sqrt{n}`.
-If the keyword argument ``norm`` is ``"unnormalize"``, both transforms will be unscaled.
+The default normalization (``norm`` is ``"backward"`` or ``None``) has the direct transforms unscaled and the inverse transforms scaled by :math:`1/n`.
+If the keyword argument ``norm`` is ``"forward"``, it is the exact opposite of ``"backward"``:
+the direct transforms are scaled by :math:`1/n` and the inverse transforms are unscaled.
+Finally, if the keyword argument ``norm`` is ``"ortho"``, both transforms are scaled by :math:`1/\sqrt{n}`.
 
 Code compatibility features
 ---------------------------
