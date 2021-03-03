@@ -582,19 +582,19 @@ class TestMemoryPool(unittest.TestCase):
             raise unittest.SkipTest('HIP does not support managed memory')
 
     def test_zero_size_alloc(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             mem = self.pool.malloc(0).mem
             assert isinstance(mem, memory.Memory)
             assert not isinstance(mem, memory.PooledMemory)
 
     def test_double_free(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             mem = self.pool.malloc(1).mem
             mem.free()
             mem.free()
 
     def test_free_all_blocks(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             mem = self.pool.malloc(1).mem
             assert isinstance(mem, memory.BaseMemory)
             assert isinstance(mem, memory.PooledMemory)
@@ -605,13 +605,13 @@ class TestMemoryPool(unittest.TestCase):
             assert self.pool.n_free_blocks() == 0
 
     def test_free_all_blocks_without_malloc(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             # call directly without malloc.
             self.pool.free_all_blocks()
             assert self.pool.n_free_blocks() == 0
 
     def test_free_all_free(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             mem = self.pool.malloc(1).mem
             assert isinstance(mem, memory.BaseMemory)
             assert isinstance(mem, memory.PooledMemory)
@@ -623,27 +623,27 @@ class TestMemoryPool(unittest.TestCase):
             assert self.pool.n_free_blocks() == 0
 
     def test_free_all_free_without_malloc(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             # call directly without malloc.
             with testing.assert_warns(DeprecationWarning):
                 self.pool.free_all_free()
             assert self.pool.n_free_blocks() == 0
 
     def test_n_free_blocks_without_malloc(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             # call directly without malloc/free_all_free.
             assert self.pool.n_free_blocks() == 0
 
     def test_used_bytes(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             assert 0 == self.pool.used_bytes()
 
     def test_free_bytes(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             assert 0 == self.pool.free_bytes()
 
     def test_total_bytes(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             assert 0 == self.pool.total_bytes()
 
 
@@ -660,7 +660,7 @@ class TestAllocator(unittest.TestCase):
         memory.set_allocator(self.old_pool.malloc)
 
     def test_set_allocator(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             assert 0 == self.pool.used_bytes()
             arr = cupy.arange(128, dtype=cupy.int64)
             assert 1024 == arr.data.mem.size
@@ -704,7 +704,7 @@ class TestAllocator(unittest.TestCase):
                 threading.Barrier(2)
             assert memory.get_allocator() == self.pool.malloc
 
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             t = threading.Thread(target=thread_body, args=(self,))
             t.daemon = True
             t.start()
@@ -738,7 +738,7 @@ class TestAllocator(unittest.TestCase):
 
         # Run in sub thread.
         self._error = True
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             t = threading.Thread(target=job, args=(self,))
             t.daemon = True
             t.start()
@@ -757,7 +757,7 @@ class TestAllocatorDisabled(unittest.TestCase):
 
     def _check_pool_not_used(self):
         used_bytes = self.pool.used_bytes()
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             arr = cupy.arange(128, dtype=cupy.int64)
             assert 0 == self.pool.used_bytes() - used_bytes
             del arr
@@ -857,7 +857,7 @@ class TestMallocAsync(unittest.TestCase):
 
     def _check_pool_not_used(self):
         used_bytes = self.old_pool.used_bytes()
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             arr = cupy.arange(128, dtype=cupy.int64)
             assert 0 == self.old_pool.used_bytes() - used_bytes
             del arr
@@ -917,29 +917,30 @@ class TestMemoryAsyncPool(unittest.TestCase):
     def setUp(self):
         self.pool = memory.MemoryAsyncPool()
         cupy.get_default_memory_pool().free_all_blocks()
+        cupy.cuda.Device().synchronize()
 
     def test_zero_size_alloc(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             mem = self.pool.malloc(0).mem
             assert isinstance(mem, memory.MemoryAsync)
             assert not isinstance(mem, memory.PooledMemory)
 
     def test_alloc(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             mem = self.pool.malloc(100).mem
             assert isinstance(mem, memory.MemoryAsync)
             assert not isinstance(mem, memory.PooledMemory)
 
     def test_alloc_large_chunk(self):
         self.pool.free_all_blocks()
-        with cupy.cuda.Device(0) as d:
+        with cupy.cuda.Device() as d:
             _, mem_total = d.mem_info
-            mem = self.pool.malloc(int(0.9 * mem_total)).mem  # 90% memory
+            mem = self.pool.malloc(int(0.8 * mem_total)).mem  # 80% memory
             del mem
             mem = self.pool.malloc(int(0.2 * mem_total)).mem  # 20% memory # noqa
 
     def test_free_all_blocks(self):
-        with cupy.cuda.Device(0):
+        with cupy.cuda.Device():
             mem = self.pool.malloc(1).mem
             del mem
             self.pool.free_all_blocks()
@@ -948,9 +949,9 @@ class TestMemoryAsyncPool(unittest.TestCase):
         # When memory is returned to the async mempool, it is not immediately
         # visible to normal malloc routines until after a sync happens.
         default_pool = cupy.get_default_memory_pool()
-        with cupy.cuda.Device(0) as d:
+        with cupy.cuda.Device() as d:
             _, mem_total = d.mem_info
-            mem = self.pool.malloc(int(0.9 * mem_total)).mem  # 90% memory
+            mem = self.pool.malloc(int(0.8 * mem_total)).mem  # 80% memory
             del mem
             with pytest.raises(memory.OutOfMemoryError):
                 default_pool.malloc(int(0.2 * mem_total))  # 20% memory
@@ -960,9 +961,9 @@ class TestMemoryAsyncPool(unittest.TestCase):
     def test_interaction_with_CuPy_default_pool(self):
         # Test saneness of cudaMallocAsync
         default_pool = cupy.get_default_memory_pool()
-        with cupy.cuda.Device(0) as d:
+        with cupy.cuda.Device() as d:
             _, mem_total = d.mem_info
-            mem = default_pool.malloc(int(0.9 * mem_total)).mem  # 90% memory
+            mem = default_pool.malloc(int(0.8 * mem_total)).mem  # 80% memory
             del mem
             with pytest.raises(memory.OutOfMemoryError):
                 self.pool.malloc(int(0.2 * mem_total))  # 20% memory
