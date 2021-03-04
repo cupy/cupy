@@ -539,7 +539,6 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
         assert 'does not support' in str(ex.value)
 
 
-@testing.slow
 @testing.gpu
 @pytest.mark.skipif(
     cupy.cuda.runtime.is_hip, reason='HIP does not support this')
