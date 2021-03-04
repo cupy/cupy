@@ -156,17 +156,16 @@ class TestPinv(unittest.TestCase):
         a_gpu = testing.shaped_random(a_shape, dtype=dtype)
         a_cpu = cupy.asnumpy(a_gpu)
         a_gpu_copy = a_gpu.copy()
+        if not isinstance(rcond, float):
+            rcond = numpy.asarray(rcond)
         result_cpu = numpy.linalg.pinv(a_cpu, rcond=rcond)
+        if not isinstance(rcond, float):
+            rcond = cupy.asarray(rcond)
         result_gpu = cupy.linalg.pinv(a_gpu, rcond=rcond)
 
         assert result_cpu.dtype == result_gpu.dtype
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
-
-    def check_shape(self, a_shape):
-        a = cupy.random.rand(*a_shape)
-        with self.assertRaises(ValueError):
-            cupy.linalg.pinv(a)
 
     def test_pinv(self):
         self.check_x((3, 3), rcond=1e-15)
@@ -177,11 +176,22 @@ class TestPinv(unittest.TestCase):
         self.check_x((2, 5), rcond=0.5)
         self.check_x((5, 3), rcond=0.6)
 
-    def test_invalid_shape(self):
-        # TODO(leofang): NumPy supports batched pinv. Since we now support
-        # batched svd (which is behind pinv), this should not raise
-        self.check_shape((2, 3, 4))
-        self.check_shape((4, 3, 2, 1))
+    def test_pinv_batched(self):
+        self.check_x((2, 3, 4), rcond=1e-15)
+        self.check_x((2, 3, 4, 5), rcond=1e-15)
+
+    def test_pinv_batched_vector_rcond(self):
+        self.check_x((2, 3, 4), rcond=[0.2, 0.8])
+        self.check_x((2, 3, 4, 5),
+                     rcond=[[0.2, 0.9, 0.1],
+                            [0.7, 0.2, 0.5]])
+
+    def test_pinv_size_0(self):
+        self.check_x((3, 0), rcond=1e-15)
+        self.check_x((0, 3), rcond=1e-15)
+        self.check_x((0, 0), rcond=1e-15)
+        self.check_x((0, 2, 3), rcond=1e-15)
+        self.check_x((2, 0, 3), rcond=1e-15)
 
 
 @testing.gpu

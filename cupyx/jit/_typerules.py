@@ -106,7 +106,7 @@ def get_ufunc(mode, op_type):
     if mode == 'numpy':
         return _numpy_ops[op_type]
     if mode == 'cuda':
-        raise NotImplementedError
+        return _numpy_ops[op_type]
     assert False
 
 
@@ -137,30 +137,3 @@ def get_ctype_from_scalar(mode, x):
             return _types.Scalar(numpy.complex64)
 
     raise NotImplementedError(f'{x} is not scalar object.')
-
-
-_suffix_literals_dict = {
-    numpy.dtype('float64'): '',
-    numpy.dtype('float32'): 'f',
-    numpy.dtype('int64'): 'll',
-    numpy.dtype('longlong'): 'll',
-    numpy.dtype('int32'): '',
-    numpy.dtype('uint64'): 'ull',
-    numpy.dtype('ulonglong'): 'ull',
-    numpy.dtype('uint32'): 'u',
-    numpy.dtype('bool'): '',
-}
-
-
-def get_cuda_code_from_constant(x, ctype):
-    dtype = ctype.dtype
-    suffix_literal = _suffix_literals_dict.get(dtype)
-    if suffix_literal is not None:
-        s = str(x).lower()
-        return f'{s}{suffix_literal}'
-    ctype = str(ctype)
-    if dtype.kind == 'c':
-        return f'{ctype}({x.real}, {x.imag})'
-    if ' ' in ctype:
-        return f'({ctype}){x}'
-    return f'{ctype}({x})'
