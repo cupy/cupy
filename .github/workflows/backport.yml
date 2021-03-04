@@ -1,0 +1,38 @@
+on:
+  push:
+    branches:
+       - master
+
+jobs:
+  pretest:
+    runs-on: ubuntu-18.04
+    env:
+      CUPY_CI: GitHub
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: set ssh
+      uses: webfactory/ssh-agent@v0.5.0
+      with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: setup python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.7'
+
+    - name: setup backport
+      run: |
+        pip install pygithub
+        git config --global user.name "CuPy Automatic Backport"
+        git config --global user.email "33715081+chainer-ci@users.noreply.github.com"
+        git clone https://github.com/cupy/backport.git
+
+    - name: run_backport
+      run: |
+        cd backport
+        export PR_NUMBER=`git show --format=%s ${{ github.event.after }} | grep "^Merge pull request" | sed -e "s/.*#\([0-9]\+\).*/\1/g"`
+        python backport.py --repo cupy --pr $PR_NUMBER --token ${{secrets.BACKPORT_TOKEN}}
