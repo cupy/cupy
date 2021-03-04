@@ -41,9 +41,9 @@ original error: {}'''.format(_exc_info[1]))  # NOQA
     raise ImportError(_msg) from e
 
 
-from cupy import cuda
+from cupy import cuda  # NOQA
 # Do not make `cupy.cupyx` available because it is confusing.
-import cupyx as _cupyx
+import cupyx as _cupyx  # NOQA
 
 
 def is_available():
