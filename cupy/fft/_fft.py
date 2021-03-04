@@ -189,14 +189,12 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     sz = out.shape[-1]
     if fft_type == cufft.CUFFT_R2C or fft_type == cufft.CUFFT_D2Z:
         sz = n
-    if norm == 'backward':
-        if direction == cufft.CUFFT_INVERSE:
-            out /= sz
+    if norm == 'backward' and direction == cufft.CUFFT_INVERSE:
+        out /= sz
     elif norm == 'ortho':
         out /= math.sqrt(sz)
-    elif norm == 'forward':
-        if direction == cufft.CUFFT_FORWARD:
-            out /= sz
+    elif norm == 'forward' and direction == cufft.CUFFT_FORWARD:
+        out /= sz
 
     if axis % a.ndim != a.ndim - 1:
         out = out.swapaxes(axis, -1)
@@ -557,14 +555,12 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     # normalize by the product of the shape along the transformed axes
     arr = a if fft_type in (cufft.CUFFT_R2C, cufft.CUFFT_D2Z) else out
     sz = _prod([arr.shape[ax] for ax in axes])
-    if norm == 'backward':
-        if direction == cufft.CUFFT_INVERSE:
-            out /= sz
+    if norm == 'backward' and direction == cufft.CUFFT_INVERSE:
+        out /= sz
     elif norm == 'ortho':
         out /= math.sqrt(sz)
-    elif norm == 'forward':
-        if direction == cufft.CUFFT_FORWARD:
-            out /= sz
+    elif norm == 'forward' and direction == cufft.CUFFT_FORWARD:
+        out /= sz
 
     return out
 
