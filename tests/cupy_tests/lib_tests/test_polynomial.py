@@ -521,6 +521,8 @@ class TestPolyfitCovMode(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     def test_polyfit_cov(self, dtype):
+        if runtime.is_hip and self.deg == 0:
+            pytest.xfail('ROCm/HIP may have a bug')
         cp_c, cp_cov = self._cov_fit(cupy, dtype)
         np_c, np_cov = self._cov_fit(numpy, dtype)
         testing.assert_allclose(cp_c, np_c, rtol=1e-5)
