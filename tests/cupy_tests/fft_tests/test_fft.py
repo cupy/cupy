@@ -394,7 +394,7 @@ class TestFftAllocate:
         {'shape': (0, 0, 5), 's': None, 'axes': None},
         {'shape': (3, 4), 's': (0, 5), 'axes': None},
         {'shape': (3, 4), 's': (1, 0), 'axes': None},
-        ],
+    ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
@@ -471,7 +471,7 @@ class TestFft2:
         {'shape': (0, 5), 's': None, 'axes': None},
         {'shape': (2, 0, 5), 's': None, 'axes': None},
         {'shape': (0, 0, 5), 's': None, 'axes': None},
-        ],
+    ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
@@ -541,7 +541,7 @@ class TestFftn:
         {'shape': (0, 5), 's': None, 'axes': None},
         {'shape': (2, 0, 5), 's': None, 'axes': None},
         {'shape': (0, 0, 5), 's': None, 'axes': None},
-        ],
+    ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
@@ -796,7 +796,7 @@ class TestMultiGpuPlanCtxManagerFft:
         {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': (-3, -2, -1)},
-        ],
+    ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
@@ -962,7 +962,7 @@ class TestPlanCtxManagerRfft:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
-        ],
+    ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
@@ -1049,7 +1049,7 @@ class TestRfft2EmptyAxes:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
-        ],
+    ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
@@ -1114,7 +1114,7 @@ class TestRfftn:
         {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
-        ],
+    ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
@@ -1192,7 +1192,7 @@ class TestPlanCtxManagerRfftn:
         {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
-        ],
+    ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
