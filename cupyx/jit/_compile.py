@@ -358,11 +358,11 @@ def _transpile_stmt(stmt, is_toplevel, env):
                      f'__it = {iters.start.code}, '
                      f'__stop = {iters.stop.code}, '
                      f'__step = {iters.step.code}')
-        cond = f'__step >= 0 ? __it < __stop : __it > __stop'
+        cond = '__step >= 0 ? __it < __stop : __it > __stop'
         if iters.step_is_positive is True:
-            cond = f'__it < __stop'
+            cond = '__it < __stop'
         elif iters.step_is_positive is False:
-            cond = f'__it > __stop'
+            cond = '__it > __stop'
 
         head = f'for ({init_code}; {cond}; __it += __step)'
         return [CodeBlock(head, [f'{name} = __it;'] + body)]
