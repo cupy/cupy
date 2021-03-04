@@ -23,7 +23,7 @@ class TestSepFIR2d(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_sepfir2d(self, xp, scp, dtype):
-        if sys.platform.startswith('win32') and xp.dtype(dtype).kind in 'iu':
+        if sys.platform.startswith('win32') and xp.dtype(dtype).kind in 'c':
             self.skipTest('Avoid "incorrect type" error')
 
         input = testing.shaped_random(self.input, xp, dtype)
