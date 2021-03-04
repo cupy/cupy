@@ -34,5 +34,4 @@ jobs:
     - name: run_backport
       run: |
         cd backport
-        export PR_NUMBER=`git show --format=%s ${{ github.event.after }} | grep "^Merge pull request" | sed -e "s/.*#\([0-9]\+\).*/\1/g"`
-        python backport.py --repo cupy --pr $PR_NUMBER --token ${{secrets.BACKPORT_TOKEN}}
+        python backport.py --repo cupy --sha ${{ github.event.after }} --token ${{secrets.BACKPORT_TOKEN}}
