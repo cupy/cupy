@@ -1,8 +1,9 @@
 import ast
-import builtins
+import collections
 import inspect
 import numbers
 import re
+import sys
 import warnings
 
 import numpy
@@ -14,6 +15,8 @@ from cupyx.jit import _typerules
 
 
 _typeclasses = (bool, numpy.bool_, numbers.Number)
+
+Result = collections.namedtuple('Result', ['func_name', 'code', 'return_type'])
 
 
 def transpile(func, attributes, mode, in_types, ret_type):
@@ -39,16 +42,19 @@ def transpile(func, attributes, mode, in_types, ret_type):
     source = '\n'.join([
         line.replace(' ' * num_indent, '', 1) for line in lines])
 
-    global_mems = dict(inspect.getclosurevars(func).globals)
-    nonlocals = dict(inspect.getclosurevars(func).nonlocals)
-    consts = dict(**global_mems, **nonlocals, **builtins.__dict__)
+    cvars = inspect.getclosurevars(func)
+    consts = dict(**cvars.globals, **cvars.nonlocals, **cvars.builtins)
     tree = ast.parse(source)
     assert isinstance(tree, ast.Module)
     assert len(tree.body) == 1
     cuda_code, env = _transpile_function(
         tree.body[0], attributes, mode, consts, in_types, ret_type)
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
-    return cuda_code, env.ret_type
+    return Result(
+        func_name=func.__name__,
+        code=cuda_code,
+        return_type=env.ret_type,
+    )
 
 
 def _indent(lines, spaces='  '):
@@ -155,11 +161,20 @@ def _transpile_function(
         env (Environment): More details of analysis result of the function,
             which includes preambles, estimated return type and more.
     """
+    consts = dict([(k, Constant(v)) for k, v, in consts.items()])
+
     if not isinstance(func, ast.FunctionDef):
         # TODO(asi1024): Support for `ast.ClassDef`.
         raise NotImplementedError('Not supported: {}'.format(type(func)))
     if len(func.decorator_list) > 0:
-        raise NotImplementedError('Decorator is not supported')
+        if sys.version_info >= (3, 9):
+            # Code path for Python versions that support `ast.unparse`.
+            for deco in func.decorator_list:
+                deco_code = ast.unparse(deco)
+                if deco_code not in ['rawkernel', 'vectorize']:
+                    warnings.warn(
+                        f'Decorator {deco_code} may not supported in JIT.',
+                        RuntimeWarning)
     arguments = func.args
     if arguments.vararg is not None:
         raise NotImplementedError('`*args` is not supported currently.')
@@ -176,15 +191,16 @@ def _transpile_function(
     if len(args) != len(in_types):
         raise TypeError(
             f'{func.name}() takes {len(args)} positional arguments '
-            'but {len(in_types)} were given.')
-    env = Environment(
-        mode,
-        dict([(k, Constant(v)) for k, v, in consts.items()]),
-        dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)]),
-        ret_type)
+            f'but {len(in_types)} were given.')
+    params = dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)])
+    env = Environment(mode, consts, params, ret_type)
     body = _transpile_stmts(func.body, True, env)
     params = ', '.join([f'{env[a].ctype} {a}' for a in args])
     local_vars = [f'{v.ctype} {n};' for n, v in env.locals.items()]
+
+    if env.ret_type is None:
+        env.ret_type = _types.Void()
+
     head = f'{attributes} {env.ret_type} {func.name}({params})'
     code = CodeBlock(head, local_vars + body)
     return str(code), env
@@ -296,11 +312,15 @@ def _transpile_stmt(stmt, is_toplevel, env):
     if isinstance(stmt, ast.Assign):
         if len(stmt.targets) != 1:
             raise NotImplementedError('Not implemented.')
-        target = stmt.targets[0]
-        if not isinstance(target, ast.Name):
-            raise NotImplementedError('Tuple is not supported.')
-        name = target.id
+
         value = _transpile_expr(stmt.value, env)
+        target = stmt.targets[0]
+
+        if not isinstance(target, ast.Name):
+            target = _transpile_expr(target, env)
+            return [f'{target.code} = {value.code};']
+
+        name = target.id
 
         if is_constants([value]):
             if not isinstance(value.obj, _typeclasses):
@@ -315,14 +335,14 @@ def _transpile_stmt(stmt, is_toplevel, env):
             value = _to_cuda_object(value, env)
 
         if env[name] is None:
-            env[name] = CudaObject(target.id, value.ctype)
+            env[name] = CudaObject(name, value.ctype)
         elif is_constants([env[name]]):
             raise TypeError('Type mismatch of variable: `{name}`')
         elif env[name].ctype.dtype != value.ctype.dtype:
             raise TypeError(
                 f'Data type mismatch of variable: `{name}`: '
                 f'{env[name].ctype.dtype} != {value.ctype.dtype}')
-        return [f'{target.id} = {value.code};']
+        return [f'{name} = {value.code};']
 
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
@@ -419,7 +439,15 @@ def _transpile_expr(expr, env):
 
     Returns (CudaObject): The CUDA code and its type of the expression.
     """
+    res = _transpile_expr_internal(expr, env)
 
+    if isinstance(res, Constant) and isinstance(res.obj, CudaObject):
+        return res.obj
+    else:
+        return res
+
+
+def _transpile_expr_internal(expr, env):
     if isinstance(expr, ast.BoolOp):
         values = [_transpile_expr(e, env) for e in expr.values]
         value = values[0]
@@ -519,12 +547,21 @@ def _transpile_expr(expr, env):
         return Constant(expr.s)
 
     if isinstance(expr, ast.Subscript):
-        # # TODO(asi1024): Fix.
-        # value = _transpile_expr(expr.value, env)
-        # if isinstance(expr.slice, ast.Index):
-        #     index = _transpile_expr(expr.slice.value, env)
-        #     return value + '[' + index + ']'
-        raise NotImplementedError('Not implemented.')
+        value = _transpile_expr(expr.value, env)
+        index = _transpile_expr(expr.slice, env)
+        if is_constants([value, index]):
+            return Constant(value[index])
+        value = _to_cuda_object(value, env)
+        index = _to_cuda_object(index, env)
+
+        if not isinstance(value.ctype, _types.Array):
+            raise ValueError(f'{value.code} must be Array type.')
+        if value.ctype.ndim != 1:
+            raise NotImplementedError('Not implemented for ndim > 1.')
+        return CudaObject(
+            f'{value.code}[{index.code}]',
+            _types.Scalar(value.ctype.dtype))
+
     if isinstance(expr, ast.Name):
         value = env[expr.id]
         if value is None:
@@ -536,6 +573,10 @@ def _transpile_expr(expr, env):
         if is_constants([value]):
             return Constant(getattr(value.obj, expr.attr))
         raise NotImplementedError('Not implemented: __getattr__')
+
+    if isinstance(expr, ast.Index):
+        return _transpile_expr(expr.value, env)
+
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
@@ -566,7 +607,7 @@ def _to_cuda_object(x, env):
         return x
     if isinstance(x, Constant):
         ctype = _typerules.get_ctype_from_scalar(env.mode, x.obj)
-        code = _typerules.get_cuda_code_from_constant(x.obj, ctype)
+        code = _types.get_cuda_code_from_constant(x.obj, ctype)
         return CudaObject(code, ctype)
     if isinstance(x, Range):
         raise TypeError('range object cannot be interpreted as a cuda object.')
