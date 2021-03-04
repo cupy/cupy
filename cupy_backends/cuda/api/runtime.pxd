@@ -782,9 +782,10 @@ ELSE:
         cudaDevAttrMaxTexture2DLinearPitch
         cudaDevAttrMaxTexture2DMipmappedWidth
         cudaDevAttrMaxTexture2DMipmappedHeight
-        cudaDevAttrComputeCapabilityMajor
-        cudaDevAttrComputeCapabilityMinor
-        cudaDevAttrMaxTexture1DMipmappedWidth
+        # The following are exposed as "deviceAttributeCo..."
+        # cudaDevAttrComputeCapabilityMajor  # = 75
+        # cudaDevAttrComputeCapabilityMinor  # = 76
+        cudaDevAttrMaxTexture1DMipmappedWidth = 77
         cudaDevAttrStreamPrioritiesSupported
         cudaDevAttrGlobalL1CacheSupported
         cudaDevAttrLocalL1CacheSupported
