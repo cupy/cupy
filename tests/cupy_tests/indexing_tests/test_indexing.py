@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 import numpy
@@ -33,9 +34,10 @@ class TestIndexing(unittest.TestCase):
         return a.take(b)
 
     # see cupy#3017
+    @pytest.mark.xfail(sys.platform.startswith('win32'),
+                       reason='NumPy could go OOM on the Windows CI')
     @testing.for_int_dtypes(no_bool=True)
-    # NumPy could go OOM on the Windows CI
-    @testing.numpy_cupy_array_equal(accept_error=MemoryError)
+    @testing.numpy_cupy_array_equal()
     def test_take_index_range_overflow(self, xp, dtype):
         # Skip for too large dimensions
         if numpy.dtype(dtype) in (numpy.int64, numpy.uint64):
