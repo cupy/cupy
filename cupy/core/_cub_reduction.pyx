@@ -44,7 +44,9 @@ cdef function.Function _create_cub_reduction_function(
         #     #ifndef CUB_NS_PREFIX
         #     #define CUB_NS_PREFIX
         #     #endif
-        # will drive NVRTC nuts. We need to work around before it's fixed.
+        # will drive NVRTC nuts (error: this declaration has no storage class
+        # or type specifier). However, we cannot find a minimum reproducer to
+        # confirm this is the root cause, so we work around by using nvcc.
         backend = 'nvcc'
     else:
         # use jitify + nvrtc
