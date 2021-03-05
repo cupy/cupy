@@ -436,7 +436,8 @@ def pinv(a, rcond=1e-15):
         a (cupy.ndarray): The matrix with dimension ``(M, N)``
         rcond (float): Cutoff parameter for small singular values.
             For stability it computes the largest singular value denoted by
-            ``s``, and sets all singular values smaller than ``s`` to zero.
+            ``rcond * s``, and sets all singular values smaller than ``s``
+            to zero.
 
     Returns:
         cupy.ndarray: The pseudoinverse of ``a`` with dimension ``(N, M)``.
@@ -450,6 +451,11 @@ def pinv(a, rcond=1e-15):
 
     .. seealso:: :func:`numpy.linalg.pinv`
     """
+    _util._assert_cupy_array(a)
+    # v8 does not support batched SVD
+    _util._assert_rank2(a)
+    if a.size == 0:
+        return cupy.empty_like(a.T)
     u, s, vt = _decomposition.svd(a.conj(), full_matrices=False)
     cutoff = rcond * s.max()
     s1 = 1 / s

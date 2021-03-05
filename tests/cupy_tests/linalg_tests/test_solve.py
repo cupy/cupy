@@ -157,6 +157,11 @@ class TestPinv(unittest.TestCase):
         self.check_x((2, 5), rcond=0.5)
         self.check_x((5, 3), rcond=0.6)
 
+    def test_pinv_size_0(self):
+        self.check_x((3, 0), rcond=1e-15)
+        self.check_x((0, 3), rcond=1e-15)
+        self.check_x((0, 0), rcond=1e-15)
+
     def test_invalid_shape(self):
         self.check_shape((2, 3, 4), rcond=1e-15)
         self.check_shape((2, 3, 4), rcond=0.5)
