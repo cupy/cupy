@@ -111,3 +111,4 @@ Linear Algebra
    cupyx.scipy.sparse.linalg.eigsh
    cupyx.scipy.sparse.linalg.svds
    cupyx.scipy.sparse.linalg.aslinearoperator
+   cupyx.scipy.sparse.linalg.lobpcg

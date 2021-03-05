@@ -2041,8 +2041,8 @@ class TestCsrMatrixDiagonal(unittest.TestCase):
         m, n = self.shape
         for k in range(-m+1, n):
             m_st, n_st = max(0, -k), max(0, k)
-            for l in (-1, 0, 1):
-                x_len = min(m - m_st, n - n_st) + l
+            for d in (-1, 0, 1):
+                x_len = min(m - m_st, n - n_st) + d
                 if x_len <= 0:
                     continue
                 x = numpy.ones((x_len,), dtype=dtype)
