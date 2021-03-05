@@ -1,4 +1,3 @@
-import sys
 import unittest
 
 import numpy
@@ -222,11 +221,7 @@ class TestVectorizeExprs(unittest.TestCase):
 
         f = xp.vectorize(my_incr)
         x = testing.shaped_random((20, 30), xp, dtype, seed=0)
-        out = f(x)
-        # On Windows, NumPy's default int type is int32, not int64
-        if sys.platform.startswith('win32') and out.dtype == xp.int32:
-            out = out.astype(xp.int64)
-        return out
+        return f(x)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal(accept_error=TypeError)
@@ -355,7 +350,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_if)
-        x = xp.array([1, 2, 3, 4, 5], dtype=xp.int64)
+        x = xp.array([1, 2, 3, 4, 5])
         return f(x)
 
     @testing.numpy_cupy_array_equal()
@@ -367,12 +362,8 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_if)
-        x = xp.array([1, 2, 3, 4, 5], dtype=xp.int64)
-        out = f(x)
-        # On Windows, NumPy's default int type is int32, not int64
-        if sys.platform.startswith('win32') and out.dtype == xp.int32:
-            out = out.astype(xp.int64)
-        return out
+        x = xp.array([1, 2, 3, 4, 5])
+        return f(x)
 
     @testing.numpy_cupy_array_equal()
     def test_elif(self, xp):
@@ -385,12 +376,8 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_if)
-        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=xp.int64)
-        out = f(x)
-        # On Windows, NumPy's default int type is int32, not int64
-        if sys.platform.startswith('win32') and out.dtype == xp.int32:
-            out = out.astype(xp.int64)
-        return out
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
 
     @testing.numpy_cupy_array_equal()
     def test_while(self, xp):
@@ -402,7 +389,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_while)
-        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=xp.int64)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         return f(x)
 
     @testing.numpy_cupy_array_equal()
@@ -414,12 +401,8 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_for)
-        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=xp.int64)
-        out = f(x)
-        # On Windows, NumPy's default int type is int32, not int64
-        if sys.platform.startswith('win32') and out.dtype == xp.int32:
-            out = out.astype(xp.int64)
-        return out
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
 
     @testing.numpy_cupy_array_equal()
     def test_for_const_range(self, xp):
@@ -466,7 +449,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return x + i
 
         f = xp.vectorize(func_for)
-        x = xp.array([0, 1, 2, 3, 4], dtype=xp.int64)
+        x = xp.array([0, 1, 2, 3, 4])
         return f(x)
 
     @testing.numpy_cupy_array_equal()
@@ -478,12 +461,8 @@ class TestVectorizeStmts(unittest.TestCase):
             return res
 
         f = xp.vectorize(func_for)
-        x = xp.array([0, 1, 2, 3, 4], dtype=xp.int64)
-        out = f(x, x)
-        # On Windows, NumPy's default int type is int32, not int64
-        if sys.platform.startswith('win32') and out.dtype == xp.int32:
-            out = out.astype(xp.int64)
-        return out
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x, x)
 
     @testing.numpy_cupy_array_equal()
     def test_for_update_loop_condition(self, xp):
@@ -495,12 +474,8 @@ class TestVectorizeStmts(unittest.TestCase):
             return res
 
         f = xp.vectorize(func_for)
-        x = xp.array([0, 1, 2, 3, 4], dtype=xp.int64)
-        out = f(x)
-        # On Windows, NumPy's default int type is int32, not int64
-        if sys.platform.startswith('win32') and out.dtype == xp.int32:
-            out = out.astype(xp.int64)
-        return out
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x)
 
 
 class _MyClass:
@@ -574,7 +549,7 @@ class TestVectorizeBroadcast(unittest.TestCase):
 
 class TestVectorize(unittest.TestCase):
 
-    @testing.for_dtypes('qQefdFD')
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_vectorize_arithmetic_ops(self, xp, dtype):
         def my_func(x1, x2, x3):
