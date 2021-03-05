@@ -165,7 +165,6 @@ def get_compiler_setting(use_hip):
 
     # For CUB, we need the complex and CUB headers. The search precedence for
     # the latter is:
-    #   1. built-in CUB (for CUDA 11+ and ROCm)
     #   2. CuPy's CUB bundle
     # Note that starting CuPy v8 we no longer use CUB_PATH
 
@@ -175,9 +174,7 @@ def get_compiler_setting(use_hip):
     global _jitify_path
     _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:
-        cuda_cub_path = os.path.join(cuda_path, 'include', 'cub')
-        if not os.path.exists(cuda_cub_path):
-            cuda_cub_path = None
+        cuda_cub_path = None
     elif rocm_path:
         cuda_cub_path = os.path.join(rocm_path, 'include', 'hipcub')
         if not os.path.exists(cuda_cub_path):
