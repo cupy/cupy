@@ -190,6 +190,7 @@ def get_compiler_setting(use_hip):
         raise Exception('Please install hipCUB and retry')
     include_dirs.insert(0, _cub_path)
     include_dirs.insert(1, cupy_header)
+    define_macros.append(('THRUST_IGNORE_CUB_VERSION_CHECK', '1'))
 
     return {
         'include_dirs': include_dirs,
