@@ -1,4 +1,3 @@
-import sys
 import unittest
 
 import numpy
@@ -34,8 +33,8 @@ class TestIndexing(unittest.TestCase):
         return a.take(b)
 
     # see cupy#3017
-    @pytest.mark.xfail(sys.platform.startswith('win32'),
-                       reason='NumPy could go OOM on the Windows CI')
+    # mark slow as NumPy could go OOM on the Windows CI
+    @testing.slow
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_take_index_range_overflow(self, xp, dtype):
