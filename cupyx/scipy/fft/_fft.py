@@ -93,7 +93,9 @@ def fft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``'ortho'``): Normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axis``, which can be obtained using::
@@ -124,7 +126,9 @@ def ifft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``'ortho'``): Normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axis``, which can be obtained using::
@@ -155,7 +159,9 @@ def fft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *, plan=None):
             output. If ``s`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``'ortho'``): Normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axes``, which can be obtained using::
@@ -186,7 +192,9 @@ def ifft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
             output. If ``s`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``'ortho'``): Normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axes``, which can be obtained using::
@@ -216,7 +224,9 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
             output. If ``s`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``'ortho'``): Normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axes``, which can be obtained using::
@@ -250,7 +260,9 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
             output. If ``s`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``'ortho'``): Normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axes``, which can be obtained using::
@@ -287,7 +299,9 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``'ortho'``): Normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axis``, which can be obtained using::
@@ -319,7 +333,9 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``'ortho'``): Normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.Plan1d` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axis``, which can be obtained using::
@@ -351,7 +367,9 @@ def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
             given, the lengths of the input along the axes specified by
             ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axes``, which can be obtained using::
@@ -384,7 +402,9 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axes``, which can be obtained using::
@@ -418,7 +438,9 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
             given, the lengths of the input along the axes specified by
             ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axes``, which can be obtained using::
@@ -454,7 +476,9 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
             transforming ``x`` over ``axes``, which can be obtained using::
@@ -498,7 +522,9 @@ def hfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
             ``n`` is not given, it is determined from the length of the input
             along the axis specified by ``axis``.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (None): This argument is currently not supported.
 
@@ -527,7 +553,9 @@ def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
             input to use. If ``n`` is not given, the length of the input along
             the axis specified by ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (None): This argument is currently not supported.
 
