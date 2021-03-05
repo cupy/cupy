@@ -43,7 +43,9 @@ monte_carlo_kernel = cupy.ElementwiseKernel(
     call = discount_factor * call_sum / n_samples;
     ''',
     preamble='''
+    #ifndef __HIPCC__
     typedef unsigned long long uint64_t;
+    #endif
 
     __device__
     inline T get_call_value(T s, T x, T p, T mu_by_t, T v_by_sqrt_t) {
