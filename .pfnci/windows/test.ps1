@@ -88,7 +88,7 @@ function Main {
     RunOrDie python -c "import cupy; cupy.show_config()"
 
     # Unit test
-    $pytest_opts = ""
+    $pytest_opts = $Env:PYTEST_OPTS
     if ($test -eq "build") {
         return
     } elseif ($test -eq "test") {
@@ -107,7 +107,7 @@ function Main {
     }
     echo "Running test..."
     $test_retval = 0
-    python -m pytest -rfEX $Env:PYTEST_OPTS tests > cupy_test_log.txt
+    python -m pytest -rfEX $pytest_opts tests > cupy_test_log.txt
     if (-not $?) {
         $test_retval = $LastExitCode
     }
