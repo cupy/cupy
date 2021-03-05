@@ -14,6 +14,7 @@ from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
+import sys
 from cupy import _environment
 from cupy.core._kernel import _get_param_info
 from cupy.cuda import driver
@@ -35,6 +36,16 @@ cdef function.Function _create_cub_reduction_function(
     # as of ROCm 3.5.0, so we must use hipcc.
     if runtime._is_hip_environment:
         options += ('-I' + _rocm_path + '/include',)
+    elif sys.platform.startswith('win32'):
+        # See #4771. NVRTC on Windows seems to have problems in handling empty
+        # macros, so any usage like this:
+        #     #ifndef CUB_NS_PREFIX
+        #     #define CUB_NS_PREFIX
+        #     #endif
+        # will drive NVRTC nuts (error: this declaration has no storage class
+        # or type specifier). However, we cannot find a minimum reproducer to
+        # confirm this is the root cause, so we work around by using nvcc.
+        backend = 'nvcc'
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
