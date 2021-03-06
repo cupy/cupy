@@ -28,7 +28,8 @@ cdef class CPointer:
 
 cdef class CNumpyArray(CPointer):
     cdef:
-        int8_t [:] val
+        int8_t[:] val
+
     def __init__(self, a):
         self.val = numpy.atleast_1d(a).ravel().view(numpy.int8)
         self.ptr = <void*>&self.val[0]
@@ -75,7 +76,7 @@ cdef inline CPointer _pointer(x):
         x = numpy.bool_(x)
     elif isinstance(x, complex):
         x = numpy.complex128(x)
-    
+
     if isinstance(x, (numpy.ndarray, numpy.generic)):
         return CNumpyArray(x)
 
