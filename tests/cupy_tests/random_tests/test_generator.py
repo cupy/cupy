@@ -1214,7 +1214,7 @@ class TestRandint(RandomGeneratorTestCase):
         self.generate(6.7, size=(2, 3))
 
     def test_randint_int64_1(self):
-        self.generate(2**34, 2**40, 3)
+        self.generate(2**34, 2**40, 3, dtype='q')
 
 
 @testing.gpu

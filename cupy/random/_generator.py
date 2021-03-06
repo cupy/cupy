@@ -1136,7 +1136,7 @@ class RandomState(object):
         RandomState._gumbel_kernel(x, loc, scale, x)
         return x
 
-    def randint(self, low, high=None, size=None, dtype='l'):
+    def randint(self, low, high=None, size=None, dtype=int):
         """Returns a scalar or an array of integer values over ``[low, high)``.
 
         .. seealso::
