@@ -14,6 +14,11 @@ from cupy import cusparse
 from cupyx.scipy import sparse
 
 
+if cupy.cuda.runtime.is_hip:
+    pytest.skip('HIP sparse support is not yet ready',
+                allow_module_level=True)
+
+
 class TestMatDescriptor(unittest.TestCase):
 
     def test_create(self):
@@ -687,3 +692,134 @@ class TestErrorSpmm(unittest.TestCase):
         c = cupy.array(self.b, order='f')
         with self.assertRaises(ValueError):
             cupy.cusparse.spmm(a, b, c=c)
+
+
+@testing.parameterize(*testing.product({
+    'lower': [True, False],
+    'unit_diag': [True, False],
+    'transa': ['N', 'T', 'H'],
+    'blocking': [True, False],
+    'level_info': [True, False],
+    'format': ['csr', 'csc'],
+    'nrhs': [None, 1, 4],
+    'order': ['C', 'F']
+}))
+@testing.with_requires('scipy')
+class TestCsrsm2(unittest.TestCase):
+
+    n = 6
+    alpha = 1.0
+    density = 0.75
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _setup(self, dtype):
+        dtype = numpy.dtype(dtype)
+        self.tol = self._tol[dtype.char.lower()]
+
+        a_shape = (self.n, self.n)
+        a = testing.shaped_random(a_shape, numpy, dtype=dtype, scale=1)
+        a_mask = testing.shaped_random(a_shape, numpy, dtype='f', scale=1)
+        a[a_mask > self.density] = 0
+        a_diag = numpy.diag(numpy.ones((self.n,), dtype=dtype))
+        if self.unit_diag:
+            a[a_diag > 0] = 0
+        a = a + a_diag
+        cp_a = cupy.array(a)
+        if self.unit_diag:
+            cp_a[a_diag > 0] = 0.1  # any number except 0
+        if self.format == 'csr':
+            self.a = sparse.csr_matrix(cp_a)
+        elif self.format == 'csc':
+            self.a = sparse.csc_matrix(cp_a)
+
+        b_shape = (self.n,) if self.nrhs is None else (self.n, self.nrhs)
+        b = numpy.arange(1, numpy.prod(b_shape) + 1,
+                         dtype=dtype).reshape(b_shape)
+        b = b.copy(order=self.order)
+        self.b = cupy.array(b, order=self.order)
+
+        if self.lower:
+            a = numpy.tril(a)
+        else:
+            a = numpy.triu(a)
+        if self.transa == 'T':
+            a = a.T
+        elif self.transa == 'H':
+            a = a.conj().T
+        self.ref_x = numpy.linalg.solve(a, self.alpha * b)
+
+    @testing.for_dtypes('fdFD')
+    def test_csrsm2(self, dtype):
+        if not cusparse.check_availability('csrsm2'):
+            raise unittest.SkipTest('csrsm2 is not available')
+        if (self.format == 'csc' and numpy.dtype(dtype).char in 'FD' and
+                self.transa == 'H'):
+            raise unittest.SkipTest('unsupported combination')
+        self._setup(dtype)
+        x = self.b.copy(order=self.order)
+        cusparse.csrsm2(self.a, x, alpha=self.alpha,
+                        lower=self.lower, unit_diag=self.unit_diag,
+                        transa=self.transa, blocking=self.blocking,
+                        level_info=self.level_info)
+        testing.assert_allclose(x, self.ref_x, atol=self.tol, rtol=self.tol)
+
+
+@testing.parameterize(*testing.product({
+    'n': [7, 10],
+    'level_info': [True, False],
+}))
+@testing.with_requires('scipy')
+class TestCsrilu02(unittest.TestCase):
+
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, dtype):
+        if not cusparse.check_availability('csrilu02'):
+            unittest.SkipTest('csrilu02 is not available')
+        a = testing.shaped_random((self.n, self.n), cupy, dtype=dtype,
+                                  scale=0.9) + 0.1
+        a = a + cupy.diag(cupy.ones((self.n,), dtype=dtype.char.lower()))
+        return a
+
+    @testing.for_dtypes('fdFD')
+    def test_csrilu02(self, dtype):
+        dtype = numpy.dtype(dtype)
+        a_ref = self._make_matrix(dtype)
+        a = sparse.csr_matrix(a_ref)
+        cusparse.csrilu02(a, level_info=self.level_info)
+        a = a.todense()
+        al = cupy.tril(a, k=-1)
+        al = al + cupy.diag(cupy.ones((self.n,), dtype=dtype.char.lower()))
+        au = cupy.triu(a)
+        a = al @ au
+        tol = self._tol[dtype.char.lower()]
+        cupy.testing.assert_allclose(a, a_ref, atol=tol, rtol=tol)
+
+    def test_invalid_cases(self):
+        dtype = numpy.dtype('d')
+        a_ref = self._make_matrix(dtype)
+
+        # invalid format
+        a = sparse.csc_matrix(a_ref)
+        with self.assertRaises(TypeError):
+            cusparse.csrilu02(a, level_info=self.level_info)
+
+        # invalid shape
+        a = cupy.ones((self.n, self.n + 1), dtype=dtype)
+        a = sparse.csr_matrix(a)
+        with self.assertRaises(ValueError):
+            cusparse.csrilu02(a, level_info=self.level_info)
+
+        # matrix with zero diagonal element
+        a = a_ref
+        a[-1, -1] = 0
+        a = sparse.csr_matrix(a)
+        with self.assertRaises(ValueError):
+            cusparse.csrilu02(a, level_info=self.level_info)
+
+        # singular matrix
+        a = a_ref
+        a[1:] = a[0]
+        a = sparse.csr_matrix(a)
+        with self.assertRaises(ValueError):
+            cusparse.csrilu02(a, level_info=self.level_info)

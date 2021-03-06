@@ -106,7 +106,7 @@ def get_ufunc(mode, op_type):
     if mode == 'numpy':
         return _numpy_ops[op_type]
     if mode == 'cuda':
-        raise NotImplementedError
+        return _numpy_ops[op_type]
     assert False
 
 
@@ -115,6 +115,8 @@ def get_ctype_from_scalar(mode, x):
         return _types.Scalar(x.dtype)
 
     if mode == 'numpy':
+        if isinstance(x, bool):
+            return _types.Scalar(numpy.bool_)
         if isinstance(x, int):
             return _types.Scalar(numpy.int64)
         if isinstance(x, float):
@@ -123,6 +125,8 @@ def get_ctype_from_scalar(mode, x):
             return _types.Scalar(numpy.complex128)
 
     if mode == 'cuda':
+        if isinstance(x, bool):
+            return _types.Scalar(numpy.bool_)
         if isinstance(x, int):
             if -(1 << 31) <= x < (1 << 31):
                 return _types.Scalar(numpy.int32)
@@ -132,4 +136,4 @@ def get_ctype_from_scalar(mode, x):
         if isinstance(x, complex):
             return _types.Scalar(numpy.complex64)
 
-    raise NotImplementedError(f'{x} is not supported as a constant.')
+    raise NotImplementedError(f'{x} is not scalar object.')

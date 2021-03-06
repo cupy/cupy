@@ -8,7 +8,7 @@ cdef extern from *:
     ctypedef double Double 'cufftDoubleReal'
     ctypedef int Result 'cufftResult_t'
 
-    IF not use_hip:
+    IF HIP_VERSION > 0:
         ctypedef int Handle 'cufftHandle'
     ELSE:
         ctypedef struct hipHandle 'hipfftHandle_t':
@@ -74,6 +74,22 @@ cdef class PlanNd:
         readonly memory.MemoryPointer work_area
         readonly tuple shape
         readonly Type fft_type
+        readonly str order
+        readonly int last_axis
+        readonly object last_size
+
+        # TODO(leofang): support multi-GPU transforms
+        readonly list gpus
+
+
+cdef class XtPlanNd:
+    cdef:
+        readonly intptr_t handle
+        readonly memory.MemoryPointer work_area
+        readonly tuple shape
+        readonly int itype
+        readonly int otype
+        readonly int etype
         readonly str order
         readonly int last_axis
         readonly object last_size

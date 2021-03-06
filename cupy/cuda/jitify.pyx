@@ -15,6 +15,8 @@ from libcpp.vector cimport vector
 
 cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
     cpp_map[cpp_str, cpp_str]& get_jitsafe_headers_map()
+    const int preinclude_jitsafe_headers_count
+    const char* preinclude_jitsafe_header_names[]
     void load_program(cpp_str&,
                       vector[cpp_str]&,
                       void*,
@@ -36,8 +38,18 @@ def get_build_version():
     return jitify_ver.decode()
 
 
-# cache all headers; this is intialized with built-in JIT-safe headers
-cdef cpp_map[cpp_str, cpp_str] cupy_headers = get_jitsafe_headers_map()
+# We cache headers found by Jitify. This is initialized with a few built-in
+# JIT-safe headers, and expands as needed to help reduce compile time.
+cdef cpp_map[cpp_str, cpp_str] cupy_headers
+cdef inline void init_cupy_headers():
+    cdef int i
+    for i in range(preinclude_jitsafe_headers_count):
+        hdr_name = preinclude_jitsafe_header_names[i]
+        hdr_source = get_jitsafe_headers_map().at(hdr_name)
+        cupy_headers[hdr_name] = hdr_source
+
+
+init_cupy_headers()
 
 
 # Use Jitify's internal mechanism to search all included headers, and return

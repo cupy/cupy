@@ -4,6 +4,7 @@ import pytest
 import numpy
 
 import cupy
+from cupy.cuda import runtime
 import cupyx
 from cupy import testing
 
@@ -78,6 +79,7 @@ class TestPoly1dInit(unittest.TestCase):
         assert out.variable == (self.variable or 'z')
         return out
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_zero_dim(self, xp, dtype):
@@ -87,6 +89,7 @@ class TestPoly1dInit(unittest.TestCase):
         assert out.variable == (self.variable or 'x')
         return out
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_poly1d_zero_size(self, xp, dtype):
@@ -124,6 +127,7 @@ class TestPoly1d(unittest.TestCase):
         a = xp.array([0, 0, 1, 2, 3, 0], dtype)
         return xp.poly1d(a).order
 
+    @pytest.mark.xfail(runtime.is_hip, reason='rocBLAS not implemented')
     @testing.for_signed_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_poly1d_roots(self, xp, dtype):
@@ -239,6 +243,7 @@ class TestPoly1d(unittest.TestCase):
 }))
 class TestPoly1dPow(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-1)
     def test_poly1d_pow_scalar(self, xp, dtype):
@@ -301,6 +306,7 @@ class Poly1dTestBase(unittest.TestCase):
 }))
 class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_arithmetic(self, xp, dtype):
@@ -315,6 +321,8 @@ class TestPoly1dPolynomialArithmetic(Poly1dTestBase):
     'type_l': ['poly1d', 'ndarray', 'python_scalar', 'numpy_scalar'],
     'type_r': ['poly1d'],
 }))
+@pytest.mark.xfail(runtime.is_hip,
+                   reason='HIP/ROCm does not support cuda array interface')
 class TestPoly1dMathArithmetic(Poly1dTestBase):
 
     @testing.for_all_dtypes()
@@ -360,6 +368,7 @@ class TestPoly1dArithmeticInvalid(Poly1dTestBase):
 }))
 class TestPoly1dRoutines(Poly1dTestBase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, accept_error=TypeError)
     def test_poly1d_routine(self, xp, dtype):
@@ -367,54 +376,6 @@ class TestPoly1dRoutines(Poly1dTestBase):
         a1 = self._get_input(xp, self.type_l, dtype)
         a2 = self._get_input(xp, self.type_r, dtype)
         return func(a1, a2)
-
-
-class UserDefinedArray:
-
-    __array_priority__ = cupy.poly1d.__array_priority__ + 10
-
-    def __init__(self):
-        self.op_count = 0
-        self.rop_count = 0
-
-    def __add__(self, other):
-        self.op_count += 1
-
-    def __radd__(self, other):
-        self.rop_count += 1
-
-    def __sub__(self, other):
-        self.op_count += 1
-
-    def __rsub__(self, other):
-        self.rop_count += 1
-
-    def __mul__(self, other):
-        self.op_count += 1
-
-    def __rmul__(self, other):
-        self.rop_count += 1
-
-
-@testing.gpu
-@testing.parameterize(*testing.product({
-    'func': [
-        lambda x, y: x + y,
-        lambda x, y: x - y,
-        lambda x, y: x * y,
-    ],
-}))
-class TestPoly1dArrayPriority(Poly1dTestBase):
-
-    def test_poly1d_array_priority_greator(self):
-        a1 = self._get_input(cupy, 'poly1d', 'int64')
-        a2 = UserDefinedArray()
-        self.func(a1, a2)
-        assert a2.op_count == 0
-        assert a2.rop_count == 1
-        self.func(a2, a1)
-        assert a2.op_count == 1
-        assert a2.rop_count == 1
 
 
 @testing.gpu
@@ -467,6 +428,7 @@ class TestPoly1dEquality(unittest.TestCase):
 }))
 class TestPolyArithmeticShapeCombination(unittest.TestCase):
 
+    @testing.with_requires('numpy>=1.20')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_polyroutine(self, xp, dtype):
@@ -559,6 +521,8 @@ class TestPolyfitCovMode(unittest.TestCase):
 
     @testing.for_float_dtypes(no_float16=True)
     def test_polyfit_cov(self, dtype):
+        if runtime.is_hip and self.deg == 0:
+            pytest.xfail('ROCm/HIP may have a bug')
         cp_c, cp_cov = self._cov_fit(cupy, dtype)
         np_c, np_cov = self._cov_fit(numpy, dtype)
         testing.assert_allclose(cp_c, np_c, rtol=1e-5)
@@ -797,6 +761,7 @@ class TestPolyRoutinesNdim(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'input': [[2, -1, -2], [-4, 10, 4]],
 }))
+@pytest.mark.xfail(runtime.is_hip, reason='rocBLAS not implemented')
 class TestRootsReal(unittest.TestCase):
 
     @testing.for_signed_dtypes()
@@ -823,6 +788,8 @@ class TestRootsComplex(unittest.TestCase):
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_roots_array(self, xp, dtype):
+        if runtime.is_hip and self.input == [3j, 1.5j, -3j]:
+            pytest.xfail('rocBLAS not implemented')
         a = xp.array(self.input, dtype)
         out = xp.roots(a)
         return xp.sort(out)
@@ -830,6 +797,8 @@ class TestRootsComplex(unittest.TestCase):
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_roots_poly1d(self, xp, dtype):
+        if runtime.is_hip and self.input == [3j, 1.5j, -3j]:
+            pytest.xfail('rocBLAS not implemented')
         a = xp.array(self.input, dtype)
         out = xp.roots(xp.poly1d(a))
         return xp.sort(out)

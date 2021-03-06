@@ -27,7 +27,7 @@ Wheel packages are built against specific versions of CUDA libraries
 To avoid loading wrong version, these shared libraries are manually
 preloaded.
 
-# TODO(kmaehashi) Currently cuDNN only. Support cuTENSOR and NCCL.
+# TODO(kmaehashi): Support NCCL
 
 Example of `_preload_config` is as follows:
 
@@ -53,7 +53,7 @@ _preload_config = None
 _preload_libs = {
     'cudnn': None,
     # 'nccl': None,
-    # 'cutensor': None,
+    'cutensor': None,
 }
 
 _preload_logs = []
@@ -262,7 +262,8 @@ def get_preload_config():
             get_cupy_install_path(), 'cupy', '.data', '_wheel.json')
         if not os.path.exists(config_path):
             return None
-        _preload_config = json.load(open(config_path))
+        with open(config_path) as f:
+            _preload_config = json.load(f)
     return _preload_config
 
 

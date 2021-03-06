@@ -1,18 +1,22 @@
-#ifndef INCLUDE_GUARD_CUPY_NVRTC_H
-#define INCLUDE_GUARD_CUPY_NVRTC_H
+#ifndef INCLUDE_GUARD_CUDA_CUPY_NVRTC_H
+#define INCLUDE_GUARD_CUDA_CUPY_NVRTC_H
 
-#ifdef CUPY_USE_HIP
-
-#include "hip/cupy_hiprtc.h"
-
-#elif !defined(CUPY_NO_CUDA)
-
+#include <cuda.h>  // for CUDA_VERSION
 #include <nvrtc.h>
 
-#else
+extern "C" {
 
-#include "stub/cupy_nvrtc.h"
+#if CUDA_VERSION < 11010
+// functions added in CUDA 11.1
+nvrtcResult nvrtcGetCUBINSize(...) {
+    return NVRTC_ERROR_COMPILATION;
+}
 
+nvrtcResult nvrtcGetCUBIN(...) {
+    return NVRTC_ERROR_COMPILATION;
+}
 #endif
 
-#endif // #ifndef INCLUDE_GUARD_CUPY_NVRTC_H
+}
+
+#endif // #ifndef INCLUDE_GUARD_CUDA_CUPY_NVRTC_H

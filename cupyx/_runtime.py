@@ -239,12 +239,18 @@ class _RuntimeInfo(object):
         for device_id in range(cupy.cuda.runtime.getDeviceCount()):
             with cupy.cuda.Device(device_id) as device:
                 props = cupy.cuda.runtime.getDeviceProperties(device_id)
-                records += [
-                    ('Device {} Name'.format(device_id),
-                     props['name'].decode('utf-8')),
-                    ('Device {} Compute Capability'.format(device_id),
-                     device.compute_capability),
-                ]
+                name = ('Device {} Name'.format(device_id),
+                        props['name'].decode())
+                if is_hip:
+                    try:
+                        arch = props['gcnArchName'].decode()
+                    except KeyError:  # ROCm < 3.6.0
+                        arch = 'gfx'+str(props['gcnArch'])
+                    arch = ('Device {} Arch'.format(device_id), arch)
+                else:
+                    arch = ('Device {} Compute Capability'.format(device_id),
+                            device.compute_capability)
+                records += [name, arch]
 
         width = max([len(r[0]) for r in records]) + 2
         fmt = '{:' + str(width) + '}: {}\n'

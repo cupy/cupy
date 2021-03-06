@@ -2,16 +2,21 @@ import unittest
 from unittest import mock
 
 import numpy
+import pytest
 
 import cupy
 from cupy import cuda
+from cupy.cuda import runtime
 from cupy import random
 from cupy import testing
+from cupy.testing import _attr
 from cupy.testing import _condition
 from cupy.testing import _hypothesis
+from cupy.testing import _parameterize
+from cupy.testing import _random
 
 
-@testing.gpu
+@_attr.gpu
 class TestRandint(unittest.TestCase):
 
     def test_lo_hi_reversed(self):
@@ -41,8 +46,8 @@ class TestRandint(unittest.TestCase):
         testing.assert_array_equal(a, cupy.array(()))
 
 
-@testing.fix_random()
-@testing.gpu
+@_random.fix_random()
+@_attr.gpu
 class TestRandint2(unittest.TestCase):
 
     @_condition.repeat(3, 10)
@@ -98,6 +103,7 @@ class TestRandint2(unittest.TestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
+    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(mx, size=(5, 20)).get()
@@ -106,7 +112,7 @@ class TestRandint2(unittest.TestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
 
-@testing.gpu
+@_attr.gpu
 class TestRandintDtype(unittest.TestCase):
 
     @testing.for_dtypes([
@@ -144,7 +150,7 @@ class TestRandintDtype(unittest.TestCase):
             random.randint(iinfo.max - 10, iinfo.max + 2, size, dtype)
 
 
-@testing.gpu
+@_attr.gpu
 class TestRandomIntegers(unittest.TestCase):
 
     def test_normal(self):
@@ -163,8 +169,8 @@ class TestRandomIntegers(unittest.TestCase):
         m.assert_called_with(3, 6, (1, 2, 3))
 
 
-@testing.fix_random()
-@testing.gpu
+@_random.fix_random()
+@_attr.gpu
 class TestRandomIntegers2(unittest.TestCase):
 
     @_condition.repeat(3, 10)
@@ -193,6 +199,7 @@ class TestRandomIntegers2(unittest.TestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
+    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(0, mx, (5, 20)).get()
@@ -201,7 +208,7 @@ class TestRandomIntegers2(unittest.TestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
 
-@testing.gpu
+@_attr.gpu
 class TestChoice(unittest.TestCase):
 
     def setUp(self):
@@ -247,7 +254,7 @@ class TestChoice(unittest.TestCase):
         self.m.choice.assert_called_with(3, 1, True, [0.1, 0.1, 0.8])
 
 
-@testing.gpu
+@_attr.gpu
 class TestRandomSample(unittest.TestCase):
 
     def test_rand(self):
@@ -283,15 +290,15 @@ class TestRandomSample(unittest.TestCase):
             random.randn(1, 2, 3, unnecessary='unnecessary_argument')
 
 
-@testing.parameterize(
+@_parameterize.parameterize(
     {'size': None},
     {'size': ()},
     {'size': 4},
     {'size': (0,)},
     {'size': (1, 0)},
 )
-@testing.fix_random()
-@testing.gpu
+@_random.fix_random()
+@_attr.gpu
 class TestMultinomial(unittest.TestCase):
 
     @_condition.repeat(3, 10)

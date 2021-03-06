@@ -1,7 +1,10 @@
 import contextlib
 import warnings
 
-from cupy._environment import get_cuda_path, get_nvcc_path  # NOQA
+from cupy._environment import get_cuda_path  # NOQA
+from cupy._environment import get_nvcc_path  # NOQA
+from cupy._environment import get_rocm_path  # NOQA
+from cupy._environment import get_hipcc_path  # NOQA
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import function  # NOQA
@@ -108,8 +111,10 @@ from cupy.cuda.function import Module  # NOQA
 from cupy.cuda.memory import alloc  # NOQA
 from cupy.cuda.memory import BaseMemory  # NOQA
 from cupy.cuda.memory import malloc_managed  # NOQA
+from cupy.cuda.memory import malloc_async  # NOQA
 from cupy.cuda.memory import ManagedMemory  # NOQA
 from cupy.cuda.memory import Memory  # NOQA
+from cupy.cuda.memory import MemoryAsync  # NOQA
 from cupy.cuda.memory import MemoryPointer  # NOQA
 from cupy.cuda.memory import MemoryPool  # NOQA
 from cupy.cuda.memory import PythonFunctionAllocator  # NOQA

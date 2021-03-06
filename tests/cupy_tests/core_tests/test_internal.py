@@ -1,6 +1,7 @@
 import math
-
 import unittest
+
+import pytest
 
 from cupy.core import internal
 from cupy import testing
@@ -33,7 +34,8 @@ class TestProdSequence(unittest.TestCase):
 class TestGetSize(unittest.TestCase):
 
     def test_none(self):
-        assert internal.get_size(None) == ()
+        with testing.assert_warns(DeprecationWarning):
+            assert internal.get_size(None) == ()
 
     def check_collection(self, a):
         assert internal.get_size(a) == tuple(a)
@@ -47,8 +49,8 @@ class TestGetSize(unittest.TestCase):
     def test_int(self):
         assert internal.get_size(1) == (1,)
 
-    def test_invalid(self):
-        with self.assertRaises(ValueError):
+    def test_float(self):
+        with pytest.raises(ValueError):
             internal.get_size(1.0)
 
 

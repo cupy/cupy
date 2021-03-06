@@ -5,14 +5,14 @@ from cupy_backends.cuda.api.runtime cimport DataType
 from cupy_backends.cuda cimport stream as stream_module
 
 
-cdef extern from '../cupy_cuComplex.h':
+cdef extern from '../../cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from '../cupy_cusparse.h' nogil:
+cdef extern from '../../cupy_sparse.h' nogil:
 
     # Version
     cusparseStatus_t cusparseGetVersion(cusparseHandle_t handle, int* version)
@@ -1554,10 +1554,8 @@ cpdef size_t getStream(intptr_t handle) except? 0:
 
 
 cdef _setStream(intptr_t handle):
-    """Set current stream when enable_current_stream is True
-    """
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
+    """Set current stream"""
+    setStream(handle, stream_module.get_current_stream_ptr())
 
 
 ########################################

@@ -13,11 +13,7 @@ _environment._preload_libraries()  # NOQA
 
 
 try:
-    with _warnings.catch_warnings():
-        _warnings.filterwarnings(
-            'ignore', category=ImportWarning,
-            message='can\'t resolve package from __spec__')
-        from cupy import core  # NOQA
+    from cupy import core  # NOQA
 except ImportError as e:
     # core is a c-extension module.
     # When a user cannot import core, it represents that CuPy is not correctly
@@ -41,9 +37,9 @@ original error: {}'''.format(_exc_info[1]))  # NOQA
     raise ImportError(_msg) from e
 
 
-from cupy import cuda
+from cupy import cuda  # NOQA
 # Do not make `cupy.cupyx` available because it is confusing.
-import cupyx as _cupyx
+import cupyx as _cupyx  # NOQA
 
 
 def is_available():
@@ -216,22 +212,6 @@ from numpy import complex128  # NOQA
 # -----------------------------------------------------------------------------
 # Built-in Python types
 # -----------------------------------------------------------------------------
-
-# After NumPy 1.20 is released, CuPy should mimic the DeprecationWarning
-# behavior for these types
-
-from builtins import int  # NOQA
-
-from builtins import bool  # NOQA
-
-from builtins import float  # NOQA
-
-from builtins import complex  # NOQA
-
-# Not supported by CuPy:
-# from numpy import object
-# from numpy import unicode
-# from numpy import str
 
 # =============================================================================
 # Routines
@@ -585,6 +565,7 @@ from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
 from cupy._math.rounding import round_  # NOQA
+from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
@@ -652,6 +633,7 @@ from cupy._math.misc import cbrt  # NOQA
 from cupy._math.misc import clip  # NOQA
 from cupy._math.misc import fmax  # NOQA
 from cupy._math.misc import fmin  # NOQA
+from cupy._math.misc import interp  # NOQA
 from cupy._math.misc import maximum  # NOQA
 from cupy._math.misc import minimum  # NOQA
 from cupy._math.misc import nan_to_num  # NOQA
@@ -712,6 +694,7 @@ from cupy._statistics.order import nanmax  # NOQA
 from cupy._statistics.order import nanmin  # NOQA
 from cupy._statistics.order import percentile  # NOQA
 from cupy._statistics.order import ptp  # NOQA
+from cupy._statistics.order import quantile  # NOQA
 
 from cupy._statistics.meanvar import median  # NOQA
 from cupy._statistics.meanvar import average  # NOQA
@@ -876,3 +859,32 @@ def show_config():
     """Prints the current runtime configuration to standard output."""
     _sys.stdout.write(str(_cupyx.get_runtime_info()))
     _sys.stdout.flush()
+
+
+if _sys.version_info >= (3, 7):
+    _deprecated_attrs = {
+        'int': (int, 'cupy.int_'),
+        'bool': (bool, 'cupy.bool_'),
+        'float': (float, 'cupy.float_'),
+        'complex': (complex, 'cupy.complex_'),
+    }
+
+    def __getattr__(name):
+        value = _deprecated_attrs.get(name)
+        if value is None:
+            raise AttributeError(
+                f"module 'cupy' has no attribute {name!r}")
+        attr, eq_attr = value
+        _warnings.warn(
+            f'`cupy.{name}` is a deprecated alias for the Python scalar type '
+            f'`{name}`. Please use the builtin `{name}` or its corresponding '
+            f'NumPy scalar type `{eq_attr}` instead.',
+            DeprecationWarning, stacklevel=2
+        )
+        return attr
+else:
+    # Does not emit warnings.
+    from builtins import int
+    from builtins import bool
+    from builtins import float
+    from builtins import complex

@@ -175,72 +175,64 @@ cpdef zgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
 ###############################################################################
 
 cpdef sgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, float alpha, size_t A, int lda,
-            size_t B, int ldb, float beta, size_t C, int ldc)
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc)
 cpdef dgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, double alpha, size_t A, int lda,
-            size_t B, int ldb, double beta, size_t C, int ldc)
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc)
 cpdef cgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, float complex alpha, size_t A, int lda,
-            size_t B, int ldb, float complex beta, size_t C, int ldc)
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc)
 cpdef zgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, double complex alpha, size_t A, int lda,
-            size_t B, int ldb, double complex beta, size_t C, int ldc)
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc)
 cpdef sgemmBatched(intptr_t handle, int transa, int transb,
-                   int m, int n, int k, float alpha, size_t Aarray, int lda,
-                   size_t Barray, int ldb, float beta, size_t Carray, int ldc,
+                   int m, int n, int k, size_t alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, size_t beta, size_t Carray, int ldc,
                    int batchCount)
 cpdef dgemmBatched(intptr_t handle, int transa, int transb,
-                   int m, int n, int k, double alpha, size_t Aarray, int lda,
-                   size_t Barray, int ldb, double beta, size_t Carray, int ldc,
+                   int m, int n, int k, size_t alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, size_t beta, size_t Carray, int ldc,
                    int batchCount)
 cpdef cgemmBatched(intptr_t handle, int transa, int transb,
-                   int m, int n, int k, float complex alpha, size_t Aarray,
-                   int lda, size_t Barray, int ldb, float complex beta,
-                   size_t Carray, int ldc, int batchCount)
+                   int m, int n, int k, size_t alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, size_t beta, size_t Carray, int ldc,
+                   int batchCount)
 cpdef zgemmBatched(intptr_t handle, int transa, int transb,
-                   int m, int n, int k, double complex alpha, size_t Aarray,
-                   int lda, size_t Barray, int ldb, double complex beta,
-                   size_t Carray, int ldc, int batchCount)
-cpdef sgemmStridedBatched(intptr_t handle, int transa, int transb,
-                          int m, int n, int k, float alpha,
-                          size_t A, int lda, long long strideA,
-                          size_t B, int ldb, long long strideB,
-                          float beta,
-                          size_t C, int ldc, long long strideC,
-                          int batchCount)
-cpdef dgemmStridedBatched(intptr_t handle, int transa, int transb,
-                          int m, int n, int k, double alpha,
-                          size_t A, int lda, long long strideA,
-                          size_t B, int ldb, long long strideB,
-                          double beta,
-                          size_t C, int ldc, long long strideC,
-                          int batchCount)
-cpdef cgemmStridedBatched(intptr_t handle, int transa, int transb,
-                          int m, int n, int k, float complex alpha,
-                          size_t A, int lda, long long strideA,
-                          size_t B, int ldb, long long strideB,
-                          float complex beta,
-                          size_t C, int ldc, long long strideC,
-                          int batchCount)
-cpdef zgemmStridedBatched(intptr_t handle, int transa, int transb,
-                          int m, int n, int k, double complex alpha,
-                          size_t A, int lda, long long strideA,
-                          size_t B, int ldb, long long strideB,
-                          double complex beta,
-                          size_t C, int ldc, long long strideC,
-                          int batchCount)
+                   int m, int n, int k, size_t alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, size_t beta, size_t Carray, int ldc,
+                   int batchCount)
+cpdef sgemmStridedBatched(intptr_t handle, int transa, int transb, int m,
+                          int n, int k, size_t alpha, size_t A, int lda,
+                          long long strideA, size_t B, int ldb,
+                          long long strideB, size_t beta, size_t C, int ldc,
+                          long long strideC, int batchCount)
+cpdef dgemmStridedBatched(intptr_t handle, int transa, int transb, int m,
+                          int n, int k, size_t alpha, size_t A, int lda,
+                          long long strideA, size_t B, int ldb,
+                          long long strideB, size_t beta, size_t C, int ldc,
+                          long long strideC, int batchCount)
+cpdef cgemmStridedBatched(intptr_t handle, int transa, int transb, int m,
+                          int n, int k, size_t alpha, size_t A, int lda,
+                          long long strideA, size_t B, int ldb,
+                          long long strideB, size_t beta, size_t C, int ldc,
+                          long long strideC, int batchCount)
+cpdef zgemmStridedBatched(intptr_t handle, int transa, int transb, int m,
+                          int n, int k, size_t alpha, size_t A, int lda,
+                          long long strideA, size_t B, int ldb,
+                          long long strideB, size_t beta, size_t C, int ldc,
+                          long long strideC, int batchCount)
 cpdef strsm(intptr_t handle, int side, int uplo, int trans, int diag,
-            int m, int n, float alpha, size_t Aarray, int lda,
+            int m, int n, size_t alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
 cpdef dtrsm(intptr_t handle, int side, int uplo, int trans, int diag,
-            int m, int n, double alpha, size_t Aarray, int lda,
+            int m, int n, size_t alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
 cpdef ctrsm(intptr_t handle, int side, int uplo, int trans, int diag,
-            int m, int n, float complex alpha, size_t Aarray, int lda,
+            int m, int n, size_t alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
 cpdef ztrsm(intptr_t handle, int side, int uplo, int trans, int diag,
-            int m, int n, double complex alpha, size_t Aarray, int lda,
+            int m, int n, size_t alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
 
 ###############################################################################
@@ -248,16 +240,28 @@ cpdef ztrsm(intptr_t handle, int side, int uplo, int trans, int diag,
 ###############################################################################
 
 cpdef sgeam(intptr_t handle, int transa, int transb, int m, int n,
-            float alpha, size_t A, int lda, float beta, size_t B, int ldb,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
             size_t C, int ldc)
 cpdef dgeam(intptr_t handle, int transa, int transb, int m, int n,
-            double alpha, size_t A, int lda, double beta, size_t B, int ldb,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
+            size_t C, int ldc)
+cpdef cgeam(intptr_t handle, int transa, int transb, int m, int n,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
+            size_t C, int ldc)
+cpdef zgeam(intptr_t handle, int transa, int transb, int m, int n,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
             size_t C, int ldc)
 cpdef sdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
             size_t x, int incx, size_t C, int ldc)
+cpdef ddgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc)
+cpdef cdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc)
+cpdef zdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc)
 cpdef sgemmEx(intptr_t handle, int transa, int transb, int m, int n, int k,
-              float alpha, size_t A, int Atype, int lda, size_t B,
-              int Btype, int ldb, float beta, size_t C, int Ctype,
+              size_t alpha, size_t A, int Atype, int lda, size_t B,
+              int Btype, int ldb, size_t beta, size_t C, int Ctype,
               int ldc)
 cpdef sgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)

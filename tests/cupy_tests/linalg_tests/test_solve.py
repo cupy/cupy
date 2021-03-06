@@ -156,17 +156,16 @@ class TestPinv(unittest.TestCase):
         a_gpu = testing.shaped_random(a_shape, dtype=dtype)
         a_cpu = cupy.asnumpy(a_gpu)
         a_gpu_copy = a_gpu.copy()
+        if not isinstance(rcond, float):
+            rcond = numpy.asarray(rcond)
         result_cpu = numpy.linalg.pinv(a_cpu, rcond=rcond)
+        if not isinstance(rcond, float):
+            rcond = cupy.asarray(rcond)
         result_gpu = cupy.linalg.pinv(a_gpu, rcond=rcond)
 
         assert result_cpu.dtype == result_gpu.dtype
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
-
-    def check_shape(self, a_shape, rcond):
-        a = cupy.random.rand(*a_shape)
-        with self.assertRaises(numpy.linalg.LinAlgError):
-            cupy.linalg.pinv(a)
 
     def test_pinv(self):
         self.check_x((3, 3), rcond=1e-15)
@@ -177,52 +176,49 @@ class TestPinv(unittest.TestCase):
         self.check_x((2, 5), rcond=0.5)
         self.check_x((5, 3), rcond=0.6)
 
-    def test_invalid_shape(self):
-        self.check_shape((2, 3, 4), rcond=1e-15)
-        self.check_shape((2, 3, 4), rcond=0.5)
-        self.check_shape((4, 3, 2, 1), rcond=1e-14)
-        self.check_shape((4, 3, 2, 1), rcond=0.1)
+    def test_pinv_batched(self):
+        self.check_x((2, 3, 4), rcond=1e-15)
+        self.check_x((2, 3, 4, 5), rcond=1e-15)
+
+    def test_pinv_batched_vector_rcond(self):
+        self.check_x((2, 3, 4), rcond=[0.2, 0.8])
+        self.check_x((2, 3, 4, 5),
+                     rcond=[[0.2, 0.9, 0.1],
+                            [0.7, 0.2, 0.5]])
+
+    def test_pinv_size_0(self):
+        self.check_x((3, 0), rcond=1e-15)
+        self.check_x((0, 3), rcond=1e-15)
+        self.check_x((0, 0), rcond=1e-15)
+        self.check_x((0, 2, 3), rcond=1e-15)
+        self.check_x((2, 0, 3), rcond=1e-15)
 
 
 @testing.gpu
 class TestLstsq(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
-    def check_lstsq_solution(self, a_shape, b_shape, seed, rcond, dtype,
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(atol=1e-3)
+    def check_lstsq_solution(self, a_shape, b_shape, seed, rcond, xp, dtype,
                              singular=False):
-        numpy.random.seed(seed)
-        a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=seed)
         if singular:
-            # make one row a linear combination of the others
-            a_cpu[-1] = numpy.sum(a_cpu[0:-1], axis=0)
-        b_cpu = numpy.random.randint(0, 10, size=b_shape).astype(dtype)
-        a_gpu = cupy.asarray(a_cpu)
-        b_gpu = cupy.asarray(b_cpu)
-        a_gpu_copy = a_gpu.copy()
-        b_gpu_copy = b_gpu.copy()
-        x_cpu, resids_cpu, rank_cpu, s_cpu = numpy.linalg.lstsq(a_cpu,
-                                                                b_cpu,
-                                                                rcond=rcond)
-        x_gpu, resids_gpu, rank_gpu, s_gpu = cupy.linalg.lstsq(a_gpu,
-                                                               b_gpu,
-                                                               rcond=rcond)
-        assert x_cpu.dtype == x_gpu.dtype
-        # check the least squares solutions are close
-        # if a is singular, no guarantee that x_cpu will be close to x_gpu
-        if not singular:
-            cupy.testing.assert_allclose(x_cpu, x_gpu, atol=1e-3)
-        cupy.testing.assert_allclose(resids_cpu, resids_gpu, atol=1e-3)
-        assert rank_cpu == rank_gpu
-        cupy.testing.assert_allclose(s_cpu, s_gpu, atol=1e-3)
-        # check that lstsq did not modify arrays
-        cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
-        cupy.testing.assert_array_equal(b_gpu_copy, b_gpu)
+            a -= a.mean(axis=0, keepdims=True)
+            a -= a.mean(axis=1, keepdims=True)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=seed+37)
+        a_copy = a.copy()
+        b_copy = b.copy()
+        results = xp.linalg.lstsq(a, b, rcond)
+        if xp is cupy:
+            testing.assert_array_equal(a_copy, a)
+            testing.assert_array_equal(b_copy, b)
+        return results
 
     def check_invalid_shapes(self, a_shape, b_shape):
         a = cupy.random.rand(*a_shape)
         b = cupy.random.rand(*b_shape)
         with self.assertRaises(numpy.linalg.LinAlgError):
-            cupy.linalg.lstsq(a, b)
+            cupy.linalg.lstsq(a, b, rcond=None)
 
     def test_lstsq_solutions(self):
         # Comapres numpy.linalg.lstsq and cupy.linalg.lstsq solutions for:
@@ -235,15 +231,18 @@ class TestLstsq(unittest.TestCase):
                     seed = i + j + k
                     # check when b has shape (i, k)
                     self.check_lstsq_solution((i, j), (i, k), seed,
-                                              rcond=1e-15)
+                                              rcond=-1)
+                    self.check_lstsq_solution((i, j), (i, k), seed,
+                                              rcond=None)
                     self.check_lstsq_solution((i, j), (i, k), seed,
                                               rcond=0.5)
                     self.check_lstsq_solution((i, j), (i, k), seed,
-                                              rcond=1e-7, singular=True)
+                                              rcond=1e-6, singular=True)
                 # check when b has shape (i, )
-                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-15)
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=-1)
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=None)
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=0.5)
-                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-7,
+                self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-6,
                                           singular=True)
 
     def test_invalid_shapes(self):
@@ -254,6 +253,14 @@ class TestLstsq(unittest.TestCase):
         self.check_invalid_shapes((2, 2), (10, ))
         self.check_invalid_shapes((3, 3), (2, 2))
         self.check_invalid_shapes((4, 3), (10, 3, 3))
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-3)
+    def test_warn_rcond(self, xp, dtype):
+        a = testing.shaped_random((3, 3), xp, dtype)
+        b = testing.shaped_random((3,), xp, dtype)
+        with testing.assert_warns(FutureWarning):
+            return xp.linalg.lstsq(a, b)
 
 
 @testing.gpu

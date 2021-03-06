@@ -1,38 +1,17 @@
-// This file is a stub header file of cuda for Read the Docs.
+#ifndef INCLUDE_GUARD_CUDA_CUPY_CUDA_RUNTIME_H
+#define INCLUDE_GUARD_CUDA_CUPY_CUDA_RUNTIME_H
 
-#ifndef INCLUDE_GUARD_CUPY_CUDA_RUNTIME_H
-#define INCLUDE_GUARD_CUPY_CUDA_RUNTIME_H
-
-#if CUPY_USE_HIP
-
-extern "C" {
-
-bool hip_environment = true;
-
-} // extern "C"
-
-
-#include "hip/cupy_runtime.h"
-
-#elif !defined(CUPY_NO_CUDA)
-
+#include <cuda.h>  // for CUDA_VERSION
 #include <cuda_runtime.h>
 
 extern "C" {
 
 bool hip_environment = false;
 
-} // extern "C"
-
-#else // #ifndef CUPY_NO_CUDA
-
-extern "C" {
-
-bool hip_environment = false;
+#if CUDA_VERSION < 10010
+const int cudaErrorContextIsDestroyed = 709;
+#endif
 
 } // extern "C"
 
-#include "stub/cupy_cuda_runtime.h"
-
-#endif // #ifndef CUPY_NO_CUDA
-#endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_RUNTIME_H
+#endif // #ifndef INCLUDE_GUARD_CUDA_CUPY_CUDA_RUNTIME_H

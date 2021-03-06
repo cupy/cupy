@@ -7,8 +7,7 @@ def shuffle(a):
     Args:
         a (cupy.ndarray): The array to be shuffled.
 
-    .. seealso:: :meth:`numpy.random.shuffle
-                 <numpy.random.mtrand.RandomState.shuffle>`
+    .. seealso:: :meth:`numpy.random.shuffle`
 
     """
     rs = _generator.get_random_state()
@@ -26,8 +25,7 @@ def permutation(a):
         and `a` - 1.
         Otherwise, it is a permutation of `a`.
 
-    .. seealso:: :meth:`numpy.random.permutation
-                 <numpy.random.mtrand.RandomState.permutation>`
+    .. seealso:: :meth:`numpy.random.permutation`
     """
     rs = _generator.get_random_state()
     return rs.permutation(a)
