@@ -1,4 +1,5 @@
 import unittest
+import pytest
 
 import numpy
 
@@ -92,12 +93,20 @@ extern "C" __global__ void test_kernel(const double* a, double5 b, double* x) {
 
         a_cpu = numpy.arange(24, dtype=numpy.float64)
         a = cupy.array(a_cpu)
-        b = numpy.arange(5).astype(numpy.float64)
         x = cupy.empty_like(a)
 
         func = _compile_func('test_kernel', code)
 
-        func.linear_launch(a.size, (a, b, x))
+        # We cannot pass np.ndarray kernel arguments of size > 1
+        b = numpy.arange(5).astype(numpy.float64)
+        with pytest.raises(TypeError):
+            func.linear_launch(a.size, (a, b, x))
+
+        double5 = numpy.dtype({
+            'names': ['dummy'],
+            'formats': [(numpy.float64, (5,))]
+        })
+        func.linear_launch(a.size, (a, b.view(double5), x))
 
         expected = a_cpu + b.sum()
         testing.assert_array_equal(x, expected)
@@ -113,7 +122,7 @@ struct custom_user_struct {
 };
 '''
 
-        # first step is to determine stuct memory layout
+        # first step is to determine struct memory layout
         struct_layout_code = '''
 {struct_definition}
 extern "C" __global__ void get_struct_layout(size_t* itemsize,
@@ -148,7 +157,7 @@ extern "C" __global__ void get_struct_layout(size_t* itemsize,
         sizes = cupy.asnumpy(sizes).tolist()
         offsets = cupy.asnumpy(offsets).tolist()
 
-        def mkdtype(basetype, N, itemsize):
+        def make_packed(basetype, N, itemsize):
             assert 0 < N <= 4, N
             names = list('xyzw')[:N]
             formats = [basetype]*N
@@ -157,11 +166,11 @@ extern "C" __global__ void get_struct_layout(size_t* itemsize,
                                     itemsize=itemsize))
 
         # structure member data types
-        int4 = mkdtype(numpy.int32, 4, sizes[0])
-        char = mkdtype(numpy.int8, 1, sizes[1])
-        double2 = mkdtype(numpy.float64, 2, sizes[2])
-        short1 = mkdtype(numpy.int16, 1, sizes[3])
-        ulong3 = mkdtype(numpy.uint64, 3, sizes[4])
+        int4 = make_packed(numpy.int32, 4, sizes[0])
+        char = make_packed(numpy.int8, 1, sizes[1])
+        double2 = make_packed(numpy.float64, 2, sizes[2])
+        short1 = make_packed(numpy.int16, 1, sizes[3])
+        ulong3 = make_packed(numpy.uint64, 3, sizes[4])
 
         formats = [int4, char, double2, short1, ulong3]
         struct_dtype = numpy.dtype(dict(names=names,

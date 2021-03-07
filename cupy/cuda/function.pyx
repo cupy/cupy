@@ -77,8 +77,24 @@ cdef inline CPointer _pointer(x):
     elif isinstance(x, complex):
         x = numpy.complex128(x)
 
-    if isinstance(x, (numpy.ndarray, numpy.generic)):
+    # Numpy generics (builtin scalars) are seen as numpy arrays of size one
+    if isinstance(x, numpy.generic):
         return CNumpyArray(x)
+
+    # All numpy.ndarray work with CNumpyArray to pass a kernel argument by
+    # value. Here we allow only arrays of size one so that users do not
+    # mistakenly send numpy.ndarrays instead of cupy.ndarrays to kernels.
+    # This may happen if they forget to convert numpy arrays to cupy
+    # arrays prior to kernel call and would pass silently without this check.
+    if isinstance(x, numpy.ndarray):
+        if (x.size == 1):
+            return CNumpyArray(x)
+        else:
+            msg = ('You are trying to pass a numpy.ndarray of shape {} as a '
+                   'kernel parameter. Only numpy.ndarrays of size one can be '
+                   'passed by value. If you meant to pass a pointer to __glob'
+                   'al__ memory, you need to pass a cupy.ndarray instead.')
+            raise TypeError(msg.format(x.shape))
 
     raise TypeError('Unsupported type %s.', type(x))
 
