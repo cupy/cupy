@@ -281,7 +281,7 @@ Python primitive types, ``int``, ``float``, ``complex`` and ``bool`` map to ``lo
 
 Numpy scalars (``numpy.generic``) and numpy arrays (``numpy.ndarray``) **of size one** 
 are passed to the kernel by value.
-This means that you can pass by value any base numpy types such as ``numpy.int8`` or ``numpy.float64`` provided kernel arguments matches in size.  You can refer to this table to match cupy/numpy dtype and CUDA types:
+This means that you can pass by value any base numpy types such as ``numpy.int8`` or ``numpy.float64`` provided kernel arguments matches in size. You can refer to this table to match cupy/numpy dtype and CUDA types:
 
 +-----------------+-----------------------------------------------+------------------+
 | cupy/numpy type | Corresponding kernel types                    | itemsize (bytes) |
@@ -294,15 +294,15 @@ This means that you can pass by value any base numpy types such as ``numpy.int8`
 +-----------------+-----------------------------------------------+------------------+
 | int32           | int, signed int                               | 4                |
 +-----------------+-----------------------------------------------+------------------+
-| int64           | longlong, long long, signed long long         | 8                |
+| int64           | long long, signed long long                   | 8                |
 +-----------------+-----------------------------------------------+------------------+
-| uint8           | uchar, unsigned char                          | 1                |
+| uint8           | unsigned char                                 | 1                |
 +-----------------+-----------------------------------------------+------------------+
-| uint16          | ushort, unsigned short                        | 2                |
+| uint16          | unsigned short                                | 2                |
 +-----------------+-----------------------------------------------+------------------+
-| uint32          | uint, unsigned int                            | 4                |
+| uint32          | unsigned int                                  | 4                |
 +-----------------+-----------------------------------------------+------------------+
-| uint64          | ulonglong, unsigned long long                 | 8                |
+| uint64          | unsigned long long                            | 8                |
 +-----------------+-----------------------------------------------+------------------+
 | float16         | half                                          | 2                |
 +-----------------+-----------------------------------------------+------------------+
@@ -316,7 +316,9 @@ This means that you can pass by value any base numpy types such as ``numpy.int8`
 +-----------------+-----------------------------------------------+------------------+
 
 The CUDA standard guarantees that the size of fundamental types on the host and device always match.
-The itemsize of ``size_t``, ``ptrdiff_t``, ``long``, ``signed long``, ``ulong`` and ``unsigned long`` are thus platform dependent. You can also pass any CUDA vector builtins such as ``float3`` or any other user defined structure 
+The itemsize of ``size_t``, ``ptrdiff_t``, ``intptr_t``, ``uintptr_t``, 
+``long``, ``signed long`` and ``unsigned long`` are thus platform dependent. 
+You can also pass any CUDA vector builtins such as ``float3`` or any other user defined structure 
 as kernel arguments provided it matches device side kernel parameter type, see section :ref:`custom_user_structs`.
 
 .. note::

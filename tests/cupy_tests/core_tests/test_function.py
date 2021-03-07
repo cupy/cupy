@@ -125,8 +125,10 @@ struct custom_user_struct {
         # first step is to determine struct memory layout
         struct_layout_code = '''
 {struct_definition}
-extern "C" __global__ void get_struct_layout(size_t* itemsize,
-                                size_t *sizes, ptrdiff_t *offsets) {{
+extern "C" __global__ void get_struct_layout(
+                                unsigned long long *itemsize,
+                                unsigned long long *sizes,
+                                unsigned long long *offsets) {{
     const custom_user_struct* ptr = NULL;
 
     itemsize[0] = sizeof(custom_user_struct);
@@ -137,17 +139,17 @@ extern "C" __global__ void get_struct_layout(size_t* itemsize,
     sizes[3] = sizeof(ptr->d);
     sizes[4] = sizeof(ptr->e);
 
-    offsets[0] = (ptrdiff_t)&ptr->a;
-    offsets[1] = (ptrdiff_t)&ptr->b;
-    offsets[2] = (ptrdiff_t)&ptr->c;
-    offsets[3] = (ptrdiff_t)&ptr->d;
-    offsets[4] = (ptrdiff_t)&ptr->e;
+    offsets[0] = (unsigned long long)&ptr->a;
+    offsets[1] = (unsigned long long)&ptr->b;
+    offsets[2] = (unsigned long long)&ptr->c;
+    offsets[3] = (unsigned long long)&ptr->d;
+    offsets[4] = (unsigned long long)&ptr->e;
 }}
 '''.format(struct_definition=struct_definition)
 
         itemsize = cupy.ndarray(shape=(1,), dtype=numpy.uint64)
         sizes = cupy.ndarray(shape=(5,), dtype=numpy.uint64)
-        offsets = cupy.ndarray(shape=(5,), dtype=numpy.int64)
+        offsets = cupy.ndarray(shape=(5,), dtype=numpy.uint64)
         func = _compile_func('get_struct_layout', struct_layout_code)
         func.linear_launch(1, (itemsize, sizes, offsets))
 
