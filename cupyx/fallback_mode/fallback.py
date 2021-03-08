@@ -108,7 +108,7 @@ class _RecursiveAttr(object):
                 return False
 
         if isinstance(arg, (tuple, list)):
-            return all([_RecursiveAttr._is_cupy_compatible(i) for i in arg])
+            return all(_RecursiveAttr._is_cupy_compatible(i) for i in arg)
 
         if isinstance(arg, dict):
             bools = [_RecursiveAttr._is_cupy_compatible(arg[i]) for i in arg]
