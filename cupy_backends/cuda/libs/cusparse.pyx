@@ -1259,10 +1259,14 @@ cdef extern from '../../cupy_sparse.h' nogil:
                           void** csrValues, IndexType* csrRowOffsetsType,
                           IndexType* csrColIndType, IndexBase* idxBase,
                           DataType* valueType)
+    Status cusparseCsrSetPointers(SpMatDescr spMatDescr, void* csrRowOffsets,
+                                  void* csrColInd, void* csrValues)
     Status cusparseSpMatGetFormat(SpMatDescr spMatDescr, Format* format)
     Status cusparseSpMatGetIndexBase(SpMatDescr spMatDescr, IndexBase* idxBase)
     Status cusparseSpMatGetValues(SpMatDescr spMatDescr, void** values)
     Status cusparseSpMatSetValues(SpMatDescr spMatDescr, void* values)
+    Status cusparseSpMatGetSize(SpMatDescr spMatDescr, int64_t* rows,
+                                int64_t* cols, int64_t* nnz)
     Status cusparseSpMatGetStridedBatch(SpMatDescr spMatDescr, int* batchCount)
     Status cusparseSpMatSetStridedBatch(SpMatDescr spMatDescr, int batchCount)
 
@@ -4590,6 +4594,12 @@ cpdef csrGet(size_t desc):
     return CsrAttributes(rows, cols, nnz, rowOffsets, colInd, values,
                          rowOffsetsType, colIndType, idxBase, valueType)
 
+cpdef csrSetPointers(size_t desc, size_t csrRowOffsets, size_t csrColInd,
+                     size_t csrValues):
+    status = cusparseCsrSetPointers(<SpMatDescr>desc, <void*>csrRowOffsets,
+                                    <void*>csrColInd, <void*>csrValues)
+    check_status(status)
+
 cpdef int spMatGetFormat(size_t desc):
     cdef Format format
     status = cusparseSpMatGetFormat(<SpMatDescr>desc, &format)
@@ -4610,6 +4620,11 @@ cpdef intptr_t spMatGetValues(size_t desc):
 
 cpdef spMatSetValues(size_t desc, intptr_t values):
     status = cusparseSpMatSetValues(<SpMatDescr>desc, <void*>values)
+    check_status(status)
+
+cpdef spMatGetSize(size_t desc, size_t rows, size_t cols, size_t nnz):
+    status = cusparseSpMatGetSize(<SpMatDescr>desc, <int64_t*>rows,
+                                  <int64_t*>cols, <int64_t*>nnz)
     check_status(status)
 
 cpdef int spMatGetStridedBatch(size_t desc):
