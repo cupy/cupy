@@ -197,7 +197,7 @@ constexpr
 #endif
 #endif
 bool _real_less(const T& lhs, const T& rhs) {
-    #ifdef  __CUDA_ARCH__
+    #if  (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
     if (isnan(lhs)) {
         return false;
     } else if (isnan(rhs)) {
@@ -271,7 +271,7 @@ bool less< tuple<size_t, double> >::operator() (
 
 // it seems Thrust doesn't care the code path on host, so we just need a wrapper for device
 __host__ __device__ __forceinline__ bool isnan(const __half& x) {
-    #ifdef  __CUDA_ARCH__
+    #if (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
     return __hisnan(x);
     #else
     return false;  // This will never be called on the host
