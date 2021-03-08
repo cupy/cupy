@@ -1072,7 +1072,7 @@ class RandomState(object):
             if not isinstance(shape, int):
                 index = cupy.reshape(index, shape)
         else:
-            if a_size == 0:
+            if a_size == 0: # TODO: (#4511) Fix `randint` instead
                 a_size = 1
             index = self.randint(0, a_size, size=shape)
             # Align the dtype with NumPy
