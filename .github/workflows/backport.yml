@@ -32,6 +32,8 @@ jobs:
         git clone https://github.com/cupy/backport.git
 
     - name: run_backport
+      env:
+        BACKPORT_GITHUB_TOKEN: ${{secrets.BACKPORT_TOKEN}} 
       run: |
         cd backport
-        python backport.py --repo cupy --sha ${{github.event.after}} --token ${{secrets.BACKPORT_TOKEN}}
+        python backport.py --repo cupy --sha ${{github.event.after}}
