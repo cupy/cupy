@@ -760,7 +760,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     # need to know arch as part of the cache key:
     if arch is None:
         # On HIP, gcnArch is computed from "compute capability":
-        # https://github.com/ROCm-Developer-Tools/HIP/blob/2080cc113a2d767352b512b9d24c0620b6dee790/rocclr/hip_device.cpp#L202
+        # https://github.com/ROCm-Developer-Tools/HIP/blob/rocm-4.0.0/rocclr/hip_device.cpp#L202
         arch = device.Device().compute_capability
     if use_converter:
         source = _convert_to_hip_source(source, extra_source,
