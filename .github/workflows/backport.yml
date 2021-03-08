@@ -5,6 +5,7 @@ on:
 
 jobs:
   backport:
+    if: github.repository_owner == 'cupy'
     runs-on: ubuntu-18.04
     env:
       CUPY_CI: GitHub
