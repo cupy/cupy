@@ -1035,7 +1035,7 @@ class TestChoice1(RandomGeneratorTestCase):
         vals = [val.get() for val in vals]
         size_ = self.size if isinstance(self.size, tuple) else (self.size,)
         if size_ == (0, ):
-            self.skipTest('no bound check for empty `random.choice`'
+            self.skipTest('no bound check for empty `random.choice`')
         for val in vals:
             assert val.shape == size_
         assert min(val.min() for val in vals) == 0
