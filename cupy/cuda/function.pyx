@@ -26,13 +26,51 @@ cdef class CPointer:
     def __init__(self, p=0):
         self.ptr = <void*>p
 
-cdef class CNumpyArray(CPointer):
-    cdef:
-        int8_t[:] val
 
-    def __init__(self, a):
-        self.val = numpy.atleast_1d(a).ravel().view(numpy.int8)
-        self.ptr = <void*>&self.val[0]
+cdef class CInt8(CPointer):
+    cdef:
+        int8_t val
+
+    def __init__(self, int8_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
+cdef class CInt16(CPointer):
+    cdef:
+        int16_t val
+
+    def __init__(self, int16_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
+cdef class CInt32(CPointer):
+    cdef:
+        int32_t val
+
+    def __init__(self, int32_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
+cdef class CInt64(CPointer):
+    cdef:
+        int64_t val
+
+    def __init__(self, int64_t v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
+
+cdef class CInt128(CPointer):
+    cdef:
+        double complex val
+
+    def __init__(self, double complex v):
+        self.val = v
+        self.ptr = <void*>&self.val
+
 
 cdef class CUIntMax(CPointer):
     cdef:
@@ -52,6 +90,15 @@ cdef class CIntptr(CPointer):
         self.ptr = <void*>&self.val
 
 
+# All numpy.ndarray work with CNumpyArray to pass a kernel argument by
+# value. Here we allow only arrays of size one so that users do not
+# mistakenly send numpy.ndarrays instead of cupy.ndarrays to kernels.
+# This may happen if they forget to convert numpy arrays to cupy
+# arrays prior to kernel call and would pass silently without this check.
+cdef class CNumpyArray(CPointer):
+    def __init__(self, a):
+        self.ptr = <void*><size_t>a.ctypes.data
+
 cdef inline CPointer _pointer(x):
     cdef Py_ssize_t itemsize
 
@@ -67,25 +114,6 @@ cdef inline CPointer _pointer(x):
         return x
     if isinstance(x, (TextureObject, SurfaceObject)):
         return CUIntMax(x.ptr)
-
-    if isinstance(x, int):
-        x = numpy.int64(x)
-    elif isinstance(x, float):
-        x = numpy.float64(x)
-    elif isinstance(x, bool):
-        x = numpy.bool_(x)
-    elif isinstance(x, complex):
-        x = numpy.complex128(x)
-
-    # Numpy generics (builtin scalars) are seen as numpy arrays of size one
-    if isinstance(x, numpy.generic):
-        return CNumpyArray(x)
-
-    # All numpy.ndarray work with CNumpyArray to pass a kernel argument by
-    # value. Here we allow only arrays of size one so that users do not
-    # mistakenly send numpy.ndarrays instead of cupy.ndarrays to kernels.
-    # This may happen if they forget to convert numpy arrays to cupy
-    # arrays prior to kernel call and would pass silently without this check.
     if isinstance(x, numpy.ndarray):
         if (x.size == 1):
             return CNumpyArray(x)
@@ -96,8 +124,28 @@ cdef inline CPointer _pointer(x):
                    'al__ memory, you need to pass a cupy.ndarray instead.')
             raise TypeError(msg.format(x.shape))
 
-    raise TypeError('Unsupported type %s.', type(x))
+    if isinstance(x, int):
+        x = numpy.int64(x)
+    elif isinstance(x, float):
+        x = numpy.float64(x)
+    elif isinstance(x, bool):
+        x = numpy.bool_(x)
+    elif isinstance(x, complex):
+        x = numpy.complex128(x)
 
+    itemsize = x.itemsize
+    if itemsize == 1:
+        return CInt8(x.view(numpy.int8))
+    if itemsize == 2:
+        return CInt16(x.view(numpy.int16))
+    if itemsize == 4:
+        return CInt32(x.view(numpy.int32))
+    if itemsize == 8:
+        return CInt64(x.view(numpy.int64))
+    if itemsize == 16:
+        return CInt128(x.view(numpy.complex128))
+
+    raise TypeError('Unsupported type %s. (size=%d)', type(x), itemsize)
 
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:
