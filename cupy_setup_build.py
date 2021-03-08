@@ -217,7 +217,6 @@ if not use_hip:
 
     MODULES.append({
         'name': 'cutensor',
-        'required': True,
         'file': [
             'cupy_backends.cuda.libs.cutensor',
             'cupy.cutensor',
