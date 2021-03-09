@@ -1011,6 +1011,10 @@ cusparseStatus_t cusparseCreateCsr(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseCreateCsc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseDestroySpMat(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }

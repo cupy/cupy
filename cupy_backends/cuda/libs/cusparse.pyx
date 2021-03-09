@@ -1245,6 +1245,12 @@ cdef extern from '../../cupy_sparse.h' nogil:
                              IndexType csrRowOffsetsType,
                              IndexType csrColIndType, IndexBase idxBase,
                              DataType valueType)
+    Status cusparseCreateCsc(SpMatDescr* spMatDescr, int64_t rows,
+                             int64_t cols, int64_t nnz, void* cscColOffsets,
+                             void* cscRowInd, void* cscValues,
+                             IndexType cscColOffsetsType,
+                             IndexType cscRowIndType, IndexBase idxBase,
+                             DataType valueType)
     Status cusparseDestroySpMat(SpMatDescr spMatDescr)
     Status cusparseCooGet(SpMatDescr spMatDescr, int64_t* rows, int64_t* cols,
                           int64_t* nnz, void** cooRowInd, void** cooColInd,
@@ -4547,6 +4553,19 @@ cpdef size_t createCsr(int64_t rows, int64_t cols, int64_t nnz,
                                <void*>csrRowOffsets, <void*>csrColind,
                                <void*>csrValues, csrRowOffsetsType,
                                csrColIndType, idxBase, valueType)
+    check_status(status)
+    return <size_t>desc
+
+cpdef size_t createCsc(int64_t rows, int64_t cols, int64_t nnz,
+                       intptr_t cscColOffsets, intptr_t cscRowInd,
+                       intptr_t cscValues, IndexType cscColOffsetsType,
+                       IndexType cscRowIndType, IndexBase idxBase,
+                       DataType valueType):
+    cdef SpMatDescr desc
+    status = cusparseCreateCsc(&desc, rows, cols, nnz,
+                               <void*>cscColOffsets, <void*>cscRowInd,
+                               <void*>cscValues, cscColOffsetsType,
+                               cscRowIndType, idxBase, valueType)
     check_status(status)
     return <size_t>desc
 

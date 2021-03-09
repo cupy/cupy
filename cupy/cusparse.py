@@ -1227,6 +1227,12 @@ class SpMatDescriptor(BaseDescriptor):
                 a.data.data.ptr, _dtype_to_IndexType(a.row.dtype),
                 idx_base, cuda_dtype)
             get = _cusparse.cooGet
+        elif a.format == 'csc':
+            desc = _cusparse.createCsc(
+                rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
+                a.data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
+                _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
+            get = None
         else:
             raise ValueError('csr and coo format are supported '
                              '(actual: {}).'.format(a.format))
@@ -1618,24 +1624,31 @@ def csrilu02(a, level_info=False):
 
 
 def denseToSparse(x, format='csr'):
-    """Converts a dense matrix into a CSR format.
+    """Converts a dense matrix into a CSR, CSC or COO format.
 
     Args:
         x (cupy.ndarray): A matrix to be converted.
-        format (str): Format of converted matrix. It must be 'csr'.
+        format (str): Format of converted matrix. It must be either 'csr',
+            'csc' or 'coo'.
 
     Returns:
         cupyx.scipy.sparse.spmatrix: A converted sparse matrix.
 
     """
-    # TODO(anaruse): Add support for CSC and COO format
     if not check_availability('denseToSparse'):
         raise RuntimeError('denseToSparse is not available.')
 
     assert x.ndim == 2
     x = _cupy.asfortranarray(x)
-    y = cupyx.scipy.sparse.csr_matrix(x.shape, dtype=x.dtype)
     desc_x = DnMatDescriptor.create(x)
+    if format == 'csr':
+        y = cupyx.scipy.sparse.csr_matrix(x.shape, dtype=x.dtype)
+    elif format == 'csc':
+        y = cupyx.scipy.sparse.csc_matrix(x.shape, dtype=x.dtype)
+    elif format == 'coo':
+        y = cupyx.scipy.sparse.coo_matrix(x.shape, dtype=x.dtype)
+    else:
+        raise TypeError('unsupported format (actual: {})'.format(format))
     desc_y = SpMatDescriptor.create(y)
     algo = _cusparse.CUSPARSE_DENSETOSPARSE_ALG_DEFAULT
     handle = _device.get_cusparse_handle()
@@ -1650,16 +1663,26 @@ def denseToSparse(x, format='csr'):
     _cusparse.spMatGetSize(desc_y.desc, num_rows_tmp.ctypes.data,
                            num_cols_tmp.ctypes.data, nnz.ctypes.data)
     nnz = int(nnz)
-    indptr = y.indptr
-    indices = _cupy.empty(nnz, 'i')
-    data = _cupy.empty(nnz, x.dtype)
-    _cusparse.csrSetPointers(desc_y.desc, indptr.data.ptr,
-                             indices.data.ptr, data.data.ptr)
+    if format == 'csr':
+        indptr = y.indptr
+        indices = _cupy.empty(nnz, 'i')
+        data = _cupy.empty(nnz, x.dtype)
+        y = cupyx.scipy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
+    elif format == 'csc':
+        indptr = y.indptr
+        indices = _cupy.empty(nnz, 'i')
+        data = _cupy.empty(nnz, x.dtype)
+        y = cupyx.scipy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
+    elif format == 'coo':
+        row = _cupy.empty(nnz, 'i')
+        col = _cupy.empty(nnz, 'i')
+        data = _cupy.empty(nnz, x.dtype)
+        y = cupyx.scipy.sparse.coo_matrix((data, (row, col)), shape=x.shape)
+    desc_y = SpMatDescriptor.create(y)
     _cusparse.denseToSparse_convert(handle, desc_x.desc,
                                     desc_y.desc, algo, buff.data.ptr)
-    ret = cupyx.scipy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
-    ret._has_canonical_format = True
-    return ret
+    y._has_canonical_format = True
+    return y
 
 
 def sparseToDense(x, out=None):

@@ -581,6 +581,10 @@ cusparseStatus_t cusparseSpMatGetSize(...) {
 typedef enum {} cusparseSparseToDenseAlg_t;
 typedef enum {} cusparseDenseToSparseAlg_t;
 
+cusparseStatus_t cusparseCreateCsc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseSparseToDense_bufferSize(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
