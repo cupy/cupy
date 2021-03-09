@@ -1667,12 +1667,14 @@ def denseToSparse(x, format='csr'):
         indptr = y.indptr
         indices = _cupy.empty(nnz, 'i')
         data = _cupy.empty(nnz, x.dtype)
-        y = cupyx.scipy.sparse.csr_matrix((data, indices, indptr), shape=x.shape)
+        y = cupyx.scipy.sparse.csr_matrix((data, indices, indptr),
+                                          shape=x.shape)
     elif format == 'csc':
         indptr = y.indptr
         indices = _cupy.empty(nnz, 'i')
         data = _cupy.empty(nnz, x.dtype)
-        y = cupyx.scipy.sparse.csc_matrix((data, indices, indptr), shape=x.shape)
+        y = cupyx.scipy.sparse.csc_matrix((data, indices, indptr),
+                                          shape=x.shape)
     elif format == 'coo':
         row = _cupy.empty(nnz, 'i')
         col = _cupy.empty(nnz, 'i')
