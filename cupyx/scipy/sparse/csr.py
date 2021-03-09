@@ -391,14 +391,23 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         x = self.copy()
         x.has_canonical_format = False  # need to enforce sum_duplicates
         x.sum_duplicates()
-        # csr2dense returns F-contiguous array.
-        if order == 'C':
-            # To return C-contiguous array, it uses transpose.
-            return cusparse.csc2dense(x.T).T
-        elif order == 'F':
-            return cusparse.csr2dense(x)
+        if cusparse.check_availability('sparseToDense'):
+            y = cusparse.sparseToDense(x)
+            if order == 'F':
+                return y
+            elif order == 'C':
+                return cupy.ascontiguousarray(y)
+            else:
+                raise ValueError('order not understood')
         else:
-            raise ValueError('order not understood')
+            # csr2dense returns F-contiguous array.
+            if order == 'C':
+                # To return C-contiguous array, it uses transpose.
+                return cusparse.csc2dense(x.T).T
+            elif order == 'F':
+                return cusparse.csr2dense(x)
+            else:
+                raise ValueError('order not understood')
 
     def tobsr(self, blocksize=None, copy=False):
         # TODO(unno): Implement tobsr
@@ -1114,7 +1123,10 @@ def cupy_csr2dense():
 
 def dense2csr(a):
     if a.dtype.char in 'fdFD':
-        return cusparse.dense2csr(a)
+        if cusparse.check_availability('denseToSparse'):
+            return cusparse.denseToSparse(a, format='csr')
+        else:
+            return cusparse.dense2csr(a)
     m, n = a.shape
     a = cupy.ascontiguousarray(a)
     indptr = cupy.zeros(m + 1, dtype=numpy.int32)
