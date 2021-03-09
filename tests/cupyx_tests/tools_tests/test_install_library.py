@@ -24,10 +24,19 @@ class TestInstallLibrary(unittest.TestCase):
             with tempfile.TemporaryDirectory() as d:
                 install_library.install_lib(cuda, d, 'cutensor')
 
+    @testing.slow
+    def test_install_nccl(self):
+        # Try installing NCCL for all supported CUDA versions
+        for rec in install_library._nccl_records:
+            cuda = rec['cuda']
+            with tempfile.TemporaryDirectory() as d:
+                install_library.install_lib(cuda, d, 'nccl')
+
     def test_urls(self):
         assets = [r['assets'] for r in (
             install_library._cudnn_records
-            + install_library._cutensor_records)]
+            + install_library._cutensor_records
+            + install_library._nccl_records)]
         for asset in assets:
             for platform in asset.keys():
                 url = asset[platform]['url']
@@ -40,3 +49,5 @@ class TestInstallLibrary(unittest.TestCase):
             ['--library', 'cudnn', '--action', 'dump', '--cuda', 'null'])
         install_library.main(
             ['--library', 'cutensor', '--action', 'dump', '--cuda', 'null'])
+        install_library.main(
+            ['--library', 'nccl', '--action', 'dump', '--cuda', 'null'])
