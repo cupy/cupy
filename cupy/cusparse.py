@@ -1663,6 +1663,7 @@ def denseToSparse(x, format='csr'):
     _cusparse.spMatGetSize(desc_y.desc, num_rows_tmp.ctypes.data,
                            num_cols_tmp.ctypes.data, nnz.ctypes.data)
     nnz = int(nnz)
+    print('# nnz: {}'.format(nnz))
     if format == 'csr':
         indptr = y.indptr
         indices = _cupy.empty(nnz, 'i')
@@ -1676,8 +1677,11 @@ def denseToSparse(x, format='csr'):
         y = cupyx.scipy.sparse.csc_matrix((data, indices, indptr),
                                           shape=x.shape)
     elif format == 'coo':
-        row = _cupy.empty(nnz, 'i')
-        col = _cupy.empty(nnz, 'i')
+        row = _cupy.zeros(nnz, 'i')
+        col = _cupy.zeros(nnz, 'i')
+        # Note: I would like to use empty() here, but that might cause an
+        # exeption in the row/col number check when creating the coo_matrix,
+        # so I used zeros() instead.
         data = _cupy.empty(nnz, x.dtype)
         y = cupyx.scipy.sparse.coo_matrix((data, (row, col)), shape=x.shape)
     desc_y = SpMatDescriptor.create(y)
