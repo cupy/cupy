@@ -1234,7 +1234,7 @@ class SpMatDescriptor(BaseDescriptor):
                 _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
             get = None
         else:
-            raise ValueError('csr and coo format are supported '
+            raise ValueError('csr, csc and coo format are supported '
                              '(actual: {}).'.format(a.format))
         destroy = _cusparse.destroySpMat
         return SpMatDescriptor(desc, get, destroy)
@@ -1639,6 +1639,7 @@ def denseToSparse(x, format='csr'):
         raise RuntimeError('denseToSparse is not available.')
 
     assert x.ndim == 2
+    assert x.dtype.char in 'fdFD'
     x = _cupy.asfortranarray(x)
     desc_x = DnMatDescriptor.create(x)
     if format == 'csr':
