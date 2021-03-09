@@ -176,9 +176,8 @@ After writing your code **(including unit tests and hopefully documentations!)**
 You have to write a precise explanation of **what** and **how** you fix;
 it is the first documentation of your code that developers read, which is a very important part of your PR.
 
-Once you send a PR, it is automatically tested on `GitHub Actions` for Linux, and on `AppVeyor <https://ci.appveyor.com/project/cupy/cupy>`_ for Windows.
-Your PR needs to pass at least the test for Linux on Travis CI.
-After the automatic test passes, some of the core developers will start reviewing your code.
+Once you send a PR, it is automatically tested on ``GitHub Actions``.
+After the automatic test passes, core developers will start reviewing your code.
 Note that this automatic PR test only includes CPU tests.
 
 .. note::
