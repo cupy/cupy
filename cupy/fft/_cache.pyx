@@ -106,7 +106,7 @@ cdef class _Node:
         return output
 
 
-cpdef void _clear_LinkedList(_LinkedList ll) except*:
+cpdef void _clear_LinkedList(_LinkedList ll):
     """ Delete all the nodes to ensure they are cleaned up.
 
     This serves for the purpose of destructor and is invoked by weakref's

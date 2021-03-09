@@ -1,5 +1,8 @@
-from libc.stdint cimport intptr_t
+# Note: nothing exposed in this pxd header is considered public API;
+# we copy this to sdist only because it's needed at runtime to support
+# cuFFT callbacks
 
+from libc.stdint cimport intptr_t
 
 cdef extern from *:
     ctypedef float Float 'cufftReal'

@@ -1,7 +1,11 @@
-// This file is a stub header file of cufft for Read the Docs.
-
 #ifndef INCLUDE_GUARD_CUPY_CUFFT_H
 #define INCLUDE_GUARD_CUPY_CUFFT_H
+
+/*
+ * Note: this file should *not* be split into 3 and moved under cupy_backends/,
+ * because we need to copy this header to sdist and use it at runtime for cuFFT
+ * callbacks.
+ */
 
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 #include <cufft.h>

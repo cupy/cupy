@@ -34,13 +34,13 @@ cdef enum:
 
 
 cdef extern from 'cupy_cufft.h' nogil:
-    # **************** duplicate types ****************
+    # we duplicate some types here to avoid cimporting from driver/runtime,
+    # as we don't include their .pxd files in the sdist
     ctypedef void* Stream 'cudaStream_t'
     ctypedef int DataType 'cudaDataType'
 
     ctypedef struct Complex 'cufftComplex':
         float x, y
-
     ctypedef struct DoubleComplex 'cufftDoubleComplex':
         double x, y
 
@@ -450,8 +450,15 @@ cdef class Plan1d:
 
     def __dealloc__(self):
         cdef Handle plan = <Handle>self.handle
-        cdef int dev = runtime.getDevice()
-        cdef int result
+        cdef int dev, result
+
+        try:
+            dev = runtime.getDevice()
+        except Exception as e:
+            # hack: the runtime module is purged at interpreter shutdown,
+            # since this is not a __del__ method, we can't use
+            # cupy._util.is_shutting_down()...
+            return
 
         if plan != <Handle>0:
             with nogil:
