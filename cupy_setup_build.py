@@ -97,6 +97,7 @@ if use_hip:
     MODULES.append({
         # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
+        'required': True,
         'file': cuda_files + [
             'cupy.cuda.nvtx',
             'cupy_backends.cuda.libs.cusolver',
@@ -126,6 +127,7 @@ if use_hip:
 else:
     MODULES.append({
         'name': 'cuda',
+        'required': True,
         'file': cuda_files,
         'include': [
             'cublas_v2.h',
@@ -153,6 +155,7 @@ else:
 if not use_hip:
     MODULES.append({
         'name': 'cusolver',
+        'required': True,
         'file': [
             'cupy_backends.cuda.libs.cusolver',
             'cupy.cusolver',
@@ -231,6 +234,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'cub',
+        'required': True,
         'file': [
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
         ],
@@ -246,6 +250,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'jitify',
+        'required': True,
         'file': [
             'cupy.cuda.jitify',
         ],
@@ -265,6 +270,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'random',
+        'required': True,
         'file': [
             'cupy.random._bit_generator',
             ('cupy.random._generator_api',
@@ -281,6 +287,7 @@ if not use_hip:
 else:
     MODULES.append({
         'name': 'cub',
+        'required': True,
         'file': [
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
         ],
@@ -313,6 +320,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     if use_hip:
         MODULES.append({
             'name': 'thrust',
+            'required': True,
             'file': [
                 ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             ],
@@ -326,6 +334,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     else:
         MODULES.append({
             'name': 'thrust',
+            'required': True,
             'file': [
                 ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             ],
@@ -343,6 +352,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
 
 MODULES.append({
     'name': 'dlpack',
+    'required': True,
     'file': [
         'cupy.core.dlpack',
     ],
@@ -381,6 +391,10 @@ def module_extension_sources(file, use_cython, no_cuda):
         others = others1
 
     return [pyx] + others
+
+
+def get_required_modules():
+    return [m['name'] for m in MODULES if m.get('required', False)]
 
 
 def check_readthedocs_environment():
@@ -595,7 +609,8 @@ def make_extensions(options, compiler, use_cython):
         available_modules = [m['name'] for m in MODULES]
     else:
         available_modules, settings = preconfigure_modules(compiler, settings)
-        if 'cuda' not in available_modules:
+        required_modules = get_required_modules()
+        if not (set(required_modules) <= set(available_modules)):
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
 
