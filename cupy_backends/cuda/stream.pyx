@@ -6,6 +6,8 @@ from cupy_backends.cuda.api cimport runtime
 
 cdef object _thread_local = threading.local()
 
+cdef bint _ptds = bool(int(os.environ.get('CUPY_CUDA_PER_THREAD_DEFAULT_STREAM', '0')) != 0)
+
 
 cdef class _ThreadLocal:
     cdef intptr_t current_stream
@@ -72,5 +74,4 @@ cdef bint is_ptds_enabled():
     if runtime._is_hip_environment:
         # HIP does not support PTDS, just ignore the env var
         return False
-    ptds = int(os.environ.get('CUPY_CUDA_PER_THREAD_DEFAULT_STREAM', '0'))
-    return bool(ptds != 0)
+    return _ptds
