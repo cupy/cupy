@@ -94,7 +94,6 @@ def _set_store_cb(code, element, data_type, callback_type, aux_type=None):
 }))
 @testing.with_requires('cython>=0.29.0')
 @testing.gpu
-@pytest.mark.skip(reason='Need to address Cython bundling issues')
 @pytest.mark.skipif(not sys.platform.startswith('linux'),
                     reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -409,7 +408,6 @@ class Test1dCallbacks:
 )
 @testing.with_requires('cython>=0.29.0')
 @testing.gpu
-@pytest.mark.skip(reason='Need to address Cython bundling issues')
 @pytest.mark.skipif(not sys.platform.startswith('linux'),
                     reason='callbacks are only supported on Linux')
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,

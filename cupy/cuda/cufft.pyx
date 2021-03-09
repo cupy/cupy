@@ -7,11 +7,10 @@ import numpy
 import threading
 
 import cupy
-from cupy_backends.cuda.api cimport driver
-from cupy_backends.cuda.api cimport runtime
-from cupy.cuda cimport stream as stream_module
-from cupy.cuda cimport device
-from cupy.cuda.stream import Event, Stream
+from cupy.cuda import device
+from cupy.cuda import memory
+from cupy.cuda import runtime
+from cupy.cuda import stream
 
 
 cdef object _thread_local = threading.local()
@@ -35,6 +34,10 @@ cdef enum:
 
 
 cdef extern from 'cupy_cufft.h' nogil:
+    # **************** duplicate types ****************
+    ctypedef void* Stream 'cudaStream_t'
+    ctypedef int DataType 'cudaDataType'
+
     ctypedef struct Complex 'cufftComplex':
         float x, y
 
@@ -48,7 +51,7 @@ cdef extern from 'cupy_cufft.h' nogil:
     Result cufftSetWorkArea(Handle plan, void *workArea)
 
     # cuFFT Stream Function
-    Result cufftSetStream(Handle plan, driver.Stream streamId)
+    Result cufftSetStream(Handle plan, Stream streamId)
 
     # cuFFT Plan Functions
     Result cufftMakePlan1d(Handle plan, int nx, Type type, int batch,
@@ -111,13 +114,13 @@ cdef extern from 'cupy_cufft.h' nogil:
                                long long int* inembed,
                                long long int istride,
                                long long int idist,
-                               runtime.DataType inputtype,
+                               DataType inputtype,
                                long long int* onembed,
                                long long int ostride,
                                long long int odist,
-                               runtime.DataType outputtype,
+                               DataType outputtype,
                                long long int batch, size_t* workSize,
-                               runtime.DataType executiontype)
+                               DataType executiontype)
     Result cufftXtExec(Handle plan, void* inarr, void* outarr, int d)
 
 
@@ -353,7 +356,7 @@ cdef class Plan1d:
         cdef vector.vector[void*] work_area_ptr
 
         # some sanity checks
-        if runtime._is_hip_environment:
+        if runtime.is_hip:
             raise RuntimeError('hipFFT/rocFFT does not support multi-GPU FFT')
         if fft_type != CUFFT_C2C and fft_type != CUFFT_Z2Z:
             raise ValueError('Currently for multiple GPUs only C2C and Z2Z are'
@@ -406,8 +409,8 @@ cdef class Plan1d:
         for i in range(nGPUs):
             with device.Device(gpus[i]):
                 buf = memory.alloc(work_size[i])
-                stream = Stream()
-                event = Event()
+                stream = stream.Stream()
+                event = stream.Event()
             work_area.append(buf)
             work_area_ptr.push_back(<void*>buf.ptr)
             gather_streams.append(stream)
@@ -439,8 +442,8 @@ cdef class Plan1d:
 
         with device.Device(curr_device):
             for i in self.gpus:
-                scatter_streams.append(Stream())
-                scatter_events.append(Event())
+                scatter_streams.append(stream.Stream())
+                scatter_events.append(stream.Event())
 
         self.scatter_streams[curr_device] = scatter_streams
         self.scatter_events[curr_device] = scatter_events
@@ -481,11 +484,11 @@ cdef class Plan1d:
 
     def _single_gpu_fft(self, a, out, direction):
         cdef intptr_t plan = self.handle
-        cdef intptr_t stream = stream_module.get_current_stream_ptr()
+        cdef intptr_t s = stream.get_current_stream().ptr
         cdef int result
 
         with nogil:
-            result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+            result = cufftSetStream(<Handle>plan, <Stream>s)
         check_result(result)
 
         if self.fft_type == CUFFT_C2C:
@@ -596,7 +599,7 @@ cdef class Plan1d:
 
                 # When we come here, another stream could still be
                 # copying data for us, so we wait patiently...
-                outer_stream = stream_module.get_current_stream()
+                outer_stream = stream.get_current_stream()
                 outer_stream.synchronize()
 
                 for dev in range(nGPUs):
@@ -627,7 +630,7 @@ cdef class Plan1d:
 
                 # When we come here, another stream could still be
                 # copying data for us, so we wait patiently...
-                outer_stream = stream_module.get_current_stream()
+                outer_stream = stream.get_current_stream()
                 outer_stream.synchronize()
 
                 for i in range(nGPUs):
@@ -782,8 +785,9 @@ cdef class PlanNd:
         # result = cufftXtSetWorkAreaPolicy(plan, policy, &work_size)
 
         work_area = memory.alloc(work_size)
+        cdef intptr_t work_area_ptr = work_area.ptr
         with nogil:
-            result = cufftSetWorkArea(plan, <void *>(work_area.ptr))
+            result = cufftSetWorkArea(plan, <void *>(work_area_ptr))
         check_result(result)
 
         self.shape = tuple(shape)
@@ -812,11 +816,11 @@ cdef class PlanNd:
 
     def fft(self, a, out, direction):
         cdef intptr_t plan = self.handle
-        cdef intptr_t stream = stream_module.get_current_stream_ptr()
+        cdef intptr_t s = stream.get_current_stream().ptr
         cdef int result
 
         with nogil:
-            result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+            result = cufftSetStream(<Handle>plan, <Stream>s)
         check_result(result)
 
         if self.fft_type == CUFFT_C2C:
@@ -953,9 +957,9 @@ cdef class XtPlanNd:
             with nogil:
                 result = cufftXtMakePlanMany(
                     plan, ndim, shape_ptr,
-                    inembed_ptr, istride, idist, <runtime.DataType>itype,
-                    onembed_ptr, ostride, odist, <runtime.DataType>otype,
-                    batch, &work_size, <runtime.DataType>etype)
+                    inembed_ptr, istride, idist, <DataType>itype,
+                    onembed_ptr, ostride, odist, <DataType>otype,
+                    batch, &work_size, <DataType>etype)
 
             # cufftMakePlanMany could use a large amount of memory
             if result == 2:
@@ -963,14 +967,15 @@ cdef class XtPlanNd:
                 with nogil:
                     result = cufftXtMakePlanMany(
                         plan, ndim, shape_ptr,
-                        inembed_ptr, istride, idist, <runtime.DataType>itype,
-                        onembed_ptr, ostride, odist, <runtime.DataType>otype,
-                        batch, &work_size, <runtime.DataType>etype)
+                        inembed_ptr, istride, idist, <DataType>itype,
+                        onembed_ptr, ostride, odist, <DataType>otype,
+                        batch, &work_size, <DataType>etype)
             check_result(result)
 
         work_area = memory.alloc(work_size)
+        cdef intptr_t work_area_ptr = work_area.ptr
         with nogil:
-            result = cufftSetWorkArea(plan, <void*>(work_area.ptr))
+            result = cufftSetWorkArea(plan, <void*>(work_area_ptr))
         check_result(result)
 
         self.shape = tuple(shape)
@@ -1001,11 +1006,11 @@ cdef class XtPlanNd:
 
     def fft(self, a, out, direction):
         cdef intptr_t plan = self.handle
-        cdef intptr_t stream = stream_module.get_current_stream_ptr()
+        cdef intptr_t s = stream.get_current_stream().ptr
         cdef int result
 
         with nogil:
-            result = cufftSetStream(<Handle>plan, <driver.Stream>stream)
+            result = cufftSetStream(<Handle>plan, <Stream>s)
         XtExec(plan, a.data.ptr, out.data.ptr, direction)
 
     def _sanity_checks(self, int itype, int otype, int etype,

@@ -5,7 +5,6 @@ import weakref
 
 from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport device
-from cupy.cuda cimport memory
 
 import threading
 
@@ -41,7 +40,6 @@ cdef class _ThreadLocal:
 
 cdef inline Py_ssize_t _get_plan_memsize(plan, int curr_dev=-1) except -1:
     cdef Py_ssize_t memsize = 0
-    cdef memory.MemoryPointer ptr
     cdef int dev
 
     # work_area could be None for "empty" plans...
@@ -50,6 +48,7 @@ cdef inline Py_ssize_t _get_plan_memsize(plan, int curr_dev=-1) except -1:
             # multi-GPU plan
             if curr_dev == -1:
                 curr_dev = runtime.getDevice()
+            # ptr is memory.MemoryPointer, but we can't type it here
             for dev, ptr in zip(plan.gpus, plan.work_area):
                 if dev == curr_dev:
                     memsize = <Py_ssize_t>(ptr.mem.size)
@@ -107,7 +106,7 @@ cdef class _Node:
         return output
 
 
-cpdef void _clear_LinkedList(_LinkedList ll):
+cpdef void _clear_LinkedList(_LinkedList ll) except*:
     """ Delete all the nodes to ensure they are cleaned up.
 
     This serves for the purpose of destructor and is invoked by weakref's
