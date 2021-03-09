@@ -49,11 +49,7 @@ def solve(a, b):
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
 
-    # Cast to float32 or float64
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
-        dtype = a.dtype
-    else:
-        dtype = numpy.promote_types(a.dtype.char, 'f')
+    dtype, out_dtype = _util.linalg_common_type(a, b)
 
     cublas_handle = device.get_cublas_handle()
     cusolver_handle = device.get_cusolver_handle()
@@ -63,7 +59,7 @@ def solve(a, b):
     if a.ndim == 2:
         return _solve(a, b, cublas_handle, cusolver_handle)
 
-    x = cupy.empty_like(b)
+    x = cupy.empty_like(b, dtype=out_dtype)
     shape = a.shape[:-2]
     for i in range(numpy.prod(shape)):
         index = numpy.unravel_index(i, shape)
@@ -74,7 +70,8 @@ def solve(a, b):
 def _solve(a, b, cublas_handle, cusolver_handle):
     a = cupy.asfortranarray(a)
     b = cupy.asfortranarray(b)
-    dtype = a.dtype
+    dtype, out_dtype = _util.linalg_common_type(a, b)
+
     m, k = (b.size, 1) if b.ndim == 1 else b.shape
     dev_info = cupy.empty(1, dtype=numpy.int32)
 
@@ -139,7 +136,7 @@ def _solve(a, b, cublas_handle, cusolver_handle):
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, cublas.CUBLAS_FILL_MODE_UPPER,
         cublas.CUBLAS_OP_N, cublas.CUBLAS_DIAG_NON_UNIT,
         m, k, 1, a.data.ptr, m, b.data.ptr, m)
-    return b
+    return b.astype(out_dtype, copy=False)
 
 
 def tensorsolve(a, b, axes=None):
@@ -308,11 +305,7 @@ def inv(a):
     _util._assert_rank2(a)
     _util._assert_nd_squareness(a)
 
-    # support float32, float64, complex64, and complex128
-    if a.dtype.char in 'fdFD':
-        dtype = a.dtype.char
-    else:
-        dtype = numpy.promote_types(a.dtype.char, 'f')
+    dtype, out_dtype = _util.linalg_common_type(a)
 
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
@@ -361,7 +354,7 @@ def inv(a):
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         getrs, dev_info)
 
-    return b
+    return b.astype(out_dtype, copy=False)
 
 
 def _batched_inv(a):
@@ -369,17 +362,18 @@ def _batched_inv(a):
     assert(a.ndim >= 3)
     _util._assert_cupy_array(a)
     _util._assert_nd_squareness(a)
+    dtype, out_dtype = _util.linalg_common_type(a)
 
-    if a.dtype == cupy.float32:
+    if dtype == cupy.float32:
         getrf = cupy.cuda.cublas.sgetrfBatched
         getri = cupy.cuda.cublas.sgetriBatched
-    elif a.dtype == cupy.float64:
+    elif dtype == cupy.float64:
         getrf = cupy.cuda.cublas.dgetrfBatched
         getri = cupy.cuda.cublas.dgetriBatched
-    elif a.dtype == cupy.complex64:
+    elif dtype == cupy.complex64:
         getrf = cupy.cuda.cublas.cgetrfBatched
         getri = cupy.cuda.cublas.cgetriBatched
-    elif a.dtype == cupy.complex128:
+    elif dtype == cupy.complex128:
         getrf = cupy.cuda.cublas.zgetrfBatched
         getri = cupy.cuda.cublas.zgetriBatched
     else:
@@ -388,11 +382,11 @@ def _batched_inv(a):
         raise ValueError(msg)
 
     if 0 in a.shape:
-        return cupy.empty_like(a)
+        return cupy.empty_like(a, dtype=out_dtype)
     a_shape = a.shape
 
     # copy is necessary to present `a` to be overwritten.
-    a = a.copy().reshape(-1, a_shape[-2], a_shape[-1])
+    a = a.astype(dtype, order='C').reshape(-1, a_shape[-2], a_shape[-1])
 
     handle = device.get_cublas_handle()
     batch_size = a.shape[0]
@@ -422,7 +416,7 @@ def _batched_inv(a):
     cupy.linalg._util._check_cublas_info_array_if_synchronization_allowed(
         getri, info_array)
 
-    return c.reshape(a_shape)
+    return c.reshape(a_shape).astype(out_dtype, copy=False)
 
 
 def pinv(a, rcond=1e-15):
@@ -455,7 +449,9 @@ def pinv(a, rcond=1e-15):
     # v8 does not support batched SVD
     _util._assert_rank2(a)
     if a.size == 0:
-        return cupy.empty_like(a.T)
+        _, out_dtype = _util.linalg_common_type(a)
+        return cupy.empty_like(a.T, dtype=out_dtype)
+
     u, s, vt = _decomposition.svd(a.conj(), full_matrices=False)
     cutoff = rcond * s.max()
     s1 = 1 / s

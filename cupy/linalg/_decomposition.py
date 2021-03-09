@@ -114,10 +114,7 @@ def _potrf_batched(a):
     if not check_availability('potrfBatched'):
         raise RuntimeError('potrfBatched is not available')
 
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
-        dtype = a.dtype.char
-    else:
-        dtype = numpy.promote_types(a.dtype.char, 'f').char
+    dtype, out_dtype = _util.linalg_common_type(a)
 
     if dtype == 'f':
         potrfBatched = cusolver.spotrfBatched
@@ -142,7 +139,7 @@ def _potrf_batched(a):
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         potrfBatched, dev_info)
 
-    return cupy.tril(x)
+    return cupy.tril(x).astype(out_dtype, copy=False)
 
 
 def cholesky(a):
@@ -173,10 +170,7 @@ def cholesky(a):
     if a.ndim > 2:
         return _potrf_batched(a)
 
-    if a.dtype.char == 'f' or a.dtype.char == 'd':
-        dtype = a.dtype.char
-    else:
-        dtype = numpy.promote_types(a.dtype.char, 'f').char
+    dtype, out_dtype = _util.linalg_common_type(a)
 
     x = a.astype(dtype, order='C', copy=True)
     n = len(a)
@@ -206,7 +200,7 @@ def cholesky(a):
         potrf, dev_info)
 
     _util._tril(x, k=0)
-    return x
+    return x.astype(out_dtype, copy=False)
 
 
 def qr(a, mode='reduced'):
@@ -250,24 +244,22 @@ def qr(a, mode='reduced'):
             raise ValueError('Unrecognized mode \'{}\''.format(mode))
 
     # support float32, float64, complex64, and complex128
-    if a.dtype.char in 'fdFD':
-        dtype = a.dtype.char
-    else:
-        dtype = numpy.promote_types(a.dtype.char, 'f').char
+    dtype, out_dtype = _util.linalg_common_type(a)
+    if mode == 'raw':
+        # compatibility with numpy.linalg.qr
+        out_dtype = numpy.promote_types(out_dtype, 'd')
 
     m, n = a.shape
     mn = min(m, n)
     if mn == 0:
         if mode == 'reduced':
-            return cupy.empty((m, 0), dtype), cupy.empty((0, n), dtype)
+            return cupy.empty((m, 0), out_dtype), cupy.empty((0, n), out_dtype)
         elif mode == 'complete':
-            return cupy.identity(m, dtype), cupy.empty((m, n), dtype)
+            return cupy.identity(m, out_dtype), cupy.empty((m, n), out_dtype)
         elif mode == 'r':
-            return cupy.empty((0, n), dtype)
+            return cupy.empty((0, n), out_dtype)
         else:  # mode == 'raw'
-            # compatibility with numpy.linalg.qr
-            dtype = numpy.promote_types(dtype, 'd')
-            return cupy.empty((n, m), dtype), cupy.empty((0,), dtype)
+            return cupy.empty((n, m), out_dtype), cupy.empty((0,), out_dtype)
 
     x = a.transpose().astype(dtype, order='C', copy=True)
     handle = device.get_cusolver_handle()
@@ -301,19 +293,12 @@ def qr(a, mode='reduced'):
 
     if mode == 'r':
         r = x[:, :mn].transpose()
-        return _util._triu(r)
+        return _util._triu(r).astype(out_dtype, copy=False)
 
     if mode == 'raw':
-        if a.dtype.char == 'f':
-            # The original numpy.linalg.qr returns float64 in raw mode,
-            # whereas the cusolver returns float32. We agree that the
-            # following code would be inappropriate, however, in this time
-            # we explicitly convert them to float64 for compatibility.
-            return x.astype(numpy.float64), tau.astype(numpy.float64)
-        elif a.dtype.char == 'F':
-            # The same applies to complex64
-            return x.astype(numpy.complex128), tau.astype(numpy.complex128)
-        return x, tau
+        return (
+            x.astype(out_dtype, copy=False),
+            tau.astype(out_dtype, copy=False))
 
     if mode == 'complete' and m > n:
         mc = m
@@ -348,7 +333,9 @@ def qr(a, mode='reduced'):
 
     q = q[:mc].transpose()
     r = x[:, :mc].transpose()
-    return q, _util._triu(r)
+    return (
+        q.astype(out_dtype, copy=False),
+        _util._triu(r).astype(out_dtype, copy=False))
 
 
 def svd(a, full_matrices=True, compute_uv=True):
@@ -384,16 +371,11 @@ def svd(a, full_matrices=True, compute_uv=True):
     _util._assert_rank2(a)
 
     # Cast to float32 or float64
-    a_dtype = numpy.promote_types(a.dtype.char, 'f').char
-    if a_dtype == 'f':
-        s_dtype = 'f'
-    elif a_dtype == 'd':
-        s_dtype = 'd'
-    elif a_dtype == 'F':
-        s_dtype = 'f'
-    else:  # a_dtype == 'D':
-        a_dtype = 'D'
-        s_dtype = 'd'
+    dtype, uv_dtype = _util.linalg_common_type(a)
+
+    # Cast to float32 or float64
+    real_dtype = dtype.char.lower()
+    s_dtype = uv_dtype.char.lower()
 
     # Remark 1: gesvd only supports m >= n (WHAT?)
     # Remark 2: gesvd only supports jobu = 'A' and jobvt = 'A'
@@ -405,34 +387,34 @@ def svd(a, full_matrices=True, compute_uv=True):
         s = cupy.empty((0,), s_dtype)
         if compute_uv:
             if full_matrices:
-                u = cupy.eye(n, dtype=a_dtype)
-                vt = cupy.eye(m, dtype=a_dtype)
+                u = cupy.eye(n, dtype=uv_dtype)
+                vt = cupy.eye(m, dtype=uv_dtype)
             else:
-                u = cupy.empty((n, 0), dtype=a_dtype)
-                vt = cupy.empty((0, m), dtype=a_dtype)
+                u = cupy.empty((n, 0), dtype=uv_dtype)
+                vt = cupy.empty((0, m), dtype=uv_dtype)
             return u, s, vt
         else:
             return s
 
     # `a` must be copied because xgesvd destroys the matrix
     if m >= n:
-        x = a.astype(a_dtype, order='C', copy=True)
+        x = a.astype(dtype, order='C', copy=True)
         trans_flag = False
     else:
         m, n = a.shape
-        x = a.transpose().astype(a_dtype, order='C', copy=True)
+        x = a.transpose().astype(dtype, order='C', copy=True)
         trans_flag = True
 
     k = n  # = min(m, n) where m >= n is ensured above
     if compute_uv:
         if full_matrices:
-            u = cupy.empty((m, m), dtype=a_dtype)
+            u = cupy.empty((m, m), dtype=dtype)
             vt = x[:, :n]
             job_u = ord('A')
             job_vt = ord('O')
         else:
             u = x
-            vt = cupy.empty((k, n), dtype=a_dtype)
+            vt = cupy.empty((k, n), dtype=dtype)
             job_u = ord('O')
             job_vt = ord('S')
         u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
@@ -440,34 +422,38 @@ def svd(a, full_matrices=True, compute_uv=True):
         u_ptr, vt_ptr = 0, 0  # Use nullptr
         job_u = ord('N')
         job_vt = ord('N')
-    s = cupy.empty(k, dtype=s_dtype)
+    s = cupy.empty(k, dtype=real_dtype)
     handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
 
-    if a_dtype == 'f':
+    if dtype == 'f':
         gesvd = cusolver.sgesvd
         gesvd_bufferSize = cusolver.sgesvd_bufferSize
-    elif a_dtype == 'd':
+    elif dtype == 'd':
         gesvd = cusolver.dgesvd
         gesvd_bufferSize = cusolver.dgesvd_bufferSize
-    elif a_dtype == 'F':
+    elif dtype == 'F':
         gesvd = cusolver.cgesvd
         gesvd_bufferSize = cusolver.cgesvd_bufferSize
-    else:  # a_dtype == 'D':
+    else:  # dtype == 'D':
         gesvd = cusolver.zgesvd
         gesvd_bufferSize = cusolver.zgesvd_bufferSize
 
     buffersize = gesvd_bufferSize(handle, m, n)
-    workspace = cupy.empty(buffersize, dtype=a_dtype)
+    workspace = cupy.empty(buffersize, dtype=dtype)
     gesvd(
         handle, job_u, job_vt, m, n, x.data.ptr, m, s.data.ptr, u_ptr, m,
         vt_ptr, n, workspace.data.ptr, buffersize, 0, dev_info.data.ptr)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         gesvd, dev_info)
 
+    s = s.astype(s_dtype, copy=False)
+
     # Note that the returned array may need to be transposed
     # depending on the structure of an input
     if compute_uv:
+        u = u.astype(uv_dtype, copy=False)
+        vt = vt.astype(uv_dtype, copy=False)
         if trans_flag:
             return u.transpose(), s, vt.transpose()
         else:
