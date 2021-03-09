@@ -127,7 +127,6 @@ These environment variables are used during installation (building CuPy from sou
   For building the ROCm support, see :ref:`install_hip` for further detail.
 
 ``CUPY_NVCC_GENERATE_CODE``
-
   Build CuPy for a particular CUDA architecture.
   For example, ``CUPY_NVCC_GENERATE_CODE="arch=compute_60,code=sm_60"``.
   For specifying multiple archs, concatenate the ``arch=...`` strings with semicolons (``;``).
