@@ -1,5 +1,3 @@
-import os
-
 import numpy
 from numpy import linalg
 
@@ -7,9 +5,6 @@ import cupy
 import cupy._util
 from cupy import core
 import cupyx
-
-
-_default_precision = os.getenv('CUPY_DEFAULT_PRECISION')
 
 
 def _assert_cupy_array(*arrays):
@@ -56,15 +51,7 @@ def linalg_common_type(*arrays, reject_float16=True):
     if reject_float16 and 'float16' in dtypes:
         raise TypeError('float16 is unsupported in linalg')
 
-    if _default_precision is not None:
-        cupy._util.experimental('CUPY_DEFAULT_PRECISION')
-        if _default_precision not in ('32', '64'):
-            raise ValueError(
-                'invalid CUPY_DEFAULT_PRECISION: {}'.format(
-                    _default_precision))
-        default = 'float' + _default_precision
-    else:
-        default = 'float64'
+    default = 'float64'
     compute_dtype = _common_type_internal(default, *dtypes)
     # No fp16 cuSOLVER routines
     if compute_dtype == 'float16':
