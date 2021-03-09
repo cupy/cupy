@@ -1052,21 +1052,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if ufunc == cupy.argmax:
                 ker_name = 'max' + ker_name
                 ker = self._max_arg_reduction_mod.get_function(ker_name)
-                ker((self.shape[0],), (1,),
-                    (self.data, self.indices,
-                     self.indptr[:len(self.indptr) - 1],
-                     self.indptr[1:], cupy.int64(self.shape[1]),
-                     value))
-            if ufunc == cupy.argmin:
+            elif ufunc == cupy.argmin:
                 ker_name = 'min' + ker_name
                 ker = self._min_arg_reduction_mod.get_function(ker_name)
-                ker((self.shape[0],), (1,),
-                    (self.data, self.indices,
-                     self.indptr[:len(self.indptr) - 1],
-                     self.indptr[1:], cupy.int64(self.shape[1]),
-                     value))
+            ker((self.shape[0],), (1,),
+                (self.data, self.indices,
+                 self.indptr[:len(self.indptr) - 1],
+                 self.indptr[1:], cupy.int64(self.shape[1]),
+                 value))
 
-        if axis == 0:
+        elif axis == 0:
             # Create the vector to hold output
             # Note: it's important to set "int" here, following what SciPy
             # does, as the outcome dtype is platform dependent
@@ -1079,18 +1074,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if ufunc == cupy.argmax:
                 ker_name = 'max' + ker_name
                 ker = self._max_arg_reduction_mod.get_function(ker_name)
-                ker((self.shape[1],), (1,),
-                    (self.data, self.indices,
-                     self.indptr[:len(self.indptr) - 1],
-                     self.indptr[1:], cupy.int64(self.shape[0]),
-                     value))
-            if ufunc == cupy.argmin:
+            elif ufunc == cupy.argmin:
                 ker_name = 'min' + ker_name
                 ker = self._min_arg_reduction_mod.get_function(ker_name)
-                ker((self.shape[1],), (1,),
-                    (self.data, self.indices,
-                     self.indptr[:len(self.indptr) - 1],
-                     self.indptr[1:],
-                     cupy.int64(self.shape[0]), value))
+            ker((self.shape[1],), (1,),
+                (self.data, self.indices,
+                 self.indptr[:len(self.indptr) - 1],
+                 self.indptr[1:], cupy.int64(self.shape[0]),
+                 value))
 
         return value
