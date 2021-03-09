@@ -778,6 +778,10 @@ class TestMultiGpuPlanCtxManagerFft:
         with pytest.raises(ValueError) as ex, plan_wrong:
             fft(a, n=self.n, norm=self.norm)
         # targeting a particular error
+        if self.norm == '':
+            # if norm is invalid, we still get ValueError, but it's raised
+            # when checking norm, earlier than the plan check
+            return  # skip
         assert 'Target array size does not match the plan.' in str(ex.value)
 
 
