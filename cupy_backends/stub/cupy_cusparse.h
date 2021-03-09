@@ -1027,6 +1027,14 @@ cusparseStatus_t cusparseCsrGet(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseCsrSetPointers(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpMatGetSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseSpMatGetFormat(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }

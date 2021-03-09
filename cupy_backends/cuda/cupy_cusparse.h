@@ -562,6 +562,19 @@ cusparseStatus_t cusparseZcsr2csc(...) {
 }
 #endif // #if CUSPARSE_VERSION >= 11000
 
+#if CUSPARSE_VERSION < 11100
+// Functions added in cuSparse 11.1 (CUDA 11.0)
+
+cusparseStatus_t cusparseCsrSetPointers(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpMatGetSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // #if CUSPARSE_VERSION < 11100
+
 #if CUSPARSE_VERSION < 11300
 // Types, macro and functions added in cuSparse 11.3 (CUDA 11.2)
 
