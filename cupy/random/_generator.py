@@ -999,16 +999,13 @@ class RandomState(object):
             raise NotImplementedError
         if isinstance(a, int):
             a_size = a
-            if a_size <= 0:
-                raise ValueError('a must be greater than 0')
+            if a_size < 0:
+                raise ValueError('a must be greater than or equal to 0')
         else:
             a = cupy.array(a, copy=False)
             if a.ndim != 1:
                 raise ValueError('a must be 1-dimensional or an integer')
-            else:
-                a_size = len(a)
-                if a_size == 0:
-                    raise ValueError('a must be non-empty')
+            a_size = len(a)
 
         if p is not None:
             p = cupy.array(p)
@@ -1026,6 +1023,9 @@ class RandomState(object):
             raise NotImplementedError
         shape = size
         size = numpy.prod(shape)
+
+        if a_size == 0 and size > 0:
+            raise ValueError('a cannot be empty unless no samples are taken')
 
         if not replace and p is None:
             if a_size < size:
@@ -1050,6 +1050,8 @@ class RandomState(object):
             if not isinstance(shape, int):
                 index = cupy.reshape(index, shape)
         else:
+            if a_size == 0:  # TODO: (#4511) Fix `randint` instead
+                a_size = 1
             index = self.randint(0, a_size, size=shape)
             # Align the dtype with NumPy
             index = index.astype(cupy.int64, copy=False)
