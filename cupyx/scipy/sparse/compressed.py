@@ -1,12 +1,12 @@
-import numpy
+import string
+import warnings
 
+import numpy
 try:
     import scipy.sparse
     scipy_available = True
 except ImportError:
     scipy_available = False
-
-import warnings
 
 import cupy
 import cupyx
@@ -180,72 +180,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     # the right template specialization according to input dtypes at runtime.
     # The distinction in int types (T2) is important for portability in OS.
 
-    _max_arg_reduction_mod = core.RawModule(
-        code=r'''
+    _argmax_argmin_code = r'''
         template<typename T1, typename T2> __global__ void
-        max_arg_reduction(T1* data, int* indices, int* x, int* y,
-                          int length, T2* z) {
+        ${func}_arg_reduction(T1* data, int* indices, int* x, int* y,
+                              int length, T2* z) {
             // Get the index of the block
-            int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-            // Calculate the block length
-            int block_length = y[tid] - x[tid];
-
-            // Select initial value based on the block density
-            int data_index = 0;
-            double data_value = 0;
-
-            if (block_length == length){
-                // Block is dense. Fill the first value
-                data_value = data[x[tid]];
-                data_index = indices[x[tid]];
-            } else if (block_length > 0)  {
-                // Block has at least one zero. Assign first occurrence as the
-                // starting reference
-                data_value = 0;
-                for (data_index = 0; data_index < length; data_index++){
-                    if (data_index != indices[x[tid] + data_index] ||
-                        x[tid] + data_index >= y[tid]){
-                        break;
-                    }
-                }
-            } else {
-                 // Zero valued array
-                data_value = 0;
-                data_index = 0;
-            }
-
-            // Iterate over the section of the sparse matrix
-            for (int entry = x[tid]; entry < y[tid]; entry++){
-                if (data[entry] != data[entry]){
-                    // Check for NaN
-                    data_value = nan("");
-                    data_index = 0;
-                    break;
-                } else {
-                    // Check for a value update
-                    if (data[entry] > data_value){
-                        data_index = indices[entry];
-                        data_value = data[entry];
-                    }
-                }
-            }
-
-            // Store in the return function
-            z[tid] = data_index;
-        }
-        ''', options=('-std=c++11',),
-        name_expressions=['max_arg_reduction<float, int>',
-                          'max_arg_reduction<float, long long>',
-                          'max_arg_reduction<double, int>',
-                          'max_arg_reduction<double, long long>'])
-
-    _min_arg_reduction_mod = core.RawModule(
-        code=r'''
-        template<typename T1, typename T2> __global__ void
-        min_arg_reduction(T1* data, int* indices, int* x, int* y,
-                          int length, T2* z) {
-            // Get the index of hte block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
             // Calculate the block length
@@ -284,7 +223,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     break;
                 } else {
                     // Check for a value update
-                    if (data[entry] < data_value){
+                    if (data[entry] ${op} data_value){
                         data_index = indices[entry];
                         data_value = data[entry];
                     }
@@ -293,9 +232,21 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             // Store in the return function
             z[tid] = data_index;
+        }'''
 
-        }
-        ''', options=('-std=c++11',),
+    _max_arg_reduction_mod = core.RawModule(
+        code=string.Template(_argmax_argmin_code).substitute(
+            func='max', op='>'),
+        options=('-std=c++11',),
+        name_expressions=['max_arg_reduction<float, int>',
+                          'max_arg_reduction<float, long long>',
+                          'max_arg_reduction<double, int>',
+                          'max_arg_reduction<double, long long>'])
+
+    _min_arg_reduction_mod = core.RawModule(
+        code=string.Template(_argmax_argmin_code).substitute(
+            func='min', op='<'),
+        options=('-std=c++11',),
         name_expressions=['min_arg_reduction<float, int>',
                           'min_arg_reduction<float, long long>',
                           'min_arg_reduction<double, int>',
