@@ -298,18 +298,19 @@ def inv(a):
     if a.ndim >= 3:
         return _batched_inv(a)
 
-    # to prevent `a` to be overwritten
-    a = a.copy()
-
     _util._assert_cupy_array(a)
     _util._assert_rank2(a)
     _util._assert_nd_squareness(a)
 
     dtype, out_dtype = _util.linalg_common_type(a)
 
+    order = 'F' if a._f_contiguous else 'C'
+    # prevent 'a' to be overwritten
+    a = a.astype(dtype, copy=True, order=order)
+
     cusolver_handle = device.get_cusolver_handle()
     dev_info = cupy.empty(1, dtype=numpy.int32)
-
+    print('types ', a.dtype, dtype, out_dtype)
     ipiv = cupy.empty((a.shape[0], 1), dtype=numpy.intc)
 
     if dtype == 'f':
@@ -450,7 +451,10 @@ def pinv(a, rcond=1e-15):
     _util._assert_rank2(a)
     if a.size == 0:
         _, out_dtype = _util.linalg_common_type(a)
-        return cupy.empty_like(a.T, dtype=out_dtype)
+        m, n = a.shape[-2:]
+        if m == 0 or n == 0:
+            out_dtype = a.dtype  # NumPy bug?
+        return cupy.empty(a.shape[:-2] + (n, m), dtype=out_dtype)
 
     u, s, vt = _decomposition.svd(a.conj(), full_matrices=False)
     cutoff = rcond * s.max()
