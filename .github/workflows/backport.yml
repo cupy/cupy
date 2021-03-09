@@ -4,7 +4,8 @@ on:
        - master
 
 jobs:
-  pretest:
+  backport:
+    if: github.repository_owner == 'cupy'
     runs-on: ubuntu-18.04
     env:
       CUPY_CI: GitHub
@@ -31,5 +32,5 @@ jobs:
         BACKPORT_GITHUB_TOKEN: ${{secrets.BACKPORT_TOKEN}}
       run: |
         cd backport
-        echo "machine github.com\nuser chainer-ci\npassword ${{secrets.BACKPORT_TOKEN}}" > ~/.netrc
+        echo -e "machine github.com\nlogin chainer-ci\npassword ${{secrets.BACKPORT_TOKEN}}" > ~/.netrc
         python backport.py --repo cupy --sha ${{github.event.after}} --https
