@@ -1,11 +1,13 @@
 on:
-  push:
+  pull_request_target:
     branches:
        - master
+    types: [closed]
 
 jobs:
   backport:
     if: github.repository_owner == 'cupy'
+    if: github.event.pull_request.merged == 'true'
     runs-on: ubuntu-18.04
     env:
       CUPY_CI: GitHub
@@ -33,4 +35,4 @@ jobs:
       run: |
         cd backport
         echo -e "machine github.com\nlogin chainer-ci\npassword ${{secrets.BACKPORT_TOKEN}}" > ~/.netrc
-        python backport.py --repo cupy --sha ${{github.event.after}} --https
+        python backport.py --repo cupy --pr ${{github.event.number}} --https
