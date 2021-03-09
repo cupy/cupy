@@ -10,8 +10,6 @@ from cupyx.tools import install_library
 import pytest
 
 
-_platform_name = platform.system()
-
 @testing.parameterize(
     {'library': 'cudnn'},
     {'library': 'cutensor'},
@@ -21,14 +19,15 @@ class TestInstallLibrary(unittest.TestCase):
 
     @testing.slow
     def test_install(self):
-        if _platform_name == 'Windows' and self.library == 'nccl':
+        system = platform.system()
+        if system == 'Windows' and self.library == 'nccl':
             pytest.skip('NCCL is only available for Linux')
 
         # Try installing library for all supported CUDA versions
         for rec in install_library.library_records[self.library]:
             cuda = rec['cuda']
             version = rec[self.library]
-            filename = rec['assets'][_platform_name]['filename']
+            filename = rec['assets'][system]['filename']
             with tempfile.TemporaryDirectory() as d:
                 install_library.install_lib(cuda, d, self.library)
                 self._check_installed(d, cuda, self.library, version, filename)
@@ -45,8 +44,8 @@ class TestInstallLibrary(unittest.TestCase):
         assets = [r['assets']
                   for r in install_library.library_records[self.library]]
         for asset in assets:
-            for platform in asset.keys():
-                url = asset[platform]['url']
+            for system in asset.keys():
+                url = asset[system]['url']
                 with urllib.request.urlopen(
                         urllib.request.Request(url, method='HEAD')) as resp:
                     assert resp.getcode() == 200
