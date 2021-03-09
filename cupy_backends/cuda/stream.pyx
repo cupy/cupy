@@ -6,7 +6,8 @@ from cupy_backends.cuda.api cimport runtime
 
 cdef object _thread_local = threading.local()
 
-cdef bint _ptds = bool(int(os.environ.get('CUPY_CUDA_PER_THREAD_DEFAULT_STREAM', '0')) != 0)
+cdef bint _ptds = bool(int(
+    os.environ.get('CUPY_CUDA_PER_THREAD_DEFAULT_STREAM', '0')) != 0)
 
 
 cdef class _ThreadLocal:
