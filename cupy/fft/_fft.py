@@ -254,9 +254,8 @@ def _nd_plan_is_possible(axes_sorted, ndim):
     # Axes must be contiguous and the first or last axis must be in the axes.
     return (0 < len(axes_sorted) <= 3
             and (0 in axes_sorted or (ndim - 1) in axes_sorted)
-            and all([
-                (axes_sorted[n + 1] - axes_sorted[n]) == 1
-                for n in range(len(axes_sorted) - 1)]))
+            and all((axes_sorted[n + 1] - axes_sorted[n]) == 1
+                    for n in range(len(axes_sorted) - 1)))
 
 
 def _get_cufft_plan_nd(
