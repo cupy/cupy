@@ -1006,6 +1006,8 @@ class TestTomaxint(RandomGeneratorTestCase):
     {'a': 3, 'size': (5, 5), 'p': numpy.array([0.3, 0.3, 0.4])},
     {'a': 3, 'size': (), 'p': None},
     {'a': numpy.array([0.0, 1.0, 2.0]), 'size': 2, 'p': [0.3, 0.3, 0.4]},
+    {'a': 0, 'size': 0, 'p': None},
+    {'a': numpy.array([]), 'size': 0, 'p': None},
 )
 @testing.fix_random()
 @testing.gpu
@@ -1032,6 +1034,8 @@ class TestChoice1(RandomGeneratorTestCase):
             a=self.a, size=self.size, p=self.p, _count=20)
         vals = [val.get() for val in vals]
         size_ = self.size if isinstance(self.size, tuple) else (self.size,)
+        if size_ == (0, ):
+            self.skipTest('no bound check for empty `random.choice`')
         for val in vals:
             assert val.shape == size_
         assert min(val.min() for val in vals) == 0
