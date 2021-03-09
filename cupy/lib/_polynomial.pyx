@@ -172,7 +172,8 @@ cdef class poly1d:
         elif dtype.kind == 'f' or dtype == numpy.uint64:
             base = base.astype(numpy.float64, copy=False)
         else:
-            base = base.astype(numpy.int64, copy=False)
+            # use Python int here for cross-platform portability
+            base = base.astype(int, copy=False)
         return poly1d(_routines_poly._polypow(base, val))
 
     def __sub__(self, other):
