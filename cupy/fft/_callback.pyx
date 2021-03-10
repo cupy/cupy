@@ -47,8 +47,7 @@ cdef str _ext_suffix = None
 # callback related stuff
 cdef bint _is_init = False
 cdef str _callback_dev_code = None
-cdef str _callback_cache_dir = os.environ.get(
-    'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/callback_cache')) + '/'
+cdef str _callback_cache_dir = None
 cdef dict _callback_mgr = {}  # keep the Python modules alive
 cdef object _callback_thread_local = threading.local()
 
@@ -288,6 +287,15 @@ cdef inline void _nvcc_link(
     os.rename(mod_temp, mod_cached)
 
 
+# make it a plain Python function so that we can mock-test it
+def get_cache_dir():
+    global _callback_cache_dir
+    if _callback_cache_dir is None:
+        _callback_cache_dir = os.environ.get(
+            'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/callback_cache'))
+    return _callback_cache_dir
+
+
 cpdef get_current_callback_manager():
     cdef _ThreadLocal tls = _ThreadLocal.get()
     cdef _CallbackManager mgr = tls._current_cufft_callback
@@ -344,7 +352,7 @@ cdef class _CallbackManager:
         mod_filename = mod_name + _ext_suffix
 
         # Check if the module is already cached on disk. If not, we compile.
-        cache_dir = _callback_cache_dir
+        cache_dir = get_cache_dir()
         if not os.path.isdir(cache_dir):
             os.makedirs(cache_dir, exist_ok=True)
         path = os.path.join(cache_dir, mod_filename)
