@@ -1438,7 +1438,7 @@ class TestCsrMatrixData(unittest.TestCase):
             t = 'd'
         return m.astype(t)
 
-    @testing.numpy_cupy_equal(sp_name='sp')
+    @testing.numpy_cupy_equal(sp_name='sp', scalar_on_gpu=True)
     def test_count_nonzero(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.count_nonzero()

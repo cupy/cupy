@@ -77,21 +77,21 @@ class TestComparisonOperator(unittest.TestCase):
 class TestArrayEqual(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_array_equal_not_equal(self, xp, dtype):
         a = xp.array([1, 2, 3, 4], dtype=dtype)
         b = xp.array([1, 2, 4, 5], dtype=dtype)
         return xp.array_equal(a, b)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_array_equal_is_equal(self, xp, dtype):
         a = xp.array([1, 2, 3, 4], dtype=dtype)
         b = xp.array([1, 2, 3, 4], dtype=dtype)
         return xp.array_equal(a, b)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_array_equal_diff_length(self, xp, dtype):
         a = xp.array([1, 2, 3, 4], dtype=dtype)
         b = xp.array([1, 2, 3], dtype=dtype)
@@ -99,7 +99,7 @@ class TestArrayEqual(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.19')
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_array_equal_infinite_equal_nan(self, xp, dtype):
         nan = float('nan')
         inf = float('inf')
@@ -110,7 +110,7 @@ class TestArrayEqual(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.19')
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_array_equal_complex_equal_nan(self, xp, dtype):
         a = xp.array([1+2j], dtype=dtype)
         b = a.copy()
@@ -118,19 +118,19 @@ class TestArrayEqual(unittest.TestCase):
         a.real = xp.nan
         return xp.array_equal(a, b, equal_nan=True)
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_array_equal_diff_dtypes_not_equal(self, xp):
         a = xp.array([0.9e-5, 1.1e-5, 100.5, 10.5])
         b = xp.array([0, 0, 1000, 1000])
         return xp.array_equal(a, b)
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_array_equal_diff_dtypes_is_equal(self, xp):
         a = xp.array([0.0, 1.0, 100.0, 10.0])
         b = xp.array([0, 1, 100, 10])
         return xp.array_equal(a, b)
 
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_array_equal_broadcast_not_allowed(self, xp):
         a = xp.array([1, 1, 1, 1])
         b = xp.array([1])
@@ -140,21 +140,21 @@ class TestArrayEqual(unittest.TestCase):
 class TestAllclose(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_allclose_finite(self, xp, dtype):
         a = xp.array([0.9e-5, 1.1e-5, 1000 + 1e-4, 1000 - 1e-4], dtype=dtype)
         b = xp.array([0, 0, 1000, 1000], dtype=dtype)
         return xp.allclose(a, b)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_allclose_min_int(self, xp, dtype):
         a = xp.array([0], dtype=dtype)
         b = xp.array([numpy.iinfo('i').min], dtype=dtype)
         return xp.allclose(a, b)
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_allclose_infinite(self, xp, dtype):
         nan = float('nan')
         inf = float('inf')
@@ -164,7 +164,7 @@ class TestAllclose(unittest.TestCase):
         return xp.allclose(a, b)
 
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_allclose_infinite_equal_nan(self, xp, dtype):
         nan = float('nan')
         inf = float('inf')
@@ -174,7 +174,7 @@ class TestAllclose(unittest.TestCase):
         return xp.allclose(a, b, equal_nan=True)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_equal()
+    @testing.numpy_cupy_equal(scalar_on_gpu=True)
     def test_allclose_array_scalar(self, xp, dtype):
         a = xp.array([0.9e-5, 1.1e-5], dtype=dtype)
         b = xp.dtype(xp.dtype).type(0)
