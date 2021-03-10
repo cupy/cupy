@@ -249,7 +249,7 @@ cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
         assert gpu == buf.device_id
         xtArr_buffer.append(buf)
         xtArr_desc.GPUs[i] = gpu
-        xtArr_desc.data[i] = <void*>buf.ptr
+        xtArr_desc.data[i] = <void*><intptr_t>(buf.ptr)
         xtArr_desc.size[i] = size
 
     xtArr.descriptor = xtArr_desc
@@ -338,7 +338,7 @@ cdef class Plan1d:
         check_result(result)
 
         work_area = memory.alloc(work_size)
-        ptr = work_area.ptr
+        ptr = <intptr_t>(work_area.ptr)
         with nogil:
             result = cufftSetWorkArea(plan, <void*>(ptr))
         check_result(result)
@@ -412,7 +412,7 @@ cdef class Plan1d:
                 s = stream.Stream()
                 e = stream.Event()
             work_area.append(buf)
-            work_area_ptr.push_back(<void*>buf.ptr)
+            work_area_ptr.push_back(<void*><intptr_t>(buf.ptr))
             gather_streams.append(s)
             gather_events.append(e)
         with nogil:
@@ -452,6 +452,10 @@ cdef class Plan1d:
         cdef Handle plan = <Handle>self.handle
         cdef int dev, result
 
+        if self.xtArr != 0:
+            _XtFree(self.xtArr)
+            self.xtArr = 0
+
         try:
             dev = runtime.getDevice()
         except Exception as e:
@@ -471,10 +475,6 @@ cdef class Plan1d:
         # https://github.com/cupy/cupy/pull/2644#discussion_r347567899 and
         # NVIDIA internal ticket 2761341.
         runtime.setDevice(dev)
-
-        if self.xtArr != 0:
-            _XtFree(self.xtArr)
-            self.xtArr = 0
 
     def __enter__(self):
         _thread_local._current_plan = self
@@ -742,6 +742,7 @@ cdef class PlanNd:
         cdef int* shape_ptr = shape_arr.data()
         cdef int* inembed_ptr
         cdef int* onembed_ptr
+        cdef intptr_t ptr
 
         self.handle = <intptr_t>0
         ndim = len(shape)
@@ -792,9 +793,9 @@ cdef class PlanNd:
         # result = cufftXtSetWorkAreaPolicy(plan, policy, &work_size)
 
         work_area = memory.alloc(work_size)
-        cdef intptr_t work_area_ptr = work_area.ptr
+        ptr = <intptr_t>(work_area.ptr)
         with nogil:
-            result = cufftSetWorkArea(plan, <void *>(work_area_ptr))
+            result = cufftSetWorkArea(plan, <void*>(ptr))
         check_result(result)
 
         self.shape = tuple(shape)
@@ -980,9 +981,9 @@ cdef class XtPlanNd:
             check_result(result)
 
         work_area = memory.alloc(work_size)
-        cdef intptr_t work_area_ptr = work_area.ptr
+        cdef intptr_t ptr = <intptr_t>(work_area.ptr)
         with nogil:
-            result = cufftSetWorkArea(plan, <void*>(work_area_ptr))
+            result = cufftSetWorkArea(plan, <void*>(ptr))
         check_result(result)
 
         self.shape = tuple(shape)
