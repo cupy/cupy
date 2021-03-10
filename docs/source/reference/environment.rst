@@ -50,7 +50,7 @@ are set, g++-6 or later is required as the runtime host compiler. Please refer t
 
   The amount of memory that can be allocated for each device.
   The value can be specified in absolute bytes or fraction (e.g., ``"90%"``) of the total memory of each GPU.
-  See :doc:`../tutorial/memory` for details.
+  See :doc:`memory` for details.
 
 ``CUPY_SEED``
   Set the seed for random number generators.
