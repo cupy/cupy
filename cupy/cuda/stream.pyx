@@ -299,6 +299,9 @@ class Stream(BaseStream):
     This class handles the CUDA stream handle in RAII way, i.e., when an Stream
     instance is destroyed by the GC, its handle is also destroyed.
 
+    Note that if both ``null`` and ``ptds`` are ``False``, a plain new
+    stream is created.
+
     Args:
         null (bool): If ``True``, the stream is a null stream (i.e. the default
             stream that synchronizes with all streams). Note that you can also
@@ -310,9 +313,6 @@ class Stream(BaseStream):
             per-thread default stream object.
         non_blocking (bool): If ``True`` and both ``null`` and ``ptds`` are
             ``False``, the stream does not synchronize with the NULL stream.
-
-        Note that if both ``null`` and ``ptds`` are ``False``, a plain new
-        stream is created.
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle. It can be passed to

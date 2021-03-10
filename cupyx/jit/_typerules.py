@@ -118,7 +118,8 @@ def get_ctype_from_scalar(mode, x):
         if isinstance(x, bool):
             return _types.Scalar(numpy.bool_)
         if isinstance(x, int):
-            return _types.Scalar(numpy.int64)
+            # use plain int here for cross-platform portability
+            return _types.Scalar(int)
         if isinstance(x, float):
             return _types.Scalar(numpy.float64)
         if isinstance(x, complex):

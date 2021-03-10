@@ -25,6 +25,8 @@ class TestCheckVersion(unittest.TestCase):
 
     @pytest.mark.gpu
     @pytest.mark.cudnn
+    @pytest.mark.xfail(build.use_hip,
+                       reason='ROCm/HIP DNN support is not ready')
     def test_check_cudnn_version(self):
         with self.assertRaises(RuntimeError):
             build.get_cudnn_version()

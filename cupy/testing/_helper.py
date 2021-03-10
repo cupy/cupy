@@ -116,8 +116,8 @@ def _check_numpy_cupy_error_compatible(cupy_error, numpy_error):
     """Checks if try/except blocks are equivalent up to public error classes
     """
 
-    return all([isinstance(cupy_error, err) == isinstance(numpy_error, err)
-                for err in _numpy_errors])
+    return all(isinstance(cupy_error, err) == isinstance(numpy_error, err)
+               for err in _numpy_errors)
 
 
 def _fail_test_with_unexpected_errors(

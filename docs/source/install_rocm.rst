@@ -22,16 +22,7 @@ Environment Variables
 
 When building or running CuPy for ROCm, the following environment variables are effective.
 
-* ``HCC_AMDGPU_TARGET``: ISA name supported by your GPU.
-  Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx900``).
-  You can specify a comma-separated list of ISAs if you have multiple GPUs of different architectures.
-
 * ``ROCM_HOME``: directory containing the ROCm software (e.g., ``/opt/rocm``).
-
-.. note::
-
-  In this version of CuPy, you must specify ``HCC_AMDGPU_TARGET`` at runtime.
-  This restriction will be removed in the future release.
 
 Docker
 ------
@@ -40,7 +31,7 @@ You can try running CuPy for ROCm using Docker.
 
 ::
 
-  $ docker run -it --device=/dev/kfd --device=/dev/dri --group-add video --env HCC_AMDGPU_TARGET=gfx900 cupy/cupy-rocm
+  $ docker run -it --device=/dev/kfd --device=/dev/dri --group-add video cupy/cupy-rocm
 
 .. _install_hip:
 
@@ -54,17 +45,20 @@ Currently we only offer wheels for ROCm v4.0.x.
 ::
 
   $ pip install --pre cupy-rocm-4-0
-  $ export HCC_AMDGPU_TARGET=gfx900
 
-Building CuPy for ROCm
------------------------
+Building CuPy for ROCm From Source
+----------------------------------
 
-To build CuPy from source, set ``CUPY_INSTALL_USE_HIP`` and ``ROCM_HOME`` environment variables.
+To build CuPy from source, set the ``CUPY_INSTALL_USE_HIP``, ``ROCM_HOME``, and ``HCC_AMDGPU_TARGET`` environment variables.
+(``HCC_AMDGPU_TARGET`` is the ISA name supported by your GPU.
+Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx900``).
+You can specify a comma-separated list of ISAs if you have multiple GPUs of different architectures.)
 
 ::
 
   $ export CUPY_INSTALL_USE_HIP=1
   $ export ROCM_HOME=/opt/rocm
+  $ export HCC_AMDGPU_TARGET=gfx906
   $ pip install --pre cupy
 
 .. note::
