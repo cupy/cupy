@@ -6,4 +6,3 @@ Tutorial
 
    basic
    kernel
-   memory
