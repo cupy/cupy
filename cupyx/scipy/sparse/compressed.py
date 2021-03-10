@@ -1,17 +1,18 @@
-import numpy
+import string
+import warnings
 
+import numpy
 try:
     import scipy.sparse
     scipy_available = True
 except ImportError:
     scipy_available = False
 
-import warnings
-
 import cupy
 import cupyx
 
 from cupy import core
+from cupy.core import _scalar
 from cupy._creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
@@ -174,66 +175,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         ''', 'min_nonzero_reduction')
 
-    _max_arg_reduction_kern = core.RawKernel(r'''
-        extern "C" __global__
-        void max_arg_reduction(double* data, int* indices, int* x, int* y,
-                               int length, long long* z) {
+    # For _max_arg_reduction_mod and _min_arg_reduction_mod below, we pick
+    # the right template specialization according to input dtypes at runtime.
+    # The distinction in int types (T2) is important for portability in OS.
+
+    _argmax_argmin_code = r'''
+        template<typename T1, typename T2> __global__ void
+        ${func}_arg_reduction(T1* data, int* indices, int* x, int* y,
+                              int length, T2* z) {
             // Get the index of the block
-            int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-            // Calculate the block length
-            int block_length = y[tid] - x[tid];
-
-            // Select initial value based on the block density
-            int data_index = 0;
-            double data_value = 0;
-
-            if (block_length == length){
-                // Block is dense. Fill the first value
-                data_value = data[x[tid]];
-                data_index = indices[x[tid]];
-            } else if (block_length > 0)  {
-                // Block has at least one zero. Assign first occurrence as the
-                // starting reference
-                data_value = 0;
-                for (data_index = 0; data_index < length; data_index++){
-                    if (data_index != indices[x[tid] + data_index] ||
-                        x[tid] + data_index >= y[tid]){
-                        break;
-                    }
-                }
-            } else {
-                 // Zero valued array
-                data_value = 0;
-                data_index = 0;
-            }
-
-            // Iterate over the section of the sparse matrix
-            for (int entry = x[tid]; entry < y[tid]; entry++){
-                if (data[entry] != data[entry]){
-                    // Check for NaN
-                    data_value = nan("");
-                    data_index = 0;
-                    break;
-                } else {
-                    // Check for a value update
-                    if (data[entry] > data_value){
-                        data_index = indices[entry];
-                        data_value = data[entry];
-                    }
-                }
-            }
-
-            // Store in the return function
-            z[tid] = data_index;
-        }
-        ''', 'max_arg_reduction')
-
-    _min_arg_reduction_kern = core.RawKernel(r'''
-        extern "C" __global__
-        void min_arg_reduction(double* data, int* indices, int* x, int* y,
-                               int length, long long* z) {
-            // Get the index of hte block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
             // Calculate the block length
@@ -272,7 +222,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     break;
                 } else {
                     // Check for a value update
-                    if (data[entry] < data_value){
+                    if (data[entry] ${op} data_value){
                         data_index = indices[entry];
                         data_value = data[entry];
                     }
@@ -281,9 +231,25 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             // Store in the return function
             z[tid] = data_index;
+        }'''
 
-        }
-        ''', 'min_arg_reduction')
+    _max_arg_reduction_mod = core.RawModule(
+        code=string.Template(_argmax_argmin_code).substitute(
+            func='max', op='>'),
+        options=('-std=c++11',),
+        name_expressions=['max_arg_reduction<float, int>',
+                          'max_arg_reduction<float, long long>',
+                          'max_arg_reduction<double, int>',
+                          'max_arg_reduction<double, long long>'])
+
+    _min_arg_reduction_mod = core.RawModule(
+        code=string.Template(_argmax_argmin_code).substitute(
+            func='min', op='<'),
+        options=('-std=c++11',),
+        name_expressions=['min_arg_reduction<float, int>',
+                          'min_arg_reduction<float, long long>',
+                          'min_arg_reduction<double, int>',
+                          'min_arg_reduction<double, long long>'])
 
     # TODO(leofang): rewrite a more load-balanced approach than this naive one?
     _has_sorted_indices_kern = core.ElementwiseKernel(
@@ -1015,42 +981,46 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # Call to the appropriate kernel function
         if axis == 1:
             # Create the vector to hold output
-            value = cupy.zeros(self.shape[0]).astype(cupy.int64)
+            # Note: it's important to set "int" here, following what SciPy
+            # does, as the outcome dtype is platform dependent
+            value = cupy.zeros(self.shape[0], dtype=int)
 
             # Perform the calculation
+            ker_name = '_arg_reduction<{}, {}>'.format(
+                _scalar.get_typename(self.data.dtype),
+                _scalar.get_typename(value.dtype))
             if ufunc == cupy.argmax:
-                self._max_arg_reduction_kern(
-                    (self.shape[0],), (1,),
-                    (self.data.astype(cupy.float64), self.indices,
-                     self.indptr[:len(self.indptr) - 1],
-                     self.indptr[1:], cupy.int64(self.shape[1]),
-                     value))
-            if ufunc == cupy.argmin:
-                self._min_arg_reduction_kern(
-                    (self.shape[0],), (1,),
-                    (self.data.astype(cupy.float64), self.indices,
-                     self.indptr[:len(self.indptr) - 1],
-                     self.indptr[1:], cupy.int64(self.shape[1]),
-                     value))
+                ker_name = 'max' + ker_name
+                ker = self._max_arg_reduction_mod.get_function(ker_name)
+            elif ufunc == cupy.argmin:
+                ker_name = 'min' + ker_name
+                ker = self._min_arg_reduction_mod.get_function(ker_name)
+            ker((self.shape[0],), (1,),
+                (self.data, self.indices,
+                 self.indptr[:len(self.indptr) - 1],
+                 self.indptr[1:], cupy.int64(self.shape[1]),
+                 value))
 
-        if axis == 0:
+        elif axis == 0:
             # Create the vector to hold output
-            value = cupy.zeros(self.shape[1]).astype(cupy.int64)
+            # Note: it's important to set "int" here, following what SciPy
+            # does, as the outcome dtype is platform dependent
+            value = cupy.zeros(self.shape[1], dtype=int)
 
             # Perform the calculation
+            ker_name = '_arg_reduction<{}, {}>'.format(
+                _scalar.get_typename(self.data.dtype),
+                _scalar.get_typename(value.dtype))
             if ufunc == cupy.argmax:
-                self._max_arg_reduction_kern(
-                    (self.shape[1],), (1,),
-                    (self.data.astype(cupy.float64), self.indices,
-                     self.indptr[:len(self.indptr) - 1],
-                     self.indptr[1:], cupy.int64(self.shape[0]),
-                     value))
-            if ufunc == cupy.argmin:
-                self._min_arg_reduction_kern(
-                    (self.shape[1],), (1,),
-                    (self.data.astype(cupy.float64), self.indices,
-                     self.indptr[:len(self.indptr) - 1],
-                     self.indptr[1:],
-                     cupy.int64(self.shape[0]), value))
+                ker_name = 'max' + ker_name
+                ker = self._max_arg_reduction_mod.get_function(ker_name)
+            elif ufunc == cupy.argmin:
+                ker_name = 'min' + ker_name
+                ker = self._min_arg_reduction_mod.get_function(ker_name)
+            ker((self.shape[1],), (1,),
+                (self.data, self.indices,
+                 self.indptr[:len(self.indptr) - 1],
+                 self.indptr[1:], cupy.int64(self.shape[0]),
+                 value))
 
         return value
