@@ -7,11 +7,7 @@ import cupy
 from cupy.core.internal import prod
 from cupy import cusolver
 from cupy import testing
-from cupy.testing import _attr
 from cupy.testing import _condition
-from cupy.testing import _helper
-from cupy.testing import _parametrize
-from cupy.testing import _random
 import cupyx
 
 
@@ -50,7 +46,7 @@ def random_matrix(shape, dtype, scale, sym=False):
     return new_a.astype(dtype)
 
 
-@_attr.gpu
+@testing.gpu
 class TestCholeskyDecomposition(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(atol=1e-3)
@@ -80,7 +76,7 @@ class TestCholeskyDecomposition(unittest.TestCase):
         self.check_L(Ab2)
 
 
-@_attr.gpu
+@testing.gpu
 class TestCholeskyInvalid(unittest.TestCase):
 
     def check_L(self, array):
@@ -98,10 +94,10 @@ class TestCholeskyInvalid(unittest.TestCase):
         self.check_L(A)
 
 
-@_parametrize.parameterize(*_parametrize.product({
+@testing.parameterize(*testing.product({
     'mode': ['r', 'raw', 'complete', 'reduced'],
 }))
-@_attr.gpu
+@testing.gpu
 class TestQRDecomposition(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
@@ -118,35 +114,35 @@ class TestQRDecomposition(unittest.TestCase):
             assert result_cpu.dtype == result_gpu.dtype
             cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
-    @_random.fix_random()
+    @testing.fix_random()
     @_condition.repeat(3, 10)
     def test_mode(self):
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
         self.check_mode(numpy.random.randn(5, 4), mode=self.mode)
 
-    @_helper.with_requires('numpy>=1.16')
+    @testing.with_requires('numpy>=1.16')
     def test_empty_array(self):
         self.check_mode(numpy.empty((0, 3)), mode=self.mode)
         self.check_mode(numpy.empty((3, 0)), mode=self.mode)
 
 
-@_parametrize.parameterize(*_parametrize.product({
+@testing.parameterize(*testing.product({
     'full_matrices': [True, False],
 }))
-@_random.fix_random()
-@_attr.gpu
+@testing.fix_random()
+@testing.gpu
 class TestSVD(unittest.TestCase):
 
     def setUp(self):
-        self.seed = _random.generate_seed()
+        self.seed = testing.generate_seed()
 
     @testing.for_dtypes([
         numpy.int32, numpy.int64, numpy.uint32, numpy.uint64,
         numpy.float32, numpy.float64, numpy.complex64, numpy.complex128,
     ])
     def check_usv(self, shape, dtype):
-        array = _helper.shaped_random(
+        array = testing.shaped_random(
             shape, numpy, dtype=dtype, seed=self.seed)
         a_cpu = numpy.asarray(array, dtype=dtype)
         a_gpu = cupy.asarray(array, dtype=dtype)
@@ -217,7 +213,7 @@ class TestSVD(unittest.TestCase):
     ])
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-4)
     def check_singular(self, shape, xp, dtype):
-        array = _helper.shaped_random(shape, xp, dtype=dtype, seed=self.seed)
+        array = testing.shaped_random(shape, xp, dtype=dtype, seed=self.seed)
         a = xp.asarray(array, dtype=dtype)
         a_copy = a.copy()
         result = xp.linalg.svd(
@@ -238,13 +234,13 @@ class TestSVD(unittest.TestCase):
         self.check_singular((2, 2))
         self.check_singular((7, 3))
 
-    @_helper.with_requires('numpy>=1.16')
+    @testing.with_requires('numpy>=1.16')
     def test_svd_rank2_empty_array(self):
         self.check_usv((0, 3))
         self.check_usv((3, 0))
         self.check_usv((1, 0))
 
-    @_helper.with_requires('numpy>=1.16')
+    @testing.with_requires('numpy>=1.16')
     @testing.numpy_cupy_array_equal()
     def test_svd_rank2_empty_array_compute_uv_false(self, xp):
         array = xp.empty((3, 0))
@@ -282,7 +278,7 @@ class TestSVD(unittest.TestCase):
         self.check_singular((2, 64, 32))
         self.check_singular((2, 32, 64))
 
-    @_helper.with_requires('numpy>=1.16')
+    @testing.with_requires('numpy>=1.16')
     def test_svd_rank3_empty_array(self):
         self.check_usv((0, 3, 4))
         self.check_usv((3, 0, 4))
@@ -291,14 +287,14 @@ class TestSVD(unittest.TestCase):
         self.check_usv((0, 3, 0))
         self.check_usv((0, 0, 3))
 
-    @_helper.with_requires('numpy>=1.16')
+    @testing.with_requires('numpy>=1.16')
     @testing.numpy_cupy_array_equal()
     def test_svd_rank3_empty_array_compute_uv_false1(self, xp):
         array = xp.empty((3, 0, 4))
         return xp.linalg.svd(
             array, full_matrices=self.full_matrices, compute_uv=False)
 
-    @_helper.with_requires('numpy>=1.16')
+    @testing.with_requires('numpy>=1.16')
     @testing.numpy_cupy_array_equal()
     def test_svd_rank3_empty_array_compute_uv_false2(self, xp):
         array = xp.empty((0, 3, 4))
@@ -336,7 +332,7 @@ class TestSVD(unittest.TestCase):
         self.check_singular((3, 2, 64, 32))
         self.check_singular((3, 2, 32, 64))
 
-    @_helper.with_requires('numpy>=1.16')
+    @testing.with_requires('numpy>=1.16')
     def test_svd_rank4_empty_array(self):
         self.check_usv((0, 2, 3, 4))
         self.check_usv((1, 2, 0, 4))

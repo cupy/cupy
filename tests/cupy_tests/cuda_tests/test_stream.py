@@ -2,16 +2,14 @@ import unittest
 
 from cupy._creation import from_data
 from cupy import cuda
-from cupy.testing import _attr
-from cupy.testing import _helper
-from cupy.testing import _parametrize
+from cupy import testing
 
 
-@_parametrize.parameterize(
-    *_parametrize.product({
+@testing.parameterize(
+    *testing.product({
         'stream_name': ['null', 'ptds'],
     }))
-@_attr.gpu
+@testing.gpu
 class TestStream(unittest.TestCase):
 
     def setUp(self):
@@ -77,7 +75,7 @@ class TestStream(unittest.TestCase):
 
     def test_get_and_add_callback(self):
         N = 100
-        cupy_arrays = [_helper.shaped_random((2, 3)) for _ in range(N)]
+        cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
 
         if not cuda.runtime.is_hip:
             stream = self.stream
@@ -108,7 +106,7 @@ class TestStream(unittest.TestCase):
                      'Only CUDA 10.0+ supports this')
     def test_launch_host_func(self):
         N = 100
-        cupy_arrays = [_helper.shaped_random((2, 3)) for _ in range(N)]
+        cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
 
         stream = cuda.Stream.null
 
@@ -139,7 +137,7 @@ class TestStream(unittest.TestCase):
         assert self.stream == cuda.get_current_stream()
 
 
-@_attr.gpu
+@testing.gpu
 class TestExternalStream(unittest.TestCase):
 
     def setUp(self):
@@ -151,7 +149,7 @@ class TestExternalStream(unittest.TestCase):
 
     def test_get_and_add_callback(self):
         N = 100
-        cupy_arrays = [_helper.shaped_random((2, 3)) for _ in range(N)]
+        cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
 
         stream = self.stream
 
@@ -171,7 +169,7 @@ class TestExternalStream(unittest.TestCase):
                      'Only CUDA 10.0+ supports this')
     def test_launch_host_func(self):
         N = 100
-        cupy_arrays = [_helper.shaped_random((2, 3)) for _ in range(N)]
+        cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
 
         stream = self.stream
 
