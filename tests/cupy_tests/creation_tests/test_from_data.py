@@ -539,7 +539,7 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
         assert 'does not support' in str(ex.value)
 
 
-# marked slow as either numpy or cupy could go OOM in this test    
+# marked slow as either numpy or cupy could go OOM in this test
 @testing.slow
 @testing.gpu
 @pytest.mark.skipif(
