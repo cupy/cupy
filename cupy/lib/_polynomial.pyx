@@ -173,7 +173,8 @@ cdef class poly1d:
             base = base.astype(numpy.float64, copy=False)
         else:
             # use Python int here for cross-platform portability
-            base = base.astype(int, copy=False)
+            int_dtype = numpy.promote_types(dtype, int)
+            base = base.astype(int_dtype, copy=False)
         return poly1d(_routines_poly._polypow(base, val))
 
     def __sub__(self, other):
