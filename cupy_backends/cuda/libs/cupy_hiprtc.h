@@ -44,6 +44,14 @@ nvrtcResult nvrtcGetPTX(nvrtcProgram prog, char* code) {
     return hiprtcGetCode(prog, code);
 }
 
+nvrtcResult nvrtcGetNumSupportedArchs(...) {
+    return HIPRTC_ERROR_INTERNAL_ERROR;
+}
+
+nvrtcResult nvrtcGetSupportedArchs(...) {
+    return HIPRTC_ERROR_INTERNAL_ERROR;
+}
+
 nvrtcResult nvrtcGetProgramLogSize(nvrtcProgram prog, std::size_t* logSizeRet) {
     return hiprtcGetProgramLogSize(prog, logSizeRet);
 }
