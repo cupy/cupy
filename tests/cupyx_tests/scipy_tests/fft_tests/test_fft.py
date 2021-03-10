@@ -41,8 +41,12 @@ def _correct_np_dtype(xp, dtype, out):
 
 def _skip_forward_backward(norm):
     if norm in ('backward', 'forward'):
-        if not (np.lib.NumpyVersion(scipy.__version__) >= '1.6.0'):
+        if (scipy_fft is not None
+                and not (np.lib.NumpyVersion(scipy.__version__) >= '1.6.0')):
             pytest.skip('forward/backward is supported by SciPy 1.6.0+')
+        elif (scipy_fft is None
+                and not (np.lib.NumpyVersion(np.__version__) >= '1.20.0')):
+            pytest.skip('forward/backward is supported by NumPy 1.20+')
 
 
 @testing.parameterize(*testing.product({
