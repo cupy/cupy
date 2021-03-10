@@ -409,12 +409,12 @@ cdef class Plan1d:
         for i in range(nGPUs):
             with device.Device(gpus[i]):
                 buf = memory.alloc(work_size[i])
-                stream = stream.Stream()
-                event = stream.Event()
+                s = stream.Stream()
+                e = stream.Event()
             work_area.append(buf)
             work_area_ptr.push_back(<void*>buf.ptr)
-            gather_streams.append(stream)
-            gather_events.append(event)
+            gather_streams.append(s)
+            gather_events.append(e)
         with nogil:
             result = cufftXtSetWorkArea(plan, work_area_ptr.data())
         check_result(result)
