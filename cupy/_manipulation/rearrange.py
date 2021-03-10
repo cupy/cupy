@@ -102,6 +102,10 @@ def roll(a, shift, axis=None):
     else:
         axis = _reduction._get_axis(axis, a.ndim)[0]
 
+        # Force shift array to be numpy based on numpy broadcasting
+        if isinstance(shift, cupy.ndarray):
+            shift = cupy.asnumpy(shift)
+
         broadcasted = numpy.broadcast(shift, axis)
         if broadcasted.nd > 1:
             raise ValueError(
