@@ -28,9 +28,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                                 sparse_data._minmax_mixin,
                                 _index.IndexMixin):
 
-    _max_reduction_kern = core.RawKernel(r'''
+    _max_min_reduction_code = r'''
         extern "C" __global__
-        void max_reduction(double* data, int* x, int* y, int length,
+        void ${func}(double* data, int* x, int* y, int length,
                            double* z) {
             // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -40,7 +40,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             // Select initial value based on the block density
             double running_value = 0;
-            if (block_length == length){
+            if (${cond}){
                 running_value = data[x[tid]];
             } else {
                 running_value = 0;
@@ -54,7 +54,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     break;
                 } else {
                     // Check for a value update
-                    if (data[entry] > running_value){
+                    if (data[entry] ${op} running_value){
                         running_value = data[entry];
                     }
                 }
@@ -62,119 +62,27 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             // Store in the return function
             z[tid] = running_value;
-        }
-        ''', 'max_reduction')
+        }'''
 
-    _max_nonzero_reduction_kern = core.RawKernel(r'''
-        extern "C" __global__
-        void max_nonzero_reduction(double* data, int* x, int* y, int length,
-                                   double* z) {
-            // Get the index of the block
-            int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    _max_reduction_kern = core.RawKernel(
+        string.Template(_max_min_reduction_code).substitute(
+            func='max_reduction', op='>', cond='block_length == length'),
+        'max_reduction')
 
-            // Calculate the block length
-            int block_length = y[tid] - x[tid];
+    _max_nonzero_reduction_kern = core.RawKernel(
+        string.Template(_max_min_reduction_code).substitute(
+            func='max_nonzero_reduction', op='>', cond='block_length > 0'),
+        'max_nonzero_reduction')
 
-            // Select initial value based on the block density
-            double running_value = 0;
-            if (block_length > 0){
-                running_value = data[x[tid]];
-            } else {
-                running_value = 0;
-            }
+    _min_reduction_kern = core.RawKernel(
+        string.Template(_max_min_reduction_code).substitute(
+            func='min_reduction', op='<', cond='block_length == length'),
+        'min_reduction')
 
-            // Iterate over the section of the sparse matrix
-            for (int entry = x[tid]; entry < y[tid]; entry++){
-                if (data[entry] != data[entry]){
-                    // Check for NaN
-                    running_value = nan("");
-                    break;
-                } else {
-                    // Check for a value update
-                    if (running_value < data[entry]){
-                        running_value = data[entry];
-                    }
-                }
-            }
-
-            // Store in the return function
-            z[tid] = running_value;
-        }
-        ''', 'max_nonzero_reduction')
-
-    _min_reduction_kern = core.RawKernel(r'''
-        extern "C" __global__
-        void min_reduction(double* data, int* x, int* y, int length,
-                           double* z) {
-            // Get the index of the block
-            int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-            // Calculate the block length
-            int block_length = y[tid] - x[tid];
-
-            // Select initial value based on the block density
-            double running_value = 0;
-            if (block_length == length){
-                running_value = data[x[tid]];
-            } else {
-                running_value = 0;
-            }
-
-            // Iterate over the block to update the initial value
-            for (int entry = x[tid]; entry < y[tid]; entry++){
-                if (data[entry] != data[entry]){
-                    // Check for NaN
-                    running_value = nan("");
-                    break;
-                } else {
-                    // Check for a value update
-                    if (data[entry] < running_value){
-                        running_value = data[entry];
-                    }
-                }
-            }
-
-            // Store in the return function
-            z[tid] = running_value;
-        }
-        ''', 'min_reduction')
-
-    _min_nonzero_reduction_kern = core.RawKernel(r'''
-        extern "C" __global__
-        void min_nonzero_reduction(double* data, int* x, int* y, int length,
-                                   double* z) {
-            // Get the index of hte block
-            int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-            // Calculate the block length
-            int block_length = y[tid] - x[tid];
-
-            // Select initial value based on the block density
-            double running_value = 0;
-            if (block_length > 0){
-                running_value = data[x[tid]];
-            } else {
-                running_value = 0;
-            }
-
-            // Iterate over the section of the sparse matrix
-            for (int entry = x[tid]; entry < y[tid]; entry++){
-                if (data[entry] != data[entry]){
-                    // Check for NaN
-                    running_value = nan("");
-                    break;
-                } else {
-                    // Check for a value update
-                    if (running_value > data[entry]){
-                        running_value = data[entry];
-                    }
-                }
-            }
-
-            // Store in the return function
-            z[tid] = running_value;
-        }
-        ''', 'min_nonzero_reduction')
+    _min_nonzero_reduction_kern = core.RawKernel(
+        string.Template(_max_min_reduction_code).substitute(
+            func='min_nonzero_reduction', op='<', cond='block_length > 0'),
+        'min_nonzero_reduction')
 
     # For _max_arg_reduction_mod and _min_arg_reduction_mod below, we pick
     # the right template specialization according to input dtypes at runtime.
@@ -893,82 +801,21 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 major_index.
 
         """
-
+        shape = self.shape[int(not(axis))]
         # Call to the appropriate kernel function
-        if axis == 1:
-            # Create the vector to hold output
-            value = cupy.zeros(self.shape[0]).astype(cupy.float64)
+        value = cupy.zeros(shape).astype(cupy.float64)
+        if nonzero:
+            kerns = {cupy.amax: self._max_nonzero_reduction_kern,
+                     cupy.amin: self._min_nonzero_reduction_kern}
+        else:
+            kerns = {cupy.amax: self._max_reduction_kern,
+                     cupy.amin: self._min_reduction_kern}
 
-            if nonzero:
-                # Perform the calculation
-                if ufunc == cupy.amax:
-                    self._max_nonzero_reduction_kern(
-                        (self.shape[0],), (1,),
-                        (self.data.astype(cupy.float64),
-                         self.indptr[:len(self.indptr) - 1],
-                         self.indptr[1:], cupy.int64(self.shape[1]),
-                         value))
-                if ufunc == cupy.amin:
-                    self._min_nonzero_reduction_kern(
-                        (self.shape[0],), (1,),
-                        (self.data.astype(cupy.float64),
-                         self.indptr[:len(self.indptr) - 1],
-                         self.indptr[1:], cupy.int64(self.shape[1]),
-                         value))
-
-            else:
-                # Perform the calculation
-                if ufunc == cupy.amax:
-                    self._max_reduction_kern(
-                        (self.shape[0],), (1,),
-                        (self.data.astype(cupy.float64),
-                         self.indptr[:len(self.indptr) - 1],
-                         self.indptr[1:], cupy.int64(self.shape[1]),
-                         value))
-                if ufunc == cupy.amin:
-                    self._min_reduction_kern(
-                        (self.shape[0],), (1,),
-                        (self.data.astype(cupy.float64),
-                         self.indptr[:len(self.indptr) - 1],
-                         self.indptr[1:], cupy.int64(self.shape[1]),
-                         value))
-
-        if axis == 0:
-            # Create the vector to hold output
-            value = cupy.zeros(self.shape[1]).astype(cupy.float64)
-
-            if nonzero:
-                # Perform the calculation
-                if ufunc == cupy.amax:
-                    self._max_nonzero_reduction_kern(
-                        (self.shape[1],), (1,),
-                        (self.data.astype(cupy.float64),
-                         self.indptr[:len(self.indptr) - 1],
-                         self.indptr[1:], cupy.int64(self.shape[0]),
-                         value))
-                if ufunc == cupy.amin:
-                    self._min_nonzero_reduction_kern(
-                        (self.shape[1],), (1,),
-                        (self.data.astype(cupy.float64),
-                         self.indptr[:len(self.indptr) - 1],
-                         self.indptr[1:], cupy.int64(self.shape[0]),
-                         value))
-            else:
-                # Perform the calculation
-                if ufunc == cupy.amax:
-                    self._max_reduction_kern(
-                        (self.shape[1],), (1,),
-                        (self.data.astype(cupy.float64),
-                         self.indptr[:len(self.indptr) - 1],
-                         self.indptr[1:], cupy.int64(self.shape[0]),
-                         value))
-                if ufunc == cupy.amin:
-                    self._min_reduction_kern(
-                        (self.shape[1],), (1,),
-                        (self.data.astype(cupy.float64),
-                         self.indptr[:len(self.indptr) - 1],
-                         self.indptr[1:], cupy.int64(self.shape[0]),
-                         value))
+        kerns[ufunc]((shape,), (1,),
+                     (self.data.astype(cupy.float64),
+                      self.indptr[:len(self.indptr) - 1],
+                      self.indptr[1:], cupy.int64(self.shape[axis]),
+                      value))
 
         return value
 
@@ -990,48 +837,25 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
 
         # Call to the appropriate kernel function
-        if axis == 1:
-            # Create the vector to hold output
-            # Note: it's important to set "int" here, following what SciPy
-            # does, as the outcome dtype is platform dependent
-            value = cupy.zeros(self.shape[0], dtype=int)
+        # Create the vector to hold output
+        # Note: it's important to set "int" here, following what SciPy
+        # does, as the outcome dtype is platform dependent
+        shape = self.shape[int(not(axis))]
+        value = cupy.zeros(shape, dtype=int)
 
-            # Perform the calculation
-            ker_name = '_arg_reduction<{}, {}>'.format(
-                _scalar.get_typename(self.data.dtype),
-                _scalar.get_typename(value.dtype))
-            if ufunc == cupy.argmax:
-                ker_name = 'max' + ker_name
-                ker = self._max_arg_reduction_mod.get_function(ker_name)
-            elif ufunc == cupy.argmin:
-                ker_name = 'min' + ker_name
-                ker = self._min_arg_reduction_mod.get_function(ker_name)
-            ker((self.shape[0],), (1,),
-                (self.data, self.indices,
-                 self.indptr[:len(self.indptr) - 1],
-                 self.indptr[1:], cupy.int64(self.shape[1]),
-                 value))
+        # Perform the calculation
+        ker_name = '_arg_reduction<{}, {}>'.format(
+            _scalar.get_typename(self.data.dtype),
+            _scalar.get_typename(value.dtype))
 
-        elif axis == 0:
-            # Create the vector to hold output
-            # Note: it's important to set "int" here, following what SciPy
-            # does, as the outcome dtype is platform dependent
-            value = cupy.zeros(self.shape[1], dtype=int)
+        prefix = {cupy.argmax: 'max', cupy.argmin: 'min'}
+        ker_name = prefix[ufunc] + ker_name
 
-            # Perform the calculation
-            ker_name = '_arg_reduction<{}, {}>'.format(
-                _scalar.get_typename(self.data.dtype),
-                _scalar.get_typename(value.dtype))
-            if ufunc == cupy.argmax:
-                ker_name = 'max' + ker_name
-                ker = self._max_arg_reduction_mod.get_function(ker_name)
-            elif ufunc == cupy.argmin:
-                ker_name = 'min' + ker_name
-                ker = self._min_arg_reduction_mod.get_function(ker_name)
-            ker((self.shape[1],), (1,),
-                (self.data, self.indices,
-                 self.indptr[:len(self.indptr) - 1],
-                 self.indptr[1:], cupy.int64(self.shape[0]),
-                 value))
+        ker = self._min_arg_reduction_mod.get_function(ker_name)
+        ker((shape,), (1,),
+            (self.data, self.indices,
+             self.indptr[:len(self.indptr) - 1],
+             self.indptr[1:], cupy.int64(self.shape[axis]),
+             value))
 
         return value
