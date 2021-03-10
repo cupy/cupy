@@ -210,16 +210,10 @@ def _fft_c2c(a, direction, norm, axes, overwrite_x, plan=None):
 
 def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
          plan=None):
-    if isinstance(a, np.ndarray):
+    if not isinstance(a, cupy.ndarray):
         raise TypeError('The input array a must be a cupy.ndarray')
-    if norm is None:  # for backward compatibility
-        norm = 'backward'
-    if norm not in ('backward', 'ortho', 'forward'):
-        raise ValueError('Invalid norm value %s, should be "backward", '
-                         '"ortho", or "forward".' % norm)
     if (s is not None) and (axes is not None) and len(s) != len(axes):
         raise ValueError('Shape and axes have different lengths.')
-
     if axes is None:
         if s is None:
             dim = a.ndim
@@ -233,6 +227,14 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
             return a
         else:
             raise IndexError('list index out of range')
+    if norm is None:  # for backward compatibility
+        norm = 'backward'
+    # it is important that we check norm after validating axes for NumPy
+    # compatibility: if axes=(), early return is triggered and norm is not
+    # checked...
+    if norm not in ('backward', 'ortho', 'forward'):
+        raise ValueError('Invalid norm value %s, should be "backward", '
+                         '"ortho", or "forward".' % norm)
     a = _convert_dtype(a, value_type)
     a = _cook_shape(a, s, axes, value_type)
 
@@ -292,9 +294,8 @@ def _nd_plan_is_possible(axes_sorted, ndim):
     # Axes must be contiguous and the first or last axis must be in the axes.
     return (0 < len(axes_sorted) <= 3
             and (0 in axes_sorted or (ndim - 1) in axes_sorted)
-            and all([
-                (axes_sorted[n + 1] - axes_sorted[n]) == 1
-                for n in range(len(axes_sorted) - 1)]))
+            and all((axes_sorted[n + 1] - axes_sorted[n]) == 1
+                    for n in range(len(axes_sorted) - 1)))
 
 
 def _get_cufft_plan_nd(
@@ -567,7 +568,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
 
 def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
           overwrite_x=False, out=None):
-    if isinstance(a, np.ndarray):
+    if not isinstance(a, cupy.ndarray):
         raise TypeError('The input array a must be a cupy.ndarray')
     if norm is None:  # for backward compatibility
         norm = 'backward'

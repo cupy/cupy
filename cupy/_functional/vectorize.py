@@ -65,14 +65,14 @@ class vectorize(object):
                 raise NotImplementedError
 
             func = _interface._CudaFunction(self.pyfunc, 'numpy', device=True)
-            code, ret_type = func._emit_code_from_types(in_types, ret_type)
+            result = func._emit_code_from_types(in_types, ret_type)
             in_params = ', '.join(
                 f'{t.dtype} in{i}' for i, t in enumerate(in_types))
-            out_params = f'{ret_type.dtype} out0'
+            out_params = str(result.return_type.dtype) + ' out0'
             body = 'out0 = {}({})'.format(
                 func.name, ', '.join([f'in{i}' for i in range(len(in_types))]))
             kern = core.ElementwiseKernel(
-                in_params, out_params, body, preamble=code)
+                in_params, out_params, body, preamble=result.code)
             self._kernel_cache[itypes] = kern
 
         return kern(*args)

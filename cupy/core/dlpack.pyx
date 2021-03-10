@@ -36,7 +36,7 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
         kDLVPI
         kDLROCM
 
-    ctypedef struct DLContext:
+    ctypedef struct DLDevice:
         DLDeviceType device_type
         int device_id
 
@@ -45,6 +45,7 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
         kDLUInt
         kDLFloat
         kDLBfloat
+        kDLComplex
 
     ctypedef struct DLDataType:
         uint8_t code
@@ -53,7 +54,7 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
 
     ctypedef struct DLTensor:
         void* data
-        DLContext ctx
+        DLDevice device
         int ndim
         DLDataType dtype
         int64_t* shape
@@ -110,24 +111,29 @@ cpdef object toDlpack(ndarray array) except +:
     dl_tensor.strides = shape_strides + ndim
     dl_tensor.byte_offset = 0
 
-    cdef DLContext* ctx = &dl_tensor.ctx
+    cdef DLDevice* device = &dl_tensor.device
     if not runtime._is_hip_environment:
-        ctx.device_type = kDLGPU
+        device.device_type = kDLGPU
     else:
-        ctx.device_type = kDLROCM
-    ctx.device_id = array.data.device_id
+        device.device_type = kDLROCM
+    device.device_id = array.data.device_id
 
     cdef DLDataType* dtype = &dl_tensor.dtype
     if array.dtype.kind == 'u':
         dtype.code = <uint8_t>kDLUInt
+        dtype.lanes = <uint16_t>1
     elif array.dtype.kind == 'i':
         dtype.code = <uint8_t>kDLInt
+        dtype.lanes = <uint16_t>1
     elif array.dtype.kind == 'f':
         dtype.code = <uint8_t>kDLFloat
+        dtype.lanes = <uint16_t>1
+    elif array.dtype.kind == 'c':
+        dtype.code = <uint8_t>kDLComplex
+        dtype.lanes = <uint16_t>2
     else:
         raise ValueError('Unknown dtype')
     dtype.bits = <uint8_t>(array.dtype.itemsize * 8)
-    dtype.lanes = <uint16_t>1
 
     dlm_tensor.manager_ctx = <void*>array
     cpython.Py_INCREF(array)
@@ -160,19 +166,19 @@ cdef class DLPackMemory(memory.BaseMemory):
         dlm_tensor = <DLManagedTensor*>cpython.PyCapsule_GetPointer(
             dltensor, 'dltensor')
         if runtime._is_hip_environment:
-            if dlm_tensor.dl_tensor.ctx.device_type != kDLROCM:
+            if dlm_tensor.dl_tensor.device.device_type != kDLROCM:
                 raise RuntimeError('CuPy is built against ROCm/HIP, different '
                                    'from the backend that backs the incoming '
                                    'DLPack tensor')
         else:
-            if dlm_tensor.dl_tensor.ctx.device_type != kDLGPU:
+            if dlm_tensor.dl_tensor.device.device_type != kDLGPU:
                 raise RuntimeError('CuPy is built against CUDA, different '
                                    'from the backend that backs the incoming '
                                    'DLPack tensor')
 
         self.dltensor = dltensor
         self.dlm_tensor = dlm_tensor
-        self.device_id = dlm_tensor.dl_tensor.ctx.device_id
+        self.device_id = dlm_tensor.dl_tensor.device.device_id
         self.ptr = <intptr_t>dlm_tensor.dl_tensor.data
         cdef int n = 0, s = 0
         cdef int ndim = dlm_tensor.dl_tensor.ndim
@@ -265,6 +271,14 @@ cpdef ndarray fromDlpack(object dltensor) except +:
             cp_dtype = cupy.float64
         else:
             raise TypeError('float{} is not supported.'.format(bits))
+    elif dtype.code == kDLComplex:
+        # TODO(leofang): support complex32
+        if bits == 64:
+            cp_dtype = cupy.complex64
+        elif bits == 128:
+            cp_dtype = cupy.complex128
+        else:
+            raise TypeError('complex{} is not supported.'.format(bits))
     elif dtype.code == kDLBfloat:
         raise NotImplementedError('CuPy does not support bfloat16 yet')
     else:

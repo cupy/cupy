@@ -22,6 +22,8 @@ _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
+use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
+
 
 # Using tempfile.TemporaryDirectory would cause an error during cleanup
 # due to a bug: https://bugs.python.org/issue26660

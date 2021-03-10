@@ -395,7 +395,7 @@ class TestFftAllocate:
         {'shape': (3, 4), 's': (0, 5), 'axes': None},
         {'shape': (3, 4), 's': (1, 0), 'axes': None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
 @testing.gpu
@@ -472,7 +472,7 @@ class TestFft2:
         {'shape': (2, 0, 5), 's': None, 'axes': None},
         {'shape': (0, 0, 5), 's': None, 'axes': None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
 @testing.gpu
@@ -707,7 +707,7 @@ class TestPlanCtxManagerFft:
 @testing.parameterize(*testing.product({
     'n': [None, 64],
     'shape': [(64,), (128,)],
-    'norm': [None, 'backward', 'ortho', 'forward'],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.multi_gpu(2)
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -778,6 +778,10 @@ class TestMultiGpuPlanCtxManagerFft:
         with pytest.raises(ValueError) as ex, plan_wrong:
             fft(a, n=self.n, norm=self.norm)
         # targeting a particular error
+        if self.norm == '':
+            # if norm is invalid, we still get ValueError, but it's raised
+            # when checking norm, earlier than the plan check
+            return  # skip
         assert 'Target array size does not match the plan.' in str(ex.value)
 
 
@@ -797,7 +801,7 @@ class TestMultiGpuPlanCtxManagerFft:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': (-3, -2, -1)},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
 @testing.gpu
@@ -845,13 +849,14 @@ class TestFftnContiguity:
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'backward', 'ortho', 'forward'],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
 class TestRfft:
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_rfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.rfft(a, n=self.n, norm=self.norm)
@@ -862,7 +867,8 @@ class TestRfft:
         return out
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_irfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfft(a, n=self.n, norm=self.norm)
@@ -963,7 +969,7 @@ class TestPlanCtxManagerRfft:
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
 @testing.gpu
@@ -1050,7 +1056,7 @@ class TestRfft2EmptyAxes:
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
 @testing.gpu
@@ -1115,7 +1121,7 @@ class TestRfftn:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
 @testing.gpu
@@ -1193,7 +1199,7 @@ class TestPlanCtxManagerRfftn:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
     ],
-        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
 ))
 @testing.gpu
@@ -1265,13 +1271,14 @@ class TestRfftnEmptyAxes:
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'backward', 'ortho', 'forward'],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
 class TestHfft:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_hfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.hfft(a, n=self.n, norm=self.norm)
@@ -1282,7 +1289,8 @@ class TestHfft:
         return out
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_ihfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ihfft(a, n=self.n, norm=self.norm)
