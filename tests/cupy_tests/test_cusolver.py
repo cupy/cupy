@@ -6,7 +6,7 @@ import pytest
 import cupy
 from cupy import cusolver
 from cupy import testing
-from cupy.testing import attr
+from cupy.testing import _attr
 
 
 @testing.parameterize(*testing.product({
@@ -21,7 +21,7 @@ from cupy.testing import attr
     'full_matrices': [True, False],
     'overwrite_a': [True, False],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGesvdj(unittest.TestCase):
 
     def setUp(self):
@@ -80,7 +80,7 @@ class TestGesvdj(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(5, 4), (1, 4, 3), (4, 3, 2)],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGesvda(unittest.TestCase):
 
     def setUp(self):
@@ -134,7 +134,7 @@ class TestGesvda(unittest.TestCase):
     'order': ['C', 'F'],
     'UPLO': ['L', 'U'],
 }))
-@attr.gpu
+@_attr.gpu
 class TestSyevj(unittest.TestCase):
 
     def setUp(self):

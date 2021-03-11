@@ -13,7 +13,7 @@ except ImportError:
 
 import cupy as cp
 from cupy import testing
-from cupy.testing import condition
+from cupy.testing import _condition
 import cupyx
 import cupyx.scipy.sparse as sp
 
@@ -52,14 +52,14 @@ class TestLschol(unittest.TestCase):
         with pytest.raises(ValueError):
             cupyx.linalg.sparse.lschol(A, b)
 
-    @condition.retry(10)
+    @_condition.retry(10)
     def test_csrmatrix(self):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
         b = cp.array(self.b, dtype=self.dtype)
         x = cupyx.linalg.sparse.lschol(A, b)
         testing.assert_array_almost_equal(x, self.x, decimal=self.decimal)
 
-    @condition.retry(10)
+    @_condition.retry(10)
     def test_ndarray(self):
         A = cp.array(self.A.A, dtype=self.dtype)
         b = cp.array(self.b, dtype=self.dtype)
