@@ -120,21 +120,20 @@ once the CUDA driver is correctly set up, you can install CuPy from the ``conda-
 
     $ conda install -c conda-forge cupy
 
-and ``conda`` will install pre-built CuPy and most of the optional dependencies for you, including CUDA runtime libraries
-(``cudatoolkit``), NCCL, and cuDNN. It is not necessary to install CUDA Toolkit in advance. If you need to enforce
+and ``conda`` will install a pre-built CuPy binary package for you, along with CUDA runtime libraries
+(``cudatoolkit``). It is not necessary to install CUDA Toolkit in advance. If you need to enforce
 the installation of a particular CUDA version (say 10.0) for driver compatibility, you can do::
 
     $ conda install -c conda-forge cupy cudatoolkit=10.0
 
 .. note::
 
-    cuTENSOR is available on ``conda-forge`` for CUDA 10.1+ and is an optional dependency. To install CuPy with the cuTENSOR
+    cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once:
     support enabled, you can do::
 
-    $ conda install -c conda-forge cupy cutensor cudatoolkit=10.2
+    $ conda install -c conda-forge cupy cudatoolkit=10.1 cudnn cutensor nccl
 
-    Note that ``cupy`` and ``cutensor`` must be installed at the same time (as shown above) in order for the ``conda`` solver to pick up the right package;
-    otherwise, the cuTENSOR support is disabled.
+    Each of them can also be installed separately as needed. Note that cuTENSOR is available since CUDA 10.1+.
 
 .. note::
 

@@ -55,7 +55,7 @@ _preload_config = None
 
 _preload_libs = {
     'cudnn': None,
-    # 'nccl': None,
+    'nccl': None,
     'cutensor': None,
 }
 
