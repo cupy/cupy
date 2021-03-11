@@ -333,8 +333,9 @@ def _get_preload_logs():
 def _preload_warning(lib, exc):
     config = get_preload_config()
     if config is not None and lib in config:
-{lib} library could not be loaded.
         msg = '''
+{lib} library could not be loaded.
+
 Reason: {exc_type} ({exc})
 
 You can install the library by:
