@@ -54,13 +54,13 @@ except ImportError:
 
 try:
     from cupy.cuda import nccl  # NOQA
-except ImportError:
+except ImportError as e:
     nccl = _UnavailableModule('cupy.cuda.nccl')
     _preload_warning('nccl', e)
 
 try:
     from cupy_backends.cuda.libs import cutensor
-except ImportError:
+except ImportError as e:
     cutensor = _UnavailableModule('cupy.cuda.cutensor')
     _preload_warning('cutensor', e)
 
