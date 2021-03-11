@@ -32,6 +32,9 @@ preloaded.
 Example of `_preload_config` is as follows:
 
 {
+    # installation source
+    'packaging': 'pip',
+
     # CUDA version string
     'cuda': '11.0',
 
@@ -330,12 +333,22 @@ def _get_preload_logs():
 def _preload_warning(lib, exc):
     config = get_preload_config()
     if config is not None and lib in config:
-        warnings.warn('''
 {lib} library could not be loaded.
-
+        msg = '''
 Reason: {exc_type} ({exc})
 
 You can install the library by:
+'''
+        if config['packaging'] == 'pip':
+            msg += '''
   $ python -m cupyx.tools.install_library --library {lib} --cuda {cuda}
-'''.format(lib=lib, exc_type=type(exc).__name__, exc=str(exc),
+'''
+        elif config['packaging'] == 'conda':
+            msg += '''
+  $ conda install -c conda-forge {lib}
+'''
+        else:
+            assert False
+        msg.format(lib=lib, exc_type=type(exc).__name__, exc=str(exc),
            cuda=config['cuda']))
+        warnings.warn(msg)

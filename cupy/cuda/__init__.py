@@ -5,6 +5,7 @@ from cupy._environment import get_cuda_path  # NOQA
 from cupy._environment import get_nvcc_path  # NOQA
 from cupy._environment import get_rocm_path  # NOQA
 from cupy._environment import get_hipcc_path  # NOQA
+from cupy._environment import _preload_warning
 from cupy.cuda import compiler  # NOQA
 from cupy.cuda import device  # NOQA
 from cupy.cuda import function  # NOQA
@@ -55,11 +56,13 @@ try:
     from cupy.cuda import nccl  # NOQA
 except ImportError:
     nccl = _UnavailableModule('cupy.cuda.nccl')
+    _preload_warning('nccl', e)
 
 try:
     from cupy_backends.cuda.libs import cutensor
 except ImportError:
     cutensor = _UnavailableModule('cupy.cuda.cutensor')
+    _preload_warning('cutensor', e)
 
 
 def __getattr__(key):
