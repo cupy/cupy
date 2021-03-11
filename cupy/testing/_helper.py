@@ -12,8 +12,8 @@ import numpy
 
 import cupy
 from cupy.core import internal
-from cupy.testing import array
-from cupy.testing import parameterized
+from cupy.testing import _array
+from cupy.testing import _parameterized
 import cupyx
 import cupyx.scipy.sparse
 
@@ -492,7 +492,7 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     def check_func(c, n):
         rtol1, atol1 = _resolve_tolerance(type_check, c, rtol, atol)
-        array.assert_allclose(c, n, rtol1, atol1, err_msg, verbose)
+        _array.assert_allclose(c, n, rtol1, atol1, err_msg, verbose)
     return _make_decorator(check_func, name, type_check, contiguous_check,
                            accept_error, sp_name, scipy_name,
                            _check_sparse_format)
@@ -532,7 +532,7 @@ def numpy_cupy_array_almost_equal(decimal=6, err_msg='', verbose=True,
     .. seealso:: :func:`cupy.testing.assert_array_almost_equal`
     """
     def check_func(x, y):
-        array.assert_array_almost_equal(x, y, decimal, err_msg, verbose)
+        _array.assert_array_almost_equal(x, y, decimal, err_msg, verbose)
     return _make_decorator(check_func, name, type_check, False,
                            accept_error, sp_name, scipy_name)
 
@@ -567,7 +567,7 @@ def numpy_cupy_array_almost_equal_nulp(nulp=1, name='xp', type_check=True,
     .. seealso:: :func:`cupy.testing.assert_array_almost_equal_nulp`
     """  # NOQA
     def check_func(x, y):
-        array.assert_array_almost_equal_nulp(x, y, nulp)
+        _array.assert_array_almost_equal_nulp(x, y, nulp)
     return _make_decorator(check_func, name, type_check, False,
                            accept_error, sp_name, scipy_name=None)
 
@@ -606,7 +606,7 @@ def numpy_cupy_array_max_ulp(maxulp=1, dtype=None, name='xp', type_check=True,
 
     """  # NOQA
     def check_func(x, y):
-        array.assert_array_max_ulp(x, y, maxulp, dtype)
+        _array.assert_array_max_ulp(x, y, maxulp, dtype)
     return _make_decorator(check_func, name, type_check, False,
                            accept_error, sp_name, scipy_name)
 
@@ -645,7 +645,7 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
-        array.assert_array_equal(x, y, err_msg, verbose, strides_check)
+        _array.assert_array_equal(x, y, err_msg, verbose, strides_check)
     return _make_decorator(check_func, name, type_check, False,
                            accept_error, sp_name, scipy_name)
 
@@ -678,7 +678,7 @@ def numpy_cupy_array_list_equal(
         DeprecationWarning)
 
     def check_func(x, y):
-        array.assert_array_equal(x, y, err_msg, verbose)
+        _array.assert_array_equal(x, y, err_msg, verbose)
     return _make_decorator(check_func, name, False, False,
                            False, sp_name, scipy_name)
 
@@ -714,7 +714,7 @@ def numpy_cupy_array_less(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_less`
     """
     def check_func(x, y):
-        array.assert_array_less(x, y, err_msg, verbose)
+        _array.assert_array_less(x, y, err_msg, verbose)
     return _make_decorator(check_func, name, type_check, False,
                            accept_error, sp_name, scipy_name)
 
@@ -1044,7 +1044,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
         full = int(os.environ.get('CUPY_TEST_FULL_COMBINATION', '0')) != 0
 
     if full:
-        combination = parameterized.product({name: types for name in names})
+        combination = _parameterized.product({name: types for name in names})
     else:
         ts = []
         for _ in range(len(names)):

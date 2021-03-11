@@ -5,7 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.testing import attr
+from cupy.testing import _attr
 import cupyx
 from cupyx import lapack
 
@@ -16,7 +16,7 @@ from cupyx import lapack
     'nrhs': [None, 1, 4],
     'order': ['C', 'F'],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGesv(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -90,7 +90,7 @@ class TestGesv(unittest.TestCase):
     'shape': [(4, 4), (5, 4), (4, 5)],
     'nrhs': [None, 1, 4],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGels(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -111,7 +111,7 @@ class TestGels(unittest.TestCase):
     'shape': [(3, 4, 2, 2), (5, 3, 3), (7, 7)],
     'nrhs': [None, 1, 4]
 }))
-@attr.gpu
+@_attr.gpu
 class TestPosv(unittest.TestCase):
 
     def setUp(self):
@@ -149,7 +149,7 @@ class TestPosv(unittest.TestCase):
     'shape': [(2, 3, 3)],
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
-@attr.gpu
+@_attr.gpu
 class TestXFailBatchedPosv(unittest.TestCase):
 
     def test_posv(self):
