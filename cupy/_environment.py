@@ -278,7 +278,14 @@ def _preload_libraries():
     """
 
     config = get_preload_config()
-    if config is None:
+    if (config is None) or (config['packaging'] == 'conda'):
+        # We don't do preload if CuPy is installed from Conda-Forge, as we
+        # cannot guarantee the version pinned in _wheel.json, which is
+        # encoded in config[lib]['filename'], is always available on
+        # Conda-Forge. In fact, in order to accommodate this, the plan is
+        # to set both "version" and "filename" to an emtpy string on CF's
+        # _wheel.json, so if we look them up below an exception would be
+        # raised.
         _log('Skip preloading as this is not a wheel installation')
         return
 
