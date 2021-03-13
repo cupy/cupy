@@ -305,10 +305,10 @@ class TestMeasurementsSelect:
     def _hip_skip_invalid_condition(self):
         if (runtime.is_hip
                 and self.op == 'extrema'
-                and (self.index == None
+                and (self.index is None
                      or (self.index == 1 and self.labels in [None, 5])
                      or (self.index in ['all', 'subset']
-                         and self.labels == None))):
+                         and self.labels is None))):
             pytest.xfail('ROCm/HIP may have a bug')
 
     # no_bool=True due to https://github.com/scipy/scipy/issues/12836
