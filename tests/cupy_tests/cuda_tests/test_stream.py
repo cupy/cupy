@@ -3,12 +3,12 @@ import unittest
 from cupy._creation import from_data
 from cupy import cuda
 from cupy import testing
-from cupy.testing import attr
+from cupy.testing import _attr
 
 
 class TestStream(unittest.TestCase):
 
-    @attr.gpu
+    @_attr.gpu
     def test_eq(self):
         null0 = cuda.Stream.null
         null1 = cuda.Stream(True)
@@ -30,15 +30,15 @@ class TestStream(unittest.TestCase):
         del stream_ptr
         del x
 
-    @attr.gpu
+    @_attr.gpu
     def test_del(self):
         self.check_del(null=False)
 
-    @attr.gpu
+    @_attr.gpu
     def test_del_null(self):
         self.check_del(null=True)
 
-    @attr.gpu
+    @_attr.gpu
     def test_get_and_add_callback(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
@@ -59,7 +59,7 @@ class TestStream(unittest.TestCase):
         stream.synchronize()
         assert out == list(range(N))
 
-    @attr.gpu
+    @_attr.gpu
     def test_with_statement(self):
         stream1 = cuda.Stream()
         stream2 = cuda.Stream()
@@ -71,7 +71,7 @@ class TestStream(unittest.TestCase):
             assert stream1 == cuda.get_current_stream()
         assert cuda.Stream.null == cuda.get_current_stream()
 
-    @attr.gpu
+    @_attr.gpu
     def test_use(self):
         stream1 = cuda.Stream().use()
         assert stream1 == cuda.get_current_stream()
@@ -88,7 +88,7 @@ class TestExternalStream(unittest.TestCase):
     def tearDown(self):
         cuda.runtime.streamDestroy(self.stream_ptr)
 
-    @attr.gpu
+    @_attr.gpu
     def test_get_and_add_callback(self):
         N = 100
         cupy_arrays = [testing.shaped_random((2, 3)) for _ in range(N)]
