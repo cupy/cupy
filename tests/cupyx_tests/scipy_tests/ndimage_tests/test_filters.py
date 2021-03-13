@@ -2,6 +2,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 import cupyx.scipy.ndimage  # NOQA
 
@@ -192,8 +193,36 @@ COMMON_FLOAT_PARAMS['dtype'] = [numpy.float32, numpy.float64]
 @testing.gpu
 @testing.with_requires('scipy')
 class TestFilter(FilterTestCaseBase):
+
+    def _hip_skip_invalid_condition(self):
+        if not runtime.is_hip:
+            return
+        if self.dtype != numpy.float64:
+            return
+        if self.filter != 'median_filter':
+            return
+        if self.mode == 'mirror':
+            invalids = [(False, 3, (4, 5)),
+                        (False, 3, (3, 4, 5)),
+                        (False, 4, (4, 5)),
+                        (True, 4, (4, 5))]
+            if (self.footprint, self.ksize, self.shape) in invalids:
+                pytest.xfail('ROCm/HIP may have a bug')
+        elif self.mode == 'reflect':
+            if (self.footprint
+                    and self.ksize == 3
+                    and self.shape == (3, 4, 5)
+                    and self.output != numpy.float64):
+                pytest.xfail('ROCm/HIP may have a bug')
+        elif self.mode == 'nearest' or self.mode == 'wrap':
+            if (self.footprint
+                    and self.ksize == 3
+                    and self.shape == (3, 4, 5)):
+                pytest.xfail('ROCm/HIP may have a bug')
+
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
+        self._hip_skip_invalid_condition()
         if self.dtype == getattr(self, 'output', None):
             pytest.skip("redundant")
         return self._filter(xp, scp)
