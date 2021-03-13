@@ -4,7 +4,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy.core.internal import prod
 from cupy import cusolver
 from cupy import testing
 from cupy.testing import _condition
@@ -217,7 +216,7 @@ class TestSVD(unittest.TestCase):
         self.check_singular((2, 2))
         self.check_singular((7, 3))
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_rank2(self):
         self.check_rank2(cupy.random.randn(2, 3, 4).astype(numpy.float32))
         self.check_rank2(cupy.random.randn(1, 2, 3, 4).astype(numpy.float64))
