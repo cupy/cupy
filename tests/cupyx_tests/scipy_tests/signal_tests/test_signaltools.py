@@ -62,9 +62,10 @@ class TestFFTConvolve(unittest.TestCase):
             np.float16: 1e-3, 'default': 1e-8}
 
     def _hip_skip_invalid_condition(self):
-        invalid_condition = [('full', 4), ('full', 5), ('full', 10),
-                             ('same', 3), ('same', 4), ('same', 5), ('same', 10),
-                             ('valid', 10)]
+        invalid_condition = [
+            ('full', 4), ('full', 5), ('full', 10),
+            ('same', 3), ('same', 4), ('same', 5), ('same', 10),
+            ('valid', 10)]
         if (runtime.is_hip and self.size1 == (3, 4, 10)
                 and (self.mode, self.size2) in invalid_condition):
             pytest.xfail('ROCm/HIP may have a bug')
