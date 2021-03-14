@@ -284,6 +284,21 @@ if not use_hip:
         ],
     })
 
+    MODULES.append({
+        'name': 'cusparselt',
+        'file': [
+            'cupy_backends.cuda.libs.cusparselt',
+        ],
+        'include': [
+            'cusparseLt.h',
+        ],
+        'libraries': [
+            'cusparseLt',
+        ],
+        'check_method': build.check_cusparselt_version,
+        'version_method': build.get_cusparselt_version,
+    })
+
 else:
     MODULES.append({
         'name': 'cub',
@@ -479,6 +494,15 @@ def preconfigure_modules(compiler, settings):
                 if os.path.exists(lib_path):
                     settings['library_dirs'].append(lib_path)
                     break
+
+        if module['name'] == 'cusparselt':
+            cusparselt_path = os.environ.get('CUSPARSELT_PATH', '')
+            inc_path = os.path.join(cusparselt_path, 'include')
+            if os.path.exists(inc_path):
+                settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cusparselt_path, 'lib64')
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
 
         print('')
         print('-------- Configuring Module: {} --------'.format(
