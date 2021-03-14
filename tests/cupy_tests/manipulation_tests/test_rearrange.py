@@ -34,6 +34,15 @@ class TestRoll(unittest.TestCase):
         x = testing.shaped_arange(self.shape, xp, dtype)
         return xp.roll(x, self.shift, axis=self.axis)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_roll_cupy_shift(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype)
+        shift = self.shift
+        if xp is cupy:
+            shift = cupy.array(shift)
+        return xp.roll(x, shift, axis=self.axis)
+
 
 class TestRollTypeError(unittest.TestCase):
 
@@ -64,6 +73,15 @@ class TestRollValueError(unittest.TestCase):
             x = testing.shaped_arange(self.shape, xp)
             with pytest.raises(ValueError):
                 xp.roll(x, self.shift, axis=self.axis)
+
+    def test_roll_invalid_cupy_shift(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange(self.shape, xp)
+            shift = self.shift
+            if xp is cupy:
+                shift = cupy.array(shift)
+            with pytest.raises(ValueError):
+                xp.roll(x, shift, axis=self.axis)
 
 
 @testing.gpu
