@@ -5,7 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.testing import helper
+from cupy.testing import _helper
 
 
 class _Exception1(Exception):
@@ -20,21 +20,21 @@ class TestContainsSignedAndUnsigned(unittest.TestCase):
 
     def test_include(self):
         kw = {'x': numpy.int32, 'y': numpy.uint32}
-        assert helper._contains_signed_and_unsigned(kw)
+        assert _helper._contains_signed_and_unsigned(kw)
 
         kw = {'x': numpy.float32, 'y': numpy.uint32}
-        assert helper._contains_signed_and_unsigned(kw)
+        assert _helper._contains_signed_and_unsigned(kw)
 
     def test_signed_only(self):
         kw = {'x': numpy.int32}
-        assert not helper._contains_signed_and_unsigned(kw)
+        assert not _helper._contains_signed_and_unsigned(kw)
 
         kw = {'x': numpy.float32}
-        assert not helper._contains_signed_and_unsigned(kw)
+        assert not _helper._contains_signed_and_unsigned(kw)
 
     def test_unsigned_only(self):
         kw = {'x': numpy.uint32}
-        assert not helper._contains_signed_and_unsigned(kw)
+        assert not _helper._contains_signed_and_unsigned(kw)
 
 
 class NumPyCuPyDecoratorBase(object):
@@ -147,22 +147,22 @@ class TestNumPyCuPyLess(unittest.TestCase, NumPyCuPyDecoratorBase,
 
 class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
 
-    @helper.numpy_cupy_allclose()
+    @_helper.numpy_cupy_allclose()
     def correct_failure(self, dtype1, dtype2, xp):
         if xp == numpy:
             return xp.array(-1, dtype=numpy.float32)
         else:
             return xp.array(-2, dtype=numpy.float32)
 
-    @helper.for_unsigned_dtypes('dtype1')
-    @helper.for_signed_dtypes('dtype2')
+    @_helper.for_unsigned_dtypes('dtype1')
+    @_helper.for_signed_dtypes('dtype2')
     def test_correct_failure(self, dtype1, dtype2):
         with pytest.raises(AssertionError):
             self.correct_failure(dtype1, dtype2)
 
-    @helper.for_unsigned_dtypes('dtype1')
-    @helper.for_signed_dtypes('dtype2')
-    @helper.numpy_cupy_allclose()
+    @_helper.for_unsigned_dtypes('dtype1')
+    @_helper.for_signed_dtypes('dtype2')
+    @_helper.numpy_cupy_allclose()
     def test_correct_success(self, xp, dtype1, dtype2):
         # Behavior of assigning a negative value to an unsigned integer
         # variable is undefined.

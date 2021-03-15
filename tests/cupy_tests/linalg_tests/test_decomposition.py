@@ -6,7 +6,7 @@ import pytest
 import cupy
 from cupy import cusolver
 from cupy import testing
-from cupy.testing import condition
+from cupy.testing import _condition
 import cupyx
 
 
@@ -114,7 +114,7 @@ class TestQRDecomposition(unittest.TestCase):
             cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
     @testing.fix_random()
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_mode(self):
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
@@ -204,19 +204,19 @@ class TestSVD(unittest.TestCase):
         with pytest.raises(numpy.linalg.LinAlgError):
             cupy.linalg.svd(array, full_matrices=self.full_matrices)
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd(self):
         self.check_usv((3, 7))
         self.check_usv((2, 2))
         self.check_usv((7, 3))
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_no_uv(self):
         self.check_singular((3, 7))
         self.check_singular((2, 2))
         self.check_singular((7, 3))
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_rank2(self):
         self.check_rank2(cupy.random.randn(2, 3, 4).astype(numpy.float32))
         self.check_rank2(cupy.random.randn(1, 2, 3, 4).astype(numpy.float64))
