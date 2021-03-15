@@ -6,10 +6,9 @@
 import cupy
 import numpy
 
-from cupy_backends.cuda.libs.cusparselt import Handle, MatDescriptor, MatmulDescriptor, MatmulAlgSelection, MatmulPlan
+from cupy_backends.cuda.libs.cusparselt import Handle, MatDescriptor, MatmulDescriptor, MatmulAlgSelection, MatmulPlan  # NOQA
 from cupy.core import _dtype
 from cupy_backends.cuda.libs import cusparselt, cusparse
-from cupy_backends.cuda.api import runtime
 
 dtype = 'float16'
 m, n, k = 1024, 1024, 1024
@@ -40,10 +39,10 @@ cuda_dtype_C = _dtype.to_cuda_dtype(C.dtype, is_half_allowed=True)
 cusparselt.structuredDescriptorInit(handle, matA, A.shape[0], A.shape[1],
                                     A.shape[1], alignment, cuda_dtype_A, order,
                                     cusparselt.CUSPARSELT_SPARSITY_50_PERCENT)
-cusparselt.denseDescriptorInit(handle, matB, B.shape[0], B.shape[1], B.shape[1],
-                               alignment, cuda_dtype_B, order)
-cusparselt.denseDescriptorInit(handle, matC, C.shape[0], C.shape[1], C.shape[1],
-                               alignment, cuda_dtype_C, order)
+cusparselt.denseDescriptorInit(handle, matB, B.shape[0], B.shape[1],
+                               B.shape[1], alignment, cuda_dtype_B, order)
+cusparselt.denseDescriptorInit(handle, matC, C.shape[0], C.shape[1],
+                               C.shape[1], alignment, cuda_dtype_C, order)
 
 #
 # initializes matmul, algorithm selection and plan

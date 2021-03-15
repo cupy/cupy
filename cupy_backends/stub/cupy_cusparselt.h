@@ -1,4 +1,4 @@
-// This file is a stub header file of cuSPARSELt for Read the Docs.
+// Stub header file for cuSPARSELt
 
 #ifndef INCLUDE_GUARD_STUB_CUPY_CUSPARSELT_H
 #define INCLUDE_GUARD_STUB_CUPY_CUSPARSELT_H
@@ -27,7 +27,7 @@ extern "C" {
     cusparseStatus_t cusparseLtInit(...) {
 	return CUSPARSE_STATUS_SUCCESS;
     }
-    
+
     cusparseStatus_t cusparseLtDestroy(...) {
 	return CUSPARSE_STATUS_SUCCESS;
     }
@@ -71,7 +71,7 @@ extern "C" {
     cusparseStatus_t cusparseLtMatmul(...) {
 	return CUSPARSE_STATUS_SUCCESS;
     }
-    
+
     cusparseStatus_t cusparseLtMatmulSearch(...) {
 	return CUSPARSE_STATUS_SUCCESS;
     }
@@ -83,11 +83,11 @@ extern "C" {
     cusparseStatus_t cusparseLtSpMMAPruneCheck(...) {
 	return CUSPARSE_STATUS_SUCCESS;
     }
-    
+
     cusparseStatus_t cusparseLtSpMMACompressedSize(...) {
 	return CUSPARSE_STATUS_SUCCESS;
     }
-	
+
     cusparseStatus_t cusparseLtSpMMACompress(...) {
 	return CUSPARSE_STATUS_SUCCESS;
     }
