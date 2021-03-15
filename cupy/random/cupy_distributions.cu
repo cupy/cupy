@@ -96,6 +96,10 @@ __device__ double rk_standard_exponential(rk_state* state) {
     return -log(1.0 - state->rk_double());
 }
 
+__device__ double rk_standard_normal(rk_state* state) {
+    return state->rk_normal();
+}
+
 __device__ double rk_standard_gamma(rk_state* state, double shape) {
     double b, c;
     double U, V, X, Y;
@@ -226,6 +230,13 @@ struct exponential_functor {
     }
 };
 
+struct standard_normal_functor {
+    template<typename... Args>
+    __device__ double operator () (Args&&... args) {
+        return rk_standard_normal(args...);
+    }
+};
+
 template<typename F, typename T, typename R, typename... Args>
 __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -279,3 +290,7 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
     generator_dispatcher(generator, launcher, state, out, size);
 }
 
+void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<standard_normal_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size);
+}

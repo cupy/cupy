@@ -30,6 +30,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void exponential(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
+    void standard_normal(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
 
 
 class Generator:
@@ -218,6 +221,37 @@ class Generator:
         # cython cant call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
+
+
+    def standard_normal(self, size=None, dtype=numpy.float64, out=None):
+        """Returns an array of samples drawn from the standard normal distribution.
+    
+        Args:
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+            dtype: Data type specifier.
+
+            out (cupy.ndarray, optional): If specified, values will be written
+                to this array
+    
+        Returns:
+            cupy.ndarray: Samples drawn from the standard normal distribution.
+    
+        .. seealso:: :func:`numpy.random.standard_normal`
+    
+        """
+        cdef ndarray y
+
+        y = ndarray(size if size is not None else (), numpy.float64)
+        _launch_dist(self.bit_generator, standard_normal, y, ())
+        if out is not None:
+            out[...] = y
+            y = out
+        # we cast the array to a python object because
+        # cython cant call astype with the default values for
+        # omitted args.
+        return (<object>y).astype(dtype, copy=False)
+
 
 
 def init_curand(generator, state, seed, size):
