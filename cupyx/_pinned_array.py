@@ -26,6 +26,9 @@ def empty_pinned(shape, dtype=float, order='C'):
     shape = (shape,) if isinstance(shape, int) else tuple(shape)
     nbytes = internal.prod(shape) * numpy.dtype(dtype).itemsize
     mem = cuda.alloc_pinned_memory(nbytes)
+    # Because PinnedMemoryPointer implements the buffer protocol, it is hard
+    # to reinterpret its shape etc, so we have to invoke the ndarray
+    # constructor...
     out = numpy.ndarray(shape, dtype=dtype, buffer=mem, order=order)
     return out
 
@@ -42,10 +45,9 @@ def empty_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
     Args:
         a (numpy.ndarray or cupy.ndarray): Base array.
         dtype: Data type specifier. The data type of ``a`` is used by default.
-        order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
-            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
-            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
-            ``'K'`` means match the layout of ``a`` as closely as possible.
+        order ({'C', 'F'}): Row-major (C-style) or column-major
+            (Fortran-style) order. Unlike :func:`numpy.empty_like`, this
+            function does not support ``'A'`` or ``'K'``.
         subok: Not supported yet, must be None.
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try
@@ -64,6 +66,14 @@ def empty_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
         dtype = a.dtype
     if shape is None:
         shape = a.shape
+    if order == 'K':
+        raise ValueError("order cannot be 'K'")
+    elif order == 'A':
+        # numpy.ndarray() is poor at inferring 'A'
+        if a.flags.c_contiguous:
+            order = 'C'
+        elif a.flags.f_contiguous:
+            order = 'F'
     return empty_pinned(shape, dtype, order)
 
 

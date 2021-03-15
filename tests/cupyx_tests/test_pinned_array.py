@@ -5,52 +5,66 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.testing._helper import _wraps_partial
 import cupyx
 
 
-_numpy_funcs = {
-    'empty': numpy.empty,
-    'empty_like': numpy.empty_like,
-    'zeros': numpy.zeros,
-    'zeros_like': numpy.zeros_like,
-}
+def numpy_cupyx_array_equal(target_func, name='func'):
+    _mod = (cupy, numpy)
 
+    _numpy_funcs = {
+        'empty': numpy.empty,
+        'empty_like': numpy.empty_like,
+        'zeros': numpy.zeros,
+        'zeros_like': numpy.zeros_like,
+    }
+    
+    _cupy_funcs = {
+        'empty': cupyx.empty_pinned,
+        'empty_like': cupyx.empty_like_pinned,
+        'zeros': cupyx.zeros_pinned,
+        'zeros_like': cupyx.zeros_like_pinned,
+    }
+    
+    def _get_test_func(xp, func):
+        if xp is numpy:
+            return _numpy_funcs[func]
+        elif xp is cupy:
+            return _cupy_funcs[func]
+        else:
+            assert False
+    
+    def _check_pinned_mem_used(a, xp):
+        if xp is cupy:
+            assert isinstance(a.base, cupy.cuda.PinnedMemoryPointer)
 
-_cupy_funcs = {
-    'empty': cupyx.empty_pinned,
-    'empty_like': cupyx.empty_like_pinned,
-    'zeros': cupyx.zeros_pinned,
-    'zeros_like': cupyx.zeros_like_pinned,
-}
+    def decorator(impl):
+        @_wraps_partial(impl, name)
+        def test_func(self, *args, **kw):
+            out = []
+            for xp in _mod:
+                func = _get_test_func(xp, target_func)
+                kw[name] = func
+                a = impl(self, *args, **kw)
+                _check_pinned_mem_used(a, xp)
+                out.append(a)
+            numpy.testing.assert_array_equal(*out)
+        return test_func
+    return decorator
 
-
-def _get_test_func(xp, func):
-    if xp is numpy:
-        return _numpy_funcs[func]
-    elif xp is cupy:
-        return _cupy_funcs[func]
-    else:
-        assert False
-
-
-def _check_pinned_mem_used(a, xp):
-    if xp is cupy:
-        assert isinstance(a.base, cupy.cuda.PinnedMemoryPointer)
 
 # test_empty_scalar_none is removed
+# test_empty_like_K_strides is removed
+# test_zeros_scalar_none is removed
 @testing.gpu
 class TestBasic(unittest.TestCase):
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    def test_empty(self, dtype, order):
-        out = []
-        for xp in (cupy, numpy):
-            func = _get_test_func(xp, 'empty')
-            a = func((2, 3, 4), dtype=dtype, order=order)
-            a.fill(0)
-            _check_pinned_mem_used(a, xp)
-            out.append(a)
-        numpy.testing.assert_array_equal(*out)
+    @numpy_cupyx_array_equal(target_func='empty')
+    def test_empty(self, dtype, order, func):
+        a = func((2, 3, 4), dtype=dtype, order=order)
+        a.fill(0)
+        return a
 
     @testing.slow
     def test_empty_huge_size(self):
@@ -72,27 +86,19 @@ class TestBasic(unittest.TestCase):
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    def test_empty_scalar(self, dtype, order):
-        out = []
-        for xp in (cupy, numpy):
-            func = _get_test_func(xp, 'empty')
-            a = func((), dtype=dtype, order=order)
-            a.fill(0)
-            _check_pinned_mem_used(a, xp)
-            out.append(a)
-        numpy.testing.assert_array_equal(*out)
+    @numpy_cupyx_array_equal(target_func='empty')
+    def test_empty_scalar(self, dtype, order, func):
+        a = func((), dtype=dtype, order=order)
+        a.fill(0)
+        return a
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    def test_empty_int(self, dtype, order):
-        out = []
-        for xp in (cupy, numpy):
-            func = _get_test_func(xp, 'empty')
-            a = func(3, dtype=dtype, order=order)
-            a.fill(0)
-            _check_pinned_mem_used(a, xp)
-            out.append(a)
-        numpy.testing.assert_array_equal(*out)
+    @numpy_cupyx_array_equal(target_func='empty')
+    def test_empty_int(self, dtype, order, func):
+        a = func(3, dtype=dtype, order=order)
+        a.fill(0)
+        return a
 
     @testing.slow
     def test_empty_int_huge_size(self):
@@ -112,25 +118,21 @@ class TestBasic(unittest.TestCase):
         del a
         cupy.get_default_pinned_memory_pool().free_all_blocks()
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders('CFA')
     @testing.for_all_dtypes()
-    def test_empty_like(self, dtype, order):
-        out = []
-        for xp in (cupy, numpy):
-            a = testing.shaped_arange((2, 3, 4), xp, dtype)
-            func = _get_test_func(xp, 'empty_like')
-            b = func(a, order=order)
-            b.fill(0)
-            _check_pinned_mem_used(b, xp)
-            out.append(b)
-        numpy.testing.assert_array_equal(*out)
+    @numpy_cupyx_array_equal(target_func='empty_like')
+    def test_empty_like(self, dtype, order, func):
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        b = func(a, order=order)
+        b.fill(0)
+        return b
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders('CFA')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_empty_like_contiguity(self, xp, dtype, order):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        b = xp.empty_like(a, order=order)
+    @numpy_cupyx_array_equal(target_func='empty_like')
+    def test_empty_like_contiguity(self, dtype, order, func):
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        b = func(a, order=order)
         b.fill(0)
         if order in ['f', 'F']:
             assert b.flags.f_contiguous
@@ -138,13 +140,13 @@ class TestBasic(unittest.TestCase):
             assert b.flags.c_contiguous
         return b
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders('CFA')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_empty_like_contiguity2(self, xp, dtype, order):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype)
-        a = xp.asfortranarray(a)
-        b = xp.empty_like(a, order=order)
+    @numpy_cupyx_array_equal(target_func='empty_like')
+    def test_empty_like_contiguity2(self, dtype, order, func):
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        a = numpy.asfortranarray(a)
+        b = func(a, order=order)
         b.fill(0)
         if order in ['c', 'C']:
             assert b.flags.c_contiguous
@@ -152,19 +154,16 @@ class TestBasic(unittest.TestCase):
             assert b.flags.f_contiguous
         return b
 
-    @testing.for_orders('CFAK')
+    @testing.for_orders('CFA')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_empty_like_contiguity3(self, xp, dtype, order):
-        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+    @numpy_cupyx_array_equal(target_func='empty_like')
+    def test_empty_like_contiguity3(self, dtype, order, func):
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
         # test strides that are both non-contiguous and non-descending
         a = a[:, ::2, :].swapaxes(0, 1)
-        b = xp.empty_like(a, order=order)
+        b = func(a, order=order)
         b.fill(0)
-        if order in ['k', 'K', None]:
-            assert not b.flags.c_contiguous
-            assert not b.flags.f_contiguous
-        elif order in ['f', 'F']:
+        if order in ['f', 'F']:
             assert not b.flags.c_contiguous
             assert b.flags.f_contiguous
         else:
@@ -172,86 +171,59 @@ class TestBasic(unittest.TestCase):
             assert not b.flags.f_contiguous
         return b
 
-    @testing.for_all_dtypes()
-    def test_empty_like_K_strides(self, dtype):
-        # test strides that are both non-contiguous and non-descending
-        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
-        a = a[:, ::2, :].swapaxes(0, 1)
-        b = numpy.empty_like(a, order='K')
-        b.fill(0)
-
-        # GPU case
-        ag = testing.shaped_arange((2, 3, 4), cupy, dtype)
-        ag = ag[:, ::2, :].swapaxes(0, 1)
-        bg = cupy.empty_like(ag, order='K')
-        bg.fill(0)
-
-        # make sure NumPy and CuPy strides agree
-        assert b.strides == bg.strides
-        return
-
     @testing.with_requires('numpy>=1.19')
     @testing.for_all_dtypes()
     def test_empty_like_invalid_order(self, dtype):
-        for xp in (numpy, cupy):
-            a = testing.shaped_arange((2, 3, 4), xp, dtype)
-            with pytest.raises(ValueError):
-                xp.empty_like(a, order='Q')
+        a = testing.shaped_arange((2, 3, 4), numpy, dtype)
+        with pytest.raises(ValueError):
+            cupyx.empty_like_pinned(a, order='Q')
 
     def test_empty_like_subok(self):
-        a = testing.shaped_arange((2, 3, 4), cupy)
+        a = testing.shaped_arange((2, 3, 4), numpy)
         with pytest.raises(TypeError):
-            cupy.empty_like(a, subok=True)
+            cupyx.empty_like_pinned(a, subok=True)
 
     @testing.for_CF_orders()
     def test_empty_zero_sized_array_strides(self, order):
         a = numpy.empty((1, 0, 2), dtype='d', order=order)
-        b = cupy.empty((1, 0, 2), dtype='d', order=order)
+        b = cupyx.empty_pinned((1, 0, 2), dtype='d', order=order)
         assert b.strides == a.strides
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_zeros(self, xp, dtype, order):
-        return xp.zeros((2, 3, 4), dtype=dtype, order=order)
+    @numpy_cupyx_array_equal(target_func='zeros')
+    def test_zeros(self, dtype, order, func):
+        return func((2, 3, 4), dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_zeros_scalar(self, xp, dtype, order):
-        return xp.zeros((), dtype=dtype, order=order)
-
-    @testing.with_requires('numpy>=1.20')
-    @testing.for_CF_orders()
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_zeros_scalar_none(self, xp, dtype, order):
-        with testing.assert_warns(DeprecationWarning):
-            return xp.zeros(None, dtype=dtype, order=order)
+    @numpy_cupyx_array_equal(target_func='zeros')
+    def test_zeros_scalar(self, dtype, order, func):
+        return func((), dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_zeros_int(self, xp, dtype, order):
-        return xp.zeros(3, dtype=dtype, order=order)
+    @numpy_cupyx_array_equal(target_func='zeros')
+    def test_zeros_int(self, dtype, order, func):
+        return func(3, dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     def test_zeros_strides(self, order):
         a = numpy.zeros((2, 3), dtype='d', order=order)
-        b = cupy.zeros((2, 3), dtype='d', order=order)
+        b = cupyx.zeros_pinned((2, 3), dtype='d', order=order)
         assert b.strides == a.strides
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_zeros_like(self, xp, dtype, order):
-        a = xp.ndarray((2, 3, 4), dtype=dtype)
-        return xp.zeros_like(a, order=order)
+    @numpy_cupyx_array_equal(target_func='zeros_like')
+    def test_zeros_like(self, dtype, order, func):
+        a = numpy.ndarray((2, 3, 4), dtype=dtype)
+        return func(a, order=order)
 
     def test_zeros_like_subok(self):
-        a = cupy.ndarray((2, 3, 4))
+        a = numpy.ndarray((2, 3, 4))
         with pytest.raises(TypeError):
-            cupy.zeros_like(a, subok=True)
+            cupyx.zeros_like_pinned(a, subok=True)
 
 
 @testing.parameterize(
