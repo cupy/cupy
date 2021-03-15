@@ -14,10 +14,6 @@ Device management
 Memory management
 -----------------
 
-For using pinned memory more conveniently, we also provide a few high-level APIs in the ``cupyx`` namespace,
-including :func:`cupyx.empty_pinned`, :func:`cupyx.empty_like_pinned`, :func:`cupyx.zeros_pinned`, and
-:func:`cupyx.zeros_like_pinned`. They return NumPy arrays backed CuPy's pinned memory pool.
-
 .. autosummary::
    :toctree: generated/
    :nosignatures:
