@@ -23,7 +23,7 @@ def empty_pinned(shape, dtype=float, order='C'):
     .. seealso:: :func:`numpy.empty`
 
     """
-    shape = tuple(shape)
+    shape = (shape,) if isinstance(shape, int) else tuple(shape)
     nbytes = internal.prod(shape) * numpy.dtype(dtype).itemsize
     mem = cuda.alloc_pinned_memory(nbytes)
     out = numpy.ndarray(shape, dtype=dtype, buffer=mem, order=order)
