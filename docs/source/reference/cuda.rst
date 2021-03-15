@@ -14,6 +14,10 @@ Device management
 Memory management
 -----------------
 
+For using pinned memory more conveniently, we also provide a few high-level APIs in the ``cupyx`` namespace,
+including :func:`cupyx.empty_pinned`, :func:`cupyx.empty_like_pinned`, :func:`cupyx.zeros_pinned`, and
+:func:`cupyx.zeros_like_pinned`. They return NumPy arrays backed CuPy's pinned memory pool.
+
 .. autosummary::
    :toctree: generated/
    :nosignatures:
@@ -37,10 +41,6 @@ Memory management
    cupy.cuda.MemoryPool
    cupy.cuda.PinnedMemoryPool
    cupy.cuda.PythonFunctionAllocator
-
-For using pinned memory more conveniently, we also provide a few high-level APIs in the ``cupyx`` namespace,
-including :func:`cupyx.empty_pinned`, :func:`cupyx.empty_like_pinned`, :func:`cupyx.zeros_pinned`, and
-:func:`cupyx.zeros_like_pinned`. They allocate pinned memory from CuPy's pinned memory pool.
 
 
 Memory hook
