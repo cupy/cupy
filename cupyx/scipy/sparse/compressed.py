@@ -801,9 +801,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 major_index.
 
         """
-        shape = self.shape[int(not(axis))]
+        out_shape = self.shape[1 - axis]
         # Call to the appropriate kernel function
-        value = cupy.zeros(shape).astype(cupy.float64)
+        out = cupy.zeros(out_shape).astype(cupy.float64)
         if nonzero:
             kerns = {cupy.amax: self._max_nonzero_reduction_kern,
                      cupy.amin: self._min_nonzero_reduction_kern}
@@ -811,13 +811,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             kerns = {cupy.amax: self._max_reduction_kern,
                      cupy.amin: self._min_reduction_kern}
 
-        kerns[ufunc]((shape,), (1,),
+        kerns[ufunc]((out_shape,), (1,),
                      (self.data.astype(cupy.float64),
                       self.indptr[:len(self.indptr) - 1],
                       self.indptr[1:], cupy.int64(self.shape[axis]),
-                      value))
+                      out))
 
-        return value
+        return out
 
     def _arg_minor_reduce(self, ufunc, axis):
         """Reduce nonzeros with a ufunc over the minor axis when non-empty
@@ -840,22 +840,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # Create the vector to hold output
         # Note: it's important to set "int" here, following what SciPy
         # does, as the outcome dtype is platform dependent
-        shape = self.shape[int(not(axis))]
-        value = cupy.zeros(shape, dtype=int)
+        out_shape = self.shape[1 - axis]
+        out = cupy.zeros(out_shape, dtype=int)
 
         # Perform the calculation
         ker_name = '_arg_reduction<{}, {}>'.format(
             _scalar.get_typename(self.data.dtype),
-            _scalar.get_typename(value.dtype))
+            _scalar.get_typename(out.dtype))
 
         prefix = {cupy.argmax: 'max', cupy.argmin: 'min'}
         ker_name = prefix[ufunc] + ker_name
 
         ker = self._min_arg_reduction_mod.get_function(ker_name)
-        ker((shape,), (1,),
+        ker((out_shape,), (1,),
             (self.data, self.indices,
              self.indptr[:len(self.indptr) - 1],
              self.indptr[1:], cupy.int64(self.shape[axis]),
-             value))
+             out))
 
-        return value
+        return out
