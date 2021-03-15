@@ -8,6 +8,8 @@ from libc.stdint cimport uint8_t, int32_t, uint32_t, int64_t, intptr_t
 from cupy_backends.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
 
+from cupy_backends.cuda.libs import cusparse
+
 cdef extern from '../../cupy_cusparselt.h' nogil:
     ctypedef int cusparseStatus_t 'cusparseStatus_t'
     ctypedef int cusparseOrder_t 'cusparseOrder_t'
@@ -79,6 +81,8 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         const cusparseLtMatmulDescriptor_t* matmulDescr,
         const cusparseLtMatmulAlgSelection_t* algSelection,
         size_t workspaceSize)
+    cusparseStatus_t cusparseLtMatmulPlanDestroy(
+        const cusparseLtMatmulPlan_t* plan)
     cusparseStatus_t cusparseLtMatmul(
         const cusparseLtHandle_t* handle, const cusparseLtMatmulPlan_t* plan,
         const void* alpha, const void* d_A, const void* d_B,
@@ -186,33 +190,10 @@ cdef class MatmulPlan:
 # Error handling
 ###############################################################################
 
-cdef dict STATUS = {
-    0: 'CUSPARSE_STATUS_SUCCESS',
-    1: 'CUSPARSE_STATUS_NOT_INITIALIZED',
-    2: 'CUSPARSE_STATUS_ALLOC_FAILED',
-    3: 'CUSPARSE_STATUS_INVALID_VALUE',
-    4: 'CUSPARSE_STATUS_ARCH_MISMATCH',
-    5: 'CUSPARSE_STATUS_MAPPING_ERROR',
-    6: 'CUSPARSE_STATUS_EXECUTION_FAILED',
-    7: 'CUSPARSE_STATUS_INTERNAL_ERROR',
-    8: 'CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED',
-    9: 'CUSPARSE_STATUS_ZERO_PIVOT',
-    10: 'CUSPARSE_STATUS_NOT_SUPPORTED',
-}
-
-class CuSparseError(RuntimeError):
-
-    def __init__(self, int status):
-        self.status = status
-        super(CuSparseError, self).__init__('%s' % (STATUS[status]))
-
-    def __reduce__(self):
-        return (type(self), (self.status,))
-
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
-        raise CuSparseError(status)
+        raise cusparse.CuSparseError(status)
 
 ###############################################################################
 # cuSPARSELt: Library Management Functions
@@ -317,6 +298,12 @@ cpdef matmulPlanInit(Handle handle, MatmulPlan plan,
         <const cusparseLtMatmulDescriptor_t*> matmulDescr._ptr,
         <const cusparseLtMatmulAlgSelection_t*> algSelection._ptr,
         <size_t> workspaceSize)
+    check_status(status)
+
+cpdef matmulPlanDestroy(MatmulPlan plan):
+    """Destroys plan"""
+    status = cusparseLtMatmulPlanDestroy(
+        <const cusparseLtMatmulPlan_t*> plan._ptr)
     check_status(status)
 
 cpdef matmul(Handle handle, MatmulPlan plan,
