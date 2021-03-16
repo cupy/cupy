@@ -1865,6 +1865,7 @@ cdef list _cupy_header_list = [
     'cupy/complex.cuh',
     'cupy/carray.cuh',
     'cupy/atomics.cuh',
+    'cupy/tuple.cuh',
 ]
 if _is_hip:
     _cupy_header_list.append('cupy/math_constants.h')
