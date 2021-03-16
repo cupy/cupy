@@ -222,10 +222,9 @@ class Generator:
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
-
     def standard_normal(self, size=None, dtype=numpy.float64, out=None):
         """Returns an array of samples drawn from the standard normal distribution.
-    
+
         Args:
             size (int or tuple of ints): The shape of the array. If ``None``, a
                 zero-dimensional array is generated.
@@ -233,12 +232,12 @@ class Generator:
 
             out (cupy.ndarray, optional): If specified, values will be written
                 to this array
-    
+
         Returns:
             cupy.ndarray: Samples drawn from the standard normal distribution.
-    
+
         .. seealso:: :func:`numpy.random.standard_normal`
-    
+
         """
         cdef ndarray y
 
