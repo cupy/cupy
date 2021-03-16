@@ -253,7 +253,6 @@ class Generator:
         return (<object>y).astype(dtype, copy=False)
 
 
-
 def init_curand(generator, state, seed, size):
     init_curand_generator(
         <int>generator,
