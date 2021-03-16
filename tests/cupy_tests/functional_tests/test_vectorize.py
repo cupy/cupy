@@ -490,6 +490,16 @@ class TestVectorizeStmts(unittest.TestCase):
         y = xp.array([5, 6, 7, 8, 9])
         return f(x, y)
 
+    @testing.numpy_cupy_array_equal()
+    def test_return_tuple(self, xp):
+        def func_tuple(x, y):
+            return x + y, x / y
+
+        f = xp.vectorize(func_tuple)
+        x = xp.array([0, 1, 2, 3, 4])
+        y = xp.array([5, 6, 7, 8, 9])
+        return f(x, y)
+
 
 class _MyClass:
 

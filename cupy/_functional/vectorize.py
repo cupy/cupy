@@ -53,6 +53,25 @@ class vectorize(object):
             raise NotImplementedError(
                 'cupy.vectorize does not support `excluded` option currently.')
 
+    @staticmethod
+    def _parse_out_param(return_type):
+        if isinstance(return_type, _types.Scalar):
+            dtypes = [return_type.dtype]
+            out_lval = 'out0'
+        elif isinstance(return_type, _types.Tuple):
+            dtypes = []
+            for t in return_type.types:
+                if not isinstance(t, _types.Scalar):
+                    raise TypeError(f'Invalid return type: {return_type}')
+                dtypes.append(t.dtype)
+            out_lvals = ', '.join([f'out{i}' for i in range(len(dtypes))])
+            out_lval = f'tie({out_lvals})'
+        else:
+            raise TypeError(f'Invalid return type: {return_type}')
+
+        out_params = [f'{dtype} out{i}' for i, dtype in enumerate(dtypes)]
+        return ', '.join(out_params), out_lval
+
     def __call__(self, *args):
         itypes = ''.join([_get_input_type(x) for x in args])
         kern = self._kernel_cache.get(itypes, None)
@@ -68,9 +87,9 @@ class vectorize(object):
             result = func._emit_code_from_types(in_types, ret_type)
             in_params = ', '.join(
                 f'{t.dtype} in{i}' for i, t in enumerate(in_types))
-            out_params = str(result.return_type.dtype) + ' out0'
-            body = 'out0 = {}({})'.format(
-                func.name, ', '.join([f'in{i}' for i in range(len(in_types))]))
+            in_args = ', '.join([f'in{i}' for i in range(len(in_types))])
+            out_params, out_lval = self._parse_out_param(result.return_type)
+            body = '{} = {}({})'.format(out_lval, func.name, in_args)
             kern = core.ElementwiseKernel(
                 in_params, out_params, body, preamble=result.code)
             self._kernel_cache[itypes] = kern
