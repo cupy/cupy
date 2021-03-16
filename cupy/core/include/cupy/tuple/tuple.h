@@ -14,8 +14,9 @@
  *  limitations under the License.
  */
 
-#include <thrust/detail/type_traits.h>
-#include <thrust/detail/swap.h>
+#include <cupy/tuple/type_traits.h>
+
+#define __thrust_exec_check_disable__
 
 namespace thrust
 {

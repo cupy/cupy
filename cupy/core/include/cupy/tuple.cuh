@@ -28,11 +28,7 @@
  * For more information, see http://www.boost.org
  */
 
-#pragma once
-
-#include <thrust/detail/config.h>
-#include <thrust/detail/tuple.inl>
-#include <thrust/pair.h>
+#include <cupy/tuple/tuple.h>
 
 namespace thrust
 {
