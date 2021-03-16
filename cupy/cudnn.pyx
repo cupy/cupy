@@ -1591,9 +1591,6 @@ cpdef _Algorithm _get_algorithm_bwd_data(
     if _cudnn_version >= 7000:
         ret = cudnn.getConvolutionBackwardDataAlgorithm_v7(
             handle, filter_desc, x_desc, conv_desc, y_desc, 10)
-        if len(ret) == 0:
-            raise RuntimeError(
-                'No conv bwd data algo is available')
         skip = False
         for perf in ret:
             if deterministic and not perf.determinism:

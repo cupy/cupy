@@ -294,7 +294,7 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
     'dilate': [1, 2],
     'groups': [1, 2],
     'ndim': [2, 3],
-    'max_workspace_size': [0, 2 ** 22, 2 ** 23],
+    'max_workspace_size': [0, 2 ** 22],
     'auto_tune': [True, False],
     'deterministic': [True, False],
     'bias': [True, False],
@@ -343,6 +343,11 @@ class TestConvolutionBackwardData(unittest.TestCase):
               int(cupy.cuda.device.get_compute_capability()) < 70 and
               self.dilate > 1 and self.groups > 1 and ndim > 2 and
               self.dtype == numpy.float16):
+            self.err = RuntimeError
+        elif (version == 7605 and deterministic and self.dtype == numpy.float16
+                and self.ndim == 3 and sys.platform.startswith('win32')
+                and self.dilate == 2 and self.max_workspace_size != 0):
+            # see https://github.com/cupy/cupy/pull/4893
             self.err = RuntimeError
         self._workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
