@@ -294,7 +294,7 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
     'dilate': [1, 2],
     'groups': [1, 2],
     'ndim': [2, 3],
-    'max_workspace_size': [0, 2 ** 22],
+    'max_workspace_size': [0, 2 ** 22, 2 ** 23],
     'auto_tune': [True, False],
     'deterministic': [True, False],
     'bias': [True, False],
