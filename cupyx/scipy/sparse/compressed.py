@@ -848,10 +848,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             _scalar.get_typename(self.data.dtype),
             _scalar.get_typename(out.dtype))
 
-        prefix = {cupy.argmax: 'max', cupy.argmin: 'min'}
-        ker_name = prefix[ufunc] + ker_name
+        if ufunc == cupy.argmax:
+            ker = self._max_arg_reduction_mod.get_function('max' + ker_name)
+        elif ufunc == cupy.argmin:
+            ker = self._min_arg_reduction_mod.get_function('min' + ker_name)
 
-        ker = self._min_arg_reduction_mod.get_function(ker_name)
         ker((out_shape,), (1,),
             (self.data, self.indices,
              self.indptr[:len(self.indptr) - 1],
