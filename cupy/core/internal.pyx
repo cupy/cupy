@@ -437,3 +437,18 @@ cpdef tuple _normalize_axis_indices(
         res.append(axis)
 
     return tuple(sorted(res) if sort_axes else res)
+
+
+cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):
+    # x here can be either numpy.ndarray or cupy.ndarray
+    cdef strides_t strides
+    # strides used when order='K' for astype, empty_like, etc.
+    stride_and_index = [
+        (abs(s), -i) for i, s in enumerate(x.strides)]
+    stride_and_index.sort()
+    strides.resize(x.ndim)
+    stride = dtype.itemsize
+    for s, i in stride_and_index:
+        strides[-i] = stride
+        stride *= shape[-i] if shape else x.shape[-i]
+    return strides

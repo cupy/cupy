@@ -57,3 +57,5 @@ cpdef Py_ssize_t _normalize_axis_index(
 
 cpdef tuple _normalize_axis_indices(
     axes, Py_ssize_t ndim, cpp_bool sort_axes=*)
+
+cpdef strides_t _get_strides_for_order_K(x, dtype, shape=*)

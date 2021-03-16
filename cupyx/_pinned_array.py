@@ -31,21 +31,6 @@ def _update_order_char(x, order_char):
     return order_char
 
 
-def _get_strides_for_order_K(x, dtype, shape=None):
-    # this is a pure Python version of
-    # cupy.core.core._get_strides_for_order_K()
-    # strides used when order='K' for astype, empty_like, etc.
-    stride_and_index = [
-        (abs(s), -i) for i, s in enumerate(x.strides)]
-    stride_and_index.sort()
-    strides = [None for i in range(x.ndim)]
-    stride = dtype.itemsize
-    for s, i in stride_and_index:
-        strides[-i] = stride
-        stride *= shape[-i] if shape else x.shape[-i]
-    return tuple(strides)
-
-
 def empty_pinned(shape, dtype=float, order='C'):
     """Returns an array without initializing the elements.
 
@@ -108,8 +93,7 @@ def empty_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
         dtype = a.dtype
     shape = _update_shape(a, shape)
     order, strides, _ = _new_like_order_and_strides(
-        a, dtype, order, shape, get_memptr=False, get_char=_update_order_char,
-        get_strides=_get_strides_for_order_K)
+        a, dtype, order, shape, get_memptr=False, get_char=_update_order_char)
     nbytes = internal.prod(shape) * numpy.dtype(dtype).itemsize
     mem = cuda.alloc_pinned_memory(nbytes)
     out = numpy.ndarray(shape, dtype=dtype, buffer=mem,

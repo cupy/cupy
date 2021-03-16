@@ -444,7 +444,7 @@ cdef class ndarray:
         order_char = _update_order_char(self, order_char)
 
         if order_char == b'K':
-            strides = _get_strides_for_order_K(self, dtype)
+            strides = internal._get_strides_for_order_K(self, dtype)
             newarray = _ndarray_init(self._shape, dtype)
             # TODO(niboshi): Confirm update_x_contiguity flags
             newarray._set_shape_and_strides(self._shape, strides, True, True)
@@ -1833,20 +1833,6 @@ cpdef int _update_order_char(ndarray x, int order_char):
         elif x._c_contiguous:
             order_char = b'C'
     return order_char
-
-
-cpdef strides_t _get_strides_for_order_K(ndarray x, dtype, shape=None):
-    cdef strides_t strides
-    # strides used when order='K' for astype, empty_like, etc.
-    stride_and_index = [
-        (abs(s), -i) for i, s in enumerate(x.strides)]
-    stride_and_index.sort()
-    strides.resize(x.ndim)
-    stride = dtype.itemsize
-    for s, i in stride_and_index:
-        strides[-i] = stride
-        stride *= shape[-i] if shape else x.shape[-i]
-    return strides
 
 
 _HANDLED_TYPES = (ndarray, numpy.ndarray)
