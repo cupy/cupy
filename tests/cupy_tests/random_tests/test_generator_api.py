@@ -257,13 +257,13 @@ class TestStandardExponential(InvalidOutsMixin, GeneratorTestCase):
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
-@testing.parameterize(*[
+@testing.parameterize(
     {'size': None},
     {'size': (1, 2, 3)},
     {'size': 3},
     {'size': (3, 3)},
     {'size': ()},
-])
+)
 @testing.fix_random()
 class TestStandardNormal(GeneratorTestCase):
 
