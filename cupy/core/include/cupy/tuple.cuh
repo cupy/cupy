@@ -368,19 +368,6 @@ template <class T0, class T1, class T2, class T3, class T4,
   /*! \endcond
    */
 
-  /*! This assignment operator allows assigning the first two elements of this \p tuple from a \p pair.
-   *  \param k A \p pair to assign from.
-   */
-  __thrust_exec_check_disable__
-  template <class U1, class U2>
-  __host__ __device__ inline
-  tuple& operator=(const thrust::pair<U1, U2>& k) {
-    //BOOST_STATIC_ASSERT(length<tuple>::value == 2);// check_length = 2
-    this->head = k.first;
-    this->tail.head = k.second;
-    return *this;
-  }
-
   /*! \p swap swaps the elements of two <tt>tuple</tt>s.
    *
    *  \param t The other <tt>tuple</tt> with which to swap.
