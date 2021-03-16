@@ -270,7 +270,7 @@ class TestStandardNormal(GeneratorTestCase):
     target_method = 'standard_normal'
 
     @testing.for_dtypes('fd')
-    @condition.repeat_with_success_at_least(10, 3)
+    @_condition.repeat_with_success_at_least(10, 3)
     def test_normal_ks(self, dtype):
         self.check_ks(0.05)(size=self.size, dtype=dtype)
 
