@@ -30,6 +30,10 @@
 
 #include <cupy/tuple/tuple.h>
 
+using thrust::tuple;
+using thrust::make_tuple;
+using thrust::tie;
+
 namespace thrust
 {
 
