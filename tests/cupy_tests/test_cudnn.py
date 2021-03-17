@@ -334,6 +334,11 @@ class TestConvolutionBackwardData(unittest.TestCase):
         if ((self.dilate > 1 and version < 6000) or
                 (self.groups > 1 and version < 7000)):
             self.err = ValueError
+        elif (sys.platform.startswith('win32') and version == 7605
+                and deterministic and self.dtype == numpy.float16
+                and self.ndim == 3 and self.dilate == 2 and self.groups == 2):
+            # see https://github.com/cupy/cupy/pull/4893
+            self.err = RuntimeError
         elif deterministic and (
                 (self.dilate > 1 and
                  (ndim != 2 and version < 8100 or version < 7300)) or
@@ -344,12 +349,6 @@ class TestConvolutionBackwardData(unittest.TestCase):
               int(cupy.cuda.device.get_compute_capability()) < 70 and
               self.dilate > 1 and self.groups > 1 and ndim > 2 and
               self.dtype == numpy.float16):
-            self.err = RuntimeError
-        elif (7000 <= version < 8000 and deterministic
-                and self.dtype == numpy.float16
-                and self.ndim == 3 and sys.platform.startswith('win32')
-                and self.dilate == 2 and self.groups == 2):
-            # see https://github.com/cupy/cupy/pull/4893
             self.err = RuntimeError
         self._workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
