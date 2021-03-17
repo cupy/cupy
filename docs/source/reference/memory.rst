@@ -18,7 +18,8 @@ See :doc:`cuda` for the details of memory management APIs.
 
 For using pinned memory more conveniently, we also provide a few high-level APIs in the ``cupyx`` namespace,
 including :func:`cupyx.empty_pinned`, :func:`cupyx.empty_like_pinned`, :func:`cupyx.zeros_pinned`, and
-:func:`cupyx.zeros_like_pinned`. They return NumPy arrays backed CuPy's pinned memory pool.
+:func:`cupyx.zeros_like_pinned`. They return NumPy arrays backed by pinned memory. If CuPy's pinned memory pool
+is in use, the pinned memory is allocated from the pool.
 
 Memory Pool Operations
 ----------------------
