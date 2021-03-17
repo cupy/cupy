@@ -117,10 +117,30 @@ def _get_nvrtc_version():
     return _nvrtc_version
 
 
+# Known archs for Tegra/Jetson/Xavier/etc
+_tegra_archs = ('53', '62', '72')
+
+
 @_util.memoize(for_each_device=True)
 def _get_arch():
+    # See Supported Compile Options section of NVRTC User Guide for
+    # the maximum value allowed for `--gpu-architecture`.
+    major, minor = _get_nvrtc_version()
+    if major < 10 or (major == 10 and minor == 0):
+        # CUDA 9.x / 10.0
+        _nvrtc_max_compute_capability = '70'
+    elif major < 11:
+        # CUDA 10.1 / 10.2
+        _nvrtc_max_compute_capability = '75'
+    else:
+        # CUDA 11.0 / 11.1 / 11.2
+        _nvrtc_max_compute_capability = '80'
+
     arch = device.Device().compute_capability
-    return arch
+    if arch in _tegra_archs:
+        return arch
+    else:
+        return min(arch, _nvrtc_max_compute_capability)
 
 
 def _is_cudadevrt_needed(options):
@@ -214,13 +234,15 @@ def _jitify_prep(source, options, cu_path):
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
-    if not arch:
-        arch = _get_arch()
-
-    options += ('-arch=compute_{}'.format(arch),)
+    # For hipRTC, arch is ignored
+    if not runtime.is_hip:
+        if not arch:
+            arch = _get_arch()
+        options += ('-arch=compute_{}'.format(arch),)
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
+
         if jitify:
             options, headers, include_names = _jitify_prep(
                 source, options, cu_path)
@@ -619,8 +641,9 @@ def is_valid_kernel_name(name):
 
 
 def compile_using_hipcc(source, options, arch, log_stream=None):
-    assert len(arch) > 0
-    # pass HCC_AMDGPU_TARGET same as arch
+    # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
+    # right arch without setting HCC_AMDGPU_TARGET, so we don't need
+    # to set arch here
     cmd = ['hipcc', '--genco'] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
@@ -731,13 +754,14 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
 
     if cache_dir is None:
         cache_dir = get_cache_dir()
-    # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
-    # pick up the right arch without needing HCC_AMDGPU_TARGET. Check the
-    # earliest ROCm version in which this happened.
+    # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
+    # right arch without setting HCC_AMDGPU_TARGET, so we don't need
+    # to tell the compiler which arch we are targeting. But, we still
+    # need to know arch as part of the cache key:
     if arch is None:
-        arch = os.environ.get('HCC_AMDGPU_TARGET')
-        if arch is None:
-            raise RuntimeError('HCC_AMDGPU_TARGET is not set')
+        # On HIP, gcnArch is computed from "compute capability":
+        # https://github.com/ROCm-Developer-Tools/HIP/blob/rocm-4.0.0/rocclr/hip_device.cpp#L202
+        arch = device.Device().compute_capability
     if use_converter:
         source = _convert_to_hip_source(source, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))

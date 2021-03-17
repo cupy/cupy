@@ -1,11 +1,12 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import cublas
 from cupy import testing
-from cupy.testing import attr
+from cupy.testing import _attr
 
 
 @testing.parameterize(*testing.product({
@@ -14,7 +15,7 @@ from cupy.testing import attr
     'bs': [None, 1, 10],
     'nrhs': [None, 1, 10],
 }))
-@attr.gpu
+@_attr.gpu
 class TestBatchedGesv(unittest.TestCase):
     _tol = {'f': 5e-5, 'd': 1e-12}
 
@@ -70,7 +71,7 @@ class TestBatchedGesv(unittest.TestCase):
     'n': [10, 100],
     'mode': [None, numpy, cupy],
 }))
-@attr.gpu
+@_attr.gpu
 class TestLevel1Functions(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -193,7 +194,7 @@ class TestLevel1Functions(unittest.TestCase):
     'order': ['C', 'F'],
     'mode': [None, numpy, cupy],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGemv(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -234,7 +235,7 @@ class TestGemv(unittest.TestCase):
     'order': ['C', 'F'],
     'mode': [None, numpy, cupy],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGer(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -286,7 +287,7 @@ class TestGer(unittest.TestCase):
     'orderc': ['C', 'F'],
     'mode': [None, numpy, cupy],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGemmAndGeam(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -395,7 +396,7 @@ class TestGemmAndGeam(unittest.TestCase):
     'ordera': ['C', 'F'],
     'orderc': ['C', 'F'],
 }))
-@attr.gpu
+@_attr.gpu
 class TestDgmm(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -452,10 +453,24 @@ class TestDgmm(unittest.TestCase):
         cublas.dgmm(self.side, self.a, self.x, out=self.a)
         cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
 
+    _dgmm_incx_minus_one_hip_skip_condition = [
+        ('C', 'F', (9, 10), 'R'),
+        ('C', 'F', (10, 9), 'R'),
+        ('F', 'F', (9, 10), 'L'),
+        ('F', 'F', (10, 9), 'L'),
+    ]
+
+    def _check_dgmm_incx_minus_one_hip_skip_condition(self):
+        return (self.ordera, self.orderc, self.shape, self.side) in \
+            self._dgmm_incx_minus_one_hip_skip_condition
+
     @testing.for_dtypes('fdFD')
     def test_dgmm_incx_minus_one(self, dtype):
         if self.orderc != 'F':
             raise unittest.SkipTest()
+        if cupy.cuda.runtime.is_hip:
+            if self._check_dgmm_incx_minus_one_hip_skip_condition():
+                pytest.xfail('HIP dgmm may have a bug')
         self._setup(dtype)
         if self.side == 'L':
             ref = cupy.diag(self.x[::-1]) @ self.a

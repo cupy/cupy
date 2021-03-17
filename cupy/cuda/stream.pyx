@@ -299,6 +299,9 @@ class Stream(BaseStream):
     This class handles the CUDA stream handle in RAII way, i.e., when an Stream
     instance is destroyed by the GC, its handle is also destroyed.
 
+    Note that if both ``null`` and ``ptds`` are ``False``, a plain new
+    stream is created.
+
     Args:
         null (bool): If ``True``, the stream is a null stream (i.e. the default
             stream that synchronizes with all streams). Note that you can also
@@ -310,9 +313,6 @@ class Stream(BaseStream):
             per-thread default stream object.
         non_blocking (bool): If ``True`` and both ``null`` and ``ptds`` are
             ``False``, the stream does not synchronize with the NULL stream.
-
-        Note that if both ``null`` and ``ptds`` are ``False``, a plain new
-        stream is created.
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle. It can be passed to
@@ -327,6 +327,9 @@ class Stream(BaseStream):
             # following 2.8.3-1.
             self.ptr = 0
         elif ptds:
+            if runtime._is_hip_environment:
+                raise ValueError('HIP does not support per-thread '
+                                 'default stream (ptds)')
             self.ptr = runtime.streamPerThread
         elif non_blocking:
             self.ptr = runtime.streamCreateWithFlags(
@@ -374,4 +377,5 @@ class ExternalStream(BaseStream):
 
 
 Stream.null = Stream(null=True)
-Stream.ptds = Stream(ptds=True)
+if not runtime._is_hip_environment:
+    Stream.ptds = Stream(ptds=True)

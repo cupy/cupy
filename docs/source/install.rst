@@ -13,25 +13,21 @@ These components must be installed to use CuPy:
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1 / v11.2
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
 
-* `Python <https://python.org/>`_: v3.6.0+ / v3.7.0+ / v3.8.0+
-
-.. note::
-
-   On Windows, CuPy only supports Python 3.6.0 or later.
+* `Python <https://python.org/>`_: v3.6.0+ / v3.7.0+ / v3.8.0+ / v3.9.0+
 
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.19 and SciPy 1.5, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.20 and SciPy 1.6, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19
+* `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19 / v1.20
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6
 
     * Required only when using :doc:`reference/scipy` (``cupyx.scipy``).
 
@@ -58,11 +54,11 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.4 (CUDA 9.2) / v2.6 (CUDA 10.0) / v2.7 (CUDA 10.1+)
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.4 (CUDA 9.2) / v2.6 (CUDA 10.0) / v2.7 (CUDA 10.1+) / v2.8 (CUDA 10.2+)
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 (CUDA 9.2 & 10.x) / v8.0 (CUDA 10.1+)
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 (CUDA 9.2 & 10.0) / v8.0 (CUDA 10.1) / v8.1 (CUDA 10.2+)
 
     * The library to accelerate deep neural network computations.
 
@@ -70,7 +66,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 Installing CuPy
 ---------------
 
-Wheels (precompiled binary packages) are available for Linux and Windows.
+Wheels (precompiled binary packages) are available for Linux (x86_64) and Windows (amd64).
 Package names are different depending on your CUDA Toolkit version.
 
 .. list-table::
@@ -90,6 +86,8 @@ Package names are different depending on your CUDA Toolkit version.
      - ``$ pip install cupy-cuda110``
    * - v11.1
      - ``$ pip install cupy-cuda111``
+   * - v11.2
+     - ``$ pip install cupy-cuda112`` (see `#4704 <https://github.com/cupy/cupy/issues/4704>`_ for Linux instructions)
 
 .. note::
 
@@ -99,7 +97,7 @@ Package names are different depending on your CUDA Toolkit version.
      You don't have to install it manually.
 
    * cuDNN library is bundled with these packages except for CUDA 10.1+.
-     For CUDA 10.1+, you need to manually download and install cuDNN v8.0.x library to use cuDNN features.
+     For CUDA 10.1+, you need to manually download and install cuDNN v8.x library to use cuDNN features.
 
 .. note::
 
@@ -187,7 +185,7 @@ If you want to install the latest development version of CuPy from a cloned Git 
 
 .. note::
 
-   To build the source tree downloaded from GitHub, you need to install Cython 0.28.0 or later (``pip install cython``).
+   To build the source tree downloaded from GitHub, you need to install Cython 0.29.22 or later (``pip install cython``).
    You don't have to install Cython to build source packages hosted on PyPI as they include pre-generated C++ source files.
 
 

@@ -8,8 +8,8 @@ import numpy
 import cupy
 from cupy import random
 from cupy import testing
-from cupy.testing import attr
-from cupy.testing import condition
+from cupy.testing import _attr
+from cupy.testing import _condition
 
 
 def numpy_cupy_equal_continuous_distribution(significance_level, name='xp'):
@@ -200,7 +200,7 @@ class TestBeta(GeneratorTestCase):
         self.generate(a=self.a, b=self.b, size=(3, 2))
 
     @testing.for_dtypes('fd')
-    @condition.repeat_with_success_at_least(10, 3)
+    @_condition.repeat_with_success_at_least(10, 3)
     def test_beta_ks(self, dtype):
         self.check_ks(0.05)(
             a=self.a, b=self.b, size=2000, dtype=dtype)
@@ -216,14 +216,14 @@ class TestStandardExponential(GeneratorTestCase):
     def test_standard_exponential(self):
         self.generate(size=(3, 2))
 
-    @attr.slow
-    @condition.repeat(10)
+    @_attr.slow
+    @_condition.repeat(10)
     def test_standard_exponential_isfinite(self):
         x = self.generate(size=10**7)
         assert cupy.isfinite(x).all()
 
     @testing.for_dtypes('fd')
-    @condition.repeat_with_success_at_least(10, 3)
+    @_condition.repeat_with_success_at_least(10, 3)
     def test_standard_exponential_ks(self, dtype):
         self.check_ks(0.05)(size=2000, dtype=dtype)
 

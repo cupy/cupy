@@ -5,7 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.testing import condition
+from cupy.testing import _condition
 import cupyx
 from cupy.cublas import get_batched_gesv_limit, set_batched_gesv_limit
 
@@ -27,11 +27,11 @@ class TestSolve(unittest.TestCase):
         if self.batched_gesv_limit is not None:
             set_batched_gesv_limit(self.old_limit)
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes('ifdFD')
     # TODO(kataoka): Fix contiguity
     @testing.numpy_cupy_allclose(atol=1e-3, contiguous_check=False)
     def check_x(self, a_shape, b_shape, xp, dtype):
-        a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=0)
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=0, scale=20)
         b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=1)
         a = a.copy(order=self.order)
         b = b.copy(order=self.order)
@@ -67,23 +67,19 @@ class TestSolve(unittest.TestCase):
 
 @testing.parameterize(*testing.product({
     'a_shape': [(2, 3, 6), (3, 4, 4, 3)],
-    'dtype': [numpy.float32, numpy.float64],
     'axes': [None, (0, 2)],
 }))
 @testing.fix_random()
 @testing.gpu
 class TestTensorSolve(unittest.TestCase):
 
-    def setUp(self):
-        self.a = numpy.random.randint(
-            0, 10, size=self.a_shape).astype(self.dtype)
-        self.b = numpy.random.randint(
-            0, 10, size=self.a_shape[:2]).astype(self.dtype)
-
+    @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose(atol=0.02)
-    def test_tensorsolve(self, xp):
-        a = xp.array(self.a)
-        b = xp.array(self.b)
+    def test_tensorsolve(self, xp, dtype):
+        a_shape = self.a_shape
+        b_shape = self.a_shape[:2]
+        a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=0)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=1)
         return xp.linalg.tensorsolve(a, b, axes=self.axes)
 
 
@@ -93,8 +89,8 @@ class TestTensorSolve(unittest.TestCase):
 @testing.gpu
 class TestInv(unittest.TestCase):
 
-    @testing.for_dtypes('fdFD')
-    @condition.retry(10)
+    @testing.for_dtypes('ifdFD')
+    @_condition.retry(10)
     def check_x(self, a_shape, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape)
         a_cpu = a_cpu.astype(dtype, order=self.order)
@@ -129,7 +125,7 @@ class TestInv(unittest.TestCase):
 @testing.gpu
 class TestInvInvalid(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('ifdFD')
     def test_inv(self, dtype):
         for xp in (numpy, cupy):
             a = xp.array([[1, 2], [2, 4]]).astype(dtype)
@@ -137,7 +133,7 @@ class TestInvInvalid(unittest.TestCase):
                 with pytest.raises(numpy.linalg.LinAlgError):
                     xp.linalg.inv(a)
 
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_dtypes('ifdFD')
     def test_batched_inv(self, dtype):
         for xp in (numpy, cupy):
             a = xp.array([[[1, 2], [2, 4]]]).astype(dtype)
@@ -150,23 +146,22 @@ class TestInvInvalid(unittest.TestCase):
 @testing.gpu
 class TestPinv(unittest.TestCase):
 
-    @testing.for_dtypes('fdFD')
-    @condition.retry(10)
+    @testing.for_dtypes('ifdFD')
+    @_condition.retry(10)
     def check_x(self, a_shape, rcond, dtype):
         a_gpu = testing.shaped_random(a_shape, dtype=dtype)
         a_cpu = cupy.asnumpy(a_gpu)
         a_gpu_copy = a_gpu.copy()
+        if not isinstance(rcond, float):
+            rcond = numpy.asarray(rcond)
         result_cpu = numpy.linalg.pinv(a_cpu, rcond=rcond)
+        if not isinstance(rcond, float):
+            rcond = cupy.asarray(rcond)
         result_gpu = cupy.linalg.pinv(a_gpu, rcond=rcond)
 
         assert result_cpu.dtype == result_gpu.dtype
         cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-3)
         cupy.testing.assert_array_equal(a_gpu_copy, a_gpu)
-
-    def check_shape(self, a_shape, rcond):
-        a = cupy.random.rand(*a_shape)
-        with self.assertRaises(numpy.linalg.LinAlgError):
-            cupy.linalg.pinv(a)
 
     def test_pinv(self):
         self.check_x((3, 3), rcond=1e-15)
@@ -177,24 +172,42 @@ class TestPinv(unittest.TestCase):
         self.check_x((2, 5), rcond=0.5)
         self.check_x((5, 3), rcond=0.6)
 
-    def test_invalid_shape(self):
-        self.check_shape((2, 3, 4), rcond=1e-15)
-        self.check_shape((2, 3, 4), rcond=0.5)
-        self.check_shape((4, 3, 2, 1), rcond=1e-14)
-        self.check_shape((4, 3, 2, 1), rcond=0.1)
+    def test_pinv_batched(self):
+        self.check_x((2, 3, 4), rcond=1e-15)
+        self.check_x((2, 3, 4, 5), rcond=1e-15)
+
+    def test_pinv_batched_vector_rcond(self):
+        self.check_x((2, 3, 4), rcond=[0.2, 0.8])
+        self.check_x((2, 3, 4, 5),
+                     rcond=[[0.2, 0.9, 0.1],
+                            [0.7, 0.2, 0.5]])
+
+    def test_pinv_size_0(self):
+        self.check_x((3, 0), rcond=1e-15)
+        self.check_x((0, 3), rcond=1e-15)
+        self.check_x((0, 0), rcond=1e-15)
+        self.check_x((0, 2, 3), rcond=1e-15)
+        self.check_x((2, 0, 3), rcond=1e-15)
 
 
 @testing.gpu
 class TestLstsq(unittest.TestCase):
 
-    @testing.for_dtypes('fdFD')
+    @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose(atol=1e-3)
     def check_lstsq_solution(self, a_shape, b_shape, seed, rcond, xp, dtype,
                              singular=False):
-        a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=seed)
         if singular:
-            a -= a.mean(axis=0, keepdims=True)
-            a -= a.mean(axis=1, keepdims=True)
+            m, n = a_shape
+            rank = min(m, n) - 1
+            a = xp.matmul(
+                testing.shaped_random(
+                    (m, rank), xp, dtype=dtype, scale=3, seed=seed),
+                testing.shaped_random(
+                    (rank, n), xp, dtype=dtype, scale=3, seed=seed+42),
+            )
+        else:
+            a = testing.shaped_random(a_shape, xp, dtype=dtype, seed=seed)
         b = testing.shaped_random(b_shape, xp, dtype=dtype, seed=seed+37)
         a_copy = a.copy()
         b_copy = b.copy()
@@ -256,8 +269,8 @@ class TestLstsq(unittest.TestCase):
 @testing.gpu
 class TestTensorInv(unittest.TestCase):
 
-    @testing.for_float_dtypes(no_float16=True)
-    @condition.retry(10)
+    @testing.for_dtypes('ifdFD')
+    @_condition.retry(10)
     def check_x(self, a_shape, ind, dtype):
         a_cpu = numpy.random.randint(0, 10, size=a_shape).astype(dtype)
         a_gpu = cupy.asarray(a_cpu)

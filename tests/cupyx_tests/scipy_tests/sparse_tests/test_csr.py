@@ -965,10 +965,19 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         assert 2 == len(M.indices)  # unaffected content
         return M
 
+    @testing.with_requires('scipy>1.6.0')
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_has_sorted_indices(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.has_sorted_indices
+
+    # TODO(asi1024): Remove test after the fixed version is released.
+    # https://github.com/scipy/scipy/pull/13426
+    @testing.with_requires('scipy<=1.6.0')
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_sorted_indices_for_old_scipy(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return bool(m.has_sorted_indices)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_has_sorted_indices2(self, xp, sp):
@@ -2032,8 +2041,8 @@ class TestCsrMatrixDiagonal(unittest.TestCase):
         m, n = self.shape
         for k in range(-m+1, n):
             m_st, n_st = max(0, -k), max(0, k)
-            for l in (-1, 0, 1):
-                x_len = min(m - m_st, n - n_st) + l
+            for d in (-1, 0, 1):
+                x_len = min(m - m_st, n - n_st) + d
                 if x_len <= 0:
                     continue
                 x = numpy.ones((x_len,), dtype=dtype)

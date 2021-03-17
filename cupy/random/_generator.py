@@ -74,8 +74,6 @@ class RandomState(object):
         # * curand.generateNormalDouble
         # * curand.generateLogNormal
         # * curand.generateLogNormalDouble
-        if size is None:
-            size = ()  # TODO(kataoka): Remove this after #4615 is merged
         size = core.get_size(size)
         element_size = core.internal.prod(size)
         if element_size % 2 == 0:
@@ -144,6 +142,8 @@ class RandomState(object):
         alpha = cupy.asarray(alpha)
         if size is None:
             size = alpha.shape
+        elif isinstance(size, (int, cupy.integer)):
+            size = (size,) + alpha.shape
         else:
             size += alpha.shape
         y = cupy.empty(shape=size, dtype=dtype)
@@ -470,6 +470,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.pareto`
         """
         a = cupy.asarray(a)
+        if size is None:
+            size = a.shape
         x = self._random_sample_raw(size, dtype)
         cupy.log(x, out=x)
         cupy.exp(-x/a, out=x)
@@ -595,8 +597,6 @@ class RandomState(object):
 
     def _random_sample_raw(self, size, dtype):
         dtype = _check_and_get_dtype(dtype)
-        if size is None:
-            size = ()  # TODO(kataoka): Remove this after #4615 is merged
         out = cupy.empty(size, dtype=dtype)
         if dtype.char == 'f':
             func = curand.generateUniform
@@ -613,6 +613,8 @@ class RandomState(object):
             - :meth:`numpy.random.RandomState.random_sample`
 
         """
+        if size is None:
+            size = ()
         out = self._random_sample_raw(size, dtype)
         RandomState._mod1_kernel(out)
         return out
@@ -780,6 +782,8 @@ class RandomState(object):
             - :func:`cupy.random.standard_exponential` for full documentation
             - :meth:`numpy.random.RandomState.standard_exponential`
         """
+        if size is None:
+            size = ()
         x = self._random_sample_raw(size, dtype)
         return -cupy.log(x, out=x)
 
@@ -1017,16 +1021,13 @@ class RandomState(object):
             raise NotImplementedError
         if isinstance(a, int):
             a_size = a
-            if a_size <= 0:
-                raise ValueError('a must be greater than 0')
+            if a_size < 0:
+                raise ValueError('a must be greater than or equal to 0')
         else:
             a = cupy.array(a, copy=False)
             if a.ndim != 1:
                 raise ValueError('a must be 1-dimensional or an integer')
-            else:
-                a_size = len(a)
-                if a_size == 0:
-                    raise ValueError('a must be non-empty')
+            a_size = len(a)
 
         if p is not None:
             p = cupy.array(p)
@@ -1044,6 +1045,9 @@ class RandomState(object):
             raise NotImplementedError
         shape = size
         size = numpy.prod(shape)
+
+        if a_size == 0 and size > 0:
+            raise ValueError('a cannot be empty unless no samples are taken')
 
         if not replace and p is None:
             if a_size < size:
@@ -1068,6 +1072,8 @@ class RandomState(object):
             if not isinstance(shape, int):
                 index = cupy.reshape(index, shape)
         else:
+            if a_size == 0:  # TODO: (#4511) Fix `randint` instead
+                a_size = 1
             index = self.randint(0, a_size, size=shape)
             # Align the dtype with NumPy
             index = index.astype(cupy.int64, copy=False)
@@ -1144,15 +1150,17 @@ class RandomState(object):
             - :func:`cupy.random.gumbel` for full documentation
             - :meth:`numpy.random.RandomState.gumbel`
         """
-        x = self._random_sample_raw(size=size, dtype=dtype)
         if not numpy.isscalar(loc):
             loc = cupy.asarray(loc, dtype)
         if not numpy.isscalar(scale):
             scale = cupy.asarray(scale, dtype)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
+        x = self._random_sample_raw(size=size, dtype=dtype)
         RandomState._gumbel_kernel(x, loc, scale, x)
         return x
 
-    def randint(self, low, high=None, size=None, dtype='l'):
+    def randint(self, low, high=None, size=None, dtype=int):
         """Returns a scalar or an array of integer values over ``[low, high)``.
 
         .. seealso::

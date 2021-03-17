@@ -6,12 +6,10 @@ from cupy.core._fusion_variable import _TraceVariable
 from cupy.core._fusion_variable import _TraceArray
 from cupy.core._fusion_variable import _VariableSet
 from cupy.core import _fusion_thread_local
-from cupy.core import _fusion_emit_code
 from cupy.core import _kernel
 from cupy.core import _reduction
-
-
-_dtype_to_ctype = _fusion_emit_code._dtype_to_ctype
+from cupy.core._scalar import get_typename
+from cupyx.jit import _codeblock
 
 
 class _UfuncRoutine:
@@ -59,11 +57,11 @@ class _UfuncRoutine:
         dtypes = self.compute_dtypes
         assert len(self.in_params) == len(self.compute_dtypes[:nin])
         in_params = [
-            (_dtype_to_ctype[p.dtype], _dtype_to_ctype[t], 'in{}'.format(i))
+            (get_typename(p.dtype), get_typename(t), 'in{}'.format(i))
             for i, (p, t) in enumerate(zip(self.in_params, dtypes[:nin]))
         ]
         out_params = [
-            (_dtype_to_ctype[p.dtype], _dtype_to_ctype[t], 'out{}'.format(i))
+            (get_typename(p.dtype), get_typename(t), 'out{}'.format(i))
             for i, (p, t) in enumerate(zip(self.out_params, dtypes[nin:]))
         ]
         params = in_params + out_params
@@ -71,9 +69,9 @@ class _UfuncRoutine:
         params_code = ', '.join(['{} &{}_'.format(t, s) for t, _, s in params])
         typedef = ['typedef {} {}_type;'.format(t, s) for _, t, s in params]
         read = ['{} {} = ({}) {}_;'.format(t, s, t, s) for _, t, s in params]
-        write = ['{}_ = {};'.format(s, s, s) for _, _, s in out_params]
+        write = ['{}_ = {};'.format(s, s) for _, _, s in out_params]
 
-        return _fusion_emit_code._CodeBlock(
+        return _codeblock.CodeBlock(
             '__device__ void {}({})'.format(self.name, params_code),
             typedef + read + [self.routine_code + ';'] + write)
 
@@ -181,7 +179,7 @@ class _ElementwiseTraceOp:
         indexer_name = next(iter(indexed_array)).indexer_name
         indexer_setup = self._emit_set_index(indexed_array, index_name)
 
-        return _fusion_emit_code._CodeBlock(
+        return _codeblock.CodeBlock(
             'CUPY_FOR({}, {}.size())'.format(index_name, indexer_name),
             indexer_setup + declaration + operation + after_operation)
 
@@ -202,7 +200,7 @@ class _ReductionTraceOp:
         assert isinstance(in_param, _TraceArray)
         assert isinstance(out_param, _TraceArray)
         assert isinstance(axis, tuple)
-        assert all([0 <= x < in_param.ndim for x in axis])
+        assert all(0 <= x < in_param.ndim for x in axis)
 
         self.name = name
         self.preamble = reduce_func.preamble
@@ -219,7 +217,7 @@ class _ReductionTraceOp:
         _, self.expr, self.postmap_cast_code, self.reduce_ctype = expr
         if self.reduce_ctype is None:
             out_param, = self.out_params
-            self.reduce_ctype = _dtype_to_ctype[out_param.dtype]
+            self.reduce_ctype = get_typename(out_param.dtype)
 
         self.premap_op = None
         self.postmap_op = None
@@ -259,7 +257,7 @@ class _ReductionTraceOp:
         op_name = '{}_op'.format(self.name)
         postmap_name = '{}_postmap'.format(self.name)
 
-        code = string.Template('''
+        template = string.Template('''
 #define ${op_name}(a, b) (${reduce_expr})
 #define ${postmap_name}(a, out0) (${postmap_cast})
 
@@ -302,16 +300,17 @@ __device__ void ${name}(
         }
         __syncthreads();
     }
-}'''  # NOQA
-        ).substitute(
+}''')  # NOQA
+        code = template.substitute(
             name=self.name,
             op_name=op_name,
             postmap_name=postmap_name,
-            in_type=_dtype_to_ctype[in_param.dtype],
-            out_type=_dtype_to_ctype[out_param.dtype],
+            in_type=get_typename(in_param.dtype),
+            out_type=get_typename(out_param.dtype),
             reduce_ctype=self.reduce_ctype,
             reduce_expr=self.expr,
             identity=self.identity,
-            postmap_cast=self.postmap_cast_code)
+            postmap_cast=self.postmap_cast_code
+        )
 
         return [code]

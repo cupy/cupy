@@ -395,8 +395,6 @@ class TestMsort(unittest.TestCase):
 
     # Test base cases
 
-    # TODO(niboshi): Fix xfail
-    @pytest.mark.xfail(reason='Explicit error types required')
     def test_msort_zero_dim(self):
         for xp in (numpy, cupy):
             a = testing.shaped_random((), xp)

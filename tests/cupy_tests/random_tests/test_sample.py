@@ -2,13 +2,15 @@ import unittest
 from unittest import mock
 
 import numpy
+import pytest
 
 import cupy
 from cupy import cuda
+from cupy.cuda import runtime
 from cupy import random
 from cupy import testing
-from cupy.testing import condition
-from cupy.testing import hypothesis
+from cupy.testing import _condition
+from cupy.testing import _hypothesis
 
 
 @testing.gpu
@@ -45,7 +47,7 @@ class TestRandint(unittest.TestCase):
 @testing.gpu
 class TestRandint2(unittest.TestCase):
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_bound_1(self):
         vals = [random.randint(0, 10, (2, 3)).get() for _ in range(20)]
         for val in vals:
@@ -53,7 +55,7 @@ class TestRandint2(unittest.TestCase):
         assert min(_.min() for _ in vals) == 0
         assert max(_.max() for _ in vals) == 9
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_bound_2(self):
         vals = [random.randint(0, 2).get() for _ in range(20)]
         for val in vals:
@@ -61,7 +63,7 @@ class TestRandint2(unittest.TestCase):
         assert min(vals) == 0
         assert max(vals) == 1
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_bound_overflow(self):
         # 100 - (-100) exceeds the range of int8
         val = random.randint(numpy.int8(-100), numpy.int8(100), size=20).get()
@@ -69,7 +71,7 @@ class TestRandint2(unittest.TestCase):
         assert val.min() >= -100
         assert val.max() < 100
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_bound_float1(self):
         # generate floats s.t. int(low) < int(high)
         low, high = sorted(numpy.random.uniform(-5, 5, size=2))
@@ -88,22 +90,23 @@ class TestRandint2(unittest.TestCase):
         assert min(_.min() for _ in vals) == -1
         assert max(_.max() for _ in vals) == 0
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
         vals = [random.randint(mx).get() for _ in range(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(trial) / mx] * mx)
-        assert hypothesis.chi_square_test(counts, expected)
+        assert _hypothesis.chi_square_test(counts, expected)
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
+    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(mx, size=(5, 20)).get()
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(vals.size) / mx] * mx)
-        assert hypothesis.chi_square_test(counts, expected)
+        assert _hypothesis.chi_square_test(counts, expected)
 
 
 @testing.gpu
@@ -167,7 +170,7 @@ class TestRandomIntegers(unittest.TestCase):
 @testing.gpu
 class TestRandomIntegers2(unittest.TestCase):
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_bound_1(self):
         vals = [random.random_integers(0, 10, (2, 3)).get() for _ in range(10)]
         for val in vals:
@@ -175,7 +178,7 @@ class TestRandomIntegers2(unittest.TestCase):
         assert min(_.min() for _ in vals) == 0
         assert max(_.max() for _ in vals) == 10
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_bound_2(self):
         vals = [random.random_integers(0, 2).get() for _ in range(20)]
         for val in vals:
@@ -183,22 +186,23 @@ class TestRandomIntegers2(unittest.TestCase):
         assert min(vals) == 0
         assert max(vals) == 2
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_goodness_of_fit(self):
         mx = 5
         trial = 100
         vals = [random.randint(0, mx).get() for _ in range(trial)]
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(trial) / mx] * mx)
-        assert hypothesis.chi_square_test(counts, expected)
+        assert _hypothesis.chi_square_test(counts, expected)
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
+    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(0, mx, (5, 20)).get()
         counts = numpy.histogram(vals, bins=numpy.arange(mx + 1))[0]
         expected = numpy.array([float(vals.size) / mx] * mx)
-        assert hypothesis.chi_square_test(counts, expected)
+        assert _hypothesis.chi_square_test(counts, expected)
 
 
 @testing.gpu
@@ -294,7 +298,7 @@ class TestRandomSample(unittest.TestCase):
 @testing.gpu
 class TestMultinomial(unittest.TestCase):
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(rtol=0.05)
     def test_multinomial(self, xp, dtype):

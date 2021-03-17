@@ -14,6 +14,7 @@ cdef extern from *:
 cpdef check_status(int status)
 
 cpdef tuple getVersion()
+cpdef tuple getSupportedArchs()
 
 
 ###############################################################################

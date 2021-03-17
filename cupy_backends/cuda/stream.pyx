@@ -6,6 +6,9 @@ from cupy_backends.cuda.api cimport runtime
 
 cdef object _thread_local = threading.local()
 
+cdef bint _ptds = bool(int(
+    os.environ.get('CUPY_CUDA_PER_THREAD_DEFAULT_STREAM', '0')) != 0)
+
 
 cdef class _ThreadLocal:
     cdef intptr_t current_stream
@@ -30,6 +33,12 @@ cdef class _ThreadLocal:
 
         return self.current_stream
 
+    cdef intptr_t get_default_stream_ptr(self):
+        if is_ptds_enabled():
+            return runtime.streamPerThread
+        else:  # we don't return 0 here
+            return runtime.streamLegacy
+
 
 cdef intptr_t get_current_stream_ptr():
     """C API to get current CUDA stream pointer.
@@ -51,6 +60,19 @@ cdef set_current_stream_ptr(intptr_t ptr):
     tls.set_current_stream_ptr(ptr)
 
 
+# cpdef for unit testing
+cpdef intptr_t get_default_stream_ptr():
+    """Get the CUDA default stream pointer.
+
+    Args:
+        ptr (intptr_t): CUDA stream pointer.
+    """
+    tls = _ThreadLocal.get()
+    return <intptr_t>tls.get_default_stream_ptr()
+
+
 cdef bint is_ptds_enabled():
-    ptds = int(os.environ.get('CUPY_CUDA_PER_THREAD_DEFAULT_STREAM', '0'))
-    return bool(ptds != 0)
+    if runtime._is_hip_environment:
+        # HIP does not support PTDS, just ignore the env var
+        return False
+    return _ptds

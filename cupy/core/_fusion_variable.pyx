@@ -2,8 +2,9 @@ import string
 
 import numpy
 
-from cupy.core._fusion_emit_code import _dtype_to_ctype
 from cupy.core import _fusion_interface
+
+from cupy.core._scalar cimport get_typename
 
 
 cdef class _AbstractDim:
@@ -143,11 +144,11 @@ class _TraceVariable:
         """Returns a string following the format taken as an input.
         """
         kwargs = dict([
-            (k, _dtype_to_ctype[v] if isinstance(v, numpy.dtype) else v)
+            (k, get_typename(v) if isinstance(v, numpy.dtype) else v)
             for k, v in kwargs.items()]
         )
         return string.Template(form).substitute(
-            type=_dtype_to_ctype[self.dtype],
+            type=get_typename(self.dtype),
             var=self.var_name,
             lvar=self.lvar_name,
             indexer=self.indexer_name,
@@ -185,7 +186,7 @@ class _TraceScalar(_TraceVariable):
             return str(self.const_value).lower()
         if self.dtype.kind == 'c':
             return '{}({}, {})'.format(
-                _dtype_to_ctype[self.dtype],
+                get_typename(self.dtype),
                 self.const_value.real,
                 self.const_value.imag)
         return str(self.const_value)
