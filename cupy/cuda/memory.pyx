@@ -470,8 +470,8 @@ cdef class MemoryPointer:
                 The default uses CUDA stream of the current context.
 
         """
+        ptr = mem if isinstance(mem, int) else mem.value
         if stream is None:
-            ptr = mem if isinstance(mem, int) else mem.value
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
