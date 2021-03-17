@@ -345,9 +345,10 @@ class TestConvolutionBackwardData(unittest.TestCase):
               self.dilate > 1 and self.groups > 1 and ndim > 2 and
               self.dtype == numpy.float16):
             self.err = RuntimeError
-        elif (version == 7605 and deterministic and self.dtype == numpy.float16
+        elif (7000 <= version < 8000 and deterministic
+                and self.dtype == numpy.float16
                 and self.ndim == 3 and sys.platform.startswith('win32')
-                and self.dilate == 2 and self.max_workspace_size != 0):
+                and self.dilate == 2 and self.groups == 2):
             # see https://github.com/cupy/cupy/pull/4893
             self.err = RuntimeError
         self._workspace_size = cudnn.get_max_workspace_size()
