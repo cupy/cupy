@@ -16,11 +16,11 @@ def _update_shape(a, shape):
 
 
 def empty_pinned(shape, dtype=float, order='C'):
-    """Returns an array without initializing the elements.
+    """Returns a new, uninitialized NumPy array with the given shape
+    and dtype.
 
     This is a convenience function which is just :func:`numpy.empty`,
-    except that the underlying memory is allocated from CuPy's pinned
-    memory pool.
+    except that the underlying memory is pinned/pagelocked.
 
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
@@ -42,11 +42,11 @@ def empty_pinned(shape, dtype=float, order='C'):
 
 
 def empty_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
-    """Returns a new array with same shape and dtype of a given array.
+    """Returns a new, uninitialized NumPy array with the same shape and dtype
+    as those of the given array.
 
     This is a convenience function which is just :func:`numpy.empty_like`,
-    except that the underlying memory is allocated from CuPy's pinned
-    memory pool.
+    except that the underlying memory is pinned/pagelocked.
 
     This function currently does not support ``subok`` option.
 
@@ -86,11 +86,11 @@ def empty_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
 
 
 def zeros_pinned(shape, dtype=float, order='C'):
-    """Returns a new array of given shape and dtype, filled with zeros.
+    """Returns a new, zero-initialized NumPy array with the given shape
+    and dtype.
 
     This is a convenience function which is just :func:`numpy.zeros`,
-    except that the underlying memory is allocated from CuPy's pinned
-    memory pool.
+    except that the underlying memory is pinned/pagelocked.
 
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
@@ -110,11 +110,11 @@ def zeros_pinned(shape, dtype=float, order='C'):
 
 
 def zeros_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
-    """Returns an array of zeros with same shape and dtype as a given array.
+    """Returns a new, zero-initialized NumPy array with the same shape and dtype
+    as those of the given array.
 
     This is a convenience function which is just :func:`numpy.zeros_like`,
-    except that the underlying memory is allocated from CuPy's pinned
-    memory pool.
+    except that the underlying memory is pinned/pagelocked.
 
     This function currently does not support ``subok`` option.
 
