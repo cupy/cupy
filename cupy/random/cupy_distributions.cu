@@ -38,7 +38,7 @@ struct curand_pseudo_state: rk_state {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
         double r = curand_uniform(_state);
-        if (((int) r) == 1) { 
+        if (r >= 1.0) { 
            r = 0.0;
         }
         return r;
