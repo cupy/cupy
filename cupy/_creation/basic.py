@@ -1,8 +1,7 @@
-import cupy
 import numpy
 
-from cupy.core.core import _update_order_char
-from cupy.core.internal import _get_strides_for_order_K
+import cupy
+from cupy.core.internal import _get_strides_for_order_K, _update_order_char
 
 
 def empty(shape, dtype=float, order='C'):
@@ -24,8 +23,7 @@ def empty(shape, dtype=float, order='C'):
 
 
 def _new_like_order_and_strides(
-        a, dtype, order, shape=None, *, get_memptr=True,
-        get_char=_update_order_char):
+        a, dtype, order, shape=None, *, get_memptr=True):
     """
     Determine order and strides as in NumPy's PyArray_NewLikeArray.
 
@@ -43,7 +41,8 @@ def _new_like_order_and_strides(
     if order == 'K' and shape is not None and len(shape) != a.ndim:
         return 'C', None, None
 
-    order = chr(get_char(a, ord(order)))
+    order = chr(_update_order_char(
+        a.flags.c_contiguous, a.flags.f_contiguous, ord(order)))
 
     if order == 'K':
         strides = _get_strides_for_order_K(a, numpy.dtype(dtype), shape)

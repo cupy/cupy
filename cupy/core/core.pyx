@@ -441,7 +441,8 @@ cdef class ndarray:
                     order_char == b'F' and self._f_contiguous):
                 return self
 
-        order_char = _update_order_char(self, order_char)
+        order_char = internal._update_order_char(
+            self._c_contiguous, self._f_contiguous, order_char)
 
         if order_char == b'K':
             strides = internal._get_strides_for_order_K(self, dtype)
@@ -1818,21 +1819,6 @@ cdef inline _carray.CArray _CArray_from_ndarray(ndarray arr):
     cdef _carray.CArray carr = _carray.CArray.__new__(_carray.CArray)
     carr.init(<void*>arr.data.ptr, arr.size, arr._shape, arr._strides)
     return carr
-
-
-cpdef int _update_order_char(ndarray x, int order_char):
-    # update order_char based on array contiguity
-    if order_char == b'A':
-        if x._f_contiguous:
-            order_char = b'F'
-        else:
-            order_char = b'C'
-    elif order_char == b'K':
-        if x._f_contiguous:
-            order_char = b'F'
-        elif x._c_contiguous:
-            order_char = b'C'
-    return order_char
 
 
 _HANDLED_TYPES = (ndarray, numpy.ndarray)

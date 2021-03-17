@@ -452,3 +452,19 @@ cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):
         strides[-i] = stride
         stride *= shape[-i] if shape else x.shape[-i]
     return strides
+
+
+cpdef int _update_order_char(
+        bint is_c_contiguous, bint is_f_contiguous, int order_char):
+    # update order_char based on array contiguity
+    if order_char == b'A':
+        if is_f_contiguous:
+            order_char = b'F'
+        else:
+            order_char = b'C'
+    elif order_char == b'K':
+        if is_f_contiguous:
+            order_char = b'F'
+        elif is_c_contiguous:
+            order_char = b'C'
+    return order_char
