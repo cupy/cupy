@@ -476,6 +476,7 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
+            ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpyAsync(self.ptr, ptr, size,
                                 runtime.memcpyHostToDevice, stream_ptr)
 
