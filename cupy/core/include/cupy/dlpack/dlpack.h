@@ -13,7 +13,7 @@
 #endif
 
 /*! \brief The current version of dlpack */
-#define DLPACK_VERSION 030
+#define DLPACK_VERSION 040
 
 /*! \brief DLPACK_DLL prefix for windows */
 #ifdef _WIN32
@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 /*!
- * \brief The device type in DLContext.
+ * \brief The device type in DLDevice.
  */
 typedef enum {
   /*! \brief CPU device */
@@ -64,23 +64,42 @@ typedef enum {
 } DLDeviceType;
 
 /*!
- * \brief A Device context for Tensor and operator.
+ * \brief A Device for Tensor and operator.
  */
 typedef struct {
   /*! \brief The device type used in the device. */
   DLDeviceType device_type;
   /*! \brief The device index */
   int device_id;
-} DLContext;
+} DLDevice;
+
+/*!
+ * \brief This is an alias for DLDevice. Notice that this will be removed in the next release.
+ */
+typedef DLDevice DLContext;
 
 /*!
  * \brief The type code options DLDataType.
  */
 typedef enum {
+  /*! \brief signed integer */
   kDLInt = 0U,
+  /*! \brief unsigned integer */
   kDLUInt = 1U,
+  /*! \brief IEEE floating point */
   kDLFloat = 2U,
+  /*!
+   * \brief Opaque handle type, reserved for testing purposes.
+   * Frameworks need to agree on the handle data type for the exchange to be well-defined.
+   */
+  kDLOpaqueHandle = 3U,
+  /*! \brief bfloat16 */
   kDLBfloat = 4U,
+  /*!
+   * \brief complex number
+   * (C/C++/Python layout: compact struct per complex number)
+   */
+  kDLComplex = 5U,
 } DLDataTypeCode;
 
 /*!
@@ -130,8 +149,8 @@ typedef struct {
    * \endcode
    */
   void* data;
-  /*! \brief The device context of the tensor */
-  DLContext ctx;
+  /*! \brief The device of the tensor */
+  DLDevice device;
   /*! \brief Number of dimensions */
   int ndim;
   /*! \brief The data type of the pointer*/
