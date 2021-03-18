@@ -62,3 +62,5 @@ cpdef strides_t _get_strides_for_order_K(x, dtype, shape=*)
 
 cpdef int _update_order_char(
     bint is_c_contiguous, bint is_f_contiguous, int order_char)
+
+cpdef tuple _broadcast_shapes(shapes)

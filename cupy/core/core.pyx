@@ -1088,11 +1088,10 @@ cdef class ndarray:
             return numpy.multiply(x, y)
 
     def __matmul__(x, y):
-        # TODO(kataoka): Support matmul (gufunc) in __array_ufunc__
         if not isinstance(y, ndarray) and _should_use_rop(x, y):
             return NotImplemented
         else:
-            return _linalg.matmul(x, y)
+            return cupy.linalg._product.matmul(x, y)
 
     def __div__(x, y):
         if isinstance(y, ndarray):
@@ -1426,6 +1425,7 @@ cdef class ndarray:
         inout = inputs
         if 'out' in kwargs:
             # need to unfold tuple argument in kwargs
+            # TODO(ecastill) GUFuncs support more than one output
             out = kwargs['out']
             if len(out) != 1:
                 raise ValueError('The \'out\' parameter must have exactly one '
@@ -1434,9 +1434,6 @@ cdef class ndarray:
             kwargs['out'] = out[0]
 
         if method == '__call__':
-            if ufunc.signature is not None:
-                # we don't support generalised-ufuncs (gufuncs)
-                return NotImplemented
             name = ufunc.__name__
             try:
                 cp_ufunc = getattr(cupy, name)
