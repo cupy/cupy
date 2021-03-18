@@ -227,6 +227,21 @@ class TestStandardExponential(GeneratorTestCase):
     def test_standard_exponential_ks(self, dtype):
         self.check_ks(0.05)(size=2000, dtype=dtype)
 
+    def test_standard_exponential_invalid_dtype_out(self):
+        out = cupy.zeros((3, 2), dtype=cupy.float32)
+        with pytest.raises(TypeError):
+            self.generate(size=(3, 2), out=out)
+
+    def test_standard_exponential_invalid_contiguity(self):
+        out = cupy.zeros((4, 6), dtype=cupy.float64)[0:3:, 0:2:]
+        with pytest.raises(ValueError):
+            self.generate(size=(3, 2), out=out)
+
+    def test_standard_exponential_invalid_dtype_shape(self):
+        out = cupy.zeros((3, 3), dtype=cupy.float64)
+        with pytest.raises(ValueError):
+            self.generate(size=(3, 2), out=out)
+
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
