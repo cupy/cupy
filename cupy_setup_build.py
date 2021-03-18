@@ -284,6 +284,20 @@ if not use_hip:
         ],
     })
 
+    MODULES.append({
+        'name': 'cugraph',
+        'file': [
+            'cupy_backends.cuda.libs.cugraph',
+        ],
+        'include': [
+            'cugraph/utilities/error.hpp',  # dummy
+        ],
+        'libraries': [
+            'cugraph',
+        ],
+        'check_method': build.check_cugraph_version,
+        'version_method': build.get_cugraph_version,
+    })
 else:
     MODULES.append({
         'name': 'cub',
@@ -479,6 +493,16 @@ def preconfigure_modules(compiler, settings):
                 if os.path.exists(lib_path):
                     settings['library_dirs'].append(lib_path)
                     break
+
+        if module['name'] == 'cugraph':
+            cusparselt_path = os.environ.get('CUGRAPH_PATH', '')
+            for i in 'include', 'include/cugraph':
+                inc_path = os.path.join(cusparselt_path, i)
+                if os.path.exists(inc_path):
+                    settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cusparselt_path, 'lib')
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
 
         print('')
         print('-------- Configuring Module: {} --------'.format(

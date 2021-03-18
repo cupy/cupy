@@ -287,6 +287,7 @@ _cub_version = None
 _jitify_path = None
 _jitify_version = None
 _compute_capabilities = None
+_cugraph_version = None
 
 
 def check_cuda_version(compiler, settings):
@@ -700,6 +701,36 @@ def get_cutensor_version(formatted=False):
         msg = 'check_cutensor_version() must be called first.'
         raise RuntimeError(msg)
     return _cutensor_version
+
+
+def check_cugraph_version(compiler, settings):
+    # TODO(anaruse): this is dummy implementation, need to change
+    global _cugraph_version
+    try:
+        out = build_and_run(compiler, '''
+        #include <stdio.h>
+        #include <cugraph/utilities/error.hpp>
+        int main(int argc, char* argv[]) {
+          printf("%d", 0);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot check cuGRAPH version\n{0}'.format(e))
+        return False
+
+    _cugraph_version = int(out)
+    return True
+
+
+def get_cugraph_version(formatted=False):
+    """Return cuGraph version cached in check_cugraph_version()."""
+    global _cugraph_version
+    if _cugraph_version is None:
+        msg = 'check_cugraph_version() must be called first.'
+        raise RuntimeError(msg)
+    return _cugraph_version
 
 
 def build_shlib(compiler, source, libraries=(),
