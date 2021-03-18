@@ -15,6 +15,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void init_curand_generator(
         int generator, intptr_t state_ptr, uint64_t seed,
         ssize_t size, intptr_t stream)
+    void random_uniform(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
     void raw(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
@@ -76,6 +79,37 @@ class Generator:
             if tup_size != out.shape:
                 raise ValueError(
                     'size must match out.shape when used together')
+
+    def random(self, size=None, dtype=numpy.float64, out=None):
+        """Return random floats in the half-open interval [0.0, 1.0).
+
+        Results are from the "continuous uniform" distribution over the
+        stated interval.  To sample :math:`Unif[a, b), b > a` multiply
+        the output of `random` by `(b-a)` and add `a`::
+
+          (b - a) * random() + a
+        Args:
+            size (None or int or tuple of ints): The shape of returned value.
+            dtype: Data type specifier.
+            out (cupy.ndarray, optional): If specified, values will be written
+                to this array
+        Returns:
+            cupy.ndarray: Samples uniformly drawn from the [0, 1) interval
+        """
+        cdef ndarray y
+
+        if out is not None:
+            self._check_output_array(dtype, size, out)
+
+        y = ndarray(size if size is not None else (), numpy.float64)
+        _launch_dist(self.bit_generator, random_uniform, y, ())
+        if out is not None:
+            out[...] = y
+            y = out
+        # we cast the array to a python object because
+        # cython cant call astype with the default values for
+        # omitted args.
+        return (<object>y).astype(dtype, copy=False)
 
     def integers(
             self, low, high=None, size=None,

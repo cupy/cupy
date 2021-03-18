@@ -168,6 +168,10 @@ __device__ uint32_t rk_raw(rk_state* state) {
     return state->rk_int();
 }
 
+__device__ double rk_random_uniform(rk_state* state) {
+    return state->rk_double();
+}
+
 __device__ uint32_t rk_interval_32(rk_state* state, uint32_t mx, uint32_t mask) {
     uint32_t sampled = state->rk_int() & mask;
     while(sampled > mx)  {
@@ -193,6 +197,14 @@ struct raw_functor {
     template<typename... Args>
     __device__ uint32_t operator () (Args&&... args) {
         return rk_raw(args...);
+    }
+};
+
+
+struct random_uniform_functor {
+    template<typename... Args>
+    __device__ double operator () (Args&&... args) {
+        return rk_random_uniform(args...);
     }
 };
 
@@ -255,6 +267,11 @@ struct kernel_launcher {
 //These functions will take the generator_id as a parameter
 void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
     kernel_launcher<raw_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size);
+}
+
+void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<random_uniform_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size);
 }
 
