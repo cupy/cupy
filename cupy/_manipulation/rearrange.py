@@ -99,6 +99,28 @@ def roll(a, shift, axis=None):
     """
     if axis is None:
         return roll(a.ravel(), shift, 0).reshape(a.shape)
+    elif isinstance(shift, cupy.ndarray):
+        shift = shift.ravel()
+        axes = _reduction._get_axis(axis, a.ndim)[0]
+        n_axes = max(len(axes), shift.size)
+        axes = numpy.broadcast_to(axes, (n_axes,))
+        shift = cupy.broadcast_to(shift, (n_axes,))
+
+        # TODO(asi1024): Improve after issue #4799 is resolved.
+        indices = []
+        for ax in range(a.ndim):
+            ind_shape = [1] * a.ndim
+            ind_shape[ax] = a.shape[ax]
+            indices.append(cupy.arange(a.shape[ax]).reshape(ind_shape))
+
+        for ax, s in zip(axes, shift):
+            indices[ax] -= s
+            indices[ax] %= a.shape[ax]
+
+        for ax in range(a.ndim):
+            indices[ax] = cupy.broadcast_to(indices[ax], a.shape)
+
+        return a[tuple(indices)]
     else:
         axis = _reduction._get_axis(axis, a.ndim)[0]
 
