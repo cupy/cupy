@@ -546,18 +546,47 @@ def _transpile_expr_internal(expr, env):
     if isinstance(expr, ast.Subscript):
         value = _transpile_expr(expr.value, env)
         index = _transpile_expr(expr.slice, env)
-        if is_constants([value, index]):
-            return Constant(value[index])
-        value = _to_cuda_object(value, env)
-        index = _to_cuda_object(index, env)
 
-        if not isinstance(value.ctype, _types.Array):
-            raise ValueError(f'{value.code} must be Array type.')
-        if value.ctype.ndim != 1:
-            raise NotImplementedError('Not implemented for ndim > 1.')
-        return CudaObject(
-            f'{value.code}[{index.code}]',
-            _types.Scalar(value.ctype.dtype))
+        if is_constants([value]):
+            if is_constants([index]):
+                return Constant(value.obj[index.obj])
+            raise TypeError(
+                f'{type(value.obj)} is not subscriptable with non-constants.')
+
+        value = _to_cuda_object(value, env)
+
+        if isinstance(value.ctype, _types.Tuple):
+            raise NotImplementedError
+
+        if isinstance(value.ctype, _types.Array):
+            index = _to_cuda_object(index, env)
+            ndim = value.ctype.ndim
+            if isinstance(index.ctype, _types.Scalar):
+                index_dtype = index.ctype.dtype
+                if ndim != 1:
+                    raise TypeError(
+                        'Scalar indexing is supported only for 1-dim array.')
+                if index_dtype.kind not in 'ui':
+                    raise TypeError('Array indices must be integers.')
+                return CudaObject(
+                    f'{value.code}[{index.code}]',
+                    _types.Scalar(value.ctype.dtype))
+            if isinstance(index.ctype, _types.Tuple):
+                if ndim != len(index.ctype.types):
+                    raise IndexError(f'The size of index must be {ndim}')
+                for t in index.ctype.types:
+                    if not isinstance(t, _types.Scalar):
+                        raise TypeError('Array indices must be scalar.')
+                    if t.dtype.kind not in 'iu':
+                        raise TypeError('Array indices must be integer.')
+                return CudaObject(
+                    f'{value.code}._indexing({index.code})',
+                    value.ctype.dtype)
+            if isinstance(index.ctype, _types.Array):
+                raise TypeError('Advanced indexing is not supported.')
+            assert False  # Never reach.
+
+        raise TypeError(f'{value.code} is not subscriptable.')
 
     if isinstance(expr, ast.Name):
         value = env[expr.id]

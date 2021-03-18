@@ -326,7 +326,7 @@ public:
 
   template <typename Tuple, int dim>
   __forceinline__ __device__ const T& _indexing(const Tuple &idx, Dim<dim>, const char* ptr) const {
-    index_t i = static_cast<index_t>(get<dim>(idx));
+    index_t i = static_cast<index_t>(thrust::get<dim>(idx));
     ptr += static_cast<index_t>(strides_[dim]) * i;
     return _indexing(idx, Dim<dim + 1>(), ptr);
   }
