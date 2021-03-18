@@ -88,11 +88,13 @@ class Generator:
         the output of `random` by `(b-a)` and add `a`::
 
           (b - a) * random() + a
+
         Args:
             size (None or int or tuple of ints): The shape of returned value.
             dtype: Data type specifier.
             out (cupy.ndarray, optional): If specified, values will be written
                 to this array
+
         Returns:
             cupy.ndarray: Samples uniformly drawn from the [0, 1) interval
         """

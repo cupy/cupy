@@ -293,7 +293,7 @@ class TestIntegers(GeneratorTestCase):
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
-class TestRandom(GeneratorTestCase):
+class TestRandom(InvalidOutsMixin, GeneratorTestCase):
     # TODO(niboshi):
     #   Test soundness of distribution.
     #   Currently only reprocibility is checked.
