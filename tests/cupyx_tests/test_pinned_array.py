@@ -37,6 +37,7 @@ def numpy_cupyx_array_equal(target_func, name='func'):
     def _check_pinned_mem_used(a, xp):
         if xp is cupy:
             assert isinstance(a.base, cupy.cuda.PinnedMemoryPointer)
+            assert a.base.ptr == a.ctypes.data
 
     def decorator(impl):
         @_wraps_partial(impl, name)
