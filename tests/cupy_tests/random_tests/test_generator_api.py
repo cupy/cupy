@@ -297,6 +297,76 @@ class TestStandardExponential(InvalidOutsMixin, GeneratorTestCase):
         self.check_ks(0.05)(size=2000, dtype=dtype)
 
 
+@testing.parameterize(
+    {'shape': 0.5, 'scale': 0.5},
+    {'shape': 1.0, 'scale': 0.5},
+    {'shape': 3.0, 'scale': 0.5},
+    {'shape': 0.5, 'scale': 1.0},
+    {'shape': 1.0, 'scale': 1.0},
+    {'shape': 3.0, 'scale': 1.0},
+    {'shape': 0.5, 'scale': 3.0},
+    {'shape': 1.0, 'scale': 3.0},
+    {'shape': 3.0, 'scale': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestGamma(GeneratorTestCase):
+
+    target_method = 'gamma'
+
+    def test_gamma_1(self):
+        self.generate(shape=self.shape, scale=self.scale, size=(3, 2))
+
+    def test_gamma_2(self):
+        self.generate(shape=self.shape, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_gamma_ks(self):
+        self.check_ks(0.05)(
+            self.shape, self.scale, size=2000)
+
+
+@testing.parameterize(
+    {'shape': 0.5},
+    {'shape': 1.0},
+    {'shape': 3.0},
+)
+@testing.gpu
+@testing.fix_random()
+class TestStandardGamma(GeneratorTestCase):
+
+    target_method = 'standard_gamma'
+
+    def test_standard_gamma(self):
+        self.generate(shape=self.shape, size=(3, 2))
+
+    @testing.for_dtypes('fd')
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_standard_gamma_ks(self, dtype):
+        self.check_ks(0.05)(
+            shape=self.shape, size=2000, dtype=dtype)
+
+
+@testing.gpu
+@testing.fix_random()
+class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
+
+    target_method = 'standard_gamma'
+
+    def test_invalid_gamma(self):
+        with pytest.raises(ValueError):
+            self.generate(shape=-1.0, size=(3, 2))
+
+    def test_invalid_dtype_out(self):
+        self.invalid_dtype_out(shape=1.0)
+
+    def test_invalid_contiguity(self):
+        self.invalid_contiguity(shape=1.0)
+
+    def test_invalid_shape(self):
+        self.invalid_shape(shape=1.0)
+
+
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.parameterize(

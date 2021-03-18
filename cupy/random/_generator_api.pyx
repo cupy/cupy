@@ -42,6 +42,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void standard_normal_float(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
+    void standard_gamma(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, double shape)
 
 
 class Generator:
@@ -350,6 +353,40 @@ class Generator:
             _launch_dist(self.bit_generator, standard_normal_float, y, ())
 
         return y
+
+    def gamma(self, shape, scale=1.0, size=None):
+        """Returns an array of samples drawn from a gamma distribution.
+
+        .. seealso::
+            - :func:`cupy.random.gamma` for full documentation
+            - :meth:`numpy.random.RandomState.gamma`
+        """
+        return self.standard_gamma(shape, size) * scale
+
+    def standard_gamma(self, shape, size=None, dtype=numpy.float64, out=None):
+        """Returns an array of samples drawn from a standard gamma distribution.
+
+        .. seealso::
+            - :func:`cupy.random.standard_gamma` for full documentation
+            - :meth:`numpy.random.RandomState.standard_gamma`
+        """
+        cdef ndarray y
+
+        if shape < 0.0:
+            raise ValueError('shape < 0')
+
+        if out is not None:
+            self._check_output_array(dtype, size, out)
+
+        y = ndarray(size if size is not None else (), numpy.float64)
+        _launch_dist(self.bit_generator, standard_gamma, y, (shape,))
+        if out is not None:
+            out[...] = y
+            y = out
+        # we cast the array to a python object because
+        # cython cant call astype with the default values for
+        # omitted args.
+        return (<object>y).astype(dtype, copy=False)
 
 
 def init_curand(generator, state, seed, size):

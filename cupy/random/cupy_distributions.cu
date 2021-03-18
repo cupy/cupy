@@ -362,6 +362,14 @@ struct standard_normal_float_functor {
     }
 };
 
+// There are several errors when trying to do this a full template
+struct standard_gamma_functor {
+    template<typename... Args>
+    __device__ double operator () (Args&&... args) {
+        return rk_standard_gamma(args...);
+    }
+};
+
 template<typename F, typename T, typename R, typename... Args>
 __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -433,4 +441,9 @@ void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, 
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
     kernel_launcher<standard_normal_float_functor, float> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size);
+}
+
+void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double shape) {
+    kernel_launcher<standard_gamma_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, shape);
 }
