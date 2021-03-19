@@ -51,8 +51,6 @@ try:
 except ImportError:
     thrust = _UnavailableModule('cupy.cuda.thrust')
 
-from cupy.cuda import nccl  # NOQA
-
 try:
     from cupy_backends.cuda.libs import cutensor
 except ImportError:
