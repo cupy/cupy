@@ -236,7 +236,7 @@ class InvalidOutsMixin:
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
-class TestStandardExponential(GeneratorTestCase, InvalidOutsMixin):
+class TestStandardExponential(InvalidOutsMixin, GeneratorTestCase):
 
     target_method = 'standard_exponential'
 
