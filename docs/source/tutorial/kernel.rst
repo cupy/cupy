@@ -275,7 +275,7 @@ No validation is performed by CuPy for arguments passed to the kernel, including
 
 Especially note that when passing a cupy :class:`~cupy.ndarray`, its ``dtype`` should match with the type of the argument declared in the method signature of the CUDA source code (unless you are casting arrays intentionally). 
 
-As an example, ``cupy.float32`` and ``cupy.uint64`` arrays must be passed to the argument typed as ``float*`` and ``unsigned long long*``. Cupy does not directly support arrays of non-primitive types such as ``float3`` but nothing prevents you from casting a ``float*`` to ``float3*`` in a :class:`~cupy.RawKernel`.
+As an example, ``cupy.float32`` and ``cupy.uint64`` arrays must be passed to the argument typed as ``float*`` and ``unsigned long long*``, respectively. CuPy does not directly support arrays of non-primitive types such as ``float3``, but nothing prevents you from casting a ``float*`` to a ``float3*`` in a kernel.
 
 Python primitive types, ``int``, ``float``, ``complex`` and ``bool`` map to ``long long``, ``double``, ``cuDoubleComplex`` and ``bool``, respectively.
 
@@ -318,8 +318,8 @@ This means that you can pass by value any base numpy types such as ``numpy.int8`
 The CUDA standard guarantees that the size of fundamental types on the host and device always match.
 The itemsize of ``size_t``, ``ptrdiff_t``, ``intptr_t``, ``uintptr_t``, 
 ``long``, ``signed long`` and ``unsigned long`` are thus platform dependent. 
-You can also pass any CUDA vector builtins such as ``float3`` or any other user defined structure 
-as kernel arguments provided it matches device side kernel parameter type, see section :ref:`custom_user_structs`.
+To pass any CUDA vector builtins such as ``float3`` or any other user defined structure 
+as kernel arguments (provided it matches the device side kernel parameter type), see section :ref:`custom_user_structs`.
 
 .. note::
     To use ``cuFloatComplex`` and ``cuDoubleComplex`` in your CUDA kernel, you need to include the header ``cuComplex.h``. You may also need to pass `translate_cucomplex=True` to :class:`~cupy.RawKernel` or :class:`~cupy.RawModule`.
