@@ -204,7 +204,7 @@ class TestMemoryPointerAsync(unittest.TestCase):
             4, stream=self.stream)
         assert b_cpu.value == a_cpu.value
 
-    def test_copy_from_device(self):
+    def test_copy_from_device_async(self):
         a_gpu = memory.alloc(4)
         a_cpu = ctypes.c_int(100)
         a_gpu.copy_from_async(ctypes.cast(ctypes.byref(
