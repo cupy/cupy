@@ -224,7 +224,7 @@ class TestExponential(GeneratorTestCase):
     @_condition.repeat_with_success_at_least(10, 3)
     def test_exponential_ks(self):
         self.check_ks(0.05)(
-            self.scale, size=2000, dtype)
+            self.scale, size=2000)
 
 
 class InvalidOutsMixin:
