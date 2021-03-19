@@ -81,7 +81,7 @@ class TestCuPyHeaders(unittest.TestCase):
 
     def test_compiling_core_header(self):
         code = r'''
-        extern "C" __global__ void _test_ker_() { printf("ok!!!\n"); }
+        extern "C" __global__ void _test_ker_() { }
         '''
         code = self.header + code
         options = () if self.cxx is None else (self.cxx,)
