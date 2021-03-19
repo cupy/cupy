@@ -67,12 +67,17 @@ def make_packed(basetype, N, itemsize):
 
 
 def main():
+    # This program demonstrate how to build a hostside
+    # representation of device structure 'complex_struct'
+    # defined in variable 'struct_definition' that can be
+    # used as a RawKernel argument.
 
-    # First step is to determine struct memory layout
+    # First step is to determine structure memory layout
     #  itemsize -> overall struct size
-    #  sizes    -> individual struct member sizes
-    #  offsets  -> individual struct member offsets
-    # Results are copied by to host after kernel launch.
+    #  sizes    -> individual struct member sizes, determined with sizeof
+    #  offsets  -> individual struct member offsets, determined with offsetof
+    # Results (in terms of bytes) are copied to host after kernel launch.
+    # Note that 'complex_struct' has 5 members named a, b, c, d and e.
     itemsize = cupy.ndarray(shape=(1,), dtype=numpy.uint64)
     sizes = cupy.ndarray(shape=(5,), dtype=numpy.uint64)
     offsets = cupy.ndarray(shape=(5,), dtype=numpy.uint64)

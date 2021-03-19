@@ -3,7 +3,6 @@ import numpy
 import cupy
 
 code = '''
-
 template<typename T>
 struct Matrix {
     T value[4][4];
@@ -84,7 +83,8 @@ def main():
         expected = cupy.matmul(A, B) + cupy.asarray(C[None, :, :])
 
         cupy.testing.assert_array_almost_equal(expected, out)
-        print("Kernel output matches expected value for type '{}'.".format(ctype))
+        print("Kernel output matches expected value for "
+              "type '{}'.".format(ctype))
 
 
 if __name__ == '__main__':
