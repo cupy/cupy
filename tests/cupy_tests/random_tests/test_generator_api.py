@@ -278,6 +278,19 @@ class TestStandardNormal(GeneratorTestCase):
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
+class TestStandardNormalInvalid(InvalidOutsMixin, GeneratorTestCase):
+
+    target_method = 'standard_normal'
+
+    def test_invalid_dtypes(self):
+        for dtype in 'bhiqleFD':
+            with pytest.raises(TypeError):
+                self.generate(size=(3, 2), dtype=dtype)
+
+
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
+@testing.fix_random()
 class TestIntegers(GeneratorTestCase):
     # TODO(niboshi):
     #   Test soundness of distribution.
