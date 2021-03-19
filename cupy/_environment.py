@@ -293,7 +293,9 @@ def _preload_libraries():
         filename = config[lib]['filename']
         _log('Looking for {} version {} ({})'.format(lib, version, filename))
 
-        # "lib" for cuTENSOR/NCCL, "lib64" for cuDNN, "bin" for Windows
+        # "lib": cuTENSOR (Linux/Windows) / NCCL (Linux)
+        # "lib64": cuDNN (Linux)
+        # "bin": cuDNN (Windows)
         libpath_cands = [
             os.path.join(
                 cupy_cuda_lib_path, config['cuda'], lib, version, x, filename)
