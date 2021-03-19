@@ -15,10 +15,10 @@ from cupy.core.core cimport ndarray
 
 from cupy.cuda import cub
 
-if cupy.cuda.cutensor.available:
+try:
     import cupy_backends.cuda.libs.cutensor as cuda_cutensor
     from cupy import cutensor
-else:
+except ImportError:
     cuda_cutensor = None
     cutensor = None
 

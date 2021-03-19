@@ -51,8 +51,6 @@ try:
 except ImportError:
     thrust = _UnavailableModule('cupy.cuda.thrust')
 
-from cupy.cuda import cutensor  # NOQA
-
 
 def __getattr__(key):
     # `*_enabled` flags are kept for backward compatibility.
