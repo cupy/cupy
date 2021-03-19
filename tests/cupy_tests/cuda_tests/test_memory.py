@@ -235,6 +235,10 @@ class TestMemoryPointerAsync(unittest.TestCase):
         b_cpu = ctypes.c_int()
         b_cpu_ptr = ctypes.cast(ctypes.byref(b_cpu), ctypes.c_void_p)
         a_gpu.copy_to_host_async(b_cpu_ptr.value, 4, stream=self.stream)
+        if self.stream is not None:
+            self.stream.synchronize()
+        else:
+            stream_module.get_current_stream().synchronize()
         assert b_cpu.value == a_cpu.value
 
     def test_copy_from_device_async_using_raw_ptr(self):
