@@ -174,11 +174,11 @@ class Generator:
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
-    def exponential(self, scale=1.0, size=None, dtype=numpy.float64):
+    def exponential(self, scale=1.0, size=None):
         """Exponential distribution.
 
-        Returns an array of samples drawn from the exponential distribution. Its
-        probability density function is defined as
+        Returns an array of samples drawn from the exponential distribution.
+        Its probability density function is defined as
 
         .. math::
         f(x) = \\frac{1}{\\beta}\\exp (-\\frac{x}{\\beta}).
@@ -188,8 +188,6 @@ class Generator:
                 :math:`\\beta`.
             size (int or tuple of ints): The shape of the array. If ``None``, a
                 zero-dimensional array is generated.
-            dtype: Data type specifier. Only :class:`numpy.float32` and
-                :class:`numpy.float64` types are allowed.
 
         Returns:
             cupy.ndarray: Samples drawn from the exponential distribution.
@@ -198,7 +196,7 @@ class Generator:
             :meth:`numpy.random.Generator.exponential
             <numpy.random.generator.Generator.exponential>`
         """
-        return self.standard_exponential(size, dtype) * scale
+        return self.standard_exponential(size) * scale
 
     def standard_exponential(
             self, size=None, dtype=numpy.float64,
