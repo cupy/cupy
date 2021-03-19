@@ -189,7 +189,7 @@ if not use_hip:
     MODULES.append({
         'name': 'nccl',
         'file': [
-            'cupy.cuda.nccl',
+            'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
             'nccl.h',
