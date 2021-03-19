@@ -576,10 +576,13 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
 class TestMemoryPool(unittest.TestCase):
 
     def setUp(self):
-        self.pool = memory.MemoryPool(self.allocator)
         if (cupy.cuda.runtime.is_hip
                 and self.allocator is memory.malloc_managed):
             raise unittest.SkipTest('HIP does not support managed memory')
+        self.pool = memory.MemoryPool(self.allocator)
+
+    def tearDown(self):
+        self.pool.free_all_blocks()
 
     def test_zero_size_alloc(self):
         with cupy.cuda.Device():
@@ -935,9 +938,9 @@ class TestMemoryAsyncPool(unittest.TestCase):
         self.pool.free_all_blocks()
         with cupy.cuda.Device() as d:
             _, mem_total = d.mem_info
-            mem = self.pool.malloc(int(0.8 * mem_total)).mem  # 80% memory
+            mem = self.pool.malloc(int(0.7 * mem_total)).mem  # 70% memory
             del mem
-            mem = self.pool.malloc(int(0.2 * mem_total)).mem  # 20% memory # noqa
+            mem = self.pool.malloc(int(0.3 * mem_total)).mem  # 30% memory # noqa
 
     def test_free_all_blocks(self):
         with cupy.cuda.Device():
@@ -951,21 +954,21 @@ class TestMemoryAsyncPool(unittest.TestCase):
         default_pool = cupy.get_default_memory_pool()
         with cupy.cuda.Device() as d:
             _, mem_total = d.mem_info
-            mem = self.pool.malloc(int(0.8 * mem_total)).mem  # 80% memory
+            mem = self.pool.malloc(int(0.7 * mem_total)).mem  # 70% memory
             del mem
             with pytest.raises(memory.OutOfMemoryError):
-                default_pool.malloc(int(0.2 * mem_total))  # 20% memory
+                default_pool.malloc(int(0.3 * mem_total))  # 30% memory
             self.pool.free_all_blocks()  # synchronize
-            default_pool.malloc(int(0.2 * mem_total))  # this time it'd work
+            default_pool.malloc(int(0.3 * mem_total))  # this time it'd work
 
     def test_interaction_with_CuPy_default_pool(self):
         # Test saneness of cudaMallocAsync
         default_pool = cupy.get_default_memory_pool()
         with cupy.cuda.Device() as d:
             _, mem_total = d.mem_info
-            mem = default_pool.malloc(int(0.8 * mem_total)).mem  # 80% memory
+            mem = default_pool.malloc(int(0.7 * mem_total)).mem  # 70% memory
             del mem
             with pytest.raises(memory.OutOfMemoryError):
-                self.pool.malloc(int(0.2 * mem_total))  # 20% memory
+                self.pool.malloc(int(0.3 * mem_total))  # 30% memory
             default_pool.free_all_blocks()
-            self.pool.malloc(int(0.2 * mem_total))  # this time it'd work
+            self.pool.malloc(int(0.3 * mem_total))  # this time it'd work
