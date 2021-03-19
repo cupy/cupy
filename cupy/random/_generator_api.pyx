@@ -33,6 +33,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void standard_normal(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
+    void standard_normal_float(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
 
 
 class Generator:
@@ -241,11 +244,25 @@ class Generator:
         """
         cdef ndarray y
 
-        y = ndarray(size if size is not None else (), numpy.float64)
-        _launch_dist(self.bit_generator, standard_normal, y, ())
         if out is not None:
-            out[...] = y
-            y = out
+            self._check_output_array(dtype, size, out)
+
+        dtype = numpy.dtype(dtype)
+
+        if out is not None and out.dtype.char in ('f', 'd'):
+            y = (<ndarray>out)
+        else:
+            if dtype.char in ('f', 'd'):
+                y = ndarray(size if size is not None else (), dtype)
+            else:
+                raise TypeError(
+                    f'Unsupported dtype {dtype.name} for standard_normal')
+
+        if dtype.char == 'd': 
+            _launch_dist(self.bit_generator, standard_normal, y, ())
+        else:
+            _launch_dist(self.bit_generator, standard_normal_float, y, ())
+
         # we cast the array to a python object because
         # cython cant call astype with the default values for
         # omitted args.

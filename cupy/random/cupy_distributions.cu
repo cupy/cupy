@@ -19,6 +19,9 @@ struct rk_state {
     __device__ virtual double rk_normal() {
         return  0.0;
     }
+    __device__ virtual float rk_normal_float() {
+        return  0.0;
+    }
 };
 
 template<typename CURAND_TYPE>
@@ -44,6 +47,10 @@ struct curand_pseudo_state: rk_state {
         return r;
     }
     __device__ virtual double rk_normal() {
+        return curand_normal_double(_state);
+    }
+
+    __device__ virtual float rk_normal_float() {
         return curand_normal(_state);
     }
 };
@@ -98,6 +105,10 @@ __device__ double rk_standard_exponential(rk_state* state) {
 
 __device__ double rk_standard_normal(rk_state* state) {
     return state->rk_normal();
+}
+
+__device__ float rk_standard_normal_float(rk_state* state) {
+    return state->rk_normal_float();
 }
 
 __device__ double rk_standard_gamma(rk_state* state, double shape) {
@@ -237,6 +248,13 @@ struct standard_normal_functor {
     }
 };
 
+struct standard_normal_float_functor {
+    template<typename... Args>
+    __device__ float operator () (Args&&... args) {
+        return rk_standard_normal_float(args...);
+    }
+};
+
 template<typename F, typename T, typename R, typename... Args>
 __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -292,5 +310,10 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
     kernel_launcher<standard_normal_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size);
+}
+
+void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<standard_normal_float_functor, float> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size);
 }
