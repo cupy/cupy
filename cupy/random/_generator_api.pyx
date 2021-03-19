@@ -56,6 +56,27 @@ class Generator:
     def __init__(self, bit_generator):
         self.bit_generator = bit_generator
 
+    def _check_output_array(self, dtype, size, out):
+        # Checks borrowed from NumPy
+        # https://github.com/numpy/numpy/blob/cb557b79fa0ce467c881830f8e8e042c484ccfaa/numpy/random/_common.pyx#L235-L251
+        dtype = numpy.dtype(dtype)
+        if out.dtype.char != dtype.char:
+            raise TypeError(
+                f'Supplied output array has the wrong type. '
+                f'Expected {dtype.name}, got {out.dtype.name}')
+        if not (out.flags.c_contiguous or out.flags.f_contiguous):
+            raise ValueError(
+                'Supplied output array is not contiguous,'
+                ' writable or aligned.')
+        if size is not None:
+            try:
+                tup_size = tuple(size)
+            except TypeError:
+                tup_size = tuple([size])
+            if tup_size != out.shape:
+                raise ValueError(
+                    'size must match out.shape when used together')
+
     def integers(
             self, low, high=None, size=None,
             dtype=numpy.int64, endpoint=False):
@@ -184,6 +205,9 @@ class Generator:
 
         if method == 'zig':
             raise NotImplementedError('Ziggurat method is not supported')
+
+        if out is not None:
+            self._check_output_array(dtype, size, out)
 
         y = ndarray(size if size is not None else (), numpy.float64)
         _launch_dist(self.bit_generator, exponential, y, ())
