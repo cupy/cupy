@@ -497,11 +497,7 @@ cdef class _AbstractReductionKernel:
 cpdef _SimpleReductionKernel create_reduction_func(
         name, ops, routine=None, identity=None, preamble='',
         sort_reduce_axis=True):
-    print(ops)
-    print(routine)
     ops = _kernel._Ops.from_tuples(ops, routine)
-    for op in ops.ops:
-        print(op.in_types, op.out_types, op.routine)
     return _SimpleReductionKernel(
         name, ops, identity, preamble, sort_reduce_axis)
 
@@ -549,16 +545,6 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             raise TypeError(
                 'Argument \'a\' has incorrect type (expected %s, got %s)' %
                 (ndarray, type(a)))
-
-       # in_dtype = arr.dtype
-       # print("\n\n\n I AM CALLED \n\n\n")
-       # if (in_dtype.kind == 'c'
-       #         and numpy.dtype(dtype).kind == 'f'):
-       #     warnings.warn(
-       #         'Casting complex values to real discards the imaginary part',
-       #         numpy.ComplexWarning)
-       #     arr = arr.real
-
         in_args = [arr]
 
         dev_id = device.get_device_id()
@@ -592,6 +578,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         else:
             out_type = op.out_types[0]
 
+        # We guessed a routine that requires a C2R casting for the input
         if (in_args[0].dtype.kind == 'c'
                 and numpy.dtype(op.in_types[0]).kind == 'f'):
             warnings.warn(
