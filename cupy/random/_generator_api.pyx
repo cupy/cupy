@@ -246,27 +246,20 @@ class Generator:
 
         if out is not None:
             self._check_output_array(dtype, size, out)
-
-        dtype = numpy.dtype(dtype)
-
-        if out is not None and out.dtype.char in ('f', 'd'):
-            y = (<ndarray>out)
+            y = out
         else:
-            if dtype.char in ('f', 'd'):
-                y = ndarray(size if size is not None else (), dtype)
-            else:
-                raise TypeError(
-                    f'Unsupported dtype {dtype.name} for standard_normal')
+            y = ndarray(size if size is not None else (), dtype)
 
-        if dtype.char == 'd': 
+        if y.dtype.char not in ('f', 'd'):
+            raise TypeError(
+                f'Unsupported dtype {y.dtype.name} for standard_normal')
+
+        if y.dtype.char == 'd':
             _launch_dist(self.bit_generator, standard_normal, y, ())
         else:
             _launch_dist(self.bit_generator, standard_normal_float, y, ())
 
-        # we cast the array to a python object because
-        # cython cant call astype with the default values for
-        # omitted args.
-        return (<object>y).astype(dtype, copy=False)
+        return y
 
 
 def init_curand(generator, state, seed, size):
