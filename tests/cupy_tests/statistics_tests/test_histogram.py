@@ -35,7 +35,7 @@ def for_signed_dtypes_bincount(name='dtype'):
 
 
 def for_all_dtypes_combination_bincount(names):
-    return testing.helper.for_dtypes_combination(_all_types, names=names)
+    return testing.for_dtypes_combination(_all_types, names=names)
 
 
 @testing.gpu

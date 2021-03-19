@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 
 
@@ -116,6 +117,8 @@ class TestCorrelate(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_correlate_non_contiguous(self, xp, dtype):
+        if runtime.is_hip and self.mode == 'full':
+            pytest.xfail(reason='ROCm/HIP may have a bug')
         a = testing.shaped_arange((300,), xp, dtype)
         b = testing.shaped_arange((100,), xp, dtype)
         return xp.correlate(a[::200], b[10::70], mode=self.mode)
@@ -129,6 +132,7 @@ class TestCorrelate(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(rtol=1e-2)
+    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_correlate_diff_types(self, xp, dtype1, dtype2):
         a = testing.shaped_random((200,), xp, dtype1)
         b = testing.shaped_random((100,), xp, dtype2)

@@ -8,7 +8,14 @@ from cupy.fft import config
 from cupy.fft._fft import (_default_fft_func, _fft, _fftn,
                            _size_last_transform_axis)
 from cupy import testing
-from cupy.testing.helper import _wraps_partial
+from cupy.testing._helper import _wraps_partial
+
+
+@pytest.fixture
+def skip_forward_backward(request):
+    if request.instance.norm in ('backward', 'forward'):
+        if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+            pytest.skip('forward/backward is supported by NumPy 1.20+')
 
 
 def nd_planning_states(states=[True, False], name='enable_nd'):
@@ -86,10 +93,11 @@ def multi_gpu_config(gpu_configs=None):
     return decorator
 
 
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(0,), (10, 0), (10,), (10, 10)],
-    'norm': [None, 'ortho', ''],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
 class TestFft:
@@ -101,7 +109,7 @@ class TestFft:
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
@@ -140,7 +148,7 @@ class TestFftOrder:
             a = xp.asfortranarray(a)
         out = xp.fft.fft(a, axis=self.axis)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
@@ -175,10 +183,11 @@ def _skip_multi_gpu_bug(shape, gpus):
 # Almost identical to the TestFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 0, 64],
     'shape': [(0,), (0, 10), (64,), (4, 64)],
-    'norm': [None, 'ortho', ''],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.multi_gpu(2)
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -195,7 +204,7 @@ class TestMultiGpuFft:
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -214,7 +223,7 @@ class TestMultiGpuFft:
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -245,7 +254,7 @@ class TestMultiGpuFftOrder:
             a = xp.asfortranarray(a)
         out = xp.fft.fft(a, axis=self.axis)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -263,7 +272,7 @@ class TestMultiGpuFftOrder:
             a = xp.asfortranarray(a)
         out = xp.fft.ifft(a, axis=self.axis)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -359,31 +368,36 @@ class TestFftAllocate:
         cupy.get_default_memory_pool().free_all_blocks()
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (0, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 0), 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': ()},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': ()},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {'shape': (0, 5), 's': None, 'axes': None},
+        {'shape': (2, 0, 5), 's': None, 'axes': None},
+        {'shape': (0, 0, 5), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (0, 5), 'axes': None},
+        {'shape': (3, 4), 's': (1, 0), 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
 class TestFft2:
 
@@ -430,32 +444,37 @@ class TestFft2:
         return out
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': [-1, -2], 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (4, 3, 2), 'axes': (2, 0, 1), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': [-1, -2]},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': ()},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': ()},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4), 's': (4, 3, 2), 'axes': (2, 0, 1)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {'shape': (0, 5), 's': None, 'axes': None},
+        {'shape': (2, 0, 5), 's': None, 'axes': None},
+        {'shape': (0, 0, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
 class TestFftn:
 
@@ -502,25 +521,30 @@ class TestFftn:
         return out
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (0, 5), 's': None, 'axes': None},
+        {'shape': (2, 0, 5), 's': None, 'axes': None},
+        {'shape': (0, 0, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
 @testing.gpu
 class TestPlanCtxManagerFftn:
 
@@ -529,9 +553,9 @@ class TestPlanCtxManagerFftn:
         if cupy.cuda.runtime.is_hip:
             # TODO(leofang): test newer ROCm versions
             if (self.axes == (0, 1) and self.shape == (2, 3, 4)):
-                raise pytest.skip("hipFFT's PlanNd for this case "
-                                  "is buggy, so Plan1d is generated "
-                                  "instead")
+                pytest.skip("hipFFT's PlanNd for this case "
+                            "is buggy, so Plan1d is generated "
+                            "instead")
 
     @nd_planning_states()
     @testing.for_complex_dtypes()
@@ -607,10 +631,11 @@ class TestPlanCtxManagerFftn:
         assert 'The cuFFT plan and a.shape do not match' in str(ex.value)
 
 
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), ],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.gpu
 class TestPlanCtxManagerFft:
@@ -630,7 +655,7 @@ class TestPlanCtxManagerFft:
         else:
             out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
@@ -678,15 +703,17 @@ class TestPlanCtxManagerFft:
 # Almost identical to the TestPlanCtxManagerFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 64],
     'shape': [(64,), (128,)],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.multi_gpu(2)
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='hipFFT does not support multi-GPU FFT')
 class TestMultiGpuPlanCtxManagerFft:
+
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -705,7 +732,7 @@ class TestMultiGpuPlanCtxManagerFft:
         else:
             out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
@@ -751,23 +778,32 @@ class TestMultiGpuPlanCtxManagerFft:
         with pytest.raises(ValueError) as ex, plan_wrong:
             fft(a, n=self.n, norm=self.norm)
         # targeting a particular error
+        if self.norm == '':
+            # if norm is invalid, we still get ValueError, but it's raised
+            # when checking norm, earlier than the plan check
+            return  # skip
         assert 'Target array size does not match the plan.' in str(ex.value)
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': (-3, -2, -1)},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
 class TestFftnContiguity:
 
@@ -809,16 +845,18 @@ class TestFftnContiguity:
                 pass
 
 
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
 class TestRfft:
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_rfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.rfft(a, n=self.n, norm=self.norm)
@@ -829,7 +867,8 @@ class TestRfft:
         return out
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_irfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfft(a, n=self.n, norm=self.norm)
@@ -840,10 +879,11 @@ class TestRfft:
         return out
 
 
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,)],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.gpu
 class TestPlanCtxManagerRfft:
@@ -853,6 +893,7 @@ class TestPlanCtxManagerRfft:
                                  contiguous_check=False)
     def test_rfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
+
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
@@ -908,24 +949,29 @@ class TestPlanCtxManagerRfft:
         assert 'Target array size does not match the plan.' in str(ex.value)
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
 class TestRfft2:
 
@@ -990,24 +1036,29 @@ class TestRfft2EmptyAxes:
                 xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
 class TestRfftn:
 
@@ -1053,21 +1104,26 @@ class TestRfftn:
 
 
 # Only those tests in which a legit plan can be obtained are kept
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
 class TestPlanCtxManagerRfftn:
 
@@ -1126,21 +1182,26 @@ class TestPlanCtxManagerRfftn:
     # TODO(leofang): write test_rfftn_error_on_wrong_plan()?
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
 class TestRfftnContiguity:
 
@@ -1206,16 +1267,18 @@ class TestRfftnEmptyAxes:
                 xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
 class TestHfft:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_hfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.hfft(a, n=self.n, norm=self.norm)
@@ -1226,7 +1289,8 @@ class TestHfft:
         return out
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_ihfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ihfft(a, n=self.n, norm=self.norm)

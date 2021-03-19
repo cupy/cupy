@@ -24,7 +24,7 @@ from install.build import PLATFORM_WIN32
 required_cython_version = pkg_resources.parse_version('0.29.22')
 ignore_cython_versions = [
 ]
-use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
+use_hip = build.use_hip
 
 
 # The value of the key 'file' is a list that contains extension names
@@ -97,6 +97,7 @@ if use_hip:
     MODULES.append({
         # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
+        'required': True,
         'file': cuda_files + [
             'cupy.cuda.nvtx',
             'cupy_backends.cuda.libs.cusolver',
@@ -126,6 +127,7 @@ if use_hip:
 else:
     MODULES.append({
         'name': 'cuda',
+        'required': True,
         'file': cuda_files,
         'include': [
             'cublas_v2.h',
@@ -153,6 +155,7 @@ else:
 if not use_hip:
     MODULES.append({
         'name': 'cusolver',
+        'required': True,
         'file': [
             'cupy_backends.cuda.libs.cusolver',
             'cupy.cusolver',
@@ -231,6 +234,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'cub',
+        'required': True,
         'file': [
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
         ],
@@ -246,6 +250,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'jitify',
+        'required': True,
         'file': [
             'cupy.cuda.jitify',
         ],
@@ -265,6 +270,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'random',
+        'required': True,
         'file': [
             'cupy.random._bit_generator',
             ('cupy.random._generator_api',
@@ -281,6 +287,7 @@ if not use_hip:
 else:
     MODULES.append({
         'name': 'cub',
+        'required': True,
         'file': [
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
         ],
@@ -313,6 +320,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     if use_hip:
         MODULES.append({
             'name': 'thrust',
+            'required': True,
             'file': [
                 ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             ],
@@ -326,6 +334,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     else:
         MODULES.append({
             'name': 'thrust',
+            'required': True,
             'file': [
                 ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             ],
@@ -343,6 +352,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
 
 MODULES.append({
     'name': 'dlpack',
+    'required': True,
     'file': [
         'cupy.core.dlpack',
     ],
@@ -381,6 +391,10 @@ def module_extension_sources(file, use_cython, no_cuda):
         others = others1
 
     return [pyx] + others
+
+
+def get_required_modules():
+    return [m['name'] for m in MODULES if m.get('required', False)]
 
 
 def check_readthedocs_environment():
@@ -595,7 +609,8 @@ def make_extensions(options, compiler, use_cython):
         available_modules = [m['name'] for m in MODULES]
     else:
         available_modules, settings = preconfigure_modules(compiler, settings)
-        if 'cuda' not in available_modules:
+        required_modules = get_required_modules()
+        if not (set(required_modules) <= set(available_modules)):
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
 
@@ -985,6 +1000,8 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             '-O2', '--compiler-options="-fPIC"']
         if cuda_version >= 11020:
             postargs += ['--std=c++14']
+            num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
+            postargs += [f'-t{num_threads}']
         else:
             postargs += ['--std=c++11']
         print('NVCC options:', postargs)
@@ -1012,7 +1029,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         use_hipcc = False
         if use_hip:
             for i in objects:
-                if any([obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')]):
+                if any(obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')):
                     use_hipcc = True
         if use_hipcc:
             _compiler_cxx = self.compiler_cxx
@@ -1056,6 +1073,8 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         # This is to compile thrust with MSVC2015
         if cuda_version >= 11020:
             postargs += ['--std=c++14']
+            num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
+            postargs += [f'-t{num_threads}']
         print('NVCC options:', postargs)
 
         for obj in objects:

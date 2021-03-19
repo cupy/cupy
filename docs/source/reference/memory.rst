@@ -14,7 +14,7 @@ There are two different memory pools in CuPy:
    When you monitor the memory usage (e.g., using ``nvidia-smi`` for GPU memory or ``ps`` for CPU memory), you may notice that memory not being freed even after the array instance become out of scope.
    This is an expected behavior, as the default memory pool "caches" the allocated memory blocks.
 
-See :doc:`../reference/cuda` for the details of memory management APIs.
+See :doc:`cuda` for the details of memory management APIs.
 
 Memory Pool Operations
 ----------------------
@@ -73,7 +73,7 @@ See :class:`cupy.cuda.MemoryPool` and :class:`cupy.cuda.PinnedMemoryPool` for de
 Limiting GPU Memory Usage
 -------------------------
 
-You can hard-limit the amount of GPU memory that can be allocated by using ``CUPY_GPU_MEMORY_LIMIT`` environment variable (see :doc:`../reference/environment` for details).
+You can hard-limit the amount of GPU memory that can be allocated by using ``CUPY_GPU_MEMORY_LIMIT`` environment variable (see :doc:`environment` for details).
 
 .. code-block:: py
 
@@ -161,7 +161,7 @@ Note that if you pass :func:`~cupy.cuda.malloc_async` directly to :func:`~cupy.c
 a :class:`~cupy.cuda.MemoryAsyncPool` instance, the device's *current* memory pool will be used.
 
 When using stream ordered memory, it is important that you maintain a correct stream semantics yourselves using, for example,
-the :class:`~cupy.cuda.Stream` and :class:`~cupy.cuda.Event` APIs (see :doc:`../reference/cuda` for details); CuPy does not
+the :class:`~cupy.cuda.Stream` and :class:`~cupy.cuda.Event` APIs (see :doc:`cuda` for details); CuPy does not
 attempt to act smartly for you. Upon deallocation, the memory is freed asynchronously either on the stream it was
 allocated (first attempt), or on any current CuPy stream (second attempt). It is permitted that the stream on which the
 memory was allocated gets destroyed before all memory allocated on it is freed.

@@ -17,7 +17,7 @@ except ImportError:
     scipy_available = False
 
 from cupy import testing
-from cupy.testing import condition
+from cupy.testing import _condition
 from cupyx.scipy import sparse
 import cupyx.scipy.sparse.linalg  # NOQA
 
@@ -47,7 +47,7 @@ class TestLsqr(unittest.TestCase):
             with pytest.raises(ValueError):
                 sp.linalg.lsqr(A, b)
 
-    @condition.retry(10)
+    @_condition.retry(10)
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
     def test_csrmatrix(self, xp, sp):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
@@ -55,7 +55,7 @@ class TestLsqr(unittest.TestCase):
         x = sp.linalg.lsqr(A, b)
         return x[0]
 
-    @condition.retry(10)
+    @_condition.retry(10)
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
     def test_ndarray(self, xp, sp):
         A = xp.array(self.A.A, dtype=self.dtype)

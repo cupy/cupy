@@ -49,9 +49,6 @@ requirements = {
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
     ],
-    'appveyor': [
-        '-r test',
-    ],
     'jenkins': [
         '-r test',
         'pytest-timeout',

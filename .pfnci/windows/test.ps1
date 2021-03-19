@@ -51,6 +51,8 @@ function PublishTestResults {
 }
 
 function Main {
+    PrioritizeFlexCIDaemon
+
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
     ActivateCUDA $cuda
@@ -88,13 +90,12 @@ function Main {
     RunOrDie python -c "import cupy; cupy.show_config()"
 
     # Unit test
-    $pytest_opts = ""
     if ($test -eq "build") {
         return
     } elseif ($test -eq "test") {
-        $pytest_opts = "$pytest_opts -m ""not slow"""
+        $pytest_opts = "-m", "not slow"
     } elseif ($test -eq "slow") {
-        $pytest_opts = "$pytest_opts -m ""slow"""
+        $pytest_opts = "-m", "slow"
     } else {
         throw "Unsupported test target: $target"
     }
@@ -107,7 +108,8 @@ function Main {
     }
     echo "Running test..."
     $test_retval = 0
-    python -m pytest -rfEX $Env:PYTEST_OPTS tests > cupy_test_log.txt
+    python -c "import cupy; cupy.show_config()" > cupy_test_log.txt
+    python -m pytest -rfEX @pytest_opts tests >> cupy_test_log.txt
     if (-not $?) {
         $test_retval = $LastExitCode
     }
