@@ -65,7 +65,7 @@ class vectorize(object):
                     raise TypeError(f'Invalid return type: {return_type}')
                 dtypes.append(t.dtype)
             out_lvals = ', '.join([f'out{i}' for i in range(len(dtypes))])
-            out_lval = f'tie({out_lvals})'
+            out_lval = f'thrust::tie({out_lvals})'
         else:
             raise TypeError(f'Invalid return type: {return_type}')
 

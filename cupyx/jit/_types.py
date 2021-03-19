@@ -73,7 +73,7 @@ class Tuple(TypeBase):
 
     def __str__(self):
         types = ', '.join([str(t) for t in self.types])
-        return f'tuple<{types}>'
+        return f'thrust::tuple<{types}>'
 
     def __eq__(self, other):
         return self.types == other.types

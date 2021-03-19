@@ -19,6 +19,11 @@ _typeclasses = (bool, numpy.bool_, numbers.Number)
 Result = collections.namedtuple('Result', ['func_name', 'code', 'return_type'])
 
 
+_global_header = '''
+#include <cupy/tuple.cuh>
+'''
+
+
 def transpile(func, attributes, mode, in_types, ret_type):
     """Transpile the target function
     Args:
@@ -49,7 +54,11 @@ def transpile(func, attributes, mode, in_types, ret_type):
     assert len(tree.body) == 1
     cuda_code, env = _transpile_function(
         tree.body[0], attributes, mode, consts, in_types, ret_type)
-    cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
+    cuda_code = (
+        _global_header +
+        ''.join([code + '\n' for code in env.preambles]) +
+        cuda_code
+    )
     return Result(
         func_name=func.__name__,
         code=cuda_code,
@@ -568,7 +577,7 @@ def _transpile_expr_internal(expr, env):
         elts = [_to_cuda_object(x, env) for x in elts]
         elts_code = ', '.join([x.code for x in elts])
         ctype = _types.Tuple([x.ctype for x in elts])
-        return CudaObject(f'make_tuple({elts_code})', ctype)
+        return CudaObject(f'thrust::make_tuple({elts_code})', ctype)
 
     if isinstance(expr, ast.Index):
         return _transpile_expr(expr.value, env)
@@ -604,7 +613,7 @@ def _transpile_lvalue(target, env, ctype):
                 for x, t in zip(target.elts, ctype.types)]
         # TODO: Support compile time constants.
         elts_code = ', '.join([x.code for x in elts])
-        return CudaObject(f'tie({elts_code})', ctype)
+        return CudaObject(f'thrust::tie({elts_code})', ctype)
 
 
 def _astype_scalar(x, ctype, casting, env):
