@@ -550,14 +550,14 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
                 'Argument \'a\' has incorrect type (expected %s, got %s)' %
                 (ndarray, type(a)))
 
-        in_dtype = arr.dtype
-        print("\n\n\n I AM CALLED \n\n\n")
-        if (in_dtype.kind == 'c'
-                and numpy.dtype(dtype).kind == 'f'):
-            warnings.warn(
-                'Casting complex values to real discards the imaginary part',
-                numpy.ComplexWarning)
-            arr = arr.real
+       # in_dtype = arr.dtype
+       # print("\n\n\n I AM CALLED \n\n\n")
+       # if (in_dtype.kind == 'c'
+       #         and numpy.dtype(dtype).kind == 'f'):
+       #     warnings.warn(
+       #         'Casting complex values to real discards the imaginary part',
+       #         numpy.ComplexWarning)
+       #     arr = arr.real
 
         in_args = [arr]
 
@@ -591,6 +591,13 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             out_type = out_args[0].dtype.type
         else:
             out_type = op.out_types[0]
+
+        if (in_args[0].dtype.kind == 'c'
+                and numpy.dtype(op.in_types[0]).kind == 'f'):
+            warnings.warn(
+                'Casting complex values to real discards the imaginary part',
+                numpy.ComplexWarning)
+            in_args[0] = in_args[0].real
 
         type_map = _kernel._TypeMap((
             ('type_in0_raw', in_args[0].dtype.type),
