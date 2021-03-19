@@ -262,7 +262,6 @@ class TestMemoryPointerAsync(unittest.TestCase):
 # -----------------------------------------------------------------------------
 # Memory pool
 
-
 @testing.gpu
 class TestSingleDeviceMemoryPool(unittest.TestCase):
 
