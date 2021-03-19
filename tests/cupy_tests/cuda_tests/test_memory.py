@@ -258,6 +258,7 @@ class TestMemoryPointerAsync(unittest.TestCase):
             stream_module.get_current_stream().synchronize()
         assert b_cpu.value == a_cpu.value
 
+
 # -----------------------------------------------------------------------------
 # Memory pool
 
