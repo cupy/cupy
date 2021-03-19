@@ -181,7 +181,7 @@ class Generator:
         Its probability density function is defined as
 
         .. math::
-        f(x) = \\frac{1}{\\beta}\\exp (-\\frac{x}{\\beta}).
+           f(x) = \\frac{1}{\\beta}\\exp (-\\frac{x}{\\beta}).
 
         Args:
             scale (float or array_like of floats): The scale parameter
