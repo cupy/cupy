@@ -321,15 +321,6 @@ The itemsize of ``size_t``, ``ptrdiff_t``, ``intptr_t``, ``uintptr_t``,
 You can also pass any CUDA vector builtins such as ``float3`` or any other user defined structure 
 as kernel arguments provided it matches device side kernel parameter type, see section :ref:`custom_user_structs`.
 
-.. note::
-    To use ``cuFloatComplex`` and ``cuDoubleComplex`` in your CUDA kernel, you need to include the header ``cuComplex.h``. You may also need to pass `translate_cucomplex=True` to :class:`~cupy.RawKernel` or :class:`~cupy.RawModule`.
-
-.. note::
-    To use ``complex<float>`` and ``complex<double>`` in your CUDA kernel, you simply need to include the header ``<cupy/complex.cuh>``. This is the recommended way to get complex support in :class:`~cupy.RawKernel`.
-
-.. note::
-    To be able to directly use ``std::complex<float>`` and ``std::complex<double>``, you need to include the header ``<cuda/std/complex.h>`` which is provided by `NVIDIA C++ Standard Library` version 1.4.0 and above. Currently **this header is not shipped with CUDA toolkit 11.2**, see this `link <https://nvidia.github.io/libcudacxx/releases.html>`_ to get more information.
-
 .. _custom_user_structs:
 
 Custom user types
@@ -376,11 +367,14 @@ vectors or matrices:
 
 Here ``arg`` represents a 100 bytes scalar (i.e. a numpy array of size 1)
 that can be passed by value to any kernel.
-Upper bound for total kernel parameters size is 256 bytes for compute capability `1.x` (via shared memory)
-and 4kB for compute capability `2.x` and higher (via constant memory).
+Kernel parameters are passed by value in a dedicated 4kB memory bank which has its own cache with broadcast.
+Upper bound for total kernel parameters size is thus 4kB
+(see this `link <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#function-parameters>`_). 
+It may be important to note that this dedicated memory bank is not shared with the device ``__constant__`` memory space.
 
-Composite types can be built recursively using numpy dtype `offsets` and `itemsize` capabilities,
-see ``cupy/tests/cupy_tests/core_tests/test_function.py`` for examples of advanced usage where structures offsets are determined by calling a cuda kernel.
+For now, CuPy offers no helper routines to create user defined composite types. 
+Such composite types can however be built recursively using numpy dtype `offsets` and `itemsize` capabilities,
+see ``cupy/examples/user_structs`` for examples of advanced usage. 
 
 .. warning::
     You cannot directly pass static arrays as kernel arguments with the ``type arg[N]`` syntax where N is a compile time constant. The signature of ``__global__ void kernel(float arg[5])`` is seen as ``__global__ void kernel(float* arg)`` by the compiler. If you want to pass five floats to the kernel by value you need to define a custom structure ``struct float5 { float val[5]; };`` and modify the kernel signature to ``__global__ void kernel(float5 arg)``.
