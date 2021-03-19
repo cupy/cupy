@@ -375,12 +375,21 @@ class Generator:
         if shape < 0.0:
             raise ValueError('shape < 0')
 
+        if out is None or out.dtype.char != 'd':
+            y = ndarray(size if size is not None else (), numpy.float64)
+
         if out is not None:
             self._check_output_array(dtype, size, out)
+            if out.dtype.char == 'd':
+                y = out
+
+        if numpy.dtype(dtype).char not in ('f', 'd'):
+            raise TypeError(
+                f'Unsupported dtype {y.dtype.name} for standard_normal')
 
         y = ndarray(size if size is not None else (), numpy.float64)
         _launch_dist(self.bit_generator, standard_gamma, y, (shape,))
-        if out is not None:
+        if out is not None and y is not out:
             out[...] = y
             y = out
         # we cast the array to a python object because

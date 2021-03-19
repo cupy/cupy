@@ -366,6 +366,11 @@ class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
     def test_invalid_shape(self):
         self.invalid_shape(shape=1.0)
 
+    def test_invalid_dtypes(self):
+        for dtype in 'bhiqleFD':
+            with pytest.raises(TypeError):
+                self.generate(size=(3, 2), shape=1.0, dtype=dtype)
+
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
