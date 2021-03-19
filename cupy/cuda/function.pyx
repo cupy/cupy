@@ -90,14 +90,14 @@ cdef class CIntptr(CPointer):
         self.ptr = <void*>&self.val
 
 
-# All numpy.ndarray work with CNumpyArray to pass a kernel argument by
-# value. Here we allow only arrays of size one so that users do not
-# mistakenly send numpy.ndarrays instead of cupy.ndarrays to kernels.
-# This may happen if they forget to convert numpy arrays to cupy
-# arrays prior to kernel call and would pass silently without this check.
 cdef class CNumpyArray(CPointer):
     def __init__(self, a):
-        self.ptr = <void*><size_t>a.ctypes.data
+        self.ptr = <void*><size_t>a.__array_interface__['data'][0]
+
+
+cdef set _pointer_numpy_types = {numpy.dtype(i).type
+                                 for i in '?bhilqBHILQefdFD'}
+
 
 cdef inline CPointer _pointer(x):
     cdef Py_ssize_t itemsize
@@ -115,6 +115,11 @@ cdef inline CPointer _pointer(x):
     if isinstance(x, (TextureObject, SurfaceObject)):
         return CUIntMax(x.ptr)
     if isinstance(x, numpy.ndarray):
+        # All numpy.ndarray work with CNumpyArray to pass a kernel argument by
+        # value. Here we allow only arrays of size one so that users do not
+        # mistakenly send numpy.ndarrays instead of cupy.ndarrays to kernels.
+        # This may happen if they forget to convert numpy arrays to cupy arrays
+        # prior to kernel call and would pass silently without this check.
         if (x.size == 1):
             return CNumpyArray(x)
         else:
@@ -124,14 +129,17 @@ cdef inline CPointer _pointer(x):
                    'al__ memory, you need to pass a cupy.ndarray instead.')
             raise TypeError(msg.format(x.shape))
 
-    if isinstance(x, int):
-        x = numpy.int64(x)
-    elif isinstance(x, float):
-        x = numpy.float64(x)
-    elif isinstance(x, bool):
-        x = numpy.bool_(x)
-    elif isinstance(x, complex):
-        x = numpy.complex128(x)
+    if type(x) not in _pointer_numpy_types:
+        if isinstance(x, int):
+            x = numpy.int64(x)
+        elif isinstance(x, float):
+            x = numpy.float64(x)
+        elif isinstance(x, bool):
+            x = numpy.bool_(x)
+        elif isinstance(x, complex):
+            x = numpy.complex128(x)
+        else:
+            raise TypeError('Unsupported type %s' % type(x))
 
     itemsize = x.itemsize
     if itemsize == 1:
@@ -144,8 +152,8 @@ cdef inline CPointer _pointer(x):
         return CInt64(x.view(numpy.int64))
     if itemsize == 16:
         return CInt128(x.view(numpy.complex128))
-
     raise TypeError('Unsupported type %s. (size=%d)', type(x), itemsize)
+
 
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:
