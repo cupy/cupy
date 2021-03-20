@@ -52,11 +52,6 @@ except ImportError:
     thrust = _UnavailableModule('cupy.cuda.thrust')
 
 try:
-    from cupy.cuda import nccl  # NOQA
-except ImportError:
-    nccl = _UnavailableModule('cupy.cuda.nccl')
-
-try:
     from cupy_backends.cuda.libs import cutensor
 except ImportError:
     cutensor = _UnavailableModule('cupy.cuda.cutensor')
@@ -73,7 +68,7 @@ This flag always returns True as cuSOLVER is always available in CUDA 8.0 or lat
             ''', DeprecationWarning)  # NOQA
         return True
 
-    for mod in [nvtx, nccl, thrust, cub, cutensor]:
+    for mod in [nvtx, thrust, cub, cutensor]:
         flag = '{}_enabled'.format(mod.__name__.split('.')[-1])
         if key == flag:
             warnings.warn('''
