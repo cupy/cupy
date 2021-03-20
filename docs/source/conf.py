@@ -160,9 +160,20 @@ html_logo = '../image/cupy_logo_1000px.png'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
+# https://pydata-sphinx-theme.readthedocs.io/en/latest/user_guide/configuring.html
 html_theme_options = {
-  "github_url": "https://github.com/cupy/cupy",
-  "twitter_url": "https://twitter.com/cupy_team",
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/cupy/cupy",
+            "icon": "fab fa-github-square",
+        },
+        {
+            "name": "Twitter",
+            "url": "https://twitter.com/CuPy_Team",
+            "icon": "fab fa-twitter-square",
+        },
+    ],
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
