@@ -91,8 +91,12 @@ cdef class CIntptr(CPointer):
 
 
 cdef class CNumpyArray(CPointer):
-    def __init__(self, a):
-        self.ptr = <void*><size_t>a.__array_interface__['data'][0]
+    cdef:
+        object val
+
+    def __init__(self, v):
+        self.val = v
+        self.ptr = <void*><size_t>v.__array_interface__['data'][0]
 
 
 cdef set _pointer_numpy_types = {numpy.dtype(i).type
