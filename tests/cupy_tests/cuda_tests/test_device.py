@@ -6,6 +6,7 @@ import pytest
 
 import cupy
 from cupy import cuda
+from cupy.cuda import runtime
 from cupy import testing
 
 
@@ -145,6 +146,8 @@ class TestDeviceHandles(unittest.TestCase):
     def test_cusolver_sp_handle(self):
         self._check_handle(cuda.device.get_cublas_handle)
 
+    @pytest.mark.xfail(
+        runtime.is_hip, reason='ROCm/HIP sparse support is not yet ready')
     def test_cusparse_handle(self):
         self._check_handle(cuda.device.get_cusparse_handle)
 

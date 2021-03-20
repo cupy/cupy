@@ -1,141 +1,19 @@
-// This file is a stub header file of nccl for Read the Docs.
-
 #ifndef INCLUDE_GUARD_CUPY_NCCL_H
 #define INCLUDE_GUARD_CUPY_NCCL_H
 
-#define UNUSED(x) ((void)x)
-
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
-#include <nccl.h>
-
-#ifndef NCCL_MAJOR
-#ifndef CUDA_HAS_HALF
-#define ncclHalf ((ncclDataType_t)2)
-#endif
-#endif
+#include "cuda/cupy_nccl.h"
 
 #elif defined(CUPY_USE_HIP)
 
-#include <rccl.h>
-typedef hipStream_t cudaStream_t;
+#include "hip/cupy_rccl.h"
 
 #else // #ifndef CUPY_NO_CUDA
 
-#define NCCL_MAJOR 0
-#define NCCL_MINOR 0
-#define NCCL_PATCH 0
+#include "stub/cupy_nccl.h"
 
-extern "C" {
-
-typedef struct ncclComm* ncclComm_t;
-
-enum {
-    NCCL_UNIQUE_ID_BYTES = 128
-};
-typedef struct {
-    char internal[NCCL_UNIQUE_ID_BYTES];
-} ncclUniqueId;
-
-typedef enum {
-    ncclSuccess
-} ncclResult_t;
-
-typedef enum {} ncclRedOp_t;
-
-typedef enum {
-    ncclChar       = 0,
-    ncclInt        = 1,
-    ncclHalf       = 2,
-    ncclFloat      = 3,
-    ncclDouble     = 4,
-    ncclInt64      = 5,
-    ncclUint64     = 6,
-    nccl_NUM_TYPES = 7 } ncclDataType_t;
-
-const char* ncclGetErrorString(...) {
-    return "";
-}
-
-ncclResult_t  ncclCommGetAsyncError(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclGetUniqueId(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclCommInitRank(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclCommInitAll(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclGroupStart(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclGroupEnd(...) {
-    return ncclSuccess;
-}
-
-void ncclCommDestroy(...) {
-}
-
-void ncclCommAbort(...) {
-}
-
-ncclResult_t ncclCommCuDevice(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclCommUserRank(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclCommCount(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclAllReduce(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclReduce(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclBroadcast(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclBcast(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclReduceScatter(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclAllGather(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclSend(...) {
-    return ncclSuccess;
-}
-
-ncclResult_t ncclRecv(...) {
-    return ncclSuccess;
-}
-
-typedef struct CUstream_st *cudaStream_t;
-
-}  // extern "C"
-
-#endif // #ifndef CUPY_NO_CUDA
+#endif
 
 #ifndef NCCL_MAJOR
 #define NCCL_MAJOR 1
@@ -262,6 +140,8 @@ ncclResult_t _ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcou
 
 #if (NCCL_VERSION_CODE < 2400)
 // New functions in 2.4
+#define UNUSED(x) ((void)x)
+
 ncclResult_t ncclCommGetAsyncError(ncclComm_t comm, ncclResult_t *asyncError) {
   UNUSED(comm);
   UNUSED(asyncError);

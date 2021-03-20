@@ -37,8 +37,8 @@ struct curand_pseudo_state: rk_state {
     __device__ virtual double rk_double() {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
-        double r = curand_uniform(_state) - 1e-12;
-        if (r < 0.0) { 
+        double r = curand_uniform(_state);
+        if (r >= 1.0) { 
            r = 0.0;
         }
         return r;

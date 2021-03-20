@@ -164,6 +164,14 @@ We can also use :meth:`cupy.ndarray.get()`:
 
    >>> x_cpu = x_gpu.get()
 
+
+Memory management
+-----------------
+
+Check :doc:`../reference/memory` for a detailed description of how is memory managed in CuPy
+using memory pools.
+
+
 How to write CPU/GPU agnostic code
 ----------------------------------
 

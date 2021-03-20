@@ -45,7 +45,7 @@ Here are the environment variables CuPy uses.
 
   The amount of memory that can be allocated for each device.
   The value can be specified in absolute bytes or fraction (e.g., ``"90%"``) of the total memory of each GPU.
-  See :doc:`../tutorial/memory` for details.
+  See :doc:`memory` for details.
 
 ``CUPY_SEED``
   Set the seed for random number generators.
@@ -138,3 +138,9 @@ These environment variables are used during installation (building CuPy from sou
   Default: ``4``
 
   To enable or disable parallel build, sets the number of processes used to build the extensions in parallel.
+
+
+``CUPY_NUM_NVCC_THREADS``
+  Default: ``2``
+
+  To enable or disable nvcc parallel compilation, sets the number of threads used to compile files using nvcc.

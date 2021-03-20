@@ -24,7 +24,7 @@ from cupy.core._routines_binary import right_shift  # NOQA
 from cupy.core._routines_linalg import _mat_ptrs  # NOQA
 from cupy.core._routines_linalg import dot  # NOQA
 from cupy.core._routines_linalg import get_compute_type  # NOQA
-from cupy.core._routines_linalg import matmul  # NOQA
+from cupy.core._routines_linalg import _matmul  # NOQA
 from cupy.core._routines_linalg import set_compute_type  # NOQA
 from cupy.core._routines_linalg import tensordot_core  # NOQA
 from cupy.core._routines_logic import create_comparison  # NOQA

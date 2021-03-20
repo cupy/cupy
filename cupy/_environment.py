@@ -246,11 +246,11 @@ def get_cupy_cuda_lib_path():
 
     This environment variable only affects wheel installations.
 
-    Shared libraries are looked up from:
-    `$CUPY_CUDA_LIB_PATH/$CUDA_VERSION/$LIBRARY_NAME/$LIBRARY_VERSION/lib64`
-    (`bin` instead of `lib64` on Windows)
+    Shared libraries are looked up from
+    `$CUPY_CUDA_LIB_PATH/$CUDA_VER/$LIB_NAME/$LIB_VER/{lib,lib64,bin}`,
+    e.g., `~/.cupy/cuda_lib/11.2/cudnn/8.1.1/lib64/libcudnn.so.8.1.1`.
 
-    The default path is `~/.cupy/cuda_lib`.
+    The default $CUPY_CUDA_LIB_PATH is `~/.cupy/cuda_lib`.
     """
     cupy_cuda_lib_path = os.environ.get('CUPY_CUDA_LIB_PATH', None)
     if cupy_cuda_lib_path is None:
@@ -303,27 +303,35 @@ def _preload_libraries():
         filename = config[lib]['filename']
         _log('Looking for {} version {} ({})'.format(lib, version, filename))
 
-        lib64dir = 'bin' if sys.platform.startswith('win32') else 'lib64'
-        libpath = os.path.join(
-            cupy_cuda_lib_path, config['cuda'], lib, version, lib64dir,
-            filename)
-        if os.path.exists(libpath):
+        # "lib": cuTENSOR (Linux/Windows) / NCCL (Linux)
+        # "lib64": cuDNN (Linux)
+        # "bin": cuDNN (Windows)
+        libpath_cands = [
+            os.path.join(
+                cupy_cuda_lib_path, config['cuda'], lib, version, x, filename)
+            for x in ['lib', 'lib64', 'bin']]
+        for libpath in libpath_cands:
+            if not os.path.exists(libpath):
+                _log('Rejected candidate (not found): {}'.format(libpath))
+                continue
+
             _log('Trying to load {}'.format(libpath))
             try:
                 # Keep reference to the preloaded module.
                 _preload_libs[lib] = (libpath, ctypes.CDLL(libpath))
                 _log('Loaded')
+                break
             except Exception as e:
                 msg = 'CuPy failed to preload library ({}): {} ({})'.format(
                     libpath, type(e).__name__, str(e))
                 _log(msg)
                 warnings.warn(msg)
         else:
-            _log('File {} could not be found'.format(libpath))
+            _log('File {} could not be found'.format(filename))
 
             # Lookup library with fully-qualified version (e.g.,
             # `libcudnn.so.X.Y.Z`).
-            _log('Trying to load {}'.format(filename))
+            _log('Trying to load {} from default search path'.format(filename))
             try:
                 _preload_libs[lib] = (filename, ctypes.CDLL(filename))
                 _log('Loaded')
