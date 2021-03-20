@@ -1,4 +1,4 @@
-sphinx==3.4.3
+sphinx==3.5.3
 pydata_sphinx_theme==0.5.0
 
 Cython==0.29.*
