@@ -51,6 +51,8 @@ function PublishTestResults {
 }
 
 function Main {
+    PrioritizeFlexCIDaemon
+
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
     ActivateCUDA $cuda
