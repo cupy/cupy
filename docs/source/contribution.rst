@@ -426,7 +426,7 @@ The documentation source is stored under `docs directory <https://github.com/cup
 
 To build the documentation, you need to install `Sphinx <http://www.sphinx-doc.org/>`_::
 
-  $ pip install sphinx sphinx_rtd_theme
+  $ pip install -r docs/requirements.txt
 
 Then you can build the documentation in HTML format locally::
 
