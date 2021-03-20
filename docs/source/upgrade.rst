@@ -48,7 +48,7 @@ NumPy 1.15 (or earlier) and SciPy 1.2 (or earlier) are no longer supported.
 Update of Docker Images
 -----------------------
 
-* CuPy official Docker images (see :doc:`install/install` for details) are now updated to use CUDA 10.2 and Python 3.6.
+* CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 10.2 and Python 3.6.
 * SciPy and Optuna are now pre-installed.
 
 CUB Support and Compiler Requirement
@@ -58,7 +58,7 @@ CUB module is now built by default.
 You can enable the use of CUB by setting ``CUPY_ACCELERATORS="cub"`` (see :doc:`reference/environment` for details).
 
 Due to this change, g++-6 or later is required when building CuPy from the source.
-See :doc:`install/install` for details.
+See :doc:`install` for details.
 
 The following environment variables are no longer effective:
 
@@ -85,7 +85,7 @@ Dropping Support of Python 2.7 and 3.4
 
 Starting from CuPy v7, Python 2.7 and 3.4 are no longer supported as it reaches its end-of-life (EOL) in January 2020 (2.7) and March 2019 (3.4).
 Python 3.5.1 is the minimum Python version supported by CuPy v7.
-Please upgrade the Python version if you are using affected versions of Python to any later versions listed under :doc:`install/install`.
+Please upgrade the Python version if you are using affected versions of Python to any later versions listed under :doc:`install`.
 
 
 CuPy v6
@@ -115,7 +115,7 @@ CuPy v5 no longer supports CUDA 7.0 / 7.5.
 Update of Docker Images
 -----------------------
 
-CuPy official Docker images (see :doc:`install/install` for details) are now updated to use CUDA 9.2 and cuDNN 7.
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 9.2 and cuDNN 7.
 
 To use these images, you may need to upgrade the NVIDIA driver on your host.
 See `Requirements of nvidia-docker <https://github.com/NVIDIA/nvidia-docker/wiki/CUDA#requirements>`_ for details.
@@ -200,7 +200,7 @@ For this rule, :func:`cupy.scatter_add` has been moved to :func:`cupyx.scatter_a
 Update of Docker Images
 -----------------------
 
-CuPy official Docker images (see :doc:`install/install` for details) are now updated to use CUDA 8.0 and cuDNN 6.0.
+CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 8.0 and cuDNN 6.0.
 This change was introduced because CUDA 7.5 does not support NVIDIA Pascal GPUs.
 
 To use these images, you may need to upgrade the NVIDIA driver on your host.
