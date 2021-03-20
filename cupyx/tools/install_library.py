@@ -35,7 +35,6 @@ def _make_cudnn_record(
         cuda_version, public_version, filename_linux, filename_windows):
     major_version = public_version.split('.')[0]
     return {
-        'packaging': 'pip',
         'cuda': cuda_version,
         'cudnn': public_version,
         'assets': {
@@ -93,7 +92,6 @@ def _make_cutensor_url(public_version, filename):
 def _make_cutensor_record(
         cuda_version, public_version, filename_linux, filename_windows):
     return {
-        'packaging': 'pip',
         'cuda': cuda_version,
         'cutensor': public_version,
         'assets': {
