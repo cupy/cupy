@@ -32,7 +32,8 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         ssize_t size, intptr_t stream)
     void poisson(
         int generator, intptr_t state, intptr_t out,
-        ssize_t size,  intptr_t stream, double lam)
+        ssize_t size, intptr_t stream, double lam)
+
 
 class Generator:
     """Container for the BitGenerators.
@@ -233,8 +234,8 @@ class Generator:
         Args:
             lam (array_like of floats): Parameter of the poisson distribution
                 :math:`\\lambda`.
-            size (int or tuple of ints): The shape of the array. If ``None``, this
-                function generate an array whose shape is `lam.shape`.
+            size (int or tuple of ints): The shape of the array. If ``None``,
+            this function generate an array whose shape is `lam.shape`.
 
         Returns:
             cupy.ndarray: Samples drawn from the poisson distribution.
