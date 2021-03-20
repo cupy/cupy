@@ -246,7 +246,7 @@ class TestPoisson(GeneratorTestCase):
     target_method = 'poisson'
 
     def test_poisson(self):
-        self.generate(size=(3,2))
+        self.generate(size=(3, 2))
 
     @_condition.repeat_with_success_at_least(10, 3)
     def test_poisson_ks(self):
