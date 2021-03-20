@@ -304,7 +304,7 @@ else:
     MODULES.append({
         'name': 'nccl',
         'file': [
-            'cupy.cuda.nccl',
+            'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
             'rccl.h',
@@ -1000,6 +1000,8 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             '-O2', '--compiler-options="-fPIC"']
         if cuda_version >= 11020:
             postargs += ['--std=c++14']
+            num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
+            postargs += [f'-t{num_threads}']
         else:
             postargs += ['--std=c++11']
         print('NVCC options:', postargs)
@@ -1071,6 +1073,8 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         # This is to compile thrust with MSVC2015
         if cuda_version >= 11020:
             postargs += ['--std=c++14']
+            num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
+            postargs += [f'-t{num_threads}']
         print('NVCC options:', postargs)
 
         for obj in objects:

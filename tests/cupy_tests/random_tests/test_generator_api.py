@@ -206,6 +206,27 @@ class TestBeta(GeneratorTestCase):
             a=self.a, b=self.b, size=2000, dtype=dtype)
 
 
+@testing.parameterize(
+    {'scale': 0.5},
+    {'scale': 1},
+    {'scale': 10},
+)
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
+@testing.fix_random()
+class TestExponential(GeneratorTestCase):
+
+    target_method = 'exponential'
+
+    def test_exponential(self):
+        self.generate(scale=self.scale, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_exponential_ks(self):
+        self.check_ks(0.05)(
+            self.scale, size=2000)
+
+
 class InvalidOutsMixin:
 
     def invalid_dtype_out(self, **kwargs):
