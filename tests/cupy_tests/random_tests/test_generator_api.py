@@ -206,7 +206,7 @@ class TestBeta(GeneratorTestCase):
             a=self.a, b=self.b, size=2000, dtype=dtype)
 
 
-@testing.parameterise(
+@testing.parameterize(
     {'scale': 0.5},
     {'scale': 1},
     {'scale': 10},
