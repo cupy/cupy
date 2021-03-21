@@ -35,3 +35,4 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    difference
    comparison
    misc
+   compatibility

@@ -8,7 +8,7 @@ CuPy -- A NumPy-compatible array library accelerated by CUDA
    :maxdepth: 2
 
    overview
-   install
+   install/index
    tutorial/index
    reference/index
 
@@ -16,13 +16,11 @@ CuPy -- A NumPy-compatible array library accelerated by CUDA
    :maxdepth: 2
    :caption: Development
 
-   compatibility
    contribution
 
 .. toctree::
    :maxdepth: 2
    :caption: Misc Notes
 
-   install_rocm
    upgrade
    license

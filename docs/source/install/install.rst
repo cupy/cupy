@@ -1,4 +1,4 @@
-Installation Guide
+Installation
 ==================
 
 Requirements
@@ -29,11 +29,11 @@ NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.20 and SciPy 1.6, and 
 
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6
 
-    * Required only when using :doc:`reference/scipy` (``cupyx.scipy``).
+    * Required only when using :doc:`../reference/scipy` (``cupyx.scipy``).
 
 * `Optuna <https://optuna.org/>`_ (*optional*): v2.x
 
-    * Required only when using :doc:`reference/optimize`.
+    * Required only when using :doc:`../reference/optimize`.
 
 .. note::
 
@@ -52,7 +52,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
 * `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.2
 
-    * The library to accelerate tensor operations. See :doc:`reference/environment` for the details.
+    * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
 * `NCCL <https://developer.nvidia.com/nccl>`_: v2.4 (CUDA 9.2) / v2.6 (CUDA 10.0) / v2.7 (CUDA 10.1+) / v2.8 (CUDA 10.2+)
 
@@ -356,3 +356,12 @@ On CentOS 6 / 7::
   $ sudo yum install devtoolset-7-gcc-c++
   $ source /opt/rh/devtoolset-7/enable
   $ export NVCC="nvcc --compiler-bidir gcc-7"
+
+----
+
+.. currentmodule:: cupy
+
+.. toctree::
+   :maxdepth: 2
+
+   install_rocm
