@@ -30,6 +30,11 @@ Dropping Support of Python 3.5
 
 Python 3.5 is no longer supported in CuPy v9.
 
+NCCL and cuDNN No Longer Included in Wheels
+-------------------------------------------
+
+NCCL and cuDNN shared libraires are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
+You can manually install them after installing wheel; see :doc:`install/install` for details.
 
 CuPy v8
 =======
