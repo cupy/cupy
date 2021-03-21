@@ -78,7 +78,7 @@ def main():
 
         kernel = module.get_function('kernel<{}>'.format(ctype))
         args = (A, B, C.ravel().view(Matrix), out)
-        kernel((N,), (N,), args)
+        kernel((1,), (N,), args)
 
         expected = cupy.matmul(A, B) + cupy.asarray(C[None, :, :])
 

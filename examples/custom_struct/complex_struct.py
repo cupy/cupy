@@ -119,7 +119,7 @@ def main():
     N = 8
     out = cupy.empty(shape=(N,), dtype=numpy.float64)
     kernel = cupy.RawKernel(kernel_code, 'test_kernel')
-    kernel((N,), (N,), (s, out))
+    kernel((1,), (N,), (s, out))
 
     # the sum of all members of our complex struct instance is 55.0
     expected = cupy.arange(N) * 55.0

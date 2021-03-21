@@ -273,18 +273,18 @@ Python primitive types and NumPy scalars are passed to the kernel by value.
 Array arguments (pointer arguments) have to be passed as CuPy ndarrays.
 No validation is performed by CuPy for arguments passed to the kernel, including types and number of arguments.
 
-Especially note that when passing a cupy :class:`~cupy.ndarray`, its ``dtype`` should match with the type of the argument declared in the method signature of the CUDA source code (unless you are casting arrays intentionally). 
+Especially note that when passing a CuPy :class:`~cupy.ndarray`, its ``dtype`` should match with the type of the argument declared in the function signature of the CUDA source code (unless you are casting arrays intentionally). 
 
-As an example, ``cupy.float32`` and ``cupy.uint64`` arrays must be passed to the argument typed as ``float*`` and ``unsigned long long*``, respectively. CuPy does not directly support arrays of non-primitive types such as ``float3``, but nothing prevents you from casting a ``float*`` to a ``float3*`` in a kernel.
+As an example, ``cupy.float32`` and ``cupy.uint64`` arrays must be passed to the argument typed as ``float*`` and ``unsigned long long*``, respectively. CuPy does not directly support arrays of non-primitive types such as ``float3``, but nothing prevents you from casting a ``float*`` or ``void*`` to a ``float3*`` in a kernel.
 
 Python primitive types, ``int``, ``float``, ``complex`` and ``bool`` map to ``long long``, ``double``, ``cuDoubleComplex`` and ``bool``, respectively.
 
-Numpy scalars (``numpy.generic``) and numpy arrays (``numpy.ndarray``) **of size one** 
+NumPy scalars (``numpy.generic``) and NumPy arrays (``numpy.ndarray``) **of size one** 
 are passed to the kernel by value.
-This means that you can pass by value any base numpy types such as ``numpy.int8`` or ``numpy.float64`` provided kernel arguments matches in size. You can refer to this table to match cupy/numpy dtype and CUDA types:
+This means that you can pass by value any base NumPy types such as ``numpy.int8`` or ``numpy.float64``, provided the kernel arguments match in size. You can refer to this table to match CuPy/NumPy dtype and CUDA types:
 
 +-----------------+-----------------------------------------------+------------------+
-| cupy/numpy type | Corresponding kernel types                    | itemsize (bytes) |
+| CuPy/NumPy type | Corresponding kernel types                    | itemsize (bytes) |
 +=================+===============================================+==================+
 | bool            | bool                                          | 1                |
 +-----------------+-----------------------------------------------+------------------+
@@ -317,9 +317,9 @@ This means that you can pass by value any base numpy types such as ``numpy.int8`
 
 The CUDA standard guarantees that the size of fundamental types on the host and device always match.
 The itemsize of ``size_t``, ``ptrdiff_t``, ``intptr_t``, ``uintptr_t``, 
-``long``, ``signed long`` and ``unsigned long`` are thus platform dependent. 
+``long``, ``signed long`` and ``unsigned long`` are however platform dependent. 
 To pass any CUDA vector builtins such as ``float3`` or any other user defined structure 
-as kernel arguments (provided it matches the device side kernel parameter type), see section :ref:`custom_user_structs`.
+as kernel arguments (provided it matches the device-side kernel parameter type), see section :ref:`custom_user_structs` below.
 
 .. _custom_user_structs:
 
@@ -327,18 +327,18 @@ Custom user types
 -----------------
 
 Is is possible to use custom types (composite types such as structures and structures of structures) 
-as kernel arguments by defining a custom numpy data type.
+as kernel arguments by defining a custom NumPy dtype.
 When doing this, it is your responsability to match host and device structure memory layout.
 The CUDA standard guarantees that the size of fundamental types on the host and device always match.
 It may however impose device alignment requirements on composite types.
 This means that for composite types, the struct member offsets may be different from what you might expect.
 
-When a kernel argument is passed by value, the CUDA driver will copy exactly ``sizeof(param_type)`` bytes starting from the beginning of the numpy object data pointer where ``param_type`` is the parameter type in your kernel. 
-You have to match ``param_type`` memory layout (size, alignment and struct padding/packing) 
-by defining a corresponding `numpy dtype <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_.
+When a kernel argument is passed by value, the CUDA driver will copy exactly ``sizeof(param_type)`` bytes starting from the beginning of the NumPy object data pointer, where ``param_type`` is the parameter type in your kernel. 
+You have to match ``param_type``'s memory layout (ex: size, alignment and struct padding/packing) 
+by defining a corresponding `NumPy dtype <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_.
 
-For builtin cuda vector types such as ``int2`` and ``double4`` and other packed structures with 
-named members you can directly define such numpy datatype as the following:
+For builtin CUDA vector types such as ``int2`` and ``double4`` and other packed structures with 
+named members you can directly define such NumPy dtypes as the following:
 
 .. doctest::
 
@@ -347,10 +347,10 @@ named members you can directly define such numpy datatype as the following:
     >>> types = [np.float32]*3
     >>> float3 = np.dtype({'names': names, 'formats': types})
     >>> arg = np.random.rand(3).astype(np.float32).view(float3)
-    >>> print(arg)
+    >>> print(arg)  # doctest: +SKIP
     [(0.9940819, 0.62873816, 0.8953669)]
     >>> arg['x'] = 42.0
-    >>> print(arg)
+    >>> print(arg)  # doctest: +SKIP
     [(42., 0.62873816, 0.8953669)]
 
 Here ``arg`` can be used directly as a kernel argument.
@@ -365,7 +365,7 @@ vectors or matrices:
     >>> print(arg.itemsize)
     100
 
-Here ``arg`` represents a 100 bytes scalar (i.e. a numpy array of size 1)
+Here ``arg`` represents a 100-byte scalar (i.e. a NumPy array of size 1)
 that can be passed by value to any kernel.
 Kernel parameters are passed by value in a dedicated 4kB memory bank which has its own cache with broadcast.
 Upper bound for total kernel parameters size is thus 4kB
@@ -373,7 +373,7 @@ Upper bound for total kernel parameters size is thus 4kB
 It may be important to note that this dedicated memory bank is not shared with the device ``__constant__`` memory space.
 
 For now, CuPy offers no helper routines to create user defined composite types. 
-Such composite types can however be built recursively using numpy dtype `offsets` and `itemsize` capabilities,
+Such composite types can however be built recursively using NumPy dtype `offsets` and `itemsize` capabilities,
 see ``cupy/examples/user_structs`` for examples of advanced usage. 
 
 .. warning::

@@ -37,7 +37,7 @@ def main():
 
     kernel = cupy.RawKernel(code, 'sum_kernel')
     args = (lhs, rhs.view(double3), out)
-    kernel((N,), (N,), args)
+    kernel((1,), (N,), args)
 
     expected = lhs + cupy.asarray(rhs[None, :])
     cupy.testing.assert_array_equal(expected, out)
