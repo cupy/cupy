@@ -99,7 +99,7 @@ if use_hip:
         'name': 'cuda',
         'required': True,
         'file': cuda_files + [
-            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.nvtx',
             'cupy_backends.cuda.libs.cusolver',
             'cupy.cusolver',
         ],
@@ -204,7 +204,7 @@ if not use_hip:
     MODULES.append({
         'name': 'nvtx',
         'file': [
-            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.nvtx',
         ],
         'include': [
             'nvToolsExt.h',
