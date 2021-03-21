@@ -91,13 +91,10 @@ Package names are different depending on your CUDA Toolkit version.
 
 .. note::
 
-   Wheel packages are built with NCCL (Linux only) and cuDNN support enabled.
+   To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
+   If you installed CuPy via wheels, you can use the installer command below to setup these libraries.
 
-   * NCCL library is bundled with these packages.
-     You don't have to install it manually.
-
-   * cuDNN library is bundled with these packages except for CUDA 10.1+.
-     For CUDA 10.1+, you need to manually download and install cuDNN v8.x library to use cuDNN features.
+     $ python -m cupyx.tools.install_library --cuda 11.2 --library cutensor
 
 .. note::
 
