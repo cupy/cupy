@@ -43,7 +43,7 @@ function ActivateCUDA($version) {
 }
 
 function IsPullRequestTest() {
-    return ${Env:FLEXCI_BRANCH}.StartsWith("refs/pull/")
+    return ${Env:FLEXCI_BRANCH} -ne $null -and ${Env:FLEXCI_BRANCH}.StartsWith("refs/pull/")
 }
 
 function PrioritizeFlexCIDaemon() {
