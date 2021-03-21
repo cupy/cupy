@@ -7,7 +7,7 @@ import pytest
 import cupy
 from cupy.core import core
 from cupy import testing
-from tests.cupy_tests.core_tests import test_raw
+from cupy_tests.core_tests import test_raw
 
 
 class TestSize(unittest.TestCase):
