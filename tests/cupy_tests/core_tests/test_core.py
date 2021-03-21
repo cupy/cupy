@@ -7,7 +7,7 @@ import pytest
 import cupy
 from cupy.core import core
 from cupy import testing
-from .test_raw import use_temporary_cache_dir
+from tests.cupy_tests.core_tests import test_raw
 
 
 class TestSize(unittest.TestCase):
@@ -65,13 +65,13 @@ class TestOrder(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'cxx': (None, '--std=c++11'),
+    'cxx': (None, '--std=c++03', '--std=c++11'),
 }))
 @testing.gpu
 class TestCuPyHeaders(unittest.TestCase):
 
     def setUp(self):
-        self.temporary_cache_dir_context = use_temporary_cache_dir()
+        self.temporary_cache_dir_context = test_raw.use_temporary_cache_dir()
         self.cache_dir = self.temporary_cache_dir_context.__enter__()
         self.header = '\n'.join(['#include <' + h + '>'
                                  for h in core._cupy_header_list])
