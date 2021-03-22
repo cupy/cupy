@@ -28,6 +28,12 @@ class Scalar(TypeBase):
             dtype = numpy.dtype('float32')
         return get_typename(dtype)
 
+    def __eq__(self, other):
+        return self.dtype == other.dtype
+
+    def __hash__(self):
+        return hash(self.dtype)
+
 
 class Array(TypeBase):
 
@@ -46,6 +52,31 @@ class Array(TypeBase):
         c_contiguous = get_cuda_code_from_constant(self.is_c_contiguous, bool_)
         index_32_bits = get_cuda_code_from_constant(self.index_32_bits, bool_)
         return f'CArray<{ctype}, {self.ndim}, {c_contiguous}, {index_32_bits}>'
+
+    def __eq__(self, other):
+        return (
+            self.dtype == other.dtype and
+            self.ndim == other.ndim and
+            self.is_c_contiguous == other.is_c_contiguous and
+            self.index_32_bits == other.index_32_bits
+        )
+
+    def __hash__(self):
+        return hash(
+            (self.dtype, self.ndim, self.is_c_contiguous, self.index_32_bits))
+
+
+class Tuple(TypeBase):
+
+    def __init__(self, types):
+        self.types = types
+
+    def __str__(self):
+        types = ', '.join([str(t) for t in self.types])
+        return f'thrust::tuple<{types}>'
+
+    def __eq__(self, other):
+        return self.types == other.types
 
 
 bool_ = Scalar(numpy.bool_)
