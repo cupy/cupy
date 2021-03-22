@@ -3,7 +3,6 @@ Custom kernels
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.ElementwiseKernel
    cupy.ReductionKernel
@@ -11,12 +10,12 @@ Custom kernels
    cupy.RawModule
    cupy.fuse
 
+
 JIT kernel definition
 ---------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupyx.jit.rawkernel
    cupyx.jit.threadIdx
@@ -27,12 +26,12 @@ JIT kernel definition
    cupyx.jit.shared_memory
    cupyx.jit._interface._JitRawKernel
 
+
 Kernel binary memoization
 -------------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.memoize
    cupy.clear_memo

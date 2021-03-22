@@ -1,7 +1,9 @@
-Universal Functions (ufunc)
-===========================
+Universal functions (:class:`cupy.ufunc`)
+=========================================
 
-.. https://docs.scipy.org/doc/numpy/reference/ufuncs.html
+.. Hint:: `NumPy API Reference: Universal functions (numpy.ufunc) <https://numpy.org/doc/stable/reference/ufuncs.html>`_
+
+.. currentmodule:: cupy
 
 CuPy provides universal functions (a.k.a. ufuncs) to support various elementwise operations.
 CuPy's ufunc supports following features of NumPy's one:
@@ -13,14 +15,13 @@ CuPy's ufunc supports following features of NumPy's one:
 CuPy's ufunc currently does not provide methods such as ``reduce``, ``accumulate``, ``reduceat``, ``outer``, and ``at``.
 
 
-Ufunc class
------------
+ufunc
+-----
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.ufunc
+   ufunc
 
 
 Available ufuncs
@@ -31,36 +32,39 @@ Math operations
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.add
-   cupy.subtract
-   cupy.multiply
-   cupy.divide
-   cupy.logaddexp
-   cupy.logaddexp2
-   cupy.true_divide
-   cupy.floor_divide
-   cupy.negative
-   cupy.power
-   cupy.remainder
-   cupy.mod
-   cupy.fmod
-   cupy.absolute
-   cupy.rint
-   cupy.sign
-   cupy.exp
-   cupy.exp2
-   cupy.log
-   cupy.log2
-   cupy.log10
-   cupy.expm1
-   cupy.log1p
-   cupy.sqrt
-   cupy.square
-   cupy.reciprocal
-   cupy.gcd
-   cupy.lcm
+   add
+   subtract
+   multiply
+   matmul
+   divide
+   logaddexp
+   logaddexp2
+   true_divide
+   floor_divide
+   negative
+   power
+   remainder
+   mod
+   fmod
+   absolute
+   rint
+   sign
+   conj
+   conjugate
+   exp
+   exp2
+   log
+   log2
+   log10
+   expm1
+   log1p
+   sqrt
+   square
+   cbrt
+   reciprocal
+   gcd
+   lcm
 
 
 Trigonometric functions
@@ -68,24 +72,25 @@ Trigonometric functions
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.sin
-   cupy.cos
-   cupy.tan
-   cupy.arcsin
-   cupy.arccos
-   cupy.arctan
-   cupy.arctan2
-   cupy.hypot
-   cupy.sinh
-   cupy.cosh
-   cupy.tanh
-   cupy.arcsinh
-   cupy.arccosh
-   cupy.arctanh
-   cupy.deg2rad
-   cupy.rad2deg
+   sin
+   cos
+   tan
+   arcsin
+   arccos
+   arctan
+   arctan2
+   hypot
+   sinh
+   cosh
+   tanh
+   arcsinh
+   arccosh
+   arctanh
+   degrees
+   radians
+   deg2rad
+   rad2deg
 
 
 Bit-twiddling functions
@@ -93,14 +98,13 @@ Bit-twiddling functions
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.bitwise_and
-   cupy.bitwise_or
-   cupy.bitwise_xor
-   cupy.invert
-   cupy.left_shift
-   cupy.right_shift
+   bitwise_and
+   bitwise_or
+   bitwise_xor
+   invert
+   left_shift
+   right_shift
 
 
 Comparison functions
@@ -108,22 +112,21 @@ Comparison functions
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.greater
-   cupy.greater_equal
-   cupy.less
-   cupy.less_equal
-   cupy.not_equal
-   cupy.equal
-   cupy.logical_and
-   cupy.logical_or
-   cupy.logical_xor
-   cupy.logical_not
-   cupy.maximum
-   cupy.minimum
-   cupy.fmax
-   cupy.fmin
+   greater
+   greater_equal
+   less
+   less_equal
+   not_equal
+   equal
+   logical_and
+   logical_or
+   logical_xor
+   logical_not
+   maximum
+   minimum
+   fmax
+   fmin
 
 
 Floating functions
@@ -131,21 +134,20 @@ Floating functions
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.isfinite
-   cupy.isinf
-   cupy.isnan
-   cupy.signbit
-   cupy.copysign
-   cupy.nextafter
-   cupy.modf
-   cupy.ldexp
-   cupy.frexp
-   cupy.fmod
-   cupy.floor
-   cupy.ceil
-   cupy.trunc
+   isfinite
+   isinf
+   isnan
+   signbit
+   copysign
+   nextafter
+   modf
+   ldexp
+   frexp
+   fmod
+   floor
+   ceil
+   trunc
 
 
 ufunc.at

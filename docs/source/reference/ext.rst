@@ -1,11 +1,11 @@
-CuPy-specific Functions
+CuPy-specific functions
 =======================
 
 CuPy-specific functions are placed under ``cupyx`` namespace.
 
+.. TODO(kmaehashi): use module:: cupyx
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupyx.rsqrt
    cupyx.scatter_add
@@ -24,20 +24,17 @@ For further detail see :ref:`dlpack`.
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.fromDlpack
 
 
 .. _kernel_param_opt:
 
-Automatic Kernel Parameters Optimizations
------------------------------------------
+Automatic Kernel Parameters Optimizations (:mod:`cupyx.optimizing`)
+-------------------------------------------------------------------
 
 .. module:: cupyx.optimizing
-
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupyx.optimizing.optimize

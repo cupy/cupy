@@ -1,19 +1,21 @@
-Input and Output
+Input and output
 ================
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.io.html
+.. Hint:: `NumPy API Reference: Input and output <https://numpy.org/doc/stable/reference/routines.io.html>`_
+
+.. currentmodule:: cupy
+
 
 NumPy binary files (NPY, NPZ)
 -----------------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.load
-   cupy.save
-   cupy.savez
-   cupy.savez_compressed
+   load
+   save
+   savez
+   savez_compressed
 
 
 String formatting
@@ -21,10 +23,9 @@ String formatting
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.array_repr
-   cupy.array_str
+   array_repr
+   array_str
 
 
 Base-n representations
@@ -32,7 +33,6 @@ Base-n representations
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.binary_repr
-   cupy.base_repr
+   binary_repr
+   base_repr

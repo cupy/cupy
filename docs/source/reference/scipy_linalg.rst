@@ -1,16 +1,19 @@
-Linear Algebra
-==============
+.. module:: cupyx.scipy.linalg
 
-.. https://docs.scipy.org/doc/scipy/reference/linalg.html
+Linear algebra (:mod:`cupyx.scipy.linalg`)
+==========================================
+
+.. Hint:: `SciPy API Reference: Linear algebra (scipy.linalg) <https://docs.scipy.org/doc/scipy/reference/linalg.html>`_
 
 Basics
 ------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-    cupyx.scipy.linalg.solve_triangular
+   solve_triangular
+   tril
+   triu
 
 
 Decompositions
@@ -18,11 +21,10 @@ Decompositions
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-    cupyx.scipy.linalg.lu
-    cupyx.scipy.linalg.lu_factor
-    cupyx.scipy.linalg.lu_solve
+   lu
+   lu_factor
+   lu_solve
 
 
 Special Matrices
@@ -30,22 +32,19 @@ Special Matrices
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-    cupyx.scipy.linalg.block_diag
-    cupyx.scipy.linalg.circulant
-    cupyx.scipy.linalg.companion
-    cupyx.scipy.linalg.convolution_matrix
-    cupyx.scipy.linalg.dft
-    cupyx.scipy.linalg.fiedler
-    cupyx.scipy.linalg.fiedler_companion
-    cupyx.scipy.linalg.hadamard
-    cupyx.scipy.linalg.hankel
-    cupyx.scipy.linalg.helmert
-    cupyx.scipy.linalg.hilbert
-    cupyx.scipy.linalg.kron
-    cupyx.scipy.linalg.leslie
-    cupyx.scipy.linalg.toeplitz
-    cupyx.scipy.linalg.tri
-    cupyx.scipy.linalg.tril
-    cupyx.scipy.linalg.triu
+   block_diag
+   circulant
+   companion
+   convolution_matrix
+   dft
+   fiedler
+   fiedler_companion
+   hadamard
+   hankel
+   helmert
+   hilbert
+   kron
+   leslie
+   toeplitz
+   tri
