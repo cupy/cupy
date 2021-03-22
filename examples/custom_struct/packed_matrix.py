@@ -54,7 +54,7 @@ __global__ void kernel(const Matrix<T>* A,
 
 def main():
     N = 8
-    module = cupy.RawModule(code=code, options=('-std=c++03',),
+    module = cupy.RawModule(code=code, options=('-std=c++11',),
                             name_expressions=('kernel<float>',
                                               'kernel<double>'))
 
