@@ -65,7 +65,7 @@ class TestOrder(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'cxx': (None, '--std=c++03', '--std=c++11'),
+    'cxx': (None, '--std=c++11'),
 }))
 @testing.gpu
 class TestCuPyHeaders(unittest.TestCase):
