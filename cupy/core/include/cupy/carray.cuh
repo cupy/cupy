@@ -198,6 +198,11 @@ __device__ int signbit(float16 x) {return x.signbit();}
          i < (n); \
          i += static_cast<ptrdiff_t>(blockDim.x) * gridDim.x)
 
+template <int dim>
+struct Dim {
+  __device__ Dim() {}
+};
+
 template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false>
 class CArray {
 public:
@@ -326,6 +331,29 @@ public:
 
   __device__ T& operator[](ptrdiff_t i) {
     return const_cast<T&>(const_cast<const CArray&>(*this)[i]);
+  }
+
+  template <typename Tuple, int dim>
+  __forceinline__ __device__ const T& _indexing(const Tuple &idx, Dim<dim>, const char* ptr) const {
+    index_t i = static_cast<index_t>(thrust::get<dim>(idx));
+    ptr += static_cast<index_t>(strides_[dim]) * i;
+    return _indexing(idx, Dim<dim + 1>(), ptr);
+  }
+
+  template <typename Tuple>
+  __forceinline__ __device__ const T& _indexing(const Tuple &idx, Dim<_ndim>, const char* ptr) const {
+    return *reinterpret_cast<const T*>(ptr);
+  }
+
+  template <typename Tuple>
+  __forceinline__ __device__ const T& _indexing(const Tuple &idx) const {
+    const char* ptr = reinterpret_cast<const char*>(data_);
+    return _indexing(idx, Dim<0>(), ptr);
+  }
+
+  template <typename Tuple>
+  __forceinline__ __device__ T& _indexing(const Tuple &idx) {
+    return const_cast<T&>(const_cast<const CArray&>(*this)._indexing(idx));
   }
 
   __device__ const T& operator[](ptrdiff_t idx) const {

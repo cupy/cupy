@@ -8,7 +8,7 @@ from cupy import testing
 
 class TestRaw(unittest.TestCase):
 
-    def test_raw_kick_one_kernel(self):
+    def test_raw_onw_thread(self):
         @jit.rawkernel()
         def f(x, y):
             y[0] = x[0]
@@ -40,6 +40,33 @@ class TestRaw(unittest.TestCase):
         x = testing.shaped_random((1024,), dtype=numpy.int32, seed=0)
         y = testing.shaped_random((1024,), dtype=numpy.int32, seed=1)
         f((5,), (6,), (x, y, numpy.uint32(1024)))
+        assert bool((x == y).all())
+
+    def test_raw_multidimensional_array(self):
+        @jit.rawkernel()
+        def f(x, y, n_row, n_col):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            ntid = jit.blockDim.x * jit.gridDim.x
+            size = n_row * n_col
+            for i in range(tid, size, ntid):
+                i_row = i // n_col
+                i_col = i % n_col
+                y[i_row, i_col] = x[i_row, i_col]
+
+        n, m = numpy.uint32(12), numpy.uint32(13)
+        x = testing.shaped_random((n, m), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((n, m), dtype=numpy.int32, seed=1)
+        f((5,), (6,), (x, y, n, m))
+        assert bool((x == y).all())
+
+    def test_raw_0dim_array(self):
+        @jit.rawkernel()
+        def f(x, y):
+            y[()] = x[()]
+
+        x = testing.shaped_random((), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((), dtype=numpy.int32, seed=1)
+        f((1,), (1,), (x, y))
         assert bool((x == y).all())
 
     def test_raw_grid_block_interface(self):
