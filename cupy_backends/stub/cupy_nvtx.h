@@ -3,21 +3,7 @@
 #ifndef INCLUDE_GUARD_STUB_CUPY_NVTX_H
 #define INCLUDE_GUARD_STUB_CUPY_NVTX_H
 
-#define NVTX_VERSION 1
-
 extern "C" {
-
-void nvtxMarkA(...) {
-}
-
-int nvtxRangePushA(...) {
-    return 0;
-}
-
-int nvtxRangePop() {
-    return 0;
-}
-
 
 typedef enum nvtxColorType_t
 {
