@@ -21,9 +21,9 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         uint8_t data[1024]
     ctypedef struct cusparseLtMatDescriptor_t 'cusparseLtMatDescriptor_t':
         uint8_t data[1024]
-    ctypedef struct cusparseLtMatmulDescriptor_t 'cusparseLtMatmulDescriptor_t':
+    ctypedef struct cusparseLtMatmulDescriptor_t 'cusparseLtMatmulDescriptor_t':  # NOQA
         uint8_t data[1024]
-    ctypedef struct cusparseLtMatmulAlgSelection_t 'cusparseLtMatmulAlgSelection_t':
+    ctypedef struct cusparseLtMatmulAlgSelection_t 'cusparseLtMatmulAlgSelection_t':  # NOQA
         uint8_t data[1024]
     ctypedef struct cusparseLtMatmulPlan_t 'cusparseLtMatmulPlan_t':
         uint8_t data[1024]
@@ -32,7 +32,7 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     ctypedef int cusparseLtSparsity_t 'cusparseLtSparsity_t'
     ctypedef int cusparseOperation_t 'cusparseOperation_t'
     ctypedef int cusparseLtMatmulAlg_t 'cusparseLtMatmulAlg_t'
-    ctypedef int cusparseLtMatmulAlgAttribute_t 'cusparseLtMatmulAlgAttribute_t'
+    ctypedef int cusparseLtMatmulAlgAttribute_t 'cusparseLtMatmulAlgAttribute_t'  # NOQA
     ctypedef int cusparseLtPruneAlg_t 'cusparseLtPruneAlg_t'
 
     # Management Functions
@@ -74,7 +74,7 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
     cusparseStatus_t cusparseLtMatmulGetWorkspace(
         const cusparseLtHandle_t* handle,
         const cusparseLtMatmulAlgSelection_t* algSelection,
-        size_t* workspaceSize);
+        size_t* workspaceSize)
     cusparseStatus_t cusparseLtMatmulPlanInit(
         const cusparseLtHandle_t* handle,
         cusparseLtMatmulPlan_t* plan,
@@ -101,7 +101,7 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         const void* d_in, int* valid, driver.Stream stream)
     cusparseStatus_t cusparseLtSpMMACompressedSize(
         const cusparseLtHandle_t* handle, const cusparseLtMatmulPlan_t* plan,
-        size_t* compressedSize);
+        size_t* compressedSize)
     cusparseStatus_t cusparseLtSpMMACompress(
         const cusparseLtHandle_t* handle, const cusparseLtMatmulPlan_t* plan,
         const void* d_dense, void* d_compressed, driver.Stream stream)
@@ -277,7 +277,8 @@ cpdef matmulAlgSetAttribute(Handle handle, MatmulAlgSelection algSelection,
         <const void*> data, <size_t> dataSize)
     check_status(status)
 
-cpdef size_t matmulGetWorkspace(Handle handle, MatmulAlgSelection algSelection):
+cpdef size_t matmulGetWorkspace(Handle handle,
+                                MatmulAlgSelection algSelection):
     """Determines the required workspace size"""
     cdef size_t workspaceSize
     status = cusparseLtMatmulGetWorkspace(
@@ -288,9 +289,9 @@ cpdef size_t matmulGetWorkspace(Handle handle, MatmulAlgSelection algSelection):
     return workspaceSize
 
 cpdef matmulPlanInit(Handle handle, MatmulPlan plan,
-                    MatmulDescriptor matmulDescr,
-                    MatmulAlgSelection algSelection,
-                    size_t workspaceSize):
+                     MatmulDescriptor matmulDescr,
+                     MatmulAlgSelection algSelection,
+                     size_t workspaceSize):
     """Initializes the plan."""
     status = cusparseLtMatmulPlanInit(
         <const cusparseLtHandle_t*> handle._ptr,
