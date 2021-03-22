@@ -79,6 +79,7 @@ class Tuple(TypeBase):
         return self.types == other.types
 
 
+void = Void()
 bool_ = Scalar(numpy.bool_)
 uint32 = Scalar(numpy.uint32)
 

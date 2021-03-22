@@ -70,7 +70,11 @@ def _indent(lines, spaces='  '):
     return [spaces + line for line in lines]
 
 
-class CudaObject:
+class Expr:
+    pass
+
+
+class CudaObject(Expr):
     def __init__(self, code, ctype):
         self.code = code
         self.ctype = ctype
@@ -83,7 +87,7 @@ class CudaObject:
         return f'<CudaObject code = "{self.code}", type = {self.ctype}>'
 
 
-class Constant:
+class Constant(Expr):
     def __init__(self, obj):
         self._obj = obj
 
@@ -95,7 +99,7 @@ class Constant:
         return f'<Constant obj = "{self.obj}">'
 
 
-class Range:
+class Range(Expr):
 
     def __init__(self, start, stop, step, step_is_positive):
         self.start = start
@@ -110,6 +114,18 @@ class Range:
             raise TypeError(f'dtype mismatch: {self.ctype} != {start.ctype}')
         if self.ctype.dtype != step.ctype.dtype:
             raise TypeError(f'dtype mismatch: {self.ctype} != {step.ctype}')
+
+
+class BuiltinFunc(Expr):
+
+    def __init__(self):
+        pass
+
+
+class SyncThreads(BuiltinFunc):
+
+    def call(self, env):
+        return CudaObject('__syncthreads()', _types.void)
 
 
 def is_constants(values):
@@ -421,7 +437,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
         raise ValueError('Cannot use global/nonlocal in the target functions.')
     if isinstance(stmt, ast.Expr):
         value = _transpile_expr(stmt.value, env)
-        return [';'] if is_constants([value]) else [value + ';']
+        return [';'] if is_constants([value]) else [value.code + ';']
     if isinstance(stmt, ast.Pass):
         return [';']
     if isinstance(stmt, ast.Break):
@@ -438,7 +454,7 @@ def _transpile_expr(expr, env):
     """
     res = _transpile_expr_internal(expr, env)
 
-    if isinstance(res, Constant) and isinstance(res.obj, CudaObject):
+    if isinstance(res, Constant) and isinstance(res.obj, Expr):
         return res.obj
     else:
         return res
@@ -486,10 +502,19 @@ def _transpile_expr_internal(expr, env):
         return CudaObject(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
 
     if isinstance(expr, ast.Call):
-        func = _transpile_expr(expr.func, env).obj
+        func = _transpile_expr(expr.func, env)
         args = [_transpile_expr(x, env) for x in expr.args]
         kwargs = dict([(kw.arg, _transpile_expr(kw.value, env))
                        for kw in expr.keywords])
+
+        if isinstance(func, BuiltinFunc):
+            return func.call(env, *args, **kwargs)
+
+        if not is_constants([func]):
+            raise NotImplementedError(
+                'device function call is not implemented.')
+
+        func = func.obj
 
         if func is range:
             if len(args) == 0:

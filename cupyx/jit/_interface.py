@@ -99,3 +99,5 @@ threadIdx = _create_dim3('threadIdx')
 blockDim = _create_dim3('blockDim')
 blockIdx = _create_dim3('blockIdx')
 gridDim = _create_dim3('gridDim')
+
+syncthreads = _compile.SyncThreads()
