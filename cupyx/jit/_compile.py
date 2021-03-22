@@ -128,6 +128,12 @@ class SyncThreads(BuiltinFunc):
         return CudaObject('__syncthreads()', _types.void)
 
 
+class SharedMalloc(BuiltinFunc):
+
+    def call(self, env):
+        return CudaObject('__syncthreads()', _types.void)
+
+
 def is_constants(values):
     return all(isinstance(x, Constant) for x in values)
 

@@ -40,8 +40,8 @@ class Array(TypeBase):
     def __init__(self, dtype, ndim, is_c_contiguous, index_32_bits):
         self.dtype = dtype
         self.ndim = ndim
-        self.is_c_contiguous = is_c_contiguous
-        self.index_32_bits = index_32_bits
+        self._c_contiguous = is_c_contiguous
+        self._index_32_bits = index_32_bits
 
     @classmethod
     def from_ndarray(cls, x):
@@ -49,21 +49,21 @@ class Array(TypeBase):
 
     def __str__(self):
         ctype = get_typename(self.dtype)
-        c_contiguous = get_cuda_code_from_constant(self.is_c_contiguous, bool_)
-        index_32_bits = get_cuda_code_from_constant(self.index_32_bits, bool_)
+        c_contiguous = get_cuda_code_from_constant(self._c_contiguous, bool_)
+        index_32_bits = get_cuda_code_from_constant(self._index_32_bits, bool_)
         return f'CArray<{ctype}, {self.ndim}, {c_contiguous}, {index_32_bits}>'
 
     def __eq__(self, other):
         return (
             self.dtype == other.dtype and
             self.ndim == other.ndim and
-            self.is_c_contiguous == other.is_c_contiguous and
-            self.index_32_bits == other.index_32_bits
+            self._c_contiguous == other._c_contiguous and
+            self._index_32_bits == other._index_32_bits
         )
 
     def __hash__(self):
         return hash(
-            (self.dtype, self.ndim, self.is_c_contiguous, self.index_32_bits))
+            (self.dtype, self.ndim, self._c_contiguous, self._index_32_bits))
 
 
 class Tuple(TypeBase):
