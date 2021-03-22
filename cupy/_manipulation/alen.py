@@ -12,4 +12,6 @@ def alen(arr):
 
     	"""
 
-	return arr.shape[0]
+	return shape(arr)[0]
+
+
