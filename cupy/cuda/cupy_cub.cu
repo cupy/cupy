@@ -1,5 +1,5 @@
 #include "cupy_cub.h"  // need to make atomicAdd visible to CUB templates early
-#include <cupy/type_dispatcher.cuh>
+#include "type_dispatcher.cuh"
 
 #ifndef CUPY_USE_HIP
 #include <cub/device/device_reduce.cuh>
