@@ -19,6 +19,11 @@ _typeclasses = (bool, numpy.bool_, numbers.Number)
 Result = collections.namedtuple('Result', ['func_name', 'code', 'return_type'])
 
 
+_global_header = '''
+#include <cupy/tuple.cuh>
+'''
+
+
 def transpile(func, attributes, mode, in_types, ret_type):
     """Transpile the target function
     Args:
@@ -49,7 +54,11 @@ def transpile(func, attributes, mode, in_types, ret_type):
     assert len(tree.body) == 1
     cuda_code, env = _transpile_function(
         tree.body[0], attributes, mode, consts, in_types, ret_type)
-    cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
+    cuda_code = (
+        _global_header +
+        ''.join([code + '\n' for code in env.preambles]) +
+        cuda_code
+    )
     return Result(
         func_name=func.__name__,
         code=cuda_code,
@@ -316,13 +325,8 @@ def _transpile_stmt(stmt, is_toplevel, env):
         value = _transpile_expr(stmt.value, env)
         target = stmt.targets[0]
 
-        if not isinstance(target, ast.Name):
-            target = _transpile_expr(target, env)
-            return [f'{target.code} = {value.code};']
-
-        name = target.id
-
-        if is_constants([value]):
+        if is_constants([value]) and isinstance(target, ast.Name):
+            name = target.id
             if not isinstance(value.obj, _typeclasses):
                 if is_toplevel:
                     if env[name] is not None and not is_constants([env[name]]):
@@ -334,15 +338,8 @@ def _transpile_stmt(stmt, is_toplevel, env):
                         'Cannot assign constant value not at top-level.')
             value = _to_cuda_object(value, env)
 
-        if env[name] is None:
-            env[name] = CudaObject(name, value.ctype)
-        elif is_constants([env[name]]):
-            raise TypeError('Type mismatch of variable: `{name}`')
-        elif env[name].ctype.dtype != value.ctype.dtype:
-            raise TypeError(
-                f'Data type mismatch of variable: `{name}`: '
-                f'{env[name].ctype.dtype} != {value.ctype.dtype}')
-        return [f'{name} = {value.code};']
+        target = _transpile_lvalue(target, env, value.ctype)
+        return [f'{target.code} = {value.code};']
 
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
@@ -574,10 +571,49 @@ def _transpile_expr_internal(expr, env):
             return Constant(getattr(value.obj, expr.attr))
         raise NotImplementedError('Not implemented: __getattr__')
 
+    if isinstance(expr, ast.Tuple):
+        elts = [_transpile_expr(x, env) for x in expr.elts]
+        # TODO: Support compile time constants.
+        elts = [_to_cuda_object(x, env) for x in elts]
+        elts_code = ', '.join([x.code for x in elts])
+        ctype = _types.Tuple([x.ctype for x in elts])
+        return CudaObject(f'thrust::make_tuple({elts_code})', ctype)
+
     if isinstance(expr, ast.Index):
         return _transpile_expr(expr.value, env)
 
     raise ValueError('Not supported: type {}'.format(type(expr)))
+
+
+def _transpile_lvalue(target, env, ctype):
+    if isinstance(target, ast.Name):
+        name = target.id
+        if env[name] is None:
+            env[name] = CudaObject(name, ctype)
+        elif is_constants([env[name]]):
+            raise TypeError('Type mismatch of variable: `{name}`')
+        elif env[name].ctype != ctype:
+            raise TypeError(
+                f'Data type mismatch of variable: `{name}`: '
+                f'{env[name].ctype.dtype} != {ctype.dtype}')
+        return env[name]
+
+    if isinstance(target, ast.Subscript):
+        return _transpile_expr(target, env)
+
+    if isinstance(target, ast.Tuple):
+        if not isinstance(ctype, _types.Tuple):
+            raise ValueError(f'{ctype} cannot be unpack')
+        size = len(target.elts)
+        if len(ctype.types) > size:
+            raise ValueError(f'too many values to unpack (expected {size})')
+        if len(ctype.types) < size:
+            raise ValueError(f'not enough values to unpack (expected {size})')
+        elts = [_transpile_lvalue(x, env, t)
+                for x, t in zip(target.elts, ctype.types)]
+        # TODO: Support compile time constants.
+        elts_code = ', '.join([x.code for x in elts])
+        return CudaObject(f'thrust::tie({elts_code})', ctype)
 
 
 def _astype_scalar(x, ctype, casting, env):

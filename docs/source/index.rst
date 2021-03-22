@@ -8,7 +8,7 @@ CuPy -- A NumPy-compatible array library accelerated by CUDA
    :maxdepth: 2
 
    overview
-   install/index
+   install
    tutorial/index
    reference/index
 
