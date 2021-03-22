@@ -92,7 +92,7 @@ Package names are different depending on your CUDA Toolkit version.
 .. note::
 
    To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
-   If you installed CuPy via wheels, you can use the installer command below to setup these libraries.
+   If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation.
 
      $ python -m cupyx.tools.install_library --cuda 11.2 --library cutensor
 

@@ -34,7 +34,7 @@ NCCL and cuDNN No Longer Included in Wheels
 -------------------------------------------
 
 NCCL and cuDNN shared libraires are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
-You can manually install them after installing wheel; see :doc:`install/install` for details.
+You can manually install them after installing wheel if you don't have a previous installation; see :doc:`install/install` for details.
 
 CuPy v8
 =======
