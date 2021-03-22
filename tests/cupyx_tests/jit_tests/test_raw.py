@@ -69,6 +69,21 @@ class TestRaw(unittest.TestCase):
         f((1,), (1,), (x, y))
         assert bool((x == y).all())
 
+    def test_syncthreads(self):
+        @jit.rawkernel()
+        def f(x, y, buf):
+            tid = jit.threadIdx.x + jit.threadIdx.y * jit.blockDim.x
+            ntid = jit.blockDim.x * jit.blockDim.y
+            buf[tid] = x[ntid - tid - 1]
+            jit.syncthreads()
+            y[tid] = buf[ntid - tid - 1]
+
+        x = testing.shaped_random((1024,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((1024,), dtype=numpy.int32, seed=1)
+        buf = testing.shaped_random((1024,), dtype=numpy.int32, seed=2)
+        f((1,), (32, 32), (x, y, buf))
+        assert bool((x == y).all())
+
     def test_raw_grid_block_interface(self):
         @jit.rawkernel()
         def f(x, y, size):
