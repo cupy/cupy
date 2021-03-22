@@ -579,6 +579,8 @@ def _transpile_expr_internal(expr, env):
                         raise TypeError('Array indices must be scalar.')
                     if t.dtype.kind not in 'iu':
                         raise TypeError('Array indices must be integer.')
+                if ndim == 0:
+                    return CudaObject(f'{value.code}[0]', value.ctype.dtype)
                 return CudaObject(
                     f'{value.code}._indexing({index.code})',
                     value.ctype.dtype)

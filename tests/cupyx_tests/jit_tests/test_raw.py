@@ -59,6 +59,16 @@ class TestRaw(unittest.TestCase):
         f((5,), (6,), (x, y, n, m))
         assert bool((x == y).all())
 
+    def test_raw_0dim_array(self):
+        @jit.rawkernel()
+        def f(x, y):
+            y[()] = x[()]
+
+        x = testing.shaped_random((), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((), dtype=numpy.int32, seed=1)
+        f((1,), (1,), (x, y))
+        assert bool((x == y).all())
+
     def test_raw_grid_block_interface(self):
         @jit.rawkernel()
         def f(x, y, size):
