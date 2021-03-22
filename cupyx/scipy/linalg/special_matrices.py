@@ -1,6 +1,5 @@
 import math
 import cupy
-from numpy import exp
 from cupy import core
 
 
@@ -557,9 +556,4 @@ def convolution_matrix(a, n, mode='full'):
 from numpy import exp
 
 
-def sinhm(arr):
-    """Returns hyperbolic sine of the given square matrix.
-Args: arr: square matrix .
-Returns: Hyperbolic sine of given square matrix as input.
-    """
-    return 0.5*(exp(arr)-exp(-1*arr))
+
