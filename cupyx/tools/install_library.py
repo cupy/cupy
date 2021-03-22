@@ -165,12 +165,17 @@ Remove the directory first if you want to reinstall.'''.format(destination))
         if library == 'cudnn':
             shutil.move(os.path.join(tmpdir, 'cuda'), destination)
         elif library == 'cutensor':
-            include = os.path.join(destination, 'include')
-            lib = os.path.join(destination, 'lib64')
-            shutil.move(os.path.join(tmpdir, 'libcutensor/include'), include)
-            if cuda.startswith('11'):
+            if cuda.startswith('11.'):
                 cuda = '11'
-            shutil.move(os.path.join(tmpdir, 'libcutensor/lib', cuda), lib)
+            shutil.move(
+                os.path.join(tmpdir, 'libcutensor', 'include'),
+                os.path.join(destination, 'include'))
+            shutil.move(
+                os.path.join(tmpdir, 'libcutensor', 'lib', cuda),
+                os.path.join(destination, 'lib'))
+            shutil.move(
+                os.path.join(tmpdir, 'libcutensor', 'license.pdf'),
+                destination)
         print('Cleaning up...')
     print('Done!')
 
