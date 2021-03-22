@@ -4,7 +4,12 @@ from cupy.core._scalar import get_typename
 
 # Base class for cuda types.
 class TypeBase:
-    pass
+
+    def __str__(self):
+        raise NotImplementedError
+
+    def declvar(self, x):
+        return f'{self} {x}'
 
 
 class Void(TypeBase):
@@ -29,23 +34,30 @@ class Scalar(TypeBase):
         return get_typename(dtype)
 
     def __eq__(self, other):
-        return self.dtype == other.dtype
+        return isinstance(other, Scalar) and self.dtype == other.dtype
 
     def __hash__(self):
         return hash(self.dtype)
 
 
-class Array(TypeBase):
+class ArrayBase(TypeBase):
 
+    def __init__(self, child_type: TypeBase, ndim: int):
+        assert isinstance(child_type, TypeBase)
+        self.child_type = child_type
+        self.ndim = ndim
+
+
+class CArray(ArrayBase):
     def __init__(self, dtype, ndim, is_c_contiguous, index_32_bits):
         self.dtype = dtype
-        self.ndim = ndim
         self._c_contiguous = is_c_contiguous
         self._index_32_bits = index_32_bits
+        super().__init__(Scalar(dtype), ndim)
 
     @classmethod
     def from_ndarray(cls, x):
-        return Array(x.dtype, x.ndim, x._c_contiguous, x._index_32_bits)
+        return CArray(x.dtype, x.ndim, x._c_contiguous, x._index_32_bits)
 
     def __str__(self):
         ctype = get_typename(self.dtype)
@@ -55,6 +67,7 @@ class Array(TypeBase):
 
     def __eq__(self, other):
         return (
+            isinstance(other, CArray) and
             self.dtype == other.dtype and
             self.ndim == other.ndim and
             self._c_contiguous == other._c_contiguous and
@@ -64,6 +77,25 @@ class Array(TypeBase):
     def __hash__(self):
         return hash(
             (self.dtype, self.ndim, self._c_contiguous, self._index_32_bits))
+
+
+class SharedMem(ArrayBase):
+
+    def __init__(self, child_type, size):
+        self._size = size
+        super().__init__(child_type, 1)
+
+    def declvar(self, x):
+        return f'__shared__ {self.child_type} {x}[{self._size}]'
+
+
+class Ptr(ArrayBase):
+
+    def __init__(self, child_type):
+        super().__init__(child_type, 1)
+
+    def __str__(self):
+        return f'{self.child_type}*'
 
 
 class Tuple(TypeBase):

@@ -75,7 +75,9 @@ class Expr:
 
 
 class CudaObject(Expr):
-    def __init__(self, code, ctype):
+    def __init__(self, code: str, ctype: _types.TypeBase):
+        assert isinstance(code, str)
+        assert isinstance(ctype, _types.TypeBase)
         self.code = code
         self.ctype = ctype
 
@@ -130,8 +132,13 @@ class SyncThreads(BuiltinFunc):
 
 class SharedMalloc(BuiltinFunc):
 
-    def call(self, env):
-        return CudaObject('__syncthreads()', _types.void)
+    def call(self, env, dtype, size):
+        name = env.get_fresh_variable_name(prefix='_smem')
+        child_type = _types.Scalar(dtype)
+        while env[name] is not None:
+            name = env.get_fresh_variable_name(prefix='_smem')  # retry
+        env[name] = CudaObject(name, _types.SharedMem(child_type, size))
+        return CudaObject(name, _types.Ptr(child_type))
 
 
 def is_constants(values):
@@ -161,6 +168,7 @@ class Environment:
         self.locals = {}
         self.ret_type = ret_type
         self.preambles = set()
+        self.count = 0
 
     def __getitem__(self, key):
         if key in self.locals:
@@ -173,6 +181,10 @@ class Environment:
 
     def __setitem__(self, key, value):
         self.locals[key] = value
+
+    def get_fresh_variable_name(self, prefix='', suffix=''):
+        self.count += 1
+        return f'{prefix}{self.count}{suffix}'
 
 
 def _transpile_function(
@@ -226,8 +238,8 @@ def _transpile_function(
     params = dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)])
     env = Environment(mode, consts, params, ret_type)
     body = _transpile_stmts(func.body, True, env)
-    params = ', '.join([f'{env[a].ctype} {a}' for a in args])
-    local_vars = [f'{v.ctype} {n};' for n, v in env.locals.items()]
+    params = ', '.join([env[a].ctype.declvar(a) for a in args])
+    local_vars = [v.ctype.declvar(n) + ';' for n, v in env.locals.items()]
 
     if env.ret_type is None:
         env.ret_type = _types.Void()
@@ -514,6 +526,10 @@ def _transpile_expr_internal(expr, env):
                        for kw in expr.keywords])
 
         if isinstance(func, BuiltinFunc):
+            if not (is_constants(args) and is_constants(kwargs.values())):
+                raise TypeError(f'Arguments of {func} must be constants.')
+            args = [x.obj for x in args]
+            kwargs = dict([(k, v.obj) for k, v in kwargs.items()])
             return func.call(env, *args, **kwargs)
 
         if not is_constants([func]):
@@ -589,7 +605,7 @@ def _transpile_expr_internal(expr, env):
         if isinstance(value.ctype, _types.Tuple):
             raise NotImplementedError
 
-        if isinstance(value.ctype, _types.Array):
+        if isinstance(value.ctype, _types.ArrayBase):
             index = _to_cuda_object(index, env)
             ndim = value.ctype.ndim
             if isinstance(index.ctype, _types.Scalar):
@@ -600,8 +616,7 @@ def _transpile_expr_internal(expr, env):
                 if index_dtype.kind not in 'ui':
                     raise TypeError('Array indices must be integers.')
                 return CudaObject(
-                    f'{value.code}[{index.code}]',
-                    _types.Scalar(value.ctype.dtype))
+                    f'{value.code}[{index.code}]', value.ctype.child_type)
             if isinstance(index.ctype, _types.Tuple):
                 if ndim != len(index.ctype.types):
                     raise IndexError(f'The size of index must be {ndim}')
@@ -611,10 +626,15 @@ def _transpile_expr_internal(expr, env):
                     if t.dtype.kind not in 'iu':
                         raise TypeError('Array indices must be integer.')
                 if ndim == 0:
-                    return CudaObject(f'{value.code}[0]', value.ctype.dtype)
+                    return CudaObject(
+                        f'{value.code}[0]', value.ctype.child_type)
+                if ndim == 1:
+                    return CudaObject(
+                        f'{value.code}[thrust::get<0>({index.code})]',
+                        value.ctype.child_type)
                 return CudaObject(
                     f'{value.code}._indexing({index.code})',
-                    value.ctype.dtype)
+                    value.ctype.child_type)
             if isinstance(index.ctype, _types.Array):
                 raise TypeError('Advanced indexing is not supported.')
             assert False  # Never reach.

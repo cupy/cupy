@@ -46,7 +46,7 @@ class _JitRawKernel:
         in_types = []
         for x in args:
             if isinstance(x, cupy.ndarray):
-                t = _types.Array.from_ndarray(x)
+                t = _types.CArray.from_ndarray(x)
             elif numpy.isscalar(x):
                 t = _typerules.get_ctype_from_scalar(self._mode, x)
             else:
