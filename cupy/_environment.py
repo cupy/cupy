@@ -365,6 +365,7 @@ You can install the library by:
 '''
         else:
             assert False
-        msg = msg.format(lib=lib, exc_type=type(exc).__name__, exc=str(exc),
-                   cuda=config['cuda'])
+        msg = msg.format(
+            lib=lib, exc_type=type(exc).__name__, exc=str(exc),
+            cuda=config['cuda'])
         warnings.warn(msg)
