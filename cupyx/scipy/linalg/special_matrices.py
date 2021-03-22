@@ -553,7 +553,7 @@ def convolution_matrix(a, n, mode='full'):
         row0 = raz[-n:]
     return toeplitz(col0, row0)
 
-from numpy import exp
+
 
 
 
