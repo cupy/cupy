@@ -278,6 +278,39 @@ class TestStandardExponential(InvalidOutsMixin, GeneratorTestCase):
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
+@testing.parameterize(
+    {'size': None},
+    {'size': (1, 2, 3)},
+    {'size': 3},
+    {'size': (3, 3)},
+    {'size': ()},
+)
+@testing.fix_random()
+class TestStandardNormal(GeneratorTestCase):
+
+    target_method = 'standard_normal'
+
+    @testing.for_dtypes('fd')
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_normal_ks(self, dtype):
+        self.check_ks(0.05)(size=self.size, dtype=dtype)
+
+
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
+@testing.fix_random()
+class TestStandardNormalInvalid(InvalidOutsMixin, GeneratorTestCase):
+
+    target_method = 'standard_normal'
+
+    def test_invalid_dtypes(self):
+        for dtype in 'bhiqleFD':
+            with pytest.raises(TypeError):
+                self.generate(size=(3, 2), dtype=dtype)
+
+
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
 @testing.fix_random()
 class TestIntegers(GeneratorTestCase):
     # TODO(niboshi):
