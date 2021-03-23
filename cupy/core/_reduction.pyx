@@ -33,6 +33,7 @@ from cupy_backends.cuda.api cimport runtime
 
 import math
 import string
+import warnings
 
 import numpy
 
@@ -577,6 +578,14 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             out_type = out_args[0].dtype.type
         else:
             out_type = op.out_types[0]
+
+        # We guessed a routine that requires a C2R casting for the input
+        if (in_args[0].dtype.kind == 'c'
+                and numpy.dtype(op.in_types[0]).kind == 'f'):
+            warnings.warn(
+                'Casting complex values to real discards the imaginary part',
+                numpy.ComplexWarning)
+            in_args[0] = in_args[0].real
 
         type_map = _kernel._TypeMap((
             ('type_in0_raw', in_args[0].dtype.type),
