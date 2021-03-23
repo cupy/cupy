@@ -106,6 +106,10 @@ function Main {
     if ($use_cache) {
         DownloadCache
     }
+    if ($upload_cache) {
+        # Generate kernel cache for all combinations.
+        $Env:CUPY_TEST_FULL_COMBINATION = "1"
+    }
     echo "Running test..."
     $test_retval = 0
     python -c "import cupy; cupy.show_config()" > cupy_test_log.txt
