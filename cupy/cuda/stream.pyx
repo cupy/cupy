@@ -12,9 +12,15 @@ cdef object _thread_local = threading.local()
 
 
 cdef class _ThreadLocal:
-    cdef intptr_t current_stream
-    cdef object current_stream_ref
-    cdef list prev_stream_ref_stack
+    cdef list current_stream  # list of intptr_t
+    cdef list current_stream_ref  # list of object
+    cdef list prev_stream_ref_stack  # list of list
+
+    def __init__(self):
+        cdef int i, num_devices = runtime.getDeviceCount()
+        self.current_stream = [0 for i in range(num_devices)]
+        self.current_stream_ref = [None for i in range(num_devices)]
+        self.prev_stream_ref_stack = [None for i in range(num_devices)]
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -26,31 +32,35 @@ cdef class _ThreadLocal:
 
     cdef set_current_stream(self, stream):
         cdef intptr_t ptr = <intptr_t>stream.ptr
-        stream_module.set_current_stream_ptr(ptr)
-        self.current_stream = <intptr_t>ptr
-        self.current_stream_ref = weakref.ref(stream)
+        cdef int dev = runtime.getDevice()
+        stream_module.set_current_stream_ptr(ptr, dev)
+        self.current_stream[dev] = <intptr_t>ptr
+        self.current_stream_ref[dev] = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
         cdef intptr_t ptr = <intptr_t>stream_ref().ptr
-        stream_module.set_current_stream_ptr(ptr)
-        self.current_stream = <intptr_t>ptr
-        self.current_stream_ref = stream_ref
+        cdef int dev = runtime.getDevice()
+        stream_module.set_current_stream_ptr(ptr, dev)
+        self.current_stream[dev] = <intptr_t>ptr
+        self.current_stream_ref[dev] = stream_ref
 
     cdef get_current_stream(self):
-        if self.current_stream_ref is None:
+        cdef int dev = runtime.getDevice()
+        if self.current_stream_ref[dev] is None:
             if stream_module.is_ptds_enabled():
-                self.current_stream_ref = weakref.ref(Stream.ptds)
+                self.current_stream_ref[dev] = weakref.ref(Stream.ptds)
             else:
-                self.current_stream_ref = weakref.ref(Stream.null)
-        return self.current_stream_ref()
+                self.current_stream_ref[dev] = weakref.ref(Stream.null)
+        return self.current_stream_ref[dev]()
 
     cdef get_current_stream_ref(self):
-        if self.current_stream_ref is None:
+        cdef int dev = runtime.getDevice()
+        if self.current_stream_ref[dev] is None:
             if stream_module.is_ptds_enabled():
-                self.current_stream_ref = weakref.ref(Stream.ptds)
+                self.current_stream_ref[dev] = weakref.ref(Stream.ptds)
             else:
-                self.current_stream_ref = weakref.ref(Stream.null)
-        return self.current_stream_ref
+                self.current_stream_ref[dev] = weakref.ref(Stream.null)
+        return self.current_stream_ref[dev]
 
     cdef intptr_t get_current_stream_ptr(self):
         # Returns the stream previously set, otherwise returns
@@ -59,7 +69,8 @@ cdef class _ThreadLocal:
         if (stream_module.is_ptds_enabled() and
                 self.current_stream == 0):
             return <intptr_t>runtime.streamPerThread
-        return self.current_stream
+        cdef int dev = runtime.getDevice()
+        return self.current_stream[dev]
 
 
 cdef intptr_t get_current_stream_ptr():
@@ -182,16 +193,18 @@ class BaseStream(object):
 
     def __enter__(self):
         tls = _ThreadLocal.get()
-        if tls.prev_stream_ref_stack is None:
-            tls.prev_stream_ref_stack = []
+        cdef int dev = runtime.getDevice()
+        if tls.prev_stream_ref_stack[dev] is None:
+            tls.prev_stream_ref_stack[dev] = []
         prev_stream_ref = tls.get_current_stream_ref()
-        tls.prev_stream_ref_stack.append(prev_stream_ref)
+        tls.prev_stream_ref_stack[dev].append(prev_stream_ref)
         tls.set_current_stream(self)
         return self
 
     def __exit__(self, *args):
         tls = _ThreadLocal.get()
-        prev_stream_ref = tls.prev_stream_ref_stack.pop()
+        cdef int dev = runtime.getDevice()
+        prev_stream_ref = tls.prev_stream_ref_stack[dev].pop()
         tls.set_current_stream_ref(prev_stream_ref)
         pass
 

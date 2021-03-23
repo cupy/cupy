@@ -11,7 +11,11 @@ cdef bint _ptds = bool(int(
 
 
 cdef class _ThreadLocal:
-    cdef intptr_t current_stream
+    cdef list current_stream  # list of intptr_t
+
+    def __init__(self):
+        cdef int i, num_devices = runtime.getDeviceCount()
+        self.current_stream = [0 for i in range(num_devices)]
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -21,8 +25,10 @@ cdef class _ThreadLocal:
             tls = _thread_local.tls = _ThreadLocal()
         return <_ThreadLocal>tls
 
-    cdef set_current_stream_ptr(self, intptr_t ptr):
-        self.current_stream = ptr
+    cdef set_current_stream_ptr(self, intptr_t ptr, int dev=-1):
+        if dev == -1:
+            dev = runtime.getDevice()
+        self.current_stream[dev] = ptr
 
     cdef intptr_t get_current_stream_ptr(self):
         # Returns the stream previously set, otherwise returns
@@ -30,8 +36,8 @@ cdef class _ThreadLocal:
         # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
         if self.current_stream == 0 and is_ptds_enabled():
             return runtime.streamPerThread
-
-        return self.current_stream
+        cdef int dev = runtime.getDevice()
+        return self.current_stream[dev]
 
     cdef intptr_t get_default_stream_ptr(self):
         if is_ptds_enabled():
@@ -50,11 +56,12 @@ cdef intptr_t get_current_stream_ptr():
     return <intptr_t>tls.get_current_stream_ptr()
 
 
-cdef set_current_stream_ptr(intptr_t ptr):
+cdef set_current_stream_ptr(intptr_t ptr, int dev=-1):
     """C API to set current CUDA stream pointer.
 
     Args:
         ptr (intptr_t): CUDA stream pointer.
+        dev (int): device ID. Look up the current device if -1.
 
     .. warning::
 
@@ -65,7 +72,7 @@ cdef set_current_stream_ptr(intptr_t ptr):
 
     """
     tls = _ThreadLocal.get()
-    tls.set_current_stream_ptr(ptr)
+    tls.set_current_stream_ptr(ptr, dev)
 
 
 # cpdef for unit testing
