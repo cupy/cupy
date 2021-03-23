@@ -589,6 +589,9 @@ def _transpile_expr_internal(expr, env):
     if isinstance(expr, ast.Str):
         # Deprecated since py3.8
         return Constant(expr.s)
+    if isinstance(expr, ast.NameConstant):
+        # Deprecated since py3.8
+        return Constant(expr.value)
 
     if isinstance(expr, ast.Subscript):
         value = _transpile_expr(expr.value, env)

@@ -42,7 +42,9 @@ class _JitRawKernel:
         self._mode = mode
         self._cache = {}
 
-    def __call__(self, grid, block, args):
+    def __call__(
+            self, grid, block, args, shared_mem=0,
+            stream=None, enable_cooperative_groups=False):
         in_types = []
         for x in args:
             if isinstance(x, cupy.ndarray):
@@ -67,7 +69,7 @@ class _JitRawKernel:
             module = cupy.core.core.compile_with_cache(result.code)
             kern = module.get_function(fname)
             self._cache[in_types] = kern
-        kern(grid, block, args)
+        kern(grid, block, args, shared_mem, stream, enable_cooperative_groups)
 
     def __getitem__(self, grid_and_block):
         grid, block = grid_and_block
@@ -75,7 +77,7 @@ class _JitRawKernel:
             grid = (grid, 1, 1)
         if not isinstance(block, tuple):
             block = (block, 1, 1)
-        return lambda *args: self(grid, block, args)
+        return lambda *args, **kwargs: self(grid, block, args, **kwargs)
 
 
 def rawkernel(mode='cuda'):

@@ -82,10 +82,14 @@ class CArray(ArrayBase):
 class SharedMem(ArrayBase):
 
     def __init__(self, child_type, size):
+        if not (isinstance(size, int) or size is None):
+            raise 'size of shared_memory must be integer or `None`'
         self._size = size
         super().__init__(child_type, 1)
 
     def declvar(self, x):
+        if self._size is None:
+            return f'extern __shared__ {self.child_type} {x}[]'
         return f'__shared__ {self.child_type} {x}[{self._size}]'
 
 
