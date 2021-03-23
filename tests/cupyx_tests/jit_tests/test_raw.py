@@ -92,7 +92,7 @@ class TestRaw(unittest.TestCase):
             bid = jit.blockIdx.x
             i = tid + bid * ntid
 
-            smem = jit.shared_malloc(numpy.int32, 32)
+            smem = jit.shared_memory(numpy.int32, 32)
             smem[tid] = x[i]
             jit.syncthreads()
             y[i] = smem[ntid - tid - 1]

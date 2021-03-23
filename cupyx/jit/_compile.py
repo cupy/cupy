@@ -130,7 +130,7 @@ class SyncThreads(BuiltinFunc):
         return CudaObject('__syncthreads()', _types.void)
 
 
-class SharedMalloc(BuiltinFunc):
+class SharedMemory(BuiltinFunc):
 
     def call(self, env, dtype, size):
         name = env.get_fresh_variable_name(prefix='_smem')

@@ -101,4 +101,4 @@ blockIdx = _create_dim3('blockIdx')
 gridDim = _create_dim3('gridDim')
 
 syncthreads = _compile.SyncThreads()
-shared_malloc = _compile.SharedMalloc()
+shared_memory = _compile.SharedMemory()
