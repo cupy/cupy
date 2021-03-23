@@ -4,7 +4,7 @@ from numpy import exp
 def sinhm(arr):
     """Returns hyperbolic sine of the given square matrix.
 
-Args:. 
+Args:.
         arr(cupy.ndarray) : Square matrix whose hyperbolic .
         sine has to be calculated .
 
