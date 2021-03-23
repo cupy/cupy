@@ -10,13 +10,13 @@ class TestCustomStruct(unittest.TestCase):
         output = example_test.run_example('custom_struct/builtin_vectors.py')
         assert re.match(
             r"Kernel output matches expected value.",
-            output.decode('utf-8')
+            output.decode('utf-8'),
         )
 
     def test_packed_matrix(self):
         output = example_test.run_example('custom_struct/packed_matrix.py')
         assert re.match(
-            r"Kernel output matches expected value for type 'float'.\n"
+            r"Kernel output matches expected value for type 'float'.\r?\n"
             r"Kernel output matches expected value for type 'double'.",
             output.decode('utf-8'),
         )
@@ -24,11 +24,11 @@ class TestCustomStruct(unittest.TestCase):
     def test_complex_struct(self):
         output = example_test.run_example('custom_struct/complex_struct.py')
         assert re.match(
-            r"Overall structure itemsize: \d+ bytes\n"
-            r"Structure members itemsize: \[(\s*\d+){5}]\n"
-            r"Structure members offsets: \[(\s*\d+){5}]\n"
-            r"Complex structure value:\n"
-            r"\s+\[.*\]\n"
+            r"Overall structure itemsize: \d+ bytes\r?\n"
+            r"Structure members itemsize: \[(\s*\d+){5}]\r?\n"
+            r"Structure members offsets: \[(\s*\d+){5}]\r?\n"
+            r"Complex structure value:\r?\n"
+            r"\s+\[.*\]\r?\n"
             r"Kernel output matches expected value.",
             output.decode('utf-8'),
         )
