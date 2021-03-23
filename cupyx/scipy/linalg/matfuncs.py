@@ -8,9 +8,8 @@ Args:.
         arr(cupy.ndarray) : Square matrix whose hyperbolic .
         sine has to be calculated .
 
-Returns: 
+Returns: .
 
         (cupy.ndarray):  Hyperbolic sine of given square matrix as input.
     """
     return 0.5 * (exp(arr) - exp(-1 * arr))
-
