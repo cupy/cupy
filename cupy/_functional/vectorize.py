@@ -91,7 +91,8 @@ class vectorize(object):
             out_params, out_lval = self._parse_out_param(result.return_type)
             body = '{} = {}({})'.format(out_lval, func.name, in_args)
             kern = core.ElementwiseKernel(
-                in_params, out_params, body, preamble=result.code)
+                in_params, out_params, body, preamble=result.code,
+                options=('-D CUPY_JIT_MODE',))
             self._kernel_cache[itypes] = kern
 
         return kern(*args)
