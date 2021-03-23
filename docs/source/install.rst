@@ -4,13 +4,6 @@ Installation
 Requirements
 ------------
 
-The following Linux distributions are recommended.
-
-* `Ubuntu <https://www.ubuntu.com/>`_ 18.04 LTS (x86_64)
-* `CentOS <https://www.centos.org/>`_ 7 (x86_64)
-
-These components must be installed to use CuPy:
-
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
 * `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1 / v11.2
@@ -20,10 +13,14 @@ These components must be installed to use CuPy:
 
 * `Python <https://python.org/>`_: v3.6.0+ / v3.7.0+ / v3.8.0+ / v3.9.0+
 
+.. note::
+
+   Currently, CuPy is tested against  `Ubuntu <https://www.ubuntu.com/>`_ 18.04 LTS (x86_64), `CentOS <https://www.centos.org/>`_ 7 (x86_64) and Windows Server 2016 (x86_64).
+
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.20 and SciPy 1.6, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v9 is based on NumPy 1.20 and SciPy 1.6, and has been tested against the following versions:
 
 * `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19 / v1.20
 
@@ -182,8 +179,8 @@ If you want to install the latest development version of CuPy from a cloned Git 
 
 .. note::
 
-   To build the source tree downloaded from GitHub, you need to install Cython 0.29.22 or later (``pip install cython``).
-   You don't have to install Cython to build source packages hosted on PyPI as they include pre-generated C++ source files.
+   Cython 0.29.22 or later is required to build CuPy from source.
+   It will be automatically installed during the build process if not available.
 
 
 Uninstalling CuPy
