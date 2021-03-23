@@ -769,6 +769,51 @@ cusparseStatus_t cusparseZcsr2csc(...) {
 }
 #endif // #if CUSPARSE_VERSION >= 11000
 
+#if CUSPARSE_VERSION < 11100
+// Functions added in cuSparse 11.1 (CUDA 11.0)
+
+cusparseStatus_t cusparseCsrSetPointers(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpMatGetSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // #if CUSPARSE_VERSION < 11100
+
+#if CUSPARSE_VERSION < 11300
+// Types, macro and functions added in cuSparse 11.3 (CUDA 11.2)
+
+typedef enum {} cusparseSparseToDenseAlg_t;
+typedef enum {} cusparseDenseToSparseAlg_t;
+
+cusparseStatus_t cusparseCreateCsc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSparseToDense_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSparseToDense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_convert(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // CUSPARSE_VERSION < 11300
+
 #else  // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #ifdef CUPY_USE_HIP
@@ -1625,6 +1670,8 @@ typedef enum {} cusparseFormat_t;
 typedef enum {} cusparseOrder_t;
 typedef enum {} cusparseSpMVAlg_t;
 typedef enum {} cusparseSpMMAlg_t;
+typedef enum {} cusparseSparseToDenseAlg_t;
+typedef enum {} cusparseDenseToSparseAlg_t;
 
 cusparseStatus_t cusparseCreateSpVec(...) {
   return CUSPARSE_STATUS_SUCCESS;
@@ -1662,6 +1709,10 @@ cusparseStatus_t cusparseCreateCsr(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseCreateCsc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseDestroySpMat(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -1675,6 +1726,14 @@ cusparseStatus_t cusparseCooAoSGet(...) {
 }
 
 cusparseStatus_t cusparseCsrGet(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseCsrSetPointers(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpMatGetSize(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
@@ -1779,6 +1838,26 @@ cusparseStatus_t cusparseConstrainedGeMM_bufferSize(...) {
 }
 
 cusparseStatus_t cusparseConstrainedGeMM(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSparseToDense_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSparseToDense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_convert(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 

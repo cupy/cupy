@@ -105,6 +105,8 @@ _available_cusparse_version = {
     'dense2csc': (8000, None),
     'dense2csr': (8000, None),
     'csr2csr_compress': (8000, None),
+    'denseToSparse': (11300, None),
+    'sparseToDense': (11300, None),
 }
 
 
@@ -1230,8 +1232,14 @@ class SpMatDescriptor(BaseDescriptor):
                 a.data.data.ptr, _dtype_to_IndexType(a.row.dtype),
                 idx_base, cuda_dtype)
             get = _cusparse.cooGet
+        elif a.format == 'csc':
+            desc = _cusparse.createCsc(
+                rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
+                a.data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
+                _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
+            get = None
         else:
-            raise ValueError('csr and coo format are supported '
+            raise ValueError('csr, csc and coo format are supported '
                              '(actual: {}).'.format(a.format))
         destroy = _cusparse.destroySpMat
         return SpMatDescriptor(desc, get, destroy)
@@ -1405,3 +1413,108 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
                                cuda_dtype, alg, buff.data.ptr)
 
     return c
+
+
+def denseToSparse(x, format='csr'):
+    """Converts a dense matrix into a CSR, CSC or COO format.
+
+    Args:
+        x (cupy.ndarray): A matrix to be converted.
+        format (str): Format of converted matrix. It must be either 'csr',
+            'csc' or 'coo'.
+
+    Returns:
+        cupyx.scipy.sparse.spmatrix: A converted sparse matrix.
+
+    """
+    if not check_availability('denseToSparse'):
+        raise RuntimeError('denseToSparse is not available.')
+
+    assert x.ndim == 2
+    assert x.dtype.char in 'fdFD'
+    x = _cupy.asfortranarray(x)
+    desc_x = DnMatDescriptor.create(x)
+    if format == 'csr':
+        y = cupyx.scipy.sparse.csr_matrix(x.shape, dtype=x.dtype)
+    elif format == 'csc':
+        y = cupyx.scipy.sparse.csc_matrix(x.shape, dtype=x.dtype)
+    elif format == 'coo':
+        y = cupyx.scipy.sparse.coo_matrix(x.shape, dtype=x.dtype)
+    else:
+        raise TypeError('unsupported format (actual: {})'.format(format))
+    desc_y = SpMatDescriptor.create(y)
+    algo = _cusparse.CUSPARSE_DENSETOSPARSE_ALG_DEFAULT
+    handle = _device.get_cusparse_handle()
+    buff_size = _cusparse.denseToSparse_bufferSize(handle, desc_x.desc,
+                                                   desc_y.desc, algo)
+    buff = _cupy.empty(buff_size, _cupy.int8)
+    _cusparse.denseToSparse_analysis(handle, desc_x.desc,
+                                     desc_y.desc, algo, buff.data.ptr)
+    num_rows_tmp = _numpy.array(0, dtype='int64')
+    num_cols_tmp = _numpy.array(0, dtype='int64')
+    nnz = _numpy.array(0, dtype='int64')
+    _cusparse.spMatGetSize(desc_y.desc, num_rows_tmp.ctypes.data,
+                           num_cols_tmp.ctypes.data, nnz.ctypes.data)
+    nnz = int(nnz)
+    print('# nnz: {}'.format(nnz))
+    if format == 'csr':
+        indptr = y.indptr
+        indices = _cupy.empty(nnz, 'i')
+        data = _cupy.empty(nnz, x.dtype)
+        y = cupyx.scipy.sparse.csr_matrix((data, indices, indptr),
+                                          shape=x.shape)
+    elif format == 'csc':
+        indptr = y.indptr
+        indices = _cupy.empty(nnz, 'i')
+        data = _cupy.empty(nnz, x.dtype)
+        y = cupyx.scipy.sparse.csc_matrix((data, indices, indptr),
+                                          shape=x.shape)
+    elif format == 'coo':
+        row = _cupy.zeros(nnz, 'i')
+        col = _cupy.zeros(nnz, 'i')
+        # Note: I would like to use empty() here, but that might cause an
+        # exeption in the row/col number check when creating the coo_matrix,
+        # so I used zeros() instead.
+        data = _cupy.empty(nnz, x.dtype)
+        y = cupyx.scipy.sparse.coo_matrix((data, (row, col)), shape=x.shape)
+    desc_y = SpMatDescriptor.create(y)
+    _cusparse.denseToSparse_convert(handle, desc_x.desc,
+                                    desc_y.desc, algo, buff.data.ptr)
+    y._has_canonical_format = True
+    return y
+
+
+def sparseToDense(x, out=None):
+    """Converts sparse matrix to a dense matrix.
+
+    Args:
+        x (cupyx.scipy.sparse.spmatrix): A sparse matrix to convert.
+        out (cupy.ndarray or None): A dense metrix to store the result.
+            It must be F-contiguous.
+
+    Returns:
+        cupy.ndarray: A converted dense matrix.
+
+    """
+    if not check_availability('sparseToDense'):
+        raise RuntimeError('sparseToDense is not available.')
+
+    dtype = x.dtype
+    assert dtype.char in 'fdFD'
+    if out is None:
+        out = _cupy.zeros(x.shape, dtype=dtype, order='F')
+    else:
+        assert out.flags.f_contiguous
+        assert out.dtype == dtype
+
+    desc_x = SpMatDescriptor.create(x)
+    desc_out = DnMatDescriptor.create(out)
+    algo = _cusparse.CUSPARSE_SPARSETODENSE_ALG_DEFAULT
+    handle = _device.get_cusparse_handle()
+    buff_size = _cusparse.sparseToDense_bufferSize(handle, desc_x.desc,
+                                                   desc_out.desc, algo)
+    buff = _cupy.empty(buff_size, _cupy.int8)
+    _cusparse.sparseToDense(handle, desc_x.desc,
+                            desc_out.desc, algo, buff.data.ptr)
+
+    return out
