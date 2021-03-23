@@ -19,11 +19,6 @@ _typeclasses = (bool, numpy.bool_, numbers.Number)
 Result = collections.namedtuple('Result', ['func_name', 'code', 'return_type'])
 
 
-_global_header = '''
-#include <cupy/tuple.cuh>
-'''
-
-
 def transpile(func, attributes, mode, in_types, ret_type):
     """Transpile the target function
     Args:
@@ -54,11 +49,7 @@ def transpile(func, attributes, mode, in_types, ret_type):
     assert len(tree.body) == 1
     cuda_code, env = _transpile_function(
         tree.body[0], attributes, mode, consts, in_types, ret_type)
-    cuda_code = (
-        _global_header +
-        ''.join([code + '\n' for code in env.preambles]) +
-        cuda_code
-    )
+    cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
     return Result(
         func_name=func.__name__,
         code=cuda_code,
