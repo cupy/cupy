@@ -451,5 +451,6 @@ class TestKronsum(unittest.TestCase):
         a = self._make_sp_mat(xp, sp, self.arrA, self.dtype)
         b = self._make_sp_mat(xp, sp, self.arrB, self.dtype)
         kronsum = sp.kronsum(a, b, format=self.format)
-        assert kronsum.shape == (a.shape[0] * b.shape[0], a.shape[1] * b.shape[1])
+        assert kronsum.shape == (a.shape[0] * b.shape[0],
+                                 a.shape[1] * b.shape[1])
         return kronsum
