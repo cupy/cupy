@@ -420,3 +420,36 @@ class TestKron(unittest.TestCase):
 
     # TODO(leofang): check oversize inputs as in scipy/scipy#11879 after
     # #3513 is fixed
+
+
+arrs = [[[0]],
+        [[-1]],
+        [[4]],
+        [[10]],
+        [[1, 2], [3, 4]],
+        [[0, 2], [5, 0]],
+        [[0, 2, -6], [8, 0, 14], [0, 3, 0]],
+        [[5, 4, 4], [1, 0, 0], [6, 0, 8]]]
+
+
+@testing.parameterize(*testing.product({
+    'dtype': (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
+    'format': ('csr', 'csc', 'coo'),
+    'arrA': arrs,
+    'arrB': arrs,
+}))
+@testing.with_requires('scipy>=1.6')
+class TestKronsum(unittest.TestCase):
+
+    def _make_sp_mat(self, xp, sp, arr, dtype):
+        a = xp.array(arr, dtype=dtype)
+        a = sp.csr_matrix(a)
+        return a
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_kronsum(self, xp, sp):
+        a = self._make_sp_mat(xp, sp, self.arrA, self.dtype)
+        b = self._make_sp_mat(xp, sp, self.arrB, self.dtype)
+        kronsum = sp.kronsum(a, b, format=self.format)
+        assert kronsum.shape == (a.shape[0] * b.shape[0], a.shape[1] * b.shape[1])
+        return kronsum

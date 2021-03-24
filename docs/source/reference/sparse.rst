@@ -60,6 +60,7 @@ Building sparse matrices
    cupyx.scipy.sparse.hstack
    cupyx.scipy.sparse.identity
    cupyx.scipy.sparse.kron
+   cupyx.scipy.sparse.kronsum
    cupyx.scipy.sparse.spdiags
    cupyx.scipy.sparse.tril
    cupyx.scipy.sparse.triu
