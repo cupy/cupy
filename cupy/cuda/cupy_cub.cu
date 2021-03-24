@@ -10,13 +10,47 @@
 #include <cub/iterator/counting_input_iterator.cuh>
 #include <cub/iterator/transform_input_iterator.cuh>
 #else
+
+// hipCUB internally uses std::numeric_limits, so we should provide specializations for the complex numbers.
+// Note that there's std::complex, so to avoid name collision we must use the full decoration (thrust::complex)!
+// TODO(leofang): wrap CuPy's thrust namespace with another one (say, cupy::thrust) for safer scope resolution?
+//
+// Update for ROCm 4.1.0: HIP internally instantiates std::numeric_limits<T>::is_integer very early, so this
+// specialization has to appear before that, or we'd get "explicit specialization after instantiation" errors
+
+namespace std {
+template <>
+class numeric_limits<thrust::complex<float>> {
+  public:
+    static __host__ __device__ thrust::complex<float> max() noexcept {
+        return thrust::complex<float>(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+    }
+
+    static __host__ __device__ thrust::complex<float> lowest() noexcept {
+        return thrust::complex<float>(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+    }
+};
+
+template <>
+class numeric_limits<thrust::complex<double>> {
+  public:
+    static __host__ __device__ thrust::complex<double> max() noexcept {
+        return thrust::complex<double>(std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
+    }
+
+    static __host__ __device__ thrust::complex<double> lowest() noexcept {
+        return thrust::complex<double>(-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max());
+    }
+};
+}  // namespace std
+
 #include <hipcub/device/device_reduce.hpp>
 #include <hipcub/device/device_segmented_reduce.hpp>
 #include <hipcub/device/device_scan.hpp>
 #include <hipcub/device/device_histogram.hpp>
 #include <rocprim/iterator/counting_iterator.hpp>
 #include <hipcub/iterator/transform_input_iterator.hpp>
-#endif
+#endif  // CUPY_USE_HIP
 
 
 /* ------------------------------------ Minimum boilerplate to support complex numbers ------------------------------------ */
@@ -58,40 +92,11 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
 
 #else
 
-// hipCUB internally uses std::numeric_limits, so we should provide specializations for the complex numbers.
-// Note that there's std::complex, so to avoid name collision we must use the full decoration (thrust::complex)!
-// TODO(leofang): wrap CuPy's thrust namespace with another one (say, cupy::thrust) for safer scope resolution?
-
-namespace std {
-template <>
-class numeric_limits<thrust::complex<float>> {
-  public:
-    static __host__ __device__ thrust::complex<float> max() noexcept {
-        return thrust::complex<float>(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-    }
-
-    static __host__ __device__ thrust::complex<float> lowest() noexcept {
-        return thrust::complex<float>(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
-    }
-};
-
-template <>
-class numeric_limits<thrust::complex<double>> {
-  public:
-    static __host__ __device__ thrust::complex<double> max() noexcept {
-        return thrust::complex<double>(std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
-    }
-
-    static __host__ __device__ thrust::complex<double> lowest() noexcept {
-        return thrust::complex<double>(-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max());
-    }
-};
-
 // Copied from https://github.com/ROCmSoftwarePlatform/hipCUB/blob/master-rocm-3.5/hipcub/include/hipcub/backend/rocprim/device/device_reduce.hpp
 // (For some reason the specialization for __half defined in the above file does not work, so we have to go
 // through the same route as we did above for complex numbers.)
 template <>
-class numeric_limits<__half> {
+class std::numeric_limits<__half> {
   public:
     static __host__ __device__ __half max() noexcept {
         unsigned short max_half = 0x7bff;
@@ -105,7 +110,6 @@ class numeric_limits<__half> {
         return lowest_value;
     }
 };
-}  // namespace std
 
 using namespace hipcub;
 
