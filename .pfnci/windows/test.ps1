@@ -72,7 +72,7 @@ function Main {
 
     echo "Building..."
     $build_retval = 0
-    python -m pip install -e ".[all,jenkins]" -vvv > cupy_build_log.txt
+    python -m pip install ".[all,jenkins]" -vvv > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
     }
@@ -84,10 +84,6 @@ function Main {
         PublishTestResults
         throw "Build failed with status $build_retval"
     }
-
-    # Import test
-    echo "CuPy Configuration:"
-    RunOrDie python -c "import cupy; cupy.show_config()"
 
     # Unit test
     if ($test -eq "build") {
@@ -106,16 +102,21 @@ function Main {
     if ($use_cache) {
         DownloadCache
     }
+
+    pushd tests
+    echo "CuPy Configuration:"
+    RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
     $test_retval = 0
-    python -c "import cupy; cupy.show_config()" > cupy_test_log.txt
-    python -m pytest -rfEX @pytest_opts tests >> cupy_test_log.txt
+    python -c "import cupy; cupy.show_config()" > ../cupy_test_log.txt
+    python -m pytest -rfEX @pytest_opts . >> ../cupy_test_log.txt
     if (-not $?) {
         $test_retval = $LastExitCode
     }
     if ($use_cache -And $upload_cache) {
         UploadCache
     }
+    popd
 
     echo "Last 10 lines from the test output:"
     Get-Content cupy_test_log.txt -Tail 10
