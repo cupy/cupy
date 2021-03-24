@@ -14,6 +14,7 @@ from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
+from cupy import _execution_stats
 
 if not runtime.is_hip:
     _cuda_version = driver.get_build_version()
@@ -479,7 +480,6 @@ def _compile_with_cache_cuda(
     name = '%s_2.cubin' % hashlib.md5(key_src).hexdigest()
 
     mod = function.Module()
-
     if not cache_in_memory:
         # Read from disk cache
         if not os.path.isdir(cache_dir):
@@ -490,6 +490,7 @@ def _compile_with_cache_cuda(
         # We force recompiling to retrieve C++ mangled names if so desired.
         path = os.path.join(cache_dir, name)
         if os.path.exists(path) and not name_expressions:
+            _execution_stats.runtime_statistics.compile_cache_hits += 1
             with open(path, 'rb') as file:
                 data = file.read()
             if len(data) >= 32:
@@ -499,6 +500,8 @@ def _compile_with_cache_cuda(
                 if hash == cubin_hash:
                     mod.load(cubin)
                     return mod
+        else:
+            _execution_stats.runtime_statistics.compile_cache_miss += 1
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
         # so we do nothing
@@ -792,6 +795,7 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
         # We force recompiling to retrieve C++ mangled names if so desired.
         path = os.path.join(cache_dir, name)
         if os.path.exists(path) and not name_expressions:
+            _execution_stats.runtime_statistics.compile_cache_hits += 1
             with open(path, 'rb') as f:
                 data = f.read()
             if len(data) >= 32:
@@ -801,6 +805,8 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
                 if hash_value == binary_hash:
                     mod.load(binary)
                     return mod
+        else:
+            _execution_stats.runtime_statistics.compile_cache_miss += 1
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
         # so we do nothing
