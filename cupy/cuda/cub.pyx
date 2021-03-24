@@ -3,8 +3,8 @@
 """Wrapper of CUB functions for CuPy API."""
 
 from cpython cimport sequence
+from libc.stdint cimport intptr_t
 
-from cupy_backends.cuda.api.driver cimport Stream as Stream_t
 from cupy_backends.cuda.api cimport runtime
 from cupy.core.core cimport _internal_ascontiguousarray
 from cupy.core.core cimport _internal_asfortranarray
@@ -47,25 +47,25 @@ CUB_sum_support_dtype = {}
 ###############################################################################
 
 cdef extern from 'cupy_cub.h' nogil:
-    void cub_device_reduce(void*, size_t&, void*, void*, int, Stream_t,
+    void cub_device_reduce(void*, size_t&, void*, void*, int, intptr_t,
                            int, int)
     void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, int,
-                                     Stream_t, int, int)
+                                     intptr_t, int, int)
     void cub_device_spmv(void*, size_t&, void*, void*, void*, void*, void*,
-                         int, int, int, Stream_t, int)
-    void cub_device_scan(void*, size_t&, void*, void*, int, Stream_t, int, int)
+                         int, int, int, intptr_t, int)
+    void cub_device_scan(void*, size_t&, void*, void*, int, intptr_t, int, int)
     void cub_device_histogram_range(void*, size_t&, void*, void*, int, void*,
-                                    size_t, Stream_t, int)
-    size_t cub_device_reduce_get_workspace_size(void*, void*, int, Stream_t,
+                                    size_t, intptr_t, int)
+    size_t cub_device_reduce_get_workspace_size(void*, void*, int, intptr_t,
                                                 int, int)
     size_t cub_device_segmented_reduce_get_workspace_size(
-        void*, void*, int, int, Stream_t, int, int)
+        void*, void*, int, int, intptr_t, int, int)
     size_t cub_device_spmv_get_workspace_size(
-        void*, void*, void*, void*, void*, int, int, int, Stream_t, int)
+        void*, void*, void*, void*, void*, int, int, int, intptr_t, int)
     size_t cub_device_scan_get_workspace_size(
-        void*, void*, int, Stream_t, int, int)
+        void*, void*, int, intptr_t, int, int)
     size_t cub_device_histogram_range_get_workspace_size(
-        void*, void*, int, void*, size_t, Stream_t, int)
+        void*, void*, int, void*, size_t, intptr_t, int)
 
     # Build-time version
     int CUPY_CUB_VERSION_CODE
@@ -125,7 +125,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
     cdef void *x_ptr
     cdef void *y_ptr
     cdef void *ws_ptr
-    cdef Stream_t s
+    cdef intptr_t s
     cdef tuple out_shape
 
     if keepdims:
@@ -157,7 +157,7 @@ def device_reduce(ndarray x, op, tuple out_axis, out=None,
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
     dtype_id = common._get_dtype_id(x.dtype)
-    s = <Stream_t>stream.get_current_stream_ptr()
+    s = stream.get_current_stream_ptr()
     x_size = <int>x.size
     ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
                                                    op, dtype_id)
@@ -194,7 +194,7 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
     cdef int dtype_id, n_segments, op_code
     cdef size_t ws_size
     cdef tuple out_shape
-    cdef Stream_t s
+    cdef intptr_t s
 
     if op not in (CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, CUPY_CUB_MAX):
         raise ValueError('only CUPY_CUB_SUM, CUPY_CUB_PROD, CUPY_CUB_MIN, '
@@ -226,7 +226,7 @@ def device_segmented_reduce(ndarray x, op, tuple reduce_axis,
             y[...] = 1
         return y
     n_segments = x.size//contiguous_size
-    s = <Stream_t>stream.get_current_stream_ptr()
+    s = stream.get_current_stream_ptr()
     dtype_id = common._get_dtype_id(x.dtype)
 
     # get workspace size and then fire up
@@ -257,7 +257,7 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
     cdef void* ws_ptr
     cdef int dtype_id
     cdef size_t ws_size
-    cdef Stream_t s
+    cdef intptr_t s
 
     if x.ndim != 1:
         raise ValueError('array must be 1d')
@@ -284,7 +284,7 @@ def device_csrmv(int n_rows, int n_cols, int nnz, ndarray values,
     y = ndarray((n_rows,), dtype=dtype)
     y_ptr = <void*>y.data.ptr
 
-    s = <Stream_t>stream.get_current_stream_ptr()
+    s = stream.get_current_stream_ptr()
     dtype_id = common._get_dtype_id(dtype)
 
     # get workspace size and then fire up
@@ -307,7 +307,7 @@ def device_scan(ndarray x, op):
     cdef size_t ws_size
     cdef void *x_ptr
     cdef void *ws_ptr
-    cdef Stream_t s
+    cdef intptr_t s
 
     if op not in (CUPY_CUB_CUMSUM, CUPY_CUB_CUMPROD):
         raise ValueError('only CUPY_CUB_CUMSUM and CUPY_CUB_CUMPROD '
@@ -320,7 +320,7 @@ def device_scan(ndarray x, op):
 
     x = _internal_ascontiguousarray(x)
     x_ptr = <void *>x.data.ptr
-    s = <Stream_t>stream.get_current_stream_ptr()
+    s = stream.get_current_stream_ptr()
     dtype_id = common._get_dtype_id(x.dtype)
     ws_size = cub_device_scan_get_workspace_size(x_ptr, x_ptr, x_size, s,
                                                  op, dtype_id)
@@ -342,7 +342,7 @@ def device_histogram(ndarray x, ndarray bins, ndarray y):
     cdef void* bins_ptr
     cdef void* y_ptr
     cdef void* ws_ptr
-    cdef Stream_t s
+    cdef intptr_t s
 
     # TODO(leofang): perhaps not needed?
     # y is guaranteed contiguous
@@ -354,7 +354,7 @@ def device_histogram(ndarray x, ndarray bins, ndarray y):
     n_bins = bins.size
     bins_ptr = <void*>bins.data.ptr
     n_samples = x.size
-    s = <Stream_t>stream.get_current_stream_ptr()
+    s = stream.get_current_stream_ptr()
     dtype_id = common._get_dtype_id(x.dtype)
     assert y.size == n_bins - 1
     ws_size = cub_device_histogram_range_get_workspace_size(

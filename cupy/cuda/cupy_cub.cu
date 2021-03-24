@@ -1,7 +1,8 @@
 #include "cupy_cub.h"  // need to make atomicAdd visible to CUB templates early
-#include <cupy/type_dispatcher.cuh>
+#include <cupy/type_dispatcher.cuh>  // complex headers got included here
 
 #ifndef CUPY_USE_HIP
+#include <cuda_runtime.h>  // for cudaStream_t
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_spmv.cuh>
@@ -43,6 +44,10 @@ class numeric_limits<thrust::complex<double>> {
     }
 };
 }  // namespace std
+
+// for cudaStream_t
+#include <hip/hip_runtime.h>
+typedef hipStream_t cudaStream_t;
 
 #include <hipcub/device/device_reduce.hpp>
 #include <hipcub/device/device_segmented_reduce.hpp>
@@ -727,8 +732,10 @@ struct _cub_histogram_range {
 /* -------- device reduce -------- */
 
 void cub_device_reduce(void* workspace, size_t& workspace_size, void* x, void* y,
-    int num_items, cudaStream_t stream, int op, int dtype_id)
+    int num_items, intptr_t s, int op, int dtype_id)
 {
+    cudaStream_t stream = (cudaStream_t)s;
+
     switch(op) {
     case CUPY_CUB_SUM:      return dtype_dispatcher(dtype_id, _cub_reduce_sum(),
                                 workspace, workspace_size, x, y, num_items, stream);
@@ -747,7 +754,7 @@ void cub_device_reduce(void* workspace, size_t& workspace_size, void* x, void* y
 }
 
 size_t cub_device_reduce_get_workspace_size(void* x, void* y, int num_items,
-    cudaStream_t stream, int op, int dtype_id)
+    intptr_t stream, int op, int dtype_id)
 {
     size_t workspace_size = 0;
     cub_device_reduce(NULL, workspace_size, x, y, num_items, stream,
@@ -759,8 +766,9 @@ size_t cub_device_reduce_get_workspace_size(void* x, void* y, int num_items,
 
 void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
     void* x, void* y, int num_segments, int segment_size,
-    cudaStream_t stream, int op, int dtype_id)
+    intptr_t s, int op, int dtype_id)
 {
+    cudaStream_t stream = (cudaStream_t)s;
     // CUB internally use int for offset...
     // This iterates over [0, segment_size, 2*segment_size, 3*segment_size, ...]
     #ifndef CUPY_USE_HIP
@@ -791,7 +799,7 @@ void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
 
 size_t cub_device_segmented_reduce_get_workspace_size(void* x, void* y,
     int num_segments, int segment_size,
-    cudaStream_t stream, int op, int dtype_id)
+    intptr_t stream, int op, int dtype_id)
 {
     size_t workspace_size = 0;
     cub_device_segmented_reduce(NULL, workspace_size, x, y,
@@ -804,9 +812,10 @@ size_t cub_device_segmented_reduce_get_workspace_size(void* x, void* y,
 
 void cub_device_spmv(void* workspace, size_t& workspace_size, void* values,
     void* row_offsets, void* column_indices, void* x, void* y, int num_rows,
-    int num_cols, int num_nonzeros, cudaStream_t stream,
+    int num_cols, int num_nonzeros, intptr_t s,
     int dtype_id)
 {
+    cudaStream_t stream = (cudaStream_t)s;
     #ifndef CUPY_USE_HIP
     return dtype_dispatcher(dtype_id, _cub_device_spmv(),
                             workspace, workspace_size, values, row_offsets,
@@ -817,7 +826,7 @@ void cub_device_spmv(void* workspace, size_t& workspace_size, void* values,
 
 size_t cub_device_spmv_get_workspace_size(void* values, void* row_offsets,
     void* column_indices, void* x, void* y, int num_rows, int num_cols,
-    int num_nonzeros, cudaStream_t stream, int dtype_id)
+    int num_nonzeros, intptr_t stream, int dtype_id)
 {
     size_t workspace_size = 0;
     #ifndef CUPY_USE_HIP
@@ -830,8 +839,10 @@ size_t cub_device_spmv_get_workspace_size(void* values, void* row_offsets,
 /* -------- device scan -------- */
 
 void cub_device_scan(void* workspace, size_t& workspace_size, void* x, void* y,
-    int num_items, cudaStream_t stream, int op, int dtype_id)
+    int num_items, intptr_t s, int op, int dtype_id)
 {
+    cudaStream_t stream = (cudaStream_t)s;
+
     switch(op) {
     case CUPY_CUB_CUMSUM:
         return dtype_dispatcher(dtype_id, _cub_inclusive_sum(),
@@ -845,7 +856,7 @@ void cub_device_scan(void* workspace, size_t& workspace_size, void* x, void* y,
 }
 
 size_t cub_device_scan_get_workspace_size(void* x, void* y, int num_items,
-    cudaStream_t stream, int op, int dtype_id)
+    intptr_t stream, int op, int dtype_id)
 {
     size_t workspace_size = 0;
     cub_device_scan(NULL, workspace_size, x, y, num_items, stream,
@@ -856,8 +867,10 @@ size_t cub_device_scan_get_workspace_size(void* x, void* y, int num_items,
 /* -------- device histogram -------- */
 
 void cub_device_histogram_range(void* workspace, size_t& workspace_size, void* x, void* y,
-    int n_bins, void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
+    int n_bins, void* bins, size_t n_samples, intptr_t s, int dtype_id)
 {
+    cudaStream_t stream = (cudaStream_t)s;
+
     // TODO(leofang): support complex
     if (dtype_id == CUPY_TYPE_COMPLEX64 || dtype_id == CUPY_TYPE_COMPLEX128) {
 	    throw std::runtime_error("complex dtype is not yet supported");
@@ -869,7 +882,7 @@ void cub_device_histogram_range(void* workspace, size_t& workspace_size, void* x
 }
 
 size_t cub_device_histogram_range_get_workspace_size(void* x, void* y, int n_bins,
-    void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
+    void* bins, size_t n_samples, intptr_t stream, int dtype_id)
 {
     size_t workspace_size = 0;
     cub_device_histogram_range(NULL, workspace_size, x, y, n_bins, bins, n_samples,
