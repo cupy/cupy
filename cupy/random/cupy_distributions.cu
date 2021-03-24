@@ -164,8 +164,8 @@ __device__ double rk_beta(rk_state* state, double a, double b) {
     }
 }
 
-__device__ long rk_poisson_mult(rk_state *state, double lam) {
-    long X;
+__device__ int64_t rk_poisson_mult(rk_state *state, double lam) {
+    int64_t X;
     double prod, U, enlam;
     enlam = exp(-lam);
     X = 0;
@@ -181,8 +181,8 @@ __device__ long rk_poisson_mult(rk_state *state, double lam) {
     }
 }
 
-__device__ long rk_poisson_ptrs(rk_state *state, double lam) {
-    long k;
+__device__ int64_t rk_poisson_ptrs(rk_state *state, double lam) {
+    int64_t k;
     double U, V, slam, loglam, a, b, invalpha, vr, us;
     slam = sqrt(lam);
     loglam = log(lam);
@@ -209,7 +209,7 @@ __device__ long rk_poisson_ptrs(rk_state *state, double lam) {
     }
 }
 
-__device__ long rk_poisson(rk_state *state, double lam) {
+__device__ int64_t rk_poisson(rk_state *state, double lam) {
     if (lam >= 10) {
         return rk_poisson_ptrs(state, lam);
     } else if (lam == 0) {
@@ -275,7 +275,7 @@ struct beta_functor {
 
 struct poisson_functor {
     template<typename... Args>
-    __device__ double operator () (Args&&... args) {
+    __device__ int64_t operator () (Args&&... args) {
         return rk_poisson(args...);
     }
 };
@@ -342,7 +342,7 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 }
 
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double lam) {
-    kernel_launcher<poisson_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    kernel_launcher<poisson_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size, lam);
 }
 
