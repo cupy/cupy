@@ -83,6 +83,10 @@ main() {
       export PATH=$PATH:$ROCM_HOME/bin:$ROCM_HOME/profiler/bin:$ROCM_HOME/opencl/bin/x86_64
       export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ROCM_HOME/lib
       echo $(hipconfig)
+
+      # minimal reproducer for ROCm 4.1.0 bug (?)
+      hipcc -I/opt/rocm/include -I/opt/rocm/include/hip --include hip_runtime.h --std=c++11 test_rocm_std.cpp -o test_rocm_std
+
       python3.7 -m pip install -v .
       # Make sure that CuPy is importable.
       # Note that CuPy cannot be imported from the source directory.
