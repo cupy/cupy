@@ -87,7 +87,8 @@ main() {
       # minimal reproducer for ROCm 4.1.0 bug (?)
       ls -l .
       mv ./test_rocm_std.py ./test_rocm_std.cpp
-      /opt/rocm/bin/hipcc -I/opt/rocm/include -I/opt/rocm/include/hip --include hip_runtime.h --std=c++11 test_rocm_std.cpp -o test_rocm_std
+      hipcc -I/opt/rocm/include -I/opt/rocm/include/hip -I./cupy/core/include/ --include hip_runtime.h --std=c++11 test_rocm_std.cpp -o test_rocm_std
+      echo $?
 
       python3.7 -m pip install -v .
       # Make sure that CuPy is importable.

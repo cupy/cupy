@@ -1,5 +1,6 @@
-#include <thrust/complex.h>
-#include <limits>
+#include <cupy/complex.cuh>
+#include <hip/hip_runtime.h>
+//#include <limits>
 
 
 namespace std {
@@ -18,5 +19,6 @@ class numeric_limits<thrust::complex<float>> {
 
 
 int main() {
+  thrust::complex<float> a = std::numeric_limits<thrust::complex<float>>::max();
   return 0;
 }
