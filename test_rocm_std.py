@@ -1,5 +1,5 @@
-#include <hip/hip_runtime.h>
 #include <thrust/complex.h>
+#include <hip/hip_runtime.h>
 //#include <limits>
 
 
