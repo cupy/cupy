@@ -1,5 +1,5 @@
-#include <cupy/complex.cuh>
 #include <hip/hip_runtime.h>
+#include <thrust/complex.h>
 //#include <limits>
 
 
