@@ -199,10 +199,15 @@ def _setup_win32_dll_directory():
     # Setup DLL directory to load CUDA Toolkit libs and shared libraries
     # added during the build process.
     if sys.platform.startswith('win32'):
+        is_conda = ((os.environ.get('CONDA_PREFIX') is not None)
+                    or (os.environ.get('CONDA_BUILD_STATE') is not None))
         # Path to the CUDA Toolkit binaries
         cuda_path = get_cuda_path()
         if cuda_path is not None:
-            cuda_bin_path = os.path.join(cuda_path, 'bin')
+            if is_conda:
+                cuda_bin_path = cuda_path
+            else:
+                cuda_bin_path = os.path.join(cuda_path, 'bin')
         else:
             cuda_bin_path = None
             warnings.warn(
