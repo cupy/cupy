@@ -238,7 +238,7 @@ You can login to the environment with bash, and run the Python interpreter::
 
 Or run the interpreter directly::
 
-  $ docker run --gpus all -it cupy/cupy /usr/bin/python
+  $ docker run --gpus all -it cupy/cupy /usr/bin/python3
 
 
 FAQ
