@@ -13,7 +13,7 @@ def sinhm(arr):
 
                         Hyperbolic sine of given square matrix as input.
 
-    ..seealso:: :func: 'scipy.linlag.matfuncs.py'                
+    ..seealso:: :func: 'scipy.linlag.matfuncs.py'           
     """
 
     arr = numpy.asanyarray(arr)
