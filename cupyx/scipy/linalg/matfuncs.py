@@ -5,15 +5,15 @@ def sinhm(arr):
     """Hyperbolic Sine calculation for a given nXn matrix
 
     Args:
-        arr(cupy.ndarray) : 
+        arr(cupy.ndarray) :
                             Square matrix with dimension nXn.
 
     Returns:
-        (cupy.ndarray):  
-        
+        (cupy.ndarray):
+
                         Hyperbolic sine of given square matrix as input.
-   
-    ..seealso:: :func: 'scipy.linlag.matfuncs.py'                     
+
+    ..seealso:: :func: 'scipy.linlag.matfuncs.py'                
     """
 
     arr = numpy.asanyarray(arr)
