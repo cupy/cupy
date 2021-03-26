@@ -1858,16 +1858,19 @@ cdef bint _is_hip = runtime._is_hip_environment
 cdef int _cuda_runtime_version = -1
 cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
 
-cdef list _cupy_header_list = [
+cdef list cupy_header_list = [
     'cupy/complex.cuh',
     'cupy/carray.cuh',
     'cupy/atomics.cuh',
 ]
 if _is_hip:
-    _cupy_header_list.append('cupy/math_constants.h')
+    cupy_header_list.append('cupy/math_constants.h')
+
+# expose to Python for unit testing
+_cupy_header_list = cupy_header_list
 
 cdef str _cupy_header = ''.join(
-    ['#include <%s>\n' % i for i in _cupy_header_list])
+    ['#include <%s>\n' % i for i in cupy_header_list])
 
 # This is indirect include header list.
 # These header files are subject to a hash key.
@@ -1917,7 +1920,7 @@ cpdef str _get_header_source():
     if _header_source is None or not _header_source_map:
         source = []
         base_path = _get_header_dir_path()
-        for file_path in _cupy_extra_header_list + _cupy_header_list:
+        for file_path in _cupy_extra_header_list + cupy_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
                 header = header_file.read()
@@ -1957,7 +1960,7 @@ cpdef function.Module compile_with_cache(
         log_stream=None, bint jitify=False):
     if translate_cucomplex:
         source = _translate_cucomplex_to_thrust(source)
-        _cupy_header_list.append('cupy/cuComplex_bridge.h')
+        cupy_header_list.append('cupy/cuComplex_bridge.h')
         prepend_cupy_headers = True
 
     if prepend_cupy_headers:

@@ -32,6 +32,9 @@ preloaded.
 Example of `_preload_config` is as follows:
 
 {
+    # installation source
+    'packaging': 'pip',
+
     # CUDA version string
     'cuda': '11.0',
 
@@ -52,7 +55,7 @@ _preload_config = None
 
 _preload_libs = {
     'cudnn': None,
-    # 'nccl': None,
+    'nccl': None,
     'cutensor': None,
 }
 
@@ -275,7 +278,14 @@ def _preload_libraries():
     """
 
     config = get_preload_config()
-    if config is None:
+    if (config is None) or (config['packaging'] == 'conda'):
+        # We don't do preload if CuPy is installed from Conda-Forge, as we
+        # cannot guarantee the version pinned in _wheel.json, which is
+        # encoded in config[lib]['filename'], is always available on
+        # Conda-Forge. In fact, in order to accommodate this, the plan is
+        # to set both "version" and "filename" to an emtpy string on CF's
+        # _wheel.json, so if we look them up below an exception would be
+        # raised.
         _log('Skip preloading as this is not a wheel installation')
         return
 
@@ -338,12 +348,24 @@ def _get_preload_logs():
 def _preload_warning(lib, exc):
     config = get_preload_config()
     if config is not None and lib in config:
-        warnings.warn('''
+        msg = '''
 {lib} library could not be loaded.
 
 Reason: {exc_type} ({exc})
 
 You can install the library by:
+'''
+        if config['packaging'] == 'pip':
+            msg += '''
   $ python -m cupyx.tools.install_library --library {lib} --cuda {cuda}
-'''.format(lib=lib, exc_type=type(exc).__name__, exc=str(exc),
-           cuda=config['cuda']))
+'''
+        elif config['packaging'] == 'conda':
+            msg += '''
+  $ conda install -c conda-forge {lib}
+'''
+        else:
+            assert False
+        msg = msg.format(
+            lib=lib, exc_type=type(exc).__name__, exc=str(exc),
+            cuda=config['cuda'])
+        warnings.warn(msg)

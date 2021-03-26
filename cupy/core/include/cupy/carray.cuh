@@ -1,20 +1,29 @@
 #pragma once
 
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
-#include <type_traits>
 #ifndef __CUDACC_RTC__
 // in NVRTC std:initializer_list is pre-defined (no need to include it)
 #include <initializer_list>
 #endif
-#else
-// Basic implementation of std::conditional when not using C++11
-namespace std {
-  template<bool B, class T, class F>
-  struct conditional { typedef T type; };
-  template<class T, class F>
-  struct conditional<false, T, F> { typedef F type; };
-}
 #endif
+
+// Basic implementation of std::type_traits
+// We use this regardless when C++ is requested, as NVRTC by default lacks many
+// C++ features like this. We need to wrap in a namespace in case Jitify kicks
+// in and/or users provide custom definitions.
+namespace cupy {
+  namespace type_traits {
+    template<bool B, class T, class F>
+    struct conditional { typedef T type; };
+    template<class T, class F>
+    struct conditional<false, T, F> { typedef F type; };
+
+    template<bool B, class T = void>
+    struct enable_if {};
+    template<class T>
+    struct enable_if<true, T> { typedef T type; };
+  }
+}
 
 // math
 #ifndef M_PI
@@ -189,13 +198,22 @@ __device__ int signbit(float16 x) {return x.signbit();}
          i < (n); \
          i += static_cast<ptrdiff_t>(blockDim.x) * gridDim.x)
 
+#ifdef CUPY_JIT_MODE
+#include <cupy/tuple.cuh>
+
+template <int dim>
+struct Dim {
+  __device__ Dim() {}
+};
+#endif
+
 template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false>
 class CArray {
 public:
   static const int ndim = _ndim;
   static const bool c_contiguous = _c_contiguous;
   static const bool use_32bit_indexing = _use_32bit_indexing;
-  typedef typename std::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
+  typedef typename cupy::type_traits::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
 private:
   T* data_;
   ptrdiff_t size_;
@@ -231,7 +249,7 @@ public:
 
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int, typename U=T>
-  __device__ CArray(typename std::enable_if<_c_contiguous, U>::type* data,
+  __device__ CArray(typename cupy::type_traits::enable_if<_c_contiguous, U>::type* data,
                     const Int* shape)
       : data_(data), size_(1)
   {
@@ -246,7 +264,7 @@ public:
   }
 
   template <typename Int, typename U=T>
-  __device__ CArray(typename std::enable_if<_c_contiguous, U>::type* data,
+  __device__ CArray(typename cupy::type_traits::enable_if<_c_contiguous, U>::type* data,
                     const std::initializer_list<Int> shape)
       : CArray(data, shape.begin())
   {
@@ -318,6 +336,31 @@ public:
   __device__ T& operator[](ptrdiff_t i) {
     return const_cast<T&>(const_cast<const CArray&>(*this)[i]);
   }
+
+#ifdef CUPY_JIT_MODE
+  template <typename Tuple, int dim>
+  __forceinline__ __device__ const T& _indexing(const Tuple &idx, Dim<dim>, const char* ptr) const {
+    index_t i = static_cast<index_t>(thrust::get<dim>(idx));
+    ptr += static_cast<index_t>(strides_[dim]) * i;
+    return _indexing(idx, Dim<dim + 1>(), ptr);
+  }
+
+  template <typename Tuple>
+  __forceinline__ __device__ const T& _indexing(const Tuple &idx, Dim<_ndim>, const char* ptr) const {
+    return *reinterpret_cast<const T*>(ptr);
+  }
+
+  template <typename Tuple>
+  __forceinline__ __device__ const T& _indexing(const Tuple &idx) const {
+    const char* ptr = reinterpret_cast<const char*>(data_);
+    return _indexing(idx, Dim<0>(), ptr);
+  }
+
+  template <typename Tuple>
+  __forceinline__ __device__ T& _indexing(const Tuple &idx) {
+    return const_cast<T&>(const_cast<const CArray&>(*this)._indexing(idx));
+  }
+#endif
 
   __device__ const T& operator[](ptrdiff_t idx) const {
     if (c_contiguous) {

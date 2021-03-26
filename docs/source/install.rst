@@ -1,15 +1,8 @@
-Installation Guide
-==================
+Installation
+============
 
 Requirements
 ------------
-
-The following Linux distributions are recommended.
-
-* `Ubuntu <https://www.ubuntu.com/>`_ 18.04 LTS (x86_64)
-* `CentOS <https://www.centos.org/>`_ 7 (x86_64)
-
-These components must be installed to use CuPy:
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
@@ -20,20 +13,24 @@ These components must be installed to use CuPy:
 
 * `Python <https://python.org/>`_: v3.6.0+ / v3.7.0+ / v3.8.0+ / v3.9.0+
 
+.. note::
+
+   Currently, CuPy is tested against  `Ubuntu <https://www.ubuntu.com/>`_ 18.04 LTS (x86_64), `CentOS <https://www.centos.org/>`_ 7 (x86_64) and Windows Server 2016 (x86_64).
+
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v8 is based on NumPy 1.20 and SciPy 1.6, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v9 is based on NumPy 1.20 and SciPy 1.6, and has been tested against the following versions:
 
 * `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19 / v1.20
 
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6
 
-    * Required only when using :doc:`reference/scipy` (``cupyx.scipy``).
+    * Required only when using :doc:`../reference/scipy` (``cupyx.scipy``).
 
 * `Optuna <https://optuna.org/>`_ (*optional*): v2.x
 
-    * Required only when using :doc:`reference/optimize`.
+    * Required only when using :doc:`../reference/optimize`.
 
 .. note::
 
@@ -52,7 +49,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
 * `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.2
 
-    * The library to accelerate tensor operations. See :doc:`reference/environment` for the details.
+    * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
 * `NCCL <https://developer.nvidia.com/nccl>`_: v2.4 (CUDA 9.2) / v2.6 (CUDA 10.0) / v2.7 (CUDA 10.1+) / v2.8 (CUDA 10.2+)
 
@@ -91,13 +88,10 @@ Package names are different depending on your CUDA Toolkit version.
 
 .. note::
 
-   Wheel packages are built with NCCL (Linux only) and cuDNN support enabled.
+   To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
+   If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation::
 
-   * NCCL library is bundled with these packages.
-     You don't have to install it manually.
-
-   * cuDNN library is bundled with these packages except for CUDA 10.1+.
-     For CUDA 10.1+, you need to manually download and install cuDNN v8.x library to use cuDNN features.
+    $ python -m cupyx.tools.install_library --cuda 11.2 --library cutensor
 
 .. note::
 
@@ -120,21 +114,20 @@ once the CUDA driver is correctly set up, you can install CuPy from the ``conda-
 
     $ conda install -c conda-forge cupy
 
-and ``conda`` will install pre-built CuPy and most of the optional dependencies for you, including CUDA runtime libraries
-(``cudatoolkit``), NCCL, and cuDNN. It is not necessary to install CUDA Toolkit in advance. If you need to enforce
+and ``conda`` will install a pre-built CuPy binary package for you, along with CUDA runtime libraries
+(``cudatoolkit``). It is not necessary to install CUDA Toolkit in advance. If you need to enforce
 the installation of a particular CUDA version (say 10.0) for driver compatibility, you can do::
 
     $ conda install -c conda-forge cupy cudatoolkit=10.0
 
 .. note::
 
-    cuTENSOR is available on ``conda-forge`` for CUDA 10.1+ and is an optional dependency. To install CuPy with the cuTENSOR
+    cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once:
     support enabled, you can do::
 
-    $ conda install -c conda-forge cupy cutensor cudatoolkit=10.2
+    $ conda install -c conda-forge cupy cudatoolkit=10.1 cudnn cutensor nccl
 
-    Note that ``cupy`` and ``cutensor`` must be installed at the same time (as shown above) in order for the ``conda`` solver to pick up the right package;
-    otherwise, the cuTENSOR support is disabled.
+    Each of them can also be installed separately as needed. Note that cuTENSOR is available since CUDA 10.1+.
 
 .. note::
 
@@ -185,8 +178,8 @@ If you want to install the latest development version of CuPy from a cloned Git 
 
 .. note::
 
-   To build the source tree downloaded from GitHub, you need to install Cython 0.29.22 or later (``pip install cython``).
-   You don't have to install Cython to build source packages hosted on PyPI as they include pre-generated C++ source files.
+   Cython 0.29.22 or later is required to build CuPy from source.
+   It will be automatically installed during the build process if not available.
 
 
 Uninstalling CuPy
@@ -245,7 +238,7 @@ You can login to the environment with bash, and run the Python interpreter::
 
 Or run the interpreter directly::
 
-  $ docker run --gpus all -it cupy/cupy /usr/bin/python
+  $ docker run --gpus all -it cupy/cupy /usr/bin/python3
 
 
 FAQ
@@ -356,3 +349,72 @@ On CentOS 6 / 7::
   $ sudo yum install devtoolset-7-gcc-c++
   $ source /opt/rh/devtoolset-7/enable
   $ export NVCC="nvcc --compiler-bidir gcc-7"
+
+
+Using CuPy on AMD GPU (experimental)
+====================================
+
+CuPy has an experimental support for AMD GPU (ROCm).
+
+Requirements
+------------
+
+* `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
+
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v3.5+
+    * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
+
+The following ROCm libraries are required:
+
+::
+
+  $ sudo apt install hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl
+
+Environment Variables
+---------------------
+
+When building or running CuPy for ROCm, the following environment variables are effective.
+
+* ``ROCM_HOME``: directory containing the ROCm software (e.g., ``/opt/rocm``).
+
+Docker
+------
+
+You can try running CuPy for ROCm using Docker.
+
+::
+
+  $ docker run -it --device=/dev/kfd --device=/dev/dri --group-add video cupy/cupy-rocm
+
+.. _install_hip:
+
+Installing Binary Packages
+--------------------------
+
+Wheels (precompiled binary packages) are available for Linux (x86_64).
+
+Currently we only offer wheels for ROCm v4.0.x.
+
+::
+
+  $ pip install --pre cupy-rocm-4-0
+
+Building CuPy for ROCm From Source
+----------------------------------
+
+To build CuPy from source, set the ``CUPY_INSTALL_USE_HIP``, ``ROCM_HOME``, and ``HCC_AMDGPU_TARGET`` environment variables.
+(``HCC_AMDGPU_TARGET`` is the ISA name supported by your GPU.
+Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx900``).
+You can specify a comma-separated list of ISAs if you have multiple GPUs of different architectures.)
+
+::
+
+  $ export CUPY_INSTALL_USE_HIP=1
+  $ export ROCM_HOME=/opt/rocm
+  $ export HCC_AMDGPU_TARGET=gfx906
+  $ pip install --pre cupy
+
+.. note::
+
+  If you don't specify the ``HCC_AMDGPU_TARGET`` environment variable, CuPy will be built for the GPU architectures available on the build host.
+  This behavior is specific to ROCm builds; when building CuPy for NVIDIA CUDA, the build result is not affected by the host configuration.

@@ -67,7 +67,10 @@ class csc_matrix(compressed._compressed_sparse_matrix):
             (data, indices, indptr), shape=self._shape)
 
     def _convert_dense(self, x):
-        m = cusparse.dense2csc(x)
+        if cusparse.check_availability('denseToSparse'):
+            m = cusparse.denseToSparse(x, format='csc')
+        else:
+            m = cusparse.dense2csc(x)
         return m.data, m.indices, m.indptr
 
     def _swap(self, x, y):
@@ -185,14 +188,23 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         x = self.copy()
         x.has_canonical_format = False  # need to enforce sum_duplicates
         x.sum_duplicates()
-        # csc2dense and csr2dense returns F-contiguous array.
-        if order == 'C':
-            # To return C-contiguous array, it uses transpose.
-            return cusparse.csr2dense(x.T).T
-        elif order == 'F':
-            return cusparse.csc2dense(x)
+        if cusparse.check_availability('sparseToDense'):
+            y = cusparse.sparseToDense(x)
+            if order == 'F':
+                return y
+            elif order == 'C':
+                return cupy.ascontiguousarray(y)
+            else:
+                raise ValueError('order not understood')
         else:
-            raise ValueError('order not understood')
+            # csc2dense and csr2dense returns F-contiguous array.
+            if order == 'C':
+                # To return C-contiguous array, it uses transpose.
+                return cusparse.csr2dense(x.T).T
+            elif order == 'F':
+                return cusparse.csc2dense(x)
+            else:
+                raise ValueError('order not understood')
 
     def _add_sparse(self, other, alpha, beta):
         self.sum_duplicates()
