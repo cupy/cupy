@@ -152,7 +152,7 @@ prepare_docker() {
 # base development branch.
 is_known_base_branch() {
   local branch="${1##refs/heads/}"
-  for BASE_BRANCH in master v7 v8; do
+  for BASE_BRANCH in master v8 v9; do
     if [ "${branch}" = "${BASE_BRANCH}" ]; then
       return 0
     fi
