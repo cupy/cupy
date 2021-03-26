@@ -5,23 +5,20 @@ import numpy
 import cupy
 from cupy._core._scalar import get_typename as _get_typename
 from cupy._core._ufuncs import elementwise_copy
-from cupy import util
-
-try:
-    from cupy.cuda import thrust
-except ImportError:
-    pass
+from cupy import _util
+from cupy.cuda import thrust
 
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport ndarray
+from cupy._core cimport internal
 
 
 cdef _ndarray_sort(ndarray self, int axis):
     cdef int ndim = self._shape.size()
     cdef ndarray data
 
-    if not cupy.cuda.thrust_enabled:
+    if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.sort. Please '
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')
@@ -35,10 +32,7 @@ cdef _ndarray_sort(ndarray self, int axis):
         raise NotImplementedError('Sorting non-contiguous array is not '
                                   'supported.')
 
-    if axis < 0:
-        axis += ndim
-    if not (0 <= axis < ndim):
-        raise numpy.AxisError('Axis out of range')
+    axis = internal._normalize_axis_index(axis, ndim)
 
     if axis == ndim - 1:
         data = self
@@ -63,7 +57,7 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
     cdef int _axis, ndim
     cdef ndarray data
 
-    if not cupy.cuda.thrust_enabled:
+    if not cupy.cuda.thrust.available:
         raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
                            'install CUDA Toolkit with Thrust then '
                            'reinstall CuPy after uninstalling it.')
@@ -78,10 +72,7 @@ cdef ndarray _ndarray_argsort(ndarray self, axis):
         data = self
         _axis = axis
 
-    if _axis < 0:
-        _axis += ndim
-    if not (0 <= _axis < ndim):
-        raise numpy.AxisError('Axis out of range')
+    _axis = internal._normalize_axis_index(_axis, ndim)
 
     if _axis == ndim - 1:
         data = data.copy()
@@ -134,10 +125,7 @@ cdef _ndarray_partition(ndarray self, kth, int axis):
         raise NotImplementedError('Sorting non-contiguous array is not '
                                   'supported.')
 
-    if axis < 0:
-        axis += ndim
-    if not (0 <= axis < ndim):
-        raise numpy.AxisError('Axis out of range')
+    axis = internal._normalize_axis_index(axis, ndim)
 
     if axis == ndim - 1:
         data = self
@@ -231,10 +219,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
         _axis = axis
 
     ndim = data._shape.size()
-    if _axis < 0:
-        _axis += ndim
-    if not (0 <= _axis < ndim):
-        raise numpy.AxisError('Axis out of range')
+    _axis = internal._normalize_axis_index(_axis, ndim)
 
     length = data._shape[_axis]
     if isinstance(kth, int):
@@ -253,7 +238,7 @@ cdef ndarray _ndarray_argpartition(self, kth, axis):
     return data.argsort(_axis)
 
 
-@util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _partition_kernel(dtype):
     name = 'partition_kernel'
     merge_kernel = 'partition_merge_kernel'

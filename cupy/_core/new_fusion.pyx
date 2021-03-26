@@ -122,7 +122,7 @@ class Fusion:
         #     value: Pair of cache_shape and kernel_list.
         # cache_shape(dict):
         #     key:   Tuple of shapes of the inputs (shape_key).
-        #     value: Pair of Runtime kernel and its perfomance cookie.
+        #     value: Pair of Runtime kernel and its performance cookie.
         # kernel_list(list): List of Runtime kernel.
         cache_shape, kernel_list = self._cache.get(param_key, (None, None))
 

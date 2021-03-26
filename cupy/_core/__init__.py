@@ -1,4 +1,6 @@
-from cupy._core import core as _core  # NOQA
+from cupy._core import core  # NOQA
+from cupy._core import internal  # NOQA
+
 
 # internal APIs for testing and developement
 from cupy._core._accelerator import set_reduction_accelerators  # NOQA
@@ -13,6 +15,18 @@ from cupy._core._kernel import ElementwiseKernel  # NOQA
 from cupy._core._kernel import ufunc  # NOQA
 from cupy._core._reduction import create_reduction_func  # NOQA
 from cupy._core._reduction import ReductionKernel  # NOQA
+from cupy._core._routines_binary import bitwise_and  # NOQA
+from cupy._core._routines_binary import bitwise_or  # NOQA
+from cupy._core._routines_binary import bitwise_xor  # NOQA
+from cupy._core._routines_binary import invert  # NOQA
+from cupy._core._routines_binary import left_shift  # NOQA
+from cupy._core._routines_binary import right_shift  # NOQA
+from cupy._core._routines_linalg import _mat_ptrs  # NOQA
+from cupy._core._routines_linalg import dot  # NOQA
+from cupy._core._routines_linalg import get_compute_type  # NOQA
+from cupy._core._routines_linalg import _matmul  # NOQA
+from cupy._core._routines_linalg import set_compute_type  # NOQA
+from cupy._core._routines_linalg import tensordot_core  # NOQA
 from cupy._core._routines_logic import create_comparison  # NOQA
 from cupy._core._routines_logic import equal  # NOQA
 from cupy._core._routines_logic import greater  # NOQA
@@ -49,19 +63,10 @@ from cupy._core.core import _internal_asfortranarray  # NOQA
 from cupy._core.core import array  # NOQA
 from cupy._core.core import ascontiguousarray  # NOQA
 from cupy._core.core import asfortranarray  # NOQA
-from cupy._core.core import bitwise_and  # NOQA
-from cupy._core.core import bitwise_or  # NOQA
-from cupy._core.core import bitwise_xor  # NOQA
 from cupy._core.core import divmod  # NOQA
-from cupy._core.core import dot  # NOQA
 from cupy._core.core import elementwise_copy  # NOQA
 from cupy._core.core import elementwise_copy_where  # NOQA
-from cupy._core.core import invert  # NOQA
-from cupy._core.core import left_shift  # NOQA
-from cupy._core.core import matmul  # NOQA
 from cupy._core.core import ndarray  # NOQA
-from cupy._core.core import right_shift  # NOQA
-from cupy._core.core import tensordot_core  # NOQA
 from cupy._core.dlpack import fromDlpack  # NOQA
 from cupy._core.internal import complete_slice  # NOQA
 from cupy._core.internal import get_size  # NOQA

@@ -16,7 +16,7 @@ from cupy import cuda
 from cupy.cuda import curand
 from cupy.cuda import device
 from cupy.random import _kernels
-from cupy import util
+from cupy import _util
 
 import cupyx
 
@@ -45,19 +45,20 @@ class RandomState(object):
             are available::
 
                cupy.cuda.curand.CURAND_RNG_PSEUDO_DEFAULT
-               cupy.cuda.curand.CURAND_RNG_XORWOW
-               cupy.cuda.curand.CURAND_RNG_MRG32K3A
-               cupy.cuda.curand.CURAND_RNG_MTGP32
-               cupy.cuda.curand.CURAND_RNG_MT19937
-               cupy.cuda.curand.CURAND_RNG_PHILOX4_32_10
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_XORWOW
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_MRG32K3A
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_MTGP32
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_MT19937
+               cupy.cuda.curand.CURAND_RNG_PSEUDO_PHILOX4_32_10
 
     """
 
     def __init__(self, seed=None, method=curand.CURAND_RNG_PSEUDO_DEFAULT):
         self._generator = curand.createGenerator(method)
+        self.method = method
         self.seed(seed)
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         # When createGenerator raises an error, _generator is not initialized
         if is_shutting_down():
             return
@@ -74,7 +75,7 @@ class RandomState(object):
         # * curand.generateLogNormal
         # * curand.generateLogNormalDouble
         size = _core.get_size(size)
-        element_size = functools.reduce(operator.mul, size, 1)
+        element_size = _core.internal.prod(size)
         if element_size % 2 == 0:
             out = cupy.empty(size, dtype=dtype)
             func(self._generator, out.data.ptr, out.size, *args)
@@ -90,9 +91,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the beta distribution.
 
         .. seealso::
-            :func:`cupy.random.beta` for full documentation,
-            :meth:`numpy.random.RandomState.beta
-            <numpy.random.mtrand.RandomState.beta>`
+            - :func:`cupy.random.beta` for full documentation
+            - :meth:`numpy.random.RandomState.beta`
         """
         a, b = cupy.asarray(a), cupy.asarray(b)
         if size is None:
@@ -106,9 +106,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the binomial distribution.
 
         .. seealso::
-            :func:`cupy.random.binomial` for full documentation,
-            :meth:`numpy.random.RandomState.binomial
-            <numpy.random.mtrand.RandomState.binomial>`
+            - :func:`cupy.random.binomial` for full documentation
+            - :meth:`numpy.random.RandomState.binomial`
         """
         n, p = cupy.asarray(n), cupy.asarray(p)
         if size is None:
@@ -122,9 +121,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the chi-square distribution.
 
         .. seealso::
-            :func:`cupy.random.chisquare` for full documentation,
-            :meth:`numpy.random.RandomState.chisquare
-            <numpy.random.mtrand.RandomState.chisquare>`
+            - :func:`cupy.random.chisquare` for full documentation
+            - :meth:`numpy.random.RandomState.chisquare`
         """
         df = cupy.asarray(df)
         if size is None:
@@ -138,13 +136,14 @@ class RandomState(object):
         """Returns an array of samples drawn from the dirichlet distribution.
 
         .. seealso::
-            :func:`cupy.random.dirichlet` for full documentation,
-            :meth:`numpy.random.RandomState.dirichlet
-            <numpy.random.mtrand.RandomState.dirichlet>`
+            - :func:`cupy.random.dirichlet` for full documentation
+            - :meth:`numpy.random.RandomState.dirichlet`
         """
         alpha = cupy.asarray(alpha)
         if size is None:
             size = alpha.shape
+        elif isinstance(size, (int, cupy.integer)):
+            size = (size,) + alpha.shape
         else:
             size += alpha.shape
         y = cupy.empty(shape=size, dtype=dtype)
@@ -161,9 +160,8 @@ class RandomState(object):
             This function may synchronize the device.
 
         .. seealso::
-            :func:`cupy.random.exponential` for full documentation,
-            :meth:`numpy.random.RandomState.exponential
-            <numpy.random.mtrand.RandomState.exponential>`
+            - :func:`cupy.random.exponential` for full documentation
+            - :meth:`numpy.random.RandomState.exponential`
         """
         scale = cupy.asarray(scale, dtype)
         if (scale < 0).any():  # synchronize!
@@ -178,9 +176,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the f distribution.
 
         .. seealso::
-            :func:`cupy.random.f` for full documentation,
-            :meth:`numpy.random.RandomState.f
-            <numpy.random.mtrand.RandomState.f>`
+            - :func:`cupy.random.f` for full documentation
+            - :meth:`numpy.random.RandomState.f`
         """
         dfnum, dfden = cupy.asarray(dfnum), cupy.asarray(dfden)
         if size is None:
@@ -194,9 +191,8 @@ class RandomState(object):
         """Returns an array of samples drawn from a gamma distribution.
 
         .. seealso::
-            :func:`cupy.random.gamma` for full documentation,
-            :meth:`numpy.random.RandomState.gamma
-            <numpy.random.mtrand.RandomState.gamma>`
+            - :func:`cupy.random.gamma` for full documentation
+            - :meth:`numpy.random.RandomState.gamma`
         """
         shape, scale = cupy.asarray(shape), cupy.asarray(scale)
         if size is None:
@@ -211,9 +207,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the geometric distribution.
 
         .. seealso::
-            :func:`cupy.random.geometric` for full documentation,
-            :meth:`numpy.random.RandomState.geometric
-            <numpy.random.mtrand.RandomState.geometric>`
+            - :func:`cupy.random.geometric` for full documentation
+            - :meth:`numpy.random.RandomState.geometric`
         """
         p = cupy.asarray(p)
         if size is None:
@@ -227,9 +222,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the hypergeometric distribution.
 
         .. seealso::
-            :func:`cupy.random.hypergeometric` for full documentation,
-            :meth:`numpy.random.RandomState.hypergeometric
-            <numpy.random.mtrand.RandomState.hypergeometric>`
+            - :func:`cupy.random.hypergeometric` for full documentation
+            - :meth:`numpy.random.RandomState.hypergeometric`
         """
         ngood, nbad, nsample = \
             cupy.asarray(ngood), cupy.asarray(nbad), cupy.asarray(nsample)
@@ -249,9 +243,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the laplace distribution.
 
         .. seealso::
-            :func:`cupy.random.laplace` for full documentation,
-            :meth:`numpy.random.RandomState.laplace
-            <numpy.random.mtrand.RandomState.laplace>`
+            - :func:`cupy.random.laplace` for full documentation
+            - :meth:`numpy.random.RandomState.laplace`
         """
         loc = cupy.asarray(loc, dtype)
         scale = cupy.asarray(scale, dtype)
@@ -265,9 +258,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the logistic distribution.
 
         .. seealso::
-            :func:`cupy.random.logistic` for full documentation,
-            :meth:`numpy.random.RandomState.logistic
-            <numpy.random.mtrand.RandomState.logistic>`
+            - :func:`cupy.random.logistic` for full documentation
+            - :meth:`numpy.random.RandomState.logistic`
         """
         loc, scale = cupy.asarray(loc), cupy.asarray(scale)
         if size is None:
@@ -285,11 +277,16 @@ class RandomState(object):
         """Returns an array of samples drawn from a log normal distribution.
 
         .. seealso::
-            :func:`cupy.random.lognormal` for full documentation,
-            :meth:`numpy.random.RandomState.lognormal
-            <numpy.random.mtrand.RandomState.lognormal>`
+            - :func:`cupy.random.lognormal` for full documentation
+            - :meth:`numpy.random.RandomState.lognormal`
 
         """
+        if any(isinstance(arg, cupy.ndarray) for arg in (mean, sigma)):
+            x = self.normal(mean, sigma, size, dtype)
+            cupy.exp(x, out=x)
+            return x
+        if size is None:
+            size = ()
         dtype = _check_and_get_dtype(dtype)
         if dtype.char == 'f':
             func = curand.generateLogNormal
@@ -305,9 +302,8 @@ class RandomState(object):
             This function may synchronize the device.
 
         .. seealso::
-            :func:`cupy.random.logseries` for full documentation,
-            :meth:`numpy.random.RandomState.logseries
-            <numpy.random.mtrand.RandomState.logseries>`
+            - :func:`cupy.random.logseries` for full documentation
+            - :meth:`numpy.random.RandomState.logseries`
 
         """
         p = cupy.asarray(p)
@@ -335,11 +331,10 @@ class RandomState(object):
             :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
         .. seealso::
-            :func:`cupy.random.multivariate_normal` for full documentation,
-            :meth:`numpy.random.RandomState.multivariate_normal
-            <numpy.random.mtrand.RandomState.multivariate_normal>`
+            - :func:`cupy.random.multivariate_normal` for full documentation
+            - :meth:`numpy.random.RandomState.multivariate_normal`
         """
-        util.experimental('cupy.random.RandomState.multivariate_normal')
+        _util.experimental('cupy.random.RandomState.multivariate_normal')
         mean = cupy.asarray(mean, dtype=dtype)
         cov = cupy.asarray(cov, dtype=dtype)
         if size is None:
@@ -427,9 +422,8 @@ class RandomState(object):
             This function may synchronize the device.
 
         .. seealso::
-            :func:`cupy.random.negative_binomial` for full documentation,
-            :meth:`numpy.random.RandomState.negative_binomial
-            <numpy.random.mtrand.RandomState.negative_binomial>`
+            - :func:`cupy.random.negative_binomial` for full documentation
+            - :meth:`numpy.random.RandomState.negative_binomial`
         """
         n = cupy.asarray(n)
         p = cupy.asarray(p)
@@ -446,27 +440,38 @@ class RandomState(object):
         """Returns an array of normally distributed samples.
 
         .. seealso::
-            :func:`cupy.random.normal` for full documentation,
-            :meth:`numpy.random.RandomState.normal
-            <numpy.random.mtrand.RandomState.normal>`
+            - :func:`cupy.random.normal` for full documentation
+            - :meth:`numpy.random.RandomState.normal`
 
         """
         dtype = _check_and_get_dtype(dtype)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
         if dtype.char == 'f':
             func = curand.generateNormal
         else:
             func = curand.generateNormalDouble
-        return self._generate_normal(func, size, dtype, loc, scale)
+        if isinstance(scale, cupy.ndarray):
+            x = self._generate_normal(func, size, dtype, 0.0, 1.0)
+            cupy.multiply(x, scale, out=x)
+            cupy.add(x, loc, out=x)
+        elif isinstance(loc, cupy.ndarray):
+            x = self._generate_normal(func, size, dtype, 0.0, scale)
+            cupy.add(x, loc, out=x)
+        else:
+            x = self._generate_normal(func, size, dtype, loc, scale)
+        return x
 
     def pareto(self, a, size=None, dtype=float):
         """Returns an array of samples drawn from the pareto II distribution.
 
         .. seealso::
-            :func:`cupy.random.pareto_kernel` for full documentation,
-            :meth:`numpy.random.RandomState.pareto
-            <numpy.random.mtrand.RandomState.pareto>`
+            - :func:`cupy.random.pareto` for full documentation
+            - :meth:`numpy.random.RandomState.pareto`
         """
         a = cupy.asarray(a)
+        if size is None:
+            size = a.shape
         x = self._random_sample_raw(size, dtype)
         cupy.log(x, out=x)
         cupy.exp(-x/a, out=x)
@@ -481,9 +486,8 @@ class RandomState(object):
             This function may synchronize the device.
 
         .. seealso::
-            :func:`cupy.random.noncentral_chisquare` for full documentation,
-            :meth:`numpy.random.RandomState.noncentral_chisquare
-            <numpy.random.mtrand.RandomState.noncentral_chisquare>`
+            - :func:`cupy.random.noncentral_chisquare` for full documentation
+            - :meth:`numpy.random.RandomState.noncentral_chisquare`
         """
         df, nonc = cupy.asarray(df), cupy.asarray(nonc)
         if cupy.any(df <= 0):  # synchronize!
@@ -505,9 +509,8 @@ class RandomState(object):
             This function may synchronize the device.
 
         .. seealso::
-            :func:`cupy.random.noncentral_f` for full documentation,
-            :meth:`numpy.random.RandomState.noncentral_f
-            <numpy.random.mtrand.RandomState.noncentral_f>`
+            - :func:`cupy.random.noncentral_f` for full documentation
+            - :meth:`numpy.random.RandomState.noncentral_f`
         """
         dfnum, dfden, nonc = \
             cupy.asarray(dfnum), cupy.asarray(dfden), cupy.asarray(nonc)
@@ -528,9 +531,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the poisson distribution.
 
         .. seealso::
-            :func:`cupy.random.poisson` for full documentation,
-            :meth:`numpy.random.RandomState.poisson
-            <numpy.random.mtrand.RandomState.poisson>`
+            - :func:`cupy.random.poisson` for full documentation
+            - :meth:`numpy.random.RandomState.poisson`
         """
         lam = cupy.asarray(lam)
         if size is None:
@@ -548,9 +550,8 @@ class RandomState(object):
             This function may synchronize the device.
 
         .. seealso::
-            :func:`cupy.random.power` for full documentation,
-            :meth:`numpy.random.RandomState.power
-            <numpy.random.mtrand.RandomState.power>`
+            - :func:`cupy.random.power` for full documentation
+            - :meth:`numpy.random.RandomState.power`
         """
         a = cupy.asarray(a)
         if cupy.any(a < 0):  # synchronize!
@@ -567,9 +568,8 @@ class RandomState(object):
         """Returns uniform random values over the interval ``[0, 1)``.
 
         .. seealso::
-            :func:`cupy.random.rand` for full documentation,
-            :meth:`numpy.random.RandomState.rand
-            <numpy.random.mtrand.RandomState.rand>`
+            - :func:`cupy.random.rand` for full documentation
+            - :meth:`numpy.random.RandomState.rand`
 
         """
         dtype = kwarg.pop('dtype', float)
@@ -582,9 +582,8 @@ class RandomState(object):
         """Returns an array of standard normal random values.
 
         .. seealso::
-            :func:`cupy.random.randn` for full documentation,
-            :meth:`numpy.random.RandomState.randn
-            <numpy.random.mtrand.RandomState.randn>`
+            - :func:`cupy.random.randn` for full documentation
+            - :meth:`numpy.random.RandomState.randn`
 
         """
         dtype = kwarg.pop('dtype', float)
@@ -610,11 +609,12 @@ class RandomState(object):
         """Returns an array of random values over the interval ``[0, 1)``.
 
         .. seealso::
-            :func:`cupy.random.random_sample` for full documentation,
-            :meth:`numpy.random.RandomState.random_sample
-            <numpy.random.mtrand.RandomState.random_sample>`
+            - :func:`cupy.random.random_sample` for full documentation
+            - :meth:`numpy.random.RandomState.random_sample`
 
         """
+        if size is None:
+            size = ()
         out = self._random_sample_raw(size, dtype)
         RandomState._mod1_kernel(out)
         return out
@@ -627,9 +627,8 @@ class RandomState(object):
             This function may synchronize the device.
 
         .. seealso::
-            :func:`cupy.random.rayleigh` for full documentation,
-            :meth:`numpy.random.RandomState.rayleigh
-            <numpy.random.mtrand.RandomState.rayleigh>`
+            - :func:`cupy.random.rayleigh` for full documentation
+            - :meth:`numpy.random.RandomState.rayleigh`
         """
         scale = cupy.asarray(scale)
         if size is None:
@@ -671,58 +670,79 @@ class RandomState(object):
                 'mx must be non-negative (actual: {})'.format(mx))
         elif mx <= _UINT32_MAX:
             dtype = numpy.uint32
+            upper_limit = _UINT32_MAX - (1 << 32) % (mx + 1)
         elif mx <= _UINT64_MAX:
             dtype = numpy.uint64
+            upper_limit = _UINT64_MAX - (1 << 64) % (mx + 1)
         else:
             raise ValueError(
                 'mx must be within uint64 range (actual: {})'.format(mx))
 
-        mask = (1 << mx.bit_length()) - 1
-        mask = cupy.array(mask, dtype=dtype)
-
-        n = functools.reduce(operator.mul, size, 1)
-
-        if n == 0:
+        n_sample = functools.reduce(operator.mul, size, 1)
+        if n_sample == 0:
             return cupy.empty(size, dtype=dtype)
+        sample = self._curand_generate(n_sample, dtype)
 
-        sample = cupy.empty((n,), dtype=dtype)
-        size32 = sample.view(dtype=numpy.uint32).size
-        n_rem = n  # The number of remaining elements to sample
-        ret = None
-        while n_rem > 0:
-            # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
-            curand.generate(
-                self._generator, sample.data.ptr, size32)
-            # Drop the samples that exceed the upper limit
+        mx1 = mx + 1
+        if mx1 != (1 << (mx1.bit_length() - 1)):
+            # Get index of samples that exceed the upper limit
+            ng_indices = self._get_indices(sample, upper_limit, False)
+            n_ng = ng_indices.size
+
+            while n_ng > 0:
+                n_supplement = max(n_ng * 2, 1024)
+                supplement = self._curand_generate(n_supplement, dtype)
+
+                # Get index of supplements that are within the upper limit
+                ok_indices = self._get_indices(supplement, upper_limit, True)
+                n_ok = ok_indices.size
+
+                # Replace the values that exceed the upper limit
+                if n_ok >= n_ng:
+                    sample[ng_indices] = supplement[ok_indices[:n_ng]]
+                    n_ng = 0
+                else:
+                    sample[ng_indices[:n_ok]] = supplement[ok_indices]
+                    ng_indices = ng_indices[n_ok:]
+                    n_ng -= n_ok
+            sample %= mx1
+        else:
+            mask = (1 << mx.bit_length()) - 1
             sample &= mask
-            success = sample <= mx
 
-            if ret is None:
-                # If the sampling has finished in the first iteration,
-                # just return the sample.
-                if success.all():
-                    n_rem = 0
-                    ret = sample
-                    break
+        return sample.reshape(size)
 
-                # Allocate the return array.
-                ret = cupy.empty((n,), dtype=dtype)
+    def _curand_generate(self, num, dtype):
+        sample = cupy.empty((num,), dtype=dtype)
+        # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
+        size32 = sample.view(dtype=numpy.uint32).size
+        curand.generate(self._generator, sample.data.ptr, size32)
+        return sample
 
-            n_succ = min(n_rem, int(success.sum()))
-            ret[n - n_rem:n - n_rem + n_succ] = sample[success][:n_succ]
-            n_rem -= n_succ
+    def _get_indices(self, sample, upper_limit, cond):
+        dtype = numpy.uint32 if sample.size < 2**32 else numpy.uint64
+        flags = (sample <= upper_limit) if cond else (sample > upper_limit)
+        csum = cupy.cumsum(flags, dtype=dtype)
+        del flags
+        indices = cupy.empty((int(csum[-1]),), dtype=dtype)
+        self._kernel_get_indices(csum, indices, size=csum.size)
+        return indices
 
-        assert n_rem == 0
-
-        return ret.reshape(size)
+    _kernel_get_indices = _core.ElementwiseKernel(
+        'raw U csum', 'raw U indices',
+        '''
+        int j = 0;
+        if (i > 0) { j = csum[i-1]; }
+        if (csum[i] > j) { indices[j] = i; }
+        ''',
+        'cupy_get_indices')
 
     def seed(self, seed=None):
         """Resets the state of the random number generator with a seed.
 
         .. seealso::
-            :func:`cupy.random.seed` for full documentation,
-            :meth:`numpy.random.RandomState.seed
-            <numpy.random.mtrand.RandomState.seed>`
+            - :func:`cupy.random.seed` for full documentation
+            - :meth:`numpy.random.RandomState.seed`
 
         """
         if seed is None:
@@ -739,7 +759,9 @@ class RandomState(object):
                     numpy.asarray(seed).astype(numpy.uint64, casting='safe'))
 
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
-        curand.setGeneratorOffset(self._generator, 0)
+        if (self.method not in (curand.CURAND_RNG_PSEUDO_MT19937,
+                                curand.CURAND_RNG_PSEUDO_MTGP32)):
+            curand.setGeneratorOffset(self._generator, 0)
 
         self._rk_seed = seed
 
@@ -747,9 +769,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the standard cauchy distribution.
 
         .. seealso::
-            :func:`cupy.random.standard_cauchy` for full documentation,
-            :meth:`numpy.random.RandomState.standard_cauchy
-            <numpy.random.mtrand.RandomState.standard_cauchy>`
+            - :func:`cupy.random.standard_cauchy` for full documentation
+            - :meth:`numpy.random.RandomState.standard_cauchy`
         """
         x = self.uniform(size=size, dtype=dtype)
         return cupy.tan(cupy.pi * (x - 0.5))
@@ -758,10 +779,11 @@ class RandomState(object):
         """Returns an array of samples drawn from the standard exp distribution.
 
          .. seealso::
-            :func:`cupy.random.standard_exponential` for full documentation,
-            :meth:`numpy.random.RandomState.standard_exponential
-            <numpy.random.mtrand.RandomState.standard_exponential>`
+            - :func:`cupy.random.standard_exponential` for full documentation
+            - :meth:`numpy.random.RandomState.standard_exponential`
         """
+        if size is None:
+            size = ()
         x = self._random_sample_raw(size, dtype)
         return -cupy.log(x, out=x)
 
@@ -769,9 +791,8 @@ class RandomState(object):
         """Returns an array of samples drawn from a standard gamma distribution.
 
         .. seealso::
-            :func:`cupy.random.standard_gamma` for full documentation,
-            :meth:`numpy.random.RandomState.standard_gamma
-            <numpy.random.mtrand.RandomState.standard_gamma>`
+            - :func:`cupy.random.standard_gamma` for full documentation
+            - :meth:`numpy.random.RandomState.standard_gamma`
         """
         shape = cupy.asarray(shape)
         if size is None:
@@ -785,9 +806,8 @@ class RandomState(object):
         """Returns samples drawn from the standard normal distribution.
 
         .. seealso::
-            :func:`cupy.random.standard_normal` for full documentation,
-            :meth:`numpy.random.RandomState.standard_normal
-            <numpy.random.mtrand.RandomState.standard_normal>`
+            - :func:`cupy.random.standard_normal` for full documentation
+            - :meth:`numpy.random.RandomState.standard_normal`
 
         """
         return self.normal(size=size, dtype=dtype)
@@ -796,9 +816,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the standard t distribution.
 
         .. seealso::
-            :func:`cupy.random.standard_t` for full documentation,
-            :meth:`numpy.random.RandomState.standard_t
-            <numpy.random.mtrand.RandomState.standard_t>`
+            - :func:`cupy.random.standard_t` for full documentation
+            - :meth:`numpy.random.RandomState.standard_t`
         """
         df = cupy.asarray(df)
         if size is None:
@@ -811,6 +830,10 @@ class RandomState(object):
     def tomaxint(self, size=None):
         """Draws integers between 0 and max integer inclusive.
 
+        Return a sample of uniformly distributed random integers in the
+        interval [0, ``np.iinfo(np.int_).max``]. The `np.int_` type translates
+        to the C long integer type and its precision is platform dependent.
+
         Args:
             size (int or tuple of ints): Output shape.
 
@@ -818,8 +841,7 @@ class RandomState(object):
             cupy.ndarray: Drawn samples.
 
         .. seealso::
-            :meth:`numpy.random.RandomState.tomaxint
-            <numpy.random.mtrand.RandomState.tomaxint>`
+            :meth:`numpy.random.RandomState.tomaxint`
 
         """
         if size is None:
@@ -864,9 +886,8 @@ class RandomState(object):
             This function may synchronize the device.
 
         .. seealso::
-            :func:`cupy.random.triangular` for full documentation,
-            :meth:`numpy.random.RandomState.triangular
-            <numpy.random.mtrand.RandomState.triangular>`
+            - :func:`cupy.random.triangular` for full documentation
+            - :meth:`numpy.random.RandomState.triangular`
         """
         left, mode, right = \
             cupy.asarray(left), cupy.asarray(mode), cupy.asarray(right)
@@ -890,9 +911,8 @@ class RandomState(object):
         """Returns an array of uniformly-distributed samples over an interval.
 
         .. seealso::
-            :func:`cupy.random.uniform` for full documentation,
-            :meth:`numpy.random.RandomState.uniform
-            <numpy.random.mtrand.RandomState.uniform>`
+            - :func:`cupy.random.uniform` for full documentation
+            - :meth:`numpy.random.RandomState.uniform`
 
         """
         dtype = numpy.dtype(dtype)
@@ -907,9 +927,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the von Mises distribution.
 
         .. seealso::
-            :func:`cupy.random.vonmises` for full documentation,
-            :meth:`numpy.random.RandomState.vonmises
-            <numpy.random.mtrand.RandomState.vonmises>`
+            - :func:`cupy.random.vonmises` for full documentation
+            - :meth:`numpy.random.RandomState.vonmises`
         """
         mu, kappa = cupy.asarray(mu), cupy.asarray(kappa)
         if size is None:
@@ -938,9 +957,8 @@ class RandomState(object):
         """Returns an array of samples drawn from the Wald distribution.
 
          .. seealso::
-            :func:`cupy.random.wald` for full documentation,
-            :meth:`numpy.random.RandomState.wald
-            <numpy.random.mtrand.RandomState.wald>`
+            - :func:`cupy.random.wald` for full documentation
+            - :meth:`numpy.random.RandomState.wald`
         """
         mean, scale = \
             cupy.asarray(mean, dtype=dtype), cupy.asarray(scale, dtype=dtype)
@@ -958,9 +976,8 @@ class RandomState(object):
             This function may synchronize the device.
 
         .. seealso::
-            :func:`cupy.random.weibull` for full documentation,
-            :meth:`numpy.random.RandomState.weibull
-            <numpy.random.mtrand.RandomState.weibull>`
+            - :func:`cupy.random.weibull` for full documentation
+            - :meth:`numpy.random.RandomState.weibull`
         """
         a = cupy.asarray(a)
         if cupy.any(a < 0):  # synchronize!
@@ -977,9 +994,8 @@ class RandomState(object):
             This function may synchronize the device.
 
         .. seealso::
-            :func:`cupy.random.zipf` for full documentation,
-            :meth:`numpy.random.RandomState.zipf
-            <numpy.random.mtrand.RandomState.zipf>`
+            - :func:`cupy.random.zipf` for full documentation
+            - :meth:`numpy.random.RandomState.zipf`
         """
         a = cupy.asarray(a)
         if cupy.any(a <= 1.0):  # synchronize!
@@ -995,9 +1011,8 @@ class RandomState(object):
         """Returns an array of random values from a given 1-D array.
 
         .. seealso::
-            :func:`cupy.random.choice` for full document,
-            :meth:`numpy.random.choice
-            <numpy.random.mtrand.RandomState.choice>`
+            - :func:`cupy.random.choice` for full documentation
+            - :meth:`numpy.random.choice`
 
         """
         if a is None:
@@ -1006,16 +1021,13 @@ class RandomState(object):
             raise NotImplementedError
         if isinstance(a, int):
             a_size = a
-            if a_size <= 0:
-                raise ValueError('a must be greater than 0')
+            if a_size < 0:
+                raise ValueError('a must be greater than or equal to 0')
         else:
             a = cupy.array(a, copy=False)
             if a.ndim != 1:
                 raise ValueError('a must be 1-dimensional or an integer')
-            else:
-                a_size = len(a)
-                if a_size == 0:
-                    raise ValueError('a must be non-empty')
+            a_size = len(a)
 
         if p is not None:
             p = cupy.array(p)
@@ -1033,6 +1045,9 @@ class RandomState(object):
             raise NotImplementedError
         shape = size
         size = numpy.prod(shape)
+
+        if a_size == 0 and size > 0:
+            raise ValueError('a cannot be empty unless no samples are taken')
 
         if not replace and p is None:
             if a_size < size:
@@ -1057,6 +1072,8 @@ class RandomState(object):
             if not isinstance(shape, int):
                 index = cupy.reshape(index, shape)
         else:
+            if a_size == 0:  # TODO: (#4511) Fix `randint` instead
+                a_size = 1
             index = self.randint(0, a_size, size=shape)
             # Align the dtype with NumPy
             index = index.astype(cupy.int64, copy=False)
@@ -1073,9 +1090,8 @@ class RandomState(object):
         """Returns a shuffled array.
 
         .. seealso::
-            :func:`cupy.random.shuffle` for full document,
-            :meth:`numpy.random.shuffle
-            <numpy.random.mtrand.RandomState.shuffle>`
+            - :func:`cupy.random.shuffle` for full documentation
+            - :meth:`numpy.random.shuffle`
 
         """
         if not isinstance(a, cupy.ndarray):
@@ -1131,25 +1147,25 @@ class RandomState(object):
         """Returns an array of samples drawn from a Gumbel distribution.
 
         .. seealso::
-            :func:`cupy.random.gumbel` for full documentation,
-            :meth:`numpy.random.RandomState.gumbel
-            <numpy.random.mtrand.RandomState.gumbel>`
+            - :func:`cupy.random.gumbel` for full documentation
+            - :meth:`numpy.random.RandomState.gumbel`
         """
-        x = self._random_sample_raw(size=size, dtype=dtype)
         if not numpy.isscalar(loc):
             loc = cupy.asarray(loc, dtype)
         if not numpy.isscalar(scale):
             scale = cupy.asarray(scale, dtype)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
+        x = self._random_sample_raw(size=size, dtype=dtype)
         RandomState._gumbel_kernel(x, loc, scale, x)
         return x
 
-    def randint(self, low, high=None, size=None, dtype='l'):
+    def randint(self, low, high=None, size=None, dtype=int):
         """Returns a scalar or an array of integer values over ``[low, high)``.
 
         .. seealso::
-            :func:`cupy.random.randint` for full documentation,
-            :meth:`numpy.random.RandomState.randint
-            <numpy.random.mtrand.RandomState.randint>`
+            - :func:`cupy.random.randint` for full documentation
+            - :meth:`numpy.random.RandomState.randint`
         """
         if high is None:
             lo = 0

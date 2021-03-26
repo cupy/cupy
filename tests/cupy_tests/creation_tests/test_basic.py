@@ -21,7 +21,7 @@ class TestBasic(unittest.TestCase):
     def test_empty_huge_size(self):
         a = cupy.empty((1024, 2048, 1024), dtype='b')
         a.fill(123)
-        self.assertTrue((a == 123).all())
+        assert (a == 123).all()
         # Free huge memory for slow test
         del a
         cupy.get_default_memory_pool().free_all_blocks()
@@ -30,7 +30,7 @@ class TestBasic(unittest.TestCase):
     def test_empty_huge_size_fill0(self):
         a = cupy.empty((1024, 2048, 1024), dtype='b')
         a.fill(0)
-        self.assertTrue((a == 0).all())
+        assert (a == 0).all()
         # Free huge memory for slow test
         del a
         cupy.get_default_memory_pool().free_all_blocks()
@@ -39,7 +39,17 @@ class TestBasic(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_empty_scalar(self, xp, dtype, order):
-        a = xp.empty(None, dtype=dtype, order=order)
+        a = xp.empty((), dtype=dtype, order=order)
+        a.fill(0)
+        return a
+
+    @testing.with_requires('numpy>=1.20')
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_empty_scalar_none(self, xp, dtype, order):
+        with testing.assert_warns(DeprecationWarning):
+            a = xp.empty(None, dtype=dtype, order=order)
         a.fill(0)
         return a
 
@@ -55,7 +65,7 @@ class TestBasic(unittest.TestCase):
     def test_empty_int_huge_size(self):
         a = cupy.empty(2 ** 31, dtype='b')
         a.fill(123)
-        self.assertTrue((a == 123).all())
+        assert (a == 123).all()
         # Free huge memory for slow test
         del a
         cupy.get_default_memory_pool().free_all_blocks()
@@ -64,7 +74,7 @@ class TestBasic(unittest.TestCase):
     def test_empty_int_huge_size_fill0(self):
         a = cupy.empty(2 ** 31, dtype='b')
         a.fill(0)
-        self.assertTrue((a == 0).all())
+        assert (a == 0).all()
         # Free huge memory for slow test
         del a
         cupy.get_default_memory_pool().free_all_blocks()
@@ -86,9 +96,9 @@ class TestBasic(unittest.TestCase):
         b = xp.empty_like(a, order=order)
         b.fill(0)
         if order in ['f', 'F']:
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.f_contiguous
         else:
-            self.assertTrue(b.flags.c_contiguous)
+            assert b.flags.c_contiguous
         return b
 
     @testing.for_orders('CFAK')
@@ -100,9 +110,9 @@ class TestBasic(unittest.TestCase):
         b = xp.empty_like(a, order=order)
         b.fill(0)
         if order in ['c', 'C']:
-            self.assertTrue(b.flags.c_contiguous)
+            assert b.flags.c_contiguous
         else:
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.f_contiguous
         return b
 
     @testing.for_orders('CFAK')
@@ -115,14 +125,14 @@ class TestBasic(unittest.TestCase):
         b = xp.empty_like(a, order=order)
         b.fill(0)
         if order in ['k', 'K', None]:
-            self.assertFalse(b.flags.c_contiguous)
-            self.assertFalse(b.flags.f_contiguous)
+            assert not b.flags.c_contiguous
+            assert not b.flags.f_contiguous
         elif order in ['f', 'F']:
-            self.assertFalse(b.flags.c_contiguous)
-            self.assertTrue(b.flags.f_contiguous)
+            assert not b.flags.c_contiguous
+            assert b.flags.f_contiguous
         else:
-            self.assertTrue(b.flags.c_contiguous)
-            self.assertFalse(b.flags.f_contiguous)
+            assert b.flags.c_contiguous
+            assert not b.flags.f_contiguous
         return b
 
     @testing.for_all_dtypes()
@@ -140,7 +150,7 @@ class TestBasic(unittest.TestCase):
         bg.fill(0)
 
         # make sure NumPy and CuPy strides agree
-        self.assertEqual(b.strides, bg.strides)
+        assert b.strides == bg.strides
         return
 
     @testing.with_requires('numpy>=1.19')
@@ -160,7 +170,7 @@ class TestBasic(unittest.TestCase):
     def test_empty_zero_sized_array_strides(self, order):
         a = numpy.empty((1, 0, 2), dtype='d', order=order)
         b = cupy.empty((1, 0, 2), dtype='d', order=order)
-        self.assertEqual(b.strides, a.strides)
+        assert b.strides == a.strides
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -183,7 +193,15 @@ class TestBasic(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_zeros_scalar(self, xp, dtype, order):
-        return xp.zeros(None, dtype=dtype, order=order)
+        return xp.zeros((), dtype=dtype, order=order)
+
+    @testing.with_requires('numpy>=1.20')
+    @testing.for_CF_orders()
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_zeros_scalar_none(self, xp, dtype, order):
+        with testing.assert_warns(DeprecationWarning):
+            return xp.zeros(None, dtype=dtype, order=order)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -195,7 +213,7 @@ class TestBasic(unittest.TestCase):
     def test_zeros_strides(self, order):
         a = numpy.zeros((2, 3), dtype='d', order=order)
         b = cupy.zeros((2, 3), dtype='d', order=order)
-        self.assertEqual(b.strides, a.strides)
+        assert b.strides == a.strides
 
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
@@ -295,9 +313,9 @@ class TestBasicReshape(unittest.TestCase):
         b = xp.empty_like(a, order=order, shape=self.shape)
         b.fill(0)
         if order in ['f', 'F']:
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.f_contiguous
         else:
-            self.assertTrue(b.flags.c_contiguous)
+            assert b.flags.c_contiguous
         return b
 
     @testing.for_orders('CFAK')
@@ -309,9 +327,9 @@ class TestBasicReshape(unittest.TestCase):
         c = cupy.empty(self.shape)
         c.fill(0)
         if order in ['f', 'F']:
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.f_contiguous
         else:
-            self.assertTrue(b.flags.c_contiguous)
+            assert b.flags.c_contiguous
         testing.assert_array_equal(b, c)
 
     @testing.with_requires('numpy>=1.17.0')
@@ -326,9 +344,9 @@ class TestBasicReshape(unittest.TestCase):
         shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
         if (order in ['c', 'C'] or
                 (order in ['k', 'K', None] and len(shape) != a.ndim)):
-            self.assertTrue(b.flags.c_contiguous)
+            assert b.flags.c_contiguous
         else:
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.f_contiguous
         return b
 
     @testing.for_orders('CFAK')
@@ -343,9 +361,9 @@ class TestBasicReshape(unittest.TestCase):
         shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
         if (order in ['c', 'C'] or
                 (order in ['k', 'K', None] and len(shape) != a.ndim)):
-            self.assertTrue(b.flags.c_contiguous)
+            assert b.flags.c_contiguous
         else:
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.f_contiguous
         testing.assert_array_equal(b, c)
 
     @testing.with_requires('numpy>=1.17.0')
@@ -360,17 +378,17 @@ class TestBasicReshape(unittest.TestCase):
         b.fill(0)
         shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
         if len(shape) == 1:
-            self.assertTrue(b.flags.c_contiguous)
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.c_contiguous
+            assert b.flags.f_contiguous
         elif order in ['k', 'K', None] and len(shape) == a.ndim:
-            self.assertFalse(b.flags.c_contiguous)
-            self.assertFalse(b.flags.f_contiguous)
+            assert not b.flags.c_contiguous
+            assert not b.flags.f_contiguous
         elif order in ['f', 'F']:
-            self.assertFalse(b.flags.c_contiguous)
-            self.assertTrue(b.flags.f_contiguous)
+            assert not b.flags.c_contiguous
+            assert b.flags.f_contiguous
         else:
-            self.assertTrue(b.flags.c_contiguous)
-            self.assertFalse(b.flags.f_contiguous)
+            assert b.flags.c_contiguous
+            assert not b.flags.f_contiguous
         return b
 
     @testing.for_orders('CFAK')
@@ -383,17 +401,17 @@ class TestBasicReshape(unittest.TestCase):
         b.fill(0)
         shape = self.shape if not numpy.isscalar(self.shape) else (self.shape,)
         if len(shape) == 1:
-            self.assertTrue(b.flags.c_contiguous)
-            self.assertTrue(b.flags.f_contiguous)
+            assert b.flags.c_contiguous
+            assert b.flags.f_contiguous
         elif order in ['k', 'K', None] and len(shape) == a.ndim:
-            self.assertFalse(b.flags.c_contiguous)
-            self.assertFalse(b.flags.f_contiguous)
+            assert not b.flags.c_contiguous
+            assert not b.flags.f_contiguous
         elif order in ['f', 'F']:
-            self.assertFalse(b.flags.c_contiguous)
-            self.assertTrue(b.flags.f_contiguous)
+            assert not b.flags.c_contiguous
+            assert b.flags.f_contiguous
         else:
-            self.assertTrue(b.flags.c_contiguous)
-            self.assertFalse(b.flags.f_contiguous)
+            assert b.flags.c_contiguous
+            assert not b.flags.f_contiguous
 
         c = cupy.zeros(self.shape)
         c.fill(0)
@@ -415,7 +433,7 @@ class TestBasicReshape(unittest.TestCase):
         bg.fill(0)
 
         # make sure NumPy and CuPy strides agree
-        self.assertEqual(b.strides, bg.strides)
+        assert b.strides == bg.strides
         return
 
     @testing.with_requires('numpy>=1.17.0')

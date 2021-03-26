@@ -6,11 +6,14 @@ try:
     import scipy.fft as scipy_fft
 except ImportError:
     scipy_fft = None
+    scipy = None
+else:
+    import scipy
 import pytest
 
 import cupy as cp
 from cupy import testing
-from cupy.fft.fft import _default_fft_func, _fftn
+from cupy.fft._fft import _default_fft_func, _fftn
 import cupyx.scipy.fft as cp_fft
 from cupyx.scipy.fft import _scipy_150
 
@@ -36,14 +39,27 @@ def _correct_np_dtype(xp, dtype, out):
     return out
 
 
+def _skip_forward_backward(norm):
+    if norm in ('backward', 'forward'):
+        if (scipy_fft is not None
+                and not (np.lib.NumpyVersion(scipy.__version__) >= '1.6.0')):
+            pytest.skip('forward/backward is supported by SciPy 1.6.0+')
+        elif (scipy_fft is None
+                and not (np.lib.NumpyVersion(np.__version__) >= '1.20.0')):
+            pytest.skip('forward/backward is supported by NumPy 1.20+')
+
+
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(9,), (10,), (10, 9), (10, 10)],
     'axis': [-1, 0],
-    'norm': [None, 'ortho']
+    'norm': [None, 'backward', 'ortho', 'forward', '']
 }))
 @testing.gpu
 class TestFft(unittest.TestCase):
+
+    def setUp(self):
+        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -287,20 +303,27 @@ class TestFft(unittest.TestCase):
 
 
 @testing.parameterize(*(
-    testing.product({
-        'shape': [(3, 4)],
-        's': [None, (1, 5)],
-        'axes': [None, (-2, -1), (-1, -2), (0,)],
-        'norm': [None, 'ortho']
-    })
-    + testing.product({
-        'shape': [(2, 3, 4)],
-        's': [None, (1, 5), (1, 4, 10)],
-        'axes': [None, (-2, -1), (-1, -2, -3)],
-        'norm': [None, 'ortho']
-    })))
+    testing.product_dict(
+        testing.product({
+            'shape': [(3, 4)],
+            's': [None, (1, 5)],
+            'axes': [None, (-2, -1), (-1, -2), (0,)],
+        })
+        + testing.product({
+            'shape': [(2, 3, 4)],
+            's': [None, (1, 5), (1, 4, 10)],
+            'axes': [None, (-2, -1), (-1, -2, -3)],
+        }),
+        testing.product({
+            'norm': [None, 'backward', 'ortho', 'forward', '']
+        })
+    )
+))
 @testing.gpu
 class TestFft2(unittest.TestCase):
+
+    def setUp(self):
+        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -537,26 +560,32 @@ class TestFft2(unittest.TestCase):
 
 
 @testing.parameterize(*(
-    testing.product({
-        'shape': [(3, 4)],
-        's': [None, (1, 5)],
-        'axes': [None, (-2, -1), (-1, -2), (0,)],
-        'norm': [None, 'ortho']
-    })
-    + testing.product({
-        'shape': [(2, 3, 4)],
-        's': [None, (1, 5), (1, 4, 10)],
-        'axes': [None, (-2, -1), (-1, -2, -3)],
-        'norm': [None, 'ortho']
-    })
-    + testing.product({
-        'shape': [(2, 3, 4, 5)],
-        's': [None],
-        'axes': [None, (0, 1, 2, 3)],
-        'norm': [None, 'ortho']
-    })))
+    testing.product_dict(
+        testing.product({
+            'shape': [(3, 4)],
+            's': [None, (1, 5)],
+            'axes': [None, (-2, -1), (-1, -2), (0,)],
+        })
+        + testing.product({
+            'shape': [(2, 3, 4)],
+            's': [None, (1, 5), (1, 4, 10)],
+            'axes': [None, (0, 1), (-2, -1), (-1, -2, -3)],
+        })
+        + testing.product({
+            'shape': [(2, 3, 4, 5)],
+            's': [None],
+            'axes': [None, (0, 1, 2, 3)],
+        }),
+        testing.product({
+            'norm': [None, 'backward', 'ortho', 'forward', '']
+        })
+    )
+))
 @testing.gpu
 class TestFftn(unittest.TestCase):
+
+    def setUp(self):
+        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -797,10 +826,13 @@ class TestFftn(unittest.TestCase):
     'n': [None, 5, 10, 15],
     'shape': [(9,), (10,), (10, 9), (10, 10)],
     'axis': [-1, 0],
-    'norm': [None, 'ortho']
+    'norm': [None, 'backward', 'ortho', 'forward', '']
 }))
 @testing.gpu
 class TestRfft(unittest.TestCase):
+
+    def setUp(self):
+        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
@@ -885,8 +917,10 @@ class TestRfft(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    # the irfft tests show a slightly different results in CUDA 11.0 when
+    # compared to SciPy 1.6.1
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -897,7 +931,7 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -907,7 +941,7 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_plan(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -923,7 +957,7 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_overwrite_plan(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -938,7 +972,7 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_plan_manager(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -958,7 +992,7 @@ class TestRfft(unittest.TestCase):
 
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -970,24 +1004,39 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+def _skip_hipFFT_PlanNd_bug(axes, shape):
+    if cp.cuda.runtime.is_hip:
+        # TODO(leofang): test newer ROCm versions
+        if (axes == (0, 1) and shape == (2, 3, 4)):
+            raise unittest.SkipTest("hipFFT's PlanNd for this case is buggy, "
+                                    "so Plan1d is generated instead")
+
+
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
 class TestRfft2(unittest.TestCase):
+
+    def setUp(self):
+        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1014,6 +1063,7 @@ class TestRfft2(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft2_plan(self, xp, dtype):
+        _skip_hipFFT_PlanNd_bug(self.axes, self.shape)
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
 
@@ -1037,6 +1087,7 @@ class TestRfft2(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft2_overwrite_plan(self, xp, dtype):
+        _skip_hipFFT_PlanNd_bug(self.axes, self.shape)
         x = testing.shaped_random(self.shape, xp, dtype)
 
         # hack: skip testing if getting a cuFFT plan is impossible
@@ -1058,6 +1109,7 @@ class TestRfft2(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft2_plan_manager(self, xp, dtype):
+        _skip_hipFFT_PlanNd_bug(self.axes, self.shape)
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
 
@@ -1103,11 +1155,7 @@ class TestRfft2(unittest.TestCase):
         x_orig = x.copy()
         out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes,
                                      norm=self.norm)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1126,6 +1174,8 @@ class TestRfft2(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
+    @unittest.skipIf(cp.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1146,16 +1196,14 @@ class TestRfft2(unittest.TestCase):
             kw = {}
         out = _fft_module(xp).irfft2(
             x, s=self.s, axes=self.axes, norm=self.norm, **kw)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
+    @unittest.skipIf(cp.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1179,6 +1227,8 @@ class TestRfft2(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
+    @unittest.skipIf(cp.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1201,11 +1251,7 @@ class TestRfft2(unittest.TestCase):
             assert get_current_plan() is None
         else:
             out = _fft_module(xp).irfft2(x, s=self.s, axes=self.axes)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1226,24 +1272,31 @@ class TestRfft2(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
 class TestRfftn(unittest.TestCase):
+
+    def setUp(self):
+        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1270,6 +1323,7 @@ class TestRfftn(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn_plan(self, xp, dtype):
+        _skip_hipFFT_PlanNd_bug(self.axes, self.shape)
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
 
@@ -1293,6 +1347,7 @@ class TestRfftn(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn_overwrite_plan(self, xp, dtype):
+        _skip_hipFFT_PlanNd_bug(self.axes, self.shape)
         x = testing.shaped_random(self.shape, xp, dtype)
 
         # hack: skip testing if getting a cuFFT plan is impossible
@@ -1314,6 +1369,7 @@ class TestRfftn(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfftn_plan_manager(self, xp, dtype):
+        _skip_hipFFT_PlanNd_bug(self.axes, self.shape)
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
 
@@ -1359,11 +1415,7 @@ class TestRfftn(unittest.TestCase):
         x_orig = x.copy()
         out = _fft_module(xp).irfftn(x, s=self.s, axes=self.axes,
                                      norm=self.norm)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1382,6 +1434,8 @@ class TestRfftn(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
+    @unittest.skipIf(cp.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1402,16 +1456,14 @@ class TestRfftn(unittest.TestCase):
             kw = {}
         out = _fft_module(xp).irfftn(
             x, s=self.s, axes=self.axes, norm=self.norm, **kw)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
+    @unittest.skipIf(cp.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1435,6 +1487,8 @@ class TestRfftn(unittest.TestCase):
 
     @pytest.mark.skipif(int(cp.cuda.device.get_compute_capability()) < 70,
                         reason="Known to fail with Pascal or older")
+    @unittest.skipIf(cp.cuda.runtime.is_hip,
+                     "hipFFT's PlanNd for C2R is buggy")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1457,11 +1511,7 @@ class TestRfftn(unittest.TestCase):
             assert get_current_plan() is None
         else:
             out = _fft_module(xp).irfftn(x, s=self.s, axes=self.axes)
-
-        # CUDA 10.1 and above may modify input, this fails for complex64
-        if (cp.cuda.runtime.runtimeGetVersion() <= 10000 or
-                dtype not in [np.complex64, np.complex128]):
-            testing.assert_array_equal(x, x_orig)
+        testing.assert_array_equal(x, x_orig)
 
         return _correct_np_dtype(xp, dtype, out)
 
@@ -1486,10 +1536,13 @@ class TestRfftn(unittest.TestCase):
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
     'axis': [0, -1],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
 class TestHfft(unittest.TestCase):
+
+    def setUp(self):
+        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,

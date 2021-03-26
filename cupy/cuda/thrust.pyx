@@ -64,6 +64,10 @@ cdef extern from 'cupy_thrust.h':
 # Python interface
 ###############################################################################
 
+
+available = True
+
+
 def get_build_version():
     return THRUST_VERSION
 

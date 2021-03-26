@@ -196,6 +196,21 @@ class TestJoin(unittest.TestCase):
             with pytest.raises(TypeError):
                 xp.concatenate((a, b, c), axis=1, out=out)
 
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_array_equal()
+    def test_concatenate_different_dtype(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((3, 4), xp, dtype1)
+        b = testing.shaped_arange((3, 4), xp, dtype2)
+        return xp.concatenate((a, b))
+
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    def test_concatenate_out_different_dtype(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((3, 4), xp, dtype1)
+        b = testing.shaped_arange((3, 4), xp, dtype1)
+        out = xp.zeros((6, 4), dtype=dtype2)
+        return xp.concatenate((a, b), out=out)
+
     @testing.numpy_cupy_array_equal()
     def test_dstack(self, xp):
         a = testing.shaped_arange((1, 3, 2), xp)
@@ -267,7 +282,7 @@ class TestJoin(unittest.TestCase):
         b = testing.shaped_arange((2, 3), cupy)
         c = testing.shaped_arange((2, 3), cupy)
         s = cupy.stack((a, b, c))
-        self.assertEqual(s.shape, (3, 2, 3))
+        assert s.shape == (3, 2, 3)
         cupy.testing.assert_array_equal(s[0], a)
         cupy.testing.assert_array_equal(s[1], b)
         cupy.testing.assert_array_equal(s[2], c)
@@ -292,7 +307,7 @@ class TestJoin(unittest.TestCase):
         a = testing.shaped_arange((2, 3), cupy)
         s = cupy.stack((a, a), axis=1)
 
-        self.assertEqual(s.shape, (2, 2, 3))
+        assert s.shape == (2, 2, 3)
         cupy.testing.assert_array_equal(s[:, 0, :], a)
         cupy.testing.assert_array_equal(s[:, 1, :], a)
 
@@ -305,7 +320,7 @@ class TestJoin(unittest.TestCase):
         a = testing.shaped_arange((2, 3), cupy)
         s = cupy.stack((a, a), axis=-1)
 
-        self.assertEqual(s.shape, (2, 3, 2))
+        assert s.shape == (2, 3, 2)
         cupy.testing.assert_array_equal(s[:, :, 0], a)
         cupy.testing.assert_array_equal(s[:, :, 1], a)
 

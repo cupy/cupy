@@ -11,8 +11,9 @@ from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
                                TextureObject, TextureReference,
                                SurfaceObject)
 
-
-dev = cupy.cuda.Device(runtime.getDevice())
+if cupy.cuda.runtime.is_hip:
+    pytest.skip('HIP texture support is not yet ready',
+                allow_module_level=True)
 
 
 @testing.gpu
@@ -41,8 +42,7 @@ class TestCUDAarray(unittest.TestCase):
             arr = xp.random.random(shape).astype(self.dtype)
             kind = runtime.cudaChannelFormatKindFloat
         else:  # int
-            # randint() in NumPy <= 1.10 does not have the dtype argument...
-            arr = xp.random.randint(100, size=shape).astype(self.dtype)
+            arr = xp.random.randint(100, size=shape, dtype=self.dtype)
             if self.dtype in (numpy.int8, numpy.int16, numpy.int32):
                 kind = runtime.cudaChannelFormatKindSigned
             else:
@@ -56,10 +56,14 @@ class TestCUDAarray(unittest.TestCase):
         ch_bits = [0, 0, 0, 0]
         for i in range(n_channel):
             ch_bits[i] = arr.dtype.itemsize*8
-        # unpacking arguments using *ch_bits is not supported before PY35...
-        ch = ChannelFormatDescriptor(ch_bits[0], ch_bits[1], ch_bits[2],
-                                     ch_bits[3], kind)
+        ch = ChannelFormatDescriptor(*ch_bits, kind)
         cu_arr = CUDAarray(ch, width, height, depth)
+
+        # need to wait for the current stream to finish initialization
+        if stream is not None:
+            s = cupy.cuda.get_current_stream()
+            e = s.record()
+            stream.wait_event(e)
 
         # copy from input to CUDA array, and back to output
         cu_arr.copy_from(arr, stream)
@@ -67,7 +71,7 @@ class TestCUDAarray(unittest.TestCase):
 
         # check input and output are identical
         if stream is not None:
-            dev.synchronize()
+            stream.synchronize()
         assert (arr == arr2).all()
 
 

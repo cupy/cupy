@@ -67,7 +67,12 @@ cpdef tuple get_dtype_with_itemsize(t):
 
 
 cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
-    cdef str dtype_char = dtype.char
+    cdef str dtype_char
+    try:
+        dtype_char = dtype.char
+    except AttributeError:
+        dtype_char = dtype
+
     if dtype_char == 'e' and is_half_allowed:
         return runtime.CUDA_R_16F
     elif dtype_char == 'f':
@@ -78,5 +83,8 @@ cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
         return runtime.CUDA_C_32F
     elif dtype_char == 'D':
         return runtime.CUDA_C_64F
+    elif dtype_char == 'E' and is_half_allowed:
+        # complex32, not supported in NumPy
+        return runtime.CUDA_C_16F
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))

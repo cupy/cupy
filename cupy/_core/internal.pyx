@@ -5,9 +5,12 @@ cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 
-from cupy._core.core cimport ndarray
-
 import sys
+import warnings
+
+import numpy
+
+from cupy._core.core cimport ndarray
 
 
 cdef extern from 'halffloat.h':
@@ -46,6 +49,11 @@ cpdef inline bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x):
 @cython.profile(False)
 cpdef inline tuple get_size(object size):
     if size is None:
+        warnings.warn(
+            'Passing None into shape arguments as an alias for () is '
+            'deprecated.',
+            DeprecationWarning,
+        )
         return ()
     if cpython.PySequence_Check(size):
         return tuple(size)
@@ -363,9 +371,96 @@ cdef _broadcast_core(list arrays, shape_t& shape):
 cpdef bint _contig_axes(tuple axes):
     # Indicate if the specified axes are in ascending order without gaps.
     cdef Py_ssize_t n
-    cdef bint contig = True
-    for n in range(1, len(axes)):
+    cdef int n_ax = len(axes)
+    cdef bint contig = n_ax > 0
+    for n in range(1, n_ax):
         contig = (axes[n] - axes[n - 1]) == 1
         if not contig:
             break
     return contig
+
+
+cpdef Py_ssize_t _normalize_axis_index(
+        Py_ssize_t axis, Py_ssize_t ndim) except -1:
+    """
+    Normalizes an axis index, ``axis``, such that is a valid positive index
+    into the shape of array with ``ndim`` dimensions. Raises a ValueError
+    with an appropriate message if this is not possible.
+
+    Args:
+        axis (int):
+            The un-normalized index of the axis. Can be negative
+        ndim (int):
+            The number of dimensions of the array that ``axis`` should be
+            normalized against
+
+    Returns:
+        int:
+            The normalized axis index, such that `0 <= normalized_axis < ndim`
+
+    """
+    if not (-ndim <= axis < ndim):
+        raise numpy.AxisError(axis, ndim)
+    if axis < 0:
+        axis += ndim
+    return axis
+
+
+cpdef tuple _normalize_axis_indices(
+        axes, Py_ssize_t ndim, cpp_bool sort_axes=True):
+    """Normalize axis indices.
+
+    Args:
+        axis (int, tuple of int or None):
+            The un-normalized indices of the axis. Can be negative.
+        ndim (int):
+            The number of dimensions of the array that ``axis`` should be
+            normalized against
+        sort_axes (bool):
+            If provided as False will not sort the axes, default is to return
+            the sorted values.
+
+    Returns:
+        tuple of int:
+            The tuple of normalized axis indices.
+    """
+    if axes is None:
+        axes = tuple(range(ndim))
+    elif not isinstance(axes, tuple):
+        axes = axes,
+
+    res = []
+    for axis in axes:
+        axis = _normalize_axis_index(axis, ndim)
+        if axis in res:
+            raise ValueError('Duplicate value in \'axis\'')
+        res.append(axis)
+
+    return tuple(sorted(res) if sort_axes else res)
+
+
+cpdef tuple _broadcast_shapes(shapes):
+    """Broadcast shapes together.
+
+    Args:
+        shapes (list of tuples of int):
+            shapes that will be broadcasted together.
+
+    Returns:
+        tuple of int:
+            Resulting shape of broadcasting shapes together.
+    """
+    out_ndim = max([len(shape) for shape in shapes])
+    shapes = [(1,) * (out_ndim - len(shape)) + shape for shape in shapes]
+
+    result_shape = []
+    for dims in zip(*shapes):
+        dims = [dim for dim in dims if dim != 1]
+        out_dim = 1 if len(dims) == 0 else dims[0]
+        if any([dim != out_dim for dim in dims]):
+            raise ValueError(
+                'Operands could not be broadcast together with shapes' +
+                ' '.join([str(shape) for shape in shapes]))
+        result_shape.append(out_dim)
+
+    return tuple(result_shape)

@@ -8,7 +8,7 @@ from cupy_backends.cuda.api import runtime as runtime_module
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy_backends.cuda.libs import cusparse
-from cupy import util
+from cupy import _util
 
 
 # This flag is kept for backward compatibility.
@@ -67,7 +67,7 @@ cpdef str get_compute_capability():
     return Device().compute_capability
 
 
-@util.memoize()
+@_util.memoize()
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""
     d = {}
@@ -299,11 +299,13 @@ def from_pointer(ptr):
     """Extracts a Device object from a device pointer.
 
     Args:
-        ptr (ctypes.c_void_p): Pointer to the device memory.
+        ptr (int): Pointer to the device memory.
 
     Returns:
         Device: The device whose memory the pointer refers to.
 
     """
+    # Initialize a context to workaround a bug in CUDA 10.2+. (#3991)
+    runtime._ensure_context()
     attrs = runtime.pointerGetAttributes(ptr)
     return Device(attrs.device)

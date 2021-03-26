@@ -19,7 +19,7 @@ from libcpp cimport vector
 # Extern
 ###############################################################################
 
-cdef extern from '../cupy_cuda.h' nogil:
+cdef extern from '../../cupy_backend.h' nogil:
     # Error handling
     int cuGetErrorName(Result error, const char** pStr)
     int cuGetErrorString(Result error, const char** pStr)
@@ -96,6 +96,7 @@ cdef extern from '../cupy_cuda.h' nogil:
 
     # Build-time version
     int CUDA_VERSION
+    int HIP_VERSION
 
 
 ###############################################################################
@@ -125,7 +126,7 @@ cpdef inline check_status(int status):
 
 
 @cython.profile(False)
-cdef inline check_attribute_status(int status, int* pi):
+cdef inline void check_attribute_status(int status, int* pi) except *:
     # set attribute to -1 on older versions of CUDA where it was undefined
     if status == CUDA_ERROR_INVALID_VALUE:
         pi[0] = -1
@@ -137,8 +138,14 @@ cdef inline check_attribute_status(int status, int* pi):
 # Build-time version
 ###############################################################################
 
-def get_build_version():
-    return CUDA_VERSION
+cpdef get_build_version():
+    # The versions are mutually exclusive
+    if CUDA_VERSION > 0:
+        return CUDA_VERSION
+    elif HIP_VERSION > 0:
+        return HIP_VERSION
+    else:
+        return 0
 
 
 ###############################################################################
@@ -317,7 +324,8 @@ cpdef launchCooperativeKernel(
 # Function attributes
 ###############################################################################
 
-cpdef int funcGetAttribute(int attribute, intptr_t f):
+# -1 is reserved by check_attribute_status
+cpdef int funcGetAttribute(int attribute, intptr_t f) except? -2:
     cdef int pi
     with nogil:
         status = cuFuncGetAttribute(

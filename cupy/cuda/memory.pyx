@@ -19,10 +19,11 @@ from libc.stdint cimport intptr_t
 from libcpp cimport algorithm
 
 from cupy.cuda cimport device
-from cupy.cuda cimport device as device_mod
 from cupy.cuda cimport memory_hook
 from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport runtime
+
+from cupy import _util
 
 
 cdef bint _exit_mode = False
@@ -100,9 +101,89 @@ cdef class Memory(BaseMemory):
             self.ptr = runtime.malloc(size)
 
     def __dealloc__(self):
+        # Note: Cannot raise in the destructor! (cython/cython#1613)
         if self.ptr:
-            syncdetect._declare_synchronize()
             runtime.free(self.ptr)
+
+
+cdef inline void async_alloc_check() except*:
+    cdef int dev_id
+    cdef list support = [runtime.deviceGetAttribute(
+        runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
+        for dev_id in range(runtime.getDeviceCount())]
+    _thread_local.device_support_async_alloc = support
+
+
+cdef inline void is_async_alloc_supported(int device_id) except*:
+    if CUDA_VERSION < 11020:
+        raise RuntimeError("memory_async is supported since CUDA 11.2")
+    if runtime._is_hip_environment:
+        raise RuntimeError('HIP does not support memory_async')
+    global is_async_alloc_support_checked
+    if not is_async_alloc_support_checked:
+        async_alloc_check()
+        is_async_alloc_support_checked = True
+    is_supported = _thread_local.device_support_async_alloc[device_id]
+    if not is_supported:
+        raise RuntimeError('Device {} does not support '
+                           'malloc_async'.format(device_id))
+
+
+cdef bint is_async_alloc_support_checked = False
+
+
+@cython.no_gc
+cdef class MemoryAsync(BaseMemory):
+    """Asynchronous memory allocation on a CUDA device.
+
+    This class provides an RAII interface of the CUDA memory allocation.
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+        stream (intptr_t): Pointer to the stream on which the memory is
+            allocated and freed.
+    """
+    cdef:
+        readonly intptr_t stream
+
+    def __init__(self, size_t size, intptr_t stream):
+        # TODO(leofang): perhaps we should align the memory ourselves?
+        # size = _round_size(size)
+        self.size = size
+        self.device_id = device.get_device_id()
+        # The stream is allowed to be destroyed before the memory is freed, so
+        # we don't need to hold a reference to the stream.
+        self.stream = stream
+        is_async_alloc_supported(self.device_id)
+        if size > 0:
+            self.ptr = runtime.mallocAsync(size, stream)
+
+    def __dealloc__(self):
+        # Free is attempted in the following order until success:
+        # 1. Free on the stream on which this memory was allocated
+        # 2. Free on the current stream, as self.stream is likely
+        #    destroyed by now. To enable this we trust the user
+        #    has established a correct stream order.
+        # 3. Free synchronously (unlikely to happen)
+        # Note: Cannot raise in the destructor! (cython/cython#1613)
+
+        cdef intptr_t curr_stream = self.stream
+        cdef tuple ok_errors = (runtime.errorInvalidResourceHandle,
+                                runtime.errorContextIsDestroyed,)
+
+        if self.ptr:
+            try:
+                runtime.freeAsync(self.ptr, curr_stream)
+            except runtime.CUDARuntimeError as e:
+                if e.status not in ok_errors:
+                    raise
+                try:
+                    curr_stream = stream_module.get_current_stream_ptr()
+                    runtime.freeAsync(self.ptr, curr_stream)
+                except runtime.CUDARuntimeError as e:
+                    if e.status not in ok_errors:
+                        raise
+                    runtime.free(self.ptr)
 
 
 cdef class UnownedMemory(BaseMemory):
@@ -129,6 +210,8 @@ cdef class UnownedMemory(BaseMemory):
             if ptr == 0:
                 raise RuntimeError('UnownedMemory requires explicit'
                                    ' device ID for a null pointer.')
+            # Initialize a context to workaround a bug in CUDA 10.2+. (#3991)
+            runtime._ensure_context()
             ptr_attrs = runtime.pointerGetAttributes(ptr)
             device_id = ptr_attrs.device
         self.size = size
@@ -150,6 +233,8 @@ cdef class ManagedMemory(BaseMemory):
     """
 
     def __init__(self, size_t size):
+        if runtime._is_hip_environment:
+            raise RuntimeError('HIP does not support managed memory')
         self.size = size
         self.device_id = device.get_device_id()
         self.ptr = 0
@@ -165,15 +250,20 @@ cdef class ManagedMemory(BaseMemory):
         runtime.memPrefetchAsync(self.ptr, self.size, self.device_id,
                                  stream.ptr)
 
-    def advise(self, int advise, device_mod.Device device):
+    def advise(self, int advise, device.Device dev):
         """(experimental) Advise about the usage of this memory.
 
         Args:
             advics (int): Advise to be applied for this memory.
-            device (cupy.cuda.Device): Device to apply the advice for.
+            dev (cupy.cuda.Device): Device to apply the advice for.
 
         """
-        runtime.memAdvise(self.ptr, self.size, advise, device.id)
+        runtime.memAdvise(self.ptr, self.size, advise, dev.id)
+
+    def __dealloc__(self):
+        # Note: Cannot raise in the destructor! (cython/cython#1613)
+        if self.ptr:
+            runtime.free(self.ptr)
 
 
 cdef set _peer_access_checked = set()
@@ -360,20 +450,21 @@ cdef class MemoryPointer:
         """Copies a memory sequence from the host memory.
 
         Args:
-            mem (ctypes.c_void_p): Source memory pointer.
+            mem (int or ctypes.c_void_p): Source memory pointer.
             size (int): Size of the sequence in bytes.
 
         """
         if size > 0:
-            runtime.memcpy(self.ptr, mem.value, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpy(self.ptr, ptr, size,
                            runtime.memcpyHostToDevice)
 
     cpdef copy_from_host_async(self, mem, size_t size, stream=None):
         """Copies a memory sequence from the host memory asynchronously.
 
         Args:
-            mem (ctypes.c_void_p): Source memory pointer. It must be a pinned
-                memory.
+            mem (int or ctypes.c_void_p): Source memory pointer. It must point
+                to pinned memory.
             size (int): Size of the sequence in bytes.
             stream (cupy.cuda.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
@@ -384,7 +475,8 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            runtime.memcpyAsync(self.ptr, mem.value, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpyAsync(self.ptr, ptr, size,
                                 runtime.memcpyHostToDevice, stream_ptr)
 
     cpdef copy_from(self, mem, size_t size):
@@ -395,8 +487,8 @@ cdef class MemoryPointer:
         :meth:`~cupy.cuda.MemoryPointer.copy_from_host`.
 
         Args:
-            mem (ctypes.c_void_p or cupy.cuda.MemoryPointer): Source memory
-                pointer.
+            mem (int or ctypes.c_void_p or cupy.cuda.MemoryPointer):
+                Source memory pointer.
             size (int): Size of the sequence in bytes.
 
         """
@@ -413,8 +505,8 @@ cdef class MemoryPointer:
         :meth:`~cupy.cuda.MemoryPointer.copy_from_host_async`.
 
         Args:
-            mem (ctypes.c_void_p or cupy.cuda.MemoryPointer): Source memory
-                pointer.
+            mem (int or ctypes.c_void_p or cupy.cuda.MemoryPointer):
+                Source memory pointer.
             size (int): Size of the sequence in bytes.
             stream (cupy.cuda.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
@@ -429,20 +521,21 @@ cdef class MemoryPointer:
         """Copies a memory sequence to the host memory.
 
         Args:
-            mem (ctypes.c_void_p): Target memory pointer.
+            mem (int or ctypes.c_void_p): Target memory pointer.
             size (int): Size of the sequence in bytes.
 
         """
         if size > 0:
-            runtime.memcpy(mem.value, self.ptr, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpy(ptr, self.ptr, size,
                            runtime.memcpyDeviceToHost)
 
     cpdef copy_to_host_async(self, mem, size_t size, stream=None):
         """Copies a memory sequence to the host memory asynchronously.
 
         Args:
-            mem (ctypes.c_void_p): Target memory pointer. It must be a pinned
-                memory.
+            mem (int or ctypes.c_void_p): Target memory pointer. It must point
+                to pinned memory.
             size (int): Size of the sequence in bytes.
             stream (cupy.cuda.Stream): CUDA stream.
                 The default uses CUDA stream of the current context.
@@ -453,7 +546,8 @@ cdef class MemoryPointer:
         else:
             stream_ptr = stream.ptr
         if size > 0:
-            runtime.memcpyAsync(mem.value, self.ptr, size,
+            ptr = mem if isinstance(mem, int) else mem.value
+            runtime.memcpyAsync(ptr, self.ptr, size,
                                 runtime.memcpyDeviceToHost, stream_ptr)
 
     cpdef memset(self, int value, size_t size):
@@ -510,6 +604,40 @@ cdef class MemoryPointer:
 # cpdef because unit-tested
 cpdef MemoryPointer _malloc(size_t size):
     mem = Memory(size)
+    return MemoryPointer(mem, 0)
+
+
+cpdef MemoryPointer malloc_async(size_t size):
+    """(Experimental) Allocate memory from Stream Ordered Memory Allocator.
+
+    This method can be used as a CuPy memory allocator. The simplest way to
+    use CUDA's Stream Ordered Memory Allocator as the default allocator is
+    the following code::
+
+        set_allocator(malloc_async)
+
+    Using this feature requires CUDA >= 11.2 with a supported GPU and platform.
+    If it is not supported, an error will be raised.
+
+    The current CuPy stream is used to allocate/free the memory.
+
+    Args:
+        size (int): Size of the memory allocation in bytes.
+
+    Returns:
+        ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+
+    .. warning::
+        This feature is currently experimental and subject to change.
+
+    .. seealso:: `Stream Ordered Memory Allocator`_
+
+    .. _Stream Ordered Memory Allocator:
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY__POOLS.html
+    """
+    cdef intptr_t stream_ptr
+    stream_ptr = stream_module.get_current_stream_ptr()
+    mem = MemoryAsync(size, stream_ptr)
     return MemoryPointer(mem, 0)
 
 
@@ -586,6 +714,8 @@ cpdef set_allocator(allocator=None):
     if getattr(_thread_local, 'allocator', None) is not None:
         raise ValueError('Can\'t change the global allocator inside '
                          '`using_allocator` context manager')
+    if allocator is malloc_async:
+        _util.experimental('cupy.cuda.malloc_async')
     _current_allocator = allocator
 
 
@@ -1268,6 +1398,11 @@ cdef class MemoryPool(object):
             stream (cupy.cuda.Stream): Release free blocks in the arena
                 of the given stream. The default releases blocks in all
                 arenas.
+
+        .. note::
+            A memory pool may split a free block for space efficiency. A split
+            block is not released until all its parts are merged back into one
+            even if :meth:`free_all_blocks` is called.
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         mp.free_all_blocks(stream=stream)
@@ -1360,9 +1495,9 @@ ctypedef void*(*malloc_func_type)(void*, size_t, int)
 ctypedef void(*free_func_type)(void*, void*, int)
 
 
-cdef size_t _call_malloc(
+cdef intptr_t _call_malloc(
         intptr_t param, intptr_t malloc_func, Py_ssize_t size, int device_id):
-    return <size_t>(
+    return <intptr_t>(
         (<malloc_func_type>malloc_func)(<void*>param, size, device_id))
 
 
@@ -1428,4 +1563,59 @@ cdef class CFunctionAllocator:
     cpdef MemoryPointer malloc(self, size_t size):
         mem = CFunctionAllocatorMemory(size, self._param, self._malloc_func,
                                        self._free_func, device.get_device_id())
+        return MemoryPointer(mem, 0)
+
+
+cdef class PythonFunctionAllocatorMemory(BaseMemory):
+
+    def __init__(self, size_t size, malloc_func, free_func,
+                 int device_id):
+        self._free_func = free_func
+        self.device_id = device_id
+        self.size = size
+        self.ptr = 0
+        if size > 0:
+            self.ptr = malloc_func(size, device_id)
+
+    def __dealloc__(self):
+        if self.ptr:
+            self._free_func(self.ptr, self.device_id)
+
+
+cdef class PythonFunctionAllocator:
+
+    """Allocator with python functions to perform memory allocation.
+
+    This allocator keeps functions corresponding to *malloc* and *free*,
+    delegating the actual allocation to external sources while only
+    handling the timing of the resource allocation and deallocation.
+
+    *malloc* should follow the signature ``malloc(int, int) -> int``
+    returning the pointer to the allocated memory given the *param* object,
+    the number of bytes to allocate and the device id on which the
+    allocation should take place.
+
+    Similarly, *free* should follow the signature
+    ``free(int, int)`` with no return, taking the pointer to the
+    allocated memory and the device id on which the memory was allocated.
+
+    If the external memory management supports asynchronous operations,
+    the current CuPy stream can be retrieved inside ``malloc_func`` and
+    ``free_func`` by calling :func:`cupy.cuda.get_current_stream()`. To
+    use external streams, wrap them with :func:`cupy.cuda.ExternalStream`.
+
+    Args:
+        malloc_func (function): *malloc* function to be called.
+        free_func (function): *free* function to be called.
+
+    """
+
+    def __init__(self, malloc_func, free_func):
+        self._malloc_func = malloc_func
+        self._free_func = free_func
+
+    cpdef MemoryPointer malloc(self, size_t size):
+        mem = PythonFunctionAllocatorMemory(
+            size, self._malloc_func,
+            self._free_func, device.get_device_id())
         return MemoryPointer(mem, 0)

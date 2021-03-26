@@ -115,6 +115,50 @@ Changing Memory Pool
 You can use your own memory allocator instead of the default memory pool by passing the memory allocation function to :func:`cupy.cuda.set_allocator` / :func:`cupy.cuda.set_pinned_memory_allocator`.
 The memory allocator function should take 1 argument (the requested size in bytes) and return :class:`cupy.cuda.MemoryPointer` / :class:`cupy.cuda.PinnedMemoryPointer`.
 
+CuPy provides two such allocators for using managed memory and stream ordered memory on GPU,
+see :func:`cupy.cuda.malloc_managed` and :func:`cupy.cuda.malloc_async`, respectively, for details.
+To enable a memory pool backed by managed memory, you can construct a new :class:`~cupy.cuda.MemoryPool` instance with its allocator
+set to :func:`~cupy.cuda.malloc_managed` as follows
+
+.. code-block:: py
+
+    import cupy
+
+    # Use managed memory
+    cupy.cuda.set_allocator(cupy.cuda.MemoryPool(cupy.cuda.malloc_managed).malloc)
+
+Note that if you pass :func:`~cupy.cuda.malloc_managed` directly to :func:`~cupy.cuda.set_allocator` without constructing
+a :class:`~cupy.cuda.MemoryPool` instance, when the memory is freed it will be released back to the system immediately,
+which may or may not be desired.
+
+Stream Ordered Memory Allocator is a new feature added since CUDA 11.2. CuPy provides an *experimental* interface to it.
+Similar to CuPy's memory pool, Stream Ordered Memory Allocator also allocates and deallocates memory *asynchronously* from
+a memory pool in a stream-ordered fashion. The key difference is that it is a built-in feature provided in CUDA by NVIDIA.
+To enable a memory pool that manages stream ordered memory, you can do
+
+.. code-block:: py
+
+    import cupy
+
+    # Use asynchronous stream ordered memory
+    cupy.cuda.set_allocator(cupy.cuda.malloc_async)
+
+    # Create a custom stream
+    s = cupy.cuda.Stream()
+
+    # This would allocate memory asynchronously on stream s
+    with s:
+        a = cupy.empty((100,), dtype=cupy.float64)
+
+Note that in this case we do not create a new :class:`~cupy.cuda.MemoryPool` instance, as the pool is directly managed
+by the CUDA driver. (Currently CuPy uses the device's default memory pool, but it is not guaranteed.)
+
+When using stream ordered memory, it is important that you maintain a correct stream semantics yourselves using, for example,
+the :class:`~cupy.cuda.Stream` and :class:`~cupy.cuda.Event` APIs (see :doc:`cuda` for details); CuPy does not
+attempt to act smartly for you. Upon deallocation, the memory is freed asynchronously either on the stream it was
+allocated (first attempt), or on any current CuPy stream (second attempt). It is permitted that the stream on which the
+memory was allocated gets destroyed before all memory allocated on it is freed.
+
 You can even disable the default memory pool by the code below.
 Be sure to do this before any other CuPy operations.
 

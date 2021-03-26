@@ -1,6 +1,5 @@
-import cupy
 from cupy.random import _generator
-from cupy import util
+from cupy import _util
 
 
 # TODO(beam2d): Implement many distributions
@@ -27,8 +26,7 @@ def beta(a, b, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the beta distribution.
 
     .. seealso::
-        :meth:`numpy.random.beta
-        <numpy.random.mtrand.RandomState.beta>`
+        :func:`numpy.random.beta`
     """
     rs = _generator.get_random_state()
     return rs.beta(a, b, size, dtype)
@@ -55,8 +53,7 @@ def binomial(n, p, size=None, dtype=int):
         cupy.ndarray: Samples drawn from the binomial distribution.
 
     .. seealso::
-        :meth:`numpy.random.binomial
-        <numpy.random.mtrand.RandomState.binomial>`
+        :func:`numpy.random.binomial`
     """
     rs = _generator.get_random_state()
     return rs.binomial(n, p, size, dtype)
@@ -82,8 +79,7 @@ def chisquare(df, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the chi-square distribution.
 
     .. seealso::
-        :meth:`numpy.random.chisquare
-        <numpy.random.mtrand.RandomState.chisquare>`
+        :func:`numpy.random.chisquare`
     """
     rs = _generator.get_random_state()
     return rs.chisquare(df, size, dtype)
@@ -112,8 +108,7 @@ def dirichlet(alpha, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the dirichlet distribution.
 
     .. seealso::
-        :meth:`numpy.random.dirichlet
-        <numpy.random.mtrand.RandomState.dirichlet>`
+        :func:`numpy.random.dirichlet`
     """
     rs = _generator.get_random_state()
     return rs.dirichlet(alpha, size, dtype)
@@ -140,8 +135,7 @@ def exponential(scale, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the exponential distribution.
 
     .. seealso::
-        :meth:`numpy.random.exponential
-        <numpy.random.mtrand.RandomState.exponential>`
+        :func:`numpy.random.exponential`
     """
     rs = _generator.get_random_state()
     return rs.exponential(scale, size, dtype)
@@ -174,8 +168,7 @@ def f(dfnum, dfden, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the f distribution.
 
     .. seealso::
-        :meth:`numpy.random.f
-        <numpy.random.mtrand.RandomState.f>`
+        :func:`numpy.random.f`
     """
     rs = _generator.get_random_state()
     return rs.f(dfnum, dfden, size, dtype)
@@ -201,8 +194,7 @@ def gamma(shape, scale=1.0, size=None, dtype=float):
     Returns:cupy.ndarray: Samples drawn from the gamma distribution.
 
     .. seealso::
-        :meth:`numpy.random.gamma
-        <numpy.random.mtrand.RandomState.gamma>`
+        :func:`numpy.random.gamma`
     """
     rs = _generator.get_random_state()
     return rs.gamma(shape, scale, size, dtype)
@@ -228,9 +220,7 @@ def geometric(p, size=None, dtype=int):
         cupy.ndarray: Samples drawn from the geometric distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.geometric`
-        :meth:`numpy.random.geometric
-        <numpy.random.mtrand.RandomState.geometric>`
+        :func:`numpy.random.geometric`
     """
     rs = _generator.get_random_state()
     return rs.geometric(p, size, dtype)
@@ -263,8 +253,7 @@ def gumbel(loc=0.0, scale=1.0, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the Gumbel distribution.
 
     .. seealso::
-        :meth:`numpy.random.gumbel
-        <numpy.random.mtrand.RandomState.gumbel>`
+        :func:`numpy.random.gumbel`
     """
     rs = _generator.get_random_state()
     return rs.gumbel(loc, scale, size, dtype)
@@ -295,8 +284,7 @@ def hypergeometric(ngood, nbad, nsample, size=None, dtype=int):
         cupy.ndarray: Samples drawn from the hypergeometric distribution.
 
     .. seealso::
-        :meth:`numpy.random.hypergeometric
-        <numpy.random.mtrand.RandomState.hypergeometric>`
+        :func:`numpy.random.hypergeometric`
     """
     rs = _generator.get_random_state()
     return rs.hypergeometric(ngood, nbad, nsample, size, dtype)
@@ -323,8 +311,7 @@ def logistic(loc=0.0, scale=1.0, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the logistic distribution.
 
     .. seealso::
-        :meth:`numpy.random.logistic
-        <numpy.random.mtrand.RandomState.logistic>`
+        :func:`numpy.random.logistic`
     """
     rs = _generator.get_random_state()
     return rs.logistic(loc, scale, size, dtype)
@@ -351,8 +338,7 @@ def laplace(loc=0.0, scale=1.0, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the laplace distribution.
 
     .. seealso::
-        :meth:`numpy.random.laplace
-        <numpy.random.mtrand.RandomState.laplace>`
+        :func:`numpy.random.laplace`
     """
     rs = _generator.get_random_state()
     return rs.laplace(loc, scale, size, dtype)
@@ -375,8 +361,7 @@ def lognormal(mean=0.0, sigma=1.0, size=None, dtype=float):
     Returns:
         cupy.ndarray: Samples drawn from the log normal distribution.
 
-    .. seealso:: :meth:`numpy.random.lognormal
-                 <numpy.random.mtrand.RandomState.lognormal>`
+    .. seealso:: :func:`numpy.random.lognormal`
 
     """
     rs = _generator.get_random_state()
@@ -402,8 +387,7 @@ def logseries(p, size=None, dtype=int):
     Returns:
         cupy.ndarray: Samples drawn from the log series distribution.
 
-    .. seealso:: :meth:`numpy.random.logseries
-                 <numpy.random.mtrand.RandomState.logseries>`
+    .. seealso:: :func:`numpy.random.logseries`
 
     """
     rs = _generator.get_random_state()
@@ -431,8 +415,7 @@ def negative_binomial(n, p, size=None, dtype=int):
         cupy.ndarray: Samples drawn from the negative binomial distribution.
 
     .. seealso::
-        :meth:`numpy.random.negative_binomial
-        <numpy.random.mtrand.RandomState.negative_binomial>`
+        :func:`numpy.random.negative_binomial`
     """
     rs = _generator.get_random_state()
     return rs.negative_binomial(n, p, size=size, dtype=dtype)
@@ -487,15 +470,13 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore',
         the specified `method` for other matrices (i.e., not positive
         semi-definite), and will warn if decomposition is suspect.
 
-    .. seealso:: :meth:`numpy.random.multivariate_normal
-                 <numpy.random.mtrand.RandomState.multivariate_normal>`
+    .. seealso:: :func:`numpy.random.multivariate_normal`
 
     """
-    util.experimental('cupy.random.multivariate_normal')
+    _util.experimental('cupy.random.multivariate_normal')
     rs = _generator.get_random_state()
-    x = rs.multivariate_normal(mean, cov, size, check_valid, tol, method,
-                               dtype)
-    return x
+    return rs.multivariate_normal(
+        mean, cov, size, check_valid, tol, method, dtype)
 
 
 def normal(loc=0.0, scale=1.0, size=None, dtype=float):
@@ -513,15 +494,11 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
     Returns:
         cupy.ndarray: Normally distributed samples.
 
-    .. seealso:: :meth:`numpy.random.normal
-                 <numpy.random.mtrand.RandomState.normal>`
+    .. seealso:: :func:`numpy.random.normal`
 
     """
     rs = _generator.get_random_state()
-    x = rs.normal(0, 1, size, dtype)
-    cupy.multiply(x, scale, out=x)
-    cupy.add(x, loc, out=x)
-    return x
+    return rs.normal(loc, scale, size, dtype)
 
 
 def pareto(a, size=None, dtype=float):
@@ -544,12 +521,10 @@ def pareto(a, size=None, dtype=float):
     Returns:
         cupy.ndarray: Samples drawn from the Pareto II distribution.
 
-    .. seealso:: :meth:`numpy.random.pareto
-                 <numpy.random.mtrand.RandomState.pareto>`
+    .. seealso:: :func:`numpy.random.pareto`
     """
     rs = _generator.get_random_state()
-    x = rs.pareto(a, size, dtype)
-    return x
+    return rs.pareto(a, size, dtype)
 
 
 def noncentral_chisquare(df, nonc, size=None, dtype=float):
@@ -579,8 +554,7 @@ def noncentral_chisquare(df, nonc, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the noncentral chisquare distribution.
 
     .. seealso::
-        :meth:`numpy.random.noncentral_chisquare
-        <numpy.random.mtrand.RandomState.noncentral_chisquare>`
+        :func:`numpy.random.noncentral_chisquare`
     """
     rs = _generator.get_random_state()
     return rs.noncentral_chisquare(df, nonc, size=size, dtype=dtype)
@@ -607,8 +581,7 @@ def noncentral_f(dfnum, dfden, nonc, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the noncentral F distribution.
 
     .. seealso::
-        :meth:`numpy.random.noncentral_f
-        <numpy.random.mtrand.RandomState.noncentral_f>`
+        :func:`numpy.random.noncentral_f`
     """
     rs = _generator.get_random_state()
     return rs.noncentral_f(dfnum, dfden, nonc, size=size, dtype=dtype)
@@ -634,12 +607,10 @@ def poisson(lam=1.0, size=None, dtype=int):
     Returns:
         cupy.ndarray: Samples drawn from the poisson distribution.
 
-    .. seealso:: :meth:`numpy.random.poisson
-                 <numpy.random.mtrand.RandomState.poisson>`
+    .. seealso:: :func:`numpy.random.poisson`
     """
     rs = _generator.get_random_state()
-    x = rs.poisson(lam, size, dtype)
-    return x
+    return rs.poisson(lam, size, dtype)
 
 
 def power(a, size=None, dtype=float):
@@ -662,8 +633,7 @@ def power(a, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the power distribution.
 
     .. seealso::
-        :meth:`numpy.random.power
-        <numpy.random.mtrand.RandomState.power>`
+        :func:`numpy.random.power`
     """
     rs = _generator.get_random_state()
     return rs.power(a, size, dtype)
@@ -688,12 +658,10 @@ def rayleigh(scale=1.0, size=None, dtype=float):
     Returns:
         cupy.ndarray: Samples drawn from the rayleigh distribution.
 
-    .. seealso:: :meth:`numpy.random.rayleigh
-                 <numpy.random.mtrand.RandomState.rayleigh>`
+    .. seealso:: :func:`numpy.random.rayleigh`
     """
     rs = _generator.get_random_state()
-    x = rs.rayleigh(scale, size, dtype)
-    return x
+    return rs.rayleigh(scale, size, dtype)
 
 
 def standard_cauchy(size=None, dtype=float):
@@ -714,12 +682,10 @@ def standard_cauchy(size=None, dtype=float):
     Returns:
         cupy.ndarray: Samples drawn from the standard cauchy distribution.
 
-    .. seealso:: :meth:`numpy.random.standard_cauchy
-                 <numpy.random.mtrand.RandomState.standard_cauchy>`
+    .. seealso:: :func:`numpy.random.standard_cauchy`
     """
     rs = _generator.get_random_state()
-    x = rs.standard_cauchy(size, dtype)
-    return x
+    return rs.standard_cauchy(size, dtype)
 
 
 def standard_exponential(size=None, dtype=float):
@@ -740,8 +706,7 @@ def standard_exponential(size=None, dtype=float):
     Returns:
         cupy.ndarray: Samples drawn from the standard exponential distribution.
 
-    .. seealso:: :meth:`numpy.random.standard_exponential
-                 <numpy.random.mtrand.RandomState.standard_exponential>`
+    .. seealso:: :func:`numpy.random.standard_exponential`
     """
     rs = _generator.get_random_state()
     return rs.standard_exponential(size, dtype)
@@ -767,8 +732,7 @@ def standard_gamma(shape, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the standard gamma distribution.
 
     .. seealso::
-        :meth:`numpy.random.standard_gamma
-        <numpy.random.mtrand.RandomState.standard_gamma>`
+        :func:`numpy.random.standard_gamma`
     """
     rs = _generator.get_random_state()
     return rs.standard_gamma(shape, size, dtype)
@@ -787,11 +751,11 @@ def standard_normal(size=None, dtype=float):
     Returns:
         cupy.ndarray: Samples drawn from the standard normal distribution.
 
-    .. seealso:: :meth:`numpy.random.standard_normal
-                 <numpy.random.mtrand.RandomState.standard_normal>`
+    .. seealso:: :func:`numpy.random.standard_normal`
 
     """
-    return normal(size=size, dtype=dtype)
+    rs = _generator.get_random_state()
+    return rs.standard_normal(size, dtype)
 
 
 def standard_t(df, size=None, dtype=float):
@@ -816,8 +780,7 @@ def standard_t(df, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the standard Student's t distribution.
 
     .. seealso::
-        :meth:`numpy.random.standard_t
-        <numpy.random.mtrand.RandomState.standard_t>`
+        :func:`numpy.random.standard_t`
     """
     rs = _generator.get_random_state()
     return rs.standard_t(df, size, dtype)
@@ -850,9 +813,7 @@ def triangular(left, mode, right, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the triangular distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.triangular`
-        :meth:`numpy.random.triangular
-        <numpy.random.mtrand.RandomState.triangular>`
+        :func:`numpy.random.triangular`
     """
     rs = _generator.get_random_state()
     return rs.triangular(left, mode, right, size, dtype)
@@ -862,7 +823,8 @@ def uniform(low=0.0, high=1.0, size=None, dtype=float):
     """Returns an array of uniformly-distributed samples over an interval.
 
     Samples are drawn from a uniform distribution over the half-open interval
-    ``[low, high)``.
+    ``[low, high)``. The samples may contain the ``high`` limit due to
+    floating-point rounding.
 
     Args:
         low (float): Lower end of the interval.
@@ -874,8 +836,7 @@ def uniform(low=0.0, high=1.0, size=None, dtype=float):
     Returns:
         cupy.ndarray: Samples drawn from the uniform distribution.
 
-    .. seealso:: :meth:`numpy.random.uniform
-                 <numpy.random.mtrand.RandomState.uniform>`
+    .. seealso:: :func:`numpy.random.uniform`
 
     """
     rs = _generator.get_random_state()
@@ -903,8 +864,7 @@ def vonmises(mu, kappa, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the von Mises distribution.
 
     .. seealso::
-        :meth:`numpy.random.vonmises
-        <numpy.random.mtrand.RandomState.vonmises>`
+        :func:`numpy.random.vonmises`
     """
     rs = _generator.get_random_state()
     return rs.vonmises(mu, kappa, size=size, dtype=dtype)
@@ -932,9 +892,7 @@ def wald(mean, scale, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the wald distribution.
 
     .. seealso::
-        :func:`cupy.random.RandomState.wald`
-        :meth:`numpy.random.wald
-        <numpy.random.mtrand.RandomState.wald>`
+        :func:`numpy.random.wald`
     """
     rs = _generator.get_random_state()
     return rs.wald(mean, scale, size, dtype)
@@ -960,8 +918,7 @@ def weibull(a, size=None, dtype=float):
         cupy.ndarray: Samples drawn from the weibull distribution.
 
     .. seealso::
-        :meth:`numpy.random.weibull
-        <numpy.random.mtrand.RandomState.weibull>`
+        :func:`numpy.random.weibull`
     """
     rs = _generator.get_random_state()
     return rs.weibull(a, size=size, dtype=dtype)
@@ -989,8 +946,7 @@ def zipf(a, size=None, dtype=int):
         cupy.ndarray: Samples drawn from the Zipf distribution.
 
     .. seealso::
-        :meth:`numpy.random.zipf
-        <numpy.random.mtrand.RandomState.zipf>`
+        :func:`numpy.random.zipf`
     """
     rs = _generator.get_random_state()
     return rs.zipf(a, size=size, dtype=dtype)

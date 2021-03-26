@@ -9,7 +9,7 @@ import numpy
 import cupy
 from cupy import _core
 from cupy._creation import from_data
-from cupy.manipulation import join
+from cupy._manipulation import join
 
 
 class AxisConcatenator(object):

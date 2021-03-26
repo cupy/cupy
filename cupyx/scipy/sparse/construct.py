@@ -145,7 +145,7 @@ def hstack(blocks, format=None, dtype=None):
 
     Examples:
         >>> from cupy import array
-        >>> from cupy.sparse import csr_matrix, hstack
+        >>> from cupyx.scipy.sparse import csr_matrix, hstack
         >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
         >>> B = csr_matrix(array([[5.], [6.]]))
         >>> hstack([A, B]).toarray()
@@ -176,7 +176,7 @@ def vstack(blocks, format=None, dtype=None):
 
     Examples:
         >>> from cupy import array
-        >>> from cupy.sparse import csr_matrix, vstack
+        >>> from cupyx.scipy.sparse import csr_matrix, vstack
         >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
         >>> B = csr_matrix(array([[5., 6.]]))
         >>> vstack([A, B]).toarray()
@@ -208,7 +208,7 @@ def bmat(blocks, format=None, dtype=None):
 
     Examples:
         >>> from cupy import array
-        >>> from cupy.sparse import csr_matrix, bmat
+        >>> from cupyx.scipy.sparse import csr_matrix, bmat
         >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
         >>> B = csr_matrix(array([[5.], [6.]]))
         >>> C = csr_matrix(array([[7.]]))
@@ -518,7 +518,7 @@ def kron(A, B, format=None):
 
     if A.nnz == 0 or B.nnz == 0:
         # kronecker product is the zero matrix
-        return coo.coo_matrix(out_shape)
+        return coo.coo_matrix(out_shape).asformat(format)
 
     if max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
         dtype = cupy.int64

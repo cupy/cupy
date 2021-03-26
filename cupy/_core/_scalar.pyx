@@ -85,6 +85,9 @@ cdef _setup_type_dict():
         _typenames[t] = _typenames_base[d]
         k = ord(d.kind)
         _dtype_kind_size_dict[t] = (k, d.itemsize)
+    # CUDA types
+    for t in ('cudaTextureObject_t',):
+        _typenames[t] = t
 
 
 _setup_type_dict()
@@ -92,6 +95,7 @@ _setup_type_dict()
 
 cdef set _python_scalar_type_set = {int, float, bool, complex}
 cdef set _numpy_scalar_type_set = set(_typenames.keys())
+cdef set scalar_type_set = _python_scalar_type_set | _numpy_scalar_type_set
 
 
 _int_iinfo = numpy.iinfo(int)

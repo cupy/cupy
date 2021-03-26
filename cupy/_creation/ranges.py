@@ -80,11 +80,12 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
         cupy.ndarray: The 1-D array of ranged values.
 
     """
+    dt = cupy.result_type(start, stop, float(num))
     if dtype is None:
         # In actual implementation, only float is used
-        dtype = float
+        dtype = dt
 
-    ret = cupy.empty((num,), dtype=dtype)
+    ret = cupy.empty((num,), dtype=dt)
     div = (num - 1) if endpoint else num
     if div <= 0:
         if num > 0:
@@ -96,14 +97,18 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
 
         if step == 0.0:
             # for underflow
-            _linspace_ufunc_underflow(start, stop - start, div, ret,
-                                      casting='unsafe')
+            _linspace_ufunc_underflow(start, stop - start, div, ret)
         else:
-            _linspace_ufunc(start, step, ret, casting='unsafe')
+            _linspace_ufunc(start, step, ret)
 
         if endpoint:
             # Here num == div + 1 > 1 is ensured.
             ret[-1] = stop
+
+    if cupy.issubdtype(dtype, cupy.integer):
+        cupy.floor(ret, out=ret)
+
+    ret = ret.astype(dtype, copy=False)
 
     if retstep:
         return ret, step
@@ -197,10 +202,15 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
     if axis != 0:
         ret = cupy.moveaxis(ret, 0, axis)
 
+    if cupy.issubdtype(dtype, cupy.integer):
+        cupy.floor(ret, out=ret)
+
+    ret = ret.astype(dtype, copy=False)
+
     if retstep:
-        return ret.astype(dtype, copy=False), step
+        return ret, step
     else:
-        return ret.astype(dtype, copy=False)
+        return ret
 
 
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
@@ -389,7 +399,7 @@ class nd_grid(object):
             slobj = [cupy.newaxis] * len(size)
             for k in range(len(size)):
                 slobj[k] = slice(None, None)
-                nn[k] = nn[k][slobj]
+                nn[k] = nn[k][tuple(slobj)]
                 slobj[k] = cupy.newaxis
         return nn
 

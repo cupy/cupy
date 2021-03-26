@@ -7,66 +7,83 @@ import re
 import sys
 import warnings
 
-import ctypes
 import numpy
 
 import cupy
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._kernel import ufunc  # NOQA
-from cupy._core._reduction import ReductionKernel
 from cupy._core._ufuncs import elementwise_copy
 from cupy._core._ufuncs import elementwise_copy_where
 from cupy._core import flags
 from cupy._core import syncdetect
 from cupy import cuda
-from cupy.cuda import device
 from cupy.cuda import memory as memory_module
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy import util
+from cupy import _util
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport vector
 from libc.stdint cimport int64_t, intptr_t
 
-from cupy._core cimport _accelerator
 from cupy._core cimport _carray
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
-from cupy._core._dtype cimport to_cuda_dtype
 from cupy._core._kernel cimport create_ufunc
+from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
+from cupy._core cimport _routines_linalg as _linalg
 from cupy._core cimport _routines_logic as _logic
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_sorting as _sorting
 from cupy._core cimport _routines_statistics as _statistics
+from cupy._core cimport _scalar
 from cupy._core cimport dlpack
 from cupy._core cimport internal
+from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
 from cupy.cuda cimport memory
 from cupy.cuda cimport stream as stream_module
+from cupy_backends.cuda cimport stream as _stream_module
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cublas
 
 
-cdef extern from '../../cupy_backends/cuda/cupy_cuComplex.h':
-    ctypedef struct cuComplex 'cuComplex':
-        float x, y
-
-    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
-        double x, y
-
-
+# If rop of cupy.ndarray is called, cupy's op is the last chance.
+# If op of cupy.ndarray is called and the `other` is cupy.ndarray, too,
+# it is safe to call cupy's op.
+# Otherwise, use this function `_should_use_rop` to choose
+# * [True] return NotImplemented to defer rhs, or
+# * [False] call NumPy's ufunc to try all `__array_ufunc__`.
+# Note that extension types (`cdef class`) in Cython 0.x shares
+# implementations of op and rop. (i.e. `__radd__(self, other)` is
+# `__add__(other, self)`.)
+#
+# It follows NEP 13 except that cupy also implements the fallback to
+# `__array_priority__`, which seems fair and necessary because of the
+# following facts:
+# * `numpy` : `scipy.sparse` = `cupy` : `cupyx.scipy.sparse`;
+# * NumPy ignores `__array_priority__` attributes of arguments if NumPy finds
+#   `__array_function__` of `cupy.ndarray`;
+# * SciPy sparse classes don't implement `__array_function__` and they even
+#   don't set `__array_function__ = None` to opt-out the feature; and
+# * `__array_priority__` of SciPy sparse classes is respected because
+#   `numpy.ndarray.__array_function__` does not disable `__array_priority__`.
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    xp = getattr(x, '__array_priority__', 0)
-    yp = getattr(y, '__array_priority__', 0)
-    return xp < yp and not isinstance(y, ndarray)
+    try:
+        y_ufunc = y.__array_ufunc__
+    except AttributeError:
+        # NEP 13's recommendation is `return False`.
+        xp = getattr(x, '__array_priority__', 0)
+        yp = getattr(y, '__array_priority__', 0)
+        return xp < yp
+    return y_ufunc is None
 
 
 cdef tuple _HANDLED_TYPES
@@ -162,12 +179,34 @@ cdef class ndarray:
 
     @property
     def __cuda_array_interface__(self):
-        desc = {
+        if runtime._is_hip_environment:
+            raise AttributeError(
+                'HIP/ROCm does not support cuda array interface')
+        cdef dict desc = {
             'shape': self.shape,
             'typestr': self.dtype.str,
             'descr': self.dtype.descr,
-            'version': 2,
         }
+        cdef int ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
+        cdef intptr_t stream_ptr
+
+        if ver == 3:
+            stream_ptr = stream_module.get_current_stream_ptr()
+            # CAI v3 says setting the stream field to 0 is disallowed
+            if stream_ptr == 0:
+                stream_ptr = _stream_module.get_default_stream_ptr()
+            desc['stream'] = stream_ptr
+        elif ver == 2:
+            # Old behavior (prior to CAI v3): stream sync is explicitly handled
+            # by users. To restore this behavior, we do not export any stream
+            # if CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION is set to 2 (so that
+            # other participating libraries lacking a finer control over sync
+            # behavior can avoid syncing).
+            pass
+        else:
+            raise ValueError('CUPY_CUDA_ARRAY_INTERFACE_EXPORT_VERSION can '
+                             'only be set to 3 (default) or 2')
+        desc['version'] = ver
         if self._c_contiguous:
             desc['strides'] = None
         else:
@@ -470,7 +509,15 @@ cdef class ndarray:
         newarray._strides = x._strides
         newarray._c_contiguous = x._c_contiguous
         newarray._f_contiguous = x._f_contiguous
+        if runtime._is_hip_environment:
+            # HIP requires changing the active device to the one where
+            # src data is before the copy. From the docs:
+            # it is recommended to set the current device to the device
+            # where the src data is physically located.
+            runtime.setDevice(self.data.device_id)
         newarray.data.copy_from_device(x.data, x.nbytes)
+        if runtime._is_hip_environment:
+            runtime.setDevice(dev_id)
         return newarray
 
     cpdef ndarray view(self, dtype=None):
@@ -737,11 +784,6 @@ cdef class ndarray:
             :func:`numpy.nonzero`
 
         """
-        if self.ndim == 0:
-            warnings.warn(
-                'calling nonzero on 0d arrays is deprecated',
-                DeprecationWarning)
-
         return _indexing._ndarray_nonzero(self)
 
     cpdef ndarray compress(self, condition, axis=None, out=None):
@@ -958,26 +1000,44 @@ cdef class ndarray:
     # Comparison operators:
 
     def __richcmp__(object self, object other, int op):
-        if isinstance(other, numpy.ndarray) and other.ndim == 0:
-            other = other.item()  # Workaround for numpy<1.13
-        if op == 0:
-            return _logic._ndarray_less(self, other)
-        if op == 1:
-            return _logic._ndarray_less_equal(self, other)
-        if op == 2:
-            return _logic._ndarray_equal(self, other)
-        if op == 3:
-            return _logic._ndarray_not_equal(self, other)
-        if op == 4:
-            return _logic._ndarray_greater(self, other)
-        if op == 5:
-            return _logic._ndarray_greater_equal(self, other)
+        if isinstance(other, ndarray):
+            if op == 0:
+                return _logic._ndarray_less(self, other)
+            if op == 1:
+                return _logic._ndarray_less_equal(self, other)
+            if op == 2:
+                return _logic._ndarray_equal(self, other)
+            if op == 3:
+                return _logic._ndarray_not_equal(self, other)
+            if op == 4:
+                return _logic._ndarray_greater(self, other)
+            if op == 5:
+                return _logic._ndarray_greater_equal(self, other)
+        elif not _should_use_rop(self, other):
+            if isinstance(other, numpy.ndarray) and other.ndim == 0:
+                other = other.item()  # Workaround for numpy<1.13
+            if op == 0:
+                return numpy.less(self, other)
+            if op == 1:
+                return numpy.less_equal(self, other)
+            if op == 2:
+                return numpy.equal(self, other)
+            if op == 3:
+                return numpy.not_equal(self, other)
+            if op == 4:
+                return numpy.greater(self, other)
+            if op == 5:
+                return numpy.greater_equal(self, other)
         return NotImplemented
 
     # Truth value of an array (bool):
 
     def __nonzero__(self):
         if self.size == 0:
+            msg = ('The truth value of an empty array is ambiguous. Returning '
+                   'False, but in future this will result in an error. Use '
+                   '`array.size > 0` to check that an array is not empty.')
+            warnings.warn(msg, DeprecationWarning)
             return False
         elif self.size == 1:
             return bool(self.get())
@@ -998,100 +1058,128 @@ cdef class ndarray:
         return _math._absolute(self)
 
     def __invert__(self):
-        return invert(self)
+        return _binary._invert(self)
 
     # Arithmetic:
 
     def __add__(x, y):
-        if _should_use_rop(x, y):
-            return y.__radd__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._add(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.add(x, y)
 
     def __sub__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rsub__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._subtract(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.subtract(x, y)
 
     def __mul__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rmul__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._multiply(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.multiply(x, y)
 
     def __matmul__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rmatmul__(x)
+        if not isinstance(y, ndarray) and _should_use_rop(x, y):
+            return NotImplemented
         else:
-            return matmul(x, y)
+            return cupy.linalg._product.matmul(x, y)
 
     def __div__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rdiv__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.divide(x, y)
 
     def __truediv__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rtruediv__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._true_divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.true_divide(x, y)
 
     def __floordiv__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rfloordiv__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._floor_divide(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.floor_divide(x, y)
 
     def __mod__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rmod__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._remainder(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.remainder(x, y)
 
     def __divmod__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rdivmod__(x)
-        else:
+        if isinstance(y, ndarray):
             return divmod(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.divmod(x, y)
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
-        if _should_use_rop(x, y):
-            return y.__rpow__(x)
-        else:
+        if isinstance(y, ndarray):
             return _math._power(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
+        else:
+            return numpy.power(x, y)
 
     def __lshift__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rlshift__(x)
+        if isinstance(y, ndarray):
+            return _binary._left_shift(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
         else:
-            return left_shift(x, y)
+            return numpy.left_shift(x, y)
 
     def __rshift__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rrshift__(x)
+        if isinstance(y, ndarray):
+            return _binary._right_shift(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
         else:
-            return right_shift(x, y)
+            return numpy.right_shift(x, y)
 
     def __and__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rand__(x)
+        if isinstance(y, ndarray):
+            return _binary._bitwise_and(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
         else:
-            return bitwise_and(x, y)
+            return numpy.bitwise_and(x, y)
 
     def __or__(x, y):
-        if _should_use_rop(x, y):
-            return y.__ror__(x)
+        if isinstance(y, ndarray):
+            return _binary._bitwise_or(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
         else:
-            return bitwise_or(x, y)
+            return numpy.bitwise_or(x, y)
 
     def __xor__(x, y):
-        if _should_use_rop(x, y):
-            return y.__rxor__(x)
+        if isinstance(y, ndarray):
+            return _binary._bitwise_xor(x, y)
+        elif _should_use_rop(x, y):
+            return NotImplemented
         else:
-            return bitwise_xor(x, y)
+            return numpy.bitwise_xor(x, y)
 
     # Arithmetic, in-place:
 
@@ -1120,19 +1208,19 @@ cdef class ndarray:
         return _math._power(self, other, self)
 
     def __ilshift__(self, other):
-        return left_shift(self, other, self)
+        return _binary._left_shift(self, other, self)
 
     def __irshift__(self, other):
-        return right_shift(self, other, self)
+        return _binary._right_shift(self, other, self)
 
     def __iand__(self, other):
-        return bitwise_and(self, other, self)
+        return _binary._bitwise_and(self, other, self)
 
     def __ior__(self, other):
-        return bitwise_or(self, other, self)
+        return _binary._bitwise_or(self, other, self)
 
     def __ixor__(self, other):
-        return bitwise_xor(self, other, self)
+        return _binary._bitwise_xor(self, other, self)
 
     cpdef ndarray conj(self):
         return _math._ndarray_conj(self)
@@ -1252,7 +1340,7 @@ cdef class ndarray:
             >>> import cupy
             >>> a = cupy.zeros((2,))
             >>> i = cupy.arange(10000) % 2
-            >>> v = cupy.arange(10000).astype(cupy.float)
+            >>> v = cupy.arange(10000).astype(cupy.float_)
             >>> a[i] = v
             >>> a  # doctest: +SKIP
             array([9150., 9151.])
@@ -1263,24 +1351,23 @@ cdef class ndarray:
             >>> import numpy
             >>> a_cpu = numpy.zeros((2,))
             >>> i_cpu = numpy.arange(10000) % 2
-            >>> v_cpu = numpy.arange(10000).astype(numpy.float)
+            >>> v_cpu = numpy.arange(10000).astype(numpy.float_)
             >>> a_cpu[i_cpu] = v_cpu
             >>> a_cpu
             array([9998., 9999.])
 
         """
-        if util.ENABLE_SLICE_COPY and (
+        if _util.ENABLE_SLICE_COPY and (
                 type(slices) is slice
                 and slices == slice(None, None, None)
                 and isinstance(value, numpy.ndarray)
         ):
-            if self.dtype == value.dtype and self.shape == value.shape:
-                if self.strides == value.strides:
-                    ptr = ctypes.c_void_p(value.__array_interface__['data'][0])
-                else:
-                    order = 'F' if self.flags.f_contiguous else 'C'
-                    tmp = value.ravel(order)
-                    ptr = ctypes.c_void_p(tmp.__array_interface__['data'][0])
+            if (self.dtype == value.dtype
+                    and self.shape == value.shape
+                    and (self._f_contiguous or self._c_contiguous)):
+                order = 'F' if self._f_contiguous else 'C'
+                tmp = value.ravel(order)
+                ptr = tmp.ctypes.data
                 stream_ptr = stream_module.get_current_stream_ptr()
                 if stream_ptr == 0:
                     self.data.copy_from_host(ptr, self.nbytes)
@@ -1334,23 +1421,35 @@ cdef class ndarray:
         numpy array.
         """
         import cupy  # top-level ufuncs
+        inout = inputs
         if 'out' in kwargs:
             # need to unfold tuple argument in kwargs
+            # TODO(ecastill) GUFuncs support more than one output
             out = kwargs['out']
             if len(out) != 1:
                 raise ValueError('The \'out\' parameter must have exactly one '
                                  'array value')
+            inout += out
             kwargs['out'] = out[0]
 
         if method == '__call__':
-            if ufunc.signature is not None:
-                # we don't support generalised-ufuncs (gufuncs)
-                return NotImplemented
             name = ufunc.__name__
             try:
                 cp_ufunc = getattr(cupy, name)
             except AttributeError:
                 return NotImplemented
+            for x in inout:
+                # numpy.ndarray is handled and then TypeError is raised due to
+                # implicit host-to-device conversion.
+                # Except for numpy.ndarray, types should be supported by
+                # `_kernel._preprocess_args`.
+                check = hasattr(x, '__cuda_array_interface__')
+                if runtime._is_hip_environment and isinstance(x, ndarray):
+                    check = True
+                if (not check
+                        and not type(x) in _scalar.scalar_type_set
+                        and not isinstance(x, numpy.ndarray)):
+                    return NotImplemented
             if name in [
                     'greater', 'greater_equal', 'less', 'less_equal',
                     'equal', 'not_equal']:
@@ -1413,6 +1512,9 @@ cdef class ndarray:
     def __str__(self):
         return str(self.get())
 
+    def __format__(self, format_spec):
+        return format(self.get(), format_spec)
+
     # -------------------------------------------------------------------------
     # Methods outside of the ndarray main documentation
     # -------------------------------------------------------------------------
@@ -1424,7 +1526,7 @@ cdef class ndarray:
            :meth:`numpy.ndarray.dot`
 
         """
-        return dot(self, b, out)
+        return _linalg.dot(self, b, out)
 
     # -------------------------------------------------------------------------
     # Cupy specific attributes and methods
@@ -1502,7 +1604,7 @@ cdef class ndarray:
             a_cpu = numpy.empty(self._shape, dtype=self.dtype, order=order)
 
         syncdetect._declare_synchronize()
-        ptr = ctypes.c_void_p(a_cpu.__array_interface__['data'][0])
+        ptr = a_cpu.ctypes.data
         with self.device:
             if stream is not None:
                 a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
@@ -1540,7 +1642,7 @@ cdef class ndarray:
         else:
             raise RuntimeError('Cannot set to non-contiguous array')
 
-        ptr = ctypes.c_void_p(arr.__array_interface__['data'][0])
+        ptr = arr.ctypes.data
         with self.device:
             if stream is not None:
                 self.data.copy_from_host_async(ptr, self.nbytes, stream)
@@ -1687,6 +1789,13 @@ cdef class ndarray:
             a DLPack tensor (which is encapsulated in a :class:`PyCapsule`
             object) to a :class:`ndarray`
 
+        .. warning::
+
+            As of the DLPack v0.3 specification, it is (implicitly) assumed
+            that the user is responsible to ensure the Producer and the
+            Consumer are operating on the same stream. This requirement might
+            be relaxed/changed in a future DLPack version.
+
         .. admonition:: Example
 
             >>> import cupy
@@ -1745,13 +1854,23 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 # =============================================================================
 # TODO(niboshi): Move it out of core.pyx
 
-cdef list _cupy_header_list = [
+cdef bint _is_hip = runtime._is_hip_environment
+cdef int _cuda_runtime_version = -1
+cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
+
+cdef list cupy_header_list = [
     'cupy/complex.cuh',
     'cupy/carray.cuh',
     'cupy/atomics.cuh',
 ]
+if _is_hip:
+    cupy_header_list.append('cupy/math_constants.h')
+
+# expose to Python for unit testing
+_cupy_header_list = cupy_header_list
+
 cdef str _cupy_header = ''.join(
-    ['#include <%s>\n' % i for i in _cupy_header_list])
+    ['#include <%s>\n' % i for i in cupy_header_list])
 
 # This is indirect include header list.
 # These header files are subject to a hash key.
@@ -1780,6 +1899,7 @@ cdef list _cupy_extra_header_list = [
 
 cdef str _header_path_cache = None
 cdef str _header_source = None
+cdef dict _header_source_map = {}
 
 
 cpdef str _get_header_dir_path():
@@ -1793,15 +1913,28 @@ cpdef str _get_header_dir_path():
 
 cpdef str _get_header_source():
     global _header_source
-    if _header_source is None:
+    global _header_source_map
+    cdef str header_path, base_path, file_path, header
+    cdef list source
+
+    if _header_source is None or not _header_source_map:
         source = []
         base_path = _get_header_dir_path()
-        for file_path in _cupy_header_list + _cupy_extra_header_list:
+        for file_path in _cupy_extra_header_list + cupy_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
-                source.append(header_file.read())
+                header = header_file.read()
+            source.append(header)
+            _header_source_map[file_path.encode()] = header.encode()
         _header_source = '\n'.join(source)
     return _header_source
+
+
+cpdef dict _get_header_source_map():
+    global _header_source_map
+    if not _header_source_map:
+        _get_header_source()
+    return _header_source_map
 
 
 # added at the module level for precompiling the regex
@@ -1824,10 +1957,10 @@ cpdef function.Module compile_with_cache(
         str source, tuple options=(), arch=None, cachd_dir=None,
         prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None):
+        log_stream=None, bint jitify=False):
     if translate_cucomplex:
         source = _translate_cucomplex_to_thrust(source)
-        _cupy_header_list.append('cupy/cuComplex_bridge.h')
+        cupy_header_list.append('cupy/cuComplex_bridge.h')
         prepend_cupy_headers = True
 
     if prepend_cupy_headers:
@@ -1841,7 +1974,14 @@ cpdef function.Module compile_with_cache(
     if _cuda_runtime_version < 0:
         _cuda_runtime_version = runtime.runtimeGetVersion()
 
-    if _cuda_runtime_version >= 9000:
+    global _cuda_path
+    if _cuda_path == '':
+        if not _is_hip:
+            _cuda_path = cuda.get_cuda_path()
+        else:
+            _cuda_path = cuda.get_rocm_path()
+
+    if not _is_hip:
         if 9020 <= _cuda_runtime_version < 9030:
             bundled_include = 'cuda-9.2'
         elif 10000 <= _cuda_runtime_version < 10010:
@@ -1852,30 +1992,37 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-10.2'
         elif 11000 <= _cuda_runtime_version < 11010:
             bundled_include = 'cuda-11.0'
+        elif 11010 <= _cuda_runtime_version < 11020:
+            bundled_include = 'cuda-11.1'
+        elif 11020 <= _cuda_runtime_version < 11030:
+            bundled_include = 'cuda-11.2'
         else:
-            # CUDA v9.0, v9.1 or versions not yet supported.
+            # CUDA versions not yet supported.
             bundled_include = None
 
-        cuda_path = cuda.get_cuda_path()
-
-        if bundled_include is None and cuda_path is None:
+        if bundled_include is None and _cuda_path is None:
             raise RuntimeError(
                 'Failed to auto-detect CUDA root directory. '
                 'Please specify `CUDA_PATH` environment variable if you '
-                'are using CUDA v9.0, v9.1 or versions not yet supported by '
-                'CuPy.')
+                'are using CUDA versions not yet supported by CuPy.')
 
         if bundled_include is not None:
-            options += ('-I ' + os.path.join(
+            options += ('-I' + os.path.join(
                 _get_header_dir_path(), 'cupy', '_cuda', bundled_include),)
+    elif _is_hip:
+        if _cuda_path is None:
+            raise RuntimeError(
+                'Failed to auto-detect ROCm root directory. '
+                'Please specify `ROCM_HOME` environment variable.')
 
-        if cuda_path is not None:
-            options += ('-I ' + os.path.join(cuda_path, 'include'),)
+    if _cuda_path is not None:
+        options += ('-I' + os.path.join(_cuda_path, 'include'),)
 
     return cuda.compile_with_cache(
         source, options, arch, cachd_dir, extra_source, backend,
         enable_cooperative_groups=enable_cooperative_groups,
-        name_expressions=name_expressions, log_stream=log_stream)
+        name_expressions=name_expressions, log_stream=log_stream,
+        jitify=jitify)
 
 
 # =============================================================================
@@ -1911,6 +2058,12 @@ divmod = create_ufunc(
 
 
 cdef _round_preamble = '''
+#ifdef __HIP_DEVICE_COMPILE__
+#define round_float llrintf
+#else
+#define round_float __float2ll_rn
+#endif
+
 template<typename T> __device__ T pow10(long long n){
   T x = 1, a = 10;
   while (n) {
@@ -1933,21 +2086,17 @@ if (in1 == 0) {
 }'''
 
 cdef _round_complex = '''
-double x, inv_x;
 if (in1 == 0) {
-    x = inv_x = 1;
-    out0 = in0_type(rint(in0.real() * x),
-                    rint(in0.imag() * x));
+    out0 = in0_type(rint(in0.real()), rint(in0.imag()));
 } else {
-    x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
-    inv_x = 1.0 / x;
+    double x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
     if (in1 < 0) {
-        double y = x;
-        x = inv_x;
-        inv_x = y;
+        out0 = in0_type(rint(in0.real() / x) * x,
+                        rint(in0.imag() / x) * x);
+    } else {
+        out0 = in0_type(rint(in0.real() * x) / x,
+                        rint(in0.imag() * x) / x);
     }
-    out0 = in0_type(rint(in0.real() * x) * inv_x,
-                    rint(in0.imag() * x) * inv_x);
 }'''
 
 
@@ -1986,7 +2135,7 @@ _round_ufunc = create_ufunc(
         // (4) unscale by `x` above: -123460000
         long long q = in0 / x / 100;
         int r = in0 - q*x*100;
-        out0 = (q*100 + __float2ll_rn(r/(x*10.0f))*10) * x;
+        out0 = (q*100 + round_float(r/(x*10.0f))*10) * x;
     }''', preamble=_round_preamble)
 
 
@@ -2055,9 +2204,9 @@ cpdef ndarray array(obj, dtype=None, bint copy=True, order='K',
         # obj is Seq[cupy.ndarray]
         assert issubclass(elem_type, ndarray), elem_type
         lst = _flatten_list(obj)
-        if len(shape) == 1:
-            # convert each scalar (0-dim) ndarray to 1-dim
-            lst = [cupy.expand_dims(x, 0) for x in lst]
+
+        # convert each scalar (0-dim) ndarray to 1-dim
+        lst = [cupy.expand_dims(x, 0) if x.ndim == 0 else x for x in lst]
 
         a =_manipulation.concatenate_method(lst, 0)
         a = a.reshape(shape)
@@ -2159,12 +2308,10 @@ cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
     if mem is not None:
         src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
         src_cpu[:] = a_cpu.ravel(order)
-        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
+        a.data.copy_from_host_async(mem.ptr, nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
-        a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]),
-            nbytes)
+        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
 
     return a
 
@@ -2197,7 +2344,7 @@ cdef ndarray _send_numpy_array_list_to_gpu(
             a_dtype,
             src_cpu)
         a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host_async(ctypes.c_void_p(mem.ptr), nbytes)
+        a.data.copy_from_host_async(mem.ptr, nbytes)
         pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
         # fallback to numpy array and send it to GPU
@@ -2205,9 +2352,7 @@ cdef ndarray _send_numpy_array_list_to_gpu(
         a_cpu = numpy.array(arrays, dtype=a_dtype, copy=False, order=order,
                             ndmin=ndmin)
         a = ndarray(shape, dtype=a_dtype, order=order)
-        a.data.copy_from_host(
-            ctypes.c_void_p(a_cpu.__array_interface__['data'][0]),
-            nbytes)
+        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
 
     return a
 
@@ -2238,7 +2383,7 @@ cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
             'could not be allocated. '
             'This generally occurs because of insufficient host memory. '
             'The original error was: {}'.format(nbytes, e),
-            util.PerformanceWarning)
+            _util.PerformanceWarning)
 
     return None
 
@@ -2264,20 +2409,22 @@ cpdef ndarray _internal_asfortranarray(ndarray a):
             (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
         m, n = a.shape
         handle = device.get_cublas_handle()
+        one = numpy.array(1, dtype=a.dtype)
+        zero = numpy.array(0, dtype=a.dtype)
         if a.dtype == numpy.float32:
             cublas.sgeam(
                 handle,
                 1,  # transpose a
                 1,  # transpose newarray
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                newarray.data.ptr, m)
+                m, n, one.ctypes.data, a.data.ptr, n,
+                zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
         elif a.dtype == numpy.float64:
             cublas.dgeam(
                 handle,
                 1,  # transpose a
                 1,  # transpose newarray
-                m, n, 1., a.data.ptr, n, 0., a.data.ptr, n,
-                newarray.data.ptr, m)
+                m, n, one.ctypes.data, a.data.ptr, n,
+                zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
     else:
         elementwise_copy(a, newarray)
     return newarray
@@ -2330,676 +2477,13 @@ cpdef ndarray asfortranarray(ndarray a, dtype=None):
     return newarray
 
 
-# -----------------------------------------------------------------------------
-# Binary operations
-# -----------------------------------------------------------------------------
-
-cpdef _create_bit_op(name, op, no_bool, doc=''):
-    types = () if no_bool else ('??->?',)
-    return create_ufunc(
-        'cupy_' + name,
-        types + ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-                 'LL->L', 'qq->q', 'QQ->Q'),
-        'out0 = in0 %s in1' % op,
-        doc=doc)
-
-
-bitwise_and = _create_bit_op(
-    'bitwise_and', '&', False,
-    '''Computes the bitwise AND of two arrays elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. seealso:: :data:`numpy.bitwise_and`
-
-    ''')
-
-
-bitwise_or = _create_bit_op(
-    'bitwise_or', '|', False,
-    '''Computes the bitwise OR of two arrays elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. seealso:: :data:`numpy.bitwise_or`
-
-    ''')
-
-
-bitwise_xor = _create_bit_op(
-    'bitwise_xor', '^', False,
-    '''Computes the bitwise XOR of two arrays elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. seealso:: :data:`numpy.bitwise_xor`
-
-    ''')
-
-
-invert = create_ufunc(
-    'cupy_invert',
-    (('?->?', 'out0 = !in0'), 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I',
-     'l->l', 'L->L', 'q->q', 'Q->Q'),
-    'out0 = ~in0',
-    doc='''Computes the bitwise NOT of an array elementwise.
-
-    Only integer and boolean arrays are handled.
-
-    .. note::
-        :func:`cupy.bitwise_not` is an alias for :func:`cupy.invert`.
-
-    .. seealso:: :data:`numpy.invert`
-
-    ''')
-
-
-left_shift = _create_bit_op(
-    'left_shift', '<<', True,
-    '''Shifts the bits of each integer element to the left.
-
-    Only integer arrays are handled.
-
-    .. seealso:: :data:`numpy.left_shift`
-
-    ''')
-
-
-right_shift = _create_bit_op(
-    'right_shift', '>>', True,
-    '''Shifts the bits of each integer element to the right.
-
-    Only integer arrays are handled
-
-    .. seealso:: :data:`numpy.right_shift`
-
-    ''')
-
-
-# -----------------------------------------------------------------------------
-# Linear algebra
-# -----------------------------------------------------------------------------
-
-cpdef ndarray dot(ndarray a, ndarray b, ndarray out=None):
-    cdef Py_ssize_t a_ndim, b_ndim, a_axis, b_axis, n, m, k
-    cdef bint input_a_is_vec, input_b_is_vec
-    cdef shape_t ret_shape, shape
-
-    a_ndim = a._shape.size()
-    b_ndim = b._shape.size()
-
-    if out is not None and numpy.result_type(a.dtype, b.dtype) != out.dtype:
-        raise ValueError('Not supported dtype combination.')
-
-    if a_ndim == 0 or b_ndim == 0:
-        return _math._multiply(a, b, out=out)
-
-    input_a_is_vec = a_ndim == 1
-    input_b_is_vec = b_ndim == 1
-    if input_a_is_vec:
-        shape.clear()
-        shape.push_back(1)
-        shape.push_back(a.size)
-        a = _manipulation._reshape(a, shape)
-        a_ndim = 2
-    if input_b_is_vec:
-        shape.clear()
-        shape.push_back(b.size)
-        shape.push_back(1)
-        b = _manipulation._reshape(b, shape)
-        b_ndim = 2
-
-    a_axis = a_ndim - 1
-    b_axis = b_ndim - 2
-
-    if a._shape[a_axis] != b._shape[b_axis]:
-        raise ValueError('Axis dimension mismatch')
-
-    if a_axis:
-        a = _manipulation.rollaxis(a, a_axis, 0)
-    if b_axis:
-        b = _manipulation.rollaxis(b, b_axis, 0)
-
-    k = a._shape[0]
-    if k != 0:
-        m = b.size // k
-        n = a.size // k
-    else:
-        # When k==0, the function must return a matrix filled with zero
-        # like NumPy.
-        m = 0
-        n = 0
-
-    if not input_a_is_vec:
-        ret_shape.insert(ret_shape.end(), a._shape.begin() + 1, a._shape.end())
-    if not input_b_is_vec:
-        ret_shape.insert(ret_shape.end(), b._shape.begin() + 1, b._shape.end())
-    if out is not None:
-        if k != 0 and out.size != n * m:
-            raise ValueError('Output array has an invalid size')
-        if not out._c_contiguous:
-            raise ValueError('Output array must be C-contiguous')
-
-    return tensordot_core(a, b, out, n, m, k, ret_shape)
-
-
-cdef _mat_ptrs_kernel = ElementwiseKernel(
-    'T base, T stride', 'T out',
-    'out = base + _ind.get()[_ind.ndim - 1] * stride', 'mat_ptrs',
-    reduce_dims=False)
-
-
-cpdef ndarray _mat_ptrs(ndarray a):
-    """Creates an array of pointers to matrices
-    Args:
-        a: A batch of matrices on GPU.
-           shape: (A, B, C) -> A ptrs to mat o size (B, C)
-           shape: (A_1, ..., A_N, B, C) -> A_1*...*A_N ptrs to mat of
-                  size (B, C)
-    Returns:
-        GPU array of pointers to matrices.
-    """
-    cdef int ndim = a._shape.size()
-    assert ndim > 2
-    cdef Py_ssize_t sh_, st_
-    cdef ndarray idx
-    idx = _mat_ptrs_kernel(
-        a.data.ptr, a._strides[0],
-        ndarray((a._shape[0],), dtype=numpy.uintp))
-
-    for i in range(1, ndim - 2):
-        idx = _mat_ptrs_kernel(
-            idx[:, None], a._strides[i],
-            ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
-        idx = idx.ravel()
-    return idx
-
-
-cdef Py_ssize_t _get_stride_for_strided_batched_gemm(ndarray a) except?0:
-    cdef int ndim = a._shape.size()
-    assert ndim > 2
-    return a._strides[ndim - 3] // <Py_ssize_t>a.itemsize
-
-
-cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
-    """ Returns the matrix product of two arrays and is the implementation of
-    the `@` operator introduced in Python 3.5 following PEP465.
-
-    The main difference against cupy.dot are the handling of arrays with more
-    than 2 dimensions. For more information see :func:`numpy.matmul`.
-
-    .. note::
-        The out array as input is currently not supported.
-
-    Args:
-        a (cupy.ndarray): The left argument.
-        b (cupy.ndarray): The right argument.
-        out (cupy.ndarray): Output array.
-
-    Returns:
-        cupy.ndarray: Output array.
-
-    .. seealso:: :func:`numpy.matmul`
-
-    """
-
-    if out is not None:
-        raise NotImplementedError('The out array as input is currently not '
-                                  'supported')
-
-    cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh
-    cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
-    cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
-    cdef ndarray ap, bp, outp, out_view
-    cdef bint use_broadcast
-
-    orig_a_ndim = a._shape.size()
-    orig_b_ndim = b._shape.size()
-    if orig_a_ndim == 0 or orig_b_ndim == 0:
-        raise ValueError('Scalar operands are not allowed, use \'*\' instead')
-
-    ndim = max(orig_a_ndim, orig_b_ndim)
-    if ndim <= 2:
-        return dot(a, b, out)
-
-    orig_a = a
-    orig_b = b
-    a_part_outshape = b_part_outshape = 0
-    if orig_a_ndim == 1:
-        a = _manipulation._reshape(a, (1, a.size))
-    else:
-        a = a.view()
-        a_part_outshape = a._shape[orig_a_ndim - 2]
-    if orig_b_ndim == 1:
-        b = _manipulation._reshape(b, (b.size, 1))
-        ldout = 1
-    else:
-        b = b.view()
-        b_part_outshape = ldout = b._shape[orig_b_ndim - 1]
-
-    # expand dims
-    a_ndim = a._shape.size()
-    b_ndim = b._shape.size()
-    if a_ndim < ndim:
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        a._set_shape_and_strides(
-            (1,) * (ndim - a_ndim) + a.shape,
-            (0,) * (ndim - a_ndim) + a.strides,
-            True, True)
-    if b_ndim < ndim:
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        b._set_shape_and_strides(
-            (1,) * (ndim - b_ndim) + b.shape,
-            (0,) * (ndim - b_ndim) + b.strides,
-            True, True)
-
-    ret_dtype = numpy.promote_types(a.dtype, b.dtype)
-    dtype = numpy.promote_types(ret_dtype, 'f')
-
-    a = ascontiguousarray(a, dtype)
-    b = ascontiguousarray(b, dtype)
-
-    # broadcast
-    batchCount = 1  # batchCount = numpy.prod(out_shape[:-2])
-    out_shape = []
-    use_broadcast = False
-    for i in range(0, ndim - 2):
-        a_sh = a._shape[i]
-        b_sh = b._shape[i]
-        if a_sh != b_sh and a_sh != 1 and b_sh != 1:
-            raise ValueError(
-                'operands could not be broadcast together with '
-                'remapped shapes')
-
-        if a_sh == 0 or b_sh == 0:
-            c_sh = 0
-        else:
-            c_sh = max(a_sh, b_sh)
-        batchCount *= c_sh
-        out_shape.append(c_sh)
-        if a_sh == 1 and c_sh > 1:
-            a._strides[i] = 0
-            a._shape[i] = c_sh
-            a._c_contiguous = a._f_contiguous = False
-            use_broadcast = True
-
-        if b_sh == 1 and c_sh > 1:
-            b._strides[i] = 0
-            b._shape[i] = c_sh
-            b._c_contiguous = b._f_contiguous = False
-            use_broadcast = True
-
-    if orig_a_ndim != 1:
-        out_shape.append(a_part_outshape)
-    if orig_b_ndim != 1:
-        out_shape.append(b_part_outshape)
-
-    # (A B)^T = B^T A^T
-    a, b = b, a
-
-    ka = a._shape[ndim - 2]
-    lda = n = a._shape[ndim - 1]
-    m = b._shape[ndim - 2]
-    ldb = kb = b._shape[ndim - 1]
-
-    if ka != kb:
-        raise ValueError(
-            'shapes ({}) and ({}) not aligned'.format(
-                ','.join([str(_) for _ in orig_a.shape]),
-                ','.join([str(_) for _ in orig_b.shape])))
-
-    if a.size == 0 or b.size == 0:
-        return cupy.zeros(out_shape, ret_dtype)
-
-    out = ndarray(out_shape, dtype=dtype)
-
-    if orig_a_ndim == 1 or orig_b_ndim == 1:
-        out_view = out.view()
-        if orig_b_ndim == 1:
-            out_view._shape.push_back(1)
-            out_view._strides.push_back(0)
-        if orig_a_ndim == 1:
-            out_view._shape.insert(out_view._shape.end() - 1, 1)
-            out_view._strides.insert(out_view._strides.end() - 1, 0)
-        assert out_view._c_contiguous
-        out_view._update_f_contiguity()
-    else:
-        out_view = out
-
-    global _cuda_runtime_version
-    if _cuda_runtime_version < 0:
-        _cuda_runtime_version = runtime.runtimeGetVersion()
-
-    cdef intptr_t handle = device.get_cublas_handle()
-
-    # TODO(anaruse) use cublasGemmStridedBatchedEx() when cuda version >= 9.1
-    if not use_broadcast:
-        strideA = _get_stride_for_strided_batched_gemm(a)
-        strideB = _get_stride_for_strided_batched_gemm(b)
-        strideC = _get_stride_for_strided_batched_gemm(out_view)
-        if dtype == numpy.float32:
-            cublas.sgemmStridedBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, 1.0,
-                a.data.ptr, lda, strideA,
-                b.data.ptr, ldb, strideB,
-                0.0, out_view.data.ptr, ldout, strideC,
-                batchCount)
-        elif dtype == numpy.float64:
-            cublas.dgemmStridedBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, 1.0,
-                a.data.ptr, lda, strideA,
-                b.data.ptr, ldb, strideB,
-                0.0, out_view.data.ptr, ldout, strideC,
-                batchCount)
-        elif dtype == numpy.complex64:
-            cublas.cgemmStridedBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, 1,
-                a.data.ptr, lda, strideA,
-                b.data.ptr, ldb, strideB,
-                0, out_view.data.ptr, ldout, strideC,
-                batchCount)
-        elif dtype == numpy.complex128:
-            cublas.zgemmStridedBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, 1,
-                a.data.ptr, lda, strideA,
-                b.data.ptr, ldb, strideB,
-                0, out_view.data.ptr, ldout, strideC,
-                batchCount)
-        else:
-            raise TypeError(dtype, a.dtype, b.dtype)
-    else:
-        ap = _mat_ptrs(a)
-        bp = _mat_ptrs(b)
-        outp = _mat_ptrs(out_view)
-        if dtype == numpy.float32:
-            cublas.sgemmBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, 1.0,
-                ap.data.ptr, lda,
-                bp.data.ptr, ldb,
-                0.0, outp.data.ptr, ldout, batchCount)
-        elif dtype == numpy.float64:
-            cublas.dgemmBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, 1.0,
-                ap.data.ptr, lda,
-                bp.data.ptr, ldb,
-                0.0, outp.data.ptr, ldout, batchCount)
-        elif dtype == numpy.complex64:
-            cublas.cgemmBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, 1,
-                ap.data.ptr, lda,
-                bp.data.ptr, ldb,
-                0, outp.data.ptr, ldout, batchCount)
-        elif dtype == numpy.complex128:
-            cublas.zgemmBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, 1,
-                ap.data.ptr, lda,
-                bp.data.ptr, ldb,
-                0, outp.data.ptr, ldout, batchCount)
-        else:
-            raise TypeError(dtype, a.dtype, b.dtype)
-
-    if dtype == ret_dtype:
-        return out
-    else:
-        ret = ndarray(out_shape, ret_dtype)
-        elementwise_copy(out, ret)
-        return ret
-
-
-cdef int _cuda_runtime_version = -1
-cdef _tensordot_core_mul_sum = ReductionKernel(
-    'S x, T y', 'U out',
-    'static_cast<U>(x) * static_cast<U>(y)',
-    'a + b', 'out = a', '0', '_tensordot_core_mul_sum')
-
-
-cpdef ndarray tensordot_core(
-        ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
-        Py_ssize_t k, const shape_t& ret_shape):
-    cdef shape_t shape
-    cdef Py_ssize_t inca, incb, transa, transb, lda, ldb
-    cdef Py_ssize_t mode
-    cdef intptr_t handle
-    cdef bint use_sgemmEx
-    cdef float one_fp32, zero_fp32
-    cdef str ret_dtype = a.dtype.char
-    if ret_dtype != b.dtype.char:
-        ret_dtype = numpy.promote_types(ret_dtype, b.dtype).char
-
-    if not a.size or not b.size:
-        if out is None:
-            out = _ndarray_init(ret_shape, ret_dtype)
-        out.fill(0)
-        return out
-
-    if ret_dtype in 'efdFD':
-        dtype = ret_dtype
-    else:
-        dtype = numpy.promote_types(ret_dtype, 'f').char
-
-    if out is None:
-        out = _ndarray_init(ret_shape, dtype)
-        if dtype == ret_dtype:
-            ret = out
-        else:
-            ret = _ndarray_init(ret_shape, ret_dtype)
-    else:
-        ret = out
-        if out.dtype != dtype:
-            out = _ndarray_init(ret_shape, dtype)
-
-    cdef int ace
-    if m == 1 and n == 1:
-        for ace in _accelerator._routine_accelerators:
-            # fast path using CUB or cuTENSOR
-            if ace in (_accelerator.ACCELERATOR_CUB,
-                       _accelerator.ACCELERATOR_CUTENSOR):
-                out = (a.ravel() * b.ravel()).sum(
-                    out=_manipulation._reshape(out, ()))
-                break
-        else:
-            _tensordot_core_mul_sum(
-                a.ravel(), b.ravel(),
-                out=_manipulation._reshape(out, ()))
-        if out is not ret:
-            elementwise_copy(out, ret)
-        return ret
-
-    # It copies the operands if needed
-    if a._shape.size() != 2 or a._shape[0] != k or a._shape[1] != n:
-        shape.clear()
-        shape.push_back(k)
-        shape.push_back(n)
-        a = _manipulation._reshape(a, shape)
-    if b._shape.size() != 2 or b._shape[0] != k or b._shape[1] != m:
-        shape.clear()
-        shape.push_back(k)
-        shape.push_back(m)
-        b = _manipulation._reshape(b, shape)
-    c = out
-    if c._shape.size() != 2 or c._shape[0] != n or c._shape[1] != m:
-        c = c.view()
-        c.shape = (n, m)
-
-    a = a.astype(dtype, copy=False)
-    b = b.astype(dtype, copy=False)
-
-    # Be careful that cuBLAS uses the FORTRAN-order matrix representation.
-    # Matrix-Matrix product A^T * B
-    # c is C-contiguous while cuBLAS assumes F-contiguous inputs, so we
-    # compute C^T = B^T * A here.
-    a, transa, lda = _mat_to_cublas_contiguous(a, 0)
-    b, transb, ldb = _mat_to_cublas_contiguous(b, 1)
-
-    global _cuda_runtime_version
-    if _cuda_runtime_version < 0:
-        _cuda_runtime_version = runtime.runtimeGetVersion()
-
-    if _cuda_runtime_version >= 11000:
-        tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
-        if out is not ret:
-            elementwise_copy(out, ret)
-        return ret
-
-    handle = device.get_cublas_handle()
-    if dtype == 'e':
-        use_tensor_core = (_cuda_runtime_version >= 9000 and
-                           int(device.get_compute_capability()) >= 70)
-        if use_tensor_core:
-            one_fp32 = 1
-            zero_fp32 = 0
-            cublas.setMathMode(handle, cublas.CUBLAS_TENSOR_OP_MATH)
-            cublas.gemmEx(
-                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
-                <size_t>&one_fp32,
-                b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
-                a.data.ptr, runtime.CUDA_R_16F, <int>lda,
-                <size_t>&zero_fp32,
-                c.data.ptr, runtime.CUDA_R_16F, <int>m,
-                runtime.CUDA_R_32F, cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP)
-            cublas.setMathMode(handle, cublas.CUBLAS_DEFAULT_MATH)
-        else:
-            cublas.sgemmEx(
-                handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
-                b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
-                a.data.ptr, runtime.CUDA_R_16F, <int>lda, 0,
-                c.data.ptr, runtime.CUDA_R_16F, <int>m)
-    elif dtype == 'f':
-        cublas.sgemmEx(
-            handle, <int>transb, <int> transa, <int>m, <int>n, <int>k, 1,
-            b.data.ptr, runtime.CUDA_R_32F, <int>ldb,
-            a.data.ptr, runtime.CUDA_R_32F, <int>lda, 0,
-            c.data.ptr, runtime.CUDA_R_32F, <int>m)
-    elif dtype == 'd':
-        cublas.dgemm(
-            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
-            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
-    elif dtype == 'F':
-        cublas.cgemm(
-            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
-            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
-    elif dtype == 'D':
-        cublas.zgemm(
-            handle, <int>transb, <int>transa, <int>m, <int>n, <int>k, 1,
-            b.data.ptr, <int>ldb, a.data.ptr, <int>lda, 0, c.data.ptr, <int>m)
-    else:
-        raise ValueError('Invalid dtype: %s' % str(dtype))
-
-    if out is not ret:
-        elementwise_copy(out, ret)
-    return ret
-
-
-cpdef ndarray tensordot_core_v11(
-        Py_ssize_t transa, Py_ssize_t transb, Py_ssize_t m, Py_ssize_t n,
-        Py_ssize_t k, ndarray a, Py_ssize_t lda, ndarray b, Py_ssize_t ldb,
-        ndarray c, Py_ssize_t ldc):
-    cdef float one_f, zero_f
-    cdef double one_d, zero_d
-    cdef cuComplex one_F, zero_F
-    cdef cuDoubleComplex one_D, zero_D
-    cdef size_t one_ptr, zero_ptr
-
-    cdef int compute_type
-    if c.dtype.char in 'efF':
-        compute_type = cublas.CUBLAS_COMPUTE_32F
-    elif c.dtype.char in 'dD':
-        compute_type = cublas.CUBLAS_COMPUTE_64F
-
-    cdef int compute_capability = int(device.get_compute_capability())
-    cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
-    if ((compute_capability >= 80) or
-            (compute_capability >= 70 and c.dtype == 'e')):
-        algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
-
-    if c.dtype.char in 'efd':
-        if compute_type == cublas.CUBLAS_COMPUTE_32F:
-            one_f = 1
-            zero_f = 0
-            one_ptr = <size_t>&one_f
-            zero_ptr = <size_t>&zero_f
-        elif compute_type == cublas.CUBLAS_COMPUTE_64F:
-            one_d = 1
-            zero_d = 0
-            one_ptr = <size_t>&one_d
-            zero_ptr = <size_t>&zero_d
-        else:
-            raise ValueError('Invalid compute type: {}'.format(compute_type))
-    elif c.dtype.char in 'FD':
-        if compute_type == cublas.CUBLAS_COMPUTE_32F:
-            one_F = cuComplex(1, 0)
-            zero_F = cuComplex(0, 0)
-            one_ptr = <size_t>&one_F
-            zero_ptr = <size_t>&zero_F
-        elif compute_type == cublas.CUBLAS_COMPUTE_64F:
-            one_D = cuDoubleComplex(1, 0)
-            zero_D = cuDoubleComplex(0, 0)
-            one_ptr = <size_t>&one_D
-            zero_ptr = <size_t>&zero_D
-        else:
-            raise ValueError('Invalid compute type: {}'.format(compute_type))
-    else:
-        raise ValueError('Invalid dtype: {}'.format(c.dtype))
-
-    cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
-    cdef int b_cuda_dtype = to_cuda_dtype(b.dtype, is_half_allowed=True)
-    cdef int c_cuda_dtype = to_cuda_dtype(c.dtype, is_half_allowed=True)
-    cdef intptr_t handle = device.get_cublas_handle()
-    cublas.gemmEx(
-        handle, <int>transa, <int>transb, <int>m, <int>n, <int>k, one_ptr,
-        a.data.ptr, a_cuda_dtype, <int>lda, b.data.ptr, b_cuda_dtype, <int>ldb,
-        zero_ptr, c.data.ptr, c_cuda_dtype, <int>ldc, compute_type, algo)
-
-
-@cython.profile(False)
-cpdef inline tuple _mat_to_cublas_contiguous(ndarray a, Py_ssize_t trans):
-    assert a.ndim == 2
-    if a._f_contiguous:
-        # builtin max function is not used for Cython 0.23
-        lda = a._strides[1] // a.itemsize
-        if lda < a._shape[0]:
-            lda = a._shape[0]
-        return a, trans, lda
-    if not a._c_contiguous:
-        a = a.copy()
-    return a, 1 - trans, a._strides[0] // a.itemsize
-
-
-@cython.profile(False)
-cpdef inline tuple _to_cublas_vector(ndarray a, Py_ssize_t rundim):
-    if a._strides[rundim] < 0:
-        return a.copy(), 1
-    else:
-        return a, a._strides[rundim] // a.itemsize
-
-
 cpdef ndarray _convert_object_with_cuda_array_interface(a):
+    if runtime._is_hip_environment:
+        raise RuntimeError(
+            'HIP/ROCm does not support cuda array interface')
+
     cdef Py_ssize_t sh, st
-    cdef object desc = a.__cuda_array_interface__
+    cdef dict desc = a.__cuda_array_interface__
     cdef tuple shape = desc['shape']
     cdef int dev_id = -1
     cdef size_t nbytes
@@ -3022,6 +2506,13 @@ cpdef ndarray _convert_object_with_cuda_array_interface(a):
         dev_id = device.get_device_id()
     mem = memory_module.UnownedMemory(ptr, nbytes, a, dev_id)
     memptr = memory.MemoryPointer(mem, 0)
+    # the v3 protocol requires an immediate synchronization, unless
+    # 1. the stream is not set (ex: from v0 ~ v2) or is None
+    # 2. users explicitly overwrite this requirement
+    stream_ptr = desc.get('stream')
+    if stream_ptr is not None:
+        if _util.CUDA_ARRAY_INTERFACE_SYNC:
+            runtime.streamSynchronize(stream_ptr)
     return ndarray(shape, dtype, memptr, strides)
 
 

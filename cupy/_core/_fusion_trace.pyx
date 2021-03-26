@@ -13,7 +13,7 @@ from cupy._core._fusion_variable import _TraceArray
 from cupy._core._fusion_variable import _VariableSet
 from cupy._core import _fusion_op
 from cupy._core import _fusion_optimization
-from cupy import util
+from cupy._core cimport internal
 
 
 _thread_local = _fusion_thread_local.thread_local
@@ -94,25 +94,6 @@ cdef class _ShapeConstraints:
             if dim_map[a] != b:
                 return False
         return True
-
-
-def _broadcast_shapes(shapes):
-    """Returns the braodcasted shapes.
-    """
-    out_ndim = max([len(shape) for shape in shapes])
-    shapes = [(1,) * (out_ndim - len(shape)) + shape for shape in shapes]
-
-    result_shape = []
-    for dims in zip(*shapes):
-        dims = [dim for dim in dims if dim != 1]
-        out_dim = 1 if len(dims) == 0 else dims[0]
-        if any([dim != out_dim for dim in dims]):
-            raise ValueError(
-                'Operands could not be broadcast together with shapes' +
-                ' '.join([str(shape) for shape in shapes]))
-        result_shape.append(out_dim)
-
-    return tuple(result_shape)
 
 
 def _guess_routine(func, args, dtype):
@@ -342,7 +323,7 @@ class TraceImpl:
                         self._make_interface(in_param)))
 
         # Broadcast shapes
-        out_rshape = _broadcast_shapes([p.rshape for p in params])
+        out_rshape = internal._broadcast_shapes([p.rshape for p in params])
         out_ashape = [None for _ in range(len(out_rshape))]
 
         for p in params:
@@ -438,7 +419,7 @@ class TraceImpl:
             raise NotImplementedError(
                 'Reduction for scalar arguments is not supported.')
 
-        axes = util._normalize_axis_indices(axis, in_param.ndim)
+        axes = internal._normalize_axis_indices(axis, in_param.ndim)
 
         if dtype is not None:
             dtype = numpy.dtype(dtype)

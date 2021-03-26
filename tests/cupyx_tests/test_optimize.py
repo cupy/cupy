@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from unittest import mock
@@ -121,6 +122,31 @@ class TestOptimize(unittest.TestCase):
             with cupyx.optimizing.optimize(key='other_key') as context:
                 with pytest.raises(ValueError):
                     context.load(filepath)
+
+    def test_optimize_autosave(self):
+        with tempfile.TemporaryDirectory() as directory:
+            filepath = directory + '/optimize_params'
+
+            # non-existing file, readonly=True
+            with testing.assert_warns(UserWarning):
+                with cupyx.optimizing.optimize(path=filepath, readonly=True):
+                    cupy.sum(cupy.arange(2))
+
+            # non-existing file, readonly=False
+            with cupyx.optimizing.optimize(path=filepath, readonly=False):
+                cupy.sum(cupy.arange(4))
+            filesize = os.stat(filepath).st_size
+            assert 0 < filesize
+
+            # existing file, readonly=True
+            with cupyx.optimizing.optimize(path=filepath, readonly=True):
+                cupy.sum(cupy.arange(6))
+            assert filesize == os.stat(filepath).st_size
+
+            # existing file, readonly=False
+            with cupyx.optimizing.optimize(path=filepath, readonly=False):
+                cupy.sum(cupy.arange(8))
+            assert filesize < os.stat(filepath).st_size
 
 
 # TODO(leofang): check the optimizer is not applicable to the cutensor backend?

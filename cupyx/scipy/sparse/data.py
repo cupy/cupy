@@ -1,5 +1,6 @@
 import cupy
 from cupy._core import internal
+from cupy import _util
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import coo
 from cupyx.scipy.sparse import sputils
@@ -146,7 +147,7 @@ class _minmax_mixin(object):
         mat = self.tocsc() if axis == 0 else self.tocsr()
         mat.sum_duplicates()
 
-        # Do the reudction
+        # Do the reduction
         value = mat._minor_reduce(min_or_max, axis, explicit)
         major_index = cupy.arange(M)
 
@@ -190,10 +191,10 @@ class _minmax_mixin(object):
                     assert False
             return m
 
-        if axis == 0 or axis == 1:
-            return self._min_or_max_axis(axis, min_or_max, explicit)
-        else:
-            raise ValueError("axis out of range")
+        if axis < 0:
+            axis += 2
+
+        return self._min_or_max_axis(axis, min_or_max, explicit)
 
     def _arg_min_or_max_axis(self, axis, op):
         if self.shape[axis] == 0:
@@ -203,7 +204,7 @@ class _minmax_mixin(object):
         mat = self.tocsc() if axis == 0 else self.tocsr()
         mat.sum_duplicates()
 
-        # Do the reudction
+        # Do the reduction
         value = mat._arg_minor_reduce(op, axis)
 
         if axis == 0:
@@ -248,6 +249,9 @@ class _minmax_mixin(object):
                         else:
                             return zero_ind
 
+        if axis < 0:
+            axis += 2
+
         return self._arg_min_or_max_axis(axis, op)
 
     def max(self, axis=None, out=None, *, explicit=False):
@@ -283,7 +287,7 @@ class _minmax_mixin(object):
         if explicit:
             api_name = 'explicit of cupyx.scipy.sparse.{}.max'.format(
                 self.__class__.__name__)
-            cupy.util.experimental(api_name)
+            _util.experimental(api_name)
         return self._min_or_max(axis, out, cupy.max, explicit)
 
     def min(self, axis=None, out=None, *, explicit=False):
@@ -319,7 +323,7 @@ class _minmax_mixin(object):
         if explicit:
             api_name = 'explicit of cupyx.scipy.sparse.{}.min'.format(
                 self.__class__.__name__)
-            cupy.util.experimental(api_name)
+            _util.experimental(api_name)
         return self._min_or_max(axis, out, cupy.min, explicit)
 
     def argmax(self, axis=None, out=None):

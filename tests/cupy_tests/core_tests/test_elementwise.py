@@ -36,7 +36,7 @@ class TestElementwise(unittest.TestCase):
     def test_copy_zero_sized_array1(self, xp, dtype, order):
         src = xp.empty((0,), dtype=dtype)
         res = xp.copy(src, order=order)
-        self.assertIsNot(src, res)
+        assert src is not res
         return res
 
     @testing.for_orders('CFAK')
@@ -45,7 +45,7 @@ class TestElementwise(unittest.TestCase):
     def test_copy_zero_sized_array2(self, xp, dtype, order):
         src = xp.empty((1, 0, 2), dtype=dtype)
         res = xp.copy(src, order=order)
-        self.assertIsNot(src, res)
+        assert src is not res
         return res
 
     @testing.for_orders('CFAK')
@@ -56,7 +56,7 @@ class TestElementwise(unittest.TestCase):
         a_cpu = numpy.empty((2, 3, 4))
         b_cpu = numpy.copy(a_cpu, order)
 
-        self.assertEqual(b.strides, b_cpu.strides)
+        assert b.strides == b_cpu.strides
 
 
 @testing.gpu

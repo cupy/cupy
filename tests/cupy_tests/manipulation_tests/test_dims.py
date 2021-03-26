@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 
 
@@ -294,13 +295,22 @@ class TestBroadcast(unittest.TestCase):
     def test_broadcast(self, dtype):
         broadcast_np = self._broadcast(numpy, dtype, self.shapes)
         broadcast_cp = self._broadcast(cupy, dtype, self.shapes)
-        self.assertEqual(broadcast_np.shape, broadcast_cp.shape)
-        self.assertEqual(broadcast_np.size, broadcast_cp.size)
-        self.assertEqual(broadcast_np.nd, broadcast_cp.nd)
+        assert broadcast_np.shape == broadcast_cp.shape
+        assert broadcast_np.size == broadcast_cp.size
+        assert broadcast_np.nd == broadcast_cp.nd
+
+    def _hip_skip_invalid_broadcast(self):
+        invalid_shapes = [
+            [(1,), (1,)],
+            [(2,), (2,)],
+        ]
+        if runtime.is_hip and self.shapes in invalid_shapes:
+            pytest.xfail('HIP/ROCm may have a bug')
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_broadcast_arrays(self, xp, dtype):
+        self._hip_skip_invalid_broadcast()
         arrays = [
             testing.shaped_arange(s, xp, dtype) for s in self.shapes]
         return xp.broadcast_arrays(*arrays)
