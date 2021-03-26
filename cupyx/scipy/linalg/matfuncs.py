@@ -2,14 +2,20 @@ import numpy
 
 
 def sinhm(arr):
-    """Hyperbolic Sine
-    Returns hyperbolic sine of the given square matrix.
-    Args:.
-        arr(cupy.ndarray) : Square matrix whose hyperbolic .
-        sine has to be calculated .
-    Returns: .
-        (cupy.ndarray):  Hyperbolic sine of given square matrix as input.
+    """Hyperbolic Sine calculation for a given nXn matrix
+
+    Args:
+        arr(cupy.ndarray) : 
+                            Square matrix with dimension nXn.
+
+    Returns:
+        (cupy.ndarray):  
+        
+                        Hyperbolic sine of given square matrix as input.
+   
+    ..seealso:: :func: 'scipy.linlag.matfuncs.py'                     
     """
+
     arr = numpy.asanyarray(arr)
 
     # Checking whether the input is a 2D matrix or not
