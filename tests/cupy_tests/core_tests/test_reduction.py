@@ -98,11 +98,11 @@ class TestSimpleReductionFunctionNonContiguous(
 class TestSimpleReductionFunctionComplexWarning(unittest.TestCase):
 
     def setUp(self):
-        self.accelerators = core.get_reduction_accelerators()
-        core.set_reduction_accelerators(self.backend)
+        self.accelerators = _core.get_reduction_accelerators()
+        _core.set_reduction_accelerators(self.backend)
 
     def tearDown(self):
-        core.set_reduction_accelerators(self.accelerators)
+        _core.set_reduction_accelerators(self.accelerators)
 
     @testing.for_complex_dtypes(name='c_dtype')
     @testing.for_float_dtypes(name='f_dtype')

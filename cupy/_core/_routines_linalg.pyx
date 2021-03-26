@@ -6,23 +6,23 @@ import cython
 import numpy
 
 import cupy
-from cupy.core._kernel import ElementwiseKernel
-from cupy.core._reduction import ReductionKernel
-from cupy.core._ufuncs import elementwise_copy
+from cupy._core._kernel import ElementwiseKernel
+from cupy._core._reduction import ReductionKernel
+from cupy._core._ufuncs import elementwise_copy
 
 
 from libc.stdint cimport intptr_t
 
-from cupy.core cimport _accelerator
-from cupy.core._carray cimport shape_t
-from cupy.core._dtype cimport to_cuda_dtype
-from cupy.core._scalar cimport get_typename
-from cupy.core.core cimport _internal_ascontiguousarray
-from cupy.core.core cimport _ndarray_init
-from cupy.core.core cimport ascontiguousarray
-from cupy.core.core cimport ndarray
-from cupy.core cimport _routines_manipulation as _manipulation
-from cupy.core cimport _routines_math as _math
+from cupy._core cimport _accelerator
+from cupy._core._carray cimport shape_t
+from cupy._core._dtype cimport to_cuda_dtype
+from cupy._core._scalar cimport get_typename
+from cupy._core.core cimport _internal_ascontiguousarray
+from cupy._core.core cimport _ndarray_init
+from cupy._core.core cimport ascontiguousarray
+from cupy._core.core cimport ndarray
+from cupy._core cimport _routines_manipulation as _manipulation
+from cupy._core cimport _routines_math as _math
 from cupy.cuda cimport device
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cublas

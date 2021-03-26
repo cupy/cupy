@@ -20,7 +20,8 @@ def around(a, decimals=0, out=None):
 
     """
     if fusion._is_fusing():
-        return fusion._call_ufunc(_core.core._round_ufunc, a, decimals, out=out)
+        return fusion._call_ufunc(
+            _core.core._round_ufunc, a, decimals, out=out)
     a = _core.array(a, copy=False)
     return a.round(decimals, out=out)
 

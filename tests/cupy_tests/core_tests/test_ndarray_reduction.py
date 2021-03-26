@@ -399,6 +399,26 @@ class TestCubReduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
+        if self.backend == 'device':
+            func_name = 'cupy._core._routines_statistics.cub.'
+            if len(axis) == len(self.shape):
+                func_name += 'device_reduce'
+            else:
+                func_name += 'device_segmented_reduce'
+            with testing.AssertFunctionIsCalled(func_name, return_value=ret):
+                a.max(axis=axis)
+        elif self.backend == 'block':
+            # this is the only function we can mock; the rest is cdef'd
+            func_name = 'cupy._core._cub_reduction.'
+            func_name += '_SimpleCubReductionKernel_get_cached_function'
+            func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+            if len(axis) == len(self.shape):
+                times_called = 2  # two passes
+            else:
+                times_called = 1  # one pass
+            with testing.AssertFunctionIsCalled(
+                    func_name, wraps=func, times_called=times_called):
+                a.max(axis=axis)
         # ...then perform the actual computation
         return a.max(axis=axis)
 

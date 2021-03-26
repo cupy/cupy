@@ -4,9 +4,9 @@ import warnings as _warnings
 import cupy as _cupy
 
 from libc.stdint cimport intptr_t, uint32_t, uint64_t
-from cupy.core._carray cimport shape_t
-from cupy.core.core cimport ndarray
-from cupy.core cimport internal
+from cupy._core._carray cimport shape_t
+from cupy._core.core cimport ndarray
+from cupy._core cimport internal
 from cupy_backends.cuda.libs.cutensor cimport Handle
 from cupy_backends.cuda.libs.cutensor cimport TensorDescriptor
 from cupy_backends.cuda.libs.cutensor cimport ContractionDescriptor

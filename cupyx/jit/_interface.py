@@ -66,7 +66,7 @@ class _JitRawKernel:
                 _types.Void(),
             )
             fname = result.func_name
-            module = cupy.core.core.compile_with_cache(
+            module = cupy._core.core.compile_with_cache(
                 source=result.code,
                 options=('-D CUPY_JIT_MODE',))
             kern = module.get_function(fname)

@@ -3,7 +3,7 @@ import warnings
 import numpy
 import cupy
 
-from cupy.core import internal
+from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 
 

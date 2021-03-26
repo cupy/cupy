@@ -175,7 +175,7 @@ def _get_cub_path():
 
     if not runtime.is_hip:
         cuda_path = get_cuda_path()
-        if os.path.isdir(os.path.join(current_dir, 'core/include/cupy/cub')):
+        if os.path.isdir(os.path.join(current_dir, '_core/include/cupy/cub')):
             _cub_path = '<bundle>'
         elif cuda_path is not None and os.path.isdir(
                 os.path.join(cuda_path, 'include/cub')):

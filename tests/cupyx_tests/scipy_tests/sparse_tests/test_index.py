@@ -127,16 +127,6 @@ class TestSetitemIndexing(unittest.TestCase):
             self._run([1, 5, 4, 5], data=data)
             self._run(0, 2, data=data)
 
-    @staticmethod
-    def _get_index_combos(idx):
-        return [dict['arr_fn'](idx, dtype=dict['dtype'])
-                for dict in testing.product({
-                    "arr_fn": [numpy.array, cupy.array],
-                    "dtype": [numpy.int32, numpy.int64]
-                })]
-
-    # 2D Slicing
-
     def test_major_slice(self):
         self._run(slice(5, 10000), data=5)
         self._run(slice(5, 4), data=5)
@@ -160,12 +150,6 @@ class TestSetitemIndexing(unittest.TestCase):
         self._run([10, 2])
         self._run([2])
 
-        self._run(numpy.array(10))
-        self._run(numpy.array(-10))
-
-        self._run(cupy.array(10))
-        self._run(cupy.array(-10))
-
     def test_major_slice_minor_slice(self):
         self._run(slice(1, 5), slice(1, 5))
 
@@ -183,12 +167,9 @@ class TestSetitemIndexing(unittest.TestCase):
 
     def test_major_scalar_minor_slice(self):
         self._run(5, slice(1, 5))
-        self._run(numpy.array(5), slice(1, 5))
-        self._run(cupy.array(5), slice(1, 5))
 
     def test_major_scalar_minor_all(self):
         self._run(5, slice(None))
-        self._run(numpy.array(5), slice(None))
 
     def test_major_scalar_minor_scalar(self):
         self._run(5, 5)

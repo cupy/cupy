@@ -1,6 +1,6 @@
-from cupy.core cimport _accelerator
-from cupy.core._accelerator cimport ACCELERATOR_CUB
-from cupy.core._scalar cimport get_typename
+from cupy._core cimport _accelerator
+from cupy._core._accelerator cimport ACCELERATOR_CUB
+from cupy._core._scalar cimport get_typename
 
 import functools
 import string

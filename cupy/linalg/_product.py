@@ -4,8 +4,8 @@ import numpy
 
 import cupy
 from cupy import _core
-from cupy.core import internal
-from cupy.core._gufuncs import _GUFunc
+from cupy._core import internal
+from cupy._core._gufuncs import _GUFunc
 
 from cupy.linalg._solve import inv
 
@@ -394,7 +394,8 @@ def kron(a, b):
             ndim = a_ndim
 
     axis = ndim - 1
-    out = _core.tensordot_core(a, b, None, a.size, b.size, 1, a_shape + b_shape)
+    out = _core.tensordot_core(
+        a, b, None, a.size, b.size, 1, a_shape + b_shape)
     for _ in range(ndim):
         out = _core.concatenate_method(out, axis=axis)
 

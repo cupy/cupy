@@ -1,6 +1,6 @@
 import cupy
 from cupy import _core
-from cupy.core import fusion
+from cupy._core import fusion
 from cupy import _util
 
 from cupy._core import _routines_indexing as _indexing

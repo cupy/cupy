@@ -17,6 +17,6 @@ Including the Jitify header as a submodule for building the `cupy.cuda.jitify` m
 For further information on Jitify, see the [Jitify repo](https://github.com/NVIDIA/jitify).
 
 ## DLPack
-The `dlpack` folder stores the DLPack header for building the `cupy.core.dlpack` module,
+The `dlpack` folder stores the DLPack header for building the `cupy._core.dlpack` module,
 see `README.md` therein.
 For further information on DLPack, see the [DLPack repo](https://github.com/dmlc/dlpack).

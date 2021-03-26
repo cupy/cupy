@@ -5,7 +5,7 @@ from libc.stdint cimport intptr_t, uint64_t, uint32_t, int32_t, int64_t
 
 import cupy
 from cupy.cuda cimport stream
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 
 
 _UINT32_MAX = 0xffffffff

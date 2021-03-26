@@ -3,8 +3,8 @@ import re
 
 import cupy
 
-import cupy.core._routines_manipulation as _manipulation
-from cupy.core import internal
+import cupy._core._routines_manipulation as _manipulation
+from cupy._core import internal
 
 # Signature parsing code and dimension accessing has been borrowed
 # from dask

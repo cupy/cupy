@@ -7,7 +7,7 @@ import cupy
 from cupy.cuda import runtime
 from cupy import testing
 from cupy import _util
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 import cupyx.scipy.ndimage  # NOQA
 
 try:
