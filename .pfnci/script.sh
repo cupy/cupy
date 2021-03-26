@@ -148,11 +148,13 @@ prepare_docker() {
   run gcloud auth configure-docker
 }
 
+KNOWN_BASE_BRANCHES="master v8 v9"
+
 # is_known_base_branch returns 0 only if the given branch name is a known
 # base development branch.
 is_known_base_branch() {
   local branch="${1##refs/heads/}"
-  for BASE_BRANCH in master v8 v9; do
+  for BASE_BRANCH in ${KNOWN_BASE_BRANCHES}; do
     if [ "${branch}" = "${BASE_BRANCH}" ]; then
       return 0
     fi
@@ -162,7 +164,7 @@ is_known_base_branch() {
 
 # get_base_branch returns the base development branch for the current HEAD.
 get_base_branch() {
-  for BASE_BRANCH in master v7 v8; do
+  for BASE_BRANCH in ${KNOWN_BASE_BRANCHES}; do
     git merge-base --is-ancestor "origin/${BASE_BRANCH}" HEAD && echo "${BASE_BRANCH}" && return 0
   done
   echo "Base branch of HEAD is not valid." >&2
