@@ -1,4 +1,4 @@
-import numpy
+import cupy
 
 
 def sinhm(arr):
@@ -12,7 +12,7 @@ def sinhm(arr):
     ..seealso:: :func: 'scipy.linlag.matfuncs.py'
     """
 
-    arr = numpy.asanyarray(arr)
+    arr = cupy.array(arr)
 
     # Checking whether the input is a 2D matrix or not
     if(len(arr.shape) != 2):
@@ -23,11 +23,11 @@ def sinhm(arr):
         raise ValueError("Input matrix should be a square matrix")
 
     # Checking whether the input matrix elements are nan or not
-    if(numpy.isnan(numpy.sum(arr))):
+    if(cupy.isnan(cupy.cumsum(arr)[2*arr.shape[0]-1])):
         raise ValueError("Input matrix elements cannot be nan")
 
     # Checking whether the input matrix elements are infinity or not
-    if(numpy.isinf(numpy.sum(arr))):
+    if(cupy.isinf(cupy.cumsum(arr)[2*arr.shape[0]-1])):
         raise ValueError("Input matrix elements cannot be infinity")
 
-    return 0.5 * (numpy.exp(arr) - numpy.exp(-1 * arr))
+    return 0.5 * (cupy.exp(arr) - cupy.exp(-1 * arr))
