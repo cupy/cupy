@@ -1,4 +1,4 @@
-from cupy import core
+from cupy import _core
 from cupy._math import ufunc
 
 
@@ -20,7 +20,7 @@ expm1 = ufunc.create_math_ufunc(
     ''')
 
 
-exp2 = core.create_ufunc(
+exp2 = _core.create_ufunc(
     'cupy_exp2',
     ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = pow(in0_type(2), in0)',
@@ -67,7 +67,7 @@ log1p = ufunc.create_math_ufunc(
     ''')
 
 
-logaddexp = core.create_ufunc(
+logaddexp = _core.create_ufunc(
     'cupy_logaddexp',
     ('ee->e', 'ff->f', 'dd->d'),
     'out0 = fmax(in0, in1) + log1p(exp(-fabs(in0 - in1)))',
@@ -78,7 +78,7 @@ logaddexp = core.create_ufunc(
     ''')
 
 
-logaddexp2 = core.create_ufunc(
+logaddexp2 = _core.create_ufunc(
     'cupy_logaddexp2',
     ('ee->e', 'ff->f', 'dd->d'),
     'out0 = fmax(in0, in1) + log2(1 + exp2(-fabs(in0 - in1)))',

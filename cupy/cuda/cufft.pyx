@@ -944,7 +944,7 @@ cdef class XtPlanNd:
 
         # determine input/output/execution types here; note that we don't
         # cimport to_cuda_dtype due to circular dependency
-        from cupy.core._dtype import to_cuda_dtype
+        from cupy._core._dtype import to_cuda_dtype
         cdef int itype = to_cuda_dtype(idtype, True)
         cdef int otype = to_cuda_dtype(odtype, True)
         cdef int etype = to_cuda_dtype(edtype, True)

@@ -1,4 +1,4 @@
-from cupy import core
+from cupy import _core
 
 
 def count_nonzero(a, axis=None):
@@ -24,7 +24,7 @@ def count_nonzero(a, axis=None):
     return _count_nonzero(a, axis=axis)
 
 
-_count_nonzero = core.create_reduction_func(
+_count_nonzero = _core.create_reduction_func(
     'cupy_count_nonzero',
     ('?->l', 'B->l', 'h->l', 'H->l', 'i->l', 'I->l', 'l->l', 'L->l',
      'q->l', 'Q->l', 'e->l', 'f->l', 'd->l', 'F->l', 'D->l'),

@@ -4,8 +4,8 @@ import numpy
 import pytest
 
 import cupy
-import cupy.core._accelerator as _acc
-from cupy.core import _cub_reduction
+import cupy._core._accelerator as _acc
+from cupy._core import _cub_reduction
 from cupy import testing
 
 
@@ -212,13 +212,13 @@ class TestCubReduction(unittest.TestCase):
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
         if self.backend == 'device':
-            func_name = 'cupy.core._routines_statistics.cub.'
+            func_name = 'cupy._core._routines_statistics.cub.'
             func_name += 'device_reduce'
             with testing.AssertFunctionIsCalled(func_name, return_value=ret):
                 a.argmin(axis=self.axis)
         elif self.backend == 'block':
             # this is the only function we can mock; the rest is cdef'd
-            func_name = 'cupy.core._cub_reduction.'
+            func_name = 'cupy._core._cub_reduction.'
             func_name += '_SimpleCubReductionKernel_get_cached_function'
             func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
             if self.axis is not None and len(self.shape) > 1:
@@ -247,13 +247,13 @@ class TestCubReduction(unittest.TestCase):
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
         if self.backend == 'device':
-            func_name = 'cupy.core._routines_statistics.cub.'
+            func_name = 'cupy._core._routines_statistics.cub.'
             func_name += 'device_reduce'
             with testing.AssertFunctionIsCalled(func_name, return_value=ret):
                 a.argmax(axis=self.axis)
         elif self.backend == 'block':
             # this is the only function we can mock; the rest is cdef'd
-            func_name = 'cupy.core._cub_reduction.'
+            func_name = 'cupy._core._cub_reduction.'
             func_name += '_SimpleCubReductionKernel_get_cached_function'
             func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
             if self.axis is not None and len(self.shape) > 1:

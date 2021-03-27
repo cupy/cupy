@@ -13,7 +13,7 @@
 # Boost Software License, Version 1.0. (See accompanying file
 # LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-from cupy import core
+from cupy import _core
 
 
 polevl_definition = '''
@@ -174,7 +174,7 @@ double __device__ psi(double x)
 '''
 
 
-digamma = core.create_ufunc(
+digamma = _core.create_ufunc(
     'cupyx_scipy_digamma', ('f->f', 'd->d'),
     'out0 = psi(in0)',
     preamble=polevl_definition+psi_definition,

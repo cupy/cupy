@@ -13,7 +13,7 @@ except ImportError:
 
 from cupy_backends.cuda.api import driver
 import cupy
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 from cupy import testing
 from cupyx.scipy import sparse
 

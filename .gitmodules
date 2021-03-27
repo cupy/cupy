@@ -1,7 +1,7 @@
-[submodule "cupy/core/include/cupy/cub"]
-	path = cupy/core/include/cupy/cub
+[submodule "cupy/_core/include/cupy/cub"]
+	path = cupy/_core/include/cupy/cub
 	url = https://github.com/NVlabs/cub.git
 	branch = 1.8.0
-[submodule "cupy/core/include/cupy/jitify"]
-	path = cupy/core/include/cupy/jitify
+[submodule "cupy/_core/include/cupy/jitify"]
+	path = cupy/_core/include/cupy/jitify
 	url = https://github.com/NVIDIA/jitify.git

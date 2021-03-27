@@ -173,7 +173,7 @@ def get_compiler_setting(use_hip):
 
     # for <cupy/complex.cuh>
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                               '../cupy/core/include')
+                               '../cupy/_core/include')
     global _jitify_path
     _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:

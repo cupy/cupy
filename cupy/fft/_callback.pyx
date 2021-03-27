@@ -2,7 +2,7 @@ from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api.driver cimport get_build_version
 from cupy_backends.cuda.api.runtime cimport _is_hip_environment
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 from cupy.cuda.device cimport get_compute_capability
 
 import hashlib
@@ -104,7 +104,7 @@ cdef inline void _set_cupy_paths() except*:
     global _cupy_root, _cupy_include, _source_dir
     if _cupy_root is None:
         _cupy_root = os.path.join(os.path.dirname(__file__), '..')
-        _cupy_include = os.path.join(_cupy_root, 'core/include')
+        _cupy_include = os.path.join(_cupy_root, '_core/include')
         _source_dir = os.path.join(_cupy_root, 'cuda')
 
 

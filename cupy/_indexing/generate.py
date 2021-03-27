@@ -7,7 +7,7 @@ import operator
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy._creation import from_data
 from cupy._manipulation import join
 
@@ -70,7 +70,7 @@ class AxisConcatenator(object):
                         newobj = self._output_obj(newobj, ndim, ndmin, trans1d)
 
             objs.append(newobj)
-            if not scalar and isinstance(newobj, core.ndarray):
+            if not scalar and isinstance(newobj, _core.ndarray):
                 arraytypes.append(newobj.dtype)
 
         final_dtype = numpy.find_common_type(arraytypes, scalartypes)

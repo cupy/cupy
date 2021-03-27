@@ -95,7 +95,7 @@ If you want to use scalar values, cast the returned arrays explicitly.
 
   >>> type(np.sum(np.arange(3))) == np.int64
   True
-  >>> type(cupy.sum(cupy.arange(3))) == cupy.core.core.ndarray
+  >>> type(cupy.sum(cupy.arange(3))) == cupy._core.core.ndarray
   True
 
 

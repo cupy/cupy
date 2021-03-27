@@ -17,7 +17,7 @@ This enables NumPy ufuncs to be directly operated on CuPy arrays.
 
     arr = cupy.random.randn(1, 2, 3, 4).astype(cupy.float32)
     result = numpy.sum(arr)
-    print(type(result))  # => <class 'cupy.core.core.ndarray'>
+    print(type(result))  # => <class 'cupy._core.core.ndarray'>
 
 :class:`cupy.ndarray` also implements ``__array_function__`` interface (see `NEP 18 — A dispatch mechanism for NumPy’s high level array functions <http://www.numpy.org/neps/nep-0018-array-function-protocol.html>`_ for details).
 This enables code using NumPy to be directly operated on CuPy arrays.
