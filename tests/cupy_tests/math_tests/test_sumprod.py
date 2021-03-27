@@ -5,14 +5,9 @@ import numpy
 import pytest
 
 import cupy
-<<<<<<< HEAD
-import cupy.core._accelerator as _acc
-import cupy.cuda.cutensor
-from cupy.core import _cub_reduction
-=======
 import cupy._core._accelerator as _acc
 from cupy._core import _cub_reduction
->>>>>>> 23f0b72e6... Merge pull request #3820 from takagi/api-core
+import cupy.cuda.cutensor
 from cupy import testing
 
 
