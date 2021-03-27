@@ -50,7 +50,7 @@ Additional CUDA Libraries
 
 Part of the CUDA features in CuPy will be activated only when the corresponding libraries are installed.
 
-* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.2
+* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.2 (CUDA 10.1+)
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
@@ -118,11 +118,11 @@ Windows once the CUDA driver is correctly set up, you can also install CuPy from
 
     $ conda install -c conda-forge cupy
 
-and ``conda`` will install a pre-built CuPy binary package for you, along with CUDA runtime libraries
+and ``conda`` will install a pre-built CuPy binary package for you, along with the CUDA runtime libraries
 (``cudatoolkit``). It is not necessary to install CUDA Toolkit in advance.
 
-Conda has a built-in mechanism to determine the latest version of ``cudatoolkit`` supported by your driver. However,
-if for any reason you need to force-install a particular CUDA version (say 10.0), you can do::
+Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` supported by your driver.
+However, if for any reason you need to force-install a particular CUDA version (say 10.0), you can do::
 
     $ conda install -c conda-forge cupy cudatoolkit=10.0
 
@@ -136,15 +136,16 @@ if for any reason you need to force-install a particular CUDA version (say 10.0)
 
 .. note::
 
-    If you encounter any problem with CuPy from ``conda-forge``, please feel free to report to `cupy-feedstock
+    If you encounter any problem with CuPy installed from ``conda-forge``, please feel free to report to `cupy-feedstock
     <https://github.com/conda-forge/cupy-feedstock/issues>`_, and we will help investigate if it is just a packaging
     issue in ``conda-forge``'s recipe or a real issue in CuPy.
 
 .. note::
 
-    If you did not install CUDA Toolkit yourselves, the ``nvcc`` compiler might not be available.
-    The ``cudatoolkit`` package from ``conda-forge`` does not have ``nvcc`` included. If you would like to use
-    a local CUDA installation, you need to make sure its version matches that of ``cudatoolkit`` to avoid surprises.
+    If you did not install CUDA Toolkit by yourself, the ``nvcc`` compiler might not be available, as
+    the ``cudatoolkit`` package from ``conda-forge`` does not include the ``nvcc`` compiler toolchain. If you would like to use
+    it from a local CUDA installation, you need to make sure the version of CUDA Toolkit matches that of ``cudatoolkit`` to
+    avoid surprises.
 
 .. _install_cupy_from_source:
 
