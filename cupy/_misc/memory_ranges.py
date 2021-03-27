@@ -1,5 +1,5 @@
-from cupy.core import _kernel
-from cupy.core import _memory_range
+from cupy._core import _kernel
+from cupy._core import _memory_range
 from cupy._manipulation import join
 from cupy._sorting import search
 

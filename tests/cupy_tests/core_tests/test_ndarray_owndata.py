@@ -1,6 +1,6 @@
 import unittest
 
-from cupy import core
+from cupy import _core
 from cupy import testing
 
 
@@ -8,7 +8,7 @@ from cupy import testing
 class TestArrayOwndata(unittest.TestCase):
 
     def setUp(self):
-        self.a = core.ndarray(())
+        self.a = _core.ndarray(())
 
     def test_original_array(self):
         assert self.a.flags.owndata is True

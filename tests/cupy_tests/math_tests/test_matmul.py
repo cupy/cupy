@@ -5,7 +5,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy.core import _routines_linalg as _linalg
+from cupy._core import _routines_linalg as _linalg
 from cupy import testing
 
 
@@ -144,11 +144,11 @@ class TestMatmulOverflow(unittest.TestCase):
 class _TestMatmulComputeTypes(unittest.TestCase):
 
     def setUp(self):
-        self.old_compute_type = cupy.core.get_compute_type(self.dtype)
-        cupy.core.set_compute_type(self.dtype, self.compute_type)
+        self.old_compute_type = cupy._core.get_compute_type(self.dtype)
+        cupy._core.set_compute_type(self.dtype, self.compute_type)
 
     def tearDown(self):
-        cupy.core.set_compute_type(self.dtype, self.old_compute_type)
+        cupy._core.set_compute_type(self.dtype, self.old_compute_type)
 
     def make_x1_x2(self, xp, shapes, dtypes):
         x1 = testing.shaped_random(shapes[0], xp, dtypes[0])

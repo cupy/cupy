@@ -10,7 +10,7 @@ except ImportError:
     _scipy_available = False
 
 import cupy
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 from cupy.cuda import cub
 from cupy import cusparse
 from cupyx.scipy.sparse import base

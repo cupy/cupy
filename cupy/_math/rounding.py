@@ -1,5 +1,5 @@
-from cupy import core
-from cupy.core import fusion
+from cupy import _core
+from cupy._core import fusion
 from cupy._math import ufunc
 
 
@@ -20,8 +20,9 @@ def around(a, decimals=0, out=None):
 
     """
     if fusion._is_fusing():
-        return fusion._call_ufunc(core.core._round_ufunc, a, decimals, out=out)
-    a = core.array(a, copy=False)
+        return fusion._call_ufunc(
+            _core.core._round_ufunc, a, decimals, out=out)
+    a = _core.array(a, copy=False)
     return a.round(decimals, out=out)
 
 
@@ -65,7 +66,7 @@ trunc = ufunc.create_math_ufunc(
     ''', support_complex=False)
 
 
-fix = core.create_ufunc(
+fix = _core.create_ufunc(
     'cupy_fix', ('e->e', 'f->f', 'd->d'),
     'out0 = (in0 >= 0.0) ? floor(in0): ceil(in0)',
     doc='''If given value x is positive, it return floor(x).

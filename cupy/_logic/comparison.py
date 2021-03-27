@@ -1,11 +1,11 @@
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy._logic import content
 
 
-_is_close = core.create_ufunc(
+_is_close = _core.create_ufunc(
     'cupy_is_close',
     ('eeee?->?', 'ffff?->?', 'dddd?->?'),
     '''
@@ -20,10 +20,10 @@ _is_close = core.create_ufunc(
     '''
 )
 
-# Note that in cupy/core/include/cupy/complex.cuh, we already got isfinite and
+# Note that in cupy/_core/include/cupy/complex.cuh, we already got isfinite and
 # isnan working for complex numbers, so just replace fabs above by abs (from
 # thrust) and we are ready to go
-_is_close_complex = core.create_ufunc(
+_is_close_complex = _core.create_ufunc(
     'cupy_is_close_complex',
     ('FFff?->?', 'DDdd?->?'),
     '''
@@ -136,19 +136,19 @@ def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
 # TODO(okuta): Implement array_equiv
 
 
-greater = core.greater
+greater = _core.greater
 
 
-greater_equal = core.greater_equal
+greater_equal = _core.greater_equal
 
 
-less = core.less
+less = _core.less
 
 
-less_equal = core.less_equal
+less_equal = _core.less_equal
 
 
-equal = core.equal
+equal = _core.equal
 
 
-not_equal = core.not_equal
+not_equal = _core.not_equal

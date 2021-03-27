@@ -233,7 +233,7 @@ def _batched_posv(a, b):
         raise ValueError(msg)
 
     a = a.astype(dtype, order='C', copy=True)
-    ap = _cupy.core._mat_ptrs(a)
+    ap = _cupy._core._mat_ptrs(a)
     lda, n = a.shape[-2:]
     batch_size = int(_numpy.prod(a.shape[:-2]))
 
@@ -249,7 +249,7 @@ def _batched_posv(a, b):
 
     b_shape = b.shape
     b = b.conj().reshape(batch_size, n, -1).astype(dtype, order='C', copy=True)
-    bp = _cupy.core._mat_ptrs(b)
+    bp = _cupy._core._mat_ptrs(b)
     ldb, nrhs = b.shape[-2:]
     dev_info = _cupy.empty(1, dtype=_numpy.int32)
 

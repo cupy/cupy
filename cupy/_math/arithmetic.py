@@ -1,11 +1,11 @@
-from cupy import core
-from cupy.core import fusion
+from cupy import _core
+from cupy._core import fusion
 
 
-add = core.add
+add = _core.add
 
 
-reciprocal = core.create_ufunc(
+reciprocal = _core.create_ufunc(
     'cupy_reciprocal',
     ('b', 'B', 'h', 'H', 'i', 'I', 'l', 'L', 'q', 'Q',
      ('e', 'out0 = 1 / in0'),
@@ -21,13 +21,13 @@ reciprocal = core.create_ufunc(
     ''')
 
 
-negative = core.negative
+negative = _core.negative
 
 
-conjugate = core.conjugate
+conjugate = _core.conjugate
 
 
-angle = core.angle
+angle = _core.angle
 
 
 def real(val):
@@ -37,9 +37,9 @@ def real(val):
 
     '''
     if fusion._is_fusing():
-        return fusion._call_ufunc(core.real, val)
-    if not isinstance(val, core.ndarray):
-        val = core.array(val)
+        return fusion._call_ufunc(_core.real, val)
+    if not isinstance(val, _core.ndarray):
+        val = _core.array(val)
     return val.real
 
 
@@ -50,34 +50,34 @@ def imag(val):
 
     '''
     if fusion._is_fusing():
-        return fusion._call_ufunc(core.imag, val)
-    if not isinstance(val, core.ndarray):
-        val = core.array(val)
+        return fusion._call_ufunc(_core.imag, val)
+    if not isinstance(val, _core.ndarray):
+        val = _core.array(val)
     return val.imag
 
 
-multiply = core.multiply
+multiply = _core.multiply
 
 
-divide = core.divide
+divide = _core.divide
 
 
-divmod = core.divmod
+divmod = _core.divmod
 
 
-power = core.power
+power = _core.power
 
 
-subtract = core.subtract
+subtract = _core.subtract
 
 
-true_divide = core.true_divide
+true_divide = _core.true_divide
 
 
-floor_divide = core.floor_divide
+floor_divide = _core.floor_divide
 
 
-fmod = core.create_ufunc(
+fmod = _core.create_ufunc(
     'cupy_fmod',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
      'qq->q', 'QQ->Q',
@@ -92,7 +92,7 @@ fmod = core.create_ufunc(
     ''')
 
 
-modf = core.create_ufunc(
+modf = _core.create_ufunc(
     'cupy_modf',
     ('e->ee', 'f->ff',
      ('d->dd', 'double iptr; out0 = modf(in0, &iptr); out1 = iptr')),
@@ -106,4 +106,4 @@ modf = core.create_ufunc(
     ''')
 
 
-remainder = core.remainder
+remainder = _core.remainder

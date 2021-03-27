@@ -1,7 +1,7 @@
 import cupy
 import numpy
 
-from cupy.core.core import _update_order_char, _get_strides_for_order_K
+from cupy._core.core import _update_order_char, _get_strides_for_order_K
 
 
 def empty(shape, dtype=float, order='C'):

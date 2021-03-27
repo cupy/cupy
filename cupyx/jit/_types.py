@@ -1,5 +1,5 @@
 import numpy
-from cupy.core._scalar import get_typename
+from cupy._core._scalar import get_typename
 
 
 # Base class for cuda types.

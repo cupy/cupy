@@ -1,7 +1,7 @@
 import warnings
 
 import cupy
-from cupy.core import internal
+from cupy._core import internal
 
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import filters
