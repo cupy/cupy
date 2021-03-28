@@ -1,6 +1,6 @@
 # distutils: language = c++
 
-# this mirrors the macro defined in cupy/core/include/cupy/type_dispatcher.cuh
+# this mirrors the macro defined in cupy/_core/include/cupy/type_dispatcher.cuh
 cdef enum:
     CUPY_TYPE_INT8 = 0
     CUPY_TYPE_UINT8 = 1

@@ -1,6 +1,9 @@
 import unittest
 
-from install import utils
+from . import _from_install_import
+
+
+utils = _from_install_import('utils')
 
 
 class TestPrintWarning(unittest.TestCase):

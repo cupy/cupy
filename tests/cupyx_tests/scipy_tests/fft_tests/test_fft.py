@@ -917,8 +917,10 @@ class TestRfft(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    # the irfft tests show a slightly different results in CUDA 11.0 when
+    # compared to SciPy 1.6.1
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -929,7 +931,7 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_overwrite(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -939,7 +941,7 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_plan(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -955,7 +957,7 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_overwrite_plan(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -970,7 +972,7 @@ class TestRfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_plan_manager(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -990,7 +992,7 @@ class TestRfft(unittest.TestCase):
 
     @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_irfft_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)

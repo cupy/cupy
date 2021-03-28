@@ -1,6 +1,6 @@
 import numpy
 
-from cupy import core
+from cupy import _core
 
 
 def array_split(ary, indices_or_sections, axis=0):
@@ -13,7 +13,7 @@ def array_split(ary, indices_or_sections, axis=0):
     .. seealso:: :func:`cupy.split` for more detail, :func:`numpy.array_split`
 
     """
-    return core.array_split(ary, indices_or_sections, axis)
+    return _core.array_split(ary, indices_or_sections, axis)
 
 
 def dsplit(ary, indices_or_sections):

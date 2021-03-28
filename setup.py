@@ -8,8 +8,8 @@ import sys
 import cupy_setup_build
 
 
-for submodule in ('cupy/core/include/cupy/cub/',
-                  'cupy/core/include/cupy/jitify'):
+for submodule in ('cupy/_core/include/cupy/cub/',
+                  'cupy/_core/include/cupy/jitify'):
     if len(os.listdir(submodule)) == 0:
         msg = '''
         The folder %s is a git submodule but is
@@ -100,7 +100,7 @@ cupy_package_data = [
     'cupy/random/cupy_distributions.cu',
     'cupy/random/cupy_distributions.cuh',
 ] + [
-    x for x in glob.glob('cupy/core/include/cupy/**', recursive=True)
+    x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
     if os.path.isfile(x)
 ]
 

@@ -7,7 +7,7 @@ import cupy
 from cupy import cusolver
 from cupy import testing
 from cupy.testing import _attr
-from cupy.core import _routines_linalg as _linalg
+from cupy._core import _routines_linalg as _linalg
 import cupyx
 
 

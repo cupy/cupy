@@ -1,7 +1,7 @@
 import math
 
 import cupy
-from cupy.core import internal
+from cupy._core import internal
 from cupyx.scipy import fft
 from cupyx.scipy.ndimage import filters
 from cupyx.scipy.ndimage import _util

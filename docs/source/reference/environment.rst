@@ -138,3 +138,9 @@ These environment variables are used during installation (building CuPy from sou
   Default: ``4``
 
   To enable or disable parallel build, sets the number of processes used to build the extensions in parallel.
+
+
+``CUPY_NUM_NVCC_THREADS``
+  Default: ``2``
+
+  To enable or disable nvcc parallel compilation, sets the number of threads used to compile files using nvcc.

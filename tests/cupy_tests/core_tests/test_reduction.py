@@ -1,7 +1,10 @@
 import unittest
 
+import numpy
+import pytest
+
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import testing
 
 
@@ -40,7 +43,7 @@ class AbstractReductionTestBase:
 class SimpleReductionFunctionTestBase(AbstractReductionTestBase):
 
     def get_sum_func(self):
-        return core.create_reduction_func(
+        return _core.create_reduction_func(
             'my_sum', ('b->b',), ('in0', 'a + b', 'out0 = a', None), 0)
 
 
@@ -86,6 +89,28 @@ class TestSimpleReductionFunctionNonContiguous(
 
     def test_noncontiguous(self):
         self.check_int8_sum(self.shape, trans=self.trans, axis=self.axis)
+
+
+@testing.parameterize(*testing.product({
+    'backend': ([], ['cub']),
+}))
+@testing.gpu
+class TestSimpleReductionFunctionComplexWarning(unittest.TestCase):
+
+    def setUp(self):
+        self.accelerators = _core.get_reduction_accelerators()
+        _core.set_reduction_accelerators(self.backend)
+
+    def tearDown(self):
+        _core.set_reduction_accelerators(self.accelerators)
+
+    @testing.for_complex_dtypes(name='c_dtype')
+    @testing.for_float_dtypes(name='f_dtype')
+    @testing.numpy_cupy_allclose()
+    def test_warns(self, xp, c_dtype, f_dtype):
+        with pytest.warns(numpy.ComplexWarning):
+            out = xp.ones((8,), dtype=c_dtype).sum(dtype=f_dtype)
+        return out
 
 
 class ReductionKernelTestBase(AbstractReductionTestBase):

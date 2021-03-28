@@ -22,18 +22,19 @@ CuPy consists of the core multi-dimensional array class, `cupy.ndarray`, and [ma
 ## Installation
 
 Wheels (precompiled binary packages) are available for Linux (x86_64) and Windows (amd64).
-Choose the right package for your CUDA Toolkit version.
+Choose the right package for your platform.
 
-| CUDA  | Command                        |
-| ----- | ------------------------------ |
-| v9.0  | `pip install cupy-cuda90`      |
-| v9.2  | `pip install cupy-cuda92`      |
-| v10.0 | `pip install cupy-cuda100`     |
-| v10.1 | `pip install cupy-cuda101`     |
-| v10.2 | `pip install cupy-cuda102`     |
-| v11.0 | `pip install cupy-cuda110`     |
-| v11.1 | `pip install cupy-cuda111`     |
-| v11.2 | `pip install cupy-cuda112` (see [#4704](https://github.com/cupy/cupy/issues/4704) for Linux instructions)     |
+| Platform  | Command                        |
+| --------- | ------------------------------ |
+| CUDA 9.0  | `pip install cupy-cuda90`      |
+| CUDA 9.2  | `pip install cupy-cuda92`      |
+| CUDA 10.0 | `pip install cupy-cuda100`     |
+| CUDA 10.1 | `pip install cupy-cuda101`     |
+| CUDA 10.2 | `pip install cupy-cuda102`     |
+| CUDA 11.0 | `pip install cupy-cuda110`     |
+| CUDA 11.1 | `pip install cupy-cuda111`     |
+| CUDA 11.2 | `pip install cupy-cuda112`     |
+| ROCm 4.0  | `pip install cupy-rocm-4-0` (experimental; see [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details) |
 
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or to build from source.
 

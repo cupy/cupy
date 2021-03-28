@@ -19,7 +19,7 @@ except ImportError:
     cudnn = None
 
 try:
-    import cupy.cuda.nccl as nccl
+    import cupy_backends.cuda.libs.nccl as nccl
 except ImportError:
     nccl = None
 

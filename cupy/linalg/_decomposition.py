@@ -4,7 +4,7 @@ import cupy
 from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
-from cupy.core import internal
+from cupy._core import internal
 from cupy.cuda import device
 from cupy.cusolver import check_availability
 from cupy.cusolver import _gesvdj_batched, _gesvd_batched
@@ -129,7 +129,7 @@ def _potrf_batched(a):
         potrfBatched = cusolver.zpotrfBatched
 
     x = a.astype(dtype, order='C', copy=True)
-    xp = cupy.core._mat_ptrs(x)
+    xp = cupy._core._mat_ptrs(x)
     n = x.shape[-1]
     ldx = x.strides[-2] // x.dtype.itemsize
     handle = device.get_cusolver_handle()

@@ -11,8 +11,8 @@ except ImportError:
 import cupy
 import cupyx
 
-from cupy import core
-from cupy.core import _scalar
+from cupy import _core
+from cupy._core import _scalar
 from cupy._creation import basic
 from cupy import cusparse
 from cupyx.scipy.sparse import base
@@ -64,22 +64,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             z[tid] = running_value;
         }'''
 
-    _max_reduction_kern = core.RawKernel(
+    _max_reduction_kern = _core.RawKernel(
         string.Template(_max_min_reduction_code).substitute(
             func='max_reduction', op='>', cond='block_length == length'),
         'max_reduction')
 
-    _max_nonzero_reduction_kern = core.RawKernel(
+    _max_nonzero_reduction_kern = _core.RawKernel(
         string.Template(_max_min_reduction_code).substitute(
             func='max_nonzero_reduction', op='>', cond='block_length > 0'),
         'max_nonzero_reduction')
 
-    _min_reduction_kern = core.RawKernel(
+    _min_reduction_kern = _core.RawKernel(
         string.Template(_max_min_reduction_code).substitute(
             func='min_reduction', op='<', cond='block_length == length'),
         'min_reduction')
 
-    _min_nonzero_reduction_kern = core.RawKernel(
+    _min_nonzero_reduction_kern = _core.RawKernel(
         string.Template(_max_min_reduction_code).substitute(
             func='min_nonzero_reduction', op='<', cond='block_length > 0'),
         'min_nonzero_reduction')
@@ -142,7 +142,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             z[tid] = data_index;
         }'''
 
-    _max_arg_reduction_mod = core.RawModule(
+    _max_arg_reduction_mod = _core.RawModule(
         code=string.Template(_argmax_argmin_code).substitute(
             func='max', op='>'),
         options=('-std=c++11',),
@@ -151,7 +151,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                           'max_arg_reduction<double, int>',
                           'max_arg_reduction<double, long long>'])
 
-    _min_arg_reduction_mod = core.RawModule(
+    _min_arg_reduction_mod = _core.RawModule(
         code=string.Template(_argmax_argmin_code).substitute(
             func='min', op='<'),
         options=('-std=c++11',),
@@ -161,7 +161,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                           'min_arg_reduction<double, long long>'])
 
     # TODO(leofang): rewrite a more load-balanced approach than this naive one?
-    _has_sorted_indices_kern = core.ElementwiseKernel(
+    _has_sorted_indices_kern = _core.ElementwiseKernel(
         'raw T indptr, raw T indices',
         'bool diff',
         '''
@@ -175,7 +175,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ''', 'has_sorted_indices')
 
     # TODO(leofang): rewrite a more load-balanced approach than this naive one?
-    _has_canonical_format_kern = core.ElementwiseKernel(
+    _has_canonical_format_kern = _core.ElementwiseKernel(
         'raw T indptr, raw T indices',
         'bool diff',
         '''

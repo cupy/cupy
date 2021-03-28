@@ -4,7 +4,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy.core.internal import prod
+from cupy._core.internal import prod
 from cupy import cusolver
 from cupy import testing
 from cupy.testing import _condition

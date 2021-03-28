@@ -6,7 +6,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 
 
 # Note that numpy.bincount does not support uint64 on 64-bit environment
