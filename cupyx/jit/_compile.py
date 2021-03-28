@@ -14,9 +14,39 @@ from cupyx.jit import _types
 from cupyx.jit import _typerules
 
 
+_is_debug_mode = False
+
 _typeclasses = (bool, numpy.bool_, numbers.Number)
 
 Result = collections.namedtuple('Result', ['func_name', 'code', 'return_type'])
+
+
+class JitCompileError(Exception):
+
+    def __init__(self, e, node):
+        self.error_type = type(e)
+        self.mes = str(e)
+        self.node = node
+
+    def reraise(self, pycode):
+        start = self.node.lineno
+        end = getattr(self.node, 'end_lineno', start)
+        pycode = '\n'.join([
+            (f'> {line}' if start <= i + 1 <= end else f'  {line}').rstrip()
+            for i, line in enumerate(pycode.split('\n'))])
+        raise self.error_type(self.mes + '\n\n' + pycode)
+
+
+def transpile_function_wrapper(func):
+    def new_func(node, *args, **kwargs):
+        try:
+            return func(node, *args, **kwargs)
+        except JitCompileError:
+            raise
+        except Exception as e:
+            raise JitCompileError(e, node)
+
+    return new_func
 
 
 def transpile(func, attributes, mode, in_types, ret_type):
@@ -48,7 +78,9 @@ def transpile(func, attributes, mode, in_types, ret_type):
     assert isinstance(tree, ast.Module)
     assert len(tree.body) == 1
     cuda_code, env = _transpile_function(
-        tree.body[0], attributes, mode, consts, in_types, ret_type)
+        tree.body[0], attributes, mode, consts, in_types, ret_type,
+        source=source
+    )
     cuda_code = ''.join([code + '\n' for code in env.preambles]) + cuda_code
     return Result(
         func_name=func.__name__,
@@ -179,7 +211,7 @@ class Environment:
 
 
 def _transpile_function(
-        func, attributes, mode, consts, in_types, ret_type):
+        func, attributes, mode, consts, in_types, ret_type, *, source):
     """Transpile the function
     Args:
         func (ast.FunctionDef): Target function.
@@ -195,6 +227,21 @@ def _transpile_function(
         env (Environment): More details of analysis result of the function,
             which includes preambles, estimated return type and more.
     """
+    try:
+        return _transpile_function_internal(
+            func, attributes, mode, consts, in_types, ret_type)
+    except JitCompileError as e:
+        exc = e
+        if _is_debug_mode:
+            exc.reraise(source)
+
+    # Raises the error out of `except` block to clean stack trace.
+    exc.reraise(source)
+    assert False
+
+
+def _transpile_function_internal(
+        func, attributes, mode, consts, in_types, ret_type):
     consts = dict([(k, Constant(v)) for k, v, in consts.items()])
 
     if not isinstance(func, ast.FunctionDef):
@@ -319,6 +366,7 @@ def _transpile_stmts(stmts, is_toplevel, env):
     return codeblocks
 
 
+@transpile_function_wrapper
 def _transpile_stmt(stmt, is_toplevel, env):
     """Transpile the statement.
 
@@ -456,6 +504,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
     assert False
 
 
+@transpile_function_wrapper
 def _transpile_expr(expr, env):
     """Transpile the statement.
 
@@ -638,8 +687,7 @@ def _transpile_expr_internal(expr, env):
     if isinstance(expr, ast.Name):
         value = env[expr.id]
         if value is None:
-            raise NameError(
-                f'Unbound name: {expr.id} in line {expr.lineno}')
+            raise NameError(f'Unbound name: {expr.id}')
         return env[expr.id]
     if isinstance(expr, ast.Attribute):
         value = _transpile_expr(expr.value, env)
