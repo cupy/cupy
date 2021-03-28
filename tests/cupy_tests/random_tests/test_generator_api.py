@@ -206,6 +206,27 @@ class TestBeta(GeneratorTestCase):
             a=self.a, b=self.b, size=2000, dtype=dtype)
 
 
+@testing.parameterize(
+    {'scale': 0.5},
+    {'scale': 1},
+    {'scale': 10},
+)
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
+@testing.fix_random()
+class TestExponential(GeneratorTestCase):
+
+    target_method = 'exponential'
+
+    def test_exponential(self):
+        self.generate(scale=self.scale, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_exponential_ks(self):
+        self.check_ks(0.05)(
+            self.scale, size=2000)
+
+
 class InvalidOutsMixin:
 
     def invalid_dtype_out(self, **kwargs):
@@ -253,6 +274,39 @@ class TestStandardExponential(InvalidOutsMixin, GeneratorTestCase):
     @_condition.repeat_with_success_at_least(10, 3)
     def test_standard_exponential_ks(self, dtype):
         self.check_ks(0.05)(size=2000, dtype=dtype)
+
+
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
+@testing.parameterize(
+    {'size': None},
+    {'size': (1, 2, 3)},
+    {'size': 3},
+    {'size': (3, 3)},
+    {'size': ()},
+)
+@testing.fix_random()
+class TestStandardNormal(GeneratorTestCase):
+
+    target_method = 'standard_normal'
+
+    @testing.for_dtypes('fd')
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_normal_ks(self, dtype):
+        self.check_ks(0.05)(size=self.size, dtype=dtype)
+
+
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
+@testing.fix_random()
+class TestStandardNormalInvalid(InvalidOutsMixin, GeneratorTestCase):
+
+    target_method = 'standard_normal'
+
+    def test_invalid_dtypes(self):
+        for dtype in 'bhiqleFD':
+            with pytest.raises(TypeError):
+                self.generate(size=(3, 2), dtype=dtype)
 
 
 @testing.with_requires('numpy>=1.17.0')

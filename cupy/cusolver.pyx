@@ -14,7 +14,7 @@ from cupy_backends.cuda.libs.cusolver cimport (  # noqa
     sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize)
 
 from cupy.cuda cimport memory
-from cupy.core.core cimport _ndarray_init, ndarray
+from cupy._core.core cimport _ndarray_init, ndarray
 
 import cupy as _cupy
 from cupy_backends.cuda.api import driver as _driver
@@ -22,7 +22,7 @@ from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusolver as _cusolver
 from cupy.cuda import device as _device
-from cupy.core import _routines_linalg as _linalg
+from cupy._core import _routines_linalg as _linalg
 from cupy import _util
 
 import cupyx as _cupyx

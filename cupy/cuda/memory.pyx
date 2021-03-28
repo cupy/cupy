@@ -12,7 +12,7 @@ import warnings
 import weakref
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy.core import syncdetect
+from cupy._core import syncdetect
 
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t
@@ -464,11 +464,11 @@ cdef class MemoryPointer:
 
         """
         if stream is None:
-            ptr = mem if isinstance(mem, int) else mem.value
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
         if size > 0:
+            ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpyAsync(self.ptr, ptr, size,
                                 runtime.memcpyHostToDevice, stream_ptr)
 

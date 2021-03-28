@@ -7,7 +7,7 @@ from fastrlock cimport rlock
 
 from cupy_backends.cuda.api import runtime
 
-from cupy.core cimport internal
+from cupy._core cimport internal
 from cupy_backends.cuda.api cimport runtime
 from cupy import _util
 

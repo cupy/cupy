@@ -1,7 +1,7 @@
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy._math import sumprod
 from cupy._math import ufunc
 
@@ -81,7 +81,7 @@ arctan2 = ufunc.create_math_ufunc(
     ''')
 
 
-deg2rad = core.create_ufunc(
+deg2rad = _core.create_ufunc(
     'cupy_deg2rad',
     ('e->e', 'f->f', 'd->d'),
     'out0 = in0 * (out0_type)(M_PI / 180)',
@@ -92,7 +92,7 @@ deg2rad = core.create_ufunc(
     ''')
 
 
-rad2deg = core.create_ufunc(
+rad2deg = _core.create_ufunc(
     'cupy_rad2deg',
     ('e->e', 'f->f', 'd->d'),
     'out0 = in0 * (out0_type)(180 / M_PI)',
@@ -103,7 +103,7 @@ rad2deg = core.create_ufunc(
     ''')
 
 
-@core.fusion.fuse()
+@_core.fusion.fuse()
 def _unwrap_correct(dd, discont):
     ddmod = cupy.mod(dd + numpy.pi, 2*numpy.pi) - numpy.pi
     cupy.copyto(ddmod, numpy.pi, where=(ddmod == -numpy.pi) & (dd > 0))

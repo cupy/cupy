@@ -42,11 +42,13 @@ class _JitRawKernel:
         self._mode = mode
         self._cache = {}
 
-    def __call__(self, grid, block, args):
+    def __call__(
+            self, grid, block, args, shared_mem=0,
+            stream=None, enable_cooperative_groups=False):
         in_types = []
         for x in args:
             if isinstance(x, cupy.ndarray):
-                t = _types.Array.from_ndarray(x)
+                t = _types.CArray.from_ndarray(x)
             elif numpy.isscalar(x):
                 t = _typerules.get_ctype_from_scalar(self._mode, x)
             else:
@@ -64,10 +66,12 @@ class _JitRawKernel:
                 _types.Void(),
             )
             fname = result.func_name
-            module = cupy.core.core.compile_with_cache(result.code)
+            module = cupy._core.core.compile_with_cache(
+                source=result.code,
+                options=('-D CUPY_JIT_MODE',))
             kern = module.get_function(fname)
             self._cache[in_types] = kern
-        kern(grid, block, args)
+        kern(grid, block, args, shared_mem, stream, enable_cooperative_groups)
 
     def __getitem__(self, grid_and_block):
         grid, block = grid_and_block
@@ -75,7 +79,7 @@ class _JitRawKernel:
             grid = (grid, 1, 1)
         if not isinstance(block, tuple):
             block = (block, 1, 1)
-        return lambda *args: self(grid, block, args)
+        return lambda *args, **kwargs: self(grid, block, args, **kwargs)
 
 
 def rawkernel(mode='cuda'):
@@ -99,3 +103,6 @@ threadIdx = _create_dim3('threadIdx')
 blockDim = _create_dim3('blockDim')
 blockIdx = _create_dim3('blockIdx')
 gridDim = _create_dim3('gridDim')
+
+syncthreads = _compile.SyncThreads()
+shared_memory = _compile.SharedMemory()

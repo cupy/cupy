@@ -47,33 +47,33 @@ cuda_files = [
     'cupy_backends.cuda.libs.nvrtc',
     'cupy_backends.cuda.libs.profiler',
     'cupy_backends.cuda.stream',
-    'cupy.core._accelerator',
-    'cupy.core._carray',
-    'cupy.core._cub_reduction',
-    'cupy.core._dtype',
-    'cupy.core._fusion_kernel',
-    'cupy.core._fusion_thread_local',
-    'cupy.core._fusion_trace',
-    'cupy.core._fusion_variable',
-    'cupy.core._kernel',
-    'cupy.core._memory_range',
-    'cupy.core._optimize_config',
-    'cupy.core._reduction',
-    'cupy.core._routines_binary',
-    'cupy.core._routines_indexing',
-    'cupy.core._routines_linalg',
-    'cupy.core._routines_logic',
-    'cupy.core._routines_manipulation',
-    'cupy.core._routines_math',
-    'cupy.core._routines_sorting',
-    'cupy.core._routines_statistics',
-    'cupy.core._scalar',
-    'cupy.core.core',
-    'cupy.core.flags',
-    'cupy.core.internal',
-    'cupy.core.fusion',
-    'cupy.core.new_fusion',
-    'cupy.core.raw',
+    'cupy._core._accelerator',
+    'cupy._core._carray',
+    'cupy._core._cub_reduction',
+    'cupy._core._dtype',
+    'cupy._core._fusion_kernel',
+    'cupy._core._fusion_thread_local',
+    'cupy._core._fusion_trace',
+    'cupy._core._fusion_variable',
+    'cupy._core._kernel',
+    'cupy._core._memory_range',
+    'cupy._core._optimize_config',
+    'cupy._core._reduction',
+    'cupy._core._routines_binary',
+    'cupy._core._routines_indexing',
+    'cupy._core._routines_linalg',
+    'cupy._core._routines_logic',
+    'cupy._core._routines_manipulation',
+    'cupy._core._routines_math',
+    'cupy._core._routines_sorting',
+    'cupy._core._routines_statistics',
+    'cupy._core._scalar',
+    'cupy._core.core',
+    'cupy._core.flags',
+    'cupy._core.internal',
+    'cupy._core.fusion',
+    'cupy._core.new_fusion',
+    'cupy._core.raw',
     'cupy.cuda.common',
     'cupy.cuda.cufft',
     'cupy.cuda.device',
@@ -189,7 +189,7 @@ if not use_hip:
     MODULES.append({
         'name': 'nccl',
         'file': [
-            'cupy.cuda.nccl',
+            'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
             'nccl.h',
@@ -304,7 +304,7 @@ else:
     MODULES.append({
         'name': 'nccl',
         'file': [
-            'cupy.cuda.nccl',
+            'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
             'rccl.h',
@@ -354,7 +354,7 @@ MODULES.append({
     'name': 'dlpack',
     'required': True,
     'file': [
-        'cupy.core.dlpack',
+        'cupy._core.dlpack',
     ],
     'include': [
         'cupy/dlpack/dlpack.h',
@@ -642,11 +642,11 @@ def make_extensions(options, compiler, use_cython):
             # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')
             # if any change is made to the Jitify header, we force recompiling
-            s['depends'] = ['./cupy/core/include/cupy/jitify/jitify.hpp']
+            s['depends'] = ['./cupy/_core/include/cupy/jitify/jitify.hpp']
 
         if module['name'] == 'dlpack':
             # if any change is made to the DLPack header, we force recompiling
-            s['depends'] = ['./cupy/core/include/cupy/dlpack/dlpack.h']
+            s['depends'] = ['./cupy/_core/include/cupy/dlpack/dlpack.h']
 
         for f in module['file']:
             s_file = copy.deepcopy(s)

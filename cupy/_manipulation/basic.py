@@ -1,8 +1,8 @@
 import numpy
 
-from cupy import core
-from cupy.core import _fusion_interface
-from cupy.core import fusion
+from cupy import _core
+from cupy._core import _fusion_interface
+from cupy._core import fusion
 from cupy._sorting import search
 
 
@@ -41,7 +41,7 @@ def copyto(dst, src, casting='same_kind', where=None):
                         (src_dtype, dst.dtype, casting))
     if fusion._is_fusing():
         if where is None:
-            core.elementwise_copy(src, dst)
+            _core.elementwise_copy(src, dst)
         else:
             fusion._call_ufunc(search._where_ufunc, where, src, dst, dst)
         return
@@ -61,9 +61,9 @@ def copyto(dst, src, casting='same_kind', where=None):
             with device:
                 if src.device != device:
                     src = src.copy()
-                core.elementwise_copy(src, dst)
+                _core.elementwise_copy(src, dst)
     else:
-        core.elementwise_copy_where(src, where, dst)
+        _core.elementwise_copy_where(src, where, dst)
 
 
 def _can_memcpy(dst, src):

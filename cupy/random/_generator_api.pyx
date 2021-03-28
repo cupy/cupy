@@ -5,7 +5,7 @@ from libc.stdint cimport intptr_t, uint64_t, uint32_t, int32_t, int64_t
 
 import cupy
 from cupy.cuda cimport stream
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 
 
 _UINT32_MAX = 0xffffffff
@@ -28,6 +28,12 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream, double a, double b)
     void exponential(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
+    void standard_normal(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
+    void standard_normal_float(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
 
@@ -174,6 +180,30 @@ class Generator:
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
+    def exponential(self, scale=1.0, size=None):
+        """Exponential distribution.
+
+        Returns an array of samples drawn from the exponential distribution.
+        Its probability density function is defined as
+
+        .. math::
+           f(x) = \\frac{1}{\\beta}\\exp (-\\frac{x}{\\beta}).
+
+        Args:
+            scale (float or array_like of floats): The scale parameter
+                :math:`\\beta`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the exponential distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.exponential
+            <numpy.random.generator.Generator.exponential>`
+        """
+        return self.standard_exponential(size) * scale
+
     def standard_exponential(
             self, size=None, dtype=numpy.float64,
             method='inv', out=None):
@@ -218,6 +248,42 @@ class Generator:
         # cython cant call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
+
+    def standard_normal(self, size=None, dtype=numpy.float64, out=None):
+        """Returns an array of samples drawn from the standard normal distribution.
+
+        Args:
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+            dtype: Data type specifier.
+
+            out (cupy.ndarray, optional): If specified, values will be written
+                to this array
+
+        Returns:
+            cupy.ndarray: Samples drawn from the standard normal distribution.
+
+        .. seealso:: :func:`numpy.random.standard_normal`
+
+        """
+        cdef ndarray y
+
+        if out is not None:
+            self._check_output_array(dtype, size, out)
+            y = out
+        else:
+            y = ndarray(size if size is not None else (), dtype)
+
+        if y.dtype.char not in ('f', 'd'):
+            raise TypeError(
+                f'Unsupported dtype {y.dtype.name} for standard_normal')
+
+        if y.dtype.char == 'd':
+            _launch_dist(self.bit_generator, standard_normal, y, ())
+        else:
+            _launch_dist(self.bit_generator, standard_normal_float, y, ())
+
+        return y
 
 
 def init_curand(generator, state, seed, size):

@@ -3,8 +3,8 @@ import itertools
 import numpy
 
 import cupy
-from cupy.core import _reduction
-from cupy.core import internal
+from cupy._core import _reduction
+from cupy._core import internal
 
 
 def flip(a, axis=None):

@@ -54,6 +54,9 @@ cdef extern from *:
     ctypedef void* cusparseSpMatDescr_t
     ctypedef void* cusparseDnMatDescr_t
 
+    ctypedef int cusparseSparseToDenseAlg_t
+    ctypedef int cusparseDenseToSparseAlg_t
+
     # CSR2CSC
     ctypedef int Csr2CscAlg 'cusparseCsr2CscAlg_t'
 
@@ -120,6 +123,12 @@ cpdef enum:
     # CSR2CSC
     CUSPARSE_CSR2CSC_ALG1 = 1  # faster than ALG2 (in general), deterministc
     CUSPARSE_CSR2CSC_ALG2 = 2  # low memory requirement, non-deterministc
+
+    # cusparseSparseToDenseAlg_t
+    CUSPARSE_SPARSETODENSE_ALG_DEFAULT = 0
+
+    # cusparseDenseToSparseAlg_t
+    CUSPARSE_DENSETOSPARSE_ALG_DEFAULT = 0
 
 cdef class SpVecAttributes:
     cdef:

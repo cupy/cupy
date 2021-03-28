@@ -8,7 +8,7 @@
 
 # TODO(YoshikawaMasashi): float implementation of zeta function
 
-from cupy import core
+from cupy import _core
 
 
 zeta_definition = '''
@@ -111,7 +111,7 @@ double __device__ zeta(double x, double q)
 '''
 
 
-zeta = core.create_ufunc(
+zeta = _core.create_ufunc(
     'cupyx_scipy_zeta', ('ff->f', 'dd->d'),
     'out0 = zeta(in0, in1)',
     preamble=zeta_definition,

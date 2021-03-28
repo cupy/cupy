@@ -1,7 +1,7 @@
-from cupy import core
+from cupy import _core
 
 
-erf = core.create_ufunc(
+erf = _core.create_ufunc(
     'cupyx_scipy_erf', ('f->f', 'd->d'),
     'out0 = erf(in0)',
     doc='''Error function.
@@ -11,7 +11,7 @@ erf = core.create_ufunc(
     ''')
 
 
-erfc = core.create_ufunc(
+erfc = _core.create_ufunc(
     'cupyx_scipy_erfc', ('f->f', 'd->d'),
     'out0 = erfc(in0)',
     doc='''Complementary error function.
@@ -21,7 +21,7 @@ erfc = core.create_ufunc(
     ''')
 
 
-erfcx = core.create_ufunc(
+erfcx = _core.create_ufunc(
     'cupyx_scipy_erfcx', ('f->f', 'd->d'),
     'out0 = erfcx(in0)',
     doc='''Scaled complementary error function.
@@ -31,7 +31,7 @@ erfcx = core.create_ufunc(
     ''')
 
 
-erfinv = core.create_ufunc(
+erfinv = _core.create_ufunc(
     'cupyx_scipy_erfinv', ('f->f', 'd->d'),
     'out0 = erfinv(in0);',
     doc='''Inverse function of error function.
@@ -45,7 +45,7 @@ erfinv = core.create_ufunc(
     ''')
 
 
-erfcinv = core.create_ufunc(
+erfcinv = _core.create_ufunc(
     'cupyx_scipy_erfcinv', ('f->f', 'd->d'),
     'out0 = erfcinv(in0);',
     doc='''Inverse function of complementary error function.

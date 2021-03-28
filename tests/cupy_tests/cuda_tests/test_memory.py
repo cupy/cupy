@@ -183,6 +183,82 @@ class TestMemoryPointer(unittest.TestCase):
             a_gpu += 1
 
 
+@testing.parameterize(*testing.product({
+    'use_streams': [True, False],
+}))
+@testing.gpu
+class TestMemoryPointerAsync(unittest.TestCase):
+
+    def setUp(self):
+        self.stream = stream_module.Stream() if self.use_streams else None
+
+    def test_copy_to_and_from_host_async(self):
+        a_gpu = memory.alloc(4)
+        a_cpu = ctypes.c_int(100)
+        a_gpu.copy_from_async(ctypes.cast(ctypes.byref(
+            a_cpu), ctypes.c_void_p), 4, stream=self.stream)
+
+        b_cpu = ctypes.c_int()
+        a_gpu.copy_to_host_async(
+            ctypes.cast(ctypes.byref(b_cpu), ctypes.c_void_p),
+            4, stream=self.stream)
+        if self.stream is not None:
+            self.stream.synchronize()
+        else:
+            stream_module.get_current_stream().synchronize()
+        assert b_cpu.value == a_cpu.value
+
+    def test_copy_from_device_async(self):
+        a_gpu = memory.alloc(4)
+        a_cpu = ctypes.c_int(100)
+        a_gpu.copy_from_async(ctypes.cast(ctypes.byref(
+            a_cpu), ctypes.c_void_p), 4, stream=self.stream)
+
+        b_gpu = memory.alloc(4)
+        b_gpu.copy_from_async(a_gpu, 4, stream=self.stream)
+        b_cpu = ctypes.c_int()
+        b_gpu.copy_to_host_async(
+            ctypes.cast(ctypes.byref(b_cpu), ctypes.c_void_p),
+            4, stream=self.stream)
+        if self.stream is not None:
+            self.stream.synchronize()
+        else:
+            stream_module.get_current_stream().synchronize()
+        assert b_cpu.value == a_cpu.value
+
+    def test_copy_to_and_from_host_async_using_raw_ptr(self):
+        a_gpu = memory.alloc(4)
+        a_cpu = ctypes.c_int(100)
+        a_cpu_ptr = ctypes.cast(ctypes.byref(a_cpu), ctypes.c_void_p)
+        a_gpu.copy_from_async(a_cpu_ptr.value, 4, stream=self.stream)
+
+        b_cpu = ctypes.c_int()
+        b_cpu_ptr = ctypes.cast(ctypes.byref(b_cpu), ctypes.c_void_p)
+        a_gpu.copy_to_host_async(b_cpu_ptr.value, 4, stream=self.stream)
+        if self.stream is not None:
+            self.stream.synchronize()
+        else:
+            stream_module.get_current_stream().synchronize()
+        assert b_cpu.value == a_cpu.value
+
+    def test_copy_from_device_async_using_raw_ptr(self):
+        a_gpu = memory.alloc(4)
+        a_cpu = ctypes.c_int(100)
+        a_cpu_ptr = ctypes.cast(ctypes.byref(a_cpu), ctypes.c_void_p)
+        a_gpu.copy_from_async(a_cpu_ptr.value, 4, stream=self.stream)
+
+        b_gpu = memory.alloc(4)
+        b_gpu.copy_from_async(a_gpu, 4, stream=self.stream)
+        b_cpu = ctypes.c_int()
+        b_cpu_ptr = ctypes.cast(ctypes.byref(b_cpu), ctypes.c_void_p)
+        b_gpu.copy_to_host_async(b_cpu_ptr.value, 4, stream=self.stream)
+        if self.stream is not None:
+            self.stream.synchronize()
+        else:
+            stream_module.get_current_stream().synchronize()
+        assert b_cpu.value == a_cpu.value
+
+
 # -----------------------------------------------------------------------------
 # Memory pool
 

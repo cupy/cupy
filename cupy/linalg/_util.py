@@ -5,7 +5,7 @@ from numpy import linalg
 
 import cupy
 import cupy._util
-from cupy import core
+from cupy import _core
 import cupyx
 
 
@@ -14,9 +14,9 @@ _default_precision = os.getenv('CUPY_DEFAULT_PRECISION')
 
 def _assert_cupy_array(*arrays):
     for a in arrays:
-        if not isinstance(a, cupy.core.ndarray):
+        if not isinstance(a, cupy._core.ndarray):
             raise linalg.LinAlgError(
-                'cupy.linalg only supports cupy.core.ndarray')
+                'cupy.linalg only supports cupy.ndarray')
 
 
 def _assert_rank2(*arrays):
@@ -87,7 +87,7 @@ def _check_cusolver_dev_info_if_synchronization_allowed(routine, dev_info):
     # `dev_info` contains integers, the status code of a cuSOLVER
     # routine call. It is referred to as "infoArray" or "devInfo" in the
     # official cuSOLVER documentation.
-    assert isinstance(dev_info, core.ndarray)
+    assert isinstance(dev_info, _core.ndarray)
     config_linalg = cupyx._ufunc_config.get_config_linalg()
     # Only 'ignore' and 'raise' are currently supported.
     if config_linalg == 'ignore':
@@ -110,7 +110,7 @@ def _check_cublas_info_array_if_synchronization_allowed(routine, info_array):
     # `info_array` contains integers, the status codes of a cuBLAS routine
     # call. It is referrd to as "infoArray" or "devInfoArray" in the official
     # cuBLAS documentation.
-    assert isinstance(info_array, core.ndarray)
+    assert isinstance(info_array, _core.ndarray)
     assert info_array.ndim == 1
 
     config_linalg = cupyx._ufunc_config.get_config_linalg()
@@ -126,7 +126,7 @@ def _check_cublas_info_array_if_synchronization_allowed(routine, info_array):
                 routine.__name__, info_array))
 
 
-_tril_kernel = core.ElementwiseKernel(
+_tril_kernel = _core.ElementwiseKernel(
     'int64 k', 'S x',
     'x = (_ind.get()[1] - _ind.get()[0] <= k) ? x : 0',
     'tril_kernel',
@@ -139,7 +139,7 @@ def _tril(x, k=0):
     return x
 
 
-_triu_kernel = core.ElementwiseKernel(
+_triu_kernel = _core.ElementwiseKernel(
     'int64 k', 'S x',
     'x = (_ind.get()[1] - _ind.get()[0] >= k) ? x : 0',
     'triu_kernel',
