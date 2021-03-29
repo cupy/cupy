@@ -11,6 +11,9 @@ Requirements
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
 
+    * This requirement is optional if you install CuPy from ``conda-forge``. However, you still need to have a compatible
+      driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
+
 * `Python <https://python.org/>`_: v3.6.0+ / v3.7.0+ / v3.8.0+ / v3.9.0+
 
 .. note::
@@ -47,7 +50,7 @@ Additional CUDA Libraries
 
 Part of the CUDA features in CuPy will be activated only when the corresponding libraries are installed.
 
-* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.2
+* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.2 (CUDA 10.1+)
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
@@ -104,26 +107,28 @@ Please make sure that only one CuPy package (``cupy`` or ``cupy-cudaXX`` where X
 
   $ pip freeze | grep cupy
 
+.. _install_cupy_from_conda_forge:
 
 Installing CuPy from Conda-Forge
 --------------------------------
 
 Conda/Anaconda is a cross-platform package management solution widely used in scientific computing and other fields.
-The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for Linux 64 systems
-once the CUDA driver is correctly set up, you can install CuPy from the ``conda-forge`` channel::
+The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux and
+Windows once the CUDA driver is correctly set up, you can also install CuPy from the ``conda-forge`` channel::
 
     $ conda install -c conda-forge cupy
 
-and ``conda`` will install a pre-built CuPy binary package for you, along with CUDA runtime libraries
-(``cudatoolkit``). It is not necessary to install CUDA Toolkit in advance. If you need to enforce
-the installation of a particular CUDA version (say 10.0) for driver compatibility, you can do::
+and ``conda`` will install a pre-built CuPy binary package for you, along with the CUDA runtime libraries
+(``cudatoolkit``). It is not necessary to install CUDA Toolkit in advance.
+
+Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` supported by your driver.
+However, if for any reason you need to force-install a particular CUDA version (say 10.0), you can do::
 
     $ conda install -c conda-forge cupy cudatoolkit=10.0
 
 .. note::
 
     cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once:
-    support enabled, you can do::
 
     $ conda install -c conda-forge cupy cudatoolkit=10.1 cudnn cutensor nccl
 
@@ -131,14 +136,16 @@ the installation of a particular CUDA version (say 10.0) for driver compatibilit
 
 .. note::
 
-    If you encounter any problem with CuPy from ``conda-forge``, please feel free to report to `cupy-feedstock
+    If you encounter any problem with CuPy installed from ``conda-forge``, please feel free to report to `cupy-feedstock
     <https://github.com/conda-forge/cupy-feedstock/issues>`_, and we will help investigate if it is just a packaging
     issue in ``conda-forge``'s recipe or a real issue in CuPy.
 
 .. note::
 
-    If you did not install CUDA Toolkit yourselves, the ``nvcc`` compiler might not be available.
-    The ``cudatoolkit`` package from Anaconda does not have ``nvcc`` included.
+    If you did not install CUDA Toolkit by yourself, the ``nvcc`` compiler might not be available, as
+    the ``cudatoolkit`` package from ``conda-forge`` does not include the ``nvcc`` compiler toolchain. If you would like to use
+    it from a local CUDA installation, you need to make sure the version of CUDA Toolkit matches that of ``cudatoolkit`` to
+    avoid surprises.
 
 .. _install_cupy_from_source:
 
