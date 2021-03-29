@@ -9,9 +9,17 @@
 
 #elif !defined(CUPY_NO_CUDA)
 
-// #include <library_types.h>
-// #include <cugraph/algorithms.hpp>
 #include <algorithms.hpp>
+
+// The following header file is available since version 0.20.0
+#if __has_include(<version_config.hpp>)
+#include <version_config.hpp>
+#else
+#warning <version_config.hpp> is not found
+#define CUGRAPH_VERSION_MAJOR 0
+#define CUGRAPH_VERSION_MINOR 0
+#define CUGRAPH_VERSION_PATCH 0
+#endif
 
 #else
 

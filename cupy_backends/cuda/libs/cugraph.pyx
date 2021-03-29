@@ -17,12 +17,17 @@ cdef extern from '../../cupy_cugraph.h' namespace 'cugraph':
 
     cdef cppclass GraphCSRView[VT,ET,WT](GraphCompressedSparseBaseView[VT,ET,WT]):
         GraphCSRView()
-        GraphCSRView(const VT *, const ET *, const WT *, size_t, size_t)
+        GraphCSRView(const ET *, const VT *, const WT *, size_t, size_t)
 
     cdef void connected_components[VT,ET,WT](
         const GraphCSRView[VT,ET,WT] &graph,
         cugraph_cc_t connect_type,
         VT *labels) except +
+
+    # Built time version
+    int CUGRAPH_VERSION_MAJOR
+    int CUGRAPH_VERSION_MINOR
+    int CUGRAPH_VERSION_PATCH
 
 
 def weakly_connected_components(csr, labels):

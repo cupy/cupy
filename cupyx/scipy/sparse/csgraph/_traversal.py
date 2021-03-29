@@ -1,10 +1,12 @@
-import numpy
-
 import cupy
 
 from cupy.linalg import _util
 import cupyx.scipy.sparse
-from cupy_backends.cuda.libs import cugraph
+try:
+    from cupy_backends.cuda.libs import cugraph
+    _cugraph_available = True
+except ImportError:
+    _cugraph_available = False
 
 
 def connected_components(csgraph, directed=True, connection='weak',
@@ -28,6 +30,9 @@ def connected_components(csgraph, directed=True, connection='weak',
             labels of each connected components. Otherwise, returns ``n``.
     .. seealso:: :func:`scipy.sparse.csgraph.connected_components`
     """
+    if not _cugraph_available:
+        raise RuntimeError('cugraph is not available')
+
     connection = connection.lower()
     if connection not in ('weak', 'strong'):
         raise ValueError("connection must be 'weak' or 'strong'")

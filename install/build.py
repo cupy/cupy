@@ -707,18 +707,33 @@ def check_cugraph_version(compiler, settings):
     # TODO(anaruse): this is dummy implementation, need to change
     global _cugraph_version
     try:
-        out = build_and_run(compiler, '''
+        build_and_run(compiler, '''
         #include <stdio.h>
         #include <cugraph/utilities/error.hpp>
         int main(int argc, char* argv[]) {
-          printf("%d", 0);
           return 0;
         }
         ''', include_dirs=settings['include_dirs'])
-
     except Exception as e:
-        utils.print_warning('Cannot check cuGRAPH version\n{0}'.format(e))
+        utils.print_warning('Cannot find cuGRAPH header files\n{0}'.format(e))
         return False
+
+    try:
+        out = build_and_run(compiler, '''
+        #include <stdio.h>
+        #include <cugraph/version_config.hpp>
+        int main(int argc, char* argv[]) {
+          printf("%d", CUGRAPH_VERSION_MAJOR * 10000
+                     + CUGRAPH_VERSION_MINOR * 100
+                     + CUGRAPH_VERSION_PATCH);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+    except Exception as e:
+        utils.print_warning('Cannot find cuGRAPH version information\n{0}'.
+                            format(e))
+        _cugraph_version = 0
+        return True
 
     _cugraph_version = int(out)
     return True

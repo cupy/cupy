@@ -7,9 +7,13 @@ try:
     scipy_available = True
 except ImportError:
     scipy_available = False
-
-from cupy import testing
 import cupyx.scipy.sparse.csgraph  # NOQA
+try:
+    from cupy_backends.cuda.libs import cugraph  # NOQA
+    cugraph_available = True
+except ImportError:
+    cugraph_available = False
+from cupy import testing
 
 
 @testing.parameterize(*testing.product({
@@ -20,7 +24,8 @@ import cupyx.scipy.sparse.csgraph  # NOQA
     'connection': ['weak', 'strong'],
     'return_labels': [True, False],
 }))
-@unittest.skipUnless(scipy_available, 'requires scipy')
+@unittest.skipUnless(scipy_available and cugraph_available,
+                     'requires scipy and cugraph')
 class TestConnectedComponents(unittest.TestCase):
 
     def _make_matrix(self, dtype, xp):
