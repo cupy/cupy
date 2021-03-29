@@ -14,7 +14,7 @@ from cupyx.scipy.fftpack import get_fft_plan
 
 __all__ = ['fft', 'ifft', 'fft2', 'ifft2', 'fftn', 'ifftn',
            'rfft', 'irfft', 'rfft2', 'irfft2', 'rfftn', 'irfftn',
-           'hfft', 'ihfft',
+           'hfft', 'ihfft', 'hfft2',
            'fftshift', 'ifftshift', 'fftfreq', 'rfftfreq',
            'get_fft_plan']
 
@@ -571,3 +571,43 @@ def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     if plan is not None:
         raise NotImplementedError('ihfft plan is currently not yet supported')
     return _ihfft(x, n, axis, norm)
+
+
+def _swap_direction(norm):
+    if norm in (None, 'backward'):
+        norm = 'forward'
+    elif norm == 'forward':
+        norm = 'backward'
+    elif norm != 'ortho':
+        raise ValueError('Invalid norm value %s; should be "backward", '
+                         '"ortho", or "forward".' % norm)
+    return norm
+
+
+@_implements(_scipy_fft.hfft2)
+def hfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
+          plan=None):
+    """Compute the FFT of a two-dimensional signal that has Hermitian symmetry.
+
+    Args:
+        a (cupy.ndarray): Array to be transform.
+        s (None or tuple of ints): Shape of the real output.
+        axes (tuple of ints): Axes over which to compute the FFT.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
+        overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (None): This argument is currently not supported.
+
+    Returns:
+        cupy.ndarray:
+            The transformed array which shape is specified by ``n`` and type
+            will convert to complex if the input is other. If ``n`` is not
+            given, the length of the transformed axis is ``2*(m-1)`` where `m`
+            is the length of the transformed axis of the input.
+
+    .. seealso:: :func:`scipy.fft.hfft2`
+    """
+    if plan is not None:
+        raise NotImplementedError('hfft2 plan is currently not yet supported')
+    return irfft2(x.conj(), s, axes, _swap_direction(norm))

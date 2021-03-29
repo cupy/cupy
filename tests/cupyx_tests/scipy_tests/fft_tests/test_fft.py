@@ -1627,6 +1627,59 @@ class TestHfft(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
 
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (2, 5), 's': None, 'axes': None},
+        {'shape': (2, 10), 's': (1, 5), 'axes': None},
+        {'shape': (2, 30), 's': None, 'axes': (-2, -1)},
+        {'shape': (2, 50), 's': None, 'axes': (-1, -2)},
+        {'shape': (2, 100), 's': None, 'axes': (0,)}
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
+@testing.gpu
+@testing.gpu
+class TestHfft2(unittest.TestCase):
+
+    def setUp(self):
+        _skip_forward_backward(self.norm)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_hfft2(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        out = _fft_module(xp).hfft2(x, s=self.s, axes=self.axes,
+                                    norm=self.norm)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_hfft2_overwrite(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        out = _fft_module(xp).hfft2(x, s=self.s, axes=self.axes,
+                                    norm=self.norm, **overwrite_kw)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.with_requires('scipy>=1.4.0')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_hfft2_backend(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        backend = 'scipy' if xp is np else cp_fft
+        with scipy_fft.set_backend(backend):
+            out = scipy_fft.hfft2(x, s=self.s, axes=self.axes, norm=self.norm)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
+
+
 @testing.gpu
 @pytest.mark.parametrize('func', [
     cp_fft.fft2, cp_fft.ifft2, cp_fft.rfft2, cp_fft.irfft2,

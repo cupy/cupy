@@ -25,6 +25,7 @@ Fast Fourier Transforms
    cupyx.scipy.fft.irfftn
    cupyx.scipy.fft.hfft
    cupyx.scipy.fft.ihfft
+   cupyx.scipy.fft.hfft2
 
 
 Helper functions for FFT
