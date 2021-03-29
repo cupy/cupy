@@ -9,7 +9,7 @@ def sinhm(arr):
     Returns:
         (cupy.ndarray):
                         Hyperbolic sine of given square matrix as input.
-    ..seealso:: :func: 'scipy.linlag.sinhm'
+    ..seealso:: :func: 'scipy.linalg.sinhm'
     """
 
     arr = cupy.array(arr)
