@@ -33,7 +33,7 @@ Choose the right package for your platform.
 | CUDA 10.2 | `pip install cupy-cuda102`     |
 | CUDA 11.0 | `pip install cupy-cuda110`     |
 | CUDA 11.1 | `pip install cupy-cuda111`     |
-| CUDA 11.2 | `pip install cupy-cuda112` (see [#4704](https://github.com/cupy/cupy/issues/4704) for Linux instructions) |
+| CUDA 11.2 | `pip install cupy-cuda112`     |
 | ROCm 4.0  | `pip install cupy-rocm-4-0` (experimental; see [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details) |
 
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or to build from source.
