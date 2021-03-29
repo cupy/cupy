@@ -590,7 +590,7 @@ def hfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
     """Compute the FFT of a two-dimensional signal that has Hermitian symmetry.
 
     Args:
-        a (cupy.ndarray): Array to be transform.
+        a (cupy.ndarray): Array to be transformed.
         s (None or tuple of ints): Shape of the real output.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
@@ -601,10 +601,7 @@ def hfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
 
     Returns:
         cupy.ndarray:
-            The transformed array which shape is specified by ``n`` and type
-            will convert to complex if the input is other. If ``n`` is not
-            given, the length of the transformed axis is ``2*(m-1)`` where `m`
-            is the length of the transformed axis of the input.
+            The real result of the 2-D Hermitian complex real FFT.
 
     .. seealso:: :func:`scipy.fft.hfft2`
     """
