@@ -4,7 +4,10 @@ import unittest
 
 import pytest
 
-from install import build
+from . import _from_install_import
+
+
+build = _from_install_import('build')
 
 
 class TestCheckVersion(unittest.TestCase):
