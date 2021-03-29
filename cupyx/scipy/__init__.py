@@ -1,6 +1,6 @@
 import sys as _sys
 
-from cupy.core import ndarray as _ndarray
+from cupy._core import ndarray as _ndarray
 from cupyx.scipy.sparse.base import spmatrix as _spmatrix
 
 

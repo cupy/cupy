@@ -4,16 +4,16 @@ import string
 import warnings
 
 import cupy
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 from cupy import _util
-from cupy.cuda import cutensor as cuda_cutensor
 from cupy.linalg._einsum_opt import _greedy_path
 from cupy.linalg._einsum_opt import _optimal_path
 
 
-if cuda_cutensor.available:
+try:
+    import cupy_backends.cuda.libs.cutensor  # NOQA
     from cupy import cutensor
-else:
+except ImportError:
     cutensor = None
 
 
@@ -292,7 +292,7 @@ def _flatten_transpose(a, axeses):
         shapes.append([a.shape[axis] for axis in axes])
     return (
         a.transpose(transpose_axes).reshape(
-            tuple([cupy.core.internal.prod(shape) for shape in shapes])),
+            tuple([cupy._core.internal.prod(shape) for shape in shapes])),
         shapes
     )
 

@@ -3,12 +3,14 @@ import collections.abc
 import numpy
 
 import cupy
-from cupy import core
-from cupy.core import internal
+from cupy import _core
+from cupy._core import internal
+from cupy._core._gufuncs import _GUFunc
 
 from cupy.linalg._solve import inv
 
-matmul = core.matmul
+matmul = _GUFunc(
+    _core._matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True)
 
 
 def dot(a, b, out=None):
@@ -55,7 +57,7 @@ def vdot(a, b):
     if a.dtype.kind == 'c':
         a = a.conj()
 
-    return core.tensordot_core(a, b, None, 1, 1, a.size, ())
+    return _core.tensordot_core(a, b, None, 1, 1, a.size, ())
 
 
 def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
@@ -217,7 +219,7 @@ def inner(a, b):
     n = a.size // k
     m = b.size // k
 
-    return core.tensordot_core(a, b, None, n, m, k, ret_shape)
+    return _core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
 def outer(a, b, out=None):
@@ -242,14 +244,14 @@ def outer(a, b, out=None):
     ret_shape = (n, m)
 
     if out is None:
-        return core.tensordot_core(a, b, None, n, m, 1, ret_shape)
+        return _core.tensordot_core(a, b, None, n, m, 1, ret_shape)
 
     if out.size != n * m:
         raise ValueError('Output array has an invalid size')
     if out.flags.c_contiguous:
-        return core.tensordot_core(a, b, out, n, m, 1, ret_shape)
+        return _core.tensordot_core(a, b, out, n, m, 1, ret_shape)
     else:
-        out[:] = core.tensordot_core(a, b, None, n, m, 1, ret_shape)
+        out[:] = _core.tensordot_core(a, b, None, n, m, 1, ret_shape)
         return out
 
 
@@ -310,12 +312,12 @@ def tensordot(a, b, axes=2):
     ret_shape = a.shape[sum_ndim:] + b.shape[sum_ndim:]
 
     k = internal.prod(a.shape[:sum_ndim])
-    # Avoid division by zero: core.tensordot_core returns zeros without
+    # Avoid division by zero: _core.tensordot_core returns zeros without
     # checking n, m consistency, thus allowing 0-length dimensions to work
     n = a.size // k if k != 0 else 0
     m = b.size // k if k != 0 else 0
 
-    return core.tensordot_core(a, b, None, n, m, k, ret_shape)
+    return _core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
 def matrix_power(M, n):
@@ -392,9 +394,10 @@ def kron(a, b):
             ndim = a_ndim
 
     axis = ndim - 1
-    out = core.tensordot_core(a, b, None, a.size, b.size, 1, a_shape + b_shape)
+    out = _core.tensordot_core(
+        a, b, None, a.size, b.size, 1, a_shape + b_shape)
     for _ in range(ndim):
-        out = core.concatenate_method(out, axis=axis)
+        out = _core.concatenate_method(out, axis=axis)
 
     return out
 

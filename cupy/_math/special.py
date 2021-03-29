@@ -1,4 +1,4 @@
-from cupy import core
+from cupy import _core
 from cupy._math import ufunc
 
 
@@ -11,7 +11,7 @@ i0 = ufunc.create_math_ufunc(
     ''')
 
 
-sinc = core.create_ufunc(
+sinc = _core.create_ufunc(
     'cupy_sinc',
     ('e->e', 'f->f', 'd->d',
      ('F->F', 'in0_type pi_in0 = (in0_type) M_PI * in0;'

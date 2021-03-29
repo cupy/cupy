@@ -1,8 +1,8 @@
 import numpy
 
 import cupy
-from cupy import core
-from cupy.core import internal
+from cupy import _core
+from cupy._core import internal
 
 
 class flatiter:
@@ -143,13 +143,13 @@ class flatiter:
         return self.base.size
 
 
-_flatiter_setitem_slice = core.ElementwiseKernel(
+_flatiter_setitem_slice = _core.ElementwiseKernel(
     'raw T val, int64 start, int64 step', 'raw T a',
     'a[start + i * step] = val[i % val.size()]',
     'cupy_flatiter_setitem_slice')
 
 
-_flatiter_getitem_slice = core.ElementwiseKernel(
+_flatiter_getitem_slice = _core.ElementwiseKernel(
     'raw T a, int64 start, int64 step', 'T o',
     'o = a[start + i * step]',
     'cupy_flatiter_getitem_slice')

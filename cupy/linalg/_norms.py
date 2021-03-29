@@ -2,7 +2,7 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy.linalg import _decomposition
 from cupy.linalg import _util
 
@@ -15,14 +15,14 @@ def _multi_svd_norm(x, row_axis, col_axis, op):
     return result
 
 
-_norm_ord2 = core.create_reduction_func(
+_norm_ord2 = _core.create_reduction_func(
     '_norm_ord2',
     ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d'),
     ('in0 * in0', 'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
-_norm_ord2_complex = core.create_reduction_func(
+_norm_ord2_complex = _core.create_reduction_func(
     '_norm_ord2_complex',
     ('F->f', 'D->d'),
     ('in0.real() * in0.real() + in0.imag() * in0.imag()',

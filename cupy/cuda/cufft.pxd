@@ -1,7 +1,8 @@
+# Note: nothing exposed in this pxd header is considered public API;
+# we copy this to sdist only because it's needed at runtime to support
+# cuFFT callbacks
+
 from libc.stdint cimport intptr_t
-
-from cupy.cuda cimport memory
-
 
 cdef extern from *:
     ctypedef float Float 'cufftReal'
@@ -71,7 +72,7 @@ cdef class Plan1d:
 cdef class PlanNd:
     cdef:
         readonly intptr_t handle
-        readonly memory.MemoryPointer work_area
+        readonly object work_area  # memory.MemoryPointer
         readonly tuple shape
         readonly Type fft_type
         readonly str order
@@ -85,7 +86,7 @@ cdef class PlanNd:
 cdef class XtPlanNd:
     cdef:
         readonly intptr_t handle
-        readonly memory.MemoryPointer work_area
+        readonly object work_area  # memory.MemoryPointer
         readonly tuple shape
         readonly int itype
         readonly int otype

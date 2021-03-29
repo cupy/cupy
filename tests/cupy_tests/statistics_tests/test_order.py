@@ -5,7 +5,7 @@ import numpy
 import pytest
 
 import cupy
-import cupy.core._accelerator as _acc
+import cupy._core._accelerator as _acc
 from cupy import cuda
 from cupy import testing
 

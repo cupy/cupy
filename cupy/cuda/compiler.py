@@ -197,7 +197,7 @@ def _jitify_prep(source, options, cu_path):
     # TODO(leofang): refactor this?
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:
-        from cupy.core import core
+        from cupy._core import core
         _jitify_header_source_map = core._get_header_source_map()
         _jitify_header_source_map_populated = True
     else:

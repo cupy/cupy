@@ -1061,3 +1061,70 @@ class TestIsspmatrixCoo(unittest.TestCase):
              cupy.array([0], 'i')),
             shape=(0, 0), dtype='f')
         assert sparse.isspmatrix_coo(x) is False
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(8, 5), (5, 5), (5, 8)],
+}))
+@testing.with_requires('scipy>=1.5.0')
+@testing.gpu
+class TestCooMatrixDiagonal(unittest.TestCase):
+    density = 0.5
+
+    def _make_matrix(self, dtype):
+        a = testing.shaped_random(self.shape, numpy, dtype=dtype)
+        mask = testing.shaped_random(self.shape, numpy, dtype='f', scale=1.0)
+        a[mask > self.density] = 0
+        scipy_a = scipy.sparse.coo_matrix(a)
+        cupyx_a = sparse.coo_matrix(cupy.array(a))
+        return scipy_a, cupyx_a
+
+    @testing.for_dtypes('fdFD')
+    def test_diagonal(self, dtype):
+        scipy_a, cupyx_a = self._make_matrix(dtype)
+        m, n = self.shape
+        for k in range(-m, n+1):
+            scipy_diag = scipy_a.diagonal(k=k)
+            cupyx_diag = cupyx_a.diagonal(k=k)
+            testing.assert_allclose(scipy_diag, cupyx_diag)
+
+    def _test_setdiag(self, scipy_a, cupyx_a, x, k):
+        scipy_a = scipy_a.copy()
+        cupyx_a = cupyx_a.copy()
+        scipy_a.setdiag(x, k=k)
+        cupyx_a.setdiag(cupy.array(x), k=k)
+        testing.assert_allclose(scipy_a.data, cupyx_a.data)
+        testing.assert_array_equal(scipy_a.row, cupyx_a.row)
+        testing.assert_array_equal(scipy_a.col, cupyx_a.col)
+
+    @testing.for_dtypes('fdFD')
+    def test_setdiag(self, dtype):
+        scipy_a, cupyx_a = self._make_matrix(dtype)
+        m, n = self.shape
+        for k in range(-m+1, n):
+            m_st, n_st = max(0, -k), max(0, k)
+            for d in (-1, 0, 1):
+                x_len = min(m - m_st, n - n_st) + d
+                if x_len <= 0:
+                    continue
+                x = numpy.ones((x_len,), dtype=dtype)
+                self._test_setdiag(scipy_a, cupyx_a, x, k)
+
+    @testing.for_dtypes('fdFD')
+    def test_setdiag_scalar(self, dtype):
+        scipy_a, cupyx_a = self._make_matrix(dtype)
+        x = numpy.array(1.0, dtype=dtype)
+        m, n = self.shape
+        for k in range(-m+1, n):
+            self._test_setdiag(scipy_a, cupyx_a, x, k)
+
+    def test_setdiag_invalid(self):
+        dtype = 'f'
+        scipy_a, cupyx_a = self._make_matrix(dtype)
+        x = numpy.array(1.0, dtype=dtype)
+        m, n = self.shape
+        for k in (-m, n):
+            with self.assertRaises(ValueError):
+                scipy_a.setdiag(x, k=k)
+            with self.assertRaises(ValueError):
+                cupyx_a.setdiag(x, k=k)

@@ -23,6 +23,7 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    sparse
    ndimage
    generic
+   memory
    cuda
    memoize
    kernel
@@ -34,3 +35,4 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    difference
    comparison
    misc
+   compatibility
