@@ -2,7 +2,9 @@ import collections
 
 import numpy
 
+from cupy_backends.cuda.api import runtime
 import cupy
+from cupy._core import core
 from cupyx.jit import _compile
 from cupyx.jit import _typerules
 from cupyx.jit import _types
@@ -66,9 +68,15 @@ class _JitRawKernel:
                 _types.Void(),
             )
             fname = result.func_name
-            module = cupy._core.core.compile_with_cache(
+            # workaround for hipRTC
+            #extra_source = core._get_header_source() if runtime.is_hip else None
+            backend = 'nvcc' if runtime.is_hip else 'nvrtc'
+            #backend = 'nvrtc'
+            module = core.compile_with_cache(
                 source=result.code,
-                options=('-D CUPY_JIT_MODE',))
+                options=('-DCUPY_JIT_MODE=1', '--std=c++11'),
+                backend=backend)
+                #extra_source=extra_source)
             kern = module.get_function(fname)
             self._cache[in_types] = kern
         kern(grid, block, args, shared_mem, stream, enable_cooperative_groups)
