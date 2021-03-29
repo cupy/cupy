@@ -7,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 
-from install import utils
+from . import utils
 
 
 PLATFORM_LINUX = sys.platform.startswith('linux')
