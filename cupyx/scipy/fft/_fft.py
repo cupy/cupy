@@ -590,7 +590,7 @@ def hfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
     """Compute the FFT of a two-dimensional signal that has Hermitian symmetry.
 
     Args:
-        a (cupy.ndarray): Array to be transformed.
+        x (cupy.ndarray): Array to be transformed.
         s (None or tuple of ints): Shape of the real output.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
