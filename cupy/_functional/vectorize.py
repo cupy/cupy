@@ -90,9 +90,12 @@ class vectorize(object):
             in_args = ', '.join([f'in{i}' for i in range(len(in_types))])
             out_params, out_lval = self._parse_out_param(result.return_type)
             body = '{} = {}({})'.format(out_lval, func.name, in_args)
+            # note: we don't worry about -D not working on ROCm here, because
+            # we unroll all headers for HIP and so thrust::tuple et al are all
+            # defined regardless if CUPY_JIT_MODE is defined or not
             kern = _core.ElementwiseKernel(
                 in_params, out_params, body, preamble=result.code,
-                options=('-D CUPY_JIT_MODE',))
+                options=('-DCUPY_JIT_MODE',))
             self._kernel_cache[itypes] = kern
 
         return kern(*args)
