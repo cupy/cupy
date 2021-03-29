@@ -305,7 +305,7 @@ if not use_hip:
             'cupy_backends.cuda.libs.cugraph',
         ],
         'include': [
-            'cugraph/utilities/error.hpp',  # dummy
+            'cugraph/raft/error.hpp',  # dummy
         ],
         'libraries': [
             'cugraph',

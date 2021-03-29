@@ -737,18 +737,17 @@ def get_cusparselt_version(formatted=False):
 
 
 def check_cugraph_version(compiler, settings):
-    # TODO(anaruse): this is dummy implementation, need to change
     global _cugraph_version
     try:
         build_and_run(compiler, '''
         #include <stdio.h>
-        #include <cugraph/utilities/error.hpp>
+        #include <cugraph/raft/error.hpp>
         int main(int argc, char* argv[]) {
           return 0;
         }
         ''', include_dirs=settings['include_dirs'])
     except Exception as e:
-        utils.print_warning('Cannot find cuGRAPH header files\n{0}'.format(e))
+        utils.print_warning('Cannot find cuGraph header files\n{0}'.format(e))
         return False
 
     try:
