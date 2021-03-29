@@ -1633,12 +1633,11 @@ class TestHfft(unittest.TestCase):
         {'shape': (2, 10), 's': (1, 5), 'axes': None},
         {'shape': (2, 30), 's': None, 'axes': (-2, -1)},
         {'shape': (2, 50), 's': None, 'axes': (-1, -2)},
-        {'shape': (2, 100), 's': None, 'axes': (0,)}
+        {'shape': (2, 100), 's': (2, 50), 'axes': (0,)}
     ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
-@testing.gpu
 @testing.gpu
 class TestHfft2(unittest.TestCase):
 
