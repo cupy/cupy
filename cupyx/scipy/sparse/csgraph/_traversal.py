@@ -69,7 +69,7 @@ def connected_components(csgraph, directed=True, connection='weak',
     return n, labels
 
 
-_cupy_count_components = cupy.core.ElementwiseKernel(
+_cupy_count_components = cupy.ElementwiseKernel(
     '',
     'raw I labels, raw int32 count, raw int32 root_labels',
     '''
@@ -85,7 +85,7 @@ _cupy_count_components = cupy.core.ElementwiseKernel(
     '_cupy_count_components')
 
 
-_cupy_adjust_labels = cupy.core.ElementwiseKernel(
+_cupy_adjust_labels = cupy.ElementwiseKernel(
     'int32 n_root_labels, raw I root_labels',
     'I labels',
     '''
