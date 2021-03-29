@@ -68,15 +68,13 @@ class _JitRawKernel:
                 _types.Void(),
             )
             fname = result.func_name
-            # workaround for hipRTC
-            #extra_source = core._get_header_source() if runtime.is_hip else None
+            # workaround for hipRTC: as of ROCm 4.1.0 hipRTC still does not
+            # recognize "-D", so we have to compile using hipcc...
             backend = 'nvcc' if runtime.is_hip else 'nvrtc'
-            #backend = 'nvrtc'
             module = core.compile_with_cache(
                 source=result.code,
-                options=('-DCUPY_JIT_MODE=1', '--std=c++11'),
+                options=('-DCUPY_JIT_MODE', '--std=c++11'),
                 backend=backend)
-                #extra_source=extra_source)
             kern = module.get_function(fname)
             self._cache[in_types] = kern
         kern(grid, block, args, shared_mem, stream, enable_cooperative_groups)

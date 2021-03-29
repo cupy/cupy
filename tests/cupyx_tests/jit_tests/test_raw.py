@@ -69,7 +69,7 @@ class TestRaw(unittest.TestCase):
         f((1,), (1,), (x, y))
         assert bool((x == y).all())
 
-    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'segfault?')
+    #@unittest.skipIf(cupy.cuda.runtime.is_hip, 'segfault?')
     def test_syncthreads(self):
         @jit.rawkernel()
         def f(x, y, buf):
@@ -104,7 +104,7 @@ class TestRaw(unittest.TestCase):
         expected = x.reshape(32, 32)[:, ::-1].ravel()
         assert bool((y == expected).all())
 
-    @unittest.skipIf(cupy.cuda.runtime.is_hip, 'segfault?')
+    #@unittest.skipIf(cupy.cuda.runtime.is_hip, 'segfault?')
     def test_shared_memory_dynamic(self):
         @jit.rawkernel()
         def f(x, y):
