@@ -1,8 +1,8 @@
 import cupy
 
-from cupy import core
+from cupy import _core
 
-_piecewise_krnl = core.ElementwiseKernel(
+_piecewise_krnl = _core.ElementwiseKernel(
     'bool cond, T value',
     'T y',
     'if (cond) y = value',

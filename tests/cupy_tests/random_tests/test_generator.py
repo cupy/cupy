@@ -83,7 +83,7 @@ def _get_size(size):
     # cf. NumPy returns a Python scalar if size=None.
     if size is None:
         return ()
-    return cupy.core.get_size(size)
+    return cupy._core.get_size(size)
 
 
 class RandomGeneratorTestCase(unittest.TestCase):

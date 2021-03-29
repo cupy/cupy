@@ -5,7 +5,7 @@ import numpy
 import pytest
 
 import cupy
-from cupy.core import core
+from cupy._core import core
 from cupy import testing
 from cupy_tests.core_tests import test_raw
 

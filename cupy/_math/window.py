@@ -1,9 +1,9 @@
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 
-_blackman_kernel = core.ElementwiseKernel(
+_blackman_kernel = _core.ElementwiseKernel(
     "float32 alpha",
     "float64 out",
     """
@@ -11,7 +11,7 @@ _blackman_kernel = core.ElementwiseKernel(
     """, name="cupy_blackman")
 
 
-_bartlett_kernel = core.ElementwiseKernel(
+_bartlett_kernel = _core.ElementwiseKernel(
     "float32 alpha",
     "T arr",
     """
@@ -80,7 +80,7 @@ def blackman(M):
     return _blackman_kernel(alpha, out)
 
 
-_hamming_kernel = core.ElementwiseKernel(
+_hamming_kernel = _core.ElementwiseKernel(
     "float32 alpha",
     "float64 out",
     """
@@ -116,7 +116,7 @@ def hamming(M):
     return _hamming_kernel(alpha, out)
 
 
-_hanning_kernel = core.ElementwiseKernel(
+_hanning_kernel = _core.ElementwiseKernel(
     "float32 alpha",
     "float64 out",
     """
@@ -152,7 +152,7 @@ def hanning(M):
     return _hanning_kernel(alpha, out)
 
 
-_kaiser_kernel = core.ElementwiseKernel(
+_kaiser_kernel = _core.ElementwiseKernel(
     "float32 beta, float32 alpha",
     "T arr",
     """

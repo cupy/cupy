@@ -9,7 +9,7 @@ import warnings
 import numpy
 
 from cupyx.jit._codeblock import CodeBlock
-from cupy.core import _kernel
+from cupy._core import _kernel
 from cupyx.jit import _types
 from cupyx.jit import _typerules
 

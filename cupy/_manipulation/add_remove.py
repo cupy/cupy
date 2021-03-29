@@ -1,7 +1,7 @@
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 
 
 # TODO(okuta): Implement delete
@@ -38,12 +38,12 @@ def append(arr, values, axis=None):
     arr = cupy.asarray(arr)
     values = cupy.asarray(values)
     if axis is None:
-        return core.concatenate_method(
+        return _core.concatenate_method(
             (arr.ravel(), values.ravel()), 0).ravel()
-    return core.concatenate_method((arr, values), axis)
+    return _core.concatenate_method((arr, values), axis)
 
 
-_resize_kernel = core.ElementwiseKernel(
+_resize_kernel = _core.ElementwiseKernel(
     'raw T x, int64 size', 'T y',
     'y = x[i % size]',
     'resize',
@@ -80,7 +80,7 @@ def resize(a, new_shape):
     return out
 
 
-_first_nonzero_krnl = core.ReductionKernel(
+_first_nonzero_krnl = _core.ReductionKernel(
     'T data, int64 len',
     'int64 y',
     'data == T(0) ? len : _j',

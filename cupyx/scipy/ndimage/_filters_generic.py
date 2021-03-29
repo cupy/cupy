@@ -37,7 +37,7 @@ def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
     in_param, out_param = rk.in_params[0], rk.out_params[0]
     out_ctype = out_param.ctype
     if out_param.dtype is None:  # resolve template
-        out_ctype = cupy.core._scalar.get_typename(
+        out_ctype = cupy._core._scalar.get_typename(
             in_dtype if out_param.ctype == in_param.ctype else out_dtype)
 
     # Get code chunks
@@ -123,7 +123,7 @@ def _get_type_info(param, dtype, types):
     if param.dtype is not None:
         return param.ctype
     # Template type -> map to actual output type
-    ctype = cupy.core._scalar.get_typename(dtype)
+    ctype = cupy._core._scalar.get_typename(dtype)
     types.setdefault(param.ctype, ctype)
     return ctype
 

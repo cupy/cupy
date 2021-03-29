@@ -1,9 +1,9 @@
 import warnings
 
 import cupy
-from cupy import core
-from cupy.core import _routines_statistics as _statistics
-from cupy.core import _fusion_thread_local
+from cupy import _core
+from cupy._core import _routines_statistics as _statistics
+from cupy._core import _fusion_thread_local
 from cupy._logic import content
 
 
@@ -106,7 +106,7 @@ def nanmin(a, axis=None, out=None, keepdims=False):
 
     """
     # TODO(niboshi): Avoid synchronization.
-    res = core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
+    res = _core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
     if content.isnan(res).any():  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
     return res
@@ -137,7 +137,7 @@ def nanmax(a, axis=None, out=None, keepdims=False):
 
     """
     # TODO(niboshi): Avoid synchronization.
-    res = core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
+    res = _core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
     if content.isnan(res).any():  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
     return res
@@ -268,7 +268,7 @@ def _quantile_unchecked(a, q, axis=None, out=None, interpolation='linear',
             keepdim = (-1,) + keepdim
         ret = ret.reshape(keepdim)
 
-    return core._internal_ascontiguousarray(ret)
+    return _core._internal_ascontiguousarray(ret)
 
 
 def _quantile_is_valid(q):

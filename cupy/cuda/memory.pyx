@@ -11,7 +11,7 @@ import warnings
 import weakref
 
 from cupy_backends.cuda.api import runtime
-from cupy.core import syncdetect
+from cupy._core import syncdetect
 
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t

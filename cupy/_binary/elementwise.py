@@ -1,22 +1,22 @@
-from cupy import core
+from cupy import _core
 
 
-bitwise_and = core.bitwise_and
+bitwise_and = _core.bitwise_and
 
 
-bitwise_or = core.bitwise_or
+bitwise_or = _core.bitwise_or
 
 
-bitwise_xor = core.bitwise_xor
+bitwise_xor = _core.bitwise_xor
 
 
-bitwise_not = core.invert
+bitwise_not = _core.invert
 
 
-invert = core.invert
+invert = _core.invert
 
 
-left_shift = core.left_shift
+left_shift = _core.left_shift
 
 
-right_shift = core.right_shift
+right_shift = _core.right_shift

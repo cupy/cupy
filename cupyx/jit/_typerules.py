@@ -6,12 +6,12 @@ from cupy._logic import ops
 from cupy._math import arithmetic
 from cupy._logic import comparison
 from cupy._binary import elementwise
-from cupy import core
+from cupy import _core
 
 from cupyx.jit import _types
 
 
-_numpy_scalar_true_divide = core.create_ufunc(
+_numpy_scalar_true_divide = _core.create_ufunc(
     'numpy_scalar_true_divide',
     ('??->d', '?i->d', 'i?->d', 'bb->f', 'bi->d', 'BB->f', 'Bi->d',
      'hh->f', 'HH->f', 'ii->d', 'II->d', 'll->d', 'LL->d', 'qq->d', 'QQ->d',
@@ -20,7 +20,7 @@ _numpy_scalar_true_divide = core.create_ufunc(
 )
 
 
-_numpy_scalar_invert = core.create_ufunc(
+_numpy_scalar_invert = _core.create_ufunc(
     'numpy_scalar_invert',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I',
      'l->l', 'L->L', 'q->q', 'Q->Q'),
@@ -28,7 +28,7 @@ _numpy_scalar_invert = core.create_ufunc(
 )
 
 
-_numpy_scalar_logical_not = core.create_ufunc(
+_numpy_scalar_logical_not = _core.create_ufunc(
     'numpy_scalar_logical_not',
     ('?->?', 'b->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?',
@@ -38,10 +38,10 @@ _numpy_scalar_logical_not = core.create_ufunc(
 )
 
 
-_scalar_lt = core.create_comparison('scalar_less', '<')
-_scalar_lte = core.create_comparison('scalar_less', '<=')
-_scalar_gt = core.create_comparison('scalar_less', '>')
-_scalar_gte = core.create_comparison('scalar_less', '>=')
+_scalar_lt = _core.create_comparison('scalar_less', '<')
+_scalar_lte = _core.create_comparison('scalar_less', '<=')
+_scalar_gt = _core.create_comparison('scalar_less', '>')
+_scalar_gte = _core.create_comparison('scalar_less', '>=')
 
 
 _py_ops = {

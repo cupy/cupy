@@ -1,9 +1,9 @@
 import numpy
 
 import cupy
-from cupy.core import _routines_math as _math
-from cupy.core import _fusion_thread_local
-from cupy.core import internal
+from cupy._core import _routines_math as _math
+from cupy._core import _fusion_thread_local
+from cupy._core import internal
 
 
 def sum(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -216,7 +216,7 @@ def nancumprod(a, axis=None, dtype=None, out=None):
     return cumprod(a, axis=axis, dtype=dtype, out=out)
 
 
-_replace_nan_kernel = cupy.core._kernel.ElementwiseKernel(
+_replace_nan_kernel = cupy._core._kernel.ElementwiseKernel(
     'T a, T val', 'T out', 'if (a == a) {out = a;} else {out = val;}',
     'cupy_replace_nan')
 
