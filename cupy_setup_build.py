@@ -284,6 +284,21 @@ if not use_hip:
         ],
     })
 
+    MODULES.append({
+        'name': 'cusparselt',
+        'file': [
+            'cupy_backends.cuda.libs.cusparselt',
+        ],
+        'include': [
+            'cusparseLt.h',
+        ],
+        'libraries': [
+            'cusparseLt',
+        ],
+        'check_method': build.check_cusparselt_version,
+        'version_method': build.get_cusparselt_version,
+    })
+
 else:
     MODULES.append({
         'name': 'cub',
