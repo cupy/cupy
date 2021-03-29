@@ -2,7 +2,7 @@ import numpy
 
 from cupy import cuda
 from cupy._creation.basic import _new_like_order_and_strides
-from cupy.core import internal
+from cupy._core import internal
 
 
 def _update_shape(a, shape):
