@@ -267,12 +267,12 @@ class TestPoisson(GeneratorTestCase):
     target_method = 'poisson'
 
     def test_poisson(self):
-        self.generate(size=(3, 2))
+        self.generate(lam=self.lam, size=(3, 2))
 
     @_condition.repeat_with_success_at_least(10, 3)
     def test_poisson_ks(self):
         self.check_ks(0.05)(
-            self.lam, size=2000)
+            lam=self.lam, size=2000)
 
 
 @testing.with_requires('numpy>=1.17.0')

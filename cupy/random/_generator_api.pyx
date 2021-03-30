@@ -275,8 +275,8 @@ class Generator:
             <numpy.random.generator.Generator.poisson>`
         """
         cdef ndarray y
-        y = ndarray(size if size is not None else (), numpy.float64)
-        _launch_dist(self.bit_generator, poisson, y, (lam))
+        y = ndarray(size if size is not None else (), numpy.int64)
+        _launch_dist(self.bit_generator, poisson, y, (lam, ))
         return y
 
     def standard_normal(self, size=None, dtype=numpy.float64, out=None):
