@@ -1678,6 +1678,40 @@ class TestHfft2(unittest.TestCase):
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_ihfft2(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        out = _fft_module(xp).ihfft2(x, s=self.s, axes=self.axes,
+                                     norm=self.norm)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_ihfft2_overwrite(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        overwrite_kw = {} if xp is np else {'overwrite_x': True}
+        out = _fft_module(xp).ihfft2(x, s=self.s, norm=self.norm,
+                                     axes=self.axes, **overwrite_kw)
+        return _correct_np_dtype(xp, dtype, out)
+
+    @testing.with_requires('scipy>=1.4.0')
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
+    def test_ihfft2_backend(self, xp, dtype):
+        x = testing.shaped_random(self.shape, xp, dtype)
+        x_orig = x.copy()
+        backend = 'scipy' if xp is np else cp_fft
+        with scipy_fft.set_backend(backend):
+            out = scipy_fft.ihfft2(x, s=self.s, axes=self.axes, norm=self.norm)
+        testing.assert_array_equal(x, x_orig)
+        return _correct_np_dtype(xp, dtype, out)
+
 
 @testing.gpu
 @pytest.mark.parametrize('func', [

@@ -14,7 +14,7 @@ from cupyx.scipy.fftpack import get_fft_plan
 
 __all__ = ['fft', 'ifft', 'fft2', 'ifft2', 'fftn', 'ifftn',
            'rfft', 'irfft', 'rfft2', 'irfft2', 'rfftn', 'irfftn',
-           'hfft', 'ihfft', 'hfft2',
+           'hfft', 'ihfft', 'hfft2', 'ihfft2',
            'fftshift', 'ifftshift', 'fftfreq', 'rfftfreq',
            'get_fft_plan']
 
@@ -608,3 +608,30 @@ def hfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
     if plan is not None:
         raise NotImplementedError('hfft2 plan is currently not yet supported')
     return irfft2(x.conj(), s, axes, _swap_direction(norm))
+
+
+@_implements(_scipy_fft.ihfft2)
+def ihfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
+           plan=None):
+    """Compute the Inverse FFT of a two-dimensional signal that has Hermitian
+    symmetry.
+
+    Args:
+        x (cupy.ndarray): Array to be transformed.
+        s (None or tuple of ints): Shape of the real output.
+        axes (tuple of ints): Axes over which to compute the FFT.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
+        overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
+        plan (None): This argument is currently not supported.
+
+    Returns:
+        cupy.ndarray:
+            The real result of the 2-D Hermitian inverse complex real FFT.
+
+    .. seealso:: :func:`scipy.fft.ihfft2`
+    """
+    if plan is not None:
+        raise NotImplementedError('ihfft2 plan is currently not yet supported')
+    return rfft2(x, s, axes, _swap_direction(norm)).conj()
