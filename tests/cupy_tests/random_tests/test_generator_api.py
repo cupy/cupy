@@ -346,6 +346,25 @@ class TestIntegers(GeneratorTestCase):
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
+@testing.fix_random()
+class TestRandom(InvalidOutsMixin, GeneratorTestCase):
+    # TODO(niboshi):
+    #   Test soundness of distribution.
+    #   Currently only reprocibility is checked.
+
+    target_method = 'random'
+
+    def test_random(self):
+        self.generate(3)
+
+    @testing.for_dtypes('fd')
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_random_ks(self, dtype):
+        self.check_ks(0.05)(size=2000, dtype=dtype)
+
+
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                     reason='HIP does not support this')
 class TestRandomStateThreadSafe(unittest.TestCase):
