@@ -10,6 +10,8 @@ import shutil
 import sys
 import warnings
 
+import pkg_resources
+
 
 # '' for uninitialized, None for non-existing
 _cuda_path = ''
@@ -380,3 +382,47 @@ You can install the library by:
             lib=lib, exc_type=type(exc).__name__, exc=str(exc),
             cuda=config['cuda'])
         warnings.warn(msg)
+
+
+def _detect_duplicate_installation():
+    # List of all CuPy packages, including out-dated ones.
+    known = set([
+        'cupy',
+        'cupy-cuda80',
+        'cupy-cuda90',
+        'cupy-cuda91',
+        'cupy-cuda92',
+        'cupy-cuda100',
+        'cupy-cuda101',
+        'cupy-cuda102',
+        'cupy-cuda110',
+        'cupy-cuda111',
+        'cupy-cuda112',
+        'cupy-rocm-4-0',
+    ])
+    installed = set(
+        [p.project_name for p in pkg_resources.working_set])
+    cupy_installed = known & installed
+    if 1 < len(cupy_installed):
+        warnings.warn('''
+--------------------------------------------------------------------------------
+
+  CuPy may not function correctly because multiple CuPy packages are installed
+  in your environment:
+
+    {cupy_installed}
+
+  Follow these steps to resolve this issue:
+
+    1. For all packages listed above, run the following command to remove all
+       existing CuPy installations:
+
+         $ pip uninstall <package_name>
+
+    2. Install the appropriate CuPy package.
+       Refer to the Installation Guide for detailed instructions.
+
+         https://docs.cupy.dev/en/stable/install.html
+
+--------------------------------------------------------------------------------
+'''.format(cupy_installed=', '.join(sorted(cupy_installed))))
