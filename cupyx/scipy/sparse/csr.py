@@ -9,6 +9,7 @@ try:
 except ImportError:
     _scipy_available = False
 
+from cupy_backends.cuda.api import driver
 import cupy
 from cupy._core import _accelerator
 from cupy.cuda import cub
@@ -181,6 +182,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 # see cupy/cupy#3679 for discussion
                 is_cub_safe = (self.indptr.data.mem.size
                                > self.indptr.size * self.indptr.dtype.itemsize)
+                # CUB spmv is buggy since CUDA 11.0, see
+                # https://github.com/cupy/cupy/issues/3822#issuecomment-782607637
+                is_cub_safe &= (driver.get_build_version() < 11000)
                 for accelerator in _accelerator.get_routine_accelerators():
                     if (accelerator == _accelerator.ACCELERATOR_CUB
                             and is_cub_safe and other.flags.c_contiguous):
