@@ -1,4 +1,5 @@
 import collections
+import functools
 import warnings
 
 import numpy
@@ -119,7 +120,7 @@ def rawkernel(mode='cuda'):
     cupy._util.experimental('cupyx.jit.rawkernel')
 
     def wrapper(func):
-        return _JitRawKernel(func, mode)
+        return functools.update_wrapper(_JitRawKernel(func, mode), func)
     return wrapper
 
 
