@@ -515,9 +515,11 @@ cdef class ndarray:
             # it is recommended to set the current device to the device
             # where the src data is physically located.
             runtime.setDevice(self.data.device_id)
-        newarray.data.copy_from_device(x.data, x.nbytes)
-        if runtime._is_hip_environment:
-            runtime.setDevice(dev_id)
+        try:
+            newarray.data.copy_from_device_async(x.data, x.nbytes)
+        finally:
+            if runtime._is_hip_environment:
+                runtime.setDevice(dev_id)
         return newarray
 
     cpdef ndarray view(self, dtype=None):
