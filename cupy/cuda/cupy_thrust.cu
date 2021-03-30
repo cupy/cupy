@@ -6,6 +6,7 @@
 #include <thrust/sort.h>
 #include <thrust/tuple.h>
 #include <thrust/execution_policy.h>
+#include <thrust/optional.h>
 #include "cupy_thrust.h"
 
 
@@ -61,9 +62,7 @@ public:
 template <typename T>
 __host__ __device__ __forceinline__ 
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
-#ifndef _WIN32
-constexpr
-#endif
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool _tuple_less(const tuple<size_t, T>& lhs,
                                                      const tuple<size_t, T>& rhs) {
@@ -95,9 +94,7 @@ bool _tuple_less(const tuple<size_t, T>& lhs,
 template <typename T>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
-#ifndef _WIN32
-constexpr
-#endif
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool _cmp_less(const T& lhs, const T& rhs) {
     bool lhsRe = isnan(lhs.real());
@@ -192,9 +189,7 @@ bool less< tuple<size_t, complex<double>> >::operator() (
 template <typename T>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
-#ifndef _WIN32
-constexpr
-#endif
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool _real_less(const T& lhs, const T& rhs) {
     #if  (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
