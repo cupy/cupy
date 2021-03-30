@@ -11,7 +11,7 @@
 
 #include <algorithms.hpp>
 
-// The following header file is available since version 0.20.0
+// The following header file is available since version 0.19.0
 #if __has_include(<version_config.hpp>)
 #include <version_config.hpp>
 #else
