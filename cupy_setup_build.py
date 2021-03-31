@@ -638,6 +638,10 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
+        if module['name'] == 'random':
+            if compiler.compiler_type == 'msvc':
+                compile_args.append('-D_USE_MATH_DEFINES')
+
         if module['name'] == 'jitify':
             # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')
