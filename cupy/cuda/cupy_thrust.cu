@@ -9,7 +9,8 @@
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
 // This is used to avoid a problem with constexpr in functions declarations introduced in
 // cuda 11.2, MSVC 15 does not fully support it so we need a dummy constexpr declaration
-// that is provided by this header. However optional.h is not present in old CUDA versions.
+// that is provided by this header. However optional.h is only available
+// starting CUDA 10.1
 #include <thrust/optional.h>
 #endif
 #include "cupy_thrust.h"
