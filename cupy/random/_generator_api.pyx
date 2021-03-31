@@ -357,31 +357,50 @@ class Generator:
     def gamma(self, shape, scale=1.0, size=None):
         """Returns an array of samples drawn from a gamma distribution.
 
+        Args:
+            shape (float or array_like of float): The shape of the gamma distribution.
+                Must be non-negative.
+            scale (float or array_like of float): The scale of the gamma distribution.
+                Must be non-negative. Default equals to 1
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
         .. seealso::
             - :func:`cupy.random.gamma` for full documentation
-            - :meth:`numpy.random.RandomState.gamma`
+            - :meth:`numpy.random.Generator.gamma`
         """
         return self.standard_gamma(shape, size) * scale
 
     def standard_gamma(self, shape, size=None, dtype=numpy.float64, out=None):
         """Returns an array of samples drawn from a standard gamma distribution.
 
+        Args:
+            shape (float or array_like of float): The shape of the gamma distribution.
+                Must be non-negative.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+            dtype: Data type specifier.
+            out (cupy.ndarray, optional): If specified, values will be written
+                to this array
+
         .. seealso::
             - :func:`cupy.random.standard_gamma` for full documentation
-            - :meth:`numpy.random.RandomState.standard_gamma`
+            - :meth:`numpy.random.Generator.standard_gamma`
         """
         cdef ndarray y
 
-        if shape < 0.0:
-            raise ValueError('shape < 0')
+        # if shape < 0.0:
+        #     raise ValueError('shape < 0')
 
-        if out is None or out.dtype.char != 'd':
-            y = ndarray(size if size is not None else (), numpy.float64)
+        y = None
 
         if out is not None:
             self._check_output_array(dtype, size, out)
             if out.dtype.char == 'd':
                 y = out
+
+        if y is None:
+            y = ndarray(size if size is not None else (), numpy.float64)
 
         if numpy.dtype(dtype).char not in ('f', 'd'):
             raise TypeError(
@@ -396,7 +415,6 @@ class Generator:
         # cython cant call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
-
 
 def init_curand(generator, state, seed, size):
     init_curand_generator(

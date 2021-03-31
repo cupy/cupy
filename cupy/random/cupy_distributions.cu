@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <utility>
 #include <iostream>
+#include <type_traits>
 
 #include <curand_kernel.h>
 
@@ -370,6 +371,26 @@ struct standard_gamma_functor {
     }
 };
 
+template<bool is_pointer, typename T>
+struct pointer_fnct {};
+
+template<typename T>
+struct pointer_fnct<true, T> {
+    using RetType = typename std::remove_pointer<T>::type;
+    static __device__ RetType get(T value, int id) {
+        return value[id];
+    }
+};
+
+template<typename T>
+struct pointer_fnct<false, T> {
+    using RetType = T;
+    static __device__ RetType get(T value, int id) {
+        return value;
+    }
+   
+};
+
 template<typename F, typename T, typename R, typename... Args>
 __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -377,7 +398,7 @@ __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args...
     if (id < size) {
         T random(id, state);
         F func;
-        out_ptr[id] = func(&random, std::forward<Args>(args)...);
+        out_ptr[id] = func(&random, (pointer_fnct<std::is_pointer<Args>::value, Args>::get(args, id))...);
     }
     return;
 }
