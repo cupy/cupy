@@ -146,14 +146,34 @@ class BuiltinFunc(Expr):
     def __init__(self):
         pass
 
+    def __call__(self):
+        raise RuntimeError('Cannot call this function from Python layer.')
+
 
 class SyncThreads(BuiltinFunc):
+
+    def __call__(self):
+        """Calls `__syncthreads()`
+        """
+        super.__call__(self)
 
     def call(self, env):
         return CudaObject('__syncthreads()', _types.void)
 
 
 class SharedMemory(BuiltinFunc):
+
+    def __call__(self, dtype, size):
+        """Allocates shared memory and returns the 1-dim array.
+
+        Args:
+            dtype (dtype):
+                The dtype of the returned array.
+            size (int or None):
+                If ``int`` type, the size of static shared memory.
+                If ``None``, declares the shared memory with extern specifier.
+        """
+        super.__call__(self)
 
     def call(self, env, dtype, size):
         name = env.get_fresh_variable_name(prefix='_smem')
