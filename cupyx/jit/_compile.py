@@ -21,7 +21,7 @@ _typeclasses = (bool, numpy.bool_, numbers.Number)
 Result = collections.namedtuple('Result', ['func_name', 'code', 'return_type'])
 
 
-class JitCompileError(Exception):
+class _JitCompileError(Exception):
 
     def __init__(self, e, node):
         self.error_type = type(e)
@@ -41,10 +41,10 @@ def transpile_function_wrapper(func):
     def new_func(node, *args, **kwargs):
         try:
             return func(node, *args, **kwargs)
-        except JitCompileError:
+        except _JitCompileError:
             raise
         except Exception as e:
-            raise JitCompileError(e, node)
+            raise _JitCompileError(e, node)
 
     return new_func
 
@@ -230,7 +230,7 @@ def _transpile_function(
     try:
         return _transpile_function_internal(
             func, attributes, mode, consts, in_types, ret_type)
-    except JitCompileError as e:
+    except _JitCompileError as e:
         exc = e
         if _is_debug_mode:
             exc.reraise(source)
