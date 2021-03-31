@@ -4,7 +4,7 @@ import time
 device = cupy.cuda.Device()
 memory_pool = cupy.cuda.MemoryPool()
 cupy.cuda.set_allocator(memory_pool.malloc)
-rand = cupy.random.generator.RandomState(seed=1)
+rand = cupy.random.RandomState(seed=1)
 
 n = 10
 zs = []
