@@ -371,6 +371,10 @@ struct standard_gamma_functor {
     }
 };
 
+// The following templates are used to unwrap arrays into an elementwise
+// approach
+// When a pointer is present in the variadic Args, it will be replaced by
+// the value of pointe[thread_id]
 template<bool is_pointer, typename T>
 struct pointer_fnct {};
 
@@ -464,7 +468,7 @@ void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t 
     generator_dispatcher(generator, launcher, state, out, size);
 }
 
-void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double shape) {
+void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
     kernel_launcher<standard_gamma_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, shape);
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<double*>(shape));
 }

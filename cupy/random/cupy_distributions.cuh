@@ -33,7 +33,7 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double lam);
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
-void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double shape);
+void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape);
 
 # else 
 
@@ -52,7 +52,7 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double lam) {}
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream){}
-void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double shape) {}
+void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {}
 
 #endif
 #endif
