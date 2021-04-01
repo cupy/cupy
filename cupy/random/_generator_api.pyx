@@ -393,9 +393,9 @@ class Generator:
         cdef intptr_t shape_arr
 
         if size is not None and not isinstance(size, tuple):
-           size = (size,)
+            size = (size,)
 
-        y = None 
+        y = None
 
         if not isinstance(shape, ndarray):
             if type(shape) in (float, int):
@@ -413,7 +413,7 @@ class Generator:
             shape = shape.astype('d', copy=False)
 
         if size is None:
-            size = shape.shape 
+            size = shape.shape
         else:
             # if shape.shape != size
             # we need to obtain a contiguous
@@ -434,7 +434,7 @@ class Generator:
 
         if out is not None:
             self._check_output_array(dtype, size, out)
-            if out.dtype.char == 'd':
+            if out.dtype.char == 'd' and out.flags.c_contiguous:
                 y = out
 
         if y is None:
