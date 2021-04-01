@@ -177,6 +177,7 @@ class _GUFunc:
         self._func = func
         self._signature = signature
         self._default_casting = 'same_kind'
+        self.__name__ = func.__name__
 
         # The following are attributes to avoid applying certain steps
         # when wrapping cupy functions that do some of the gufunc
