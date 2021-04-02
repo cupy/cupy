@@ -548,8 +548,8 @@ def kron(A, B, format=None):
 def kronsum(A, B, format=None):
     """Kronecker sum of sparse matrices A and B.
 
-    Kronecker sum is matrix sum defined as sum of two Kronecker products
-    kron(I_n, A) + kron(B, I_m), where I_n and I_m are identity matrices
+    Kronecker sum is the sum of two Kronecker products
+    ``kron(I_n, A) + kron(B, I_m)``, where ``I_n`` and ``I_m`` are identity matrices.
 
     Args:
         A (cupyx.scipy.sparse.spmatrix): a sparse matrix.
@@ -577,4 +577,4 @@ def kronsum(A, B, format=None):
     L = kron(eye(B.shape[0], dtype=dtype), A, format=format)
     R = kron(B, eye(A.shape[0], dtype=dtype), format=format)
 
-    return (L + R).asformat(format)
+    return L + R
