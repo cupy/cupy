@@ -101,7 +101,7 @@ def repeat(
             is stopped and the statistics collected up to the breakpoint is
             reported.
         devices (tuple): a tuple of device IDs (int) that will be timed during
-            the timing test.
+            the timing test. If not given, the current device is used.
 
     Returns:
         :class:`_PerfCaseResult`: an object collecting all test results.
