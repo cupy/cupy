@@ -9,7 +9,6 @@ CuPy-specific functions are placed under ``cupyx`` namespace.
    :toctree: generated/
    :nosignatures:
 
-   cupyx.time.repeat
    cupyx.rsqrt
    cupyx.scatter_add
    cupyx.scatter_max

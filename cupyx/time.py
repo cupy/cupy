@@ -70,7 +70,7 @@ def repeat(
     GPU time is properly recorded by synchronizing internal streams. As a
     result, to time a multi-GPU function all participating devices must be
     passed as the ``devices`` argument so that this helper knows which devices
-    to record. A simple example is given as follows::
+    to record. A simple example is given as follows:
 
     .. code-block:: py
 
@@ -83,6 +83,7 @@ def repeat(
         a = 0.5 - cp.random.random((100,))
         b = cp.random.random((100,))
         print(repeat(f, (a, b), n_repeat=1000))
+
 
     Args:
         func (callable): a callable object to be timed.
