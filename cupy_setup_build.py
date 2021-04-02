@@ -1073,7 +1073,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
             # to build CuPy because some Python versions were built using it.
             # REF: https://wiki.python.org/moin/WindowsCompilers
             postargs += ['-allow-unsupported-compiler']
-        postargs += ['-Xcompiler', '/MD']
+        postargs += ['-Xcompiler', '/MD', '-D_USE_MATH_DEFINES']
         # This is to compile thrust with MSVC2015
         if cuda_version >= 11020:
             postargs += ['--std=c++14']
