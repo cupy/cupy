@@ -42,7 +42,7 @@ else:
     jitify = None
 
 try:
-    from cupy.cuda import nvtx  # NOQA
+    from cupy_backends.cuda.libs import nvtx  # NOQA
 except ImportError:
     nvtx = _UnavailableModule('cupy.cuda.nvtx')
 
