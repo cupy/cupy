@@ -1,7 +1,7 @@
 Profiling
 =========
 
-time range
+Time range
 ----------
 
 .. autosummary::
@@ -11,7 +11,7 @@ time range
    cupy.prof.TimeRangeDecorator
    cupy.prof.time_range
 
-timing helper
+Timing helper
 -------------
 
 .. autosummary::
