@@ -1639,6 +1639,7 @@ class TestHfft(unittest.TestCase):
     )
 ))
 @testing.gpu
+@testing.with_requires('scipy>=1.4.0')
 class TestHfft2(unittest.TestCase):
 
     def setUp(self):
@@ -1665,7 +1666,6 @@ class TestHfft2(unittest.TestCase):
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1699,7 +1699,6 @@ class TestHfft2(unittest.TestCase):
                                      axes=self.axes, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1725,6 +1724,7 @@ class TestHfft2(unittest.TestCase):
     )
 ))
 @testing.gpu
+@testing.with_requires('scipy>=1.4.0')
 class TestHfftn(unittest.TestCase):
 
     def setUp(self):
@@ -1751,7 +1751,6 @@ class TestHfftn(unittest.TestCase):
                                     norm=self.norm, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1785,7 +1784,6 @@ class TestHfftn(unittest.TestCase):
                                      axes=self.axes, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
