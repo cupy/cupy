@@ -549,7 +549,7 @@ def kronsum(A, B, format=None):
     """Kronecker sum of sparse matrices A and B.
 
     Kronecker sum is the sum of two Kronecker products
-    ``kron(I_n, A) + kron(B, I_m)``, where ``I_n`` and ``I_m`` are identity 
+    ``kron(I_n, A) + kron(B, I_m)``, where ``I_n`` and ``I_m`` are identity
     matrices.
 
     Args:
