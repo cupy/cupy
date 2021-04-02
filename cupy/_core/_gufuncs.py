@@ -169,6 +169,9 @@ class _GUFunc:
         supports_out (bool, optional):
             If the wrapped function supports out as one of its kwargs.
             Defaults to `False`.
+        name (str, optional):
+            Name for the GUFunc object. If not specified, ``func``'s name
+            is used.
     '''
 
     def __init__(self, func, signature, **kwargs):
@@ -177,7 +180,7 @@ class _GUFunc:
         self._func = func
         self._signature = signature
         self._default_casting = 'same_kind'
-        self.__name__ = func.__name__
+        self.__name__ = kwargs.get('name', func.__name__)
 
         # The following are attributes to avoid applying certain steps
         # when wrapping cupy functions that do some of the gufunc
