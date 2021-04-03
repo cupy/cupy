@@ -70,7 +70,7 @@ In addition, :func:`cupy.asarray` supports zero-copy conversion from Numba CUDA 
 .. warning::
 
     ``__cuda_array_interface__`` specifies that the object lifetime must be managed by the user, so it is an undefined behavior if the
-    object is destroyed while the consumer is still using the exported object.
+    exported object is destroyed while still in use by the consumer.
 
 .. note::
 
@@ -82,7 +82,7 @@ mpi4py
 
 `MPI for Python (mpi4py) <https://mpi4py.readthedocs.io/en/latest/>`_ is a Python wrapper for the Message Passing Interface (MPI) libraries.
 
-MPI is the most widely used standard for high-performance inter-process communications. Recently several MPI vendors, including Open MPI and MVAPICH, have extended their support beyond the MPI-3.1 standard to enable "CUDA-awareness"; that is, passing CUDA device pointers directly to MPI calls to avoid explicit data movement between the host and the device.
+MPI is the most widely used standard for high-performance inter-process communications. Recently several MPI vendors, including MPICH, Open MPI and MVAPICH, have extended their support beyond the MPI-3.1 standard to enable "CUDA-awareness"; that is, passing CUDA device pointers directly to MPI calls to avoid explicit data movement between the host and the device.
 
 With the aforementioned ``__cuda_array_interface__`` standard implemented in CuPy, mpi4py now provides (experimental) support for passing CuPy arrays to MPI calls, provided that mpi4py is built against a CUDA-aware MPI implementation. The following is a simple example code borrowed from `mpi4py Tutorial <https://mpi4py.readthedocs.io/en/latest/tutorial.html>`_:
 
@@ -225,5 +225,50 @@ Here is a simple example:
 
 	# Convert it back to a CuPy array.
 	cx2 = cupy.fromDlpack(dx)
+
+`TensorFlow <https://www.tensorflow.org>`_ also supports DLpack, so zero-copy data exchange between CuPy and TensorFlow through
+DLPack is possible:
+
+.. code:: python
+
+    >>> import tensorflow as tf
+    >>> import cupy as cp
+    >>>
+    >>> # convert a TF tensor to a cupy array
+    >>> with tf.device('/GPU:0'):
+    ...     a = tf.random.uniform((10,))
+    ...
+    >>> a
+    <tf.Tensor: shape=(10,), dtype=float32, numpy=
+    array([0.9672388 , 0.57568085, 0.53163004, 0.6536236 , 0.20479882,
+           0.84908986, 0.5852566 , 0.30355775, 0.1733712 , 0.9177849 ],
+          dtype=float32)>
+    >>> a.device
+    '/job:localhost/replica:0/task:0/device:GPU:0'
+    >>> cap = tf.experimental.dlpack.to_dlpack(a)
+    >>> b = cp.fromDlpack(cap)
+    >>> b *= 3
+    >>> b
+    array([1.4949363 , 0.60699713, 1.3276931 , 1.5781245 , 1.1914308 ,
+           2.3180873 , 1.9560868 , 1.3932796 , 1.9299742 , 2.5352407 ],
+          dtype=float32)
+    >>> a
+    <tf.Tensor: shape=(10,), dtype=float32, numpy=
+    array([1.4949363 , 0.60699713, 1.3276931 , 1.5781245 , 1.1914308 ,
+           2.3180873 , 1.9560868 , 1.3932796 , 1.9299742 , 2.5352407 ],
+          dtype=float32)>
+    >>>
+    >>> # convert a cupy array to a TF tensor
+    >>> a = cp.arange(10)
+    >>> cap = a.toDlpack()
+    >>> b = tf.experimental.dlpack.from_dlpack(cap)
+    >>> b.device
+    '/job:localhost/replica:0/task:0/device:GPU:0'
+    >>> b
+    <tf.Tensor: shape=(10,), dtype=int64, numpy=array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])>
+    >>> a
+    array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+Be aware that in TensorFlow all tensors are immutable, so in the latter case any changes in ``b`` cannot be reflected in the CuPy array ``a``.
 
 Note that as of DLPack v0.4 for correctness it (implicitly) requires users to ensure that such conversion (both importing and exporting a CuPy array) must happen on the same CUDA/HIP stream. If in doubt, the current CuPy stream in use can be fetched by, for example, calling :func:`cupy.cuda.get_current_stream`. Please consult the other framework's documentation for how to access and control the streams. This requirement might be relaxed/changed in a future DLPack version.
