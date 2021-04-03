@@ -380,19 +380,23 @@ struct pointer_fnct {};
 
 template<typename T>
 struct pointer_fnct<true, T> {
-    using RetType = typename std::remove_pointer<T>::type;
-    static __device__ RetType get(T value, int id) {
-        return value[id];
+    static __device__ double get(int64_t *value, int id) {
+        void *ptr = reinterpret_cast<void*>(value[0]);
+        int ndim = value[1];
+        ptrdiff_t offset = 0;
+        for (int dim = ndim; --dim >= 0; ) {
+            offset += value[ndim + dim + 2] * (id % value[dim + 2]);
+            id /= value[dim + 2];
+        }
+        return *reinterpret_cast<double*>(ptr + offset);
     }
 };
 
 template<typename T>
 struct pointer_fnct<false, T> {
-    using RetType = T;
-    static __device__ RetType get(T value, int id) {
+    static __device__ T get(T value, int id) {
         return value;
     }
-   
 };
 
 template<typename F, typename T, typename R, typename... Args>
@@ -470,5 +474,5 @@ void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t 
 
 void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
     kernel_launcher<standard_gamma_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<double*>(shape));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(shape));
 }

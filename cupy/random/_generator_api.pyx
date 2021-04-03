@@ -48,6 +48,10 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         ssize_t size, intptr_t stream, intptr_t shape)
 
 
+cdef ndarray _array_data(ndarray x):
+    return cupy.array((x.data.ptr, x.ndim) + x.shape + x.strides)
+
+
 class Generator:
     """Container for the BitGenerators.
 
@@ -430,7 +434,9 @@ class Generator:
                 shape = cupy.broadcast_to(shape, size)
 
         shape = cupy.ascontiguousarray(shape)
-        shape_arr = <intptr_t> shape.data.ptr
+        shape = cupy.broadcast_to(out.shape)
+        shape_arr = _array_data(shape)
+        shape_ptr = shape_arr.data.ptr
 
         if out is not None:
             self._check_output_array(dtype, size, out)
@@ -445,7 +451,7 @@ class Generator:
                 f'Unsupported dtype {y.dtype.name} for standard_normal')
 
         y = ndarray(size if size is not None else (), numpy.float64)
-        _launch_dist(self.bit_generator, standard_gamma, y, (shape_arr,))
+        _launch_dist(self.bit_generator, standard_gamma, y, (shape_ptr,))
         if out is not None and y is not out:
             out[...] = y
             y = out
