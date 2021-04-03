@@ -1633,7 +1633,13 @@ class TestHfft(unittest.TestCase):
         {'shape': (2, 10), 's': (1, 5), 'axes': None},
         {'shape': (2, 30), 's': None, 'axes': (-2, -1)},
         {'shape': (2, 50), 's': None, 'axes': (-1, -2)},
-        {'shape': (2, 100), 's': (2, 50), 'axes': (0,)}
+        {'shape': (2, 100), 's': (2, 50), 'axes': (0,)},
+        {'shape': (2, 3, 10), 's': None, 'axes': None},
+        {'shape': (2, 5, 20), 's': None, 'axes': (0, 1, 2)},
+        {'shape': (2, 10, 100), 's': (2, 10), 'axes': (0, -1, -2)},
+        {'shape': (2, 5, 10), 's': None, 'axes': (-2, -1, 0)},
+        {'shape': (2, 10, 50, 100), 's': (2, 10, 50), 'axes': (0,)},
+
     ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
@@ -1715,10 +1721,16 @@ class TestHfft2(unittest.TestCase):
 @testing.parameterize(*(
     testing.product_dict([
         {'shape': (2, 5), 's': None, 'axes': None},
-        {'shape': (3, 10), 's': (2, 5), 'axes': None},
-        {'shape': (4, 30), 's': None, 'axes': (-2, -1)},
-        {'shape': (5, 50), 's': None, 'axes': (-1, -2)},
-        {'shape': (6, 100), 's': (5, 50), 'axes': (0,)}
+        {'shape': (2, 10), 's': (1, 5), 'axes': None},
+        {'shape': (2, 30), 's': None, 'axes': (-2, -1)},
+        {'shape': (2, 50), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 100), 's': (2, 50), 'axes': (0,)},
+        {'shape': (3, 3, 10), 's': None, 'axes': None},
+        {'shape': (3, 5, 20), 's': None, 'axes': (0, 1, 2)},
+        {'shape': (5, 10, 100), 's': (2, 10), 'axes': (0, -1, -2)},
+        {'shape': (6, 5, 10), 's': None, 'axes': (-2, -1, 0)},
+        {'shape': (7, 10, 50, 100), 's': (2, 10, 50), 'axes': (0,)},
+
     ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
