@@ -29,7 +29,7 @@ Numba
 
 `Numba <https://numba.pydata.org/>`_ is a Python JIT compiler with NumPy support.
 
-:class:`cupy.ndarray` implements ``__cuda_array_interface__``, which is the CUDA array interchange interface compatible with Numba v0.39.0 or later (see `CUDA Array Interface <http://numba.pydata.org/numba-doc/latest/cuda/cuda_array_interface.html>`_ for details).
+:class:`cupy.ndarray` implements ``__cuda_array_interface__``, which is the CUDA array interchange interface compatible with Numba v0.39.0 or later (see `CUDA Array Interface <https://numba.readthedocs.io/en/stable/cuda/cuda_array_interface.html>`_ for details).
 It means you can pass CuPy arrays to kernels JITed with Numba.
 The following is a simple example code borrowed from `numba/numba#2860 <https://github.com/numba/numba/pull/2860>`_:
 
@@ -66,6 +66,15 @@ In addition, :func:`cupy.asarray` supports zero-copy conversion from Numba CUDA 
     x = numpy.arange(10)  # type: numpy.ndarray
     x_numba = numba.cuda.to_device(x)  # type: numba.cuda.cudadrv.devicearray.DeviceNDArray
     x_cupy = cupy.asarray(x_numba)  # type: cupy.ndarray
+
+.. warning::
+
+    ``__cuda_array_interface__`` specifies that the object lifetime must be managed by the user, so it is an undefined behavior if the
+    object is destroyed while the consumer is still using the exported object.
+
+.. note::
+
+    CuPy has a few environment variables controlling the exchange behavior, see :doc:`./environment` for details.
 
 
 mpi4py
@@ -138,6 +147,28 @@ users need to ensure the tensor is already on GPU before exchanging.
     array([ 3,  4,  5,  6,  7,  8,  9, 10, 11, 12])
     >>> assert a.__cuda_array_interface__['data'][0] == b.__cuda_array_interface__['data'][0]
 
+PyTorch also supports zero-copy data exchange through ``DLPack`` (see :ref:`dlpack` below):
+
+.. code:: python
+
+	import cupy
+	import torch
+
+	from torch.utils.dlpack import to_dlpack
+	from torch.utils.dlpack import from_dlpack
+
+	# Create a PyTorch tensor.
+	tx1 = torch.randn(1, 2, 3, 4).cuda()
+
+	# Convert it into a DLPack tensor.
+	dx = to_dlpack(tx1)
+
+	# Convert it into a CuPy array.
+	cx = cupy.fromDlpack(dx)
+
+	# Convert it back to a PyTorch tensor.
+	tx2 = from_dlpack(cx.toDlpack())
+
 
 RMM
 ---
@@ -164,6 +195,8 @@ Sometimes, a more performant allocator may be desirable. RMM provides an option 
 
 For more information on CuPy's memory management, see :doc:`./memory`.
 
+
+.. _dlpack:
 
 DLPack
 ------
@@ -192,27 +225,5 @@ Here is a simple example:
 
 	# Convert it back to a CuPy array.
 	cx2 = cupy.fromDlpack(dx)
-
-Here is an example of converting PyTorch tensor into :class:`cupy.ndarray`.
-
-.. code:: python
-
-	import cupy
-	import torch
-
-	from torch.utils.dlpack import to_dlpack
-	from torch.utils.dlpack import from_dlpack
-
-	# Create a PyTorch tensor.
-	tx1 = torch.randn(1, 2, 3, 4).cuda()
-
-	# Convert it into a DLPack tensor.
-	dx = to_dlpack(tx1)
-
-	# Convert it into a CuPy array.
-	cx = cupy.fromDlpack(dx)
-
-	# Convert it back to a PyTorch tensor.
-	tx2 = from_dlpack(cx.toDlpack())
 
 Note that as of DLPack v0.4 for correctness it (implicitly) requires users to ensure that such conversion (both importing and exporting a CuPy array) must happen on the same CUDA/HIP stream. If in doubt, the current CuPy stream in use can be fetched by, for example, calling :func:`cupy.cuda.get_current_stream`. Please consult the other framework's documentation for how to access and control the streams. This requirement might be relaxed/changed in a future DLPack version.
