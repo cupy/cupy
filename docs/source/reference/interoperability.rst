@@ -215,4 +215,4 @@ Here is an example of converting PyTorch tensor into :class:`cupy.ndarray`.
 	# Convert it back to a PyTorch tensor.
 	tx2 = from_dlpack(cx.toDlpack())
 
-Note that as of DLPack v0.3 for correctness it (implicitly) requires users to ensure that such conversion (both importing and exporting a CuPy array) must happen on the same CUDA/HIP stream. If in doubt, the current CuPy stream in use can be fetched by, for example, calling :func:`cupy.cuda.get_current_stream`. Please consult the other framework's documentation for how to access and control the streams. This requirement might be relaxed/changed in a future DLPack version.
+Note that as of DLPack v0.4 for correctness it (implicitly) requires users to ensure that such conversion (both importing and exporting a CuPy array) must happen on the same CUDA/HIP stream. If in doubt, the current CuPy stream in use can be fetched by, for example, calling :func:`cupy.cuda.get_current_stream`. Please consult the other framework's documentation for how to access and control the streams. This requirement might be relaxed/changed in a future DLPack version.
