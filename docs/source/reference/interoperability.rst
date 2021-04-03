@@ -201,7 +201,7 @@ For more information on CuPy's memory management, see :doc:`./memory`.
 DLPack
 ------
 
-`DLPack <https://github.com/dmlc/dlpack>`_ is a specification of tensor structure to share tensors among frameworks.
+`DLPack <https://github.com/dmlc/dlpack>`__ is a specification of tensor structure to share tensors among frameworks.
 
 CuPy supports importing from and exporting to DLPack data structure (:func:`cupy.fromDlpack` and :func:`cupy.ndarray.toDlpack`).
 
