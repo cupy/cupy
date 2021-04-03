@@ -73,7 +73,7 @@ mpi4py
 
 `MPI for Python (mpi4py) <https://mpi4py.readthedocs.io/en/latest/>`_ is a Python wrapper for the Message Passing Interface (MPI) libraries.
 
-MPI is the most widely used standard for high-performance inter-process communications. Recently several MPI vendors, including Open MPI and MVAPICH, have extended their support beyond the v3.1 standard to enable "CUDA-awareness"; that is, passing CUDA device pointers directly to MPI calls to avoid explicit data movement between the host and the device.
+MPI is the most widely used standard for high-performance inter-process communications. Recently several MPI vendors, including Open MPI and MVAPICH, have extended their support beyond the MPI-3.1 standard to enable "CUDA-awareness"; that is, passing CUDA device pointers directly to MPI calls to avoid explicit data movement between the host and the device.
 
 With the aforementioned ``__cuda_array_interface__`` standard implemented in CuPy, mpi4py now provides (experimental) support for passing CuPy arrays to MPI calls, provided that mpi4py is built against a CUDA-aware MPI implementation. The following is a simple example code borrowed from `mpi4py Tutorial <https://mpi4py.readthedocs.io/en/latest/tutorial.html>`_:
 
@@ -95,6 +95,74 @@ With the aforementioned ``__cuda_array_interface__`` standard implemented in CuP
     assert cupy.allclose(recvbuf, sendbuf*size)
 
 This new feature will be officially released in mpi4py 3.1.0. To try it out, please build mpi4py from source for the time being. See the `mpi4py website <https://mpi4py.readthedocs.io/en/latest/>`_ for more information.
+
+
+PyTorch
+-------
+
+`PyTorch <https://pytorch.org/>`_ is a machine learning framefork that provides high-performance, differentiable tensor operations.
+
+PyTorch also supports ``__cuda_array_interface__``, so zero-copy data exchange between CuPy and PyTorch can be achieved at no cost.
+The only caveat is PyTorch by default creates CPU tensors, which do not have the ``__cuda_array_interface__`` property defined, and
+users need to ensure the tensor is already on GPU before exchanging.
+
+.. code:: python
+
+    >>> import cupy as cp
+    >>> import torch
+    >>>
+    >>> # convert a torch tensor to a cupy array
+    >>> a = torch.rand((4, 4), device='cuda')
+    >>> b = cp.asarray(a)
+    >>> b *= b
+    >>> b
+    array([[0.8215962 , 0.82399917, 0.65607935, 0.30354425],
+           [0.422695  , 0.8367199 , 0.00208597, 0.18545236],
+           [0.00226746, 0.46201342, 0.6833052 , 0.47549972],
+           [0.5208748 , 0.6059282 , 0.1909013 , 0.5148635 ]], dtype=float32)
+    >>> a
+    tensor([[0.8216, 0.8240, 0.6561, 0.3035],
+            [0.4227, 0.8367, 0.0021, 0.1855],
+            [0.0023, 0.4620, 0.6833, 0.4755],
+            [0.5209, 0.6059, 0.1909, 0.5149]], device='cuda:0')
+    >>> # check the underlying memory pointer is the same
+    >>> assert a.__cuda_array_interface__['data'][0] == b.__cuda_array_interface__['data'][0]
+    >>>
+    >>> # convert a cupy array to a torch tensor
+    >>> a = cp.arange(10)
+    >>> b = torch.as_tensor(a, device='cuda')
+    >>> b += 3
+    >>> b
+    tensor([ 3,  4,  5,  6,  7,  8,  9, 10, 11, 12], device='cuda:0')
+    >>> a
+    array([ 3,  4,  5,  6,  7,  8,  9, 10, 11, 12])
+    >>> assert a.__cuda_array_interface__['data'][0] == b.__cuda_array_interface__['data'][0]
+
+
+RMM
+---
+
+`RMM (RAPIDS Memory Manager) <https://docs.rapids.ai/api/rmm/stable/index.html>`_ provides highly configurable memory allocators.
+
+RMM provides an interface to allow CuPy to allocate memory from its memory pool instead of from CuPy's own pool. It can be set up
+as simple as follows:
+
+.. code:: python
+
+    import cupy
+    import rmm
+    cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+
+Sometimes, a more performant allocator may be desirable. RMM provides an option to switch the allocator:
+
+.. code:: python
+
+    import cupy
+    import rmm
+    rmm.reinitialize(pool_allocator=True)  # can also set init pool size etc here
+    cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+
+For more information on CuPy's memory management, see :doc:`./memory`.
 
 
 DLPack
