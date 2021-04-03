@@ -628,7 +628,7 @@ def ihfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
 
 
 @_implements(_scipy_fft.hfftn)
-def hfftn(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
+def hfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *,
           plan=None):
     """Compute the FFT of a N-dimensional signal that has Hermitian symmetry.
 
@@ -654,7 +654,7 @@ def hfftn(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
 
 
 @_implements(_scipy_fft.ihfftn)
-def ihfftn(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
+def ihfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *,
            plan=None):
     """Compute the Inverse FFT of a N-dimensional signal that has Hermitian
     symmetry.
