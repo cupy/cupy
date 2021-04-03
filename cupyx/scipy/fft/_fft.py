@@ -7,7 +7,8 @@ import cupy
 
 from cupy.cuda import cufft
 from cupy.fft._fft import (_fft, _default_fft_func, hfft as _hfft,
-                           ihfft as _ihfft, _size_last_transform_axis)
+                           ihfft as _ihfft, _size_last_transform_axis,
+                           _swap_direction)
 from cupy.fft import fftshift, ifftshift, fftfreq, rfftfreq
 
 from cupyx.scipy.fftpack import get_fft_plan
@@ -571,17 +572,6 @@ def ihfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     if plan is not None:
         raise NotImplementedError('ihfft plan is currently not yet supported')
     return _ihfft(x, n, axis, norm)
-
-
-def _swap_direction(norm):
-    if norm in (None, 'backward'):
-        norm = 'forward'
-    elif norm == 'forward':
-        norm = 'backward'
-    elif norm != 'ortho':
-        raise ValueError('Invalid norm value %s; should be "backward", '
-                         '"ortho", or "forward".' % norm)
-    return norm
 
 
 @_implements(_scipy_fft.hfft2)
