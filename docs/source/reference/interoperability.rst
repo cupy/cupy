@@ -1,7 +1,7 @@
 Interoperability
 ================
 
-CuPy can also be used in conjunction with other frameworks.
+CuPy can also be used in conjunction with other libraries.
 
 NumPy
 -----
