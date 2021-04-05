@@ -15,7 +15,7 @@ There are several ways to contribute to CuPy community:
 
 1. Registering an issue
 2. Sending a pull request (PR)
-3. Sending a question to `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_
+3. Sending a question to `CuPy's Gitter channel <https://gitter.im/cupy/community>`_, `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_, or `StackOverflow <https://stackoverflow.com/questions/tagged/cupy>`_
 4. Open-sourcing an external example
 5. Writing a post about CuPy
 
@@ -154,7 +154,7 @@ You can contain your thoughts on **how** to realize it into the feature requests
 
 .. warning::
 
-   If you have a question on usages of CuPy, it is highly recommended to send a post to `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_ instead of the issue tracker.
+   If you have a question on usages of CuPy, it is highly recommended to send a post to `CuPy's Gitter channel <https://gitter.im/cupy/community>`_, `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_ or `StackOverflow <https://stackoverflow.com/questions/tagged/cupy>`_ instead of the issue tracker.
    The issue tracker is not a place to share knowledge on practices.
    We may suggest these places and immediately close how-to question issues.
 
