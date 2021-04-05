@@ -130,6 +130,7 @@ to use these functions.
    cupy.cuda.runtime.driverGetVersion
    cupy.cuda.runtime.runtimeGetVersion
    cupy.cuda.runtime.getDevice
+   cupy.cuda.runtime.getDeviceProperties
    cupy.cuda.runtime.deviceGetAttribute
    cupy.cuda.runtime.deviceGetByPCIBusId
    cupy.cuda.runtime.deviceGetPCIBusId
