@@ -1,44 +1,9 @@
 // This file is a stub header file of cuda for Read the Docs.
 
-#ifndef INCLUDE_GUARD_CUPY_NVTX_H
-#define INCLUDE_GUARD_CUPY_NVTX_H
-
-#if CUPY_USE_HIP
-
-#include "../../cupy_backends/hip/cupy_roctx.h"
-
-#elif !defined(CUPY_NO_CUDA)
-
-#include <nvToolsExt.h>
-
-#else  // defined(CUPY_NO_CUDA)
-
-#define NVTX_VERSION 1
+#ifndef INCLUDE_GUARD_STUB_CUPY_NVTX_H
+#define INCLUDE_GUARD_STUB_CUPY_NVTX_H
 
 extern "C" {
-
-void nvtxMarkA(...) {
-}
-
-int nvtxRangePushA(...) {
-    return 0;
-}
-
-int nvtxRangePop() {
-    return 0;
-}
-
-} // extern "C"
-
-#endif  // defined(CUPY_NO_CUDA)
-
-
-#if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
-
-//#include "../../cupy_backends/cupy_cuda_common.h"
-
-extern "C" {
-
 
 typedef enum nvtxColorType_t
 {
@@ -96,6 +61,5 @@ void nvtxRangeEnd(...) {
 
 } // extern "C"
 
-#endif // #if (defined(CUPY_NO_CUDA) || defined(CUPY_USE_HIP))
 
-#endif // #ifndef INCLUDE_GUARD_CUPY_NVTX_H
+#endif
