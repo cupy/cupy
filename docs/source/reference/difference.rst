@@ -168,6 +168,4 @@ counterparts:
   (nan-3.9j) (nan-3.9j)
 
 The reason is that internally the reduction is performed in a strided fashion, thus it does not ensure a proper
-comparison order and cannot follow NumPy's rule to always propagate the first-encountered NaN. If full compliance
-for this behavior is needed, we recommend using the CUB reduction by setting ``CUPY_ACCELERATORS=cub``, see
-:ref:`here<accelerators>` for a brief introduction to the CUB backend.
+comparison order and cannot follow NumPy's rule to always propagate the first-encountered NaN.
