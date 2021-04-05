@@ -378,16 +378,16 @@ You can specify the kernel name by using the ``kernel_name`` keyword argument as
 JIT kernel definition
 ---------------------
 
-The :class:`~cupyx.jit.rawkernel` decorator can define raw CUDA kernel from Python function.
+The :class:`cupyx.jit.rawkernel` decorator can create raw CUDA kernels from Python functions.
 
-In this section, the Python function wrapped with the decorator is called as *target function*.
+In this section, a Python function wrapped with the decorator is called a *target function*.
 
-The target function consists of the elemental scalar operations, and the users have to manage how parallelize them. CuPy's array operations which automatically parallelize the operation (e.g., :func:`cupy.add`, :func:`cupy.sum`) is not supported. If the custom kernel from the array functions are desired, please refer the :ref:`kernel_fusion` section.
+A target function consists of elementary scalar operations, and users have to manage how to parallelize them. CuPy's array operations which automatically parallelize operations (e.g., :func:`~cupy.add`, :func:`~cupy.sum`) are not supported. If a custom kernel based on such array functions is desired, please refer to the :ref:`kernel_fusion` section.
 
 Basic Usage
 ^^^^^^^^^^^
 
-:class:`cupyx.jit.rawkernel` decorator can define a CUDA global function.
+Here is a short example for how to write a :class:`cupyx.jit.rawkernel` to copy the values from ``x`` to ``y`` using a grid-stride loop:
 
 .. doctest::
 
@@ -401,8 +401,9 @@ Basic Usage
    >>> size = cupy.uint32(2 ** 22)
    >>> x = cupy.random.normal(size=(size,), dtype=cupy.float32)
    >>> y = cupy.empty((size,), dtype=cupy.float32)
+   >>> assert (x == y).all()
 
-Two kinds of interfaces  to launch the kenrel are supported. See the document of :class:`cupyx.jit.CudaFunction` for details.
+Two kinds of interfaces to launch the kernel are supported, see the documentation of :class:`cupyx.jit.CudaFunction` for details.
 
 .. doctest::
 
@@ -412,12 +413,12 @@ Two kinds of interfaces  to launch the kenrel are supported. See the document of
 
    >>> elementwise_copy[128, 1024](x, y, size)
 
-Compilation will be deferred until the first function call. CuPy JIT compiler infers the types of arguments at call time.
+The compilation will be deferred until the first function call. CuPy's JIT compiler infers the types of arguments at the call time, and will cache the compiled kernels for speeding up any subsequent calls.
 
 Typing rule
 ^^^^^^^^^^^
 
-The type of local variables are inferred at the first assignment in the function. The first assign instruction must be at the top-level -- in other words, must not be in if/else body or for-loops.
+The types of local variables are inferred at the first assignment in the function. The first assignment must be done at the top-level of the function; in other words, it must *not* be in ``if``/``else`` bodies or ``for``-loops.
 
 List of API
 ^^^^^^^^^^^
@@ -434,7 +435,7 @@ Limitations
 
 CuPy's JIT compiler generates CUDA code via Python AST. We decided not to use Python bytecode to analyze the target function to avoid perforamance degradation. The CUDA source code generated from the Python bytecode will not effectively optimized by CUDA compiler, because for-loops and other control statements of the target function are fully transformed to jump instruction when converting the target function to bytecode.
 
-CuPy's JIT compiler uses :py:func:`inspect.getsource` to get the text of the source code of the target function. So the compiler does not work in the following situtaions.
+CuPy's JIT compiler uses :py:func:`inspect.getsource` to get the source code of the target function, so the compiler does not work in the following situations:
 
-* In iPython iterpreter
-* Lambda expression as the target function.
+* In IPython interpreter
+* Lambda expressions as target functions
