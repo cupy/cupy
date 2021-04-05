@@ -1665,16 +1665,6 @@ class TestHfft2(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_hfft2_overwrite(self, xp, dtype):
-        x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
-        out = _fft_module(xp).hfft2(x, s=self.s, axes=self.axes,
-                                    norm=self.norm, **overwrite_kw)
-        return _correct_np_dtype(xp, dtype, out)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
-                                 contiguous_check=False)
     def test_hfft2_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
@@ -1693,16 +1683,6 @@ class TestHfft2(unittest.TestCase):
         out = _fft_module(xp).ihfft2(x, s=self.s, axes=self.axes,
                                      norm=self.norm)
         testing.assert_array_equal(x, x_orig)
-        return _correct_np_dtype(xp, dtype, out)
-
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
-                                 contiguous_check=False)
-    def test_ihfft2_overwrite(self, xp, dtype):
-        x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
-        out = _fft_module(xp).ihfft2(x, s=self.s, norm=self.norm,
-                                     axes=self.axes, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes(no_complex=True)
@@ -1756,16 +1736,6 @@ class TestHfftn(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
-    def test_hfftn_overwrite(self, xp, dtype):
-        x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
-        out = _fft_module(xp).hfftn(x, s=self.s, axes=self.axes,
-                                    norm=self.norm, **overwrite_kw)
-        return _correct_np_dtype(xp, dtype, out)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
-                                 contiguous_check=False)
     def test_hfftn_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
         x_orig = x.copy()
@@ -1784,16 +1754,6 @@ class TestHfftn(unittest.TestCase):
         out = _fft_module(xp).ihfftn(x, s=self.s, axes=self.axes,
                                      norm=self.norm)
         testing.assert_array_equal(x, x_orig)
-        return _correct_np_dtype(xp, dtype, out)
-
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
-                                 contiguous_check=False)
-    def test_ihfftn_overwrite(self, xp, dtype):
-        x = testing.shaped_random(self.shape, xp, dtype)
-        overwrite_kw = {} if xp is np else {'overwrite_x': True}
-        out = _fft_module(xp).ihfftn(x, s=self.s, norm=self.norm,
-                                     axes=self.axes, **overwrite_kw)
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes(no_complex=True)
