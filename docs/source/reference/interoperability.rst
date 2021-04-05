@@ -196,8 +196,8 @@ RMM
 
 `RMM (RAPIDS Memory Manager) <https://docs.rapids.ai/api/rmm/stable/index.html>`_ provides highly configurable memory allocators.
 
-RMM provides an interface to allow CuPy to allocate memory from its memory pool instead of from CuPy's own pool. It can be set up
-as simple as follows:
+RMM provides an interface to allow CuPy to allocate memory from the RMM memory pool instead of from CuPy's own pool. It can be set up
+as simple as:
 
 .. code:: python
 
