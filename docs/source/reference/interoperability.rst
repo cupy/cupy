@@ -169,6 +169,27 @@ PyTorch also supports zero-copy data exchange through ``DLPack`` (see :ref:`dlpa
 	# Convert it back to a PyTorch tensor.
 	tx2 = from_dlpack(cx.toDlpack())
 
+`pytorch-pfn-extras <https://github.com/pfnet/pytorch-pfn-extras/>`_ library provides additional integration features with PyTorch, including memory pool sharing and stream sharing:
+
+.. code:: python
+
+   >>> import cupy
+   >>> import torch
+   >>> import pytorch_pfn_extras as ppe
+   >>>
+   >>> # Perform CuPy memory allocation using the PyTorch memory pool.
+   >>> ppe.cuda.use_torch_mempool_in_cupy()
+   >>> torch.cuda.memory_allocated()
+   0
+   >>> arr = cupy.arange(10)
+   >>> torch.cuda.memory_allocated()
+   512
+   >>>
+   >>> # Change the default stream in PyTorch and CuPy:
+   >>> stream = torch.cuda.Stream()
+   >>> with ppe.cuda.stream(stream):
+   ...     ...
+
 
 RMM
 ---
