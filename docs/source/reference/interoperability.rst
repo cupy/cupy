@@ -70,7 +70,7 @@ In addition, :func:`cupy.asarray` supports zero-copy conversion from Numba CUDA 
 .. warning::
 
     ``__cuda_array_interface__`` specifies that the object lifetime must be managed by the user, so it is an undefined behavior if the
-    exported object is destroyed while still in use by the consumer.
+    exported object is destroyed while still in use by the consumer library.
 
 .. note::
 
