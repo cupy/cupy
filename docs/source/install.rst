@@ -128,9 +128,9 @@ However, if for any reason you need to force-install a particular CUDA version (
 
 .. note::
 
-    cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once:
+    cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
 
-    $ conda install -c conda-forge cupy cudatoolkit=10.1 cudnn cutensor nccl
+        $ conda install -c conda-forge cupy cudatoolkit=10.1 cudnn cutensor nccl
 
     Each of them can also be installed separately as needed. Note that cuTENSOR is available since CUDA 10.1+.
 
