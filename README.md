@@ -3,6 +3,7 @@
 # CuPy : A NumPy-compatible array library accelerated by CUDA
 
 [![pypi](https://img.shields.io/pypi/v/cupy.svg)](https://pypi.python.org/pypi/cupy)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/cupy.svg)](https://anaconda.org/conda-forge/cupy)
 [![GitHub license](https://img.shields.io/github/license/cupy/cupy.svg)](https://github.com/cupy/cupy)
 [![coveralls](https://img.shields.io/coveralls/cupy/cupy.svg)](https://coveralls.io/github/cupy/cupy)
 [![Gitter](https://badges.gitter.im/cupy/community.svg)](https://gitter.im/cupy/community)
@@ -36,7 +37,7 @@ Choose the right package for your platform.
 | CUDA 11.2 | `pip install cupy-cuda112`     |
 | ROCm 4.0  | `pip install cupy-rocm-4-0` (experimental; see [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details) |
 
-See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or to build from source.
+See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or building from source.
 
 ## Run on Docker
 
