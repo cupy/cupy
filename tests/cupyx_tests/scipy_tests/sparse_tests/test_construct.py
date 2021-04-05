@@ -380,7 +380,7 @@ class TestDiags(unittest.TestCase):
 
 
 # borrowed from scipy:
-arrs = [[[0]],
+_arrs_kron = [[[0]],
         [[-1]],
         [[4]],
         [[10]],
@@ -398,8 +398,8 @@ arrs = [[[0]],
 @testing.parameterize(*testing.product({
     'dtype': (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
     'format': ('csr', 'csc', 'coo'),
-    'arrA': arrs,
-    'arrB': arrs,
+    'arrA': _arrs_kron,
+    'arrB': _arrs_kron,
 }))
 @testing.with_requires('scipy>=1.6')
 class TestKron(unittest.TestCase):
@@ -422,7 +422,7 @@ class TestKron(unittest.TestCase):
     # #3513 is fixed
 
 
-arrs = [[[0]],
+_arrs_kronsum = [[[0]],
         [[-1]],
         [[4]],
         [[10]],
@@ -435,8 +435,8 @@ arrs = [[[0]],
 @testing.parameterize(*testing.product({
     'dtype': (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
     'format': ('csr', 'csc', 'coo'),
-    'arrA': arrs,
-    'arrB': arrs,
+    'arrA': _arrs_kronsum,
+    'arrB': _arrs_kronsum,
 }))
 @testing.with_requires('scipy>=1.6')
 class TestKronsum(unittest.TestCase):
