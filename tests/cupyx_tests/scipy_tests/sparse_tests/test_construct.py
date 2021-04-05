@@ -380,7 +380,8 @@ class TestDiags(unittest.TestCase):
 
 
 # borrowed from scipy:
-_arrs_kron = [[[0]],
+_arrs_kron = [
+        [[0]],
         [[-1]],
         [[4]],
         [[10]],
@@ -422,7 +423,8 @@ class TestKron(unittest.TestCase):
     # #3513 is fixed
 
 
-_arrs_kronsum = [[[0]],
+_arrs_kronsum = [
+        [[0]],
         [[-1]],
         [[4]],
         [[10]],
