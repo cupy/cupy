@@ -578,4 +578,4 @@ def kronsum(A, B, format=None):
     L = kron(eye(B.shape[0], dtype=dtype), A, format=format)
     R = kron(B, eye(A.shape[0], dtype=dtype), format=format)
 
-    return L + R
+    return (L + R).asformat(format)
