@@ -752,6 +752,15 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     if _is_cudadevrt_needed(options):
         raise ValueError('separate compilation is not supported in HIP')
 
+    # HIP's equivalent of -ftz=true, see ROCm-Developer-Tools/HIP#2252
+    # Notes:
+    # - For hipcc, this should just work, as invalid options would cause errors
+    #   See https://clang.llvm.org/docs/ClangCommandLineReference.html.
+    # - For hiprtc, this is a no-op until the compiler options like -D and -I
+    #   are accepted, see ROCm-Developer-Tools/HIP#2182 and
+    #   ROCm-Developer-Tools/HIP#2248
+    options += ('-fcuda-flush-denormals-to-zero',)
+
     if cache_dir is None:
         cache_dir = get_cache_dir()
     # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
