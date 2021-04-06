@@ -394,7 +394,7 @@ class Generator:
             - :meth:`numpy.random.Generator.standard_gamma`
         """
         cdef ndarray y
-        cdef intptr_t shape_arr
+        cdef ndarray shape_arr
 
         if size is not None and not isinstance(size, tuple):
             size = (size,)
@@ -433,11 +433,6 @@ class Generator:
                 # Array must be C-Contiguous
                 shape = cupy.broadcast_to(shape, size)
 
-        shape = cupy.ascontiguousarray(shape)
-        shape = cupy.broadcast_to(out.shape)
-        shape_arr = _array_data(shape)
-        shape_ptr = shape_arr.data.ptr
-
         if out is not None:
             self._check_output_array(dtype, size, out)
             if out.dtype.char == 'd' and out.flags.c_contiguous:
@@ -451,6 +446,11 @@ class Generator:
                 f'Unsupported dtype {y.dtype.name} for standard_normal')
 
         y = ndarray(size if size is not None else (), numpy.float64)
+
+        shape = cupy.broadcast_to(shape, y.shape)
+        shape_arr = _array_data(shape)
+        shape_ptr = shape_arr.data.ptr
+
         _launch_dist(self.bit_generator, standard_gamma, y, (shape_ptr,))
         if out is not None and y is not out:
             out[...] = y
