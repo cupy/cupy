@@ -22,6 +22,7 @@ class TestStream(unittest.TestCase):
             self.stream = cuda.Stream.null
         elif self.stream_name == 'ptds':
             self.stream = cuda.Stream.ptds
+        self.stream.use()
 
     def tearDown(self):
         self._prev_stream.use()
