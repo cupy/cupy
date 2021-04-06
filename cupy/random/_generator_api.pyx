@@ -33,6 +33,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void exponential(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
+    void poisson(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, double lam)
     void standard_normal(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
@@ -284,6 +287,33 @@ class Generator:
         # cython cant call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
+
+    def poisson(self, lam=1.0, size=None):
+        """Poisson distribution.
+
+        Returns an array of samples drawn from the poisson distribution. Its
+        probability mass function is defined as
+
+        .. math::
+            f(x) = \\frac{\\lambda^xe^{-\\lambda}}{x!}.
+
+        Args:
+            lam (array_like of floats): Parameter of the poisson distribution
+                :math:`\\lambda`.
+            size (int or tuple of ints): The shape of the array. If ``None``,
+            this function generate an array whose shape is `lam.shape`.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the poisson distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.poisson
+            <numpy.random.generator.Generator.poisson>`
+        """
+        cdef ndarray y
+        y = ndarray(size if size is not None else (), numpy.int64)
+        _launch_dist(self.bit_generator, poisson, y, (lam, ))
+        return y
 
     def standard_normal(self, size=None, dtype=numpy.float64, out=None):
         """Returns an array of samples drawn from the standard normal distribution.
