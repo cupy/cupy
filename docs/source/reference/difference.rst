@@ -118,7 +118,7 @@ This may affect the dtype of its output, depending on the values of the "scalar"
 Data types
 ----------
 
-Data type of CuPy arrays cannot be non-numeric like strings and objects.
+Data type of CuPy arrays cannot be non-numeric like strings or objects.
 See :ref:`overview` for details.
 
 
@@ -149,3 +149,23 @@ full numpy arrays.
 However, unlike Numpy, array seeds will be hashed down to a single number and
 so may not communicate as much entropy to the underlying random number
 generator.
+
+
+NaN (not-a-number) handling
+---------------------------
+
+By default CuPy's reduction functions (e.g., :func:`cupy.sum`) handle NaNs in complex numbers differently from NumPy's
+counterparts:
+
+  >>> a = [0.5 + 3.7j, complex(0.7, np.nan), complex(np.nan, -3.9), complex(np.nan, np.nan)]
+  >>>
+  >>> a_np = np.asarray(a)
+  >>> print(a_np.max(), a_np.min())
+  (0.7+nanj) (0.7+nanj)
+  >>>
+  >>> a_cp = cp.asarray(a_np)
+  >>> print(a_cp.max(), a_cp.min())
+  (nan-3.9j) (nan-3.9j)
+
+The reason is that internally the reduction is performed in a strided fashion, thus it does not ensure a proper
+comparison order and cannot follow NumPy's rule to always propagate the first-encountered NaN.

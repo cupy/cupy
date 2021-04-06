@@ -29,7 +29,9 @@ CuPy also includes the following features for performance:
 
 - User-defined elementwise CUDA kernels
 - User-defined reduction CUDA kernels
+- Just-in-time compiler converting Python functions to CUDA kernels
 - Fusing CUDA kernels to optimize user-defined calculation
+- CUB/cuTENSOR backends for reduction and other routines
 - Customizable memory allocator and memory pool
 - `cuDNN <https://developer.nvidia.com/cudnn>`_ utilities
 
