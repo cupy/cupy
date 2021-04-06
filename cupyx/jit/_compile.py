@@ -143,11 +143,42 @@ class Range(Expr):
 
 class BuiltinFunc(Expr):
 
+    def call(self, env, *args, **kwargs):
+        if not (is_constants(args) and is_constants(kwargs.values())):
+            raise TypeError('Arguments must be constants.')
+        args = [x.obj for x in args]
+        kwargs = dict([(k, v.obj) for k, v in kwargs.items()])
+        return self.call_const(env, *args, **kwargs)
+
+    def call_const(self, env, *args, **kwarg):
+        raise NotImplementedError
+
     def __init__(self):
         self.__doc__ = type(self).__call__.__doc__
 
     def __call__(self):
         raise RuntimeError('Cannot call this function from Python layer.')
+
+
+class RangeFunc(BuiltinFunc):
+
+    def call(self, env, *args, **kwargs):
+        if len(args) == 0:
+            raise TypeError('range expected at least 1 argument, got 0')
+        elif len(args) == 1:
+            start, stop, step = Constant(0), args[0], Constant(1)
+        elif len(args) == 2:
+            start, stop, step = args[0], args[1], Constant(1)
+        elif len(args) == 3:
+            start, stop, step = args
+        else:
+            raise TypeError(
+                f'range expected at most 3 argument, got {len(args)}')
+        step_is_positive = step.obj >= 0 if is_constants([step]) else None
+        start = _to_cuda_object(start, env)
+        stop = _to_cuda_object(stop, env)
+        step = _to_cuda_object(step, env)
+        return Range(start, stop, step, step_is_positive)
 
 
 class SyncThreads(BuiltinFunc):
@@ -157,7 +188,7 @@ class SyncThreads(BuiltinFunc):
         """
         super.__call__(self)
 
-    def call(self, env):
+    def call_const(self, env):
         return CudaObject('__syncthreads()', _types.void)
 
 
@@ -175,13 +206,18 @@ class SharedMemory(BuiltinFunc):
         """
         super.__call__(self)
 
-    def call(self, env, dtype, size):
+    def call_const(self, env, dtype, size):
         name = env.get_fresh_variable_name(prefix='_smem')
         child_type = _types.Scalar(dtype)
         while env[name] is not None:
             name = env.get_fresh_variable_name(prefix='_smem')  # retry
         env[name] = CudaObject(name, _types.SharedMem(child_type, size))
         return CudaObject(name, _types.Ptr(child_type))
+
+
+_builtin_functions_dict = {
+    range: RangeFunc(),
+}
 
 
 def is_constants(values):
@@ -583,11 +619,10 @@ def _transpile_expr_internal(expr, env):
         kwargs = dict([(kw.arg, _transpile_expr(kw.value, env))
                        for kw in expr.keywords])
 
+        if is_constants([func]) and (func.obj in _builtin_functions_dict):
+            func = _builtin_functions_dict[func.obj]
+
         if isinstance(func, BuiltinFunc):
-            if not (is_constants(args) and is_constants(kwargs.values())):
-                raise TypeError(f'Arguments of {func} must be constants.')
-            args = [x.obj for x in args]
-            kwargs = dict([(k, v.obj) for k, v in kwargs.items()])
             return func.call(env, *args, **kwargs)
 
         if not is_constants([func]):
@@ -595,24 +630,6 @@ def _transpile_expr_internal(expr, env):
                 'device function call is not implemented.')
 
         func = func.obj
-
-        if func is range:
-            if len(args) == 0:
-                raise TypeError('range expected at least 1 argument, got 0')
-            elif len(args) == 1:
-                start, stop, step = Constant(0), args[0], Constant(1)
-            elif len(args) == 2:
-                start, stop, step = args[0], args[1], Constant(1)
-            elif len(args) == 3:
-                start, stop, step = args
-            else:
-                raise TypeError(
-                    f'range expected at most 3 argument, got {len(args)}')
-            step_is_positive = step.obj >= 0 if is_constants([step]) else None
-            start = _to_cuda_object(start, env)
-            stop = _to_cuda_object(stop, env)
-            step = _to_cuda_object(step, env)
-            return Range(start, stop, step, step_is_positive)
 
         if is_constants(args) and is_constants(kwargs.values()):
             # compile-time function call
