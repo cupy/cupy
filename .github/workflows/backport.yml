@@ -39,4 +39,4 @@ jobs:
       run: |
         cd backport
         echo -e "machine github.com\nlogin chainer-ci\npassword ${{secrets.BACKPORT_TOKEN}}" > ~/.netrc
-        python backport.py --repo cupy --pr ${{github.event.number}} --https
+        python backport.py --repo cupy --pr ${{github.event.number}} --https --bot
