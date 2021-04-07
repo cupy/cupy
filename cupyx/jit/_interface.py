@@ -1,4 +1,5 @@
 import collections
+import warnings
 
 import numpy
 
@@ -41,6 +42,7 @@ class _JitRawKernel:
         self._func = func
         self._mode = mode
         self._cache = {}
+        self._cached_codes = {}
 
     def __call__(
             self, grid, block, args, shared_mem=0,
@@ -71,6 +73,8 @@ class _JitRawKernel:
                 options=('-D CUPY_JIT_MODE',))
             kern = module.get_function(fname)
             self._cache[in_types] = kern
+            self._cached_codes[in_types] = result.code
+
         kern(grid, block, args, shared_mem, stream, enable_cooperative_groups)
 
     def __getitem__(self, grid_and_block):
@@ -80,6 +84,33 @@ class _JitRawKernel:
         if not isinstance(block, tuple):
             block = (block, 1, 1)
         return lambda *args, **kwargs: self(grid, block, args, **kwargs)
+
+    @property
+    def cached_codes(self):
+        """Returns a dict that has input types as keys and codes values.
+
+        This proprety method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        if len(self._cached_codes) == 0:
+            warnings.warn(
+                'No codes are cached because compilation is deferred until '
+                'the first function call.')
+        return self._cached_codes
+
+    @property
+    def cached_code(self):
+        """Returns `next(iter(self.cached_codes.values()))`.
+
+        This proprety method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        codes = self.cached_codes
+        if len(codes) > 1:
+            warnings.warn(
+                'The input types of the kernel could not be inferred. '
+                'Please use `.cached_codes` instead.')
+        return next(iter(codes.values()))
 
 
 def rawkernel(mode='cuda'):
