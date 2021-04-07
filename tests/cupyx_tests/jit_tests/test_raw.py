@@ -1,6 +1,8 @@
 import unittest
 import numpy
 
+import pytest
+
 import cupy
 from cupyx import jit
 from cupy import testing
@@ -134,3 +136,19 @@ class TestRaw(unittest.TestCase):
         y = testing.shaped_random((1024,), dtype=numpy.int32, seed=1)
         f[5, 6](x, y, numpy.uint32(1024))
         assert bool((x == y).all())
+
+    def test_error_msg(self):
+        @jit.rawkernel()
+        def f(x):
+            return unknown_var  # NOQA
+
+        import re
+        mes = re.escape('''Unbound name: unknown_var
+
+  @jit.rawkernel()
+  def f(x):
+>     return unknown_var  # NOQA
+''')
+        x = cupy.zeros((10,), dtype=numpy.float32)
+        with pytest.raises(NameError, match=mes):
+            f((1,), (1,), (x,))
