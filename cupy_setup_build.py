@@ -230,6 +230,7 @@ if not use_hip:
         ],
         'check_method': build.check_cutensor_version,
         'version_method': build.get_cutensor_version,
+        'check_cuda_version': lambda version: version >= 10010
     })
 
     MODULES.append({
@@ -297,6 +298,7 @@ if not use_hip:
         ],
         'check_method': build.check_cusparselt_version,
         'version_method': build.get_cusparselt_version,
+        'check_cuda_version': lambda version: version >= 11000
     })
 
 else:
@@ -487,8 +489,7 @@ def preconfigure_modules(compiler, settings):
                 settings['include_dirs'].append(inc_path)
             cuda_version = build.get_cuda_version()
             cuda_major = str(cuda_version // 1000)
-            cuda_major_minor = cuda_major + '.' + \
-                str((cuda_version // 10) % 100)
+            cuda_major_minor = f'{cuda_major}.{(cuda_version // 10) % 100}'
             for cuda_ver in (cuda_major_minor, cuda_major):
                 lib_path = os.path.join(cutensor_path, 'lib', cuda_ver)
                 if os.path.exists(lib_path):
@@ -526,6 +527,14 @@ def preconfigure_modules(compiler, settings):
             cmd = 'nvcc' if not use_hip else 'hipcc'
             errmsg = ['{} command could not be found in PATH.'.format(cmd),
                       'Check your PATH environment variable.']
+        elif ('required_cuda_version' in module
+              and not module['check_cuda_version'](build.get_cuda_version())):
+            cuda_version = build.get_cuda_version()
+            cuda_major = cuda_version // 1000
+            cuda_major_minor = f'{cuda_major}.{(cuda_version // 10) % 100}'
+            installed = True
+            errmsg = [
+                f'The library is not supported for CUDA {cuda_major_minor}']
         else:
             installed = True
             status = 'Yes'
