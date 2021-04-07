@@ -391,7 +391,7 @@ Here is a short example for how to write a :class:`cupyx.jit.rawkernel` to copy 
 
 .. doctest::
 
-   >>> @jit.rawkernel()
+   >>> @cupyx.jit.rawkernel()
    ... def elementwise_copy(x, y, size):
    ...     tid = jit.blockIdx.x * jit.blockDim.x + jit.threadIdx.x
    ...     ntid = jit.gridDim.x * jit.blockDim.x
