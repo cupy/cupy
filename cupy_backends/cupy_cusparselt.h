@@ -10,6 +10,11 @@
 #include <library_types.h>
 #include <cusparseLt.h>
 
+cusparseStatus_t cusparseLtGetVersion(int* version) {
+  *version = CUSPARSELT_VERSION;
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 #else
 
 #include "stub/cupy_cusparselt.h"

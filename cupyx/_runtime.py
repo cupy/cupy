@@ -39,6 +39,11 @@ except ImportError:
     cutensor = None
 
 try:
+    import cupy_backends.cuda.libs.cusparselt as cusparselt
+except ImportError:
+    cutensor = None
+
+try:
     import scipy
 except ImportError:
     scipy = None
@@ -192,6 +197,9 @@ class _RuntimeInfo(object):
         if cutensor is not None:
             self.cutensor_version = cutensor.get_version()
 
+        if cusparselt is not None:
+            self.cusparselt_version = cusparselt.get_version()
+
         self.cython_build_version = cupy._util.cython_build_ver
         if Cython is not None:
             self.cython_version = Cython.__version__
@@ -234,6 +242,7 @@ class _RuntimeInfo(object):
             ('NCCL Build Version', self.nccl_build_version),
             ('NCCL Runtime Version', self.nccl_runtime_version),
             ('cuTENSOR Version', self.cutensor_version),
+            ('cuSPARSELt Version', self.cusparselt_version),
         ]
 
         for device_id in range(cupy.cuda.runtime.getDeviceCount()):

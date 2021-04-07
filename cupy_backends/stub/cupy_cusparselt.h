@@ -92,6 +92,10 @@ extern "C" {
 	return CUSPARSE_STATUS_SUCCESS;
     }
 
+    cusparseStatus_t cusparseLtGetVersion(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+    }
+
 } // extern "C"
 
 #endif  // INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H
