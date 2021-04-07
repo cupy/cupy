@@ -16,10 +16,16 @@ class TestStream(unittest.TestCase):
         if cuda.runtime.is_hip and self.stream_name == 'ptds':
             self.skipTest('HIP does not support PTDS')
 
+        self._prev_stream = cuda.get_current_stream()
+
         if self.stream_name == 'null':
             self.stream = cuda.Stream.null
         elif self.stream_name == 'ptds':
             self.stream = cuda.Stream.ptds
+        self.stream.use()
+
+    def tearDown(self):
+        self._prev_stream.use()
 
     @unittest.skipIf(cuda.runtime.is_hip, 'This test is only for CUDA')
     def test_eq_cuda(self):
