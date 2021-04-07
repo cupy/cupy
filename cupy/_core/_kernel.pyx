@@ -1242,12 +1242,12 @@ cdef class _Ops:
         raise TypeError('Wrong type (%s) of arguments for %s' %
                         (dtype, name))
 
-    cpdef _Op _guess_routine_from_in_types(self, tuple in_types):
+    cpdef _Op _guess_routine_from_in_types(
+            self, tuple in_types, object can_cast=_numpy_can_cast):
         cdef _Op op
         cdef tuple op_types
         cdef Py_ssize_t n = len(in_types)
         cdef Py_ssize_t i
-        can_cast = numpy.can_cast
         for op in self.ops:
             op_types = op.in_types
             for i in range(n):
