@@ -35,6 +35,7 @@ Memory management
    cupy.cuda.using_allocator
    cupy.cuda.set_pinned_memory_allocator
    cupy.cuda.MemoryPool
+   cupy.cuda.MemoryAsyncPool
    cupy.cuda.PinnedMemoryPool
    cupy.cuda.PythonFunctionAllocator
 
@@ -134,6 +135,10 @@ to use these functions.
    cupy.cuda.runtime.deviceGetAttribute
    cupy.cuda.runtime.deviceGetByPCIBusId
    cupy.cuda.runtime.deviceGetPCIBusId
+   cupy.cuda.runtime.deviceGetDefaultMemPool
+   cupy.cuda.runtime.deviceGetMemPool
+   cupy.cuda.runtime.deviceSetMemPool
+   cupy.cuda.runtime.memPoolTrimTo
    cupy.cuda.runtime.getDeviceCount
    cupy.cuda.runtime.setDevice
    cupy.cuda.runtime.deviceSynchronize
