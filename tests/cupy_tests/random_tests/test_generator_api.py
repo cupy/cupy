@@ -254,6 +254,27 @@ class InvalidOutsMixin:
         self.invalid_shape()
 
 
+@testing.parameterize(
+    {'lam': 1.0},
+    {'lam': 3.0},
+    {'lam': 10.0},
+)
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
+@testing.fix_random()
+class TestPoisson(GeneratorTestCase):
+
+    target_method = 'poisson'
+
+    def test_poisson(self):
+        self.generate(lam=self.lam, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_poisson_ks(self):
+        self.check_ks(0.05)(
+            lam=self.lam, size=2000)
+
+
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()

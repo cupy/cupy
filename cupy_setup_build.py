@@ -638,6 +638,10 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
+        if module['name'] == 'random':
+            if compiler.compiler_type == 'msvc':
+                compile_args.append('-D_USE_MATH_DEFINES')
+
         if module['name'] == 'jitify':
             # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')
@@ -1069,7 +1073,7 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
             # to build CuPy because some Python versions were built using it.
             # REF: https://wiki.python.org/moin/WindowsCompilers
             postargs += ['-allow-unsupported-compiler']
-        postargs += ['-Xcompiler', '/MD']
+        postargs += ['-Xcompiler', '/MD', '-D_USE_MATH_DEFINES']
         # This is to compile thrust with MSVC2015
         if cuda_version >= 11020:
             postargs += ['--std=c++14']
