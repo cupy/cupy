@@ -252,7 +252,8 @@ def _transpile_function_internal(
             # Code path for Python versions that support `ast.unparse`.
             for deco in func.decorator_list:
                 deco_code = ast.unparse(deco)
-                if deco_code not in ['rawkernel', 'vectorize']:
+                if not any(word in deco_code
+                           for word in ['rawkernel', 'vectorize']):
                     warnings.warn(
                         f'Decorator {deco_code} may not supported in JIT.',
                         RuntimeWarning)

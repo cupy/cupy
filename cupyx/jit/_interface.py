@@ -1,4 +1,5 @@
 import collections
+import functools
 import warnings
 
 import numpy
@@ -114,8 +115,12 @@ class _JitRawKernel:
 
 
 def rawkernel(mode='cuda'):
+    """A decorator compiles a Python function into CUDA kernel.
+    """
+    cupy._util.experimental('cupyx.jit.rawkernel')
+
     def wrapper(func):
-        return _JitRawKernel(func, mode)
+        return functools.update_wrapper(_JitRawKernel(func, mode), func)
     return wrapper
 
 
