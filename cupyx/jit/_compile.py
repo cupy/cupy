@@ -309,10 +309,7 @@ def _call_ufunc(ufunc, args, dtype, env):
             t = x.ctype.dtype
         in_types.append(t)
 
-    if dtype is None:
-        op = ufunc._ops._guess_routine_from_in_types(tuple(in_types))
-    else:
-        op = ufunc._ops._guess_routine_from_dtype(dtype)
+    op = _typerules.guess_routine(ufunc, in_types, dtype, env.mode)
 
     if op is None:
         raise TypeError(
