@@ -3,6 +3,8 @@
 #ifndef INCLUDE_GUARD_STUB_CUPY_CUSPARSELT_H
 #define INCLUDE_GUARD_STUB_CUPY_CUSPARSELT_H
 
+#define CUSPARSELT_VERSION -1
+
 extern "C" {
 
     typedef enum {
@@ -90,10 +92,6 @@ extern "C" {
 
     cusparseStatus_t cusparseLtSpMMACompress(...) {
 	return CUSPARSE_STATUS_SUCCESS;
-    }
-
-    cusparseStatus_t cusparseLtGetVersion(...) {
-  return CUSPARSE_STATUS_SUCCESS;
     }
 
 } // extern "C"

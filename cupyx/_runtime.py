@@ -41,7 +41,7 @@ except ImportError:
 try:
     import cupy_backends.cuda.libs.cusparselt as cusparselt
 except ImportError:
-    cutensor = None
+    cusparselt = None
 
 try:
     import scipy
@@ -129,6 +129,7 @@ class _RuntimeInfo(object):
     cub_build_version = None
     jitify_build_version = None
     cutensor_version = None
+    cusparselt_version = None
     cython_build_version = None
     cython_version = None
 
@@ -198,7 +199,7 @@ class _RuntimeInfo(object):
             self.cutensor_version = cutensor.get_version()
 
         if cusparselt is not None:
-            self.cusparselt_version = cusparselt.get_version()
+            self.cusparselt_version = cusparselt.get_build_version()
 
         self.cython_build_version = cupy._util.cython_build_ver
         if Cython is not None:
