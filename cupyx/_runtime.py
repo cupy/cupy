@@ -243,7 +243,7 @@ class _RuntimeInfo(object):
             ('NCCL Build Version', self.nccl_build_version),
             ('NCCL Runtime Version', self.nccl_runtime_version),
             ('cuTENSOR Version', self.cutensor_version),
-            ('cuSPARSELt Version', self.cusparselt_version),
+            ('cuSPARSELt Build Version', self.cusparselt_version),
         ]
 
         for device_id in range(cupy.cuda.runtime.getDeviceCount()):
