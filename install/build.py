@@ -147,6 +147,7 @@ def get_compiler_setting(use_hip):
             library_dirs.append(os.path.join(cuda_path, 'lib'))
 
     if rocm_path:
+        include_dirs.append(os.path.join(rocm_path, 'hipfft', 'include'))
         include_dirs.append(os.path.join(rocm_path, 'include'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'rocrand'))

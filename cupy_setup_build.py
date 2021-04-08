@@ -116,7 +116,7 @@ if use_hip:
             'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
             'hipblas',
             'hiprand',
-            'rocfft',
+            'hipfft',
             'roctx64',
             'rocblas',
             'rocsolver',
