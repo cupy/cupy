@@ -287,6 +287,7 @@ _cub_version = None
 _jitify_path = None
 _jitify_version = None
 _compute_capabilities = None
+_cusparselt_version = None
 
 
 def check_cuda_version(compiler, settings):
@@ -700,6 +701,38 @@ def get_cutensor_version(formatted=False):
         msg = 'check_cutensor_version() must be called first.'
         raise RuntimeError(msg)
     return _cutensor_version
+
+
+def check_cusparselt_version(compiler, settings):
+    global _cusparselt_version
+    try:
+        out = build_and_run(compiler, '''
+        #include <cusparseLt.h>
+        #include <stdio.h>
+        #ifndef CUSPARSELT_VERSION
+        #define CUSPARSELT_VERSION 0
+        #endif
+        int main(int argc, char* argv[]) {
+          printf("%d", CUSPARSELT_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot check cuSPARSELt version\n{0}'.format(e))
+        return False
+
+    _cusparselt_version = int(out)
+    return True
+
+
+def get_cusparselt_version(formatted=False):
+    """Return cuSPARSELt version cached in check_cusparselt_version()."""
+    global _cusparselt_version
+    if _cusparselt_version is None:
+        msg = 'check_cusparselt_version() must be called first.'
+        raise RuntimeError(msg)
+    return _cusparselt_version
 
 
 def build_shlib(compiler, source, libraries=(),
