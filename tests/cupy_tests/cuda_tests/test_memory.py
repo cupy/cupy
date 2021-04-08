@@ -1010,6 +1010,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
             assert isinstance(mem, memory.MemoryAsync)
             assert not isinstance(mem, memory.PooledMemory)
 
+    @testing.slow
     def test_alloc_large_chunk(self):
         self.pool.free_all_blocks()
         with cupy.cuda.Device() as d:
@@ -1024,6 +1025,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
             del mem
             self.pool.free_all_blocks()
 
+    @testing.slow
     def test_free_all_blocks_large_chunk(self):
         # When memory is returned to the async mempool, it is not immediately
         # visible to normal malloc routines until after a sync happens.
@@ -1037,6 +1039,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
             self.pool.free_all_blocks()  # synchronize
             default_pool.malloc(int(0.3 * mem_total))  # this time it'd work
 
+    @testing.slow
     def test_interaction_with_CuPy_default_pool(self):
         # Test saneness of cudaMallocAsync
         default_pool = cupy.get_default_memory_pool()
