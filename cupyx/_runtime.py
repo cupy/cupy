@@ -241,6 +241,8 @@ class _RuntimeInfo(object):
                 props = cupy.cuda.runtime.getDeviceProperties(device_id)
                 name = ('Device {} Name'.format(device_id),
                         props['name'].decode())
+                pci_bus = ('Device {} PCI Bus ID'.format(device_id),
+                           device.pci_bus_id)
                 if is_hip:
                     try:
                         arch = props['gcnArchName'].decode()
@@ -250,7 +252,7 @@ class _RuntimeInfo(object):
                 else:
                     arch = ('Device {} Compute Capability'.format(device_id),
                             device.compute_capability)
-                records += [name, arch]
+                records += [name, arch, pci_bus]
 
         width = max([len(r[0]) for r in records]) + 2
         fmt = '{:' + str(width) + '}: {}\n'
