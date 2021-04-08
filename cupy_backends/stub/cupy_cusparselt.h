@@ -3,6 +3,8 @@
 #ifndef INCLUDE_GUARD_STUB_CUPY_CUSPARSELT_H
 #define INCLUDE_GUARD_STUB_CUPY_CUSPARSELT_H
 
+#define CUSPARSELT_VERSION -1
+
 extern "C" {
 
     typedef enum {

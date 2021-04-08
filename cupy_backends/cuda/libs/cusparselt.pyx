@@ -106,6 +106,9 @@ cdef extern from '../../cupy_cusparselt.h' nogil:
         const cusparseLtHandle_t* handle, const cusparseLtMatmulPlan_t* plan,
         const void* d_dense, void* d_compressed, driver.Stream stream)
 
+    # Build-time version
+    int CUSPARSELT_VERSION
+
 
 ###############################################################################
 # Classes
@@ -363,3 +366,7 @@ cpdef spMMACompress(Handle handle, MatmulPlan plan,
         <const cusparseLtMatmulPlan_t*> plan._ptr,
         <const void*> d_dense, <void*> d_compressed, <driver.Stream> stream)
     check_status(status)
+
+
+def get_build_version():
+    return CUSPARSELT_VERSION
