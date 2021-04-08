@@ -109,6 +109,7 @@ from cupy.cuda.memory import MemoryPointer  # NOQA
 from cupy.cuda.memory import MemoryPool  # NOQA
 from cupy.cuda.memory import MemoryAsyncPool  # NOQA
 from cupy.cuda.memory import PythonFunctionAllocator  # NOQA
+from cupy.cuda.memory import CFunctionAllocator  # NOQA
 from cupy.cuda.memory import set_allocator  # NOQA
 from cupy.cuda.memory import get_allocator  # NOQA
 from cupy.cuda.memory import UnownedMemory  # NOQA
