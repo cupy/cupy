@@ -22,6 +22,7 @@ Memory management
    cupy.get_default_pinned_memory_pool
    cupy.cuda.Memory
    cupy.cuda.MemoryAsync
+   cupy.cuda.ManagedMemory
    cupy.cuda.UnownedMemory
    cupy.cuda.PinnedMemory
    cupy.cuda.MemoryPointer
@@ -38,6 +39,7 @@ Memory management
    cupy.cuda.MemoryAsyncPool
    cupy.cuda.PinnedMemoryPool
    cupy.cuda.PythonFunctionAllocator
+   cupy.cuda.CFunctionAllocator
 
 
 Memory hook
