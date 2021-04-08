@@ -138,3 +138,19 @@ def get_ctype_from_scalar(mode, x):
             return _types.Scalar(numpy.complex64)
 
     raise NotImplementedError(f'{x} is not scalar object.')
+
+
+_cuda_types = '?bhilBHILefdFD'
+
+
+def _cuda_can_cast(from_dtype, to_dtype):
+    from_dtype = numpy.dtype(from_dtype)
+    to_dtype = numpy.dtype(to_dtype)
+    return _cuda_types.find(from_dtype.char) <= _cuda_types.find(to_dtype.char)
+
+
+def guess_routine(ufunc, in_types, dtype, mode):
+    if dtype is not None:
+        return ufunc._ops._guess_routine_from_dtype(dtype)
+    can_cast = numpy.can_cast if mode == 'numpy' else _cuda_can_cast
+    return ufunc._ops._guess_routine_from_in_types(tuple(in_types), can_cast)
