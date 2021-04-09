@@ -269,7 +269,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         self.pool = memory.SingleDeviceMemoryPool(allocator=mock_alloc)
         self.unit = memory._allocation_unit_size
         self.stream = stream_module.Stream()
-        self.stream_ptr = self.stream.ptr
+        self.stream_ident = self.stream.ptr
 
     def test_round_size(self):
         assert memory._round_size(self.unit - 1) == self.unit
@@ -283,20 +283,20 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def test_split(self):
         mem = MockMemory(self.unit * 4)
-        chunk = memory._Chunk(mem, 0, mem.size, self.stream_ptr)
+        chunk = memory._Chunk(mem, 0, mem.size, self.stream_ident)
         tail = chunk.split(self.unit * 2)
         assert chunk.ptr() == mem.ptr
         assert chunk.offset == 0
         assert chunk.size == self.unit * 2
         assert chunk.prev is None
         assert chunk.next.ptr() == tail.ptr()
-        assert chunk.stream_ptr == self.stream_ptr
+        assert chunk.stream_ident == self.stream_ident
         assert tail.ptr() == mem.ptr + self.unit * 2
         assert tail.offset == self.unit * 2
         assert tail.size == self.unit * 2
         assert tail.prev.ptr() == chunk.ptr()
         assert tail.next is None
-        assert tail.stream_ptr == self.stream_ptr
+        assert tail.stream_ident == self.stream_ident
 
         tail_of_head = chunk.split(self.unit)
         assert chunk.ptr() == mem.ptr
@@ -304,13 +304,13 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert chunk.size == self.unit
         assert chunk.prev is None
         assert chunk.next.ptr() == tail_of_head.ptr()
-        assert chunk.stream_ptr == self.stream_ptr
+        assert chunk.stream_ident == self.stream_ident
         assert tail_of_head.ptr() == mem.ptr + self.unit
         assert tail_of_head.offset == self.unit
         assert tail_of_head.size == self.unit
         assert tail_of_head.prev.ptr() == chunk.ptr()
         assert tail_of_head.next.ptr() == tail.ptr()
-        assert tail_of_head.stream_ptr == self.stream_ptr
+        assert tail_of_head.stream_ident == self.stream_ident
 
         tail_of_tail = tail.split(self.unit)
         assert tail.ptr() == chunk.ptr() + self.unit * 2
@@ -318,17 +318,17 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert tail.size == self.unit
         assert tail.prev.ptr() == tail_of_head.ptr()
         assert tail.next.ptr() == tail_of_tail.ptr()
-        assert tail.stream_ptr == self.stream_ptr
+        assert tail.stream_ident == self.stream_ident
         assert tail_of_tail.ptr() == mem.ptr + self.unit * 3
         assert tail_of_tail.offset == self.unit * 3
         assert tail_of_tail.size == self.unit
         assert tail_of_tail.prev.ptr() == tail.ptr()
         assert tail_of_tail.next is None
-        assert tail_of_tail.stream_ptr == self.stream_ptr
+        assert tail_of_tail.stream_ident == self.stream_ident
 
     def test_merge(self):
         mem = MockMemory(self.unit * 4)
-        chunk = memory._Chunk(mem, 0, mem.size, self.stream_ptr)
+        chunk = memory._Chunk(mem, 0, mem.size, self.stream_ident)
         chunk_ptr = chunk.ptr()
         chunk_offset = chunk.offset
         chunk_size = chunk.size
@@ -351,7 +351,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert head.size == head_size
         assert head.prev is None
         assert head.next.ptr() == tail_ptr
-        assert head.stream_ptr == self.stream_ptr
+        assert head.stream_ident == self.stream_ident
 
         tail.merge(tail_of_tail)
         assert tail.ptr() == tail_ptr
@@ -359,7 +359,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert tail.size == tail_size
         assert tail.prev.ptr() == head_ptr
         assert tail.next is None
-        assert tail.stream_ptr == self.stream_ptr
+        assert tail.stream_ident == self.stream_ident
 
         head.merge(tail)
         assert head.ptr() == chunk_ptr
@@ -367,7 +367,7 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert head.size == chunk_size
         assert head.prev is None
         assert head.next is None
-        assert head.stream_ptr == self.stream_ptr
+        assert head.stream_ident == self.stream_ident
 
     def test_alloc(self):
         p1 = self.pool.malloc(self.unit * 4)
