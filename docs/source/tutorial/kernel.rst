@@ -414,6 +414,8 @@ The above two kinds of styles to launch the kernel are supported, see the docume
 
 The compilation will be deferred until the first function call. CuPy's JIT compiler infers the types of arguments at the call time, and will cache the compiled kernels for speeding up any subsequent calls.
 
+See :doc:`../reference/kernel` for a full list of API.
+
 Basic Design
 ^^^^^^^^^^^^
 
@@ -423,16 +425,6 @@ Typing rule
 ^^^^^^^^^^^
 
 The types of local variables are inferred at the first assignment in the function. The first assignment must be done at the top-level of the function; in other words, it must *not* be in ``if``/``else`` bodies or ``for``-loops.
-
-List of API
-^^^^^^^^^^^
-
-* ``cupyx.jit.threadIdx``
-* ``cupyx.jit.blockDim``
-* ``cupyx.jit.blockIdx``
-* ``cupyx.jit.gridDim``
-* ``cupyx.jit.syncthreads()``
-* ``cupyx.jit.shared_memory(dtype, size)``
 
 Limitations
 ^^^^^^^^^^^

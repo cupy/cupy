@@ -144,7 +144,7 @@ class Range(Expr):
 class BuiltinFunc(Expr):
 
     def __init__(self):
-        pass
+        self.__doc__ = type(self).__call__.__doc__
 
     def __call__(self):
         raise RuntimeError('Cannot call this function from Python layer.')
@@ -153,7 +153,7 @@ class BuiltinFunc(Expr):
 class SyncThreads(BuiltinFunc):
 
     def __call__(self):
-        """Calls `__syncthreads()`
+        """Calls ``__syncthreads()``
         """
         super.__call__(self)
 
