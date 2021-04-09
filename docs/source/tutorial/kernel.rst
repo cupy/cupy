@@ -404,17 +404,13 @@ Here is a short example for how to write a :class:`cupyx.jit.rawkernel` to copy 
    >>> x = cupy.random.normal(size=(size,), dtype=cupy.float32)
    >>> y = cupy.empty((size,), dtype=cupy.float32)
 
-Two kinds of interfaces to launch the kernel are supported, see the documentation of :class:`cupyx.jit.CudaFunction` for details.
-
-.. doctest::
-
    >>> elementwise_copy((128,), (1024,), (x, y, size))  # RawKernel style
    >>> assert (x == y).all()
 
-.. doctest::
-
    >>> elementwise_copy[128, 1024](x, y, size)  #  Numba style
    >>> assert (x == y).all()
+
+The above two kinds of styles to launch the kernel are supported, see the documentation of :class:`cupyx.jit.CudaFunction` for details.
 
 The compilation will be deferred until the first function call. CuPy's JIT compiler infers the types of arguments at the call time, and will cache the compiled kernels for speeding up any subsequent calls.
 
