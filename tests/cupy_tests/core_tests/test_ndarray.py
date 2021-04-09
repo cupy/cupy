@@ -156,6 +156,23 @@ class TestNdarrayDeepCopy(unittest.TestCase):
         assert arr2.device == arr.device
 
 
+_test_copy_multi_device_with_stream_src = r'''
+extern "C" __global__
+void f(long long *x) {
+  clock_t start = clock();
+  clock_t now;
+  for (;;) {
+    now = clock();
+    clock_t cycles = now > start ? now - start : now + (0xffffffff - start);
+    if (cycles >= 100000000) {
+      break;
+    }
+  }
+  x[0] = 1;
+  x[1] = now;  // in case the compiler optimizing away the entire loop
+}
+'''
+
 @testing.gpu
 class TestNdarrayCopy(unittest.TestCase):
 
@@ -175,6 +192,29 @@ class TestNdarrayCopy(unittest.TestCase):
         with cuda.Device(1):
             with self.assertRaises(NotImplementedError):
                 arr.copy('K')
+
+    # See cupy/cupy#5004
+    @testing.multi_gpu(2)
+    def test_copy_multi_device_with_stream(self):
+        # Kernel that takes long enough then finally writes values.
+        kern = cupy.RawKernel(_test_copy_multi_device_with_stream_src,
+                              'test_copy_multi_device_with_stream')
+
+        # Allocates a memory and launches the kernel on a device with its
+        # stream.
+        with cuda.Device(0):
+            with cuda.Stream():
+                a = cupy.zeros((2,), dtype=numpy.uint64)
+                kern((1,), (1,), a)
+
+        # D2D copy to another device with another stream should get the
+        # original values of the memory before the kernel on the first device
+        # finally makes the write.
+        with cuda.Device(1):
+            with cuda.Stream():
+                b = a.copy()
+                testing.assert_array_equal(
+                    b, numpy.array([0, 0], dtype=numpy.uint64))
 
 
 @testing.gpu
