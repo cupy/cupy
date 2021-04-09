@@ -1148,13 +1148,13 @@ cdef class SingleDeviceMemoryPool:
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** chunks"""
-        cdef intptr_t stream_ptr
+        cdef intptr_t stream_ident
 
         with LockAndNoGc(self._free_lock):
             # free blocks in all arenas
             if stream is None:
-                for stream_ptr in list(self._arenas.iterkeys()):
-                    self._compact_index(stream_ptr, True)
+                for stream_ident in list(self._arenas.iterkeys()):
+                    self._compact_index(stream_ident, True)
             else:
                 self._compact_index(_get_stream_identifier(stream.ptr), True)
 
