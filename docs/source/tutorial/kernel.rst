@@ -418,6 +418,11 @@ Two kinds of interfaces to launch the kernel are supported, see the documentatio
 
 The compilation will be deferred until the first function call. CuPy's JIT compiler infers the types of arguments at the call time, and will cache the compiled kernels for speeding up any subsequent calls.
 
+Basic Design
+^^^^^^^^^^^^
+
+CuPy's JIT compiler generates CUDA code via Python AST. We decided not to use Python bytecode to analyze the target function to avoid perforamance degradation. The CUDA source code generated from the Python bytecode will not effectively optimized by CUDA compiler, because for-loops and other control statements of the target function are fully transformed to jump instruction when converting the target function to bytecode.
+
 Typing rule
 ^^^^^^^^^^^
 
@@ -435,8 +440,6 @@ List of API
 
 Limitations
 ^^^^^^^^^^^
-
-CuPy's JIT compiler generates CUDA code via Python AST. We decided not to use Python bytecode to analyze the target function to avoid perforamance degradation. The CUDA source code generated from the Python bytecode will not effectively optimized by CUDA compiler, because for-loops and other control statements of the target function are fully transformed to jump instruction when converting the target function to bytecode.
 
 CuPy's JIT compiler uses :py:func:`inspect.getsource` to get the source code of the target function, so the compiler does not work in the following situations:
 
