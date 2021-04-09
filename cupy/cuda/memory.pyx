@@ -988,7 +988,7 @@ cdef class SingleDeviceMemoryPool:
         # `_in_use_lock` must be acquired to access it.
         dict _in_use
 
-        # Map from stream pointer (intptr_t) to its arena for the stream
+        # Map from stream identifier to its arena for the stream.
         # `_free_lock` must be acquired to access it.
         dict _arenas
 
@@ -1021,16 +1021,16 @@ cdef class SingleDeviceMemoryPool:
 
         self.set_limit(**(_parse_limit_string()))
 
-    cdef _Arena _arena(self, intptr_t stream_ptr):
+    cdef _Arena _arena(self, intptr_t stream_ident):
         """Returns appropriate arena of a given stream.
 
         All free chunks in the stream belong to one of the bin in the arena.
 
         Caller is responsible to acquire `_free_lock`.
         """
-        ret = self._arenas.get(stream_ptr, None)
+        ret = self._arenas.get(stream_ident, None)
         if ret is None:
-            self._arenas[stream_ptr] = ret = _Arena()
+            self._arenas[stream_ident] = ret = _Arena()
         return ret
 
     cdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
