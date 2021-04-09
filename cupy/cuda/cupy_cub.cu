@@ -63,8 +63,6 @@ template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, t
 // TODO(leofang): wrap CuPy's thrust namespace with another one (say, cupy::thrust) for safer scope resolution?
 
 namespace std {
-// TODO(amathews-amd): Check if this code can be safetly removed.
-#if HIP_VERSION < 401
 template <>
 class numeric_limits<thrust::complex<float>> {
   public:
@@ -88,7 +86,6 @@ class numeric_limits<thrust::complex<double>> {
         return thrust::complex<double>(-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max());
     }
 };
-#endif
 
 // Copied from https://github.com/ROCmSoftwarePlatform/hipCUB/blob/master-rocm-3.5/hipcub/include/hipcub/backend/rocprim/device/device_reduce.hpp
 // (For some reason the specialization for __half defined in the above file does not work, so we have to go
