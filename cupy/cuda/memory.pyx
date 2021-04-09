@@ -417,7 +417,7 @@ cdef class MemoryPointer:
 
             This function always uses the legacy default stream and does not
             honor the current stream. Use `copy_from_device_async` instead
-            if you don't understand what you are doing.
+            if you are using streams in your code, or have PTDS enabled.
 
         """
         if size > 0:
@@ -456,7 +456,7 @@ cdef class MemoryPointer:
 
             This function always uses the legacy default stream and does not
             honor the current stream. Use `copy_from_host_async` instead
-            if you don't understand what you are doing.
+            if you are using streams in your code, or have PTDS enabled.
 
         """
         if size > 0:
@@ -500,7 +500,7 @@ cdef class MemoryPointer:
 
             This function always uses the legacy default stream and does not
             honor the current stream. Use `copy_from_async` instead
-            if you don't understand what you are doing.
+            if you are using streams in your code, or have PTDS enabled.
 
         """
         if isinstance(mem, MemoryPointer):
@@ -539,7 +539,7 @@ cdef class MemoryPointer:
 
             This function always uses the legacy default stream and does not
             honor the current stream. Use `copy_to_host_async` instead
-            if you don't understand what you are doing.
+            if you are using streams in your code, or have PTDS enabled.
 
         """
         if size > 0:
@@ -578,7 +578,7 @@ cdef class MemoryPointer:
 
             This function always uses the legacy default stream and does not
             honor the current stream. Use `memset_async` instead
-            if you don't understand what you are doing.
+            if you are using streams in your code, or have PTDS enabled.
 
         """
         if size > 0:
