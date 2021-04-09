@@ -4,7 +4,7 @@ import pytest
 import numpy
 
 import cupy
-from cupy.core import core
+from cupy._core import core
 from cupy.cuda import compiler
 from cupy.cuda import runtime
 from cupy import testing
