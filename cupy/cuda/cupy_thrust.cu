@@ -6,6 +6,13 @@
 #include <thrust/sort.h>
 #include <thrust/tuple.h>
 #include <thrust/execution_policy.h>
+#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+// This is used to avoid a problem with constexpr in functions declarations introduced in
+// cuda 11.2, MSVC 15 does not fully support it so we need a dummy constexpr declaration
+// that is provided by this header. However optional.h is only available
+// starting CUDA 10.1
+#include <thrust/optional.h>
+#endif
 #include "cupy_thrust.h"
 
 
@@ -61,9 +68,7 @@ public:
 template <typename T>
 __host__ __device__ __forceinline__ 
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
-#ifndef _WIN32
-constexpr
-#endif
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool _tuple_less(const tuple<size_t, T>& lhs,
                                                      const tuple<size_t, T>& rhs) {
@@ -95,9 +100,7 @@ bool _tuple_less(const tuple<size_t, T>& lhs,
 template <typename T>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
-#ifndef _WIN32
-constexpr
-#endif
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool _cmp_less(const T& lhs, const T& rhs) {
     bool lhsRe = isnan(lhs.real());
@@ -192,12 +195,10 @@ bool less< tuple<size_t, complex<double>> >::operator() (
 template <typename T>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
-#ifndef _WIN32
-constexpr
-#endif
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool _real_less(const T& lhs, const T& rhs) {
-    #ifdef  __CUDA_ARCH__
+    #if  (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
     if (isnan(lhs)) {
         return false;
     } else if (isnan(rhs)) {
@@ -271,7 +272,7 @@ bool less< tuple<size_t, double> >::operator() (
 
 // it seems Thrust doesn't care the code path on host, so we just need a wrapper for device
 __host__ __device__ __forceinline__ bool isnan(const __half& x) {
-    #ifdef  __CUDA_ARCH__
+    #if (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
     return __hisnan(x);
     #else
     return false;  // This will never be called on the host

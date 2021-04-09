@@ -13,7 +13,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy import _util
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
 

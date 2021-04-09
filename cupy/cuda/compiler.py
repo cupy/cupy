@@ -197,7 +197,7 @@ def _jitify_prep(source, options, cu_path):
     # TODO(leofang): refactor this?
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:
-        from cupy.core import core
+        from cupy._core import core
         _jitify_header_source_map = core._get_header_source_map()
         _jitify_header_source_map_populated = True
     else:
@@ -234,13 +234,11 @@ def _jitify_prep(source, options, cu_path):
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
-    if not arch:
-        arch = _get_arch()
-
+    # For hipRTC, arch is ignored
     if not runtime.is_hip:
+        if not arch:
+            arch = _get_arch()
         options += ('-arch=compute_{}'.format(arch),)
-    else:
-        options += ('-arch={}'.format(arch),)
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
@@ -643,12 +641,10 @@ def is_valid_kernel_name(name):
 
 
 def compile_using_hipcc(source, options, arch, log_stream=None):
-    # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
-    # pick up the right arch without needing HCC_AMDGPU_TARGET. Perhaps we just
-    # don't bother passing arch to hiprtc/hipcc?
-    assert len(arch) > 0
-    # pass HCC_AMDGPU_TARGET same as arch
-    cmd = ['hipcc', '--genco', '-arch='+arch] + list(options)
+    # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
+    # right arch without setting HCC_AMDGPU_TARGET, so we don't need
+    # to set arch here
+    cmd = ['hipcc', '--genco'] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
@@ -756,15 +752,25 @@ def _compile_with_cache_hip(source, options, arch, cache_dir, extra_source,
     if _is_cudadevrt_needed(options):
         raise ValueError('separate compilation is not supported in HIP')
 
+    # HIP's equivalent of -ftz=true, see ROCm-Developer-Tools/HIP#2252
+    # Notes:
+    # - For hipcc, this should just work, as invalid options would cause errors
+    #   See https://clang.llvm.org/docs/ClangCommandLineReference.html.
+    # - For hiprtc, this is a no-op until the compiler options like -D and -I
+    #   are accepted, see ROCm-Developer-Tools/HIP#2182 and
+    #   ROCm-Developer-Tools/HIP#2248
+    options += ('-fcuda-flush-denormals-to-zero',)
+
     if cache_dir is None:
         cache_dir = get_cache_dir()
-    # TODO(leofang): it seems as of ROCm 3.5.0 hiprtc/hipcc can automatically
-    # pick up the right arch without needing HCC_AMDGPU_TARGET. Perhaps we just
-    # don't bother passing arch to hiprtc/hipcc?
+    # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
+    # right arch without setting HCC_AMDGPU_TARGET, so we don't need
+    # to tell the compiler which arch we are targeting. But, we still
+    # need to know arch as part of the cache key:
     if arch is None:
-        arch = os.environ.get('HCC_AMDGPU_TARGET')
-        if arch is None:
-            raise RuntimeError('HCC_AMDGPU_TARGET is not set')
+        # On HIP, gcnArch is computed from "compute capability":
+        # https://github.com/ROCm-Developer-Tools/HIP/blob/rocm-4.0.0/rocclr/hip_device.cpp#L202
+        arch = device.Device().compute_capability
     if use_converter:
         source = _convert_to_hip_source(source, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))

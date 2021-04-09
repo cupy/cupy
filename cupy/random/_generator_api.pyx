@@ -5,7 +5,7 @@ from libc.stdint cimport intptr_t, uint64_t, uint32_t, int32_t, int64_t
 
 import cupy
 from cupy.cuda cimport stream
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 
 
 _UINT32_MAX = 0xffffffff
@@ -14,6 +14,9 @@ _UINT64_MAX = 0xffffffffffffffff
 cdef extern from 'cupy_distributions.cuh' nogil:
     void init_curand_generator(
         int generator, intptr_t state_ptr, uint64_t seed,
+        ssize_t size, intptr_t stream)
+    void random_uniform(
+        int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
     void raw(
         int generator, intptr_t state, intptr_t out,
@@ -28,6 +31,15 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream, double a, double b)
     void exponential(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
+    void poisson(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, double lam)
+    void standard_normal(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream)
+    void standard_normal_float(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
 
@@ -55,6 +67,60 @@ class Generator:
     """
     def __init__(self, bit_generator):
         self.bit_generator = bit_generator
+
+    def _check_output_array(self, dtype, size, out):
+        # Checks borrowed from NumPy
+        # https://github.com/numpy/numpy/blob/cb557b79fa0ce467c881830f8e8e042c484ccfaa/numpy/random/_common.pyx#L235-L251
+        dtype = numpy.dtype(dtype)
+        if out.dtype.char != dtype.char:
+            raise TypeError(
+                f'Supplied output array has the wrong type. '
+                f'Expected {dtype.name}, got {out.dtype.name}')
+        if not (out.flags.c_contiguous or out.flags.f_contiguous):
+            raise ValueError(
+                'Supplied output array is not contiguous,'
+                ' writable or aligned.')
+        if size is not None:
+            try:
+                tup_size = tuple(size)
+            except TypeError:
+                tup_size = tuple([size])
+            if tup_size != out.shape:
+                raise ValueError(
+                    'size must match out.shape when used together')
+
+    def random(self, size=None, dtype=numpy.float64, out=None):
+        """Return random floats in the half-open interval [0.0, 1.0).
+
+        Results are from the "continuous uniform" distribution over the
+        stated interval.  To sample :math:`Unif[a, b), b > a` multiply
+        the output of `random` by `(b-a)` and add `a`::
+
+          (b - a) * random() + a
+
+        Args:
+            size (None or int or tuple of ints): The shape of returned value.
+            dtype: Data type specifier.
+            out (cupy.ndarray, optional): If specified, values will be written
+                to this array
+
+        Returns:
+            cupy.ndarray: Samples uniformly drawn from the [0, 1) interval
+        """
+        cdef ndarray y
+
+        if out is not None:
+            self._check_output_array(dtype, size, out)
+
+        y = ndarray(size if size is not None else (), numpy.float64)
+        _launch_dist(self.bit_generator, random_uniform, y, ())
+        if out is not None:
+            out[...] = y
+            y = out
+        # we cast the array to a python object because
+        # cython cant call astype with the default values for
+        # omitted args.
+        return (<object>y).astype(dtype, copy=False)
 
     def integers(
             self, low, high=None, size=None,
@@ -153,6 +219,30 @@ class Generator:
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
 
+    def exponential(self, scale=1.0, size=None):
+        """Exponential distribution.
+
+        Returns an array of samples drawn from the exponential distribution.
+        Its probability density function is defined as
+
+        .. math::
+           f(x) = \\frac{1}{\\beta}\\exp (-\\frac{x}{\\beta}).
+
+        Args:
+            scale (float or array_like of floats): The scale parameter
+                :math:`\\beta`.
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the exponential distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.exponential
+            <numpy.random.generator.Generator.exponential>`
+        """
+        return self.standard_exponential(size) * scale
+
     def standard_exponential(
             self, size=None, dtype=numpy.float64,
             method='inv', out=None):
@@ -185,6 +275,9 @@ class Generator:
         if method == 'zig':
             raise NotImplementedError('Ziggurat method is not supported')
 
+        if out is not None:
+            self._check_output_array(dtype, size, out)
+
         y = ndarray(size if size is not None else (), numpy.float64)
         _launch_dist(self.bit_generator, exponential, y, ())
         if out is not None:
@@ -194,6 +287,69 @@ class Generator:
         # cython cant call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
+
+    def poisson(self, lam=1.0, size=None):
+        """Poisson distribution.
+
+        Returns an array of samples drawn from the poisson distribution. Its
+        probability mass function is defined as
+
+        .. math::
+            f(x) = \\frac{\\lambda^xe^{-\\lambda}}{x!}.
+
+        Args:
+            lam (array_like of floats): Parameter of the poisson distribution
+                :math:`\\lambda`.
+            size (int or tuple of ints): The shape of the array. If ``None``,
+            this function generate an array whose shape is `lam.shape`.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the poisson distribution.
+
+        .. seealso::
+            :meth:`numpy.random.Generator.poisson
+            <numpy.random.generator.Generator.poisson>`
+        """
+        cdef ndarray y
+        y = ndarray(size if size is not None else (), numpy.int64)
+        _launch_dist(self.bit_generator, poisson, y, (lam, ))
+        return y
+
+    def standard_normal(self, size=None, dtype=numpy.float64, out=None):
+        """Returns an array of samples drawn from the standard normal distribution.
+
+        Args:
+            size (int or tuple of ints): The shape of the array. If ``None``, a
+                zero-dimensional array is generated.
+            dtype: Data type specifier.
+
+            out (cupy.ndarray, optional): If specified, values will be written
+                to this array
+
+        Returns:
+            cupy.ndarray: Samples drawn from the standard normal distribution.
+
+        .. seealso:: :func:`numpy.random.standard_normal`
+
+        """
+        cdef ndarray y
+
+        if out is not None:
+            self._check_output_array(dtype, size, out)
+            y = out
+        else:
+            y = ndarray(size if size is not None else (), dtype)
+
+        if y.dtype.char not in ('f', 'd'):
+            raise TypeError(
+                f'Unsupported dtype {y.dtype.name} for standard_normal')
+
+        if y.dtype.char == 'd':
+            _launch_dist(self.bit_generator, standard_normal, y, ())
+        else:
+            _launch_dist(self.bit_generator, standard_normal_float, y, ())
+
+        return y
 
 
 def init_curand(generator, state, seed, size):

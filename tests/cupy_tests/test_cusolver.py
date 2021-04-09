@@ -6,8 +6,8 @@ import pytest
 import cupy
 from cupy import cusolver
 from cupy import testing
-from cupy.testing import attr
-from cupy.core import _routines_linalg as _linalg
+from cupy.testing import _attr
+from cupy._core import _routines_linalg as _linalg
 import cupyx
 
 
@@ -23,7 +23,7 @@ import cupyx
     'full_matrices': [True, False],
     'overwrite_a': [True, False],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGesvdj(unittest.TestCase):
 
     def setUp(self):
@@ -82,7 +82,7 @@ class TestGesvdj(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(5, 4), (1, 4, 3), (4, 3, 2)],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGesvda(unittest.TestCase):
 
     def setUp(self):
@@ -136,7 +136,7 @@ class TestGesvda(unittest.TestCase):
     'order': ['C', 'F'],
     'UPLO': ['L', 'U'],
 }))
-@attr.gpu
+@_attr.gpu
 class TestSyevj(unittest.TestCase):
 
     def setUp(self):
@@ -190,7 +190,7 @@ class TestSyevj(unittest.TestCase):
                      _linalg.COMPUTE_TYPE_TF32,
                      _linalg.COMPUTE_TYPE_FP32],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGesv(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -247,7 +247,7 @@ class TestGesv(unittest.TestCase):
                      _linalg.COMPUTE_TYPE_TF32,
                      _linalg.COMPUTE_TYPE_FP32],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGels(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 

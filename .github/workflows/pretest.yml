@@ -1,3 +1,5 @@
+name: "Pre-review Tests"
+
 on: [push, pull_request]
 
 jobs:

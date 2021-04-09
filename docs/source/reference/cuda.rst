@@ -22,6 +22,7 @@ Memory management
    cupy.get_default_pinned_memory_pool
    cupy.cuda.Memory
    cupy.cuda.MemoryAsync
+   cupy.cuda.ManagedMemory
    cupy.cuda.UnownedMemory
    cupy.cuda.PinnedMemory
    cupy.cuda.MemoryPointer
@@ -35,8 +36,10 @@ Memory management
    cupy.cuda.using_allocator
    cupy.cuda.set_pinned_memory_allocator
    cupy.cuda.MemoryPool
+   cupy.cuda.MemoryAsyncPool
    cupy.cuda.PinnedMemoryPool
    cupy.cuda.PythonFunctionAllocator
+   cupy.cuda.CFunctionAllocator
 
 
 Memory hook
@@ -130,9 +133,14 @@ to use these functions.
    cupy.cuda.runtime.driverGetVersion
    cupy.cuda.runtime.runtimeGetVersion
    cupy.cuda.runtime.getDevice
+   cupy.cuda.runtime.getDeviceProperties
    cupy.cuda.runtime.deviceGetAttribute
    cupy.cuda.runtime.deviceGetByPCIBusId
    cupy.cuda.runtime.deviceGetPCIBusId
+   cupy.cuda.runtime.deviceGetDefaultMemPool
+   cupy.cuda.runtime.deviceGetMemPool
+   cupy.cuda.runtime.deviceSetMemPool
+   cupy.cuda.runtime.memPoolTrimTo
    cupy.cuda.runtime.getDeviceCount
    cupy.cuda.runtime.setDevice
    cupy.cuda.runtime.deviceSynchronize

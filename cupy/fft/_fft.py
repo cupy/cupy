@@ -11,7 +11,7 @@ from cupy.fft._cache import get_plan_cache
 
 
 _reduce = functools.reduce
-_prod = cupy.core.internal.prod
+_prod = cupy._core.internal.prod
 
 
 @cupy._util.memoize()
@@ -189,11 +189,12 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
     sz = out.shape[-1]
     if fft_type == cufft.CUFFT_R2C or fft_type == cufft.CUFFT_D2Z:
         sz = n
-    if norm is None:
-        if direction == cufft.CUFFT_INVERSE:
-            out /= sz
-    else:
+    if norm == 'backward' and direction == cufft.CUFFT_INVERSE:
+        out /= sz
+    elif norm == 'ortho':
         out /= math.sqrt(sz)
+    elif norm == 'forward' and direction == cufft.CUFFT_FORWARD:
+        out /= sz
 
     if axis % a.ndim != a.ndim - 1:
         out = out.swapaxes(axis, -1)
@@ -209,15 +210,10 @@ def _fft_c2c(a, direction, norm, axes, overwrite_x, plan=None):
 
 def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
          plan=None):
-    if isinstance(a, np.ndarray):
+    if not isinstance(a, cupy.ndarray):
         raise TypeError('The input array a must be a cupy.ndarray')
-    if norm not in (None, 'ortho'):
-        raise ValueError('Invalid norm value %s, should be None or "ortho".'
-                         % norm)
-
     if (s is not None) and (axes is not None) and len(s) != len(axes):
         raise ValueError('Shape and axes have different lengths.')
-
     if axes is None:
         if s is None:
             dim = a.ndim
@@ -231,6 +227,14 @@ def _fft(a, s, axes, norm, direction, value_type='C2C', overwrite_x=False,
             return a
         else:
             raise IndexError('list index out of range')
+    if norm is None:  # for backward compatibility
+        norm = 'backward'
+    # it is important that we check norm after validating axes for NumPy
+    # compatibility: if axes=(), early return is triggered and norm is not
+    # checked...
+    if norm not in ('backward', 'ortho', 'forward'):
+        raise ValueError('Invalid norm value %s, should be "backward", '
+                         '"ortho", or "forward".' % norm)
     a = _convert_dtype(a, value_type)
     a = _cook_shape(a, s, axes, value_type)
 
@@ -290,9 +294,8 @@ def _nd_plan_is_possible(axes_sorted, ndim):
     # Axes must be contiguous and the first or last axis must be in the axes.
     return (0 < len(axes_sorted) <= 3
             and (0 in axes_sorted or (ndim - 1) in axes_sorted)
-            and all([
-                (axes_sorted[n + 1] - axes_sorted[n]) == 1
-                for n in range(len(axes_sorted) - 1)]))
+            and all((axes_sorted[n + 1] - axes_sorted[n]) == 1
+                    for n in range(len(axes_sorted) - 1)))
 
 
 def _get_cufft_plan_nd(
@@ -553,22 +556,25 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     # normalize by the product of the shape along the transformed axes
     arr = a if fft_type in (cufft.CUFFT_R2C, cufft.CUFFT_D2Z) else out
     sz = _prod([arr.shape[ax] for ax in axes])
-    if norm is None:
-        if direction == cufft.CUFFT_INVERSE:
-            out /= sz
-    else:
+    if norm == 'backward' and direction == cufft.CUFFT_INVERSE:
+        out /= sz
+    elif norm == 'ortho':
         out /= math.sqrt(sz)
+    elif norm == 'forward' and direction == cufft.CUFFT_FORWARD:
+        out /= sz
 
     return out
 
 
 def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
           overwrite_x=False, out=None):
-    if isinstance(a, np.ndarray):
+    if not isinstance(a, cupy.ndarray):
         raise TypeError('The input array a must be a cupy.ndarray')
-    if norm not in (None, 'ortho'):
-        raise ValueError('Invalid norm value %s, should be None or "ortho".'
-                         % norm)
+    if norm is None:  # for backward compatibility
+        norm = 'backward'
+    if norm not in ('backward', 'ortho', 'forward'):
+        raise ValueError('Invalid norm value %s, should be "backward", '
+                         '"ortho", or "forward".' % norm)
 
     axes, axes_sorted = _prep_fftn_axes(a.ndim, s, axes, value_type)
     if not axes_sorted:
@@ -657,7 +663,9 @@ def fft(a, n=None, axis=-1, norm=None):
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -678,7 +686,9 @@ def ifft(a, n=None, axis=-1, norm=None):
             is not given, the length of the input along the axis specified by
             ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -699,7 +709,9 @@ def fft2(a, s=None, axes=(-2, -1), norm=None):
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -721,7 +733,9 @@ def ifft2(a, s=None, axes=(-2, -1), norm=None):
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -743,7 +757,9 @@ def fftn(a, s=None, axes=None, norm=None):
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -765,7 +781,9 @@ def ifftn(a, s=None, axes=None, norm=None):
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -787,7 +805,9 @@ def rfft(a, n=None, axis=-1, norm=None):
             input to use. If ``n`` is not given, the length of the input along
             the axis specified by ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -810,7 +830,9 @@ def irfft(a, n=None, axis=-1, norm=None):
             ``n`` is not given, it is determined from the length of the input
             along the axis specified by ``axis``.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -833,7 +855,9 @@ def rfft2(a, s=None, axes=(-2, -1), norm=None):
             given, the lengths of the input along the axes specified by
             ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -856,7 +880,9 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -881,7 +907,9 @@ def rfftn(a, s=None, axes=None, norm=None):
             given, the lengths of the input along the axes specified by
             ``axes`` are used.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -913,7 +941,9 @@ def irfftn(a, s=None, axes=None, norm=None):
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
         axes (tuple of ints): Axes over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -935,6 +965,17 @@ def irfftn(a, s=None, axes=None, norm=None):
     return func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R')
 
 
+def _swap_direction(norm):
+    if norm in (None, 'backward'):
+        norm = 'forward'
+    elif norm == 'forward':
+        norm = 'backward'
+    elif norm != 'ortho':
+        raise ValueError('Invalid norm value %s; should be "backward", '
+                         '"ortho", or "forward".' % norm)
+    return norm
+
+
 def hfft(a, n=None, axis=-1, norm=None):
     """Compute the FFT of a signal that has Hermitian symmetry.
 
@@ -945,7 +986,9 @@ def hfft(a, n=None, axis=-1, norm=None):
             ``n`` is not given, it is determined from the length of the input
             along the axis specified by ``axis``.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -956,9 +999,7 @@ def hfft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.hfft`
     """
-    a = irfft(a.conj(), n, axis)
-    return a * (a.shape[axis] if norm is None else
-                cupy.sqrt(a.shape[axis], dtype=a.dtype))
+    return irfft(a.conj(), n, axis, _swap_direction(norm))
 
 
 def ihfft(a, n=None, axis=-1, norm=None):
@@ -970,7 +1011,9 @@ def ihfft(a, n=None, axis=-1, norm=None):
             input to use. If ``n`` is not given, the length of the input along
             the axis specified by ``axis`` is used.
         axis (int): Axis over which to compute the FFT.
-        norm (None or ``"ortho"``): Keyword to specify the normalization mode.
+        norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
+            to specify the normalization mode. Default is ``None``, which is
+            an alias of ``"backward"``.
 
     Returns:
         cupy.ndarray:
@@ -980,9 +1023,7 @@ def ihfft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.ihfft`
     """
-    if n is None:
-        n = a.shape[axis]
-    return rfft(a, n, axis, norm).conj() / (n if norm is None else 1)
+    return rfft(a, n, axis, _swap_direction(norm)).conj()
 
 
 def fftfreq(n, d=1.0):

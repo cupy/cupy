@@ -1,6 +1,6 @@
 import cupy
 
-from cupy.core._dtype import get_dtype
+from cupy._core._dtype import get_dtype
 
 supported_dtypes = [get_dtype(x) for x in
                     ('single', 'double', 'csingle', 'cdouble')]

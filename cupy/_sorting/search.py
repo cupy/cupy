@@ -1,10 +1,10 @@
 import cupy
-from cupy import core
-from cupy.core import fusion
+from cupy import _core
+from cupy._core import fusion
 from cupy import _util
 
-from cupy.core import _routines_indexing as _indexing
-from cupy.core import _routines_statistics as _statistics
+from cupy._core import _routines_indexing as _indexing
+from cupy._core import _routines_statistics as _statistics
 
 
 def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -162,7 +162,7 @@ def flatnonzero(a):
     return a.ravel().nonzero()[0]
 
 
-_where_ufunc = core.create_ufunc(
+_where_ufunc = _core.create_ufunc(
     'cupy_where',
     ('???->?', '?bb->b', '?BB->B', '?hh->h', '?HH->H', '?ii->i', '?II->I',
      '?ll->l', '?LL->L', '?qq->q', '?QQ->Q', '?ee->e', '?ff->f',
@@ -256,7 +256,7 @@ _hip_preamble = r'''
 '''
 
 
-_searchsorted_kernel = core.ElementwiseKernel(
+_searchsorted_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int64 n_bins, bool side_is_right, '
     'bool assume_increassing',
     'int64 y',

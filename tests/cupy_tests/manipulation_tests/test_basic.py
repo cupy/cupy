@@ -79,6 +79,9 @@ class TestBasic(unittest.TestCase):
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_copyto_multigpu(self, xp, dtype):
+        # TODO(kmaehashi): tentatively add print for debug (#4673)
+        print('current stream:', cuda.get_current_stream())
+        print('current device:', cuda.runtime.getDevice())
         with cuda.Device(0):
             a = testing.shaped_arange((2, 3, 4), xp, dtype)
         with cuda.Device(1):

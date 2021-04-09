@@ -14,7 +14,7 @@ from cupy_backends.cuda.libs.cusolver cimport (  # noqa
     sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize)
 
 from cupy.cuda cimport memory
-from cupy.core.core cimport _ndarray_init, ndarray
+from cupy._core.core cimport _ndarray_init, ndarray
 
 import cupy as _cupy
 from cupy_backends.cuda.api import driver as _driver
@@ -22,7 +22,7 @@ from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupy_backends.cuda.libs import cusolver as _cusolver
 from cupy.cuda import device as _device
-from cupy.core import _routines_linalg as _linalg
+from cupy._core import _routines_linalg as _linalg
 from cupy import _util
 
 import cupyx as _cupyx
@@ -299,19 +299,18 @@ cpdef _gesvd_batched(a, a_dtype, full_matrices, compute_uv, overwrite_a):
 
     k = n  # = min(m, n) where m >= n is ensured above
     if compute_uv:
-        # TODO(leofang): the current approach may be memory hungry, try
-        # setting either job_u or job_vt to 'O' to overwrite the input?
         if full_matrices:
             u = _ndarray_init((batch_size, m, m), a_dtype)
-            vt = _ndarray_init((batch_size, n, n), a_dtype)
+            vt = x[..., :n]
             job_u = b'A'
-            job_vt = b'A'
+            job_vt = b'O'
+            u_ptr, vt_ptr = u.data.ptr, 0
         else:
-            u = _ndarray_init((batch_size, k, m), a_dtype)
+            u = x
             vt = _ndarray_init((batch_size, k, n), a_dtype)
-            job_u = b'S'
+            job_u = b'O'
             job_vt = b'S'
-        u_ptr, vt_ptr = u.data.ptr, vt.data.ptr
+            u_ptr, vt_ptr = 0, vt.data.ptr
     else:
         u_ptr, vt_ptr = 0, 0  # Use nullptr
         job_u = b'N'
@@ -486,43 +485,17 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
 
     assert a.ndim == 2
 
-    if a.dtype == 'f' or a.dtype == 'e':
-        dtype = 'f'
-        inp_w_dtype = 'f'
-        inp_v_dtype = 'f'
-        ret_w_dtype = a.dtype
-        ret_v_dtype = a.dtype
-    elif a.dtype == 'd':
-        dtype = 'd'
-        inp_w_dtype = 'd'
-        inp_v_dtype = 'd'
-        ret_w_dtype = 'd'
-        ret_v_dtype = 'd'
-    elif a.dtype == 'F':
-        dtype = 'F'
-        inp_w_dtype = 'f'
-        inp_v_dtype = 'F'
-        ret_w_dtype = 'f'
-        ret_v_dtype = 'F'
-    elif a.dtype == 'D':
-        dtype = 'D'
-        inp_w_dtype = 'd'
-        inp_v_dtype = 'D'
-        ret_w_dtype = 'd'
-        ret_v_dtype = 'D'
-    else:
-        # NumPy uses float64 when an input is not floating point number.
-        dtype = 'd'
-        inp_w_dtype = 'd'
-        inp_v_dtype = 'd'
-        ret_w_dtype = 'd'
-        ret_v_dtype = 'd'
+    # reject_float16=False for backward compatibility
+    dtype, v_dtype = _cupy.linalg._util.linalg_common_type(
+        a, reject_float16=False)
+    real_dtype = dtype.char.lower()
+    w_dtype = v_dtype.char.lower()
 
     # Note that cuSolver assumes fortran array
-    v = a.astype(inp_v_dtype, order='F', copy=True)
+    v = a.astype(dtype, order='F', copy=True)
 
     m, lda = a.shape
-    w = _cupy.empty(m, inp_w_dtype)
+    w = _cupy.empty(m, real_dtype)
     dev_info = _cupy.empty((1,), _cupy.int32)
     handle = _device.Device().cusolver_handle
 
@@ -555,7 +528,7 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
     params = _cusolver.createSyevjInfo()
     work_size = buffer_size(
         handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr, params)
-    work = _cupy.empty(work_size, inp_v_dtype)
+    work = _cupy.empty(work_size, dtype)
     syevj(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params)
@@ -564,53 +537,27 @@ def syevj(a, UPLO='L', with_eigen_vector=True):
 
     _cusolver.destroySyevjInfo(params)
 
-    w = w.astype(ret_w_dtype, copy=False)
+    w = w.astype(w_dtype, copy=False)
     if not with_eigen_vector:
         return w
-    v = v.astype(ret_v_dtype, copy=False)
+    v = v.astype(v_dtype, copy=False)
     return w, v
 
 
 def _syevj_batched(a, UPLO, with_eigen_vector):
-    if a.dtype == 'f' or a.dtype == 'e':
-        dtype = 'f'
-        inp_w_dtype = 'f'
-        inp_v_dtype = 'f'
-        ret_w_dtype = a.dtype
-        ret_v_dtype = a.dtype
-    elif a.dtype == 'd':
-        dtype = 'd'
-        inp_w_dtype = 'd'
-        inp_v_dtype = 'd'
-        ret_w_dtype = 'd'
-        ret_v_dtype = 'd'
-    elif a.dtype == 'F':
-        dtype = 'F'
-        inp_w_dtype = 'f'
-        inp_v_dtype = 'F'
-        ret_w_dtype = 'f'
-        ret_v_dtype = 'F'
-    elif a.dtype == 'D':
-        dtype = 'D'
-        inp_w_dtype = 'd'
-        inp_v_dtype = 'D'
-        ret_w_dtype = 'd'
-        ret_v_dtype = 'D'
-    else:
-        # NumPy uses float64 when an input is not floating point number.
-        dtype = 'd'
-        inp_w_dtype = 'd'
-        inp_v_dtype = 'd'
-        ret_w_dtype = 'd'
-        ret_v_dtype = 'd'
+    # reject_float16=False for backward compatibility
+    dtype, v_dtype = _cupy.linalg._util.linalg_common_type(
+        a, reject_float16=False)
+    real_dtype = dtype.char.lower()
+    w_dtype = v_dtype.char.lower()
 
     *batch_shape, m, lda = a.shape
     batch_size = _numpy.prod(batch_shape)
     a = a.reshape(batch_size, m, lda)
     v = _cupy.array(
-        a.swapaxes(-2, -1), order='C', copy=True, dtype=inp_v_dtype)
+        a.swapaxes(-2, -1), order='C', copy=True, dtype=dtype)
 
-    w = _cupy.empty((batch_size, m), inp_w_dtype).swapaxes(-2, 1)
+    w = _cupy.empty((batch_size, m), real_dtype).swapaxes(-2, 1)
     dev_info = _cupy.empty((batch_size,), _cupy.int32)
     handle = _device.Device().cusolver_handle
 
@@ -643,7 +590,7 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
     params = _cusolver.createSyevjInfo()
     work_size = buffer_size(
         handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr, params, batch_size)
-    work = _cupy.empty(work_size, inp_v_dtype)
+    work = _cupy.empty(work_size, dtype)
     syevjBatched(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr, params,
@@ -653,11 +600,11 @@ def _syevj_batched(a, UPLO, with_eigen_vector):
 
     _cusolver.destroySyevjInfo(params)
 
-    w = w.astype(ret_w_dtype, copy=False)
+    w = w.astype(w_dtype, copy=False)
     w = w.swapaxes(-2, -1).reshape(*batch_shape, m)
     if not with_eigen_vector:
         return w
-    v = v.astype(ret_v_dtype, copy=False)
+    v = v.astype(v_dtype, copy=False)
     v = v.swapaxes(-2, -1).reshape(*batch_shape, m, m)
     return w, v
 

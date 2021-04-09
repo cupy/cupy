@@ -1,15 +1,3 @@
-try:
-    import scipy.sparse as _sparse
-    SparseWarning = _sparse.SparseWarning
-    SparseEfficiencyWarning = _sparse.SparseEfficiencyWarning
-except ImportError:
-    class SparseWarning(Warning):
-        pass
-
-    class SparseEfficiencyWarning(SparseWarning):
-        pass
-
-
 from cupyx.scipy.sparse.base import issparse  # NOQA
 from cupyx.scipy.sparse.base import isspmatrix  # NOQA
 from cupyx.scipy.sparse.base import spmatrix  # NOQA
@@ -40,7 +28,7 @@ from cupyx.scipy.sparse.construct import vstack  # NOQA
 # TODO(unno): implement lil_matrix
 
 from cupyx.scipy.sparse.construct import kron  # NOQA
-# TODO(unno): implement kronsum
+from cupyx.scipy.sparse.construct import kronsum  # NOQA
 # TODO(unno): implement diags
 # TODO(unno): implement block_diag
 

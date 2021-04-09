@@ -1,4 +1,5 @@
 # distutils: language = c++
+cimport cpython  # NOQA
 cimport cython  # NOQA
 
 import atexit
@@ -10,8 +11,8 @@ import threading
 import warnings
 import weakref
 
-from cupy_backends.cuda.api import runtime
-from cupy.core import syncdetect
+from cupy_backends.cuda.api.runtime import CUDARuntimeError
+from cupy._core import syncdetect
 
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t
@@ -49,9 +50,9 @@ class OutOfMemoryError(MemoryError):
         self._limit = limit
 
         if limit == 0:
-            msg = (
-                'Out of memory allocating {:,} bytes '
-                '(allocated so far: {:,} bytes).'.format(size, total))
+            msg = 'Out of memory allocating {:,} bytes'.format(size)
+            if total != -1:
+                msg += ' (allocated so far: {:,} bytes).'.format(total)
         else:
             msg = (
                 'Out of memory allocating {:,} bytes '
@@ -106,30 +107,24 @@ cdef class Memory(BaseMemory):
             runtime.free(self.ptr)
 
 
-cdef inline void async_alloc_check() except*:
-    cdef int dev_id
-    cdef list support = [runtime.deviceGetAttribute(
-        runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
-        for dev_id in range(runtime.getDeviceCount())]
-    _thread_local.device_support_async_alloc = support
-
-
 cdef inline void is_async_alloc_supported(int device_id) except*:
     if CUDA_VERSION < 11020:
         raise RuntimeError("memory_async is supported since CUDA 11.2")
     if runtime._is_hip_environment:
         raise RuntimeError('HIP does not support memory_async')
-    global is_async_alloc_support_checked
-    if not is_async_alloc_support_checked:
-        async_alloc_check()
-        is_async_alloc_support_checked = True
-    is_supported = _thread_local.device_support_async_alloc[device_id]
+    cdef int dev_id
+    cdef list support
+    try:
+        is_supported = _thread_local.device_support_async_alloc[device_id]
+    except AttributeError:
+        support = [runtime.deviceGetAttribute(
+            runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
+            for dev_id in range(runtime.getDeviceCount())]
+        _thread_local.device_support_async_alloc = support
+        is_supported = support[device_id]
     if not is_supported:
         raise RuntimeError('Device {} does not support '
                            'malloc_async'.format(device_id))
-
-
-cdef bint is_async_alloc_support_checked = False
 
 
 @cython.no_gc
@@ -147,8 +142,6 @@ cdef class MemoryAsync(BaseMemory):
         readonly intptr_t stream
 
     def __init__(self, size_t size, intptr_t stream):
-        # TODO(leofang): perhaps we should align the memory ourselves?
-        # size = _round_size(size)
         self.size = size
         self.device_id = device.get_device_id()
         # The stream is allowed to be destroyed before the memory is freed, so
@@ -174,13 +167,13 @@ cdef class MemoryAsync(BaseMemory):
         if self.ptr:
             try:
                 runtime.freeAsync(self.ptr, curr_stream)
-            except runtime.CUDARuntimeError as e:
+            except CUDARuntimeError as e:
                 if e.status not in ok_errors:
                     raise
                 try:
                     curr_stream = stream_module.get_current_stream_ptr()
                     runtime.freeAsync(self.ptr, curr_stream)
-                except runtime.CUDARuntimeError as e:
+                except CUDARuntimeError as e:
                     if e.status not in ok_errors:
                         raise
                     runtime.free(self.ptr)
@@ -471,11 +464,11 @@ cdef class MemoryPointer:
 
         """
         if stream is None:
-            ptr = mem if isinstance(mem, int) else mem.value
             stream_ptr = stream_module.get_current_stream_ptr()
         else:
             stream_ptr = stream.ptr
         if size > 0:
+            ptr = mem if isinstance(mem, int) else mem.value
             runtime.memcpyAsync(self.ptr, ptr, size,
                                 runtime.memcpyHostToDevice, stream_ptr)
 
@@ -594,7 +587,7 @@ cdef class MemoryPointer:
         try:
             runtime.deviceEnablePeerAccess(peer)
         # peer access could already be set by external libraries at this point
-        except runtime.CUDARuntimeError as e:
+        except CUDARuntimeError as e:
             if e.status != runtime.errorPeerAccessAlreadyEnabled:
                 raise
         finally:
@@ -813,7 +806,7 @@ DEF ALLOCATION_UNIT_SIZE = 512
 _allocation_unit_size = ALLOCATION_UNIT_SIZE
 
 
-cpdef size_t _round_size(size_t size):
+cpdef inline size_t _round_size(size_t size):
     """Rounds up the memory size to fit memory alignment of cudaMalloc."""
     # avoid 0 div checking
     size = (size + ALLOCATION_UNIT_SIZE - 1) // ALLOCATION_UNIT_SIZE
@@ -944,6 +937,21 @@ cdef class _Arena:
         return False
 
 
+# cpdef because uint-tested
+# module-level function can be inlined
+cpdef inline dict _parse_limit_string(limit=None):
+    if limit is None:
+        limit = os.environ.get('CUPY_GPU_MEMORY_LIMIT')
+    size = None
+    fraction = None
+    if limit is not None:
+        if limit.endswith('%'):
+            fraction = float(limit[:-1]) / 100.0
+        else:
+            size = int(limit)
+    return {'size': size, 'fraction': fraction}
+
+
 @cython.final
 cdef class SingleDeviceMemoryPool:
     """Memory pool implementation for single device.
@@ -996,7 +1004,7 @@ cdef class SingleDeviceMemoryPool:
         self._in_use_lock = rlock.create_fastrlock()
         self._total_bytes_lock = rlock.create_fastrlock()
 
-        self.set_limit(**(self._parse_limit_string()))
+        self.set_limit(**(_parse_limit_string()))
 
     cdef _Arena _arena(self, intptr_t stream_ptr):
         """Returns appropriate arena of a given stream.
@@ -1213,19 +1221,6 @@ cdef class SingleDeviceMemoryPool:
         with LockAndNoGc(self._total_bytes_lock):
             return self._total_bytes_limit
 
-    # cpdef because uint-tested
-    cpdef dict _parse_limit_string(self, limit=None):
-        if limit is None:
-            limit = os.environ.get('CUPY_GPU_MEMORY_LIMIT')
-        size = None
-        fraction = None
-        if limit is not None:
-            if limit.endswith('%'):
-                fraction = float(limit[:-1]) / 100.0
-            else:
-                size = int(limit)
-        return {'size': size, 'fraction': fraction}
-
     cdef _compact_index(self, intptr_t stream_ptr, bint free):
         # need self._free_lock
         cdef _Arena arena
@@ -1306,20 +1301,20 @@ cdef class SingleDeviceMemoryPool:
         oom_error = False
         try:
             mem = self._alloc(size).mem
-        except runtime.CUDARuntimeError as e:
+        except CUDARuntimeError as e:
             if e.status != runtime.errorMemoryAllocation:
                 raise
             self.free_all_blocks()
             try:
                 mem = self._alloc(size).mem
-            except runtime.CUDARuntimeError as e:
+            except CUDARuntimeError as e:
                 if e.status != runtime.errorMemoryAllocation:
                     raise
                 gc.collect()
                 self.free_all_blocks()
                 try:
                     mem = self._alloc(size).mem
-                except runtime.CUDARuntimeError as e:
+                except CUDARuntimeError as e:
                     if e.status != runtime.errorMemoryAllocation:
                         raise
                     oom_error = True
@@ -1334,7 +1329,7 @@ cdef class SingleDeviceMemoryPool:
         return mem
 
 
-cdef class MemoryPool(object):
+cdef class MemoryPool:
 
     """Memory pool for all GPU devices on the host.
 
@@ -1489,6 +1484,162 @@ cdef class MemoryPool(object):
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.get_limit()
+
+
+cdef class MemoryAsyncPool:
+    """(Experimental) CUDA memory pool for all GPU devices on the host.
+
+    A memory pool preserves any allocations even if they are freed by the user.
+    One instance of this class can be used for multiple devices. This class
+    uses CUDA's Stream Ordered Memory Allocator (supported on CUDA 11.2+).
+    The simplest way to use this pool as CuPy's default allocator is the
+    following code::
+
+        set_allocator(MemoryAsyncPool().malloc)
+
+    Using this feature requires CUDA >= 11.2 with a supported GPU and platform.
+    If it is not supported, an error will be raised.
+
+    The current CuPy stream is used to allocate/free the memory.
+
+    Args:
+        pool_handles (str or int): A flag to indicate which mempool to use.
+            `'default'` is for the device's default mempool, `'current'` is for
+            the current mempool (which could be the default one), and an `int`
+            that represents ``cudaMemPool_t`` created from elsewhere for an
+            external mempool. A list consisting of these flags can also be
+            accepted, in which case the list length must equal to the total
+            number of visible devices so that the mempools for each device can
+            be set independently.
+
+    .. warning::
+        This feature is currently experimental and subject to change.
+
+    .. note::
+        :class:`MemoryAsyncPool` currently cannot work with memory hooks.
+
+    .. seealso:: `Stream Ordered Memory Allocator`_
+
+    .. _Stream Ordered Memory Allocator:
+        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY__POOLS.html
+    """
+    # This is an analogous to SingleDeviceMemoryPool + MemoryPool, but for
+    # CUDA's async allocator. The main purpose is to provide a memory pool
+    # interface for multiple devices, but given that CUDA's mempool is
+    # implemented at the driver level, the same pool could be shared by many
+    # applications in the same process, so we can't collect meaningful
+    # statistics like used bytes for this pool...
+
+    cdef:
+        # A list of cudaMemPool_t to each device's mempool
+        readonly list _pools
+
+    def __init__(self, pool_handles='default'):
+        cdef int dev_id
+        if (cpython.PySequence_Check(pool_handles)
+                and not isinstance(pool_handles, str)):
+            # allow different kinds of handles on each device
+            self._pools = [self.set_pool(pool_handles[dev_id], dev_id)
+                           for dev_id in range(runtime.getDeviceCount())]
+        else:
+            # use the same argument for all devices
+            self._pools = [self.set_pool(pool_handles, dev_id)
+                           for dev_id in range(runtime.getDeviceCount())]
+
+    cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
+        cdef intptr_t pool
+        if handle == 'default':
+            # Use the device's default pool
+            pool = runtime.deviceGetDefaultMemPool(dev_id)
+        elif handle == 'current':
+            # Use the device's current pool
+            pool = runtime.deviceGetMemPool(dev_id)
+        elif handle == 'create':
+            # TODO(leofang): Support cudaMemPoolCreate
+            raise NotImplementedError('cudaMemPoolCreate is not yet supported')
+        elif isinstance(handle, int):
+            # Use an existing pool (likely from other applications?)
+            pool = <intptr_t>(handle)
+        else:
+            raise ValueError("handle must be "
+                             "'default' (for the device's default pool), "
+                             "'current' (for the device's current pool), "
+                             "or int (a pointer to cudaMemPool_t)")
+        runtime.deviceSetMemPool(dev_id, pool)
+        return pool
+
+    cpdef MemoryPointer malloc(self, size_t size):
+        """Allocate memory from the current device's pool on the current
+        stream.
+
+        This method can be used as a CuPy memory allocator. The simplest way to
+        use a memory pool as the default allocator is the following code::
+
+            set_allocator(MemoryAsyncPool().malloc)
+
+        Args:
+            size (int): Size of the memory buffer to allocate in bytes.
+
+        Returns:
+            ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
+
+        """
+        _util.experimental('cupy.cuda.MemoryAsyncPool.malloc')
+        cdef size_t rounded_size = _round_size(size)
+        mem = None
+        oom_error = False
+        try:
+            mem = malloc_async(rounded_size)
+        except CUDARuntimeError as e:
+            if e.status != runtime.errorMemoryAllocation:
+                raise
+            stream = stream_module.get_current_stream()
+            stream.synchronize()
+            try:
+                mem = malloc_async(rounded_size)
+            except CUDARuntimeError as e:
+                if e.status != runtime.errorMemoryAllocation:
+                    raise
+                stream.synchronize()
+                try:
+                    mem = malloc_async(rounded_size)
+                except CUDARuntimeError as e:
+                    if e.status != runtime.errorMemoryAllocation:
+                        raise
+                    oom_error = True
+        finally:
+            if mem is None:
+                assert oom_error
+                # Set total to -1 as we currently do not keep track of the
+                # usage of the async mempool
+                raise OutOfMemoryError(size, -1, 0)
+        return mem
+
+    cpdef free_all_blocks(self, stream=None):
+        # We don't have access to the mempool internal, but if there are
+        # any memory asynchronously freed, a synchonization will make sure
+        # they become visible (to both cudaMalloc and cudaMallocAsync). See
+        # https://github.com/cupy/cupy/issues/3777#issuecomment-758890450
+        runtime.deviceSynchronize()
+
+    cpdef size_t n_free_blocks(self):
+        raise NotImplementedError
+
+    cpdef size_t used_bytes(self):
+        raise NotImplementedError
+
+    cpdef size_t free_bytes(self):
+        raise NotImplementedError
+
+    cpdef size_t total_bytes(self):
+        raise NotImplementedError
+
+    cpdef set_limit(self, size=None, fraction=None):
+        # TODO(leofang): Support cudaMemPoolTrimTo?
+        raise NotImplementedError
+
+    cpdef size_t get_limit(self):
+        raise NotImplementedError
 
 
 ctypedef void*(*malloc_func_type)(void*, size_t, int)

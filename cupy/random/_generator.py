@@ -11,7 +11,7 @@ import warnings
 from numpy.linalg import LinAlgError
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import cuda
 from cupy.cuda import curand
 from cupy.cuda import device
@@ -74,8 +74,8 @@ class RandomState(object):
         # * curand.generateNormalDouble
         # * curand.generateLogNormal
         # * curand.generateLogNormalDouble
-        size = core.get_size(size)
-        element_size = core.internal.prod(size)
+        size = _core.get_size(size)
+        element_size = _core.internal.prod(size)
         if element_size % 2 == 0:
             out = cupy.empty(size, dtype=dtype)
             func(self._generator, out.data.ptr, out.size, *args)
@@ -234,7 +234,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    _laplace_kernel = core.ElementwiseKernel(
+    _laplace_kernel = _core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = loc + scale * ((x <= 0.5) ? log(x + x): -log(x + x - 1.0))',
         'laplace_kernel')
@@ -592,7 +592,7 @@ class RandomState(object):
                             % ', '.join(kwarg.keys()))
         return self.normal(size=size, dtype=dtype)
 
-    _mod1_kernel = core.ElementwiseKernel(
+    _mod1_kernel = _core.ElementwiseKernel(
         '', 'T x', 'x = (x == (T)1) ? 0 : x', 'cupy_random_x_mod_1')
 
     def _random_sample_raw(self, size, dtype):
@@ -728,7 +728,7 @@ class RandomState(object):
         self._kernel_get_indices(csum, indices, size=csum.size)
         return indices
 
-    _kernel_get_indices = core.ElementwiseKernel(
+    _kernel_get_indices = _core.ElementwiseKernel(
         'raw U csum', 'raw U indices',
         '''
         int j = 0;
@@ -856,7 +856,7 @@ class RandomState(object):
         sample &= cupy.iinfo(cupy.int_).max
         return sample
 
-    _triangular_kernel = core.ElementwiseKernel(
+    _triangular_kernel = _core.ElementwiseKernel(
         'L left, M mode, R right', 'T x',
         """
         T base, leftbase, ratio, leftprod, rightprod;
@@ -902,7 +902,7 @@ class RandomState(object):
         x = self.random_sample(size=size, dtype=dtype)
         return RandomState._triangular_kernel(left, mode, right, x)
 
-    _scale_kernel = core.ElementwiseKernel(
+    _scale_kernel = _core.ElementwiseKernel(
         'T low, T high', 'T x',
         'x = T(low) + x * T(high - low)',
         'cupy_scale')
@@ -938,7 +938,7 @@ class RandomState(object):
         self._update_seed(y.size)
         return y
 
-    _wald_kernel = core.ElementwiseKernel(
+    _wald_kernel = _core.ElementwiseKernel(
         'T mean, T scale, T U', 'T X',
         """
             T mu_2l;
@@ -1021,16 +1021,13 @@ class RandomState(object):
             raise NotImplementedError
         if isinstance(a, int):
             a_size = a
-            if a_size <= 0:
-                raise ValueError('a must be greater than 0')
+            if a_size < 0:
+                raise ValueError('a must be greater than or equal to 0')
         else:
             a = cupy.array(a, copy=False)
             if a.ndim != 1:
                 raise ValueError('a must be 1-dimensional or an integer')
-            else:
-                a_size = len(a)
-                if a_size == 0:
-                    raise ValueError('a must be non-empty')
+            a_size = len(a)
 
         if p is not None:
             p = cupy.array(p)
@@ -1048,6 +1045,9 @@ class RandomState(object):
             raise NotImplementedError
         shape = size
         size = numpy.prod(shape)
+
+        if a_size == 0 and size > 0:
+            raise ValueError('a cannot be empty unless no samples are taken')
 
         if not replace and p is None:
             if a_size < size:
@@ -1072,6 +1072,8 @@ class RandomState(object):
             if not isinstance(shape, int):
                 index = cupy.reshape(index, shape)
         else:
+            if a_size == 0:  # TODO: (#4511) Fix `randint` instead
+                a_size = 1
             index = self.randint(0, a_size, size=shape)
             # Align the dtype with NumPy
             index = index.astype(cupy.int64, copy=False)
@@ -1136,7 +1138,7 @@ class RandomState(object):
             array = cupy.argsort(sample)
         return array
 
-    _gumbel_kernel = core.ElementwiseKernel(
+    _gumbel_kernel = _core.ElementwiseKernel(
         'T x, T loc, T scale', 'T y',
         'y = T(loc) - log(-log(x)) * T(scale)',
         'gumbel_kernel')
@@ -1158,7 +1160,7 @@ class RandomState(object):
         RandomState._gumbel_kernel(x, loc, scale, x)
         return x
 
-    def randint(self, low, high=None, size=None, dtype='l'):
+    def randint(self, low, high=None, size=None, dtype=int):
         """Returns a scalar or an array of integer values over ``[low, high)``.
 
         .. seealso::
@@ -1187,7 +1189,7 @@ class RandomState(object):
         return x
 
 
-_cupy_permutation = core.ElementwiseKernel(
+_cupy_permutation = _core.ElementwiseKernel(
     'raw int32 sample, int32 j_start, int32 _j_end',
     'raw int32 array',
     '''

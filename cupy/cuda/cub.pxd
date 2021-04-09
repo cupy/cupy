@@ -1,4 +1,4 @@
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 
 
 cpdef enum cupy_cub_op:

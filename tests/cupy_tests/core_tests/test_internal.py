@@ -3,7 +3,7 @@ import unittest
 
 import pytest
 
-from cupy.core import internal
+from cupy._core import internal
 from cupy import testing
 
 

@@ -1,5 +1,5 @@
 import cupy
-from cupy.core import internal
+from cupy._core import internal
 from cupy import _util
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import coo

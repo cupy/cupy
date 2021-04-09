@@ -1,7 +1,7 @@
 Profiling
 =========
 
-time range
+Time range
 ----------
 
 .. autosummary::
@@ -11,6 +11,14 @@ time range
    cupy.prof.TimeRangeDecorator
    cupy.prof.time_range
 
+Timing helper
+-------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.time.repeat
 
 Device synchronization detection
 --------------------------------

@@ -4,49 +4,23 @@ import cupy
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy.cuda import device
+from cupy.linalg import _util
 
 
 def _syevd(a, UPLO, with_eigen_vector):
     if UPLO not in ('L', 'U'):
         raise ValueError('UPLO argument must be \'L\' or \'U\'')
 
-    if a.dtype == 'f' or a.dtype == 'e':
-        dtype = 'f'
-        inp_w_dtype = 'f'
-        inp_v_dtype = 'f'
-        ret_w_dtype = a.dtype
-        ret_v_dtype = a.dtype
-    elif a.dtype == 'd':
-        dtype = 'd'
-        inp_w_dtype = 'd'
-        inp_v_dtype = 'd'
-        ret_w_dtype = 'd'
-        ret_v_dtype = 'd'
-    elif a.dtype == 'F':
-        dtype = 'F'
-        inp_w_dtype = 'f'
-        inp_v_dtype = 'F'
-        ret_w_dtype = 'f'
-        ret_v_dtype = 'F'
-    elif a.dtype == 'D':
-        dtype = 'D'
-        inp_w_dtype = 'd'
-        inp_v_dtype = 'D'
-        ret_w_dtype = 'd'
-        ret_v_dtype = 'D'
-    else:
-        # NumPy uses float64 when an input is not floating point number.
-        dtype = 'd'
-        inp_w_dtype = 'd'
-        inp_v_dtype = 'd'
-        ret_w_dtype = 'd'
-        ret_v_dtype = 'd'
+    # reject_float16=False for backward compatibility
+    dtype, v_dtype = _util.linalg_common_type(a, reject_float16=False)
+    real_dtype = dtype.char.lower()
+    w_dtype = v_dtype.char.lower()
 
     # Note that cuSolver assumes fortran array
-    v = a.astype(inp_v_dtype, order='F', copy=True)
+    v = a.astype(dtype, order='F', copy=True)
 
     m, lda = a.shape
-    w = cupy.empty(m, inp_w_dtype)
+    w = cupy.empty(m, real_dtype)
     dev_info = cupy.empty((), numpy.int32)
     handle = device.Device().cusolver_handle
 
@@ -78,14 +52,14 @@ def _syevd(a, UPLO, with_eigen_vector):
 
     work_size = buffer_size(
         handle, jobz, uplo, m, v.data.ptr, lda, w.data.ptr)
-    work = cupy.empty(work_size, inp_v_dtype)
+    work = cupy.empty(work_size, dtype)
     syevd(
         handle, jobz, uplo, m, v.data.ptr, lda,
         w.data.ptr, work.data.ptr, work_size, dev_info.data.ptr)
     cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
         syevd, dev_info)
 
-    return w.astype(ret_w_dtype, copy=False), v.astype(ret_v_dtype, copy=False)
+    return w.astype(w_dtype, copy=False), v.astype(v_dtype, copy=False)
 
 
 # TODO(okuta): Implement eig
@@ -166,9 +140,7 @@ def eigvalsh(a, UPLO='L'):
     if a.ndim < 2:
         raise ValueError('Array must be at least two-dimensional')
 
-    m, n = a.shape[-2:]
-    if m != n:
-        raise ValueError('Last 2 dimensions of the array must be square')
+    _util._assert_nd_squareness(a)
 
     if a.ndim > 2:
         return cupy.cusolver.syevj(a, UPLO, False)
