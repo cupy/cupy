@@ -807,6 +807,7 @@ class TestAllocator(unittest.TestCase):
 
     def _reuse_between_thread(self, stream):
         new_pool = memory.MemoryPool()
+
         def job():
             with cupy.cuda.using_allocator(new_pool.malloc):
                 with stream:
