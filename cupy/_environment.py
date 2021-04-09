@@ -404,13 +404,14 @@ def _detect_duplicate_installation():
         [p.project_name for p in pkg_resources.working_set])
     cupy_installed = known & installed
     if 1 < len(cupy_installed):
-        warnings.warn('''
+        cupy_packages_list = ', '.join(sorted(cupy_installed))
+        warnings.warn(f'''
 --------------------------------------------------------------------------------
 
   CuPy may not function correctly because multiple CuPy packages are installed
   in your environment:
 
-    {cupy_installed}
+    {cupy_packages_list}
 
   Follow these steps to resolve this issue:
 
@@ -419,10 +420,14 @@ def _detect_duplicate_installation():
 
          $ pip uninstall <package_name>
 
+      If you previously installed CuPy via conda, also run the following:
+
+         $ conda uninstall cupy
+
     2. Install the appropriate CuPy package.
        Refer to the Installation Guide for detailed instructions.
 
          https://docs.cupy.dev/en/stable/install.html
 
 --------------------------------------------------------------------------------
-'''.format(cupy_installed=', '.join(sorted(cupy_installed))))
+''')
