@@ -173,6 +173,7 @@ void f(long long *x) {
 }
 '''
 
+
 @testing.gpu
 class TestNdarrayCopy(unittest.TestCase):
 
