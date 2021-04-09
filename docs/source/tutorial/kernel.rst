@@ -443,5 +443,5 @@ Limitations
 
 CuPy's JIT compiler uses :py:func:`inspect.getsource` to get the source code of the target function, so the compiler does not work in the following situations:
 
-* In IPython interpreter
+* In Python REPL
 * Lambda expressions as target functions
