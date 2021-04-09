@@ -807,15 +807,20 @@ class TestAllocator(unittest.TestCase):
 
     def test_reuse_between_thread(self):
         def job(self):
-            cupy.arange(16)
+            arr = cupy.arange(16)
+            self._ptr = arr.data.ptr
+            del arr
             self._error = False
 
         # Run in main thread.
+        self._ptr = -1
         self._error = True
         job(self)
         assert not self._error
+        main_ptr = self._ptr
 
         # Run in sub thread.
+        self._ptr = -1
         self._error = True
         with cupy.cuda.Device():
             t = threading.Thread(target=job, args=(self,))
@@ -823,6 +828,7 @@ class TestAllocator(unittest.TestCase):
             t.start()
             t.join()
         assert not self._error
+        assert self._ptr == main_ptr
 
 
 @testing.gpu
