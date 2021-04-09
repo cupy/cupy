@@ -113,10 +113,11 @@ function Main {
     if (-not $?) {
         $test_retval = $LastExitCode
     }
+    popd
+
     if ($use_cache -And $upload_cache) {
         UploadCache
     }
-    popd
 
     echo "Last 10 lines from the test output:"
     Get-Content cupy_test_log.txt -Tail 10
