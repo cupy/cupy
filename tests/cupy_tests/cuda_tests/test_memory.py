@@ -805,9 +805,12 @@ class TestAllocator(unittest.TestCase):
         assert arr.data.mem.size == new_pool.used_bytes()
         assert arr.sum() == 128
 
-    def test_reuse_between_thread(self):
-        def job(self):
-            arr = cupy.arange(16)
+    def _reuse_between_thread(self, stream):
+        new_pool = memory.MemoryPool()
+        def job():
+            with cupy.cuda.using_allocator(new_pool.malloc):
+                with stream:
+                    arr = cupy.arange(16)
             self._ptr = arr.data.ptr
             del arr
             self._error = False
@@ -815,7 +818,7 @@ class TestAllocator(unittest.TestCase):
         # Run in main thread.
         self._ptr = -1
         self._error = True
-        job(self)
+        job()
         assert not self._error
         main_ptr = self._ptr
 
@@ -823,12 +826,20 @@ class TestAllocator(unittest.TestCase):
         self._ptr = -1
         self._error = True
         with cupy.cuda.Device():
-            t = threading.Thread(target=job, args=(self,))
+            t = threading.Thread(target=job)
             t.daemon = True
             t.start()
             t.join()
         assert not self._error
-        assert self._ptr == main_ptr
+        return main_ptr, self._ptr
+
+    def test_reuse_between_thread(self):
+        main_ptr, sub_ptr = self._reuse_between_thread(cupy.cuda.Stream.null)
+        assert main_ptr == sub_ptr
+
+    def test_reuse_between_thread_ptds(self):
+        main_ptr, sub_ptr = self._reuse_between_thread(cupy.cuda.Stream.ptds)
+        assert main_ptr != sub_ptr
 
 
 @testing.gpu
