@@ -805,10 +805,10 @@ class TestAllocator(unittest.TestCase):
         assert arr.data.mem.size == new_pool.used_bytes()
         assert arr.sum() == 128
 
-    def _reuse_between_thread(self, stream):
+    def _reuse_between_thread(self, stream_main, stream_sub):
         new_pool = memory.MemoryPool()
 
-        def job():
+        def job(stream):
             with cupy.cuda.using_allocator(new_pool.malloc):
                 with stream:
                     arr = cupy.arange(16)
@@ -819,7 +819,7 @@ class TestAllocator(unittest.TestCase):
         # Run in main thread.
         self._ptr = -1
         self._error = True
-        job()
+        job(stream_main)
         assert not self._error
         main_ptr = self._ptr
 
@@ -827,7 +827,7 @@ class TestAllocator(unittest.TestCase):
         self._ptr = -1
         self._error = True
         with cupy.cuda.Device():
-            t = threading.Thread(target=job)
+            t = threading.Thread(target=job, args=(stream_sub,))
             t.daemon = True
             t.start()
             t.join()
@@ -835,12 +835,25 @@ class TestAllocator(unittest.TestCase):
         return main_ptr, self._ptr
 
     def test_reuse_between_thread(self):
-        main_ptr, sub_ptr = self._reuse_between_thread(cupy.cuda.Stream.null)
+        stream = cupy.cuda.Stream.null
+        main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
         assert main_ptr == sub_ptr
+
+    def test_reuse_between_thread_same_stream(self):
+        stream = cupy.cuda.Stream()
+        main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
+        assert main_ptr == sub_ptr
+
+    def test_reuse_between_thread_different_stream(self):
+        stream1 = cupy.cuda.Stream()
+        stream2 = cupy.cuda.Stream()
+        main_ptr, sub_ptr = self._reuse_between_thread(stream1, stream2)
+        assert main_ptr != sub_ptr
 
     @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='No PTDS on HIP')
     def test_reuse_between_thread_ptds(self):
-        main_ptr, sub_ptr = self._reuse_between_thread(cupy.cuda.Stream.ptds)
+        stream = cupy.cuda.Stream.ptds
+        main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
         assert main_ptr != sub_ptr
 
 
