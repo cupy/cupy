@@ -25,3 +25,4 @@ JIT kernel definition
    cupyx.jit.gridDim
    cupyx.jit.syncthreads
    cupyx.jit.shared_memory
+   cupyx.jit._interface._JitRawKernel

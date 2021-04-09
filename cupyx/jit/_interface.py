@@ -1,4 +1,3 @@
-import collections
 import functools
 import warnings
 
@@ -38,6 +37,12 @@ class _CudaFunction:
 
 
 class _JitRawKernel:
+    """JIT CUDA kernel object.
+
+    The decorator :func:``cupyx.jit.rawkernel`` converts the target function
+    to an object of this class. This class is not inteded to be instantiated
+    by users.
+    """
 
     def __init__(self, func, mode):
         self._func = func
@@ -48,6 +53,26 @@ class _JitRawKernel:
     def __call__(
             self, grid, block, args, shared_mem=0,
             stream=None, enable_cooperative_groups=False):
+        """Calls the CUDA kernel.
+
+        The compilation will be deferred until the first function call.
+        CuPy's JIT compiler infers the types of arguments at the call
+        time, and will cache the compiled kernels for speeding up any
+        subsequent calls.
+
+        Args:
+            grid (tuple of int): Size of grid in blocks.
+            block (tuple of int): Dimensions of each thread block.
+            args (tuple):
+                Arguments of the kernel. The type of all elements must be
+                ``bool``, ``int``, ``float``, ``complex``, NumPy scalar or
+                ``cupy.ndarray``.
+            shared_mem (int):
+                Dynamic shared-memory size per thread block in bytes.
+            stream (cupy.cuda.Stream): CUDA stream.
+
+        .. seealso:: :ref:`jit_kernel_definition`
+        """
         in_types = []
         for x in args:
             if isinstance(x, cupy.ndarray):
@@ -79,6 +104,10 @@ class _JitRawKernel:
         kern(grid, block, args, shared_mem, stream, enable_cooperative_groups)
 
     def __getitem__(self, grid_and_block):
+        """Numba-style kernel call.
+
+        .. seealso:: :ref:`jit_kernel_definition`
+        """
         grid, block = grid_and_block
         if not isinstance(grid, tuple):
             grid = (grid, 1, 1)
