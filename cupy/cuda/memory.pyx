@@ -275,7 +275,7 @@ cdef class _Chunk:
         mem (~cupy.cuda.Memory): The device memory buffer.
         offset (int): An offset bytes from the head of the buffer.
         size (int): Chunk size in bytes.
-        stream_ptr (intptr_t): Raw stream handle of cupy.cuda.Stream
+        stream_ident (intptr_t): Value to uniquely identify the stream.
 
     Attributes:
         mem (Memory): The device memory buffer.
@@ -284,29 +284,29 @@ cdef class _Chunk:
         size (int): Chunk size in bytes.
         prev (Chunk): prev memory pointer if split from a larger allocation
         next (Chunk): next memory pointer if split from a larger allocation
-        stream_ptr (int): Raw stream handle of cupy.cuda.Stream
+        stream_ident (intptr_t): Value to uniquely identify the stream.
     """
 
     cdef:
         readonly BaseMemory mem
         readonly ptrdiff_t offset
         readonly size_t size
-        readonly intptr_t stream_ptr
+        readonly intptr_t stream_ident
         public _Chunk prev
         public _Chunk next
 
     def __init__(self, *args):
         # For debug
-        mem, offset, size, stream_ptr = args
-        self._init(mem, offset, size, stream_ptr)
+        mem, offset, size, stream_ident = args
+        self._init(mem, offset, size, stream_ident)
 
     cdef _init(self, BaseMemory mem, ptrdiff_t offset,
-               size_t size, intptr_t stream_ptr):
+               size_t size, intptr_t stream_ident):
         assert mem.ptr != 0 or offset == 0
         self.mem = mem
         self.offset = offset
         self.size = size
-        self.stream_ptr = stream_ptr
+        self.stream_ident = stream_ident
 
     cpdef intptr_t ptr(self):
         return self.mem.ptr + self.offset
@@ -319,7 +319,7 @@ cdef class _Chunk:
             return None
         remaining = _Chunk.__new__(_Chunk)
         remaining._init(self.mem, self.offset + size, self.size - size,
-                        self.stream_ptr)
+                        self.stream_ident)
         self.size = size
 
         if self.next is not None:
@@ -331,7 +331,7 @@ cdef class _Chunk:
 
     cpdef merge(self, _Chunk remaining):
         """Merge previously splitted block (chunk)"""
-        assert self.stream_ptr == remaining.stream_ptr
+        assert self.stream_ident == remaining.stream_ident
         self.size += remaining.size
         self.next = remaining.next
         if remaining.next is not None:
@@ -1127,11 +1127,11 @@ cdef class SingleDeviceMemoryPool:
             raise RuntimeError('Cannot free out-of-pool memory')
         finally:
             rlock.unlock_fastrlock(self._in_use_lock)
-        stream_ptr = chunk.stream_ptr
+        stream_ident = chunk.stream_ident
 
         gc_mode = _lock_no_gc(self._free_lock)
         try:
-            arena = self._arena(stream_ptr)
+            arena = self._arena(stream_ident)
 
             c = chunk.next
             if c is not None and arena.remove_from_free_list(c):
@@ -1237,7 +1237,7 @@ cdef class SingleDeviceMemoryPool:
         with LockAndNoGc(self._total_bytes_lock):
             return self._total_bytes_limit
 
-    cdef _compact_index(self, intptr_t stream_ptr, bint free):
+    cdef _compact_index(self, intptr_t stream_ident, bint free):
         # need self._free_lock
         cdef _Arena arena
         cdef list new_free
@@ -1246,10 +1246,10 @@ cdef class SingleDeviceMemoryPool:
         cdef size_t index
         cdef size_t size_to_free = 0
 
-        if stream_ptr not in self._arenas:
+        if stream_ident not in self._arenas:
             return
         new_free = []
-        arena = self._arenas[stream_ptr]
+        arena = self._arenas[stream_ident]
 
         for index, free_list in enumerate(arena._free):
             if not free_list:
@@ -1268,7 +1268,7 @@ cdef class SingleDeviceMemoryPool:
             new_index.push_back(arena._index.at(index))
             new_free.append(free_list)
         if free and len(new_free) == 0:
-            del self._arenas[stream_ptr]
+            del self._arenas[stream_ident]
         else:
             arena._free = new_free
             arena._index.swap(new_index)
@@ -1277,13 +1277,13 @@ cdef class SingleDeviceMemoryPool:
             with LockAndNoGc(self._total_bytes_lock):
                 self._total_bytes -= size_to_free
 
-    cdef object _get_chunk(self, size_t size, intptr_t stream_ptr):
+    cdef object _get_chunk(self, size_t size, intptr_t stream_ident):
         # need self._free_lock
         cdef set free_list
         cdef size_t i, index, length
         cdef _Chunk chunk
         cdef size_t bin_index = _bin_index_from_size(size)
-        cdef _Arena a = self._arena(stream_ptr)
+        cdef _Arena a = self._arena(stream_ident)
         index = <size_t>(
             algorithm.lower_bound(a._index.begin(), a._index.end(), bin_index)
             - a._index.begin())
@@ -1297,11 +1297,11 @@ cdef class SingleDeviceMemoryPool:
                 a._flag[i] = 0
                 a._free[i] = None
             if i - index >= _index_compaction_threshold:
-                self._compact_index(stream_ptr, False)
+                self._compact_index(stream_ident, False)
             remaining = chunk.split(size)
             if remaining is not None:
                 a.append_to_free_list(remaining)
-            assert chunk.stream_ptr == stream_ptr
+            assert chunk.stream_ident == stream_ident
             return chunk
         return None
 
