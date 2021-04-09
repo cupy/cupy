@@ -675,6 +675,21 @@ def _set_thread_local_allocator(allocator):
     _thread_local.allocator = allocator
 
 
+cdef inline intptr_t _get_stream_identifier(intptr_t stream_ptr):
+    # When PTDS is enabled, return an ID to uniquely identify the default
+    # stream for each thread. (#5069)
+    if stream_ptr != runtime.streamPerThread:
+        return stream_ptr
+
+    cpdef intptr_t tid
+    try:
+        tid = _thread_local._tid
+    except AttributeError:
+        _thread_local._tid_obj = tid_obj = object()
+        _thread_local._tid = tid = id(tid_obj)
+    return -tid
+
+
 cpdef MemoryPointer alloc(size):
     """Calls the current allocator.
 
@@ -1075,12 +1090,13 @@ cdef class SingleDeviceMemoryPool:
         if size == 0:
             return MemoryPointer(Memory(0), 0)
 
-        stream_ptr = stream_module.get_current_stream_ptr()
+        stream_ident = _get_stream_identifier(
+            stream_module.get_current_stream_ptr())
 
         # find best-fit, or a smallest larger allocation
         gc_mode = _lock_no_gc(self._free_lock)
         try:
-            chunk = self._get_chunk(size, stream_ptr)
+            chunk = self._get_chunk(size, stream_ident)
         finally:
             _unlock_no_gc(self._free_lock, gc_mode)
 
@@ -1088,7 +1104,7 @@ cdef class SingleDeviceMemoryPool:
             mem = self._try_malloc(size)
             chunk = _Chunk.__new__(_Chunk)
             # cudaMalloc if a cache is not found
-            chunk._init(mem, 0, size, stream_ptr)
+            chunk._init(mem, 0, size, stream_ident)
 
         rlock.lock_fastrlock(self._in_use_lock, -1, True)
         try:
@@ -1140,7 +1156,7 @@ cdef class SingleDeviceMemoryPool:
                 for stream_ptr in list(self._arenas.iterkeys()):
                     self._compact_index(stream_ptr, True)
             else:
-                self._compact_index(stream.ptr, True)
+                self._compact_index(_get_stream_identifier(stream.ptr), True)
 
     cpdef free_all_free(self):
         warnings.warn(
