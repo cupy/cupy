@@ -324,6 +324,8 @@ For CUDA kernels that need to access global symbols, such as constant memory, th
 CuPy also supports the Texture Reference API. A handle to the texture reference in a module can be retrieved by name via :meth:`~cupy.RawModule.get_texref`. Then, you need to pass it to :class:`~cupy.cuda.texture.TextureReference`, along with a resource descriptor and texture descriptor, for binding the reference to the array. (The interface of :class:`~cupy.cuda.texture.TextureReference` is meant to mimic that of :class:`~cupy.cuda.texture.TextureObject` to help users make transition to the latter, since as of CUDA Toolkit 10.1 the former is marked as deprecated.)
 
 
+.. _kernel_fusion:
+
 Kernel fusion
 --------------------
 
@@ -370,3 +372,64 @@ You can specify the kernel name by using the ``kernel_name`` keyword argument as
 
 .. note::
    Currently, :func:`cupy.fuse` can fuse only simple elementwise and reduction operations.  Most other routines (e.g. :func:`cupy.matmul`, :func:`cupy.reshape`) are not supported.
+
+.. _jit_kernel_definition:
+
+JIT kernel definition
+---------------------
+
+The :class:`cupyx.jit.rawkernel` decorator can create raw CUDA kernels from Python functions.
+
+In this section, a Python function wrapped with the decorator is called a *target function*.
+
+A target function consists of elementary scalar operations, and users have to manage how to parallelize them. CuPy's array operations which automatically parallelize operations (e.g., :func:`~cupy.add`, :func:`~cupy.sum`) are not supported. If a custom kernel based on such array functions is desired, please refer to the :ref:`kernel_fusion` section.
+
+Basic Usage
+^^^^^^^^^^^
+
+Here is a short example for how to write a :class:`cupyx.jit.rawkernel` to copy the values from ``x`` to ``y`` using a grid-stride loop:
+
+.. doctest::
+
+   >>> from cupyx import jit
+   >>>
+   >>> @jit.rawkernel()
+   ... def elementwise_copy(x, y, size):
+   ...     tid = jit.blockIdx.x * jit.blockDim.x + jit.threadIdx.x
+   ...     ntid = jit.gridDim.x * jit.blockDim.x
+   ...     for i in range(tid, size, ntid):
+   ...         y[i] = x[i]
+
+   >>> size = cupy.uint32(2 ** 22)
+   >>> x = cupy.random.normal(size=(size,), dtype=cupy.float32)
+   >>> y = cupy.empty((size,), dtype=cupy.float32)
+
+   >>> elementwise_copy((128,), (1024,), (x, y, size))  # RawKernel style
+   >>> assert (x == y).all()
+
+   >>> elementwise_copy[128, 1024](x, y, size)  #  Numba style
+   >>> assert (x == y).all()
+
+The above two kinds of styles to launch the kernel are supported, see the documentation of :class:`cupyx.jit._interface._JitRawKernel` for details.
+
+The compilation will be deferred until the first function call. CuPy's JIT compiler infers the types of arguments at the call time, and will cache the compiled kernels for speeding up any subsequent calls.
+
+See :doc:`../reference/kernel` for a full list of API.
+
+Basic Design
+^^^^^^^^^^^^
+
+CuPy's JIT compiler generates CUDA code via Python AST. We decided not to use Python bytecode to analyze the target function to avoid perforamance degradation. The CUDA source code generated from the Python bytecode will not effectively optimized by CUDA compiler, because for-loops and other control statements of the target function are fully transformed to jump instruction when converting the target function to bytecode.
+
+Typing rule
+^^^^^^^^^^^
+
+The types of local variables are inferred at the first assignment in the function. The first assignment must be done at the top-level of the function; in other words, it must *not* be in ``if``/``else`` bodies or ``for``-loops.
+
+Limitations
+^^^^^^^^^^^
+
+CuPy's JIT compiler uses :py:func:`inspect.getsource` to get the source code of the target function, so the compiler does not work in the following situations:
+
+* In Python REPL
+* Lambda expressions as target functions
