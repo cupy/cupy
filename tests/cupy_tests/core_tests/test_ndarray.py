@@ -158,7 +158,7 @@ class TestNdarrayDeepCopy(unittest.TestCase):
 
 _test_copy_multi_device_with_stream_src = r'''
 extern "C" __global__
-void f(long long *x) {
+void wait_and_write(long long *x) {
   clock_t start = clock();
   clock_t now;
   for (;;) {
@@ -198,8 +198,8 @@ class TestNdarrayCopy(unittest.TestCase):
     @testing.multi_gpu(2)
     def test_copy_multi_device_with_stream(self):
         # Kernel that takes long enough then finally writes values.
-        kern = cupy.RawKernel(_test_copy_multi_device_with_stream_src,
-                              'test_copy_multi_device_with_stream')
+        kern = cupy.RawKernel(
+            _test_copy_multi_device_with_stream_src, 'wait_and_write')
 
         # Allocates a memory and launches the kernel on a device with its
         # stream.
