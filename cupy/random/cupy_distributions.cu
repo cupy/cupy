@@ -375,29 +375,22 @@ struct standard_gamma_functor {
 // approach
 // When a pointer is present in the variadic Args, it will be replaced by
 // the value of pointe[thread_id]
-template<bool is_pointer, typename T>
-struct pointer_fnct {};
+template<typename T>
+__device__ typename std::enable_if<std::is_pointer<T>::value, double>::type get_index(T value, int id) {
+    void *ptr = reinterpret_cast<void*>(value[0]);
+    int ndim = value[1];
+    ptrdiff_t offset = 0;
+    for (int dim = ndim; --dim >= 0; ) {
+        offset += value[ndim + dim + 2] * (id % value[dim + 2]);
+        id /= value[dim + 2];
+    }
+    return *reinterpret_cast<double*>(ptr + offset);
+}
 
 template<typename T>
-struct pointer_fnct<true, T> {
-    static __device__ double get(int64_t *value, int id) {
-        void *ptr = reinterpret_cast<void*>(value[0]);
-        int ndim = value[1];
-        ptrdiff_t offset = 0;
-        for (int dim = ndim; --dim >= 0; ) {
-            offset += value[ndim + dim + 2] * (id % value[dim + 2]);
-            id /= value[dim + 2];
-        }
-        return *reinterpret_cast<double*>(ptr + offset);
-    }
-};
-
-template<typename T>
-struct pointer_fnct<false, T> {
-    static __device__ T get(T value, int id) {
-        return value;
-    }
-};
+__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id) {
+    return value;
+}
 
 template<typename F, typename T, typename R, typename... Args>
 __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
@@ -406,7 +399,7 @@ __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args...
     if (id < size) {
         T random(id, state);
         F func;
-        out_ptr[id] = func(&random, (pointer_fnct<std::is_pointer<Args>::value, Args>::get(args, id))...);
+        out_ptr[id] = func(&random, (get_index(args, id))...);
     }
     return;
 }
