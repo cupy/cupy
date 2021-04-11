@@ -3,6 +3,7 @@
 #include <utility>
 #include <iostream>
 #include <type_traits>
+#include <cstdint>
 
 #include <curand_kernel.h>
 
