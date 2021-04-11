@@ -239,6 +239,10 @@ class InvalidOutsMixin:
         with pytest.raises(ValueError):
             self.generate(size=(3, 2), out=out, **kwargs)
 
+        out = cupy.zeros((4, 6), order='F', dtype=cupy.float64)
+        with pytest.raises(ValueError):
+            self.generate(size=(4, 6), out=out, **kwargs)
+
     def invalid_shape(self, **kwargs):
         out = cupy.zeros((3, 3), dtype=cupy.float64)
         with pytest.raises(ValueError):
@@ -353,10 +357,6 @@ class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
 
     target_method = 'standard_gamma'
 
-    def test_invalid_gamma(self):
-        with pytest.raises(ValueError):
-            self.generate(shape=-1.0, size=(3, 2))
-
     def test_invalid_dtype_out(self):
         self.invalid_dtype_out(shape=1.0)
 
@@ -370,6 +370,21 @@ class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
         for dtype in 'bhiqleFD':
             with pytest.raises(TypeError):
                 self.generate(size=(3, 2), shape=1.0, dtype=dtype)
+
+
+@testing.gpu
+@testing.fix_random()
+class TestStandardGammaEmpty(GeneratorTestCase):
+
+    target_method = 'standard_gamma'
+
+    def test_empty_shape(self):
+        y = self.generate(shape=cupy.empty((1, 0)))
+        assert y.shape == (1, 0)
+
+    def test_empty_size(self):
+        y = self.generate(1.0, size=(1, 0))
+        assert y.shape == (1, 0)
 
 
 @testing.with_requires('numpy>=1.17.0')

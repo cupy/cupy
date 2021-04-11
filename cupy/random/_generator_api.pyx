@@ -84,9 +84,9 @@ class Generator:
             raise TypeError(
                 f'Supplied output array has the wrong type. '
                 f'Expected {dtype.name}, got {out.dtype.name}')
-        if not (out.flags.c_contiguous or out.flags.f_contiguous):
+        if not out.flags.c_contiguous:
             raise ValueError(
-                'Supplied output array is not contiguous,'
+                'Supplied output array is not C-contiguous,'
                 ' writable or aligned.')
         if size is not None:
             try:
@@ -396,43 +396,38 @@ class Generator:
         cdef ndarray y
         cdef ndarray shape_arr
 
-        if size is not None and not isinstance(size, tuple):
-            size = (size,)
-
-        y = None
-
         if not isinstance(shape, ndarray):
             if type(shape) in (float, int):
                 shape_a = ndarray(1, numpy.float64)
                 shape_a.fill(shape)
                 shape = shape_a
             else:
-                raise ValueError('shape is required to be a cupy.ndarray')
+                raise ValueError('shape is required to be a cupy.ndarray'
+                                 ' or a scalar')
         else:
             # TODO, ensure the array is c-contiguous
             # Check if size is broadcastable to shape
             # but size determines the output
-            if size is not None:
-                internal._broadcast_shapes([size, shape.shape])
+            if numpy.prod(shape.shape) == 0:
+                return cupy.empty(shape.shape)
             shape = shape.astype('d', copy=False)
 
-        if size is None:
-            size = shape.shape
-        else:
-            # if shape.shape != size
-            # we need to obtain a contiguous
-            # broadcasted view of shape
-            # if shape < size or the corresponding
-            # first slice of shape that matches size
-            t_size = numpy.prod(size)
-            if shape.size > t_size:
-                shape = shape.ravel()[:t_size].reshape(size)
-            elif shape.size < t_size:
-                # We have checked before that the two arrays
-                # are broadcastable
-                # Array must be C-Contiguous
-                shape = cupy.broadcast_to(shape, size)
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        elif size is None:
+            size = shape.shape if out is None else out.shape
 
+        internal._broadcast_shapes([size, shape.shape])
+
+        # first slice of shape that matches size
+        t_size = numpy.prod(size)
+        if t_size == 0:
+            return cupy.empty(size)
+
+        if shape.size > t_size:
+            shape = shape.ravel()[:t_size].reshape(size)
+
+        y = None
         if out is not None:
             self._check_output_array(dtype, size, out)
             if out.dtype.char == 'd' and out.flags.c_contiguous:

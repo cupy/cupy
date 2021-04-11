@@ -2,8 +2,8 @@
 #include <stdexcept>
 #include <utility>
 #include <iostream>
+#include <stdint.h>
 #include <type_traits>
-#include <cstdint>
 
 #include <curand_kernel.h>
 
@@ -378,7 +378,7 @@ struct standard_gamma_functor {
 // the value of pointe[thread_id]
 template<typename T>
 __device__ typename std::enable_if<std::is_pointer<T>::value, double>::type get_index(T value, int id) {
-    void *ptr = reinterpret_cast<void*>(value[0]);
+    intptr_t ptr = reinterpret_cast<intptr_t>(value[0]);
     int ndim = value[1];
     ptrdiff_t offset = 0;
     for (int dim = ndim; --dim >= 0; ) {
