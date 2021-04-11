@@ -126,19 +126,12 @@ class Constant(Expr):
 
 class Range(Expr):
 
-    def __init__(self, start, stop, step, step_is_positive):
+    def __init__(self, start, stop, step, ctype, step_is_positive):
         self.start = start
         self.stop = stop
         self.step = step
-        self.ctype = stop.ctype
+        self.ctype = ctype
         self.step_is_positive = step_is_positive  # True, False or None
-
-        if self.ctype.dtype.kind not in 'iu':
-            raise TypeError('range supports only for integer type.')
-        if self.ctype.dtype != start.ctype.dtype:
-            raise TypeError(f'dtype mismatch: {self.ctype} != {start.ctype}')
-        if self.ctype.dtype != step.ctype.dtype:
-            raise TypeError(f'dtype mismatch: {self.ctype} != {step.ctype}')
 
 
 class BuiltinFunc(Expr):
@@ -174,11 +167,33 @@ class RangeFunc(BuiltinFunc):
         else:
             raise TypeError(
                 f'range expected at most 3 argument, got {len(args)}')
-        step_is_positive = step.obj >= 0 if is_constants([step]) else None
-        start = _to_cuda_object(start, env)
+
         stop = _to_cuda_object(stop, env)
+        start = _to_cuda_object(start, env)
         step = _to_cuda_object(step, env)
-        return Range(start, stop, step, step_is_positive)
+
+        if start.ctype.dtype.kind not in 'iu':
+            raise TypeError('range supports only for integer type.')
+        if stop.ctype.dtype.kind not in 'iu':
+            raise TypeError('range supports only for integer type.')
+        if step.ctype.dtype.kind not in 'iu':
+            raise TypeError('range supports only for integer type.')
+
+        if is_constants([step]):
+            step_is_positive = step.obj >= 0
+        elif step.ctype.dtype.kind == 'u':
+            step_is_positive = True
+        else:
+            step_is_positive = None
+
+        if env.mode == 'numpy':
+            ctype = _types.Scalar(int)
+        elif env.mode == 'cuda':
+            ctype = stop.ctype
+        else:
+            assert False
+
+        return Range(start, stop, step, ctype, step_is_positive)
 
 
 class SyncThreads(BuiltinFunc):
