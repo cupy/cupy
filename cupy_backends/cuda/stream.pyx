@@ -55,6 +55,14 @@ cdef set_current_stream_ptr(intptr_t ptr):
 
     Args:
         ptr (intptr_t): CUDA stream pointer.
+
+    .. warning::
+
+        This method is intended to be called from `cupy.cuda.stream` module.
+        Do not call this method from somewhere else; this method only changes
+        the default stream for `cupy_backends.*`, so the stream used will be
+        inconsistent with the default one for `cupy.*`.
+
     """
     tls = _ThreadLocal.get()
     tls.set_current_stream_ptr(ptr)
