@@ -102,6 +102,9 @@ function Main {
     if ($use_cache) {
         DownloadCache
     }
+    if ($upload_cache) {
+        $Env:CUPY_TEST_FULL_COMBINATION = "1"
+    }
 
     pushd tests
     echo "CuPy Configuration:"
