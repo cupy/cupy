@@ -18,7 +18,7 @@ def reduction(x, y, size):
 
     if tid == cupy.uint32(0):
         value = cupy.float32(0)
-        for i in range(cupy.uint32(0), ntid, cupy.uint32(1)):  # TODO: Fix
+        for i in range(ntid):
             value += smem[i]
         y[0] = value
 
