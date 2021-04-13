@@ -406,7 +406,6 @@ class Generator:
                 raise ValueError('shape is required to be a cupy.ndarray'
                                  ' or a scalar')
         else:
-            # TODO, ensure the array is c-contiguous
             # Check if size is broadcastable to shape
             # but size determines the output
             shape = shape.astype('d', copy=False)
