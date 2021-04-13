@@ -148,9 +148,9 @@ cdef class _Ops:
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
                    default_casting=*, loop_prep=*, out_ops=*)
 
-cpdef tuple _get_arginfos(list args)
+cdef tuple _get_arginfos(list args)
 
-cpdef str _get_kernel_params(tuple params, tuple arginfos)
+cdef str _get_kernel_params(tuple params, tuple arginfos)
 
 cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
 
