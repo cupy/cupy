@@ -413,6 +413,12 @@ cdef class MemoryPointer:
             src (cupy.cuda.MemoryPointer): Source memory pointer.
             size (int): Size of the sequence in bytes.
 
+        .. warning::
+
+            This function always uses the legacy default stream and does not
+            honor the current stream. Use `copy_from_device_async` instead
+            if you are using streams in your code, or have PTDS enabled.
+
         """
         if size > 0:
             MemoryPointer._set_peer_access(src.device_id, self.device_id)
@@ -445,6 +451,12 @@ cdef class MemoryPointer:
         Args:
             mem (int or ctypes.c_void_p): Source memory pointer.
             size (int): Size of the sequence in bytes.
+
+        .. warning::
+
+            This function always uses the legacy default stream and does not
+            honor the current stream. Use `copy_from_host_async` instead
+            if you are using streams in your code, or have PTDS enabled.
 
         """
         if size > 0:
@@ -484,6 +496,12 @@ cdef class MemoryPointer:
                 Source memory pointer.
             size (int): Size of the sequence in bytes.
 
+        .. warning::
+
+            This function always uses the legacy default stream and does not
+            honor the current stream. Use `copy_from_async` instead
+            if you are using streams in your code, or have PTDS enabled.
+
         """
         if isinstance(mem, MemoryPointer):
             self.copy_from_device(mem, size)
@@ -517,6 +535,12 @@ cdef class MemoryPointer:
             mem (int or ctypes.c_void_p): Target memory pointer.
             size (int): Size of the sequence in bytes.
 
+        .. warning::
+
+            This function always uses the legacy default stream and does not
+            honor the current stream. Use `copy_to_host_async` instead
+            if you are using streams in your code, or have PTDS enabled.
+
         """
         if size > 0:
             ptr = mem if isinstance(mem, int) else mem.value
@@ -549,6 +573,12 @@ cdef class MemoryPointer:
         Args:
             value (int): Value to fill.
             size (int): Size of the sequence in bytes.
+
+        .. warning::
+
+            This function always uses the legacy default stream and does not
+            honor the current stream. Use `memset_async` instead
+            if you are using streams in your code, or have PTDS enabled.
 
         """
         if size > 0:
