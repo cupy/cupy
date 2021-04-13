@@ -239,10 +239,6 @@ class InvalidOutsMixin:
         with pytest.raises(ValueError):
             self.generate(size=(3, 2), out=out, **kwargs)
 
-        out = cupy.zeros((4, 6), order='F', dtype=cupy.float64)
-        with pytest.raises(ValueError):
-            self.generate(size=(4, 6), out=out, **kwargs)
-
     def invalid_shape(self, **kwargs):
         out = cupy.zeros((3, 3), dtype=cupy.float64)
         with pytest.raises(ValueError):
@@ -363,6 +359,10 @@ class TestStandardGammaInvalid(InvalidOutsMixin, GeneratorTestCase):
     def test_invalid_contiguity(self):
         self.invalid_contiguity(shape=1.0)
 
+        out = cupy.zeros((4, 6), order='F', dtype=cupy.float64)
+        with pytest.raises(ValueError):
+            self.generate(size=(4, 6), out=out, shape=1.0)
+
     def test_invalid_shape(self):
         self.invalid_shape(shape=1.0)
 
@@ -384,6 +384,12 @@ class TestStandardGammaEmpty(GeneratorTestCase):
 
     def test_empty_size(self):
         y = self.generate(1.0, size=(1, 0))
+        assert y.shape == (1, 0)
+
+    def test_empty_out(self):
+        out = cupy.empty((1, 0))
+        y = self.generate(cupy.empty((1, 0)), out=out)
+        assert y is out
         assert y.shape == (1, 0)
 
 

@@ -76,7 +76,7 @@ class Generator:
     def __init__(self, bit_generator):
         self.bit_generator = bit_generator
 
-    def _check_output_array(self, dtype, size, out):
+    def _check_output_array(self, dtype, size, out, check_only_c_cont=False):
         # Checks borrowed from NumPy
         # https://github.com/numpy/numpy/blob/cb557b79fa0ce467c881830f8e8e042c484ccfaa/numpy/random/_common.pyx#L235-L251
         dtype = numpy.dtype(dtype)
@@ -85,9 +85,10 @@ class Generator:
                 f'Supplied output array has the wrong type. '
                 f'Expected {dtype.name}, got {out.dtype.name}')
         if not out.flags.c_contiguous:
-            raise ValueError(
-                'Supplied output array is not C-contiguous,'
-                ' writable or aligned.')
+            if check_only_c_cont or not out.flags.f_contiguous:
+                raise ValueError(
+                    'Supplied output array is not contiguous,'
+                    ' writable or aligned.')
         if size is not None:
             try:
                 tup_size = tuple(size)
@@ -408,8 +409,6 @@ class Generator:
             # TODO, ensure the array is c-contiguous
             # Check if size is broadcastable to shape
             # but size determines the output
-            if numpy.prod(shape.shape) == 0:
-                return cupy.empty(shape.shape)
             shape = shape.astype('d', copy=False)
 
         if size is not None and not isinstance(size, tuple):
@@ -421,15 +420,13 @@ class Generator:
 
         # first slice of shape that matches size
         t_size = numpy.prod(size)
-        if t_size == 0:
-            return cupy.empty(size)
 
         if shape.size > t_size:
             shape = shape.ravel()[:t_size].reshape(size)
 
         y = None
         if out is not None:
-            self._check_output_array(dtype, size, out)
+            self._check_output_array(dtype, size, out, True)
             if out.dtype.char == 'd' and out.flags.c_contiguous:
                 y = out
 
@@ -438,9 +435,10 @@ class Generator:
 
         if numpy.dtype(dtype).char not in ('f', 'd'):
             raise TypeError(
-                f'Unsupported dtype {y.dtype.name} for standard_normal')
+                f'Unsupported dtype {y.dtype.name} for standard_gamma')
 
-        y = ndarray(size if size is not None else (), numpy.float64)
+        if numpy.prod(size) == 0:
+            return y
 
         shape = cupy.broadcast_to(shape, y.shape)
         shape_arr = _array_data(shape)
