@@ -90,6 +90,15 @@ cdef class CIntptr(CPointer):
         self.ptr = <void*>&self.val
 
 
+cdef class CNumpyArray(CPointer):
+    cdef:
+        object val
+
+    def __init__(self, v):
+        self.val = v
+        self.ptr = <void*><size_t>v.__array_interface__['data'][0]
+
+
 cdef set _pointer_numpy_types = {numpy.dtype(i).type
                                  for i in '?bhilqBHILQefdFD'}
 
@@ -109,6 +118,20 @@ cdef inline CPointer _pointer(x):
         return x
     if isinstance(x, (TextureObject, SurfaceObject)):
         return CUIntMax(x.ptr)
+    if isinstance(x, numpy.ndarray):
+        # All numpy.ndarray work with CNumpyArray to pass a kernel argument by
+        # value. Here we allow only arrays of size one so that users do not
+        # mistakenly send numpy.ndarrays instead of cupy.ndarrays to kernels.
+        # This may happen if they forget to convert numpy arrays to cupy arrays
+        # prior to kernel call and would pass silently without this check.
+        if (x.size == 1):
+            return CNumpyArray(x)
+        else:
+            msg = ('You are trying to pass a numpy.ndarray of shape {} as a '
+                   'kernel parameter. Only numpy.ndarrays of size one can be '
+                   'passed by value. If you meant to pass a pointer to __glob'
+                   'al__ memory, you need to pass a cupy.ndarray instead.')
+            raise TypeError(msg.format(x.shape))
 
     if type(x) not in _pointer_numpy_types:
         if isinstance(x, int):

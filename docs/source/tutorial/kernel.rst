@@ -264,14 +264,120 @@ Accessing texture (surface) memory in :class:`~cupy.RawKernel` is supported via 
     You need to pass both input arrays and output arrays as arguments.
 
 .. note::
-    No validation will be performed by CuPy for arguments passed to the kernel, including types and number of arguments.
-    Especially note that when passing :class:`~cupy.ndarray`, its ``dtype`` should match with the type of the argument declared in the method signature of the CUDA source code (unless you are casting arrays intentionally).
-    For example, ``cupy.float32`` and ``cupy.uint64`` arrays must be passed to the argument typed as ``float*`` and ``unsigned long long*``.
-    For Python primitive types, ``int``, ``float``, ``complex`` and ``bool`` map to ``long long``, ``double``, ``cuDoubleComplex`` and ``bool``, respectively.
-
-.. note::
     When using ``printf()`` in your CUDA kernel, you may need to synchronize the stream to see the output.
     You can use ``cupy.cuda.Stream.null.synchronize()`` if you are using the default stream.
+
+Kernel arguments
+----------------
+Python primitive types and NumPy scalars are passed to the kernel by value.
+Array arguments (pointer arguments) have to be passed as CuPy ndarrays.
+No validation is performed by CuPy for arguments passed to the kernel, including types and number of arguments.
+
+Especially note that when passing a CuPy :class:`~cupy.ndarray`, its ``dtype`` should match with the type of the argument declared in the function signature of the CUDA source code (unless you are casting arrays intentionally). 
+
+As an example, ``cupy.float32`` and ``cupy.uint64`` arrays must be passed to the argument typed as ``float*`` and ``unsigned long long*``, respectively. CuPy does not directly support arrays of non-primitive types such as ``float3``, but nothing prevents you from casting a ``float*`` or ``void*`` to a ``float3*`` in a kernel.
+
+Python primitive types, ``int``, ``float``, ``complex`` and ``bool`` map to ``long long``, ``double``, ``cuDoubleComplex`` and ``bool``, respectively.
+
+NumPy scalars (``numpy.generic``) and NumPy arrays (``numpy.ndarray``) **of size one** 
+are passed to the kernel by value.
+This means that you can pass by value any base NumPy types such as ``numpy.int8`` or ``numpy.float64``, provided the kernel arguments match in size. You can refer to this table to match CuPy/NumPy dtype and CUDA types:
+
++-----------------+-----------------------------------------------+------------------+
+| CuPy/NumPy type | Corresponding kernel types                    | itemsize (bytes) |
++=================+===============================================+==================+
+| bool            | bool                                          | 1                |
++-----------------+-----------------------------------------------+------------------+
+| int8            | char, signed char                             | 1                |
++-----------------+-----------------------------------------------+------------------+
+| int16           | short, signed short                           | 2                |
++-----------------+-----------------------------------------------+------------------+
+| int32           | int, signed int                               | 4                |
++-----------------+-----------------------------------------------+------------------+
+| int64           | long long, signed long long                   | 8                |
++-----------------+-----------------------------------------------+------------------+
+| uint8           | unsigned char                                 | 1                |
++-----------------+-----------------------------------------------+------------------+
+| uint16          | unsigned short                                | 2                |
++-----------------+-----------------------------------------------+------------------+
+| uint32          | unsigned int                                  | 4                |
++-----------------+-----------------------------------------------+------------------+
+| uint64          | unsigned long long                            | 8                |
++-----------------+-----------------------------------------------+------------------+
+| float16         | half                                          | 2                |
++-----------------+-----------------------------------------------+------------------+
+| float32         | float                                         | 4                |
++-----------------+-----------------------------------------------+------------------+
+| float64         | double                                        | 8                |
++-----------------+-----------------------------------------------+------------------+
+| complex64       | float2, cuFloatComplex, complex<float>        | 8                |
++-----------------+-----------------------------------------------+------------------+
+| complex128      | double2, cuDoubleComplex, complex<double>     | 16               |
++-----------------+-----------------------------------------------+------------------+
+
+The CUDA standard guarantees that the size of fundamental types on the host and device always match.
+The itemsize of ``size_t``, ``ptrdiff_t``, ``intptr_t``, ``uintptr_t``, 
+``long``, ``signed long`` and ``unsigned long`` are however platform dependent. 
+To pass any CUDA vector builtins such as ``float3`` or any other user defined structure 
+as kernel arguments (provided it matches the device-side kernel parameter type), see section :ref:`custom_user_structs` below.
+
+.. _custom_user_structs:
+
+Custom user types
+-----------------
+
+Is is possible to use custom types (composite types such as structures and structures of structures) 
+as kernel arguments by defining a custom NumPy dtype.
+When doing this, it is your responsability to match host and device structure memory layout.
+The CUDA standard guarantees that the size of fundamental types on the host and device always match.
+It may however impose device alignment requirements on composite types.
+This means that for composite types, the struct member offsets may be different from what you might expect.
+
+When a kernel argument is passed by value, the CUDA driver will copy exactly ``sizeof(param_type)`` bytes starting from the beginning of the NumPy object data pointer, where ``param_type`` is the parameter type in your kernel. 
+You have to match ``param_type``'s memory layout (ex: size, alignment and struct padding/packing) 
+by defining a corresponding `NumPy dtype <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_.
+
+For builtin CUDA vector types such as ``int2`` and ``double4`` and other packed structures with 
+named members you can directly define such NumPy dtypes as the following:
+
+.. doctest::
+
+    >>> import numpy as np
+    >>> names = ['x', 'y', 'z']
+    >>> types = [np.float32]*3
+    >>> float3 = np.dtype({'names': names, 'formats': types})
+    >>> arg = np.random.rand(3).astype(np.float32).view(float3)
+    >>> print(arg)  # doctest: +SKIP
+    [(0.9940819, 0.62873816, 0.8953669)]
+    >>> arg['x'] = 42.0
+    >>> print(arg)  # doctest: +SKIP
+    [(42., 0.62873816, 0.8953669)]
+
+Here ``arg`` can be used directly as a kernel argument.
+When there is no need to name fields you may prefer this syntax to define packed structures such as 
+vectors or matrices:
+
+.. doctest::
+
+    >>> import numpy as np
+    >>> float5x5 = np.dtype({'names': ['dummy'], 'formats': [(np.float32,(5,5))]}) 
+    >>> arg = np.random.rand(25).astype(np.float32).view(float5x5)
+    >>> print(arg.itemsize)
+    100
+
+Here ``arg`` represents a 100-byte scalar (i.e. a NumPy array of size 1)
+that can be passed by value to any kernel.
+Kernel parameters are passed by value in a dedicated 4kB memory bank which has its own cache with broadcast.
+Upper bound for total kernel parameters size is thus 4kB
+(see this `link <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#function-parameters>`_). 
+It may be important to note that this dedicated memory bank is not shared with the device ``__constant__`` memory space.
+
+For now, CuPy offers no helper routines to create user defined composite types. 
+Such composite types can however be built recursively using NumPy dtype `offsets` and `itemsize` capabilities,
+see ``cupy/examples/user_structs`` for examples of advanced usage. 
+
+.. warning::
+    You cannot directly pass static arrays as kernel arguments with the ``type arg[N]`` syntax where N is a compile time constant. The signature of ``__global__ void kernel(float arg[5])`` is seen as ``__global__ void kernel(float* arg)`` by the compiler. If you want to pass five floats to the kernel by value you need to define a custom structure ``struct float5 { float val[5]; };`` and modify the kernel signature to ``__global__ void kernel(float5 arg)``.
 
 
 Raw modules
