@@ -419,18 +419,13 @@ class Generator:
         elif size is None:
             size = shape.shape if out is None else out.shape
 
-        internal._broadcast_shapes([size, shape.shape])
-
         # first slice of shape that matches size
         t_size = numpy.prod(size)
-
-        if shape.size > t_size:
-            shape = shape.ravel()[:t_size].reshape(size)
 
         y = None
         if out is not None:
             self._check_output_array(dtype, size, out, True)
-            if out.dtype.char == 'd' and out.flags.c_contiguous:
+            if out.dtype.char == 'd':
                 y = out
 
         if y is None:
@@ -439,9 +434,6 @@ class Generator:
         if numpy.dtype(dtype).char not in ('f', 'd'):
             raise TypeError(
                 f'Unsupported dtype {y.dtype.name} for standard_gamma')
-
-        if numpy.prod(size) == 0:
-            return y
 
         shape = cupy.broadcast_to(shape, y.shape)
         shape_arr = _array_data(shape)

@@ -118,6 +118,8 @@ __device__ double rk_standard_gamma(rk_state* state, double shape) {
     double U, V, X, Y;
     if (shape == 1.0) {
         return rk_standard_exponential(state);
+    } else if (shape < 0.0) {
+        return 0.0;
     } else if (shape < 1.0) {
         for (;;) {
             U = state->rk_double();
@@ -373,9 +375,9 @@ struct standard_gamma_functor {
 };
 
 // The following templates are used to unwrap arrays into an elementwise
-// approach
+// approach, the array is `_array_data` in `cupy/random/_generator_api.pyx`.
 // When a pointer is present in the variadic Args, it will be replaced by
-// the value of pointe[thread_id]
+// the value of pointer[thread_id]
 template<typename T>
 __device__ typename std::enable_if<std::is_pointer<T>::value, double>::type get_index(T value, int id) {
     intptr_t ptr = reinterpret_cast<intptr_t>(value[0]);
