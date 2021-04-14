@@ -376,7 +376,11 @@ class Generator:
             - :func:`cupy.random.gamma` for full documentation
             - :meth:`numpy.random.Generator.gamma`
         """
-        return self.standard_gamma(shape, size) * scale
+        if size is None:
+            size = cupy.broadcast(shape, scale).shape
+        y = self.standard_gamma(shape, size)
+        y *= scale
+        return y
 
     def standard_gamma(self, shape, size=None, dtype=numpy.float64, out=None):
         """Returns an array of samples drawn from a standard gamma distribution.
