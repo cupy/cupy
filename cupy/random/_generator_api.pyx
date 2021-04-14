@@ -419,9 +419,6 @@ class Generator:
         elif size is None:
             size = shape.shape if out is None else out.shape
 
-        # first slice of shape that matches size
-        t_size = numpy.prod(size)
-
         y = None
         if out is not None:
             self._check_output_array(dtype, size, out, True)
