@@ -237,18 +237,11 @@ class TestDirichlet(RandomGeneratorTestCase):
 )
 @testing.gpu
 @testing.fix_random()
-class TestExponential(RandomGeneratorTestCase):
-
-    target_method = 'exponential'
-
-    def test_exponential(self):
-        self.generate(scale=self.scale, size=(3, 2))
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_exponential_ks(self, dtype):
-        self.check_ks(0.05)(
-            self.scale, size=2000, dtype=dtype)
+class TestExponential(
+    common_distributions.Exponential,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(
@@ -602,14 +595,11 @@ class TestPareto(RandomGeneratorTestCase):
 )
 @testing.gpu
 @testing.fix_random()
-class TestPoisson(RandomGeneratorTestCase):
-
-    target_method = 'poisson'
-
-    def test_poisson(self):
-        self.generate(lam=self.lam, size=(3, 2))
-
-    # TODO(kataoka): add distribution test
+class TestPoisson(
+    common_distributions.Poisson,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(

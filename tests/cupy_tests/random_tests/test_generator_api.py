@@ -7,6 +7,7 @@ import numpy
 import cupy
 from cupy import random
 from cupy import testing
+from cupy.testing import _condition
 
 from cupy_tests.random_tests import common_distributions
 
@@ -36,17 +37,11 @@ class GeneratorTestCase(common_distributions.BaseGeneratorTestCase):
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
-class TestExponential(GeneratorTestCase):
-
-    target_method = 'exponential'
-
-    def test_exponential(self):
-        self.generate(scale=self.scale, size=(3, 2))
-
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_exponential_ks(self):
-        self.check_ks(0.05)(
-            self.scale, size=2000)
+class TestExponential(
+    common_distributions.Exponential,
+    GeneratorTestCase
+):
+    pass
 
 
 class InvalidOutsMixin:
@@ -84,17 +79,11 @@ class InvalidOutsMixin:
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
-class TestPoisson(GeneratorTestCase):
-
-    target_method = 'poisson'
-
-    def test_poisson(self):
-        self.generate(lam=self.lam, size=(3, 2))
-
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_poisson_ks(self):
-        self.check_ks(0.05)(
-            lam=self.lam, size=2000)
+class TestPoisson(
+    common_distributions.Poisson,
+    GeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(
@@ -213,14 +202,11 @@ class TestStandardGammaEmpty(GeneratorTestCase):
     {'size': ()},
 )
 @testing.fix_random()
-class TestStandardNormal(GeneratorTestCase):
-
-    target_method = 'standard_normal'
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_normal_ks(self, dtype):
-        self.check_ks(0.05)(size=self.size, dtype=dtype)
+class TestStandardNormal(
+    common_distributions.StandardNormal,
+    GeneratorTestCase
+):
+    pass
 
 
 @testing.with_requires('numpy>=1.17.0')

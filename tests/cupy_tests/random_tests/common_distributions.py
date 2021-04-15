@@ -173,6 +173,42 @@ class StandardGamma:
             shape=self.shape, size=2000, dtype=dtype)
 
 
+class StandardNormal:
+
+    target_method = 'standard_normal'
+
+    @testing.for_dtypes('fd')
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_normal_ks(self, dtype):
+        self.check_ks(0.05)(size=self.size, dtype=dtype)
+
+
+class Exponential:
+
+    target_method = 'exponential'
+
+    def test_exponential(self):
+        self.generate(scale=self.scale, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_exponential_ks(self):
+        self.check_ks(0.05)(
+            self.scale, size=2000)
+
+
+class Poisson:
+
+    target_method = 'poisson'
+
+    def test_poisson(self):
+        self.generate(lam=self.lam, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_poisson_ks(self):
+        self.check_ks(0.05)(
+            lam=self.lam, size=2000)
+
+
 class Gamma:
 
     target_method = 'gamma'
