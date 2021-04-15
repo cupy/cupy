@@ -25,6 +25,17 @@ class RandomDistributionsTestCase(unittest.TestCase):
         assert cp_out.shape == np_out.shape
         assert cp_out.dtype == np_out.dtype
 
+    def check_generator_distribution(self, dist_name, params, dtype):
+        cp_params = {k: cupy.asarray(params[k]) for k in params}
+        np_gen = numpy.random.default_rng()
+        cp_gen = cupy.random.default_rng()
+        np_out = numpy.asarray(
+            getattr(np_gen, dist_name)(size=self.shape, **params))
+        cp_out = getattr(cp_gen, dist_name)(
+            size=self.shape, **cp_params)
+        assert cp_out.shape == np_out.shape
+        assert cp_out.dtype == np_out.dtype
+
 
 @testing.parameterize(*testing.product({
     'shape': [(4, 3, 2), (3, 2)],
@@ -161,18 +172,28 @@ class TestDistributionsF(unittest.TestCase):
 @testing.gpu
 class TestDistributionsGamma(unittest.TestCase):
 
-    def check_distribution(self, dist_func, shape_dtype, scale_dtype, dtype):
+    def check_distribution(self, dist_func, shape_dtype, scale_dtype,
+                           dtype=None):
         shape = cupy.ones(self.shape_shape, dtype=shape_dtype)
         scale = cupy.ones(self.scale_shape, dtype=scale_dtype)
-        out = dist_func(shape, scale, self.shape, dtype)
+        if dtype is None:
+            out = dist_func(shape, scale, self.shape)
+        else:
+            out = dist_func(shape, scale, self.shape, dtype)
         assert self.shape == out.shape
         assert out.dtype == dtype
 
     @cupy.testing.for_dtypes_combination(
         _float_dtypes, names=['shape_dtype', 'scale_dtype'])
-    def test_gamma(self, shape_dtype, scale_dtype):
+    def test_gamma_legacy(self, shape_dtype, scale_dtype):
         self.check_distribution(_distributions.gamma,
                                 shape_dtype, scale_dtype, self.dtype)
+
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['shape_dtype', 'scale_dtype'])
+    def test_gamma_generator(self, shape_dtype, scale_dtype):
+        self.check_distribution(cupy.random.default_rng().gamma,
+                                shape_dtype, scale_dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -606,10 +627,18 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('shape_dtype')
-    def test_standard_gamma(self, shape_dtype, dtype):
+    def test_standard_gamma_legacy(self, shape_dtype, dtype):
         shape = numpy.ones(self.shape_shape, dtype=shape_dtype)
         self.check_distribution('standard_gamma',
                                 {'shape': shape}, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('shape_dtype')
+    def test_standard_gamma_generator(self, shape_dtype, dtype):
+        shape = numpy.ones(self.shape_shape, dtype=shape_dtype)
+        self.check_generator_distribution('standard_gamma',
+                                          {'shape': shape},
+                                          dtype)
 
 
 @testing.parameterize(*testing.product({
