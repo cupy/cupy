@@ -2,6 +2,8 @@
 #include <stdexcept>
 #include <utility>
 #include <iostream>
+#include <stdint.h>
+#include <type_traits>
 
 #include <curand_kernel.h>
 
@@ -116,6 +118,8 @@ __device__ double rk_standard_gamma(rk_state* state, double shape) {
     double U, V, X, Y;
     if (shape == 1.0) {
         return rk_standard_exponential(state);
+    } else if (shape < 0.0) {
+        return 0.0;
     } else if (shape < 1.0) {
         for (;;) {
             U = state->rk_double();
@@ -362,6 +366,35 @@ struct standard_normal_float_functor {
     }
 };
 
+// There are several errors when trying to do this a full template
+struct standard_gamma_functor {
+    template<typename... Args>
+    __device__ double operator () (Args&&... args) {
+        return rk_standard_gamma(args...);
+    }
+};
+
+// The following templates are used to unwrap arrays into an elementwise
+// approach, the array is `_array_data` in `cupy/random/_generator_api.pyx`.
+// When a pointer is present in the variadic Args, it will be replaced by
+// the value of pointer[thread_id]
+template<typename T>
+__device__ typename std::enable_if<std::is_pointer<T>::value, double>::type get_index(T value, int id) {
+    intptr_t ptr = reinterpret_cast<intptr_t>(value[0]);
+    int ndim = value[1];
+    ptrdiff_t offset = 0;
+    for (int dim = ndim; --dim >= 0; ) {
+        offset += value[ndim + dim + 2] * (id % value[dim + 2]);
+        id /= value[dim + 2];
+    }
+    return *reinterpret_cast<double*>(ptr + offset);
+}
+
+template<typename T>
+__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id) {
+    return value;
+}
+
 template<typename F, typename T, typename R, typename... Args>
 __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -369,7 +402,7 @@ __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args...
     if (id < size) {
         T random(id, state);
         F func;
-        out_ptr[id] = func(&random, std::forward<Args>(args)...);
+        out_ptr[id] = func(&random, (get_index(args, id))...);
     }
     return;
 }
@@ -433,4 +466,9 @@ void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, 
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
     kernel_launcher<standard_normal_float_functor, float> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size);
+}
+
+void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
+    kernel_launcher<standard_gamma_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(shape));
 }
