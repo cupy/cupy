@@ -238,6 +238,18 @@ class TestSvds:
             a = sp.linalg.aslinearoperator(a)
         return self._test_svds(a, xp, sp)
 
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_dense_low_rank(self, dtype, xp, sp):
+        m, n = self.shape
+        rank = 5
+        # density is ignored.
+        a = testing.shaped_random((m, rank), xp, dtype=dtype, scale=1).dot(
+            testing.shaped_random((rank, n), xp, dtype=dtype, scale=1))
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        return self._test_svds(a, xp, sp)
+
     def test_invalid(self):
         if self.use_linear_operator is True:
             raise unittest.SkipTest
