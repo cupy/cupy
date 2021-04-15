@@ -276,8 +276,9 @@ class Generator:
             cupy.ndarray: Samples drawn from the standard exponential
                 distribution.
 
-        .. seealso:: :meth:`numpy.random.standard_exponential
-                     <numpy.random.mtrand.RandomState.standard_exponential>`
+        .. seealso::
+            :meth:`numpy.random.Generator.standard_exponential
+            <numpy.random.generator.Generator.standard_exponential>`
         """
         cdef ndarray y
 
