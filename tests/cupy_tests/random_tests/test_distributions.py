@@ -526,16 +526,25 @@ class TestDistributionsPareto(unittest.TestCase):
 @testing.gpu
 class TestDistributionsPoisson(unittest.TestCase):
 
-    def check_distribution(self, dist_func, lam_dtype, dtype):
+    def check_distribution(self, dist_func, lam_dtype, dtype=None):
         lam = cupy.full(self.lam_shape, 5, dtype=lam_dtype)
-        out = dist_func(lam, self.shape, dtype)
+        if dtype is not None:
+            out = dist_func(lam, self.shape, dtype)
+            assert out.dtype == dtype
+        else:
+            out = dist_func(lam, self.shape)
         assert self.shape == out.shape
-        assert out.dtype == dtype
 
     @cupy.testing.for_int_dtypes('dtype')
     @cupy.testing.for_float_dtypes('lam_dtype')
-    def test_poisson(self, lam_dtype, dtype):
+    def test_poisson_legacy(self, lam_dtype, dtype):
         self.check_distribution(_distributions.poisson, lam_dtype, dtype)
+
+    @cupy.testing.for_int_dtypes('dtype')
+    @cupy.testing.for_float_dtypes('lam_dtype')
+    def test_poisson_generator(self, lam_dtype, dtype):
+        self.check_distribution(cupy.random.default_rng().poisson,
+                                lam_dtype)
 
 
 @testing.parameterize(*testing.product({

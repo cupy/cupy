@@ -453,9 +453,9 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
     generator_dispatcher(generator, launcher, state, out, size);
 }
 
-void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double lam) {
+void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
     kernel_launcher<poisson_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, lam);
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(lam));
 }
 
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
