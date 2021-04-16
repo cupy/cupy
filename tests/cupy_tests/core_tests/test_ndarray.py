@@ -204,7 +204,7 @@ class TestNdarrayCopy(unittest.TestCase):
         # Allocates a memory and launches the kernel on a device with its
         # stream.
         with cuda.Device(0):
-            with cuda.Stream() as s1:  # Keep the stream alive for HIP
+            with cuda.Stream() as s1:  # NOQA: Keep the stream alive for HIP
                 a = cupy.zeros((2,), dtype=numpy.uint64)
                 kern((1,), (1,), a)
 
