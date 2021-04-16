@@ -6,6 +6,7 @@ from libc.stdint cimport intptr_t, uint64_t, uint32_t, int32_t, int64_t
 import cupy
 from cupy.cuda cimport stream
 from cupy._core.core cimport ndarray
+from cupy._core cimport internal
 
 
 _UINT32_MAX = 0xffffffff
@@ -42,6 +43,13 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void standard_normal_float(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
+    void standard_gamma(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, intptr_t shape)
+
+
+cdef ndarray _array_data(ndarray x):
+    return cupy.array((x.data.ptr, x.ndim) + x.shape + x.strides)
 
 
 class Generator:
@@ -68,7 +76,7 @@ class Generator:
     def __init__(self, bit_generator):
         self.bit_generator = bit_generator
 
-    def _check_output_array(self, dtype, size, out):
+    def _check_output_array(self, dtype, size, out, check_only_c_cont=False):
         # Checks borrowed from NumPy
         # https://github.com/numpy/numpy/blob/cb557b79fa0ce467c881830f8e8e042c484ccfaa/numpy/random/_common.pyx#L235-L251
         dtype = numpy.dtype(dtype)
@@ -76,10 +84,11 @@ class Generator:
             raise TypeError(
                 f'Supplied output array has the wrong type. '
                 f'Expected {dtype.name}, got {out.dtype.name}')
-        if not (out.flags.c_contiguous or out.flags.f_contiguous):
-            raise ValueError(
-                'Supplied output array is not contiguous,'
-                ' writable or aligned.')
+        if not out.flags.c_contiguous:
+            if check_only_c_cont or not out.flags.f_contiguous:
+                raise ValueError(
+                    'Supplied output array is not contiguous,'
+                    ' writable or aligned.')
         if size is not None:
             try:
                 tup_size = tuple(size)
@@ -350,6 +359,91 @@ class Generator:
             _launch_dist(self.bit_generator, standard_normal_float, y, ())
 
         return y
+
+    def gamma(self, shape, scale=1.0, size=None):
+        """Returns an array of samples drawn from a gamma distribution.
+
+        Args:
+            shape (float or array_like of float): The shape of the
+                gamma distribution.  Must be non-negative.
+            scale (float or array_like of float): The scale of the
+                gamma distribution.  Must be non-negative.
+                Default equals to 1
+            size (int or tuple of ints): The shape of the array.
+                If ``None``, a zero-dimensional array is generated.
+
+        .. seealso::
+            - :func:`cupy.random.gamma` for full documentation
+            - :meth:`numpy.random.Generator.gamma`
+        """
+        if size is None:
+            size = cupy.broadcast(shape, scale).shape
+        y = self.standard_gamma(shape, size)
+        y *= scale
+        return y
+
+    def standard_gamma(self, shape, size=None, dtype=numpy.float64, out=None):
+        """Returns an array of samples drawn from a standard gamma distribution.
+
+        Args:
+            shape (float or array_like of float): The shape of the
+                gamma distribution.  Must be non-negative.
+            size (int or tuple of ints): The shape of the array.
+                If ``None``, a zero-dimensional array is generated.
+            dtype: Data type specifier.
+            out (cupy.ndarray, optional): If specified, values will be written
+                to this array
+
+        .. seealso::
+            - :func:`cupy.random.standard_gamma` for full documentation
+            - :meth:`numpy.random.Generator.standard_gamma`
+        """
+        cdef ndarray y
+        cdef ndarray shape_arr
+
+        if not isinstance(shape, ndarray):
+            if type(shape) in (float, int):
+                shape_a = ndarray(1, numpy.float64)
+                shape_a.fill(shape)
+                shape = shape_a
+            else:
+                raise ValueError('shape is required to be a cupy.ndarray'
+                                 ' or a scalar')
+        else:
+            # Check if size is broadcastable to shape
+            # but size determines the output
+            shape = shape.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        elif size is None:
+            size = shape.shape if out is None else out.shape
+
+        y = None
+        if out is not None:
+            self._check_output_array(dtype, size, out, True)
+            if out.dtype.char == 'd':
+                y = out
+
+        if y is None:
+            y = ndarray(size if size is not None else (), numpy.float64)
+
+        if numpy.dtype(dtype).char not in ('f', 'd'):
+            raise TypeError(
+                f'Unsupported dtype {y.dtype.name} for standard_gamma')
+
+        shape = cupy.broadcast_to(shape, y.shape)
+        shape_arr = _array_data(shape)
+        shape_ptr = shape_arr.data.ptr
+
+        _launch_dist(self.bit_generator, standard_gamma, y, (shape_ptr,))
+        if out is not None and y is not out:
+            out[...] = y
+            y = out
+        # we cast the array to a python object because
+        # cython cant call astype with the default values for
+        # omitted args.
+        return (<object>y).astype(dtype, copy=False)
 
 
 def init_curand(generator, state, seed, size):
