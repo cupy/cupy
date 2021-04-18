@@ -168,7 +168,7 @@ We can also use :meth:`cupy.ndarray.get()`:
 Memory management
 -----------------
 
-Check :doc:`../reference/memory` for a detailed description of how is memory managed in CuPy
+Check :doc:`./memory` for a detailed description of how is memory managed in CuPy
 using memory pools.
 
 

@@ -74,7 +74,7 @@ In addition, :func:`cupy.asarray` supports zero-copy conversion from Numba CUDA 
 
 .. note::
 
-    CuPy has a few environment variables controlling the exchange behavior, see :doc:`./environment` for details.
+    CuPy has a few environment variables controlling the exchange behavior, see :doc:`../reference/environment` for details.
 
 
 mpi4py
