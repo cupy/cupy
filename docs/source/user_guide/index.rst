@@ -10,3 +10,5 @@ This user guide provides an overview of CuPy and explains its important features
    kernel
    memory
    interoperability
+   difference
+   compatibility

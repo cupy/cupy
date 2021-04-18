@@ -9,3 +9,4 @@ Miscellaneous functions
    cupy.shares_memory
    cupy.show_config
    cupy.who
+   cupy.fromDlpack
