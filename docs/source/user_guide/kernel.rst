@@ -259,7 +259,7 @@ Dynamical parallelism is supported by :class:`~cupy.RawKernel`. You just need to
 
 Accessing texture (surface) memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture (Surface) Object API, see the documentation for :class:`~cupy.cuda.texture.TextureObject` (:class:`~cupy.cuda.texture.SurfaceObject`) as well as CUDA C Programming Guide. For using the Texture Reference API, which is marked as deprecated as of CUDA Toolkit 10.1, see the introduction to :class:`~cupy.RawModule` below.
 
-If your kernel relies on the C++ std library headers such as ``<type_traits>``, it is likely you will encounter compilation errors. In this case, try enabling CuPy's `Jitify <https://github.com/NVIDIA/jitify>`_ support by setting ``jitify=True`` when creating the :class:`~cupy.RawKernel`. It provides basic C++ support to avoid common errors.
+If your kernel relies on the C++ std library headers such as ``<type_traits>``, it is likely you will encounter compilation errors. In this case, try enabling CuPy's `Jitify <https://github.com/NVIDIA/jitify>`_ support by setting ``jitify=True`` when creating the :class:`~cupy.RawKernel` instance. It provides basic C++ support to avoid common errors.
 
 .. note::
     The kernel does not have return values.
@@ -438,6 +438,7 @@ CuPy also supports the Texture Reference API. A handle to the texture reference 
 To support C++ template kernels, :class:`~cupy.RawModule` additionally provide a ``name_expressions`` argument. A list of template specializations should be provided, so that the corresponding kernels can be generated and retrieved by type:
 
 .. doctest::
+
     >>> code = r'''
     ... template<typename T>
     ... __global__ void fx3(T* arr, int N) {
