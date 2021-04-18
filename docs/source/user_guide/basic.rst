@@ -9,17 +9,17 @@ In this section, you will learn about the following things:
 * The concept of *current device*
 * host-device and device-device array transfer
 
+
 Basics of cupy.ndarray
 ----------------------
 
 CuPy is a GPU array backend that implements a subset of NumPy interface.
-In the following code, cp is an abbreviation of cupy, as np is numpy as is customarily done:
+In the following code, ``cp`` is an abbreviation of ``cupy``, following the convention of abbreviating ``numpy`` to ``np``:
 
 .. doctest::
 
    >>> import numpy as np
    >>> import cupy as cp
-
 
 The :class:`cupy.ndarray` class is in its core, which is a compatible GPU alternative of :class:`numpy.ndarray`.
 
@@ -31,7 +31,6 @@ The :class:`cupy.ndarray` class is in its core, which is a compatible GPU altern
 You can see its creation of identical to ``NumPy``'s one, except that ``numpy`` is replaced with ``cupy``.
 The main difference of :class:`cupy.ndarray` from :class:`numpy.ndarray` is that the content is allocated on the device memory.
 Its data is allocated on the *current device*, which will be explained later.
-
 
 Most of the array manipulations are also done in the way similar to NumPy.
 Take the Euclidean norm (a.k.a L2 norm) for example.
@@ -49,7 +48,6 @@ We can calculate it on GPU with CuPy in a similar way:
    >>> x_gpu = cp.array([1, 2, 3])
    >>> l2_gpu = cp.linalg.norm(x_gpu)
 
-
 CuPy implements many functions on :class:`cupy.ndarray` objects.
 See the :ref:`reference <cupy_reference>` for the supported subset of NumPy API.
 Understanding NumPy might help utilizing most features of CuPy.
@@ -59,15 +57,14 @@ So, we recommend you to read the `NumPy documentation <https://docs.scipy.org/do
 Current Device
 --------------
 
-CuPy has a concept of the *current device*, which is the default device on which
-the allocation, manipulation, calculation etc. of arrays are taken place.
+CuPy has a concept of *current devices*, which is the default device on which
+the allocation, manipulation, calculation, etc., of arrays are taken place.
 Suppose the ID of current device is 0.
 The following code allocates array contents on GPU 0.
 
 .. doctest::
 
    >>> x_on_gpu0 = cp.array([1, 2, 3, 4, 5])
-
 
 The current device can be changed by :class:`cupy.cuda.Device.use()` as follows:
 
@@ -85,7 +82,7 @@ If you switch the current GPU temporarily, *with* statement comes in handy.
    ...    x_on_gpu1 = cp.array([1, 2, 3, 4, 5])
    >>> x_on_gpu0 = cp.array([1, 2, 3, 4, 5])
 
-Most operations of CuPy is done on the current device.
+Most operations of CuPy are done on the current device.
 Be careful that if processing of an array on a non-current device will cause an error:
 
 .. doctest::
@@ -100,7 +97,6 @@ Be careful that if processing of an array on a non-current device will cause an 
 
 ``cupy.ndarray.device`` attribute indicates the device on which the array is allocated.
 
-
 .. doctest::
 
    >>> with cp.cuda.Device(1):
@@ -108,10 +104,25 @@ Be careful that if processing of an array on a non-current device will cause an 
    >>> x.device
    <CUDA Device 1>
 
-
 .. note::
 
    If the environment has only one device, such explicit device switching is not needed.
+
+
+Current Stream
+--------------
+
+Associated with the concept of current devices is *current streams*. By default, in CuPy any CUDA operations
+such as data transfer (see the next section) and kernel launches are enqueued onto the current stream,
+and the queued tasks will be executed in serial on the stream (but *asynchronously* with respect to the host).
+
+The default current stream in CuPy is CUDA's null stream (i.e., stream 0). It is also known as the legacy
+default stream, which is unique per device. However, it is possible to change the current stream using the
+:class:`cupy.cuda.Stream` API, please see :doc:`cuda_api` for example. The current stream in CuPy can be
+retrieved using :func:`cupy.cuda.get_current_stream`.
+
+It is worth noting that CuPy's current stream is per thread per device, meaning that on different Python
+threads the current stream (if not the null stream) can be different.
 
 
 Data Transfer
@@ -138,7 +149,6 @@ transfer the array between devices with this function.
    >>> with cp.cuda.Device(1):
    ...     x_gpu_1 = cp.asarray(x_gpu_0)  # move the array to GPU 1
 
-
 .. note::
 
    :func:`cupy.asarray` does not copy the input array if possible.
@@ -146,7 +156,6 @@ transfer the array between devices with this function.
 
    If we do copy the array in this situation, you can use :func:`cupy.array` with `copy=True`.
    Actually :func:`cupy.asarray` is equivalent to `cupy.array(arr, dtype, copy=False)`.
-
 
 Move array from a device to the host
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

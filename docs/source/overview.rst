@@ -34,6 +34,7 @@ CuPy also includes the following features for performance:
 - `CUB <https://github.com/NVIDIA/cub>`/`cuTENSOR <https://developer.nvidia.com/cutensor>` backends for reduction and other routines
 - Customizable memory allocator and memory pool
 - `cuDNN <https://developer.nvidia.com/cudnn>`_ utilities
+- Full coverage of `NCCL <https://developer.nvidia.com/nccl>`_ APIs
 
 CuPy uses on-the-fly kernel synthesis: when a kernel call is required, it
 compiles a kernel code optimized for the shapes and dtypes of given arguments,
