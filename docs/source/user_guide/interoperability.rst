@@ -226,12 +226,6 @@ DLPack
 
 CuPy supports importing from and exporting to DLPack data structure (:func:`cupy.fromDlpack` and :func:`cupy.ndarray.toDlpack`).
 
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupy.fromDlpack
-
 Here is a simple example:
 
 .. code:: python
