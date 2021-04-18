@@ -22,7 +22,7 @@ The following is a brief overview of supported subset of NumPy interface:
 - All operators with `broadcasting <https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`_
 - All `universal functions <https://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_
   for elementwise operations (except those for complex numbers).
-- `Linear algebra functions <https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, including product (\ ``dot``, ``matmul``, etc.) and decomposition (\ ``cholesky``, ``svd``, etc.), accelerated by `cuBLAS <https://developer.nvidia.com/cublas>`_.
+- `Linear algebra functions <https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, including product (\ ``dot``, ``matmul``, etc.) and decomposition (\ ``cholesky``, ``svd``, etc.), accelerated by `cuBLAS <https://developer.nvidia.com/cublas>`_ and `cuSOLVER <https://developer.nvidia.com/cusolver>`.
 - Reduction along axes (``sum``, ``max``, ``argmax``, etc.)
 
 CuPy also includes the following features for performance:
@@ -31,7 +31,7 @@ CuPy also includes the following features for performance:
 - User-defined reduction CUDA kernels
 - Just-in-time compiler converting Python functions to CUDA kernels
 - Fusing CUDA kernels to optimize user-defined calculation
-- CUB/cuTENSOR backends for reduction and other routines
+- `CUB <https://github.com/NVIDIA/cub>`/`cuTENSOR <https://developer.nvidia.com/cutensor>` backends for reduction and other routines
 - Customizable memory allocator and memory pool
 - `cuDNN <https://developer.nvidia.com/cudnn>`_ utilities
 
