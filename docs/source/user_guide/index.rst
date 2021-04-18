@@ -8,6 +8,7 @@ This user guide provides an overview of CuPy and explains its important features
 
    basic
    kernel
+   cuda_api
    memory
    interoperability
    difference
