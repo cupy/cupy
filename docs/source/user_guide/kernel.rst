@@ -253,11 +253,13 @@ attributes:
    >>> add_kernel.max_dynamic_shared_size_bytes  # doctest: +SKIP
    50000
 
-Dynamical parallelism is supported by :class:`~cupy.RawKernel`. You just need to provide the linking flag (such as ``-dc``) to :class:`~cupy.RawKernel`'s ``options`` arugment. The static CUDA device runtime library (``cudadevrt``) is automatically discovered by CuPy. For further detail, see `CUDA Toolkit's documentation`_.
+Dynamical parallelism is supported by :class:`~cupy.RawKernel`. You just need to provide the linking flag (such as ``-dc``) to :class:`~cupy.RawKernel`'s ``options`` argument. The static CUDA device runtime library (``cudadevrt``) is automatically discovered by CuPy. For further detail, see `CUDA Toolkit's documentation`_.
 
 .. _CUDA Toolkit's documentation: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compiling-and-linking
 
 Accessing texture (surface) memory in :class:`~cupy.RawKernel` is supported via CUDA Runtime's Texture (Surface) Object API, see the documentation for :class:`~cupy.cuda.texture.TextureObject` (:class:`~cupy.cuda.texture.SurfaceObject`) as well as CUDA C Programming Guide. For using the Texture Reference API, which is marked as deprecated as of CUDA Toolkit 10.1, see the introduction to :class:`~cupy.RawModule` below.
+
+If your kernel relies on the C++ std library headers such as ``<type_traits>``, it is likely you will encounter compilation errors. In this case, try enabling CuPy's `Jitify <https://github.com/NVIDIA/jitify>`_ support by setting ``jitify=True`` when creating the :class:`~cupy.RawKernel`. It provides basic C++ support to avoid common errors.
 
 .. note::
     The kernel does not have return values.
@@ -266,6 +268,10 @@ Accessing texture (surface) memory in :class:`~cupy.RawKernel` is supported via 
 .. note::
     When using ``printf()`` in your CUDA kernel, you may need to synchronize the stream to see the output.
     You can use ``cupy.cuda.Stream.null.synchronize()`` if you are using the default stream.
+
+.. note::
+    It is worth pointing out that in all of the above examples we declare the kernels in an ``extern "C"`` block,
+    indicating that the C linkage is used. This is to ensure the kernel names are not mangled so that they can be retrived by name.
 
 Kernel arguments
 ----------------
@@ -319,19 +325,19 @@ The CUDA standard guarantees that the size of fundamental types on the host and 
 The itemsize of ``size_t``, ``ptrdiff_t``, ``intptr_t``, ``uintptr_t``, 
 ``long``, ``signed long`` and ``unsigned long`` are however platform dependent. 
 To pass any CUDA vector builtins such as ``float3`` or any other user defined structure 
-as kernel arguments (provided it matches the device-side kernel parameter type), see section :ref:`custom_user_structs` below.
+as kernel arguments (provided it matches the device-side kernel parameter type), see :ref:`custom_user_structs` below.
 
 .. _custom_user_structs:
 
 Custom user types
 -----------------
 
-Is is possible to use custom types (composite types such as structures and structures of structures) 
+It is possible to use custom types (composite types such as structures and structures of structures)
 as kernel arguments by defining a custom NumPy dtype.
-When doing this, it is your responsability to match host and device structure memory layout.
+When doing this, it is your responsibility to match host and device structure memory layout.
 The CUDA standard guarantees that the size of fundamental types on the host and device always match.
 It may however impose device alignment requirements on composite types.
-This means that for composite types, the struct member offsets may be different from what you might expect.
+This means that for composite types the struct member offsets may be different from what you might expect.
 
 When a kernel argument is passed by value, the CUDA driver will copy exactly ``sizeof(param_type)`` bytes starting from the beginning of the NumPy object data pointer, where ``param_type`` is the parameter type in your kernel. 
 You have to match ``param_type``'s memory layout (ex: size, alignment and struct padding/packing) 
@@ -369,12 +375,12 @@ Here ``arg`` represents a 100-byte scalar (i.e. a NumPy array of size 1)
 that can be passed by value to any kernel.
 Kernel parameters are passed by value in a dedicated 4kB memory bank which has its own cache with broadcast.
 Upper bound for total kernel parameters size is thus 4kB
-(see this `link <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#function-parameters>`_). 
+(see `this link <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#function-parameters>`_).
 It may be important to note that this dedicated memory bank is not shared with the device ``__constant__`` memory space.
 
 For now, CuPy offers no helper routines to create user defined composite types. 
 Such composite types can however be built recursively using NumPy dtype `offsets` and `itemsize` capabilities,
-see ``cupy/examples/user_structs`` for examples of advanced usage. 
+see `cupy/examples/custum_struct <https://github.com/cupy/cupy/tree/master/examples/custom_struct>`_ for examples of advanced usage.
 
 .. warning::
     You cannot directly pass static arrays as kernel arguments with the ``type arg[N]`` syntax where N is a compile time constant. The signature of ``__global__ void kernel(float arg[5])`` is seen as ``__global__ void kernel(float* arg)`` by the compiler. If you want to pass five floats to the kernel by value you need to define a custom structure ``struct float5 { float val[5]; };`` and modify the kernel signature to ``__global__ void kernel(float5 arg)``.
@@ -383,7 +389,7 @@ see ``cupy/examples/user_structs`` for examples of advanced usage.
 Raw modules
 -----------
 
-For dealing a large raw CUDA source or loading an existing CUDA binary, the :class:`~cupy.RawModule` class can be more handy. It can be initialized either by a CUDA source code, or by a path to the CUDA binary. The needed kernels can then be retrieved by calling the :meth:`~cupy.RawModule.get_function` method, which returns a :class:`~cupy.RawKernel` instance that can be invoked as discussed above.
+For dealing a large raw CUDA source or loading an existing CUDA binary, the :class:`~cupy.RawModule` class can be more handy. It can be initialized either by a CUDA source code, or by a path to the CUDA binary. It accepts most of the arguments as in :class:`~cupy.RawKernel`. The needed kernels can then be retrieved by calling the :meth:`~cupy.RawModule.get_function` method, which returns a :class:`~cupy.RawKernel` instance that can be invoked as discussed above.
 
 .. doctest::
 
@@ -429,6 +435,33 @@ For CUDA kernels that need to access global symbols, such as constant memory, th
 
 CuPy also supports the Texture Reference API. A handle to the texture reference in a module can be retrieved by name via :meth:`~cupy.RawModule.get_texref`. Then, you need to pass it to :class:`~cupy.cuda.texture.TextureReference`, along with a resource descriptor and texture descriptor, for binding the reference to the array. (The interface of :class:`~cupy.cuda.texture.TextureReference` is meant to mimic that of :class:`~cupy.cuda.texture.TextureObject` to help users make transition to the latter, since as of CUDA Toolkit 10.1 the former is marked as deprecated.)
 
+To support C++ template kernels, :class:`~cupy.RawModule` additionally provide a ``name_expressions`` argument. A list of template specializations should be provided, so that the corresponding kernels can be generated and retrieved by type:
+
+.. doctest::
+    >>> code = r'''
+    ... template<typename T>
+    ... __global__ void fx3(T* arr, int N) {
+    ...     unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    ...     if (tid < N) {
+    ...         arr[tid] = arr[tid] * 3;
+    ...     }
+    ... }
+    ... '''
+    >>>
+    >>> name_exp = ['fx3<float>', 'fx3<double>']
+    >>> mod = cp.RawModule(code=code, options=('-std=c++11',),
+    ...     name_expressions=name_exp)
+    >>> ker_float = mod.get_function(name_exp[0])  # compilation happens here
+    >>> N=10
+    >>> a = cp.arange(N, dtype=cp.float32)
+    >>> ker_float((1,), (N,), (a, N))
+    >>> a
+    array([ 0.,  3.,  6.,  9., 12., 15., 18., 21., 24., 27.], dtype=float32)
+    >>> ker_double = mod.get_function(name_exp[1])
+    >>> a = cp.arange(N, dtype=cp.float64)
+    >>> ker_double((1,), (N,), (a, N))
+    >>> a
+    array([ 0.,  3.,  6.,  9., 12., 15., 18., 21., 24., 27.])
 
 .. _kernel_fusion:
 
