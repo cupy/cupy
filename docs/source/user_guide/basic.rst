@@ -112,11 +112,12 @@ Be careful that if processing of an array on a non-current device will cause an 
 Current Stream
 --------------
 
-Associated with the concept of current devices is *current streams*. By default, in CuPy any CUDA operations
+Associated with the concept of current devices is *current streams*, which help avoid explicitly passing streams
+in every single operation so as to keep the APIs pythonic and user-friendly. In CuPy, any CUDA operations
 such as data transfer (see the next section) and kernel launches are enqueued onto the current stream,
-and the queued tasks will be executed in serial on the stream (but *asynchronously* with respect to the host).
+and the queued tasks on the stream will be executed in serial (but *asynchronously* with respect to the host).
 
-The default current stream in CuPy is CUDA's null stream (i.e., stream 0). It is also known as the legacy
+The default current stream in CuPy is CUDA's null stream (i.e., stream 0). It is also known as the *legacy*
 default stream, which is unique per device. However, it is possible to change the current stream using the
 :class:`cupy.cuda.Stream` API, please see :doc:`cuda_api` for example. The current stream in CuPy can be
 retrieved using :func:`cupy.cuda.get_current_stream`.
