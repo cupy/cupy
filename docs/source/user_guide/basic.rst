@@ -109,6 +109,8 @@ Be careful that if processing of an array on a non-current device will cause an 
    If the environment has only one device, such explicit device switching is not needed.
 
 
+.. _current_stream:
+
 Current Stream
 --------------
 
