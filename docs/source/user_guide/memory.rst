@@ -152,10 +152,8 @@ instance:
         a = cupy.empty((100,), dtype=cupy.float64)
 
 Note that in this case we do not use the :class:`~cupy.cuda.MemoryPool` class. The :class:`~cupy.cuda.MemoryAsyncPool` takes
-a different input argument from that of :class:`~cupy.cuda.MemoryPool`: the default (``'default'``) is to use the device's default
-memory pool. It also allows passing in ``'current'`` to use the device's *current* memory pool (which could be different from the default one),
-or passing in an ``int`` representing a pool handle ``cudaMemPool_t`` to use the memory pool created by other libraries. Please refer to
-the :class:`~cupy.cuda.MemoryAsyncPool`'s documentation for further detail.
+a different input argument from that of :class:`~cupy.cuda.MemoryPool` to indicate the pool to use.
+Please refer to the :class:`~cupy.cuda.MemoryAsyncPool`'s documentation for further detail.
 
 Note that if you pass :func:`~cupy.cuda.malloc_async` directly to :func:`~cupy.cuda.set_allocator` without constructing
 a :class:`~cupy.cuda.MemoryAsyncPool` instance, the device's *current* memory pool will be used.
