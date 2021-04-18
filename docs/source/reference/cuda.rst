@@ -54,6 +54,8 @@ Memory hook
    cupy.cuda.memory_hooks.LineProfileHook
 
 
+.. _stream_event_api:
+
 Streams and events
 ------------------
 
@@ -117,14 +119,14 @@ NCCL
    cupy.cuda.nccl.groupEnd
 
 
+.. _runtime_api:
+
 Runtime API
 -----------
 
 CuPy wraps CUDA Runtime APIs to provide the native CUDA operations.
 Please check the `Original CUDA Runtime API document <https://docs.nvidia.com/cuda/cuda-runtime-api/index.html>`_
 to use these functions.
-
-
 
 .. autosummary::
    :toctree: generated/

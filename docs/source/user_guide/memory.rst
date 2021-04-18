@@ -159,7 +159,7 @@ Note that if you pass :func:`~cupy.cuda.malloc_async` directly to :func:`~cupy.c
 a :class:`~cupy.cuda.MemoryAsyncPool` instance, the device's *current* memory pool will be used.
 
 When using stream ordered memory, it is important that you maintain a correct stream semantics yourselves using, for example,
-the :class:`~cupy.cuda.Stream` and :class:`~cupy.cuda.Event` APIs (see :doc:`../reference/cuda` for details); CuPy does not
+the :class:`~cupy.cuda.Stream` and :class:`~cupy.cuda.Event` APIs (see :ref:`cuda_stream_event` for details); CuPy does not
 attempt to act smartly for you. Upon deallocation, the memory is freed asynchronously either on the stream it was
 allocated (first attempt), or on any current CuPy stream (second attempt). It is permitted that the stream on which the
 memory was allocated gets destroyed before all memory allocated on it is freed.
