@@ -145,6 +145,17 @@ def _get_arch():
         return min(arch, _nvrtc_max_compute_capability)
 
 
+def _get_arch_for_options(arch=None):
+    # This is needed to differentiate between
+    # compute or sm depending on the CUDA version
+    # needed to ensure backwards compatibility with nvrtc
+    if arch is None:
+        arch = _get_arch()
+    if _cuda_version >= 11010:
+        return f'-arch=sm_{arch}'
+    return f'-arch=compute_{arch}'
+
+
 def _is_cudadevrt_needed(options):
     return any(o for o in options if o in _rdc_flags)
 
@@ -238,9 +249,7 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         cache_in_memory=False, jitify=False):
     # For hipRTC, arch is ignored
     if not runtime.is_hip:
-        if not arch:
-            arch = _get_arch()
-        options += ('-arch=compute_{}'.format(arch),)
+        options += (_get_arch_for_options(),)
 
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
@@ -368,7 +377,7 @@ def compile_using_nvcc(source, options=(), arch=None,
 
 def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
-        options += ('-arch=compute_{}'.format(arch),)
+        options += (_get_arch_for_options(arch),)
 
         prog = _NVRTCProgram(source)
         try:
@@ -630,7 +639,9 @@ class _NVRTCProgram(object):
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
             if log_stream is not None:
                 log_stream.write(nvrtc.getProgramLog(self.ptr))
-            # TODO(leofang): use getCUBIN() for _cuda_hip_version >= 11010?
+            # This is to ensure backwards compatibility with nvrtc
+            if _cuda_version >= 11010:
+                return nvrtc.getCUBIN(self.ptr), mapping
             return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
