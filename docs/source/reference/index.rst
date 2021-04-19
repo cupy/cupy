@@ -20,8 +20,6 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    ufunc
    routines
    scipy
-   sparse
-   ndimage
    generic
    cuda
    memoize
