@@ -1,4 +1,4 @@
-Python API for accessing CUDA functionalities
+Python API for Accessing CUDA Functionalities
 =============================================
 
 .. _cuda_stream_event:
