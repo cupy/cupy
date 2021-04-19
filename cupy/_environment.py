@@ -233,19 +233,10 @@ def _setup_win32_dll_directory():
                 wheel_libdir))
             wheel_libdir = None
 
-        if (3, 8) <= sys.version_info:
-            if cuda_bin_path is not None:
-                _log('Adding DLL search path: {}'.format(cuda_bin_path))
-                os.add_dll_directory(cuda_bin_path)
-            if wheel_libdir is not None:
-                _log('Adding DLL search path: {}'.format(wheel_libdir))
-                os.add_dll_directory(wheel_libdir)
-        else:
-            # Users are responsible for adding `%CUDA_PATH%/bin` to PATH.
-            if wheel_libdir is not None:
-                _log('Adding to PATH: {}'.format(wheel_libdir))
-                path = os.environ.get('PATH', '')
-                os.environ['PATH'] = wheel_libdir + os.pathsep + path
+        if cuda_bin_path is not None:
+            _add_dll_directory(cuda_bin_path)
+        if wheel_libdir is not None:
+            _add_dll_directory(wheel_libdir)
 
 
 def get_cupy_install_path():
