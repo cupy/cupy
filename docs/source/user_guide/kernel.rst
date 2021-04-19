@@ -270,8 +270,9 @@ If your kernel relies on the C++ std library headers such as ``<type_traits>``, 
     You can use ``cupy.cuda.Stream.null.synchronize()`` if you are using the default stream.
 
 .. note::
-    It is worth pointing out that in all of the above examples we declare the kernels in an ``extern "C"`` block,
-    indicating that the C linkage is used. This is to ensure the kernel names are not mangled so that they can be retrived by name.
+    In all of the examples above, we declare the kernels in an ``extern "C"`` block,
+    indicating that the C linkage is used. This is to ensure the kernel names are not
+    mangled so that they can be retrived by name.
 
 Kernel arguments
 ----------------
@@ -463,6 +464,12 @@ To support C++ template kernels, :class:`~cupy.RawModule` additionally provide a
     >>> ker_double((1,), (N,), (a, N))
     >>> a
     array([ 0.,  3.,  6.,  9., 12., 15., 18., 21., 24., 27.])
+
+.. note::
+
+    The name expressions used to both initialize a :class:`~cupy.RawModule` instance and retrieve the kernels are
+    the original (*un-mangled*) kernel names with all template parameters unambiguously specified. The name mangling
+    and demangling are handled under the hood so that users do not need to worry about it.
 
 .. _kernel_fusion:
 
