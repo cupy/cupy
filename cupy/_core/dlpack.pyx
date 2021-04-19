@@ -121,18 +121,15 @@ cpdef object toDlpack(ndarray array) except +:
     cdef DLDataType* dtype = &dl_tensor.dtype
     if array.dtype.kind == 'u':
         dtype.code = <uint8_t>kDLUInt
-        dtype.lanes = <uint16_t>1
     elif array.dtype.kind == 'i':
         dtype.code = <uint8_t>kDLInt
-        dtype.lanes = <uint16_t>1
     elif array.dtype.kind == 'f':
         dtype.code = <uint8_t>kDLFloat
-        dtype.lanes = <uint16_t>1
     elif array.dtype.kind == 'c':
         dtype.code = <uint8_t>kDLComplex
-        dtype.lanes = <uint16_t>2
     else:
         raise ValueError('Unknown dtype')
+    dtype.lanes = <uint16_t>1
     dtype.bits = <uint8_t>(array.dtype.itemsize * 8)
 
     dlm_tensor.manager_ctx = <void*>array
@@ -240,6 +237,9 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     cdef DLPackMemory mem = DLPackMemory(dltensor)
     cdef DLDataType dtype = mem.dlm_tensor.dl_tensor.dtype
     cdef int bits = dtype.bits
+    if dtype.lanes != 1:
+        raise ValueError(f'vector dtypes (lanes={dtype.lanes}) is '
+                         'not supported')
     if dtype.code == kDLUInt:
         if bits == 8:
             cp_dtype = cupy.uint8
