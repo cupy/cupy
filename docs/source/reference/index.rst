@@ -22,7 +22,6 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    scipy
    generic
    cuda
-   memoize
    kernel
    optimize
    testing

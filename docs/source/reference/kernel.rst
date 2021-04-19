@@ -26,3 +26,13 @@ JIT kernel definition
    cupyx.jit.syncthreads
    cupyx.jit.shared_memory
    cupyx.jit._interface._JitRawKernel
+
+Kernel binary memoization
+-------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.memoize
+   cupy.clear_memo
