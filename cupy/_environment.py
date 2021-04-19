@@ -195,6 +195,19 @@ def _get_cub_path():
     return _cub_path
 
 
+def _add_dll_directory(path):
+    assert sys.platform == 'win32'
+    _log(f'Adding DLL search path: {path}')
+    if (3, 8) <= sys.version_info:
+        os.add_dll_directory(path)
+        return
+    stat = ctypes.windll.kernel32.AddDllDirectory(path)
+    if stat == 0:
+        msg = f'Failed to add DLL search path: {path}'
+        warnings.warn(msg)
+        _log(msg)
+
+
 def _setup_win32_dll_directory():
     # Setup DLL directory to load CUDA Toolkit libs and shared libraries
     # added during the build process.
@@ -315,8 +328,11 @@ def _preload_libraries():
                 _log('Rejected candidate (not found): {}'.format(libpath))
                 continue
 
-            _log('Trying to load {}'.format(libpath))
             try:
+                if sys.platform == 'win32':
+                    # This is needed to load cuDNN v8+ on Windows
+                    _add_dll_directory(os.path.dirname(libpath))
+                _log(f'Trying to load {libpath}')
                 # Keep reference to the preloaded module.
                 _preload_libs[lib] = (libpath, ctypes.CDLL(libpath))
                 _log('Loaded')
