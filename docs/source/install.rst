@@ -425,3 +425,23 @@ You can specify a comma-separated list of ISAs if you have multiple GPUs of diff
 
   If you don't specify the ``HCC_AMDGPU_TARGET`` environment variable, CuPy will be built for the GPU architectures available on the build host.
   This behavior is specific to ROCm builds; when building CuPy for NVIDIA CUDA, the build result is not affected by the host configuration.
+
+Limitations
+-----------
+
+The following CUDA-specific features are not available in ROCm:
+
+* CUDA Array Interface
+* cuTENSOR
+
+The following features are not yet supported:
+
+* Several options in RawKernel/RawModule APIs: Jitify, dynamic parallelism
+* Sparse matrices (``cupyx.scipy.sparse``)
+* cuDNN (hipDNN)
+
+The following features may now work in edge cases (e.g., some combinations of dtype):
+
+* ...
+
+
