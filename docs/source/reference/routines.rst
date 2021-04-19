@@ -29,7 +29,6 @@ These functions cover a subset of
    sorting
    statistics
    testing
-   ext
 
 
 .. _accelerators:
