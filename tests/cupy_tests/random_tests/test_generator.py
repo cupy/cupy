@@ -71,7 +71,7 @@ class RandomGeneratorTestCase(common_distributions.BaseGeneratorTestCase):
         return xp.random.RandomState(seed=seed)
 
     def set_rs_seed(self, seed):
-        self.rs.seed(seed)
+        self.rng.seed(seed)
 
 
 def _xp_random(xp, method_name):
@@ -157,11 +157,7 @@ class TestRandomState(unittest.TestCase):
             rs.normal()
 
 
-@testing.parameterize(
-    {'a': 1.0, 'b': 3.0},
-    {'a': 3.0, 'b': 3.0},
-    {'a': 3.0, 'b': 1.0},
-)
+@testing.parameterize(*common_distributions.beta_params)
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
@@ -230,11 +226,7 @@ class TestDirichlet(RandomGeneratorTestCase):
     # TODO(kataoka): add distribution test
 
 
-@testing.parameterize(
-    {'scale': 1.0},
-    {'scale': 3.0},
-    {'scale': 10.0},
-)
+@testing.parameterize(*common_distributions.exponential_params)
 @testing.gpu
 @testing.fix_random()
 class TestExponential(
@@ -265,17 +257,7 @@ class TestF(RandomGeneratorTestCase):
             self.dfnum, self.dfden, size=2000, dtype=dtype)
 
 
-@testing.parameterize(
-    {'shape': 0.5, 'scale': 0.5},
-    {'shape': 1.0, 'scale': 0.5},
-    {'shape': 3.0, 'scale': 0.5},
-    {'shape': 0.5, 'scale': 1.0},
-    {'shape': 1.0, 'scale': 1.0},
-    {'shape': 3.0, 'scale': 1.0},
-    {'shape': 0.5, 'scale': 3.0},
-    {'shape': 1.0, 'scale': 3.0},
-    {'shape': 3.0, 'scale': 3.0},
-)
+@testing.parameterize(*common_distributions.gamma_params)
 @testing.gpu
 @testing.fix_random()
 class TestGamma(
@@ -588,11 +570,7 @@ class TestPareto(RandomGeneratorTestCase):
             a=self.a, size=2000, dtype=dtype)
 
 
-@testing.parameterize(
-    {'lam': 1.0},
-    {'lam': 3.0},
-    {'lam': 10.0},
-)
+@testing.parameterize(*common_distributions.poisson_params)
 @testing.gpu
 @testing.fix_random()
 class TestPoisson(
@@ -742,11 +720,7 @@ class TestStandardCauchy(RandomGeneratorTestCase):
             size=2000, dtype=dtype)
 
 
-@testing.parameterize(
-    {'shape': 0.5},
-    {'shape': 1.0},
-    {'shape': 3.0},
-)
+@testing.parameterize(*common_distributions.standard_gamma_params)
 @testing.gpu
 @testing.fix_random()
 class TestStandardGamma(

@@ -46,12 +46,13 @@ class BaseGeneratorTestCase(unittest.TestCase):
 
     def setUp(self):
         self.__seed = testing.generate_seed()
-        self.rs = self.get_random_state(cupy, self.__seed)
+        # rng will be a new or old generator API object
+        self.rng = self.get_random_state(cupy, self.__seed)
 
     def _get_generator_func(self, *args, **kwargs):
         assert isinstance(self.target_method, str), (
             'generate_method must be overridden')
-        f = getattr(self.rs, self.target_method)
+        f = getattr(self.rng, self.target_method)
         return lambda: f(*args, **kwargs)
 
     def _generate_check_repro(self, func, seed):
@@ -109,8 +110,8 @@ class BaseGeneratorTestCase(unittest.TestCase):
         # numpy
         kwargs['size'] = numpy_len
         dtype = kwargs.pop('dtype', None)
-        numpy_rs = self.get_random_state(numpy, self.__seed)
-        vals_numpy = getattr(numpy_rs, self.target_method)(*args, **kwargs)
+        numpy_rng = self.get_random_state(numpy, self.__seed)
+        vals_numpy = getattr(numpy_rng, self.target_method)(*args, **kwargs)
         if dtype is not None:
             vals_numpy = vals_numpy.astype(dtype, copy=False)
 
@@ -124,6 +125,12 @@ p: %f
 D+ (cupy < numpy): %f
 D- (cupy > numpy): %f''' % (p_value, d_plus, d_minus)
             raise AssertionError(message)
+
+
+beta_params = [
+    {'a': 1.0, 'b': 3.0},
+    {'a': 3.0, 'b': 3.0},
+    {'a': 3.0, 'b': 1.0}]
 
 
 class Beta:
@@ -159,6 +166,12 @@ class StandardExponential:
         self.check_ks(0.05)(size=2000, dtype=dtype)
 
 
+standard_gamma_params = [
+    {'shape': 0.5},
+    {'shape': 1.0},
+    {'shape': 3.0}]
+
+
 class StandardGamma:
 
     target_method = 'standard_gamma'
@@ -173,6 +186,14 @@ class StandardGamma:
             shape=self.shape, size=2000, dtype=dtype)
 
 
+standard_normal_params = [
+    {'size': None},
+    {'size': (1, 2, 3)},
+    {'size': 3},
+    {'size': (3, 3)},
+    {'size': ()}]
+
+
 class StandardNormal:
 
     target_method = 'standard_normal'
@@ -181,6 +202,12 @@ class StandardNormal:
     @_condition.repeat_with_success_at_least(10, 3)
     def test_normal_ks(self, dtype):
         self.check_ks(0.05)(size=self.size, dtype=dtype)
+
+
+exponential_params = [
+    {'scale': 0.5},
+    {'scale': 1},
+    {'scale': 10}]
 
 
 class Exponential:
@@ -196,6 +223,12 @@ class Exponential:
             self.scale, size=2000)
 
 
+poisson_params = [
+    {'lam': 1.0},
+    {'lam': 3.0},
+    {'lam': 10.0}]
+
+
 class Poisson:
 
     target_method = 'poisson'
@@ -207,6 +240,18 @@ class Poisson:
     def test_poisson_ks(self):
         self.check_ks(0.05)(
             lam=self.lam, size=2000)
+
+
+gamma_params = [
+    {'shape': 0.5, 'scale': 0.5},
+    {'shape': 1.0, 'scale': 0.5},
+    {'shape': 3.0, 'scale': 0.5},
+    {'shape': 0.5, 'scale': 1.0},
+    {'shape': 1.0, 'scale': 1.0},
+    {'shape': 3.0, 'scale': 1.0},
+    {'shape': 0.5, 'scale': 3.0},
+    {'shape': 1.0, 'scale': 3.0},
+    {'shape': 3.0, 'scale': 3.0}]
 
 
 class Gamma:

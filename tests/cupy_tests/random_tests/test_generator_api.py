@@ -26,22 +26,7 @@ class GeneratorTestCase(common_distributions.BaseGeneratorTestCase):
             return numpy.random.Generator(numpy.random.MT19937(seed))
 
     def set_rs_seed(self, seed):
-        self.rs.bit_generator = random._bit_generator.Philox4x3210(seed=seed)
-
-
-@testing.parameterize(
-    {'scale': 0.5},
-    {'scale': 1},
-    {'scale': 10},
-)
-@testing.with_requires('numpy>=1.17.0')
-@testing.gpu
-@testing.fix_random()
-class TestExponential(
-    common_distributions.Exponential,
-    GeneratorTestCase
-):
-    pass
+        self.rng.bit_generator = random._bit_generator.Philox4x3210(seed=seed)
 
 
 class InvalidOutsMixin:
@@ -71,11 +56,18 @@ class InvalidOutsMixin:
         self.invalid_shape()
 
 
-@testing.parameterize(
-    {'lam': 1.0},
-    {'lam': 3.0},
-    {'lam': 10.0},
-)
+@testing.parameterize(*common_distributions.exponential_params)
+@testing.with_requires('numpy>=1.17.0')
+@testing.gpu
+@testing.fix_random()
+class TestExponential(
+    common_distributions.Exponential,
+    GeneratorTestCase
+):
+    pass
+
+
+@testing.parameterize(*common_distributions.poisson_params)
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
@@ -86,11 +78,7 @@ class TestPoisson(
     pass
 
 
-@testing.parameterize(
-    {'a': 1.0, 'b': 3.0},
-    {'a': 3.0, 'b': 3.0},
-    {'a': 3.0, 'b': 1.0},
-)
+@testing.parameterize(*common_distributions.beta_params)
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @testing.fix_random()
@@ -112,17 +100,7 @@ class TestStandardExponential(
     pass
 
 
-@testing.parameterize(
-    {'shape': 0.5, 'scale': 0.5},
-    {'shape': 1.0, 'scale': 0.5},
-    {'shape': 3.0, 'scale': 0.5},
-    {'shape': 0.5, 'scale': 1.0},
-    {'shape': 1.0, 'scale': 1.0},
-    {'shape': 3.0, 'scale': 1.0},
-    {'shape': 0.5, 'scale': 3.0},
-    {'shape': 1.0, 'scale': 3.0},
-    {'shape': 3.0, 'scale': 3.0},
-)
+@testing.parameterize(*common_distributions.gamma_params)
 @testing.gpu
 @testing.fix_random()
 class TestGamma(
@@ -132,11 +110,7 @@ class TestGamma(
     pass
 
 
-@testing.parameterize(
-    {'shape': 0.5},
-    {'shape': 1.0},
-    {'shape': 3.0},
-)
+@testing.parameterize(*common_distributions.standard_gamma_params)
 @testing.gpu
 @testing.fix_random()
 class TestStandardGamma(
@@ -194,13 +168,7 @@ class TestStandardGammaEmpty(GeneratorTestCase):
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
-@testing.parameterize(
-    {'size': None},
-    {'size': (1, 2, 3)},
-    {'size': 3},
-    {'size': (3, 3)},
-    {'size': ()},
-)
+@testing.parameterize(*common_distributions.standard_normal_params)
 @testing.fix_random()
 class TestStandardNormal(
     common_distributions.StandardNormal,
