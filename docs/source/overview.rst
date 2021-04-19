@@ -21,20 +21,20 @@ The following is a brief overview of supported subset of NumPy interface:
 - Most of the `array manipulation routines <https://docs.scipy.org/doc/numpy/reference/routines.array-manipulation.html>`_ (\ ``reshape``, ``rollaxis``, ``concatenate``, etc.)
 - All operators with `broadcasting <https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`_
 - All `universal functions <https://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_
-  for elementwise operations (except those for complex numbers).
-- `Linear algebra functions <https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, including product (\ ``dot``, ``matmul``, etc.) and decomposition (\ ``cholesky``, ``svd``, etc.), accelerated by `cuBLAS <https://developer.nvidia.com/cublas>`_ and `cuSOLVER <https://developer.nvidia.com/cusolver>`_.
-- Multi-dimensional fast Fourier transform (FFT), accelerated by `cuFFT <https://developer.nvidia.com/cufft>`_.
+  for elementwise operations (except those for complex numbers)
+- `Linear algebra functions <https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, including product (\ ``dot``, ``matmul``, etc.) and decomposition (\ ``cholesky``, ``svd``, etc.), accelerated by `cuBLAS <https://developer.nvidia.com/cublas>`_ and `cuSOLVER <https://developer.nvidia.com/cusolver>`_
+- Multi-dimensional `fast Fourier transform <https://numpy.org/doc/stable/reference/routines.fft.html>`_ (FFT), accelerated by `cuFFT <https://developer.nvidia.com/cufft>`_
 - Reduction along axes (``sum``, ``max``, ``argmax``, etc.)
 
 CuPy additionally supports a subset of SciPy features:
 
-- Sparse matrices and sparse linear algebra, powered by `cuSPARSE <https://developer.nvidia.com/cusparse>`_.
-- Multi-dimensional image processing
-- Signal processing
-- Fast Fourier transform (FFT)
-- Linear algebra functions
-- Special functions
-- Statistical functions
+- `Sparse matrices <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_ and `sparse linear algebra <https://docs.scipy.org/doc/scipy/reference/sparse.linalg.html>`_, powered by `cuSPARSE <https://developer.nvidia.com/cusparse>`_.
+- `Multi-dimensional image processing <https://docs.scipy.org/doc/scipy/reference/ndimage.html>`_
+- `Signal processing <https://docs.scipy.org/doc/scipy/reference/signal.html>`_
+- `Fast Fourier transform <https://docs.scipy.org/doc/scipy/reference/fft.html>`_ (FFT)
+- `Linear algebra functions <https://docs.scipy.org/doc/scipy/reference/linalg.html>`_
+- `Special functions <https://docs.scipy.org/doc/scipy/reference/special.html>`_
+- `Statistical functions <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
 
 CuPy also includes the following features for performance:
 
@@ -42,7 +42,7 @@ CuPy also includes the following features for performance:
 - User-defined reduction CUDA kernels
 - Just-in-time compiler converting Python functions to CUDA kernels
 - Fusing CUDA kernels to optimize user-defined calculation
-- `CUB <https://github.com/NVIDIA/cub>`/`cuTENSOR <https://developer.nvidia.com/cutensor>` backends for reduction and other routines
+- `CUB <https://github.com/NVIDIA/cub>`_/`cuTENSOR <https://developer.nvidia.com/cutensor>`_ backends for reduction and other routines
 - Customizable memory allocator and memory pool
 - `cuDNN <https://developer.nvidia.com/cudnn>`_ utilities
 - Full coverage of `NCCL <https://developer.nvidia.com/nccl>`_ APIs
