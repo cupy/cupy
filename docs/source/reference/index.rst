@@ -23,8 +23,6 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    cuda
    kernel
    optimize
-   testing
    prof
    environment
    comparison
-   misc
