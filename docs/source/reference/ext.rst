@@ -13,3 +13,7 @@ CuPy-specific functions are placed under ``cupyx`` namespace.
    cupyx.scatter_add
    cupyx.scatter_max
    cupyx.scatter_min
+   cupyx.empty_pinned
+   cupyx.empty_like_pinned
+   cupyx.zeros_pinned
+   cupyx.zeros_like_pinned
