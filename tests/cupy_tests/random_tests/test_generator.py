@@ -67,10 +67,10 @@ class RandomGeneratorTestCase(common_distributions.BaseGeneratorTestCase):
 
     target_method = None
 
-    def get_random_state(self, xp, seed):
+    def get_rng(self, xp, seed):
         return xp.random.RandomState(seed=seed)
 
-    def set_rs_seed(self, seed):
+    def set_rng_seed(self, seed):
         self.rng.seed(seed)
 
 

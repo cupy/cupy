@@ -18,14 +18,14 @@ class GeneratorTestCase(common_distributions.BaseGeneratorTestCase):
 
     target_method = None
 
-    def get_random_state(self, xp, seed):
+    def get_rng(self, xp, seed):
         if xp is cupy:
             return cupy.random._generator_api.Generator(
                 random._bit_generator.Philox4x3210(seed=seed))
         else:
             return numpy.random.Generator(numpy.random.MT19937(seed))
 
-    def set_rs_seed(self, seed):
+    def set_rng_seed(self, seed):
         self.rng.bit_generator = random._bit_generator.Philox4x3210(seed=seed)
 
 

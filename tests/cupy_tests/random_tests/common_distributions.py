@@ -38,16 +38,16 @@ class BaseGeneratorTestCase(unittest.TestCase):
 
     target_method = None
 
-    def get_random_state(self, xp, seed):
+    def get_rng(self, xp, seed):
         pass
 
-    def set_rs_seed(self, seed):
+    def set_rng_seed(self, seed):
         pass
 
     def setUp(self):
         self.__seed = testing.generate_seed()
         # rng will be a new or old generator API object
-        self.rng = self.get_random_state(cupy, self.__seed)
+        self.rng = self.get_rng(cupy, self.__seed)
 
     def _get_generator_func(self, *args, **kwargs):
         assert isinstance(self.target_method, str), (
@@ -57,9 +57,9 @@ class BaseGeneratorTestCase(unittest.TestCase):
 
     def _generate_check_repro(self, func, seed):
         # Sample a random array while checking reproducibility
-        self.set_rs_seed(seed)
+        self.set_rng_seed(seed)
         x = func()
-        self.set_rs_seed(seed)
+        self.set_rng_seed(seed)
         y = func()
         testing.assert_array_equal(
             x, y,
@@ -110,7 +110,7 @@ class BaseGeneratorTestCase(unittest.TestCase):
         # numpy
         kwargs['size'] = numpy_len
         dtype = kwargs.pop('dtype', None)
-        numpy_rng = self.get_random_state(numpy, self.__seed)
+        numpy_rng = self.get_rng(numpy, self.__seed)
         vals_numpy = getattr(numpy_rng, self.target_method)(*args, **kwargs)
         if dtype is not None:
             vals_numpy = vals_numpy.astype(dtype, copy=False)
