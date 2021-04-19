@@ -3,7 +3,9 @@ import warnings
 
 import numpy
 
+from cupy_backends.cuda.api import runtime
 import cupy
+from cupy._core import core
 from cupyx.jit import _compile
 from cupyx.jit import _typerules
 from cupyx.jit import _types
@@ -94,9 +96,13 @@ class _JitRawKernel:
                 _types.Void(),
             )
             fname = result.func_name
-            module = cupy._core.core.compile_with_cache(
+            # workaround for hipRTC: as of ROCm 4.1.0 hipRTC still does not
+            # recognize "-D", so we have to compile using hipcc...
+            backend = 'nvcc' if runtime.is_hip else 'nvrtc'
+            module = core.compile_with_cache(
                 source=result.code,
-                options=('-D CUPY_JIT_MODE',))
+                options=('-DCUPY_JIT_MODE', '--std=c++11'),
+                backend=backend)
             kern = module.get_function(fname)
             self._cache[in_types] = kern
             self._cached_codes[in_types] = result.code
