@@ -124,7 +124,7 @@ default stream, which is unique per device. However, it is possible to change th
 :class:`cupy.cuda.Stream` API, please see :doc:`cuda_api` for example. The current stream in CuPy can be
 retrieved using :func:`cupy.cuda.get_current_stream`.
 
-It is worth noting that CuPy's current stream is per thread, per device, meaning that on different Python
+It is worth noting that CuPy's current stream is managed on a *per thread* basis, meaning that on different Python
 threads the current stream (if not the null stream) can be different.
 
 
