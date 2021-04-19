@@ -1,5 +1,5 @@
 Accessing CUDA Functionalities
-=============================================
+==============================
 
 .. _cuda_stream_event:
 
