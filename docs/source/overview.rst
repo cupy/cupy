@@ -31,8 +31,8 @@ CuPy additionally supports a subset of SciPy features:
 - `Sparse matrices <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_ and `sparse linear algebra <https://docs.scipy.org/doc/scipy/reference/sparse.linalg.html>`_, powered by `cuSPARSE <https://developer.nvidia.com/cusparse>`_.
 - `Multi-dimensional image processing <https://docs.scipy.org/doc/scipy/reference/ndimage.html>`_
 - `Signal processing <https://docs.scipy.org/doc/scipy/reference/signal.html>`_
-- `Fast Fourier transform <https://docs.scipy.org/doc/scipy/reference/fft.html>`_ (FFT)
-- `Linear algebra functions <https://docs.scipy.org/doc/scipy/reference/linalg.html>`_
+- `Fast Fourier transform <https://docs.scipy.org/doc/scipy/reference/fft.html>`__ (FFT)
+- `Linear algebra functions <https://docs.scipy.org/doc/scipy/reference/linalg.html>`__
 - `Special functions <https://docs.scipy.org/doc/scipy/reference/special.html>`_
 - `Statistical functions <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
 
