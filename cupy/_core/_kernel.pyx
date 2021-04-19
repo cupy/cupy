@@ -35,7 +35,7 @@ cdef inline bint _contains_zero(const shape_t& v) except? -1:
     return False
 
 
-cpdef function.Function _get_simple_elementwise_kernel(
+cdef function.Function _get_simple_elementwise_kernel(
         tuple params, tuple arginfos, str operation, str name,
         _TypeMap type_map, str preamble, str loop_prep='', str after_loop='',
         tuple options=()):
@@ -62,7 +62,7 @@ cpdef function.Function _get_simple_elementwise_kernel(
     return module.get_function(name)
 
 
-cpdef inline int get_kind_score(int kind):
+cdef inline int _get_kind_score(int kind):
     if b'b' == kind:
         return 0
     if b'u' == kind or b'i' == kind:
@@ -261,11 +261,11 @@ cdef class _ArgInfo:
         return p.name
 
 
-cpdef tuple _get_arginfos(list args):
+cdef tuple _get_arginfos(list args):
     return tuple([_ArgInfo.from_arg(a) for a in args])
 
 
-cpdef str _get_kernel_params(tuple params, tuple arginfos):
+cdef str _get_kernel_params(tuple params, tuple arginfos):
     cdef ParameterInfo p
     cdef _ArgInfo arginfo
     assert len(params) == len(arginfos)
@@ -635,8 +635,9 @@ cdef list _get_out_args_with_params(
 
 @_util.memoize(for_each_device=True)
 def _get_elementwise_kernel(
-        tuple arginfos, _TypeMap type_map, tuple params, operation, name,
-        preamble, **kwargs):
+        tuple arginfos, _TypeMap type_map,
+        tuple params, str operation, str name,
+        str preamble, str loop_prep='', str after_loop='', tuple options=()):
     cdef _ArgInfo arginfo
 
     op = []
@@ -651,7 +652,7 @@ def _get_elementwise_kernel(
     operation = '\n'.join(op)
     return _get_simple_elementwise_kernel(
         params, arginfos, operation, name, type_map,
-        preamble, **kwargs)
+        preamble, loop_prep, after_loop, options)
 
 
 cdef class ElementwiseKernel:
@@ -909,7 +910,7 @@ cdef inline bint _check_should_use_min_scalar(list in_args) except? -1:
     max_array_kind = -1
     max_scalar_kind = -1
     for i in in_args:
-        kind = get_kind_score(ord(i.dtype.kind))
+        kind = _get_kind_score(ord(i.dtype.kind))
         if isinstance(i, ndarray):
             all_scalars = False
             max_array_kind = max(max_array_kind, kind)
