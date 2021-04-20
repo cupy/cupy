@@ -329,7 +329,7 @@ class Generator:
 
         if not isinstance(lam, ndarray):
             if type(lam) in (float, int):
-                lam_a = ndarray(1, numpy.float64)
+                lam_a = ndarray((), numpy.float64)
                 lam_a.fill(lam)
                 lam = lam_a
             else:
@@ -432,7 +432,7 @@ class Generator:
 
         if not isinstance(shape, ndarray):
             if type(shape) in (float, int):
-                shape_a = ndarray(1, numpy.float64)
+                shape_a = ndarray((), numpy.float64)
                 shape_a.fill(shape)
                 shape = shape_a
             else:
