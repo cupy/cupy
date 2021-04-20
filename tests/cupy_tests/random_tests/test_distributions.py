@@ -540,9 +540,8 @@ class TestDistributionsPoisson(unittest.TestCase):
     def test_poisson_legacy(self, lam_dtype, dtype):
         self.check_distribution(_distributions.poisson, lam_dtype, dtype)
 
-    @cupy.testing.for_int_dtypes('dtype')
     @cupy.testing.for_float_dtypes('lam_dtype')
-    def test_poisson_generator(self, lam_dtype, dtype):
+    def test_poisson_generator(self, lam_dtype):
         self.check_distribution(cupy.random.default_rng().poisson,
                                 lam_dtype)
 
