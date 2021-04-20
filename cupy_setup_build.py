@@ -511,12 +511,12 @@ def preconfigure_modules(compiler, settings):
                     break
 
         if module['name'] == 'cugraph':
-            cusparselt_path = os.environ.get('CUGRAPH_PATH', '')
+            cugraph_path = os.environ.get('CUGRAPH_PATH', '')
             for i in 'include', 'include/cugraph':
-                inc_path = os.path.join(cusparselt_path, i)
+                inc_path = os.path.join(cugraph_path, i)
                 if os.path.exists(inc_path):
                     settings['include_dirs'].append(inc_path)
-            lib_path = os.path.join(cusparselt_path, 'lib')
+            lib_path = os.path.join(cugraph_path, 'lib')
             if os.path.exists(lib_path):
                 settings['library_dirs'].append(lib_path)
 
