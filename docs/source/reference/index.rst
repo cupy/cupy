@@ -20,19 +20,13 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    ufunc
    routines
    scipy
-   sparse
-   ndimage
    generic
-   memory
    cuda
    memoize
    kernel
    optimize
-   interoperability
    testing
    prof
    environment
-   difference
    comparison
    misc
-   compatibility
