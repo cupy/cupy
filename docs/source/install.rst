@@ -433,15 +433,33 @@ The following CUDA-specific features are not available in ROCm:
 
 * CUDA Array Interface
 * cuTENSOR
+* Atomic addition in FP16 (``cupy.ndarray.scatter_add`` and `cupyx.scatter_add`)
+* Multi-GPU FFT and FFT callback
+* Some random number generation algorithms
 
 The following features are not yet supported:
 
 * Several options in RawKernel/RawModule APIs: Jitify, dynamic parallelism
 * Sparse matrices (``cupyx.scipy.sparse``)
 * cuDNN (hipDNN)
+* Hermitian/symmetric eigenvalue solver (``cupy.linalg.eigh``)
+* Polynomial roots (uses Hermitian/symmetric eigenvalue solver)
 
-The following features may now work in edge cases (e.g., some combinations of dtype):
+The following features may not work in edge cases (e.g., some combinations of dtype):
 
-* ...
+.. note::
+   We are investigating the root causes of the issues. They are not necessarily
+   CuPy's issues, but ROCm may have some potential bugs.
 
-
+* 32-bit CArray boundary (HIP is known to fail with sizes 2**32-1024)
+* ``cupy.ndarray.__getitem__``
+* ``cupy.cuda.cufft.PlanNd``
+* ``cupy.ix_``
+* Some polynomial routines
+* ``cupy.broadcast``
+* ``cupy.convolve``
+* ``cupy.correlate``
+* Some random sampling routines (``cupy.random``)
+* ``cupy.cublas.dgmm``
+* ``cupy.linalg.einsum``
+* ``cupyx.scipy.ndimage`` and ``cupyx.scipy.signal``
