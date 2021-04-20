@@ -98,7 +98,7 @@ Package names are different depending on your CUDA Toolkit version.
 
 .. note::
 
-   Use ``pip install --pre cupy-cudaXXX`` if you want to install prerelease (development) versions.
+   Use ``pip install --pre cupy-cudaXXX`` if you want to install pre-release (development) versions.
 
 
 When using wheels, please be careful not to install multiple CuPy packages at the same time.
@@ -106,6 +106,7 @@ Any of these packages and ``cupy`` package (source installation) conflict with e
 Please make sure that only one CuPy package (``cupy`` or ``cupy-cudaXX`` where XX is a CUDA version) is installed::
 
   $ pip freeze | grep cupy
+
 
 .. _install_cupy_from_conda_forge:
 
@@ -146,6 +147,11 @@ However, if for any reason you need to force-install a particular CUDA version (
     the ``cudatoolkit`` package from ``conda-forge`` does not include the ``nvcc`` compiler toolchain. If you would like to use
     it from a local CUDA installation, you need to make sure the version of CUDA Toolkit matches that of ``cudatoolkit`` to
     avoid surprises.
+
+.. note::
+
+   Use ``conda install -c conda-forge/label/cupy_rc cupy`` if you want to install pre-release (development) versions.
+
 
 .. _install_cupy_from_source:
 
