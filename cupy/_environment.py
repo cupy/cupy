@@ -320,8 +320,14 @@ def _preload_libraries():
                 _log('Rejected candidate (not found): {}'.format(libpath))
                 continue
 
-            _log('Trying to load {}'.format(libpath))
             try:
+                if sys.platform == 'win32':
+                    # This is needed to load cuDNN v8 on Windows.
+                    libpath_dir = os.path.dirname(libpath)
+                    _log(f'Adding to PATH: {libpath_dir}')
+                    os.environ['PATH'] = (libpath_dir + os.pathsep +
+                                          os.environ.get('PATH', ''))
+                _log(f'Trying to load {libpath}')
                 # Keep reference to the preloaded module.
                 _preload_libs[lib] = (libpath, ctypes.CDLL(libpath))
                 _log('Loaded')
