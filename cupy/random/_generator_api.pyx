@@ -117,8 +117,7 @@ class Generator:
             cupy.ndarray: Samples uniformly drawn from the [0, 1) interval
 
         .. seealso::
-            - :meth:`numpy.random.Generator.random
-              <numpy.random.Generator.random>`
+            - :meth:`numpy.random.Generator.random`
         """
         cdef ndarray y
 
@@ -162,8 +161,7 @@ class Generator:
             Otherwise, it is the array whose shape specified by ``size``.
 
         .. seealso::
-            - :meth:`numpy.random.Generator.integers
-              <numpy.random.Generator.integers>`
+            - :meth:`numpy.random.Generator.integers`
         """
         cdef ndarray y
         if high is None:
@@ -225,8 +223,7 @@ class Generator:
             cupy.ndarray: Samples drawn from the beta distribution.
 
         .. seealso::
-            :meth:`numpy.random.Generator.beta
-            <numpy.random.generator.Generator.beta>`
+            :meth:`numpy.random.Generator.beta`
         """
         cdef ndarray y
         y = ndarray(size if size is not None else (), numpy.float64)
@@ -255,8 +252,7 @@ class Generator:
             cupy.ndarray: Samples drawn from the exponential distribution.
 
         .. seealso::
-            :meth:`numpy.random.Generator.exponential
-            <numpy.random.generator.Generator.exponential>`
+            :meth:`numpy.random.Generator.exponential`
         """
         return self.standard_exponential(size) * scale
 
@@ -285,8 +281,7 @@ class Generator:
                 distribution.
 
         .. seealso::
-            :meth:`numpy.random.Generator.standard_exponential
-            <numpy.random.generator.Generator.standard_exponential>`
+            :meth:`numpy.random.Generator.standard_exponential`
         """
         cdef ndarray y
 
@@ -325,8 +320,7 @@ class Generator:
             cupy.ndarray: Samples drawn from the poisson distribution.
 
         .. seealso::
-            :meth:`numpy.random.Generator.poisson
-            <numpy.random.generator.Generator.poisson>`
+            :meth:`numpy.random.Generator.poisson`
         """
         cdef ndarray y
         y = ndarray(size if size is not None else (), numpy.int64)
@@ -351,9 +345,7 @@ class Generator:
             cupy.ndarray: Samples drawn from the standard normal distribution.
 
         .. seealso::
-            - :meth:`numpy.random.Generator.standard_normal
-              <numpy.random.Generator.standard_normal>`
-
+            - :meth:`numpy.random.Generator.standard_normal`
         """
         cdef ndarray y
 
@@ -394,8 +386,7 @@ class Generator:
                 If ``None``, a zero-dimensional array is generated.
 
         .. seealso::
-            - :meth:`numpy.random.Generator.gamma
-              <numpy.random.Generator.gamma>`
+            - :meth:`numpy.random.Generator.gamma`
         """
         if size is None:
             size = cupy.broadcast(shape, scale).shape
@@ -423,8 +414,7 @@ class Generator:
                 to this array
 
         .. seealso::
-            - :meth:`numpy.random.Generator.standard_gamma
-              <numpy.random.Generator.standard_gamma>`
+            - :meth:`numpy.random.Generator.standard_gamma`
         """
         cdef ndarray y
         cdef ndarray shape_arr
