@@ -333,6 +333,8 @@ class Generator:
                 lam_a.fill(lam)
                 lam = lam_a
             else:
+                if lam is None:
+                    raise TypeError('lam must be real number, not NoneType')
                 raise ValueError('lam is required to be a cupy.ndarray'
                                  ' or a scalar')
         else:
@@ -436,6 +438,8 @@ class Generator:
                 shape_a.fill(shape)
                 shape = shape_a
             else:
+                if shape is None:
+                    raise TypeError('shape must be real number, not NoneType')
                 raise ValueError('shape is required to be a cupy.ndarray'
                                  ' or a scalar')
         else:

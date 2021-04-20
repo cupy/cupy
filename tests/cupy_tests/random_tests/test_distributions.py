@@ -27,8 +27,8 @@ class RandomDistributionsTestCase(unittest.TestCase):
 
     def check_generator_distribution(self, dist_name, params, dtype):
         cp_params = {k: cupy.asarray(params[k]) for k in params}
-        np_gen = numpy.random.default_rng()
-        cp_gen = cupy.random.default_rng()
+        np_gen = numpy.random.default_rng(0)
+        cp_gen = cupy.random.default_rng(0)
         np_out = numpy.asarray(
             getattr(np_gen, dist_name)(size=self.shape, **params))
         cp_out = getattr(cp_gen, dist_name)(
@@ -542,8 +542,19 @@ class TestDistributionsPoisson(unittest.TestCase):
 
     @cupy.testing.for_float_dtypes('lam_dtype')
     def test_poisson_generator(self, lam_dtype):
-        self.check_distribution(cupy.random.default_rng().poisson,
+        self.check_distribution(cupy.random.default_rng(0).poisson,
                                 lam_dtype)
+
+
+@testing.gpu
+class TestDistributionsPoissonInvalid(unittest.TestCase):
+    def test_none_lam_generator(self):
+        with self.assertRaises(TypeError):
+            cupy.random.default_rng(0).poisson(None)
+
+    def test_none_lam_legacy(self):
+        with self.assertRaises(ValueError):
+            _distributions.poisson(None)
 
 
 @testing.parameterize(*testing.product({
@@ -647,6 +658,18 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
         self.check_generator_distribution('standard_gamma',
                                           {'shape': shape},
                                           dtype)
+
+
+@testing.gpu
+class TestDistributionsStandardGammaInvalid(RandomDistributionsTestCase):
+
+    def test_none_shape_generator(self):
+        with self.assertRaises(TypeError):
+            cupy.random.default_rng(0).standard_gamma(None)
+
+    def test_none_shape_legacy(self):
+        with self.assertRaises(ValueError):
+            _distributions.standard_gamma(None)
 
 
 @testing.parameterize(*testing.product({
