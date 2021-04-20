@@ -17,7 +17,7 @@ The updates of CuPy are classified into three levels: major, minor, and revision
 These types have distinct levels of backward compatibilities.
 
 - **Major update** contains disruptive changes that break the backward compatibility.
-- **Minor update** contains addition and extension to the APIs keeping the supported backward compatibility.
+- **Minor update** contains additions and extensions to the APIs that keep the backward compatibility supported.
 - **Revision update** contains improvements on the API implementations without changing any API specifications.
 
 Note that we do not support full backward compatibility, which is almost infeasible for Python-based APIs, since there is no way to completely hide the implementation details.
@@ -30,16 +30,16 @@ Deprecation, Dropping, and Its Preparation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Any APIs may be *deprecated* at some minor updates.
-In such a case, the deprecation note is added to the API documentation, and the API implementation is changed to fire deprecation warning (if possible).
-There should be another way to reimplement the same things previously written with the deprecated APIs.
+In such a case, the deprecation note is added to the API documentation, and the API implementation is changed to fire a deprecation warning (if possible).
+There should be another way to reimplement the same functionality previously written using the deprecated APIs.
 
 Any APIs may be marked as *to be dropped in the future*.
-In such a case, the dropping is stated in the documentation with the major version number on which the API is planned to be dropped, and the API implementation is changed to fire the future warning (if possible).
+In such a case, the dropping is stated in the documentation with the major version number on which the API is planned to be dropped, and the API implementation is changed to fire a future warning (if possible).
 
 The actual dropping should be done through the following steps:
 
 - Make the API deprecated.
-  At this point, users should not need the deprecated API in their new application codes.
+  At this point, users should not use the deprecated API in their new application codes.
 - After that, mark the API as *to be dropped in the future*.
   It must be done in the minor update different from that of the deprecation.
 - At the major version announced in the above update, drop the API.
@@ -69,10 +69,10 @@ This section defines backward compatibilities that minor updates must maintain.
 Documented Interface
 ~~~~~~~~~~~~~~~~~~~~
 
-CuPy has the official API documentation.
+CuPy has an official API documentation.
 Many applications can be written based on the documented features.
 We support backward compatibilities of documented features.
-In other words, codes only based on the documented features run correctly with minor/revision-updated versions.
+In other words, codes only based on the documented features run correctly with minor-/revision- updated versions.
 
 Developers are encouraged to use apparent names for objects of implementation details.
 For example, attributes outside of the documented APIs should have one or more underscores at the prefix of their names.
@@ -112,13 +112,13 @@ Object Attributes and Properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Object attributes and properties are sometimes replaced by each other at minor updates.
-It does not break the user codes, except the codes depend on how the attributes and properties are implemented.
+It does not break the user codes, except for the codes depending on how the attributes and properties are implemented.
 
 Functions and Methods
 ~~~~~~~~~~~~~~~~~~~~~
 
 Methods may be replaced by callable attributes keeping the compatibility of parameters and return values in minor updates.
-It does not break the user codes, except the codes depend on how the methods and callable attributes are implemented.
+It does not break the user codes, except for the codes depending on how the methods and callable attributes are implemented.
 
 Exceptions and Warnings
 ~~~~~~~~~~~~~~~~~~~~~~~

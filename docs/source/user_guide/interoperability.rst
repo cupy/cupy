@@ -74,7 +74,7 @@ In addition, :func:`cupy.asarray` supports zero-copy conversion from Numba CUDA 
 
 .. note::
 
-    CuPy has a few environment variables controlling the exchange behavior, see :doc:`./environment` for details.
+    CuPy has a few environment variables controlling the exchange behavior, see :doc:`../reference/environment` for details.
 
 
 mpi4py
@@ -225,12 +225,6 @@ DLPack
 `DLPack <https://github.com/dmlc/dlpack>`__ is a specification of tensor structure to share tensors among frameworks.
 
 CuPy supports importing from and exporting to DLPack data structure (:func:`cupy.fromDlpack` and :func:`cupy.ndarray.toDlpack`).
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupy.fromDlpack
 
 Here is a simple example:
 

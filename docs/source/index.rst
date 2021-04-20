@@ -9,7 +9,7 @@ CuPy -- A NumPy-compatible array library accelerated by CUDA
 
    overview
    install
-   tutorial/index
+   user_guide/index
    reference/index
 
 .. toctree::

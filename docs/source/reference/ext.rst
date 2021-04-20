@@ -1,5 +1,3 @@
-.. module:: cupyx
-
 CuPy-specific Functions
 =======================
 
@@ -17,3 +15,15 @@ CuPy-specific functions are placed under ``cupyx`` namespace.
    cupyx.empty_like_pinned
    cupyx.zeros_pinned
    cupyx.zeros_like_pinned
+
+DLPack utilities
+----------------
+
+This is a helper function for creating a :class:`cupy.ndarray` from a DLPack tensor.
+For further detail see :ref:`dlpack`.
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupy.fromDlpack
