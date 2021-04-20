@@ -20,13 +20,9 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    ufunc
    routines
    scipy
-   generic
+   ext
    cuda
-   memoize
    kernel
-   optimize
-   testing
    prof
    environment
    comparison
-   misc

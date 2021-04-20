@@ -22,12 +22,13 @@ These functions cover a subset of
    linalg
    logic
    math
+   misc
    pad
    polynomials
    random
    sorting
    statistics
-   ext
+   testing
 
 
 .. _accelerators:
