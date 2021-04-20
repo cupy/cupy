@@ -115,6 +115,9 @@ class Generator:
 
         Returns:
             cupy.ndarray: Samples uniformly drawn from the [0, 1) interval
+
+        .. seealso::
+            - :meth:`numpy.random.Generator.random`
         """
         cdef ndarray y
 
@@ -156,6 +159,9 @@ class Generator:
             it is single integer sampled.
             If size is integer, it is the 1D-array of length ``size`` element.
             Otherwise, it is the array whose shape specified by ``size``.
+
+        .. seealso::
+            - :meth:`numpy.random.Generator.integers`
         """
         cdef ndarray y
         if high is None:
@@ -217,8 +223,7 @@ class Generator:
             cupy.ndarray: Samples drawn from the beta distribution.
 
         .. seealso::
-            :meth:`numpy.random.Generator.beta
-            <numpy.random.generator.Generator.beta>`
+            :meth:`numpy.random.Generator.beta`
         """
         cdef ndarray y
         y = ndarray(size if size is not None else (), numpy.float64)
@@ -247,8 +252,7 @@ class Generator:
             cupy.ndarray: Samples drawn from the exponential distribution.
 
         .. seealso::
-            :meth:`numpy.random.Generator.exponential
-            <numpy.random.generator.Generator.exponential>`
+            :meth:`numpy.random.Generator.exponential`
         """
         return self.standard_exponential(size) * scale
 
@@ -276,8 +280,8 @@ class Generator:
             cupy.ndarray: Samples drawn from the standard exponential
                 distribution.
 
-        .. seealso:: :meth:`numpy.random.standard_exponential
-                     <numpy.random.mtrand.RandomState.standard_exponential>`
+        .. seealso::
+            :meth:`numpy.random.Generator.standard_exponential`
         """
         cdef ndarray y
 
@@ -316,8 +320,7 @@ class Generator:
             cupy.ndarray: Samples drawn from the poisson distribution.
 
         .. seealso::
-            :meth:`numpy.random.Generator.poisson
-            <numpy.random.generator.Generator.poisson>`
+            :meth:`numpy.random.Generator.poisson`
         """
         cdef ndarray y
         y = ndarray(size if size is not None else (), numpy.int64)
@@ -325,7 +328,10 @@ class Generator:
         return y
 
     def standard_normal(self, size=None, dtype=numpy.float64, out=None):
-        """Returns an array of samples drawn from the standard normal distribution.
+        """Standard normal distribution.
+
+        Returns an array of samples drawn from the standard normal
+        distribution.
 
         Args:
             size (int or tuple of ints): The shape of the array. If ``None``, a
@@ -338,8 +344,8 @@ class Generator:
         Returns:
             cupy.ndarray: Samples drawn from the standard normal distribution.
 
-        .. seealso:: :func:`numpy.random.standard_normal`
-
+        .. seealso::
+            - :meth:`numpy.random.Generator.standard_normal`
         """
         cdef ndarray y
 
@@ -361,7 +367,14 @@ class Generator:
         return y
 
     def gamma(self, shape, scale=1.0, size=None):
-        """Returns an array of samples drawn from a gamma distribution.
+        """Gamma distribution.
+
+        Returns an array of samples drawn from the gamma distribution. Its
+        probability density function is defined as
+
+        .. math::
+           f(x) = \\frac{1}{\\Gamma(k)\\theta^k}x^{k-1}e^{-x/\\theta}.
+
 
         Args:
             shape (float or array_like of float): The shape of the
@@ -373,7 +386,6 @@ class Generator:
                 If ``None``, a zero-dimensional array is generated.
 
         .. seealso::
-            - :func:`cupy.random.gamma` for full documentation
             - :meth:`numpy.random.Generator.gamma`
         """
         if size is None:
@@ -383,7 +395,14 @@ class Generator:
         return y
 
     def standard_gamma(self, shape, size=None, dtype=numpy.float64, out=None):
-        """Returns an array of samples drawn from a standard gamma distribution.
+        """Standard gamma distribution.
+
+        Returns an array of samples drawn from the standard gamma distribution.
+        Its probability density function is defined as
+
+        .. math::
+           f(x) = \\frac{1}{\\Gamma(k)}x^{k-1}e^{-x}.
+
 
         Args:
             shape (float or array_like of float): The shape of the
@@ -395,7 +414,6 @@ class Generator:
                 to this array
 
         .. seealso::
-            - :func:`cupy.random.standard_gamma` for full documentation
             - :meth:`numpy.random.Generator.standard_gamma`
         """
         cdef ndarray y
