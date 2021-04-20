@@ -33,7 +33,7 @@ NumPy/SciPy-compatible API in CuPy v9 is based on NumPy 1.20 and SciPy 1.6, and 
 
 * `Optuna <https://optuna.org/>`_ (*optional*): v2.x
 
-    * Required only when using :doc:`../reference/optimize`.
+    * Required only when using :ref:`kernel_param_opt`.
 
 .. note::
 

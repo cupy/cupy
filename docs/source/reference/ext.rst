@@ -27,3 +27,17 @@ For further detail see :ref:`dlpack`.
    :nosignatures:
 
    cupy.fromDlpack
+
+
+.. _kernel_param_opt:
+
+Automatic Kernel Parameters Optimizations
+-----------------------------------------
+
+.. module:: cupyx.optimizing
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   cupyx.optimizing.optimize
