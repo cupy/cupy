@@ -460,4 +460,4 @@ The following features may not work in edge cases (e.g., some combinations of dt
 * ``cupy.correlate`` (`#4781 <https://github.com/cupy/cupy/pull/4781>`_)
 * Some random sampling routines (``cupy.random``, `#4770 <https://github.com/cupy/cupy/pull/4770>`_)
 * ``cupy.linalg.einsum``
-* ``cupyx.scipy.ndimage`` and ``cupyx.scipy.signal``(`#4878 <https://github.com/cupy/cupy/pull/4878>`_, `#4879 <https://github.com/cupy/cupy/pull/4879>`_, `#4880 <https://github.com/cupy/cupy/pull/4880>`_)
+* ``cupyx.scipy.ndimage`` and ``cupyx.scipy.signal`` (`#4878 <https://github.com/cupy/cupy/pull/4878>`_, `#4879 <https://github.com/cupy/cupy/pull/4879>`_, `#4880 <https://github.com/cupy/cupy/pull/4880>`_)
