@@ -433,7 +433,7 @@ The following features are not available due to the limitation of ROCm or becaus
 
 * CUDA Array Interface
 * cuTENSOR
-* Atomic addition in FP16 (``cupy.ndarray.scatter_add`` and `cupyx.scatter_add`)
+* Atomic addition in FP16 (``cupy.ndarray.scatter_add`` and ``cupyx.scatter_add``)
 * Multi-GPU FFT and FFT callback
 * Some random number generation algorithms
 
