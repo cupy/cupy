@@ -1,22 +1,23 @@
-Data Type Routines
+Data type routines
 ==================
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.dtype.html
+.. Hint:: `NumPy API Reference: Data type routines <https://numpy.org/doc/stable/reference/routines.dtype.html>`_
+
+.. currentmodule:: cupy
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.can_cast
-   cupy.result_type
-   cupy.common_type
+   can_cast
+   result_type
+   common_type
 
 .. csv-table::
    :align: left
 
-   ``cupy.promote_types`` (alias of :func:`numpy.promote_types`)
-   ``cupy.min_scalar_type`` (alias of :func:`numpy.min_scalar_type`)
-   ``cupy.obj2sctype`` (alias of :func:`numpy.obj2sctype`)
+   ``promote_types`` (alias of :func:`numpy.promote_types`)
+   ``min_scalar_type`` (alias of :func:`numpy.min_scalar_type`)
+   ``obj2sctype`` (alias of :func:`numpy.obj2sctype`)
 
 Creating data types
 -------------------
@@ -24,8 +25,8 @@ Creating data types
 .. csv-table::
    :align: left
 
-   ``cupy.dtype`` (alias of :class:`numpy.dtype`)
-   ``cupy.format_parser`` (alias of :class:`numpy.format_parser`)
+   ``dtype`` (alias of :class:`numpy.dtype`)
+   ``format_parser`` (alias of :class:`numpy.format_parser`)
 
 Data type information
 ---------------------
@@ -33,9 +34,9 @@ Data type information
 .. csv-table::
    :align: left
 
-   ``cupy.finfo`` (alias of :class:`numpy.finfo`)
-   ``cupy.iinfo`` (alias of :class:`numpy.iinfo`)
-   ``cupy.MachAr`` (alias of :class:`numpy.MachAr`)
+   ``finfo`` (alias of :class:`numpy.finfo`)
+   ``iinfo`` (alias of :class:`numpy.iinfo`)
+   ``MachAr`` (alias of :class:`numpy.MachAr`)
 
 Data type testing
 -----------------
@@ -43,11 +44,11 @@ Data type testing
 .. csv-table::
    :align: left
 
-   ``cupy.issctype`` (alias of :func:`numpy.issctype`)
-   ``cupy.issubdtype`` (alias of :func:`numpy.issubdtype`)
-   ``cupy.issubsctype`` (alias of :func:`numpy.issubsctype`)
-   ``cupy.issubclass_`` (alias of :func:`numpy.issubclass_`)
-   ``cupy.find_common_type`` (alias of :func:`numpy.find_common_type`)
+   ``issctype`` (alias of :func:`numpy.issctype`)
+   ``issubdtype`` (alias of :func:`numpy.issubdtype`)
+   ``issubsctype`` (alias of :func:`numpy.issubsctype`)
+   ``issubclass_`` (alias of :func:`numpy.issubclass_`)
+   ``find_common_type`` (alias of :func:`numpy.find_common_type`)
 
 Miscellaneous
 -------------
@@ -55,6 +56,6 @@ Miscellaneous
 .. csv-table::
    :align: left
 
-   ``cupy.typename`` (alias of :func:`numpy.typename`)
-   ``cupy.sctype2char`` (alias of :func:`numpy.sctype2char`)
-   ``cupy.mintypecode`` (alias of :func:`numpy.mintypecode`)
+   ``typename`` (alias of :func:`numpy.typename`)
+   ``sctype2char`` (alias of :func:`numpy.sctype2char`)
+   ``mintypecode`` (alias of :func:`numpy.mintypecode`)

@@ -1,12 +1,10 @@
---------
-Routines
---------
+----------------
+Routines (NumPy)
+----------------
 
 The following pages describe NumPy-compatible routines.
 These functions cover a subset of
-`NumPy routines <https://docs.scipy.org/doc/numpy/reference/routines.html>`_.
-
-.. currentmodule:: cupy
+`NumPy routines <https://numpy.org/doc/stable/reference/routines.html>`_.
 
 .. toctree::
    :maxdepth: 2
@@ -26,9 +24,11 @@ These functions cover a subset of
    pad
    polynomials
    random
+   set
    sorting
    statistics
    testing
+   window
 
 
 .. _accelerators:

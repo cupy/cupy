@@ -1,23 +1,24 @@
 .. module:: cupy.fft
 
-FFT Functions
-=============
+Discrete Fourier Transform (:mod:`cupy.fft`)
+============================================
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.fft.html
+.. Hint:: `NumPy API Reference: Discrete Fourier Transform (numpy.fft) <https://numpy.org/doc/stable/reference/routines.fft.html>`_
+
+.. seealso:: :doc:`scipy_fft`
 
 Standard FFTs
 -------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.fft.fft
-   cupy.fft.ifft
-   cupy.fft.fft2
-   cupy.fft.ifft2
-   cupy.fft.fftn
-   cupy.fft.ifftn
+   fft
+   ifft
+   fft2
+   ifft2
+   fftn
+   ifftn
 
 
 Real FFTs
@@ -25,14 +26,13 @@ Real FFTs
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.fft.rfft
-   cupy.fft.irfft
-   cupy.fft.rfft2
-   cupy.fft.irfft2
-   cupy.fft.rfftn
-   cupy.fft.irfftn
+   rfft
+   irfft
+   rfft2
+   irfft2
+   rfftn
+   irfftn
 
 
 Hermitian FFTs
@@ -40,10 +40,9 @@ Hermitian FFTs
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.fft.hfft
-   cupy.fft.ihfft
+   hfft
+   ihfft
 
 
 Helper routines
@@ -51,16 +50,24 @@ Helper routines
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.fft.fftfreq
-   cupy.fft.rfftfreq
-   cupy.fft.fftshift
-   cupy.fft.ifftshift
-   cupy.fft.config.set_cufft_callbacks
-   cupy.fft.config.set_cufft_gpus
-   cupy.fft.config.get_plan_cache
-   cupy.fft.config.show_plan_cache_info
+   fftfreq
+   rfftfreq
+   fftshift
+   ifftshift
+
+CuPy-specific APIs
+------------------
+
+See the description below for details.
+
+.. autosummary::
+   :toctree: generated/
+
+   config.set_cufft_callbacks
+   config.set_cufft_gpus
+   config.get_plan_cache
+   config.show_plan_cache_info
 
 
 Normalization
