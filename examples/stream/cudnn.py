@@ -1,5 +1,6 @@
 # nvprof --print-gpu-trace python examples/stream/cudnn.py
 import cupy
+import cupy.cuda.cudnn
 import cupy.cudnn
 
 x = cupy.array([1.0, 2.0, 3.0])
