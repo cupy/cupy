@@ -1,5 +1,4 @@
 from cupy._core import core  # NOQA
-from cupy._core import fusion  # NOQA
 from cupy._core import internal  # NOQA
 
 
@@ -73,3 +72,7 @@ from cupy._core.internal import complete_slice  # NOQA
 from cupy._core.internal import get_size  # NOQA
 from cupy._core.raw import RawKernel  # NOQA
 from cupy._core.raw import RawModule  # NOQA
+
+
+# Avoid a circular import by importing `fusion` (and `new_fusion`) at last
+from cupy._core import fusion  # NOQA
