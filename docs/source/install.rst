@@ -433,6 +433,7 @@ The following features are not available due to the limitation of ROCm or becaus
 
 * CUDA Array Interface
 * cuTENSOR
+* Handling extremely large arrays whose size is around 32-bit boundary (HIP is known to fail with sizes 2**32-1024)
 * Atomic addition in FP16 (``cupy.ndarray.scatter_add`` and ``cupyx.scatter_add``)
 * Multi-GPU FFT and FFT callback
 * Some random number generation algorithms
@@ -451,15 +452,12 @@ The following features may not work in edge cases (e.g., some combinations of dt
    We are investigating the root causes of the issues. They are not necessarily
    CuPy's issues, but ROCm may have some potential bugs.
 
-* 32-bit CArray boundary (HIP is known to fail with sizes 2**32-1024)
-* ``cupy.ndarray.__getitem__``
-* ``cupy.cuda.cufft.PlanNd``
-* ``cupy.ix_``
-* Some polynomial routines
-* ``cupy.broadcast``
-* ``cupy.convolve``
-* ``cupy.correlate``
-* Some random sampling routines (``cupy.random``)
-* ``cupy.cublas.dgmm``
+* ``cupy.ndarray.__getitem__`` (`#4653 <https://github.com/cupy/cupy/pull/4653>`_)
+* ``cupy.ix_`` (`#4654 <https://github.com/cupy/cupy/pull/4654>`_)
+* Some polynomial routines (`#4656 <https://github.com/cupy/cupy/pull/4656>`_, `#4658 <https://github.com/cupy/cupy/pull/4658>`_, `#4758 <https://github.com/cupy/cupy/pull/4758>`_, `#4759 <https://github.com/cupy/cupy/pull/4759>`_)
+* ``cupy.broadcast`` (`#4662 <https://github.com/cupy/cupy/pull/4662>`_)
+* ``cupy.convolve`` (`#4668 <https://github.com/cupy/cupy/pull/4668>`_)
+* ``cupy.correlate`` (`#4781 <https://github.com/cupy/cupy/pull/4781>`_)
+* Some random sampling routines (``cupy.random``, `#4770 <https://github.com/cupy/cupy/pull/4770>`_)
 * ``cupy.linalg.einsum``
-* ``cupyx.scipy.ndimage`` and ``cupyx.scipy.signal``
+* ``cupyx.scipy.ndimage`` and ``cupyx.scipy.signal``(`#4878 <https://github.com/cupy/cupy/pull/4878>`_, `#4879 <https://github.com/cupy/cupy/pull/4879>`_, `#4880 <https://github.com/cupy/cupy/pull/4880>`_)
