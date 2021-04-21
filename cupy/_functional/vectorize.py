@@ -18,7 +18,7 @@ def _get_input_type(arg):
 class vectorize(object):
     """Generalized function class.
 
-    .. seealso:: :func:`numpy.vectorize`
+    .. seealso:: :class:`numpy.vectorize`
     """
 
     def __init__(

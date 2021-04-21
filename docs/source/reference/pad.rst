@@ -1,10 +1,10 @@
-Padding
-================================
+Padding arrays
+==============
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.padding.html
+.. Hint:: `NumPy API Reference: Padding arrays <https://numpy.org/doc/stable/reference/routines.padding.html>`_
 
+.. currentmodule:: cupy
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.pad
+   pad
