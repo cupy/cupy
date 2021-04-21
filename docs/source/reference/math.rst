@@ -1,28 +1,29 @@
-Mathematical Functions
+Mathematical functions
 ======================
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.math.html
+.. Hint:: `NumPy API Reference: Mathematical functions <https://numpy.org/doc/stable/reference/routines.math.html>`_
+
+.. currentmodule:: cupy
 
 Trigonometric functions
 -----------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.sin
-   cupy.cos
-   cupy.tan
-   cupy.arcsin
-   cupy.arccos
-   cupy.arctan
-   cupy.hypot
-   cupy.arctan2
-   cupy.degrees
-   cupy.radians
-   cupy.unwrap
-   cupy.deg2rad
-   cupy.rad2deg
+   sin
+   cos
+   tan
+   arcsin
+   arccos
+   arctan
+   hypot
+   arctan2
+   degrees
+   radians
+   unwrap
+   deg2rad
+   rad2deg
 
 
 Hyperbolic functions
@@ -30,14 +31,13 @@ Hyperbolic functions
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.sinh
-   cupy.cosh
-   cupy.tanh
-   cupy.arcsinh
-   cupy.arccosh
-   cupy.arctanh
+   sinh
+   cosh
+   tanh
+   arcsinh
+   arccosh
+   arctanh
 
 
 Rounding
@@ -45,15 +45,14 @@ Rounding
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.around
-   cupy.round_
-   cupy.rint
-   cupy.fix
-   cupy.floor
-   cupy.ceil
-   cupy.trunc
+   around
+   round_
+   rint
+   fix
+   floor
+   ceil
+   trunc
 
 
 Sums, products, differences
@@ -61,18 +60,18 @@ Sums, products, differences
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.prod
-   cupy.sum
-   cupy.cumprod
-   cupy.cumsum
-   cupy.nansum
-   cupy.nanprod
-   cupy.nancumsum
-   cupy.nancumprod
-   cupy.diff
-   cupy.gradient
+   prod
+   sum
+   nanprod
+   nansum
+   cumprod
+   cumsum
+   nancumprod
+   nancumsum
+   diff
+   gradient
+   cross
 
 
 Exponents and logarithms
@@ -80,17 +79,16 @@ Exponents and logarithms
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.exp
-   cupy.expm1
-   cupy.exp2
-   cupy.log
-   cupy.log10
-   cupy.log2
-   cupy.log1p
-   cupy.logaddexp
-   cupy.logaddexp2
+   exp
+   expm1
+   exp2
+   log
+   log10
+   log2
+   log1p
+   logaddexp
+   logaddexp2
 
 
 Other special functions
@@ -98,10 +96,9 @@ Other special functions
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.i0
-   cupy.sinc
+   i0
+   sinc
 
 
 Floating point routines
@@ -109,13 +106,22 @@ Floating point routines
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.signbit
-   cupy.copysign
-   cupy.frexp
-   cupy.ldexp
-   cupy.nextafter
+   signbit
+   copysign
+   frexp
+   ldexp
+   nextafter
+
+
+Rational routines
+-----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   lcm
+   gcd
 
 
 Arithmetic operations
@@ -123,22 +129,21 @@ Arithmetic operations
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.add
-   cupy.reciprocal
-   cupy.negative
-   cupy.multiply
-   cupy.divide
-   cupy.power
-   cupy.subtract
-   cupy.true_divide
-   cupy.floor_divide
-   cupy.fmod
-   cupy.mod
-   cupy.modf
-   cupy.remainder
-   cupy.divmod
+   add
+   reciprocal
+   negative
+   multiply
+   divide
+   power
+   subtract
+   true_divide
+   floor_divide
+   fmod
+   mod
+   modf
+   remainder
+   divmod
 
 
 Handling complex numbers
@@ -146,12 +151,12 @@ Handling complex numbers
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.angle
-   cupy.real
-   cupy.imag
-   cupy.conj
+   angle
+   real
+   imag
+   conj
+   conjugate
 
 
 Miscellaneous
@@ -159,23 +164,17 @@ Miscellaneous
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.convolve
-   cupy.clip
-   cupy.sqrt
-   cupy.cbrt
-   cupy.square
-   cupy.absolute
-   cupy.sign
-   cupy.maximum
-   cupy.minimum
-   cupy.fmax
-   cupy.fmin
-   cupy.nan_to_num
-   cupy.interp
-   cupy.bartlett
-   cupy.blackman
-   cupy.hamming
-   cupy.hanning
-   cupy.kaiser
+   convolve
+   clip
+   sqrt
+   cbrt
+   square
+   absolute
+   sign
+   maximum
+   minimum
+   fmax
+   fmin
+   nan_to_num
+   interp

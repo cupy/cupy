@@ -1,22 +1,22 @@
-Binary Operations
+Binary operations
 =================
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.bitwise.html
+.. Hint:: `NumPy API Reference: Binary operations <https://numpy.org/doc/stable/reference/routines.bitwise.html>`_
+
+.. currentmodule:: cupy
 
 Elementwise bit operations
 --------------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.bitwise_and
-   cupy.bitwise_not
-   cupy.bitwise_or
-   cupy.bitwise_xor
-   cupy.invert
-   cupy.left_shift
-   cupy.right_shift
+   bitwise_and
+   bitwise_or
+   bitwise_xor
+   invert
+   left_shift
+   right_shift
 
 
 Bit packing
@@ -24,10 +24,9 @@ Bit packing
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.packbits
-   cupy.unpackbits
+   packbits
+   unpackbits
 
 
 Output formatting
@@ -35,6 +34,5 @@ Output formatting
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.binary_repr
+   binary_repr

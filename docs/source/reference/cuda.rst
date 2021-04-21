@@ -1,4 +1,4 @@
-Low-Level CUDA Support
+Low-level CUDA support
 ======================
 
 Device management
@@ -6,7 +6,6 @@ Device management
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.Device
 
@@ -16,7 +15,6 @@ Memory management
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.get_default_memory_pool
    cupy.get_default_pinned_memory_pool
@@ -47,7 +45,6 @@ Memory hook
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.MemoryHook
    cupy.cuda.memory_hooks.DebugPrintHook
@@ -61,7 +58,6 @@ Streams and events
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.Stream
    cupy.cuda.ExternalStream
@@ -75,7 +71,6 @@ Texture and surface memory
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.texture.ChannelFormatDescriptor
    cupy.cuda.texture.CUDAarray
@@ -91,7 +86,6 @@ Profiler
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.profile
    cupy.cuda.profiler.initialize
@@ -109,7 +103,6 @@ NCCL
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.nccl.NcclCommunicator
    cupy.cuda.nccl.get_build_version
@@ -125,12 +118,11 @@ Runtime API
 -----------
 
 CuPy wraps CUDA Runtime APIs to provide the native CUDA operations.
-Please check the `Original CUDA Runtime API document <https://docs.nvidia.com/cuda/cuda-runtime-api/index.html>`_
+Please check the `CUDA Runtime API documentation <https://docs.nvidia.com/cuda/cuda-runtime-api/index.html>`_
 to use these functions.
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.runtime.driverGetVersion
    cupy.cuda.runtime.runtimeGetVersion
