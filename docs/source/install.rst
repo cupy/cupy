@@ -431,3 +431,39 @@ You can specify a comma-separated list of ISAs if you have multiple GPUs of diff
 
   If you don't specify the ``HCC_AMDGPU_TARGET`` environment variable, CuPy will be built for the GPU architectures available on the build host.
   This behavior is specific to ROCm builds; when building CuPy for NVIDIA CUDA, the build result is not affected by the host configuration.
+
+Limitations
+-----------
+
+The following features are not available due to the limitation of ROCm or because that they are specific to CUDA:
+
+* CUDA Array Interface
+* cuTENSOR
+* Handling extremely large arrays whose size is around 32-bit boundary (HIP is known to fail with sizes `2**32-1024`)
+* Atomic addition in FP16 (``cupy.ndarray.scatter_add`` and ``cupyx.scatter_add``)
+* Multi-GPU FFT and FFT callback
+* Some random number generation algorithms
+
+The following features are not yet supported:
+
+* Several options in RawKernel/RawModule APIs: Jitify, dynamic parallelism
+* Sparse matrices (``cupyx.scipy.sparse``)
+* cuDNN (hipDNN)
+* Hermitian/symmetric eigenvalue solver (``cupy.linalg.eigh``)
+* Polynomial roots (uses Hermitian/symmetric eigenvalue solver)
+
+The following features may not work in edge cases (e.g., some combinations of dtype):
+
+.. note::
+   We are investigating the root causes of the issues. They are not necessarily
+   CuPy's issues, but ROCm may have some potential bugs.
+
+* ``cupy.ndarray.__getitem__`` (`#4653 <https://github.com/cupy/cupy/pull/4653>`_)
+* ``cupy.ix_`` (`#4654 <https://github.com/cupy/cupy/pull/4654>`_)
+* Some polynomial routines (`#4656 <https://github.com/cupy/cupy/pull/4656>`_, `#4658 <https://github.com/cupy/cupy/pull/4658>`_, `#4758 <https://github.com/cupy/cupy/pull/4758>`_, `#4759 <https://github.com/cupy/cupy/pull/4759>`_)
+* ``cupy.broadcast`` (`#4662 <https://github.com/cupy/cupy/pull/4662>`_)
+* ``cupy.convolve`` (`#4668 <https://github.com/cupy/cupy/pull/4668>`_)
+* ``cupy.correlate`` (`#4781 <https://github.com/cupy/cupy/pull/4781>`_)
+* Some random sampling routines (``cupy.random``, `#4770 <https://github.com/cupy/cupy/pull/4770>`_)
+* ``cupy.linalg.einsum``
+* ``cupyx.scipy.ndimage`` and ``cupyx.scipy.signal`` (`#4878 <https://github.com/cupy/cupy/pull/4878>`_, `#4879 <https://github.com/cupy/cupy/pull/4879>`_, `#4880 <https://github.com/cupy/cupy/pull/4880>`_)
