@@ -433,7 +433,7 @@ The following features are not available due to the limitation of ROCm or becaus
 
 * CUDA Array Interface
 * cuTENSOR
-* Handling extremely large arrays whose size is around 32-bit boundary (HIP is known to fail with sizes 2**32-1024)
+* Handling extremely large arrays whose size is around 32-bit boundary (HIP is known to fail with sizes `2**32-1024`)
 * Atomic addition in FP16 (``cupy.ndarray.scatter_add`` and ``cupyx.scatter_add``)
 * Multi-GPU FFT and FFT callback
 * Some random number generation algorithms
