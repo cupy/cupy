@@ -429,7 +429,7 @@ You can specify a comma-separated list of ISAs if you have multiple GPUs of diff
 Limitations
 -----------
 
-The following CUDA-specific features are not available in ROCm:
+The following features are not available due to the limitation of ROCm or because that they are specific to CUDA:
 
 * CUDA Array Interface
 * cuTENSOR
