@@ -49,7 +49,6 @@ def is_available():
 __version__ = _version.__version__
 
 
-import cupy._core.fusion  # NOQA
 from cupy import fft  # NOQA
 from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
@@ -806,13 +805,13 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, _cupyx.scipy.sparse.spmatrix,
-                            cupy._core.fusion._FusionVarArray,
-                            cupy._core.new_fusion._ArrayProxy)):
+                            _core.fusion._FusionVarArray,
+                            _core.new_fusion._ArrayProxy)):
             return _cupy
     return _numpy
 
 
-fuse = cupy._core.fusion.fuse
+fuse = _core.fusion.fuse
 
 disable_experimental_feature_warning = False
 
