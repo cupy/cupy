@@ -1279,15 +1279,26 @@ class TestRandomStateThreadSafe(unittest.TestCase):
         cupy.random.reset_states()
 
     def test_get_random_state_thread_safe(self):
+        def _f(func, args=()):
+            cupy.cuda.Device().use()
+            func(*args)
+
         seed = 10
         threads = [
-            threading.Thread(target=lambda: cupy.random.seed(seed)),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
-            threading.Thread(target=lambda: cupy.random.get_random_state()),
+            threading.Thread(
+                target=_f, args=(cupy.random.seed, (seed,))),
+            threading.Thread(
+                target=_f, args=(cupy.random.get_random_state,)),
+            threading.Thread(
+                target=_f, args=(cupy.random.get_random_state,)),
+            threading.Thread(
+                target=_f, args=(cupy.random.get_random_state,)),
+            threading.Thread(
+                target=_f, args=(cupy.random.get_random_state,)),
+            threading.Thread(
+                target=_f, args=(cupy.random.get_random_state,)),
+            threading.Thread(
+                target=_f, args=(cupy.random.get_random_state,)),
         ]
 
         for t in threads:
@@ -1301,10 +1312,16 @@ class TestRandomStateThreadSafe(unittest.TestCase):
         assert actual == expected
 
     def test_set_random_state_thread_safe(self):
+        def _f(func, args=()):
+            cupy.cuda.Device().use()
+            func(*args)
+
         rs = cupy.random.RandomState()
         threads = [
-            threading.Thread(target=lambda: cupy.random.set_random_state(rs)),
-            threading.Thread(target=lambda: cupy.random.set_random_state(rs)),
+            threading.Thread(
+                target=_f, args=(cupy.random.set_random_state, (rs,))),
+            threading.Thread(
+                target=_f, args=(cupy.random.set_random_state, (rs,))),
         ]
 
         for t in threads:
