@@ -1,5 +1,3 @@
-.. currentmodule:: cupy
-
 =============
 Upgrade Guide
 =============
@@ -35,6 +33,15 @@ NCCL and cuDNN No Longer Included in Wheels
 
 NCCL and cuDNN shared libraires are no longer included in wheels (see `#4850 <https://github.com/cupy/cupy/issues/4850>`_ for discussions). 
 You can manually install them after installing wheel if you don't have a previous installation; see :doc:`install` for details.
+
+Baseline API Changes
+--------------------
+
+Baseline API has been bumped from NumPy 1.19 and SciPy 1.5 to NumPy 1.20 and SciPy 1.6.
+CuPy v9 will follow the upstream products' specifications of these baseline versions.
+
+Following NumPy 1.20, aliases for the Python scalar types (``cupy.bool``, ``cupy.int``, ``cupy.float``, and ``cupy.complex``) are now deprecated.
+``cupy.bool_``, ``cupy.int_``, ``cupy.float_`` and ``cupy.complex_`` should be used instead when required.
 
 Update of Docker Images
 -----------------------
