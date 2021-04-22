@@ -8,6 +8,7 @@ import warnings
 
 import numpy
 
+from cupyx import jit
 from cupyx.jit._codeblock import CodeBlock
 from cupy._core import _kernel
 from cupyx.jit import _types
@@ -66,7 +67,7 @@ def transpile(func, attributes, mode, in_types, ret_type):
         raise NotImplementedError('Lambda function is not supported.')
 
     attributes = ' '.join(attributes)
-    source = inspect.getsource(func)
+    source = jit._getsource_func(func)
     lines = source.split('\n')
     num_indent = len(lines[0]) - len(lines[0].lstrip())
     source = '\n'.join([

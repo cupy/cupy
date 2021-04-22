@@ -6,3 +6,8 @@ from cupyx.jit._interface import blockIdx  # NOQA
 from cupyx.jit._interface import gridDim  # NOQA
 from cupyx.jit._interface import syncthreads  # NOQA
 from cupyx.jit._interface import shared_memory  # NOQA
+
+
+import inspect as _inspect
+
+_getsource_func = _inspect.getsource  # NOQA
