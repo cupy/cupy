@@ -8,9 +8,9 @@ import warnings
 
 import numpy
 
-from cupyx import jit
-from cupyx.jit._codeblock import CodeBlock
+from cupy._core._codeblock import CodeBlock
 from cupy._core import _kernel
+from cupyx import jit
 from cupyx.jit import _types
 from cupyx.jit import _typerules
 

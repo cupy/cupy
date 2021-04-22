@@ -17,12 +17,12 @@ from cupy._core cimport _reduction
 
 from cupy._core import _dtype
 from cupy import _util
+from cupy._core import _codeblock
 from cupy._core import _fusion_op
 from cupy._core._fusion_variable import _AbstractDim
 from cupy._core._fusion_variable import _TraceVariable
 from cupy._core._fusion_variable import _TraceScalar
 from cupy._core._fusion_variable import _TraceArray
-from cupyx.jit import _codeblock
 
 
 cdef Py_ssize_t _default_block_size = (
