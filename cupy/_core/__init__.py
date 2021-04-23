@@ -1,4 +1,5 @@
 from cupy._core import core  # NOQA
+from cupy._core import fusion  # NOQA
 from cupy._core import internal  # NOQA
 
 
