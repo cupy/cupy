@@ -31,7 +31,7 @@ class coo_matrix(sparse_data._data_matrix):
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
         is float64.
 
-    ``coo_matrix((data, (row, col))``
+    ``coo_matrix((data, (row, col)))``
         All ``data``, ``row`` and ``col`` are one-dimenaional
         :class:`cupy.ndarray`.
 
