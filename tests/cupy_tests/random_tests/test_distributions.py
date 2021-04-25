@@ -163,7 +163,7 @@ class TestDistributionsF(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'shape_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
     'dtype': _float_dtypes,  # to escape timeout
@@ -180,7 +180,10 @@ class TestDistributionsGamma(unittest.TestCase):
             out = dist_func(shape, scale, self.shape)
         else:
             out = dist_func(shape, scale, self.shape, dtype)
-        assert self.shape == out.shape
+        out_shape = self.shape
+        if self.shape is None:
+            out_shape = shape.shape if shape.shape != () else scale.shape
+        assert out_shape == out.shape
         assert out.dtype == dtype
 
     @cupy.testing.for_dtypes_combination(
@@ -519,7 +522,7 @@ class TestDistributionsPareto(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'lam_shape': [(), (3, 2)],
 })
 )
@@ -533,7 +536,10 @@ class TestDistributionsPoisson(unittest.TestCase):
             assert out.dtype == dtype
         else:
             out = dist_func(lam, self.shape)
-        assert self.shape == out.shape
+        if self.shape is not None:
+            assert self.shape == out.shape
+        else:
+            assert lam.shape == out.shape
 
     @cupy.testing.for_int_dtypes('dtype')
     @cupy.testing.for_float_dtypes('lam_dtype')
@@ -637,7 +643,7 @@ class TestDistributionsStandardExponential(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'shape_shape': [(), (3, 2)],
 })
 )
