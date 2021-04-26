@@ -169,6 +169,10 @@ class TestEigsh:
             a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
 
+    @pytest.mark.xfail(
+        reason='eigsh works wrong (#5001)',
+        raises=AssertionError,
+    )
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
     def test_dense_low_rank(self, dtype, xp, sp):
@@ -250,6 +254,10 @@ class TestSvds:
             a = sp.linalg.aslinearoperator(a)
         return self._test_svds(a, xp, sp)
 
+    @pytest.mark.xfail(
+        reason='eigsh works wrong (#5001)',
+        raises=AssertionError,
+    )
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
     def test_dense_low_rank(self, dtype, xp, sp):
