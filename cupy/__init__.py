@@ -49,7 +49,6 @@ def is_available():
 __version__ = _version.__version__
 
 
-import cupy._core.fusion  # NOQA
 from cupy import fft  # NOQA
 from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
@@ -347,7 +346,7 @@ def can_cast(from_, to, casting='safe'):
 
     .. seealso:: :func:`numpy.can_cast`
     """
-    from_ = from_.dtype if isinstance(from_, cupy.ndarray) else from_
+    from_ = from_.dtype if isinstance(from_, ndarray) else from_
     return _numpy.can_cast(from_, to, casting=casting)
 
 
@@ -378,7 +377,7 @@ def result_type(*arrays_and_dtypes):
 
     .. seealso:: :func:`numpy.result_type`
     """
-    dtypes = [a.dtype if isinstance(a, cupy.ndarray)
+    dtypes = [a.dtype if isinstance(a, ndarray)
               else a for a in arrays_and_dtypes]
     return _numpy.result_type(*dtypes)
 
@@ -806,13 +805,13 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, _cupyx.scipy.sparse.spmatrix,
-                            cupy._core.fusion._FusionVarArray,
-                            cupy._core.new_fusion._ArrayProxy)):
+                            _core.fusion._FusionVarArray,
+                            _core.new_fusion._ArrayProxy)):
             return _cupy
     return _numpy
 
 
-fuse = cupy._core.fusion.fuse
+fuse = _core.fusion.fuse
 
 disable_experimental_feature_warning = False
 
