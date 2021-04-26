@@ -34,7 +34,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     ``csr_matrix((M, N), [dtype])``
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
         is float64.
-    ``csr_matrix((data, (row, col))``
+    ``csr_matrix((data, (row, col)))``
         All ``data``, ``row`` and ``col`` are one-dimenaional
         :class:`cupy.ndarray`.
     ``csr_matrix((data, indices, indptr))``
