@@ -24,7 +24,7 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     ``csc_matrix((M, N), [dtype])``
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
         is float64.
-    ``csc_matrix((data, (row, col))``
+    ``csc_matrix((data, (row, col)))``
         All ``data``, ``row`` and ``col`` are one-dimenaional
         :class:`cupy.ndarray`.
     ``csc_matrix((data, indices, indptr))``
