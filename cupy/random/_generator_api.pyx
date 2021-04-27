@@ -333,10 +333,8 @@ class Generator:
                 lam_a.fill(lam)
                 lam = lam_a
             else:
-                if lam is None:
-                    raise TypeError('lam must be real number, not NoneType')
-                raise ValueError('lam is required to be a cupy.ndarray'
-                                 ' or a scalar')
+                raise TypeError('lam is required to be a cupy.ndarray'
+                                ' or a scalar')
         else:
             # Check if size is broadcastable to shape
             # but size determines the output
