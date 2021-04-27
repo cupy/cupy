@@ -1,12 +1,13 @@
 import tempfile
 import unittest
 
+import numpy
 import pytest
 
 import cupy
 from cupy import cuda
 from cupy import testing
-import numpy
+import cupyx
 
 
 @testing.gpu
@@ -285,6 +286,14 @@ class TestFromData(unittest.TestCase):
         b = xp.array(a, copy=False, order='F')
         assert b.flags.f_contiguous
         return b
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    def test_array_from_pinned_numpy(self, dtype, order):
+        a = cupyx.empty_pinned((2, 3, 4), dtype, order)
+        a[:] = testing.shaped_arange(a.shape, numpy, dtype)
+        b = cupy.array(a, order=order)
+        testing.assert_array_equal(a, b)
 
     @testing.multi_gpu(2)
     def test_array_multi_device(self):
