@@ -98,7 +98,8 @@ def _indent(lines, spaces='  '):
     return [spaces + line for line in lines]
 
 
-def is_constants(values):
+def is_constants(*values):
+    assert all(isinstance(x, _internal_types.Expr) for x in values)
     return all(isinstance(x, Constant) for x in values)
 
 
@@ -224,7 +225,7 @@ def _transpile_function_internal(
 
 
 def _eval_operand(op, args, env):
-    if is_constants(args):
+    if is_constants(*args):
         pyfunc = _cuda_typerules.get_pyfunc(type(op))
         return Constant(pyfunc(*[x.obj for x in args]))
 
@@ -238,7 +239,7 @@ def _call_ufunc(ufunc, args, dtype, env):
 
     in_types = []
     for x in args:
-        if is_constants([x]):
+        if is_constants(x):
             t = _cuda_typerules.get_ctype_from_scalar(env.mode, x.obj).dtype
         else:
             t = x.ctype.dtype
@@ -331,11 +332,11 @@ def _transpile_stmt(stmt, is_toplevel, env):
         value = _transpile_expr(stmt.value, env)
         target = stmt.targets[0]
 
-        if is_constants([value]) and isinstance(target, ast.Name):
+        if is_constants(value) and isinstance(target, ast.Name):
             name = target.id
             if not isinstance(value.obj, _typeclasses):
                 if is_toplevel:
-                    if env[name] is not None and not is_constants([env[name]]):
+                    if env[name] is not None and not is_constants(env[name]):
                         raise TypeError(f'Type mismatch of variable: `{name}`')
                     env.consts[name] = value
                     return []
@@ -403,7 +404,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
         return [CodeBlock(head, body)]
     if isinstance(stmt, ast.If):
         condition = _transpile_expr(stmt.test, env)
-        if is_constants([condition]):
+        if is_constants(condition):
             stmts = stmt.body if condition.obj else stmt.orelse
             return _transpile_stmts(stmts, is_toplevel, env)
         head = f'if ({condition.code})'
@@ -416,7 +417,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
         raise ValueError('throw/catch are not allowed.')
     if isinstance(stmt, ast.Assert):
         value = _transpile_expr(stmt.test, env)
-        if is_constants([value]):
+        if is_constants(value):
             assert value.obj
             return [';']
         else:
@@ -427,7 +428,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
         raise ValueError('Cannot use global/nonlocal in the target functions.')
     if isinstance(stmt, ast.Expr):
         value = _transpile_expr(stmt.value, env)
-        return [';'] if is_constants([value]) else [value.code + ';']
+        return [';'] if is_constants(value) else [value.code + ';']
     if isinstance(stmt, ast.Pass):
         return [';']
     if isinstance(stmt, ast.Break):
@@ -499,19 +500,19 @@ def _transpile_expr_internal(expr, env):
                        for kw in expr.keywords])
 
         builtin_funcs = _builtin_funcs.builtin_functions_dict
-        if is_constants([func]) and (func.obj in builtin_funcs):
+        if is_constants(func) and (func.obj in builtin_funcs):
             func = builtin_funcs[func.obj]
 
         if isinstance(func, _internal_types.BuiltinFunc):
             return func.call(env, *args, **kwargs)
 
-        if not is_constants([func]):
+        if not is_constants(func):
             raise NotImplementedError(
                 'device function call is not implemented.')
 
         func = func.obj
 
-        if is_constants(args) and is_constants(kwargs.values()):
+        if is_constants(*args, *kwargs.values()):
             # compile-time function call
             args = [x.obj for x in args]
             kwargs = dict([(k, v.obj) for k, v in kwargs.items()])
@@ -553,8 +554,8 @@ def _transpile_expr_internal(expr, env):
         value = _transpile_expr(expr.value, env)
         index = _transpile_expr(expr.slice, env)
 
-        if is_constants([value]):
-            if is_constants([index]):
+        if is_constants(value):
+            if is_constants(index):
                 return Constant(value.obj[index.obj])
             raise TypeError(
                 f'{type(value.obj)} is not subscriptable with non-constants.')
@@ -607,7 +608,7 @@ def _transpile_expr_internal(expr, env):
         return env[expr.id]
     if isinstance(expr, ast.Attribute):
         value = _transpile_expr(expr.value, env)
-        if is_constants([value]):
+        if is_constants(value):
             return Constant(getattr(value.obj, expr.attr))
         raise NotImplementedError('Not implemented: __getattr__')
 
@@ -630,7 +631,7 @@ def _transpile_lvalue(target, env, ctype):
         name = target.id
         if env[name] is None:
             env[name] = Data(name, ctype)
-        elif is_constants([env[name]]):
+        elif is_constants(env[name]):
             raise TypeError('Type mismatch of variable: `{name}`')
         elif env[name].ctype != ctype:
             raise TypeError(
@@ -657,7 +658,7 @@ def _transpile_lvalue(target, env, ctype):
 
 
 def _astype_scalar(x, ctype, casting, env):
-    if is_constants([x]):
+    if is_constants(x):
         return Constant(ctype.dtype.type(x.obj))
 
     from_t = x.ctype.dtype
