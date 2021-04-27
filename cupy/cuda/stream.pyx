@@ -98,8 +98,7 @@ class Event(object):
             processes.
 
     Attributes:
-        ~Event.ptr (intptr_t): Raw stream handle. It can be passed to
-            the CUDA Runtime API via ctypes.
+        ~Event.ptr (intptr_t): Raw event handle.
 
     """
 
@@ -169,8 +168,7 @@ class BaseStream(object):
     """CUDA stream.
 
     Attributes:
-        ~Stream.ptr (intptr_t): Raw stream handle. It can be passed to
-            the CUDA Runtime API via ctypes.
+        ~Stream.ptr (intptr_t): Raw stream handle.
 
     """
 
@@ -315,8 +313,7 @@ class Stream(BaseStream):
             ``False``, the stream does not synchronize with the NULL stream.
 
     Attributes:
-        ~Stream.ptr (intptr_t): Raw stream handle. It can be passed to
-            the CUDA Runtime API via ctypes.
+        ~Stream.ptr (intptr_t): Raw stream handle.
 
     """
 
@@ -367,8 +364,7 @@ class ExternalStream(BaseStream):
         ptr (intptr_t): Address of the `cudaStream_t` object.
 
     Attributes:
-        ~Stream.ptr (intptr_t): Raw stream handle. It can be passed to
-            the CUDA Runtime API via ctypes.
+        ~Stream.ptr (intptr_t): Raw stream handle.
 
     """
 
