@@ -2281,16 +2281,21 @@ cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
     cdef Py_ssize_t nbytes = a.nbytes
 
     stream = stream_module.get_current_stream()
-    cdef pinned_memory.PinnedMemoryPointer mem = (
-        _alloc_async_transfer_buffer(nbytes))
-    if mem is not None:
-        src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-        src_cpu[:] = a_cpu.ravel(order)
+    cdef pinned_memory.PinnedMemoryPointer mem
+    if isinstance(a_cpu.base, pinned_memory.PinnedMemoryPointer):
+        # NumPy arrays could be backed by pinned memory, in this case we
+        # don't need to monitor the copy using the watch list
+        mem = a_cpu.base
         a.data.copy_from_host_async(mem.ptr, nbytes)
-        pinned_memory._add_to_watch_list(stream.record(), mem)
     else:
-        a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
-
+        mem = _alloc_async_transfer_buffer(nbytes)
+        if mem is not None:
+            src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
+            src_cpu[:] = a_cpu.ravel(order)
+            a.data.copy_from_host_async(mem.ptr, nbytes)
+            pinned_memory._add_to_watch_list(stream.record(), mem)
+        else:
+            a.data.copy_from_host(a_cpu.ctypes.data, nbytes)
     return a
 
 
