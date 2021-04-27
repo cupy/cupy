@@ -410,7 +410,7 @@ Currently we only offer wheels for ROCm v4.0.x.
 
 ::
 
-  $ pip install --pre cupy-rocm-4-0
+  $ pip install cupy-rocm-4-0
 
 Building CuPy for ROCm From Source
 ----------------------------------
