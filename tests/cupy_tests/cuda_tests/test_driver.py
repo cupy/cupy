@@ -19,6 +19,7 @@ class TestDriver(unittest.TestCase):
 
         def f(self):
             self._result0 = driver.ctxGetCurrent()
+            cupy.cuda.Device().use()
             cupy.arange(1)
             self._result1 = driver.ctxGetCurrent()
 

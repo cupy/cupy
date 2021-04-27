@@ -127,6 +127,7 @@ class TestDeviceHandles(unittest.TestCase):
         handles = [func(), None, None]
 
         def _subthread():
+            cupy.cuda.Device().use()
             handles[1] = func()
             handles[2] = func()
 
