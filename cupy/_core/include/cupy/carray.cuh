@@ -199,6 +199,7 @@ __device__ int signbit(float16 x) {return x.signbit();}
          i += static_cast<ptrdiff_t>(blockDim.x) * gridDim.x)
 
 #ifdef CUPY_JIT_MODE
+#include <cupy/swap.cuh>
 #include <cupy/tuple.cuh>
 
 template <int dim>
