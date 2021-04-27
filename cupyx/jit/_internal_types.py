@@ -8,7 +8,7 @@ class Expr:
     pass
 
 
-class CudaObject(Expr):
+class Data(Expr):
     def __init__(self, code: str, ctype: _cuda_types.TypeBase):
         assert isinstance(code, str)
         assert isinstance(ctype, _cuda_types.TypeBase)
@@ -20,16 +20,16 @@ class CudaObject(Expr):
         raise ValueError(f'Constant value is requried: {self.code}')
 
     def __repr__(self):
-        return f'<CudaObject code = "{self.code}", type = {self.ctype}>'
+        return f'<Data code = "{self.code}", type = {self.ctype}>'
 
     @classmethod
-    def init(cls, x, env):
-        if isinstance(x, CudaObject):
+    def init(cls, x: Expr, env):
+        if isinstance(x, Data):
             return x
         if isinstance(x, Constant):
             ctype = _cuda_typerules.get_ctype_from_scalar(env.mode, x.obj)
             code = _cuda_types.get_cuda_code_from_constant(x.obj, ctype)
-            return CudaObject(code, ctype)
+            return Data(code, ctype)
         raise TypeError(f"'{x}' cannot be interpreted as a cuda object.")
 
 

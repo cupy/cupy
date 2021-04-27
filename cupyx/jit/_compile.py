@@ -14,7 +14,7 @@ from cupyx import jit
 from cupyx.jit import _cuda_types
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _internal_types
-from cupyx.jit._internal_types import CudaObject
+from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit import _builtin_funcs
 
@@ -110,9 +110,9 @@ class Environment:
         consts (dict): The dictionary with keys as the variable names and
             the values as the data that is determined at compile-time.
         params (dict): The dictionary of function arguments with keys as
-            the variable names and the values as the CudaObject.
+            the variable names and the values as the Data.
         locals (dict): The dictionary with keys as the variable names and the
-            values as the CudaObject stored at the local scope of the function.
+            values as the Data stored at the local scope of the function.
         ret_type (_cuda_types.TypeBase):
             The type of return value of the function.
             If it is initialized to be ``None``, the return type must be
@@ -209,7 +209,7 @@ def _transpile_function_internal(
         raise TypeError(
             f'{func.name}() takes {len(args)} positional arguments '
             f'but {len(in_types)} were given.')
-    params = dict([(x, CudaObject(x, t)) for x, t in zip(args, in_types)])
+    params = dict([(x, Data(x, t)) for x, t in zip(args, in_types)])
     env = Environment(mode, consts, params, ret_type)
     body = _transpile_stmts(func.body, True, env)
     params = ', '.join([env[a].ctype.declvar(a) for a in args])
@@ -260,7 +260,7 @@ def _call_ufunc(ufunc, args, dtype, env):
         in_params = []
         for x, t in zip(args, op.in_types):
             x = _astype_scalar(x, _cuda_types.Scalar(t), 'same_kind', env)
-            x = CudaObject.init(x, env)
+            x = Data.init(x, env)
             in_params.append(x)
 
         can_use_inline_expansion = True
@@ -287,7 +287,7 @@ __device__ {out_type} {ufunc_name}({params}) {{
             env.preambles.add(ufunc_code)
             in_params = ', '.join([a.code for a in in_params])
             expr = f'{ufunc_name}({in_params})'
-        return CudaObject(expr, out_type)
+        return Data(expr, out_type)
 
     raise NotImplementedError(f'ufunc `{ufunc.name}` is not supported.')
 
@@ -313,7 +313,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
             'Nested functions are not supported currently.')
     if isinstance(stmt, ast.Return):
         value = _transpile_expr(stmt.value, env)
-        value = CudaObject.init(value, env)
+        value = Data.init(value, env)
         t = value.ctype
         if env.ret_type is None:
             env.ret_type = t
@@ -342,7 +342,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
                 else:
                     raise TypeError(
                         'Cannot assign constant value not at top-level.')
-            value = CudaObject.init(value, env)
+            value = Data.init(value, env)
 
         target = _transpile_lvalue(target, env, value.ctype)
         return [f'{target.code} = {value.code};']
@@ -350,8 +350,8 @@ def _transpile_stmt(stmt, is_toplevel, env):
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
         target = _transpile_expr(stmt.target, env)
-        assert isinstance(target, CudaObject)
-        value = CudaObject.init(value, env)
+        assert isinstance(target, Data)
+        value = Data.init(value, env)
         result = _eval_operand(stmt.op, (target, value), env)
         if not numpy.can_cast(
                 result.ctype.dtype, target.ctype.dtype, 'same_kind'):
@@ -365,7 +365,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
         iters = _transpile_expr(stmt.iter, env)
 
         if env[name] is None:
-            env[name] = CudaObject(stmt.target.id, iters.ctype)
+            env[name] = Data(stmt.target.id, iters.ctype)
         elif env[name].ctype.dtype != iters.ctype.dtype:
             raise TypeError(
                 f'Data type mismatch of variable: `{name}`: '
@@ -397,7 +397,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
             raise NotImplementedError('while-else is not supported.')
         condition = _transpile_expr(stmt.test, env)
         condition = _astype_scalar(condition, _cuda_types.bool_, 'unsafe', env)
-        condition = CudaObject.init(condition, env)
+        condition = Data.init(condition, env)
         body = _transpile_stmts(stmt.body, False, env)
         head = f'while ({condition.code})'
         return [CodeBlock(head, body)]
@@ -441,7 +441,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
 def _transpile_expr(expr, env):
     """Transpile the statement.
 
-    Returns (CudaObject): The CUDA code and its type of the expression.
+    Returns (Data): The CUDA code and its type of the expression.
     """
     res = _transpile_expr_internal(expr, env)
 
@@ -483,14 +483,14 @@ def _transpile_expr_internal(expr, env):
             return x if expr.obj else y
         if cond.ctype.dtype.kind == 'c':
             raise NotImplementedError('')
-        x = CudaObject.init(x, env)
-        y = CudaObject.init(y, env)
+        x = Data.init(x, env)
+        y = Data.init(y, env)
         if x.ctype.dtype != y.ctype.dtype:
             raise TypeError(
                 'Type mismatch in conditional expression.: '
                 f'{x.ctype.dtype} != {y.ctype.dtype}')
         cond = _astype_scalar(cond, _cuda_types.bool_, 'unsafe', env)
-        return CudaObject(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
+        return Data(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
 
     if isinstance(expr, ast.Call):
         func = _transpile_expr(expr.func, env)
@@ -559,13 +559,13 @@ def _transpile_expr_internal(expr, env):
             raise TypeError(
                 f'{type(value.obj)} is not subscriptable with non-constants.')
 
-        value = CudaObject.init(value, env)
+        value = Data.init(value, env)
 
         if isinstance(value.ctype, _cuda_types.Tuple):
             raise NotImplementedError
 
         if isinstance(value.ctype, _cuda_types.ArrayBase):
-            index = CudaObject.init(index, env)
+            index = Data.init(index, env)
             ndim = value.ctype.ndim
             if isinstance(index.ctype, _cuda_types.Scalar):
                 index_dtype = index.ctype.dtype
@@ -574,7 +574,7 @@ def _transpile_expr_internal(expr, env):
                         'Scalar indexing is supported only for 1-dim array.')
                 if index_dtype.kind not in 'ui':
                     raise TypeError('Array indices must be integers.')
-                return CudaObject(
+                return Data(
                     f'{value.code}[{index.code}]', value.ctype.child_type)
             if isinstance(index.ctype, _cuda_types.Tuple):
                 if ndim != len(index.ctype.types):
@@ -585,13 +585,13 @@ def _transpile_expr_internal(expr, env):
                     if t.dtype.kind not in 'iu':
                         raise TypeError('Array indices must be integer.')
                 if ndim == 0:
-                    return CudaObject(
+                    return Data(
                         f'{value.code}[0]', value.ctype.child_type)
                 if ndim == 1:
-                    return CudaObject(
+                    return Data(
                         f'{value.code}[thrust::get<0>({index.code})]',
                         value.ctype.child_type)
-                return CudaObject(
+                return Data(
                     f'{value.code}._indexing({index.code})',
                     value.ctype.child_type)
             if isinstance(index.ctype, _cuda_types.Array):
@@ -614,10 +614,10 @@ def _transpile_expr_internal(expr, env):
     if isinstance(expr, ast.Tuple):
         elts = [_transpile_expr(x, env) for x in expr.elts]
         # TODO: Support compile time constants.
-        elts = [CudaObject.init(x, env) for x in elts]
+        elts = [Data.init(x, env) for x in elts]
         elts_code = ', '.join([x.code for x in elts])
         ctype = _cuda_types.Tuple([x.ctype for x in elts])
-        return CudaObject(f'thrust::make_tuple({elts_code})', ctype)
+        return Data(f'thrust::make_tuple({elts_code})', ctype)
 
     if isinstance(expr, ast.Index):
         return _transpile_expr(expr.value, env)
@@ -629,7 +629,7 @@ def _transpile_lvalue(target, env, ctype):
     if isinstance(target, ast.Name):
         name = target.id
         if env[name] is None:
-            env[name] = CudaObject(name, ctype)
+            env[name] = Data(name, ctype)
         elif is_constants([env[name]]):
             raise TypeError('Type mismatch of variable: `{name}`')
         elif env[name].ctype != ctype:
@@ -653,7 +653,7 @@ def _transpile_lvalue(target, env, ctype):
                 for x, t in zip(target.elts, ctype.types)]
         # TODO: Support compile time constants.
         elts_code = ', '.join([x.code for x in elts])
-        return CudaObject(f'thrust::tie({elts_code})', ctype)
+        return Data(f'thrust::tie({elts_code})', ctype)
 
 
 def _astype_scalar(x, ctype, casting, env):
@@ -674,5 +674,5 @@ def _astype_scalar(x, ctype, casting, env):
             warnings.warn(
                 'Casting complex values to real discards the imaginary part',
                 numpy.ComplexWarning)
-        return CudaObject(f'({ctype})({x.code}.real())', ctype)
-    return CudaObject(f'({ctype})({x.code})', ctype)
+        return Data(f'({ctype})({x.code}.real())', ctype)
+    return Data(f'({ctype})({x.code})', ctype)

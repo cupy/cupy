@@ -1,6 +1,6 @@
 from cupyx.jit import _cuda_types
 from cupyx.jit._internal_types import BuiltinFunc
-from cupyx.jit._internal_types import CudaObject
+from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit._internal_types import Range
 
@@ -20,9 +20,9 @@ class RangeFunc(BuiltinFunc):
             raise TypeError(
                 f'range expected at most 3 argument, got {len(args)}')
 
-        stop = CudaObject.init(stop, env)
-        start = CudaObject.init(start, env)
-        step = CudaObject.init(step, env)
+        stop = Data.init(stop, env)
+        start = Data.init(start, env)
+        step = Data.init(step, env)
 
         if start.ctype.dtype.kind not in 'iu':
             raise TypeError('range supports only for integer type.')
@@ -56,7 +56,7 @@ class SyncThreads(BuiltinFunc):
         super.__call__(self)
 
     def call_const(self, env):
-        return CudaObject('__syncthreads()', _cuda_types.void)
+        return Data('__syncthreads()', _cuda_types.void)
 
 
 class SharedMemory(BuiltinFunc):
@@ -78,8 +78,8 @@ class SharedMemory(BuiltinFunc):
         child_type = _cuda_types.Scalar(dtype)
         while env[name] is not None:
             name = env.get_fresh_variable_name(prefix='_smem')  # retry
-        env[name] = CudaObject(name, _cuda_types.SharedMem(child_type, size))
-        return CudaObject(name, _cuda_types.Ptr(child_type))
+        env[name] = Data(name, _cuda_types.SharedMem(child_type, size))
+        return Data(name, _cuda_types.Ptr(child_type))
 
 
 builtin_functions_dict = {

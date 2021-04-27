@@ -9,6 +9,7 @@ from cupy._core import core
 from cupyx.jit import _compile
 from cupyx.jit import _cuda_typerules
 from cupyx.jit import _cuda_types
+from cupyx.jit import _internal_types
 
 
 class _CudaFunction:
@@ -161,9 +162,9 @@ def rawkernel(mode='cuda'):
 
 class _Dim3:
     def __init__(self, name):
-        self.x = _compile.CudaObject(f'{name}.x', _cuda_types.uint32)
-        self.y = _compile.CudaObject(f'{name}.y', _cuda_types.uint32)
-        self.z = _compile.CudaObject(f'{name}.z', _cuda_types.uint32)
+        self.x = _internal_types.Data(f'{name}.x', _cuda_types.uint32)
+        self.y = _internal_types.Data(f'{name}.y', _cuda_types.uint32)
+        self.z = _internal_types.Data(f'{name}.z', _cuda_types.uint32)
         self.__doc__ = f"""dim3 {name}
 
         A namedtuple of three integers represents {name}.
