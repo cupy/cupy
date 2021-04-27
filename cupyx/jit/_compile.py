@@ -11,8 +11,8 @@ import numpy
 from cupy._core._codeblock import CodeBlock
 from cupy._core import _kernel
 from cupyx import jit
-from cupyx.jit import _types
-from cupyx.jit import _typerules
+from cupyx.jit import _cuda_types
+from cupyx.jit import _cuda_typerules
 
 
 _is_debug_mode = False
@@ -56,8 +56,8 @@ def transpile(func, attributes, mode, in_types, ret_type):
         func (function): Target function.
         attributes (list of str): Attributes of the generated CUDA function.
         mode ('numpy' or 'cuda'): The rule for typecast.
-        in_types (list of _types.TypeBase): Types of the arguments.
-        ret_type (_types.TypeBase or None): Type of the return value.
+        in_types (list of _cuda_types.TypeBase): Types of the arguments.
+        ret_type (_cuda_types.TypeBase or None): Type of the return value.
     """
 
     if not callable(func):
@@ -99,9 +99,9 @@ class Expr:
 
 
 class CudaObject(Expr):
-    def __init__(self, code: str, ctype: _types.TypeBase):
+    def __init__(self, code: str, ctype: _cuda_types.TypeBase):
         assert isinstance(code, str)
-        assert isinstance(ctype, _types.TypeBase)
+        assert isinstance(ctype, _cuda_types.TypeBase)
         self.code = code
         self.ctype = ctype
 
@@ -188,7 +188,7 @@ class RangeFunc(BuiltinFunc):
             step_is_positive = None
 
         if env.mode == 'numpy':
-            ctype = _types.Scalar(int)
+            ctype = _cuda_types.Scalar(int)
         elif env.mode == 'cuda':
             ctype = stop.ctype
         else:
@@ -205,7 +205,7 @@ class SyncThreads(BuiltinFunc):
         super.__call__(self)
 
     def call_const(self, env):
-        return CudaObject('__syncthreads()', _types.void)
+        return CudaObject('__syncthreads()', _cuda_types.void)
 
 
 class SharedMemory(BuiltinFunc):
@@ -224,11 +224,11 @@ class SharedMemory(BuiltinFunc):
 
     def call_const(self, env, dtype, size):
         name = env.get_fresh_variable_name(prefix='_smem')
-        child_type = _types.Scalar(dtype)
+        child_type = _cuda_types.Scalar(dtype)
         while env[name] is not None:
             name = env.get_fresh_variable_name(prefix='_smem')  # retry
-        env[name] = CudaObject(name, _types.SharedMem(child_type, size))
-        return CudaObject(name, _types.Ptr(child_type))
+        env[name] = CudaObject(name, _cuda_types.SharedMem(child_type, size))
+        return CudaObject(name, _cuda_types.Ptr(child_type))
 
 
 _builtin_functions_dict = {
@@ -251,7 +251,8 @@ class Environment:
             the variable names and the values as the CudaObject.
         locals (dict): The dictionary with keys as the variable names and the
             values as the CudaObject stored at the local scope of the function.
-        ret_type (_types.TypeBase): The type of return value of the function.
+        ret_type (_cuda_types.TypeBase):
+            The type of return value of the function.
             If it is initialized to be ``None``, the return type must be
             inferred until the end of transpilation of the function.
     """
@@ -291,8 +292,8 @@ def _transpile_function(
         mode ('numpy' or 'cuda'): The rule for typecast.
         consts (dict): The dictionary with keys as variable names and
             values as concrete data object.
-        in_types (list of _types.TypeBase): The types of arguments.
-        ret_type (_types.TypeBase): The type of return value.
+        in_types (list of _cuda_types.TypeBase): The types of arguments.
+        ret_type (_cuda_types.TypeBase): The type of return value.
 
     Returns:
         code (str): The generated CUDA code.
@@ -353,7 +354,7 @@ def _transpile_function_internal(
     local_vars = [v.ctype.declvar(n) + ';' for n, v in env.locals.items()]
 
     if env.ret_type is None:
-        env.ret_type = _types.Void()
+        env.ret_type = _cuda_types.void
 
     head = f'{attributes} {env.ret_type} {func.name}({params})'
     code = CodeBlock(head, local_vars + body)
@@ -362,10 +363,10 @@ def _transpile_function_internal(
 
 def _eval_operand(op, args, env):
     if is_constants(args):
-        pyfunc = _typerules.get_pyfunc(type(op))
+        pyfunc = _cuda_typerules.get_pyfunc(type(op))
         return Constant(pyfunc(*[x.obj for x in args]))
 
-    ufunc = _typerules.get_ufunc(env.mode, type(op))
+    ufunc = _cuda_typerules.get_ufunc(env.mode, type(op))
     return _call_ufunc(ufunc, args, None, env)
 
 
@@ -376,12 +377,12 @@ def _call_ufunc(ufunc, args, dtype, env):
     in_types = []
     for x in args:
         if is_constants([x]):
-            t = _typerules.get_ctype_from_scalar(env.mode, x.obj).dtype
+            t = _cuda_typerules.get_ctype_from_scalar(env.mode, x.obj).dtype
         else:
             t = x.ctype.dtype
         in_types.append(t)
 
-    op = _typerules.guess_routine(ufunc, in_types, dtype, env.mode)
+    op = _cuda_typerules.guess_routine(ufunc, in_types, dtype, env.mode)
 
     if op is None:
         raise TypeError(
@@ -391,12 +392,12 @@ def _call_ufunc(ufunc, args, dtype, env):
         op.error_func()
 
     if ufunc.nout == 1 and op.routine.startswith('out0 = '):
-        out_type = _types.Scalar(op.out_types[0])
+        out_type = _cuda_types.Scalar(op.out_types[0])
         expr = op.routine.replace('out0 = ', '')
 
         in_params = []
         for x, t in zip(args, op.in_types):
-            x = _astype_scalar(x, _types.Scalar(t), 'same_kind', env)
+            x = _astype_scalar(x, _cuda_types.Scalar(t), 'same_kind', env)
             x = _to_cuda_object(x, env)
             in_params.append(x)
 
@@ -533,7 +534,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
         if len(stmt.orelse) > 0:
             raise NotImplementedError('while-else is not supported.')
         condition = _transpile_expr(stmt.test, env)
-        condition = _astype_scalar(condition, _types.bool_, 'unsafe', env)
+        condition = _astype_scalar(condition, _cuda_types.bool_, 'unsafe', env)
         condition = _to_cuda_object(condition, env)
         body = _transpile_stmts(stmt.body, False, env)
         head = f'while ({condition.code})'
@@ -626,7 +627,7 @@ def _transpile_expr_internal(expr, env):
             raise TypeError(
                 'Type mismatch in conditional expression.: '
                 f'{x.ctype.dtype} != {y.ctype.dtype}')
-        cond = _astype_scalar(cond, _types.Scalar(numpy.bool_), 'unsafe', env)
+        cond = _astype_scalar(cond, _cuda_types.bool_, 'unsafe', env)
         return CudaObject(f'({cond.code} ? {x.code} : {y.code})', x.ctype)
 
     if isinstance(expr, ast.Call):
@@ -667,7 +668,8 @@ def _transpile_expr_internal(expr, env):
             if len(args) != 1:
                 raise TypeError(
                     f'function takes {func} invalid number of argument')
-            return _astype_scalar(args[0], _types.Scalar(func), 'unsafe', env)
+            ctype = _cuda_types.Scalar(func)
+            return _astype_scalar(args[0], ctype, 'unsafe', env)
 
         raise NotImplementedError(
             f'function call of `{func.__name__}` is not implemented')
@@ -696,13 +698,13 @@ def _transpile_expr_internal(expr, env):
 
         value = _to_cuda_object(value, env)
 
-        if isinstance(value.ctype, _types.Tuple):
+        if isinstance(value.ctype, _cuda_types.Tuple):
             raise NotImplementedError
 
-        if isinstance(value.ctype, _types.ArrayBase):
+        if isinstance(value.ctype, _cuda_types.ArrayBase):
             index = _to_cuda_object(index, env)
             ndim = value.ctype.ndim
-            if isinstance(index.ctype, _types.Scalar):
+            if isinstance(index.ctype, _cuda_types.Scalar):
                 index_dtype = index.ctype.dtype
                 if ndim != 1:
                     raise TypeError(
@@ -711,11 +713,11 @@ def _transpile_expr_internal(expr, env):
                     raise TypeError('Array indices must be integers.')
                 return CudaObject(
                     f'{value.code}[{index.code}]', value.ctype.child_type)
-            if isinstance(index.ctype, _types.Tuple):
+            if isinstance(index.ctype, _cuda_types.Tuple):
                 if ndim != len(index.ctype.types):
                     raise IndexError(f'The size of index must be {ndim}')
                 for t in index.ctype.types:
-                    if not isinstance(t, _types.Scalar):
+                    if not isinstance(t, _cuda_types.Scalar):
                         raise TypeError('Array indices must be scalar.')
                     if t.dtype.kind not in 'iu':
                         raise TypeError('Array indices must be integer.')
@@ -729,7 +731,7 @@ def _transpile_expr_internal(expr, env):
                 return CudaObject(
                     f'{value.code}._indexing({index.code})',
                     value.ctype.child_type)
-            if isinstance(index.ctype, _types.Array):
+            if isinstance(index.ctype, _cuda_types.Array):
                 raise TypeError('Advanced indexing is not supported.')
             assert False  # Never reach.
 
@@ -751,7 +753,7 @@ def _transpile_expr_internal(expr, env):
         # TODO: Support compile time constants.
         elts = [_to_cuda_object(x, env) for x in elts]
         elts_code = ', '.join([x.code for x in elts])
-        ctype = _types.Tuple([x.ctype for x in elts])
+        ctype = _cuda_types.Tuple([x.ctype for x in elts])
         return CudaObject(f'thrust::make_tuple({elts_code})', ctype)
 
     if isinstance(expr, ast.Index):
@@ -777,7 +779,7 @@ def _transpile_lvalue(target, env, ctype):
         return _transpile_expr(target, env)
 
     if isinstance(target, ast.Tuple):
-        if not isinstance(ctype, _types.Tuple):
+        if not isinstance(ctype, _cuda_types.Tuple):
             raise ValueError(f'{ctype} cannot be unpack')
         size = len(target.elts)
         if len(ctype.types) > size:
@@ -817,8 +819,8 @@ def _to_cuda_object(x, env):
     if isinstance(x, CudaObject):
         return x
     if isinstance(x, Constant):
-        ctype = _typerules.get_ctype_from_scalar(env.mode, x.obj)
-        code = _types.get_cuda_code_from_constant(x.obj, ctype)
+        ctype = _cuda_typerules.get_ctype_from_scalar(env.mode, x.obj)
+        code = _cuda_types.get_cuda_code_from_constant(x.obj, ctype)
         return CudaObject(code, ctype)
     if isinstance(x, Range):
         raise TypeError('range object cannot be interpreted as a cuda object.')

@@ -7,8 +7,8 @@ from cupy_backends.cuda.api import runtime
 import cupy
 from cupy._core import core
 from cupyx.jit import _compile
-from cupyx.jit import _typerules
-from cupyx.jit import _types
+from cupyx.jit import _cuda_typerules
+from cupyx.jit import _cuda_types
 
 
 class _CudaFunction:
@@ -78,9 +78,9 @@ class _JitRawKernel:
         in_types = []
         for x in args:
             if isinstance(x, cupy.ndarray):
-                t = _types.CArray.from_ndarray(x)
+                t = _cuda_types.CArray.from_ndarray(x)
             elif numpy.isscalar(x):
-                t = _typerules.get_ctype_from_scalar(self._mode, x)
+                t = _cuda_typerules.get_ctype_from_scalar(self._mode, x)
             else:
                 raise TypeError(f'{type(x)} is not supported for RawKernel')
             in_types.append(t)
@@ -93,7 +93,7 @@ class _JitRawKernel:
                 ['extern "C"', '__global__'],
                 self._mode,
                 in_types,
-                _types.Void(),
+                _cuda_types.void,
             )
             fname = result.func_name
             # workaround for hipRTC: as of ROCm 4.1.0 hipRTC still does not
@@ -161,9 +161,9 @@ def rawkernel(mode='cuda'):
 
 class _Dim3:
     def __init__(self, name):
-        self.x = _compile.CudaObject(f'{name}.x', _types.uint32)
-        self.y = _compile.CudaObject(f'{name}.y', _types.uint32)
-        self.z = _compile.CudaObject(f'{name}.z', _types.uint32)
+        self.x = _compile.CudaObject(f'{name}.x', _cuda_types.uint32)
+        self.y = _compile.CudaObject(f'{name}.y', _cuda_types.uint32)
+        self.z = _compile.CudaObject(f'{name}.z', _cuda_types.uint32)
         self.__doc__ = f"""dim3 {name}
 
         A namedtuple of three integers represents {name}.
