@@ -179,6 +179,3 @@ threadIdx = _Dim3('threadIdx')
 blockDim = _Dim3('blockDim')
 blockIdx = _Dim3('blockIdx')
 gridDim = _Dim3('gridDim')
-
-syncthreads = _compile.SyncThreads()
-shared_memory = _compile.SharedMemory()
