@@ -773,6 +773,7 @@ class TestAllocator(unittest.TestCase):
 
     def test_allocator_thread_local(self):
         def thread_body(self):
+            cupy.cuda.Device().use()
             new_pool = memory.MemoryPool()
             with cupy.cuda.using_allocator(new_pool.malloc):
                 assert memory.get_allocator() == new_pool.malloc
@@ -809,6 +810,7 @@ class TestAllocator(unittest.TestCase):
         new_pool = memory.MemoryPool()
 
         def job(stream):
+            cupy.cuda.Device().use()
             with cupy.cuda.using_allocator(new_pool.malloc):
                 with stream:
                     arr = cupy.arange(16)

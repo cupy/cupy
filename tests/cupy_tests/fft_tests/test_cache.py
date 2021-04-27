@@ -162,6 +162,7 @@ class TestPlanCache(unittest.TestCase):
         def thread_show_plan_cache_info(queue):
             # allow output from another thread to be accessed by the
             # main thread
+            cupy.cuda.Device().use()
             stdout = intercept_stdout(config.show_plan_cache_info)
             queue.put(stdout)
 
@@ -176,6 +177,7 @@ class TestPlanCache(unittest.TestCase):
         assert stdout.count('uninitialized') == n_devices
 
         def thread_init_caches(gpus, queue):
+            cupy.cuda.Device().use()
             init_caches(gpus)
             thread_show_plan_cache_info(queue)
 
