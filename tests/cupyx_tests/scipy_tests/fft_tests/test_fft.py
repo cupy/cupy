@@ -1723,7 +1723,7 @@ class TestHfftn(unittest.TestCase):
         _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_hfftn(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
@@ -1734,7 +1734,7 @@ class TestHfftn(unittest.TestCase):
         return _correct_np_dtype(xp, dtype, out)
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
+    @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
     def test_hfftn_backend(self, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
