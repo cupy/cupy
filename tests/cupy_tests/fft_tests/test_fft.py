@@ -1360,6 +1360,7 @@ class TestThreading:
         from cupy.cuda.cufft import get_current_plan
 
         def thread_get_curr_plan():
+            cupy.cuda.Device().use()
             return get_current_plan()
 
         new_thread = threading.Thread(target=thread_get_curr_plan)
@@ -1371,6 +1372,7 @@ class TestThreading:
         a = cupy.arange(100, dtype=cupy.complex64).reshape(10, 10)
 
         def thread_do_fft():
+            cupy.cuda.Device().use()
             b = cupy.fft.fftn(a)
             return b
 

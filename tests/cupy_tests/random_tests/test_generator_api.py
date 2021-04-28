@@ -251,15 +251,20 @@ class TestRandom(InvalidOutsMixin, GeneratorTestCase):
 class TestRandomStateThreadSafe(unittest.TestCase):
 
     def test_default_rng_thread_safe(self):
+        def _f(func, args=()):
+            cupy.cuda.Device().use()
+            func(*args)
+
         seed = 10
         threads = [
-            threading.Thread(target=lambda: cupy.random.default_rng(seed)),
-            threading.Thread(target=lambda: cupy.random.default_rng()),
-            threading.Thread(target=lambda: cupy.random.default_rng()),
-            threading.Thread(target=lambda: cupy.random.default_rng()),
-            threading.Thread(target=lambda: cupy.random.default_rng()),
-            threading.Thread(target=lambda: cupy.random.default_rng()),
-            threading.Thread(target=lambda: cupy.random.default_rng()),
+            threading.Thread(
+                target=_f, args=(cupy.random.default_rng, (seed,))),
+            threading.Thread(target=_f, args=(cupy.random.default_rng)),
+            threading.Thread(target=_f, args=(cupy.random.default_rng)),
+            threading.Thread(target=_f, args=(cupy.random.default_rng)),
+            threading.Thread(target=_f, args=(cupy.random.default_rng)),
+            threading.Thread(target=_f, args=(cupy.random.default_rng)),
+            threading.Thread(target=_f, args=(cupy.random.default_rng)),
         ]
 
         for t in threads:
