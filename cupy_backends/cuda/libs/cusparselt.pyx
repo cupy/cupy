@@ -263,7 +263,7 @@ cpdef structuredDescriptorInit(Handle handle, MatDescriptor matDescr,
 cpdef matDescriptorDestroy(MatDescriptor matDescr):
     """Releases the resources used by an instance of a matrix descriptor."""
     status = cusparseLtMatDescriptorDestroy(
-        <const cusparseLtMatDescriptor_t*> matDescr._ptr);
+        <const cusparseLtMatDescriptor_t*> matDescr._ptr)
     check_status(status)
 
 cpdef matmulDescriptorInit(Handle handle,
@@ -436,6 +436,7 @@ cpdef spMMACompress2(Handle handle, MatDescriptor sparseMatDescr,
         <int> isSparseA, <cusparseOperation_t> op, <const void*> d_dense,
         <void*> d_compressed, <driver.Stream> stream)
     check_status(status)
+
 
 def get_build_version():
     return CUSPARSELT_VERSION
