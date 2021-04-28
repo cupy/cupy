@@ -339,7 +339,7 @@ class Stream(BaseStream):
         if is_shutting_down():
             return
         tls = _ThreadLocal.get()
-        if self.ptr:
+        if self.ptr and self.ptr != runtime.streamPerThread:
             current_ptr = <intptr_t>tls.get_current_stream_ptr()
             if <intptr_t>self.ptr == current_ptr:
                 tls.set_current_stream(self.null)
