@@ -42,6 +42,10 @@ cusparseStatus_t cusparseLtStructuredDescriptorInit(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseLtMatDescriptorDestroy(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseLtMatmulDescriptorInit(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
@@ -86,11 +90,27 @@ cusparseStatus_t cusparseLtSpMMAPruneCheck(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseLtSpMMAPrune2(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseLtSpMMAPruneCheck2(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
 cusparseStatus_t cusparseLtSpMMACompressedSize(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
 
 cusparseStatus_t cusparseLtSpMMACompress(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseLtSpMMACompressedSize2(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseLtSpMMACompress2(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
 
