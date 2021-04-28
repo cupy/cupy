@@ -164,7 +164,7 @@ void wait_and_write(long long *x) {
   for (;;) {
     now = clock();
     clock_t cycles = now > start ? now - start : now + (0xffffffff - start);
-    if (cycles >= 100000000) {
+    if (cycles >= 1000000000) {
       break;
     }
   }
@@ -204,7 +204,8 @@ class TestNdarrayCopy(unittest.TestCase):
         # Allocates a memory and launches the kernel on a device with its
         # stream.
         with cuda.Device(0):
-            with cuda.Stream():
+            # Keep this stream alive over the D2D copy below for HIP
+            with cuda.Stream() as s1:  # NOQA
                 a = cupy.zeros((2,), dtype=numpy.uint64)
                 kern((1,), (1,), a)
 
