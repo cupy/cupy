@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+import cupyx
 from cupyx import jit
 from cupy import testing
 
@@ -123,6 +124,30 @@ class TestRaw(unittest.TestCase):
         f((32,), (32,), (x, y), shared_mem=128)
         expected = x.reshape(32, 32)[:, ::-1].ravel()
         assert bool((y == expected).all())
+
+    @staticmethod
+    def _check(a, e):
+        if a.dtype == numpy.float16:
+            testing.assert_allclose(a, e, rtol=1e-2, atol=1e-2)
+        else:
+            testing.assert_allclose(a, e, rtol=1e-6, atol=1e-6)
+
+    @testing.for_dtypes('iILefd')
+    def test_atomic_add(self, dtype):
+        @jit.rawkernel()
+        def f(x, index, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            jit.atomic_add(out, index[tid], x[tid])
+
+        x = testing.shaped_random((1024,), dtype=dtype, seed=0)
+        index = testing.shaped_random(
+            (1024,), dtype=numpy.bool_, seed=1).astype(numpy.int32)
+        out = cupy.zeros((2,), dtype=dtype)
+        f((32,), (32,), (x, index, out))
+
+        expected = cupy.zeros((2,), dtype=dtype)
+        cupyx.scatter_add(expected, index, x)
+        self._check(out, expected)
 
     def test_raw_grid_block_interface(self):
         @jit.rawkernel()

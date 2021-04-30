@@ -3,6 +3,7 @@ from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit._internal_types import Range
+from cupyx.jit import _compile
 
 
 class RangeFunc(BuiltinFunc):
@@ -82,9 +83,32 @@ class SharedMemory(BuiltinFunc):
         return Data(name, _cuda_types.Ptr(child_type))
 
 
+class AtomicOp(BuiltinFunc):
+
+    def __init__(self, op, dtypes):
+        self._op = op
+        self._name = 'atomic' + op
+        self._dtypes = dtypes
+        super().__init__()
+
+    def call(self, env, array, index, value):
+        array = Data.init(array, env)
+        if not isinstance(array.ctype, (_cuda_types.CArray, _cuda_types.Ptr)):
+            raise TypeError('The first argument must be of array type.')
+        target = _compile._indexing(array, index, env)
+        ctype = target.ctype
+        value = _compile._astype_scalar(value, ctype, 'same_kind', env)
+        name = self._name
+        value = Data.init(value, env)
+        if ctype.dtype.char not in self._dtypes:
+            raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
+        return Data(f'{name}(&{target.code}, {value.code})', ctype)
+
+
 builtin_functions_dict = {
     range: RangeFunc(),
 }
 
 syncthreads = SyncThreads()
 shared_memory = SharedMemory()
+atomic_add = AtomicOp('Add', 'iILefd')
