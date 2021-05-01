@@ -111,4 +111,6 @@ builtin_functions_dict = {
 
 syncthreads = SyncThreads()
 shared_memory = SharedMemory()
+
+# TODO: Add more atomic functions.
 atomic_add = AtomicOp('Add', 'iILefd')
