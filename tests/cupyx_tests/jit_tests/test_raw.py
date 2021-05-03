@@ -132,7 +132,7 @@ class TestRaw(unittest.TestCase):
         else:
             testing.assert_allclose(a, e, rtol=1e-6, atol=1e-6)
 
-    @testing.for_dtypes('iILefd')
+    @testing.for_dtypes('iILQefd')
     def test_atomic_add(self, dtype):
         @jit.rawkernel()
         def f(x, index, out):

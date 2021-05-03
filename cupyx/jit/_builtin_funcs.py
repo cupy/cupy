@@ -113,4 +113,4 @@ syncthreads = SyncThreads()
 shared_memory = SharedMemory()
 
 # TODO: Add more atomic functions.
-atomic_add = AtomicOp('Add', 'iILefd')
+atomic_add = AtomicOp('Add', 'iILQefd')
