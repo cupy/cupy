@@ -1,3 +1,4 @@
+from cupy_backends.cuda.api import runtime
 from cupyx.jit import _cuda_types
 from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
@@ -102,6 +103,9 @@ class AtomicOp(BuiltinFunc):
         value = Data.init(value, env)
         if ctype.dtype.char not in self._dtypes:
             raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
+        if ctype.dtype.char == 'e' and runtime.runtimeGetVersion() < 10000:
+            raise RuntimeError(
+                'float16 atomic operation is not supported this CUDA version.')
         return Data(f'{name}(&{target.code}, {value.code})', ctype)
 
 
