@@ -30,20 +30,15 @@ cdef class _ThreadLocal:
             dev = runtime.getDevice()
         self.current_stream[dev] = ptr
 
-    cdef intptr_t get_current_stream_ptr(self):
+    cdef intptr_t get_current_stream_ptr(self, int dev=-1):
         # Returns the stream previously set, otherwise returns
         # nullptr or runtime.streamPerThread when
         # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
         if self.current_stream == 0 and is_ptds_enabled():
             return runtime.streamPerThread
-        cdef int dev = runtime.getDevice()
+        if dev == -1:
+            dev = runtime.getDevice()
         return self.current_stream[dev]
-
-    cdef intptr_t get_default_stream_ptr(self):
-        if is_ptds_enabled():
-            return runtime.streamPerThread
-        else:  # we don't return 0 here
-            return runtime.streamLegacy
 
 
 cdef intptr_t get_current_stream_ptr():
@@ -79,11 +74,13 @@ cdef set_current_stream_ptr(intptr_t ptr, int dev=-1):
 cpdef intptr_t get_default_stream_ptr():
     """Get the CUDA default stream pointer.
 
-    Args:
-        ptr (intptr_t): CUDA stream pointer.
+    Returns:
+        intptr_t: CUDA stream pointer.
     """
-    tls = _ThreadLocal.get()
-    return <intptr_t>tls.get_default_stream_ptr()
+    if is_ptds_enabled():
+        return runtime.streamPerThread
+    else:  # we don't return 0 here
+        return runtime.streamLegacy
 
 
 cdef bint is_ptds_enabled():
