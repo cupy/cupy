@@ -34,11 +34,12 @@ cdef class _ThreadLocal:
         # Returns the stream previously set, otherwise returns
         # nullptr or runtime.streamPerThread when
         # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
-        if self.current_stream == 0 and is_ptds_enabled():
-            return runtime.streamPerThread
         if dev == -1:
             dev = runtime.getDevice()
-        return self.current_stream[dev]
+        cdef intptr_t curr_stream = self.current_stream[dev]
+        if curr_stream == 0 and is_ptds_enabled():
+            return runtime.streamPerThread
+        return curr_stream
 
 
 cdef intptr_t get_current_stream_ptr():

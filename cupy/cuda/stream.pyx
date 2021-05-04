@@ -36,37 +36,32 @@ cdef class _ThreadLocal:
         if dev == -1:
             dev = runtime.getDevice()
         stream_module.set_current_stream_ptr(ptr, dev)
-        self.current_stream[dev] = <intptr_t>ptr
+        self.current_stream[dev] = ptr
         self.current_stream_ref[dev] = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
-        cdef intptr_t ptr = <intptr_t>stream_ref().ptr
+        cdef intptr_t ptr = <intptr_t>(stream_ref().ptr)
         cdef int dev = stream_ref().dev
         if dev == -1:
             dev = runtime.getDevice()
         stream_module.set_current_stream_ptr(ptr, dev)
-        self.current_stream[dev] = <intptr_t>ptr
+        self.current_stream[dev] = ptr
         self.current_stream_ref[dev] = stream_ref
 
     cdef get_current_stream(self, int dev=-1):
-        if dev == -1:
-            dev = runtime.getDevice()
-        if self.current_stream_ref[dev] is None:
-            if stream_module.is_ptds_enabled():
-                self.current_stream_ref[dev] = weakref.ref(Stream.ptds)
-            else:
-                self.current_stream_ref[dev] = weakref.ref(Stream.null)
-        return self.current_stream_ref[dev]()
+        return self.get_current_stream_ref(dev)()
 
     cdef get_current_stream_ref(self, int dev=-1):
         if dev == -1:
             dev = runtime.getDevice()
-        if self.current_stream_ref[dev] is None:
+        stream_ref = self.current_stream_ref[dev]
+        if stream_ref is None:
             if stream_module.is_ptds_enabled():
-                self.current_stream_ref[dev] = weakref.ref(Stream.ptds)
+                stream_ref = weakref.ref(Stream.ptds)
             else:
-                self.current_stream_ref[dev] = weakref.ref(Stream.null)
-        return self.current_stream_ref[dev]
+                stream_ref = weakref.ref(Stream.null)
+            self.current_stream_ref[dev] = stream_ref
+        return stream_ref
 
     cdef intptr_t get_current_stream_ptr(self, int dev=-1):
         # Returns the stream previously set, otherwise returns
@@ -75,7 +70,7 @@ cdef class _ThreadLocal:
         if dev == -1:
             dev = runtime.getDevice()
         cdef intptr_t curr_stream = self.current_stream[dev]
-        if stream_module.is_ptds_enabled() and curr_stream == 0:
+        if curr_stream == 0 and stream_module.is_ptds_enabled():
             return <intptr_t>runtime.streamPerThread
         return curr_stream
 
@@ -181,13 +176,15 @@ def get_elapsed_time(start_event, end_event):
     return runtime.eventElapsedTime(start_event.ptr, end_event.ptr)
 
 
-cdef void check_stream_device_match(int dev) except*:
+cdef int check_stream_device_match(int dev) except? -1:
+    """Check if the stream was created on the current device."""
     cdef int curr_dev = runtime.getDevice()
     if dev == -1:
         dev = curr_dev
     if dev != curr_dev:
         raise RuntimeError(
             f'This stream was not created on device {curr_dev}')
+    return dev
 
 
 class BaseStream(object):
@@ -206,12 +203,15 @@ class BaseStream(object):
         # This operator is implemented to compare the singleton instance
         # of null stream (Stream.null) can safely be compared with null
         # stream instance created by a user.
-        return self.ptr == other.ptr
+        if self.dev == -1 or other.dev == -1:
+            return self.ptr == other.ptr
+        else:
+            return (self.dev == other.dev and self.ptr == other.ptr)
 
     def __enter__(self):
         tls = _ThreadLocal.get()
         cdef int dev = self.dev
-        check_stream_device_match(dev)
+        dev = check_stream_device_match(dev)
         # to prevent from popping the wrong stream at exit
         self._curr_dev = dev
         if tls.prev_stream_ref_stack[dev] is None:
@@ -223,13 +223,13 @@ class BaseStream(object):
 
     def __exit__(self, *args):
         tls = _ThreadLocal.get()
-        dev = self._curr_dev
-        self._curr_dev = -1
+        cdef int dev = self._curr_dev
         prev_stream_ref = tls.prev_stream_ref_stack[dev].pop()
         tls.set_current_stream_ref(prev_stream_ref)
 
     def __repr__(self):
-        return '<{} {}>'.format(type(self).__name__, self.ptr)
+        return '<{} {} (device {})>'.format(
+            type(self).__name__, self.ptr, self.dev)
 
     def use(self):
         """Makes this stream current.
@@ -237,7 +237,8 @@ class BaseStream(object):
         If you want to switch a stream temporarily, use the *with* statement.
         """
         tls = _ThreadLocal.get()
-        check_stream_device_match(self.dev)
+        cdef int dev = self.dev
+        check_stream_device_match(dev)
         tls.set_current_stream(self)
         return self
 
@@ -380,7 +381,7 @@ class Stream(BaseStream):
             return
         tls = _ThreadLocal.get()
         if self.ptr:
-            current_ptr = <intptr_t>tls.get_current_stream_ptr()
+            current_ptr = tls.get_current_stream_ptr(self.dev)
             if <intptr_t>self.ptr == current_ptr:
                 tls.set_current_stream(self.null)
             runtime.streamDestroy(self.ptr)
