@@ -181,6 +181,15 @@ def get_elapsed_time(start_event, end_event):
     return runtime.eventElapsedTime(start_event.ptr, end_event.ptr)
 
 
+cdef void check_stream_device_match(int dev) except*:
+    cdef int curr_dev = runtime.getDevice()
+    if dev == -1:
+        dev = curr_dev
+    if dev != curr_dev:
+        raise RuntimeError(
+            f'This stream was not created on device {curr_dev}')
+
+
 class BaseStream(object):
 
     """CUDA stream.
@@ -202,8 +211,9 @@ class BaseStream(object):
     def __enter__(self):
         tls = _ThreadLocal.get()
         cdef int dev = self.dev
-        if dev == -1:
-            dev = runtime.getDevice()
+        check_stream_device_match(dev)
+        # to prevent from popping the wrong stream at exit
+        self._curr_dev = dev
         if tls.prev_stream_ref_stack[dev] is None:
             tls.prev_stream_ref_stack[dev] = []
         prev_stream_ref = tls.get_current_stream_ref(dev)
@@ -213,9 +223,8 @@ class BaseStream(object):
 
     def __exit__(self, *args):
         tls = _ThreadLocal.get()
-        cdef int dev = self.dev
-        if dev == -1:
-            dev = runtime.getDevice()
+        dev = self._curr_dev
+        self._curr_dev = -1
         prev_stream_ref = tls.prev_stream_ref_stack[dev].pop()
         tls.set_current_stream_ref(prev_stream_ref)
 
@@ -228,6 +237,7 @@ class BaseStream(object):
         If you want to switch a stream temporarily, use the *with* statement.
         """
         tls = _ThreadLocal.get()
+        check_stream_device_match(self.dev)
         tls.set_current_stream(self)
         return self
 
