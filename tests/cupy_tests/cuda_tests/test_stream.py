@@ -142,6 +142,17 @@ class TestStream(unittest.TestCase):
         self.stream.use()
         assert self.stream == cuda.get_current_stream()
 
+    @testing.multi_gpu(2)
+    def test_per_device(self):
+        with cuda.Device(0):
+            stream0 = cuda.Stream()
+            with stream0:
+                assert stream0 == cuda.get_current_stream()
+                with cuda.Device(1):
+                    assert stream0 != cuda.get_current_stream()
+                    assert cuda.Stream.null == cuda.get_current_stream()
+                assert stream0 == cuda.get_current_stream()
+
 
 @testing.gpu
 class TestExternalStream(unittest.TestCase):
