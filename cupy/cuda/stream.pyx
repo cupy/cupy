@@ -32,20 +32,25 @@ cdef class _ThreadLocal:
 
     cdef set_current_stream(self, stream):
         cdef intptr_t ptr = <intptr_t>stream.ptr
-        cdef int dev = runtime.getDevice()
+        cdef int dev = stream.dev
+        if dev == -1:
+            dev = runtime.getDevice()
         stream_module.set_current_stream_ptr(ptr, dev)
         self.current_stream[dev] = <intptr_t>ptr
         self.current_stream_ref[dev] = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
         cdef intptr_t ptr = <intptr_t>stream_ref().ptr
-        cdef int dev = runtime.getDevice()
+        cdef int dev = stream_ref().dev
+        if dev == -1:
+            dev = runtime.getDevice()
         stream_module.set_current_stream_ptr(ptr, dev)
         self.current_stream[dev] = <intptr_t>ptr
         self.current_stream_ref[dev] = stream_ref
 
-    cdef get_current_stream(self):
-        cdef int dev = runtime.getDevice()
+    cdef get_current_stream(self, int dev=-1):
+        if dev == -1:
+            dev = runtime.getDevice()
         if self.current_stream_ref[dev] is None:
             if stream_module.is_ptds_enabled():
                 self.current_stream_ref[dev] = weakref.ref(Stream.ptds)
@@ -53,8 +58,9 @@ cdef class _ThreadLocal:
                 self.current_stream_ref[dev] = weakref.ref(Stream.null)
         return self.current_stream_ref[dev]()
 
-    cdef get_current_stream_ref(self):
-        cdef int dev = runtime.getDevice()
+    cdef get_current_stream_ref(self, int dev=-1):
+        if dev == -1:
+            dev = runtime.getDevice()
         if self.current_stream_ref[dev] is None:
             if stream_module.is_ptds_enabled():
                 self.current_stream_ref[dev] = weakref.ref(Stream.ptds)
@@ -62,15 +68,16 @@ cdef class _ThreadLocal:
                 self.current_stream_ref[dev] = weakref.ref(Stream.null)
         return self.current_stream_ref[dev]
 
-    cdef intptr_t get_current_stream_ptr(self):
+    cdef intptr_t get_current_stream_ptr(self, int dev=-1):
         # Returns the stream previously set, otherwise returns
         # nullptr or runtime.streamPerThread when
         # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
-        if (stream_module.is_ptds_enabled() and
-                self.current_stream == 0):
+        if dev == -1:
+            dev = runtime.getDevice()
+        cdef intptr_t curr_stream = self.current_stream[dev]
+        if stream_module.is_ptds_enabled() and curr_stream == 0:
             return <intptr_t>runtime.streamPerThread
-        cdef int dev = runtime.getDevice()
-        return self.current_stream[dev]
+        return curr_stream
 
 
 cdef intptr_t get_current_stream_ptr():
@@ -180,6 +187,7 @@ class BaseStream(object):
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle.
+        ~Stream.dev (int): The ID of the device that the stream was created on.
 
     """
 
@@ -193,20 +201,23 @@ class BaseStream(object):
 
     def __enter__(self):
         tls = _ThreadLocal.get()
-        cdef int dev = runtime.getDevice()
+        cdef int dev = self.dev
+        if dev == -1:
+            dev = runtime.getDevice()
         if tls.prev_stream_ref_stack[dev] is None:
             tls.prev_stream_ref_stack[dev] = []
-        prev_stream_ref = tls.get_current_stream_ref()
+        prev_stream_ref = tls.get_current_stream_ref(dev)
         tls.prev_stream_ref_stack[dev].append(prev_stream_ref)
         tls.set_current_stream(self)
         return self
 
     def __exit__(self, *args):
         tls = _ThreadLocal.get()
-        cdef int dev = runtime.getDevice()
+        cdef int dev = self.dev
+        if dev == -1:
+            dev = runtime.getDevice()
         prev_stream_ref = tls.prev_stream_ref_stack[dev].pop()
         tls.set_current_stream_ref(prev_stream_ref)
-        pass
 
     def __repr__(self):
         return '<{} {}>'.format(type(self).__name__, self.ptr)
@@ -327,6 +338,10 @@ class Stream(BaseStream):
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle.
+        ~Stream.dev (int): The ID of the device that the stream was created on.
+            The value ``-1`` is used to indicate either it's unknown or does
+            not matter (such as in the cases of the singleton legacy/per-thread
+            default streams).
 
     """
 
@@ -336,16 +351,20 @@ class Stream(BaseStream):
             # because of a NCCL bug that should be fixed in the version
             # following 2.8.3-1.
             self.ptr = 0
+            self.dev = -1
         elif ptds:
             if runtime._is_hip_environment:
                 raise ValueError('HIP does not support per-thread '
                                  'default stream (ptds)')
             self.ptr = runtime.streamPerThread
+            self.dev = -1
         elif non_blocking:
             self.ptr = runtime.streamCreateWithFlags(
                 runtime.streamNonBlocking)
+            self.dev = runtime.getDevice()
         else:
             self.ptr = runtime.streamCreate()
+            self.dev = runtime.getDevice()
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
         cdef intptr_t current_ptr
@@ -378,11 +397,22 @@ class ExternalStream(BaseStream):
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle.
+        ~Stream.dev (int): The ID of the device that the stream was created on.
+            The value ``-1`` is used to indicate either it's unknown or does
+            not matter (such as in the cases of legacy/per-thread default
+            streams).
 
     """
 
     def __init__(self, ptr):
         self.ptr = ptr
+        # It is in theory unsafe to just call runtime.getDevice() here, as the
+        # stream pointer could come from a different device (although
+        # unlikely). While we could use driver API combos cuStreamGetCtx ->
+        # cuCtxSetCurrent -> cuCtxGetDevice to retrieve the device ID
+        # associated with the stream, it is way too complicated. Let us keep
+        # this as thin as possible.
+        self.dev = -1
 
 
 Stream.null = Stream(null=True)
