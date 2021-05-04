@@ -339,9 +339,7 @@ class Stream(BaseStream):
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle.
         ~Stream.dev (int): The ID of the device that the stream was created on.
-            The value ``-1`` is used to indicate either it's unknown or does
-            not matter (such as in the cases of the singleton legacy/per-thread
-            default streams).
+            The value ``-1`` is used for the singleton stream objects.
 
     """
 
@@ -394,25 +392,30 @@ class ExternalStream(BaseStream):
 
     Args:
         ptr (intptr_t): Address of the `cudaStream_t` object.
+        dev (int): The ID of the device that the stream was created on. Default
+            is ``-1``, indicating it is unknown.
 
     Attributes:
         ~Stream.ptr (intptr_t): Raw stream handle.
         ~Stream.dev (int): The ID of the device that the stream was created on.
-            The value ``-1`` is used to indicate either it's unknown or does
-            not matter (such as in the cases of legacy/per-thread default
-            streams).
+            The value ``-1`` is used to indicate it is unknown.
+
+    .. warning::
+        If ``dev`` is not specified, the user is required to ensure legal
+        operations of the stream. Specifically, the stream must be used on the
+        device that it was created on.
 
     """
 
-    def __init__(self, ptr):
+    def __init__(self, ptr, dev=-1):
         self.ptr = ptr
         # It is in theory unsafe to just call runtime.getDevice() here, as the
         # stream pointer could come from a different device (although
         # unlikely). While we could use driver API combos cuStreamGetCtx ->
-        # cuCtxSetCurrent -> cuCtxGetDevice to retrieve the device ID
+        # cuCtxSetCurrent -> cuCtxGetDevice -> ... to retrieve the device ID
         # associated with the stream, it is way too complicated. Let us keep
         # this as thin as possible.
-        self.dev = -1
+        self.dev = dev
 
 
 Stream.null = Stream(null=True)
