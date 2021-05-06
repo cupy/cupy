@@ -11,9 +11,6 @@ import threading
 import warnings
 import weakref
 
-from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy._core import syncdetect
-
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t
 from libc.stdint cimport intptr_t
@@ -22,8 +19,10 @@ from libcpp cimport algorithm
 from cupy.cuda cimport device
 from cupy.cuda cimport memory_hook
 from cupy.cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 
+from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import _util
 
 
@@ -656,7 +655,7 @@ cpdef MemoryPointer malloc_async(size_t size):
     .. seealso:: `Stream Ordered Memory Allocator`_
 
     .. _Stream Ordered Memory Allocator:
-        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY__POOLS.html
+        https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-memory-allocator
     """
     cdef intptr_t stream_ptr
     stream_ptr = stream_module.get_current_stream_ptr()
@@ -1567,30 +1566,36 @@ cdef class MemoryAsyncPool:
     .. seealso:: `Stream Ordered Memory Allocator`_
 
     .. _Stream Ordered Memory Allocator:
-        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY__POOLS.html
+        https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-memory-allocator
     """
     # This is an analogous to SingleDeviceMemoryPool + MemoryPool, but for
     # CUDA's async allocator. The main purpose is to provide a memory pool
-    # interface for multiple devices, but given that CUDA's mempool is
+    # interface for multiple devices. Given that CUDA's mempool is
     # implemented at the driver level, the same pool could be shared by many
-    # applications in the same process, so we can't collect meaningful
-    # statistics like used bytes for this pool...
+    # applications in the same process.
 
     cdef:
         # A list of cudaMemPool_t to each device's mempool
         readonly list _pools
 
     def __init__(self, pool_handles='default'):
-        cdef int dev_id
+        cdef int dev_id, dev_counts
+        dev_counts = runtime.getDeviceCount()
+
         if (cpython.PySequence_Check(pool_handles)
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
             self._pools = [self.set_pool(pool_handles[dev_id], dev_id)
-                           for dev_id in range(runtime.getDeviceCount())]
+                           for dev_id in range(dev_counts)]
         else:
             # use the same argument for all devices
             self._pools = [self.set_pool(pool_handles, dev_id)
-                           for dev_id in range(runtime.getDeviceCount())]
+                           for dev_id in range(dev_counts)]
+
+        for dev_id in range(dev_counts):
+            limit = _parse_limit_string()
+            with device.Device(dev_id):
+                self.set_limit(**limit)
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool
@@ -1666,26 +1671,71 @@ cdef class MemoryAsyncPool:
         # any memory asynchronously freed, a synchonization will make sure
         # they become visible (to both cudaMalloc and cudaMallocAsync). See
         # https://github.com/cupy/cupy/issues/3777#issuecomment-758890450
-        runtime.deviceSynchronize()
+        if stream is None:
+            # TODO(leofang): synchronize the current stream?
+            runtime.deviceSynchronize()
+        else:
+            stream.synchronize()
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        # We don't care the actual limit; putting 0 here means we guarantee
+        # to reserve at least 0 bytes
+        runtime.memPoolTrimTo(pool, 0)
 
     cpdef size_t n_free_blocks(self):
         raise NotImplementedError
 
-    cpdef size_t used_bytes(self):
+    cpdef size_t used_bytes(self) except*:
+        # TODO(leofang): check if it's due to driver or runtime's version
+        if runtime.driverGetVersion() < 11030:
+            raise RuntimeError
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        return runtime.memPoolGetAttribute(
+            pool, runtime.cudaMemPoolAttrUsedMemCurrent)
+
+    cpdef size_t free_bytes(self) except*:
+        # TODO(leofang): add this
         raise NotImplementedError
 
-    cpdef size_t free_bytes(self):
-        raise NotImplementedError
-
-    cpdef size_t total_bytes(self):
-        raise NotImplementedError
+    cpdef size_t total_bytes(self) except*:
+        # TODO(leofang): check if it's due to driver or runtime's version
+        if runtime.driverGetVersion() < 11030:
+            raise RuntimeError
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        return runtime.memPoolGetAttribute(
+            pool, runtime.cudaMemPoolAttrReservedMemCurrent)
 
     cpdef set_limit(self, size=None, fraction=None):
-        # TODO(leofang): Support cudaMemPoolTrimTo?
-        raise NotImplementedError
+        # TODO(leofang): reuse the common part to avoid code dup
+        # TODO(leofang): copy the doc string
+        if size is None:
+            if fraction is None:
+                size = 0
+            else:
+                if not 0 <= fraction <= 1:
+                    raise ValueError(
+                        'memory limit fraction out of range: {}'.format(
+                            fraction))
+                _, total = runtime.memGetInfo()
+                size = fraction * total
+            self.set_limit(size=size)
+            return
+
+        if fraction is not None:
+            raise ValueError('size and fraction cannot be specified at '
+                             'one time')
+        if size < 0:
+            raise ValueError(
+                'memory limit size out of range: {}'.format(size))
+
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        runtime.memPoolSetAttribute(
+            pool, runtime.cudaMemPoolAttrReleaseThreshold, size)
 
     cpdef size_t get_limit(self):
-        raise NotImplementedError
+        # TODO(leofang): copy the doc string
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        return runtime.memPoolGetAttribute(
+            pool, runtime.cudaMemPoolAttrReleaseThreshold)
 
 
 ctypedef void*(*malloc_func_type)(void*, size_t, int)
