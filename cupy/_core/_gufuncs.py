@@ -208,6 +208,8 @@ class _GUFunc:
             if not isinstance(output_coredimss, list)
             else len(output_coredimss)
         )
+        if hasattr(func, '__doc__'):
+            self.__doc__ = func.__doc__
 
     def _apply_func_to_inputs(self, dim, sizes, dims, args, outs):
         # Apply function
