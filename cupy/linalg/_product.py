@@ -10,7 +10,7 @@ from cupy._core._gufuncs import _GUFunc
 from cupy.linalg._solve import inv
 
 matmul = _GUFunc(
-    _core._matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True)
+    _core.matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True)
 
 
 def dot(a, b, out=None):

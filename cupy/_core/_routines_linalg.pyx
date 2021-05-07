@@ -682,7 +682,7 @@ cpdef ndarray _mat_ptrs(ndarray a):
     return idx
 
 
-cpdef ndarray _matmul(ndarray a, ndarray b, ndarray out=None):
+cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=None):
     """Matrix product of two arrays.
 
     Returns the matrix product of two arrays and is the implementation of
