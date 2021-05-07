@@ -240,6 +240,14 @@ cudaError_t cudaMemPoolTrimTo(...) {
     return cudaSuccess;
 }
 
+cudaError_t cudaMemPoolGetAttribute(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemPoolSetAttribute(...) {
+    return cudaSuccess;
+}
+
 
 // Stream and Event
 cudaError_t cudaStreamCreate(...) {
