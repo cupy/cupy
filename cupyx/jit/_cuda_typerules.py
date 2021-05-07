@@ -8,7 +8,7 @@ from cupy._logic import comparison
 from cupy._binary import elementwise
 from cupy import _core
 
-from cupyx.jit import _types
+from cupyx.jit import _cuda_types
 
 
 _numpy_scalar_true_divide = _core.create_ufunc(
@@ -112,41 +112,41 @@ def get_ufunc(mode, op_type):
 
 def get_ctype_from_scalar(mode, x):
     if isinstance(x, numpy.generic):
-        return _types.Scalar(x.dtype)
+        return _cuda_types.Scalar(x.dtype)
 
     if mode == 'numpy':
         if isinstance(x, bool):
-            return _types.Scalar(numpy.bool_)
+            return _cuda_types.Scalar(numpy.bool_)
         if isinstance(x, int):
             # use plain int here for cross-platform portability
-            return _types.Scalar(int)
+            return _cuda_types.Scalar(int)
         if isinstance(x, float):
-            return _types.Scalar(numpy.float64)
+            return _cuda_types.Scalar(numpy.float64)
         if isinstance(x, complex):
-            return _types.Scalar(numpy.complex128)
+            return _cuda_types.Scalar(numpy.complex128)
 
     if mode == 'cuda':
         if isinstance(x, bool):
-            return _types.Scalar(numpy.bool_)
+            return _cuda_types.Scalar(numpy.bool_)
         if isinstance(x, int):
             if -(1 << 31) <= x < (1 << 31):
-                return _types.Scalar(numpy.int32)
-            return _types.Scalar(numpy.int64)
+                return _cuda_types.Scalar(numpy.int32)
+            return _cuda_types.Scalar(numpy.int64)
         if isinstance(x, float):
-            return _types.Scalar(numpy.float32)
+            return _cuda_types.Scalar(numpy.float32)
         if isinstance(x, complex):
-            return _types.Scalar(numpy.complex64)
+            return _cuda_types.Scalar(numpy.complex64)
 
     raise NotImplementedError(f'{x} is not scalar object.')
 
 
-_cuda_types = '?bBhHiIlLefdFD'
+_typechars = '?bBhHiIlLefdFD'
 
 
 def _cuda_can_cast(from_dtype, to_dtype):
     from_dtype = numpy.dtype(from_dtype)
     to_dtype = numpy.dtype(to_dtype)
-    return _cuda_types.find(from_dtype.char) <= _cuda_types.find(to_dtype.char)
+    return _typechars.find(from_dtype.char) <= _typechars.find(to_dtype.char)
 
 
 def guess_routine(ufunc, in_types, dtype, mode):
