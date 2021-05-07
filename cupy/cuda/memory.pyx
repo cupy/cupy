@@ -1580,22 +1580,24 @@ cdef class MemoryAsyncPool:
 
     def __init__(self, pool_handles='default'):
         cdef int dev_id, dev_counts
+        cdef dict limit = _parse_limit_string()
         dev_counts = runtime.getDeviceCount()
+        self._pools = []
 
         if (cpython.PySequence_Check(pool_handles)
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
-            self._pools = [self.set_pool(pool_handles[dev_id], dev_id)
-                           for dev_id in range(dev_counts)]
+            for dev_id in range(dev_counts):
+                with device.Device(dev_id):
+                    self._pools.append(self.set_pool(
+                        pool_handles[dev_id], dev_id))
+                    self.set_limit(**limit)
         else:
             # use the same argument for all devices
-            self._pools = [self.set_pool(pool_handles, dev_id)
-                           for dev_id in range(dev_counts)]
-
-        for dev_id in range(dev_counts):
-            limit = _parse_limit_string()
-            with device.Device(dev_id):
-                self.set_limit(**limit)
+            for dev_id in range(dev_counts):
+                with device.Device(dev_id):
+                    self._pools.append(self.set_pool(pool_handles, dev_id))
+                    self.set_limit(**limit)
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool
@@ -1672,17 +1674,16 @@ cdef class MemoryAsyncPool:
         # they become visible (to both cudaMalloc and cudaMallocAsync). See
         # https://github.com/cupy/cupy/issues/3777#issuecomment-758890450
         if stream is None:
-            # TODO(leofang): synchronize the current stream?
-            runtime.deviceSynchronize()
-        else:
-            stream.synchronize()
+            stream = stream_module.get_current_stream()
+        stream.synchronize()
         cdef intptr_t pool = self._pools[device.get_device_id()]
         # We don't care the actual limit; putting 0 here means we guarantee
         # to reserve at least 0 bytes
         runtime.memPoolTrimTo(pool, 0)
 
     cpdef size_t n_free_blocks(self):
-        raise NotImplementedError
+        raise NotImplementedError(
+            'This function is not supported in MemoryAsyncPool')
 
     cpdef size_t used_bytes(self) except*:
         # TODO(leofang): check if it's due to driver or runtime's version
@@ -1693,8 +1694,15 @@ cdef class MemoryAsyncPool:
             pool, runtime.cudaMemPoolAttrUsedMemCurrent)
 
     cpdef size_t free_bytes(self) except*:
-        # TODO(leofang): add this
-        raise NotImplementedError
+        # TODO(leofang): check if it's due to driver or runtime's version
+        if runtime.driverGetVersion() < 11030:
+            raise RuntimeError
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        cdef size_t total_bytes = runtime.memPoolGetAttribute(
+            pool, runtime.cudaMemPoolAttrReservedMemCurrent)
+        cdef size_t used_bytes = runtime.memPoolGetAttribute(
+            pool, runtime.cudaMemPoolAttrUsedMemCurrent)
+        return total_bytes - used_bytes
 
     cpdef size_t total_bytes(self) except*:
         # TODO(leofang): check if it's due to driver or runtime's version
