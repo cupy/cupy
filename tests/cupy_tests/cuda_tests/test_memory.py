@@ -615,6 +615,8 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.pool.set_limit(fraction=1.1)
 
+
+class TestParseMempoolLimitEnvVar(unittest.TestCase):
     def test_parse_limit_string(self):
         parse_limit_string = memory._parse_limit_string
 
@@ -726,12 +728,15 @@ class TestMemoryPool(unittest.TestCase):
             assert 0 == self.pool.total_bytes()
 
 
+@testing.parameterize(*testing.product({
+    'mempool': ('MemoryPool', 'MemoryAsyncPool'),
+}))
 @testing.gpu
 class TestAllocator(unittest.TestCase):
 
     def setUp(self):
         self.old_pool = cupy.get_default_memory_pool()
-        self.pool = memory.MemoryPool()
+        self.pool = getattr(memory, self.mempool)()
         memory.set_allocator(self.pool.malloc)
 
     def tearDown(self):
@@ -1029,8 +1034,14 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
     def setUp(self):
         self.pool = memory.MemoryAsyncPool()
+        self.unit = memory._allocation_unit_size
+        self.stream = stream_module.Stream()
+        self.stream_ident = self.stream.ptr
         cupy.get_default_memory_pool().free_all_blocks()
         cupy.cuda.Device().synchronize()
+
+    def tearDown(self):
+        self.pool.free_all_blocks()
 
     def test_zero_size_alloc(self):
         with cupy.cuda.Device():
@@ -1085,3 +1096,172 @@ class TestMemoryAsyncPool(unittest.TestCase):
                 self.pool.malloc(int(0.3 * mem_total))  # 30% memory
             default_pool.free_all_blocks()
             self.pool.malloc(int(0.3 * mem_total))  # this time it'd work
+
+    @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
+                        reason='used_bytes is supported with driver 11.3+')
+    def test_used_bytes(self):
+        with cupy.cuda.Device():
+            assert 0 == self.pool.used_bytes()
+
+    @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
+                        reason='used_bytes is supported with driver 11.3+')
+    def test_used_bytes2(self):
+        p1 = self.pool.malloc(self.unit * 2)
+        assert self.unit * 2 == self.pool.used_bytes()
+        p2 = self.pool.malloc(self.unit * 4)
+        assert self.unit * 6 == self.pool.used_bytes()
+        del p2
+        assert self.unit * 2 == self.pool.used_bytes()
+        del p1
+        assert self.unit * 0 == self.pool.used_bytes()
+        p3 = self.pool.malloc(self.unit * 1)
+        assert self.unit * 1 == self.pool.used_bytes()
+        del p3
+
+    @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
+                        reason='used_bytes is supported with driver 11.3+')
+    def test_used_bytes_stream(self):
+        p1 = self.pool.malloc(self.unit * 4)
+        del p1
+        with self.stream:
+            p2 = self.pool.malloc(self.unit * 2)
+        assert self.unit * 2 == self.pool.used_bytes()
+        del p2
+
+    @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
+                        reason='free_bytes is supported with driver 11.3+')
+    def test_free_bytes(self):
+        with cupy.cuda.Device():
+            assert 0 == self.pool.free_bytes()
+
+    @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
+                        reason='free_bytes is supported with driver 11.3+')
+    def test_free_bytes2(self):
+        # Note: MemoryAsyncPool works differently from MemoryPool. The first
+        # allocation would be much bigger than requested, and the pool size
+        # increases as needed. As a result, this test method is very different
+        # from TestSingleDeviceMemoryPool.test_free_bytes(), in that the pool
+        # size is a fixed value (outside of our control).
+        p1 = self.pool.malloc(self.unit * 2)
+        assert self.pool.free_bytes() == (
+            self.pool.total_bytes() - self.pool.used_bytes())  # always true
+
+        current_size = self.pool.total_bytes()  # fixed throughout this method
+        free_size = self.pool.free_bytes()
+
+        p2 = self.pool.malloc(self.unit * 4)
+        free_size -= self.unit * 4
+        assert self.pool.free_bytes() == free_size
+        del p2
+        free_size += self.unit * 4
+        assert self.pool.free_bytes() == free_size
+        del p1
+        free_size += self.unit * 2
+        assert self.pool.free_bytes() == free_size
+        p3 = self.pool.malloc(self.unit * 1)
+        free_size -= self.unit * 1
+        assert self.pool.free_bytes() == free_size
+        del p3
+
+    @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
+                        reason='free_bytes is supported with driver 11.3+')
+    def test_free_bytes_stream(self):
+        p1 = self.pool.malloc(self.unit * 4)
+        del p1
+        with self.stream:
+            p2 = self.pool.malloc(self.unit * 2)
+        assert self.pool.free_bytes() == (
+            self.pool.total_bytes() - self.pool.used_bytes())  # always true
+        del p2
+
+    @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
+                        reason='total_bytes is supported with driver 11.3+')
+    def test_total_bytes(self):
+        with cupy.cuda.Device():
+            assert 0 == self.pool.total_bytes()
+
+    @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
+                        reason='total_bytes is supported with driver 11.3+')
+    def test_total_bytes2(self):
+        # Note: MemoryAsyncPool works differently from MemoryPool. The first
+        # allocation would be much bigger than requested, and the pool size
+        # increases as needed. As a result, this test method is very different
+        # from TestSingleDeviceMemoryPool.test_total_bytes(), in that the pool
+        # size is either 0 or a fixed value (outside of our control).
+        p1 = self.pool.malloc(self.unit * 2)
+        current_size = self.pool.total_bytes()
+
+        assert current_size == self.pool.total_bytes()
+        p2 = self.pool.malloc(self.unit * 4)
+        assert current_size == self.pool.total_bytes()
+        del p1
+        assert current_size == self.pool.total_bytes()
+        del p2
+        assert current_size == self.pool.total_bytes()
+        self.pool.free_all_blocks()
+        assert 0 == self.pool.total_bytes()
+        p3 = self.pool.malloc(self.unit * 1)
+        assert current_size == self.pool.total_bytes()
+
+        assert (self.pool.used_bytes() + self.pool.free_bytes()
+                == self.pool.total_bytes())
+
+        del p3
+
+        self.pool.free_all_blocks()
+        assert 0 == self.pool.total_bytes()
+
+    @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
+                        reason='total_bytes is supported with driver 11.3+')
+    def test_total_bytes_stream(self):
+        # Note: MemoryAsyncPool works differently from MemoryPool. The first
+        # allocation would be much bigger than requested, and the pool size
+        # increases as needed. As a result, this test method is very different
+        # from TestSingleDeviceMemoryPool.test_total_bytes_stream(), in that
+        # the pool size is either 0 or a fixed value (outside of our control).
+        p1 = self.pool.malloc(self.unit * 4)
+        current_size = self.pool.total_bytes()
+        assert current_size > 0
+        del p1
+        assert current_size > 0
+        self.pool.free_all_blocks()
+        assert 0 == self.pool.total_bytes()
+        with self.stream:
+            p2 = self.pool.malloc(self.unit * 2)
+        assert current_size == self.pool.total_bytes()
+        del p2
+
+    def test_get_limit(self):
+        # limit is disabled by default
+        assert 0 == self.pool.get_limit()
+
+    def test_set_limit_size(self):
+        self.pool.set_limit(size=1024)
+        assert 1024 == self.pool.get_limit()
+
+        self.pool.set_limit(size=2**33)
+        assert 2**33 == self.pool.get_limit()
+
+        self.pool.set_limit(size=0)
+        assert 0 == self.pool.get_limit()
+
+        with self.assertRaises(ValueError):
+            self.pool.set_limit(size=-1)
+
+    def test_set_limit_fraction(self):
+        _, total = cupy.cuda.runtime.memGetInfo()
+
+        self.pool.set_limit(fraction=0)
+        assert 0 == self.pool.get_limit()
+
+        self.pool.set_limit(fraction=0.5)
+        assert total * 0.5 == self.pool.get_limit()
+
+        self.pool.set_limit(fraction=1.0)
+        assert total == self.pool.get_limit()
+
+        with self.assertRaises(ValueError):
+            self.pool.set_limit(fraction=-1)
+
+        with self.assertRaises(ValueError):
+            self.pool.set_limit(fraction=1.1)
