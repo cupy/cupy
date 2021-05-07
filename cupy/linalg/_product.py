@@ -11,7 +11,6 @@ from cupy.linalg._solve import inv
 
 matmul = _GUFunc(
     _core._matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True)
-matmul.__doc__ = _core._matmul.__doc__
 
 
 def dot(a, b, out=None):
