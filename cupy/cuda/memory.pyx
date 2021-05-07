@@ -1641,7 +1641,17 @@ cdef class MemoryAsyncPool:
         cdef size_t rounded_size = _round_size(size)
         mem = None
         oom_error = False
-        # TODO(leofang): check get_limit()?
+
+        # CUDA does not allow us to set a hard limit, so the best we can do is
+        # to prevent CuPy from drawing too much memory from the pool; we cannot
+        # do anything if other applications oversubscribe the pool.
+        cdef size_t total=size-1, total_bytes_limit=0
+        if runtime.driverGetVersion() >= 11030:
+            total_bytes_limit = self.get_limit()
+            total = self.total_bytes() + rounded_size
+            if total_bytes_limit != 0 and total_bytes_limit < total:
+                raise OutOfMemoryError(size, total - size, total_bytes_limit)
+
         try:
             mem = malloc_async(rounded_size)
         except CUDARuntimeError as e:
@@ -1664,9 +1674,8 @@ cdef class MemoryAsyncPool:
         finally:
             if mem is None:
                 assert oom_error
-                # Set total to -1 as we currently do not keep track of the
-                # usage of the async mempool
-                raise OutOfMemoryError(size, -1, 0)
+                raise OutOfMemoryError(
+                    size, total - size, total_bytes_limit)
         return mem
 
     cpdef free_all_blocks(self, stream=None):
@@ -1717,16 +1726,7 @@ cdef class MemoryAsyncPool:
         Returns:
             int: The total number of bytes acquired but not used by the pool.
         """
-        # this is nothing but total_bytes() - used_bytes()
-        if runtime.driverGetVersion() < 11030:
-            raise RuntimeError(
-                'The driver version is insufficient for this query')
-        cdef intptr_t pool = self._pools[device.get_device_id()]
-        cdef size_t total_bytes = runtime.memPoolGetAttribute(
-            pool, runtime.cudaMemPoolAttrReservedMemCurrent)
-        cdef size_t used_bytes = runtime.memPoolGetAttribute(
-            pool, runtime.cudaMemPoolAttrUsedMemCurrent)
-        return total_bytes - used_bytes
+        return self.total_bytes() - self.used_bytes()
 
     cpdef size_t total_bytes(self) except*:
         """Gets the total number of bytes acquired by the pool.
@@ -1753,6 +1753,12 @@ cdef class MemoryAsyncPool:
         ``size`` and ``fraction`` cannot be specified at the same time.
         If both of them are **not** specified or ``0`` is specified, the
         limit will be disabled.
+
+        .. note::
+            Unlike with :class:`MemoryPool`, :class:`MemoryAsyncPool`'s
+            :meth:`set_limit` method can only impose a *soft* limit. If other
+            (non-CuPy) applications are also allocating memory from the same
+            mempool, this limit may not be respected.
 
         .. note::
             You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
@@ -1799,6 +1805,12 @@ cdef class MemoryAsyncPool:
 
         Returns:
             int: The number of bytes
+
+        .. note::
+            Unlike with :class:`MemoryPool`, :class:`MemoryAsyncPool`'s
+            :meth:`set_limit` method can only impose a *soft* limit. If other
+            (non-CuPy) applications are also allocating memory from the same
+            mempool, this limit may not be respected.
         """
         cdef intptr_t pool = self._pools[device.get_device_id()]
         return runtime.memPoolGetAttribute(
