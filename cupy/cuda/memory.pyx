@@ -1579,6 +1579,7 @@ cdef class MemoryAsyncPool:
         readonly list _pools
 
     def __init__(self, pool_handles='default'):
+        _util.experimental('cupy.cuda.MemoryAsyncPool')
         cdef int dev_id, dev_counts
         cdef dict limit = _parse_limit_string()
         dev_counts = runtime.getDeviceCount()
@@ -1637,10 +1638,10 @@ cdef class MemoryAsyncPool:
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
-        _util.experimental('cupy.cuda.MemoryAsyncPool.malloc')
         cdef size_t rounded_size = _round_size(size)
         mem = None
         oom_error = False
+        # TODO(leofang): check get_limit()?
         try:
             mem = malloc_async(rounded_size)
         except CUDARuntimeError as e:
@@ -1686,17 +1687,18 @@ cdef class MemoryAsyncPool:
             'This function is not supported in MemoryAsyncPool')
 
     cpdef size_t used_bytes(self) except*:
-        # TODO(leofang): check if it's due to driver or runtime's version
         if runtime.driverGetVersion() < 11030:
-            raise RuntimeError
+            raise RuntimeError(
+                'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]
         return runtime.memPoolGetAttribute(
             pool, runtime.cudaMemPoolAttrUsedMemCurrent)
 
     cpdef size_t free_bytes(self) except*:
-        # TODO(leofang): check if it's due to driver or runtime's version
+        # this is nothing but total_bytes() - used_bytes()
         if runtime.driverGetVersion() < 11030:
-            raise RuntimeError
+            raise RuntimeError(
+                'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]
         cdef size_t total_bytes = runtime.memPoolGetAttribute(
             pool, runtime.cudaMemPoolAttrReservedMemCurrent)
@@ -1705,9 +1707,9 @@ cdef class MemoryAsyncPool:
         return total_bytes - used_bytes
 
     cpdef size_t total_bytes(self) except*:
-        # TODO(leofang): check if it's due to driver or runtime's version
         if runtime.driverGetVersion() < 11030:
-            raise RuntimeError
+            raise RuntimeError(
+                'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]
         return runtime.memPoolGetAttribute(
             pool, runtime.cudaMemPoolAttrReservedMemCurrent)
