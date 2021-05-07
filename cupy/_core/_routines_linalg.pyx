@@ -683,7 +683,9 @@ cpdef ndarray _mat_ptrs(ndarray a):
 
 
 cpdef ndarray _matmul(ndarray a, ndarray b, ndarray out=None):
-    """Returns the matrix product of two arrays and is the implementation of
+    """Matrix product of two arrays.
+
+    Returns the matrix product of two arrays and is the implementation of
     the `@` operator introduced in Python 3.5 following PEP465.
 
     The main difference against cupy.dot are the handling of arrays with more
