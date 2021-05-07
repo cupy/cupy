@@ -1464,28 +1464,28 @@ cdef class MemoryPool:
         return mp.n_free_blocks()
 
     cpdef size_t used_bytes(self):
-        """Gets the total number of bytes used.
+        """Gets the total number of bytes used by the pool.
 
         Returns:
-            int: The total number of bytes used.
+            int: The total number of bytes used by the pool.
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.used_bytes()
 
     cpdef size_t free_bytes(self):
-        """Gets the total number of bytes acquired but not used in the pool.
+        """Gets the total number of bytes acquired but not used by the pool.
 
         Returns:
-            int: The total number of bytes acquired but not used in the pool.
+            int: The total number of bytes acquired but not used by the pool.
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.free_bytes()
 
     cpdef size_t total_bytes(self):
-        """Gets the total number of bytes acquired in the pool.
+        """Gets the total number of bytes acquired by the pool.
 
         Returns:
-            int: The total number of bytes acquired in the pool.
+            int: The total number of bytes acquired by the pool.
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.total_bytes()
@@ -1499,7 +1499,7 @@ cdef class MemoryPool:
         ``set_limit(fraction=0.5)`` or ``set_limit(size=1024**3)`` to limit
         the memory size to 1 GiB.
 
-        ``size`` and ``fraction`` cannot be specified at one time.
+        ``size`` and ``fraction`` cannot be specified at the same time.
         If both of them are **not** specified or ``0`` is specified, the
         limit will be disabled.
 
@@ -1670,6 +1670,18 @@ cdef class MemoryAsyncPool:
         return mem
 
     cpdef free_all_blocks(self, stream=None):
+        """Releases free memory.
+
+        Args:
+            stream (cupy.cuda.Stream): Release memory freed on the given
+                ``stream``. If ``stream`` is ``None``, the current stream is
+                used.
+
+        .. seealso:: `Physical Page Caching Behavior`_
+
+        .. _Physical Page Caching Behavior:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-physical-page-caching-behavior
+        """
         # We don't have access to the mempool internal, but if there are
         # any memory asynchronously freed, a synchonization will make sure
         # they become visible (to both cudaMalloc and cudaMallocAsync). See
@@ -1687,6 +1699,11 @@ cdef class MemoryAsyncPool:
             'This function is not supported in MemoryAsyncPool')
 
     cpdef size_t used_bytes(self) except*:
+        """Gets the total number of bytes used by the pool.
+
+        Returns:
+            int: The total number of bytes used by the pool.
+        """
         if runtime.driverGetVersion() < 11030:
             raise RuntimeError(
                 'The driver version is insufficient for this query')
@@ -1695,6 +1712,11 @@ cdef class MemoryAsyncPool:
             pool, runtime.cudaMemPoolAttrUsedMemCurrent)
 
     cpdef size_t free_bytes(self) except*:
+        """Gets the total number of bytes acquired but not used by the pool.
+
+        Returns:
+            int: The total number of bytes acquired but not used by the pool.
+        """
         # this is nothing but total_bytes() - used_bytes()
         if runtime.driverGetVersion() < 11030:
             raise RuntimeError(
@@ -1707,6 +1729,11 @@ cdef class MemoryAsyncPool:
         return total_bytes - used_bytes
 
     cpdef size_t total_bytes(self) except*:
+        """Gets the total number of bytes acquired by the pool.
+
+        Returns:
+            int: The total number of bytes acquired by the pool.
+        """
         if runtime.driverGetVersion() < 11030:
             raise RuntimeError(
                 'The driver version is insufficient for this query')
@@ -1715,8 +1742,34 @@ cdef class MemoryAsyncPool:
             pool, runtime.cudaMemPoolAttrReservedMemCurrent)
 
     cpdef set_limit(self, size=None, fraction=None):
+        """Sets the upper limit of memory allocation of the current device.
+
+        When `fraction` is specified, its value will become a fraction of the
+        amount of GPU memory that is available for allocation.
+        For example, if you have a GPU with 2 GiB memory, you can either use
+        ``set_limit(fraction=0.5)`` or ``set_limit(size=1024**3)`` to limit
+        the memory size to 1 GiB.
+
+        ``size`` and ``fraction`` cannot be specified at the same time.
+        If both of them are **not** specified or ``0`` is specified, the
+        limit will be disabled.
+
+        .. note::
+            You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
+            environment variable.
+            See :ref:`environment` for the details.
+            The limit set by this method supersedes the value specified in
+            the environment variable.
+
+            Also note that this method only changes the limit for the current
+            device, whereas the environment variable sets the default limit for
+            all devices.
+
+        Args:
+            size (int): Limit size in bytes.
+            fraction (float): Fraction in the range of ``[0, 1]``.
+        """
         # TODO(leofang): reuse the common part to avoid code dup
-        # TODO(leofang): copy the doc string
         if size is None:
             if fraction is None:
                 size = 0
@@ -1742,7 +1795,11 @@ cdef class MemoryAsyncPool:
             pool, runtime.cudaMemPoolAttrReleaseThreshold, size)
 
     cpdef size_t get_limit(self):
-        # TODO(leofang): copy the doc string
+        """Gets the upper limit of memory allocation of the current device.
+
+        Returns:
+            int: The number of bytes
+        """
         cdef intptr_t pool = self._pools[device.get_device_id()]
         return runtime.memPoolGetAttribute(
             pool, runtime.cudaMemPoolAttrReleaseThreshold)
