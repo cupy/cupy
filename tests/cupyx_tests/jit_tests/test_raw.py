@@ -128,7 +128,7 @@ class TestRaw(unittest.TestCase):
     @staticmethod
     def _check(a, e):
         if a.dtype == numpy.float16:
-            testing.assert_allclose(a, e, rtol=1e-2, atol=1e-2)
+            testing.assert_allclose(a, e, rtol=3e-2, atol=3e-2)
         else:
             testing.assert_allclose(a, e, rtol=1e-6, atol=1e-6)
 
