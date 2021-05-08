@@ -277,6 +277,7 @@ class TestGels(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'tol': [0, 1e-5],
     'reorder': [0, 1, 2, 3],
+    'b_contiguous': [True, False],
 }))
 @testing.with_requires('scipy')
 class TestCsrlsvqr(unittest.TestCase):
@@ -304,10 +305,13 @@ class TestCsrlsvqr(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     def test_csrlsvqr(self, dtype):
         a, b, test_tol = self._setup(dtype)
-        ref_x = numpy.linalg.solve(a, b)
         cp_a = cupy.array(a)
         sp_a = cupyx.scipy.sparse.csr_matrix(cp_a)
         cp_b = cupy.array(b)
+        if not self.b_contiguous:
+            b = b[::-1]
+            cp_b = cp_b[::-1]
+        ref_x = numpy.linalg.solve(a, b)
         x = cupy.cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
                                    reorder=self.reorder)
         cupy.testing.assert_allclose(x, ref_x, rtol=test_tol,
