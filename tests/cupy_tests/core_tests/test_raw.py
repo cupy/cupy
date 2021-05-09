@@ -1270,8 +1270,6 @@ class TestRawJitify(unittest.TestCase):
         ker((1,), (N,), (a, N))
         assert cupy.allclose(a, b+100)
 
-    @pytest.mark.xfail(sys.platform.startswith('win32'),
-                       reason='macro preprocessing in NVRTC is likely buggy')
     def test_jitify1(self):
         # simply prepend an unused header
         hdr = '#include <cupy/cub/cub/block/block_reduce.cuh>\n'
