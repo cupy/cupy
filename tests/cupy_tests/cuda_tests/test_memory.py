@@ -735,6 +735,13 @@ class TestMemoryPool(unittest.TestCase):
 class TestAllocator(unittest.TestCase):
 
     def setUp(self):
+        if self.mempool == 'MemoryAsyncPool':
+            if cupy.cuda.runtime.is_hip:
+                pytest.skip('HIP does not support async allocator')
+            if cupy.cuda.driver.get_build_version() < 11020:
+                pytest.skip('malloc_async is supported since CUDA 11.2')
+            if cupy.cuda.runtime.driverGetVersion() < 11030:
+                pytest.skip('pool statistics is supported with driver 11.3+')
         self.old_pool = cupy.get_default_memory_pool()
         self.pool = getattr(memory, self.mempool)()
         memory.set_allocator(self.pool.malloc)
