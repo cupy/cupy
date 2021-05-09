@@ -1146,7 +1146,9 @@ class TestMemoryAsyncPool(unittest.TestCase):
         assert self.pool.free_bytes() == (
             self.pool.total_bytes() - self.pool.used_bytes())  # always true
 
-        current_size = self.pool.total_bytes()  # fixed throughout this method
+        # current_size is fixed throughout this test, as no synchronization
+        # (such as free_all_blocks()) is done
+        current_size = self.pool.total_bytes()
         free_size = self.pool.free_bytes()
 
         p2 = self.pool.malloc(self.unit * 4)
@@ -1162,6 +1164,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
         free_size -= self.unit * 1
         assert self.pool.free_bytes() == free_size
         del p3
+        assert self.pool.total_bytes() == current_size
 
     @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
                         reason='free_bytes is supported with driver 11.3+')
