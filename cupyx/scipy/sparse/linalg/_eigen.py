@@ -129,8 +129,17 @@ def eigsh(a, k=6, *, which='LM', ncv=None, maxiter=None, tol=0,
     else:
         return cupy.sort(w)
 
+def inversion_eps(dt):
+  '''
+  Inversion epsilon for type `dt`. 
+  Adopted from scipy.sparse.linalg.svds.
+  '''
+  t = dt.char.lower()
+  factor = {'f': 1E3, 'd': 1E6}
+  return factor[t] * cupy.finfo(t).eps
 
 def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
+    beta_eps = inversion_eps(a.dtype)
     for i in range(i_start, i_end):
         u[...] = a @ V[i]
         cublas.dotc(V[i], u, out=alpha[i])
@@ -138,6 +147,14 @@ def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
         cublas.nrm2(u, out=beta[i])
         if i >= i_end - 1:
             break
+        
+        if beta[i] < beta_eps:
+            V[i+1:i_end,:] = 0
+            u[...] = 0
+            break
+        if i == i_start:
+            beta_eps *= beta[i] # scale eps to largest beta
+        
         V[i+1] = u / beta[i]
 
 
@@ -182,6 +199,7 @@ def _lanczos_fast(A, n, ncv):
 
     def aux(A, V, u, alpha, beta, i_start, i_end):
         assert A is outer_A
+        beta_eps = inversion_eps(A.dtype)
 
         # Get ready for spmv if enabled
         if cusparse_handle is not None:
@@ -240,7 +258,15 @@ def _lanczos_fast(A, n, ncv):
             # Break here as the normalization below touches V[i+1]
             if i >= i_end - 1:
                 break
-
+          
+            if beta[i] < beta_eps:
+                V[i+1:i_end,:] = 0
+                u[...] = 0
+                v[...] = 0
+                break
+            if i == i_start:
+                beta_eps *= beta[i] # scale eps to largest beta
+          
             # Normalize
             _kernel_normalize(u, beta, i, n, v, V)
 
