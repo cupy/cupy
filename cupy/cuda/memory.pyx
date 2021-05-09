@@ -1506,8 +1506,7 @@ cdef class MemoryPool:
 
         .. note::
             You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
-            environment variable.
-            See :ref:`environment` for the details.
+            environment variable, see :ref:`environment` for the details.
             The limit set by this method supersedes the value specified in
             the environment variable.
 
@@ -1581,12 +1580,12 @@ cdef class MemoryAsyncPool:
     # Internally (as of driver v11.3) the pool starts with size 0. The first
     # allocation will bump the size to 32n MiB to accommodate the requested
     # amount (n is integer). The size is increased only if it is not enough
-    # to meet later allocation needs. The size is decreased to 32m MiB if
-    # enough memory is returned (freed) to the pool when free_all_blocks()
-    # (that is, cudaMemPoolTrimTo()) is called (m<n is integer). This
-    # observation may vary with future driver updates, so the MemoryAsyncPool
-    # API does not rely on any internal behavior, but only on the Programming
-    # Guide and sane assumptions.
+    # to meet later allocation needs. The size is decreased to 32m MiB (m<n)
+    # if enough memory is returned (freed) to the pool when free_all_blocks()
+    # (that is, sync + cudaMemPoolTrimTo) is called. This observation may
+    # vary with future driver updates, so the MemoryAsyncPool API does not
+    # rely on any internal behavior, but only on the Programming Guide and
+    # sane assumptions.
 
     cdef:
         # A list of cudaMemPool_t to each device's mempool
@@ -1774,12 +1773,12 @@ cdef class MemoryAsyncPool:
             Unlike with :class:`MemoryPool`, :class:`MemoryAsyncPool`'s
             :meth:`set_limit` method can only impose a *soft* limit. If other
             (non-CuPy) applications are also allocating memory from the same
-            mempool, this limit may not be respected.
+            mempool, this limit may not be respected. Internally, this limit
+            is set via the ``cudaMemPoolAttrReleaseThreshold`` attribute.
 
         .. note::
             You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
-            environment variable.
-            See :ref:`environment` for the details.
+            environment variable, see :ref:`environment` for the details.
             The limit set by this method supersedes the value specified in
             the environment variable.
 
