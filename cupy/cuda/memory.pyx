@@ -14,6 +14,7 @@ import weakref
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t
 from libc.stdint cimport intptr_t
+from libc.stdint cimport UINT64_MAX
 from libcpp cimport algorithm
 
 from cupy.cuda cimport device
@@ -1531,6 +1532,9 @@ cdef class MemoryPool:
         return mp.get_limit()
 
 
+cdef bint MemoryAsyncHasStat = (runtime.driverGetVersion() >= 11030)
+
+
 cdef class MemoryAsyncPool:
     """(Experimental) CUDA memory pool for all GPU devices on the host.
 
@@ -1570,9 +1574,19 @@ cdef class MemoryAsyncPool:
     """
     # This is an analogous to SingleDeviceMemoryPool + MemoryPool, but for
     # CUDA's async allocator. The main purpose is to provide a memory pool
-    # interface for multiple devices. Given that CUDA's mempool is
-    # implemented at the driver level, the same pool could be shared by many
-    # applications in the same process.
+    # interface for multiple devices. Given that CUDA's mempool is implemented
+    # at the driver level, the same pool can be shared by many applications
+    # in the same process.
+    #
+    # Internally (as of driver v11.3) the pool starts with size 0. The first
+    # allocation will bump the size to 32n MiB to accommodate the requested
+    # amount (n is integer). The size is increased only if it is not enough
+    # to meet later allocation needs. The size is decreased to 32m MiB if
+    # enough memory is returned (freed) to the pool when free_all_blocks()
+    # (that is, cudaMemPoolTrimTo()) is called (m<n is integer). This
+    # observation may vary with future driver updates, so the MemoryAsyncPool
+    # API does not rely on any internal behavior, but only on the Programming
+    # Guide and sane assumptions.
 
     cdef:
         # A list of cudaMemPool_t to each device's mempool
@@ -1645,12 +1659,14 @@ cdef class MemoryAsyncPool:
         # CUDA does not allow us to set a hard limit, so the best we can do is
         # to prevent CuPy from drawing too much memory from the pool; we cannot
         # do anything if other applications oversubscribe the pool.
-        cdef size_t total=size-1, total_bytes_limit=0
-        if runtime.driverGetVersion() >= 11030:
-            total_bytes_limit = self.get_limit()
-            total = self.total_bytes() + rounded_size
-            if total_bytes_limit != 0 and total_bytes_limit < total:
-                raise OutOfMemoryError(size, total - size, total_bytes_limit)
+        cdef size_t curr_total=-1, curr_free=0, total_limit=0
+        if MemoryAsyncHasStat:
+            curr_total = self.total_bytes()
+            curr_free = curr_total - self.used_bytes()
+            if curr_free < rounded_size:  # need to increase pool size
+                total_limit = self.get_limit()
+                if max(total_limit, curr_total) < curr_total + rounded_size:
+                    raise OutOfMemoryError(size, curr_total, total_limit)
 
         try:
             mem = malloc_async(rounded_size)
@@ -1674,8 +1690,8 @@ cdef class MemoryAsyncPool:
         finally:
             if mem is None:
                 assert oom_error
-                raise OutOfMemoryError(
-                    size, total - size, total_bytes_limit)
+                # Set total to -1 as we do not have access to the mempool usage
+                raise OutOfMemoryError(size, curr_total, total_limit)
         return mem
 
     cpdef free_all_blocks(self, stream=None):
@@ -1713,7 +1729,7 @@ cdef class MemoryAsyncPool:
         Returns:
             int: The total number of bytes used by the pool.
         """
-        if runtime.driverGetVersion() < 11030:
+        if not MemoryAsyncHasStat:
             raise RuntimeError(
                 'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]
@@ -1734,7 +1750,7 @@ cdef class MemoryAsyncPool:
         Returns:
             int: The total number of bytes acquired by the pool.
         """
-        if runtime.driverGetVersion() < 11030:
+        if not MemoryAsyncHasStat:
             raise RuntimeError(
                 'The driver version is insufficient for this query')
         cdef intptr_t pool = self._pools[device.get_device_id()]
@@ -1775,10 +1791,9 @@ cdef class MemoryAsyncPool:
             size (int): Limit size in bytes.
             fraction (float): Fraction in the range of ``[0, 1]``.
         """
-        # TODO(leofang): reuse the common part to avoid code dup
         if size is None:
             if fraction is None:
-                size = 0
+                size = UINT64_MAX  # ensure pool size is never shrunk
             else:
                 if not 0 <= fraction <= 1:
                     raise ValueError(

@@ -1233,7 +1233,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
     def test_get_limit(self):
         # limit is disabled by default
-        assert 0 == self.pool.get_limit()
+        assert 2**64-1 == self.pool.get_limit()
 
     def test_set_limit_size(self):
         self.pool.set_limit(size=1024)
