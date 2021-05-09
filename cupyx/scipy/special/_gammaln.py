@@ -1,7 +1,7 @@
-from cupy import core
+from cupy import _core
 
 
-gammaln = core.create_ufunc(
+gammaln = _core.create_ufunc(
     'cupyx_scipy_gammaln', ('f->f', 'd->d'),
     '''
     if (isinf(in0) && in0 < 0) {

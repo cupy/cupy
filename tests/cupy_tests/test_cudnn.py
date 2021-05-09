@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 import numpy
@@ -333,6 +334,11 @@ class TestConvolutionBackwardData(unittest.TestCase):
         if ((self.dilate > 1 and version < 6000) or
                 (self.groups > 1 and version < 7000)):
             self.err = ValueError
+        elif (sys.platform.startswith('win32') and version == 7605
+                and deterministic and self.dtype == numpy.float16
+                and self.ndim == 3 and self.dilate == 2 and self.groups == 2):
+            # see https://github.com/cupy/cupy/pull/4893
+            self.err = RuntimeError
         elif deterministic and (
                 (self.dilate > 1 and
                  (ndim != 2 and version < 8100 or version < 7300)) or

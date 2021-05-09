@@ -2,7 +2,7 @@ import numpy
 from numpy import linalg
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy.linalg import _decomposition
 from cupy.linalg import _util
 
@@ -15,14 +15,14 @@ def _multi_svd_norm(x, row_axis, col_axis, op):
     return result
 
 
-_norm_ord2 = core.create_reduction_func(
+_norm_ord2 = _core.create_reduction_func(
     '_norm_ord2',
     ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d'),
     ('in0 * in0', 'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
-_norm_ord2_complex = core.create_reduction_func(
+_norm_ord2_complex = _core.create_reduction_func(
     '_norm_ord2_complex',
     ('F->f', 'D->d'),
     ('in0.real() * in0.real() + in0.imag() * in0.imag()',
@@ -240,14 +240,8 @@ def slogdet(a):
         raise linalg.LinAlgError(msg)
     _util._assert_nd_squareness(a)
 
-    dtype = numpy.promote_types(a.dtype.char, 'f')
-    real_dtype = numpy.dtype(dtype.char.lower())
-
-    if dtype not in (numpy.float32, numpy.float64,
-                     numpy.complex64, numpy.complex128):
-        msg = ('dtype must be float32, float64, complex64, or complex128'
-               ' (actual: {})'.format(a.dtype))
-        raise ValueError(msg)
+    dtype, sign_dtype = _util.linalg_common_type(a)
+    logdet_dtype = numpy.dtype(sign_dtype.char.lower())
 
     a_shape = a.shape
     shape = a_shape[:-2]
@@ -255,8 +249,8 @@ def slogdet(a):
 
     if a.size == 0:
         # empty batch (result is empty, too) or empty matrices det([[]]) == 1
-        sign = cupy.ones(shape, dtype)
-        logdet = cupy.zeros(shape, real_dtype)
+        sign = cupy.ones(shape, sign_dtype)
+        logdet = cupy.zeros(shape, logdet_dtype)
         return sign, logdet
 
     lu, ipiv, dev_info = _decomposition._lu_factor(a, dtype)
@@ -280,10 +274,12 @@ def slogdet(a):
     if dtype.kind == "c":
         sign = sign * cupy.prod(diag / cupy.abs(diag), axis=-1)
 
+    sign = sign.astype(dtype)
+    logdet = logdet.astype(logdet_dtype, copy=False)
     singular = dev_info > 0
     return (
-        cupy.where(singular, dtype.type(0), sign.astype(dtype)).reshape(shape),
-        cupy.where(singular, real_dtype.type('-inf'), logdet).reshape(shape),
+        cupy.where(singular, sign_dtype.type(0), sign).reshape(shape),
+        cupy.where(singular, logdet_dtype.type('-inf'), logdet).reshape(shape),
     )
 
 

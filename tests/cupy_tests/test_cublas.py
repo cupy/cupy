@@ -6,7 +6,7 @@ import pytest
 import cupy
 from cupy import cublas
 from cupy import testing
-from cupy.testing import attr
+from cupy.testing import _attr
 
 
 @testing.parameterize(*testing.product({
@@ -15,7 +15,7 @@ from cupy.testing import attr
     'bs': [None, 1, 10],
     'nrhs': [None, 1, 10],
 }))
-@attr.gpu
+@_attr.gpu
 class TestBatchedGesv(unittest.TestCase):
     _tol = {'f': 5e-5, 'd': 1e-12}
 
@@ -71,7 +71,7 @@ class TestBatchedGesv(unittest.TestCase):
     'n': [10, 100],
     'mode': [None, numpy, cupy],
 }))
-@attr.gpu
+@_attr.gpu
 class TestLevel1Functions(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -194,7 +194,7 @@ class TestLevel1Functions(unittest.TestCase):
     'order': ['C', 'F'],
     'mode': [None, numpy, cupy],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGemv(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -235,7 +235,7 @@ class TestGemv(unittest.TestCase):
     'order': ['C', 'F'],
     'mode': [None, numpy, cupy],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGer(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -287,7 +287,7 @@ class TestGer(unittest.TestCase):
     'orderc': ['C', 'F'],
     'mode': [None, numpy, cupy],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGemmAndGeam(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -396,7 +396,7 @@ class TestGemmAndGeam(unittest.TestCase):
     'ordera': ['C', 'F'],
     'orderc': ['C', 'F'],
 }))
-@attr.gpu
+@_attr.gpu
 class TestDgmm(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 

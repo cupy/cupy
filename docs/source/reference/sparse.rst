@@ -1,13 +1,12 @@
----------------
-Sparse matrices
----------------
+.. module:: cupyx.scipy.sparse
 
-.. https://docs.scipy.org/doc/scipy/reference/sparse.html
+Sparse matrices (:mod:`cupyx.scipy.sparse`)
+===========================================
+
+.. Hint:: `SciPy API Reference: Sparse matrices (scipy.sparse) <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_
 
 CuPy supports sparse matrices using `cuSPARSE <https://developer.nvidia.com/cusparse>`_.
 These matrices have the same interfaces of `SciPy's sparse matrices <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_.
-
-.. module:: cupyx.scipy.sparse
 
 Conversion to/from SciPy sparse matrices
 ----------------------------------------
@@ -34,81 +33,133 @@ Sparse matrix classes
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.sparse.coo_matrix
-   cupyx.scipy.sparse.csc_matrix
-   cupyx.scipy.sparse.csr_matrix
-   cupyx.scipy.sparse.dia_matrix
-   cupyx.scipy.sparse.spmatrix
-   cupyx.scipy.sparse.linalg.LinearOperator
+   coo_matrix
+   csc_matrix
+   csr_matrix
+   dia_matrix
+   spmatrix
 
 
 Functions
 ---------
 
-Building sparse matrices
-~~~~~~~~~~~~~~~~~~~~~~~~
+Building sparse matrices:
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.sparse.bmat
-   cupyx.scipy.sparse.diags
-   cupyx.scipy.sparse.eye
-   cupyx.scipy.sparse.hstack
-   cupyx.scipy.sparse.identity
-   cupyx.scipy.sparse.kron
-   cupyx.scipy.sparse.spdiags
-   cupyx.scipy.sparse.tril
-   cupyx.scipy.sparse.triu
-   cupyx.scipy.sparse.rand
-   cupyx.scipy.sparse.random
-   cupyx.scipy.sparse.vstack
-
-
-Sparse matrix tools
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupyx.scipy.sparse.find
+   eye
+   identity
+   kron
+   kronsum
+   diags
+   spdiags
+   tril
+   triu
+   bmat
+   hstack
+   vstack
+   rand
+   random
 
 
-Identifying sparse matrices
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Sparse matrix tools:
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.sparse.issparse
-   cupyx.scipy.sparse.isspmatrix
-   cupyx.scipy.sparse.isspmatrix_csc
-   cupyx.scipy.sparse.isspmatrix_csr
-   cupyx.scipy.sparse.isspmatrix_coo
-   cupyx.scipy.sparse.isspmatrix_dia
+   find
 
-
-Linear Algebra
-~~~~~~~~~~~~~~
-
-.. https://docs.scipy.org/doc/scipy/reference/sparse.linalg.html
+Identifying sparse matrices:
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
+
+   issparse
+   isspmatrix
+   isspmatrix_csc
+   isspmatrix_csr
+   isspmatrix_coo
+   isspmatrix_dia
+
+
+.. module:: cupyx.scipy.sparse.linalg
+
+Linear Algebra (:mod:`cupyx.scipy.sparse.linalg`)
+-------------------------------------------------
+
+.. Hint:: `SciPy API Reference: Sparse linear algebra (scipy.sparse.linalg) <https://docs.scipy.org/doc/scipy/reference/sparse.linalg.html>`_
+
+Abstract linear operators
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   LinearOperator
+   aslinearoperator
+
+
+Matrix norms
+~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
 
    cupyx.scipy.sparse.linalg.norm
-   cupyx.scipy.sparse.linalg.spsolve
-   cupyx.scipy.sparse.linalg.spsolve_triangular
-   cupyx.scipy.sparse.linalg.cg
-   cupyx.scipy.sparse.linalg.gmres
-   cupyx.scipy.sparse.linalg.lsqr
-   cupyx.scipy.sparse.linalg.eigsh
-   cupyx.scipy.sparse.linalg.svds
-   cupyx.scipy.sparse.linalg.aslinearoperator
-   cupyx.scipy.sparse.linalg.lobpcg
+
+
+Solving linear problems
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Direct methods for linear equation systems:
+
+.. autosummary::
+   :toctree: generated/
+
+   spsolve
+   spsolve_triangular
+   factorized
+
+Iterative methods for linear equation systems:
+
+.. autosummary::
+   :toctree: generated/
+
+   cg
+   gmres
+
+Iterative methods for least-squares problems:
+
+.. autosummary::
+   :toctree: generated/
+
+   lsqr
+
+
+Matrix factorizations
+~~~~~~~~~~~~~~~~~~~~~
+
+Eigenvalue problems:
+
+.. autosummary::
+   :toctree: generated/
+
+   eigsh
+   lobpcg
+
+Singular values problems:
+
+.. autosummary::
+   :toctree: generated/
+
+   svds
+
+Complete or incomplete LU factorizations:
+
+.. autosummary::
+   :toctree: generated/
+
+   splu
+   spilu

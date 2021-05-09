@@ -1,7 +1,7 @@
-from cupy import core
+from cupy import _core
 
 
-gamma = core.create_ufunc(
+gamma = _core.create_ufunc(
     'cupyx_scipy_gamma', ('f->f', 'd->d'),
     '''
     if (isinf(in0) && in0 < 0) {

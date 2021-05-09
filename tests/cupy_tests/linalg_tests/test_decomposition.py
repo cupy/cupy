@@ -4,10 +4,10 @@ import numpy
 import pytest
 
 import cupy
+from cupy._core.internal import prod
 from cupy import cusolver
 from cupy import testing
-from cupy.core.internal import prod
-from cupy.testing import condition
+from cupy.testing import _condition
 import cupyx
 
 
@@ -115,7 +115,7 @@ class TestQRDecomposition(unittest.TestCase):
             cupy.testing.assert_allclose(result_cpu, result_gpu, atol=1e-4)
 
     @testing.fix_random()
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_mode(self):
         self.check_mode(numpy.random.randn(2, 4), mode=self.mode)
         self.check_mode(numpy.random.randn(3, 3), mode=self.mode)
@@ -222,13 +222,13 @@ class TestSVD(unittest.TestCase):
         assert (a == a_copy).all()
         return result
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_rank2(self):
         self.check_usv((3, 7))
         self.check_usv((2, 2))
         self.check_usv((7, 3))
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_rank2_no_uv(self):
         self.check_singular((3, 7))
         self.check_singular((2, 2))
@@ -247,7 +247,7 @@ class TestSVD(unittest.TestCase):
         return xp.linalg.svd(
             array, full_matrices=self.full_matrices, compute_uv=False)
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_rank3(self):
         self.check_usv((2, 3, 4))
         self.check_usv((2, 3, 7))
@@ -256,14 +256,14 @@ class TestSVD(unittest.TestCase):
         self.check_usv((2, 4, 3))
         self.check_usv((2, 32, 32))  # still use _gesvdj_batched
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_rank3_loop(self):
         # This tests the loop-based batched gesvd on CUDA (_gesvd_batched)
         self.check_usv((2, 64, 64))
         self.check_usv((2, 64, 32))
         self.check_usv((2, 32, 64))
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_rank3_no_uv(self):
         self.check_singular((2, 3, 4))
         self.check_singular((2, 3, 7))
@@ -271,7 +271,7 @@ class TestSVD(unittest.TestCase):
         self.check_singular((2, 7, 3))
         self.check_singular((2, 4, 3))
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_rank3_no_uv_loop(self):
         # This tests the loop-based batched gesvd on CUDA (_gesvd_batched)
         self.check_singular((2, 64, 64))
@@ -301,7 +301,7 @@ class TestSVD(unittest.TestCase):
         return xp.linalg.svd(
             array, full_matrices=self.full_matrices, compute_uv=False)
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_rank4(self):
         self.check_usv((2, 2, 3, 4))
         self.check_usv((2, 2, 3, 7))
@@ -310,14 +310,14 @@ class TestSVD(unittest.TestCase):
         self.check_usv((2, 2, 4, 3))
         self.check_usv((2, 2, 32, 32))  # still use _gesvdj_batched
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_rank4_loop(self):
         # This tests the loop-based batched gesvd on CUDA (_gesvd_batched)
         self.check_usv((3, 2, 64, 64))
         self.check_usv((3, 2, 64, 32))
         self.check_usv((3, 2, 32, 64))
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_rank4_no_uv(self):
         self.check_singular((2, 2, 3, 4))
         self.check_singular((2, 2, 3, 7))
@@ -325,7 +325,7 @@ class TestSVD(unittest.TestCase):
         self.check_singular((2, 2, 7, 3))
         self.check_singular((2, 2, 4, 3))
 
-    @condition.repeat(3, 10)
+    @_condition.repeat(3, 10)
     def test_svd_rank4_no_uv_loop(self):
         # This tests the loop-based batched gesvd on CUDA (_gesvd_batched)
         self.check_singular((3, 2, 64, 64))

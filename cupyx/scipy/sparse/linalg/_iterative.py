@@ -3,7 +3,7 @@ import numpy
 import cupy
 from cupy import cublas
 from cupy import cusparse
-from cupy.core import _dtype
+from cupy._core import _dtype
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy_backends.cuda.libs import cublas as _cublas

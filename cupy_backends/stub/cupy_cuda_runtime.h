@@ -220,8 +220,23 @@ cudaError_t cudaMemPrefetchAsync(...) {
     return cudaSuccess;
 }
 
-
 cudaError_t cudaPointerGetAttributes(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDeviceGetDefaultMemPool(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDeviceGetMemPool(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDeviceSetMemPool(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemPoolTrimTo(...) {
     return cudaSuccess;
 }
 

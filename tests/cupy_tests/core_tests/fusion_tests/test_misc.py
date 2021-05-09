@@ -184,7 +184,7 @@ class TestFusionKernelName(unittest.TestCase):
 
         # Test kernel name (with mock)
         if xp is cupy:
-            target = cupy.core._fusion_kernel.FusedKernel
+            target = cupy._core._fusion_kernel.FusedKernel
             target_full_name = '{}.{}'.format(
                 target.__module__, target.__name__)
 

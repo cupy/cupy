@@ -153,13 +153,28 @@ napoleon_include_special_with_doc = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-if not on_rtd:
-    html_theme = 'sphinx_rtd_theme'
+html_theme = 'pydata_sphinx_theme'
+
+html_logo = '../image/cupy_logo_1000px.png'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+# https://pydata-sphinx-theme.readthedocs.io/en/latest/user_guide/configuring.html
+html_theme_options = {
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/cupy/cupy",
+            "icon": "fab fa-github-square",
+        },
+        {
+            "name": "Twitter",
+            "url": "https://twitter.com/CuPy_Team",
+            "icon": "fab fa-twitter-square",
+        },
+    ],
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -183,18 +198,7 @@ if not on_rtd:
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
-
-html_style = 'css/modified_theme.css'
-
-if on_rtd:
-    html_context = {
-        'css_files': [
-            'https://media.readthedocs.org/css/sphinx_rtd_theme.css',
-            'https://media.readthedocs.org/css/readthedocs-doc-embed.css',
-            '_static/css/modified_theme.css',
-        ],
-    }
+#html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -344,7 +348,7 @@ autosummary_generate = True
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
-    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
 }
 

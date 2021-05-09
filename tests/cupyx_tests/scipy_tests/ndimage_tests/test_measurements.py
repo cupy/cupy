@@ -4,9 +4,10 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 from cupy import _util
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 import cupyx.scipy.ndimage  # NOQA
 
 try:
@@ -301,10 +302,21 @@ class TestMeasurementsSelect:
         yield
         _accelerator.set_routine_accelerators(old_accelerators)
 
+    def _hip_skip_invalid_condition(self):
+        if (runtime.is_hip
+                and self.op == 'extrema'
+                and (self.index is None
+                     or (self.index == 1 and self.labels in [None, 5])
+                     or (self.index in ['all', 'subset']
+                         and self.labels is None))):
+            pytest.xfail('ROCm/HIP may have a bug')
+
     # no_bool=True due to https://github.com/scipy/scipy/issues/12836
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_measurements_select(self, xp, scp, dtype):
+        self._hip_skip_invalid_condition()
+
         shape = self.shape
         rstate = numpy.random.RandomState(0)
         # scale must be small enough to avoid potential integer overflow due to

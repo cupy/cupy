@@ -392,8 +392,9 @@ class TestVectorizeStmts(unittest.TestCase):
         x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         return f(x)
 
+    @testing.for_dtypes('qQ')
     @testing.numpy_cupy_array_equal()
-    def test_for(self, xp):
+    def test_for(self, xp, dtype):
         def func_for(x):
             y = 0
             for i in range(x):
@@ -401,7 +402,7 @@ class TestVectorizeStmts(unittest.TestCase):
             return y
 
         f = xp.vectorize(func_for)
-        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype)
         return f(x)
 
     @testing.numpy_cupy_array_equal()
@@ -477,6 +478,29 @@ class TestVectorizeStmts(unittest.TestCase):
         x = xp.array([0, 1, 2, 3, 4])
         return f(x)
 
+    @testing.numpy_cupy_array_equal()
+    def test_tuple(self, xp):
+        def func_tuple(x, y):
+            x, y = y, x
+            z = x, y
+            a, b = z
+            return a * a + b
+
+        f = xp.vectorize(func_tuple)
+        x = xp.array([0, 1, 2, 3, 4])
+        y = xp.array([5, 6, 7, 8, 9])
+        return f(x, y)
+
+    @testing.numpy_cupy_array_equal()
+    def test_return_tuple(self, xp):
+        def func_tuple(x, y):
+            return x + y, x / y
+
+        f = xp.vectorize(func_tuple)
+        x = xp.array([0, 1, 2, 3, 4])
+        y = xp.array([5, 6, 7, 8, 9])
+        return f(x, y)
+
 
 class _MyClass:
 
@@ -549,7 +573,7 @@ class TestVectorizeBroadcast(unittest.TestCase):
 
 class TestVectorize(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_dtypes('qQefdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_vectorize_arithmetic_ops(self, xp, dtype):
         def my_func(x1, x2, x3):

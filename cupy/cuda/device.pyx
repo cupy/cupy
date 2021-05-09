@@ -2,7 +2,7 @@
 
 import threading
 
-from cupy.core import syncdetect
+from cupy._core import syncdetect
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api import runtime as runtime_module
 from cupy_backends.cuda.libs import cublas
@@ -19,6 +19,28 @@ cdef object _thread_local = threading.local()
 
 cdef dict _devices = {}
 cdef dict _compute_capabilities = {}
+
+
+cdef class _ThreadLocalStack:
+    cdef list _devices
+
+    def __init__(self):
+        self._devices = []
+
+    @staticmethod
+    cdef _ThreadLocalStack get():
+        try:
+            stack = _thread_local._device_stack
+        except AttributeError:
+            stack = _ThreadLocalStack()
+            _thread_local._device_stack = stack
+        return <_ThreadLocalStack>stack
+
+    cdef void push(self, int device_id) except *:
+        self._devices.append(device_id)
+
+    cdef int pop(self) except -1:
+        return <int>self._devices.pop()
 
 
 cpdef int get_device_id() except? -1:
@@ -114,8 +136,6 @@ cdef class Device:
         else:
             self.id = int(device)
 
-        self._device_stack = []
-
     @classmethod
     def from_pci_bus_id(cls, pci_bus_id):
         """Returns a new device instance based on a PCI Bus ID
@@ -138,13 +158,13 @@ cdef class Device:
 
     def __enter__(self):
         cdef int id = runtime.getDevice()
-        self._device_stack.append(id)
+        _ThreadLocalStack.get().push(id)
         if self.id != id:
             self.use()
         return self
 
     def __exit__(self, *args):
-        runtime.setDevice(self._device_stack.pop())
+        runtime.setDevice(_ThreadLocalStack.get().pop())
 
     def __repr__(self):
         return '<CUDA Device %d>' % self.id

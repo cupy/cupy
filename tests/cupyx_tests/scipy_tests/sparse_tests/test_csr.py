@@ -11,8 +11,9 @@ try:
 except ImportError:
     scipy_available = False
 
+from cupy_backends.cuda.api import driver
 import cupy
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 from cupy import testing
 from cupyx.scipy import sparse
 
@@ -1693,6 +1694,8 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
+@unittest.skipIf(driver.get_build_version() >= 11000,
+                 'CUDA built-in CUB SpMV is buggy, see cupy/cupy#3822')
 @unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubSpmv(unittest.TestCase):
 

@@ -1,30 +1,30 @@
 .. module:: cupyx.scipy.fftpack
 
-Legacy Discrete Fourier transforms (``scipy.fftpack``)
-======================================================
+Legacy discrete fourier transforms (:mod:`cupyx.scipy.fftpack`)
+===============================================================
 
 .. note::
 
-   As of SciPy version 1.4.0, ``scipy.fft`` is recommended over
-   ``scipy.fftpack``. Consider using :mod:`cupyx.scipy.fft` instead.
+   As of SciPy version 1.4.0, :mod:`scipy.fft` is recommended over
+   :mod:`scipy.fftpack`. Consider using :mod:`cupyx.scipy.fft` instead.
 
+.. Hint:: `SciPy API Reference: Legacy discrete Fourier transforms (scipy.fftpack) <https://docs.scipy.org/doc/scipy/reference/fftpack.html>`_
 
-Fast Fourier Transforms
------------------------
+Fast Fourier Transforms (FFTs)
+------------------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.fftpack.fft
-   cupyx.scipy.fftpack.ifft
-   cupyx.scipy.fftpack.fft2
-   cupyx.scipy.fftpack.ifft2
-   cupyx.scipy.fftpack.fftn
-   cupyx.scipy.fftpack.ifftn
-   cupyx.scipy.fftpack.rfft
-   cupyx.scipy.fftpack.irfft
-   cupyx.scipy.fftpack.get_fft_plan
+   fft
+   ifft
+   fft2
+   ifft2
+   fftn
+   ifftn
+   rfft
+   irfft
+   get_fft_plan
 
 
 Code compatibility features

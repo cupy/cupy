@@ -17,7 +17,7 @@ except ImportError:
     scipy_available = False
 
 from cupy import testing
-from cupy.testing import condition
+from cupy.testing import _condition
 from cupyx.scipy import sparse
 import cupyx.scipy.sparse.linalg  # NOQA
 
@@ -47,7 +47,7 @@ class TestLsqr(unittest.TestCase):
             with pytest.raises(ValueError):
                 sp.linalg.lsqr(A, b)
 
-    @condition.retry(10)
+    @_condition.retry(10)
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
     def test_csrmatrix(self, xp, sp):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
@@ -55,7 +55,7 @@ class TestLsqr(unittest.TestCase):
         x = sp.linalg.lsqr(A, b)
         return x[0]
 
-    @condition.retry(10)
+    @_condition.retry(10)
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
     def test_ndarray(self, xp, sp):
         A = xp.array(self.A.A, dtype=self.dtype)
@@ -169,6 +169,22 @@ class TestEigsh:
             a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
 
+    @pytest.mark.xfail(
+        reason='eigsh works wrong (#5001)',
+        raises=AssertionError,
+    )
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_dense_low_rank(self, dtype, xp, sp):
+        n = self.n
+        rank = 5
+        # density is ignored.
+        a = testing.shaped_random((n, rank), xp, dtype=dtype, scale=1).dot(
+            testing.shaped_random((rank, n), xp, dtype=dtype, scale=1))
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        return self._test_eigsh(a, xp, sp)
+
     def test_invalid(self):
         if self.use_linear_operator is True:
             raise unittest.SkipTest
@@ -234,6 +250,22 @@ class TestSvds:
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
     def test_dense(self, dtype, xp, sp):
         a = self._make_matrix(dtype, xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        return self._test_svds(a, xp, sp)
+
+    @pytest.mark.xfail(
+        reason='eigsh works wrong (#5001)',
+        raises=AssertionError,
+    )
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_dense_low_rank(self, dtype, xp, sp):
+        m, n = self.shape
+        rank = 5
+        # density is ignored.
+        a = testing.shaped_random((m, rank), xp, dtype=dtype, scale=1).dot(
+            testing.shaped_random((rank, n), xp, dtype=dtype, scale=1))
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
         return self._test_svds(a, xp, sp)

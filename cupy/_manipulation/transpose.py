@@ -1,5 +1,5 @@
-from cupy import core
-from cupy.core import _routines_manipulation
+from cupy import _core
+from cupy._core import _routines_manipulation
 
 
 def rollaxis(a, axis, start=0):
@@ -16,7 +16,7 @@ def rollaxis(a, axis, start=0):
     .. seealso:: :func:`numpy.rollaxis`
 
     """
-    return core.rollaxis(a, axis, start)
+    return _core.rollaxis(a, axis, start)
 
 
 def swapaxes(a, axis1, axis2):
@@ -61,7 +61,7 @@ def moveaxis(a, source, destination):
     # checking __len__ attribute is faster than cupy.isscalar or isinstance
     if not (hasattr(source, '__len__') or hasattr(destination, '__len__')):
         return _routines_manipulation._move_single_axis(a, source, destination)
-    return core.moveaxis(a, source, destination)
+    return _core.moveaxis(a, source, destination)
 
 
 def transpose(a, axes=None):

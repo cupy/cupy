@@ -1,5 +1,5 @@
-from cupy.core import _kernel
-from cupy.core import _routines_logic
+from cupy._core import _kernel
+from cupy._core import _routines_logic
 
 logical_and = _routines_logic.create_comparison(
     'logical_and', '&&',

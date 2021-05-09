@@ -3,7 +3,7 @@ import unittest
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import cuda
 from cupy import testing
 
@@ -16,7 +16,7 @@ class TestElementwise(unittest.TestCase):
             src = testing.shaped_arange((2, 3, 4), dtype=dtype)
         with cuda.Device(dst_id):
             dst = cupy.empty((2, 3, 4), dtype=dtype)
-        core.elementwise_copy(src, dst)
+        _core.elementwise_copy(src, dst)
         testing.assert_allclose(src, dst)
 
     @testing.for_all_dtypes()

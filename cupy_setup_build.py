@@ -24,7 +24,7 @@ from install.build import PLATFORM_WIN32
 required_cython_version = pkg_resources.parse_version('0.29.22')
 ignore_cython_versions = [
 ]
-use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
+use_hip = build.use_hip
 
 
 # The value of the key 'file' is a list that contains extension names
@@ -47,33 +47,33 @@ cuda_files = [
     'cupy_backends.cuda.libs.nvrtc',
     'cupy_backends.cuda.libs.profiler',
     'cupy_backends.cuda.stream',
-    'cupy.core._accelerator',
-    'cupy.core._carray',
-    'cupy.core._cub_reduction',
-    'cupy.core._dtype',
-    'cupy.core._fusion_kernel',
-    'cupy.core._fusion_thread_local',
-    'cupy.core._fusion_trace',
-    'cupy.core._fusion_variable',
-    'cupy.core._kernel',
-    'cupy.core._memory_range',
-    'cupy.core._optimize_config',
-    'cupy.core._reduction',
-    'cupy.core._routines_binary',
-    'cupy.core._routines_indexing',
-    'cupy.core._routines_linalg',
-    'cupy.core._routines_logic',
-    'cupy.core._routines_manipulation',
-    'cupy.core._routines_math',
-    'cupy.core._routines_sorting',
-    'cupy.core._routines_statistics',
-    'cupy.core._scalar',
-    'cupy.core.core',
-    'cupy.core.flags',
-    'cupy.core.internal',
-    'cupy.core.fusion',
-    'cupy.core.new_fusion',
-    'cupy.core.raw',
+    'cupy._core._accelerator',
+    'cupy._core._carray',
+    'cupy._core._cub_reduction',
+    'cupy._core._dtype',
+    'cupy._core._fusion_kernel',
+    'cupy._core._fusion_thread_local',
+    'cupy._core._fusion_trace',
+    'cupy._core._fusion_variable',
+    'cupy._core._kernel',
+    'cupy._core._memory_range',
+    'cupy._core._optimize_config',
+    'cupy._core._reduction',
+    'cupy._core._routines_binary',
+    'cupy._core._routines_indexing',
+    'cupy._core._routines_linalg',
+    'cupy._core._routines_logic',
+    'cupy._core._routines_manipulation',
+    'cupy._core._routines_math',
+    'cupy._core._routines_sorting',
+    'cupy._core._routines_statistics',
+    'cupy._core._scalar',
+    'cupy._core.core',
+    'cupy._core.flags',
+    'cupy._core.internal',
+    'cupy._core.fusion',
+    'cupy._core.new_fusion',
+    'cupy._core.raw',
     'cupy.cuda.common',
     'cupy.cuda.cufft',
     'cupy.cuda.device',
@@ -97,8 +97,9 @@ if use_hip:
     MODULES.append({
         # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
+        'required': True,
         'file': cuda_files + [
-            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.nvtx',
             'cupy_backends.cuda.libs.cusolver',
             'cupy.cusolver',
         ],
@@ -126,6 +127,7 @@ if use_hip:
 else:
     MODULES.append({
         'name': 'cuda',
+        'required': True,
         'file': cuda_files,
         'include': [
             'cublas_v2.h',
@@ -153,6 +155,7 @@ else:
 if not use_hip:
     MODULES.append({
         'name': 'cusolver',
+        'required': True,
         'file': [
             'cupy_backends.cuda.libs.cusolver',
             'cupy.cusolver',
@@ -186,7 +189,7 @@ if not use_hip:
     MODULES.append({
         'name': 'nccl',
         'file': [
-            'cupy.cuda.nccl',
+            'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
             'nccl.h',
@@ -201,7 +204,7 @@ if not use_hip:
     MODULES.append({
         'name': 'nvtx',
         'file': [
-            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.nvtx',
         ],
         'include': [
             'nvToolsExt.h',
@@ -231,6 +234,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'cub',
+        'required': True,
         'file': [
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
         ],
@@ -246,6 +250,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'jitify',
+        'required': True,
         'file': [
             'cupy.cuda.jitify',
         ],
@@ -265,6 +270,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'random',
+        'required': True,
         'file': [
             'cupy.random._bit_generator',
             ('cupy.random._generator_api',
@@ -278,9 +284,40 @@ if not use_hip:
         ],
     })
 
+    MODULES.append({
+        'name': 'cusparselt',
+        'file': [
+            'cupy_backends.cuda.libs.cusparselt',
+        ],
+        'include': [
+            'cusparseLt.h',
+        ],
+        'libraries': [
+            'cusparseLt',
+        ],
+        'check_method': build.check_cusparselt_version,
+        'version_method': build.get_cusparselt_version,
+    })
+
+    MODULES.append({
+        'name': 'cugraph',
+        'file': [
+            'cupy_backends.cuda.libs.cugraph',
+        ],
+        'include': [
+            'cugraph/raft/error.hpp',  # dummy
+        ],
+        'libraries': [
+            'cugraph',
+        ],
+        'check_method': build.check_cugraph_version,
+        'version_method': build.get_cugraph_version,
+    })
+
 else:
     MODULES.append({
         'name': 'cub',
+        'required': True,
         'file': [
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
         ],
@@ -297,7 +334,7 @@ else:
     MODULES.append({
         'name': 'nccl',
         'file': [
-            'cupy.cuda.nccl',
+            'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
             'rccl.h',
@@ -313,6 +350,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     if use_hip:
         MODULES.append({
             'name': 'thrust',
+            'required': True,
             'file': [
                 ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             ],
@@ -326,6 +364,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     else:
         MODULES.append({
             'name': 'thrust',
+            'required': True,
             'file': [
                 ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             ],
@@ -343,8 +382,9 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
 
 MODULES.append({
     'name': 'dlpack',
+    'required': True,
     'file': [
-        'cupy.core.dlpack',
+        'cupy._core.dlpack',
     ],
     'include': [
         'cupy/dlpack/dlpack.h',
@@ -381,6 +421,10 @@ def module_extension_sources(file, use_cython, no_cuda):
         others = others1
 
     return [pyx] + others
+
+
+def get_required_modules():
+    return [m['name'] for m in MODULES if m.get('required', False)]
 
 
 def check_readthedocs_environment():
@@ -465,6 +509,16 @@ def preconfigure_modules(compiler, settings):
                 if os.path.exists(lib_path):
                     settings['library_dirs'].append(lib_path)
                     break
+
+        if module['name'] == 'cugraph':
+            cugraph_path = os.environ.get('CUGRAPH_PATH', '')
+            for i in 'include', 'include/cugraph':
+                inc_path = os.path.join(cugraph_path, i)
+                if os.path.exists(inc_path):
+                    settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cugraph_path, 'lib')
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
 
         print('')
         print('-------- Configuring Module: {} --------'.format(
@@ -595,7 +649,8 @@ def make_extensions(options, compiler, use_cython):
         available_modules = [m['name'] for m in MODULES]
     else:
         available_modules, settings = preconfigure_modules(compiler, settings)
-        if 'cuda' not in available_modules:
+        required_modules = get_required_modules()
+        if not (set(required_modules) <= set(available_modules)):
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
 
@@ -623,15 +678,19 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
+        if module['name'] == 'random':
+            if compiler.compiler_type == 'msvc':
+                compile_args.append('-D_USE_MATH_DEFINES')
+
         if module['name'] == 'jitify':
             # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')
             # if any change is made to the Jitify header, we force recompiling
-            s['depends'] = ['./cupy/core/include/cupy/jitify/jitify.hpp']
+            s['depends'] = ['./cupy/_core/include/cupy/jitify/jitify.hpp']
 
         if module['name'] == 'dlpack':
             # if any change is made to the DLPack header, we force recompiling
-            s['depends'] = ['./cupy/core/include/cupy/dlpack/dlpack.h']
+            s['depends'] = ['./cupy/_core/include/cupy/dlpack/dlpack.h']
 
         for f in module['file']:
             s_file = copy.deepcopy(s)
@@ -985,6 +1044,8 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
             '-O2', '--compiler-options="-fPIC"']
         if cuda_version >= 11020:
             postargs += ['--std=c++14']
+            num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
+            postargs += [f'-t{num_threads}']
         else:
             postargs += ['--std=c++11']
         print('NVCC options:', postargs)
@@ -1012,7 +1073,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         use_hipcc = False
         if use_hip:
             for i in objects:
-                if any([obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')]):
+                if any(obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')):
                     use_hipcc = True
         if use_hipcc:
             _compiler_cxx = self.compiler_cxx
@@ -1052,10 +1113,12 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
             # to build CuPy because some Python versions were built using it.
             # REF: https://wiki.python.org/moin/WindowsCompilers
             postargs += ['-allow-unsupported-compiler']
-        postargs += ['-Xcompiler', '/MD']
+        postargs += ['-Xcompiler', '/MD', '-D_USE_MATH_DEFINES']
         # This is to compile thrust with MSVC2015
         if cuda_version >= 11020:
             postargs += ['--std=c++14']
+            num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
+            postargs += [f'-t{num_threads}']
         print('NVCC options:', postargs)
 
         for obj in objects:

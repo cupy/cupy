@@ -823,3 +823,38 @@ class TestCsrilu02(unittest.TestCase):
         a = sparse.csr_matrix(a)
         with self.assertRaises(ValueError):
             cusparse.csrilu02(a, level_info=self.level_info)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 4), (4, 4), (4, 3)],
+    'density': [0.0, 0.5, 1.0],
+    'format': ['csr', 'csc', 'coo']
+}))
+@testing.with_requires('scipy')
+class TestSparseMatrixConversion(unittest.TestCase):
+
+    @testing.for_dtypes('fdFD')
+    def test_denseToSparse(self, dtype):
+        if not cusparse.check_availability('denseToSparse'):
+            pytest.skip('denseToSparse is not available')
+        x = cupy.random.uniform(0, 1, self.shape).astype(dtype)
+        x[x < self.density] = 0
+        y = cusparse.denseToSparse(x, format=self.format)
+        assert y.format == self.format
+        testing.assert_array_equal(x, y.todense())
+
+    @testing.for_dtypes('fdFD')
+    def test_sparseToDense(self, dtype):
+        if not cusparse.check_availability('sparseToDense'):
+            pytest.skip('sparseToDense is not available')
+        m, n = self.shape
+        x = scipy.sparse.random(m, n, density=self.density, format=self.format,
+                                dtype=dtype)
+        if self.format == 'csr':
+            x = sparse.csr_matrix(x)
+        elif self.format == 'csc':
+            x = sparse.csc_matrix(x)
+        elif self.format == 'coo':
+            x = sparse.coo_matrix(x)
+        y = cusparse.sparseToDense(x)
+        testing.assert_array_equal(x.todense(), y)

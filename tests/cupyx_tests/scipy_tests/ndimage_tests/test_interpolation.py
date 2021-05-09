@@ -2,6 +2,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 import cupyx.scipy.ndimage
 from cupyx.scipy.ndimage import _util
@@ -206,9 +207,19 @@ class TestAffineTransform:
         matrix = xp.asfortranarray(matrix)
         return self._affine_transform(xp, scp, a, matrix)
 
+    def _hip_skip_invalid_condition(self):
+        if (runtime.is_hip
+                and self.matrix_shape in [(2,), (2, 2)]
+                and self.order in [2, 3, 4, 5]
+                and self.output in [None, 'empty']
+                and self.prefilter):
+            pytest.xfail('ROCm/HIP may have a bug')
+
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_affine_transform_int(self, xp, scp, dtype):
+        self._hip_skip_invalid_condition()
+
         if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
             if dtype in (numpy.dtype('l'), numpy.dtype('q')):
                 dtype = numpy.int64
@@ -348,9 +359,24 @@ class TestRotate:
         a = xp.asfortranarray(a)
         return self._rotate(xp, scp, a)
 
+    def _hip_skip_invalid_condition(self):
+        if runtime.is_hip:
+            if (self.angle in [-10, 1000]
+                    and self.mode in ['constant', 'nearest', 'mirror']
+                    and self.output == numpy.float64
+                    and self.reshape):
+                pytest.xfail('ROCm/HIP may have a bug')
+            if (self.angle == -15
+                    and self.mode in [
+                        'nearest', 'grid-wrap', 'reflect', 'grid-mirror']
+                    and self.order == 3):
+                pytest.xfail('ROCm/HIP may have a bug')
+
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_rotate_int(self, xp, scp, dtype):
+        self._hip_skip_invalid_condition()
+
         if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
             if dtype in (numpy.dtype('l'), numpy.dtype('q')):
                 dtype = numpy.int64
@@ -477,9 +503,19 @@ class TestShift:
         a = xp.asfortranarray(a)
         return self._shift(xp, scp, a)
 
+    def _hip_skip_invalid_condition(self):
+        if (runtime.is_hip
+                and self.cval == 1.0
+                and self.order == 3
+                and self.output in [None, 'empty']
+                and self.shift == 0.1):
+            pytest.xfail('ROCm/HIP may have a bug')
+
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_shift_int(self, xp, scp, dtype):
+        self._hip_skip_invalid_condition()
+
         if self.mode == 'constant' and not xp.isfinite(self.cval):
             if self.output is None or self.output == 'empty':
                 # Non-finite cval with integer output array is not supported

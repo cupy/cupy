@@ -562,4 +562,50 @@ cusparseStatus_t cusparseZcsr2csc(...) {
 }
 #endif // #if CUSPARSE_VERSION >= 11000
 
+#if CUSPARSE_VERSION < 11100
+// Functions added in cuSparse 11.1 (CUDA 11.0)
+
+cusparseStatus_t cusparseCsrSetPointers(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpMatGetSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // #if CUSPARSE_VERSION < 11100
+
+#if CUSPARSE_VERSION < 11300
+// Types, macro and functions added in cuSparse 11.3 (CUDA 11.2)
+
+typedef enum {} cusparseSparseToDenseAlg_t;
+typedef enum {} cusparseDenseToSparseAlg_t;
+
+cusparseStatus_t cusparseCreateCsc(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSparseToDense_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSparseToDense(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_bufferSize(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_analysis(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseDenseToSparse_convert(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+#endif // CUSPARSE_VERSION < 11300
+
+
 #endif  // INCLUDE_GUARD_CUDA_CUPY_CUSPARSE_H

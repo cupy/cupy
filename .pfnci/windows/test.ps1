@@ -51,6 +51,8 @@ function PublishTestResults {
 }
 
 function Main {
+    PrioritizeFlexCIDaemon
+
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
     ActivateCUDA $cuda
@@ -106,7 +108,8 @@ function Main {
     }
     echo "Running test..."
     $test_retval = 0
-    python -m pytest -rfEX @pytest_opts tests > cupy_test_log.txt
+    python -c "import cupy; cupy.show_config()" > cupy_test_log.txt
+    python -m pytest -rfEX @pytest_opts tests >> cupy_test_log.txt
     if (-not $?) {
         $test_retval = $LastExitCode
     }

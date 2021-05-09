@@ -5,8 +5,9 @@ import numpy
 import pytest
 
 import cupy
-import cupy.core._accelerator as _acc
-from cupy.core import _cub_reduction
+import cupy._core._accelerator as _acc
+import cupy.cuda.cutensor
+from cupy._core import _cub_reduction
 from cupy import testing
 
 
@@ -242,7 +243,7 @@ class TestCubReduction(unittest.TestCase):
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
         if self.backend == 'device':
-            func_name = 'cupy.core._routines_math.cub.'
+            func_name = 'cupy._core._routines_math.cub.'
             if len(axis) == len(self.shape):
                 func_name += 'device_reduce'
             else:
@@ -251,7 +252,7 @@ class TestCubReduction(unittest.TestCase):
                 a.sum(axis=axis)
         elif self.backend == 'block':
             # this is the only function we can mock; the rest is cdef'd
-            func_name = 'cupy.core._cub_reduction.'
+            func_name = 'cupy._core._cub_reduction.'
             func_name += '_SimpleCubReductionKernel_get_cached_function'
             func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
             if len(axis) == len(self.shape):
@@ -292,7 +293,7 @@ class TestCubReduction(unittest.TestCase):
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
         if self.backend == 'device':
-            func_name = 'cupy.core._routines_math.cub.'
+            func_name = 'cupy._core._routines_math.cub.'
             if len(axis) == len(self.shape):
                 func_name += 'device_reduce'
             else:
@@ -301,7 +302,7 @@ class TestCubReduction(unittest.TestCase):
                 a.prod(axis=axis)
         elif self.backend == 'block':
             # this is the only function we can mock; the rest is cdef'd
-            func_name = 'cupy.core._cub_reduction.'
+            func_name = 'cupy._core._cub_reduction.'
             func_name += '_SimpleCubReductionKernel_get_cached_function'
             func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
             if len(axis) == len(self.shape):
@@ -333,7 +334,7 @@ class TestCubReduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.core._routines_math.cub.device_scan'
+        func = 'cupy._core._routines_math.cub.device_scan'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.cumsum()
         # ...then perform the actual computation
@@ -359,7 +360,7 @@ class TestCubReduction(unittest.TestCase):
 
         # xp is cupy, first ensure we really use CUB
         ret = cupy.empty(())  # Cython checks return type, need to fool it
-        func = 'cupy.core._routines_math.cub.device_scan'
+        func = 'cupy._core._routines_math.cub.device_scan'
         with testing.AssertFunctionIsCalled(func, return_value=ret):
             a.cumprod()
         # ...then perform the actual computation
@@ -390,11 +391,11 @@ class TestCubReduction(unittest.TestCase):
 class TestCuTensorReduction(unittest.TestCase):
 
     def setUp(self):
-        self.old_accelerators = cupy.core.get_routine_accelerators()
-        cupy.core.set_routine_accelerators(['cutensor'])
+        self.old_accelerators = cupy._core.get_routine_accelerators()
+        cupy._core.set_routine_accelerators(['cutensor'])
 
     def tearDown(self):
-        cupy.core.set_routine_accelerators(self.old_accelerators)
+        cupy._core.set_routine_accelerators(self.old_accelerators)
 
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?

@@ -1,40 +1,47 @@
 .. module:: cupyx.scipy.fft
 
-Discrete Fourier transforms (``scipy.fft``)
-===========================================
+Discrete Fourier transforms (:mod:`cupyx.scipy.fft`)
+====================================================
 
+.. Hint:: `SciPy API Reference: Discrete Fourier transforms (scipy.fft) <https://docs.scipy.org/doc/scipy/reference/fft.html>`_
 
-Fast Fourier Transforms
------------------------
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupyx.scipy.fft.fft
-   cupyx.scipy.fft.ifft
-   cupyx.scipy.fft.fft2
-   cupyx.scipy.fft.ifft2
-   cupyx.scipy.fft.fftn
-   cupyx.scipy.fft.ifftn
-   cupyx.scipy.fft.rfft
-   cupyx.scipy.fft.irfft
-   cupyx.scipy.fft.rfft2
-   cupyx.scipy.fft.irfft2
-   cupyx.scipy.fft.rfftn
-   cupyx.scipy.fft.irfftn
-   cupyx.scipy.fft.hfft
-   cupyx.scipy.fft.ihfft
-
-
-Helper functions for FFT
-------------------------
+Fast Fourier Transforms (FFTs)
+------------------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.fft.next_fast_len
+   fft
+   ifft
+   fft2
+   ifft2
+   fftn
+   ifftn
+   rfft
+   irfft
+   rfft2
+   irfft2
+   rfftn
+   irfftn
+   hfft
+   ihfft
+   hfft2
+   ihfft2
+   hfftn
+   ihfftn
+
+
+Helper functions
+----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   fftshift
+   ifftshift
+   fftfreq
+   rfftfreq
+   next_fast_len
 
 
 Code compatibility features

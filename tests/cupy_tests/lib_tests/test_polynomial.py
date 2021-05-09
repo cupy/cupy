@@ -445,24 +445,38 @@ class TestPolyArithmeticShapeCombination(unittest.TestCase):
 class TestPolyArithmeticDiffTypes(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
-    @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
-    def test_polyroutine_diff_types_array(self, xp, dtype1, dtype2):
-        func = getattr(xp, self.fname)
-        a = testing.shaped_arange((10,), xp, dtype1)
-        b = testing.shaped_arange((5,), xp, dtype2)
-        return func(a, b)
+    def test_polyroutine_diff_types_array(self, dtype1, dtype2):
+        def f(xp):
+            func = getattr(xp, self.fname)
+            a = testing.shaped_arange((10,), xp, dtype1)
+            b = testing.shaped_arange((5,), xp, dtype2)
+            return func(a, b)
+        rtol = 1e-5
+        if runtime.is_hip and self.fname == 'polymul':
+            rtol = 1e-4
+        try:
+            testing.assert_allclose(f(cupy), f(numpy), rtol=rtol)
+        except TypeError:
+            pass
 
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
-    @testing.numpy_cupy_allclose(rtol=1e-5, accept_error=TypeError)
-    def test_polyroutine_diff_types_poly1d(self, xp, dtype1, dtype2):
-        func = getattr(xp, self.fname)
-        a = testing.shaped_arange((10,), xp, dtype1)
-        b = testing.shaped_arange((5,), xp, dtype2)
-        a = xp.poly1d(a, variable='z')
-        b = xp.poly1d(b, variable='y')
-        out = func(a, b)
-        assert out.variable == 'x'
-        return out
+    def test_polyroutine_diff_types_poly1d(self, dtype1, dtype2):
+        def f(xp):
+            func = getattr(xp, self.fname)
+            a = testing.shaped_arange((10,), xp, dtype1)
+            b = testing.shaped_arange((5,), xp, dtype2)
+            a = xp.poly1d(a, variable='z')
+            b = xp.poly1d(b, variable='y')
+            out = func(a, b)
+            assert out.variable == 'x'
+            return out
+        rtol = 1e-5
+        if runtime.is_hip and self.fname == 'polymul':
+            rtol = 1e-4
+        try:
+            testing.assert_allclose(f(cupy), f(numpy), rtol=rtol)
+        except TypeError:
+            pass
 
 
 @testing.gpu
@@ -485,6 +499,8 @@ class TestPolyfitParametersCombinations(unittest.TestCase):
     @testing.numpy_cupy_allclose(
         atol=1e-9, accept_error=TypeError, contiguous_check=False)
     def test_polyfit_default(self, xp, dtype):
+        if runtime.is_hip and self.deg == 0:
+            pytest.xfail('ROCm/HIP may have a bug')
         x = testing.shaped_arange(self.shape1, xp, dtype)
         y = testing.shaped_arange(self.shape2, xp, dtype)
         w = x if self.weighted else None
@@ -492,6 +508,9 @@ class TestPolyfitParametersCombinations(unittest.TestCase):
 
     @testing.for_all_dtypes(no_float16=True)
     def test_polyfit_full(self, dtype):
+        if runtime.is_hip and self.deg == 0:
+            pytest.xfail('ROCm/HIP may have a bug')
+
         cp_c, cp_resids, cp_rank, cp_s, cp_rcond = self._full_fit(cupy, dtype)
         np_c, np_resids, np_rank, np_s, np_rcond = self._full_fit(numpy, dtype)
 

@@ -120,7 +120,7 @@ class TestXtPlanNd(unittest.TestCase):
         t = dtype
         idtype = odtype = edtype = cupy.dtype(t)
         shape = self.shape
-        length = cupy.core.internal.prod(shape[1:])
+        length = cupy._core.internal.prod(shape[1:])
 
         a = testing.shaped_random(shape, cupy, dtype)
         out = cupy.empty_like(a)
@@ -143,7 +143,7 @@ class TestXtPlanNd(unittest.TestCase):
         t = dtype
         idtype = odtype = edtype = cupy.dtype(t)
         shape = self.shape
-        length = cupy.core.internal.prod(shape[1:])
+        length = cupy._core.internal.prod(shape[1:])
 
         a = testing.shaped_random(shape, cupy, dtype)
         out = cupy.empty_like(a)
@@ -175,7 +175,7 @@ class TestXtPlanNd(unittest.TestCase):
         out = cupy.empty_like(a)
 
         shape = old_shape
-        length = cupy.core.internal.prod(shape[1:])
+        length = cupy._core.internal.prod(shape[1:])
         plan = cufft.XtPlanNd(shape[1:],
                               shape[1:], 1, length, idtype,
                               shape[1:], 1, length, odtype,
@@ -210,7 +210,7 @@ class TestXtPlanNd(unittest.TestCase):
         out = cupy.empty_like(a)
 
         shape = old_shape
-        length = cupy.core.internal.prod(shape[1:])
+        length = cupy._core.internal.prod(shape[1:])
         plan = cufft.XtPlanNd(shape[1:],
                               shape[1:], 1, length, idtype,
                               shape[1:], 1, length, odtype,

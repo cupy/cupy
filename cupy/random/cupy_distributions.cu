@@ -2,6 +2,8 @@
 #include <stdexcept>
 #include <utility>
 #include <iostream>
+#include <stdint.h>
+#include <type_traits>
 
 #include <curand_kernel.h>
 
@@ -17,6 +19,9 @@ struct rk_state {
         return  0.0;
     }
     __device__ virtual double rk_normal() {
+        return  0.0;
+    }
+    __device__ virtual float rk_normal_float() {
         return  0.0;
     }
 };
@@ -37,13 +42,17 @@ struct curand_pseudo_state: rk_state {
     __device__ virtual double rk_double() {
         // Curand returns (0, 1] while the functions
         // below rely on [0, 1)
-        double r = curand_uniform(_state) - 1e-12;
-        if (r < 0.0) { 
+        double r = curand_uniform(_state);
+        if (r >= 1.0) { 
            r = 0.0;
         }
         return r;
     }
     __device__ virtual double rk_normal() {
+        return curand_normal_double(_state);
+    }
+
+    __device__ virtual float rk_normal_float() {
         return curand_normal(_state);
     }
 };
@@ -96,11 +105,21 @@ __device__ double rk_standard_exponential(rk_state* state) {
     return -log(1.0 - state->rk_double());
 }
 
+__device__ double rk_standard_normal(rk_state* state) {
+    return state->rk_normal();
+}
+
+__device__ float rk_standard_normal_float(rk_state* state) {
+    return state->rk_normal_float();
+}
+
 __device__ double rk_standard_gamma(rk_state* state, double shape) {
     double b, c;
     double U, V, X, Y;
     if (shape == 1.0) {
         return rk_standard_exponential(state);
+    } else if (shape < 0.0) {
+        return 0.0;
     } else if (shape < 1.0) {
         for (;;) {
             U = state->rk_double();
@@ -164,8 +183,100 @@ __device__ double rk_beta(rk_state* state, double a, double b) {
     }
 }
 
+__device__ double loggam(double x) {
+    double x0, x2, xp, gl, gl0;
+    long k, n;
+    double a[10] = {8.333333333333333e-02,-2.777777777777778e-03,
+         7.936507936507937e-04,-5.952380952380952e-04,
+         8.417508417508418e-04,-1.917526917526918e-03,
+         6.410256410256410e-03,-2.955065359477124e-02,
+         1.796443723688307e-01,-1.39243221690590e+00};
+    x0 = x;
+    n = 0;
+    if ((x == 1.0) || (x == 2.0)) {
+        return 0.0;
+    } else if (x <= 7.0) {
+        n = (long)(7 - x);
+        x0 = x + n;
+    }
+    x2 = 1.0/(x0*x0);
+    xp = 2*M_PI;
+    gl0 = a[9];
+    for (k=8; k>=0; k--) {
+        gl0 *= x2;
+        gl0 += a[k];
+    }
+    gl = gl0/x0 + 0.5*log(xp) + (x0-0.5)*log(x0) - x0;
+    if (x <= 7.0) {
+        for (k=1; k<=n; k++) {
+            gl -= log(x0-1.0);
+            x0 -= 1.0;
+        }
+    }
+    return gl;
+}
+
+__device__ int64_t rk_poisson_mult(rk_state *state, double lam) {
+    int64_t X;
+    double prod, U, enlam;
+    enlam = exp(-lam);
+    X = 0;
+    prod = 1.0;
+    while (1) {
+        U = state->rk_double();
+        prod *= U;
+        if (prod > enlam) {
+            X += 1;
+        } else {
+            return X;
+        }
+    }
+}
+
+__device__ int64_t rk_poisson_ptrs(rk_state *state, double lam) {
+    int64_t k;
+    double U, V, slam, loglam, a, b, invalpha, vr, us;
+    slam = sqrt(lam);
+    loglam = log(lam);
+    b = 0.931 + 2.53*slam;
+    a = -0.059 + 0.02483*b;
+    invalpha = 1.1239 + 1.1328/(b-3.4);
+    vr = 0.9277 - 3.6224/(b-2);
+    while (1) {
+        U = state->rk_double() - 0.5;
+        V = state->rk_double();
+        us = 0.5 - fabs(U);
+        k = (int64_t)floor((2*a/us + b)*U + lam + 0.43);
+        if ((us >= 0.07) && (V <= vr)) {
+            return k;
+        }
+        if ((k < 0) ||
+            ((us < 0.013) && (V > us))) {
+            continue;
+        }
+        if ((log(V) + log(invalpha) - log(a/(us*us)+b)) <=
+            (-lam + k*loglam - loggam(k+1))) {
+            return k;
+        }
+    }
+}
+
+__device__ int64_t rk_poisson(rk_state *state, double lam) {
+    if (lam >= 10) {
+        return rk_poisson_ptrs(state, lam);
+    } else if (lam == 0) {
+        return 0;
+    } else {
+        return rk_poisson_mult(state, lam);
+    }
+}
+
 __device__ uint32_t rk_raw(rk_state* state) {
     return state->rk_int();
+}
+
+__device__ double rk_random_uniform(rk_state* state) {
+    return state->rk_double();
 }
 
 __device__ uint32_t rk_interval_32(rk_state* state, uint32_t mx, uint32_t mask) {
@@ -197,6 +308,14 @@ struct raw_functor {
 };
 
 
+struct random_uniform_functor {
+    template<typename... Args>
+    __device__ double operator () (Args&&... args) {
+        return rk_random_uniform(args...);
+    }
+};
+
+
 struct interval_32_functor {
     template<typename... Args>
     __device__ uint32_t operator () (Args&&... args) {
@@ -218,6 +337,13 @@ struct beta_functor {
     }
 };
 
+struct poisson_functor {
+    template<typename... Args>
+    __device__ int64_t operator () (Args&&... args) {
+        return rk_poisson(args...);
+    }
+};
+
 // There are several errors when trying to do this a full template
 struct exponential_functor {
     template<typename... Args>
@@ -226,6 +352,49 @@ struct exponential_functor {
     }
 };
 
+struct standard_normal_functor {
+    template<typename... Args>
+    __device__ double operator () (Args&&... args) {
+        return rk_standard_normal(args...);
+    }
+};
+
+struct standard_normal_float_functor {
+    template<typename... Args>
+    __device__ float operator () (Args&&... args) {
+        return rk_standard_normal_float(args...);
+    }
+};
+
+// There are several errors when trying to do this a full template
+struct standard_gamma_functor {
+    template<typename... Args>
+    __device__ double operator () (Args&&... args) {
+        return rk_standard_gamma(args...);
+    }
+};
+
+// The following templates are used to unwrap arrays into an elementwise
+// approach, the array is `_array_data` in `cupy/random/_generator_api.pyx`.
+// When a pointer is present in the variadic Args, it will be replaced by
+// the value of pointer[thread_id]
+template<typename T>
+__device__ typename std::enable_if<std::is_pointer<T>::value, double>::type get_index(T value, int id) {
+    intptr_t ptr = reinterpret_cast<intptr_t>(value[0]);
+    int ndim = value[1];
+    ptrdiff_t offset = 0;
+    for (int dim = ndim; --dim >= 0; ) {
+        offset += value[ndim + dim + 2] * (id % value[dim + 2]);
+        id /= value[dim + 2];
+    }
+    return *reinterpret_cast<double*>(ptr + offset);
+}
+
+template<typename T>
+__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id) {
+    return value;
+}
+
 template<typename F, typename T, typename R, typename... Args>
 __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args... args) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -233,7 +402,7 @@ __global__ void execute_dist(intptr_t state, intptr_t out, ssize_t size, Args...
     if (id < size) {
         T random(id, state);
         F func;
-        out_ptr[id] = func(&random, std::forward<Args>(args)...);
+        out_ptr[id] = func(&random, (get_index(args, id))...);
     }
     return;
 }
@@ -258,6 +427,11 @@ void raw(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t str
     generator_dispatcher(generator, launcher, state, out, size);
 }
 
+void random_uniform(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<random_uniform_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size);
+}
+
 //These functions will take the generator_id as a parameter
 void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {
     kernel_launcher<interval_32_functor, int32_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
@@ -279,3 +453,22 @@ void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intp
     generator_dispatcher(generator, launcher, state, out, size);
 }
 
+void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double lam) {
+    kernel_launcher<poisson_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, lam);
+}
+
+void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<standard_normal_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size);
+}
+
+void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
+    kernel_launcher<standard_normal_float_functor, float> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size);
+}
+
+void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {
+    kernel_launcher<standard_gamma_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(shape));
+}

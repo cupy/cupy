@@ -1,5 +1,5 @@
 import cupy
-from cupy import core
+from cupy import _core
 
 
 # TODO(okuta): Implement asfarray
@@ -19,7 +19,7 @@ def asfortranarray(a, dtype=None):
     .. seealso:: :func:`numpy.asfortranarray`
 
     """
-    return core.asfortranarray(a, dtype)
+    return _core.asfortranarray(a, dtype)
 
 
 # TODO(okuta): Implement asarray_chkfinite

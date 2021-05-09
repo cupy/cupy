@@ -13,10 +13,10 @@ _environment._preload_libraries()  # NOQA
 
 
 try:
-    from cupy import core  # NOQA
+    from cupy import _core  # NOQA
 except ImportError as e:
-    # core is a c-extension module.
-    # When a user cannot import core, it represents that CuPy is not correctly
+    # _core is a c-extension module.
+    # When a user cannot import _core, it represents that CuPy is not correctly
     # built.
     _exc_info = _sys.exc_info()
     _msg = ('''\
@@ -49,7 +49,6 @@ def is_available():
 __version__ = _version.__version__
 
 
-import cupy.core.fusion  # NOQA
 from cupy import fft  # NOQA
 from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
@@ -60,8 +59,8 @@ from cupy import testing  # NOQA  # NOQA
 
 
 # import class and function
-from cupy.core import ndarray  # NOQA
-from cupy.core import ufunc  # NOQA
+from cupy._core import ndarray  # NOQA
+from cupy._core import ufunc  # NOQA
 
 
 # =============================================================================
@@ -347,7 +346,7 @@ def can_cast(from_, to, casting='safe'):
 
     .. seealso:: :func:`numpy.can_cast`
     """
-    from_ = from_.dtype if isinstance(from_, cupy.ndarray) else from_
+    from_ = from_.dtype if isinstance(from_, ndarray) else from_
     return _numpy.can_cast(from_, to, casting=casting)
 
 
@@ -378,7 +377,7 @@ def result_type(*arrays_and_dtypes):
 
     .. seealso:: :func:`numpy.result_type`
     """
-    dtypes = [a.dtype if isinstance(a, cupy.ndarray)
+    dtypes = [a.dtype if isinstance(a, ndarray)
               else a for a in arrays_and_dtypes]
     return _numpy.result_type(*dtypes)
 
@@ -715,7 +714,7 @@ from cupy._statistics.histogram import histogramdd  # NOQA
 # -----------------------------------------------------------------------------
 # Undocumented functions
 # -----------------------------------------------------------------------------
-from cupy.core import size  # NOQA
+from cupy._core import size  # NOQA
 
 
 def ndim(a):
@@ -742,16 +741,16 @@ def ndim(a):
 from cupy._util import clear_memo  # NOQA
 from cupy._util import memoize  # NOQA
 
-from cupy.core import ElementwiseKernel  # NOQA
-from cupy.core import RawKernel  # NOQA
-from cupy.core import RawModule  # NOQA
-from cupy.core._reduction import ReductionKernel  # NOQA
+from cupy._core import ElementwiseKernel  # NOQA
+from cupy._core import RawKernel  # NOQA
+from cupy._core import RawModule  # NOQA
+from cupy._core._reduction import ReductionKernel  # NOQA
 
 # -----------------------------------------------------------------------------
 # DLPack
 # -----------------------------------------------------------------------------
 
-from cupy.core import fromDlpack  # NOQA
+from cupy._core import fromDlpack  # NOQA
 
 
 def asnumpy(a, stream=None, order='C'):
@@ -806,13 +805,13 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, _cupyx.scipy.sparse.spmatrix,
-                            cupy.core.fusion._FusionVarArray,
-                            cupy.core.new_fusion._ArrayProxy)):
+                            _core.fusion._FusionVarArray,
+                            _core.new_fusion._ArrayProxy)):
             return _cupy
     return _numpy
 
 
-fuse = cupy.core.fusion.fuse
+fuse = _core.fusion.fuse
 
 disable_experimental_feature_warning = False
 

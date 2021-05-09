@@ -43,5 +43,13 @@ function ActivateCUDA($version) {
 }
 
 function IsPullRequestTest() {
-    return ${Env:FLEXCI_BRANCH}.StartsWith("refs/pull/")
+    return ${Env:FLEXCI_BRANCH} -ne $null -and ${Env:FLEXCI_BRANCH}.StartsWith("refs/pull/")
+}
+
+function PrioritizeFlexCIDaemon() {
+    echo "Prioritizing FlexCI daemon process..."
+    wmic.exe process where 'name="imosci.exe"' CALL setpriority realtime
+    if (-not $?) {
+        throw "Failed to change priority of daemon (exit code = $LastExitCode)"
+    }
 }

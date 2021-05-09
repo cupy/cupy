@@ -1,6 +1,6 @@
 import cupy
-from cupy.core import _routines_logic as _logic
-from cupy.core import _fusion_thread_local
+from cupy._core import _routines_logic as _logic
+from cupy._core import _fusion_thread_local
 from cupy import _util
 
 

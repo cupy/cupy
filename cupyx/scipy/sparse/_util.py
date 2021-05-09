@@ -1,5 +1,5 @@
 import cupy
-from cupy.core import core
+from cupy._core import core
 
 
 def isdense(x):

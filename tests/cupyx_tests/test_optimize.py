@@ -7,7 +7,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 
 
 try:
@@ -16,7 +16,7 @@ try:
         warnings.filterwarnings('ignore', category=DeprecationWarning)
         import cupyx.optimizing
         import cupyx.optimizing._optimize
-        import cupy.core._optimize_config
+        import cupy._core._optimize_config
 except ImportError:
     pass
 
@@ -26,7 +26,7 @@ except ImportError:
 class TestOptimize(unittest.TestCase):
 
     def setUp(self):
-        cupy.core._optimize_config._clear_all_contexts_cache()
+        cupy._core._optimize_config._clear_all_contexts_cache()
 
     def test_optimize_reduction_kernel(self):
         my_sum = cupy.ReductionKernel(
@@ -112,7 +112,7 @@ class TestOptimize(unittest.TestCase):
                 params_map = context._params_map
                 context.save(filepath)
 
-            cupy.core._optimize_config._clear_all_contexts_cache()
+            cupy._core._optimize_config._clear_all_contexts_cache()
 
             with cupyx.optimizing.optimize() as context:
                 assert params_map.keys() != context._params_map.keys()
@@ -159,7 +159,7 @@ class TestOptimizeBackends(unittest.TestCase):
     """This class tests if optuna is in effect for create_reduction_func()"""
 
     def setUp(self):
-        cupy.core._optimize_config._clear_all_contexts_cache()
+        cupy._core._optimize_config._clear_all_contexts_cache()
         self.old_reductions = _accelerator.get_reduction_accelerators()
         _accelerator.set_reduction_accelerators(self.backend)
 
@@ -191,13 +191,13 @@ class TestOptimizeBackends(unittest.TestCase):
 
     def test_optimize2(self):
         # Ensure the CUB optimizer is not run when the CUB kernel is not used.
-        func = 'cupy.core._cub_reduction._get_cub_optimized_params'
+        func = 'cupy._core._cub_reduction._get_cub_optimized_params'
         times_called = 2 if ('cub' in self.backend) else 0
 
         # Setting "wraps" is necessary to avoid errors being silently ignored.
         with testing.AssertFunctionIsCalled(
                 func, times_called=times_called,
-                wraps=cupy.core._cub_reduction._get_cub_optimized_params):
+                wraps=cupy._core._cub_reduction._get_cub_optimized_params):
             with cupyx.optimizing.optimize():
                 self.x.sum()
             with cupyx.optimizing.optimize():

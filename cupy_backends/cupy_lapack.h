@@ -65,8 +65,8 @@ int gesvd_loop(
         if (status != 0) break;
         A += m * n;
         S += k;
-        U += (jobu=='A' ? m*m : (jobu=='S' ? m*k : /* 'N' */ 0));
-        VT += (jobvt=='A'? n*n : (jobvt=='S' ? n*k : /* 'N' */ 0));
+        U += (jobu=='A' ? m*m : (jobu=='S' ? m*k : /* jobu=='O' or 'N' */ 0));
+        VT += (jobvt=='A' ? n*n : (jobvt=='S' ? n*k : /* jobvt=='O' or 'N' */ 0));
         devInfo += 1;
     }
     return status;

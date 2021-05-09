@@ -7,15 +7,15 @@ import warnings as _warnings
 
 import numpy as _numpy
 
-from cupy.core._carray cimport shape_t
-from cupy.core cimport _routines_manipulation as _manipulation
-from cupy.core cimport core
-from cupy.core cimport internal
+from cupy._core._carray cimport shape_t
+from cupy._core cimport _routines_manipulation as _manipulation
+from cupy._core cimport core
+from cupy._core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
 from cupy_backends.cuda.libs cimport cudnn
 
-from cupy.core._ufuncs import elementwise_copy as _elementwise_copy
+from cupy._core._ufuncs import elementwise_copy as _elementwise_copy
 from cupy import _util
 from cupy_backends.cuda.libs import cudnn as _py_cudnn
 
