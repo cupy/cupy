@@ -109,7 +109,7 @@ function Main {
     echo "Running test..."
     $test_retval = 0
     python -c "import cupy; cupy.show_config()" > cupy_test_log.txt
-    python -m pytest -rfEX @pytest_opts tests >> cupy_test_log.txt
+    python -m pytest -rfEX @pytest_opts tests/cupy_tests/core_tests/test_raw.py >> cupy_test_log.txt
     if (-not $?) {
         $test_retval = $LastExitCode
     }
