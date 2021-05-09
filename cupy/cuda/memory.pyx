@@ -1792,7 +1792,7 @@ cdef class MemoryAsyncPool:
         """
         if size is None:
             if fraction is None:
-                size = UINT64_MAX  # ensure pool size is never shrunk
+                size = 0
             else:
                 if not 0 <= fraction <= 1:
                     raise ValueError(
@@ -1810,6 +1810,8 @@ cdef class MemoryAsyncPool:
             raise ValueError(
                 'memory limit size out of range: {}'.format(size))
 
+        if size == 0:
+            size = UINT64_MAX  # ensure pool size is never shrunk
         cdef intptr_t pool = self._pools[device.get_device_id()]
         runtime.memPoolSetAttribute(
             pool, runtime.cudaMemPoolAttrReleaseThreshold, size)
