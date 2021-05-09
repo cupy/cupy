@@ -27,8 +27,8 @@ class RandomDistributionsTestCase(unittest.TestCase):
 
     def check_generator_distribution(self, dist_name, params, dtype):
         cp_params = {k: cupy.asarray(params[k]) for k in params}
-        np_gen = numpy.random.default_rng()
-        cp_gen = cupy.random.default_rng()
+        np_gen = numpy.random.default_rng(0)
+        cp_gen = cupy.random.default_rng(0)
         np_out = numpy.asarray(
             getattr(np_gen, dist_name)(size=self.shape, **params))
         cp_out = getattr(cp_gen, dist_name)(
@@ -163,7 +163,7 @@ class TestDistributionsF(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'shape_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
     'dtype': _float_dtypes,  # to escape timeout
@@ -180,7 +180,10 @@ class TestDistributionsGamma(unittest.TestCase):
             out = dist_func(shape, scale, self.shape)
         else:
             out = dist_func(shape, scale, self.shape, dtype)
-        assert self.shape == out.shape
+        out_shape = self.shape
+        if self.shape is None:
+            out_shape = shape.shape if shape.shape != () else scale.shape
+        assert out_shape == out.shape
         assert out.dtype == dtype
 
     @cupy.testing.for_dtypes_combination(
@@ -519,23 +522,45 @@ class TestDistributionsPareto(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'lam_shape': [(), (3, 2)],
 })
 )
 @testing.gpu
 class TestDistributionsPoisson(unittest.TestCase):
 
-    def check_distribution(self, dist_func, lam_dtype, dtype):
+    def check_distribution(self, dist_func, lam_dtype, dtype=None):
         lam = cupy.full(self.lam_shape, 5, dtype=lam_dtype)
-        out = dist_func(lam, self.shape, dtype)
-        assert self.shape == out.shape
-        assert out.dtype == dtype
+        if dtype is not None:
+            out = dist_func(lam, self.shape, dtype)
+            assert out.dtype == dtype
+        else:
+            out = dist_func(lam, self.shape)
+        if self.shape is not None:
+            assert self.shape == out.shape
+        else:
+            assert lam.shape == out.shape
 
     @cupy.testing.for_int_dtypes('dtype')
     @cupy.testing.for_float_dtypes('lam_dtype')
-    def test_poisson(self, lam_dtype, dtype):
+    def test_poisson_legacy(self, lam_dtype, dtype):
         self.check_distribution(_distributions.poisson, lam_dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('lam_dtype')
+    def test_poisson_generator(self, lam_dtype):
+        self.check_distribution(cupy.random.default_rng(0).poisson,
+                                lam_dtype)
+
+
+@testing.gpu
+class TestDistributionsPoissonInvalid(unittest.TestCase):
+    def test_none_lam_generator(self):
+        with self.assertRaises(TypeError):
+            cupy.random.default_rng(0).poisson(None)
+
+    def test_none_lam_legacy(self):
+        with self.assertRaises(ValueError):
+            _distributions.poisson(None)
 
 
 @testing.parameterize(*testing.product({
@@ -618,7 +643,7 @@ class TestDistributionsStandardExponential(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'shape_shape': [(), (3, 2)],
 })
 )
@@ -639,6 +664,18 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
         self.check_generator_distribution('standard_gamma',
                                           {'shape': shape},
                                           dtype)
+
+
+@testing.gpu
+class TestDistributionsStandardGammaInvalid(RandomDistributionsTestCase):
+
+    def test_none_shape_generator(self):
+        with self.assertRaises(TypeError):
+            cupy.random.default_rng(0).standard_gamma(None)
+
+    def test_none_shape_legacy(self):
+        with self.assertRaises(ValueError):
+            _distributions.standard_gamma(None)
 
 
 @testing.parameterize(*testing.product({
