@@ -262,6 +262,9 @@ cpdef structuredDescriptorInit(Handle handle, MatDescriptor matDescr,
 
 cpdef matDescriptorDestroy(MatDescriptor matDescr):
     """Releases the resources used by an instance of a matrix descriptor."""
+    if CUSPARSELT_VERSION < 100:
+        raise RuntimeError(
+            'matDescriptorDestroy is supported since cuSPARSELt 0.1.0')
     status = cusparseLtMatDescriptorDestroy(
         <const cusparseLtMatDescriptor_t*> matDescr._ptr)
     check_status(status)

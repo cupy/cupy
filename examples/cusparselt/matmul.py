@@ -92,8 +92,10 @@ print('C[:, 0]: {}'.format(C[:, 0]))
 #
 # destroys plan and handle
 #
-cusparselt.matDescriptorDestroy(matA)
-cusparselt.matDescriptorDestroy(matB)
-cusparselt.matDescriptorDestroy(matC)
+if cusparselt.get_build_version() >= 100:
+    # You need to call matDescriptorDestroy for cuSPARSELt v0.1.0 and later
+    cusparselt.matDescriptorDestroy(matA)
+    cusparselt.matDescriptorDestroy(matB)
+    cusparselt.matDescriptorDestroy(matC)
 cusparselt.matmulPlanDestroy(plan)
 cusparselt.destroy(handle)

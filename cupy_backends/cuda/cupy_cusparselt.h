@@ -8,23 +8,23 @@
 // Added in cuSPARSELt 0.1.0
 
 cusparseStatus_t cusparseLtMatDescriptorDestroy(...) {
-    return CUSPARSE_STATUS_SUCCESS;
+    return CUSPARSE_STATUS_NOT_SUPPORTED;
 }
 
 cusparseStatus_t cusparseLtSpMMAPrune2(...) {
-    return CUSPARSE_STATUS_SUCCESS;
+    return CUSPARSE_STATUS_NOT_SUPPORTED;
 }
 
 cusparseStatus_t cusparseLtSpMMAPruneCheck2(...) {
-    return CUSPARSE_STATUS_SUCCESS;
+    return CUSPARSE_STATUS_NOT_SUPPORTED;
 }
 
 cusparseStatus_t cusparseLtSpMMACompressedSize2(...) {
-    return CUSPARSE_STATUS_SUCCESS;
+    return CUSPARSE_STATUS_NOT_SUPPORTED;
 }
 
 cusparseStatus_t cusparseLtSpMMACompress2(...) {
-    return CUSPARSE_STATUS_SUCCESS;
+    return CUSPARSE_STATUS_NOT_SUPPORTED;
 }
 
 #endif  // CUSPARSELT_VERSION < 100
