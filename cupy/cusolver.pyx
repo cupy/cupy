@@ -14,6 +14,7 @@ from cupy_backends.cuda.libs.cusolver cimport (  # noqa
     sgesvd_bufferSize, dgesvd_bufferSize, cgesvd_bufferSize, zgesvd_bufferSize)
 
 from cupy.cuda cimport memory
+from cupy._core.core cimport _internal_ascontiguousarray
 from cupy._core.core cimport _ndarray_init, ndarray
 
 import cupy as _cupy
@@ -829,6 +830,7 @@ def csrlsvqr(A, b, tol=0, reorder=1):
 
     tol = max(tol, 0)
     m = A.shape[0]
+    b = _internal_ascontiguousarray(b)
     x = _cupy.empty((m,), dtype=dtype)
     singularity = _numpy.empty((1,), _numpy.int32)
 
