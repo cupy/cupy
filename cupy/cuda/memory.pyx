@@ -1591,7 +1591,7 @@ cdef class MemoryAsyncPool:
         # A list of cudaMemPool_t to each device's mempool
         readonly list _pools
 
-    def __init__(self, pool_handles='default'):
+    def __init__(self, pool_handles='current'):
         _util.experimental('cupy.cuda.MemoryAsyncPool')
         cdef int dev_id, dev_counts
         cdef dict limit = _parse_limit_string()
