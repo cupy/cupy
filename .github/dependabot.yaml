@@ -6,3 +6,5 @@ updates:
     interval: daily
   labels:
     - "cat:document"
+  reviewers:
+    - "cupy/code-owners"
