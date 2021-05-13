@@ -4,3 +4,5 @@ updates:
   directory: "/docs"
   schedule:
     interval: daily
+  labels:
+    - "cat:document"
