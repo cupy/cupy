@@ -1,6 +1,10 @@
 sphinx==3.5.4
 pydata_sphinx_theme==0.6.1
 
+# Workaround for UndefinedError("'meta' is undefined") issue.
+# TODO(kmaehashi): remove this once fixed.
+Jinja2<3.0.0
+
 Cython==0.29.*
 numpy==1.20.*
 scipy==1.6.*
