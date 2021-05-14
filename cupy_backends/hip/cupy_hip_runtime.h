@@ -258,6 +258,14 @@ cudaError_t cudaMemPoolTrimTo(...) {
     return hipErrorUnknown;
 }
 
+cudaError_t cudaMemPoolGetAttribute(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemPoolSetAttribute(...) {
+    return hipErrorUnknown;
+}
+
 
 // Stream and Event
 cudaError_t cudaStreamCreate(cudaStream_t *stream) {

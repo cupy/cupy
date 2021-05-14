@@ -103,6 +103,7 @@ cdef extern from *:
         char bytes[16]
 
     ctypedef void* MemPool 'cudaMemPool_t'
+    ctypedef int MemPoolAttr 'cudaMemPoolAttr'
 
     IF CUDA_VERSION >= 11000:
         # We can't use IF in the middle of structs declaration
@@ -578,6 +579,18 @@ cpdef enum:
     cudaReadModeElementType = 0
     cudaReadModeNormalizedFloat = 1
 
+    # cudaMemPoolAttr
+    # ----- added since 11.2 -----
+    cudaMemPoolReuseFollowEventDependencies = 0x1
+    cudaMemPoolReuseAllowOpportunistic = 0x2
+    cudaMemPoolReuseAllowInternalDependencies = 0x3
+    cudaMemPoolAttrReleaseThreshold = 0x4
+    # ----- added since 11.3 -----
+    cudaMemPoolAttrReservedMemCurrent = 0x5
+    cudaMemPoolAttrReservedMemHigh = 0x6
+    cudaMemPoolAttrUsedMemCurrent = 0x7
+    cudaMemPoolAttrUsedMemHigh = 0x8
+
 
 # This was a legacy mistake: the prefix "cuda" should have been removed
 # so that we can directly assign their C counterparts here. Now because
@@ -821,6 +834,11 @@ ELSE:
         # added since CUDA 11.2
         cudaDevAttrMaxTimelineSemaphoreInteropSupported = 114
         cudaDevAttrMemoryPoolsSupported = 115
+        # added since CUDA 11.3
+        cudaDevAttrGPUDirectRDMASupported
+        cudaDevAttrGPUDirectRDMAFlushWritesOptions
+        cudaDevAttrGPUDirectRDMAWritesOrdering
+        cudaDevAttrMemoryPoolSupportedHandleTypes
 
 
 ###############################################################################
@@ -934,6 +952,8 @@ cpdef intptr_t deviceGetDefaultMemPool(int) except? 0
 cpdef intptr_t deviceGetMemPool(int) except? 0
 cpdef deviceSetMemPool(int, intptr_t)
 cpdef memPoolTrimTo(intptr_t, size_t)
+cpdef memPoolGetAttribute(intptr_t, int)
+cpdef memPoolSetAttribute(intptr_t, int, object)
 
 
 ###############################################################################
