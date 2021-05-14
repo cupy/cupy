@@ -105,7 +105,8 @@ class TestLabelSpecialCases:
 
 @testing.gpu
 @testing.parameterize(*testing.product({
-    'op': ['sum', 'mean', 'variance', 'standard_deviation', 'center_of_mass'],
+    'op': ['sum', 'sum_labels', 'mean', 'variance', 'standard_deviation',
+           'center_of_mass'],
 }))
 @testing.with_requires('scipy')
 class TestStats:
