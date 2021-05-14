@@ -30,7 +30,7 @@ cdef class _ThreadLocal:
             tls = _thread_local.tls = _ThreadLocal()
         return <_ThreadLocal>tls
 
-    cdef void push_stream(self, stream, int device_id) except *:
+    cdef void push_stream(self, stream, int device_id) except*:
         if self.prev_stream_ref_stack[device_id] is None:
             self.prev_stream_ref_stack[device_id] = []
         prev_stream_ref = self.get_current_stream_ref(device_id)
@@ -39,7 +39,7 @@ cdef class _ThreadLocal:
         self.current_device_id_stack.append(device_id)
         self.set_current_stream(stream)
 
-    cdef pop_stream(self):
+    cdef void pop_stream(self) except*:
         cdef int device_id = self.current_device_id_stack.pop()
         prev_stream_ref = self.prev_stream_ref_stack[device_id].pop()
         self.set_current_stream_ref(prev_stream_ref)
