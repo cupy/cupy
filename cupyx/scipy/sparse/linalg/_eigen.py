@@ -148,7 +148,7 @@ def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
         if i >= i_end - 1:
             break
         
-        if beta[i] < beta_eps:
+        if cupy.abs(beta[i]) < beta_eps:
             V[i+1:i_end,:] = 0
             u[...] = 0
             break
@@ -259,7 +259,7 @@ def _lanczos_fast(A, n, ncv):
             if i >= i_end - 1:
                 break
           
-            if beta[i] < beta_eps:
+            if cupy.abs(beta[i]) < beta_eps:
                 V[i+1:i_end,:] = 0
                 u[...] = 0
                 v[...] = 0
