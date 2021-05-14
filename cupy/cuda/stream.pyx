@@ -12,15 +12,15 @@ cdef object _thread_local = threading.local()
 
 
 cdef class _ThreadLocal:
-    cdef list current_stream  # list of intptr_t
     cdef list current_stream_ref  # list of object
+    cdef list current_device_id_stack  # list of int
     cdef list prev_stream_ref_stack  # list of list
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
-        self.current_stream = [0 for i in range(num_devices)]
         self.current_stream_ref = [None for i in range(num_devices)]
         self.prev_stream_ref_stack = [None for i in range(num_devices)]
+        self.current_device_id_stack = []
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -30,13 +30,26 @@ cdef class _ThreadLocal:
             tls = _thread_local.tls = _ThreadLocal()
         return <_ThreadLocal>tls
 
+    cdef void push_stream(self, stream, int dev) except *:
+        if self.prev_stream_ref_stack[dev] is None:
+            self.prev_stream_ref_stack[dev] = []
+        prev_stream_ref = self.get_current_stream_ref(dev)
+        self.prev_stream_ref_stack[dev].append(prev_stream_ref)
+        # record dev to prevent from popping the wrong stream at exit
+        self.current_device_id_stack.append(dev)
+        self.set_current_stream(stream)
+
+    cdef pop_stream(self):
+        cdef int dev = self.current_device_id_stack.pop()
+        prev_stream_ref = self.prev_stream_ref_stack[dev].pop()
+        self.set_current_stream_ref(prev_stream_ref)
+
     cdef set_current_stream(self, stream):
         cdef intptr_t ptr = <intptr_t>stream.ptr
         cdef int dev = stream.dev
         if dev == -1:
             dev = runtime.getDevice()
         stream_module.set_current_stream_ptr(ptr, dev)
-        self.current_stream[dev] = ptr
         self.current_stream_ref[dev] = weakref.ref(stream)
 
     cdef set_current_stream_ref(self, stream_ref):
@@ -45,7 +58,6 @@ cdef class _ThreadLocal:
         if dev == -1:
             dev = runtime.getDevice()
         stream_module.set_current_stream_ptr(ptr, dev)
-        self.current_stream[dev] = ptr
         self.current_stream_ref[dev] = stream_ref
 
     cdef get_current_stream(self, int dev=-1):
@@ -63,16 +75,8 @@ cdef class _ThreadLocal:
             self.current_stream_ref[dev] = stream_ref
         return stream_ref
 
-    cdef intptr_t get_current_stream_ptr(self, int dev=-1):
-        # Returns the stream previously set, otherwise returns
-        # nullptr or runtime.streamPerThread when
-        # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
-        if dev == -1:
-            dev = runtime.getDevice()
-        cdef intptr_t curr_stream = self.current_stream[dev]
-        if curr_stream == 0 and stream_module.is_ptds_enabled():
-            return <intptr_t>runtime.streamPerThread
-        return curr_stream
+    cdef intptr_t get_current_stream_ptr(self):
+        return stream_module.get_current_stream_ptr()
 
 
 cdef intptr_t get_current_stream_ptr():
@@ -212,20 +216,12 @@ class BaseStream(object):
         tls = _ThreadLocal.get()
         cdef int dev = self.dev
         dev = check_stream_device_match(dev)
-        # to prevent from popping the wrong stream at exit
-        self._curr_dev = dev
-        if tls.prev_stream_ref_stack[dev] is None:
-            tls.prev_stream_ref_stack[dev] = []
-        prev_stream_ref = tls.get_current_stream_ref(dev)
-        tls.prev_stream_ref_stack[dev].append(prev_stream_ref)
-        tls.set_current_stream(self)
+        tls.push_stream(self, dev)
         return self
 
     def __exit__(self, *args):
         tls = _ThreadLocal.get()
-        cdef int dev = self._curr_dev
-        prev_stream_ref = tls.prev_stream_ref_stack[dev].pop()
-        tls.set_current_stream_ref(prev_stream_ref)
+        tls.pop_stream()
 
     def __repr__(self):
         return '<{} {} (device {})>'.format(
@@ -381,7 +377,7 @@ class Stream(BaseStream):
             return
         tls = _ThreadLocal.get()
         if self.ptr:
-            current_ptr = tls.get_current_stream_ptr(self.dev)
+            current_ptr = tls.get_current_stream_ptr()
             if <intptr_t>self.ptr == current_ptr:
                 tls.set_current_stream(self.null)
             runtime.streamDestroy(self.ptr)
