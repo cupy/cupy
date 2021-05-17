@@ -141,7 +141,7 @@ def affine_transformation(data,
     ndim = data.ndim
     shape = data.shape
     dtype = data.dtype
-    if (ndim < 2) and (ndim > 3):
+    if (ndim < 2) or (ndim > 3):
         raise ValueError(
             'Texture memory affine transformation is defined only for '
             '2D and 3D arrays without channel dimension.')
@@ -150,6 +150,9 @@ def affine_transformation(data,
         raise ValueError(
             f'Unsupported interpolation {interpolation} '
             f'(supported: linear, nearest)')
+
+    if transformation_matrix.shape != (ndim + 1, ndim + 1):
+        raise ValueError('Matrix must be have shape (ndim + 1, ndim + 1)')
 
     texture_object = _create_texture_object(data,
                                             address_mode=mode,
@@ -161,9 +164,6 @@ def affine_transformation(data,
         kernel = _affine_transform_2d_array_kernel
     else:
         kernel = _affine_transform_3d_array_kernel
-
-    if transformation_matrix.shape != (ndim + 1, ndim + 1):
-        raise ValueError('Matrix must be have shape (ndim + 1, ndim + 1)')
 
     output = cupy.empty(shape, dtype=dtype)
     kernel(texture_object, transformation_matrix, *shape[1:], output)
