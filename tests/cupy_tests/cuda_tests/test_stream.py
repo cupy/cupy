@@ -166,6 +166,22 @@ class TestStream(unittest.TestCase):
             with pytest.raises(RuntimeError):
                 stream0.use()
 
+    def test_mix_use_context(self):
+        # See cupy/cupy#5143
+        s1 = cuda.Stream()
+        s2 = cuda.Stream()
+        s3 = cuda.Stream()
+        assert cuda.get_current_stream() == self.stream
+        with s1:
+            assert cuda.get_current_stream() == s1
+            s2.use()
+            assert cuda.get_current_stream() == s2
+            with s3:
+                assert cuda.get_current_stream() == s3
+                del s2
+            assert cuda.get_current_stream() == cuda.Stream.null
+        assert cuda.get_current_stream() == self.stream
+
 
 @testing.gpu
 class TestExternalStream(unittest.TestCase):

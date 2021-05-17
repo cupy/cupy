@@ -14,12 +14,12 @@ cdef object _thread_local = threading.local()
 cdef class _ThreadLocal:
     cdef list current_stream_ref  # list of object
     cdef list current_device_id_stack  # list of int
-    cdef list prev_stream_ref_stack  # list of list
+    cdef list prev_stream_stack  # list of list
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
         self.current_stream_ref = [None for i in range(num_devices)]
-        self.prev_stream_ref_stack = [None for i in range(num_devices)]
+        self.prev_stream_stack = [[] for i in range(num_devices)]
         self.current_device_id_stack = []
 
     @staticmethod
@@ -31,18 +31,16 @@ cdef class _ThreadLocal:
         return <_ThreadLocal>tls
 
     cdef void push_stream(self, stream, int device_id) except*:
-        if self.prev_stream_ref_stack[device_id] is None:
-            self.prev_stream_ref_stack[device_id] = []
-        prev_stream_ref = self.get_current_stream_ref(device_id)
-        self.prev_stream_ref_stack[device_id].append(prev_stream_ref)
+        prev_stream = self.get_current_stream(device_id)
+        self.prev_stream_stack[device_id].append(prev_stream)
         # record device_id to prevent from popping the wrong stream at exit
         self.current_device_id_stack.append(device_id)
         self.set_current_stream(stream)
 
     cdef void pop_stream(self) except*:
         cdef int device_id = self.current_device_id_stack.pop()
-        prev_stream_ref = self.prev_stream_ref_stack[device_id].pop()
-        self.set_current_stream_ref(prev_stream_ref)
+        prev_stream = self.prev_stream_stack[device_id].pop()
+        self.set_current_stream(prev_stream)
 
     cdef set_current_stream(self, stream):
         cdef intptr_t ptr = <intptr_t>stream.ptr
@@ -52,31 +50,21 @@ cdef class _ThreadLocal:
         stream_module.set_current_stream_ptr(ptr, device_id)
         self.current_stream_ref[device_id] = weakref.ref(stream)
 
-    cdef set_current_stream_ref(self, stream_ref):
-        cdef intptr_t ptr = <intptr_t>(stream_ref().ptr)
-        cdef int device_id = stream_ref().device_id
-        if device_id == -1:
-            device_id = runtime.getDevice()
-        stream_module.set_current_stream_ptr(ptr, device_id)
-        self.current_stream_ref[device_id] = stream_ref
-
     cdef get_current_stream(self, int device_id=-1):
-        return self.get_current_stream_ref(device_id)()
-
-    cdef get_current_stream_ref(self, int device_id=-1):
         if device_id == -1:
             device_id = runtime.getDevice()
         stream_ref = self.current_stream_ref[device_id]
         if stream_ref is None:
-            if stream_module.is_ptds_enabled():
-                stream_ref = weakref.ref(Stream.ptds)
-            else:
-                stream_ref = weakref.ref(Stream.null)
+            stream_ref = weakref.ref(get_default_stream())
             self.current_stream_ref[device_id] = stream_ref
-        return stream_ref
+        return stream_ref()
 
     cdef intptr_t get_current_stream_ptr(self):
         return stream_module.get_current_stream_ptr()
+
+
+cdef get_default_stream():
+    return Stream.ptds if stream_module.is_ptds_enabled() else Stream.null
 
 
 cdef intptr_t get_current_stream_ptr():
@@ -379,15 +367,15 @@ class Stream(BaseStream):
         if is_shutting_down():
             return
         tls = _ThreadLocal.get()
-        if self.ptr:
+        if self.ptr not in (0, 1, 2):
             current_ptr = tls.get_current_stream_ptr()
             if <intptr_t>self.ptr == current_ptr:
-                tls.set_current_stream(self.null)
+                tls.set_current_stream(get_default_stream())
             runtime.streamDestroy(self.ptr)
         else:
             current_stream = tls.get_current_stream()
             if current_stream == self:
-                tls.set_current_stream(self.null)
+                tls.set_current_stream(get_default_stream())
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
 
