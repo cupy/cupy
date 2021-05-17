@@ -136,7 +136,8 @@ class TestStream(unittest.TestCase):
             with stream2:
                 assert stream2 == cuda.get_current_stream()
             assert stream1 == cuda.get_current_stream()
-        assert self.stream == cuda.get_current_stream()
+        # self.stream is "forgotten"!
+        assert cuda.Stream.null == cuda.get_current_stream()
 
     def test_use(self):
         stream1 = cuda.Stream().use()
@@ -179,8 +180,9 @@ class TestStream(unittest.TestCase):
             with s3:
                 assert cuda.get_current_stream() == s3
                 del s2
-            assert cuda.get_current_stream() == cuda.Stream.null
-        assert cuda.get_current_stream() == self.stream
+            assert cuda.get_current_stream() == s1
+        # self.stream is "forgotten"!
+        assert cuda.get_current_stream() == cuda.Stream.null
 
 
 @testing.gpu
