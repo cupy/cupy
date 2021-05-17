@@ -272,6 +272,24 @@ class TestAffineExceptions:
             with pytest.raises(RuntimeError):
                 ndi.affine_transform(x, xp.ones((0, 3)), output=output)
 
+    def test_invalid_texture_arguments(self):
+        aft = cupyx.scipy.ndimage.affine_transform
+        x = [cupy.ones((8, ) * n) for n in range(1, 5)]
+
+        # (ndim < 2) and (ndim > 3) must fail
+        for i in [0, 3]:
+            with pytest.raises(ValueError):
+                aft(x[i], cupy.eye(i + 1), texture_memory=True)
+        # wrong matrix shape
+        for i in range(len(x)):
+            with pytest.raises(ValueError):
+                aft(x[i], cupy.eye(i), texture_memory=True)
+        # wrong mode
+        for m in ['mirror', 'reflect', 'wrap', 'grid-mirror',
+                  'grid-wrap', 'grid-constant', 'opencv']:
+            with pytest.raises(ValueError):
+                aft(x[2], cupy.eye(3), mode=m, texture_memory=True)
+
 
 @testing.gpu
 @testing.with_requires('opencv-python')
