@@ -298,6 +298,8 @@ def _flatten_transpose(a, axeses):
 
 
 def _use_cutensor(dtype0, sub0, dtype1, sub1, batch_dims, contract_dims):
+    if not cutensor.check_availability('contraction'):
+        return False
     if dtype0 != dtype1:
         return False
     if dtype0 not in (cupy.float32, cupy.float64,
