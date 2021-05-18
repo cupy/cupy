@@ -1,65 +1,77 @@
-Special Functions
-=================
+.. module:: cupyx.scipy.special
 
-.. https://docs.scipy.org/doc/scipy/reference/special.html
+Special functions (:mod:`cupyx.scipy.special`)
+===============================================
 
-Bessel Functions
+.. Hint:: `SciPy API Reference: Special functions (scipy.special) <https://docs.scipy.org/doc/scipy/reference/special.html>`_
+
+Bessel functions
 ----------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.special.j0
-   cupyx.scipy.special.j1
-   cupyx.scipy.special.y0
-   cupyx.scipy.special.y1
-   cupyx.scipy.special.i0
-   cupyx.scipy.special.i1
+   j0
+   j1
+   y0
+   y1
+   i0
+   i1
 
 
-Gamma and Related Functions
+Raw statistical functions
+-------------------------
+
+.. seealso:: :mod:`cupyx.scipy.stats`
+
+.. autosummary::
+   :toctree: generated/
+
+   ndtr
+
+
+Information Theory functions
+----------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   entr
+   rel_entr
+   kl_div
+   huber
+   pseudo_huber
+
+
+Gamma and related functions
 ---------------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.special.gamma
-   cupyx.scipy.special.gammaln
-   cupyx.scipy.special.polygamma
-   cupyx.scipy.special.digamma
-
-
-Raw Statistical Functions
--------------------------
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupyx.scipy.special.ndtr
+   gamma
+   gammaln
+   polygamma
+   digamma
 
 
-Error Function
---------------
+Error function and Fresnel integrals
+------------------------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.special.erf
-   cupyx.scipy.special.erfc
-   cupyx.scipy.special.erfcx
-   cupyx.scipy.special.erfinv
-   cupyx.scipy.special.erfcinv
+   erf
+   erfc
+   erfcx
+   erfinv
+   erfcinv
 
 
-Other Special Functions
+Other special functions
 -----------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.special.zeta
+   zeta

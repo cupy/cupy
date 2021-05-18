@@ -12,14 +12,14 @@ from cupy_backends.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from '../cupy_cuComplex.h':
+cdef extern from '../../cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 
     ctypedef struct cuDoubleComplex 'cuDoubleComplex':
         double x, y
 
-cdef extern from '../cupy_cuda.h' nogil:
+cdef extern from '../../cupy_blas.h' nogil:
     # Context
     int cublasCreate(Handle* handle)
     int cublasDestroy(Handle handle)
@@ -38,14 +38,36 @@ cdef extern from '../cupy_cuda.h' nogil:
     # BLAS Level 1
     int cublasIsamax(Handle handle, int n, float* x, int incx,
                      int* result)
+    int cublasIdamax(Handle handle, int n, double* x, int incx,
+                     int* result)
+    int cublasIcamax(Handle handle, int n, cuComplex* x, int incx,
+                     int* result)
+    int cublasIzamax(Handle handle, int n, cuDoubleComplex* x, int incx,
+                     int* result)
     int cublasIsamin(Handle handle, int n, float* x, int incx,
+                     int* result)
+    int cublasIdamin(Handle handle, int n, double* x, int incx,
+                     int* result)
+    int cublasIcamin(Handle handle, int n, cuComplex* x, int incx,
+                     int* result)
+    int cublasIzamin(Handle handle, int n, cuDoubleComplex* x, int incx,
                      int* result)
     int cublasSasum(Handle handle, int n, float* x, int incx,
                     float* result)
+    int cublasDasum(Handle handle, int n, double* x, int incx,
+                    double* result)
+    int cublasScasum(Handle handle, int n, cuComplex* x, int incx,
+                     float* result)
+    int cublasDzasum(Handle handle, int n, cuDoubleComplex* x, int incx,
+                     double* result)
     int cublasSaxpy(Handle handle, int n, float* alpha, float* x,
                     int incx, float* y, int incy)
     int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
                     int incx, double* y, int incy)
+    int cublasCaxpy(Handle handle, int n, cuComplex* alpha, cuComplex* x,
+                    int incx, cuComplex* y, int incy)
+    int cublasZaxpy(Handle handle, int n, cuDoubleComplex* alpha,
+                    cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy)
     int cublasSdot(Handle handle, int n, float* x, int incx,
                    float* y, int incy, float* result)
     int cublasDdot(Handle handle, int n, double* x, int incx,
@@ -60,10 +82,22 @@ cdef extern from '../cupy_cuda.h' nogil:
     int cublasZdotc(Handle handle, int n, cuDoubleComplex* x, int incx,
                     cuDoubleComplex* y, int incy,
                     cuDoubleComplex* result)
-    int cublasSnrm2(Handle handle, int n, float* x, int incx,
-                    float* result)
-    int cublasSscal(Handle handle, int n, float* alpha, float* x,
-                    int incx)
+    int cublasSnrm2(Handle handle, int n, float* x, int incx, float* result)
+    int cublasDnrm2(Handle handle, int n, double* x, int incx, double* result)
+    int cublasScnrm2(Handle handle, int n, cuComplex* x, int incx,
+                     float* result)
+    int cublasDznrm2(Handle handle, int n, cuDoubleComplex* x, int incx,
+                     double* result)
+    int cublasSscal(Handle handle, int n, float* alpha, float* x, int incx)
+    int cublasDscal(Handle handle, int n, double* alpha, double* x, int incx)
+    int cublasCscal(Handle handle, int n, cuComplex* alpha,
+                    cuComplex* x, int incx)
+    int cublasCsscal(Handle handle, int n, float* alpha,
+                     cuComplex* x, int incx)
+    int cublasZscal(Handle handle, int n, cuDoubleComplex* alpha,
+                    cuDoubleComplex* x, int incx)
+    int cublasZdscal(Handle handle, int n, double* alpha,
+                     cuDoubleComplex* x, int incx)
 
     # BLAS Level 2
     int cublasSgemv(
@@ -200,9 +234,29 @@ cdef extern from '../cupy_cuda.h' nogil:
         const double* alpha, const double* A, int lda,
         const double* beta, const double* B, int ldb,
         double* C, int ldc)
+    int cublasCgeam(
+        Handle handle, Operation transa, Operation transb, int m, int n,
+        const cuComplex* alpha, const cuComplex* A, int lda,
+        const cuComplex* beta, const cuComplex* B, int ldb,
+        cuComplex* C, int ldc)
+    int cublasZgeam(
+        Handle handle, Operation transa, Operation transb, int m, int n,
+        const cuDoubleComplex* alpha, const cuDoubleComplex* A, int lda,
+        const cuDoubleComplex* beta, const cuDoubleComplex* B, int ldb,
+        cuDoubleComplex* C, int ldc)
     int cublasSdgmm(
-        Handle handle, SideMode mode, int m, int n, float* A, int lda,
-        float* x, int incx, float* C, int ldc)
+        Handle handle, SideMode mode, int m, int n, const float* A, int lda,
+        const float* x, int incx, float* C, int ldc)
+    int cublasDdgmm(
+        Handle handle, SideMode mode, int m, int n, const double* A, int lda,
+        const double* x, int incx, double* C, int ldc)
+    int cublasCdgmm(
+        Handle handle, SideMode mode, int m, int n, const cuComplex* A,
+        int lda, const cuComplex* x, int incx, cuComplex* C, int ldc)
+    int cublasZdgmm(
+        Handle handle, SideMode mode, int m, int n, const cuDoubleComplex* A,
+        int lda, const cuDoubleComplex* x, int incx, cuDoubleComplex* C,
+        int ldc)
     int cublasSgemmEx(
         Handle handle, Operation transa,
         Operation transb, int m, int n, int k,
@@ -221,6 +275,24 @@ cdef extern from '../cupy_cuda.h' nogil:
     int cublasZgetrfBatched(
         Handle handle, int n, cuDoubleComplex **Aarray, int lda,
         int *PivotArray, int *infoArray, int batchSize)
+
+    int cublasSgetrsBatched(
+        Handle handle, Operation trans, int n, int nrhs,
+        const float **Aarray, int lda, const int *devIpiv,
+        float **Barray, int ldb, int *info, int batchSize)
+    int cublasDgetrsBatched(
+        Handle handle, Operation trans, int n, int nrhs,
+        const double **Aarray, int lda, const int *devIpiv,
+        double **Barray, int ldb, int *info, int batchSize)
+    int cublasCgetrsBatched(
+        Handle handle, Operation trans, int n, int nrhs,
+        const cuComplex **Aarray, int lda, const int *devIpiv,
+        cuComplex **Barray, int ldb, int *info, int batchSize)
+    int cublasZgetrsBatched(
+        Handle handle, Operation trans, int n, int nrhs,
+        const cuDoubleComplex **Aarray, int lda, const int *devIpiv,
+        cuDoubleComplex **Barray, int ldb, int *info, int batchSize)
+
     int cublasSgetriBatched(
         Handle handle, int n, const float **Aarray, int lda,
         int *PivotArray, float *Carray[], int ldc, int *infoArray,
@@ -246,6 +318,15 @@ cdef extern from '../cupy_cuda.h' nogil:
         const void *beta,
         void *C, runtime.DataType Ctype, int ldc,
         runtime.DataType computetype, GemmAlgo algo)
+    int cublasGemmEx_v11(
+        Handle handle, Operation transa, Operation transb,
+        int m, int n, int k,
+        const void *alpha,
+        const void *A, runtime.DataType Atype, int lda,
+        const void *B, runtime.DataType Btype, int ldb,
+        const void *beta,
+        void *C, runtime.DataType Ctype, int ldc,
+        ComputeType computetype, GemmAlgo algo)
     int cublasStpttr(
         Handle handle, FillMode uplo, int n, const float *AP, float *A,
         int lda)
@@ -258,23 +339,6 @@ cdef extern from '../cupy_cuda.h' nogil:
     int cublasDtrttp(
         Handle handle, FillMode uplo, int n, const double *A, int lda,
         double *AP)
-
-###############################################################################
-# Util
-###############################################################################
-
-cdef cuComplex get_cu_complex(float complex a):
-    cdef cuComplex ret
-    ret.x = a.real
-    ret.y = a.imag
-    return ret
-
-
-cdef cuDoubleComplex get_cu_double_complex(double complex a):
-    cdef cuDoubleComplex ret
-    ret.x = a.real
-    ret.y = a.imag
-    return ret
 
 
 ###############################################################################
@@ -295,11 +359,30 @@ cdef dict STATUS = {
 }
 
 
+cdef dict HIP_STATUS = {
+    0: 'HIPBLAS_STATUS_SUCCESS',
+    1: 'HIPBLAS_STATUS_NOT_INITIALIZED',
+    2: 'HIPBLAS_STATUS_ALLOC_FAILED',
+    3: 'HIPBLAS_STATUS_INVALID_VALUE',
+    4: 'HIPBLAS_STATUS_MAPPING_ERROR',
+    5: 'HIPBLAS_STATUS_EXECUTION_FAILED',
+    6: 'HIPBLAS_STATUS_INTERNAL_ERROR',
+    7: 'HIPBLAS_STATUS_NOT_SUPPORTED',
+    8: 'HIPBLAS_STATUS_ARCH_MISMATCH',
+    9: 'HIPBLAS_STATUS_HANDLE_IS_NULLPTR',
+}
+
+
 class CUBLASError(RuntimeError):
 
     def __init__(self, status):
         self.status = status
-        super(CUBLASError, self).__init__(STATUS[status])
+        cdef str err
+        if runtime._is_hip_environment:
+            err = HIP_STATUS[status]
+        else:
+            err = STATUS[status]
+        super(CUBLASError, self).__init__(err)
 
     def __reduce__(self):
         return (type(self), (self.status,))
@@ -370,10 +453,8 @@ cpdef size_t getStream(intptr_t handle) except? 0:
 
 
 cdef _setStream(intptr_t handle):
-    """Set current stream when enable_current_stream is True
-    """
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
+    """Set current stream"""
+    setStream(handle, stream_module.get_current_stream_ptr())
 
 ###############################################################################
 # Math Mode
@@ -397,51 +478,126 @@ cpdef int getMathMode(intptr_t handle) except? -1:
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef int result
+cpdef isamax(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasIsamax(
-            <Handle>handle, n, <float*>x, incx, &result)
+            <Handle>handle, n, <float*>x, incx, <int*>result)
     check_status(status)
-    return result
+
+cpdef idamax(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasIdamax(
+            <Handle>handle, n, <double*>x, incx, <int*>result)
+    check_status(status)
+
+cpdef icamax(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasIcamax(
+            <Handle>handle, n, <cuComplex*>x, incx, <int*>result)
+    check_status(status)
+
+cpdef izamax(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasIzamax(
+            <Handle>handle, n, <cuDoubleComplex*>x, incx, <int*>result)
+    check_status(status)
 
 
-cpdef int isamin(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef int result
+cpdef isamin(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasIsamin(
-            <Handle>handle, n, <float*>x, incx, &result)
+            <Handle>handle, n, <float*>x, incx, <int*>result)
     check_status(status)
-    return result
+
+cpdef idamin(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasIdamin(
+            <Handle>handle, n, <double*>x, incx, <int*>result)
+    check_status(status)
+
+cpdef icamin(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasIcamin(
+            <Handle>handle, n, <cuComplex*>x, incx, <int*>result)
+    check_status(status)
+
+cpdef izamin(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasIzamin(
+            <Handle>handle, n, <cuDoubleComplex*>x, incx, <int*>result)
+    check_status(status)
 
 
-cpdef float sasum(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef float result
+cpdef sasum(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
         status = cublasSasum(
-            <Handle>handle, n, <float*>x, incx, &result)
+            <Handle>handle, n, <float*>x, incx, <float*>result)
     check_status(status)
-    return result
+
+cpdef dasum(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasDasum(
+            <Handle>handle, n, <double*>x, incx, <double*>result)
+    check_status(status)
+
+cpdef scasum(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasScasum(
+            <Handle>handle, n, <cuComplex*>x, incx, <float*>result)
+    check_status(status)
+
+cpdef dzasum(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasDzasum(
+            <Handle>handle, n, <cuDoubleComplex*>x, incx, <double*>result)
+    check_status(status)
 
 
-cpdef saxpy(intptr_t handle, int n, float alpha, size_t x, int incx, size_t y,
+cpdef saxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
             int incy):
     _setStream(handle)
     with nogil:
         status = cublasSaxpy(
-            <Handle>handle, n, &alpha, <float*>x, incx, <float*>y, incy)
+            <Handle>handle, n, <float*>alpha, <float*>x, incx, <float*>y, incy)
     check_status(status)
 
-
-cpdef daxpy(intptr_t handle, int n, double alpha, size_t x, int incx, size_t y,
+cpdef daxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
             int incy):
     _setStream(handle)
     with nogil:
         status = cublasDaxpy(
-            <Handle>handle, n, &alpha, <double*>x, incx, <double*>y, incy)
+            <Handle>handle, n, <double*>alpha, <double*>x, incx, <double*>y,
+            incy)
+    check_status(status)
+
+cpdef caxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
+            int incy):
+    _setStream(handle)
+    with nogil:
+        status = cublasCaxpy(
+            <Handle>handle, n, <cuComplex*>alpha, <cuComplex*>x, incx,
+            <cuComplex*>y, incy)
+    check_status(status)
+
+cpdef zaxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
+            int incy):
+    _setStream(handle)
+    with nogil:
+        status = cublasZaxpy(
+            <Handle>handle, n, <cuDoubleComplex*>alpha, <cuDoubleComplex*>x,
+            incx, <cuDoubleComplex*>y, incy)
     check_status(status)
 
 
@@ -454,7 +610,6 @@ cpdef sdot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <float*>result)
     check_status(status)
 
-
 cpdef ddot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result):
     _setStream(handle)
@@ -463,7 +618,6 @@ cpdef ddot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <Handle>handle, n, <double*>x, incx, <double*>y, incy,
             <double*>result)
     check_status(status)
-
 
 cpdef cdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
@@ -474,7 +628,6 @@ cpdef cdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <cuComplex*>result)
     check_status(status)
 
-
 cpdef cdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     _setStream(handle)
@@ -483,7 +636,6 @@ cpdef cdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <Handle>handle, n, <cuComplex*>x, incx, <cuComplex*>y, incy,
             <cuComplex*>result)
     check_status(status)
-
 
 cpdef zdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
@@ -494,7 +646,6 @@ cpdef zdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             <cuDoubleComplex*>y, incy, <cuDoubleComplex*>result)
     check_status(status)
 
-
 cpdef zdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result):
     with nogil:
@@ -504,19 +655,75 @@ cpdef zdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
     check_status(status)
 
 
-cpdef float snrm2(intptr_t handle, int n, size_t x, int incx) except? 0:
-    cdef float result
+cpdef snrm2(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
-        status = cublasSnrm2(<Handle>handle, n, <float*>x, incx, &result)
+        status = cublasSnrm2(<Handle>handle, n, <float*>x, incx,
+                             <float*>result)
     check_status(status)
-    return result
 
-
-cpdef sscal(intptr_t handle, int n, float alpha, size_t x, int incx):
+cpdef dnrm2(intptr_t handle, int n, size_t x, int incx, size_t result):
     _setStream(handle)
     with nogil:
-        status = cublasSscal(<Handle>handle, n, &alpha, <float*>x, incx)
+        status = cublasDnrm2(<Handle>handle, n, <double*>x, incx,
+                             <double*>result)
+    check_status(status)
+
+cpdef scnrm2(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasScnrm2(<Handle>handle, n, <cuComplex*>x, incx,
+                              <float*>result)
+    check_status(status)
+
+cpdef dznrm2(intptr_t handle, int n, size_t x, int incx, size_t result):
+    _setStream(handle)
+    with nogil:
+        status = cublasDznrm2(<Handle>handle, n, <cuDoubleComplex*>x, incx,
+                              <double*>result)
+    check_status(status)
+
+
+cpdef sscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasSscal(<Handle>handle, n, <float*>alpha,
+                             <float*>x, incx)
+    check_status(status)
+
+cpdef dscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasDscal(<Handle>handle, n, <double*>alpha,
+                             <double*>x, incx)
+    check_status(status)
+
+cpdef cscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasCscal(<Handle>handle, n, <cuComplex*>alpha,
+                             <cuComplex*>x, incx)
+    check_status(status)
+
+cpdef csscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasCsscal(<Handle>handle, n, <float*>alpha,
+                              <cuComplex*>x, incx)
+    check_status(status)
+
+cpdef zscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasZscal(<Handle>handle, n, <cuDoubleComplex*>alpha,
+                             <cuDoubleComplex*>x, incx)
+    check_status(status)
+
+cpdef zdscal(intptr_t handle, int n, size_t alpha, size_t x, int incx):
+    _setStream(handle)
+    with nogil:
+        status = cublasZdscal(<Handle>handle, n, <double*>alpha,
+                              <cuDoubleComplex*>x, incx)
     check_status(status)
 
 
@@ -524,113 +731,105 @@ cpdef sscal(intptr_t handle, int n, float alpha, size_t x, int incx):
 # BLAS Level 2
 ###############################################################################
 
-cpdef sgemv(intptr_t handle, int trans, int m, int n, float alpha, size_t A,
-            int lda, size_t x, int incx, float beta, size_t y, int incy):
+cpdef sgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy):
     _setStream(handle)
     with nogil:
         status = cublasSgemv(
-            <Handle>handle, <Operation>trans, m, n, &alpha,
-            <float*>A, lda, <float*>x, incx, &beta, <float*>y, incy)
+            <Handle>handle, <Operation>trans, m, n, <float*>alpha,
+            <float*>A, lda, <float*>x, incx, <float*>beta, <float*>y, incy)
     check_status(status)
 
 
-cpdef dgemv(intptr_t handle, int trans, int m, int n, double alpha, size_t A,
-            int lda, size_t x, int incx, double beta, size_t y, int incy):
+cpdef dgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy):
     _setStream(handle)
     with nogil:
         status = cublasDgemv(
-            <Handle>handle, <Operation>trans, m, n, &alpha,
-            <double*>A, lda, <double*>x, incx, &beta, <double*>y, incy)
+            <Handle>handle, <Operation>trans, m, n, <double*>alpha,
+            <double*>A, lda, <double*>x, incx, <double*>beta, <double*>y, incy)
     check_status(status)
 
 
-cpdef cgemv(intptr_t handle, int trans, int m, int n, float complex alpha,
-            size_t A, int lda, size_t x, int incx, float complex beta,
-            size_t y, int incy):
-    cdef cuComplex a = get_cu_complex(alpha)
-    cdef cuComplex b = get_cu_complex(beta)
+cpdef cgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy):
     _setStream(handle)
     with nogil:
         status = cublasCgemv(
-            <Handle>handle, <Operation>trans, m, n, &a, <cuComplex*>A, lda,
-            <cuComplex*>x, incx, &b, <cuComplex*>y, incy)
+            <Handle>handle, <Operation>trans, m, n, <cuComplex*>alpha,
+            <cuComplex*>A, lda, <cuComplex*>x, incx, <cuComplex*>beta,
+            <cuComplex*>y, incy)
     check_status(status)
 
 
-cpdef zgemv(intptr_t handle, int trans, int m, int n, double complex alpha,
-            size_t A, int lda, size_t x, int incx, double complex beta,
-            size_t y, int incy):
-    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
-    cdef cuDoubleComplex b = get_cu_double_complex(beta)
+cpdef zgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy):
     _setStream(handle)
     with nogil:
         status = cublasZgemv(
-            <Handle>handle, <Operation>trans, m, n, &a, <cuDoubleComplex*>A,
-            lda, <cuDoubleComplex*>x, incx, &b, <cuDoubleComplex*>y, incy)
+            <Handle>handle, <Operation>trans, m, n, <cuDoubleComplex*>alpha,
+            <cuDoubleComplex*>A, lda, <cuDoubleComplex*>x, incx,
+            <cuDoubleComplex*>beta, <cuDoubleComplex*>y, incy)
     check_status(status)
 
 
-cpdef sger(intptr_t handle, int m, int n, float alpha, size_t x, int incx,
+cpdef sger(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasSger(
-            <Handle>handle, m, n, &alpha, <float*>x, incx, <float*>y, incy,
-            <float*>A, lda)
+            <Handle>handle, m, n, <float*>alpha, <float*>x, incx, <float*>y,
+            incy, <float*>A, lda)
     check_status(status)
 
 
-cpdef dger(intptr_t handle, int m, int n, double alpha, size_t x, int incx,
+cpdef dger(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasDger(
-            <Handle>handle, m, n, &alpha, <double*>x, incx, <double*>y, incy,
-            <double*>A, lda)
+            <Handle>handle, m, n, <double*>alpha, <double*>x, incx, <double*>y,
+            incy, <double*>A, lda)
     check_status(status)
 
 
-cpdef cgeru(intptr_t handle, int m, int n, float complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda):
-    cdef cuComplex a = get_cu_complex(alpha)
+cpdef cgeru(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasCgeru(
-            <Handle>handle, m, n, &a, <cuComplex*>x, incx,
+            <Handle>handle, m, n, <cuComplex*>alpha, <cuComplex*>x, incx,
             <cuComplex*>y, incy, <cuComplex*>A, lda)
     check_status(status)
 
 
-cpdef cgerc(intptr_t handle, int m, int n, float complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda):
-    cdef cuComplex a = get_cu_complex(alpha)
+cpdef cgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasCgerc(
-            <Handle>handle, m, n, &a, <cuComplex*>x, incx,
+            <Handle>handle, m, n, <cuComplex*>alpha, <cuComplex*>x, incx,
             <cuComplex*>y, incy, <cuComplex*>A, lda)
     check_status(status)
 
 
-cpdef zgeru(intptr_t handle, int m, int n, double complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda):
-    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
+cpdef zgeru(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasZgeru(
-            <Handle>handle, m, n, &a,
+            <Handle>handle, m, n, <cuDoubleComplex*>alpha,
             <cuDoubleComplex*>x, incx, <cuDoubleComplex*>y, incy,
             <cuDoubleComplex*>A, lda)
     check_status(status)
 
 
-cpdef zgerc(intptr_t handle, int m, int n, double complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda):
-    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
+cpdef zgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda):
     _setStream(handle)
     with nogil:
         status = cublasZgerc(
-            <Handle>handle, m, n, &a,
+            <Handle>handle, m, n, <cuDoubleComplex*>alpha,
             <cuDoubleComplex*>x, incx, <cuDoubleComplex*>y, incy,
             <cuDoubleComplex*>A, lda)
     check_status(status)
@@ -641,128 +840,121 @@ cpdef zgerc(intptr_t handle, int m, int n, double complex alpha, size_t x,
 ###############################################################################
 
 cpdef sgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, float alpha, size_t A, int lda,
-            size_t B, int ldb, float beta, size_t C, int ldc):
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc):
     _setStream(handle)
     with nogil:
         status = cublasSgemm(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha, <float*>A, lda, <float*>B, ldb, &beta, <float*>C, ldc)
+            <float*>alpha, <float*>A, lda, <float*>B, ldb, <float*>beta,
+            <float*>C, ldc)
     check_status(status)
 
 
 cpdef dgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, double alpha, size_t A, int lda,
-            size_t B, int ldb, double beta, size_t C, int ldc):
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc):
     _setStream(handle)
     with nogil:
         status = cublasDgemm(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha, <double*>A, lda, <double*>B, ldb, &beta, <double*>C, ldc)
+            <double*>alpha, <double*>A, lda, <double*>B, ldb, <double*>beta,
+            <double*>C, ldc)
     check_status(status)
 
 
 cpdef cgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, float complex alpha, size_t A, int lda,
-            size_t B, int ldb, float complex beta, size_t C, int ldc):
-    cdef cuComplex a = get_cu_complex(alpha)
-    cdef cuComplex b = get_cu_complex(beta)
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc):
     _setStream(handle)
     with nogil:
         status = cublasCgemm(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &a, <cuComplex*>A, lda, <cuComplex*>B, ldb,
-            &b, <cuComplex*>C, ldc)
+            <cuComplex*>alpha, <cuComplex*>A, lda, <cuComplex*>B, ldb,
+            <cuComplex*>beta, <cuComplex*>C, ldc)
     check_status(status)
 
 
 cpdef zgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, double complex alpha, size_t A, int lda,
-            size_t B, int ldb, double complex beta, size_t C, int ldc):
-    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
-    cdef cuDoubleComplex b = get_cu_double_complex(beta)
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc):
     _setStream(handle)
     with nogil:
         status = cublasZgemm(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &a, <cuDoubleComplex*>A, lda,
-            <cuDoubleComplex*>B, ldb, &b,
+            <cuDoubleComplex*>alpha, <cuDoubleComplex*>A, lda,
+            <cuDoubleComplex*>B, ldb, <cuDoubleComplex*>beta,
             <cuDoubleComplex*>C, ldc)
     check_status(status)
 
 
 cpdef sgemmBatched(
         intptr_t handle, int transa, int transb, int m, int n, int k,
-        float alpha, size_t Aarray, int lda, size_t Barray, int ldb,
-        float beta, size_t Carray, int ldc, int batchCount):
+        size_t alpha, size_t Aarray, int lda, size_t Barray, int ldb,
+        size_t beta, size_t Carray, int ldc, int batchCount):
     _setStream(handle)
     with nogil:
         status = cublasSgemmBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha, <const float**>Aarray, lda, <const float**>Barray, ldb,
-            &beta, <float**>Carray, ldc, batchCount)
+            <float*>alpha, <const float**>Aarray, lda, <const float**>Barray,
+            ldb, <float*>beta, <float**>Carray, ldc, batchCount)
     check_status(status)
 
 
 cpdef dgemmBatched(
         intptr_t handle, int transa, int transb, int m, int n, int k,
-        double alpha, size_t Aarray, int lda, size_t Barray, int ldb,
-        double beta, size_t Carray, int ldc, int batchCount):
+        size_t alpha, size_t Aarray, int lda, size_t Barray, int ldb,
+        size_t beta, size_t Carray, int ldc, int batchCount):
     _setStream(handle)
     with nogil:
         status = cublasDgemmBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha, <const double**>Aarray, lda, <const double**>Barray, ldb,
-            &beta, <double**>Carray, ldc, batchCount)
+            <double*>alpha, <const double**>Aarray, lda,
+            <const double**>Barray, ldb, <double*>beta,
+            <double**>Carray, ldc, batchCount)
     check_status(status)
 
 
 cpdef cgemmBatched(
         intptr_t handle, int transa, int transb, int m, int n, int k,
-        float complex alpha, size_t Aarray, int lda, size_t Barray, int ldb,
-        float complex beta, size_t Carray, int ldc, int batchCount):
-    cdef cuComplex a = get_cu_complex(alpha)
-    cdef cuComplex b = get_cu_complex(beta)
+        size_t alpha, size_t Aarray, int lda, size_t Barray, int ldb,
+        size_t beta, size_t Carray, int ldc, int batchCount):
     _setStream(handle)
     with nogil:
         status = cublasCgemmBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &a, <const cuComplex**>Aarray, lda, <const cuComplex**>Barray, ldb,
-            &b, <cuComplex**>Carray, ldc, batchCount)
+            <cuComplex*>alpha, <const cuComplex**>Aarray, lda,
+            <const cuComplex**>Barray, ldb, <cuComplex*>beta,
+            <cuComplex**>Carray, ldc, batchCount)
     check_status(status)
 
 
 cpdef zgemmBatched(
         intptr_t handle, int transa, int transb, int m, int n, int k,
-        double complex alpha, size_t Aarray, int lda, size_t Barray, int ldb,
-        double complex beta, size_t Carray, int ldc, int batchCount):
-    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
-    cdef cuDoubleComplex b = get_cu_double_complex(beta)
+        size_t alpha, size_t Aarray, int lda, size_t Barray, int ldb,
+        size_t beta, size_t Carray, int ldc, int batchCount):
     _setStream(handle)
     with nogil:
         status = cublasZgemmBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &a, <const cuDoubleComplex**>Aarray, lda,
-            <const cuDoubleComplex**>Barray, ldb, &b,
+            <cuDoubleComplex*>alpha, <const cuDoubleComplex**>Aarray, lda,
+            <const cuDoubleComplex**>Barray, ldb, <cuDoubleComplex*>beta,
             <cuDoubleComplex**>Carray, ldc, batchCount)
 
 
 cpdef sgemmStridedBatched(
         intptr_t handle, int transa, int transb, int m, int n, int k,
-        float alpha,
-        size_t A, int lda, long long strideA,
-        size_t B, int ldb, long long strideB,
-        float beta,
-        size_t C, int ldc, long long strideC,
+        size_t alpha, size_t A, int lda, long long strideA, size_t B, int ldb,
+        long long strideB, size_t beta, size_t C, int ldc, long long strideC,
         int batchCount):
     _setStream(handle)
     with nogil:
         status = cublasSgemmStridedBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha,
+            <const float*>alpha,
             <const float*>A, lda, <long long>strideA,
             <const float*>B, ldb, <long long>strideB,
-            &beta,
+            <const float*>beta,
             <float*>C, ldc, <long long>strideC,
             batchCount)
     check_status(status)
@@ -770,20 +962,17 @@ cpdef sgemmStridedBatched(
 
 cpdef dgemmStridedBatched(
         intptr_t handle, int transa, int transb, int m, int n, int k,
-        double alpha,
-        size_t A, int lda, long long strideA,
-        size_t B, int ldb, long long strideB,
-        double beta,
-        size_t C, int ldc, long long strideC,
+        size_t alpha, size_t A, int lda, long long strideA, size_t B, int ldb,
+        long long strideB, size_t beta, size_t C, int ldc, long long strideC,
         int batchCount):
     _setStream(handle)
     with nogil:
         status = cublasDgemmStridedBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha,
+            <const double*>alpha,
             <const double*>A, lda, <long long>strideA,
             <const double*>B, ldb, <long long>strideB,
-            &beta,
+            <const double*>beta,
             <double*>C, ldc, <long long>strideC,
             batchCount)
     check_status(status)
@@ -791,20 +980,17 @@ cpdef dgemmStridedBatched(
 
 cpdef cgemmStridedBatched(
         intptr_t handle, int transa, int transb, int m, int n, int k,
-        float complex alpha,
-        size_t A, int lda, long long strideA,
-        size_t B, int ldb, long long strideB,
-        float complex beta,
-        size_t C, int ldc, long long strideC,
+        size_t alpha, size_t A, int lda, long long strideA, size_t B, int ldb,
+        long long strideB, size_t beta, size_t C, int ldc, long long strideC,
         int batchCount):
     _setStream(handle)
     with nogil:
         status = cublasCgemmStridedBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            <const cuComplex*>&alpha,
+            <const cuComplex*>alpha,
             <const cuComplex*>A, lda, <long long>strideA,
             <const cuComplex*>B, ldb, <long long>strideB,
-            <const cuComplex*>&beta,
+            <const cuComplex*>beta,
             <cuComplex*>C, ldc, <long long>strideC,
             batchCount)
     check_status(status)
@@ -812,20 +998,17 @@ cpdef cgemmStridedBatched(
 
 cpdef zgemmStridedBatched(
         intptr_t handle, int transa, int transb, int m, int n, int k,
-        double complex alpha,
-        size_t A, int lda, long long strideA,
-        size_t B, int ldb, long long strideB,
-        double complex beta,
-        size_t C, int ldc, long long strideC,
+        size_t alpha, size_t A, int lda, long long strideA, size_t B, int ldb,
+        long long strideB, size_t beta, size_t C, int ldc, long long strideC,
         int batchCount):
     _setStream(handle)
     with nogil:
         status = cublasZgemmStridedBatched(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            <const cuDoubleComplex*>&alpha,
+            <const cuDoubleComplex*>alpha,
             <const cuDoubleComplex*>A, lda, <long long>strideA,
             <const cuDoubleComplex*>B, ldb, <long long>strideB,
-            <const cuDoubleComplex*>&beta,
+            <const cuDoubleComplex*>beta,
             <cuDoubleComplex*>C, ldc, <long long>strideC,
             batchCount)
     check_status(status)
@@ -833,54 +1016,52 @@ cpdef zgemmStridedBatched(
 
 cpdef strsm(
         intptr_t handle, int side, int uplo, int trans, int diag,
-        int m, int n, float alpha, size_t Aarray, int lda,
+        int m, int n, size_t alpha, size_t Aarray, int lda,
         size_t Barray, int ldb):
     _setStream(handle)
     with nogil:
         status = cublasStrsm(
             <Handle>handle, <SideMode>side, <FillMode>uplo, <Operation>trans,
-            <DiagType>diag, m, n, &alpha, <const float*>Aarray, lda,
-            <float*>Barray, ldb)
+            <DiagType>diag, m, n, <const float*>alpha, <const float*>Aarray,
+            lda, <float*>Barray, ldb)
     check_status(status)
 
 
 cpdef dtrsm(
         intptr_t handle, int side, int uplo, int trans, int diag,
-        int m, int n, double alpha, size_t Aarray, int lda,
+        int m, int n, size_t alpha, size_t Aarray, int lda,
         size_t Barray, int ldb):
     _setStream(handle)
     with nogil:
         status = cublasDtrsm(
             <Handle>handle, <SideMode>side, <FillMode>uplo, <Operation>trans,
-            <DiagType>diag, m, n, &alpha, <const double*>Aarray, lda,
-            <double*>Barray, ldb)
+            <DiagType>diag, m, n, <const double*>alpha, <const double*>Aarray,
+            lda, <double*>Barray, ldb)
     check_status(status)
 
 cpdef ctrsm(
         intptr_t handle, int side, int uplo, int trans, int diag,
-        int m, int n, float complex alpha, size_t Aarray, int lda,
+        int m, int n, size_t alpha, size_t Aarray, int lda,
         size_t Barray, int ldb):
     _setStream(handle)
-    cdef cuComplex a = get_cu_complex(alpha)
     with nogil:
         status = cublasCtrsm(
             <Handle>handle, <SideMode>side, <FillMode>uplo, <Operation>trans,
-            <DiagType>diag, m, n, &a, <const cuComplex*>Aarray, lda,
-            <cuComplex*>Barray, ldb)
+            <DiagType>diag, m, n, <const cuComplex*>alpha,
+            <const cuComplex*>Aarray, lda, <cuComplex*>Barray, ldb)
     check_status(status)
 
 
 cpdef ztrsm(
         intptr_t handle, int side, int uplo, int trans, int diag,
-        int m, int n, double complex alpha, size_t Aarray, int lda,
+        int m, int n, size_t alpha, size_t Aarray, int lda,
         size_t Barray, int ldb):
     _setStream(handle)
-    cdef cuDoubleComplex a = get_cu_double_complex(alpha)
     with nogil:
         status = cublasZtrsm(
             <Handle>handle, <SideMode>side, <FillMode>uplo, <Operation>trans,
-            <DiagType>diag, m, n, &a, <const cuDoubleComplex*>Aarray, lda,
-            <cuDoubleComplex*>Barray, ldb)
+            <DiagType>diag, m, n, <const cuDoubleComplex*>alpha,
+            <const cuDoubleComplex*>Aarray, lda, <cuDoubleComplex*>Barray, ldb)
     check_status(status)
 
 ###############################################################################
@@ -888,26 +1069,49 @@ cpdef ztrsm(
 ###############################################################################
 
 cpdef sgeam(intptr_t handle, int transa, int transb, int m, int n,
-            float alpha, size_t A, int lda, float beta, size_t B, int ldb,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
             size_t C, int ldc):
     _setStream(handle)
     with nogil:
         status = cublasSgeam(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n,
-            &alpha, <const float*>A, lda, &beta, <const float*>B, ldb,
-            <float*>C, ldc)
+            <const float*>alpha, <const float*>A, lda, <const float*>beta,
+            <const float*>B, ldb, <float*>C, ldc)
     check_status(status)
 
-
 cpdef dgeam(intptr_t handle, int transa, int transb, int m, int n,
-            double alpha, size_t A, int lda, double beta, size_t B, int ldb,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
             size_t C, int ldc):
     _setStream(handle)
     with nogil:
         status = cublasDgeam(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n,
-            &alpha, <const double*>A, lda, &beta, <const double*>B, ldb,
-            <double*>C, ldc)
+            <const double*>alpha, <const double*>A, lda, <const double*>beta,
+            <const double*>B, ldb, <double*>C, ldc)
+    check_status(status)
+
+cpdef cgeam(intptr_t handle, int transa, int transb, int m, int n,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
+            size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasCgeam(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n,
+            <const cuComplex*>alpha, <const cuComplex*>A, lda,
+            <const cuComplex*>beta, <const cuComplex*>B, ldb,
+            <cuComplex*>C, ldc)
+    check_status(status)
+
+cpdef zgeam(intptr_t handle, int transa, int transb, int m, int n,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
+            size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasZgeam(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n,
+            <const cuDoubleComplex*>alpha, <const cuDoubleComplex*>A, lda,
+            <const cuDoubleComplex*>beta, <const cuDoubleComplex*>B, ldb,
+            <cuDoubleComplex*>C, ldc)
     check_status(status)
 
 
@@ -916,23 +1120,50 @@ cpdef sdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
     _setStream(handle)
     with nogil:
         status = cublasSdgmm(
-            <Handle>handle, <SideMode>mode, m, n, <float*>A, lda, <float*>x,
-            incx, <float*>C, ldc)
+            <Handle>handle, <SideMode>mode, m, n, <const float*>A, lda,
+            <const float*>x, incx, <float*>C, ldc)
+    check_status(status)
+
+cpdef ddgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasDdgmm(
+            <Handle>handle, <SideMode>mode, m, n, <const double*>A, lda,
+            <const double*>x, incx, <double*>C, ldc)
+    check_status(status)
+
+cpdef cdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasCdgmm(
+            <Handle>handle, <SideMode>mode, m, n, <const cuComplex*>A, lda,
+            <const cuComplex*>x, incx, <cuComplex*>C, ldc)
+    check_status(status)
+
+cpdef zdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc):
+    _setStream(handle)
+    with nogil:
+        status = cublasZdgmm(
+            <Handle>handle, <SideMode>mode, m, n, <const cuDoubleComplex*>A,
+            lda, <const cuDoubleComplex*>x, incx, <cuDoubleComplex*>C, ldc)
     check_status(status)
 
 
 cpdef sgemmEx(
         intptr_t handle, int transa, int transb, int m, int n, int k,
-        float alpha, size_t A, int Atype, int lda, size_t B,
-        int Btype, int ldb, float beta, size_t C, int Ctype,
+        size_t alpha, size_t A, int Atype, int lda, size_t B,
+        int Btype, int ldb, size_t beta, size_t C, int Ctype,
         int ldc):
     _setStream(handle)
     with nogil:
         status = cublasSgemmEx(
             <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            &alpha, <const void*>A, <runtime.DataType>Atype, lda,
-            <const void*>B, <runtime.DataType>Btype, ldb, &beta, <void*>C,
-            <runtime.DataType>Ctype, ldc)
+            <const float*>alpha, <const void*>A, <runtime.DataType>Atype, lda,
+            <const void*>B, <runtime.DataType>Btype, ldb, <const float*>beta,
+            <void*>C, <runtime.DataType>Ctype, ldc)
     check_status(status)
 
 
@@ -973,6 +1204,51 @@ cpdef zgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
         status = cublasZgetrfBatched(
             <Handle>handle, n, <cuDoubleComplex**>Aarray, lda,
             <int*>PivotArray, <int*>infoArray, batchSize)
+    check_status(status)
+
+
+cpdef int sgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize):
+    _setStream(handle)
+    with nogil:
+        status = cublasSgetrsBatched(
+            <Handle>handle, <Operation>trans, n, nrhs,
+            <const float**>Aarray, lda, <const int*>devIpiv,
+            <float**>Barray, ldb, <int*>info, batchSize)
+    check_status(status)
+
+cpdef int dgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize):
+    _setStream(handle)
+    with nogil:
+        status = cublasDgetrsBatched(
+            <Handle>handle, <Operation>trans, n, nrhs,
+            <const double**>Aarray, lda, <const int*>devIpiv,
+            <double**>Barray, ldb, <int*>info, batchSize)
+    check_status(status)
+
+cpdef int cgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize):
+    _setStream(handle)
+    with nogil:
+        status = cublasCgetrsBatched(
+            <Handle>handle, <Operation>trans, n, nrhs,
+            <const cuComplex**>Aarray, lda, <const int*>devIpiv,
+            <cuComplex**>Barray, ldb, <int*>info, batchSize)
+    check_status(status)
+
+cpdef int zgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize):
+    _setStream(handle)
+    with nogil:
+        status = cublasZgetrsBatched(
+            <Handle>handle, <Operation>trans, n, nrhs,
+            <const cuDoubleComplex**>Aarray, lda, <const int*>devIpiv,
+            <cuDoubleComplex**>Barray, ldb, <int*>info, batchSize)
     check_status(status)
 
 
@@ -1029,14 +1305,24 @@ cpdef gemmEx(
         int ldc, int computeType, int algo):
     _setStream(handle)
     with nogil:
-        status = cublasGemmEx(
-            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-            <const void*>alpha,
-            <const void*>A, <runtime.DataType>Atype, lda,
-            <const void*>B, <runtime.DataType>Btype, ldb,
-            <const void*>beta,
-            <void*>C, <runtime.DataType>Ctype, ldc,
-            <runtime.DataType>computeType, <GemmAlgo>algo)
+        if computeType >= CUBLAS_COMPUTE_16F:
+            status = cublasGemmEx_v11(
+                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+                <const void*>alpha,
+                <const void*>A, <runtime.DataType>Atype, lda,
+                <const void*>B, <runtime.DataType>Btype, ldb,
+                <const void*>beta,
+                <void*>C, <runtime.DataType>Ctype, ldc,
+                <ComputeType>computeType, <GemmAlgo>algo)
+        else:
+            status = cublasGemmEx(
+                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+                <const void*>alpha,
+                <const void*>A, <runtime.DataType>Atype, lda,
+                <const void*>B, <runtime.DataType>Btype, ldb,
+                <const void*>beta,
+                <void*>C, <runtime.DataType>Ctype, ldc,
+                <runtime.DataType>computeType, <GemmAlgo>algo)
     check_status(status)
 
 

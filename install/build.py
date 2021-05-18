@@ -10,17 +10,19 @@ import tempfile
 from install import utils
 
 
-PLATFORM_DARWIN = sys.platform.startswith('darwin')
 PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
-minimum_cuda_version = 9000
-minimum_cudnn_version = 7000
-maximum_cudnn_version = 8099
+minimum_cuda_version = 9020
+minimum_cudnn_version = 7600
+
+minimum_hip_version = 305  # for ROCm 3.5.0+
 
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
+
+use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
 
 # Using tempfile.TemporaryDirectory would cause an error during cleanup
@@ -146,15 +148,14 @@ def get_compiler_setting(use_hip):
 
     if rocm_path:
         include_dirs.append(os.path.join(rocm_path, 'include'))
-        include_dirs.append(os.path.join(rocm_path, 'rocrand', 'include'))
+        include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
+        include_dirs.append(os.path.join(rocm_path, 'include', 'rocrand'))
+        include_dirs.append(os.path.join(rocm_path, 'include', 'hiprand'))
+        include_dirs.append(os.path.join(rocm_path, 'include', 'roctracer'))
         library_dirs.append(os.path.join(rocm_path, 'lib'))
-        library_dirs.append(os.path.join(rocm_path, 'rocrand', 'lib'))
 
     if use_hip:
         extra_compile_args.append('-std=c++11')
-
-    if PLATFORM_DARWIN:
-        library_dirs.append('/usr/local/cuda/lib')
 
     if PLATFORM_WIN32:
         nvtoolsext_path = os.environ.get('NVTOOLSEXT_PATH', '')
@@ -166,20 +167,21 @@ def get_compiler_setting(use_hip):
 
     # For CUB, we need the complex and CUB headers. The search precedence for
     # the latter is:
-    #   1. built-in CUB (for CUDA 11+)
+    #   1. built-in CUB (for CUDA 11+ and ROCm)
     #   2. CuPy's CUB bundle
     # Note that starting CuPy v8 we no longer use CUB_PATH
 
     # for <cupy/complex.cuh>
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                               '../cupy/core/include')
-    # TODO(leofang): remove this detection in CuPy v9
-    old_cub_path = os.environ.get('CUB_PATH', '')
-    if old_cub_path:
-        utils.print_warning('CUB_PATH is detected: ' + old_cub_path,
-                            'It is no longer used by CuPy and will be ignored')
+                               '../cupy/_core/include')
+    global _jitify_path
+    _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:
         cuda_cub_path = os.path.join(cuda_path, 'include', 'cub')
+        if not os.path.exists(cuda_cub_path):
+            cuda_cub_path = None
+    elif rocm_path:
+        cuda_cub_path = os.path.join(rocm_path, 'include', 'hipcub')
         if not os.path.exists(cuda_cub_path):
             cuda_cub_path = None
     else:
@@ -187,8 +189,10 @@ def get_compiler_setting(use_hip):
     global _cub_path
     if cuda_cub_path:
         _cub_path = cuda_cub_path
-    else:
+    elif not use_hip:  # CuPy's bundle doesn't work for ROCm
         _cub_path = os.path.join(cupy_header, 'cupy', 'cub')
+    else:
+        raise Exception('Please install hipCUB and retry')
     include_dirs.insert(0, _cub_path)
     include_dirs.insert(1, cupy_header)
 
@@ -223,28 +227,28 @@ def _match_output_lines(output_lines, regexs):
     return None
 
 
-def get_compiler_base_options():
+def get_compiler_base_options(compiler_path):
     """Returns base options for nvcc compiler.
 
     """
     global _compiler_base_options
     if _compiler_base_options is None:
-        _compiler_base_options = _get_compiler_base_options()
+        _compiler_base_options = _get_compiler_base_options(compiler_path)
     return _compiler_base_options
 
 
-def _get_compiler_base_options():
+def _get_compiler_base_options(compiler_path):
     # Try compiling a dummy code.
     # If the compilation fails, try to parse the output of compilation
     # and try to compose base options according to it.
-    nvcc_path = get_nvcc_path()
+    # compiler_path is the path to nvcc (CUDA) or hipcc (ROCm/HIP)
     with _tempdir() as temp_dir:
         test_cu_path = os.path.join(temp_dir, 'test.cu')
         test_out_path = os.path.join(temp_dir, 'test.out')
         with open(test_cu_path, 'w') as f:
             f.write('int main() { return 0; }')
         proc = subprocess.Popen(
-            nvcc_path + ['-o', test_out_path, test_cu_path],
+            compiler_path + ['-o', test_out_path, test_cu_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         stdoutdata, stderrdata = proc.communicate()
@@ -273,12 +277,18 @@ def _get_compiler_base_options():
 
 
 _cuda_version = None
+_hip_version = None
 _thrust_version = None
 _cudnn_version = None
 _nccl_version = None
 _cutensor_version = None
 _cub_path = None
 _cub_version = None
+_jitify_path = None
+_jitify_version = None
+_compute_capabilities = None
+_cusparselt_version = None
+_cugraph_version = None
 
 
 def check_cuda_version(compiler, settings):
@@ -302,14 +312,10 @@ def check_cuda_version(compiler, settings):
     if _cuda_version < minimum_cuda_version:
         utils.print_warning(
             'CUDA version is too old: %d' % _cuda_version,
-            'CUDA 9.0 or newer is required')
+            'CUDA 9.2 or newer is required')
         return False
 
     return True
-
-
-def _format_cuda_version(version):
-    return str(version)
 
 
 def get_cuda_version(formatted=False):
@@ -319,8 +325,81 @@ def get_cuda_version(formatted=False):
         msg = 'check_cuda_version() must be called first.'
         raise RuntimeError(msg)
     if formatted:
-        return _format_cuda_version(_cuda_version)
+        return str(_cuda_version)
     return _cuda_version
+
+
+def check_hip_version(compiler, settings):
+    global _hip_version
+    try:
+        out = build_and_run(compiler, '''
+        #include <hip/hip_version.h>
+        #include <stdio.h>
+        int main() {
+          printf("%d", HIP_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot check HIP version', str(e))
+        return False
+
+    _hip_version = int(out)
+
+    if _hip_version < minimum_hip_version:
+        utils.print_warning(
+            'ROCm/HIP version is too old: %d' % _hip_version,
+            'ROCm 3.5.0 or newer is required')
+        return False
+
+    return True
+
+
+def get_hip_version(formatted=False):
+    """Return ROCm version cached in check_hip_version()."""
+    global _hip_version
+    if _hip_version is None:
+        msg = 'check_hip_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        return str(_hip_version)
+    return _hip_version
+
+
+def check_compute_capabilities(compiler, settings):
+    """Return compute capabilities of the installed devices."""
+    global _compute_capabilities
+    try:
+        src = '''#include <cuda_runtime_api.h>
+        #include <stdio.h>
+        int main() {
+          cudaDeviceProp prop;
+          int device_count;
+          int i;
+          cudaGetDeviceCount(&device_count);
+          for(i=0; i < device_count; i++) {
+              cudaGetDeviceProperties(&prop, i);
+              printf("%d%d ", prop.major,prop.minor);
+          }
+          return 0;
+        }
+        '''
+        out = build_and_run(
+            compiler, src,
+            include_dirs=settings['include_dirs'],
+            libraries=('cudart',),
+            library_dirs=settings['library_dirs'])
+        _compute_capabilities = set([int(o) for o in out.split()])
+    except Exception as e:
+        utils.print_warning('Cannot check cuDNN version\n{0}'.format(e))
+        return False
+
+    return True
+
+
+def get_compute_capabilities(formatted=False):
+    return _compute_capabilities
 
 
 def check_thrust_version(compiler, settings):
@@ -374,13 +453,11 @@ def check_cudnn_version(compiler, settings):
 
     _cudnn_version = int(out)
 
-    if not minimum_cudnn_version <= _cudnn_version <= maximum_cudnn_version:
-        min_major = _format_cuda_version(minimum_cudnn_version)
-        max_major = _format_cuda_version(maximum_cudnn_version)
+    if not minimum_cudnn_version <= _cudnn_version:
+        min_major = str(minimum_cudnn_version)
         utils.print_warning(
-            'Unsupported cuDNN version: {}'.format(
-                _format_cuda_version(_cudnn_version)),
-            'cuDNN v{}= and <=v{} is required'.format(min_major, max_major))
+            'Unsupported cuDNN version: {}'.format(str(_cudnn_version)),
+            'cuDNN >=v{} is required'.format(min_major))
         return False
 
     return True
@@ -393,7 +470,7 @@ def get_cudnn_version(formatted=False):
         msg = 'check_cudnn_version() must be called first.'
         raise RuntimeError(msg)
     if formatted:
-        return _format_cuda_version(_cudnn_version)
+        return str(_cudnn_version)
     return _cudnn_version
 
 
@@ -402,22 +479,29 @@ def check_nccl_version(compiler, settings):
 
     # NCCL 1.x does not provide version information.
     try:
-        out = build_and_run(compiler, '''
-        #include <nccl.h>
-        #include <stdio.h>
-        #ifdef NCCL_MAJOR
-        #ifndef NCCL_VERSION_CODE
-        #  define NCCL_VERSION_CODE \
-                (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
-        #endif
-        #else
-        #  define NCCL_VERSION_CODE 0
-        #endif
-        int main() {
-          printf("%d", NCCL_VERSION_CODE);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
+        out = build_and_run(compiler,
+                            '''
+                            #ifndef CUPY_USE_HIP
+                            #include <nccl.h>
+                            #else
+                            #include <rccl.h>
+                            #endif
+                            #include <stdio.h>
+                            #ifdef NCCL_MAJOR
+                            #ifndef NCCL_VERSION_CODE
+                            #  define NCCL_VERSION_CODE \
+                            (NCCL_MAJOR * 1000 + NCCL_MINOR * 100 + NCCL_PATCH)
+                            #endif
+                            #else
+                            #  define NCCL_VERSION_CODE 0
+                            #endif
+                            int main() {
+                              printf("%d", NCCL_VERSION_CODE);
+                              return 0;
+                            }
+                            ''',
+                            include_dirs=settings['include_dirs'],
+                            define_macros=settings['define_macros'])
 
     except Exception as e:
         utils.print_warning('Cannot include NCCL\n{0}'.format(e))
@@ -437,7 +521,7 @@ def get_nccl_version(formatted=False):
     if formatted:
         if _nccl_version == 0:
             return '1.x'
-        return _format_cuda_version(_nccl_version)
+        return str(_nccl_version)
     return _nccl_version
 
 
@@ -466,17 +550,28 @@ def check_cub_version(compiler, settings):
 
     # This is guaranteed to work for any CUB source because the search
     # precedence follows that of include paths.
-    # CUB < 1.9.9 does not provide version.cuh and would error out
+    # - On CUDA, CUB < 1.9.9 does not provide version.cuh and would error out
+    # - On ROCm, hipCUB has the same version as rocPRIM (as of ROCm 3.5.0)
     try:
-        out = build_and_run(compiler, '''
-        #include <cub/version.cuh>
-        #include <stdio.h>
+        out = build_and_run(compiler,
+                            '''
+                            #ifndef CUPY_USE_HIP
+                            #include <cub/version.cuh>
+                            #else
+                            #include <hipcub/hipcub_version.hpp>
+                            #endif
+                            #include <stdio.h>
 
-        int main() {
-          printf("%d", CUB_VERSION);
-          return 0;
-        }
-        ''', include_dirs=settings['include_dirs'])
+                            int main() {
+                              #ifndef CUPY_USE_HIP
+                              printf("%d", CUB_VERSION);
+                              #else
+                              printf("%d", HIPCUB_VERSION);
+                              #endif
+                              return 0;
+                            }''',
+                            include_dirs=settings['include_dirs'],
+                            define_macros=settings['define_macros'])
     except Exception as e:
         # could be in a git submodule?
         try:
@@ -527,6 +622,44 @@ def get_cub_version(formatted=False):
     return _cub_version
 
 
+def check_jitify_version(compiler, settings):
+    global _jitify_version
+
+    try:
+        cupy_jitify_include = _jitify_path
+        # Unfortunately Jitify does not have any identifiable name (branch,
+        # tag, etc), so we must use the commit here
+        a = subprocess.run(' '.join(['git', 'rev-parse', '--short', 'HEAD']),
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           shell=True, cwd=cupy_jitify_include)
+        if a.returncode == 0:
+            out = a.stdout.decode()[:-1]  # unlike elsewhere, out is a str here
+        else:
+            raise RuntimeError('Cannot determine Jitify version from git')
+    except Exception as e:
+        utils.print_warning('Cannot determine Jitify version\n{}'.format(e))
+        # 0: Jitify is not built (makes no sense), -1: built with unknown ver
+        out = -1
+
+    _jitify_version = out
+    settings['define_macros'].append(('CUPY_JITIFY_VERSION_CODE',
+                                      _jitify_version))
+    return True  # we always build Jitify
+
+
+def get_jitify_version(formatted=False):
+    """Return Jitify version cached in check_jitify_version()."""
+    global _jitify_version
+    if _jitify_version is None:
+        msg = 'check_jitify_version() must be called first.'
+        raise RuntimeError(msg)
+    if formatted:
+        if _jitify_version == -1:
+            return '<unknown>'
+        return _jitify_version
+    raise RuntimeError('Jitify version is a commit string')
+
+
 def check_cutensor_version(compiler, settings):
     global _cutensor_version
     try:
@@ -569,6 +702,82 @@ def get_cutensor_version(formatted=False):
         msg = 'check_cutensor_version() must be called first.'
         raise RuntimeError(msg)
     return _cutensor_version
+
+
+def check_cusparselt_version(compiler, settings):
+    global _cusparselt_version
+    try:
+        out = build_and_run(compiler, '''
+        #include <cusparseLt.h>
+        #include <stdio.h>
+        #ifndef CUSPARSELT_VERSION
+        #define CUSPARSELT_VERSION 0
+        #endif
+        int main(int argc, char* argv[]) {
+          printf("%d", CUSPARSELT_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot check cuSPARSELt version\n{0}'.format(e))
+        return False
+
+    _cusparselt_version = int(out)
+    return True
+
+
+def get_cusparselt_version(formatted=False):
+    """Return cuSPARSELt version cached in check_cusparselt_version()."""
+    global _cusparselt_version
+    if _cusparselt_version is None:
+        msg = 'check_cusparselt_version() must be called first.'
+        raise RuntimeError(msg)
+    return _cusparselt_version
+
+
+def check_cugraph_version(compiler, settings):
+    global _cugraph_version
+    try:
+        build_and_run(compiler, '''
+        #include <stdio.h>
+        #include <cugraph/raft/error.hpp>
+        int main(int argc, char* argv[]) {
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+    except Exception as e:
+        utils.print_warning('Cannot find cuGraph header files\n{0}'.format(e))
+        return False
+
+    try:
+        out = build_and_run(compiler, '''
+        #include <stdio.h>
+        #include <cugraph/version_config.hpp>
+        int main(int argc, char* argv[]) {
+          printf("%d", CUGRAPH_VERSION_MAJOR * 10000
+                     + CUGRAPH_VERSION_MINOR * 100
+                     + CUGRAPH_VERSION_PATCH);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+    except Exception as e:
+        utils.print_warning('Cannot find cuGRAPH version information\n{0}'.
+                            format(e))
+        _cugraph_version = 0
+        return True
+
+    _cugraph_version = int(out)
+    return True
+
+
+def get_cugraph_version(formatted=False):
+    """Return cuGraph version cached in check_cugraph_version()."""
+    global _cugraph_version
+    if _cugraph_version is None:
+        msg = 'check_cugraph_version() must be called first.'
+        raise RuntimeError(msg)
+    return _cugraph_version
 
 
 def build_shlib(compiler, source, libraries=(),

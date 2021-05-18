@@ -1,47 +1,40 @@
-Statistical Functions
-=====================
+Statistics
+==========
 
-.. https://docs.scipy.org/doc/scipy/reference/stats.html
+.. Hint:: `NumPy API Reference: Statistics <https://numpy.org/doc/stable/reference/routines.statistics.html>`_
+
+.. currentmodule:: cupy
 
 Order statistics
 ----------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.amin
-   cupy.amax
-   cupy.nanmin
-   cupy.nanmax
-   cupy.percentile
-
-
-Means and variances
--------------------
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupy.average
-   cupy.mean
-   cupy.var
-   cupy.std
-   cupy.nanmean
-   cupy.nanvar
-   cupy.nanstd
+   amin
+   amax
+   nanmin
+   nanmax
+   ptp
+   percentile
+   quantile
 
 
-Histograms
-----------
+Averages and variances
+----------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.histogram
-   cupy.bincount
+   median
+   average
+   mean
+   std
+   var
+   nanmedian
+   nanmean
+   nanstd
+   nanvar
 
 
 Correlations
@@ -49,8 +42,20 @@ Correlations
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.corrcoef
-   cupy.cov
-   cupy.correlate
+   corrcoef
+   correlate
+   cov
+
+
+Histograms
+----------
+
+.. autosummary::
+   :toctree: generated/
+
+   histogram
+   histogram2d
+   histogramdd
+   bincount
+   digitize

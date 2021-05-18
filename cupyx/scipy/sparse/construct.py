@@ -145,7 +145,7 @@ def hstack(blocks, format=None, dtype=None):
 
     Examples:
         >>> from cupy import array
-        >>> from cupy.sparse import csr_matrix, hstack
+        >>> from cupyx.scipy.sparse import csr_matrix, hstack
         >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
         >>> B = csr_matrix(array([[5.], [6.]]))
         >>> hstack([A, B]).toarray()
@@ -176,7 +176,7 @@ def vstack(blocks, format=None, dtype=None):
 
     Examples:
         >>> from cupy import array
-        >>> from cupy.sparse import csr_matrix, vstack
+        >>> from cupyx.scipy.sparse import csr_matrix, vstack
         >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
         >>> B = csr_matrix(array([[5., 6.]]))
         >>> vstack([A, B]).toarray()
@@ -208,7 +208,7 @@ def bmat(blocks, format=None, dtype=None):
 
     Examples:
         >>> from cupy import array
-        >>> from cupy.sparse import csr_matrix, bmat
+        >>> from cupyx.scipy.sparse import csr_matrix, bmat
         >>> A = csr_matrix(array([[1., 2.], [3., 4.]]))
         >>> B = csr_matrix(array([[5.], [6.]]))
         >>> C = csr_matrix(array([[7.]]))
@@ -518,7 +518,7 @@ def kron(A, B, format=None):
 
     if A.nnz == 0 or B.nnz == 0:
         # kronecker product is the zero matrix
-        return coo.coo_matrix(out_shape)
+        return coo.coo_matrix(out_shape).asformat(format)
 
     if max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
         dtype = cupy.int64
@@ -543,3 +543,39 @@ def kron(A, B, format=None):
     data = data.ravel()
 
     return coo.coo_matrix((data, (row, col)), shape=out_shape).asformat(format)
+
+
+def kronsum(A, B, format=None):
+    """Kronecker sum of sparse matrices A and B.
+
+    Kronecker sum is the sum of two Kronecker products
+    ``kron(I_n, A) + kron(B, I_m)``, where ``I_n`` and ``I_m`` are identity
+    matrices.
+
+    Args:
+        A (cupyx.scipy.sparse.spmatrix): a sparse matrix.
+        B (cupyx.scipy.sparse.spmatrix): a sparse matrix.
+        format (str): the format of the returned sparse matrix.
+
+    Returns:
+        cupyx.scipy.sparse.spmatrix:
+            Generated sparse matrix with the specified ``format``.
+
+    .. seealso:: :func:`scipy.sparse.kronsum`
+
+    """
+    A = coo.coo_matrix(A)
+    B = coo.coo_matrix(B)
+
+    if A.shape[0] != A.shape[1]:
+        raise ValueError('A is not square matrix')
+
+    if B.shape[0] != B.shape[1]:
+        raise ValueError('B is not square matrix')
+
+    dtype = sputils.upcast(A.dtype, B.dtype)
+
+    L = kron(eye(B.shape[0], dtype=dtype), A, format=format)
+    R = kron(B, eye(A.shape[0], dtype=dtype), format=format)
+
+    return (L + R).asformat(format)

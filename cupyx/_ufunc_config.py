@@ -88,7 +88,9 @@ def seterr(*, divide=None, over=None, under=None,
     if invalid is not None:
         raise NotImplementedError()
     if linalg is not None:
-        if linalg not in ('ignore', 'raise'):
+        if linalg in ('ignore', 'raise'):
+            _config.linalg = linalg
+        else:
             raise NotImplementedError()
     if fallback_mode is not None:
         if fallback_mode in ['print', 'warn', 'ignore', 'raise']:
@@ -103,7 +105,6 @@ def seterr(*, divide=None, over=None, under=None,
     _config.under = under
     _config.over = over
     _config.invalid = invalid
-    _config.linalg = linalg
 
     return old_state
 

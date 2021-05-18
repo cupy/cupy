@@ -1,4 +1,4 @@
-import cupy
+import cupy as _cupy
 
 
 def as_strided(x, shape=None, strides=None):
@@ -35,5 +35,5 @@ def as_strided(x, shape=None, strides=None):
     shape = x.shape if shape is None else tuple(shape)
     strides = x.strides if strides is None else tuple(strides)
 
-    return cupy.ndarray(shape=shape, dtype=x.dtype,
-                        memptr=x.data, strides=strides)
+    return _cupy.ndarray(shape=shape, dtype=x.dtype,
+                         memptr=x.data, strides=strides)

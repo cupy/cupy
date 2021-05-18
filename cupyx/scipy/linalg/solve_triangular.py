@@ -3,7 +3,7 @@ import numpy
 import cupy
 from cupy.cuda import cublas
 from cupy.cuda import device
-from cupy.linalg import util
+from cupy.linalg import _util
 
 
 def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
@@ -14,18 +14,16 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
         a (cupy.ndarray): The matrix with dimension ``(M, M)``.
         b (cupy.ndarray): The matrix with dimension ``(M,)`` or
             ``(M, N)``.
-        lower (bool): Use only data contained in the lower triangle of `a`.
+        lower (bool): Use only data contained in the lower triangle of ``a``.
             Default is to use upper triangle.
-        trans ({0, 1, 2, 'N', 'T', 'C'}): Type of system to solve:
-            ========  =========
-            trans     system
-            ========  =========
-            0 or 'N'  a x  = b
-            1 or 'T'  a^T x = b
-            2 or 'C'  a^H x = b
-            ========  =========
-        unit_diagonal (bool): If True, diagonal elements of `a` are assumed to
-            be 1 and will not be referenced.
+        trans (0, 1, 2, 'N', 'T' or 'C'): Type of system to solve:
+
+            - *'0'* or *'N'* -- :math:`a x  = b`
+            - *'1'* or *'T'* -- :math:`a^T x = b`
+            - *'2'* or *'C'* -- :math:`a^H x = b`
+
+        unit_diagonal (bool): If ``True``, diagonal elements of ``a`` are
+            assumed to be 1 and will not be referenced.
         overwrite_b (bool): Allow overwriting data in b (may enhance
             performance)
         check_finite (bool): Whether to check that the input matrices contain
@@ -40,7 +38,7 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
     .. seealso:: :func:`scipy.linalg.solve_triangular`
     """
 
-    util._assert_cupy_array(a, b)
+    _util._assert_cupy_array(a, b)
 
     if len(a.shape) != 2 or a.shape[0] != a.shape[1]:
         raise ValueError('expected square matrix')
@@ -69,8 +67,13 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
 
     if dtype == 'f':
         trsm = cublas.strsm
-    else:  # dtype == 'd'
+    elif dtype == 'd':
         trsm = cublas.dtrsm
+    elif dtype == 'F':
+        trsm = cublas.ctrsm
+    else:  # dtype == 'D'
+        trsm = cublas.ztrsm
+    one = numpy.array(1, dtype=dtype)
 
     if lower:
         uplo = cublas.CUBLAS_FILL_MODE_LOWER
@@ -92,5 +95,5 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
     trsm(
         cublas_handle, cublas.CUBLAS_SIDE_LEFT, uplo,
         trans, diag,
-        m, n, 1, a.data.ptr, m, b.data.ptr, m)
+        m, n, one.ctypes.data, a.data.ptr, m, b.data.ptr, m)
     return b

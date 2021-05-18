@@ -1,75 +1,71 @@
-Linear Algebra
-==============
+.. module:: cupy.linalg
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.linalg.html
+Linear algebra (:mod:`cupy.linalg`)
+===================================
+
+.. Hint:: `NumPy API Reference: Linear algebra (numpy.linalg) <https://numpy.org/doc/stable/reference/routines.linalg.html>`_
+
+.. seealso:: :doc:`scipy_linalg`
+
+.. currentmodule:: cupy
 
 Matrix and vector products
 --------------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
-   
-   cupy.cross
-   cupy.dot
-   cupy.vdot
-   cupy.inner
-   cupy.outer
-   cupy.matmul
-   cupy.tensordot
-   cupy.einsum
-   cupy.linalg.matrix_power
-   cupy.kron
+
+   dot
+   vdot
+   inner
+   outer
+   matmul
+   tensordot
+   einsum
+   linalg.matrix_power
+   kron
 
 Decompositions
 --------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.linalg.cholesky
-   cupy.linalg.qr
-   cupy.linalg.svd
+   linalg.cholesky
+   linalg.qr
+   linalg.svd
 
 Matrix eigenvalues
 ------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.linalg.eigh
-   cupy.linalg.eigvalsh
+   linalg.eigh
+   linalg.eigvalsh
 
-Norms etc.
-----------
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupy.linalg.det
-   cupy.linalg.norm
-   cupy.linalg.matrix_rank
-   cupy.linalg.slogdet
-   cupy.trace
-
-
-Solving linear equations
---------------------------
+Norms and other numbers
+-----------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.linalg.solve
-   cupy.linalg.tensorsolve
-   cupy.linalg.lstsq
-   cupy.linalg.inv
-   cupy.linalg.pinv
-   cupy.linalg.tensorinv
+   linalg.norm
+   linalg.det
+   linalg.matrix_rank
+   linalg.slogdet
+   trace
 
-   cupyx.scipy.linalg.lu_factor
-   cupyx.scipy.linalg.lu_solve
-   cupyx.scipy.linalg.solve_triangular
+
+Solving equations and inverting matrices
+----------------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   linalg.solve
+   linalg.tensorsolve
+   linalg.lstsq
+   linalg.inv
+   linalg.pinv
+   linalg.tensorinv

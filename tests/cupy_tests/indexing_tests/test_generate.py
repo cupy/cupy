@@ -4,7 +4,8 @@ import numpy
 import pytest
 
 import cupy
-from cupy.indexing import generate
+from cupy.cuda import runtime
+from cupy._indexing import generate
 from cupy import testing
 
 
@@ -39,6 +40,7 @@ class TestIX_(unittest.TestCase):
     def test_ix_list(self, xp):
         return xp.ix_([0, 1], [2, 4])
 
+    @pytest.mark.xfail(runtime.is_hip, reason='HIP may have a bug')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_ix_ndarray(self, xp, dtype):
@@ -138,11 +140,11 @@ class TestAxisConcatenator(unittest.TestCase):
 
     def test_AxisConcatenator_init1(self):
         with self.assertRaises(TypeError):
-            cupy.indexing.generate.AxisConcatenator.__init__()
+            generate.AxisConcatenator.__init__()
 
     def test_len(self):
         a = generate.AxisConcatenator()
-        self.assertEqual(len(a), 0)
+        assert len(a) == 0
 
 
 @testing.gpu

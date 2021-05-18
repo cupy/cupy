@@ -4,6 +4,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import cusolver
 from cupy import testing
 import cupyx
@@ -14,6 +15,8 @@ import cupyx
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @testing.gpu
+@pytest.mark.xfail(runtime.is_hip,
+                   reason='rocSOLVER does not implement potrs yet.')
 class TestInvh(unittest.TestCase):
 
     @testing.numpy_cupy_allclose(atol=1e-5)
@@ -49,8 +52,9 @@ class TestErrorInvh(unittest.TestCase):
 
     def test_invh(self):
         a = self._create_symmetric_matrix(self.size, self.dtype)
-        with self.assertRaises(RuntimeError):
-            cupyx.linalg.invh(a)
+        with cupyx.errstate(linalg='raise'):
+            with self.assertRaises(numpy.linalg.LinAlgError):
+                cupyx.linalg.invh(a)
 
     def _create_symmetric_matrix(self, n, dtype):
         a = testing.shaped_random((n, n), cupy, dtype, scale=1)
@@ -70,9 +74,9 @@ class TestXFailBatchedInvh(unittest.TestCase):
         if not cusolver.check_availability('potrsBatched'):
             pytest.skip('potrsBatched is not available')
         a = self._create_symmetric_matrix(self.shape, self.dtype)
-        with cupyx.errstate(linalg='ignore'):
-            with self.assertRaises(cupy.cuda.cusolver.CUSOLVERError):
-                cupyx.linalg.solve._batched_invh(a)
+        with cupyx.errstate(linalg='raise'):
+            with self.assertRaises(numpy.linalg.LinAlgError):
+                cupyx.linalg.invh(a)
 
     def _create_symmetric_matrix(self, shape, dtype):
         a = testing.shaped_random(shape, cupy, dtype, scale=1)

@@ -21,7 +21,7 @@ class TestConj(unittest.TestCase):
     def test_conj_pass(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
         y = x.conj()
-        self.assertIs(x, y)
+        assert x is y
         return y
 
     @testing.for_all_dtypes()
@@ -35,7 +35,7 @@ class TestConj(unittest.TestCase):
     def test_conjugate_pass(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
         y = x.conjugate()
-        self.assertIs(x, y)
+        assert x is y
         return y
 
 
@@ -164,7 +164,7 @@ class TestScalarConversion(unittest.TestCase):
     def test_scalar_conversion(self, dtype):
         scalar = 1 + 1j if numpy.dtype(dtype).kind == 'c' else 1
         x_1d = cupy.array([scalar]).astype(dtype)
-        self.assertEqual(complex(x_1d), scalar)
+        assert complex(x_1d) == scalar
 
         x_0d = x_1d.reshape(())
-        self.assertEqual(complex(x_0d), scalar)
+        assert complex(x_0d) == scalar

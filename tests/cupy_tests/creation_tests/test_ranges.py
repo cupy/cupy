@@ -1,3 +1,4 @@
+import functools
 import math
 import sys
 import unittest
@@ -7,6 +8,26 @@ import pytest
 
 import cupy
 from cupy import testing
+
+
+def skip_int_equality_before_numpy_1_20(names=('dtype',)):
+    """Require numpy/numpy#16841 or skip the equality check."""
+    def decorator(wrapped):
+        if numpy.lib.NumpyVersion(numpy.__version__) >= '1.20.0':
+            return wrapped
+
+        @functools.wraps(wrapped)
+        def wrapper(self, *args, **kwargs):
+            xp = kwargs['xp']
+            dtypes = [kwargs[name] for name in names]
+            ret = wrapped(self, *args, **kwargs)
+            if any(numpy.issubdtype(dtype, numpy.integer) for dtype in dtypes):
+                ret = xp.zeros_like(ret)
+            return ret
+
+        return wrapper
+
+    return decorator
 
 
 @testing.gpu
@@ -81,6 +102,14 @@ class TestRanges(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
+    @skip_int_equality_before_numpy_1_20()
+    def test_linspace3(self, xp, dtype):
+        if xp.dtype(dtype).kind == 'u':
+            pytest.skip()
+        return xp.linspace(-10, 8, 9, dtype=dtype)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
     def test_linspace_zero_num(self, xp, dtype):
         return xp.linspace(0, 10, 0, dtype=dtype)
 
@@ -89,7 +118,7 @@ class TestRanges(unittest.TestCase):
     def test_linspace_zero_num_no_endopoint_with_retstep(self, xp, dtype):
         x, step = xp.linspace(0, 10, 0, dtype=dtype, endpoint=False,
                               retstep=True)
-        self.assertTrue(math.isnan(step))
+        assert math.isnan(step)
         return x
 
     @testing.with_requires('numpy>=1.18')
@@ -99,7 +128,7 @@ class TestRanges(unittest.TestCase):
         start, stop = 3, 7
         x, step = xp.linspace(start, stop, 1, dtype=dtype, endpoint=False,
                               retstep=True)
-        self.assertEqual(step, stop - start)
+        assert step == stop - start
         return x
 
     @testing.for_all_dtypes(no_bool=True)
@@ -116,7 +145,7 @@ class TestRanges(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_linspace_with_retstep(self, xp, dtype):
         x, step = xp.linspace(0, 10, 5, dtype=dtype, retstep=True)
-        self.assertEqual(step, 2.5)
+        assert step == 2.5
         return x
 
     @testing.numpy_cupy_allclose()
@@ -161,6 +190,7 @@ class TestRanges(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
+    @skip_int_equality_before_numpy_1_20(names=('dtype_range', 'dtype_out'))
     def test_linspace_mixed_start_stop(self, xp, dtype_range, dtype_out):
         start = 0.0
         if xp.dtype(dtype_range).kind in 'u':
@@ -173,6 +203,7 @@ class TestRanges(unittest.TestCase):
     @testing.for_all_dtypes_combination(names=('dtype_range', 'dtype_out'),
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
+    @skip_int_equality_before_numpy_1_20(names=('dtype_range', 'dtype_out'))
     def test_linspace_mixed_start_stop2(self, xp, dtype_range, dtype_out):
         if xp.dtype(dtype_range).kind in 'u':
             start = xp.array([160, 120], dtype=dtype_range)

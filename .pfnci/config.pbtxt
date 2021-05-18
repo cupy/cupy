@@ -36,6 +36,28 @@ configs {
     command: "bash .pfnci/script.sh py37"
   }
 }
+configs {
+  key: "cupy.experimental.win.cuda100"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+      image: "windows"
+    }
+    time_limit {
+      seconds: 36000
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "CUPY_CI_CACHE_KERNEL" value: "1" }
+    command: ".pfnci\\windows\\run.bat 10.0 3.7 test"
+  }
+}
+
 
 # CuPy CI related targets: cupy.docker.{version}.{action}.
 # - version should be either "py37" or "py27and35".
@@ -109,14 +131,18 @@ configs {
 
 # ROCm build test
 configs {
-  key: "cupy.py37.amd"
+  key: "cupy.py3.amd"
   value {
     requirement {
-      cpu: 2
-      memory: 10
+      cpu: 8
+      memory: 24
+      disk: 10
     }
     time_limit: {
       seconds: 3600
+    }
+    checkout_strategy {
+      include_dot_git: true
     }
     command: "bash .pfnci/script.sh py37.amd"
   }

@@ -7,9 +7,9 @@ from fastrlock cimport rlock
 
 from cupy_backends.cuda.api import runtime
 
-from cupy.core cimport internal
+from cupy._core cimport internal
 from cupy_backends.cuda.api cimport runtime
-from cupy import util
+from cupy import _util
 
 
 class PinnedMemory(object):
@@ -29,7 +29,7 @@ class PinnedMemory(object):
         if size > 0:
             self.ptr = runtime.hostAlloc(size, flags)
 
-    def __del__(self, is_shutting_down=util.is_shutting_down):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
             return
         if self.ptr:

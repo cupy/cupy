@@ -37,15 +37,15 @@ class TestExplog(unittest.TestCase):
         self.check_unary('exp2')
 
     def test_log(self):
-        with testing.NumpyError(divide='ignore'):
+        with numpy.errstate(divide='ignore'):
             self.check_unary('log')
 
     def test_log10(self):
-        with testing.NumpyError(divide='ignore'):
+        with numpy.errstate(divide='ignore'):
             self.check_unary('log10')
 
     def test_log2(self):
-        with testing.NumpyError(divide='ignore'):
+        with numpy.errstate(divide='ignore'):
             self.check_unary('log2')
 
     def test_log1p(self):

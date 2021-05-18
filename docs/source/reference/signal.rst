@@ -1,13 +1,32 @@
-Signal processing
-=================
+.. module:: cupyx.scipy.signal
 
-.. https://docs.scipy.org/doc/scipy/reference/signal.html
+Signal processing (:mod:`cupyx.scipy.signal`)
+=============================================
+
+.. Hint:: `SciPy API Reference: Signal processing (scipy.signal) <https://docs.scipy.org/doc/scipy/reference/signal.html>`_
 
 Convolution
 -----------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-    cupyx.scipy.signal.choose_conv_method
+   convolve
+   correlate
+   fftconvolve
+   oaconvolve
+   convolve2d
+   correlate2d
+   choose_conv_method
+
+
+Filtering
+---------
+
+.. autosummary::
+   :toctree: generated/
+
+   order_filter
+   medfilt
+   medfilt2d
+   wiener

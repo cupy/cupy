@@ -1,12 +1,17 @@
+import sys
 import unittest
 
 import numpy
 
 import cupy
+import cupy.cuda.cudnn as libcudnn
+from cupy import testing
 
-try:
-    import cupy.cuda.cudnn as libcudnn
-    cudnn_enabled = True
+
+cudnn_enabled = libcudnn.available
+
+
+if cudnn_enabled:
     modes = [
         libcudnn.CUDNN_ACTIVATION_SIGMOID,
         libcudnn.CUDNN_ACTIVATION_RELU,
@@ -24,14 +29,11 @@ try:
         coef_modes.append(libcudnn.CUDNN_ACTIVATION_ELU)
 
     from cupy import cudnn
-except ImportError:
-    cudnn_enabled = False
+else:
     cudnn_version = -1
     modes = []
     coef_modes = []
     layouts = []
-
-from cupy import testing
 
 
 @testing.parameterize(*testing.product({
@@ -90,9 +92,9 @@ class TestCudnnDropout(unittest.TestCase):
     def test_dropout_forward(self):
         _, y = self.states.forward(None, self.x, self.ratio)
         if self.ratio == 0:
-            self.assertTrue(cupy.all(self.x == y))
+            assert cupy.all(self.x == y)
         else:
-            self.assertTrue(cupy.all(self.x != y))
+            assert cupy.all(self.x != y)
 
     def test_dropout_backward(self):
         rspace, y = self.states.forward(None, self.x, self.ratio)
@@ -103,7 +105,7 @@ class TestCudnnDropout(unittest.TestCase):
         backward_mask = gx / self.gy
 
         # backward_mask must be the same as forward_mask
-        self.assertTrue(cupy.all(forward_mask == backward_mask))
+        assert cupy.all(forward_mask == backward_mask)
 
     def test_dropout_seed(self):
         # initialize Dropoutstates with the same seed
@@ -112,12 +114,12 @@ class TestCudnnDropout(unittest.TestCase):
         rspace, y = self.states.forward(None, self.x, self.ratio)
         rspace2, y2 = states2.forward(None, self.x, self.ratio)
         # forward results must be the same
-        self.assertTrue(cupy.all(y == y2))
+        assert cupy.all(y == y2)
 
         gx = self.states.backward(None, self.gy, self.ratio, rspace)
         gx2 = states2.backward(None, self.gy, self.ratio, rspace2)
         # backward results must be the same
-        self.assertTrue(cupy.all(gx == gx2))
+        assert cupy.all(gx == gx2)
 
 
 @testing.parameterize(*(testing.product({
@@ -203,7 +205,7 @@ class TestConvolutionForward(unittest.TestCase):
                 return unittest.SkipTest()
         if self.err is None:
             self.call()
-            self.assertTrue((self.y == 0).all())
+            assert (self.y == 0).all()
         else:
             with self.assertRaises(self.err):
                 self.call()
@@ -253,8 +255,14 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
         elif deterministic and (
                 (self.dilate > 1 and version < 7000) or
                 (ndim > 2 and version < 6000) or
-                (ndim > 2 and self.dtype == numpy.float64)):
+                (ndim > 2 and self.dtype == numpy.float64 and version < 8100)):
             self.err = libcudnn.CuDNNError
+        elif (8000 <= version < 8100 and
+              self.max_workspace_size == 0 and
+              int(cupy.cuda.device.get_compute_capability()) < 70 and
+              self.groups > 1 and ndim > 2 and
+              self.dtype == numpy.float16):
+            self.err = RuntimeError
         self._workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
 
@@ -275,7 +283,7 @@ class TestConvolutionBackwardFilter(unittest.TestCase):
             return
         if self.err is None:
             self.call()
-            self.assertTrue((self.gW == 0).all())
+            assert (self.gW == 0).all()
         else:
             with self.assertRaises(self.err):
                 self.call()
@@ -326,11 +334,22 @@ class TestConvolutionBackwardData(unittest.TestCase):
         if ((self.dilate > 1 and version < 6000) or
                 (self.groups > 1 and version < 7000)):
             self.err = ValueError
+        elif (sys.platform.startswith('win32') and version == 7605
+                and deterministic and self.dtype == numpy.float16
+                and self.ndim == 3 and self.dilate == 2 and self.groups == 2):
+            # see https://github.com/cupy/cupy/pull/4893
+            self.err = RuntimeError
         elif deterministic and (
-                (self.dilate > 1 and (ndim != 2 or version < 7300)) or
+                (self.dilate > 1 and
+                 (ndim != 2 and version < 8100 or version < 7300)) or
                 (ndim > 2 and version < 6000) or
-                (ndim > 2 and self.dtype == numpy.float64)):
+                (ndim > 2 and self.dtype == numpy.float64 and version < 8100)):
             self.err = libcudnn.CuDNNError
+        elif (8000 <= version < 8100 and
+              int(cupy.cuda.device.get_compute_capability()) < 70 and
+              self.dilate > 1 and self.groups > 1 and ndim > 2 and
+              self.dtype == numpy.float16):
+            self.err = RuntimeError
         self._workspace_size = cudnn.get_max_workspace_size()
         cudnn.set_max_workspace_size(self.max_workspace_size)
 
@@ -351,7 +370,7 @@ class TestConvolutionBackwardData(unittest.TestCase):
             return
         if self.err is None:
             self.call()
-            self.assertTrue((self.gx == 0).all())
+            assert (self.gx == 0).all()
         else:
             with self.assertRaises(self.err):
                 self.call()

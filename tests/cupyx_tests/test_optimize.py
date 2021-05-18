@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from unittest import mock
@@ -6,7 +7,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 
 
 try:
@@ -15,7 +16,7 @@ try:
         warnings.filterwarnings('ignore', category=DeprecationWarning)
         import cupyx.optimizing
         import cupyx.optimizing._optimize
-        import cupy.core._optimize_config
+        import cupy._core._optimize_config
 except ImportError:
     pass
 
@@ -25,7 +26,7 @@ except ImportError:
 class TestOptimize(unittest.TestCase):
 
     def setUp(self):
-        cupy.core._optimize_config._clear_all_contexts_cache()
+        cupy._core._optimize_config._clear_all_contexts_cache()
 
     def test_optimize_reduction_kernel(self):
         my_sum = cupy.ReductionKernel(
@@ -111,7 +112,7 @@ class TestOptimize(unittest.TestCase):
                 params_map = context._params_map
                 context.save(filepath)
 
-            cupy.core._optimize_config._clear_all_contexts_cache()
+            cupy._core._optimize_config._clear_all_contexts_cache()
 
             with cupyx.optimizing.optimize() as context:
                 assert params_map.keys() != context._params_map.keys()
@@ -121,6 +122,31 @@ class TestOptimize(unittest.TestCase):
             with cupyx.optimizing.optimize(key='other_key') as context:
                 with pytest.raises(ValueError):
                     context.load(filepath)
+
+    def test_optimize_autosave(self):
+        with tempfile.TemporaryDirectory() as directory:
+            filepath = directory + '/optimize_params'
+
+            # non-existing file, readonly=True
+            with testing.assert_warns(UserWarning):
+                with cupyx.optimizing.optimize(path=filepath, readonly=True):
+                    cupy.sum(cupy.arange(2))
+
+            # non-existing file, readonly=False
+            with cupyx.optimizing.optimize(path=filepath, readonly=False):
+                cupy.sum(cupy.arange(4))
+            filesize = os.stat(filepath).st_size
+            assert 0 < filesize
+
+            # existing file, readonly=True
+            with cupyx.optimizing.optimize(path=filepath, readonly=True):
+                cupy.sum(cupy.arange(6))
+            assert filesize == os.stat(filepath).st_size
+
+            # existing file, readonly=False
+            with cupyx.optimizing.optimize(path=filepath, readonly=False):
+                cupy.sum(cupy.arange(8))
+            assert filesize < os.stat(filepath).st_size
 
 
 # TODO(leofang): check the optimizer is not applicable to the cutensor backend?
@@ -133,7 +159,7 @@ class TestOptimizeBackends(unittest.TestCase):
     """This class tests if optuna is in effect for create_reduction_func()"""
 
     def setUp(self):
-        cupy.core._optimize_config._clear_all_contexts_cache()
+        cupy._core._optimize_config._clear_all_contexts_cache()
         self.old_reductions = _accelerator.get_reduction_accelerators()
         _accelerator.set_reduction_accelerators(self.backend)
 
@@ -165,13 +191,13 @@ class TestOptimizeBackends(unittest.TestCase):
 
     def test_optimize2(self):
         # Ensure the CUB optimizer is not run when the CUB kernel is not used.
-        func = 'cupy.core._cub_reduction._get_cub_optimized_params'
+        func = 'cupy._core._cub_reduction._get_cub_optimized_params'
         times_called = 2 if ('cub' in self.backend) else 0
 
         # Setting "wraps" is necessary to avoid errors being silently ignored.
         with testing.AssertFunctionIsCalled(
                 func, times_called=times_called,
-                wraps=cupy.core._cub_reduction._get_cub_optimized_params):
+                wraps=cupy._core._cub_reduction._get_cub_optimized_params):
             with cupyx.optimizing.optimize():
                 self.x.sum()
             with cupyx.optimizing.optimize():

@@ -3,6 +3,7 @@ import types
 
 import cupy
 
+from cupy import _util
 from cupyx.scipy.ndimage import _filters_core
 
 
@@ -257,7 +258,7 @@ def _transpose(strides, axes):
     return tuple(strides[axis % ndim] for axis in axes)
 
 
-@cupy.util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
                             wshape, offsets, cval, int_type):
     """Generic filter implementation based on a reduction kernel."""
@@ -265,16 +266,17 @@ def _get_generic_filter_red(rk, in_dtype, out_dtype, filter_size, mode,
     in_param, out_param = rk.in_params[0], rk.out_params[0]
     out_ctype = out_param.ctype
     if out_param.dtype is None:  # resolve template
-        out_ctype = cupy.core._scalar.get_typename(
+        out_ctype = cupy._core._scalar.get_typename(
             in_dtype if out_param.ctype == in_param.ctype else out_dtype)
 
     # Get code chunks
     setup = '''
     int iv = 0;
-    X values[{}];
-    {} val_out;'''.format(filter_size, out_ctype)
-    setup += (_carray_ctor('sub_in', 'X', 'values', (filter_size,)) + '\n' +
-              _carray_ctor('sub_out', out_ctype, '&val_out', (1,)))
+    X values[{size}];
+    CArray<X, 1, true, true> sub_in(values, {{{size}}});
+    {out_ctype} val_out;
+    CArray<{out_ctype}, 1, true, true> sub_out(&val_out, {{1}});
+    '''.format(size=filter_size, out_ctype=out_ctype)
 
     sub_call = '''reduction_kernel::{}(sub_in, sub_out);
     y = cast<Y>(val_out);'''.format(rk.name)
@@ -313,8 +315,8 @@ __device__
 void {name}({in_const} CArray<{in_ctype}, 1, true, true>& _raw_{in_name},
             CArray<{out_ctype}, 1, true, true>& _raw_{out_name}) {{
     // these are just provided so if they are available for the RK
-    {in_ind}
-    {out_ind}
+    CIndexer<1> _in_ind({{{size}}});
+    CIndexer<0> _out_ind;
 
     #define REDUCE(a, b) ({reduce_expr})
     #define POST_MAP(a) ({post_map_expr})
@@ -336,9 +338,7 @@ void {name}({in_const} CArray<{in_ctype}, 1, true, true>& _raw_{in_name},
         name=rk.name, type_preamble=types, preamble=rk.preamble,
         in_const='const' if in_param.is_const else '',
         in_ctype=in_ctype, in_name=in_param.name,
-        in_ind=_cindexer_ctor('_in_ind', (filter_size,)),
         out_ctype=out_ctype, out_name=out_param.name,
-        out_ind=_cindexer_ctor('_out_ind', ()),
 
         pre_map_expr=rk.map_expr,
         identity='' if rk.identity is None else rk.identity,
@@ -348,67 +348,16 @@ void {name}({in_const} CArray<{in_ctype}, 1, true, true>& _raw_{in_name},
     )
 
 
-# No C++ constructor for CIndexer and CArray so we must manually set the fields
-def _cindexer_ctor(name, shape):
-    if len(shape) == 0:
-        return ('CIndexer<0> {name}; '
-                '((ptrdiff_t*)&{name})[0] = 1;').format(name=name)
-    return ('CIndexer<{ndim}> {name}; {{ '
-            'ptrdiff_t* _raw = (ptrdiff_t*)&{name}; '
-            '_raw[0] = {size}; {shape} }}').format(
-        name=name, ndim=len(shape), size=cupy.core.internal.prod(shape),
-        shape=_assign_array(shape, 1))
-
-
-def _carray_ctor(name, ctype, ptr, shape, strides=None, c_contig=None):
-    # TODO: assuming sizeof(T*) == sizeof(ptrdiff_t)
-    if len(shape) == 0:
-        return ('CArray<{ctype}, 0, true, true> {name}; '
-                '(({ctype}**)&{name})[0] = {ptr}; '
-                '((ptrdiff_t*)&{name})[1] = 1;'
-                ).format(name=name, ctype=ctype, ptr=ptr)
-    if c_contig is None:
-        c_contig = strides is None
-    c_contig = 'true' if c_contig else 'false'
-
-    if strides is None:
-        strides = _contig_strides(shape, 'sizeof({})'.format(ctype))
-
-    return ('CArray<{ctype}, 1, {c_contig}, true> {name}; {{ '
-            'ptrdiff_t* _raw = (ptrdiff_t*)&{name}; '
-            '(({ctype}**)_raw)[0] = {ptr}; '
-            '_raw[1] = {size}; {shape} {strides} }}'
-            ).format(name=name, ctype=ctype, ptr=ptr,
-                     size=cupy.core.internal.prod(shape),
-                     c_contig=c_contig, shape=_assign_array(shape, 2),
-                     strides=_assign_array(strides, 2+len(shape)))
-
-
-def _contig_strides(shape, itemsize):
-    strides = []
-    prod = 1
-    for x in shape[::-1]:
-        strides.append(prod*itemsize if isinstance(itemsize, int) else
-                       '{}*{}'.format(prod, itemsize))
-        prod *= x
-    return tuple(strides[::-1])
-
-
-def _assign_array(array, offset):
-    return ' '.join('_raw[{}] = {};'.format(i, x)
-                    for i, x in enumerate(array, offset))
-
-
 def _get_type_info(param, dtype, types):
     if param.dtype is not None:
         return param.ctype
     # Template type -> map to actual output type
-    ctype = cupy.core._scalar.get_typename(dtype)
+    ctype = cupy._core._scalar.get_typename(dtype)
     types.setdefault(param.ctype, ctype)
     return ctype
 
 
-@cupy.util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_generic_filter_raw(rk, filter_size, mode, wshape, offsets, cval,
                             int_type):
     """Generic filter implementation based on a raw kernel."""
@@ -424,11 +373,16 @@ def _get_generic_filter_raw(rk, filter_size, mode, wshape, offsets, cval,
         'generic_{}_{}'.format(filter_size, rk.name),
         setup, 'values[iv++] = cast<double>({value});', sub_call,
         mode, wshape, int_type, offsets, cval,
-        preamble='namespace raw_kernel {{\n{}\n}}'.format(rk.code),
+        preamble='namespace raw_kernel {{\n{}\n}}'.format(
+            # Users can test RawKernel independently, but when passed to here
+            # it must be used as a device function here. In fact, RawKernel
+            # wouldn't compile if code only contains device functions, so this
+            # is necessary.
+            rk.code.replace('__global__', '__device__')),
         options=rk.options)
 
 
-@cupy.util.memoize(for_each_device=True)
+@_util.memoize(for_each_device=True)
 def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
                           in_ctype, out_ctype, int_type):
     """
@@ -475,6 +429,7 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
     name = 'generic1d_{}_{}_{}'.format(length, filter_size, rk.name)
     code = '''#include "cupy/carray.cuh"
 #include "cupy/complex.cuh"
+#include <type_traits>  // let Jitify handle this
 
 namespace raw_kernel {{\n{rk_code}\n}}
 
@@ -529,6 +484,12 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
 }}'''.format(n_lines=n_lines, length=length, in_length=in_length, start=start,
              in_ctype=in_ctype, out_ctype=out_ctype, int_type=int_type,
              boundary_early=boundary_early, boundary=boundary,
-             name=name, rk_name=rk.name, rk_code=rk.code,
+             name=name, rk_name=rk.name,
+             # Users can test RawKernel independently, but when passed to here
+             # it must be used as a device function here. In fact, RawKernel
+             # wouldn't compile if code only contains device functions, so this
+             # is necessary.
+             rk_code=rk.code.replace('__global__', '__device__'),
              CAST=_filters_core._CAST_FUNCTION)
-    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options)
+    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options,
+                          jitify=True)

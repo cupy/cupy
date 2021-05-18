@@ -1,41 +1,74 @@
 Polynomials
 ===========
 
-.. https://numpy.org/doc/stable/reference/routines.polynomials.html
+.. Hint:: `NumPy API Reference: Polynomials <https://numpy.org/doc/stable/reference/routines.polynomials.html>`_
 
-Polynomial Package
-------------------
+Power Series (:mod:`cupy.polynomial.polynomial`)
+------------------------------------------------
 
-Polynomial Module
-~~~~~~~~~~~~~~~~~
+.. Hint:: `NumPy API Reference: Power Series (numpy.polynomial.polynomial) <https://numpy.org/doc/stable/reference/routines.polynomials.polynomial.html>`_
 
+Misc Functions
+~~~~~~~~~~~~~~
+
+.. module:: cupy.polynomial.polynomial
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.polynomial.polynomial.polyvander
-   cupy.polynomial.polynomial.polycompanion
+   polyvander
+   polycompanion
 
 
 Polyutils
+---------
+
+.. Hint:: `NumPy API Reference: Polyutils <https://numpy.org/doc/stable/reference/routines.polynomials.polyutils.html>`_
+
+Functions
 ~~~~~~~~~
 
+.. module:: cupy.polynomial.polyutils
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.polynomial.polyutils.as_series
-   cupy.polynomial.polyutils.trimseq
+   as_series
+   trimseq
+   trimcoef
 
 
 Poly1d
 ------
+
+.. Hint:: `NumPy API Reference: Poly1d <https://numpy.org/doc/stable/reference/routines.polynomials.poly1d.html>`_
+
+.. currentmodule:: cupy
 
 Basics
 ~~~~~~
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-    cupy.poly1d
+   poly1d
+   polyval
+   roots
+
+
+Fitting
+~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   polyfit
+
+
+Arithmetic
+~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   polyadd
+   polysub
+   polymul

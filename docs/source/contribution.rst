@@ -15,7 +15,7 @@ There are several ways to contribute to CuPy community:
 
 1. Registering an issue
 2. Sending a pull request (PR)
-3. Sending a question to `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_
+3. Sending a question to `CuPy's Gitter channel <https://gitter.im/cupy/community>`_, `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_, or `StackOverflow <https://stackoverflow.com/questions/tagged/cupy>`_
 4. Open-sourcing an external example
 5. Writing a post about CuPy
 
@@ -38,7 +38,7 @@ While the major, minor, and revision numbers follow the rule of semantic version
 **Note that a major update basically does not contain compatibility-breaking changes from the last release candidate (RC).**
 This is not a strict rule, though; if there is a critical API bug that we have to fix for the major version, we may add breaking changes to the major version up.
 
-As for the backward compatibility, see :doc:`compatibility`.
+As for the backward compatibility, see :doc:`user_guide/compatibility`.
 
 
 .. _contrib-release-cycle:
@@ -154,7 +154,7 @@ You can contain your thoughts on **how** to realize it into the feature requests
 
 .. warning::
 
-   If you have a question on usages of CuPy, it is highly recommended to send a post to `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_ instead of the issue tracker.
+   If you have a question on usages of CuPy, it is highly recommended to send a post to `CuPy's Gitter channel <https://gitter.im/cupy/community>`_, `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_ or `StackOverflow <https://stackoverflow.com/questions/tagged/cupy>`_ instead of the issue tracker.
    The issue tracker is not a place to share knowledge on practices.
    We may suggest these places and immediately close how-to question issues.
 
@@ -176,9 +176,8 @@ After writing your code **(including unit tests and hopefully documentations!)**
 You have to write a precise explanation of **what** and **how** you fix;
 it is the first documentation of your code that developers read, which is a very important part of your PR.
 
-Once you send a PR, it is automatically tested on `Travis CI <https://travis-ci.org/cupy/cupy/>`_ for Linux and Mac OS X, and on `AppVeyor <https://ci.appveyor.com/project/cupy/cupy>`_ for Windows.
-Your PR needs to pass at least the test for Linux on Travis CI.
-After the automatic test passes, some of the core developers will start reviewing your code.
+Once you send a PR, it is automatically tested on ``GitHub Actions``.
+After the automatic test passes, core developers will start reviewing your code.
 Note that this automatic PR test only includes CPU tests.
 
 .. note::
@@ -244,7 +243,7 @@ For example, ``cupy.cuda.Device`` is a shortcut of ``cupy.cuda.device.Device``.
 **It is not allowed to use such shortcuts in the ``cupy`` library implementation**.
 Note that you can still use them in :tree:`tests` and :tree:`examples` directories.
 
-Once you send a pull request, your coding style is automatically checked by `Travis-CI <https://travis-ci.org/cupy/cupy/>`_.
+Once you send a pull request, your coding style is automatically checked by `GitHub Actions`.
 The reviewing process starts after the check passes.
 
 The CuPy is designed based on NumPy's API design. CuPy's source code and documents contain the original NumPy ones.
@@ -295,19 +294,6 @@ In order to run unit tests at the repository root, you first have to build Cytho
   When you modify ``*.pxd`` files, before running ``pip install -e .``, you must clean ``*.cpp`` and ``*.so`` files once with the following command, because Cython does not automatically rebuild those files nicely::
 
     $ git clean -fdx
-
-.. note::
-
-  It's not officially supported, but you can use `ccache <https://ccache.samba.org/>`_ to reduce compilation time.
-  On Ubuntu 16.04, you can set up as follows::
-
-    $ sudo apt-get install ccache
-    $ export PATH=/usr/lib/ccache:$PATH
-
-  See `ccache <https://ccache.samba.org/>`_ for details.
-
-  If you want to use ccache for nvcc, please install ccache v3.3 or later.
-  You also need to set environment variable ``NVCC='ccache nvcc'``.
 
 Once Cython modules are built, you can run unit tests by running the following command at the repository root::
 
@@ -440,7 +426,7 @@ The documentation source is stored under `docs directory <https://github.com/cup
 
 To build the documentation, you need to install `Sphinx <http://www.sphinx-doc.org/>`_::
 
-  $ pip install sphinx sphinx_rtd_theme
+  $ pip install -r docs/requirements.txt
 
 Then you can build the documentation in HTML format locally::
 
@@ -454,3 +440,36 @@ Open ``index.html`` with the browser and see if it is rendered as expected.
 
    Docstrings (documentation comments in the source code) are collected from the installed CuPy module.
    If you modified docstrings, make sure to install the module (e.g., using `pip install -e .`) before building the documentation.
+
+
+Tips for Developers
+-------------------
+
+Here are some tips for developers hacking CuPy source code.
+
+Install as Editable
+~~~~~~~~~~~~~~~~~~~
+
+During the development we recommend using ``pip`` with ``-e`` option to install as editable mode::
+
+  $ pip install -e .
+
+Please note that even with ``-e``, you will have to rerun ``pip install -e .`` to regenerate C++ sources using Cython if you modified Cython source files (e.g., ``*.pyx`` files).
+
+Use ccache
+~~~~~~~~~~
+
+``NVCC`` environment variable can be specified at the build time to use the custom command instead of ``nvcc`` .
+You can speed up the rebuild using `ccache <https://ccache.dev/>`_ (v3.4 or later) by::
+
+  $ export NVCC='ccache nvcc'
+
+Limit Architecture
+~~~~~~~~~~~~~~~~~~
+
+Use ``CUPY_NVCC_GENERATE_CODE`` environment variable to reduce the build time by limiting the target CUDA architectures.
+For example, if you only run your CuPy build with NVIDIA P100 and V100, you can use::
+
+  $ export CUPY_NVCC_GENERATE_CODE=arch=compute_60,code=sm_60;arch=compute_70,code=sm_70
+
+See :doc:`reference/environment` for the description.

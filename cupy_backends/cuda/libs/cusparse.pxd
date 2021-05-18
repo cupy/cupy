@@ -12,6 +12,8 @@ cdef extern from *:
     ctypedef int Direction 'cusparseDirection_t'
 
     ctypedef int MatrixType 'cusparseMatrixType_t'
+    ctypedef int FillMode 'cusparseFillMode_t'
+    ctypedef int DiagType 'cusparseDiagType_t'
 
     ctypedef int Operation 'cusparseOperation_t'
 
@@ -22,6 +24,8 @@ cdef extern from *:
 
     ctypedef void* cusparseHandle_t
     ctypedef void* cusparseMatDescr_t
+    ctypedef void* csrsv2Info_t
+    ctypedef void* csrsm2Info_t
     ctypedef void* csric02Info_t
     ctypedef void* bsric02Info_t
     ctypedef void* csrilu02Info_t
@@ -50,6 +54,9 @@ cdef extern from *:
     ctypedef void* cusparseSpMatDescr_t
     ctypedef void* cusparseDnMatDescr_t
 
+    ctypedef int cusparseSparseToDenseAlg_t
+    ctypedef int cusparseDenseToSparseAlg_t
+
     # CSR2CSC
     ctypedef int Csr2CscAlg 'cusparseCsr2CscAlg_t'
 
@@ -67,6 +74,14 @@ cpdef enum:
     CUSPARSE_MATRIX_TYPE_SYMMETRIC = 1
     CUSPARSE_MATRIX_TYPE_HERMITIAN = 2
     CUSPARSE_MATRIX_TYPE_TRIANGULAR = 3
+
+    # cusparseDiagType_t
+    CUSPARSE_FILL_MODE_LOWER = 0
+    CUSPARSE_FILL_MODE_UPPER = 1
+
+    # cusparseIndexBase_t
+    CUSPARSE_DIAG_TYPE_NON_UNIT = 0
+    CUSPARSE_DIAG_TYPE_UNIT = 1
 
     CUSPARSE_OPERATION_NON_TRANSPOSE = 0
     CUSPARSE_OPERATION_TRANSPOSE = 1
@@ -108,6 +123,12 @@ cpdef enum:
     # CSR2CSC
     CUSPARSE_CSR2CSC_ALG1 = 1  # faster than ALG2 (in general), deterministc
     CUSPARSE_CSR2CSC_ALG2 = 2  # low memory requirement, non-deterministc
+
+    # cusparseSparseToDenseAlg_t
+    CUSPARSE_SPARSETODENSE_ALG_DEFAULT = 0
+
+    # cusparseDenseToSparseAlg_t
+    CUSPARSE_DENSETOSPARSE_ALG_DEFAULT = 0
 
 cdef class SpVecAttributes:
     cdef:

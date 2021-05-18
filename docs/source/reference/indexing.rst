@@ -1,31 +1,60 @@
-Indexing Routines
+Indexing routines
 =================
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.indexing.html
+.. Hint:: `NumPy API Reference: Indexing routines <https://numpy.org/doc/stable/reference/routines.indexing.html>`_
+
+.. currentmodule:: cupy
+
+Generating index arrays
+-----------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.c_
-   cupy.r_
-   cupy.nonzero
-   cupy.where
-   cupy.indices
-   cupy.ix_
-   cupy.ravel_multi_index
-   cupy.unravel_index
-   cupy.take
-   cupy.take_along_axis
-   cupy.choose
-   cupy.compress
-   cupy.diag
-   cupy.diagonal
-   cupy.extract
-   cupy.select
-   cupy.lib.stride_tricks.as_strided
-   cupy.place
-   cupy.put
-   cupy.putmask
-   cupy.fill_diagonal
-   cupy.flatiter
+   c_
+   r_
+   nonzero
+   where
+   indices
+   ix_
+   ravel_multi_index
+   unravel_index
+   diag_indices
+   diag_indices_from
+
+
+Indexing-like operations
+------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   take
+   take_along_axis
+   choose
+   compress
+   diag
+   diagonal
+   select
+   lib.stride_tricks.as_strided
+
+
+Inserting data into arrays
+--------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   place
+   put
+   putmask
+   fill_diagonal
+
+
+Iterating over arrays
+---------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   flatiter

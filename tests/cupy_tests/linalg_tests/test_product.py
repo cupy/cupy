@@ -68,7 +68,7 @@ class TestDot(unittest.TestCase):
             shape_c = shape_a[:-1] + shape_b[:-2] + shape_b[-1:]
         c = xp.empty(shape_c, dtype=dtype_c)
         out = xp.dot(a, b, out=c)
-        self.assertIs(out, c)
+        assert out is c
         return c
 
 

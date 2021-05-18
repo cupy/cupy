@@ -33,13 +33,13 @@ class TestReshape(unittest.TestCase):
         def func(xp):
             a = testing.shaped_arange((1, 1, 1, 2, 2), xp)
             return a.strides
-        self.assertEqual(func(numpy), func(cupy))
+        assert func(numpy) == func(cupy)
 
     def test_reshape2(self):
         def func(xp):
             a = xp.zeros((8,), dtype=xp.float32)
             return a.reshape((1, 1, 1, 4, 1, 2)).strides
-        self.assertEqual(func(numpy), func(cupy))
+        assert func(numpy) == func(cupy)
 
     @testing.for_orders('CFA')
     @testing.for_all_dtypes()

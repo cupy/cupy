@@ -6,20 +6,23 @@ except ImportError:
     _scipy_available = False
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import csr
 from cupyx.scipy.sparse import data as sparse_data
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 
 
 class coo_matrix(sparse_data._data_matrix):
 
     """COOrdinate format sparse matrix.
 
-    Now it has only one initializer format below:
+    This can be instantiated in several ways.
+
+    ``coo_matrix(D)``
+        ``D`` is a rank-2 :class:`cupy.ndarray`.
 
     ``coo_matrix(S)``
         ``S`` is another sparse matrix. It is equivalent to ``S.tocoo()``.
@@ -28,7 +31,7 @@ class coo_matrix(sparse_data._data_matrix):
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
         is float64.
 
-    ``coo_matrix((data, (row, col))``
+    ``coo_matrix((data, (row, col)))``
         All ``data``, ``row`` and ``col`` are one-dimenaional
         :class:`cupy.ndarray`.
 
@@ -45,7 +48,7 @@ class coo_matrix(sparse_data._data_matrix):
 
     format = 'coo'
 
-    _sum_duplicates_diff = core.ElementwiseKernel(
+    _sum_duplicates_diff = _core.ElementwiseKernel(
         'raw T row, raw T col',
         'T diff',
         '''
@@ -76,7 +79,7 @@ class coo_matrix(sparse_data._data_matrix):
 
             self.has_canonical_format = x.has_canonical_format
 
-        elif util.isshape(arg1):
+        elif _util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
             data = cupy.zeros(0, dtype if dtype else 'd')
@@ -116,8 +119,17 @@ class coo_matrix(sparse_data._data_matrix):
 
             self.has_canonical_format = False
 
+        elif base.isdense(arg1):
+            if arg1.ndim > 2:
+                raise TypeError('expected dimension <= 2 array or matrix')
+            dense = cupy.atleast_2d(arg1)
+            row, col = dense.nonzero()
+            data = dense[row, col]
+            shape = dense.shape
+
+            self.has_canonical_format = True
+
         else:
-            # TODO(leofang): support constructing from a dense matrix
             raise TypeError('invalid input format')
 
         if dtype is None:
@@ -153,7 +165,7 @@ class coo_matrix(sparse_data._data_matrix):
         sparse_data._data_matrix.__init__(self, data)
         self.row = row
         self.col = col
-        if not util.isshape(shape):
+        if not _util.isshape(shape):
             raise ValueError('invalid shape (must be a 2-tuple of int)')
         self._shape = int(shape[0]), int(shape[1])
 
@@ -170,6 +182,85 @@ class coo_matrix(sparse_data._data_matrix):
             return coo_matrix(
                 (data, (self.row, self.col)), shape=self.shape,
                 dtype=data.dtype)
+
+    def diagonal(self, k=0):
+        """Returns the k-th diagonal of the matrix.
+
+        Args:
+            k (int, optional): Which diagonal to get, corresponding to elements
+            a[i, i+k]. Default: 0 (the main diagonal).
+
+        Returns:
+            cupy.ndarray : The k-th diagonal.
+        """
+        rows, cols = self.shape
+        if k <= -rows or k >= cols:
+            return cupy.empty(0, dtype=self.data.dtype)
+        diag = cupy.zeros(min(rows + min(k, 0), cols - max(k, 0)),
+                          dtype=self.dtype)
+        diag_mask = (self.row + k) == self.col
+
+        if self.has_canonical_format:
+            row = self.row[diag_mask]
+            data = self.data[diag_mask]
+        else:
+            row, _, data = self._sum_duplicates(self.row[diag_mask],
+                                                self.col[diag_mask],
+                                                self.data[diag_mask])
+        diag[row + min(k, 0)] = data
+
+        return diag
+
+    def setdiag(self, values, k=0):
+        """Set diagonal or off-diagonal elements of the array.
+
+        Args:
+            values (ndarray): New values of the diagonal elements. Values may
+                have any length. If the diagonal is longer than values, then
+                the remaining diagonal entries will not be set. If values are
+                longer than the diagonal, then the remaining values are
+                ignored. If a scalar value is given, all of the diagonal is set
+                to it.
+            k (int, optional): Which off-diagonal to set, corresponding to
+                elements a[i,i+k]. Default: 0 (the main diagonal).
+
+        """
+        M, N = self.shape
+        if (k > 0 and k >= N) or (k < 0 and -k >= M):
+            raise ValueError("k exceeds matrix dimensions")
+        if values.ndim and not len(values):
+            return
+        idx_dtype = self.row.dtype
+
+        # Determine which triples to keep and where to put the new ones.
+        full_keep = self.col - self.row != k
+        if k < 0:
+            max_index = min(M + k, N)
+            if values.ndim:
+                max_index = min(max_index, len(values))
+            keep = cupy.logical_or(full_keep, self.col >= max_index)
+            new_row = cupy.arange(-k, -k + max_index, dtype=idx_dtype)
+            new_col = cupy.arange(max_index, dtype=idx_dtype)
+        else:
+            max_index = min(M, N - k)
+            if values.ndim:
+                max_index = min(max_index, len(values))
+            keep = cupy.logical_or(full_keep, self.row >= max_index)
+            new_row = cupy.arange(max_index, dtype=idx_dtype)
+            new_col = cupy.arange(k, k + max_index, dtype=idx_dtype)
+
+        # Define the array of data consisting of the entries to be added.
+        if values.ndim:
+            new_data = values[:max_index]
+        else:
+            new_data = cupy.empty(max_index, dtype=self.dtype)
+            new_data[:] = values
+
+        # Update the internal structure.
+        self.row = cupy.concatenate((self.row[keep], new_row))
+        self.col = cupy.concatenate((self.col[keep], new_col))
+        self.data = cupy.concatenate((self.data[keep], new_data))
+        self.has_canonical_format = False
 
     def eliminate_zeros(self):
         """Removes zero entories in place."""

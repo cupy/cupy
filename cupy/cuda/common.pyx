@@ -33,7 +33,7 @@ cpdef int _get_dtype_id(dtype) except -1:
         ret = CUPY_TYPE_COMPLEX64
     elif dtype == numpy.complex128:
         ret = CUPY_TYPE_COMPLEX128
-    elif dtype == numpy.bool:
+    elif dtype == numpy.bool_:
         ret = CUPY_TYPE_BOOL
     else:
         raise ValueError('Unsupported dtype ({})'.format(dtype))
@@ -43,13 +43,17 @@ cpdef int _get_dtype_id(dtype) except -1:
 cdef int _has_fp16 = -1
 
 
-cpdef int _is_fp16_supported() except -1:
+cpdef int _is_fp16_supported() except -2:
     global _has_fp16
 
     if _has_fp16 != -1:
         return _has_fp16
-    if (int(device.get_compute_capability()) < 53
-            or runtime.runtimeGetVersion() < 9020):
+
+    # TODO(leofang): make sure if this is really OK
+    if runtime._is_hip_environment:
+        _has_fp16 = 1  # tested on ROCm 3.5.0 + gfx906
+    elif (int(device.get_compute_capability()) < 53
+          or runtime.runtimeGetVersion() < 9020):
         _has_fp16 = 0
     else:
         _has_fp16 = 1

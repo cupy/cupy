@@ -21,6 +21,7 @@ cdef extern from *:
     ctypedef int SideMode 'cublasSideMode_t'
     ctypedef int GemmAlgo 'cublasGemmAlgo_t'
     ctypedef int Math 'cublasMath_t'
+    ctypedef int ComputeType 'cublasComputeType_t'
 
 
 ###############################################################################
@@ -55,6 +56,19 @@ cpdef enum:
     CUBLAS_DEFAULT_MATH = 0
     CUBLAS_TENSOR_OP_MATH = 1
 
+    # cublasComputeType_t added in CUDA 11.0
+    CUBLAS_COMPUTE_16F = 64            # half - default
+    CUBLAS_COMPUTE_16F_PEDANTIC = 65   # half - pedantic
+    CUBLAS_COMPUTE_32F = 68            # float - default
+    CUBLAS_COMPUTE_32F_PEDANTIC = 69   # float - pedantic
+    CUBLAS_COMPUTE_32F_FAST_16F = 74   # float - fast, allows down-converting inputs to half or TF32  # NOQA
+    CUBLAS_COMPUTE_32F_FAST_16BF = 75  # float - fast, allows down-converting inputs to bfloat16 or TF32  # NOQA
+    CUBLAS_COMPUTE_32F_FAST_TF32 = 77  # float - fast, allows down-converting inputs to TF32  # NOQA
+    CUBLAS_COMPUTE_64F = 70            # double - default
+    CUBLAS_COMPUTE_64F_PEDANTIC = 71   # double - pedantic
+    CUBLAS_COMPUTE_32I = 72            # signed 32-bit int - default
+    CUBLAS_COMPUTE_32I_PEDANTIC = 73   # signed 32-bit int - pedantic
+
 ###############################################################################
 # Context
 ###############################################################################
@@ -86,12 +100,25 @@ cpdef int getMathMode(intptr_t handle) except? -1
 # BLAS Level 1
 ###############################################################################
 
-cpdef int isamax(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef int isamin(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef float sasum(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef saxpy(intptr_t handle, int n, float alpha, size_t x, int incx, size_t y,
+cpdef isamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef idamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef icamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef izamax(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef isamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef idamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef icamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef izamin(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef sasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef scasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dzasum(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef saxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
             int incy)
-cpdef daxpy(intptr_t handle, int n, double alpha, size_t x, int incx, size_t y,
+cpdef daxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
+            int incy)
+cpdef caxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
+            int incy)
+cpdef zaxpy(intptr_t handle, int n, size_t alpha, size_t x, int incx, size_t y,
             int incy)
 cpdef sdot(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
            size_t result)
@@ -105,36 +132,42 @@ cpdef zdotu(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
 cpdef zdotc(intptr_t handle, int n, size_t x, int incx, size_t y, int incy,
             size_t result)
-cpdef float snrm2(intptr_t handle, int n, size_t x, int incx) except? 0
-cpdef sscal(intptr_t handle, int n, float alpha, size_t x, int incx)
+cpdef snrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dnrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef scnrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef dznrm2(intptr_t handle, int n, size_t x, int incx, size_t result)
+cpdef sscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef dscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef cscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef csscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef zscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
+cpdef zdscal(intptr_t handle, int n, size_t alpha, size_t x, int incx)
 
 
 ###############################################################################
 # BLAS Level 2
 ###############################################################################
 
-cpdef sgemv(intptr_t handle, int trans, int m, int n, float alpha, size_t A,
-            int lda, size_t x, int incx, float beta, size_t y, int incy)
-cpdef dgemv(intptr_t handle, int trans, int m, int n, double alpha, size_t A,
-            int lda, size_t x, int incx, double beta, size_t y, int incy)
-cpdef cgemv(intptr_t handle, int trans, int m, int n, float complex alpha,
-            size_t A, int lda, size_t x, int incx, float complex beta,
-            size_t y, int incy)
-cpdef zgemv(intptr_t handle, int trans, int m, int n, double complex alpha,
-            size_t A, int lda, size_t x, int incx, double complex beta,
-            size_t y, int incy)
-cpdef sger(intptr_t handle, int m, int n, float alpha, size_t x, int incx,
+cpdef sgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy)
+cpdef dgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy)
+cpdef cgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy)
+cpdef zgemv(intptr_t handle, int trans, int m, int n, size_t alpha, size_t A,
+            int lda, size_t x, int incx, size_t beta, size_t y, int incy)
+cpdef sger(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda)
-cpdef dger(intptr_t handle, int m, int n, double alpha, size_t x, int incx,
+cpdef dger(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
            size_t y, int incy, size_t A, int lda)
-cpdef cgeru(intptr_t handle, int m, int n, float complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda)
-cpdef cgerc(intptr_t handle, int m, int n, float complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda)
-cpdef zgeru(intptr_t handle, int m, int n, double complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda)
-cpdef zgerc(intptr_t handle, int m, int n, double complex alpha, size_t x,
-            int incx, size_t y, int incy, size_t A, int lda)
+cpdef cgeru(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda)
+cpdef cgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda)
+cpdef zgeru(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda)
+cpdef zgerc(intptr_t handle, int m, int n, size_t alpha, size_t x, int incx,
+            size_t y, int incy, size_t A, int lda)
 
 
 ###############################################################################
@@ -142,72 +175,64 @@ cpdef zgerc(intptr_t handle, int m, int n, double complex alpha, size_t x,
 ###############################################################################
 
 cpdef sgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, float alpha, size_t A, int lda,
-            size_t B, int ldb, float beta, size_t C, int ldc)
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc)
 cpdef dgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, double alpha, size_t A, int lda,
-            size_t B, int ldb, double beta, size_t C, int ldc)
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc)
 cpdef cgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, float complex alpha, size_t A, int lda,
-            size_t B, int ldb, float complex beta, size_t C, int ldc)
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc)
 cpdef zgemm(intptr_t handle, int transa, int transb,
-            int m, int n, int k, double complex alpha, size_t A, int lda,
-            size_t B, int ldb, double complex beta, size_t C, int ldc)
+            int m, int n, int k, size_t alpha, size_t A, int lda,
+            size_t B, int ldb, size_t beta, size_t C, int ldc)
 cpdef sgemmBatched(intptr_t handle, int transa, int transb,
-                   int m, int n, int k, float alpha, size_t Aarray, int lda,
-                   size_t Barray, int ldb, float beta, size_t Carray, int ldc,
+                   int m, int n, int k, size_t alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, size_t beta, size_t Carray, int ldc,
                    int batchCount)
 cpdef dgemmBatched(intptr_t handle, int transa, int transb,
-                   int m, int n, int k, double alpha, size_t Aarray, int lda,
-                   size_t Barray, int ldb, double beta, size_t Carray, int ldc,
+                   int m, int n, int k, size_t alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, size_t beta, size_t Carray, int ldc,
                    int batchCount)
 cpdef cgemmBatched(intptr_t handle, int transa, int transb,
-                   int m, int n, int k, float complex alpha, size_t Aarray,
-                   int lda, size_t Barray, int ldb, float complex beta,
-                   size_t Carray, int ldc, int batchCount)
+                   int m, int n, int k, size_t alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, size_t beta, size_t Carray, int ldc,
+                   int batchCount)
 cpdef zgemmBatched(intptr_t handle, int transa, int transb,
-                   int m, int n, int k, double complex alpha, size_t Aarray,
-                   int lda, size_t Barray, int ldb, double complex beta,
-                   size_t Carray, int ldc, int batchCount)
-cpdef sgemmStridedBatched(intptr_t handle, int transa, int transb,
-                          int m, int n, int k, float alpha,
-                          size_t A, int lda, long long strideA,
-                          size_t B, int ldb, long long strideB,
-                          float beta,
-                          size_t C, int ldc, long long strideC,
-                          int batchCount)
-cpdef dgemmStridedBatched(intptr_t handle, int transa, int transb,
-                          int m, int n, int k, double alpha,
-                          size_t A, int lda, long long strideA,
-                          size_t B, int ldb, long long strideB,
-                          double beta,
-                          size_t C, int ldc, long long strideC,
-                          int batchCount)
-cpdef cgemmStridedBatched(intptr_t handle, int transa, int transb,
-                          int m, int n, int k, float complex alpha,
-                          size_t A, int lda, long long strideA,
-                          size_t B, int ldb, long long strideB,
-                          float complex beta,
-                          size_t C, int ldc, long long strideC,
-                          int batchCount)
-cpdef zgemmStridedBatched(intptr_t handle, int transa, int transb,
-                          int m, int n, int k, double complex alpha,
-                          size_t A, int lda, long long strideA,
-                          size_t B, int ldb, long long strideB,
-                          double complex beta,
-                          size_t C, int ldc, long long strideC,
-                          int batchCount)
+                   int m, int n, int k, size_t alpha, size_t Aarray, int lda,
+                   size_t Barray, int ldb, size_t beta, size_t Carray, int ldc,
+                   int batchCount)
+cpdef sgemmStridedBatched(intptr_t handle, int transa, int transb, int m,
+                          int n, int k, size_t alpha, size_t A, int lda,
+                          long long strideA, size_t B, int ldb,
+                          long long strideB, size_t beta, size_t C, int ldc,
+                          long long strideC, int batchCount)
+cpdef dgemmStridedBatched(intptr_t handle, int transa, int transb, int m,
+                          int n, int k, size_t alpha, size_t A, int lda,
+                          long long strideA, size_t B, int ldb,
+                          long long strideB, size_t beta, size_t C, int ldc,
+                          long long strideC, int batchCount)
+cpdef cgemmStridedBatched(intptr_t handle, int transa, int transb, int m,
+                          int n, int k, size_t alpha, size_t A, int lda,
+                          long long strideA, size_t B, int ldb,
+                          long long strideB, size_t beta, size_t C, int ldc,
+                          long long strideC, int batchCount)
+cpdef zgemmStridedBatched(intptr_t handle, int transa, int transb, int m,
+                          int n, int k, size_t alpha, size_t A, int lda,
+                          long long strideA, size_t B, int ldb,
+                          long long strideB, size_t beta, size_t C, int ldc,
+                          long long strideC, int batchCount)
 cpdef strsm(intptr_t handle, int side, int uplo, int trans, int diag,
-            int m, int n, float alpha, size_t Aarray, int lda,
+            int m, int n, size_t alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
 cpdef dtrsm(intptr_t handle, int side, int uplo, int trans, int diag,
-            int m, int n, double alpha, size_t Aarray, int lda,
+            int m, int n, size_t alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
 cpdef ctrsm(intptr_t handle, int side, int uplo, int trans, int diag,
-            int m, int n, float complex alpha, size_t Aarray, int lda,
+            int m, int n, size_t alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
 cpdef ztrsm(intptr_t handle, int side, int uplo, int trans, int diag,
-            int m, int n, double complex alpha, size_t Aarray, int lda,
+            int m, int n, size_t alpha, size_t Aarray, int lda,
             size_t Barray, int ldb)
 
 ###############################################################################
@@ -215,16 +240,28 @@ cpdef ztrsm(intptr_t handle, int side, int uplo, int trans, int diag,
 ###############################################################################
 
 cpdef sgeam(intptr_t handle, int transa, int transb, int m, int n,
-            float alpha, size_t A, int lda, float beta, size_t B, int ldb,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
             size_t C, int ldc)
 cpdef dgeam(intptr_t handle, int transa, int transb, int m, int n,
-            double alpha, size_t A, int lda, double beta, size_t B, int ldb,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
+            size_t C, int ldc)
+cpdef cgeam(intptr_t handle, int transa, int transb, int m, int n,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
+            size_t C, int ldc)
+cpdef zgeam(intptr_t handle, int transa, int transb, int m, int n,
+            size_t alpha, size_t A, int lda, size_t beta, size_t B, int ldb,
             size_t C, int ldc)
 cpdef sdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
             size_t x, int incx, size_t C, int ldc)
+cpdef ddgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc)
+cpdef cdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc)
+cpdef zdgmm(intptr_t handle, int mode, int m, int n, size_t A, int lda,
+            size_t x, int incx, size_t C, int ldc)
 cpdef sgemmEx(intptr_t handle, int transa, int transb, int m, int n, int k,
-              float alpha, size_t A, int Atype, int lda, size_t B,
-              int Btype, int ldb, float beta, size_t C, int Ctype,
+              size_t alpha, size_t A, int Atype, int lda, size_t B,
+              int Btype, int ldb, size_t beta, size_t C, int Ctype,
               int ldc)
 cpdef sgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)
@@ -234,6 +271,19 @@ cpdef cgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)
 cpdef zgetrfBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t infoArray, int batchSize)
+
+cpdef int sgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize)
+cpdef int dgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize)
+cpdef int cgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize)
+cpdef int zgetrsBatched(intptr_t handle, int trans, int n, int nrhs,
+                        size_t Aarray, int lda, size_t devIpiv,
+                        size_t Barray, int ldb, size_t info, int batchSize)
 
 cpdef sgetriBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t Carray, int ldc,

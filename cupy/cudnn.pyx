@@ -1,26 +1,26 @@
 from libcpp cimport vector
 from libc.stdint cimport int64_t
 
-import atexit
-import threading
-import warnings
+import atexit as _atexit
+import threading as _threading
+import warnings as _warnings
 
-import numpy
+import numpy as _numpy
 
-from cupy.core._carray cimport shape_t
-from cupy.core cimport _routines_manipulation as _manipulation
-from cupy.core cimport core
-from cupy.core cimport internal
+from cupy._core._carray cimport shape_t
+from cupy._core cimport _routines_manipulation as _manipulation
+from cupy._core cimport core
+from cupy._core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
 from cupy_backends.cuda.libs cimport cudnn
 
-from cupy.core._ufuncs import elementwise_copy
-from cupy import util
-from cupy_backends.cuda.libs import cudnn as py_cudnn
+from cupy._core._ufuncs import elementwise_copy as _elementwise_copy
+from cupy import _util
+from cupy_backends.cuda.libs import cudnn as _py_cudnn
 
 cdef int _cudnn_version = cudnn.getVersion()
-cdef _thread_local = threading.local()
+cdef _thread_local = _threading.local()
 
 cdef vector.vector[size_t] _handles
 
@@ -38,7 +38,7 @@ cpdef size_t get_handle() except? 0:
     return ret
 
 
-@atexit.register
+@_atexit.register
 def reset_handles():
     for handle in _handles:
         if handle:
@@ -253,13 +253,13 @@ cpdef core.ndarray _ascontiguousarray_normalized_strides(core.ndarray a):
         newarray._set_contiguous_strides(newarray.itemsize, True)
     else:
         newarray = core.ndarray(a.shape, a.dtype)
-        elementwise_copy(a, newarray)
+        _elementwise_copy(a, newarray)
     return newarray
 
 
 def create_tensor_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     desc = Descriptor(cudnn.createTensorDescriptor(),
-                      py_cudnn.destroyTensorDescriptor)
+                      _py_cudnn.destroyTensorDescriptor)
     _create_tensor_descriptor(desc.value, arr, format)
     return desc
 
@@ -271,7 +271,7 @@ def create_uninitialized_tensor_descriptor():
     This is used by the batch normalization functions.
     """
     return Descriptor(cudnn.createTensorDescriptor(),
-                      py_cudnn.destroyTensorDescriptor)
+                      _py_cudnn.destroyTensorDescriptor)
 
 
 def create_tensor_nd_descriptor(core.ndarray arr):
@@ -289,7 +289,7 @@ def create_tensor_nd_descriptor(core.ndarray arr):
     # numpy's stride is defined in bytes, but cudnn's stride is defined in
     # size of element
     desc = Descriptor(cudnn.createTensorDescriptor(),
-                      py_cudnn.destroyTensorDescriptor)
+                      _py_cudnn.destroyTensorDescriptor)
     _create_tensor_nd_descriptor(desc.value, arr, data_type)
     cache[key] = desc
     return desc
@@ -297,7 +297,7 @@ def create_tensor_nd_descriptor(core.ndarray arr):
 
 def create_filter_descriptor(arr, format=cudnn.CUDNN_TENSOR_NCHW):
     desc = Descriptor(cudnn.createFilterDescriptor(),
-                      py_cudnn.destroyFilterDescriptor)
+                      _py_cudnn.destroyFilterDescriptor)
     _create_filter_descriptor(desc.value, arr, format)
     return desc
 
@@ -308,7 +308,7 @@ def create_convolution_descriptor(pad, stride, dtype,
                                   use_tensor_core=False,
                                   groups=1):
     desc = Descriptor(cudnn.createConvolutionDescriptor(),
-                      py_cudnn.destroyConvolutionDescriptor)
+                      _py_cudnn.destroyConvolutionDescriptor)
     _create_convolution_descriptor(
         desc.value, pad, stride, dilation, groups,
         dtype, mode, use_tensor_core)
@@ -339,14 +339,14 @@ cdef _create_pooling_descriptor(
 
 def create_pooling_descriptor(ksize, stride, pad, int mode):
     desc = Descriptor(cudnn.createPoolingDescriptor(),
-                      py_cudnn.destroyPoolingDescriptor)
+                      _py_cudnn.destroyPoolingDescriptor)
     _create_pooling_descriptor(desc.value, ksize, stride, pad, mode)
     return desc
 
 
 cdef Descriptor _create_rnn_data_descriptor():
     return Descriptor(cudnn.createRNNDataDescriptor(),
-                      py_cudnn.destroyRNNDataDescriptor)
+                      _py_cudnn.destroyRNNDataDescriptor)
 
 
 cdef Descriptor _make_unpacked_rnn_data_descriptor(core.ndarray xs, lengths):
@@ -608,7 +608,7 @@ def rnn_backward_weights_ex(
 def create_activation_descriptor(mode, nan_prop_mode=cudnn.CUDNN_PROPAGATE_NAN,
                                  coef=0.0):
     desc = Descriptor(cudnn.createActivationDescriptor(),
-                      py_cudnn.destroyActivationDescriptor)
+                      _py_cudnn.destroyActivationDescriptor)
     cudnn.setActivationDescriptor(desc.value, mode, nan_prop_mode, coef)
     return desc
 
@@ -759,7 +759,7 @@ def softmax_backward(core.ndarray y, core.ndarray gy, int axis, int algorithm):
 def create_dropout_descriptor(
         handle, dropout, states, state_size_in_bytes, seed):
     desc = Descriptor(cudnn.createDropoutDescriptor(),
-                      py_cudnn.destroyDropoutDescriptor)
+                      _py_cudnn.destroyDropoutDescriptor)
     cudnn.setDropoutDescriptor(desc.value, handle, dropout,
                                states, state_size_in_bytes, seed)
     return desc
@@ -772,7 +772,7 @@ def set_dropout_descriptor(desc, handle, dropout):
 
 def _create_ctc_loss_descriptor(data_type):
     desc = Descriptor(cudnn.createCTCLossDescriptor(),
-                      py_cudnn.destroyCTCLossDescriptor)
+                      _py_cudnn.destroyCTCLossDescriptor)
     cudnn.setCTCLossDescriptor(desc.value, data_type)
     return desc
 
@@ -786,7 +786,7 @@ def ctc_loss(core.ndarray probs, labels,
     handle = get_handle()
     data_type = get_data_type(probs.dtype)
     ctc_desc = Descriptor(cudnn.createCTCLossDescriptor(),
-                          py_cudnn.destroyCTCLossDescriptor)
+                          _py_cudnn.destroyCTCLossDescriptor)
     cudnn.setCTCLossDescriptor(ctc_desc.value, data_type)
 
     gradients = core.ndarray(probs._shape, probs.dtype)
@@ -811,7 +811,7 @@ def ctc_loss(core.ndarray probs, labels,
 def create_rnn_descriptor(hidden_size, num_layers, dropout_desc,
                           input_mode, direction, mode, data_type, algo=None):
     desc = Descriptor(cudnn.createRNNDescriptor(),
-                      py_cudnn.destroyRNNDescriptor)
+                      _py_cudnn.destroyRNNDescriptor)
     if _cudnn_version >= 6000:
         _handle = get_handle()
         if algo is None:
@@ -888,7 +888,7 @@ cdef _DescriptorArray _make_tensor_descriptor_array(xs, lengths):
 
     """
     cdef _DescriptorArray descs = _DescriptorArray(
-        py_cudnn.destroyTensorDescriptor)
+        _py_cudnn.destroyTensorDescriptor)
     cdef size_t desc
     cdef int data_type = get_data_type(xs.dtype)
     cdef vector.vector[int] c_shape, c_strides
@@ -921,7 +921,7 @@ cdef _DescriptorArray _make_tensor_descriptor_array_for_padded(xs):
     assert xs.ndim == 3
 
     cdef _DescriptorArray descs = _DescriptorArray(
-        py_cudnn.destroyTensorDescriptor)
+        _py_cudnn.destroyTensorDescriptor)
     cdef size_t desc
     cdef int data_type = get_data_type(xs.dtype)
     cdef Py_ssize_t itemsize = xs.itemsize
@@ -1179,16 +1179,16 @@ def rnn_backward_weights(
 
 
 def create_dropout_states(handle):
-    warnings.warn('create_dropout_states is deprecated.'
-                  'Please use DropoutStates class instead.',
-                  DeprecationWarning)
+    _warnings.warn('create_dropout_states is deprecated.'
+                   'Please use DropoutStates class instead.',
+                   DeprecationWarning)
     state_size = cudnn.dropoutGetStatesSize(handle)
     return core.ndarray((state_size,), 'b')
 
 
 def create_spatial_transformer_descriptor(sampler_type, dtype, nb_dims, dim_A):
     desc = Descriptor(cudnn.createSpatialTransformerDescriptor(),
-                      py_cudnn.destroySpatialTransformerDescriptor)
+                      _py_cudnn.destroySpatialTransformerDescriptor)
     data_type = get_data_type(dtype)
 
     cudnn.setSpatialTransformerDescriptor(
@@ -1204,7 +1204,7 @@ def add_tensor(handle, alpha, biasDesc, biasData, beta, srcDestDesc,
 
 def create_op_tensor_descriptor(op_type, dtype):
     desc = Descriptor(cudnn.createOpTensorDescriptor(),
-                      py_cudnn.destroyOpTensorDescriptor)
+                      _py_cudnn.destroyOpTensorDescriptor)
     data_type = get_data_type(dtype)
 
     cudnn.setOpTensorDescriptor(desc.value, op_type, data_type,
@@ -1214,7 +1214,7 @@ def create_op_tensor_descriptor(op_type, dtype):
 
 def create_reduce_tensor_descriptor(reduce_type, dtype):
     desc = Descriptor(cudnn.createReduceTensorDescriptor(),
-                      py_cudnn.destroyReduceTensorDescriptor)
+                      _py_cudnn.destroyReduceTensorDescriptor)
     data_type = get_data_type(dtype)
     if reduce_type in (cudnn.CUDNN_REDUCE_TENSOR_MIN,
                        cudnn.CUDNN_REDUCE_TENSOR_MAX):
@@ -1334,13 +1334,13 @@ cdef dict _algorithm_bwd_data_cache = {}
 
 cpdef _warn_algorithm_fwd(
         core.ndarray x, core.ndarray W, core.ndarray y, tuple conv_param):
-    warnings.warn(
+    _warnings.warn(
         'Tensor Core mode is set but the selected convolution forward '
         'algorithm is not a Tensor Core enabled algorithm. '
         'This might be due to lack of workspace memory. '
         'x.shape:{}, W.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(x.shape, W.shape, y.shape, conv_param[0], conv_param[1]),
-        util.PerformanceWarning)
+        _util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_fwd(
@@ -1395,10 +1395,10 @@ cpdef _Algorithm _get_algorithm_fwd(
             raise RuntimeError('No conv fwd algo available with workspace size'
                                ' less equal {}'.format(max_workspace_size))
         if skip:
-            warnings.warn(
+            _warnings.warn(
                 'The best algo of conv fwd might not be selected due to '
                 'lack of workspace size ({})'.format(max_workspace_size),
-                util.PerformanceWarning)
+                _util.PerformanceWarning)
         algo = perf.algo
         workspace_size = perf.memory
         math_type = perf.mathType
@@ -1419,13 +1419,13 @@ cpdef _Algorithm _get_algorithm_fwd(
 
 cpdef _warn_algorithm_bwd_filter(
         core.ndarray x, core.ndarray dy, core.ndarray dW, tuple conv_param):
-    warnings.warn(
+    _warnings.warn(
         'Tensor Core mode is set but the selected convolution backward '
         'filter algorithm is not a Tensor Core enabled algorithm. '
         'This might be due to lack of workspace memory. '
         'x.shape:{}, dy.shape:{}, dW.shape:{}, pad:{}, stride:{}'
         .format(x.shape, dy.shape, dW.shape, conv_param[0], conv_param[1]),
-        util.PerformanceWarning)
+        _util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_bwd_filter(
@@ -1500,10 +1500,10 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
                 'No conv bwd filter algo available with workspace size less '
                 'equal {}'.format(max_workspace_size))
         if use_tensor_core and skip:
-            warnings.warn(
+            _warnings.warn(
                 'The best algo of conv bwd filter might not not selected due '
                 'to lack of workspace size ({})'.format(max_workspace_size),
-                util.PerformanceWarning)
+                _util.PerformanceWarning)
         algo = perf.algo
         workspace_size = perf.memory
         math_type = perf.mathType
@@ -1524,13 +1524,13 @@ cpdef _Algorithm _get_algorithm_bwd_filter(
 
 cpdef _warn_algorithm_bwd_data(
         core.ndarray W, core.ndarray x, core.ndarray y, tuple conv_param):
-    warnings.warn(
+    _warnings.warn(
         'Tensor Core mode is set but the selected convolution backward '
         'data algorithm is not a Tensor Core enabled algorithm. '
         'This might be due to lack of workspace memory. '
         'W.shape:{}, x.shape:{}, y.shape:{}, pad:{}, stride:{}'
         .format(W.shape, x.shape, y.shape, conv_param[0], conv_param[1]),
-        util.PerformanceWarning)
+        _util.PerformanceWarning)
 
 
 cpdef _Algorithm _find_algorithm_bwd_data(
@@ -1603,10 +1603,10 @@ cpdef _Algorithm _get_algorithm_bwd_data(
                 'No conv bwd data algo available with workspace size less '
                 'equal {}'.format(max_workspace_size))
         if use_tensor_core and skip:
-            warnings.warn(
+            _warnings.warn(
                 'The best algo of conv bwd data might not not selected due '
                 'to lack of workspace size ({})'.format(max_workspace_size),
-                util.PerformanceWarning)
+                _util.PerformanceWarning)
         algo = perf.algo
         workspace_size = perf.memory
         math_type = perf.mathType
@@ -1718,7 +1718,7 @@ def convolution_forward(
                 handle, one, x_desc, x.data.ptr, filter_desc, W.data.ptr,
                 conv_desc, perf.algo, workspace.ptr, perf.memory, zero, y_desc,
                 y.data.ptr)
-        except py_cudnn.CuDNNError as e:
+        except _py_cudnn.CuDNNError as e:
             infos = [
                 'func: cudnnConvolutionForward',
                 'x: {}'.format(_get_array_info(x)),
@@ -2048,11 +2048,11 @@ cdef _create_tensor_descriptor_for_bn(
 cdef _get_dtype_of_tensor_descriptor(size_t desc):
     cudnn_dtype, _, _, _, _, _, _, _, _ = cudnn.getTensor4dDescriptor(desc)
     if cudnn_dtype == cudnn.CUDNN_DATA_DOUBLE:
-        return numpy.dtype(numpy.float64)
+        return _numpy.dtype(_numpy.float64)
     elif cudnn_dtype == cudnn.CUDNN_DATA_FLOAT:
-        return numpy.dtype(numpy.float32)
+        return _numpy.dtype(_numpy.float32)
     elif cudnn_dtype == cudnn.CUDNN_DATA_HALF:
-        return numpy.dtype(numpy.float16)
+        return _numpy.dtype(_numpy.float16)
     else:
         raise RuntimeError('Unknown cudnn data type {} '.format(cudnn_dtype))
 
@@ -2075,11 +2075,11 @@ def batch_normalization_forward_training(
             debug,
             d_layout))
     if reserve_space is not None:
-        warnings.warn(
+        _warnings.warn(
             'Could be faster by calling '
             'batch_normalization_forward_training_ex() instead of '
             'batch_normalization_forward_training().',
-            util.PerformanceWarning)
+            _util.PerformanceWarning)
     if mean is None:
         return y, save_mean, save_inv_std
     else:
@@ -2178,7 +2178,7 @@ cdef _batch_normalization_forward_training(
 
             if (
                     cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT
-                    and x.dtype == numpy.float16
+                    and x.dtype == _numpy.float16
                     and d_layout == cudnn.CUDNN_TENSOR_NHWC
                     and x.shape[3] % 4 == 0  # C mod 4 == 0
             ):
@@ -2246,13 +2246,13 @@ cdef _batch_normalization_forward_training(
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use
         # queryRuntimeError() to make sure whether the overflow actually
-        # occured or not during the batch normalization.
+        # occurred or not during the batch normalization.
         if debug and cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT:
             query_mode = cudnn.CUDNN_ERRQUERY_BLOCKING
             rstatus = cudnn.queryRuntimeError(handle, query_mode)
             if rstatus != cudnn.CUDNN_STATUS_SUCCESS:
-                warnings.warn(
-                    'A numerical overflow might have happend in cuDNN'
+                _warnings.warn(
+                    'A numerical overflow might have happened in cuDNN'
                     'batch normalization (status:{})'.format(rstatus))
     finally:
         cudnn.destroyTensorDescriptor(x_desc)
@@ -2407,13 +2407,13 @@ def batch_normalization_backward(
         # Note: When the CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode is used,
         # there is a possibility of numerical overflow. You can use
         # queryRuntimeError() to make sure whether the overflow actually
-        # occured or not during the batch normalization.
+        # occurred or not during the batch normalization.
         if debug and cudnn_mode == cudnn.CUDNN_BATCHNORM_SPATIAL_PERSISTENT:
             query_mode = cudnn.CUDNN_ERRQUERY_BLOCKING
             rstatus = cudnn.queryRuntimeError(handle, query_mode)
             if rstatus != cudnn.CUDNN_STATUS_SUCCESS:
-                warnings.warn(
-                    'A numerical overflow might have happend in cuDNN'
+                _warnings.warn(
+                    'A numerical overflow might have happened in cuDNN'
                     'batch normalization (status:{})'.format(rstatus))
     finally:
         cudnn.destroyTensorDescriptor(x_desc)
@@ -2428,20 +2428,20 @@ def batch_normalization_backward(
 def create_activation_descriptor(mode, relu_nan_opt=cudnn.CUDNN_PROPAGATE_NAN,
                                  coef=0.0):
     desc = Descriptor(cudnn.createActivationDescriptor(),
-                      py_cudnn.destroyActivationDescriptor)
+                      _py_cudnn.destroyActivationDescriptor)
     cudnn.setActivationDescriptor(desc.value, mode, relu_nan_opt, coef)
     return desc
 
 
 def create_fused_ops_plan(ops):
     plan = Descriptor(cudnn.createFusedOpsPlan(ops),
-                      py_cudnn.destroyFusedOpsPlan)
+                      _py_cudnn.destroyFusedOpsPlan)
     return plan
 
 
 def create_fused_ops_const_param_pack(ops, list_attr_param):
     const_pack = Descriptor(cudnn.createFusedOpsConstParamPack(ops),
-                            py_cudnn.destroyFusedOpsConstParamPack)
+                            _py_cudnn.destroyFusedOpsConstParamPack)
     for attr, param in list_attr_param:
         set_fused_ops_const_param_pack_attribute(const_pack, attr, param)
     return const_pack
@@ -2454,7 +2454,7 @@ def make_fused_ops_plan(plan, const_pack):
 
 def create_fused_ops_variant_param_pack(ops, list_attr_param):
     var_pack = Descriptor(cudnn.createFusedOpsVariantParamPack(ops),
-                          py_cudnn.destroyFusedOpsVariantParamPack)
+                          _py_cudnn.destroyFusedOpsVariantParamPack)
     for attr, param in list_attr_param:
         set_fused_ops_variant_param_pack_attribute(var_pack, attr, param)
     return var_pack

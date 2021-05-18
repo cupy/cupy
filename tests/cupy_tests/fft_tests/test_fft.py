@@ -1,14 +1,21 @@
 import functools
-import unittest
-import pytest
 
 import numpy as np
+import pytest
 
 import cupy
-from cupy import testing
 from cupy.fft import config
-from cupy.fft.fft import (_default_fft_func, _fft, _fftn,
-                          _size_last_transform_axis)
+from cupy.fft._fft import (_default_fft_func, _fft, _fftn,
+                           _size_last_transform_axis)
+from cupy import testing
+from cupy.testing._helper import _wraps_partial
+
+
+@pytest.fixture
+def skip_forward_backward(request):
+    if request.instance.norm in ('backward', 'forward'):
+        if not (np.lib.NumpyVersion(np.__version__) >= '1.20.0'):
+            pytest.skip('forward/backward is supported by NumPy 1.20+')
 
 
 def nd_planning_states(states=[True, False], name='enable_nd'):
@@ -26,7 +33,7 @@ def nd_planning_states(states=[True, False], name='enable_nd'):
     argument.
     """
     def decorator(impl):
-        @functools.wraps(impl)
+        @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
             # get original global planning state
             planning_state = config.enable_nd_planning
@@ -53,7 +60,7 @@ def multi_gpu_config(gpu_configs=None):
     """Decorator for parameterized tests with different GPU configurations.
 
     Args:
-        gpu_configs(list of list): The GPUs to test.
+        gpu_configs (list of list): The GPUs to test.
 
     .. notes:
         The decorated tests are skipped if no or only one GPU is available.
@@ -71,6 +78,7 @@ def multi_gpu_config(gpu_configs=None):
                         assert nGPUs >= 2, 'Must use at least two gpus'
                         config.use_multi_gpus = True
                         config.set_cufft_gpus(gpus)
+                        self.gpus = gpus
 
                         impl(self, *args, **kw)
                     except Exception:
@@ -79,18 +87,20 @@ def multi_gpu_config(gpu_configs=None):
             finally:
                 config.use_multi_gpus = use_multi_gpus
                 config._devices = _devices
+                del self.gpus
 
         return test_func
     return decorator
 
 
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(0,), (10, 0), (10,), (10, 10)],
-    'norm': [None, 'ortho', ''],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
-class TestFft(unittest.TestCase):
+class TestFft:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -99,7 +109,7 @@ class TestFft(unittest.TestCase):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
@@ -127,7 +137,7 @@ class TestFft(unittest.TestCase):
     'axis': [0, 1, -1],
 }))
 @testing.gpu
-class TestFftOrder(unittest.TestCase):
+class TestFftOrder:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -138,7 +148,7 @@ class TestFftOrder(unittest.TestCase):
             a = xp.asfortranarray(a)
         out = xp.fft.fft(a, axis=self.axis)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype in [np.float16, np.float32, np.complex64]:
             out = out.astype(np.complex64)
 
@@ -159,25 +169,42 @@ class TestFftOrder(unittest.TestCase):
         return out
 
 
+# See #3757 and NVIDIA internal ticket 3093094
+def _skip_multi_gpu_bug(shape, gpus):
+    # avoid CUDA 11.0 (will be fixed by CUDA 11.2) bug triggered by
+    # - batch = 1
+    # - gpus = [1, 0]
+    if (11000 <= cupy.cuda.runtime.runtimeGetVersion() < 11200
+            and len(shape) == 1
+            and gpus == [1, 0]):
+        pytest.skip('avoid CUDA 11 bug')
+
+
 # Almost identical to the TestFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 0, 64],
     'shape': [(0,), (0, 10), (64,), (4, 64)],
-    'norm': [None, 'ortho', ''],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.multi_gpu(2)
-class TestMultiGpuFft(unittest.TestCase):
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='hipFFT does not support multi-GPU FFT')
+class TestMultiGpuFft:
+
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -191,10 +218,12 @@ class TestMultiGpuFft(unittest.TestCase):
     @testing.with_requires('numpy!=1.17.0')
     @testing.with_requires('numpy!=1.17.1')
     def test_ifft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ifft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -210,18 +239,22 @@ class TestMultiGpuFft(unittest.TestCase):
     'axis': [0, 1, -1],
 }))
 @testing.multi_gpu(2)
-class TestMultiGpuFftOrder(unittest.TestCase):
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='hipFFT does not support multi-GPU FFT')
+class TestMultiGpuFftOrder:
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.fft(a, axis=self.axis)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -232,12 +265,14 @@ class TestMultiGpuFftOrder(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if self.data_order == 'F':
             a = xp.asfortranarray(a)
         out = xp.fft.ifft(a, axis=self.axis)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(dtype)
 
@@ -245,7 +280,7 @@ class TestMultiGpuFftOrder(unittest.TestCase):
 
 
 @testing.gpu
-class TestDefaultPlanType(unittest.TestCase):
+class TestDefaultPlanType:
 
     @nd_planning_states()
     def test_default_fft_func(self, enable_nd):
@@ -254,7 +289,11 @@ class TestDefaultPlanType(unittest.TestCase):
         for axes in [(0, 1), (1, 2), None, (0, 1, 2)]:
             fft_func = _default_fft_func(ca, axes=axes)
             if enable_nd:
-                assert fft_func is _fftn
+                # TODO(leofang): test newer ROCm versions
+                if axes == (0, 1) and cupy.cuda.runtime.is_hip:
+                    assert fft_func is _fft
+                else:
+                    assert fft_func is _fftn
             else:
                 assert fft_func is _fft
 
@@ -278,7 +317,11 @@ class TestDefaultPlanType(unittest.TestCase):
                            [(-2, -1), (0, 1), None]):
             fft_func = _default_fft_func(ca, s=s, axes=axes, value_type='R2C')
             if enable_nd:
-                assert fft_func is _fftn
+                # TODO(leofang): test newer ROCm versions
+                if axes == (0, 1) and cupy.cuda.runtime.is_hip:
+                    assert fft_func is _fft
+                else:
+                    assert fft_func is _fftn
             else:
                 assert fft_func is _fft
 
@@ -291,7 +334,12 @@ class TestDefaultPlanType(unittest.TestCase):
                            [(-2, -1), (0, 1), None]):
             fft_func = _default_fft_func(ca, s=s, axes=axes, value_type='C2R')
             if enable_nd:
-                assert fft_func is _fftn
+                # To get around hipFFT's bug, we don't use PlanNd for C2R
+                # TODO(leofang): test newer ROCm versions
+                if cupy.cuda.runtime.is_hip:
+                    assert fft_func is _fft
+                else:
+                    assert fft_func is _fftn
             else:
                 assert fft_func is _fft
 
@@ -299,9 +347,11 @@ class TestDefaultPlanType(unittest.TestCase):
         assert _default_fft_func(ca, axes=(2, 1), value_type='C2R') is _fft
 
 
+@pytest.mark.skipif(10010 <= cupy.cuda.runtime.runtimeGetVersion() <= 11010,
+                    reason='avoid a cuFFT bug (cupy/cupy#3777)')
 @testing.gpu
 @testing.slow
-class TestFftAllocate(unittest.TestCase):
+class TestFftAllocate:
 
     def test_fft_allocate(self):
         # Check CuFFTError is not raised when the GPU memory is enough.
@@ -318,33 +368,38 @@ class TestFftAllocate(unittest.TestCase):
         cupy.get_default_memory_pool().free_all_blocks()
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (0, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 0), 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': ()},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': ()},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {'shape': (0, 5), 's': None, 'axes': None},
+        {'shape': (2, 0, 5), 's': None, 'axes': None},
+        {'shape': (0, 0, 5), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (0, 5), 'axes': None},
+        {'shape': (3, 4), 's': (1, 0), 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
-class TestFft2(unittest.TestCase):
+class TestFft2:
 
     @nd_planning_states()
     @testing.for_orders('CF')
@@ -389,34 +444,39 @@ class TestFft2(unittest.TestCase):
         return out
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': [-1, -2], 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (4, 3, 2), 'axes': (2, 0, 1), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': [-1, -2]},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': ()},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': ()},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4), 's': (4, 3, 2), 'axes': (2, 0, 1)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        {'shape': (0, 5), 's': None, 'axes': None},
+        {'shape': (2, 0, 5), 's': None, 'axes': None},
+        {'shape': (0, 0, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
-class TestFftn(unittest.TestCase):
+class TestFftn:
 
     @nd_planning_states()
     @testing.for_orders('CF')
@@ -461,27 +521,41 @@ class TestFftn(unittest.TestCase):
         return out
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 0, 5), 's': None, 'axes': None, 'norm': None},
-    {'shape': (0, 0, 5), 's': None, 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (0, 5), 's': None, 'axes': None},
+        {'shape': (2, 0, 5), 's': None, 'axes': None},
+        {'shape': (0, 0, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
+    )
+))
 @testing.gpu
-class TestPlanCtxManagerFftn(unittest.TestCase):
+class TestPlanCtxManagerFftn:
+
+    @pytest.fixture(autouse=True)
+    def skip_buggy(self):
+        if cupy.cuda.runtime.is_hip:
+            # TODO(leofang): test newer ROCm versions
+            if (self.axes == (0, 1) and self.shape == (2, 3, 4)):
+                pytest.skip("hipFFT's PlanNd for this case "
+                            "is buggy, so Plan1d is generated "
+                            "instead")
 
     @nd_planning_states()
     @testing.for_complex_dtypes()
@@ -527,7 +601,7 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
     @testing.for_complex_dtypes()
     def test_fftn_error_on_wrong_plan(self, dtype, enable_nd):
         if 0 in self.shape:
-            raise unittest.SkipTest('0 in shape')
+            pytest.skip('0 in shape')
         # This test ensures the context manager plan is picked up
 
         from cupyx.scipy.fftpack import get_fft_plan
@@ -557,13 +631,14 @@ class TestPlanCtxManagerFftn(unittest.TestCase):
         assert 'The cuFFT plan and a.shape do not match' in str(ex.value)
 
 
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), ],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.gpu
-class TestPlanCtxManagerFft(unittest.TestCase):
+class TestPlanCtxManagerFft:
 
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -580,7 +655,7 @@ class TestPlanCtxManagerFft(unittest.TestCase):
         else:
             out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
@@ -628,18 +703,24 @@ class TestPlanCtxManagerFft(unittest.TestCase):
 # Almost identical to the TestPlanCtxManagerFft class, except that
 # 1. multi-GPU cuFFT is used
 # 2. the tested parameter combinations are adjusted to meet the requirements
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 64],
     'shape': [(64,), (128,)],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.multi_gpu(2)
-class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='hipFFT does not support multi-GPU FFT')
+class TestMultiGpuPlanCtxManagerFft:
+
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_fft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
@@ -651,7 +732,7 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
         else:
             out = xp.fft.fft(a, n=self.n, norm=self.norm)
 
-        # np.fft.fft alway returns np.complex128
+        # np.fft.fft always returns np.complex128
         if xp is np and dtype is np.complex64:
             out = out.astype(np.complex64)
 
@@ -662,6 +743,8 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_ifft(self, xp, dtype):
+        _skip_multi_gpu_bug(self.shape, self.gpus)
+
         a = testing.shaped_random(self.shape, xp, dtype)
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
@@ -695,25 +778,34 @@ class TestMultiGpuPlanCtxManagerFft(unittest.TestCase):
         with pytest.raises(ValueError) as ex, plan_wrong:
             fft(a, n=self.n, norm=self.norm)
         # targeting a particular error
+        if self.norm == '':
+            # if norm is invalid, we still get ValueError, but it's raised
+            # when checking norm, earlier than the plan check
+            return  # skip
         assert 'Target array size does not match the plan.' in str(ex.value)
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': (-3, -2, -1)},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
-class TestFftnContiguity(unittest.TestCase):
+class TestFftnContiguity:
 
     @nd_planning_states([True])
     @testing.for_all_dtypes()
@@ -727,8 +819,8 @@ class TestFftnContiguity(unittest.TestCase):
             fft_func = _default_fft_func(a, s=self.s, axes=self.axes)
             if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
-                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
-                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+                assert out.flags.c_contiguous == a.flags.c_contiguous
+                assert out.flags.f_contiguous == a.flags.f_contiguous
             else:
                 # 1d planning case doesn't guarantee preserved contiguity
                 pass
@@ -746,23 +838,25 @@ class TestFftnContiguity(unittest.TestCase):
             fft_func = _default_fft_func(a, s=self.s, axes=self.axes)
             if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
-                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
-                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+                assert out.flags.c_contiguous == a.flags.c_contiguous
+                assert out.flags.f_contiguous == a.flags.f_contiguous
             else:
                 # 1d planning case doesn't guarantee preserved contiguity
                 pass
 
 
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
-class TestRfft(unittest.TestCase):
+class TestRfft:
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_rfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.rfft(a, n=self.n, norm=self.norm)
@@ -773,7 +867,8 @@ class TestRfft(unittest.TestCase):
         return out
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_irfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.irfft(a, n=self.n, norm=self.norm)
@@ -784,19 +879,21 @@ class TestRfft(unittest.TestCase):
         return out
 
 
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,)],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward'],
 }))
 @testing.gpu
-class TestPlanCtxManagerRfft(unittest.TestCase):
+class TestPlanCtxManagerRfft:
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
     def test_rfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
+
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
@@ -817,6 +914,7 @@ class TestPlanCtxManagerRfft(unittest.TestCase):
                                  contiguous_check=False)
     def test_irfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
+
         if xp is cupy:
             from cupyx.scipy.fftpack import get_fft_plan
             shape = (self.n,) if self.n is not None else None
@@ -851,26 +949,31 @@ class TestPlanCtxManagerRfft(unittest.TestCase):
         assert 'Target array size does not match the plan.' in str(ex.value)
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
-class TestRfft2(unittest.TestCase):
+class TestRfft2:
 
     @nd_planning_states()
     @testing.for_orders('CF')
@@ -899,7 +1002,7 @@ class TestRfft2(unittest.TestCase):
                 and int(cupy.cuda.device.get_compute_capability()) < 70
                 and _size_last_transform_axis(
                     self.shape, self.s, self.axes) == 2):
-            raise unittest.SkipTest('work-around for cuFFT issue')
+            pytest.skip('work-around for cuFFT issue')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
@@ -916,7 +1019,7 @@ class TestRfft2(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
 )
 @testing.gpu
-class TestRfft2EmptyAxes(unittest.TestCase):
+class TestRfft2EmptyAxes:
 
     @testing.for_all_dtypes(no_complex=True)
     def test_rfft2(self, dtype):
@@ -933,26 +1036,31 @@ class TestRfft2EmptyAxes(unittest.TestCase):
                 xp.fft.irfft2(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
-class TestRfftn(unittest.TestCase):
+class TestRfftn:
 
     @nd_planning_states()
     @testing.for_orders('CF')
@@ -982,7 +1090,7 @@ class TestRfftn(unittest.TestCase):
                 and int(cupy.cuda.device.get_compute_capability()) < 70
                 and _size_last_transform_axis(
                     self.shape, self.s, self.axes) == 2):
-            raise unittest.SkipTest('work-around for cuFFT issue')
+            pytest.skip('work-around for cuFFT issue')
 
         a = testing.shaped_random(self.shape, xp, dtype)
         if order == 'F':
@@ -996,23 +1104,37 @@ class TestRfftn(unittest.TestCase):
 
 
 # Only those tests in which a legit plan can be obtained are kept
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, None), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': (1, 5), 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2), 'norm': 'ortho'},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': (1, None), 'axes': None},
+        {'shape': (3, 4), 's': (1, 5), 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
-class TestPlanCtxManagerRfftn(unittest.TestCase):
+class TestPlanCtxManagerRfftn:
+
+    @pytest.fixture(autouse=True)
+    def skip_buggy(self):
+        if cupy.cuda.runtime.is_hip:
+            # TODO(leofang): test newer ROCm versions
+            if (self.axes == (0, 1) and self.shape == (2, 3, 4)):
+                pytest.skip("hipFFT's PlanNd for this case "
+                            "is buggy, so Plan1d is generated "
+                            "instead")
 
     @nd_planning_states()
     @testing.for_all_dtypes(no_complex=True)
@@ -1034,6 +1156,8 @@ class TestPlanCtxManagerRfftn(unittest.TestCase):
 
         return out
 
+    @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                        reason="hipFFT's PlanNd for C2R is buggy")
     @nd_planning_states()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1058,23 +1182,28 @@ class TestPlanCtxManagerRfftn(unittest.TestCase):
     # TODO(leofang): write test_rfftn_error_on_wrong_plan()?
 
 
-@testing.parameterize(
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-2, -1), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (-1, -2), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': (0,), 'norm': None},
-    {'shape': (3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None, 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': (0, 1), 'norm': None},
-    {'shape': (2, 3, 4), 's': None, 'axes': None, 'norm': 'ortho'},
-    {'shape': (2, 3, 4, 5), 's': None, 'axes': None, 'norm': None},
-)
+@pytest.mark.usefixtures('skip_forward_backward')
+@testing.parameterize(*(
+    testing.product_dict([
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (3, 4), 's': None, 'axes': (-2, -1)},
+        {'shape': (3, 4), 's': None, 'axes': (-1, -2)},
+        {'shape': (3, 4), 's': None, 'axes': (0,)},
+        {'shape': (3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, None), 'axes': None},
+        {'shape': (2, 3, 4), 's': (1, 4, 10), 'axes': None},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-3, -2, -1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (-1, -2, -3)},
+        {'shape': (2, 3, 4), 's': None, 'axes': (0, 1)},
+        {'shape': (2, 3, 4), 's': None, 'axes': None},
+        {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+    ],
+        testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
+    )
+))
 @testing.gpu
-class TestRfftnContiguity(unittest.TestCase):
+class TestRfftnContiguity:
 
     @nd_planning_states([True])
     @testing.for_float_dtypes()
@@ -1089,8 +1218,8 @@ class TestRfftnContiguity(unittest.TestCase):
                                          value_type='R2C')
             if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
-                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
-                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+                assert out.flags.c_contiguous == a.flags.c_contiguous
+                assert out.flags.f_contiguous == a.flags.f_contiguous
             else:
                 # 1d planning case doesn't guarantee preserved contiguity
                 pass
@@ -1109,8 +1238,8 @@ class TestRfftnContiguity(unittest.TestCase):
                                          value_type='C2R')
             if fft_func is _fftn:
                 # nd plans have output with contiguity matching the input
-                self.assertEqual(out.flags.c_contiguous, a.flags.c_contiguous)
-                self.assertEqual(out.flags.f_contiguous, a.flags.f_contiguous)
+                assert out.flags.c_contiguous == a.flags.c_contiguous
+                assert out.flags.f_contiguous == a.flags.f_contiguous
             else:
                 # 1d planning case doesn't guarantee preserved contiguity
                 pass
@@ -1121,7 +1250,7 @@ class TestRfftnContiguity(unittest.TestCase):
     {'shape': (2, 3, 4), 's': None, 'axes': (), 'norm': None},
 )
 @testing.gpu
-class TestRfftnEmptyAxes(unittest.TestCase):
+class TestRfftnEmptyAxes:
 
     @testing.for_all_dtypes(no_complex=True)
     def test_rfftn(self, dtype):
@@ -1138,16 +1267,18 @@ class TestRfftnEmptyAxes(unittest.TestCase):
                 xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
+@pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
     'n': [None, 5, 10, 15],
     'shape': [(10,), (10, 10)],
-    'norm': [None, 'ortho'],
+    'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 @testing.gpu
-class TestHfft(unittest.TestCase):
+class TestHfft:
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_hfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.hfft(a, n=self.n, norm=self.norm)
@@ -1158,7 +1289,8 @@ class TestHfft(unittest.TestCase):
         return out
 
     @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
+    @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
+                                 contiguous_check=False)
     def test_ihfft(self, xp, dtype):
         a = testing.shaped_random(self.shape, xp, dtype)
         out = xp.fft.ihfft(a, n=self.n, norm=self.norm)
@@ -1175,7 +1307,7 @@ class TestHfft(unittest.TestCase):
     {'n': 100, 'd': 2},
 )
 @testing.gpu
-class TestFftfreq(unittest.TestCase):
+class TestFftfreq:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
@@ -1202,7 +1334,7 @@ class TestFftfreq(unittest.TestCase):
     {'shape': (10, 10), 'axes': (0, 1)},
 )
 @testing.gpu
-class TestFftshift(unittest.TestCase):
+class TestFftshift:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, contiguous_check=False)
@@ -1221,13 +1353,14 @@ class TestFftshift(unittest.TestCase):
         return out
 
 
-class TestThreading(unittest.TestCase):
+class TestThreading:
 
     def test_threading1(self):
         import threading
         from cupy.cuda.cufft import get_current_plan
 
         def thread_get_curr_plan():
+            cupy.cuda.Device().use()
             return get_current_plan()
 
         new_thread = threading.Thread(target=thread_get_curr_plan)
@@ -1239,6 +1372,7 @@ class TestThreading(unittest.TestCase):
         a = cupy.arange(100, dtype=cupy.complex64).reshape(10, 10)
 
         def thread_do_fft():
+            cupy.cuda.Device().use()
             b = cupy.fft.fftn(a)
             return b
 

@@ -1,31 +1,29 @@
-Logic Functions
+Logic functions
 ===============
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.logic.html
+.. Hint:: `NumPy API Reference: Logic functions <https://numpy.org/doc/stable/reference/routines.logic.html>`_
+
+.. currentmodule:: cupy
 
 Truth value testing
 -------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.all
-   cupy.any
-   cupy.in1d
-   cupy.isin
+   all
+   any
 
 
-Infinities and NaNs
--------------------
+Array contents
+--------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.isfinite
-   cupy.isinf
-   cupy.isnan
+   isfinite
+   isinf
+   isnan
 
 
 Array type testing
@@ -33,14 +31,13 @@ Array type testing
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.iscomplex
-   cupy.iscomplexobj
-   cupy.isfortran
-   cupy.isreal
-   cupy.isrealobj
-   cupy.isscalar
+   iscomplex
+   iscomplexobj
+   isfortran
+   isreal
+   isrealobj
+   isscalar
 
 
 Logic operations
@@ -48,12 +45,11 @@ Logic operations
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.logical_and
-   cupy.logical_or
-   cupy.logical_not
-   cupy.logical_xor
+   logical_and
+   logical_or
+   logical_not
+   logical_xor
 
 
 Comparison
@@ -61,13 +57,13 @@ Comparison
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.allclose
-   cupy.isclose
-   cupy.greater
-   cupy.greater_equal
-   cupy.less
-   cupy.less_equal
-   cupy.equal
-   cupy.not_equal
+   allclose
+   isclose
+   array_equal
+   greater
+   greater_equal
+   less
+   less_equal
+   equal
+   not_equal

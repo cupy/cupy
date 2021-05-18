@@ -1,5 +1,7 @@
 import contextlib
 import math
+import os
+import warnings
 
 
 try:
@@ -9,7 +11,7 @@ except ImportError:
     _optuna_available = False
 
 
-from cupy.core import _optimize_config
+from cupy._core import _optimize_config
 from cupyx import time
 
 
@@ -42,7 +44,7 @@ def _optimize(
 
 
 @contextlib.contextmanager
-def optimize(*, key=None, **config_dict):
+def optimize(*, key=None, path=None, readonly=False, **config_dict):
     """Context manager that optimizes kernel launch parameters.
 
     In this context, CuPy's routines find the best kernel launch parameter
@@ -52,6 +54,11 @@ def optimize(*, key=None, **config_dict):
 
     Args:
         key (string or None): The cache key of optimizations.
+        path (string or None): The path to save optimization cache records.
+            When path is specified and exists, records will be loaded from
+            the path. When readonly option is set to ``False``, optimization
+            cache records will be saved to the path after the optimization.
+        readonly (bool): See the description of ``path`` option.
         max_trials (int): The number of trials that defaults to 100.
         timeout (float):
             Stops study after the given number of seconds. Default is 1.
@@ -83,7 +90,18 @@ def optimize(*, key=None, **config_dict):
     context = _optimize_config.get_new_context(key, _optimize, config_dict)
     _optimize_config.set_current_context(context)
 
+    if path is not None:
+        if os.path.exists(path):
+            context.load(path)
+        elif readonly:
+            warnings.warn('''
+The specified path {} could not be found, and the readonly option is set.
+The optimization results will never be stored.
+'''.format(path))
+
     try:
         yield context
+        if path is not None and not readonly and context._is_dirty():
+            context.save(path)
     finally:
         _optimize_config.set_current_context(old_context)

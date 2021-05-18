@@ -1,12 +1,10 @@
 import cupy
-from cupy import core
-from cupy.core import fusion
-from cupy import util
+from cupy import _core
+from cupy._core import fusion
+from cupy import _util
 
-from cupy.core import _routines_indexing as _indexing
-from cupy.core import _routines_statistics as _statistics
-
-import warnings
+from cupy._core import _routines_indexing as _indexing
+from cupy._core import _routines_statistics as _statistics
 
 
 def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
@@ -118,8 +116,6 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
 
     return _statistics._nanargmin(a, axis, dtype, out, keepdims)
 
-# TODO(okuta): Implement argwhere
-
 
 def nonzero(a):
     """Return the indices of the elements that are non-zero.
@@ -140,7 +136,7 @@ def nonzero(a):
     .. seealso:: :func:`numpy.nonzero`
 
     """
-    util.check_array(a, arg_name='a')
+    _util.check_array(a, arg_name='a')
     return a.nonzero()
 
 
@@ -162,11 +158,11 @@ def flatnonzero(a):
 
     .. seealso:: :func:`numpy.flatnonzero`
     """
-    util.check_array(a, arg_name='a')
+    _util.check_array(a, arg_name='a')
     return a.ravel().nonzero()[0]
 
 
-_where_ufunc = core.create_ufunc(
+_where_ufunc = _core.create_ufunc(
     'cupy_where',
     ('???->?', '?bb->b', '?BB->B', '?hh->h', '?HH->H', '?ii->i', '?II->I',
      '?ll->l', '?LL->L', '?qq->q', '?QQ->Q', '?ee->e', '?ff->f',
@@ -220,7 +216,7 @@ def argwhere(a):
 
     Returns a (N, ndim) dimantional array containing the
     indices of the non-zero elements. Where `N` is number of
-    non-zero elements and `ndim` is dimention of the given array.
+    non-zero elements and `ndim` is dimension of the given array.
 
     Args:
         a (cupy.ndarray): array
@@ -231,11 +227,7 @@ def argwhere(a):
     .. seealso:: :func:`numpy.argwhere`
 
     """
-    util.check_array(a, arg_name='a')
-    if a.ndim == 0:
-        warnings.warn(
-            'calling argwhere on 0d arrays is deprecated',
-            DeprecationWarning)
+    _util.check_array(a, arg_name='a')
     return _indexing._ndarray_argwhere(a)
 
 
@@ -249,11 +241,30 @@ __device__ bool _isnan(T val) {
 '''
 
 
-_searchsorted_kernel = core.ElementwiseKernel(
+_hip_preamble = r'''
+#ifdef __HIP_DEVICE_COMPILE__
+  #define no_thread_divergence(do_work, to_return) \
+    if (!is_done) {                                \
+      do_work;                                     \
+      is_done = true;                              \
+    }
+#else
+  #define no_thread_divergence(do_work, to_return) \
+    do_work;                                       \
+    if (to_return) { return; }
+#endif
+'''
+
+
+_searchsorted_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int64 n_bins, bool side_is_right, '
     'bool assume_increassing',
     'int64 y',
     '''
+    #ifdef __HIP_DEVICE_COMPILE__
+    bool is_done = false;
+    #endif
+
     // Array is assumed to be monotonically
     // increasing unless a check is requested with the
     // `assume_increassing = False` parameter.
@@ -279,8 +290,7 @@ _searchsorted_kernel = core.ElementwiseKernel(
                 }
             }
         }
-        y = pos;
-        return;
+        no_thread_divergence( y = pos , true )
     }
 
     bool greater = false;
@@ -290,8 +300,7 @@ _searchsorted_kernel = core.ElementwiseKernel(
         greater = (inc ? x > bins[n_bins-1] : x <= bins[n_bins-1]);
     }
     if (greater) {
-        y = n_bins;
-        return;
+        no_thread_divergence( y = n_bins , true )
     }
 
     long long left = 0;
@@ -302,14 +311,12 @@ _searchsorted_kernel = core.ElementwiseKernel(
             ++left;
         }
         if (left == n_bins) {
-            y = n_bins;
-            return;
+            no_thread_divergence( y = n_bins , true )
         }
         if (side_is_right
                 && !_isnan<T>(bins[n_bins-1]) && !_isnan<S>(x)
                 && bins[n_bins-1] > x) {
-            y = n_bins;
-            return;
+            no_thread_divergence( y = n_bins , true )
         }
     }
 
@@ -328,8 +335,8 @@ _searchsorted_kernel = core.ElementwiseKernel(
             right = m;
         }
     }
-    y = right;
-    ''', preamble=_preamble)
+    no_thread_divergence( y = right , false )
+    ''', preamble=_preamble+_hip_preamble)
 
 
 def searchsorted(a, v, side='left', sorter=None):
@@ -391,7 +398,7 @@ def _searchsorted(a, v, side, sorter, assume_increasing):
         a = a.astype(v.dtype)
 
     # Numpy does not check if the array is monotonic inside searchsorted
-    # which leds to undefined behavior in such cases.
+    # which leads to undefined behavior in such cases.
     if sorter is not None:
         if sorter.dtype.kind not in ('i', 'u'):
             raise TypeError('sorter must be of integer type')

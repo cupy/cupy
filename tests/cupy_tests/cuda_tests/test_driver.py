@@ -6,11 +6,12 @@ import cupy
 from cupy.cuda import driver
 
 
+@unittest.skipIf(cupy.cuda.runtime.is_hip, 'Context API is dperecated in HIP')
 class TestDriver(unittest.TestCase):
     def test_ctxGetCurrent(self):
         # Make sure to create context.
         cupy.arange(1)
-        self.assertNotEqual(0, driver.ctxGetCurrent())
+        assert 0 != driver.ctxGetCurrent()
 
     def test_ctxGetCurrent_thread(self):
         # Make sure to create context in main thread.
@@ -18,6 +19,7 @@ class TestDriver(unittest.TestCase):
 
         def f(self):
             self._result0 = driver.ctxGetCurrent()
+            cupy.cuda.Device().use()
             cupy.arange(1)
             self._result1 = driver.ctxGetCurrent()
 
@@ -30,11 +32,11 @@ class TestDriver(unittest.TestCase):
 
         # The returned context pointer must be NULL on sub thread
         # without valid context.
-        self.assertEqual(0, self._result0)
+        assert 0 == self._result0
 
         # After the context is created, it should return the valid
         # context pointer.
-        self.assertNotEqual(0, self._result1)
+        assert 0 != self._result1
 
 
 class TestExceptionPicklable(unittest.TestCase):

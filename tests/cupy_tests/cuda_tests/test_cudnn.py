@@ -1,11 +1,10 @@
 import pickle
 import unittest
 
-try:
-    from cupy.cuda import cudnn
-    cudnn_available = True
-except Exception:
-    cudnn_available = False
+from cupy.cuda import cudnn
+
+
+cudnn_available = cudnn.available
 
 
 @unittest.skipUnless(cudnn_available, 'cuDNN is unavailable')

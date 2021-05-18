@@ -1,28 +1,68 @@
-----------------------------------
-Multi-dimensional image processing
-----------------------------------
-
-CuPy provides multi-dimensional image processing functions.
-It supports a subset of :mod:`scipy.ndimage` interface.
-
 .. module:: cupyx.scipy.ndimage
 
-.. https://docs.scipy.org/doc/scipy/reference/ndimage.html
+Multidimensional image processing (:mod:`cupyx.scipy.ndimage`)
+==============================================================
+
+.. Hint:: `SciPy API Reference: Multidimensional image processing (scipy.ndimage) <https://docs.scipy.org/doc/scipy/reference/ndimage.html>`_
+
+
+Filters
+-------
+
+.. autosummary::
+   :toctree: generated/
+
+   convolve
+   convolve1d
+   correlate
+   correlate1d
+   gaussian_filter
+   gaussian_filter1d
+   gaussian_gradient_magnitude
+   gaussian_laplace
+   generic_filter
+   generic_filter1d
+   generic_gradient_magnitude
+   generic_laplace
+   laplace
+   maximum_filter
+   maximum_filter1d
+   median_filter
+   minimum_filter
+   minimum_filter1d
+   percentile_filter
+   prewitt
+   rank_filter
+   sobel
+   uniform_filter
+   uniform_filter1d
+
+
+Fourier filters
+---------------
+
+.. autosummary::
+   :toctree: generated/
+
+   fourier_ellipsoid
+   fourier_gaussian
+   fourier_shift
+   fourier_uniform
+
 
 Interpolation
 -------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.ndimage.affine_transform
-   cupyx.scipy.ndimage.convolve
-   cupyx.scipy.ndimage.correlate
-   cupyx.scipy.ndimage.map_coordinates
-   cupyx.scipy.ndimage.rotate
-   cupyx.scipy.ndimage.shift
-   cupyx.scipy.ndimage.zoom
+   affine_transform
+   map_coordinates
+   rotate
+   shift
+   spline_filter
+   spline_filter1d
+   zoom
 
 
 Measurements
@@ -30,13 +70,46 @@ Measurements
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.ndimage.label
-   cupyx.scipy.ndimage.mean
-   cupyx.scipy.ndimage.standard_deviation
-   cupyx.scipy.ndimage.sum
-   cupyx.scipy.ndimage.variance
+   center_of_mass
+   extrema
+   histogram
+   label
+   labeled_comprehension
+   maximum
+   maximum_position
+   mean
+   median
+   minimum
+   minimum_position
+   standard_deviation
+   sum
+   variance
+
+
+Morphology
+----------
+
+.. autosummary::
+   :toctree: generated/
+
+   binary_closing
+   binary_dilation
+   binary_erosion
+   binary_fill_holes
+   binary_hit_or_miss
+   binary_opening
+   binary_propagation
+   black_tophat
+   generate_binary_structure
+   grey_closing
+   grey_dilation
+   grey_erosion
+   grey_opening
+   iterate_structure
+   morphological_gradient
+   morphological_laplace
+   white_tophat
 
 
 OpenCV mode

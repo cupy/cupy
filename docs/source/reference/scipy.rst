@@ -1,6 +1,6 @@
--------------------------
-SciPy-compatible Routines
--------------------------
+----------------
+Routines (SciPy)
+----------------
 
 The following pages describe SciPy-compatible routines.
 These functions cover a subset of
@@ -14,7 +14,9 @@ These functions cover a subset of
 
    scipy_fft
    fftpack
+   scipy_linalg
    ndimage
    sparse
    special
    signal
+   stats

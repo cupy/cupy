@@ -110,6 +110,9 @@ def generate():
     ]
     buf += _section(
         'Discrete Fourier Transform',
+        'scipy.fft', 'cupyx.scipy.fft', 'SciPy')
+    buf += _section(
+        'Discrete Fourier Transform (legacy fftpack module)',
         'scipy.fftpack', 'cupyx.scipy.fftpack', 'SciPy')
     buf += _section(
         'Sparse Matrices',

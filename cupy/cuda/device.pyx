@@ -2,13 +2,13 @@
 
 import threading
 
-from cupy.core import syncdetect
+from cupy._core import syncdetect
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api import runtime as runtime_module
 from cupy_backends.cuda.libs import cublas
 from cupy_backends.cuda.libs import cusolver
 from cupy_backends.cuda.libs import cusparse
-from cupy import util
+from cupy import _util
 
 
 # This flag is kept for backward compatibility.
@@ -19,6 +19,28 @@ cdef object _thread_local = threading.local()
 
 cdef dict _devices = {}
 cdef dict _compute_capabilities = {}
+
+
+cdef class _ThreadLocalStack:
+    cdef list _devices
+
+    def __init__(self):
+        self._devices = []
+
+    @staticmethod
+    cdef _ThreadLocalStack get():
+        try:
+            stack = _thread_local._device_stack
+        except AttributeError:
+            stack = _ThreadLocalStack()
+            _thread_local._device_stack = stack
+        return <_ThreadLocalStack>stack
+
+    cdef void push(self, int device_id) except *:
+        self._devices.append(device_id)
+
+    cdef int pop(self) except -1:
+        return <int>self._devices.pop()
 
 
 cpdef int get_device_id() except? -1:
@@ -43,19 +65,19 @@ cdef class Handle:
         self._destroy_func(self.handle)
 
 
-cpdef size_t get_cublas_handle() except? 0:
+cpdef intptr_t get_cublas_handle() except? 0:
     return _get_device().cublas_handle
 
 
-cpdef size_t get_cusolver_handle() except? 0:
+cpdef intptr_t get_cusolver_handle() except? 0:
     return _get_device().cusolver_handle
 
 
-cpdef get_cusolver_sp_handle():
+cpdef intptr_t get_cusolver_sp_handle() except? 0:
     return _get_device().cusolver_sp_handle
 
 
-cpdef size_t get_cusparse_handle() except? 0:
+cpdef intptr_t get_cusparse_handle() except? 0:
     return _get_device().cusparse_handle
 
 
@@ -67,7 +89,7 @@ cpdef str get_compute_capability():
     return Device().compute_capability
 
 
-@util.memoize()
+@_util.memoize()
 def _get_attributes(device_id):
     """Return a dict containing all device attributes."""
     d = {}
@@ -114,8 +136,6 @@ cdef class Device:
         else:
             self.id = int(device)
 
-        self._device_stack = []
-
     @classmethod
     def from_pci_bus_id(cls, pci_bus_id):
         """Returns a new device instance based on a PCI Bus ID
@@ -138,13 +158,13 @@ cdef class Device:
 
     def __enter__(self):
         cdef int id = runtime.getDevice()
-        self._device_stack.append(id)
+        _ThreadLocalStack.get().push(id)
         if self.id != id:
             self.use()
         return self
 
     def __exit__(self, *args):
-        runtime.setDevice(self._device_stack.pop())
+        runtime.setDevice(_ThreadLocalStack.get().pop())
 
     def __repr__(self):
         return '<CUDA Device %d>' % self.id
@@ -299,11 +319,13 @@ def from_pointer(ptr):
     """Extracts a Device object from a device pointer.
 
     Args:
-        ptr (ctypes.c_void_p): Pointer to the device memory.
+        ptr (int): Pointer to the device memory.
 
     Returns:
         Device: The device whose memory the pointer refers to.
 
     """
+    # Initialize a context to workaround a bug in CUDA 10.2+. (#3991)
+    runtime._ensure_context()
     attrs = runtime.pointerGetAttributes(ptr)
     return Device(attrs.device)

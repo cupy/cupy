@@ -1,8 +1,20 @@
 import numpy
 
 import cupy
-from cupyx.scipy.sparse import util
+from cupyx.scipy.sparse import _util
 from cupyx.scipy.sparse import sputils
+
+
+try:
+    import scipy.sparse as _sparse
+    SparseWarning = _sparse.SparseWarning
+    SparseEfficiencyWarning = _sparse.SparseEfficiencyWarning
+except ImportError:
+    class SparseWarning(Warning):
+        pass
+
+    class SparseEfficiencyWarning(SparseWarning):
+        pass
 
 
 class spmatrix(object):
@@ -106,6 +118,19 @@ class spmatrix(object):
                 return NotImplemented
             return (self.T * tr).T
 
+    # matmul (@) operator
+    def __matmul__(self, other):
+        if _util.isscalarlike(other):
+            raise ValueError('Scalar operands are not allowed, '
+                             'use \'*\' instead')
+        return self.__mul__(other)
+
+    def __rmatmul__(self, other):
+        if _util.isscalarlike(other):
+            raise ValueError('Scalar operands are not allowed, '
+                             'use \'*\' instead')
+        return self.__rmul__(other)
+
     def __div__(self, other):
         return self.tocsr().__div__(other)
 
@@ -154,7 +179,7 @@ class spmatrix(object):
         if m != n:
             raise TypeError('matrix is not square')
 
-        if util.isintlike(other):
+        if _util.isintlike(other):
             other = int(other)
             if other < 0:
                 raise ValueError('exponent must be >= 0')
@@ -171,7 +196,7 @@ class spmatrix(object):
                     return self * tmp * tmp
                 else:
                     return tmp * tmp
-        elif util.isscalarlike(other):
+        elif _util.isscalarlike(other):
             raise ValueError('exponent must be an integer')
         else:
             return NotImplemented
@@ -416,7 +441,20 @@ class spmatrix(object):
     def set_shape(self, shape):
         self.reshape(shape)
 
-    # TODO(unno): Implement setdiag
+    def setdiag(self, values, k=0):
+        """Set diagonal or off-diagonal elements of the array.
+
+        Args:
+            values (cupy.ndarray): New values of the diagonal elements.
+                Values may have any length. If the diagonal is longer than
+                values, then the remaining diagonal entries will not be set.
+                If values is longer than the diagonal, then the remaining
+                values are ignored. If a scalar value is given, all of the
+                diagonal is set to it.
+            k (int, optional): Which diagonal to set, corresponding to elements
+                a[i, i+k]. Default: 0 (the main diagonal).
+        """
+        raise NotImplementedError
 
     def sum(self, axis=None, dtype=None, out=None):
         """Sums the matrix elements over a given axis.
@@ -517,5 +555,5 @@ def issparse(x):
     return isinstance(x, spmatrix)
 
 
-isdense = util.isdense
+isdense = _util.isdense
 isspmatrix = issparse

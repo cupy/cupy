@@ -1,6 +1,6 @@
 import cupy
 
-from cupy.core._dtype import get_dtype
+from cupy._core._dtype import get_dtype
 
 supported_dtypes = [get_dtype(x) for x in
                     ('single', 'double', 'csingle', 'cdouble')]
@@ -37,7 +37,7 @@ def get_index_dtype(arrays=(), maxval=None, check_contents=False):
     int32min = cupy.iinfo(cupy.int32).min
     int32max = cupy.iinfo(cupy.int32).max
 
-    dtype = cupy.intc
+    dtype = cupy.int32
     if maxval is not None:
         if maxval > int32max:
             dtype = cupy.int64

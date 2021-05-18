@@ -5,6 +5,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 
 
@@ -13,25 +14,27 @@ class TestArrayBoolOp(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_bool_empty(self, dtype):
-        self.assertFalse(bool(cupy.array((), dtype=dtype)))
+        with testing.assert_warns(DeprecationWarning):
+            assert not bool(cupy.array((), dtype=dtype))
 
     def test_bool_scalar_bool(self):
-        self.assertTrue(bool(cupy.array(True, dtype=numpy.bool)))
-        self.assertFalse(bool(cupy.array(False, dtype=numpy.bool)))
+        assert bool(cupy.array(True, dtype=numpy.bool_))
+        assert not bool(cupy.array(False, dtype=numpy.bool_))
 
     @testing.for_all_dtypes()
     def test_bool_scalar(self, dtype):
-        self.assertTrue(bool(cupy.array(1, dtype=dtype)))
-        self.assertFalse(bool(cupy.array(0, dtype=dtype)))
+        assert bool(cupy.array(1, dtype=dtype))
+        assert not bool(cupy.array(0, dtype=dtype))
 
     def test_bool_one_element_bool(self):
-        self.assertTrue(bool(cupy.array([True], dtype=numpy.bool)))
-        self.assertFalse(bool(cupy.array([False], dtype=numpy.bool)))
+        assert bool(cupy.array([True], dtype=numpy.bool_))
+        assert not bool(cupy.array([False], dtype=numpy.bool_))
 
     @testing.for_all_dtypes()
+    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_bool_one_element(self, dtype):
-        self.assertTrue(bool(cupy.array([1], dtype=dtype)))
-        self.assertFalse(bool(cupy.array([0], dtype=dtype)))
+        assert bool(cupy.array([1], dtype=dtype))
+        assert not bool(cupy.array([0], dtype=dtype))
 
     @testing.for_all_dtypes()
     def test_bool_two_elements(self, dtype):

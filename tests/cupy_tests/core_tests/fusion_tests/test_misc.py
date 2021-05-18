@@ -161,8 +161,8 @@ class TestFusionDecorator(unittest.TestCase):
             """Fuse without parentheses"""
             return x + x
 
-        self.assertEqual(func_wo_paren.__name__, 'func_wo_paren')
-        self.assertEqual(func_wo_paren.__doc__, 'Fuse without parentheses')
+        assert func_wo_paren.__name__ == 'func_wo_paren'
+        assert func_wo_paren.__doc__ == 'Fuse without parentheses'
 
     def test_with_paren(self):
         @cupy.fuse()
@@ -170,8 +170,8 @@ class TestFusionDecorator(unittest.TestCase):
             """Fuse with parentheses"""
             return x + x
 
-        self.assertEqual(func_w_paren.__name__, 'func_w_paren')
-        self.assertEqual(func_w_paren.__doc__, 'Fuse with parentheses')
+        assert func_w_paren.__name__ == 'func_w_paren'
+        assert func_w_paren.__doc__ == 'Fuse with parentheses'
 
 
 @testing.gpu
@@ -184,7 +184,7 @@ class TestFusionKernelName(unittest.TestCase):
 
         # Test kernel name (with mock)
         if xp is cupy:
-            target = cupy.core._fusion_kernel.FusedKernel
+            target = cupy._core._fusion_kernel.FusedKernel
             target_full_name = '{}.{}'.format(
                 target.__module__, target.__name__)
 

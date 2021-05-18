@@ -1,47 +1,47 @@
-Sorting, Searching, and Counting
+Sorting, searching, and counting
 ================================
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.sort.html
+.. Hint:: `NumPy API Reference: Sorting, searching, and counting <https://numpy.org/doc/stable/reference/routines.sort.html>`_
+
+.. currentmodule:: cupy
 
 Sorting
 -------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.sort
-   cupy.lexsort
-   cupy.argsort
-   cupy.msort
-   cupy.sort_complex
-   cupy.partition
-   cupy.argpartition
+   sort
+   lexsort
+   argsort
+   msort
+   sort_complex
+   partition
+   argpartition
 
-.. seealso::
-   :func:`cupy.ndarray.sort`
+.. seealso:: :func:`cupy.ndarray.sort`
 
 Searching
 ---------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.argmax
-   cupy.nanargmax
-   cupy.argmin
-   cupy.nanargmin
-   cupy.nonzero
-   cupy.flatnonzero
-   cupy.where
-   cupy.argwhere
+   argmax
+   nanargmax
+   argmin
+   nanargmin
+   argwhere
+   nonzero
+   flatnonzero
+   where
+   searchsorted
+   extract
 
 Counting
 --------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.count_nonzero
+   count_nonzero

@@ -1,17 +1,17 @@
-import sys
+import sys as _sys
 
-from cupy.core import ndarray
-from cupyx.scipy.sparse.base import spmatrix
+from cupy._core import ndarray as _ndarray
+from cupyx.scipy.sparse.base import spmatrix as _spmatrix
 
 
 try:
-    import scipy
+    import scipy as _scipy
     _scipy_available = True
 except ImportError:
     _scipy_available = False
 
 
-_cupyx_scipy = sys.modules[__name__]
+_cupyx_scipy = _sys.modules[__name__]
 
 
 def get_array_module(*args):
@@ -30,6 +30,6 @@ def get_array_module(*args):
 
     """
     for arg in args:
-        if isinstance(arg, (ndarray, spmatrix)):
+        if isinstance(arg, (_ndarray, _spmatrix)):
             return _cupyx_scipy
-    return scipy
+    return _scipy

@@ -1,4 +1,4 @@
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 
 
 cpdef enum cupy_cub_op:
@@ -16,3 +16,5 @@ cpdef enum cupy_cub_op:
 cpdef cub_reduction(ndarray arr, op,
                     axis=*, dtype=*, ndarray out=*, keepdims=*)
 cpdef cub_scan(ndarray arr, op)
+
+cpdef bint _cub_device_segmented_reduce_axis_compatible(tuple, Py_ssize_t, str)

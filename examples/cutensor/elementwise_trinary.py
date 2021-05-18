@@ -29,9 +29,9 @@ desc_c = cutensor.create_tensor_descriptor(c)
 mode_a = cutensor.create_mode(*mode_a)
 mode_b = cutensor.create_mode(*mode_b)
 mode_c = cutensor.create_mode(*mode_c)
-alpha = numpy.array(1.1, dtype)
-beta = numpy.array(1.2, dtype)
-gamma = numpy.array(1.3, dtype)
+alpha = 1.1
+beta = 1.2
+gamma = 1.3
 
 perf = cupyx.time.repeat(
     cutensor.elementwise_trinary,

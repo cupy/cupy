@@ -10,7 +10,7 @@ from cupy_backends.cuda cimport stream as stream_module
 # Extern
 ###############################################################################
 
-cdef extern from '../cupy_cuda.h' nogil:
+cdef extern from '../../cupy_rand.h' nogil:
     # Generator
     int curandCreateGenerator(Generator* generator, int rng_type)
     int curandDestroyGenerator(Generator generator)
@@ -116,10 +116,8 @@ cpdef setStream(size_t generator, size_t stream):
 
 
 cdef _setStream(size_t generator):
-    """Set current stream when enable_current_stream is True
-    """
-    if stream_module.enable_current_stream:
-        setStream(generator, stream_module.get_current_stream_ptr())
+    """Set current stream"""
+    setStream(generator, stream_module.get_current_stream_ptr())
 
 
 cpdef setPseudoRandomGeneratorSeed(size_t generator, unsigned long long seed):

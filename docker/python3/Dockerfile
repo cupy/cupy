@@ -1,4 +1,4 @@
-FROM nvidia/cuda:9.2-cudnn7-devel
+FROM nvidia/cuda:11.2.2-cudnn8-devel
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
@@ -9,4 +9,4 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN pip3 install --no-cache-dir -U install setuptools pip
-RUN pip3 install --no-cache-dir cupy-cuda92==8.0.0b4
+RUN pip3 install --no-cache-dir "cupy-cuda112[all]==9.0.0rc1"
