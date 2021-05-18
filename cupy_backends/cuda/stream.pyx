@@ -25,18 +25,18 @@ cdef class _ThreadLocal:
             tls = _thread_local.tls = _ThreadLocal()
         return <_ThreadLocal>tls
 
-    cdef set_current_stream_ptr(self, intptr_t ptr, int dev=-1):
-        if dev == -1:
-            dev = runtime.getDevice()
-        self.current_stream[dev] = ptr
+    cdef set_current_stream_ptr(self, intptr_t ptr, int device_id=-1):
+        if device_id == -1:
+            device_id = runtime.getDevice()
+        self.current_stream[device_id] = ptr
 
-    cdef intptr_t get_current_stream_ptr(self, int dev=-1):
+    cdef intptr_t get_current_stream_ptr(self, int device_id=-1):
         # Returns the stream previously set, otherwise returns
         # nullptr or runtime.streamPerThread when
         # CUPY_CUDA_PER_THREAD_DEFAULT_STREAM=1.
-        if dev == -1:
-            dev = runtime.getDevice()
-        cdef intptr_t curr_stream = self.current_stream[dev]
+        if device_id == -1:
+            device_id = runtime.getDevice()
+        cdef intptr_t curr_stream = self.current_stream[device_id]
         if curr_stream == 0 and is_ptds_enabled():
             return runtime.streamPerThread
         return curr_stream
@@ -52,12 +52,12 @@ cdef intptr_t get_current_stream_ptr():
     return <intptr_t>tls.get_current_stream_ptr()
 
 
-cdef set_current_stream_ptr(intptr_t ptr, int dev=-1):
+cdef set_current_stream_ptr(intptr_t ptr, int device_id=-1):
     """C API to set current CUDA stream pointer.
 
     Args:
         ptr (intptr_t): CUDA stream pointer.
-        dev (int): device ID. Look up the current device if -1.
+        device_id (int): device ID. Look up the current device if -1.
 
     .. warning::
 
@@ -68,7 +68,7 @@ cdef set_current_stream_ptr(intptr_t ptr, int dev=-1):
 
     """
     tls = _ThreadLocal.get()
-    tls.set_current_stream_ptr(ptr, dev)
+    tls.set_current_stream_ptr(ptr, device_id)
 
 
 # cpdef for unit testing
