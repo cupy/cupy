@@ -69,6 +69,7 @@ enum cudaMemoryAdvise {};
 typedef hipMemcpyKind cudaMemcpyKind;
 typedef hipDeviceProp_t cudaDeviceProp;
 typedef void* cudaMemPool_t;
+enum cudaMemPoolAttr {};
 
 typedef hipStreamCallback_t cudaStreamCallback_t;
 typedef void (*cudaHostFn_t)(void* userData);

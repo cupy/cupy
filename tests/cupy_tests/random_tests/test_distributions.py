@@ -1,8 +1,10 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy.random import _distributions
 from cupy import testing
 
@@ -194,6 +196,8 @@ class TestDistributionsGamma(unittest.TestCase):
 
     @cupy.testing.for_dtypes_combination(
         _float_dtypes, names=['shape_dtype', 'scale_dtype'])
+    @pytest.mark.xfail(
+        runtime.is_hip, reason='Generator API not supported in HIP')
     def test_gamma_generator(self, shape_dtype, scale_dtype):
         self.check_distribution(cupy.random.default_rng().gamma,
                                 shape_dtype, scale_dtype)
@@ -659,6 +663,8 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('shape_dtype')
+    @pytest.mark.xfail(
+        runtime.is_hip, reason='Generator API not supported in HIP')
     def test_standard_gamma_generator(self, shape_dtype, dtype):
         shape = numpy.ones(self.shape_shape, dtype=shape_dtype)
         self.check_generator_distribution('standard_gamma',

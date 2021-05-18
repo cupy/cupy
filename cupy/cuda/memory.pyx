@@ -11,19 +11,19 @@ import threading
 import warnings
 import weakref
 
-from cupy_backends.cuda.api.runtime import CUDARuntimeError
-from cupy._core import syncdetect
-
 from fastrlock cimport rlock
 from libc.stdint cimport int8_t
 from libc.stdint cimport intptr_t
+from libc.stdint cimport UINT64_MAX
 from libcpp cimport algorithm
 
 from cupy.cuda cimport device
 from cupy.cuda cimport memory_hook
 from cupy.cuda cimport stream as stream_module
+from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 
+from cupy_backends.cuda.api.runtime import CUDARuntimeError
 from cupy import _util
 
 
@@ -656,7 +656,7 @@ cpdef MemoryPointer malloc_async(size_t size):
     .. seealso:: `Stream Ordered Memory Allocator`_
 
     .. _Stream Ordered Memory Allocator:
-        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY__POOLS.html
+        https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-memory-allocator
     """
     cdef intptr_t stream_ptr
     stream_ptr = stream_module.get_current_stream_ptr()
@@ -1465,28 +1465,28 @@ cdef class MemoryPool:
         return mp.n_free_blocks()
 
     cpdef size_t used_bytes(self):
-        """Gets the total number of bytes used.
+        """Gets the total number of bytes used by the pool.
 
         Returns:
-            int: The total number of bytes used.
+            int: The total number of bytes used by the pool.
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.used_bytes()
 
     cpdef size_t free_bytes(self):
-        """Gets the total number of bytes acquired but not used in the pool.
+        """Gets the total number of bytes acquired but not used by the pool.
 
         Returns:
-            int: The total number of bytes acquired but not used in the pool.
+            int: The total number of bytes acquired but not used by the pool.
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.free_bytes()
 
     cpdef size_t total_bytes(self):
-        """Gets the total number of bytes acquired in the pool.
+        """Gets the total number of bytes acquired by the pool.
 
         Returns:
-            int: The total number of bytes acquired in the pool.
+            int: The total number of bytes acquired by the pool.
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.total_bytes()
@@ -1500,14 +1500,13 @@ cdef class MemoryPool:
         ``set_limit(fraction=0.5)`` or ``set_limit(size=1024**3)`` to limit
         the memory size to 1 GiB.
 
-        ``size`` and ``fraction`` cannot be specified at one time.
+        ``size`` and ``fraction`` cannot be specified at the same time.
         If both of them are **not** specified or ``0`` is specified, the
         limit will be disabled.
 
         .. note::
             You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
-            environment variable.
-            See :ref:`environment` for the details.
+            environment variable, see :ref:`environment` for the details.
             The limit set by this method supersedes the value specified in
             the environment variable.
 
@@ -1530,6 +1529,9 @@ cdef class MemoryPool:
         """
         mp = <SingleDeviceMemoryPool>self._pools[device.get_device_id()]
         return mp.get_limit()
+
+
+cdef bint MemoryAsyncHasStat = (runtime.driverGetVersion() >= 11030)
 
 
 cdef class MemoryAsyncPool:
@@ -1567,30 +1569,49 @@ cdef class MemoryAsyncPool:
     .. seealso:: `Stream Ordered Memory Allocator`_
 
     .. _Stream Ordered Memory Allocator:
-        https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY__POOLS.html
+        https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-memory-allocator
     """
     # This is an analogous to SingleDeviceMemoryPool + MemoryPool, but for
     # CUDA's async allocator. The main purpose is to provide a memory pool
-    # interface for multiple devices, but given that CUDA's mempool is
-    # implemented at the driver level, the same pool could be shared by many
-    # applications in the same process, so we can't collect meaningful
-    # statistics like used bytes for this pool...
+    # interface for multiple devices. Given that CUDA's mempool is implemented
+    # at the driver level, the same pool can be shared by many applications
+    # in the same process.
+    #
+    # Internally (as of driver v11.3) the pool starts with size 0. The first
+    # allocation will bump the size to 32n MiB to accommodate the requested
+    # amount (n is integer). The size is increased only if it is not enough
+    # to meet later allocation needs. The size is decreased to 32m MiB (m<n)
+    # if enough memory is returned (freed) to the pool when free_all_blocks()
+    # (that is, sync + cudaMemPoolTrimTo) is called. This observation may
+    # vary with future driver updates, so the MemoryAsyncPool API does not
+    # rely on any internal behavior, but only on the Programming Guide and
+    # sane assumptions.
 
     cdef:
         # A list of cudaMemPool_t to each device's mempool
         readonly list _pools
 
     def __init__(self, pool_handles='default'):
-        cdef int dev_id
+        _util.experimental('cupy.cuda.MemoryAsyncPool')
+        cdef int dev_id, dev_counts
+        cdef dict limit = _parse_limit_string()
+        dev_counts = runtime.getDeviceCount()
+        self._pools = []
+
         if (cpython.PySequence_Check(pool_handles)
                 and not isinstance(pool_handles, str)):
             # allow different kinds of handles on each device
-            self._pools = [self.set_pool(pool_handles[dev_id], dev_id)
-                           for dev_id in range(runtime.getDeviceCount())]
+            for dev_id in range(dev_counts):
+                with device.Device(dev_id):
+                    self._pools.append(self.set_pool(
+                        pool_handles[dev_id], dev_id))
+                    self.set_limit(**limit)
         else:
             # use the same argument for all devices
-            self._pools = [self.set_pool(pool_handles, dev_id)
-                           for dev_id in range(runtime.getDeviceCount())]
+            for dev_id in range(dev_counts):
+                with device.Device(dev_id):
+                    self._pools.append(self.set_pool(pool_handles, dev_id))
+                    self.set_limit(**limit)
 
     cdef intptr_t set_pool(self, handle, int dev_id) except? 0:
         cdef intptr_t pool
@@ -1630,10 +1651,22 @@ cdef class MemoryAsyncPool:
             ~cupy.cuda.MemoryPointer: Pointer to the allocated buffer.
 
         """
-        _util.experimental('cupy.cuda.MemoryAsyncPool.malloc')
         cdef size_t rounded_size = _round_size(size)
         mem = None
         oom_error = False
+
+        # CUDA does not allow us to set a hard limit, so the best we can do is
+        # to prevent CuPy from drawing too much memory from the pool; we cannot
+        # do anything if other applications oversubscribe the pool.
+        cdef size_t curr_total=-1, curr_free=0, total_limit=0
+        if MemoryAsyncHasStat:
+            curr_total = self.total_bytes()
+            curr_free = curr_total - self.used_bytes()
+            if curr_free < rounded_size:  # need to increase pool size
+                total_limit = self.get_limit()
+                if max(total_limit, curr_total) < curr_total + rounded_size:
+                    raise OutOfMemoryError(size, curr_total, total_limit)
+
         try:
             mem = malloc_async(rounded_size)
         except CUDARuntimeError as e:
@@ -1656,36 +1689,148 @@ cdef class MemoryAsyncPool:
         finally:
             if mem is None:
                 assert oom_error
-                # Set total to -1 as we currently do not keep track of the
-                # usage of the async mempool
-                raise OutOfMemoryError(size, -1, 0)
+                # Set total to -1 as we do not have access to the mempool usage
+                raise OutOfMemoryError(size, curr_total, total_limit)
         return mem
 
     cpdef free_all_blocks(self, stream=None):
+        """Releases free memory.
+
+        Args:
+            stream (cupy.cuda.Stream): Release memory freed on the given
+                ``stream``. If ``stream`` is ``None``, the current stream is
+                used.
+
+        .. seealso:: `Physical Page Caching Behavior`_
+
+        .. _Physical Page Caching Behavior:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#stream-ordered-physical-page-caching-behavior
+        """
         # We don't have access to the mempool internal, but if there are
         # any memory asynchronously freed, a synchonization will make sure
         # they become visible (to both cudaMalloc and cudaMallocAsync). See
         # https://github.com/cupy/cupy/issues/3777#issuecomment-758890450
-        runtime.deviceSynchronize()
+        if stream is None:
+            stream = stream_module.get_current_stream()
+        stream.synchronize()
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        # We don't care the actual limit; putting 0 here means we guarantee
+        # to reserve at least 0 bytes
+        runtime.memPoolTrimTo(pool, 0)
 
     cpdef size_t n_free_blocks(self):
-        raise NotImplementedError
+        raise NotImplementedError(
+            'This function is not supported in MemoryAsyncPool')
 
-    cpdef size_t used_bytes(self):
-        raise NotImplementedError
+    cpdef size_t used_bytes(self) except*:
+        """Gets the total number of bytes used by the pool.
 
-    cpdef size_t free_bytes(self):
-        raise NotImplementedError
+        Returns:
+            int: The total number of bytes used by the pool.
+        """
+        if not MemoryAsyncHasStat:
+            raise RuntimeError(
+                'The driver version is insufficient for this query')
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        return runtime.memPoolGetAttribute(
+            pool, runtime.cudaMemPoolAttrUsedMemCurrent)
 
-    cpdef size_t total_bytes(self):
-        raise NotImplementedError
+    cpdef size_t free_bytes(self) except*:
+        """Gets the total number of bytes acquired but not used by the pool.
+
+        Returns:
+            int: The total number of bytes acquired but not used by the pool.
+        """
+        return self.total_bytes() - self.used_bytes()
+
+    cpdef size_t total_bytes(self) except*:
+        """Gets the total number of bytes acquired by the pool.
+
+        Returns:
+            int: The total number of bytes acquired by the pool.
+        """
+        if not MemoryAsyncHasStat:
+            raise RuntimeError(
+                'The driver version is insufficient for this query')
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        return runtime.memPoolGetAttribute(
+            pool, runtime.cudaMemPoolAttrReservedMemCurrent)
 
     cpdef set_limit(self, size=None, fraction=None):
-        # TODO(leofang): Support cudaMemPoolTrimTo?
-        raise NotImplementedError
+        """Sets the upper limit of memory allocation of the current device.
+
+        When `fraction` is specified, its value will become a fraction of the
+        amount of GPU memory that is available for allocation.
+        For example, if you have a GPU with 2 GiB memory, you can either use
+        ``set_limit(fraction=0.5)`` or ``set_limit(size=1024**3)`` to limit
+        the memory size to 1 GiB.
+
+        ``size`` and ``fraction`` cannot be specified at the same time.
+        If both of them are **not** specified or ``0`` is specified, the
+        limit will be disabled.
+
+        .. note::
+            Unlike with :class:`MemoryPool`, :class:`MemoryAsyncPool`'s
+            :meth:`set_limit` method can only impose a *soft* limit. If other
+            (non-CuPy) applications are also allocating memory from the same
+            mempool, this limit may not be respected. Internally, this limit
+            is set via the ``cudaMemPoolAttrReleaseThreshold`` attribute.
+
+        .. note::
+            You can also set the limit by using ``CUPY_GPU_MEMORY_LIMIT``
+            environment variable, see :ref:`environment` for the details.
+            The limit set by this method supersedes the value specified in
+            the environment variable.
+
+            Also note that this method only changes the limit for the current
+            device, whereas the environment variable sets the default limit for
+            all devices.
+
+        Args:
+            size (int): Limit size in bytes.
+            fraction (float): Fraction in the range of ``[0, 1]``.
+        """
+        if size is None:
+            if fraction is None:
+                size = 0
+            else:
+                if not 0 <= fraction <= 1:
+                    raise ValueError(
+                        'memory limit fraction out of range: {}'.format(
+                            fraction))
+                _, total = runtime.memGetInfo()
+                size = fraction * total
+            self.set_limit(size=size)
+            return
+
+        if fraction is not None:
+            raise ValueError('size and fraction cannot be specified at '
+                             'one time')
+        if size < 0:
+            raise ValueError(
+                'memory limit size out of range: {}'.format(size))
+
+        if size == 0:
+            size = UINT64_MAX  # ensure pool size is never shrunk
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        runtime.memPoolSetAttribute(
+            pool, runtime.cudaMemPoolAttrReleaseThreshold, size)
 
     cpdef size_t get_limit(self):
-        raise NotImplementedError
+        """Gets the upper limit of memory allocation of the current device.
+
+        Returns:
+            int: The number of bytes
+
+        .. note::
+            Unlike with :class:`MemoryPool`, :class:`MemoryAsyncPool`'s
+            :meth:`set_limit` method can only impose a *soft* limit. If other
+            (non-CuPy) applications are also allocating memory from the same
+            mempool, this limit may not be respected.
+        """
+        cdef intptr_t pool = self._pools[device.get_device_id()]
+        return runtime.memPoolGetAttribute(
+            pool, runtime.cudaMemPoolAttrReleaseThreshold)
 
 
 ctypedef void*(*malloc_func_type)(void*, size_t, int)
