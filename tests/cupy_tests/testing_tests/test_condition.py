@@ -1,6 +1,6 @@
 import unittest
 
-from cupy.testing import condition
+from cupy.testing import _condition
 
 
 SKIP_REASON = 'test skip reason'
@@ -80,7 +80,7 @@ def _should_skip(self, f):
 class TestRepeatWithSuccessAtLeast(unittest.TestCase):
 
     def _decorate(self, f, times, min_success):
-        return condition.repeat_with_success_at_least(
+        return _condition.repeat_with_success_at_least(
             times, min_success)(f)
 
     def setUp(self):
@@ -108,7 +108,7 @@ class TestRepeatWithSuccessAtLeast(unittest.TestCase):
 
     def test_all_trials_succeed2(self):
         self.assertRaises(AssertionError,
-                          condition.repeat_with_success_at_least,
+                          _condition.repeat_with_success_at_least,
                           10, 11)
 
     def test_half_of_trials_succeed(self):
@@ -129,7 +129,7 @@ class TestRepeatWithSuccessAtLeast(unittest.TestCase):
 class TestRepeat(unittest.TestCase):
 
     def _decorate(self, f, times):
-        return condition.repeat(times)(f)
+        return _condition.repeat(times)(f)
 
     def setUp(self):
         self.unit_test = MockUnitTest()
@@ -161,7 +161,7 @@ class TestRepeat(unittest.TestCase):
 class TestRetry(unittest.TestCase):
 
     def _decorate(self, f, times):
-        return condition.retry(times)(f)
+        return _condition.retry(times)(f)
 
     def setUp(self):
         self.unit_test = MockUnitTest()

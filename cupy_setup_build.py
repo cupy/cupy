@@ -13,17 +13,18 @@ import sys
 import pkg_resources
 import setuptools
 from setuptools.command import build_ext
-from setuptools.command import sdist
 
 from install import build
 from install.build import PLATFORM_LINUX
 from install.build import PLATFORM_WIN32
 
 
-required_cython_version = pkg_resources.parse_version('0.28.0')
+# Cython requirements (minimum version and versions known to be broken).
+# Note: this must be in sync with setup_requires defined in setup.py.
+required_cython_version = pkg_resources.parse_version('0.29.22')
 ignore_cython_versions = [
 ]
-use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
+use_hip = build.use_hip
 
 
 # The value of the key 'file' is a list that contains extension names
@@ -46,34 +47,33 @@ cuda_files = [
     'cupy_backends.cuda.libs.nvrtc',
     'cupy_backends.cuda.libs.profiler',
     'cupy_backends.cuda.stream',
-    'cupy.core._accelerator',
-    'cupy.core._carray',
-    'cupy.core._cub_reduction',
-    'cupy.core._dtype',
-    'cupy.core._fusion_kernel',
-    'cupy.core._fusion_thread_local',
-    'cupy.core._fusion_trace',
-    'cupy.core._fusion_variable',
-    'cupy.core._kernel',
-    'cupy.core._memory_range',
-    'cupy.core._optimize_config',
-    'cupy.core._reduction',
-    'cupy.core._routines_binary',
-    'cupy.core._routines_indexing',
-    'cupy.core._routines_linalg',
-    'cupy.core._routines_logic',
-    'cupy.core._routines_manipulation',
-    'cupy.core._routines_math',
-    'cupy.core._routines_sorting',
-    'cupy.core._routines_statistics',
-    'cupy.core._scalar',
-    'cupy.core.core',
-    'cupy.core.dlpack',
-    'cupy.core.flags',
-    'cupy.core.internal',
-    'cupy.core.fusion',
-    'cupy.core.new_fusion',
-    'cupy.core.raw',
+    'cupy._core._accelerator',
+    'cupy._core._carray',
+    'cupy._core._cub_reduction',
+    'cupy._core._dtype',
+    'cupy._core._fusion_kernel',
+    'cupy._core._fusion_thread_local',
+    'cupy._core._fusion_trace',
+    'cupy._core._fusion_variable',
+    'cupy._core._kernel',
+    'cupy._core._memory_range',
+    'cupy._core._optimize_config',
+    'cupy._core._reduction',
+    'cupy._core._routines_binary',
+    'cupy._core._routines_indexing',
+    'cupy._core._routines_linalg',
+    'cupy._core._routines_logic',
+    'cupy._core._routines_manipulation',
+    'cupy._core._routines_math',
+    'cupy._core._routines_sorting',
+    'cupy._core._routines_statistics',
+    'cupy._core._scalar',
+    'cupy._core.core',
+    'cupy._core.flags',
+    'cupy._core.internal',
+    'cupy._core.fusion',
+    'cupy._core.new_fusion',
+    'cupy._core.raw',
     'cupy.cuda.common',
     'cupy.cuda.cufft',
     'cupy.cuda.device',
@@ -97,9 +97,11 @@ if use_hip:
     MODULES.append({
         # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
+        'required': True,
         'file': cuda_files + [
-            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.nvtx',
             'cupy_backends.cuda.libs.cusolver',
+            'cupy.cusolver',
         ],
         'include': [
             'hip/hip_runtime_api.h',
@@ -125,6 +127,7 @@ if use_hip:
 else:
     MODULES.append({
         'name': 'cuda',
+        'required': True,
         'file': cuda_files,
         'include': [
             'cublas_v2.h',
@@ -152,8 +155,10 @@ else:
 if not use_hip:
     MODULES.append({
         'name': 'cusolver',
+        'required': True,
         'file': [
             'cupy_backends.cuda.libs.cusolver',
+            'cupy.cusolver',
         ],
         'include': [
             'cusolverDn.h',
@@ -184,7 +189,7 @@ if not use_hip:
     MODULES.append({
         'name': 'nccl',
         'file': [
-            'cupy.cuda.nccl',
+            'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
             'nccl.h',
@@ -199,7 +204,7 @@ if not use_hip:
     MODULES.append({
         'name': 'nvtx',
         'file': [
-            'cupy.cuda.nvtx',
+            'cupy_backends.cuda.libs.nvtx',
         ],
         'include': [
             'nvToolsExt.h',
@@ -229,6 +234,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'cub',
+        'required': True,
         'file': [
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
         ],
@@ -244,6 +250,7 @@ if not use_hip:
 
     MODULES.append({
         'name': 'jitify',
+        'required': True,
         'file': [
             'cupy.cuda.jitify',
         ],
@@ -260,9 +267,57 @@ if not use_hip:
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
     })
+
+    MODULES.append({
+        'name': 'random',
+        'required': True,
+        'file': [
+            'cupy.random._bit_generator',
+            ('cupy.random._generator_api',
+             ['cupy/random/cupy_distributions.cu']),
+        ],
+        'include': [
+        ],
+        'libraries': [
+            'cudart',
+            'curand',
+        ],
+    })
+
+    MODULES.append({
+        'name': 'cusparselt',
+        'file': [
+            'cupy_backends.cuda.libs.cusparselt',
+        ],
+        'include': [
+            'cusparseLt.h',
+        ],
+        'libraries': [
+            'cusparseLt',
+        ],
+        'check_method': build.check_cusparselt_version,
+        'version_method': build.get_cusparselt_version,
+    })
+
+    MODULES.append({
+        'name': 'cugraph',
+        'file': [
+            'cupy_backends.cuda.libs.cugraph',
+        ],
+        'include': [
+            'cugraph/raft/error.hpp',  # dummy
+        ],
+        'libraries': [
+            'cugraph',
+        ],
+        'check_method': build.check_cugraph_version,
+        'version_method': build.get_cugraph_version,
+    })
+
 else:
     MODULES.append({
         'name': 'cub',
+        'required': True,
         'file': [
             ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
         ],
@@ -279,7 +334,7 @@ else:
     MODULES.append({
         'name': 'nccl',
         'file': [
-            'cupy.cuda.nccl',
+            'cupy_backends.cuda.libs.nccl',
         ],
         'include': [
             'rccl.h',
@@ -295,6 +350,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     if use_hip:
         MODULES.append({
             'name': 'thrust',
+            'required': True,
             'file': [
                 ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             ],
@@ -308,6 +364,7 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
     else:
         MODULES.append({
             'name': 'thrust',
+            'required': True,
             'file': [
                 ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
             ],
@@ -322,6 +379,18 @@ if bool(int(os.environ.get('CUPY_SETUP_ENABLE_THRUST', 1))):
             'check_method': build.check_thrust_version,
             'version_method': build.get_thrust_version,
         })
+
+MODULES.append({
+    'name': 'dlpack',
+    'required': True,
+    'file': [
+        'cupy._core.dlpack',
+    ],
+    'include': [
+        'cupy/dlpack/dlpack.h',
+    ],
+    'libraries': [],
+})
 
 
 def ensure_module_file(file):
@@ -338,14 +407,7 @@ def module_extension_name(file):
 def module_extension_sources(file, use_cython, no_cuda):
     pyx, others = ensure_module_file(file)
     base = path.join(*pyx.split('.'))
-    if use_cython:
-        pyx = base + '.pyx'
-        if not os.path.exists(pyx):
-            use_cython = False
-            print(
-                'NOTICE: Skipping cythonize as {} does not exist.'.format(pyx))
-    if not use_cython:
-        pyx = base + '.cpp'
+    pyx = base + ('.pyx' if use_cython else '.cpp')
 
     # If CUDA SDK is not available, remove CUDA C files from extension sources
     # and use stubs defined in header files.
@@ -359,6 +421,10 @@ def module_extension_sources(file, use_cython, no_cuda):
         others = others1
 
     return [pyx] + others
+
+
+def get_required_modules():
+    return [m['name'] for m in MODULES if m.get('required', False)]
 
 
 def check_readthedocs_environment():
@@ -444,6 +510,16 @@ def preconfigure_modules(compiler, settings):
                     settings['library_dirs'].append(lib_path)
                     break
 
+        if module['name'] == 'cugraph':
+            cugraph_path = os.environ.get('CUGRAPH_PATH', '')
+            for i in 'include', 'include/cugraph':
+                inc_path = os.path.join(cugraph_path, i)
+                if os.path.exists(inc_path):
+                    settings['include_dirs'].append(inc_path)
+            lib_path = os.path.join(cugraph_path, 'lib')
+            if os.path.exists(lib_path):
+                settings['library_dirs'].append(lib_path)
+
         print('')
         print('-------- Configuring Module: {} --------'.format(
             module['name']))
@@ -469,7 +545,7 @@ def preconfigure_modules(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
             installed = True
             errmsg = ['The library is installed but not supported.']
-        elif (module['name'] in ('thrust', 'cub')
+        elif (module['name'] in ('thrust', 'cub', 'random')
                 and (nvcc_path is None and hipcc_path is None)):
             installed = True
             cmd = 'nvcc' if not use_hip else 'hipcc'
@@ -573,7 +649,8 @@ def make_extensions(options, compiler, use_cython):
         available_modules = [m['name'] for m in MODULES]
     else:
         available_modules, settings = preconfigure_modules(compiler, settings)
-        if 'cuda' not in available_modules:
+        required_modules = get_required_modules()
+        if not (set(required_modules) <= set(available_modules)):
             raise Exception('Your CUDA environment is invalid. '
                             'Please check above error log.')
 
@@ -590,6 +667,8 @@ def make_extensions(options, compiler, use_cython):
         link_args = s.setdefault('extra_link_args', [])
 
         if module['name'] == 'cusolver':
+            # cupy_backends/cupy_lapack.h has C++ template code
+            compile_args.append('--std=c++11')
             # openmp is required for cusolver
             if use_hip:
                 pass
@@ -599,11 +678,19 @@ def make_extensions(options, compiler, use_cython):
             elif compiler.compiler_type == 'msvc':
                 compile_args.append('/openmp')
 
+        if module['name'] == 'random':
+            if compiler.compiler_type == 'msvc':
+                compile_args.append('-D_USE_MATH_DEFINES')
+
         if module['name'] == 'jitify':
             # this fixes RTD (no_cuda) builds...
             compile_args.append('--std=c++11')
             # if any change is made to the Jitify header, we force recompiling
-            s['depends'] = ['./cupy/core/include/cupy/jitify/jitify.hpp']
+            s['depends'] = ['./cupy/_core/include/cupy/jitify/jitify.hpp']
+
+        if module['name'] == 'dlpack':
+            # if any change is made to the DLPack header, we force recompiling
+            s['depends'] = ['./cupy/_core/include/cupy/dlpack/dlpack.h']
 
         for f in module['file']:
             s_file = copy.deepcopy(s)
@@ -631,7 +718,7 @@ def make_extensions(options, compiler, use_cython):
 
             if not PLATFORM_WIN32 and not PLATFORM_LINUX:
                 assert False, "macOS is no longer supported"
-            if (PLATFORM_LINUX and s_file['library_dirs']):
+            if (PLATFORM_LINUX and len(rpath) != 0):
                 ldflag = '-Wl,'
                 if PLATFORM_LINUX:
                     ldflag += '--disable-new-dtags,'
@@ -771,18 +858,17 @@ def prepare_wheel_libs():
     return [os.path.relpath(x[1], 'cupy') for x in files_to_copy]
 
 
-try:
+def cythonize(extensions, arg_options):
+    # Delay importing Cython as it may be installed via setup_requires if
+    # the user does not have Cython installed.
     import Cython
     import Cython.Build
     cython_version = pkg_resources.parse_version(Cython.__version__)
-    cython_available = (
-        cython_version >= required_cython_version and
-        cython_version not in ignore_cython_versions)
-except ImportError:
-    cython_available = False
+    if (cython_version < required_cython_version or
+            cython_version in ignore_cython_versions):
+        raise AssertionError(
+            'Unsupported Cython version: {}'.format(cython_version))
 
-
-def cythonize(extensions, arg_options):
     directive_keys = ('linetrace', 'profile')
     directives = {key: arg_options[key] for key in directive_keys}
 
@@ -798,13 +884,17 @@ def cythonize(extensions, arg_options):
     if compile_time_env is None:
         compile_time_env = {}
         cythonize_options['compile_time_env'] = compile_time_env
-    compile_time_env['use_hip'] = arg_options['use_hip']
     compile_time_env['CUPY_CUFFT_STATIC'] = False
     compile_time_env['cython_version'] = str(cython_version)
-    if use_hip or arg_options['no_cuda']:
+    if arg_options['no_cuda']:  # on RTD
         compile_time_env['CUDA_VERSION'] = 0
-    else:
+        compile_time_env['HIP_VERSION'] = 0
+    elif use_hip:  # on ROCm/HIP
+        compile_time_env['CUDA_VERSION'] = 0
+        compile_time_env['HIP_VERSION'] = build.get_hip_version()
+    else:  # on CUDA
         compile_time_env['CUDA_VERSION'] = build.get_cuda_version()
+        compile_time_env['HIP_VERSION'] = 0
 
     return Cython.Build.cythonize(
         extensions, verbose=True, language_level=3,
@@ -951,7 +1041,13 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
 
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + [
-            '-O2', '--compiler-options="-fPIC"', '--std=c++11']
+            '-O2', '--compiler-options="-fPIC"']
+        if cuda_version >= 11020:
+            postargs += ['--std=c++14']
+            num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
+            postargs += [f'-t{num_threads}']
+        else:
+            postargs += ['--std=c++11']
         print('NVCC options:', postargs)
         try:
             self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
@@ -977,7 +1073,7 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         use_hipcc = False
         if use_hip:
             for i in objects:
-                if any([obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')]):
+                if any(obj in i for obj in ('cupy_thrust.o', 'cupy_cub.o')):
                     use_hipcc = True
         if use_hipcc:
             _compiler_cxx = self.compiler_cxx
@@ -1012,7 +1108,17 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
         cuda_version = build.get_cuda_version()
         postargs = _nvcc_gencode_options(cuda_version) + ['-O2']
-        postargs += ['-Xcompiler', '/MD']
+        if cuda_version >= 11020:
+            # MSVC 14.0 (2015) is deprecated for CUDA 11.2 but we need it
+            # to build CuPy because some Python versions were built using it.
+            # REF: https://wiki.python.org/moin/WindowsCompilers
+            postargs += ['-allow-unsupported-compiler']
+        postargs += ['-Xcompiler', '/MD', '-D_USE_MATH_DEFINES']
+        # This is to compile thrust with MSVC2015
+        if cuda_version >= 11020:
+            postargs += ['--std=c++14']
+            num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
+            postargs += [f'-t{num_threads}']
         print('NVCC options:', postargs)
 
         for obj in objects:
@@ -1051,18 +1157,6 @@ class _MSVCCompiler(msvccompiler.MSVCCompiler):
         return other_objects + cu_objects
 
 
-class sdist_with_cython(sdist.sdist):
-
-    """Custom `sdist` command with cyhonizing."""
-
-    def __init__(self, *args, **kwargs):
-        if not cython_available:
-            raise RuntimeError('Cython is required to make sdist.')
-        ext_modules = get_ext_modules(True)  # get .pyx modules
-        cythonize(ext_modules, cupy_setup_options)
-        sdist.sdist.__init__(self, *args, **kwargs)
-
-
 class custom_build_ext(build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
@@ -1086,9 +1180,8 @@ class custom_build_ext(build_ext.build_ext):
             # Intentionally causes DistutilsPlatformError in
             # ccompiler.new_compiler() function to hook.
             self.compiler = 'nvidia'
-        if cython_available:
-            ext_modules = get_ext_modules(True)  # get .pyx modules
-            cythonize(ext_modules, cupy_setup_options)
+        ext_modules = get_ext_modules(True)  # get .pyx modules
+        cythonize(ext_modules, cupy_setup_options)
         check_extensions(self.extensions)
         build_ext.build_ext.run(self)
 

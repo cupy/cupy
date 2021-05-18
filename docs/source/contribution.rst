@@ -15,7 +15,7 @@ There are several ways to contribute to CuPy community:
 
 1. Registering an issue
 2. Sending a pull request (PR)
-3. Sending a question to `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_
+3. Sending a question to `CuPy's Gitter channel <https://gitter.im/cupy/community>`_, `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_, or `StackOverflow <https://stackoverflow.com/questions/tagged/cupy>`_
 4. Open-sourcing an external example
 5. Writing a post about CuPy
 
@@ -38,7 +38,7 @@ While the major, minor, and revision numbers follow the rule of semantic version
 **Note that a major update basically does not contain compatibility-breaking changes from the last release candidate (RC).**
 This is not a strict rule, though; if there is a critical API bug that we have to fix for the major version, we may add breaking changes to the major version up.
 
-As for the backward compatibility, see :doc:`compatibility`.
+As for the backward compatibility, see :doc:`user_guide/compatibility`.
 
 
 .. _contrib-release-cycle:
@@ -154,7 +154,7 @@ You can contain your thoughts on **how** to realize it into the feature requests
 
 .. warning::
 
-   If you have a question on usages of CuPy, it is highly recommended to send a post to `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_ instead of the issue tracker.
+   If you have a question on usages of CuPy, it is highly recommended to send a post to `CuPy's Gitter channel <https://gitter.im/cupy/community>`_, `CuPy User Group <https://groups.google.com/forum/#!forum/cupy>`_ or `StackOverflow <https://stackoverflow.com/questions/tagged/cupy>`_ instead of the issue tracker.
    The issue tracker is not a place to share knowledge on practices.
    We may suggest these places and immediately close how-to question issues.
 
@@ -176,9 +176,8 @@ After writing your code **(including unit tests and hopefully documentations!)**
 You have to write a precise explanation of **what** and **how** you fix;
 it is the first documentation of your code that developers read, which is a very important part of your PR.
 
-Once you send a PR, it is automatically tested on `GitHub Actions` for Linux, and on `AppVeyor <https://ci.appveyor.com/project/cupy/cupy>`_ for Windows.
-Your PR needs to pass at least the test for Linux on Travis CI.
-After the automatic test passes, some of the core developers will start reviewing your code.
+Once you send a PR, it is automatically tested on ``GitHub Actions``.
+After the automatic test passes, core developers will start reviewing your code.
 Note that this automatic PR test only includes CPU tests.
 
 .. note::
@@ -427,7 +426,7 @@ The documentation source is stored under `docs directory <https://github.com/cup
 
 To build the documentation, you need to install `Sphinx <http://www.sphinx-doc.org/>`_::
 
-  $ pip install sphinx sphinx_rtd_theme
+  $ pip install -r docs/requirements.txt
 
 Then you can build the documentation in HTML format locally::
 

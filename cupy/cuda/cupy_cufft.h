@@ -1,7 +1,11 @@
-// This file is a stub header file of cufft for Read the Docs.
-
 #ifndef INCLUDE_GUARD_CUPY_CUFFT_H
 #define INCLUDE_GUARD_CUPY_CUFFT_H
+
+/*
+ * Note: this file should *not* be split into 3 and moved under cupy_backends/,
+ * because we need to copy this header to sdist and use it at runtime for cuFFT
+ * callbacks.
+ */
 
 #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 #include <cufft.h>
@@ -19,9 +23,6 @@ typedef hipfftDoubleReal cufftDoubleReal;
 
 typedef hipfftResult_t cufftResult_t;
 typedef hipfftHandle cufftHandle;
-//typedef struct hipfftHandle_t* cufftHandle;
-//typedef int cufftHandle;
-//typedef struct _hipfftHandle_t* cufftHandle;
 typedef hipfftType_t cufftType_t;
 typedef hipStream_t cudaStream_t;
 
@@ -114,6 +115,9 @@ cufftResult_t cufftGetVersion(int *version) {
     return hipfftGetVersion(version);
 }
 
+// TODO(leofang): move this header to cupy_backends/ and include hip/cupy_hip_common.h
+typedef enum {} cudaDataType;
+
 // cufftXt functions
 cufftResult_t cufftXtSetGPUs(...) {
     return HIPFFT_NOT_IMPLEMENTED;
@@ -124,6 +128,14 @@ cufftResult_t cufftXtSetWorkArea(...) {
 }
 
 cufftResult_t cufftXtMemcpy(...) {
+    return HIPFFT_NOT_IMPLEMENTED;
+}
+
+cufftResult_t cufftXtMakePlanMany(...) {
+    return HIPFFT_NOT_IMPLEMENTED;
+}
+
+cufftResult_t cufftXtExec(...) {
     return HIPFFT_NOT_IMPLEMENTED;
 }
 
@@ -244,6 +256,14 @@ cufftResult_t cufftXtSetWorkArea(...) {
 }
 
 cufftResult_t cufftXtMemcpy(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftXtMakePlanMany(...) {
+    return CUFFT_SUCCESS;
+}
+
+cufftResult_t cufftXtExec(...) {
     return CUFFT_SUCCESS;
 }
 

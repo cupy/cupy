@@ -6,8 +6,8 @@ import pytest
 import cupy
 from cupy import cusolver
 from cupy import testing
-from cupy.testing import attr
-from cupy.core import _routines_linalg as _linalg
+from cupy.testing import _attr
+from cupy._core import _routines_linalg as _linalg
 import cupyx
 
 
@@ -23,7 +23,7 @@ import cupyx
     'full_matrices': [True, False],
     'overwrite_a': [True, False],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGesvdj(unittest.TestCase):
 
     def setUp(self):
@@ -82,7 +82,7 @@ class TestGesvdj(unittest.TestCase):
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(5, 4), (1, 4, 3), (4, 3, 2)],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGesvda(unittest.TestCase):
 
     def setUp(self):
@@ -136,7 +136,7 @@ class TestGesvda(unittest.TestCase):
     'order': ['C', 'F'],
     'UPLO': ['L', 'U'],
 }))
-@attr.gpu
+@_attr.gpu
 class TestSyevj(unittest.TestCase):
 
     def setUp(self):
@@ -190,7 +190,7 @@ class TestSyevj(unittest.TestCase):
                      _linalg.COMPUTE_TYPE_TF32,
                      _linalg.COMPUTE_TYPE_FP32],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGesv(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -247,7 +247,7 @@ class TestGesv(unittest.TestCase):
                      _linalg.COMPUTE_TYPE_TF32,
                      _linalg.COMPUTE_TYPE_FP32],
 }))
-@attr.gpu
+@_attr.gpu
 class TestGels(unittest.TestCase):
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -277,6 +277,7 @@ class TestGels(unittest.TestCase):
 @testing.parameterize(*testing.product({
     'tol': [0, 1e-5],
     'reorder': [0, 1, 2, 3],
+    'b_contiguous': [True, False],
 }))
 @testing.with_requires('scipy')
 class TestCsrlsvqr(unittest.TestCase):
@@ -284,6 +285,10 @@ class TestCsrlsvqr(unittest.TestCase):
     n = 8
     density = 0.75
     _test_tol = {'f': 1e-5, 'd': 1e-12}
+
+    def setUp(self):
+        if not cusolver.check_availability('csrlsvqr'):
+            pytest.skip('csrlsvqr is not available')
 
     def _setup(self, dtype):
         dtype = numpy.dtype(dtype)
@@ -299,13 +304,14 @@ class TestCsrlsvqr(unittest.TestCase):
 
     @testing.for_dtypes('fdFD')
     def test_csrlsvqr(self, dtype):
-        if not cusolver.check_availability('csrlsvqr'):
-            unittest.SkipTest('csrlsvqr is not available')
         a, b, test_tol = self._setup(dtype)
-        ref_x = numpy.linalg.solve(a, b)
         cp_a = cupy.array(a)
         sp_a = cupyx.scipy.sparse.csr_matrix(cp_a)
         cp_b = cupy.array(b)
+        if not self.b_contiguous:
+            b = b[::-1]
+            cp_b = cp_b[::-1]
+        ref_x = numpy.linalg.solve(a, b)
         x = cupy.cusolver.csrlsvqr(sp_a, cp_b, tol=self.tol,
                                    reorder=self.reorder)
         cupy.testing.assert_allclose(x, ref_x, rtol=test_tol,

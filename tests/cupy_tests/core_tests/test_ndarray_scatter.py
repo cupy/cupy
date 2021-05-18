@@ -1,4 +1,5 @@
 import unittest
+import pytest
 
 import numpy
 
@@ -90,12 +91,12 @@ from cupy import testing
      'value': 1},
     {'shape': (2, 3, 4), 'slices': ([], []),
      'value': 1},
-    {'shape': (2, 3, 4), 'slices': numpy.array([], dtype=numpy.bool),
+    {'shape': (2, 3, 4), 'slices': numpy.array([], dtype=numpy.bool_),
      'value': 1},
     {'shape': (2, 3, 4),
-     'slices': (slice(None), numpy.array([], dtype=numpy.bool)),
+     'slices': (slice(None), numpy.array([], dtype=numpy.bool_)),
      'value': 1},
-    {'shape': (2, 3, 4), 'slices': numpy.array([[], []], dtype=numpy.bool),
+    {'shape': (2, 3, 4), 'slices': numpy.array([[], []], dtype=numpy.bool_),
      'value': numpy.random.uniform(size=(4,))},
     # list indexes
     {'shape': (2, 3, 4), 'slices': [1], 'value': 1},
@@ -116,6 +117,8 @@ class TestScatterParametrized(unittest.TestCase):
                          numpy.float64])
     @testing.numpy_cupy_array_equal()
     def test_scatter_add(self, xp, dtype):
+        if cupy.cuda.runtime.is_hip and dtype == numpy.float16:
+            pytest.skip('atomicAdd does not support float16 in HIP')
         a = xp.zeros(self.shape, dtype)
         if xp is cupy:
             a.scatter_add(self.slices, self.value)
@@ -153,6 +156,8 @@ class TestScatterAdd(unittest.TestCase):
                          numpy.uint64, numpy.ulonglong, numpy.float16,
                          numpy.float64])
     def test_scatter_add_cupy_arguments(self, dtype):
+        if cupy.cuda.runtime.is_hip and dtype == numpy.float16:
+            pytest.skip('atomicAdd does not support float16 in HIP')
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
         slices = (cupy.array([1, 1]), slice(None))
@@ -164,6 +169,8 @@ class TestScatterAdd(unittest.TestCase):
                          numpy.uint64, numpy.ulonglong, numpy.float16,
                          numpy.float64])
     def test_scatter_add_cupy_arguments_mask(self, dtype):
+        if cupy.cuda.runtime.is_hip and dtype == numpy.float16:
+            pytest.skip('atomicAdd does not support float16 in HIP')
         shape = (2, 3)
         a = cupy.zeros(shape, dtype)
         slices = (cupy.array([True, False]), slice(None))
@@ -176,6 +183,11 @@ class TestScatterAdd(unittest.TestCase):
          numpy.ulonglong, numpy.float16, numpy.float64],
         names=['src_dtype', 'dst_dtype'])
     def test_scatter_add_differnt_dtypes(self, src_dtype, dst_dtype):
+        if (
+                cupy.cuda.runtime.is_hip
+                and (src_dtype == numpy.float16
+                     or dst_dtype == numpy.float16)):
+            pytest.skip('atomicAdd does not support float16 in HIP')
         shape = (2, 3)
         a = cupy.zeros(shape, dtype=src_dtype)
         value = cupy.array(1, dtype=dst_dtype)
@@ -191,6 +203,11 @@ class TestScatterAdd(unittest.TestCase):
          numpy.ulonglong, numpy.float16, numpy.float64],
         names=['src_dtype', 'dst_dtype'])
     def test_scatter_add_differnt_dtypes_mask(self, src_dtype, dst_dtype):
+        if (
+                cupy.cuda.runtime.is_hip
+                and (src_dtype == numpy.float16
+                     or dst_dtype == numpy.float16)):
+            pytest.skip('atomicAdd does not support float16 in HIP')
         shape = (2, 3)
         a = cupy.zeros(shape, dtype=src_dtype)
         value = cupy.array(1, dtype=dst_dtype)

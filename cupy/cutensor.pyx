@@ -4,18 +4,19 @@ import warnings as _warnings
 import cupy as _cupy
 
 from libc.stdint cimport intptr_t, uint32_t, uint64_t
-from cupy.core._carray cimport shape_t
-from cupy.core.core cimport ndarray
-from cupy.core cimport internal
+from cupy._core._carray cimport shape_t
+from cupy._core.core cimport ndarray
+from cupy._core cimport internal
 from cupy_backends.cuda.libs.cutensor cimport Handle
 from cupy_backends.cuda.libs.cutensor cimport TensorDescriptor
 from cupy_backends.cuda.libs.cutensor cimport ContractionDescriptor
 from cupy_backends.cuda.libs.cutensor cimport ContractionFind
 from cupy_backends.cuda.libs.cutensor cimport ContractionPlan
 
-from cupy.core cimport core
-from cupy.core cimport _routines_linalg as _linalg
-from cupy.core cimport _reduction
+from cupy._core cimport core
+from cupy._core cimport _dtype
+from cupy._core cimport _routines_linalg as _linalg
+from cupy._core cimport _reduction
 from cupy.cuda cimport device
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cutensor
@@ -130,21 +131,6 @@ cdef Handle _get_handle():
     return _handles[dev]
 
 
-cdef int _get_cuda_dtype(numpy_dtype) except -1:
-    if numpy_dtype == _numpy.float16:
-        return runtime.CUDA_R_16F
-    elif numpy_dtype == _numpy.float32:
-        return runtime.CUDA_R_32F
-    elif numpy_dtype == _numpy.float64:
-        return runtime.CUDA_R_64F
-    elif numpy_dtype == _numpy.complex64:
-        return runtime.CUDA_C_32F
-    elif numpy_dtype == _numpy.complex128:
-        return runtime.CUDA_C_64F
-    else:
-        raise TypeError('Dtype {} is not supported'.format(numpy_dtype))
-
-
 cdef int _get_cutensor_compute_type(numpy_dtype) except -1:
     if cutensor.get_version() >= 10200:
         # version 1.2.0 or later
@@ -241,7 +227,7 @@ cpdef TensorDescriptor create_tensor_descriptor(
     num_modes = a.ndim
     extent = _numpy.array(a.shape, dtype=_numpy.int64)
     stride = _numpy.array(a.strides, dtype=_numpy.int64) // a.itemsize
-    cuda_dtype = _get_cuda_dtype(a.dtype)
+    cuda_dtype = _dtype.to_cuda_dtype(a.dtype, is_half_allowed=True)
     desc = TensorDescriptor()
     cutensor.initTensorDescriptor(
         handle, desc, num_modes, extent.ctypes.data, stride.ctypes.data,
@@ -321,7 +307,8 @@ def elementwise_trinary(
         B, desc_B, _auto_create_mode(B, mode_B),
         _create_scalar(gamma, compute_dtype),
         C, desc_C, _auto_create_mode(C, mode_C),
-        out, op_AB, op_ABC, _get_cuda_dtype(compute_dtype))
+        out, op_AB, op_ABC,
+        _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True))
 
 
 cdef inline ndarray _elementwise_trinary_impl(
@@ -381,8 +368,7 @@ def elementwise_binary(
         A, desc_A, _auto_create_mode(A, mode_A),
         _create_scalar(gamma, compute_dtype),
         C, desc_C, _auto_create_mode(A, mode_C),
-        out, op_AC, _get_cuda_dtype(compute_dtype)
-    )
+        out, op_AC, _dtype.to_cuda_dtype(compute_dtype, is_half_allowed=True))
 
 
 cdef inline ndarray _elementwise_binary_impl(

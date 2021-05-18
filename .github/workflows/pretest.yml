@@ -1,3 +1,5 @@
+name: "Pre-review Tests"
+
 on: [push, pull_request]
 
 jobs:
@@ -14,13 +16,13 @@ jobs:
     - name: setup python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.6'
+        python-version: '3.7'
 
     - name: install
       run: |
         pip install -U pip wheel
         pip install cython
-        READTHEDOCS=True pip install -U -e .[stylecheck,docs]
+        READTHEDOCS=True pip install -U -e .[stylecheck]
 
     - name: flake8
       run: |
@@ -32,10 +34,11 @@ jobs:
         autopep8 -r . --diff | tee check_autopep8
         test ! -s check_autopep8
 
-    - name: doc tests
+    - name: doc build
       run: |
+        # Test to detect invalid escape sequences in docstrings (#1619)
         python -Werror::DeprecationWarning -m compileall -f -q cupy cupyx examples tests docs
-        pip install scipy
         pushd docs
+        pip install -r requirements.txt
         SPHINXOPTS=-W make html
         popd

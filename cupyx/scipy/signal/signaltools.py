@@ -2,7 +2,7 @@ import warnings
 import math
 
 import cupy
-from cupy.core import internal
+from cupy._core import internal
 
 import cupyx
 from cupyx.scipy.ndimage import _util
@@ -123,14 +123,14 @@ def _correlate(in1, in2, mode='full', method='auto', convolution=False):
     if inputs_swapped:
         in1, in2 = in2, in1
     if not convolution:
-        in2 = _st_core._reverse_and_conj(in2)
+        in2 = _st_core._reverse(in2).conj()
     out = fftconvolve(in1, in2, mode)
     result_type = cupy.result_type(in1, in2)
     if result_type.kind in 'ui':
         out = out.round()
     out = out.astype(result_type, copy=False)
     if not convolution and inputs_swapped:
-        out = cupy.ascontiguousarray(_st_core._reverse_and_conj(out))
+        out = cupy.ascontiguousarray(_st_core._reverse(out).conj())
     return out
 
 
@@ -499,16 +499,11 @@ def wiener(im, mysize=None, noise=None):
 
     .. seealso:: :func:`scipy.signal.wiener`
     """
-    if im.dtype.kind == 'c':
-        # TODO: adding support for complex types requires ndimage filters
-        # to support complex types (which they could easily if not for the
-        # scipy compatibility requirement of forbidding complex and using
-        # float64 intermediates)
-        raise TypeError("complex types not currently supported")
     if mysize is None:
         mysize = 3
     mysize = _util._fix_sequence_arg(mysize, im.ndim, 'mysize', int)
-    im = im.astype(float, copy=False)
+    im = im.astype(cupy.complex128 if im.dtype.kind == 'c' else cupy.float64,
+                   copy=False)
 
     # Estimate the local mean
     local_mean = filters.uniform_filter(im, mysize, mode='constant')
@@ -582,7 +577,6 @@ def medfilt(volume, kernel_size=None):
     """
     if volume.dtype.kind == 'c':
         # scipy doesn't support complex
-        # (and filters.rank_filter raise TypeError)
         raise ValueError("complex types not supported")
     # output is forced to float64 to match scipy
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)

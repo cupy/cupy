@@ -1,11 +1,18 @@
 Functional programming
 ======================
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.functional.html
+.. Hint:: `NumPy API Reference: Functional programming <https://numpy.org/doc/stable/reference/routines.functional.html>`_
+
+.. currentmodule:: cupy
+
+.. note::
+
+   :class:`cupy.vectorize` applies JIT compiler to the given Python function.
+   See :ref:`jit_kernel_definition` for details.
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.apply_along_axis
-   cupy.piecewise
+   apply_along_axis
+   vectorize
+   piecewise

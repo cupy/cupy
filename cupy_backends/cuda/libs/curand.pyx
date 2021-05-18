@@ -116,10 +116,8 @@ cpdef setStream(size_t generator, size_t stream):
 
 
 cdef _setStream(size_t generator):
-    """Set current stream when enable_current_stream is True
-    """
-    if stream_module.enable_current_stream:
-        setStream(generator, stream_module.get_current_stream_ptr())
+    """Set current stream"""
+    setStream(generator, stream_module.get_current_stream_ptr())
 
 
 cpdef setPseudoRandomGeneratorSeed(size_t generator, unsigned long long seed):

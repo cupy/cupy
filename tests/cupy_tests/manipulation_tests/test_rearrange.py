@@ -8,103 +8,43 @@ from cupy import testing
 
 
 @testing.gpu
+@testing.parameterize(
+    {'shape': (10,), 'shift': 2, 'axis': None},
+    {'shape': (5, 2), 'shift': 1, 'axis': None},
+    {'shape': (5, 2), 'shift': -2, 'axis': None},
+    {'shape': (5, 2), 'shift': 1, 'axis': 0},
+    {'shape': (5, 2), 'shift': 1, 'axis': -1},
+    {'shape': (10,), 'shift': 35, 'axis': None},
+    {'shape': (5, 2), 'shift': 11, 'axis': 0},
+    {'shape': (), 'shift': 5, 'axis': None},
+    {'shape': (5, 2), 'shift': 1, 'axis': (0, 1)},
+    {'shape': (5, 2), 'shift': 1, 'axis': (0, 0)},
+    {'shape': (5, 2), 'shift': 50, 'axis': 0},
+    {'shape': (5, 2), 'shift': (2, 1), 'axis': (0, 1)},
+    {'shape': (5, 2), 'shift': (2, 1), 'axis': (0, -1)},
+    {'shape': (5, 2), 'shift': (2, 1), 'axis': (1, -1)},
+    {'shape': (5, 2), 'shift': (2, 1, 3), 'axis': 0},
+    {'shape': (5, 2), 'shift': (2, 1, 3), 'axis': None},
+)
 class TestRoll(unittest.TestCase):
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    @testing.numpy_cupy_array_equal()
     def test_roll(self, xp, dtype):
-        x = xp.arange(10, dtype)
-        return xp.roll(x, 2)
+        x = testing.shaped_arange(self.shape, xp, dtype)
+        return xp.roll(x, self.shift, axis=self.axis)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_roll2(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, 1)
+    def test_roll_cupy_shift(self, xp, dtype):
+        x = testing.shaped_arange(self.shape, xp, dtype)
+        shift = self.shift
+        if xp is cupy:
+            shift = cupy.array(shift)
+        return xp.roll(x, shift, axis=self.axis)
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_negative(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, -2)
 
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_with_axis(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, 1, axis=0)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_with_negative_axis(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, 1, axis=-1)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_double_shift(self, xp, dtype):
-        x = testing.shaped_arange((10,), xp, dtype)
-        return xp.roll(x, 35)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_double_shift_with_axis(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, 11, axis=0)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_zero_array(self, xp, dtype):
-        x = testing.shaped_arange((), xp, dtype)
-        return xp.roll(x, 5)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_scalar_shift_multi_axis(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, 1, axis=(0, 1))
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_scalar_shift_duplicate_axis(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, 1, axis=(0, 0))
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_large_shift(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, 50, axis=0)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_multi_shift_multi_axis(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, (2, 1), axis=(0, 1))
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_multi_shift_multi_axis2(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, (2, 1), axis=(0, -1))
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_multi_shift_multi_axis3(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, (2, 1), axis=(1, -1))
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_multi_shift_scalar_axis(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, (2, 1, 3), axis=0)
-
-    @testing.for_all_dtypes()
-    @testing.numpy_cupy_array_equal()
-    def test_roll_multi_shift_axis_none(self, xp, dtype):
-        x = testing.shaped_arange((5, 2), xp, dtype)
-        return xp.roll(x, (2, 1, 3), axis=None)
+class TestRollTypeError(unittest.TestCase):
 
     def test_roll_invalid_shift(self):
         for xp in (numpy, cupy):
@@ -112,47 +52,36 @@ class TestRoll(unittest.TestCase):
             with pytest.raises(TypeError):
                 xp.roll(x, '0', axis=0)
 
-    def test_roll_shape_mismatch(self):
-        for xp in (numpy, cupy):
-            x = testing.shaped_arange((5, 2, 3), xp)
-            with pytest.raises(ValueError):
-                xp.roll(x, (2, 2, 2), axis=(0, 1))
-
-    def test_roll_invalid_axis1(self):
-        for xp in (numpy, cupy):
-            x = testing.shaped_arange((5, 2), xp)
-            with pytest.raises(ValueError):
-                xp.roll(x, 1, axis=2)
-
-    def test_roll_invalid_axis2(self):
-        for xp in (numpy, cupy):
-            x = testing.shaped_arange((5, 2), xp)
-            with pytest.raises(ValueError):
-                xp.roll(x, 1, axis=-3)
-
-    def test_roll_invalid_axis_length(self):
-        for xp in (numpy, cupy):
-            x = testing.shaped_arange((5, 2, 2), xp)
-            with pytest.raises(ValueError):
-                cupy.roll(x, shift=(1, 0), axis=(0, 1, 2))
-
     def test_roll_invalid_axis_type(self):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((5, 2), xp)
             with pytest.raises(TypeError):
                 xp.roll(x, 2, axis='0')
 
-    def test_roll_invalid_negative_axis1(self):
-        for xp in (numpy, cupy):
-            x = testing.shaped_arange((5, 2), xp)
-            with pytest.raises(ValueError):
-                xp.roll(x, 1, axis=-3)
 
-    def test_roll_invalid_negative_axis2(self):
+@testing.parameterize(
+    {'shape': (5, 2, 3), 'shift': (2, 2, 2), 'axis': (0, 1)},
+    {'shape': (5, 2), 'shift': 1, 'axis': 2},
+    {'shape': (5, 2), 'shift': 1, 'axis': -3},
+    {'shape': (5, 2, 2), 'shift': (1, 0), 'axis': (0, 1, 2)},
+    {'shape': (5, 2), 'shift': 1, 'axis': -3},
+    {'shape': (5, 2), 'shift': 1, 'axis': (1, -3)},
+)
+class TestRollValueError(unittest.TestCase):
+    def test_roll_invalid(self):
         for xp in (numpy, cupy):
-            x = testing.shaped_arange((5, 2), xp)
+            x = testing.shaped_arange(self.shape, xp)
             with pytest.raises(ValueError):
-                xp.roll(x, 1, axis=(1, -3))
+                xp.roll(x, self.shift, axis=self.axis)
+
+    def test_roll_invalid_cupy_shift(self):
+        for xp in (numpy, cupy):
+            x = testing.shaped_arange(self.shape, xp)
+            shift = self.shift
+            if xp is cupy:
+                shift = cupy.array(shift)
+            with pytest.raises(ValueError):
+                xp.roll(x, shift, axis=self.axis)
 
 
 @testing.gpu

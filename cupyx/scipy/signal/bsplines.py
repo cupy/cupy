@@ -26,18 +26,14 @@ def sepfir2d(input, hrow, hcol):
         raise ValueError('hrow and hcol must be 1 dimensional and odd length')
     dtype = input.dtype
     if dtype.kind == 'c':
-        # TODO: adding support for complex types requires ndimage filters
-        # to support complex types (which they could easily if not for the
-        # scipy compatibility requirement of forbidding complex and using
-        # float64 intermediates)
-        raise TypeError("complex types not currently supported")
-    if dtype == cupy.float32 or dtype.itemsize <= 2:
+        dtype = cupy.complex64 if dtype == cupy.complex64 else cupy.complex128
+    elif dtype == cupy.float32 or dtype.itemsize <= 2:
         dtype = cupy.float32
     else:
         dtype = cupy.float64
     input = input.astype(dtype, copy=False)
     hrow = hrow.astype(dtype, copy=False)
     hcol = hcol.astype(dtype, copy=False)
-    filters = (hcol[::-1], hrow[::-1])
+    filters = (hcol[::-1].conj(), hrow[::-1].conj())
     return cupyx.scipy.ndimage.filters._run_1d_correlates(
         input, (0, 1), lambda i: filters[i], None, 'reflect', 0)

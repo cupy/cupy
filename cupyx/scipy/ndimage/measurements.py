@@ -3,7 +3,7 @@ import warnings
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import _util
 
 
@@ -111,13 +111,13 @@ def _label(x, structure, y):
 
 
 def _kernel_init():
-    return core.ElementwiseKernel(
+    return _core.ElementwiseKernel(
         'X x', 'Y y', 'if (x == 0) { y = -1; } else { y = i; }',
         'cupyx_nd_label_init')
 
 
 def _kernel_connect():
-    return core.ElementwiseKernel(
+    return _core.ElementwiseKernel(
         'raw int32 shape, raw int32 dirs, int32 ndirs, int32 ndim',
         'raw Y y',
         '''
@@ -160,7 +160,7 @@ def _kernel_connect():
 
 
 def _kernel_count():
-    return core.ElementwiseKernel(
+    return _core.ElementwiseKernel(
         '', 'raw Y y, raw int32 count',
         '''
         if (y[i] < 0) continue;
@@ -173,7 +173,7 @@ def _kernel_count():
 
 
 def _kernel_labels():
-    return core.ElementwiseKernel(
+    return _core.ElementwiseKernel(
         '', 'raw Y y, raw int32 count, raw int32 labels',
         '''
         if (y[i] != i) continue;
@@ -184,7 +184,7 @@ def _kernel_labels():
 
 
 def _kernel_finalize():
-    return core.ElementwiseKernel(
+    return _core.ElementwiseKernel(
         'int32 maxlabel', 'raw int32 labels, raw Y y',
         '''
         if (y[i] < 0) {
@@ -206,7 +206,7 @@ def _kernel_finalize():
         'cupyx_nd_label_finalize')
 
 
-_ndimage_variance_kernel = core.ElementwiseKernel(
+_ndimage_variance_kernel = _core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size, raw float64 mean',
     'raw float64 out',
     """
@@ -219,7 +219,7 @@ _ndimage_variance_kernel = core.ElementwiseKernel(
     """)
 
 
-_ndimage_sum_kernel = core.ElementwiseKernel(
+_ndimage_sum_kernel = _core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size',
     'raw float64 out',
     """
@@ -242,7 +242,7 @@ def _ndimage_sum_kernel_2(input, labels, index, sum_val, batch_size=4):
     return sum_val
 
 
-_ndimage_mean_kernel = core.ElementwiseKernel(
+_ndimage_mean_kernel = _core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size',
     'raw float64 out, raw uint64 count',
     """
@@ -655,7 +655,7 @@ def _select(input, labels=None, index=None, find_min=False, find_max=False,
         found = unique_labels[idxs] == index
     else:
         # Labels are an integer type, and there aren't too many
-        idxs = cupy.asanyarray(index, cupy.int).copy()
+        idxs = cupy.asanyarray(index, int).copy()
         found = (idxs >= 0) & (idxs <= max_label)
 
     idxs[~found] = max_label + 1
@@ -665,8 +665,8 @@ def _select(input, labels=None, index=None, find_min=False, find_max=False,
     if find_positions:
         positions = positions.ravel()
 
-    using_cub = core._accelerator.ACCELERATOR_CUB in \
-        cupy.core.get_routine_accelerators()
+    using_cub = _core._accelerator.ACCELERATOR_CUB in \
+        cupy._core.get_routine_accelerators()
 
     if using_cub:
         # Cutoff values below were determined empirically for relatively large
@@ -720,9 +720,9 @@ def _select(input, labels=None, index=None, find_min=False, find_max=False,
         result += [maxpos[idxs]]
     if find_median:
         locs = cupy.arange(len(labels))
-        lo = cupy.zeros(int(labels.max()) + 2, cupy.int)
+        lo = cupy.zeros(int(labels.max()) + 2, int)
         lo[labels[min_index]] = locs[min_index]
-        hi = cupy.zeros(int(labels.max()) + 2, cupy.int)
+        hi = cupy.zeros(int(labels.max()) + 2, int)
         hi[labels[max_index]] = locs[max_index]
         lo = lo[idxs]
         hi = hi[idxs]

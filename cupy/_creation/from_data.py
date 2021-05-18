@@ -1,7 +1,7 @@
 import numpy
 
-from cupy import core
-from cupy.core import fusion
+from cupy import _core
+from cupy._core import fusion
 
 
 def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
@@ -38,7 +38,7 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0):
     .. seealso:: :func:`numpy.array`
 
     """
-    return core.array(obj, dtype, copy, order, subok, ndmin)
+    return _core.array(obj, dtype, copy, order, subok, ndmin)
 
 
 def asarray(a, dtype=None, order=None):
@@ -63,7 +63,7 @@ def asarray(a, dtype=None, order=None):
     .. seealso:: :func:`numpy.asarray`
 
     """
-    return core.array(a, dtype, False, order)
+    return _core.array(a, dtype, False, order)
 
 
 def asanyarray(a, dtype=None, order=None):
@@ -77,7 +77,7 @@ def asanyarray(a, dtype=None, order=None):
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
-    return core.array(a, dtype, False, order)
+    return _core.array(a, dtype, False, order)
 
 
 def ascontiguousarray(a, dtype=None):
@@ -94,7 +94,7 @@ def ascontiguousarray(a, dtype=None):
     .. seealso:: :func:`numpy.ascontiguousarray`
 
     """
-    return core.ascontiguousarray(a, dtype)
+    return _core.ascontiguousarray(a, dtype)
 
 
 # TODO(okuta): Implement asmatrix
@@ -126,7 +126,7 @@ def copy(a, order='K'):
         if order != 'K':
             raise NotImplementedError(
                 'cupy.copy does not support `order` in fusion yet.')
-        return fusion._call_ufunc(core.elementwise_copy, a)
+        return fusion._call_ufunc(_core.elementwise_copy, a)
 
     # If the current device is different from the device of ``a``, then this
     # function allocates a new array on the current device, and copies the

@@ -1,14 +1,15 @@
+# Note: nothing exposed in this pxd header is considered public API;
+# we copy this to sdist only because it's needed at runtime to support
+# cuFFT callbacks
+
 from libc.stdint cimport intptr_t
-
-from cupy.cuda cimport memory
-
 
 cdef extern from *:
     ctypedef float Float 'cufftReal'
     ctypedef double Double 'cufftDoubleReal'
     ctypedef int Result 'cufftResult_t'
 
-    IF not use_hip:
+    IF HIP_VERSION > 0:
         ctypedef int Handle 'cufftHandle'
     ELSE:
         ctypedef struct hipHandle 'hipfftHandle_t':
@@ -71,9 +72,25 @@ cdef class Plan1d:
 cdef class PlanNd:
     cdef:
         readonly intptr_t handle
-        readonly memory.MemoryPointer work_area
+        readonly object work_area  # memory.MemoryPointer
         readonly tuple shape
         readonly Type fft_type
+        readonly str order
+        readonly int last_axis
+        readonly object last_size
+
+        # TODO(leofang): support multi-GPU transforms
+        readonly list gpus
+
+
+cdef class XtPlanNd:
+    cdef:
+        readonly intptr_t handle
+        readonly object work_area  # memory.MemoryPointer
+        readonly tuple shape
+        readonly int itype
+        readonly int otype
+        readonly int etype
         readonly str order
         readonly int last_axis
         readonly object last_size

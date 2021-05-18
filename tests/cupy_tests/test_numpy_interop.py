@@ -135,3 +135,20 @@ class TestArrayUfuncOptout:
         y = MockArray2()
         assert (x < y) == 'gt'
         assert (y < x) == 'lt'
+
+
+@testing.gpu
+class TestAsnumpy:
+
+    def test_asnumpy(self):
+        x = testing.shaped_random((2, 3, 4), cupy, cupy.float64)
+        y = cupy.asnumpy(x)
+        testing.assert_array_equal(x, y)
+
+    def test_asnumpy_out(self):
+        x = testing.shaped_random((2, 3, 4), cupy, cupy.float64)
+        y = cupyx.empty_like_pinned(x)
+        y = cupy.asnumpy(x, out=y)
+        testing.assert_array_equal(x, y)
+        assert isinstance(y.base, cupy.cuda.PinnedMemoryPointer)
+        assert y.base.ptr == y.ctypes.data

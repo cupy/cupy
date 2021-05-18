@@ -59,6 +59,8 @@ typedef hipError_t cudaError_t;
 const CUresult cudaSuccess = static_cast<CUresult>(0);
 const CUresult cudaErrorInvalidValue = hipErrorInvalidValue;
 const CUresult cudaErrorMemoryAllocation = hipErrorMemoryAllocation;
+const CUresult cudaErrorInvalidResourceHandle = hipErrorInvalidResourceHandle;
+const CUresult cudaErrorContextIsDestroyed = hipErrorUnknown;  // no counterpart in HIP
 const CUresult cudaErrorPeerAccessAlreadyEnabled = hipErrorPeerAccessAlreadyEnabled;
 typedef enum {} cudaDataType;
 typedef hipDeviceAttribute_t cudaDeviceAttr;
@@ -66,7 +68,8 @@ typedef hipLimit_t cudaLimit;
 enum cudaMemoryAdvise {};
 typedef hipMemcpyKind cudaMemcpyKind;
 typedef hipDeviceProp_t cudaDeviceProp;
-
+typedef void* cudaMemPool_t;
+enum cudaMemPoolAttr {};
 
 typedef hipStreamCallback_t cudaStreamCallback_t;
 typedef void (*cudaHostFn_t)(void* userData);

@@ -2,7 +2,7 @@
 """
 
 import cupy
-from cupy import core
+from cupy import _core
 
 from cupyx.scipy.sparse.base import isspmatrix
 from cupyx.scipy.sparse.base import spmatrix
@@ -19,16 +19,16 @@ except ImportError:
     scipy_available = False
 
 _int_scalar_types = (int, numpy.integer, numpy.int_)
-_bool_scalar_types = (bool, numpy.bool, numpy.bool_)
+_bool_scalar_types = (bool, numpy.bool_)
 
 
-_compress_getitem_kern = core.ElementwiseKernel(
+_compress_getitem_kern = _core.ElementwiseKernel(
     'T d, S ind, int32 minor', 'raw T answer',
     'if (ind == minor) atomicAdd(&answer[0], d);',
     'compress_getitem')
 
 
-_compress_getitem_complex_kern = core.ElementwiseKernel(
+_compress_getitem_complex_kern = _core.ElementwiseKernel(
     'T real, T imag, S ind, int32 minor',
     'raw T answer_real, raw T answer_imag',
     '''
@@ -93,7 +93,7 @@ def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
     return Bx, Bj, Bp
 
 
-_csr_row_index_ker = core.ElementwiseKernel(
+_csr_row_index_ker = _core.ElementwiseKernel(
     'int32 out_rows, raw I rows, '
     'raw int32 Ap, raw int32 Aj, raw T Ax, raw int32 Bp',
     'int32 Bj, T Bx',
@@ -167,7 +167,7 @@ def _select_last_indices(i, j, x, idx_dtype):
     return indptr_inserts[mask], indices_inserts[mask], data_inserts[mask]
 
 
-_insert_many_populate_arrays = core.ElementwiseKernel(
+_insert_many_populate_arrays = _core.ElementwiseKernel(
     '''raw I insert_indices, raw T insert_values, raw I insertion_indptr,
         raw I Ap, raw I Aj, raw T Ax, raw I Bp''',
     'raw I Bj, raw T Bx', '''
@@ -262,7 +262,7 @@ _insert_many_populate_arrays = core.ElementwiseKernel(
 
 
 # Create a filter mask based on the lowest value of order
-_unique_mask_kern = core.ElementwiseKernel(
+_unique_mask_kern = _core.ElementwiseKernel(
     '''raw I rows, raw I cols, raw I order''',
     '''raw bool mask''',
     """
@@ -311,7 +311,7 @@ def _csr_sample_values(n_row, n_col,
                                    size=Bi.size)
 
 
-_csr_sample_values_kern = core.ElementwiseKernel(
+_csr_sample_values_kern = _core.ElementwiseKernel(
     '''I n_row, I n_col, raw I Ap, raw I Aj, raw T Ax,
     raw I Bi, raw I Bj, I not_found_val''',
     'raw T Bx', '''

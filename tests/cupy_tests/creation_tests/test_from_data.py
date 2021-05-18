@@ -158,6 +158,15 @@ class TestFromData(unittest.TestCase):
     @testing.for_orders('CFAK')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
+    def test_array_from_nested_list_of_cupy_scalar(self, xp, dtype, order):
+        # compares numpy.array(<list of numpy.ndarray>) with
+        # cupy.array(<list of cupy.ndarray>)
+        a = [[xp.array(i, dtype=dtype)] for i in range(2)]
+        return xp.array(a, order=order)
+
+    @testing.for_orders('CFAK')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
     def test_array_copy(self, xp, dtype, order):
         a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.array(a, order=order)
@@ -457,6 +466,8 @@ max_cuda_array_interface_version = 3
     'ver': tuple(range(max_cuda_array_interface_version+1)),
     'strides': (False, None, True),
 }))
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip, reason='HIP does not support this')
 class TestCudaArrayInterface(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_base(self, dtype):
@@ -514,6 +525,8 @@ class TestCudaArrayInterface(unittest.TestCase):
     'ver': tuple(range(1, max_cuda_array_interface_version+1)),
     'strides': (False, None, True),
 }))
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip, reason='HIP does not support this')
 class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
     # TODO(leofang): update this test when masked array is supported
     @testing.for_all_dtypes()
@@ -526,24 +539,22 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
         assert 'does not support' in str(ex.value)
 
 
+# marked slow as either numpy or cupy could go OOM in this test
 @testing.slow
 @testing.gpu
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip, reason='HIP does not support this')
 class TestCudaArrayInterfaceBigArray(unittest.TestCase):
     def test_with_over_size_array(self):
         # real example from #3009
         size = 5 * 10**8
-        try:
-            a = testing.shaped_random((size,), cupy, cupy.float64)
-            b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, 2, None))
-            testing.assert_array_equal(a, b)
-        except cupy.cuda.memory.OutOfMemoryError:
-            pass
-        else:
-            del b, a
-        finally:
-            cupy.get_default_memory_pool().free_all_blocks()
+        a = testing.shaped_random((size,), cupy, cupy.float64)
+        b = cupy.asarray(DummyObjectWithCudaArrayInterface(a, 2, None))
+        testing.assert_array_equal(a, b)
 
 
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip, reason='HIP does not support this')
 class DummyObjectWithCudaArrayInterface(object):
     def __init__(self, a, ver, include_strides=False, mask=None, stream=None):
         assert ver in tuple(range(max_cuda_array_interface_version+1))
@@ -577,9 +588,10 @@ class DummyObjectWithCudaArrayInterface(object):
         # synchronization is done via calling a cpdef function, which cannot
         # be mock-tested.
         if self.stream is not None:
-            # TODO(leofang): how about PTDS?
             if self.stream is cuda.Stream.null:
-                desc['stream'] = 1  # TODO(leofang): use runtime.streamLegacy
+                desc['stream'] = cuda.runtime.streamLegacy
+            elif (not cuda.runtime.is_hip) and self.stream is cuda.Stream.ptds:
+                desc['stream'] = cuda.runtime.streamPerThread
             else:
                 desc['stream'] = self.stream.ptr
         return desc

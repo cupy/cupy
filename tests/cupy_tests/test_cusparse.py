@@ -14,6 +14,11 @@ from cupy import cusparse
 from cupyx.scipy import sparse
 
 
+if cupy.cuda.runtime.is_hip:
+    pytest.skip('HIP sparse support is not yet ready',
+                allow_module_level=True)
+
+
 class TestMatDescriptor(unittest.TestCase):
 
     def test_create(self):
@@ -757,3 +762,99 @@ class TestCsrsm2(unittest.TestCase):
                         transa=self.transa, blocking=self.blocking,
                         level_info=self.level_info)
         testing.assert_allclose(x, self.ref_x, atol=self.tol, rtol=self.tol)
+
+
+@testing.parameterize(*testing.product({
+    'n': [7, 10],
+    'level_info': [True, False],
+}))
+@testing.with_requires('scipy')
+class TestCsrilu02(unittest.TestCase):
+
+    _tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, dtype):
+        if not cusparse.check_availability('csrilu02'):
+            unittest.SkipTest('csrilu02 is not available')
+        a = testing.shaped_random((self.n, self.n), cupy, dtype=dtype,
+                                  scale=0.9) + 0.1
+        a = a + cupy.diag(cupy.ones((self.n,), dtype=dtype.char.lower()))
+        return a
+
+    @testing.for_dtypes('fdFD')
+    def test_csrilu02(self, dtype):
+        dtype = numpy.dtype(dtype)
+        a_ref = self._make_matrix(dtype)
+        a = sparse.csr_matrix(a_ref)
+        cusparse.csrilu02(a, level_info=self.level_info)
+        a = a.todense()
+        al = cupy.tril(a, k=-1)
+        al = al + cupy.diag(cupy.ones((self.n,), dtype=dtype.char.lower()))
+        au = cupy.triu(a)
+        a = al @ au
+        tol = self._tol[dtype.char.lower()]
+        cupy.testing.assert_allclose(a, a_ref, atol=tol, rtol=tol)
+
+    def test_invalid_cases(self):
+        dtype = numpy.dtype('d')
+        a_ref = self._make_matrix(dtype)
+
+        # invalid format
+        a = sparse.csc_matrix(a_ref)
+        with self.assertRaises(TypeError):
+            cusparse.csrilu02(a, level_info=self.level_info)
+
+        # invalid shape
+        a = cupy.ones((self.n, self.n + 1), dtype=dtype)
+        a = sparse.csr_matrix(a)
+        with self.assertRaises(ValueError):
+            cusparse.csrilu02(a, level_info=self.level_info)
+
+        # matrix with zero diagonal element
+        a = a_ref
+        a[-1, -1] = 0
+        a = sparse.csr_matrix(a)
+        with self.assertRaises(ValueError):
+            cusparse.csrilu02(a, level_info=self.level_info)
+
+        # singular matrix
+        a = a_ref
+        a[1:] = a[0]
+        a = sparse.csr_matrix(a)
+        with self.assertRaises(ValueError):
+            cusparse.csrilu02(a, level_info=self.level_info)
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 4), (4, 4), (4, 3)],
+    'density': [0.0, 0.5, 1.0],
+    'format': ['csr', 'csc', 'coo']
+}))
+@testing.with_requires('scipy')
+class TestSparseMatrixConversion(unittest.TestCase):
+
+    @testing.for_dtypes('fdFD')
+    def test_denseToSparse(self, dtype):
+        if not cusparse.check_availability('denseToSparse'):
+            pytest.skip('denseToSparse is not available')
+        x = cupy.random.uniform(0, 1, self.shape).astype(dtype)
+        x[x < self.density] = 0
+        y = cusparse.denseToSparse(x, format=self.format)
+        assert y.format == self.format
+        testing.assert_array_equal(x, y.todense())
+
+    @testing.for_dtypes('fdFD')
+    def test_sparseToDense(self, dtype):
+        if not cusparse.check_availability('sparseToDense'):
+            pytest.skip('sparseToDense is not available')
+        m, n = self.shape
+        x = scipy.sparse.random(m, n, density=self.density, format=self.format,
+                                dtype=dtype)
+        if self.format == 'csr':
+            x = sparse.csr_matrix(x)
+        elif self.format == 'csc':
+            x = sparse.csc_matrix(x)
+        elif self.format == 'coo':
+            x = sparse.coo_matrix(x)
+        y = cusparse.sparseToDense(x)
+        testing.assert_array_equal(x.todense(), y)

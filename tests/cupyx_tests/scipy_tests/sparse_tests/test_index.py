@@ -231,7 +231,7 @@ class TestSetitemIndexing(unittest.TestCase):
         self._run([1, 5, 4], slice(5, 1, -1))
 
     def test_major_bool_fancy(self):
-        rand_bool = cupy.random.random(self.n_rows).astype(cupy.bool)
+        rand_bool = testing.shaped_random(self.n_rows, dtype=bool)
         self._run(rand_bool)
 
     def test_major_slice_with_step(self):

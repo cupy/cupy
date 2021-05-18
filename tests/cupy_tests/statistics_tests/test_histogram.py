@@ -6,7 +6,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 
 
 # Note that numpy.bincount does not support uint64 on 64-bit environment
@@ -35,7 +35,7 @@ def for_signed_dtypes_bincount(name='dtype'):
 
 
 def for_all_dtypes_combination_bincount(names):
-    return testing.helper.for_dtypes_combination(_all_types, names=names)
+    return testing.for_dtypes_combination(_all_types, names=names)
 
 
 @testing.gpu
@@ -506,8 +506,8 @@ class TestDigitizeInvalid(unittest.TestCase):
 
     def test_digitize_complex(self):
         for xp in (numpy, cupy):
-            x = testing.shaped_arange((14,), xp, xp.complex)
-            bins = xp.array([1.0, 3.0, 5.0, 8.0, 12.0], xp.complex)
+            x = testing.shaped_arange((14,), xp, complex)
+            bins = xp.array([1.0, 3.0, 5.0, 8.0, 12.0], complex)
             with pytest.raises(TypeError):
                 xp.digitize(x, bins)
 

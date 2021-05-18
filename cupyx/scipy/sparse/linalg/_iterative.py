@@ -3,6 +3,7 @@ import numpy
 import cupy
 from cupy import cublas
 from cupy import cusparse
+from cupy._core import _dtype
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy_backends.cuda.libs import cublas as _cublas
@@ -259,7 +260,7 @@ def _make_fast_matvec(A):
         op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
         alpha = numpy.array(1.0, A.dtype)
         beta = numpy.array(0.0, A.dtype)
-        cuda_dtype = cusparse._dtype_to_DataType(A.dtype)
+        cuda_dtype = _dtype.to_cuda_dtype(A.dtype)
         alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
         x = cupy.empty((A.shape[0],), dtype=A.dtype)
         y = cupy.empty((A.shape[0],), dtype=A.dtype)

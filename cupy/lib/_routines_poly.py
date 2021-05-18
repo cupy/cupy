@@ -4,7 +4,6 @@ import warnings
 import numpy
 
 import cupy
-from cupy import core
 
 
 def _wraps_polyroutine(func):
@@ -24,7 +23,7 @@ def _wraps_polyroutine(func):
         coeffs = [_get_coeffs(x) for x in args]
         out = func(*coeffs)
 
-        if all([not isinstance(x, cupy.poly1d) for x in args]):
+        if all(not isinstance(x, cupy.poly1d) for x in args):
             return out
         if isinstance(out, cupy.ndarray):
             return cupy.poly1d(out)
@@ -99,9 +98,9 @@ def polymul(a1, a2):
     a1 = cupy.trim_zeros(a1, trim='f')
     a2 = cupy.trim_zeros(a2, trim='f')
     if a1.size == 0:
-        a1 = cupy.array([0.])
+        a1 = cupy.array([0.], a1.dtype)
     if a2.size == 0:
-        a2 = cupy.array([0.])
+        a2 = cupy.array([0.], a2.dtype)
     return cupy.convolve(a1, a2)
 
 
@@ -274,8 +273,8 @@ def polyval(p, x):
     if p.dtype == numpy.complex128 and val.dtype in [
        numpy.float16, numpy.float32, numpy.complex64]:
         return out.astype(numpy.complex64, copy=False)
-    p_kind_score = core._kernel.get_kind_score(ord(p.dtype.kind))
-    x_kind_score = core._kernel.get_kind_score(ord(val.dtype.kind))
+    p_kind_score = numpy.dtype(p.dtype.char.lower()).kind
+    x_kind_score = numpy.dtype(val.dtype.char.lower()).kind
     if (p.dtype.kind not in 'c' and (p_kind_score == x_kind_score
                                      or val.dtype.kind in 'c')) or (
             issubclass(p.dtype.type, numpy.integer)

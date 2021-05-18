@@ -2,7 +2,7 @@ from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api.driver cimport get_build_version
 from cupy_backends.cuda.api.runtime cimport _is_hip_environment
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 from cupy.cuda.device cimport get_compute_capability
 
 import hashlib
@@ -48,8 +48,7 @@ cdef str _ext_suffix = None
 # callback related stuff
 cdef bint _is_init = False
 cdef str _callback_dev_code = None
-cdef str _callback_cache_dir = os.environ.get(
-    'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/callback_cache')) + '/'
+cdef str _callback_cache_dir = None
 cdef dict _callback_mgr = {}  # keep the Python modules alive
 cdef object _callback_thread_local = threading.local()
 
@@ -105,7 +104,7 @@ cdef inline void _set_cupy_paths() except*:
     global _cupy_root, _cupy_include, _source_dir
     if _cupy_root is None:
         _cupy_root = os.path.join(os.path.dirname(__file__), '..')
-        _cupy_include = os.path.join(_cupy_root, 'core/include')
+        _cupy_include = os.path.join(_cupy_root, '_core/include')
         _source_dir = os.path.join(_cupy_root, 'cuda')
 
 
@@ -171,7 +170,7 @@ cdef inline void _cythonize(str tempdir, str mod_name) except*:
     shutil.copyfile(os.path.join(_source_dir, 'cufft.pyx'),
                     os.path.join(tempdir, mod_name + '.pyx'))
     p = subprocess.run(['cython', '-3', '--cplus',
-                        '-E', 'use_hip=0',
+                        '-E', 'HIP_VERSION=0',
                         '-E', 'CUDA_VERSION=' + _build_ver,
                         '-E', 'CUPY_CUFFT_STATIC=True',
                         os.path.join(tempdir, mod_name + '.pyx'),
@@ -285,6 +284,15 @@ cdef inline void _nvcc_link(
     os.rename(mod_temp, mod_cached)
 
 
+# make it a plain Python function so that we can mock-test it
+def get_cache_dir():
+    global _callback_cache_dir
+    if _callback_cache_dir is None:
+        _callback_cache_dir = os.environ.get(
+            'CUPY_CACHE_DIR', os.path.expanduser('~/.cupy/callback_cache'))
+    return _callback_cache_dir
+
+
 cpdef get_current_callback_manager():
     cdef _ThreadLocal tls = _ThreadLocal.get()
     cdef _CallbackManager mgr = tls._current_cufft_callback
@@ -341,7 +349,7 @@ cdef class _CallbackManager:
         mod_filename = mod_name + _ext_suffix
 
         # Check if the module is already cached on disk. If not, we compile.
-        cache_dir = _callback_cache_dir
+        cache_dir = get_cache_dir()
         if not os.path.isdir(cache_dir):
             os.makedirs(cache_dir, exist_ok=True)
         path = os.path.join(cache_dir, mod_filename)

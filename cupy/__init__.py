@@ -13,14 +13,10 @@ _environment._preload_libraries()  # NOQA
 
 
 try:
-    with _warnings.catch_warnings():
-        _warnings.filterwarnings(
-            'ignore', category=ImportWarning,
-            message='can\'t resolve package from __spec__')
-        from cupy import core  # NOQA
+    from cupy import _core  # NOQA
 except ImportError as e:
-    # core is a c-extension module.
-    # When a user cannot import core, it represents that CuPy is not correctly
+    # _core is a c-extension module.
+    # When a user cannot import _core, it represents that CuPy is not correctly
     # built.
     _exc_info = _sys.exc_info()
     _msg = ('''\
@@ -41,9 +37,9 @@ original error: {}'''.format(_exc_info[1]))  # NOQA
     raise ImportError(_msg) from e
 
 
-from cupy import cuda
+from cupy import cuda  # NOQA
 # Do not make `cupy.cupyx` available because it is confusing.
-import cupyx as _cupyx
+import cupyx as _cupyx  # NOQA
 
 
 def is_available():
@@ -53,7 +49,6 @@ def is_available():
 __version__ = _version.__version__
 
 
-import cupy.core.fusion  # NOQA
 from cupy import fft  # NOQA
 from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
@@ -64,8 +59,8 @@ from cupy import testing  # NOQA  # NOQA
 
 
 # import class and function
-from cupy.core import ndarray  # NOQA
-from cupy.core import ufunc  # NOQA
+from cupy._core import ndarray  # NOQA
+from cupy._core import ufunc  # NOQA
 
 
 # =============================================================================
@@ -217,22 +212,6 @@ from numpy import complex128  # NOQA
 # Built-in Python types
 # -----------------------------------------------------------------------------
 
-# After NumPy 1.20 is released, CuPy should mimic the DeprecationWarning
-# behavior for these types
-
-from builtins import int  # NOQA
-
-from builtins import bool  # NOQA
-
-from builtins import float  # NOQA
-
-from builtins import complex  # NOQA
-
-# Not supported by CuPy:
-# from numpy import object
-# from numpy import unicode
-# from numpy import str
-
 # =============================================================================
 # Routines
 #
@@ -367,7 +346,7 @@ def can_cast(from_, to, casting='safe'):
 
     .. seealso:: :func:`numpy.can_cast`
     """
-    from_ = from_.dtype if isinstance(from_, cupy.ndarray) else from_
+    from_ = from_.dtype if isinstance(from_, ndarray) else from_
     return _numpy.can_cast(from_, to, casting=casting)
 
 
@@ -398,7 +377,7 @@ def result_type(*arrays_and_dtypes):
 
     .. seealso:: :func:`numpy.result_type`
     """
-    dtypes = [a.dtype if isinstance(a, cupy.ndarray)
+    dtypes = [a.dtype if isinstance(a, ndarray)
               else a for a in arrays_and_dtypes]
     return _numpy.result_type(*dtypes)
 
@@ -585,6 +564,7 @@ from cupy._math.rounding import fix  # NOQA
 from cupy._math.rounding import floor  # NOQA
 from cupy._math.rounding import rint  # NOQA
 from cupy._math.rounding import round_  # NOQA
+from cupy._math.rounding import round_ as round  # NOQA
 from cupy._math.rounding import trunc  # NOQA
 
 from cupy._math.sumprod import prod  # NOQA
@@ -734,7 +714,7 @@ from cupy._statistics.histogram import histogramdd  # NOQA
 # -----------------------------------------------------------------------------
 # Undocumented functions
 # -----------------------------------------------------------------------------
-from cupy.core import size  # NOQA
+from cupy._core import size  # NOQA
 
 
 def ndim(a):
@@ -761,19 +741,19 @@ def ndim(a):
 from cupy._util import clear_memo  # NOQA
 from cupy._util import memoize  # NOQA
 
-from cupy.core import ElementwiseKernel  # NOQA
-from cupy.core import RawKernel  # NOQA
-from cupy.core import RawModule  # NOQA
-from cupy.core._reduction import ReductionKernel  # NOQA
+from cupy._core import ElementwiseKernel  # NOQA
+from cupy._core import RawKernel  # NOQA
+from cupy._core import RawModule  # NOQA
+from cupy._core._reduction import ReductionKernel  # NOQA
 
 # -----------------------------------------------------------------------------
 # DLPack
 # -----------------------------------------------------------------------------
 
-from cupy.core import fromDlpack  # NOQA
+from cupy._core import fromDlpack  # NOQA
 
 
-def asnumpy(a, stream=None, order='C'):
+def asnumpy(a, stream=None, order='C', out=None):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
@@ -785,16 +765,24 @@ def asnumpy(a, stream=None, order='C'):
         order ({'C', 'F', 'A'}): The desired memory layout of the host
             array. When ``order`` is 'A', it uses 'F' if ``a`` is
             fortran-contiguous and 'C' otherwise.
+        out (numpy.ndarray): The output array to be written to. It must have
+            compatible shape and dtype with those of ``a``'s.
+
     Returns:
         numpy.ndarray: Converted array on the host memory.
 
     """
     if isinstance(a, ndarray):
-        return a.get(stream=stream, order=order)
+        return a.get(stream=stream, order=order, out=out)
     elif hasattr(a, "__cuda_array_interface__"):
-        return array(a).get(stream=stream, order=order)
+        return array(a).get(stream=stream, order=order, out=out)
     else:
-        return _numpy.asarray(a, order=order)
+        temp = _numpy.asarray(a, order=order)
+        if out is not None:
+            out[...] = temp
+        else:
+            out = temp
+        return out
 
 
 _cupy = _sys.modules[__name__]
@@ -825,13 +813,13 @@ def get_array_module(*args):
     """
     for arg in args:
         if isinstance(arg, (ndarray, _cupyx.scipy.sparse.spmatrix,
-                            cupy.core.fusion._FusionVarArray,
-                            cupy.core.new_fusion._ArrayProxy)):
+                            _core.fusion._FusionVarArray,
+                            _core.new_fusion._ArrayProxy)):
             return _cupy
     return _numpy
 
 
-fuse = cupy.core.fusion.fuse
+fuse = _core.fusion.fuse
 
 disable_experimental_feature_warning = False
 
@@ -878,3 +866,32 @@ def show_config():
     """Prints the current runtime configuration to standard output."""
     _sys.stdout.write(str(_cupyx.get_runtime_info()))
     _sys.stdout.flush()
+
+
+if _sys.version_info >= (3, 7):
+    _deprecated_attrs = {
+        'int': (int, 'cupy.int_'),
+        'bool': (bool, 'cupy.bool_'),
+        'float': (float, 'cupy.float_'),
+        'complex': (complex, 'cupy.complex_'),
+    }
+
+    def __getattr__(name):
+        value = _deprecated_attrs.get(name)
+        if value is None:
+            raise AttributeError(
+                f"module 'cupy' has no attribute {name!r}")
+        attr, eq_attr = value
+        _warnings.warn(
+            f'`cupy.{name}` is a deprecated alias for the Python scalar type '
+            f'`{name}`. Please use the builtin `{name}` or its corresponding '
+            f'NumPy scalar type `{eq_attr}` instead.',
+            DeprecationWarning, stacklevel=2
+        )
+        return attr
+else:
+    # Does not emit warnings.
+    from builtins import int
+    from builtins import bool
+    from builtins import float
+    from builtins import complex

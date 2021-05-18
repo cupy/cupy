@@ -5,7 +5,7 @@ import numpy
 import pytest
 
 import cupy
-import cupy.core._accelerator as _acc
+import cupy._core._accelerator as _acc
 from cupy import cuda
 from cupy import testing
 
@@ -383,3 +383,29 @@ class TestOrder(unittest.TestCase):
             pytest.skip()
         a = xp.array([float('nan'), float('nan')], dtype)
         return xp.ptp(a)
+
+
+# See gh-4607
+# "Magic" values used in this test were empirically found to result in
+# non-monotonicity for less accurate linear interpolation formulas
+@testing.parameterize(*testing.product({
+    'magic_value': (-29, -53, -207, -16373, -99999,)
+}))
+@testing.gpu
+class TestPercentileMonotonic(unittest.TestCase):
+
+    @testing.with_requires('numpy>=1.20')
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_percentile_monotonic(self, dtype, xp):
+        a = testing.shaped_random((5,), xp, dtype)
+
+        a[0] = self.magic_value
+        a[1] = self.magic_value
+        q = xp.linspace(0, 100, 21)
+        percentiles = xp.percentile(a, q, interpolation='linear')
+
+        # Assert that percentile output increases monotonically
+        assert xp.all(xp.diff(percentiles) >= 0)
+
+        return percentiles

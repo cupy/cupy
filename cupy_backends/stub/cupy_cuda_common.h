@@ -61,6 +61,8 @@ typedef enum {
     cudaSuccess = 0,
     cudaErrorInvalidValue = 1,
     cudaErrorMemoryAllocation = 2,
+    cudaErrorInvalidResourceHandle = 400,
+    cudaErrorContextIsDestroyed = 709,
     cudaErrorPeerAccessAlreadyEnabled = 704,
 } cudaError_t;
 typedef enum {} cudaDataType;
@@ -191,6 +193,10 @@ typedef struct {
      int isMultiGpuBoard;
      int canMapHostMemory;
 } cudaDeviceProp;
+
+typedef void* cudaMemPool_t;
+enum cudaMemPoolAttr {};
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // library_types.h

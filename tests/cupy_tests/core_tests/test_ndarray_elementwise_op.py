@@ -181,8 +181,20 @@ class TestArrayElementwiseOp(unittest.TestCase):
         with numpy.errstate(divide='ignore'):
             self.check_array_array_op(operator.ifloordiv, no_complex=True)
 
+    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-6, accept_error=TypeError)
+    def check_pow_array(self, xp, x_type, y_type):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
+        b = xp.array([[6, 5, 4], [3, 2, 1]], y_type)
+        return operator.pow(a, b)
+
     def test_pow_array(self):
-        self.check_array_array_op(operator.pow)
+        # There are some precission issues in HIP that prevent
+        # checking with atol=0
+        if cupy.cuda.runtime.is_hip:
+            self.check_pow_array()
+        else:
+            self.check_array_array_op(operator.pow)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(atol=1.0, accept_error=TypeError)
@@ -273,8 +285,20 @@ class TestArrayElementwiseOp(unittest.TestCase):
             self.check_array_broadcasted_op(operator.ifloordiv,
                                             no_complex=True)
 
+    @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-6, accept_error=TypeError)
+    def check_broadcasted_pow(self, xp, x_type, y_type):
+        a = xp.array([[1, 2, 3], [4, 5, 6]], x_type)
+        b = xp.array([[1], [2]], y_type)
+        return operator.pow(a, b)
+
     def test_broadcasted_pow(self):
-        self.check_array_broadcasted_op(operator.pow)
+        # There are some precission issues in HIP that prevent
+        # checking with atol=0
+        if cupy.cuda.runtime.is_hip:
+            self.check_broadcasted_pow()
+        else:
+            self.check_array_broadcasted_op(operator.pow)
 
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(atol=1.0, accept_error=TypeError)

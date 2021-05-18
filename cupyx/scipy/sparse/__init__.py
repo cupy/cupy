@@ -28,7 +28,7 @@ from cupyx.scipy.sparse.construct import vstack  # NOQA
 # TODO(unno): implement lil_matrix
 
 from cupyx.scipy.sparse.construct import kron  # NOQA
-# TODO(unno): implement kronsum
+from cupyx.scipy.sparse.construct import kronsum  # NOQA
 # TODO(unno): implement diags
 # TODO(unno): implement block_diag
 

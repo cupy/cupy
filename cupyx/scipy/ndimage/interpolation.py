@@ -4,13 +4,12 @@ import warnings
 import cupy
 import numpy
 
-import cupy._util
-from cupy.core import internal
+from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _interp_kernels
 from cupyx.scipy.ndimage import _spline_prefilter_core
 
-_prod = cupy.core.internal.prod
+_prod = cupy._core.internal.prod
 
 
 def _check_parameter(func_name, order, mode):
@@ -20,9 +19,6 @@ def _check_parameter(func_name, order, mode):
                       'scipy.ndimage ')
     elif order < 0 or 5 < order:
         raise ValueError('spline order is not supported')
-
-    if mode in ['grid-mirror', 'grid-wrap', 'grid-reflect', 'wrap', 'reflect']:
-        cupy._util.experimental(f"mode '{mode}'")
 
     if mode not in ('constant', 'grid-constant', 'nearest', 'mirror',
                     'reflect', 'grid-mirror', 'wrap', 'grid-wrap', 'opencv',
@@ -111,8 +107,8 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
         return output
 
     temp, data_dtype, output_dtype = _get_spline_output(x, output)
-    data_type = cupy.core._scalar.get_typename(temp.dtype)
-    pole_type = cupy.core._scalar.get_typename(temp.real.dtype)
+    data_type = cupy._core._scalar.get_typename(temp.dtype)
+    pole_type = cupy._core._scalar.get_typename(temp.real.dtype)
 
     index_type = _util._get_inttype(input)
     index_dtype = cupy.int32 if index_type == 'int' else cupy.int64
@@ -695,7 +691,6 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
         )
     else:
         if grid_mode:
-            cupy._util.experimental("grid_mode=True")
 
             # warn about modes that may have surprising behavior
             suggest_mode = None
@@ -710,11 +705,10 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
 
         zoom = []
         for in_size, out_size in zip(input.shape, output_shape):
-            if out_size > 1:
-                if grid_mode:
-                    zoom.append(in_size / out_size)
-                else:
-                    zoom.append((in_size - 1) / (out_size - 1))
+            if grid_mode and out_size > 0:
+                zoom.append(in_size / out_size)
+            elif out_size > 1:
+                zoom.append((in_size - 1) / (out_size - 1))
             else:
                 zoom.append(0)
 

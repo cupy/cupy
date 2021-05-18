@@ -9,20 +9,18 @@ CuPy -- A NumPy-compatible array library accelerated by CUDA
 
    overview
    install
-   tutorial/index
+   user_guide/index
    reference/index
 
 .. toctree::
    :maxdepth: 2
    :caption: Development
 
-   compatibility
    contribution
 
 .. toctree::
    :maxdepth: 2
    :caption: Misc Notes
 
-   install_rocm
    upgrade
    license

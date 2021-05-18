@@ -196,6 +196,21 @@ class TestJoin(unittest.TestCase):
             with pytest.raises(TypeError):
                 xp.concatenate((a, b, c), axis=1, out=out)
 
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_array_equal()
+    def test_concatenate_different_dtype(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((3, 4), xp, dtype1)
+        b = testing.shaped_arange((3, 4), xp, dtype2)
+        return xp.concatenate((a, b))
+
+    @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
+    @testing.numpy_cupy_array_equal(accept_error=TypeError)
+    def test_concatenate_out_different_dtype(self, xp, dtype1, dtype2):
+        a = testing.shaped_arange((3, 4), xp, dtype1)
+        b = testing.shaped_arange((3, 4), xp, dtype1)
+        out = xp.zeros((6, 4), dtype=dtype2)
+        return xp.concatenate((a, b), out=out)
+
     @testing.numpy_cupy_array_equal()
     def test_dstack(self, xp):
         a = testing.shaped_arange((1, 3, 2), xp)

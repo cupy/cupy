@@ -44,7 +44,7 @@ def check_number_of_ops(
         loops, memories, variables, lookup, mutate):
     def wrapper(test_method):
         def new_impl(self, *args, **kwargs):
-            target = 'cupy.core._fusion_trace.TraceImpl'
+            target = 'cupy._core._fusion_trace.TraceImpl'
             with mock.patch(target, CreateMock(target)) as m:
                 result = test_method(self, *args, **kwargs)
                 m.check_number_of_ops(

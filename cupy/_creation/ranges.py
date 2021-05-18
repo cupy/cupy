@@ -3,7 +3,7 @@ import math
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 
 
 def arange(start, stop=None, step=1, dtype=None):
@@ -80,11 +80,12 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
         cupy.ndarray: The 1-D array of ranged values.
 
     """
+    dt = cupy.result_type(start, stop, float(num))
     if dtype is None:
         # In actual implementation, only float is used
-        dtype = float
+        dtype = dt
 
-    ret = cupy.empty((num,), dtype=dtype)
+    ret = cupy.empty((num,), dtype=dt)
     div = (num - 1) if endpoint else num
     if div <= 0:
         if num > 0:
@@ -96,14 +97,18 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
 
         if step == 0.0:
             # for underflow
-            _linspace_ufunc_underflow(start, stop - start, div, ret,
-                                      casting='unsafe')
+            _linspace_ufunc_underflow(start, stop - start, div, ret)
         else:
-            _linspace_ufunc(start, step, ret, casting='unsafe')
+            _linspace_ufunc(start, step, ret)
 
         if endpoint:
             # Here num == div + 1 > 1 is ensured.
             ret[-1] = stop
+
+    if cupy.issubdtype(dtype, cupy.integer):
+        cupy.floor(ret, out=ret)
+
+    ret = ret.astype(dtype, copy=False)
 
     if retstep:
         return ret, step
@@ -197,10 +202,15 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
     if axis != 0:
         ret = cupy.moveaxis(ret, 0, axis)
 
+    if cupy.issubdtype(dtype, cupy.integer):
+        cupy.floor(ret, out=ret)
+
+    ret = ret.astype(dtype, copy=False)
+
     if retstep:
-        return ret.astype(dtype, copy=False), step
+        return ret, step
     else:
-        return ret.astype(dtype, copy=False)
+        return ret
 
 
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
@@ -228,8 +238,8 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
     """
     y = linspace(start, stop, num=num, endpoint=endpoint)
     if dtype is None:
-        return core.power(base, y)
-    return core.power(base, y).astype(dtype)
+        return _core.power(base, y)
+    return _core.power(base, y).astype(dtype)
 
 
 def meshgrid(*xi, **kwargs):
@@ -401,7 +411,7 @@ mgrid = nd_grid(sparse=False)
 ogrid = nd_grid(sparse=True)
 
 
-_arange_ufunc = core.create_ufunc(
+_arange_ufunc = _core.create_ufunc(
     'cupy_arange',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
      'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d',
@@ -409,12 +419,12 @@ _arange_ufunc = core.create_ufunc(
      ('DD->D', 'out0 = in0 + double(i) * in1')),
     'out0 = in0 + i * in1')
 
-_linspace_ufunc = core.create_ufunc(
+_linspace_ufunc = _core.create_ufunc(
     'cupy_linspace',
     ('dd->d',),
     'out0 = in0 + i * in1')
 
-_linspace_ufunc_underflow = core.create_ufunc(
+_linspace_ufunc_underflow = _core.create_ufunc(
     'cupy_linspace',
     ('ddd->d',),
     'out0 = in0 + i * in1 / in2')

@@ -2,7 +2,7 @@ import numbers
 
 import numpy
 
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 
 import cupy
 from cupy.lib import _routines_poly
@@ -41,7 +41,7 @@ cdef class poly1d:
             return self._coeffs
         self._coeffs = cupy.trim_zeros(self._coeffs, trim='f')
         if self._coeffs.size == 0:
-            self._coeffs = cupy.array([0.])
+            self._coeffs = cupy.array([0.], self._coeffs.dtype)
         self._trimmed = True
         return self._coeffs
 
@@ -172,7 +172,9 @@ cdef class poly1d:
         elif dtype.kind == 'f' or dtype == numpy.uint64:
             base = base.astype(numpy.float64, copy=False)
         else:
-            base = base.astype(numpy.int64, copy=False)
+            # use Python int here for cross-platform portability
+            int_dtype = numpy.promote_types(dtype, int)
+            base = base.astype(int_dtype, copy=False)
         return poly1d(_routines_poly._polypow(base, val))
 
     def __sub__(self, other):
@@ -193,7 +195,7 @@ cdef class poly1d:
             raise NotImplementedError
         if self.coeffs.shape != other.coeffs.shape:
             return False
-        return (self.coeffs == other.coeffs).all().get()
+        return (self.coeffs == other.coeffs).all().get()[()]
 
     def __ne__(self, other):
         if not isinstance(other, poly1d):

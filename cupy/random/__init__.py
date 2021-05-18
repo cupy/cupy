@@ -1,5 +1,7 @@
 import numpy as _numpy
 
+from cupy_backends.cuda.api import runtime
+
 
 def bytes(length):
     """Returns random bytes.
@@ -12,6 +14,32 @@ def bytes(length):
     """
     # TODO(kmaehashi): should it be provided in CuPy?
     return _numpy.random.bytes(length)
+
+
+def default_rng(seed=None):  # NOQA  avoid redefinition of seed
+    """Construct a new Generator with the default BitGenerator (XORWOW).
+
+    Args:
+        seed (None, int, array_like[ints], numpy.random.SeedSequence, cupy.random.BitGenerator, cupy.random.Generator, optional):
+            A seed to initialize the :class:`cupy.random.BitGenerator`. If an
+            ``int`` or ``array_like[ints]`` or None is passed, then it will be
+            passed to :class:`numpy.random.SeedSequence` to detive the initial
+            :class:`BitGenerator` state. One may also pass in a `SeedSequence
+            instance. Adiditionally, when passed :class:`BitGenerator`, it will
+            be wrapped by :class:`Generator`. If passed a :class:`Generator`,
+            it will be returned unaltered.
+
+    Returns:
+        Generator: The initialized generator object.
+    """  # NOQA, list of types need to be in one line for sphinx
+    if runtime.is_hip:
+        raise RuntimeError('Generator API not supported in HIP,'
+                           ' please use the legacy one.')
+    if isinstance(seed, BitGenerator):
+        return Generator(seed)
+    elif isinstance(seed, Generator):
+        return seed
+    return Generator(XORWOW(seed))
 
 
 # import class and function
@@ -66,3 +94,12 @@ from cupy.random._sample import random_sample  # NOQA
 from cupy.random._sample import random_sample as random  # NOQA
 from cupy.random._sample import random_sample as ranf  # NOQA
 from cupy.random._sample import random_sample as sample  # NOQA
+if not runtime.is_hip:
+    # This is disabled for HIP due to a problem when using
+    # dynamic dispatching of kernels
+    # see https://github.com/ROCm-Developer-Tools/HIP/issues/2186
+    from cupy.random._bit_generator import BitGenerator  # NOQA
+    from cupy.random._bit_generator import XORWOW  # NOQA
+    from cupy.random._bit_generator import MRG32k3a  # NOQA
+    from cupy.random._bit_generator import Philox4x3210  # NOQA
+    from cupy.random._generator_api import Generator  # NOQA

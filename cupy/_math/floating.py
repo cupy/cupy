@@ -1,8 +1,9 @@
-from cupy import core
+from cupy import _core
 from cupy._math import ufunc
+from cupy.cuda import runtime
 
 
-signbit = core.create_ufunc(
+signbit = _core.create_ufunc(
     'cupy_signbit',
     ('e->?', 'f->?', 'd->?'),
     'out0 = signbit(in0)',
@@ -22,7 +23,7 @@ copysign = ufunc.create_math_ufunc(
     ''')
 
 
-ldexp = core.create_ufunc(
+ldexp = _core.create_ufunc(
     'cupy_ldexp',
     ('ei->e', 'fi->f', 'el->e', 'fl->f', 'di->d', 'dq->d'),
     'out0 = ldexp(in0, in1)',
@@ -32,11 +33,12 @@ ldexp = core.create_ufunc(
 
     ''')
 
-
-frexp = core.create_ufunc(
+# HIP supports frexpf but not frexp ...
+frexp = _core.create_ufunc(
     'cupy_frexp',
     ('e->ei', 'f->fi', 'd->di'),
-    'int nptr; out0 = frexp(in0, &nptr); out1 = nptr',
+    'int nptr; out0 = {}(in0, &nptr); out1 = nptr'.format(
+        'frexpf' if runtime.is_hip else 'frexp'),
     doc='''Decomposes each element to mantissa and two's exponent.
 
     This ufunc outputs two arrays of the input dtype and the ``int`` dtype.

@@ -1,7 +1,7 @@
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 
 
 def diag(v, k=0):
@@ -63,7 +63,7 @@ def diagflat(v, k=0):
     return cupy.diag(v.ravel(), k)
 
 
-_tri_kernel = core.ElementwiseKernel(
+_tri_kernel = _core.ElementwiseKernel(
     'int32 m, int32 k',
     'T out',
     '''

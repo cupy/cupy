@@ -1245,6 +1245,12 @@ cdef extern from '../../cupy_sparse.h' nogil:
                              IndexType csrRowOffsetsType,
                              IndexType csrColIndType, IndexBase idxBase,
                              DataType valueType)
+    Status cusparseCreateCsc(SpMatDescr* spMatDescr, int64_t rows,
+                             int64_t cols, int64_t nnz, void* cscColOffsets,
+                             void* cscRowInd, void* cscValues,
+                             IndexType cscColOffsetsType,
+                             IndexType cscRowIndType, IndexBase idxBase,
+                             DataType valueType)
     Status cusparseDestroySpMat(SpMatDescr spMatDescr)
     Status cusparseCooGet(SpMatDescr spMatDescr, int64_t* rows, int64_t* cols,
                           int64_t* nnz, void** cooRowInd, void** cooColInd,
@@ -1259,10 +1265,14 @@ cdef extern from '../../cupy_sparse.h' nogil:
                           void** csrValues, IndexType* csrRowOffsetsType,
                           IndexType* csrColIndType, IndexBase* idxBase,
                           DataType* valueType)
+    Status cusparseCsrSetPointers(SpMatDescr spMatDescr, void* csrRowOffsets,
+                                  void* csrColInd, void* csrValues)
     Status cusparseSpMatGetFormat(SpMatDescr spMatDescr, Format* format)
     Status cusparseSpMatGetIndexBase(SpMatDescr spMatDescr, IndexBase* idxBase)
     Status cusparseSpMatGetValues(SpMatDescr spMatDescr, void** values)
     Status cusparseSpMatSetValues(SpMatDescr spMatDescr, void* values)
+    Status cusparseSpMatGetSize(SpMatDescr spMatDescr, int64_t* rows,
+                                int64_t* cols, int64_t* nnz)
     Status cusparseSpMatGetStridedBatch(SpMatDescr spMatDescr, int* batchCount)
     Status cusparseSpMatSetStridedBatch(SpMatDescr spMatDescr, int batchCount)
 
@@ -1324,6 +1334,23 @@ cdef extern from '../../cupy_sparse.h' nogil:
         Handle handle, Operation opA, Operation opB, void* alpha,
         DnMatDescr matA, DnMatDescr matB, void* beta, SpMatDescr matC,
         DataType computeType, void* externalBuffer)
+
+    Status cusparseSparseToDense_bufferSize(
+        Handle handle, SpMatDescr matA, DnMatDescr matB,
+        cusparseSparseToDenseAlg_t alg, size_t* bufferSize)
+    Status cusparseSparseToDense(
+        Handle handle, SpMatDescr matA, DnMatDescr matB,
+        cusparseSparseToDenseAlg_t alg, void* buffer)
+
+    Status cusparseDenseToSparse_bufferSize(
+        Handle handle, DnMatDescr matA, SpMatDescr matB,
+        cusparseDenseToSparseAlg_t alg, size_t* bufferSize)
+    Status cusparseDenseToSparse_analysis(
+        Handle handle, DnMatDescr matA, SpMatDescr matB,
+        cusparseDenseToSparseAlg_t alg, void* buffer)
+    Status cusparseDenseToSparse_convert(
+        Handle handle, DnMatDescr matA, SpMatDescr matB,
+        cusparseDenseToSparseAlg_t alg, void* buffer)
 
     # CSR2CSC
     Status cusparseCsr2cscEx2_bufferSize(
@@ -1554,10 +1581,8 @@ cpdef size_t getStream(intptr_t handle) except? 0:
 
 
 cdef _setStream(intptr_t handle):
-    """Set current stream when enable_current_stream is True
-    """
-    if stream_module.enable_current_stream:
-        setStream(handle, stream_module.get_current_stream_ptr())
+    """Set current stream"""
+    setStream(handle, stream_module.get_current_stream_ptr())
 
 
 ########################################
@@ -4531,6 +4556,19 @@ cpdef size_t createCsr(int64_t rows, int64_t cols, int64_t nnz,
     check_status(status)
     return <size_t>desc
 
+cpdef size_t createCsc(int64_t rows, int64_t cols, int64_t nnz,
+                       intptr_t cscColOffsets, intptr_t cscRowInd,
+                       intptr_t cscValues, IndexType cscColOffsetsType,
+                       IndexType cscRowIndType, IndexBase idxBase,
+                       DataType valueType):
+    cdef SpMatDescr desc
+    status = cusparseCreateCsc(&desc, rows, cols, nnz,
+                               <void*>cscColOffsets, <void*>cscRowInd,
+                               <void*>cscValues, cscColOffsetsType,
+                               cscRowIndType, idxBase, valueType)
+    check_status(status)
+    return <size_t>desc
+
 cpdef destroySpMat(size_t desc):
     status = cusparseDestroySpMat(<SpMatDescr>desc)
     check_status(status)
@@ -4575,6 +4613,12 @@ cpdef csrGet(size_t desc):
     return CsrAttributes(rows, cols, nnz, rowOffsets, colInd, values,
                          rowOffsetsType, colIndType, idxBase, valueType)
 
+cpdef csrSetPointers(size_t desc, size_t csrRowOffsets, size_t csrColInd,
+                     size_t csrValues):
+    status = cusparseCsrSetPointers(<SpMatDescr>desc, <void*>csrRowOffsets,
+                                    <void*>csrColInd, <void*>csrValues)
+    check_status(status)
+
 cpdef int spMatGetFormat(size_t desc):
     cdef Format format
     status = cusparseSpMatGetFormat(<SpMatDescr>desc, &format)
@@ -4595,6 +4639,11 @@ cpdef intptr_t spMatGetValues(size_t desc):
 
 cpdef spMatSetValues(size_t desc, intptr_t values):
     status = cusparseSpMatSetValues(<SpMatDescr>desc, <void*>values)
+    check_status(status)
+
+cpdef spMatGetSize(size_t desc, size_t rows, size_t cols, size_t nnz):
+    status = cusparseSpMatGetSize(<SpMatDescr>desc, <int64_t*>rows,
+                                  <int64_t*>cols, <int64_t*>nnz)
     check_status(status)
 
 cpdef int spMatGetStridedBatch(size_t desc):
@@ -4773,6 +4822,45 @@ cpdef constrainedGeMM(intptr_t handle, Operation opA, Operation opB,
         <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
         <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,
         <void*>externalBuffer)
+    check_status(status)
+
+cpdef size_t sparseToDense_bufferSize(intptr_t handle, size_t matA,
+                                      size_t matB, int alg):
+    cpdef size_t bufferSize
+    status = cusparseSparseToDense_bufferSize(
+        <Handle>handle, <SpMatDescr>matA, <DnMatDescr>matB,
+        <cusparseSparseToDenseAlg_t>alg, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef sparseToDense(intptr_t handle, size_t matA, size_t matB, int alg,
+                    intptr_t buffer):
+    status = cusparseSparseToDense(
+        <Handle>handle, <SpMatDescr>matA, <DnMatDescr>matB,
+        <cusparseSparseToDenseAlg_t>alg, <void*>buffer)
+    check_status(status)
+
+cpdef size_t denseToSparse_bufferSize(intptr_t handle, size_t matA,
+                                      size_t matB, int alg):
+    cpdef size_t bufferSize
+    status = cusparseDenseToSparse_bufferSize(
+        <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
+        <cusparseDenseToSparseAlg_t>alg, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+cpdef denseToSparse_analysis(intptr_t handle, size_t matA, size_t matB,
+                             int alg, intptr_t buffer):
+    status = cusparseDenseToSparse_analysis(
+        <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
+        <cusparseDenseToSparseAlg_t>alg, <void*>buffer)
+    check_status(status)
+
+cpdef denseToSparse_convert(intptr_t handle, size_t matA, size_t matB,
+                            int alg, intptr_t buffer):
+    status = cusparseDenseToSparse_convert(
+        <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
+        <cusparseDenseToSparseAlg_t>alg, <void*>buffer)
     check_status(status)
 
 # CSR2CSC

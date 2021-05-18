@@ -14,6 +14,8 @@ There are four differences compared to the original C API.
 cimport cython  # NOQA
 from libcpp cimport vector
 
+from cupy_backends.cuda.api cimport runtime
+
 
 ###############################################################################
 # Extern
@@ -30,10 +32,14 @@ cdef extern from '../../cupy_rtc.h' nogil:
                             const char** options)
     int nvrtcGetPTXSize(Program prog, size_t *ptxSizeRet)
     int nvrtcGetPTX(Program prog, char *ptx)
+    int nvrtcGetCUBINSize(Program prog, size_t *cubinSizeRet)
+    int nvrtcGetCUBIN(Program prog, char *cubin)
     int nvrtcGetProgramLogSize(Program prog, size_t* logSizeRet)
     int nvrtcGetProgramLog(Program prog, char* log)
     int nvrtcAddNameExpression(Program, const char*)
     int nvrtcGetLoweredName(Program, const char*, const char**)
+    int nvrtcGetNumSupportedArchs(int* numArchs)
+    int nvrtcGetSupportedArchs(int* supportedArchs)
 
 
 ###############################################################################
@@ -66,6 +72,21 @@ cpdef tuple getVersion():
     return major, minor
 
 
+cpdef tuple getSupportedArchs():
+    cdef int status, num_archs
+    cdef vector.vector[int] archs
+    if CUDA_VERSION < 11020 or runtime._is_hip_environment:
+        raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
+
+    with nogil:
+        status = nvrtcGetNumSupportedArchs(&num_archs)
+        if status == 0:
+            archs.resize(num_archs)
+            status = nvrtcGetSupportedArchs(archs.data())
+    check_status(status)
+    return tuple(archs)
+
+
 ###############################################################################
 # Program
 ###############################################################################
@@ -76,7 +97,11 @@ cpdef intptr_t createProgram(unicode src, unicode name, headers,
     cdef bytes b_src = src.encode()
     cdef const char* src_ptr = b_src
     cdef bytes b_name = name.encode()
-    cdef const char* name_ptr = b_name
+    cdef const char* name_ptr
+    if len(name) > 0:
+        name_ptr = b_name
+    else:
+        name_ptr = NULL
     cdef int num_headers = len(headers)
     cdef vector.vector[const char*] header_vec
     cdef vector.vector[const char*] include_name_vec
@@ -137,6 +162,30 @@ cpdef bytes getPTX(intptr_t prog):
 
     # Strip the trailing NULL.
     return ptx_ptr[:ptxSizeRet-1]
+
+
+cpdef bytes getCUBIN(intptr_t prog):
+    cdef size_t cubinSizeRet = 0
+    cdef vector.vector[char] cubin
+    cdef char* cubin_ptr = NULL
+    if CUDA_VERSION < 11010 or runtime._is_hip_environment:
+        raise RuntimeError("getCUBIN is supported since CUDA 11.1")
+    with nogil:
+        status = nvrtcGetCUBINSize(<Program>prog, &cubinSizeRet)
+    check_status(status)
+    if cubinSizeRet <= 1:
+        # On CUDA 11.1, cubinSizeRet=1 if -arch=compute_XX is used, but the
+        # spec says it should be 0 in this case...
+        raise RuntimeError('cubin is requested, but the real arch (sm_XX) is '
+                           'not provided')
+    cubin.resize(cubinSizeRet)
+    cubin_ptr = cubin.data()
+    with nogil:
+        status = nvrtcGetCUBIN(<Program>prog, cubin_ptr)
+    check_status(status)
+
+    # Strip the trailing NULL.
+    return cubin_ptr[:cubinSizeRet-1]
 
 
 cpdef unicode getProgramLog(intptr_t prog):

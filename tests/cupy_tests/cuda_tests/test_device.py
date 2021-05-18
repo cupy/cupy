@@ -6,6 +6,7 @@ import pytest
 
 import cupy
 from cupy import cuda
+from cupy.cuda import runtime
 from cupy import testing
 
 
@@ -126,6 +127,7 @@ class TestDeviceHandles(unittest.TestCase):
         handles = [func(), None, None]
 
         def _subthread():
+            cupy.cuda.Device().use()
             handles[1] = func()
             handles[2] = func()
 
@@ -145,6 +147,8 @@ class TestDeviceHandles(unittest.TestCase):
     def test_cusolver_sp_handle(self):
         self._check_handle(cuda.device.get_cublas_handle)
 
+    @pytest.mark.xfail(
+        runtime.is_hip, reason='ROCm/HIP sparse support is not yet ready')
     def test_cusparse_handle(self):
         self._check_handle(cuda.device.get_cusparse_handle)
 
@@ -152,3 +156,40 @@ class TestDeviceHandles(unittest.TestCase):
 class TestDeviceFromPointer(unittest.TestCase):
     def test_from_pointer(self):
         assert cuda.device.from_pointer(cupy.empty(1).data.ptr).id == 0
+
+
+@testing.multi_gpu(2)
+class TestDeviceContextManager(unittest.TestCase):
+    def test_thread_safe(self):
+        dev0 = cuda.Device(0)
+        dev1 = cuda.Device(1)
+
+        t0_setup = threading.Event()
+        t1_setup = threading.Event()
+        t0_first_exit = threading.Event()
+
+        t0_exit_device = []
+        t1_exit_device = []
+
+        def t0_seq():
+            with dev0:
+                with dev0:
+                    t0_setup.set()
+                    t1_setup.wait()
+                t0_exit_device.append(cuda.Device().id)
+                t0_first_exit.set()
+
+        def t1_seq():
+            t0_setup.wait()
+            with dev1:
+                with dev0:
+                    t1_setup.set()
+                    t0_first_exit.wait()
+                t1_exit_device.append(cuda.Device().id)
+
+        t1 = threading.Thread(target=t1_seq)
+        t1.start()
+        t0_seq()
+        t1.join()
+        assert t0_exit_device[0] == 0
+        assert t1_exit_device[0] == 1

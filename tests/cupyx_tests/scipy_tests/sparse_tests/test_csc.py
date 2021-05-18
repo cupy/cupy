@@ -890,10 +890,19 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         assert 2 == len(M.indices)  # unaffected content
         return M
 
+    @testing.with_requires('scipy>1.6.0')
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_has_sorted_indices(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.has_sorted_indices
+
+    # TODO(asi1024): Remove test after the fixed version is released.
+    # https://github.com/scipy/scipy/pull/13426
+    @testing.with_requires('scipy<=1.6.0')
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_sorted_indices_for_old_scipy(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return bool(m.has_sorted_indices)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_has_sorted_indices2(self, xp, sp):
@@ -1101,7 +1110,7 @@ class TestCscMatrixScipyCompressedMinMax(unittest.TestCase):
                 # If all elements in a row/column are set to infinity, we make
                 # it have at least a zero so spmatrix.min(axis=axis) returns
                 # zero for the row/column.
-                mask = numpy.zeros_like(dm_data, dtype=numpy.bool)
+                mask = numpy.zeros_like(dm_data, dtype=numpy.bool_)
                 if axis == 0:
                     rows = dm_data.argmin(axis=0)
                     cols = numpy.arange(20)

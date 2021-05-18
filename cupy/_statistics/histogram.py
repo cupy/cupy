@@ -4,8 +4,8 @@ import warnings
 import numpy
 
 import cupy
-from cupy import core
-from cupy.core import _accelerator
+from cupy import _core
+from cupy._core import _accelerator
 from cupy.cuda import cub
 from cupy.cuda import common
 from cupy.cuda import runtime
@@ -16,7 +16,7 @@ _range = range
 
 
 # TODO(unno): use searchsorted
-_histogram_kernel = core.ElementwiseKernel(
+_histogram_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int32 n_bins',
     'raw U y',
     '''
@@ -38,7 +38,7 @@ _histogram_kernel = core.ElementwiseKernel(
     ''')
 
 
-_weighted_histogram_kernel = core.ElementwiseKernel(
+_weighted_histogram_kernel = _core.ElementwiseKernel(
     'S x, raw T bins, int32 n_bins, raw W weights',
     'raw Y y',
     '''
@@ -217,7 +217,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
     bin_edges = _get_bin_edges(x, bins, range)
 
     if weights is None:
-        y = cupy.zeros(bin_edges.size - 1, dtype='l')
+        y = cupy.zeros(bin_edges.size - 1, dtype=cupy.int64)
         for accelerator in _accelerator.get_routine_accelerators():
             # CUB uses int for bin counts
             # TODO(leofang): support >= 2^31 elements in x?
@@ -227,7 +227,7 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
                 # the CUB call and the correction later
                 assert isinstance(bin_edges, cupy.ndarray)
                 if numpy.issubdtype(x.dtype, numpy.integer):
-                    bin_type = numpy.float
+                    bin_type = float
                 else:
                     bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
                     if (bin_type == numpy.float16 and
@@ -489,13 +489,13 @@ def histogram2d(x, y, bins=10, range=None, weights=None, density=None):
     return hist, edges[0], edges[1]
 
 
-_bincount_kernel = core.ElementwiseKernel(
+_bincount_kernel = _core.ElementwiseKernel(
     'S x', 'raw U bin',
     'atomicAdd(&bin[x], U(1))',
     'bincount_kernel')
 
 
-_bincount_with_weight_kernel = core.ElementwiseKernel(
+_bincount_with_weight_kernel = _core.ElementwiseKernel(
     'S x, T w', 'raw U bin',
     'atomicAdd(&bin[x], w)',
     'bincount_with_weight_kernel')

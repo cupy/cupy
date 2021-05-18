@@ -1,6 +1,6 @@
 from libc.stdint cimport intptr_t, uintmax_t
 
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 
 
 cdef class ChannelFormatDescriptor:

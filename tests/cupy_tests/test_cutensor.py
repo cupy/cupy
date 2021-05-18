@@ -3,7 +3,7 @@ import unittest
 import numpy
 
 import cupy
-from cupy.core import _routines_linalg as _linalg
+from cupy._core import _routines_linalg as _linalg
 from cupy import testing
 from cupy.cuda import device
 
@@ -299,11 +299,11 @@ class TestCuTensorContraction(unittest.TestCase):
         self.c = self.make_matrix((m, n), self.c_dtype)
         self.c_ref = self.alpha * cupy.matmul(self.a, self.b)
         self.c_ref += self.beta * self.c
-        self.old_compute_type = cupy.core.get_compute_type(self.c_dtype)
-        cupy.core.set_compute_type(self.c_dtype, self.compute_type)
+        self.old_compute_type = cupy._core.get_compute_type(self.c_dtype)
+        cupy._core.set_compute_type(self.c_dtype, self.compute_type)
 
     def tearDown(self):
-        cupy.core.set_compute_type(self.c_dtype, self.old_compute_type)
+        cupy._core.set_compute_type(self.c_dtype, self.old_compute_type)
 
     def test_contraction(self):
         desc_a = cutensor.create_tensor_descriptor(self.a)

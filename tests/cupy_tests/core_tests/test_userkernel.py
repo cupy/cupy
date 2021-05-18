@@ -5,6 +5,10 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.cuda import runtime
+from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
+                               ResourceDescriptor, TextureDescriptor,
+                               TextureObject,)
 
 
 class TestUserkernel(unittest.TestCase):
@@ -237,3 +241,102 @@ class TestUserkernelManualBlockSize(unittest.TestCase):
         kernel = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
         y = kernel(x, 1, block_size=1)
         testing.assert_array_equal(y, x + 1)
+
+
+@testing.parameterize(*testing.product({
+    'dimensions': ((64, 0, 0), (64, 32, 0), (64, 32, 19)),
+}))
+@testing.gpu
+@pytest.mark.skipif(runtime.is_hip,
+                    reason='texture support on HIP is not yet implemented')
+class TestElementwiseKernelTexture(unittest.TestCase):
+
+    def _prep_texture(self):
+        width, height, depth = self.dimensions
+        dim = 3 if depth != 0 else 2 if height != 0 else 1
+
+        # generate input data and allocate output buffer
+        shape = (depth, height, width) if dim == 3 else \
+                (height, width) if dim == 2 else \
+                (width,)
+        self.shape = shape
+
+        # prepare input, output, and texture memory
+        # self.data holds the data stored in the texture memory
+        tex_data = cupy.random.random(shape, dtype=cupy.float32)
+        ch = ChannelFormatDescriptor(32, 0, 0, 0,
+                                     runtime.cudaChannelFormatKindFloat)
+        arr = CUDAarray(ch, width, height, depth)
+        arr.copy_from(tex_data)
+        self.data = tex_data
+
+        # create resource and texture descriptors
+        res = ResourceDescriptor(runtime.cudaResourceTypeArray, cuArr=arr)
+        address_mode = (runtime.cudaAddressModeClamp,
+                        runtime.cudaAddressModeClamp)
+        tex = TextureDescriptor(address_mode, runtime.cudaFilterModePoint,
+                                runtime.cudaReadModeElementType)
+
+        # create a texture object
+        return TextureObject(res, tex)
+
+    def _prep_kernel1D(self):
+        return cupy.ElementwiseKernel(
+            'T x, U texObj',
+            'T y',
+            '''
+            T temp = tex1D<T>(texObj,
+                              float(i)
+                              );
+            y = temp + x;
+            ''', name='test_tex1D')
+
+    def _prep_kernel2D(self):
+        return cupy.ElementwiseKernel(
+            'T x, U texObj, uint64 width',
+            'T y',
+            '''
+            T temp = tex2D<T>(texObj,
+                              (float)(i % width),
+                              (float)(i / width)
+                              );
+            y = temp + x;
+            ''', name='test_tex2D')
+
+    def _prep_kernel3D(self):
+        return cupy.ElementwiseKernel(
+            'T x, U texObj, uint64 width, uint64 height',
+            'T y',
+            '''
+            T temp = tex3D<T>(texObj,
+                              (float)((i % (width * height)) % width),
+                              (float)((i % (width * height)) / width),
+                              (float)((i / (width * height)))
+                              );
+            y = temp + x;
+            ''', name='test_tex3D')
+
+    def test_texture_input(self):
+        width, height, depth = self.dimensions
+        dim = 3 if depth != 0 else 2 if height != 0 else 1
+
+        texobj = self._prep_texture()
+        ker = getattr(self, f'_prep_kernel{dim}D')()
+
+        # prepare input
+        args = [None, texobj]
+        size = width
+        if height > 0:
+            size *= height
+            args.append(width)
+        if depth > 0:
+            size *= depth
+            args.append(height)
+        in_arr = cupy.arange(size, dtype=cupy.float32)
+        in_arr = in_arr.reshape(self.shape)
+        args[0] = in_arr
+
+        # compute and validate output
+        out_arr = ker(*args)
+        expected = in_arr + self.data
+        testing.assert_allclose(out_arr, expected)

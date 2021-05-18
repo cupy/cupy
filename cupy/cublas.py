@@ -44,7 +44,7 @@ def batched_gesv(a, b):
             'a must have (..., M, M) shape and b must have (..., M) '
             'or (..., M, K)')
 
-    dtype = numpy.promote_types(a.dtype.char, 'f')
+    dtype, out_dtype = _util.linalg_common_type(a, b)
     if dtype == 'f':
         t = 's'
     elif dtype == 'd':
@@ -101,7 +101,7 @@ def batched_gesv(a, b):
             msg += 'The {}-th parameter had an illegal value.'.format(-info[0])
         raise linalg.LinAlgError(msg)
 
-    return b.transpose(0, 2, 1).reshape(b_shape)
+    return b.transpose(0, 2, 1).reshape(b_shape).astype(out_dtype, copy=False)
 
 
 def iamax(x, out=None):

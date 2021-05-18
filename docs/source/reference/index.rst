@@ -4,14 +4,18 @@
 API Reference
 *************
 
-This is the official reference of CuPy, a multi-dimensional array on CUDA with a subset of NumPy interface.
-
 * :ref:`genindex`
 * :ref:`modindex`
 
 ----
 
 .. currentmodule:: cupy
+
+..
+  For NumPy/SciPy-compatible APIs (ndarray, ufunc, routines, scipy),
+  omit the module name prefix in the API list, following the convension in
+  NumPy/SciPy documentation.
+  For CuPy-specific APIs, use fully-qualified names.
 
 .. toctree::
    :maxdepth: 2
@@ -20,18 +24,9 @@ This is the official reference of CuPy, a multi-dimensional array on CUDA with a
    ufunc
    routines
    scipy
-   sparse
-   ndimage
-   generic
-   memory
+   ext
    cuda
-   memoize
    kernel
-   optimize
-   interoperability
-   testing
    prof
    environment
-   difference
    comparison
-   misc

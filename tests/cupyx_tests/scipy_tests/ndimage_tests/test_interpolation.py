@@ -2,6 +2,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 import cupyx.scipy.ndimage
 from cupyx.scipy.ndimage import _util
@@ -118,6 +119,29 @@ class TestMapCoordinates:
 
 
 @testing.parameterize(*testing.product({
+    'order': [0, 1, 2, 3, 4, 5],
+    'mode': ['constant', 'nearest', 'mirror'] + scipy16_modes,
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestMapCoordinatesHalfInteger:
+
+    def _map_coordinates(self, xp, scp, a, coordinates):
+        _conditional_scipy_version_skip(self.mode, self.order)
+        map_coordinates = scp.ndimage.map_coordinates
+        return map_coordinates(a, coordinates, None, self.order, self.mode)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
+    def test_map_coordinates_float(self, xp, scp, dtype):
+        # Half integer coordinate rounding test case from:
+        # https://github.com/cupy/cupy/issues/4550
+        a = testing.shaped_arange((4, 3), xp, dtype)
+        coordinates = xp.array([[0.5, 2], [0.5, 1]])
+        return self._map_coordinates(xp, scp, a, coordinates)
+
+
+@testing.parameterize(*testing.product({
     'matrix_shape': [(2,), (2, 2), (2, 3), (3, 3)],
     'offset': [0.3, [-1.3, 1.3]],
     'output_shape': [None],
@@ -183,9 +207,19 @@ class TestAffineTransform:
         matrix = xp.asfortranarray(matrix)
         return self._affine_transform(xp, scp, a, matrix)
 
+    def _hip_skip_invalid_condition(self):
+        if (runtime.is_hip
+                and self.matrix_shape in [(2,), (2, 2)]
+                and self.order in [2, 3, 4, 5]
+                and self.output in [None, 'empty']
+                and self.prefilter):
+            pytest.xfail('ROCm/HIP may have a bug')
+
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_affine_transform_int(self, xp, scp, dtype):
+        self._hip_skip_invalid_condition()
+
         if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
             if dtype in (numpy.dtype('l'), numpy.dtype('q')):
                 dtype = numpy.int64
@@ -325,9 +359,24 @@ class TestRotate:
         a = xp.asfortranarray(a)
         return self._rotate(xp, scp, a)
 
+    def _hip_skip_invalid_condition(self):
+        if runtime.is_hip:
+            if (self.angle in [-10, 1000]
+                    and self.mode in ['constant', 'nearest', 'mirror']
+                    and self.output == numpy.float64
+                    and self.reshape):
+                pytest.xfail('ROCm/HIP may have a bug')
+            if (self.angle == -15
+                    and self.mode in [
+                        'nearest', 'grid-wrap', 'reflect', 'grid-mirror']
+                    and self.order == 3):
+                pytest.xfail('ROCm/HIP may have a bug')
+
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_rotate_int(self, xp, scp, dtype):
+        self._hip_skip_invalid_condition()
+
         if numpy.lib.NumpyVersion(scipy.__version__) < '1.0.0':
             if dtype in (numpy.dtype('l'), numpy.dtype('q')):
                 dtype = numpy.int64
@@ -454,9 +503,19 @@ class TestShift:
         a = xp.asfortranarray(a)
         return self._shift(xp, scp, a)
 
+    def _hip_skip_invalid_condition(self):
+        if (runtime.is_hip
+                and self.cval == 1.0
+                and self.order == 3
+                and self.output in [None, 'empty']
+                and self.shift == 0.1):
+            pytest.xfail('ROCm/HIP may have a bug')
+
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_shift_int(self, xp, scp, dtype):
+        self._hip_skip_invalid_condition()
+
         if self.mode == 'constant' and not xp.isfinite(self.cval):
             if self.output is None or self.output == 'empty':
                 # Non-finite cval with integer output array is not supported
@@ -668,6 +727,26 @@ class TestZoomOrder0IntegerGrid():
             ),
             cupy.kron(x, cupy.ones(self.zoom)),
         )
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(5, 5, 2)],
+    'zoom': [(2, 2, 0.5)],  # selected to give output.shape[-1] == 1
+    'mode': legacy_modes + scipy16_modes,
+    'order': [0, 1, 2, 3, 4, 5],
+    'grid_mode': [False, True],
+}))
+@testing.gpu
+class TestZoomOutputSize1():
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.with_requires('scipy>=1.6.0')
+    def test_zoom_output_size1(self, xp, scp, dtype):
+        x = xp.zeros(self.shape, dtype=dtype)
+        x[1, 1, 1] = 1
+        return scp.ndimage.zoom(x, self.zoom, order=self.order, mode=self.mode,
+                                grid_mode=self.grid_mode)
 
 
 @testing.parameterize(

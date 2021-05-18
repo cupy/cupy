@@ -3,13 +3,15 @@ from libc.string cimport memset as c_memset
 
 import numpy
 
-from cupy.core.core cimport ndarray
+from cupy._core.core cimport ndarray
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime cimport Array,\
     ChannelFormatDesc, ChannelFormatKind,\
     Memcpy3DParms, MemoryKind, PitchedPtr, ResourceDesc, ResourceType, \
     TextureAddressMode, TextureDesc, TextureFilterMode, TextureReadMode
+from cupy.cuda cimport stream as stream_module
+
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
 
 
@@ -426,11 +428,16 @@ cdef class CUDAarray:
             param = <Memcpy3DParms*>self._make_cudaMemcpy3DParms(arr, self)
         elif direction == 'out':
             param = <Memcpy3DParms*>self._make_cudaMemcpy3DParms(self, arr)
+
+        # we need to serialize on the current or given stream to ensure
+        # data is ready
+        cdef intptr_t stream_ptr
         try:
             if stream is None:
-                runtime.memcpy3D(<intptr_t>param)
+                stream_ptr = stream_module.get_current_stream_ptr()
             else:
-                runtime.memcpy3DAsync(<intptr_t>param, stream.ptr)
+                stream_ptr = <intptr_t>(stream.ptr)
+            runtime.memcpy3DAsync(<intptr_t>param, stream_ptr)
         except CUDARuntimeError as ex:
             raise ex
         finally:
@@ -489,7 +496,8 @@ cdef class CUDAarray:
 cdef class TextureObject:
     '''A class that holds a texture object. Equivalent to
     ``cudaTextureObject_t``. The returned :class:`TextureObject` instance can
-    be passed as a argument when launching :class:`~cupy.RawKernel`.
+    be passed as a argument when launching :class:`~cupy.RawKernel` or
+    :class:`~cupy.ElementwiseKernel`.
 
     Args:
         ResDesc (ResourceDescriptor): an intance of the resource descriptor.

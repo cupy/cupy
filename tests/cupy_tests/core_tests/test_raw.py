@@ -13,7 +13,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy import _util
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 from cupy.cuda import compiler
 from cupy.cuda import memory
 
@@ -532,17 +532,18 @@ class TestRaw(unittest.TestCase):
         file_path = self.cache_dir + 'test_load_cubin'
         with open(source, 'w') as f:
             f.write(code)
-        if ext == 'cubin':
-            file_path += '.cubin'
-            flag = '-cubin'
-        elif ext == 'ptx':
-            file_path += '.ptx'
-            flag = '-ptx'
-        elif ext == 'hsaco':
+        if not cupy.cuda.runtime.is_hip:
+            if ext == 'cubin':
+                file_path += '.cubin'
+                flag = '-cubin'
+            elif ext == 'ptx':
+                file_path += '.ptx'
+                flag = '-ptx'
+            else:
+                raise ValueError
+        else:
             file_path += '.hsaco'
             flag = '--genco'
-        else:
-            raise ValueError
         cmd += [arch, flag, source, '-o', file_path]
         cc = 'nvcc' if not cupy.cuda.runtime.is_hip else 'hipcc'
         compiler._run_cc(cmd, self.cache_dir, cc)
@@ -1269,6 +1270,8 @@ class TestRawJitify(unittest.TestCase):
         ker((1,), (N,), (a, N))
         assert cupy.allclose(a, b+100)
 
+    @pytest.mark.xfail(sys.platform.startswith('win32'),
+                       reason='macro preprocessing in NVRTC is likely buggy')
     def test_jitify1(self):
         # simply prepend an unused header
         hdr = '#include <cupy/cub/cub/block/block_reduce.cuh>\n'

@@ -1,4 +1,3 @@
-import cupy
 from cupy.random import _generator
 from cupy import _util
 
@@ -476,9 +475,8 @@ def multivariate_normal(mean, cov, size=None, check_valid='ignore',
     """
     _util.experimental('cupy.random.multivariate_normal')
     rs = _generator.get_random_state()
-    x = rs.multivariate_normal(mean, cov, size, check_valid, tol, method,
-                               dtype)
-    return x
+    return rs.multivariate_normal(
+        mean, cov, size, check_valid, tol, method, dtype)
 
 
 def normal(loc=0.0, scale=1.0, size=None, dtype=float):
@@ -500,13 +498,7 @@ def normal(loc=0.0, scale=1.0, size=None, dtype=float):
 
     """
     rs = _generator.get_random_state()
-    if size is None and any(isinstance(arg, cupy.ndarray)
-                            for arg in [scale, loc]):
-        size = cupy.broadcast_arrays(loc, scale)[0].shape
-    x = rs.normal(0, 1, size, dtype)
-    cupy.multiply(x, scale, out=x)
-    cupy.add(x, loc, out=x)
-    return x
+    return rs.normal(loc, scale, size, dtype)
 
 
 def pareto(a, size=None, dtype=float):
@@ -532,8 +524,7 @@ def pareto(a, size=None, dtype=float):
     .. seealso:: :func:`numpy.random.pareto`
     """
     rs = _generator.get_random_state()
-    x = rs.pareto(a, size, dtype)
-    return x
+    return rs.pareto(a, size, dtype)
 
 
 def noncentral_chisquare(df, nonc, size=None, dtype=float):
@@ -619,8 +610,7 @@ def poisson(lam=1.0, size=None, dtype=int):
     .. seealso:: :func:`numpy.random.poisson`
     """
     rs = _generator.get_random_state()
-    x = rs.poisson(lam, size, dtype)
-    return x
+    return rs.poisson(lam, size, dtype)
 
 
 def power(a, size=None, dtype=float):
@@ -671,8 +661,7 @@ def rayleigh(scale=1.0, size=None, dtype=float):
     .. seealso:: :func:`numpy.random.rayleigh`
     """
     rs = _generator.get_random_state()
-    x = rs.rayleigh(scale, size, dtype)
-    return x
+    return rs.rayleigh(scale, size, dtype)
 
 
 def standard_cauchy(size=None, dtype=float):
@@ -696,8 +685,7 @@ def standard_cauchy(size=None, dtype=float):
     .. seealso:: :func:`numpy.random.standard_cauchy`
     """
     rs = _generator.get_random_state()
-    x = rs.standard_cauchy(size, dtype)
-    return x
+    return rs.standard_cauchy(size, dtype)
 
 
 def standard_exponential(size=None, dtype=float):
@@ -766,7 +754,8 @@ def standard_normal(size=None, dtype=float):
     .. seealso:: :func:`numpy.random.standard_normal`
 
     """
-    return normal(size=size, dtype=dtype)
+    rs = _generator.get_random_state()
+    return rs.standard_normal(size, dtype)
 
 
 def standard_t(df, size=None, dtype=float):

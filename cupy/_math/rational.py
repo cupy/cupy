@@ -1,4 +1,4 @@
-from cupy import core
+from cupy import _core
 
 
 def _negative_gcd_error():
@@ -23,7 +23,7 @@ template <typename T> inline __device__ T gcd(T in0, T in1) {
 }
 '''
 
-gcd = core.create_ufunc(
+gcd = _core.create_ufunc(
     'cupy_gcd',
     (('??->?', _negative_gcd_error),
      'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
@@ -36,7 +36,7 @@ gcd = core.create_ufunc(
 
     ''')
 
-_lcm_preamble = '''
+_lcm_preamble = _gcd_preamble + '''
 template <typename T> inline __device__ T lcm(T in0, T in1) {
   T r = gcd(in0, in1);
   if (r == 0)
@@ -46,9 +46,9 @@ template <typename T> inline __device__ T lcm(T in0, T in1) {
     return -r;
   return r;
 }
-''' + _gcd_preamble
+'''
 
-lcm = core.create_ufunc(
+lcm = _core.create_ufunc(
     'cupy_lcm',
     (('??->?', _negative_lcm_error),
      'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',

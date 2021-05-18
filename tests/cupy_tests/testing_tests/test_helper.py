@@ -6,7 +6,7 @@ import pytest
 
 import cupy
 from cupy import testing
-from cupy.testing import helper
+from cupy.testing import _helper
 
 
 class _Exception1(Exception):
@@ -21,21 +21,21 @@ class TestContainsSignedAndUnsigned(unittest.TestCase):
 
     def test_include(self):
         kw = {'x': numpy.int32, 'y': numpy.uint32}
-        assert helper._contains_signed_and_unsigned(kw)
+        assert _helper._contains_signed_and_unsigned(kw)
 
         kw = {'x': numpy.float32, 'y': numpy.uint32}
-        assert helper._contains_signed_and_unsigned(kw)
+        assert _helper._contains_signed_and_unsigned(kw)
 
     def test_signed_only(self):
         kw = {'x': numpy.int32}
-        assert not helper._contains_signed_and_unsigned(kw)
+        assert not _helper._contains_signed_and_unsigned(kw)
 
-        kw = {'x': numpy.float}
-        assert not helper._contains_signed_and_unsigned(kw)
+        kw = {'x': numpy.float32}
+        assert not _helper._contains_signed_and_unsigned(kw)
 
     def test_unsigned_only(self):
         kw = {'x': numpy.uint32}
-        assert not helper._contains_signed_and_unsigned(kw)
+        assert not _helper._contains_signed_and_unsigned(kw)
 
 
 class TestCheckCupyNumpyError(unittest.TestCase):
@@ -47,7 +47,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_both_success(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises()
+            @testing._helper.numpy_cupy_raises()
             def dummy_both_success(self, xp):
                 pass
 
@@ -56,7 +56,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_cupy_error(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises()
+            @testing._helper.numpy_cupy_raises()
             def dummy_cupy_error(self, xp):
                 if xp is cupy:
                     raise Exception(self.tbs.get(cupy))
@@ -66,7 +66,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_numpy_error(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises()
+            @testing._helper.numpy_cupy_raises()
             def dummy_numpy_error(self, xp):
                 if xp is numpy:
                     raise Exception(self.tbs.get(numpy))
@@ -76,7 +76,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_cupy_numpy_different_error(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises()
+            @testing._helper.numpy_cupy_raises()
             def dummy_cupy_numpy_different_error(self, xp):
                 if xp is cupy:
                     raise TypeError(self.tbs.get(cupy))
@@ -91,7 +91,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_cupy_derived_error(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises()
+            @testing._helper.numpy_cupy_raises()
             def dummy_cupy_derived_error(self, xp):
                 if xp is cupy:
                     raise _Exception1(self.tbs.get(cupy))
@@ -102,7 +102,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_numpy_derived_error(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises()
+            @testing._helper.numpy_cupy_raises()
             def dummy_numpy_derived_error(self, xp):
                 if xp is cupy:
                     raise Exception(self.tbs.get(cupy))
@@ -118,7 +118,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_same_error(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises(accept_error=Exception)
+            @testing._helper.numpy_cupy_raises(accept_error=Exception)
             def dummy_same_error(self, xp):
                 raise Exception(self.tbs.get(xp))
 
@@ -126,7 +126,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_cupy_derived_unaccept_error(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises(accept_error=ValueError)
+            @testing._helper.numpy_cupy_raises(accept_error=ValueError)
             def dummy_cupy_derived_unaccept_error(self, xp):
                 if xp is cupy:
                     raise IndexError(self.tbs.get(cupy))
@@ -142,7 +142,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_numpy_derived_unaccept_error(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises(accept_error=ValueError)
+            @testing._helper.numpy_cupy_raises(accept_error=ValueError)
             def dummy_numpy_derived_unaccept_error(self, xp):
                 if xp is cupy:
                     raise Exception(self.tbs.get(cupy))
@@ -158,7 +158,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_forbidden_error(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises(accept_error=False)
+            @testing._helper.numpy_cupy_raises(accept_error=False)
             def dummy_forbidden_error(self, xp):
                 raise Exception(self.tbs.get(xp))
 
@@ -169,7 +169,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_axis_error_different_type(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises()
+            @testing._helper.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
                     raise numpy.AxisError(self.tbs.get(cupy))
@@ -183,7 +183,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_axis_error_value_different_type(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises()
+            @testing._helper.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
                     raise numpy.AxisError(self.tbs.get(cupy))
@@ -197,7 +197,7 @@ class TestCheckCupyNumpyError(unittest.TestCase):
 
     def test_axis_error_index_different_type(self):
         with testing.assert_warns(DeprecationWarning):
-            @testing.helper.numpy_cupy_raises()
+            @testing._helper.numpy_cupy_raises()
             def dummy_axis_error(self, xp):
                 if xp is cupy:
                     raise numpy.AxisError(self.tbs.get(cupy))
@@ -327,20 +327,20 @@ class TestNumPyCuPyAllCloseTolPerDtype(unittest.TestCase):
             finfo = numpy.finfo(dtype)
             return cupy.array(1 + finfo.eps, dtype=dtype)
 
-    @helper.for_float_dtypes()
-    @helper.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-6})
+    @_helper.for_float_dtypes()
+    @_helper.numpy_cupy_allclose(rtol={numpy.float16: 1e-3, 'default': 1e-6})
     def test_rtol_per_dtype(self, xp, dtype):
         return self._test_rtol(xp, dtype)
 
     @pytest.mark.xfail(strict=True)
-    @helper.for_float_dtypes()
-    @helper.numpy_cupy_allclose(rtol=1e-6)
+    @_helper.for_float_dtypes()
+    @_helper.numpy_cupy_allclose(rtol=1e-6)
     def test_rtol_fail(self, xp, dtype):
         return self._test_rtol(xp, dtype)
 
     def test_rtol_invalid_key(self):
         with self.assertRaises(TypeError):
-            helper.numpy_cupy_allclose(rtol={'float16': 1e-3})
+            _helper.numpy_cupy_allclose(rtol={'float16': 1e-3})
 
     def _test_atol(self, xp, dtype):
         if xp is numpy:
@@ -349,40 +349,40 @@ class TestNumPyCuPyAllCloseTolPerDtype(unittest.TestCase):
             finfo = numpy.finfo(dtype)
             return cupy.array(finfo.eps, dtype=dtype)
 
-    @helper.for_float_dtypes()
-    @helper.numpy_cupy_allclose(atol={numpy.float16: 1e-3, 'default': 1e-6})
+    @_helper.for_float_dtypes()
+    @_helper.numpy_cupy_allclose(atol={numpy.float16: 1e-3, 'default': 1e-6})
     def test_atol_per_dtype(self, xp, dtype):
         return self._test_atol(xp, dtype)
 
     @pytest.mark.xfail(strict=True)
-    @helper.for_float_dtypes()
-    @helper.numpy_cupy_allclose(atol=1e-6)
+    @_helper.for_float_dtypes()
+    @_helper.numpy_cupy_allclose(atol=1e-6)
     def test_atol_fail(self, xp, dtype):
         return self._test_atol(xp, dtype)
 
     def test_atol_invalid_key(self):
         with self.assertRaises(TypeError):
-            helper.numpy_cupy_allclose(atol={'float16': 1e-3})
+            _helper.numpy_cupy_allclose(atol={'float16': 1e-3})
 
 
 class TestIgnoreOfNegativeValueDifferenceOnCpuAndGpu(unittest.TestCase):
 
-    @helper.numpy_cupy_allclose()
+    @_helper.numpy_cupy_allclose()
     def correct_failure(self, dtype1, dtype2, xp):
         if xp == numpy:
             return xp.array(-1, dtype=numpy.float32)
         else:
             return xp.array(-2, dtype=numpy.float32)
 
-    @helper.for_unsigned_dtypes('dtype1')
-    @helper.for_signed_dtypes('dtype2')
+    @_helper.for_unsigned_dtypes('dtype1')
+    @_helper.for_signed_dtypes('dtype2')
     def test_correct_failure(self, dtype1, dtype2):
         with pytest.raises(AssertionError):
             self.correct_failure(dtype1, dtype2)
 
-    @helper.for_unsigned_dtypes('dtype1')
-    @helper.for_signed_dtypes('dtype2')
-    @helper.numpy_cupy_allclose()
+    @_helper.for_unsigned_dtypes('dtype1')
+    @_helper.for_signed_dtypes('dtype2')
+    @_helper.numpy_cupy_allclose()
     def test_correct_success(self, xp, dtype1, dtype2):
         # Behavior of assigning a negative value to an unsigned integer
         # variable is undefined.
@@ -505,7 +505,7 @@ class TestGenerateMatrixInvalid(unittest.TestCase):
                 (2, 2), singular_values=numpy.ones(3))
 
     def test_shape_mismatch_2(self):
-        with self.assertRaises(numpy.linalg.LinAlgError):
+        with self.assertRaises(ValueError):
             testing.generate_matrix(
                 (0, 2, 2), singular_values=numpy.ones(3))
 

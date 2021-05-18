@@ -1,8 +1,8 @@
 import numpy
 
-from cupy import core
+from cupy import _core
 from cupyx.jit import _interface
-from cupyx.jit import _types
+from cupyx.jit import _cuda_types
 
 
 def _get_input_type(arg):
@@ -18,7 +18,7 @@ def _get_input_type(arg):
 class vectorize(object):
     """Generalized function class.
 
-    .. seealso:: :func:`numpy.vectorize`
+    .. seealso:: :class:`numpy.vectorize`
     """
 
     def __init__(
@@ -53,26 +53,49 @@ class vectorize(object):
             raise NotImplementedError(
                 'cupy.vectorize does not support `excluded` option currently.')
 
+    @staticmethod
+    def _parse_out_param(return_type):
+        if isinstance(return_type, _cuda_types.Scalar):
+            dtypes = [return_type.dtype]
+            out_lval = 'out0'
+        elif isinstance(return_type, _cuda_types.Tuple):
+            dtypes = []
+            for t in return_type.types:
+                if not isinstance(t, _cuda_types.Scalar):
+                    raise TypeError(f'Invalid return type: {return_type}')
+                dtypes.append(t.dtype)
+            out_lvals = ', '.join([f'out{i}' for i in range(len(dtypes))])
+            out_lval = f'thrust::tie({out_lvals})'
+        else:
+            raise TypeError(f'Invalid return type: {return_type}')
+
+        out_params = [f'{dtype} out{i}' for i, dtype in enumerate(dtypes)]
+        return ', '.join(out_params), out_lval
+
     def __call__(self, *args):
         itypes = ''.join([_get_input_type(x) for x in args])
         kern = self._kernel_cache.get(itypes, None)
 
         if kern is None:
-            in_types = [_types.Scalar(t) for t in itypes]
+            in_types = [_cuda_types.Scalar(t) for t in itypes]
             ret_type = None
             if self.otypes is not None:
                 # TODO(asi1024): Implement
                 raise NotImplementedError
 
             func = _interface._CudaFunction(self.pyfunc, 'numpy', device=True)
-            code, ret_type = func._emit_code_from_types(in_types, ret_type)
+            result = func._emit_code_from_types(in_types, ret_type)
             in_params = ', '.join(
                 f'{t.dtype} in{i}' for i, t in enumerate(in_types))
-            out_params = f'{ret_type.dtype} out0'
-            body = 'out0 = {}({})'.format(
-                func.name, ', '.join([f'in{i}' for i in range(len(in_types))]))
-            kern = core.ElementwiseKernel(
-                in_params, out_params, body, preamble=code)
+            in_args = ', '.join([f'in{i}' for i in range(len(in_types))])
+            out_params, out_lval = self._parse_out_param(result.return_type)
+            body = '{} = {}({})'.format(out_lval, func.name, in_args)
+            # note: we don't worry about -D not working on ROCm here, because
+            # we unroll all headers for HIP and so thrust::tuple et al are all
+            # defined regardless if CUPY_JIT_MODE is defined or not
+            kern = _core.ElementwiseKernel(
+                in_params, out_params, body, preamble=result.code,
+                options=('-DCUPY_JIT_MODE',))
             self._kernel_cache[itypes] = kern
 
         return kern(*args)

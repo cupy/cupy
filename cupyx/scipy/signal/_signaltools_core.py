@@ -1,7 +1,7 @@
 import math
 
 import cupy
-from cupy.core import internal
+from cupy._core import internal
 from cupyx.scipy import fft
 from cupyx.scipy.ndimage import filters
 from cupyx.scipy.ndimage import _util
@@ -32,7 +32,7 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
     if _inputs_swap_needed(mode, in1.shape, in2.shape) or (
             in2.size > in1.size and boundary == 'constant' and fillvalue == 0):
         in1, in2 = in2, in1
-        swapped_inputs = not convolution
+        swapped_inputs = True
 
     # Due to several optimizations, the second array can only be 2 GiB
     if in2.nbytes >= (1 << 31):
@@ -70,21 +70,23 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
     int_type = _util._get_inttype(in1)
     kernel = filters._get_correlate_kernel(
         boundary, in2.shape, int_type, offsets, fillvalue)
-    in2 = _reverse_and_conj(in2) if convolution else in2
-    if not swapped_inputs:
+    in2 = _reverse(in2) if convolution else in2.conj()
+    if not swapped_inputs or convolution:
         kernel(in1, in2, output)
     elif output.dtype.kind != 'c':
         # Avoids one array copy
-        kernel(in1, in2, _reverse_and_conj(output))
+        kernel(in1, in2, _reverse(output))
     else:
         kernel(in1, in2, output)
-        output = cupy.ascontiguousarray(_reverse_and_conj(output))
+        output = cupy.ascontiguousarray(_reverse(output))
+        if swapped_inputs and (mode != 'valid' or not shift):
+            cupy.conjugate(output, out=output)
     return output
 
 
-def _reverse_and_conj(x):
-    # Reverse array `x` in all dimensions and perform the complex conjugate
-    return x[(slice(None, None, -1),) * x.ndim].conj()
+def _reverse(x):
+    # Reverse array `x` in all dimensions
+    return x[(slice(None, None, -1),) * x.ndim]
 
 
 def _inputs_swap_needed(mode, shape1, shape2, axes=None):

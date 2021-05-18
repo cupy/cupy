@@ -4,34 +4,13 @@ import unittest
 import numpy
 import pytest
 
+from cupy_backends.cuda import stream as stream_module
 import cupy
 from cupy import _util
-from cupy import core
+from cupy import _core
 from cupy import cuda
 from cupy import get_array_module
 from cupy import testing
-
-
-class TestGetSize(unittest.TestCase):
-
-    def test_none(self):
-        assert core.get_size(None) == ()
-
-    def check_collection(self, a):
-        assert core.get_size(a) == tuple(a)
-
-    def test_list(self):
-        self.check_collection([1, 2, 3])
-
-    def test_tuple(self):
-        self.check_collection((1, 2, 3))
-
-    def test_int(self):
-        assert core.get_size(1) == (1,)
-
-    def test_float(self):
-        with pytest.raises(ValueError):
-            core.get_size(1.0)
 
 
 def wrap_take(array, *args, **kwargs):
@@ -45,7 +24,8 @@ def wrap_take(array, *args, **kwargs):
 class TestNdarrayInit(unittest.TestCase):
 
     def test_shape_none(self):
-        a = cupy.ndarray(None)
+        with testing.assert_warns(DeprecationWarning):
+            a = cupy.ndarray(None)
         assert a.shape == ()
 
     def test_shape_int(self):
@@ -99,7 +79,7 @@ class TestNdarrayInit(unittest.TestCase):
 
     def test_order(self):
         shape = (2, 3, 4)
-        a = core.ndarray(shape, order='F')
+        a = _core.ndarray(shape, order='F')
         a_cpu = numpy.ndarray(shape, order='F')
         assert a.strides == a_cpu.strides
         assert a.flags.f_contiguous
@@ -107,7 +87,7 @@ class TestNdarrayInit(unittest.TestCase):
 
     def test_order_none(self):
         shape = (2, 3, 4)
-        a = core.ndarray(shape, order=None)
+        a = _core.ndarray(shape, order=None)
         a_cpu = numpy.ndarray(shape, order=None)
         assert a.flags.c_contiguous == a_cpu.flags.c_contiguous
         assert a.flags.f_contiguous == a_cpu.flags.f_contiguous
@@ -143,7 +123,7 @@ class TestNdarrayInitRaise(unittest.TestCase):
     def test_unsupported_type(self):
         arr = numpy.ndarray((2, 3), dtype=object)
         with pytest.raises(ValueError):
-            core.array(arr)
+            _core.array(arr)
 
 
 @testing.parameterize(
@@ -163,17 +143,35 @@ class TestNdarrayDeepCopy(unittest.TestCase):
         testing.assert_array_equal(arr, arr2)
 
     def test_deepcopy(self):
-        arr = core.ndarray(self.shape)
+        arr = _core.ndarray(self.shape)
         arr2 = copy.deepcopy(arr)
         self._check_deepcopy(arr, arr2)
 
     @testing.multi_gpu(2)
     def test_deepcopy_multi_device(self):
-        arr = core.ndarray(self.shape)
+        arr = _core.ndarray(self.shape)
         with cuda.Device(1):
             arr2 = copy.deepcopy(arr)
         self._check_deepcopy(arr, arr2)
         assert arr2.device == arr.device
+
+
+_test_copy_multi_device_with_stream_src = r'''
+extern "C" __global__
+void wait_and_write(long long *x) {
+  clock_t start = clock();
+  clock_t now;
+  for (;;) {
+    now = clock();
+    clock_t cycles = now > start ? now - start : now + (0xffffffff - start);
+    if (cycles >= 1000000000) {
+      break;
+    }
+  }
+  x[0] = 1;
+  x[1] = now;  // in case the compiler optimizing away the entire loop
+}
+'''
 
 
 @testing.gpu
@@ -182,7 +180,7 @@ class TestNdarrayCopy(unittest.TestCase):
     @testing.multi_gpu(2)
     @testing.for_orders('CFA')
     def test_copy_multi_device_non_contiguous(self, order):
-        arr = core.ndarray((20,))[::2]
+        arr = _core.ndarray((20,))[::2]
         dev1 = cuda.Device(1)
         with dev1:
             arr2 = arr.copy(order)
@@ -191,10 +189,34 @@ class TestNdarrayCopy(unittest.TestCase):
 
     @testing.multi_gpu(2)
     def test_copy_multi_device_non_contiguous_K(self):
-        arr = core.ndarray((20,))[::2]
+        arr = _core.ndarray((20,))[::2]
         with cuda.Device(1):
             with self.assertRaises(NotImplementedError):
                 arr.copy('K')
+
+    # See cupy/cupy#5004
+    @testing.multi_gpu(2)
+    def test_copy_multi_device_with_stream(self):
+        # Kernel that takes long enough then finally writes values.
+        kern = cupy.RawKernel(
+            _test_copy_multi_device_with_stream_src, 'wait_and_write')
+
+        # Allocates a memory and launches the kernel on a device with its
+        # stream.
+        with cuda.Device(0):
+            # Keep this stream alive over the D2D copy below for HIP
+            with cuda.Stream() as s1:  # NOQA
+                a = cupy.zeros((2,), dtype=numpy.uint64)
+                kern((1,), (1,), a)
+
+        # D2D copy to another device with another stream should get the
+        # original values of the memory before the kernel on the first device
+        # finally makes the write.
+        with cuda.Device(1):
+            with cuda.Stream():
+                b = a.copy()
+                testing.assert_array_equal(
+                    b, numpy.array([0, 0], dtype=numpy.uint64))
 
 
 @testing.gpu
@@ -219,6 +241,8 @@ class TestNdarrayShape(unittest.TestCase):
         return xp.array(arr.shape)
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestNdarrayCudaInterface(unittest.TestCase):
 
     def test_cuda_array_interface(self):
@@ -236,7 +260,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert not iface['data'][1]
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
-        assert iface['stream'] == 1
+        assert iface['stream'] == stream_module.get_default_stream_ptr()
 
     def test_cuda_array_interface_view(self):
         arr = cupy.zeros(shape=(10, 20), dtype=cupy.float64)
@@ -254,7 +278,7 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert not iface['data'][1]
         assert iface['strides'] == (320, 40)
         assert iface['descr'] == [('', '<f8')]
-        assert iface['stream'] == 1
+        assert iface['stream'] == stream_module.get_default_stream_ptr()
 
     def test_cuda_array_interface_zero_size(self):
         arr = cupy.zeros(shape=(10,), dtype=cupy.float64)
@@ -272,20 +296,23 @@ class TestNdarrayCudaInterface(unittest.TestCase):
         assert not iface['data'][1]
         assert iface['strides'] is None
         assert iface['descr'] == [('', '<f8')]
-        assert iface['stream'] == 1
+        assert iface['stream'] == stream_module.get_default_stream_ptr()
 
 
-# TODO(leofang): test PTDS
 @testing.parameterize(*testing.product({
-    'stream': ('null', 'new'),
+    'stream': ('null', 'new', 'ptds'),
     'ver': (2, 3),
 }))
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='HIP does not support this')
 class TestNdarrayCudaInterfaceStream(unittest.TestCase):
     def setUp(self):
         if self.stream == 'null':
             self.stream = cuda.Stream.null
         elif self.stream == 'new':
             self.stream = cuda.Stream()
+        elif self.stream == 'ptds':
+            self.stream = cuda.Stream.ptds
 
         self.old_ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
         _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION = self.ver
@@ -312,7 +339,27 @@ class TestNdarrayCudaInterfaceStream(unittest.TestCase):
         assert iface['descr'] == [('', '<f8')]
         assert iface['strides'] is None
         if self.ver == 3:
-            assert iface['stream'] == 1 if stream.ptr == 0 else stream.ptr
+            if stream.ptr == 0:
+                ptr = stream_module.get_default_stream_ptr()
+                assert iface['stream'] == ptr
+            else:
+                assert iface['stream'] == stream.ptr
+
+
+@pytest.mark.skipif(not cupy.cuda.runtime.is_hip,
+                    reason='This is supported on CUDA')
+class TestNdarrayCudaInterfaceNoneCUDA(unittest.TestCase):
+
+    def setUp(self):
+        self.arr = cupy.zeros(shape=(2, 3), dtype=cupy.float64)
+
+    def test_cuda_array_interface_hasattr(self):
+        assert not hasattr(self.arr, '__cuda_array_interface__')
+
+    def test_cuda_array_interface_getattr(self):
+        with pytest.raises(AttributeError) as e:
+            getattr(self.arr, '__cuda_array_interface__')
+        assert 'HIP' in str(e.value)
 
 
 @testing.parameterize(
@@ -452,8 +499,9 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
 
 
 @testing.parameterize(
-    {'shape': (0,), 'indices': (0,)},
-    {'shape': (0,), 'indices': (0, 1)},
+    {'shape': (0,), 'indices': (0,), 'axis': None},
+    {'shape': (0,), 'indices': (0, 1), 'axis': None},
+    {'shape': (3, 0), 'indices': (2,), 'axis': 0},
 )
 @testing.gpu
 class TestZeroSizedNdarrayTake(unittest.TestCase):
@@ -462,7 +510,7 @@ class TestZeroSizedNdarrayTake(unittest.TestCase):
     def test_output_type_mismatch(self, xp):
         a = testing.shaped_arange(self.shape, xp, numpy.int32)
         i = testing.shaped_arange(self.indices, xp, numpy.int32)
-        return wrap_take(a, i)
+        return wrap_take(a, i, axis=self.axis)
 
 
 @testing.parameterize(
@@ -552,6 +600,11 @@ class TestPythonInterface(unittest.TestCase):
     def test_bytes_tobytes_scalar_array(self, xp, dtype):
         x = xp.array(3, dtype)
         return bytes(x)
+
+    @testing.numpy_cupy_equal()
+    def test_format(self, xp):
+        x = xp.array(1.12345)
+        return format(x, '.2f')
 
 
 @testing.gpu

@@ -5,8 +5,8 @@ import sys
 import cupy
 from cupy import _environment
 from cupy import testing
-from cupy.core import _accelerator
-from cupy.core import _cub_reduction
+from cupy._core import _accelerator
+from cupy._core import _cub_reduction
 from cupy.cuda import memory
 
 
@@ -14,7 +14,6 @@ from cupy.cuda import memory
 # or not; they don't verify its correctness as it's already extensively covered
 # by existing tests
 @unittest.skipIf(_environment.get_cub_path() is None, 'CUB not found')
-@unittest.skipIf(_environment.get_nvcc_path() is None, 'nvcc not found')
 class CubReductionTestBase(unittest.TestCase):
     """
     Note: call self.can_use() when arrays are already allocated, otherwise
@@ -22,7 +21,11 @@ class CubReductionTestBase(unittest.TestCase):
     """
 
     def setUp(self):
-        self.can_use = cupy.core._cub_reduction._can_use_cub_block_reduction
+        if cupy.cuda.runtime.is_hip:
+            if _environment.get_hipcc_path() is None:
+                self.skipTest('hipcc is not found')
+
+        self.can_use = cupy._core._cub_reduction._can_use_cub_block_reduction
 
         self.old_accelerators = _accelerator.get_reduction_accelerators()
         _accelerator.set_reduction_accelerators(['cub'])
@@ -131,7 +134,7 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
 
         a = cupy.random.random((10, 10))
         # this is the only function we can mock; the rest is cdef'd
-        func_name = ''.join(('cupy.core._cub_reduction.',
+        func_name = ''.join(('cupy._core._cub_reduction.',
                              '_SimpleCubReductionKernel_get_cached_function'))
         func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
         with testing.AssertFunctionIsCalled(

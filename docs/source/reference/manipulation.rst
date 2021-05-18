@@ -1,17 +1,18 @@
-Array Manipulation Routines
+Array manipulation routines
 ===========================
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.array-manipulation.html
+.. Hint:: `NumPy API Reference: Array manipulation routines <https://numpy.org/doc/stable/reference/routines.array-manipulation.html>`_
+
+.. currentmodule:: cupy
 
 Basic operations
 ----------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.copyto
-   cupy.shape
+   copyto
+   shape
 
 
 Changing array shape
@@ -19,42 +20,39 @@ Changing array shape
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.reshape
-   cupy.ravel
+   reshape
+   ravel
 
+.. seealso:: :attr:`cupy.ndarray.flat` and :func:`cupy.ndarray.flatten`
 
 Transpose-like operations
 -------------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.moveaxis
-   cupy.rollaxis
-   cupy.swapaxes
-   cupy.transpose
+   moveaxis
+   rollaxis
+   swapaxes
+   transpose
 
-.. seealso::
-   :attr:`cupy.ndarray.T`
+.. seealso:: :attr:`cupy.ndarray.T`
 
 Changing number of dimensions
 -----------------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.atleast_1d
-   cupy.atleast_2d
-   cupy.atleast_3d
-   cupy.broadcast
-   cupy.broadcast_to
-   cupy.broadcast_arrays
-   cupy.expand_dims
-   cupy.squeeze
+   atleast_1d
+   atleast_2d
+   atleast_3d
+   broadcast
+   broadcast_to
+   broadcast_arrays
+   expand_dims
+   squeeze
 
 
 Changing kind of array
@@ -62,13 +60,12 @@ Changing kind of array
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.asarray
-   cupy.asanyarray
-   cupy.asfortranarray
-   cupy.ascontiguousarray
-   cupy.require
+   asarray
+   asanyarray
+   asfortranarray
+   ascontiguousarray
+   require
 
 
 Joining arrays
@@ -76,14 +73,13 @@ Joining arrays
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.concatenate
-   cupy.stack
-   cupy.column_stack
-   cupy.dstack
-   cupy.hstack
-   cupy.vstack
+   concatenate
+   stack
+   vstack
+   hstack
+   dstack
+   column_stack
 
 
 Splitting arrays
@@ -91,13 +87,12 @@ Splitting arrays
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.split
-   cupy.array_split
-   cupy.dsplit
-   cupy.hsplit
-   cupy.vsplit
+   split
+   array_split
+   dsplit
+   hsplit
+   vsplit
 
 
 Tiling arrays
@@ -105,10 +100,9 @@ Tiling arrays
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.tile
-   cupy.repeat
+   tile
+   repeat
 
 
 Adding and removing elements
@@ -116,12 +110,11 @@ Adding and removing elements
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.append
-   cupy.resize
-   cupy.unique
-   cupy.trim_zeros
+   append
+   resize
+   unique
+   trim_zeros
 
 
 Rearranging elements
@@ -129,11 +122,10 @@ Rearranging elements
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.flip
-   cupy.fliplr
-   cupy.flipud
-   cupy.reshape
-   cupy.roll
-   cupy.rot90
+   flip
+   fliplr
+   flipud
+   reshape
+   roll
+   rot90

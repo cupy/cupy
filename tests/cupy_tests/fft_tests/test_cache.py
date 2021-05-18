@@ -162,6 +162,7 @@ class TestPlanCache(unittest.TestCase):
         def thread_show_plan_cache_info(queue):
             # allow output from another thread to be accessed by the
             # main thread
+            cupy.cuda.Device().use()
             stdout = intercept_stdout(config.show_plan_cache_info)
             queue.put(stdout)
 
@@ -176,6 +177,7 @@ class TestPlanCache(unittest.TestCase):
         assert stdout.count('uninitialized') == n_devices
 
         def thread_init_caches(gpus, queue):
+            cupy.cuda.Device().use()
             init_caches(gpus)
             thread_show_plan_cache_info(queue)
 
@@ -230,6 +232,8 @@ class TestPlanCache(unittest.TestCase):
         assert cache1.get_curr_size() == 0 <= cache1.get_size()
 
     @testing.multi_gpu(2)
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason="hipFFT doesn't support multi-GPU")
     def test_LRU_cache7(self):
         # test accessing a multi-GPU plan
         cache0 = self.caches[0]
@@ -386,6 +390,8 @@ class TestPlanCache(unittest.TestCase):
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.multi_gpu(2)
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason="hipFFT doesn't support multi-GPU")
     def test_LRU_cache11(self):
         # test if collectively deleting a multi-GPU plan works
         _skip_multi_gpu_bug((128,), self.gpus)
@@ -418,6 +424,8 @@ class TestPlanCache(unittest.TestCase):
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.multi_gpu(2)
+    @pytest.mark.skipif(runtime.is_hip,
+                        reason="hipFFT doesn't support multi-GPU")
     def test_LRU_cache12(self):
         # test if an error is raise when one of the caches is unable
         # to fit it a multi-GPU plan

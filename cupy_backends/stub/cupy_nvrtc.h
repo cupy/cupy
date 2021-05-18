@@ -40,6 +40,22 @@ nvrtcResult nvrtcGetPTX(...) {
     return NVRTC_SUCCESS;
 }
 
+nvrtcResult nvrtcGetCUBINSize(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcGetCUBIN(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcGetNumSupportedArchs(...) {
+    return NVRTC_SUCCESS;
+}
+
+nvrtcResult nvrtcGetSupportedArchs(...) {
+    return NVRTC_SUCCESS;
+}
+
 nvrtcResult nvrtcGetProgramLogSize(...) {
     return NVRTC_SUCCESS;
 }

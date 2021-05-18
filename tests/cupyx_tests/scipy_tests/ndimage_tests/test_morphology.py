@@ -62,7 +62,7 @@ class TestIterateStructure:
 
 @testing.parameterize(*(
     testing.product({
-        'x_dtype': [numpy.bool, numpy.int8, numpy.uint8, numpy.float32,
+        'x_dtype': [numpy.bool_, numpy.int8, numpy.uint8, numpy.float32,
                     numpy.float64],
         'border_value': [0, 1],
         'structure': [None, [1, 0, 1], [1, 1, 0]],
@@ -100,7 +100,7 @@ class TestBinaryErosionAndDilation1d:
 
 @testing.parameterize(*(
     testing.product({
-        'x_dtype': [numpy.bool, numpy.float64],
+        'x_dtype': [numpy.bool_, numpy.float64],
         'border_value': [0, 1],
         'connectivity': [1, 2],
         'origin': [0, 1],
@@ -147,7 +147,7 @@ class TestBinaryOpeningAndClosing:
 
 @testing.parameterize(*(
     testing.product({
-        'x_dtype': [numpy.bool, numpy.float64],
+        'x_dtype': [numpy.bool_, numpy.float64],
         'connectivity': [1, 2],
         'origin': [-1, 0, 1],
         'data': [[[0, 0, 0, 0, 0, 0, 0, 0],
@@ -196,7 +196,7 @@ class TestBinaryFillHoles:
 
 @testing.parameterize(*(
     testing.product({
-        'x_dtype': [numpy.bool, numpy.float64],
+        'x_dtype': [numpy.bool_, numpy.float64],
         'struct': ['same', 'separate'],
         'origins': [((0, 0), (0, 0)),
                     ((0, 1), (-1, 0))],
@@ -256,7 +256,7 @@ class TestBinaryHitOrMiss:
 
 @testing.parameterize(*(
     testing.product({
-        'x_dtype': [numpy.bool, numpy.float64],
+        'x_dtype': [numpy.bool_, numpy.float64],
         'border_value': [0, 1],
         'connectivity': [1, 2],
         'origin': [0, 1],

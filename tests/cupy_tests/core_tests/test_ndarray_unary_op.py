@@ -5,6 +5,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 
 
@@ -17,8 +18,8 @@ class TestArrayBoolOp(unittest.TestCase):
             assert not bool(cupy.array((), dtype=dtype))
 
     def test_bool_scalar_bool(self):
-        assert bool(cupy.array(True, dtype=numpy.bool))
-        assert not bool(cupy.array(False, dtype=numpy.bool))
+        assert bool(cupy.array(True, dtype=numpy.bool_))
+        assert not bool(cupy.array(False, dtype=numpy.bool_))
 
     @testing.for_all_dtypes()
     def test_bool_scalar(self, dtype):
@@ -26,10 +27,11 @@ class TestArrayBoolOp(unittest.TestCase):
         assert not bool(cupy.array(0, dtype=dtype))
 
     def test_bool_one_element_bool(self):
-        assert bool(cupy.array([True], dtype=numpy.bool))
-        assert not bool(cupy.array([False], dtype=numpy.bool))
+        assert bool(cupy.array([True], dtype=numpy.bool_))
+        assert not bool(cupy.array([False], dtype=numpy.bool_))
 
     @testing.for_all_dtypes()
+    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_bool_one_element(self, dtype):
         assert bool(cupy.array([1], dtype=dtype))
         assert not bool(cupy.array([0], dtype=dtype))

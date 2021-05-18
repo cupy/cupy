@@ -1,5 +1,7 @@
+import contextlib
 import pickle
 import unittest
+import warnings
 
 import numpy
 import pytest
@@ -9,8 +11,9 @@ try:
 except ImportError:
     scipy_available = False
 
+from cupy_backends.cuda.api import driver
 import cupy
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 from cupy import testing
 from cupyx.scipy import sparse
 
@@ -963,10 +966,19 @@ class TestCsrMatrixScipyComparison(unittest.TestCase):
         assert 2 == len(M.indices)  # unaffected content
         return M
 
+    @testing.with_requires('scipy>1.6.0')
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_has_sorted_indices(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.has_sorted_indices
+
+    # TODO(asi1024): Remove test after the fixed version is released.
+    # https://github.com/scipy/scipy/pull/13426
+    @testing.with_requires('scipy<=1.6.0')
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_sorted_indices_for_old_scipy(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return bool(m.has_sorted_indices)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_has_sorted_indices2(self, xp, sp):
@@ -1340,7 +1352,7 @@ class TestCsrMatrixScipyCompressedMinMax(unittest.TestCase):
                 # If all elements in a row/column are set to infinity, we make
                 # it have at least a zero so spmatrix.min(axis=axis) returns
                 # zero for the row/column.
-                mask = numpy.zeros_like(dm_data, dtype=numpy.bool)
+                mask = numpy.zeros_like(dm_data, dtype=numpy.bool_)
                 if axis == 0:
                     rows = dm_data.argmin(axis=0)
                     cols = numpy.arange(20)
@@ -1682,6 +1694,8 @@ class TestCsrMatrixGetitem2(unittest.TestCase):
 }))
 @testing.with_requires('scipy')
 @testing.gpu
+@unittest.skipIf(driver.get_build_version() >= 11000,
+                 'CUDA built-in CUB SpMV is buggy, see cupy/cupy#3822')
 @unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubSpmv(unittest.TestCase):
 
@@ -1882,11 +1896,35 @@ class TestCsrMatrixComparison(unittest.TestCase):
         elif self.opt == '_ge_':
             return a >= b
 
+    @contextlib.contextmanager
+    def _ignore_efficiency_warning(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
+            yield
+
+    @contextlib.contextmanager
+    def _assert_warns_efficiency(self, sp, scalar_rhs=None):
+        if scalar_rhs is None and self._compare(0, 0):
+            with testing.assert_warns(sp.SparseEfficiencyWarning):
+                yield
+        elif scalar_rhs is not None and self._compare(0, scalar_rhs):
+            if sp is sparse:  # cupy
+                # TODO(kataoka): Test it, too. But, it seems the current
+                # implementation does not depend on the scalar value.
+                with self._ignore_efficiency_warning():
+                    yield
+            else:  # scipy
+                with testing.assert_warns(sp.SparseEfficiencyWarning):
+                    yield
+        else:
+            yield
+
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_sparse(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         b = self._make_sp_matrix(self.b_dtype, xp, sp)
-        return self._compare(a, b)
+        with self._assert_warns_efficiency(sp):
+            return self._compare(a, b)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_sparse_row(self, xp, sp):
@@ -1896,7 +1934,8 @@ class TestCsrMatrixComparison(unittest.TestCase):
             # SciPy does not support sparse broadcasting
             return self._compare(a, b.toarray())
         else:
-            return self._compare(a, b).toarray()
+            with self._assert_warns_efficiency(sp):
+                return self._compare(a, b).toarray()
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_sparse_col(self, xp, sp):
@@ -1906,7 +1945,8 @@ class TestCsrMatrixComparison(unittest.TestCase):
             # SciPy does not support sparse broadcasting
             return self._compare(a, b.toarray())
         else:
-            return self._compare(a, b).toarray()
+            with self._assert_warns_efficiency(sp):
+                return self._compare(a, b).toarray()
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_dense(self, xp, sp):
@@ -1929,12 +1969,14 @@ class TestCsrMatrixComparison(unittest.TestCase):
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_plus(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
-        return self._compare(a, 0.5)
+        with self._assert_warns_efficiency(sp, 0.5):
+            return self._compare(a, 0.5)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_minus(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
-        return self._compare(a, -0.5)
+        with self._assert_warns_efficiency(sp, -0.5):
+            return self._compare(a, -0.5)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_zero(self, xp, sp):
@@ -1942,12 +1984,14 @@ class TestCsrMatrixComparison(unittest.TestCase):
             # <= and >= with 0 are not supported by SciPy
             pytest.skip()
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
-        return self._compare(a, 0)
+        with self._assert_warns_efficiency(sp, 0):
+            return self._compare(a, 0)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_nan(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
-        return self._compare(a, numpy.nan)
+        with self._assert_warns_efficiency(sp, numpy.nan):
+            return self._compare(a, numpy.nan)
 
     def test_ng_shape(self):
         xp, sp = cupy, sparse
@@ -1956,7 +2000,8 @@ class TestCsrMatrixComparison(unittest.TestCase):
             shape = self.shape[0] + i, self.shape[1] + j
             b = self._make_sp_matrix_shape(shape, self.b_dtype, xp, sp)
             with self.assertRaises(ValueError):
-                self._compare(a, b)
+                with self._ignore_efficiency_warning():
+                    self._compare(a, b)
 
 
 @testing.parameterize(*testing.product({
@@ -1999,8 +2044,8 @@ class TestCsrMatrixDiagonal(unittest.TestCase):
         m, n = self.shape
         for k in range(-m+1, n):
             m_st, n_st = max(0, -k), max(0, k)
-            for l in (-1, 0, 1):
-                x_len = min(m - m_st, n - n_st) + l
+            for d in (-1, 0, 1):
+                x_len = min(m - m_st, n - n_st) + d
                 if x_len <= 0:
                     continue
                 x = numpy.ones((x_len,), dtype=dtype)

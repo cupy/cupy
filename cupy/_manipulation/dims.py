@@ -1,6 +1,6 @@
 import cupy
-from cupy import core
-import cupy.core._routines_manipulation as _manipulation
+from cupy import _core
+import cupy._core._routines_manipulation as _manipulation
 
 
 # Shape map for atleast_nd functions
@@ -95,7 +95,7 @@ def atleast_3d(*arys):
     return _atleast_nd_helper(3, arys)
 
 
-broadcast = core.broadcast
+broadcast = _core.broadcast
 
 
 def broadcast_arrays(*args):
@@ -126,7 +126,7 @@ def broadcast_to(array, shape):
     .. seealso:: :func:`numpy.broadcast_to`
 
     """
-    return core.broadcast_to(array, shape)
+    return _core.broadcast_to(array, shape)
 
 
 def expand_dims(a, axis):
