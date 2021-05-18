@@ -753,7 +753,7 @@ from cupy._core._reduction import ReductionKernel  # NOQA
 from cupy._core import fromDlpack  # NOQA
 
 
-def asnumpy(a, stream=None, order='C'):
+def asnumpy(a, stream=None, order='C', out=None):
     """Returns an array on the host memory from an arbitrary source array.
 
     Args:
@@ -765,16 +765,24 @@ def asnumpy(a, stream=None, order='C'):
         order ({'C', 'F', 'A'}): The desired memory layout of the host
             array. When ``order`` is 'A', it uses 'F' if ``a`` is
             fortran-contiguous and 'C' otherwise.
+        out (numpy.ndarray): The output array to be written to. It must have
+            compatible shape and dtype with those of ``a``'s.
+
     Returns:
         numpy.ndarray: Converted array on the host memory.
 
     """
     if isinstance(a, ndarray):
-        return a.get(stream=stream, order=order)
+        return a.get(stream=stream, order=order, out=out)
     elif hasattr(a, "__cuda_array_interface__"):
-        return array(a).get(stream=stream, order=order)
+        return array(a).get(stream=stream, order=order, out=out)
     else:
-        return _numpy.asarray(a, order=order)
+        temp = _numpy.asarray(a, order=order)
+        if out is not None:
+            out[...] = temp
+        else:
+            out = temp
+        return out
 
 
 _cupy = _sys.modules[__name__]
