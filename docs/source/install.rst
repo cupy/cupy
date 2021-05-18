@@ -444,6 +444,7 @@ The following features are not available due to the limitation of ROCm or becaus
 * Multi-GPU FFT and FFT callback
 * Some random number generation algorithms
 * Several options in RawKernel/RawModule APIs: Jitify, dynamic parallelism
+* Per-thread default stream
 
 The following features are not yet supported:
 
@@ -460,7 +461,7 @@ The following features may not work in edge cases (e.g., some combinations of dt
 
 * ``cupy.ndarray.__getitem__`` (`#4653 <https://github.com/cupy/cupy/pull/4653>`_)
 * ``cupy.ix_`` (`#4654 <https://github.com/cupy/cupy/pull/4654>`_)
-* Some polynomial routines (`#4656 <https://github.com/cupy/cupy/pull/4656>`_, `#4658 <https://github.com/cupy/cupy/pull/4658>`_, `#4758 <https://github.com/cupy/cupy/pull/4758>`_, `#4759 <https://github.com/cupy/cupy/pull/4759>`_)
+* Some polynomial routines (`#4758 <https://github.com/cupy/cupy/pull/4758>`_, `#4759 <https://github.com/cupy/cupy/pull/4759>`_)
 * ``cupy.broadcast`` (`#4662 <https://github.com/cupy/cupy/pull/4662>`_)
 * ``cupy.convolve`` (`#4668 <https://github.com/cupy/cupy/pull/4668>`_)
 * ``cupy.correlate`` (`#4781 <https://github.com/cupy/cupy/pull/4781>`_)

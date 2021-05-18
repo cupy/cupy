@@ -72,7 +72,7 @@ main() {
 
       # Uninstall CUDA to ensure it's a clean ROCm environment
       # https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-tk-and-driver
-      apt-get --purge remove "*cublas*" "*cufft*" "*curand*" "*cusolver*" "*cusparse*" "*npp*" "*nvjpeg*" "cuda*" "nsight*" "*cudnn*" -qqy
+      apt-get --purge remove "*cublas*" "*cufft*" "*curand*" "*cusolver*" "*cusparse*" "*npp*" "cuda*" "nsight*" -qqy
       apt-get autoremove -qqy
 
       apt update -qqy

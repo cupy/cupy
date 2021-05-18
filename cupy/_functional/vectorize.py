@@ -2,7 +2,7 @@ import numpy
 
 from cupy import _core
 from cupyx.jit import _interface
-from cupyx.jit import _types
+from cupyx.jit import _cuda_types
 
 
 def _get_input_type(arg):
@@ -55,13 +55,13 @@ class vectorize(object):
 
     @staticmethod
     def _parse_out_param(return_type):
-        if isinstance(return_type, _types.Scalar):
+        if isinstance(return_type, _cuda_types.Scalar):
             dtypes = [return_type.dtype]
             out_lval = 'out0'
-        elif isinstance(return_type, _types.Tuple):
+        elif isinstance(return_type, _cuda_types.Tuple):
             dtypes = []
             for t in return_type.types:
-                if not isinstance(t, _types.Scalar):
+                if not isinstance(t, _cuda_types.Scalar):
                     raise TypeError(f'Invalid return type: {return_type}')
                 dtypes.append(t.dtype)
             out_lvals = ', '.join([f'out{i}' for i in range(len(dtypes))])
@@ -77,7 +77,7 @@ class vectorize(object):
         kern = self._kernel_cache.get(itypes, None)
 
         if kern is None:
-            in_types = [_types.Scalar(t) for t in itypes]
+            in_types = [_cuda_types.Scalar(t) for t in itypes]
             ret_type = None
             if self.otypes is not None:
                 # TODO(asi1024): Implement

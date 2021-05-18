@@ -344,7 +344,7 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
     cond = factor[t] * numpy.finfo(t).eps
     cutoff = cond * cupy.max(w)
     above_cutoff = (w > cutoff)
-    n_large = above_cutoff.sum()
+    n_large = above_cutoff.sum().item()
     s = cupy.zeros_like(w)
     s[:n_large] = cupy.sqrt(w[above_cutoff])
     if not return_singular_vectors:
