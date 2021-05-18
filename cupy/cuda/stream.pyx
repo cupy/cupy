@@ -205,11 +205,7 @@ class BaseStream(object):
         # This operator is implemented to compare the singleton instance
         # of null stream (Stream.null) can safely be compared with null
         # stream instance created by a user.
-        if self.device_id == -1 or other.device_id == -1:
-            return self.ptr == other.ptr
-        else:
-            return (self.device_id == other.device_id
-                    and self.ptr == other.ptr)
+        return self.ptr == other.ptr
 
     def __enter__(self):
         tls = _ThreadLocal.get()
@@ -376,7 +372,7 @@ class Stream(BaseStream):
         if is_shutting_down():
             return
         tls = _ThreadLocal.get()
-        if self.ptr not in (0, 1, 2):
+        if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
             current_ptr = tls.get_current_stream_ptr()
             if <intptr_t>self.ptr == current_ptr:
                 tls.set_current_stream(get_default_stream())
