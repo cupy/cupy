@@ -176,7 +176,7 @@ class TestEigsh:
         rank = 5
         # density is ignored.
         a = testing.shaped_random((n, rank), xp, dtype=dtype, scale=1)
-        a = a @ a.T
+        a = a @ a.conj().T
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
