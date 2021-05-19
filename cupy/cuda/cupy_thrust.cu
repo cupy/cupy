@@ -6,7 +6,7 @@
 #include <thrust/sort.h>
 #include <thrust/tuple.h>
 #include <thrust/execution_policy.h>
-#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2))
+#if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
 // This is used to avoid a problem with constexpr in functions declarations introduced in
 // cuda 11.2, MSVC 15 does not fully support it so we need a dummy constexpr declaration
 // that is provided by this header. However optional.h is only available
@@ -143,7 +143,7 @@ bool _cmp_less(const T& lhs, const T& rhs) {
 template <>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-constexpr
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool less<complex<float>>::operator() (
     const complex<float>& lhs, const complex<float>& rhs) const {
@@ -155,7 +155,7 @@ bool less<complex<float>>::operator() (
 template <>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-constexpr
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool less<complex<double>>::operator() (
     const complex<double>& lhs, const complex<double>& rhs) const {
@@ -167,7 +167,7 @@ bool less<complex<double>>::operator() (
 template <>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-constexpr
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool less< tuple<size_t, complex<float>> >::operator() (
     const tuple<size_t, complex<float>>& lhs, const tuple<size_t, complex<float>>& rhs) const {
@@ -179,7 +179,7 @@ bool less< tuple<size_t, complex<float>> >::operator() (
 template <>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-constexpr
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool less< tuple<size_t, complex<double>> >::operator() (
     const tuple<size_t, complex<double>>& lhs, const tuple<size_t, complex<double>>& rhs) const {
@@ -219,7 +219,7 @@ bool _real_less(const T& lhs, const T& rhs) {
 template <>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-constexpr
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool less<float>::operator() (
     const float& lhs, const float& rhs) const {
@@ -231,7 +231,7 @@ bool less<float>::operator() (
 template <>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-constexpr
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool less<double>::operator() (
     const double& lhs, const double& rhs) const {
@@ -243,7 +243,7 @@ bool less<double>::operator() (
 template <>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-constexpr
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool less< tuple<size_t, float> >::operator() (
     const tuple<size_t, float>& lhs, const tuple<size_t, float>& rhs) const {
@@ -255,7 +255,7 @@ bool less< tuple<size_t, float> >::operator() (
 template <>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-constexpr
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool less< tuple<size_t, double> >::operator() (
     const tuple<size_t, double>& lhs, const tuple<size_t, double>& rhs) const {
@@ -283,7 +283,7 @@ __host__ __device__ __forceinline__ bool isnan(const __half& x) {
 template <>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-constexpr
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool less<__half>::operator() (const __half& lhs, const __half& rhs) const {
     return _real_less<__half>(lhs, rhs);
@@ -293,7 +293,7 @@ bool less<__half>::operator() (const __half& lhs, const __half& rhs) const {
 template <>
 __host__ __device__ __forceinline__
 #if (__CUDACC_VER_MAJOR__ >11 || (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ >= 2) || HIP_VERSION >= 402)
-constexpr
+THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
 bool less< tuple<size_t, __half> >::operator() (
     const tuple<size_t, __half>& lhs, const tuple<size_t, __half>& rhs) const {
