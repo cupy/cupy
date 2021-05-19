@@ -15,6 +15,7 @@ try:
     import scipy.ndimage  # NOQA
     scipy_version = numpy.lib.NumpyVersion(scipy.__version__)
 except ImportError:
+    scipy_version = numpy.lib.NumpyVersion('0.0.0')
     pass
 
 stats_ops = ['sum', 'mean', 'variance', 'standard_deviation', 'center_of_mass']
