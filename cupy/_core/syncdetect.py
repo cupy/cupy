@@ -2,8 +2,6 @@ import contextlib
 import threading
 import warnings
 
-from cupy import _util
-
 
 _thread_local = threading.local()
 
