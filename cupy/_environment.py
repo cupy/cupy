@@ -398,7 +398,10 @@ def _detect_duplicate_installation():
         'cupy-cuda110',
         'cupy-cuda111',
         'cupy-cuda112',
+        'cupy-cuda113',
         'cupy-rocm-4-0',
+        'cupy-rocm-4-1',
+        'cupy-rocm-4-2',
     ])
     installed = set(
         [p.project_name for p in pkg_resources.working_set])
