@@ -10,8 +10,6 @@ import shutil
 import sys
 import warnings
 
-import pkg_resources
-
 
 # '' for uninitialized, None for non-existing
 _cuda_path = ''
@@ -385,8 +383,13 @@ You can install the library by:
 
 
 def _detect_duplicate_installation():
+    # importlib.metadata only available in Python 3.8+.
+    if sys.version_info < (3, 8):
+        return
+    import importlib.metadata
+
     # List of all CuPy packages, including out-dated ones.
-    known = set([
+    known = [
         'cupy',
         'cupy-cuda80',
         'cupy-cuda90',
@@ -402,10 +405,10 @@ def _detect_duplicate_installation():
         'cupy-rocm-4-0',
         'cupy-rocm-4-1',
         'cupy-rocm-4-2',
-    ])
-    installed = set(
-        [p.project_name for p in pkg_resources.working_set])
-    cupy_installed = known & installed
+    ]
+    cupy_installed = [
+        name for name in known
+        if list(importlib.metadata.distributions(name=name))]
     if 1 < len(cupy_installed):
         cupy_packages_list = ', '.join(sorted(cupy_installed))
         warnings.warn(f'''
