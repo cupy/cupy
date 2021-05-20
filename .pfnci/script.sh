@@ -68,7 +68,7 @@ main() {
       python3.7 -m pip install cython numpy
 
       wget -qO - http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
-      echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/4.0.1/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
+      echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
 
       # Uninstall CUDA to ensure it's a clean ROCm environment
       # https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-tk-and-driver
