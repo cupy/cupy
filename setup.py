@@ -31,11 +31,11 @@ requirements = {
     ],
 
     'install': [
-        'numpy>=1.17',
+        'numpy>=1.17,<1.23',  # see #4773
         'fastrlock>=0.5',
     ],
     'all': [
-        'scipy>=1.4',
+        'scipy>=1.4,<1.9',  # see #4773
         'optuna>=2.0',
     ],
 
