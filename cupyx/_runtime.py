@@ -217,24 +217,20 @@ class _RuntimeInfo(object):
     def __str__(self):
         records = [
             ('OS',  platform.platform()),
+            ('Python Version', platform.python_version()),
             ('CuPy Version', self.cupy_version),
             ('CuPy Platform', 'NVIDIA CUDA' if not is_hip else 'AMD ROCm'),
             ('NumPy Version', self.numpy_version),
             ('SciPy Version', self.scipy_version),
-            ('Python Version', platform.python_version()),
             ('Cython Build Version', self.cython_build_version),
             ('Cython Runtime Version', self.cython_version),
             ('CUDA Root', self.cuda_path),
+            ('hipcc PATH' if is_hip else 'nvcc PATH', self.nvcc_path),
 
             ('CUDA Build Version', self.cuda_build_version),
             ('CUDA Driver Version', self.cuda_driver_version),
 
             ('CUDA Runtime Version', self.cuda_runtime_version),
-        ]
-
-        compiler_name = 'hipcc' if is_hip else 'nvcc'
-        records += [
-            (f'{compiler_name} PATH', self.nvcc_path)
         ]
 
         records += [
