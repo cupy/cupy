@@ -58,7 +58,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 (CUDA 10.0) / v8.0 (CUDA 10.1) / v8.1 (CUDA 10.2+) / v8.2 (CUDA 10.2+)
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 / v8.0 / v8.1 / v8.2
 
     * The library to accelerate deep neural network computations.
 
