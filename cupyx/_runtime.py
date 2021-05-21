@@ -232,7 +232,7 @@ class _RuntimeInfo(object):
             ('CUDA Runtime Version', self.cuda_runtime_version),
         ]
 
-        compiler_name = 'hipcc' if is_hip else 'NVCC'
+        compiler_name = 'hipcc' if is_hip else 'nvcc'
         records += [
             (f'{compiler_name} PATH', self.nvcc_path)
         ]
