@@ -225,7 +225,7 @@ The current platform ({}) is not supported.'''.format(target_platform))
             shutil.move(
                 os.path.join(outdir, 'libcutensor', 'lib', cuda),
                 os.path.join(destination, 'lib'))
-            if cuda == '10.2':
+            if cuda == '10.1':
                 license = 'license.pdf'  # v1.2.2
             else:
                 license = 'license.txt'  # v1.3.0
