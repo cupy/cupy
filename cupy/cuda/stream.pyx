@@ -62,6 +62,10 @@ cdef class _ThreadLocal:
         return self.current_stream
 
 
+cdef get_default_stream():
+    return Stream.ptds if stream_module.is_ptds_enabled() else Stream.null
+
+
 cdef intptr_t get_current_stream_ptr():
     """C API to get current CUDA stream pointer.
 
