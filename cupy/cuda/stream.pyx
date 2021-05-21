@@ -62,6 +62,10 @@ cdef class _ThreadLocal:
         return self.current_stream
 
 
+cdef get_default_stream():
+    return Stream.ptds if stream_module.is_ptds_enabled() else Stream.null
+
+
 cdef intptr_t get_current_stream_ptr():
     """C API to get current CUDA stream pointer.
 
@@ -339,15 +343,15 @@ class Stream(BaseStream):
         if is_shutting_down():
             return
         tls = _ThreadLocal.get()
-        if self.ptr:
-            current_ptr = <intptr_t>tls.get_current_stream_ptr()
+        if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
+            current_ptr = tls.get_current_stream_ptr()
             if <intptr_t>self.ptr == current_ptr:
-                tls.set_current_stream(self.null)
+                tls.set_current_stream(get_default_stream())
             runtime.streamDestroy(self.ptr)
         else:
             current_stream = tls.get_current_stream()
             if current_stream == self:
-                tls.set_current_stream(self.null)
+                tls.set_current_stream(get_default_stream())
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
 
