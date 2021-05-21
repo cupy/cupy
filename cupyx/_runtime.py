@@ -144,6 +144,11 @@ class _RuntimeInfo(object):
         else:
             self.cuda_path = cupy._environment.get_rocm_path()
 
+        if not is_hip:
+            self.nvcc_path = cupy._environment.get_nvcc_path()
+        else:
+            self.nvcc_path = cupy._environment.get_hipcc_path()
+
         self.cuda_build_version = cupy.cuda.driver.get_build_version()
         self.cuda_driver_version = _eval_or_error(
             cupy.cuda.runtime.driverGetVersion,
@@ -212,12 +217,15 @@ class _RuntimeInfo(object):
     def __str__(self):
         records = [
             ('OS',  platform.platform()),
+            ('Python Version', platform.python_version()),
             ('CuPy Version', self.cupy_version),
+            ('CuPy Platform', 'NVIDIA CUDA' if not is_hip else 'AMD ROCm'),
             ('NumPy Version', self.numpy_version),
             ('SciPy Version', self.scipy_version),
             ('Cython Build Version', self.cython_build_version),
             ('Cython Runtime Version', self.cython_version),
             ('CUDA Root', self.cuda_path),
+            ('hipcc PATH' if is_hip else 'nvcc PATH', self.nvcc_path),
 
             ('CUDA Build Version', self.cuda_build_version),
             ('CUDA Driver Version', self.cuda_driver_version),
