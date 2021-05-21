@@ -218,6 +218,7 @@ class _RuntimeInfo(object):
         records = [
             ('OS',  platform.platform()),
             ('CuPy Version', self.cupy_version),
+            ('CuPy Platform', 'NVIDIA CUDA' if not is_hip else 'AMD ROCm'),
             ('NumPy Version', self.numpy_version),
             ('SciPy Version', self.scipy_version),
             ('Python Version', platform.python_version()),
