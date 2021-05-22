@@ -1,9 +1,8 @@
 from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda cimport stream as stream_module
+from cupy_backends.cuda cimport stream as backends_stream
 
 import os
 import threading
-import weakref
 
 from cupy import _util
 
@@ -12,25 +11,16 @@ cdef object _thread_local = threading.local()
 
 
 cdef class _ThreadLocal:
-    # We keep both current_stream_ref and current_stream_stack because the
-    # former is also used when calling stream.use(). This bookkeeping enables
-    # correct rewinding when "with" blocks are mixed with ".use()" (though
-    # this is considered an anti-pattern). As the name suggested, stream
-    # lifetime is not tracked in current_stream_ref.
-
-    cdef list current_stream_ref  # list of object
-    cdef list current_device_id_stack  # list of int
-    cdef list current_stream_stack  # list of list
+    cdef list current_streams  # list of object (index = device ID)
+    cdef list stream_stacks  # list of list (index = device ID)
+    cdef list device_id_stack  # list of int
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
-        self.current_stream_ref = []
-        self.current_device_id_stack = []
-        self.current_stream_stack = []
-        for i in range(num_devices):
-            default_stream = get_default_stream()
-            self.current_stream_ref.append(weakref.ref(default_stream))
-            self.current_stream_stack.append([default_stream])
+        default_stream = get_default_stream()
+        self.current_streams = [default_stream for i in range(num_devices)]
+        self.stream_stacks = [list() for i in range(num_devices)]
+        self.device_id_stack = []
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -42,38 +32,36 @@ cdef class _ThreadLocal:
 
     cdef void push_stream(self, stream, int device_id) except*:
         assert device_id >= 0
-        self.current_stream_stack[device_id].append(stream)
         # record device_id to prevent from popping the wrong stream at exit
-        self.current_device_id_stack.append(device_id)
-        self.set_current_stream(stream)
+        self.device_id_stack.append(device_id)
+        self.stream_stacks[device_id].append(self.current_streams[device_id])
+        self.set_current_stream(stream, device_id)
 
     cdef void pop_stream(self) except*:
-        cdef int device_id = self.current_device_id_stack.pop()
-        self.current_stream_stack[device_id].pop()
-        prev_stream = self.current_stream_stack[device_id][-1]
-        self.set_current_stream(prev_stream)
-        assert len(self.current_stream_stack[device_id]) >= 1
+        cdef int device_id = self.device_id_stack.pop()
+        prev_stream = self.stream_stacks[device_id].pop()
+        self.set_current_stream(prev_stream, device_id)
 
-    cdef set_current_stream(self, stream):
-        cdef intptr_t ptr = <intptr_t>stream.ptr
-        cdef int device_id = stream.device_id
+    cdef set_current_stream(self, stream, int device_id):
         if device_id == -1:
-            device_id = runtime.getDevice()
-        stream_module.set_current_stream_ptr(ptr, device_id)
-        self.current_stream_ref[device_id] = weakref.ref(stream)
+            if stream.device_id == -1:
+                device_id = runtime.getDevice()
+            else:
+                device_id = stream.device_id
+        backends_stream.set_current_stream_ptr(stream.ptr, device_id)
+        self.current_streams[device_id] = stream
 
     cdef get_current_stream(self, int device_id=-1):
         if device_id == -1:
             device_id = runtime.getDevice()
-        stream_ref = self.current_stream_ref[device_id]
-        return stream_ref()
+        return self.current_streams[device_id]
 
     cdef intptr_t get_current_stream_ptr(self):
-        return stream_module.get_current_stream_ptr()
+        return backends_stream.get_current_stream_ptr()
 
 
 cdef get_default_stream():
-    return Stream.ptds if stream_module.is_ptds_enabled() else Stream.null
+    return Stream.ptds if backends_stream.is_ptds_enabled() else Stream.null
 
 
 cdef intptr_t get_current_stream_ptr():
@@ -229,8 +217,8 @@ class BaseStream(object):
         """
         tls = _ThreadLocal.get()
         cdef int device_id = self.device_id
-        check_stream_device_match(device_id)
-        tls.set_current_stream(self)
+        device_id = check_stream_device_match(device_id)
+        tls.set_current_stream(self, device_id)
         return self
 
     @property
@@ -371,16 +359,8 @@ class Stream(BaseStream):
         cdef intptr_t current_ptr
         if is_shutting_down():
             return
-        tls = _ThreadLocal.get()
         if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
-            current_ptr = tls.get_current_stream_ptr()
-            if <intptr_t>self.ptr == current_ptr:
-                tls.set_current_stream(get_default_stream())
             runtime.streamDestroy(self.ptr)
-        else:
-            current_stream = tls.get_current_stream()
-            if current_stream == self:
-                tls.set_current_stream(get_default_stream())
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
 
