@@ -14,7 +14,7 @@
 #include <thrust/optional.h>
 
 #if (defined(_MSC_VER)
-#define THRUST_OPTIONAL_CPP11_CONSTEXPR constexpr
+#define THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS constexpr
 #else
 #define THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS THRUST_OPTIONAL_CPP11_CONSTEXPR
 #endif
