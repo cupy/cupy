@@ -12,6 +12,11 @@
 // that is provided by this header. However optional.h is only available
 // starting CUDA 10.1
 #include <thrust/optional.h>
+
+#if (defined(_MSC_VER)
+#define THRUST_OPTIONAL_CPP11_CONSTEXPR constexpr
+#endif
+
 #endif
 #include "cupy_thrust.h"
 
