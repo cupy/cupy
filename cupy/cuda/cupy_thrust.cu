@@ -13,7 +13,7 @@
 // starting CUDA 10.1
 #include <thrust/optional.h>
 
-#if (defined(_MSC_VER)
+#ifdef _MSC_VER
 #define THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS constexpr
 #else
 #define THRUST_OPTIONAL_CPP11_CONSTEXPR_LESS THRUST_OPTIONAL_CPP11_CONSTEXPR
