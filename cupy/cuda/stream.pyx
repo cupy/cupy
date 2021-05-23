@@ -12,25 +12,27 @@ cdef object _thread_local = threading.local()
 
 
 cdef class _ThreadLocal:
+    # TODO(takagi): Update the following comment
     # We keep both current_stream_ref and current_stream_stack because the
     # former is also used when calling stream.use(). This bookkeeping enables
     # correct rewinding when "with" blocks are mixed with ".use()" (though
     # this is considered an anti-pattern). As the name suggested, stream
     # lifetime is not tracked in current_stream_ref.
 
-    cdef list current_stream_ref  # list of object
     cdef list current_device_id_stack  # list of int
-    cdef list current_stream_stack  # list of list
+
+    # A list of list of (stream, stream_ref or None). We say the second element
+    # of the tuple as an alternative stream, that shadows the default stream or
+    # an context stream when `use`d.
+    cdef list current_stream_stack
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
-        self.current_stream_ref = []
         self.current_device_id_stack = []
         self.current_stream_stack = []
         for i in range(num_devices):
             default_stream = get_default_stream()
-            self.current_stream_ref.append(weakref.ref(default_stream))
-            self.current_stream_stack.append([default_stream])
+            self.current_stream_stack.append([(default_stream, None)])
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -42,31 +44,58 @@ cdef class _ThreadLocal:
 
     cdef void push_stream(self, stream, int device_id) except*:
         assert device_id >= 0
-        self.current_stream_stack[device_id].append(stream)
+        self.current_stream_stack[device_id].append((stream, None))
         # record device_id to prevent from popping the wrong stream at exit
         self.current_device_id_stack.append(device_id)
-        self.set_current_stream(stream)
+        self._set_current_stream_ptr(<intptr_t>stream.ptr, device_id)
 
     cdef void pop_stream(self) except*:
+        cdef intptr_t ptr
         cdef int device_id = self.current_device_id_stack.pop()
         self.current_stream_stack[device_id].pop()
-        prev_stream = self.current_stream_stack[device_id][-1]
-        self.set_current_stream(prev_stream)
+        prev_stream, prev_stream_alt_ref = (
+            self.current_stream_stack[device_id][-1])
+        if prev_stream_alt_ref and prev_stream_alt_ref():
+            ptr = prev_stream_alt_ref().ptr
+            self._set_current_stream_ptr(ptr, device_id)
+        else:
+            # Clean up invalidated weakref
+            self.current_stream_stack[device_id][-1] = (prev_stream, None)
+            ptr = prev_stream.ptr
+            self._set_current_stream_ptr(ptr, device_id)
         assert len(self.current_stream_stack[device_id]) >= 1
 
-    cdef set_current_stream(self, stream):
-        cdef intptr_t ptr = <intptr_t>stream.ptr
-        cdef int device_id = stream.device_id
+    cdef set_alternative_stream(self, stream_alt, int device_id):
+        assert device_id >= 0
+        cdef intptr_t ptr = <intptr_t>stream_alt.ptr
+        stream, _ = self.current_stream_stack[device_id][-1]
+        self.current_stream_stack[device_id][-1] = (
+            stream, weakref.ref(stream_alt))
+        self._set_current_stream_ptr(ptr, device_id)
+
+    cdef clear_alternative_stream(self, stream_alt):
+        # Remove the alternative stream at the topmost of the stack with
+        # properly rewinding the current stream pointer to that of the context
+        # stream. Alternative streams in the middle of the stack are safely
+        # handled in `pop_stream()`.
+        cdef int device_id = stream_alt.device_id
         if device_id == -1:
             device_id = runtime.getDevice()
+        stream, _ = self.current_stream_stack[device_id][-1]
+        self.current_stream_stack[device_id][-1] = (stream, None)
+        self._set_current_stream_ptr(<intptr_t>stream.ptr, device_id)
+
+    cdef _set_current_stream_ptr(self, intptr_t ptr, int device_id):
         stream_module.set_current_stream_ptr(ptr, device_id)
-        self.current_stream_ref[device_id] = weakref.ref(stream)
 
     cdef get_current_stream(self, int device_id=-1):
         if device_id == -1:
             device_id = runtime.getDevice()
-        stream_ref = self.current_stream_ref[device_id]
-        return stream_ref()
+        stream, stream_alt_ref = self.current_stream_stack[device_id][-1]
+        if stream_alt_ref:
+            return stream_alt_ref()
+        else:
+            return stream
 
     cdef intptr_t get_current_stream_ptr(self):
         return stream_module.get_current_stream_ptr()
@@ -229,8 +258,8 @@ class BaseStream(object):
         """
         tls = _ThreadLocal.get()
         cdef int device_id = self.device_id
-        check_stream_device_match(device_id)
-        tls.set_current_stream(self)
+        device_id = check_stream_device_match(device_id)
+        tls.set_alternative_stream(self, device_id)
         return self
 
     @property
@@ -373,14 +402,21 @@ class Stream(BaseStream):
             return
         tls = _ThreadLocal.get()
         if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
+            # TODO(takagi): The current stream of a device that is not set to
+            # the current device can be being deleted.
             current_ptr = tls.get_current_stream_ptr()
             if <intptr_t>self.ptr == current_ptr:
-                tls.set_current_stream(get_default_stream())
+                # When the current stream is `__del__`ed, it is always set as
+                # an alternative stream because a context stream is strongly
+                # referenced by the stack so it can not be `__del__`ed before
+                # it is poped from the stack and invalidated as the current
+                # stream.
+                tls.clear_alternative_stream(self)
             runtime.streamDestroy(self.ptr)
         else:
             current_stream = tls.get_current_stream()
             if current_stream == self:
-                tls.set_current_stream(get_default_stream())
+                tls.clear_alternative_stream(self)
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
 
