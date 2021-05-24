@@ -83,7 +83,7 @@ Measurements
    minimum
    minimum_position
    standard_deviation
-   sum
+   sum_labels
    variance
 
 
