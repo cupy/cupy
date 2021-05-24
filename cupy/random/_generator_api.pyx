@@ -171,10 +171,10 @@ class Generator:
         cdef ndarray y
         if high is None:
             lo = 0
-            hi1 = int(low) - 1
+            hi1 = int(low)
         else:
             lo = int(low)
-            hi1 = int(high) - 1
+            hi1 = int(high)
 
         if lo > hi1:
             raise ValueError('low >= high')
