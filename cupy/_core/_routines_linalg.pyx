@@ -647,7 +647,8 @@ cpdef ndarray tensordot_core_v11(
 cdef Py_ssize_t _get_stride_for_strided_batched_gemm(ndarray a) except? 0:
     cdef int ndim = a._shape.size()
     assert ndim > 2
-    return a._strides[ndim - 3] // <Py_ssize_t>a.itemsize
+    assert a._c_contiguous
+    return a._shape[ndim - 2] * a._shape[ndim - 1]
 
 
 cdef _mat_ptrs_kernel = ElementwiseKernel(
