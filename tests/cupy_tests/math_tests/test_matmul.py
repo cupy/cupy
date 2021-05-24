@@ -75,6 +75,16 @@ class TestMatmul(unittest.TestCase):
         return xp.matmul(x1, x2)
 
 
+class TestMatmulStrides:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
+    def test_relaxed_c_contiguous_input(self, xp, dtype):
+        x1 = testing.shaped_arange((2, 2, 3), xp, dtype)[:, None, :, :]
+        x2 = testing.shaped_arange((2, 1, 3, 1), xp, dtype)
+        return x1 @ x2
+
+
 @testing.parameterize(
     *testing.product({
         'shape_pair': [

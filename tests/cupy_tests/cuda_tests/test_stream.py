@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 from cupy._creation import from_data
 from cupy import cuda
 from cupy import testing
@@ -134,13 +136,53 @@ class TestStream(unittest.TestCase):
             with stream2:
                 assert stream2 == cuda.get_current_stream()
             assert stream1 == cuda.get_current_stream()
-        assert self.stream == cuda.get_current_stream()
+        # self.stream is "forgotten"!
+        assert cuda.Stream.null == cuda.get_current_stream()
 
     def test_use(self):
         stream1 = cuda.Stream().use()
         assert stream1 == cuda.get_current_stream()
         self.stream.use()
         assert self.stream == cuda.get_current_stream()
+
+    @testing.multi_gpu(2)
+    def test_per_device(self):
+        with cuda.Device(0):
+            stream0 = cuda.Stream()
+            with stream0:
+                assert stream0 == cuda.get_current_stream()
+                with cuda.Device(1):
+                    assert stream0 != cuda.get_current_stream()
+                    assert cuda.Stream.null == cuda.get_current_stream()
+                assert stream0 == cuda.get_current_stream()
+
+    @testing.multi_gpu(2)
+    def test_per_device_failure(self):
+        with cuda.Device(0):
+            stream0 = cuda.Stream()
+        with cuda.Device(1):
+            with pytest.raises(RuntimeError):
+                with stream0:
+                    pass
+            with pytest.raises(RuntimeError):
+                stream0.use()
+
+    def test_mix_use_context(self):
+        # See cupy/cupy#5143
+        s1 = cuda.Stream()
+        s2 = cuda.Stream()
+        s3 = cuda.Stream()
+        assert cuda.get_current_stream() == self.stream
+        with s1:
+            assert cuda.get_current_stream() == s1
+            s2.use()
+            assert cuda.get_current_stream() == s2
+            with s3:
+                assert cuda.get_current_stream() == s3
+                del s2
+            assert cuda.get_current_stream() == s1
+        # self.stream is "forgotten"!
+        assert cuda.get_current_stream() == cuda.Stream.null
 
 
 @testing.gpu

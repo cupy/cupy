@@ -1061,7 +1061,13 @@ class _UnixCCompiler(unixccompiler.UnixCCompiler):
         rocm_path = build.get_hipcc_path()
         base_opts = build.get_compiler_base_options(rocm_path)
         compiler_so = rocm_path
+
+        hip_version = build.get_hip_version()
         postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
+        if hip_version >= 402:
+            postargs += ['--std=c++14']
+        else:
+            postargs += ['--std=c++11']
         print('HIPCC options:', postargs)
         try:
             self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
