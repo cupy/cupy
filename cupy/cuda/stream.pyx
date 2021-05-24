@@ -3,7 +3,6 @@ from cupy_backends.cuda cimport stream as stream_module
 
 import os
 import threading
-import weakref
 
 from cupy import _util
 
@@ -12,24 +11,23 @@ cdef object _thread_local = threading.local()
 
 
 cdef class _ThreadLocal:
-    # We keep both current_stream_ref and current_stream_stack because the
+    # We keep both current_stream and current_stream_stack because the
     # former is also used when calling stream.use(). This bookkeeping enables
     # correct rewinding when "with" blocks are mixed with ".use()" (though
-    # this is considered an anti-pattern). As the name suggested, stream
-    # lifetime is not tracked in current_stream_ref.
+    # this is considered an anti-pattern).
 
-    cdef list current_stream_ref  # list of object
+    cdef list current_stream  # list of object
     cdef list current_device_id_stack  # list of int
     cdef list current_stream_stack  # list of list
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
-        self.current_stream_ref = []
+        self.current_stream = []
         self.current_device_id_stack = []
         self.current_stream_stack = []
         for i in range(num_devices):
             default_stream = get_default_stream()
-            self.current_stream_ref.append(weakref.ref(default_stream))
+            self.current_stream.append(default_stream)
             self.current_stream_stack.append([default_stream])
 
     @staticmethod
@@ -60,13 +58,13 @@ cdef class _ThreadLocal:
         if device_id == -1:
             device_id = runtime.getDevice()
         stream_module.set_current_stream_ptr(ptr, device_id)
-        self.current_stream_ref[device_id] = weakref.ref(stream)
+        self.current_stream[device_id] = stream
 
     cdef get_current_stream(self, int device_id=-1):
         if device_id == -1:
             device_id = runtime.getDevice()
-        stream_ref = self.current_stream_ref[device_id]
-        return stream_ref()
+        stream_ref = self.current_stream[device_id]
+        return stream_ref
 
     cdef intptr_t get_current_stream_ptr(self):
         return stream_module.get_current_stream_ptr()
