@@ -366,19 +366,11 @@ class Stream(BaseStream):
             self.device_id = runtime.getDevice()
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
-        cdef intptr_t current_ptr
         if is_shutting_down():
             return
         tls = _ThreadLocal.get()
         if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
-            current_ptr = tls.get_current_stream_ptr()
-            if <intptr_t>self.ptr == current_ptr:
-                tls.set_current_stream(get_default_stream())
             runtime.streamDestroy(self.ptr)
-        else:
-            current_stream = tls.get_current_stream()
-            if current_stream == self:
-                tls.set_current_stream(get_default_stream())
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
 
