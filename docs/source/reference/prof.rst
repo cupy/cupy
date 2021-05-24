@@ -21,6 +21,10 @@ Timing helper
 Device synchronization detection
 --------------------------------
 
+.. warning::
+
+   These APIs are deprecated in CuPy v10 and will be removed in future releases.
+
 .. autosummary::
    :toctree: generated/
 
