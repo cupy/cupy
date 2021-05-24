@@ -3,6 +3,7 @@ from cupy_backends.cuda cimport stream as backends_stream
 
 import os
 import threading
+import weakref
 
 from cupy import _util
 
@@ -11,15 +12,20 @@ cdef object _thread_local = threading.local()
 
 
 cdef class _ThreadLocal:
-    cdef list current_streams  # list of object (index = device ID)
-    cdef list stream_stacks  # list of list (index = device ID)
+    # The current stream for each device.
+    cdef list current_streams  # list (index = device ID) of object
+
+    # Stack of stream weakrefs for each device.
+    cdef list stream_ref_stacks  # list (index = device ID) of list of object
+
+    # Stack of device IDs.
     cdef list device_id_stack  # list of int
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
         default_stream = get_default_stream()
         self.current_streams = [default_stream for i in range(num_devices)]
-        self.stream_stacks = [list() for i in range(num_devices)]
+        self.stream_ref_stacks = [list() for i in range(num_devices)]
         self.device_id_stack = []
 
     @staticmethod
@@ -34,26 +40,28 @@ cdef class _ThreadLocal:
         assert device_id >= 0
         # record device_id to prevent from popping the wrong stream at exit
         self.device_id_stack.append(device_id)
-        self.stream_stacks[device_id].append(self.current_streams[device_id])
+        self.stream_ref_stacks[device_id].append(
+            self.current_streams[device_id]._weakref)
         self.set_current_stream(stream, device_id)
 
-    cdef void pop_stream(self) except*:
+    cdef void pop_stream(self, bint _maybe_prev_is_none=True) except*:
         cdef int device_id = self.device_id_stack.pop()
-        prev_stream = self.stream_stacks[device_id].pop()
-        self.set_current_stream(prev_stream, device_id)
+        prev_stream = self.stream_ref_stacks[device_id].pop()()
+        if prev_stream is None:
+            assert _maybe_prev_is_none
+            # The previous stream was set via `stream.use()` and has already
+            # been discarded.
+            self.pop_stream(_maybe_prev_is_none=False)
+        else:
+            self.set_current_stream(prev_stream, device_id)
 
     cdef set_current_stream(self, stream, int device_id):
-        if device_id == -1:
-            if stream.device_id == -1:
-                device_id = runtime.getDevice()
-            else:
-                device_id = stream.device_id
+        assert device_id >= 0
         backends_stream.set_current_stream_ptr(stream.ptr, device_id)
         self.current_streams[device_id] = stream
 
-    cdef get_current_stream(self, int device_id=-1):
-        if device_id == -1:
-            device_id = runtime.getDevice()
+    cdef get_current_stream(self, int device_id):
+        assert device_id >= 0
         return self.current_streams[device_id]
 
     cdef intptr_t get_current_stream_ptr(self):
@@ -81,7 +89,7 @@ cpdef get_current_stream():
         cupy.cuda.Stream: The current CUDA stream.
     """
     tls = _ThreadLocal.get()
-    return tls.get_current_stream()
+    return tls.get_current_stream(runtime.getDevice())
 
 
 class Event(object):
@@ -354,6 +362,7 @@ class Stream(BaseStream):
         else:
             self.ptr = runtime.streamCreate()
             self.device_id = runtime.getDevice()
+        self._weakref = weakref.ref(self)
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
         cdef intptr_t current_ptr
@@ -399,6 +408,7 @@ class ExternalStream(BaseStream):
         # associated with the stream, it is way too complicated. Let us keep
         # this as thin as possible.
         self.device_id = device_id
+        self._weakref = weakref.ref(self)
 
 
 Stream.null = Stream(null=True)
