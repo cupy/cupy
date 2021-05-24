@@ -365,7 +365,6 @@ class Stream(BaseStream):
         self._weakref = weakref.ref(self)
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
-        cdef intptr_t current_ptr
         if is_shutting_down():
             return
         if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
