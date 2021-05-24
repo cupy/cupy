@@ -9,8 +9,37 @@ from cupy._core._gufuncs import _GUFunc
 
 from cupy.linalg._solve import inv
 
-matmul = _GUFunc(
+_gu_func_matmul = _GUFunc(
     _core.matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True)
+
+
+def matmul(x1, x2, out=None, *, axes=None):
+    """Matrix product of two arrays.
+
+    Returns the matrix product of two arrays and is the implementation of
+    the `@` operator introduced in Python 3.5 following PEP465.
+
+    The main difference against cupy.dot are the handling of arrays with more
+    than 2 dimensions. For more information see :func:`numpy.matmul`.
+
+    .. note::
+        The out array as input is currently not supported.
+
+    Args:
+        x1 (cupy.ndarray): The left argument.
+        x2 (cupy.ndarray): The right argument.
+        out (cupy.ndarray, optional): Output array.
+        axes (List of tuples of int, optional):
+            A list of tuples with indices of axes the matrix multiplication
+            should operate on.
+
+    Returns:
+        cupy.ndarray: Output array.
+
+    .. seealso:: :func:`numpy.matmul`
+
+    """
+    return _gu_func_matmul(x1, x2, out=out, axes=axes)
 
 
 def dot(a, b, out=None):
