@@ -1,7 +1,10 @@
+import gc
+import threading
 import unittest
 
 import pytest
 
+import cupy
 from cupy._creation import from_data
 from cupy import cuda
 from cupy import testing
@@ -183,6 +186,56 @@ class TestStream(unittest.TestCase):
             assert cuda.get_current_stream() == s1
         # self.stream is "forgotten"!
         assert cuda.get_current_stream() == cuda.Stream.null
+
+    def test_stream_thread(self):
+        s1 = None
+
+        def f1(barrier, errors):
+            global s1
+            tid = barrier.wait()
+            try:
+                s1 = cuda.Stream()
+                barrier.wait()  # until t2 starts
+                s1.use()
+                barrier.wait()  # until t2 uses the stream
+                s1 = None
+                gc.collect()
+                barrier.wait()  # until t2 decrefs the stream
+                assert cuda.get_current_stream() is not None
+                cupy.arange(10)
+                errors[tid] = False
+            except Exception as e:
+                print(f'error in {tid}: {e}')
+
+        def f2(barrier, errors):
+            global s1
+            tid = barrier.wait()
+            try:
+                barrier.wait()  # until t1 creates the stream
+                s1.use()
+                barrier.wait()  # until t1 uses the stream
+                s1 = None
+                gc.collect()
+                barrier.wait()  # until t1 decrefs the stream
+                assert cuda.get_current_stream() is not None
+                cupy.arange(10)
+                errors[tid] = False
+            except Exception as e:
+                print(f'error in {tid}: {e}')
+
+        barrier = threading.Barrier(2)
+        errors = [True, True]
+        threads = [
+            threading.Thread(target=f1, args=(barrier, errors), daemon=True),
+            threading.Thread(target=f2, args=(barrier, errors), daemon=True),
+        ]
+        del s1
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for err in errors:
+            assert err is False
 
 
 @testing.gpu
