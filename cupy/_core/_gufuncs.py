@@ -345,8 +345,8 @@ class _GUFunc:
 
         return args, dimsizess, loop_output_dims, outs, missing_dims
 
-    def _can_cast(d1, d2, casting):
-        if casting == 'same_kind' and get_dtype(d1).kind == d2.kind:
+    def _can_cast(self, d1, d2, casting):
+        if casting == 'same_kind' and get_dtype(d1).kind == get_dtype(d2).kind:
             return True
         return numpy.can_cast(d1, d2, casting=casting)
 
@@ -409,6 +409,7 @@ class _GUFunc:
         signature = kwargs.pop('signature', None)
         casting = kwargs.pop('casting', 'same_kind')
 
+        ret_dtype = None
         if signature is None:
             if dtype is not None:
                 if type(dtype) == tuple:
@@ -418,20 +419,27 @@ class _GUFunc:
                 # Convert args to the dtype
                 n_args = []
                 for i, arg in enumerate(args):
-                    if self._can_cast(arg.dtype, dtype):
+                    if self._can_cast(arg.dtype, dtype, casting):
                         n_args.append(arg.astype(dtype, copy=False))
                     else:
                         raise TypeError(
                             f'cannot cast ufunc {self.__name__} input {i} from'
                             f' {arg.dtype} to {dtype} with casting rule'
                             f' {casting}')
+                args = n_args
                 ret_dtype = dtype
             else:
+                # TODO(ecastill) create a signature and do a look up
+                # of the input dtypes and retrieve the ret one, ones
+                pass
+            if ret_dtype is None:
                 dtype = args[0].dtype
                 for arg in args:
                     ret_dtype = numpy.promote_types(dtype, arg.dtype)
         else:
-            raise RuntimeError('signature kwarg is not yet supported')
+            # TODO: support signatures
+            raise TypeError('No loop matching the specified signature and'
+                            f' casting was found for ufunc {self.__name__}')
             if dtype is not None:
                 raise RuntimeError(
                     'cannot specify both \'signature\' and \'dtype\'')
