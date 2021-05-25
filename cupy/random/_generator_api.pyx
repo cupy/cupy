@@ -171,10 +171,13 @@ class Generator:
         cdef ndarray y
         if high is None:
             lo = 0
-            hi1 = int(low) - 1
+            hi1 = int(low)
         else:
             lo = int(low)
-            hi1 = int(high) - 1
+            hi1 = int(high)
+
+        if not endpoint:
+            hi1 -= 1
 
         if lo > hi1:
             raise ValueError('low >= high')
@@ -186,8 +189,6 @@ class Generator:
                 'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
 
         diff = hi1 - lo
-        if not endpoint:
-            diff -= 1
 
         cdef uint64_t mask = (1 << diff.bit_length()) - 1
         # TODO adjust dtype
