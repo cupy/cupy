@@ -18,7 +18,7 @@
 | [**Forum**](https://groups.google.com/forum/#!forum/cupy)
 
 CuPy is a NumPy/SciPy-compatible array library for GPU-accelerated computing with Python.
-CuPy acts as a [drop-in replacement](https://docs.cupy.dev/en/stable/reference/comparison.html) for existing NumPy/SciPy code to make it runnable on NVIDIA CUDA or AMD ROCm platform.
+CuPy acts as a [drop-in replacement](https://docs.cupy.dev/en/stable/reference/comparison.html) to run existing NumPy/SciPy code on NVIDIA CUDA or AMD ROCm platforms.
 
 ```py
 >>> import cupy as cp
@@ -31,7 +31,7 @@ array([  3.,  12.], dtype=float32)
 ```
 
 CuPy also provides access to low-level CUDA features.
-You can pass `ndarray` to existing CUDA C/C++ program via [RawKernels](https://docs.cupy.dev/en/stable/user_guide/kernel.html#raw-kernels), use [Streams](https://docs.cupy.dev/en/stable/reference/cuda.html) for performance, or even call [CUDA Runtime APIs](https://docs.cupy.dev/en/stable/reference/cuda.html#runtime-api) directly.
+You can pass `ndarray` to existing CUDA C/C++ programs via [RawKernels](https://docs.cupy.dev/en/stable/user_guide/kernel.html#raw-kernels), use [Streams](https://docs.cupy.dev/en/stable/reference/cuda.html) for performance, or even call [CUDA Runtime APIs](https://docs.cupy.dev/en/stable/reference/cuda.html#runtime-api) directly.
 
 ## Installation
 
