@@ -5,6 +5,7 @@ import numpy
 
 import cupy
 import cupy._core._routines_manipulation as _manipulation
+from cupy._core._dtype import get_dtype
 from cupy._core import internal
 
 # Signature parsing code and dimension accessing has been borrowed
@@ -344,6 +345,11 @@ class _GUFunc:
 
         return args, dimsizess, loop_output_dims, outs, missing_dims
 
+    def _can_cast(d1, d2, casting):
+        if casting == 'same_kind' and get_dtype(d1).kind == d2.kind:
+            return True
+        return numpy.can_cast(d1, d2, casting=casting)
+
     def __call__(self, *args, **kwargs):
         '''
         Apply a generalized ufunc.
@@ -394,14 +400,44 @@ class _GUFunc:
         #  as those take non-scalar input.
         # where = kwargs.pop('where', None)
 
-        dtype = args[0].dtype
-        for arg in args:
-            ret_dtype = numpy.promote_types(dtype, arg.dtype)
-
         outs = kwargs.pop('out', None)
         axes = kwargs.pop('axes', None)
         axis = kwargs.pop('axis', None)
+        order = kwargs.pop('order', 'K')
+        dtype = kwargs.pop('dtype', None)
         keepdims = kwargs.pop('keepdims', False)
+        signature = kwargs.pop('signature', None)
+        casting = kwargs.pop('casting', 'same_kind')
+
+        if signature is None:
+            if dtype is not None:
+                if type(dtype) == tuple:
+                    # TODO(ecastill) support dtype tuples
+                    raise RuntimeError('dtype with tuple is not yet supported')
+                dtype = get_dtype(dtype).type
+                # Convert args to the dtype
+                n_args = []
+                for i, arg in enumerate(args):
+                    if self._can_cast(arg.dtype, dtype):
+                        n_args.append(arg.astype(dtype, copy=False))
+                    else:
+                        raise TypeError(
+                            f'cannot cast ufunc {self.__name__} input {i} from'
+                            f' {arg.dtype} to {dtype} with casting rule'
+                            f' {casting}')
+                ret_dtype = dtype
+            else:
+                dtype = args[0].dtype
+                for arg in args:
+                    ret_dtype = numpy.promote_types(dtype, arg.dtype)
+        else:
+            raise RuntimeError('signature kwarg is not yet supported')
+            if dtype is not None:
+                raise RuntimeError(
+                    'cannot specify both \'signature\' and \'dtype\'')
+        if kwargs:
+            raise TypeError('Wrong arguments %s' % kwargs)
+
         if len(kwargs) > 0:
             raise RuntimeError(
                 'Unknown kwargs {}'.format(' '.join(kwargs.keys())))
@@ -436,6 +472,8 @@ class _GUFunc:
         # TODO(ecastill) this only works for one out argument
         out_shape = tuple([dimsizess[od][0] for od in loop_output_dims]
                           + [dimsizess[od][0] for od in output_coredimss])
+
+        # TODO(ecastill) check order in here
         if outs is None:
             outs = (cupy.empty(out_shape, dtype=ret_dtype),)
         elif outs[0].shape != out_shape:
@@ -484,5 +522,5 @@ class _GUFunc:
                         d for d, n in zip(core_shape, ocd) if n not in m_dims])
                     shape = shape[:-len(ocd)] + core_shape
                     leaf_arr = leaf_arr.reshape(shape)
-                leaf_arrs.append(leaf_arr)
+                leaf_arrs.append(leaf_arr.astype(leaf_arr.dtype, order=order))
         return tuple(leaf_arrs) if self._nout else leaf_arrs[0]
