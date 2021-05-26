@@ -1,11 +1,15 @@
 Fast-Fourier Transform with CuPy
 ================================
 
-CuPy covers the full Fast Fourier Transform (FFT) functionalities provided in NumPy (see :doc:`../reference/fft`)
-and a subset in SciPy (see :doc:`../reference/scipy_fft`). In addition to those high-level APIs that can be used
-as is, CuPy provides additional features to 1. access advanced routines that `cuFFT`_ offers, 2. control better
-the performance and behavior of the FFT routines. Some of these features are *experimental* (subject to change or
-deprecation) or may not be applicable to `hipFFT`_/`rocFFT`_ targeting AMD GPUs.
+CuPy covers the full Fast Fourier Transform (FFT) functionalities provided in NumPy (:mod:`cupy.fft`) and a
+subset in SciPy (:mod:`cupyx.scipy.fft`). In addition to those high-level APIs that can be used
+as is, CuPy provides additional features to
+
+1. access advanced routines that `cuFFT`_ offers,
+2. control better the performance and behavior of the FFT routines.
+
+Some of these features are *experimental* (subject to change, deprecation, or removal, see :doc:`./compatibility`)
+or may not be applicable to `hipFFT`_/`rocFFT`_ targeting AMD GPUs.
 
 .. _cuFFT: https://docs.nvidia.com/cuda/cufft/index.html
 .. _hipFFT: https://hipfft.readthedocs.io/en/latest/
@@ -91,7 +95,7 @@ There are occasions when users may *not* want to manage the FFT plans by themsel
 
     >>> # clear the cache
     >>> cache.clear()
-    >>> cache.show_info()    
+    >>> cp.fft.config.show_plan_cache_info()  # = cache.show_info()    
     ------------------- cuFFT plan cache (device 0) -------------------
     cache enabled? True
     current / max size   : 0 / 16 (counts)
@@ -116,7 +120,49 @@ The returned :class:`~cupy.fft._cache.PlanCache` object has other methods for fi
 FFT callbacks
 -------------
 
-Under construction.
+`cuFFT`_ provides FFT callbacks for merging pre- and/or post- processing kernels with the FFT routines so as to reduce the access to global memory.
+This capability is supported *experimentally* by CuPy. Users need to supply custom load and/or store kernels as strings, and set up a context manager
+via :func:`~cupy.fft.config.set_cufft_callbacks`. Note that the load (store) kernel pointer has to be named as ``d_loadCallbackPtr`` (``d_storeCallbackPtr``).
+
+.. code:: python
+
+    import cupy as cp
+
+    # a load callback that overwrites the input array to 1
+    code = r'''
+    __device__ cufftComplex CB_ConvertInputC(
+        void *dataIn,
+        size_t offset,
+        void *callerInfo,
+        void *sharedPtr)
+    {
+        cufftComplex x;
+        x.x = 1.;
+        x.y = 0.;
+        return x;
+    }
+    __device__ cufftCallbackLoadC d_loadCallbackPtr = CB_ConvertInputC;
+    '''
+    
+    a = cp.random.random((64, 128, 128)).astype(cp.complex64)
+    
+    # this fftn call uses callback
+    with cp.fft.config.set_cufft_callbacks(cb_load=code):
+        b = cp.fft.fftn(a, axes=(1,2))
+    
+    # this does not use
+    c = cp.fft.fftn(cp.ones(shape=a.shape, dtype=cp.complex64), axes=(1,2))
+    
+    # result agrees
+    assert cp.allclose(b, c)
+    
+    # "static" plans are also cached, but are distinct from their no-callback counterparts
+    cp.fft.config.get_plan_cache().show_info()
+
+
+.. note::
+
+    Internally, this feature requires recompiling the :mod:`cupy.cuda.cufft` module *for each distinct pair* of load and store kernels. Therefore, the first invocation will be very slow, and this cost is amortized if the callbacks can be reused in the subsequent calculations. The compiled modules are cached on disk, with a default position ``$HOME/.cupy/callback_cache`` that can be changed by the environment variable ``CUPY_CACHE_DIR``.
 
 
 Multi-GPU FFT
