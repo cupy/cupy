@@ -434,9 +434,27 @@ class spmatrix(object):
     def power(self, n, dtype=None):
         return self.tocsr().power(n, dtype=dtype)
 
-    def reshape(self, shape, order='C'):
-        """Gives a new shape to a sparse matrix without changing its data."""
-        raise NotImplementedError
+    def reshape(self, *args, order='C'):
+        """Gives a new shape to a sparse matrix without changing its data.
+        Args:
+            shape: tuple of ints
+                The new shape should be compatible with the original shape.
+            order: {'C', 'F'}, optional
+                Read the elements using this index order. 'C' means to read and
+                write the elements using C-like index order. 'F' means to read
+                and write the elements using Fortran-like index order.
+
+        Returns:
+            reshaped_matrix: sparse matrix
+                A sparse matrix with the given `shape`, not necessarily of the
+                same format as the current object.
+        """
+        shape = sputils.check_shape(args, self.shape)
+
+        if shape == self.shape:
+            return self
+
+        return self.tocoo().reshape(shape, order=order)
 
     def set_shape(self, shape):
         self.reshape(shape)
