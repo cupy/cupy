@@ -107,7 +107,7 @@ cdef class Memory(BaseMemory):
             runtime.free(self.ptr)
 
 
-cdef inline void is_async_alloc_supported(int device_id) except*:
+cdef inline void check_async_alloc_supported(int device_id) except*:
     if CUDA_VERSION < 11020:
         raise RuntimeError("memory_async is supported since CUDA 11.2")
     if runtime._is_hip_environment:
@@ -148,7 +148,7 @@ cdef class MemoryAsync(BaseMemory):
         # we don't need to hold a strong reference to the stream.
         self.stream_ref = weakref.ref(stream)
         self.ptr = 0
-        is_async_alloc_supported(self.device_id)
+        check_async_alloc_supported(self.device_id)
         if size > 0:
             self.ptr = runtime.mallocAsync(size, stream.ptr)
 
