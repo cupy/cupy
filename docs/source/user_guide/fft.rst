@@ -35,6 +35,7 @@ CuPy currently provides two kinds of *experimental* support for multi-GPU FFT.
 The first kind of support is with the high-level :func`:`~cupy.fft.fft` and :func`:`~cupy.fft.ifft` APIs, which requires the input array to reside on one of the participating GPUs. The multi-GPU calculation is done under the hood, and by the end of the calculation the result again resides on the device where it started. Currently only 1D complex-to-complex (C2C) transform is supported; complex-to-real (C2R) or real-to-complex (R2C) transforms (such as :func:`~cupy.fft.rfft` and friends) are not. The transform can be batched or not batched (batch size = 1).
 
 .. code:: python
+
     import cupy as cp
     
     cp.fft.config.use_multi_gpus = True
@@ -51,6 +52,7 @@ If you need to perform 2D/3D transforms (ex: :func:`~cupy.fft.fftn`) instead of 
 The second kind of usage is to use the low-level, *internal* CuPy APIs. You need to construct a :class:`~cupy.cuda.fft.Plan1d` object and use it as if you are programming in C/C++ with `cuFFT`_. Using this approach, your array can reside on the host as a `numpy.ndarray`, so its size can be much larger than what a single GPU can accommodate, which is one of the main reasons to run multi-GPU FFT.
 
 .. code:: python
+
     import numpy as np
     import cupy as cp
     
