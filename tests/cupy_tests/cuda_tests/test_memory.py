@@ -1001,7 +1001,7 @@ class TestMallocAsync(unittest.TestCase):
         s = cupy.cuda.Stream()
         with s:
             memptr = memory.alloc(100)
-            assert memptr.mem.stream == s.ptr
+            assert memptr.mem.stream_ref().ptr == s.ptr
 
     def test_stream3(self):
         # Check: destory stream does not affect memory deallocation
