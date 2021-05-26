@@ -43,6 +43,8 @@ or as a context manager for the :mod:`cupy.fft` APIs:
         out = cp.fft.fft2(a, axes=(1, 2))
 
 
+.. _fft_plan_cache:
+
 FFT plan cache
 --------------
 
