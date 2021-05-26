@@ -67,12 +67,11 @@ class TestStream(unittest.TestCase):
         stream_ptr = stream.ptr
         x = from_data.array([1, 2, 3])
         del stream
-        assert stream is cuda.get_current_stream()
+        assert stream_ptr == cuda.get_current_stream().ptr
         cuda.Stream.null.use()
         assert cuda.Stream.null is cuda.get_current_stream()
         # Want to test cudaStreamDestory is issued, but
         # runtime.streamQuery(stream_ptr) causes SEGV. We cannot test...
-        del stream_ptr
         del x
 
     def test_del_default(self):
