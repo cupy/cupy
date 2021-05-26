@@ -11,16 +11,46 @@ deprecation) or may not be applicable to `hipFFT`_/`rocFFT`_ targeting AMD GPUs.
 .. _hipFFT: https://hipfft.readthedocs.io/en/latest/
 .. _rocFFT: https://rocfft.readthedocs.io/en/latest/
 
+
 User-managed FFT plans
 ----------------------
 
-Under construction.
+For performance reasons, users may want to create, reuse, and manage the FFT plans themselves. CuPy provides a high-level *experimental* API :func:`~cupyx.scipy.fft.get_fft_plan` for this need. Users specify the transform to be performed as they would with most of the high-level FFT APIs, and a plan will be generated based on the input.
+
+.. code:: python
+
+    import cupy as cp
+    from cupyx.scipy.fft import get_fft_plan
+
+    a = cp.random.random((4, 64, 64)).astype(cp.complex64)
+    plan = get_fft_plan(a, axes=(1, 2), value_type='C2C')  # for batched, C2C, 2D transform
+
+The returned plan can be used either explicitly as an argument with the :mod:`cupyx.scipy.fft` APIs:
+
+.. code:: python
+
+    import cupyx.scipy.fft
+
+    # the rest of the arguments must match those used when generating the plan
+    out = cupyx.scipy.fft.fft2(a, axes=(1, 2), plan=plan)
+
+or as a context manager for the :mod:`cupy.fft` APIs:
+
+.. code:: python
+
+    with plan:
+        # the rest of the arguments must match those used when generating the plan
+        out = cp.fft.fft2(a, axes=(1, 2))
 
 
 FFT plan cache
 --------------
 
 Under construction.
+
+
+FFT callbacks
+-------------
 
 
 Multi-GPU FFT
