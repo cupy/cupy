@@ -345,10 +345,59 @@ class _GUFunc:
 
         return args, dimsizess, loop_output_dims, outs, missing_dims
 
+    def _determine_order(self, args, order):
+        if order == 'K':
+            # order is determined by the majority of the arrays
+            # favor c_contiguous
+            # c_cont = len([a for a in args if a.flags.c_contiguous])
+            # f_cont = len([a for a in args if a.flags.f_contiguous])
+            # order = 'C' if c_cont >= f_cont else 'F'
+            return 'C'
+        elif order == 'A':
+            # order is F if all arrays are strictly F
+            order = ('F' if all([a.flags.f_contiguous
+                                 and not a.flags.c_contiguous
+                                 for a in args]) else 'C')
+        return order
+
     def _can_cast(self, d1, d2, casting):
         if casting == 'same_kind' and get_dtype(d1).kind == get_dtype(d2).kind:
             return True
         return numpy.can_cast(d1, d2, casting=casting)
+
+    def _determine_dtype_from_dtype(self, args, dtype, casting):
+        ret_dtype = None
+        if dtype is not None:
+            if type(dtype) == tuple:
+                # TODO(ecastill) support dtype tuples
+                raise RuntimeError('dtype with tuple is not yet supported')
+            dtype = get_dtype(dtype).type
+            # Convert args to the dtype
+            n_args = []
+            for i, arg in enumerate(args):
+                if self._can_cast(arg.dtype, dtype, casting):
+                    n_args.append(arg.astype(dtype, copy=False))
+                else:
+                    raise TypeError(
+                        f'cannot cast ufunc {self.__name__} input {i} from'
+                        f' {arg.dtype} to {dtype} with casting rule'
+                        f' {casting}')
+            args = n_args
+            ret_dtype = dtype
+        else:
+            # TODO(ecastill) create a signature and do a look up
+            # of the input dtypes and retrieve the ret one, ones
+            pass
+        if ret_dtype is None:
+            dtype = args[0].dtype
+            for arg in args:
+                ret_dtype = numpy.promote_types(dtype, arg.dtype)
+        return ret_dtype
+
+    def _determine_dtype_from_signature(self, args, signature, casting):
+        # TODO: support signatures
+        raise TypeError('No loop matching the specified signature and'
+                        f' casting was found for ufunc {self.__name__}')
 
     def __call__(self, *args, **kwargs):
         '''
@@ -409,46 +458,20 @@ class _GUFunc:
         signature = kwargs.pop('signature', None)
         casting = kwargs.pop('casting', 'same_kind')
 
-        ret_dtype = None
-        if signature is None:
-            if dtype is not None:
-                if type(dtype) == tuple:
-                    # TODO(ecastill) support dtype tuples
-                    raise RuntimeError('dtype with tuple is not yet supported')
-                dtype = get_dtype(dtype).type
-                # Convert args to the dtype
-                n_args = []
-                for i, arg in enumerate(args):
-                    if self._can_cast(arg.dtype, dtype, casting):
-                        n_args.append(arg.astype(dtype, copy=False))
-                    else:
-                        raise TypeError(
-                            f'cannot cast ufunc {self.__name__} input {i} from'
-                            f' {arg.dtype} to {dtype} with casting rule'
-                            f' {casting}')
-                args = n_args
-                ret_dtype = dtype
-            else:
-                # TODO(ecastill) create a signature and do a look up
-                # of the input dtypes and retrieve the ret one, ones
-                pass
-            if ret_dtype is None:
-                dtype = args[0].dtype
-                for arg in args:
-                    ret_dtype = numpy.promote_types(dtype, arg.dtype)
-        else:
-            # TODO: support signatures
-            raise TypeError('No loop matching the specified signature and'
-                            f' casting was found for ufunc {self.__name__}')
-            if dtype is not None:
-                raise RuntimeError(
-                    'cannot specify both \'signature\' and \'dtype\'')
-        if kwargs:
-            raise TypeError('Wrong arguments %s' % kwargs)
-
         if len(kwargs) > 0:
             raise RuntimeError(
                 'Unknown kwargs {}'.format(' '.join(kwargs.keys())))
+
+        ret_dtype = None
+
+        if signature is None:
+            ret_dtype = self._determine_dtype_from_dtype(args, dtype, casting)
+        else:
+            if dtype is not None:
+                raise RuntimeError(
+                    'cannot specify both \'signature\' and \'dtype\'')
+            ret_dtype = self._determine_dtype_from_signature(
+                args, signature, casting)
 
         if not type(self._signature) == str:
             raise TypeError('`signature` has to be of type string')
@@ -458,6 +481,8 @@ class _GUFunc:
                 outs = (outs,)
             else:
                 raise TypeError('`outs` must be a tuple or `cupy.ndarray`')
+
+        order = self._determine_order(args, order)
 
         input_coredimss = self._input_coredimss
         output_coredimss = self._output_coredimss
@@ -481,9 +506,8 @@ class _GUFunc:
         out_shape = tuple([dimsizess[od][0] for od in loop_output_dims]
                           + [dimsizess[od][0] for od in output_coredimss])
 
-        # TODO(ecastill) check order in here
         if outs is None:
-            outs = (cupy.empty(out_shape, dtype=ret_dtype),)
+            outs = (cupy.empty(out_shape, dtype=ret_dtype, order=order),)
         elif outs[0].shape != out_shape:
             raise ValueError(f'Invalid shape for out {outs[0].shape}'
                              f' needs {out_shape}')
@@ -530,5 +554,6 @@ class _GUFunc:
                         d for d, n in zip(core_shape, ocd) if n not in m_dims])
                     shape = shape[:-len(ocd)] + core_shape
                     leaf_arr = leaf_arr.reshape(shape)
-                leaf_arrs.append(leaf_arr.astype(leaf_arr.dtype, order=order))
+                # leaf_arrs.append(leaf_arr.astype(leaf_arr.dtype, order=order))  # NOQA
+                leaf_arrs.append(leaf_arr)
         return tuple(leaf_arrs) if self._nout else leaf_arrs[0]
