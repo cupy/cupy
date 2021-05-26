@@ -147,7 +147,6 @@ cdef class MemoryAsync(BaseMemory):
         # The stream is allowed to be destroyed before the memory is freed, so
         # we don't need to hold a strong reference to the stream.
         self.stream_ref = weakref.ref(stream)
-        self.ptr = 0
         check_async_alloc_supported(self.device_id)
         if size > 0:
             self.ptr = runtime.mallocAsync(size, stream.ptr)
