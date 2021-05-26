@@ -1580,7 +1580,7 @@ cdef class MemoryAsyncPool:
         # A list of cudaMemPool_t to each device's mempool
         readonly list _pools
 
-    def __init__(self, pool_handles='default'):
+    def __init__(self, pool_handles='current'):
         cdef int dev_id
         if (cpython.PySequence_Check(pool_handles)
                 and not isinstance(pool_handles, str)):
