@@ -98,16 +98,11 @@ Half-precision FFT
 
 
     shape = (1024, 256, 256)  # input array shape
-    dtype = 'E'  # = numpy.complex32 in the future
+    idtype = odtype = edtype = 'E'  # = numpy.complex32 in the future
 
-    # store the array as an fp16 array twice as long, as complex32 is not yet available
-    dtype = cp.float16
-    old_shape = shape
-    shape = (shape[0], shape[1], 2*shape[2])
-    idtype = odtype = edtype = dtype
-    a = cp.random.random(shape).astype(dtype)
+    # store the input/output arrays as fp16 arrays twice as long, as complex32 is not yet available
+    a = cp.random.random((shape[0], shape[1], 2*shape[2])).astype(cp.float16)
     out = cp.empty_like(a)
-    shape = old_shape
 
     # FFT with cuFFT
     plan = cp.cuda.cufft.XtPlanNd(shape[1:],
@@ -127,6 +122,6 @@ Half-precision FFT
     out_np = out_np.astype(np.float16)
 
     # don't worry about accruacy for now, as we probably lost a lot during casting
-    print(t, 'ok' if cp.mean(cp.abs(out - cp.asarray(out_np))) < 0.1 else 'not ok')
+    print('ok' if cp.mean(cp.abs(out - cp.asarray(out_np))) < 0.1 else 'not ok')
 
 The 64-bit indexing support for all high-level FFT APIs is planned for a future CuPy release.
