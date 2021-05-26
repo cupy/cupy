@@ -65,7 +65,7 @@ There are occasions when users may *not* want to manage the FFT plans by themsel
     current / max size   : 0 / 16 (counts)
     current / max memsize: 0 / (unlimited) (bytes)
     hits / misses: 0 / 0 (counts)
-    
+
     cached plans (most recently used first):
 
     >>> # perform a transform
@@ -77,33 +77,33 @@ There are occasions when users may *not* want to manage the FFT plans by themsel
     current / max size   : 1 / 16 (counts)
     current / max memsize: 262144 / (unlimited) (bytes)
     hits / misses: 0 / 1 (counts)
-    
+
     cached plans (most recently used first):
     key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
 
     >>> # perform the same transform again, the plan is looked up from cache and reused
-    >>> out = cp.fft.fftn(a, axes=(1, 2))  
+    >>> out = cp.fft.fftn(a, axes=(1, 2))
     >>> cache.show_info()  # hit = 1
     ------------------- cuFFT plan cache (device 0) -------------------
     cache enabled? True
     current / max size   : 1 / 16 (counts)
     current / max memsize: 262144 / (unlimited) (bytes)
     hits / misses: 1 / 1 (counts)
-    
+
     cached plans (most recently used first):
     key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
 
     >>> # clear the cache
     >>> cache.clear()
-    >>> cp.fft.config.show_plan_cache_info()  # = cache.show_info()    
+    >>> cp.fft.config.show_plan_cache_info()  # = cache.show_info()
     ------------------- cuFFT plan cache (device 0) -------------------
     cache enabled? True
     current / max size   : 0 / 16 (counts)
     current / max memsize: 0 / (unlimited) (bytes)
     hits / misses: 0 / 0 (counts)
-    
+
     cached plans (most recently used first):
-    
+
     >>>
 
 The returned :class:`~cupy.fft._cache.PlanCache` object has other methods for finer control, such as setting the cache size (either by counts or by memory usage), please refer to its documentation for more detail.
@@ -143,19 +143,19 @@ via :func:`~cupy.fft.config.set_cufft_callbacks`. Note that the load (store) ker
     }
     __device__ cufftCallbackLoadC d_loadCallbackPtr = CB_ConvertInputC;
     '''
-    
+
     a = cp.random.random((64, 128, 128)).astype(cp.complex64)
-    
+
     # this fftn call uses callback
     with cp.fft.config.set_cufft_callbacks(cb_load=code):
         b = cp.fft.fftn(a, axes=(1,2))
-    
+
     # this does not use
     c = cp.fft.fftn(cp.ones(shape=a.shape, dtype=cp.complex64), axes=(1,2))
-    
+
     # result agrees
     assert cp.allclose(b, c)
-    
+
     # "static" plans are also cached, but are distinct from their no-callback counterparts
     cp.fft.config.get_plan_cache().show_info()
 
@@ -179,14 +179,14 @@ The first kind of support is with the high-level :func:`~cupy.fft.fft` and :func
 .. code:: python
 
     import cupy as cp
-    
+
     cp.fft.config.use_multi_gpus = True
     cp.fft.config.set_cufft_gpus([0, 1])  # use GPU 0 & 1
-    
+
     shape = (64, 64)  # batch size = 64
     dtype = cp.complex64
     a = cp.random.random(shape).astype(dtype)  # reside on GPU 0
-    
+
     b = cp.fft.fft(a)  # computed on GPU 0 & 1, reside on GPU 0
 
 If you need to perform 2D/3D transforms (ex: :func:`~cupy.fft.fftn`) instead of 1D (ex: :func:`~cupy.fft.fft`), it would likely still work, but in this particular use case it loops over the transformed axes under the hood (which is exactly what is done in NumPy too), which could lead to suboptimal performance.
@@ -197,31 +197,31 @@ The second kind of usage is to use the low-level, *private* CuPy APIs. You need 
 
     import numpy as np
     import cupy as cp
-    
+
     # no need to touch cp.fft.config, as we are using low-level API
-    
+
     shape = (64, 64)
     dtype = np.complex64
     a = np.random.random(shape).astype(dtype)  # reside on CPU
-    
+
     if len(shape) == 1:
         batch = 1
         nx = shape[0]
     elif len(shape) == 2:
         batch = shape[0]
         nx = shape[1]
-    
+
     # compute via cuFFT
     cufft_type = cp.cuda.cufft.CUFFT_C2C  # single-precision c2c
     plan = cp.cuda.cufft.Plan1d(nx, cufft_type, batch, devices=[0,1])
     out_cp = np.empty_like(a)  # output on CPU
     plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
-    
+
     out_np = numpy.fft.fft(a)  # use NumPy's fft
     # np.fft.fft alway returns np.complex128
     if dtype is numpy.complex64:
         out_np = out_np.astype(dtype)
-    
+
     # check result
     assert np.allclose(out_cp, out_np, rtol=1e-4, atol=1e-7)
 
