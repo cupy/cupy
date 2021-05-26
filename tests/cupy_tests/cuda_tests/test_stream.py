@@ -67,6 +67,7 @@ class TestStream(unittest.TestCase):
         stream_ptr = stream.ptr
         x = from_data.array([1, 2, 3])
         del stream
+        assert stream is cuda.get_current_stream()
         cuda.Stream.null.use()
         assert cuda.Stream.null is cuda.get_current_stream()
         # Want to test cudaStreamDestory is issued, but
