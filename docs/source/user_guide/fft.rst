@@ -65,9 +65,9 @@ There are occasions when users may *not* want to manage the FFT plans by themsel
     current / max size   : 0 / 16 (counts)
     current / max memsize: 0 / (unlimited) (bytes)
     hits / misses: 0 / 0 (counts)
-
+    <BLANKLINE>
     cached plans (most recently used first):
-
+    <BLANKLINE>
     >>> # perform a transform
     >>> a = cp.random.random((4, 64, 64))
     >>> out = cp.fft.fftn(a, axes=(1, 2))
@@ -77,10 +77,10 @@ There are occasions when users may *not* want to manage the FFT plans by themsel
     current / max size   : 1 / 16 (counts)
     current / max memsize: 262144 / (unlimited) (bytes)
     hits / misses: 0 / 1 (counts)
-
+    <BLANKLINE>
     cached plans (most recently used first):
     key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
-
+    <BLANKLINE>
     >>> # perform the same transform again, the plan is looked up from cache and reused
     >>> out = cp.fft.fftn(a, axes=(1, 2))
     >>> cache.show_info()  # hit = 1
@@ -89,21 +89,22 @@ There are occasions when users may *not* want to manage the FFT plans by themsel
     current / max size   : 1 / 16 (counts)
     current / max memsize: 262144 / (unlimited) (bytes)
     hits / misses: 1 / 1 (counts)
-
+    <BLANKLINE>
     cached plans (most recently used first):
     key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
-
+    <BLANKLINE>
     >>> # clear the cache
     >>> cache.clear()
-    >>> cp.fft.config.show_plan_cache_info()  # = cache.show_info()
+    >>> cp.fft.config.show_plan_cache_info()  # = cache.show_info(), for all devices
+    =============== cuFFT plan cache info (all devices) ===============
     ------------------- cuFFT plan cache (device 0) -------------------
     cache enabled? True
     current / max size   : 0 / 16 (counts)
     current / max memsize: 0 / (unlimited) (bytes)
     hits / misses: 0 / 0 (counts)
-
+    <BLANKLINE>
     cached plans (most recently used first):
-
+    <BLANKLINE>
     >>>
 
 The returned :class:`~cupy.fft._cache.PlanCache` object has other methods for finer control, such as setting the cache size (either by counts or by memory usage), please refer to its documentation for more detail.
