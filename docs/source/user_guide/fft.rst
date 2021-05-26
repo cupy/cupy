@@ -15,7 +15,7 @@ deprecation) or may not be applicable to `hipFFT`_/`rocFFT`_ targeting AMD GPUs.
 User-managed FFT plans
 ----------------------
 
-For performance reasons, users may want to create, reuse, and manage the FFT plans themselves. CuPy provides a high-level *experimental* API :func:`~cupyx.scipy.fft.get_fft_plan` for this need. Users specify the transform to be performed as they would with most of the high-level FFT APIs, and a plan will be generated based on the input.
+For performance reasons, users may want to create, reuse, and manage the FFT plans themselves. CuPy provides a high-level *experimental* API :func:`~cupyx.scipy.fftpack.get_fft_plan` for this need. Users specify the transform to be performed as they would with most of the high-level FFT APIs, and a plan will be generated based on the input.
 
 .. code:: python
 
@@ -46,11 +46,75 @@ or as a context manager for the :mod:`cupy.fft` APIs:
 FFT plan cache
 --------------
 
-Under construction.
+There are occasions when users may *not* want to manage the FFT plans by themselves, however. Moreover, plans could also be reused internally in CuPy's routines, to which user-managed plans would not be applicable. Therefore, starting CuPy v8 we provide a built-in plan cache, enabled by default. The plan cache is done on a *per device, per thread* basis, and can be retrieved by the :func:`~cupy.fft.config.get_plan_cache` API.
+
+.. doctest::
+
+    >>> import cupy as cp
+    >>>
+    >>> cache = cp.fft.config.get_plan_cache()
+    >>> cache.show_info()
+    ------------------- cuFFT plan cache (device 0) -------------------
+    cache enabled? True
+    current / max size   : 0 / 16 (counts)
+    current / max memsize: 0 / (unlimited) (bytes)
+    hits / misses: 0 / 0 (counts)
+    
+    cached plans (most recently used first):
+
+    >>> # perform a transform
+    >>> a = cp.random.random((4, 64, 64))
+    >>> out = cp.fft.fftn(a, axes=(1, 2))
+    >>> cache.show_info()  # hit = 0
+    ------------------- cuFFT plan cache (device 0) -------------------
+    cache enabled? True
+    current / max size   : 1 / 16 (counts)
+    current / max memsize: 262144 / (unlimited) (bytes)
+    hits / misses: 0 / 1 (counts)
+    
+    cached plans (most recently used first):
+    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
+
+    >>> # perform the same transform again, the plan is looked up from cache and reused
+    >>> out = cp.fft.fftn(a, axes=(1, 2))  
+    >>> cache.show_info()  # hit = 1
+    ------------------- cuFFT plan cache (device 0) -------------------
+    cache enabled? True
+    current / max size   : 1 / 16 (counts)
+    current / max memsize: 262144 / (unlimited) (bytes)
+    hits / misses: 1 / 1 (counts)
+    
+    cached plans (most recently used first):
+    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
+
+    >>> # clear the cache
+    >>> cache.clear()
+    >>> cache.show_info()    
+    ------------------- cuFFT plan cache (device 0) -------------------
+    cache enabled? True
+    current / max size   : 0 / 16 (counts)
+    current / max memsize: 0 / (unlimited) (bytes)
+    hits / misses: 0 / 0 (counts)
+    
+    cached plans (most recently used first):
+    
+    >>>
+
+The returned :class:`~cupy.fft._cache.PlanCache` object has other methods for finer control, such as setting the cache size (either by counts or by memory usage), please refer to its documentation for more detail.
+
+.. note::
+
+    Each FFT plan has an associated working area allocated. If an out-of-memory error happens, one may want to inspect, clear, or limit the plan cache.
+
+.. note::
+
+    The plans returned by :func:`~cupyx.scipy.fftpack.get_fft_plan` are not cached.
 
 
 FFT callbacks
 -------------
+
+Under construction.
 
 
 Multi-GPU FFT
@@ -114,6 +178,10 @@ The second kind of usage is to use the low-level, *private* CuPy APIs. You need 
     assert np.allclose(out_cp, out_np, rtol=1e-4, atol=1e-7)
 
 For this use case, please consult the `cuFFT`_ documentation on multi-GPU transform for further detail.
+
+.. note::
+
+    The multi-GPU plans are cached if generated via the high-level APIs, but not if manually generated via the low-level APIs.
 
 
 Half-precision FFT
