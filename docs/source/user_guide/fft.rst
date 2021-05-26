@@ -32,7 +32,7 @@ CuPy currently provides two kinds of *experimental* support for multi-GPU FFT.
 
     Using multiple GPUs to perform FFT is not guaranteed to be more performant. The rule of thumb is if the transform fits in 1 GPU, you should avoid using multiple.
 
-The first kind of support is with the high-level :func`:`~cupy.fft.fft` and :func`:`~cupy.fft.ifft` APIs, which requires the input array to reside on one of the participating GPUs. The multi-GPU calculation is done under the hood, and by the end of the calculation the result again resides on the device where it started. Currently only 1D complex-to-complex (C2C) transform is supported; complex-to-real (C2R) or real-to-complex (R2C) transforms (such as :func:`~cupy.fft.rfft` and friends) are not. The transform can be batched or not batched (batch size = 1).
+The first kind of support is with the high-level :func:`~cupy.fft.fft` and :func:`~cupy.fft.ifft` APIs, which requires the input array to reside on one of the participating GPUs. The multi-GPU calculation is done under the hood, and by the end of the calculation the result again resides on the device where it started. Currently only 1D complex-to-complex (C2C) transform is supported; complex-to-real (C2R) or real-to-complex (R2C) transforms (such as :func:`~cupy.fft.rfft` and friends) are not. The transform can be either batched (batch size > 1) or not (batch size = 1).
 
 .. code:: python
 
@@ -41,15 +41,15 @@ The first kind of support is with the high-level :func`:`~cupy.fft.fft` and :fun
     cp.fft.config.use_multi_gpus = True
     cp.fft.config.set_cufft_gpus([0, 1])  # use GPU 0 & 1
     
-    shape = (64, 64)
+    shape = (64, 64)  # batch size = 64
     dtype = cp.complex64
     a = cp.random.random(shape).astype(dtype)  # reside on GPU 0
     
     b = cp.fft.fft(a)  # computed on GPU 0 & 1, reside on GPU 0
 
-If you need to perform 2D/3D transforms (ex: :func:`~cupy.fft.fftn`) instead of 1D (ex: `fft`), it would likely still work, but in this particular use case it loops over the transformed axes under the hood (which is exactly what is done in NumPy too), which could be suboptimal.
+If you need to perform 2D/3D transforms (ex: :func:`~cupy.fft.fftn`) instead of 1D (ex: :func:`~cupy.fft.fft`), it would likely still work, but in this particular use case it loops over the transformed axes under the hood (which is exactly what is done in NumPy too), which could lead to suboptimal performance.
 
-The second kind of usage is to use the low-level, *internal* CuPy APIs. You need to construct a :class:`~cupy.cuda.fft.Plan1d` object and use it as if you are programming in C/C++ with `cuFFT`_. Using this approach, your array can reside on the host as a `numpy.ndarray`, so its size can be much larger than what a single GPU can accommodate, which is one of the main reasons to run multi-GPU FFT.
+The second kind of usage is to use the low-level, *private* CuPy APIs. You need to construct a :class:`~cupy.cuda.fft.Plan1d` object and use it as if you are programming in C/C++ with `cuFFT`_. Using this approach, your array can reside on the host as a :class:`numpy.ndarray`, so its size can be much larger than what a single GPU can accommodate, which is one of the main reasons to run multi-GPU FFT.
 
 .. code:: python
 
@@ -89,4 +89,44 @@ For this use case, please consult the `cuFFT`_ documentation on multi-GPU transf
 Half-precision FFT
 ------------------
 
-Under construction.
+`cuFFT`_ provides ``cufftXtMakePlanMany`` and ``cufftXtExec`` routines to support a wide range of FFT needs, including 64-bit indexing and half-precision FFT. CuPy provides an *experimental* support for this capability via the new (though *private*) :class:`~cupy.cuda.fft.XtPlanNd` API. For half-precision FFT, on supported hardware it can be twice as fast than its single-precision counterpart. NumPy does not yet provide the necessary infrastructure for half-precision complex numbers (i.e., ``numpy.complex32``), though, so the steps for this feature is currently a bit more involved than common cases.
+
+.. code:: python
+
+    import cupy as cp
+    import numpy as np
+
+
+    shape = (1024, 256, 256)  # input array shape
+    dtype = 'E'  # = numpy.complex32 in the future
+
+    # store the array as an fp16 array twice as long, as complex32 is not yet available
+    dtype = cp.float16
+    old_shape = shape
+    shape = (shape[0], shape[1], 2*shape[2])
+    idtype = odtype = edtype = dtype
+    a = cp.random.random(shape).astype(dtype)
+    out = cp.empty_like(a)
+    shape = old_shape
+
+    # FFT with cuFFT
+    plan = cp.cuda.cufft.XtPlanNd(shape[1:],
+                                  shape[1:], 1, shape[1]*shape[2], idtype,
+                                  shape[1:], 1, shape[1]*shape[2], odtype,
+                                  shape[0], edtype,
+                                  order='C', last_axis=-1, last_size=None)
+
+    plan.fft(a, out, cp.cuda.cufft.CUFFT_FORWARD)
+
+    # FFT with NumPy
+    a_np = cp.asnumpy(a).astype(np.float32)  # upcast
+    a_np = a_np.view(np.complex64)
+    out_np = np.fft.fftn(a_np, axes=(-2,-1))
+    out_np = np.ascontiguousarray(out_np).astype(np.complex64)  # downcast
+    out_np = out_np.view(np.float32)
+    out_np = out_np.astype(np.float16)
+
+    # don't worry about accruacy for now, as we probably lost a lot during casting
+    print(t, 'ok' if cp.mean(cp.abs(out - cp.asarray(out_np))) < 0.1 else 'not ok')
+
+The 64-bit indexing support for all high-level FFT APIs is planned for a future CuPy release.
