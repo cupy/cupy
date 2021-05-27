@@ -8,8 +8,8 @@ import sys
 import cupy_setup_build
 
 
-for submodule in ('cupy/core/include/cupy/cub/',
-                  'cupy/core/include/cupy/jitify'):
+for submodule in ('cupy/_core/include/cupy/cub/',
+                  'cupy/_core/include/cupy/jitify'):
     if len(os.listdir(submodule)) == 0:
         msg = '''
         The folder %s is a git submodule but is
@@ -24,12 +24,15 @@ for submodule in ('cupy/core/include/cupy/cub/',
 
 
 requirements = {
+    # TODO(kmaehashi): migrate to pyproject.toml (see #4727, #4619)
     'setup': [
-        'fastrlock>=0.3',
+        'Cython>=0.29.22',
+        'fastrlock>=0.5',
     ],
+
     'install': [
         'numpy>=1.17',
-        'fastrlock>=0.3',
+        'fastrlock>=0.5',
     ],
     'all': [
         'scipy>=1.4',
@@ -37,17 +40,14 @@ requirements = {
     ],
 
     'stylecheck': [
-        'autopep8==1.4.4',
-        'flake8==3.7.9',
-        'pbr==4.0.4',
-        'pycodestyle==2.5.0',
+        'autopep8==1.5.5',
+        'flake8==3.8.4',
+        'pbr==5.5.1',
+        'pycodestyle==2.6.0',
     ],
     'test': [
         # 4.2 <= pytest < 6.2 is slow collecting tests and times out on CI.
         'pytest>=6.2',
-    ],
-    'appveyor': [
-        '-r test',
     ],
     'jenkins': [
         '-r test',
@@ -100,7 +100,7 @@ cupy_package_data = [
     'cupy/random/cupy_distributions.cu',
     'cupy/random/cupy_distributions.cuh',
 ] + [
-    x for x in glob.glob('cupy/core/include/cupy/**', recursive=True)
+    x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
     if os.path.isfile(x)
 ]
 
@@ -116,11 +116,11 @@ package_name = cupy_setup_build.get_package_name()
 long_description = cupy_setup_build.get_long_description()
 ext_modules = cupy_setup_build.get_ext_modules()
 build_ext = cupy_setup_build.custom_build_ext
-sdist = cupy_setup_build.sdist_with_cython
 
 here = os.path.abspath(os.path.dirname(__file__))
 # Get __version__ variable
-exec(open(os.path.join(here, 'cupy', '_version.py')).read())
+with open(os.path.join(here, 'cupy', '_version.py')) as f:
+    exec(f.read())
 
 CLASSIFIERS = """\
 Development Status :: 5 - Production/Stable
@@ -132,6 +132,7 @@ Programming Language :: Python :: 3
 Programming Language :: Python :: 3.6
 Programming Language :: Python :: 3.7
 Programming Language :: Python :: 3.8
+Programming Language :: Python :: 3.9
 Programming Language :: Python :: 3 :: Only
 Programming Language :: Cython
 Topic :: Software Development
@@ -165,6 +166,5 @@ setup(
     tests_require=tests_require,
     extras_require=extras_require,
     ext_modules=ext_modules,
-    cmdclass={'build_ext': build_ext,
-              'sdist': sdist},
+    cmdclass={'build_ext': build_ext},
 )

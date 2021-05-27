@@ -1,11 +1,11 @@
 # distutils: language = c++
 
 import gc
+import warnings
 import weakref
 
 from cupy_backends.cuda.api cimport runtime
 from cupy.cuda cimport device
-from cupy.cuda cimport memory
 
 import threading
 
@@ -41,7 +41,6 @@ cdef class _ThreadLocal:
 
 cdef inline Py_ssize_t _get_plan_memsize(plan, int curr_dev=-1) except -1:
     cdef Py_ssize_t memsize = 0
-    cdef memory.MemoryPointer ptr
     cdef int dev
 
     # work_area could be None for "empty" plans...
@@ -50,6 +49,7 @@ cdef inline Py_ssize_t _get_plan_memsize(plan, int curr_dev=-1) except -1:
             # multi-GPU plan
             if curr_dev == -1:
                 curr_dev = runtime.getDevice()
+            # ptr is memory.MemoryPointer, but we can't type it here
             for dev, ptr in zip(plan.gpus, plan.work_area):
                 if dev == curr_dev:
                     memsize = <Py_ssize_t>(ptr.mem.size)
@@ -264,6 +264,11 @@ cdef class PlanCache:
     # ---------------------- Python methods ---------------------- #
 
     def __init__(self, Py_ssize_t size=16, Py_ssize_t memsize=-1, int dev=-1):
+        if runtime.runtimeGetVersion() == 11010:
+            warnings.warn('cuFFT plan cache is disabled on CUDA 11.1 due to a '
+                          'known bug, so performance may be degraded. The bug '
+                          'is fixed on CUDA 11.2+.')
+            size = 0
         self._validate_size_memsize(size, memsize)
         self._set_size_memsize(size, memsize)
         self._reset()

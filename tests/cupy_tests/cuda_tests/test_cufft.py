@@ -30,6 +30,7 @@ class TestExceptionPicklable(unittest.TestCase):
     'shape': [(64,), (4, 16), (128,), (8, 32)],
 }))
 @testing.multi_gpu(2)
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='not supported by hipFFT')
 class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
@@ -119,7 +120,7 @@ class TestXtPlanNd(unittest.TestCase):
         t = dtype
         idtype = odtype = edtype = cupy.dtype(t)
         shape = self.shape
-        length = cupy.core.internal.prod(shape[1:])
+        length = cupy._core.internal.prod(shape[1:])
 
         a = testing.shaped_random(shape, cupy, dtype)
         out = cupy.empty_like(a)
@@ -142,7 +143,7 @@ class TestXtPlanNd(unittest.TestCase):
         t = dtype
         idtype = odtype = edtype = cupy.dtype(t)
         shape = self.shape
-        length = cupy.core.internal.prod(shape[1:])
+        length = cupy._core.internal.prod(shape[1:])
 
         a = testing.shaped_random(shape, cupy, dtype)
         out = cupy.empty_like(a)
@@ -174,7 +175,7 @@ class TestXtPlanNd(unittest.TestCase):
         out = cupy.empty_like(a)
 
         shape = old_shape
-        length = cupy.core.internal.prod(shape[1:])
+        length = cupy._core.internal.prod(shape[1:])
         plan = cufft.XtPlanNd(shape[1:],
                               shape[1:], 1, length, idtype,
                               shape[1:], 1, length, odtype,
@@ -209,7 +210,7 @@ class TestXtPlanNd(unittest.TestCase):
         out = cupy.empty_like(a)
 
         shape = old_shape
-        length = cupy.core.internal.prod(shape[1:])
+        length = cupy._core.internal.prod(shape[1:])
         plan = cufft.XtPlanNd(shape[1:],
                               shape[1:], 1, length, idtype,
                               shape[1:], 1, length, odtype,

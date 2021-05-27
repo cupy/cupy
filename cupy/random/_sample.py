@@ -1,4 +1,4 @@
-from cupy import core
+from cupy import _core
 from cupy._creation import basic
 from cupy.random import _distributions
 from cupy.random import _generator
@@ -190,7 +190,7 @@ def choice(a, size=None, replace=True, p=None):
     return rs.choice(a, size, replace, p)
 
 
-_multinominal_kernel = core.ElementwiseKernel(
+_multinominal_kernel = _core.ElementwiseKernel(
     'int64 x, int32 p, int32 n', 'raw U ys',
     'atomicAdd(&ys[i / n * p + x], U(1))',
     'cupy_random_multinomial')

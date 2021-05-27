@@ -1,13 +1,13 @@
 import cupy
 import cupyx.scipy.fft
 
-from cupy import core
-from cupy.core import _routines_math as _math
-from cupy.core import fusion
+from cupy import _core
+from cupy._core import _routines_math as _math
+from cupy._core import fusion
 from cupy.lib import stride_tricks
 
 
-_dot_kernel = core.ReductionKernel(
+_dot_kernel = _core.ReductionKernel(
     'T x1, T x2',
     'T y',
     'x1 * x2',
@@ -172,10 +172,10 @@ def clip(a, a_min=None, a_max=None, out=None):
 
 # sqrt_fixed is deprecated.
 # numpy.sqrt is fixed in numpy 1.11.2.
-sqrt = sqrt_fixed = core.sqrt
+sqrt = sqrt_fixed = _core.sqrt
 
 
-cbrt = core.create_ufunc(
+cbrt = _core.create_ufunc(
     'cupy_cbrt',
     ('e->e', 'f->f', 'd->d'),
     'out0 = cbrt(in0)',
@@ -186,7 +186,7 @@ cbrt = core.create_ufunc(
     ''')
 
 
-square = core.create_ufunc(
+square = _core.create_ufunc(
     'cupy_square',
     ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
      'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
@@ -198,7 +198,7 @@ square = core.create_ufunc(
     ''')
 
 
-absolute = core.absolute
+absolute = _core.absolute
 
 
 # TODO(beam2d): Implement it
@@ -213,7 +213,7 @@ if (in0.real() == 0) {
   out0 = (in0.real() > 0) - (in0.real() < 0);
 }
 '''
-sign = core.create_ufunc(
+sign = _core.create_ufunc(
     'cupy_sign',
     ('b->b', ('B->B', _unsigned_sign), 'h->h', ('H->H', _unsigned_sign),
      'i->i', ('I->I', _unsigned_sign), 'l->l', ('L->L', _unsigned_sign),
@@ -236,7 +236,7 @@ _float_preamble = '''
 '''
 _float_maximum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
                   'out0_type(max(in0, in1))')
-maximum = core.create_ufunc(
+maximum = _core.create_ufunc(
     'cupy_maximum',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
@@ -258,7 +258,7 @@ maximum = core.create_ufunc(
 
 _float_minimum = ('out0 = (isnan(in0) | isnan(in1)) ? out0_type(NAN) : '
                   'out0_type(min(in0, in1))')
-minimum = core.create_ufunc(
+minimum = _core.create_ufunc(
     'cupy_minimum',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
@@ -278,7 +278,7 @@ minimum = core.create_ufunc(
     ''')
 
 
-fmax = core.create_ufunc(
+fmax = _core.create_ufunc(
     'cupy_fmax',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
@@ -296,7 +296,7 @@ fmax = core.create_ufunc(
     ''')
 
 
-fmin = core.create_ufunc(
+fmin = _core.create_ufunc(
     'cupy_fmin',
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
@@ -333,7 +333,7 @@ __device__ complex<T> nan_to_num(complex<T> x, T large) {
 '''
 
 
-nan_to_num = core.create_ufunc(
+nan_to_num = _core.create_ufunc(
     'cupy_nan_to_num',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H',
      'i->i', 'I->I', 'l->l', 'L->L', 'q->q', 'Q->Q',

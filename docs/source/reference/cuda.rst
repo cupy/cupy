@@ -1,4 +1,4 @@
-Low-Level CUDA Support
+Low-level CUDA support
 ======================
 
 Device management
@@ -6,7 +6,6 @@ Device management
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.Device
 
@@ -16,12 +15,12 @@ Memory management
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.get_default_memory_pool
    cupy.get_default_pinned_memory_pool
    cupy.cuda.Memory
    cupy.cuda.MemoryAsync
+   cupy.cuda.ManagedMemory
    cupy.cuda.UnownedMemory
    cupy.cuda.PinnedMemory
    cupy.cuda.MemoryPointer
@@ -35,8 +34,10 @@ Memory management
    cupy.cuda.using_allocator
    cupy.cuda.set_pinned_memory_allocator
    cupy.cuda.MemoryPool
+   cupy.cuda.MemoryAsyncPool
    cupy.cuda.PinnedMemoryPool
    cupy.cuda.PythonFunctionAllocator
+   cupy.cuda.CFunctionAllocator
 
 
 Memory hook
@@ -44,19 +45,19 @@ Memory hook
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.MemoryHook
    cupy.cuda.memory_hooks.DebugPrintHook
    cupy.cuda.memory_hooks.LineProfileHook
 
 
+.. _stream_event_api:
+
 Streams and events
 ------------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.Stream
    cupy.cuda.ExternalStream
@@ -70,7 +71,6 @@ Texture and surface memory
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.texture.ChannelFormatDescriptor
    cupy.cuda.texture.CUDAarray
@@ -86,7 +86,6 @@ Profiler
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.profile
    cupy.cuda.profiler.initialize
@@ -104,7 +103,6 @@ NCCL
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.nccl.NcclCommunicator
    cupy.cuda.nccl.get_build_version
@@ -114,25 +112,29 @@ NCCL
    cupy.cuda.nccl.groupEnd
 
 
+.. _runtime_api:
+
 Runtime API
 -----------
 
 CuPy wraps CUDA Runtime APIs to provide the native CUDA operations.
-Please check the `Original CUDA Runtime API document <https://docs.nvidia.com/cuda/cuda-runtime-api/index.html>`_
+Please check the `CUDA Runtime API documentation <https://docs.nvidia.com/cuda/cuda-runtime-api/index.html>`_
 to use these functions.
-
-
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
    cupy.cuda.runtime.driverGetVersion
    cupy.cuda.runtime.runtimeGetVersion
    cupy.cuda.runtime.getDevice
+   cupy.cuda.runtime.getDeviceProperties
    cupy.cuda.runtime.deviceGetAttribute
    cupy.cuda.runtime.deviceGetByPCIBusId
    cupy.cuda.runtime.deviceGetPCIBusId
+   cupy.cuda.runtime.deviceGetDefaultMemPool
+   cupy.cuda.runtime.deviceGetMemPool
+   cupy.cuda.runtime.deviceSetMemPool
+   cupy.cuda.runtime.memPoolTrimTo
    cupy.cuda.runtime.getDeviceCount
    cupy.cuda.runtime.setDevice
    cupy.cuda.runtime.deviceSynchronize

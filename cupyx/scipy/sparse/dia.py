@@ -5,7 +5,7 @@ except ImportError:
     _scipy_available = False
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupyx.scipy.sparse import csc
 from cupyx.scipy.sparse import data
 from cupyx.scipy.sparse import _util
@@ -125,7 +125,7 @@ class dia_matrix(data._data_matrix):
                 'getnnz over an axis is not implemented for DIA format')
 
         m, n = self.shape
-        nnz = core.ReductionKernel(
+        nnz = _core.ReductionKernel(
             'int32 offsets, int32 m, int32 n', 'int32 nnz',
             'offsets > 0 ? min(m, n - offsets) : min(m + offsets, n)',
             'a + b', 'nnz = a', '0', 'dia_nnz')(self.offsets, m, n)
@@ -153,7 +153,7 @@ class dia_matrix(data._data_matrix):
         num_rows, num_cols = self.shape
         num_offsets, offset_len = self.data.shape
 
-        row, mask = core.ElementwiseKernel(
+        row, mask = _core.ElementwiseKernel(
             'int32 offset_len, int32 offsets, int32 num_rows, '
             'int32 num_cols, T data',
             'int32 row, bool mask',

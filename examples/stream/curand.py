@@ -1,7 +1,7 @@
 # nvprof --print-gpu-trace python examples/stream/curand.py
 import cupy
 
-rand = cupy.random.generator.RandomState()
+rand = cupy.random.RandomState()
 
 stream = cupy.cuda.stream.Stream()
 with stream:

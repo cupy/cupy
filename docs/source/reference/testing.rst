@@ -1,54 +1,57 @@
-Testing Modules
-===============
-
 .. module:: cupy.testing
 
-CuPy offers testing utilities to support unit testing.
-They are under namespace :mod:`cupy.testing`.
+Test support (:mod:`cupy.testing`)
+==================================
 
+.. Hint:: `NumPy API Reference: Test support (numpy.testing) <https://numpy.org/doc/stable/reference/routines.testing.html>`_
 
-Standard Assertions
--------------------
+Asserts
+-------
 
-The assertions have same names as NumPy's ones.
-The difference from NumPy is that they can accept both :class:`numpy.ndarray`
-and :class:`cupy.ndarray`.
-
+.. Hint:: These APIs can accept both :class:`numpy.ndarray` and :class:`cupy.ndarray`.
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.testing.assert_allclose
-   cupy.testing.assert_array_almost_equal
-   cupy.testing.assert_array_almost_equal_nulp
-   cupy.testing.assert_array_max_ulp
-   cupy.testing.assert_array_equal
-   cupy.testing.assert_array_list_equal
-   cupy.testing.assert_array_less
+   assert_array_almost_equal
+   assert_allclose
+   assert_array_almost_equal_nulp
+   assert_array_max_ulp
+   assert_array_equal
+   assert_array_less
+
+CuPy-specific APIs
+------------------
+
+Asserts
+~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   assert_array_list_equal
 
 
 NumPy-CuPy Consistency Check
-----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following decorators are for testing consistency
 between CuPy's functions and corresponding NumPy's ones.
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.testing.numpy_cupy_allclose
-   cupy.testing.numpy_cupy_array_almost_equal
-   cupy.testing.numpy_cupy_array_almost_equal_nulp
-   cupy.testing.numpy_cupy_array_max_ulp
-   cupy.testing.numpy_cupy_array_equal
-   cupy.testing.numpy_cupy_array_list_equal
-   cupy.testing.numpy_cupy_array_less
+   numpy_cupy_allclose
+   numpy_cupy_array_almost_equal
+   numpy_cupy_array_almost_equal_nulp
+   numpy_cupy_array_max_ulp
+   numpy_cupy_array_equal
+   numpy_cupy_array_list_equal
+   numpy_cupy_array_less
 
 
 Parameterized dtype Test
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following decorators offer the standard way for
 parameterized test with respect to single or the
@@ -56,30 +59,29 @@ combination of dtype(s).
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.testing.for_dtypes
-   cupy.testing.for_all_dtypes
-   cupy.testing.for_float_dtypes
-   cupy.testing.for_signed_dtypes
-   cupy.testing.for_unsigned_dtypes
-   cupy.testing.for_int_dtypes
-   cupy.testing.for_complex_dtypes
-   cupy.testing.for_dtypes_combination
-   cupy.testing.for_all_dtypes_combination
-   cupy.testing.for_signed_dtypes_combination
-   cupy.testing.for_unsigned_dtypes_combination
-   cupy.testing.for_int_dtypes_combination
+   for_dtypes
+   for_all_dtypes
+   for_float_dtypes
+   for_signed_dtypes
+   for_unsigned_dtypes
+   for_int_dtypes
+   for_complex_dtypes
+   for_dtypes_combination
+   for_all_dtypes_combination
+   for_signed_dtypes_combination
+   for_unsigned_dtypes_combination
+   for_int_dtypes_combination
 
 
 Parameterized order Test
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
+
 The following decorators offer the standard way to parameterize tests with
 orders.
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.testing.for_orders
-   cupy.testing.for_CF_orders
+   for_orders
+   for_CF_orders

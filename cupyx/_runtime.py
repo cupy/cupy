@@ -19,7 +19,7 @@ except ImportError:
     cudnn = None
 
 try:
-    import cupy.cuda.nccl as nccl
+    import cupy_backends.cuda.libs.nccl as nccl
 except ImportError:
     nccl = None
 
@@ -37,6 +37,11 @@ try:
     import cupy_backends.cuda.libs.cutensor as cutensor
 except ImportError:
     cutensor = None
+
+try:
+    import cupy_backends.cuda.libs.cusparselt as cusparselt
+except ImportError:
+    cusparselt = None
 
 try:
     import scipy
@@ -124,6 +129,7 @@ class _RuntimeInfo(object):
     cub_build_version = None
     jitify_build_version = None
     cutensor_version = None
+    cusparselt_version = None
     cython_build_version = None
     cython_version = None
 
@@ -137,6 +143,11 @@ class _RuntimeInfo(object):
             self.cuda_path = cupy.cuda.get_cuda_path()
         else:
             self.cuda_path = cupy._environment.get_rocm_path()
+
+        if not is_hip:
+            self.nvcc_path = cupy._environment.get_nvcc_path()
+        else:
+            self.nvcc_path = cupy._environment.get_hipcc_path()
 
         self.cuda_build_version = cupy.cuda.driver.get_build_version()
         self.cuda_driver_version = _eval_or_error(
@@ -192,6 +203,9 @@ class _RuntimeInfo(object):
         if cutensor is not None:
             self.cutensor_version = cutensor.get_version()
 
+        if cusparselt is not None:
+            self.cusparselt_version = cusparselt.get_build_version()
+
         self.cython_build_version = cupy._util.cython_build_ver
         if Cython is not None:
             self.cython_version = Cython.__version__
@@ -203,12 +217,15 @@ class _RuntimeInfo(object):
     def __str__(self):
         records = [
             ('OS',  platform.platform()),
+            ('Python Version', platform.python_version()),
             ('CuPy Version', self.cupy_version),
+            ('CuPy Platform', 'NVIDIA CUDA' if not is_hip else 'AMD ROCm'),
             ('NumPy Version', self.numpy_version),
             ('SciPy Version', self.scipy_version),
             ('Cython Build Version', self.cython_build_version),
             ('Cython Runtime Version', self.cython_version),
             ('CUDA Root', self.cuda_path),
+            ('hipcc PATH' if is_hip else 'nvcc PATH', self.nvcc_path),
 
             ('CUDA Build Version', self.cuda_build_version),
             ('CUDA Driver Version', self.cuda_driver_version),
@@ -234,17 +251,26 @@ class _RuntimeInfo(object):
             ('NCCL Build Version', self.nccl_build_version),
             ('NCCL Runtime Version', self.nccl_runtime_version),
             ('cuTENSOR Version', self.cutensor_version),
+            ('cuSPARSELt Build Version', self.cusparselt_version),
         ]
 
         for device_id in range(cupy.cuda.runtime.getDeviceCount()):
             with cupy.cuda.Device(device_id) as device:
                 props = cupy.cuda.runtime.getDeviceProperties(device_id)
-                records += [
-                    ('Device {} Name'.format(device_id),
-                     props['name'].decode('utf-8')),
-                    ('Device {} Compute Capability'.format(device_id),
-                     device.compute_capability),
-                ]
+                name = ('Device {} Name'.format(device_id),
+                        props['name'].decode())
+                pci_bus = ('Device {} PCI Bus ID'.format(device_id),
+                           device.pci_bus_id)
+                if is_hip:
+                    try:
+                        arch = props['gcnArchName'].decode()
+                    except KeyError:  # ROCm < 3.6.0
+                        arch = 'gfx'+str(props['gcnArch'])
+                    arch = ('Device {} Arch'.format(device_id), arch)
+                else:
+                    arch = ('Device {} Compute Capability'.format(device_id),
+                            device.compute_capability)
+                records += [name, arch, pci_bus]
 
         width = max([len(r[0]) for r in records]) + 2
         fmt = '{:' + str(width) + '}: {}\n'

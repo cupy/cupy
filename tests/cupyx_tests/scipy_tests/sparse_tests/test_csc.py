@@ -890,10 +890,19 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         assert 2 == len(M.indices)  # unaffected content
         return M
 
+    @testing.with_requires('scipy>1.6.0')
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_has_sorted_indices(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.has_sorted_indices
+
+    # TODO(asi1024): Remove test after the fixed version is released.
+    # https://github.com/scipy/scipy/pull/13426
+    @testing.with_requires('scipy<=1.6.0')
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_sorted_indices_for_old_scipy(self, xp, sp):
+        m = self.make(xp, sp, self.dtype)
+        return bool(m.has_sorted_indices)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_has_sorted_indices2(self, xp, sp):

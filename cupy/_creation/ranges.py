@@ -3,7 +3,7 @@ import math
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 
 
 def arange(start, stop=None, step=1, dtype=None):
@@ -238,8 +238,8 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None):
     """
     y = linspace(start, stop, num=num, endpoint=endpoint)
     if dtype is None:
-        return core.power(base, y)
-    return core.power(base, y).astype(dtype)
+        return _core.power(base, y)
+    return _core.power(base, y).astype(dtype)
 
 
 def meshgrid(*xi, **kwargs):
@@ -411,7 +411,7 @@ mgrid = nd_grid(sparse=False)
 ogrid = nd_grid(sparse=True)
 
 
-_arange_ufunc = core.create_ufunc(
+_arange_ufunc = _core.create_ufunc(
     'cupy_arange',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
      'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d',
@@ -419,12 +419,12 @@ _arange_ufunc = core.create_ufunc(
      ('DD->D', 'out0 = in0 + double(i) * in1')),
     'out0 = in0 + i * in1')
 
-_linspace_ufunc = core.create_ufunc(
+_linspace_ufunc = _core.create_ufunc(
     'cupy_linspace',
     ('dd->d',),
     'out0 = in0 + i * in1')
 
-_linspace_ufunc_underflow = core.create_ufunc(
+_linspace_ufunc_underflow = _core.create_ufunc(
     'cupy_linspace',
     ('ddd->d',),
     'out0 = in0 + i * in1 / in2')

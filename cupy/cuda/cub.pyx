@@ -6,9 +6,9 @@ from cpython cimport sequence
 
 from cupy_backends.cuda.api.driver cimport Stream as Stream_t
 from cupy_backends.cuda.api cimport runtime
-from cupy.core.core cimport _internal_ascontiguousarray
-from cupy.core.core cimport _internal_asfortranarray
-from cupy.core.internal cimport _contig_axes
+from cupy._core.core cimport _internal_ascontiguousarray
+from cupy._core.core cimport _internal_asfortranarray
+from cupy._core.internal cimport _contig_axes
 from cupy.cuda cimport common
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
@@ -429,7 +429,7 @@ cdef _cub_reduce_dtype_compatible(x_dtype, int op, dtype=None):
         if op in (CUPY_CUB_SUM, CUPY_CUB_PROD):
             # auto dtype:
             # CUB reduce_sum does not support dtype promotion.
-            # See _sum_auto_dtype in cupy/core/_routines_math.pyx for which
+            # See _sum_auto_dtype in cupy/_core/_routines_math.pyx for which
             # dtypes are promoted.
             support_dtype = _cub_support_dtype(True, dev_id)
         else:
@@ -452,7 +452,7 @@ cpdef cub_reduction(
     If the specified reduction is not possible, None is returned.
     """
     # if import at the top level, a segfault would happen when import cupy!
-    from cupy.core._reduction import _get_axis
+    from cupy._core._reduction import _get_axis
     cdef bint enforce_numpy_API = False, is_ok
     cdef str order
     cdef tuple reduce_axis, out_axis

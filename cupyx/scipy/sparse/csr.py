@@ -9,8 +9,9 @@ try:
 except ImportError:
     _scipy_available = False
 
+from cupy_backends.cuda.api import driver
 import cupy
-from cupy.core import _accelerator
+from cupy._core import _accelerator
 from cupy.cuda import cub
 from cupy import cusparse
 from cupyx.scipy.sparse import base
@@ -33,7 +34,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
     ``csr_matrix((M, N), [dtype])``
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
         is float64.
-    ``csr_matrix((data, (row, col))``
+    ``csr_matrix((data, (row, col)))``
         All ``data``, ``row`` and ``col`` are one-dimenaional
         :class:`cupy.ndarray`.
     ``csr_matrix((data, indices, indptr))``
@@ -181,6 +182,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 # see cupy/cupy#3679 for discussion
                 is_cub_safe = (self.indptr.data.mem.size
                                > self.indptr.size * self.indptr.dtype.itemsize)
+                # CUB spmv is buggy since CUDA 11.0, see
+                # https://github.com/cupy/cupy/issues/3822#issuecomment-782607637
+                is_cub_safe &= (driver.get_build_version() < 11000)
                 for accelerator in _accelerator.get_routine_accelerators():
                     if (accelerator == _accelerator.ACCELERATOR_CUB
                             and is_cub_safe and other.flags.c_contiguous):
@@ -391,14 +395,23 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         x = self.copy()
         x.has_canonical_format = False  # need to enforce sum_duplicates
         x.sum_duplicates()
-        # csr2dense returns F-contiguous array.
-        if order == 'C':
-            # To return C-contiguous array, it uses transpose.
-            return cusparse.csc2dense(x.T).T
-        elif order == 'F':
-            return cusparse.csr2dense(x)
+        if cusparse.check_availability('sparseToDense'):
+            y = cusparse.sparseToDense(x)
+            if order == 'F':
+                return y
+            elif order == 'C':
+                return cupy.ascontiguousarray(y)
+            else:
+                raise ValueError('order not understood')
         else:
-            raise ValueError('order not understood')
+            # csr2dense returns F-contiguous array.
+            if order == 'C':
+                # To return C-contiguous array, it uses transpose.
+                return cusparse.csc2dense(x.T).T
+            elif order == 'F':
+                return cusparse.csr2dense(x)
+            else:
+                raise ValueError('order not understood')
 
     def tobsr(self, blocksize=None, copy=False):
         # TODO(unno): Implement tobsr
@@ -1114,7 +1127,10 @@ def cupy_csr2dense():
 
 def dense2csr(a):
     if a.dtype.char in 'fdFD':
-        return cusparse.dense2csr(a)
+        if cusparse.check_availability('denseToSparse'):
+            return cusparse.denseToSparse(a, format='csr')
+        else:
+            return cusparse.dense2csr(a)
     m, n = a.shape
     a = cupy.ascontiguousarray(a)
     indptr = cupy.zeros(m + 1, dtype=numpy.int32)

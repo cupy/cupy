@@ -61,18 +61,21 @@ main() {
           "asia.gcr.io/pfn-public-ci/cupy-ci-prep.${TARGET}:${base_branch}" \
           bash /src/.pfnci/run.sh "${TARGET}"
       ;;
-    'py37.amd' )
+    py37.rocm-* )
+      # ROCM_REPO can be set via config.pbtxt and will be used as a
+      # part of ROCm repository URL (http://repo.radeon.com/rocm/apt/).
+      ROCM_REPO=${ROCM_REPO:-debian}
       cd "$(dirname "${BASH_SOURCE}")"/..
       apt update -qqy
       apt install python3.7-dev python3-apt python3-pip python3-setuptools -qqy
       python3.7 -m pip install cython numpy
 
       wget -qO - http://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
-      echo 'deb [arch=amd64] http://repo.radeon.com/rocm/apt/debian/ xenial main' | tee /etc/apt/sources.list.d/rocm.list
+      echo "deb [arch=amd64] http://repo.radeon.com/rocm/apt/${ROCM_REPO}/ xenial main" | tee /etc/apt/sources.list.d/rocm.list
 
       # Uninstall CUDA to ensure it's a clean ROCm environment
       # https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#removing-cuda-tk-and-driver
-      apt-get --purge remove "*cublas*" "*cufft*" "*curand*" "*cusolver*" "*cusparse*" "*npp*" "*nvjpeg*" "cuda*" "nsight*" "*cudnn*" -qqy
+      apt-get --purge remove "*cublas*" "*cufft*" "*curand*" "*cusolver*" "*cusparse*" "*npp*" "cuda*" "nsight*" -qqy
       apt-get autoremove -qqy
 
       apt update -qqy
@@ -148,11 +151,13 @@ prepare_docker() {
   run gcloud auth configure-docker
 }
 
+KNOWN_BASE_BRANCHES="master v8 v9"
+
 # is_known_base_branch returns 0 only if the given branch name is a known
 # base development branch.
 is_known_base_branch() {
   local branch="${1##refs/heads/}"
-  for BASE_BRANCH in master v7 v8; do
+  for BASE_BRANCH in ${KNOWN_BASE_BRANCHES}; do
     if [ "${branch}" = "${BASE_BRANCH}" ]; then
       return 0
     fi
@@ -162,7 +167,7 @@ is_known_base_branch() {
 
 # get_base_branch returns the base development branch for the current HEAD.
 get_base_branch() {
-  for BASE_BRANCH in master v7 v8; do
+  for BASE_BRANCH in ${KNOWN_BASE_BRANCHES}; do
     git merge-base --is-ancestor "origin/${BASE_BRANCH}" HEAD && echo "${BASE_BRANCH}" && return 0
   done
   echo "Base branch of HEAD is not valid." >&2

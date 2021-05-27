@@ -1,11 +1,22 @@
+import contextlib
 import string
 import sys
+import tempfile
+from unittest import mock
 
 import numpy as np
 import pytest
 
 import cupy
 from cupy import testing
+
+
+@contextlib.contextmanager
+def use_temporary_cache_dir():
+    target = 'cupy.fft._callback.get_cache_dir'
+    with tempfile.TemporaryDirectory() as path:
+        with mock.patch(target, lambda: path):
+            yield path
 
 
 _load_callback = r'''
@@ -123,8 +134,9 @@ class Test1dCallbacks:
                 else:
                     out = out.astype(np.float32)
         else:
-            with xp.fft.config.set_cufft_callbacks(cb_load=cb_load):
-                out = fft(a, n=self.n, norm=self.norm)
+            with use_temporary_cache_dir():
+                with xp.fft.config.set_cufft_callbacks(cb_load=cb_load):
+                    out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
@@ -179,8 +191,9 @@ class Test1dCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with xp.fft.config.set_cufft_callbacks(cb_store=cb_store):
-                out = fft(a, n=self.n, norm=self.norm)
+            with use_temporary_cache_dir():
+                with xp.fft.config.set_cufft_callbacks(cb_store=cb_store):
+                    out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
@@ -249,9 +262,10 @@ class Test1dCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with xp.fft.config.set_cufft_callbacks(
-                    cb_load=cb_load, cb_store=cb_store):
-                out = fft(a, n=self.n, norm=self.norm)
+            with use_temporary_cache_dir():
+                with xp.fft.config.set_cufft_callbacks(
+                        cb_load=cb_load, cb_store=cb_store):
+                    out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
@@ -302,9 +316,10 @@ class Test1dCallbacks:
             if dtype in (np.float32, np.complex64):
                 out = out.astype(np.complex64)
         else:
-            with xp.fft.config.set_cufft_callbacks(
-                    cb_load=cb_load, cb_load_aux_arr=b):
-                out = fft(a, n=self.n, norm=self.norm)
+            with use_temporary_cache_dir():
+                with xp.fft.config.set_cufft_callbacks(
+                        cb_load=cb_load, cb_load_aux_arr=b):
+                    out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
@@ -365,10 +380,11 @@ class Test1dCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with xp.fft.config.set_cufft_callbacks(
-                    cb_load=cb_load, cb_store=cb_store,
-                    cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux):
-                out = fft(a, n=self.n, norm=self.norm)
+            with use_temporary_cache_dir():
+                with xp.fft.config.set_cufft_callbacks(
+                        cb_load=cb_load, cb_store=cb_store,
+                        cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux):
+                    out = fft(a, n=self.n, norm=self.norm)
 
         return out
 
@@ -437,8 +453,9 @@ class TestNdCallbacks:
                 else:
                     out = out.astype(np.float32)
         else:
-            with xp.fft.config.set_cufft_callbacks(cb_load=cb_load):
-                out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
+            with use_temporary_cache_dir():
+                with xp.fft.config.set_cufft_callbacks(cb_load=cb_load):
+                    out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
 
@@ -497,8 +514,9 @@ class TestNdCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with xp.fft.config.set_cufft_callbacks(cb_store=cb_store):
-                out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
+            with use_temporary_cache_dir():
+                with xp.fft.config.set_cufft_callbacks(cb_store=cb_store):
+                    out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
 
@@ -571,9 +589,10 @@ class TestNdCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with xp.fft.config.set_cufft_callbacks(
-                    cb_load=cb_load, cb_store=cb_store):
-                out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
+            with use_temporary_cache_dir():
+                with xp.fft.config.set_cufft_callbacks(
+                        cb_load=cb_load, cb_store=cb_store):
+                    out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
 
@@ -658,10 +677,11 @@ class TestNdCallbacks:
                 if dtype in (np.float32, np.complex64):
                     out = out.astype(np.float32)
         else:
-            with xp.fft.config.set_cufft_callbacks(
-                    cb_load=cb_load, cb_store=cb_store,
-                    cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux):
-                out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
+            with use_temporary_cache_dir():
+                with xp.fft.config.set_cufft_callbacks(
+                        cb_load=cb_load, cb_store=cb_store,
+                        cb_load_aux_arr=load_aux, cb_store_aux_arr=store_aux):
+                    out = fft(a, s=self.s, axes=self.axes, norm=self.norm)
 
         return out
 

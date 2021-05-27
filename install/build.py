@@ -1,5 +1,6 @@
 import contextlib
 import distutils.util
+import importlib
 import os
 import re
 import shutil
@@ -7,7 +8,20 @@ import subprocess
 import sys
 import tempfile
 
-from install import utils
+
+# This is done because pip is installed in no editable mode in
+# windows CI so the kernel cache gets always a deterministic path.
+def _from_install_import(name):
+    install_module_path = os.path.join(os.path.dirname(__file__))
+    original_sys_path = sys.path.copy()
+    try:
+        sys.path.append(install_module_path)
+        return importlib.import_module(name)
+    finally:
+        sys.path = original_sys_path
+
+
+utils = _from_install_import('utils')
 
 
 PLATFORM_LINUX = sys.platform.startswith('linux')
@@ -15,13 +29,14 @@ PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 minimum_cuda_version = 9020
 minimum_cudnn_version = 7600
-maximum_cudnn_version = 8099
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
 
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
+
+use_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
 
 # Using tempfile.TemporaryDirectory would cause an error during cleanup
@@ -172,7 +187,7 @@ def get_compiler_setting(use_hip):
 
     # for <cupy/complex.cuh>
     cupy_header = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                               '../cupy/core/include')
+                               '../cupy/_core/include')
     global _jitify_path
     _jitify_path = os.path.join(cupy_header, 'cupy/jitify')
     if cuda_path:
@@ -286,6 +301,8 @@ _cub_version = None
 _jitify_path = None
 _jitify_version = None
 _compute_capabilities = None
+_cusparselt_version = None
+_cugraph_version = None
 
 
 def check_cuda_version(compiler, settings):
@@ -450,13 +467,11 @@ def check_cudnn_version(compiler, settings):
 
     _cudnn_version = int(out)
 
-    if not minimum_cudnn_version <= _cudnn_version <= maximum_cudnn_version:
+    if not minimum_cudnn_version <= _cudnn_version:
         min_major = str(minimum_cudnn_version)
-        max_major = str(maximum_cudnn_version)
         utils.print_warning(
-            'Unsupported cuDNN version: {}'.format(
-                str(_cudnn_version)),
-            'cuDNN >=v{} and <=v{} is required'.format(min_major, max_major))
+            'Unsupported cuDNN version: {}'.format(str(_cudnn_version)),
+            'cuDNN >=v{} is required'.format(min_major))
         return False
 
     return True
@@ -701,6 +716,82 @@ def get_cutensor_version(formatted=False):
         msg = 'check_cutensor_version() must be called first.'
         raise RuntimeError(msg)
     return _cutensor_version
+
+
+def check_cusparselt_version(compiler, settings):
+    global _cusparselt_version
+    try:
+        out = build_and_run(compiler, '''
+        #include <cusparseLt.h>
+        #include <stdio.h>
+        #ifndef CUSPARSELT_VERSION
+        #define CUSPARSELT_VERSION 0
+        #endif
+        int main(int argc, char* argv[]) {
+          printf("%d", CUSPARSELT_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+
+    except Exception as e:
+        utils.print_warning('Cannot check cuSPARSELt version\n{0}'.format(e))
+        return False
+
+    _cusparselt_version = int(out)
+    return True
+
+
+def get_cusparselt_version(formatted=False):
+    """Return cuSPARSELt version cached in check_cusparselt_version()."""
+    global _cusparselt_version
+    if _cusparselt_version is None:
+        msg = 'check_cusparselt_version() must be called first.'
+        raise RuntimeError(msg)
+    return _cusparselt_version
+
+
+def check_cugraph_version(compiler, settings):
+    global _cugraph_version
+    try:
+        build_and_run(compiler, '''
+        #include <stdio.h>
+        #include <cugraph/raft/error.hpp>
+        int main(int argc, char* argv[]) {
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+    except Exception as e:
+        utils.print_warning('Cannot find cuGraph header files\n{0}'.format(e))
+        return False
+
+    try:
+        out = build_and_run(compiler, '''
+        #include <stdio.h>
+        #include <cugraph/version_config.hpp>
+        int main(int argc, char* argv[]) {
+          printf("%d", CUGRAPH_VERSION_MAJOR * 10000
+                     + CUGRAPH_VERSION_MINOR * 100
+                     + CUGRAPH_VERSION_PATCH);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'])
+    except Exception as e:
+        utils.print_warning('Cannot find cuGRAPH version information\n{0}'.
+                            format(e))
+        _cugraph_version = 0
+        return True
+
+    _cugraph_version = int(out)
+    return True
+
+
+def get_cugraph_version(formatted=False):
+    """Return cuGraph version cached in check_cugraph_version()."""
+    global _cugraph_version
+    if _cugraph_version is None:
+        msg = 'check_cugraph_version() must be called first.'
+        raise RuntimeError(msg)
+    return _cugraph_version
 
 
 def build_shlib(compiler, source, libraries=(),

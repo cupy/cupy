@@ -5,6 +5,7 @@ import numpy
 import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy import testing
 
 
@@ -375,6 +376,8 @@ class TestConvolve(unittest.TestCase):
         b = testing.shaped_arange((100,), xp, dtype)
         return xp.convolve(a[200::], b[10::70], mode=self.mode)
 
+    @pytest.mark.xfail(runtime.is_hip,
+                       reason='HIP/ROCm may have a bug with larger `b`')
     @testing.for_all_dtypes_combination(names=['dtype1', 'dtype2'])
     @testing.numpy_cupy_allclose(rtol=1e-2)
     def test_convolve_diff_types(self, xp, dtype1, dtype2):

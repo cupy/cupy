@@ -1,40 +1,40 @@
-Array Creation Routines
+Array creation routines
 =======================
 
-.. https://docs.scipy.org/doc/numpy/reference/routines.array-creation.html
+.. Hint:: `NumPy API Reference: Array creation routines <https://numpy.org/doc/stable/reference/routines.array-creation.html>`_
 
-Basic creation routines
------------------------
+.. currentmodule:: cupy
 
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   cupy.empty
-   cupy.empty_like
-   cupy.eye
-   cupy.identity
-   cupy.ones
-   cupy.ones_like
-   cupy.zeros
-   cupy.zeros_like
-   cupy.full
-   cupy.full_like
-
-
-Creation from other data
-------------------------
+Ones and zeros
+--------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.array
-   cupy.asarray
-   cupy.asanyarray
-   cupy.ascontiguousarray
-   cupy.copy
-   cupy.fromfile
+   empty
+   empty_like
+   eye
+   identity
+   ones
+   ones_like
+   zeros
+   zeros_like
+   full
+   full_like
+
+
+From existing data
+------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   array
+   asarray
+   asanyarray
+   ascontiguousarray
+   copy
+   fromfile
 
 
 Numerical ranges
@@ -42,25 +42,23 @@ Numerical ranges
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.arange
-   cupy.linspace
-   cupy.logspace
-   cupy.meshgrid
-   cupy.mgrid
-   cupy.ogrid
+   arange
+   linspace
+   logspace
+   meshgrid
+   mgrid
+   ogrid
 
 
-Matrix creation
----------------
+Building matrices
+-----------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupy.diag
-   cupy.diagflat
-   cupy.tri
-   cupy.tril
-   cupy.triu
+   diag
+   diagflat
+   tri
+   tril
+   triu

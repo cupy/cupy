@@ -36,8 +36,22 @@ function ActivateCUDA($version) {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V11_1
     } elseif ($version -eq "11.2") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V11_2
+    } elseif ($version -eq "11.3") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_3
     } else {
         throw "Unsupported CUDA version: $version"
     }
     $Env:PATH = "$Env:CUDA_PATH\bin;$Env:ProgramFiles\NVIDIA Corporation\NvToolsExt\bin\x64;" + $Env:PATH
+}
+
+function IsPullRequestTest() {
+    return ${Env:FLEXCI_BRANCH} -ne $null -and ${Env:FLEXCI_BRANCH}.StartsWith("refs/pull/")
+}
+
+function PrioritizeFlexCIDaemon() {
+    echo "Prioritizing FlexCI daemon process..."
+    wmic.exe process where 'name="imosci.exe"' CALL setpriority realtime
+    if (-not $?) {
+        throw "Failed to change priority of daemon (exit code = $LastExitCode)"
+    }
 }

@@ -1,8 +1,10 @@
 import unittest
 
 import numpy
+import pytest
 
 import cupy
+from cupy.cuda import runtime
 from cupy.random import _distributions
 from cupy import testing
 
@@ -22,6 +24,17 @@ class RandomDistributionsTestCase(unittest.TestCase):
             dtype)
         cp_out = getattr(_distributions, dist_name)(
             size=self.shape, dtype=dtype, **cp_params)
+        assert cp_out.shape == np_out.shape
+        assert cp_out.dtype == np_out.dtype
+
+    def check_generator_distribution(self, dist_name, params, dtype):
+        cp_params = {k: cupy.asarray(params[k]) for k in params}
+        np_gen = numpy.random.default_rng(0)
+        cp_gen = cupy.random.default_rng(0)
+        np_out = numpy.asarray(
+            getattr(np_gen, dist_name)(size=self.shape, **params))
+        cp_out = getattr(cp_gen, dist_name)(
+            size=self.shape, **cp_params)
         assert cp_out.shape == np_out.shape
         assert cp_out.dtype == np_out.dtype
 
@@ -152,7 +165,7 @@ class TestDistributionsF(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'shape_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
     'dtype': _float_dtypes,  # to escape timeout
@@ -161,18 +174,33 @@ class TestDistributionsF(unittest.TestCase):
 @testing.gpu
 class TestDistributionsGamma(unittest.TestCase):
 
-    def check_distribution(self, dist_func, shape_dtype, scale_dtype, dtype):
+    def check_distribution(self, dist_func, shape_dtype, scale_dtype,
+                           dtype=None):
         shape = cupy.ones(self.shape_shape, dtype=shape_dtype)
         scale = cupy.ones(self.scale_shape, dtype=scale_dtype)
-        out = dist_func(shape, scale, self.shape, dtype)
-        assert self.shape == out.shape
+        if dtype is None:
+            out = dist_func(shape, scale, self.shape)
+        else:
+            out = dist_func(shape, scale, self.shape, dtype)
+        out_shape = self.shape
+        if self.shape is None:
+            out_shape = shape.shape if shape.shape != () else scale.shape
+        assert out_shape == out.shape
         assert out.dtype == dtype
 
     @cupy.testing.for_dtypes_combination(
         _float_dtypes, names=['shape_dtype', 'scale_dtype'])
-    def test_gamma(self, shape_dtype, scale_dtype):
+    def test_gamma_legacy(self, shape_dtype, scale_dtype):
         self.check_distribution(_distributions.gamma,
                                 shape_dtype, scale_dtype, self.dtype)
+
+    @cupy.testing.for_dtypes_combination(
+        _float_dtypes, names=['shape_dtype', 'scale_dtype'])
+    @pytest.mark.xfail(
+        runtime.is_hip, reason='Generator API not supported in HIP')
+    def test_gamma_generator(self, shape_dtype, scale_dtype):
+        self.check_distribution(cupy.random.default_rng().gamma,
+                                shape_dtype, scale_dtype)
 
 
 @testing.parameterize(*testing.product({
@@ -197,7 +225,7 @@ class TestDistributionsGeometric(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })
@@ -244,7 +272,7 @@ class TestDistributionsHyperGeometric(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'loc_shape': [(), (3, 2)],
     'scale_shape': [(), (3, 2)],
 })
@@ -476,7 +504,7 @@ class TestDistributionsNormal(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'a_shape': [(), (3, 2)],
 })
 )
@@ -486,7 +514,8 @@ class TestDistributionsPareto(unittest.TestCase):
     def check_distribution(self, dist_func, a_dtype, dtype):
         a = cupy.ones(self.a_shape, dtype=a_dtype)
         out = dist_func(a, self.shape, dtype)
-        assert self.shape == out.shape
+        if self.shape is not None:
+            assert self.shape == out.shape
         assert out.dtype == dtype
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
@@ -497,23 +526,45 @@ class TestDistributionsPareto(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'lam_shape': [(), (3, 2)],
 })
 )
 @testing.gpu
 class TestDistributionsPoisson(unittest.TestCase):
 
-    def check_distribution(self, dist_func, lam_dtype, dtype):
+    def check_distribution(self, dist_func, lam_dtype, dtype=None):
         lam = cupy.full(self.lam_shape, 5, dtype=lam_dtype)
-        out = dist_func(lam, self.shape, dtype)
-        assert self.shape == out.shape
-        assert out.dtype == dtype
+        if dtype is not None:
+            out = dist_func(lam, self.shape, dtype)
+            assert out.dtype == dtype
+        else:
+            out = dist_func(lam, self.shape)
+        if self.shape is not None:
+            assert self.shape == out.shape
+        else:
+            assert lam.shape == out.shape
 
     @cupy.testing.for_int_dtypes('dtype')
     @cupy.testing.for_float_dtypes('lam_dtype')
-    def test_poisson(self, lam_dtype, dtype):
+    def test_poisson_legacy(self, lam_dtype, dtype):
         self.check_distribution(_distributions.poisson, lam_dtype, dtype)
+
+    @cupy.testing.for_float_dtypes('lam_dtype')
+    def test_poisson_generator(self, lam_dtype):
+        self.check_distribution(cupy.random.default_rng(0).poisson,
+                                lam_dtype)
+
+
+@testing.gpu
+class TestDistributionsPoissonInvalid(unittest.TestCase):
+    def test_none_lam_generator(self):
+        with self.assertRaises(TypeError):
+            cupy.random.default_rng(0).poisson(None)
+
+    def test_none_lam_legacy(self):
+        with self.assertRaises(ValueError):
+            _distributions.poisson(None)
 
 
 @testing.parameterize(*testing.product({
@@ -541,7 +592,7 @@ class TestDistributionsPower(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'scale_shape': [(), (3, 2)],
 })
 )
@@ -584,7 +635,7 @@ class TestDistributionsStandardCauchy(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
 })
 )
 @testing.gpu
@@ -596,7 +647,7 @@ class TestDistributionsStandardExponential(RandomDistributionsTestCase):
 
 
 @testing.parameterize(*testing.product({
-    'shape': [(4, 3, 2), (3, 2)],
+    'shape': [(4, 3, 2), (3, 2), None],
     'shape_shape': [(), (3, 2)],
 })
 )
@@ -605,10 +656,32 @@ class TestDistributionsStandardGamma(RandomDistributionsTestCase):
 
     @cupy.testing.for_float_dtypes('dtype', no_float16=True)
     @cupy.testing.for_float_dtypes('shape_dtype')
-    def test_standard_gamma(self, shape_dtype, dtype):
+    def test_standard_gamma_legacy(self, shape_dtype, dtype):
         shape = numpy.ones(self.shape_shape, dtype=shape_dtype)
         self.check_distribution('standard_gamma',
                                 {'shape': shape}, dtype)
+
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    @cupy.testing.for_float_dtypes('shape_dtype')
+    @pytest.mark.xfail(
+        runtime.is_hip, reason='Generator API not supported in HIP')
+    def test_standard_gamma_generator(self, shape_dtype, dtype):
+        shape = numpy.ones(self.shape_shape, dtype=shape_dtype)
+        self.check_generator_distribution('standard_gamma',
+                                          {'shape': shape},
+                                          dtype)
+
+
+@testing.gpu
+class TestDistributionsStandardGammaInvalid(RandomDistributionsTestCase):
+
+    def test_none_shape_generator(self):
+        with self.assertRaises(TypeError):
+            cupy.random.default_rng(0).standard_gamma(None)
+
+    def test_none_shape_legacy(self):
+        with self.assertRaises(ValueError):
+            _distributions.standard_gamma(None)
 
 
 @testing.parameterize(*testing.product({

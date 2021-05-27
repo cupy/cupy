@@ -4,12 +4,12 @@ import warnings
 import cupy
 import numpy
 
-from cupy.core import internal
+from cupy._core import internal
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _interp_kernels
 from cupyx.scipy.ndimage import _spline_prefilter_core
 
-_prod = cupy.core.internal.prod
+_prod = cupy._core.internal.prod
 
 
 def _check_parameter(func_name, order, mode):
@@ -107,8 +107,8 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
         return output
 
     temp, data_dtype, output_dtype = _get_spline_output(x, output)
-    data_type = cupy.core._scalar.get_typename(temp.dtype)
-    pole_type = cupy.core._scalar.get_typename(temp.real.dtype)
+    data_type = cupy._core._scalar.get_typename(temp.dtype)
+    pole_type = cupy._core._scalar.get_typename(temp.real.dtype)
 
     index_type = _util._get_inttype(input)
     index_dtype = cupy.int32 if index_type == 'int' else cupy.int64

@@ -1,5 +1,5 @@
 import cupy
-from cupy import core
+from cupy import _core
 
 
 def column_stack(tup):
@@ -52,7 +52,7 @@ def concatenate(tup, axis=0, out=None):
     if axis is None:
         tup = [m.ravel() for m in tup]
         axis = 0
-    return core.concatenate_method(tup, axis, out)
+    return _core.concatenate_method(tup, axis, out)
 
 
 def dstack(tup):

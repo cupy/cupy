@@ -1,9 +1,9 @@
 import warnings
 
 import cupy
-from cupy import core
-from cupy.core import _routines_statistics as _statistics
-from cupy.core import _fusion_thread_local
+from cupy import _core
+from cupy._core import _routines_statistics as _statistics
+from cupy._core import _fusion_thread_local
 from cupy._logic import content
 
 
@@ -106,7 +106,7 @@ def nanmin(a, axis=None, out=None, keepdims=False):
 
     """
     # TODO(niboshi): Avoid synchronization.
-    res = core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
+    res = _core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
     if content.isnan(res).any():  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
     return res
@@ -137,7 +137,7 @@ def nanmax(a, axis=None, out=None, keepdims=False):
 
     """
     # TODO(niboshi): Avoid synchronization.
-    res = core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
+    res = _core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
     if content.isnan(res).any():  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
     return res
@@ -245,10 +245,17 @@ def _quantile_unchecked(a, q, axis=None, out=None, interpolation='linear',
             ptrdiff_t idx_below = floor(idx);
             U weight_above = idx - idx_below;
 
-            ptrdiff_t offset_i = _ind.get()[0] * offset;
             ptrdiff_t max_idx = size - 1;
-            ret = a[offset_i + idx_below] * (1.0 - weight_above)
-              + a[min(offset_i + idx_below + 1, max_idx)] * weight_above;
+            ptrdiff_t offset_bottom = _ind.get()[0] * offset + idx_below;
+            ptrdiff_t offset_top = min(offset_bottom + 1, max_idx);
+
+            U diff = a[offset_top] - a[offset_bottom];
+
+            if (weight_above < 0.5) {
+                ret = a[offset_bottom] + diff * weight_above;
+            } else {
+                ret = a[offset_top] - diff * (1 - weight_above);
+            }
             ''',
             'percentile_weightnening'
         )(indices, ap, ap.shape[-1] if ap.ndim > 1 else 0, ap.size, ret)
@@ -261,7 +268,7 @@ def _quantile_unchecked(a, q, axis=None, out=None, interpolation='linear',
             keepdim = (-1,) + keepdim
         ret = ret.reshape(keepdim)
 
-    return core._internal_ascontiguousarray(ret)
+    return _core._internal_ascontiguousarray(ret)
 
 
 def _quantile_is_valid(q):

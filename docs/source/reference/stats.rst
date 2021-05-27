@@ -1,9 +1,9 @@
 .. module:: cupyx.scipy.stats
 
-Statistical functions (``scipy.stats``)
-=======================================
+Statistical functions (:mod:`cupyx.scipy.stats`)
+================================================
 
-.. https://docs.scipy.org/doc/scipy/reference/stats.html
+.. Hint:: `SciPy API Reference: Statistical functions (scipy.stats) <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
 
 
 Summary statistics
@@ -11,6 +11,5 @@ Summary statistics
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.stats.entropy
+   entropy

@@ -1,6 +1,6 @@
--------------------------
-SciPy-compatible Routines
--------------------------
+----------------
+Routines (SciPy)
+----------------
 
 The following pages describe SciPy-compatible routines.
 These functions cover a subset of

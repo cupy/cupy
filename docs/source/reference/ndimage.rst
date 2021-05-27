@@ -1,58 +1,53 @@
-----------------------------------
-Multi-dimensional image processing
-----------------------------------
-
-CuPy provides multi-dimensional image processing functions.
-It supports a subset of :mod:`scipy.ndimage` interface.
-
 .. module:: cupyx.scipy.ndimage
 
-.. https://docs.scipy.org/doc/scipy/reference/ndimage.html
+Multidimensional image processing (:mod:`cupyx.scipy.ndimage`)
+==============================================================
+
+.. Hint:: `SciPy API Reference: Multidimensional image processing (scipy.ndimage) <https://docs.scipy.org/doc/scipy/reference/ndimage.html>`_
+
 
 Filters
 -------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.ndimage.convolve
-   cupyx.scipy.ndimage.convolve1d
-   cupyx.scipy.ndimage.correlate
-   cupyx.scipy.ndimage.correlate1d
-   cupyx.scipy.ndimage.gaussian_filter
-   cupyx.scipy.ndimage.gaussian_filter1d
-   cupyx.scipy.ndimage.gaussian_gradient_magnitude
-   cupyx.scipy.ndimage.gaussian_laplace
-   cupyx.scipy.ndimage.generic_filter
-   cupyx.scipy.ndimage.generic_filter1d
-   cupyx.scipy.ndimage.generic_gradient_magnitude
-   cupyx.scipy.ndimage.generic_laplace
-   cupyx.scipy.ndimage.laplace
-   cupyx.scipy.ndimage.maximum_filter
-   cupyx.scipy.ndimage.maximum_filter1d
-   cupyx.scipy.ndimage.median_filter
-   cupyx.scipy.ndimage.minimum_filter
-   cupyx.scipy.ndimage.minimum_filter1d
-   cupyx.scipy.ndimage.percentile_filter
-   cupyx.scipy.ndimage.prewitt
-   cupyx.scipy.ndimage.rank_filter
-   cupyx.scipy.ndimage.sobel
-   cupyx.scipy.ndimage.uniform_filter
-   cupyx.scipy.ndimage.uniform_filter1d
+   convolve
+   convolve1d
+   correlate
+   correlate1d
+   gaussian_filter
+   gaussian_filter1d
+   gaussian_gradient_magnitude
+   gaussian_laplace
+   generic_filter
+   generic_filter1d
+   generic_gradient_magnitude
+   generic_laplace
+   laplace
+   maximum_filter
+   maximum_filter1d
+   median_filter
+   minimum_filter
+   minimum_filter1d
+   percentile_filter
+   prewitt
+   rank_filter
+   sobel
+   uniform_filter
+   uniform_filter1d
 
 
-Fourier Filters
+Fourier filters
 ---------------
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.ndimage.fourier_ellipsoid
-   cupyx.scipy.ndimage.fourier_gaussian
-   cupyx.scipy.ndimage.fourier_shift
-   cupyx.scipy.ndimage.fourier_uniform
+   fourier_ellipsoid
+   fourier_gaussian
+   fourier_shift
+   fourier_uniform
 
 
 Interpolation
@@ -60,15 +55,14 @@ Interpolation
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.ndimage.affine_transform
-   cupyx.scipy.ndimage.map_coordinates
-   cupyx.scipy.ndimage.rotate
-   cupyx.scipy.ndimage.shift
-   cupyx.scipy.ndimage.spline_filter
-   cupyx.scipy.ndimage.spline_filter1d
-   cupyx.scipy.ndimage.zoom
+   affine_transform
+   map_coordinates
+   rotate
+   shift
+   spline_filter
+   spline_filter1d
+   zoom
 
 
 Measurements
@@ -76,22 +70,21 @@ Measurements
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.ndimage.center_of_mass
-   cupyx.scipy.ndimage.extrema
-   cupyx.scipy.ndimage.histogram
-   cupyx.scipy.ndimage.label
-   cupyx.scipy.ndimage.labeled_comprehension
-   cupyx.scipy.ndimage.maximum
-   cupyx.scipy.ndimage.maximum_position
-   cupyx.scipy.ndimage.mean
-   cupyx.scipy.ndimage.median
-   cupyx.scipy.ndimage.minimum
-   cupyx.scipy.ndimage.minimum_position
-   cupyx.scipy.ndimage.standard_deviation
-   cupyx.scipy.ndimage.sum
-   cupyx.scipy.ndimage.variance
+   center_of_mass
+   extrema
+   histogram
+   label
+   labeled_comprehension
+   maximum
+   maximum_position
+   mean
+   median
+   minimum
+   minimum_position
+   standard_deviation
+   sum_labels
+   variance
 
 
 Morphology
@@ -99,25 +92,24 @@ Morphology
 
 .. autosummary::
    :toctree: generated/
-   :nosignatures:
 
-   cupyx.scipy.ndimage.binary_closing
-   cupyx.scipy.ndimage.binary_dilation
-   cupyx.scipy.ndimage.binary_erosion
-   cupyx.scipy.ndimage.binary_fill_holes
-   cupyx.scipy.ndimage.binary_hit_or_miss
-   cupyx.scipy.ndimage.binary_opening
-   cupyx.scipy.ndimage.binary_propagation
-   cupyx.scipy.ndimage.black_tophat
-   cupyx.scipy.ndimage.generate_binary_structure
-   cupyx.scipy.ndimage.grey_closing
-   cupyx.scipy.ndimage.grey_dilation
-   cupyx.scipy.ndimage.grey_erosion
-   cupyx.scipy.ndimage.grey_opening
-   cupyx.scipy.ndimage.iterate_structure
-   cupyx.scipy.ndimage.morphological_gradient
-   cupyx.scipy.ndimage.morphological_laplace
-   cupyx.scipy.ndimage.white_tophat
+   binary_closing
+   binary_dilation
+   binary_erosion
+   binary_fill_holes
+   binary_hit_or_miss
+   binary_opening
+   binary_propagation
+   black_tophat
+   generate_binary_structure
+   grey_closing
+   grey_dilation
+   grey_erosion
+   grey_opening
+   iterate_structure
+   morphological_gradient
+   morphological_laplace
+   white_tophat
 
 
 OpenCV mode

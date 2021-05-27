@@ -1,7 +1,9 @@
 import unittest
 
 import numpy
+import pytest
 
+import cupy
 from cupy import testing
 
 
@@ -244,7 +246,7 @@ class TestVectorizeExprs(unittest.TestCase):
         y = testing.shaped_random((20, 30), xp, dtype1, seed=2)
         return f(x, y)
 
-    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'))
+    @testing.for_all_dtypes_combination(names=('dtype1', 'dtype2'), full=True)
     @testing.numpy_cupy_array_equal(
         accept_error=(TypeError, numpy.ComplexWarning))
     def test_vectorize_typecast(self, xp, dtype1, dtype2):
@@ -292,6 +294,212 @@ class TestVectorizeInstructions(unittest.TestCase):
         f = xp.vectorize(my_augassign)
         x = testing.shaped_random((20, 30), xp, dtype, seed=1)
         return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_const_assign(self, xp):
+        def my_typecast(x):
+            typecast = xp.dtype('f').type
+            return typecast(x)
+
+        f = xp.vectorize(my_typecast)
+        x = testing.shaped_random((20, 30), xp, numpy.int32, seed=1)
+        return f(x)
+
+    def test_vectorize_const_typeerror(self):
+        def my_invalid_type(x):
+            x = numpy.dtype('f').type
+            return x
+
+        f = cupy.vectorize(my_invalid_type)
+        x = testing.shaped_random((20, 30), cupy, numpy.int32, seed=1)
+        with pytest.raises(TypeError):
+            f(x)
+
+    def test_vectorize_const_non_toplevel(self):
+        def my_invalid_type(x):
+            if x == 3:
+                typecast = numpy.dtype('f').type  # NOQA
+            return x
+
+        f = cupy.vectorize(my_invalid_type)
+        x = cupy.array([1, 2, 3, 4, 5])
+        with pytest.raises(TypeError):
+            f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_vectorize_nonconst_for_value(self, xp):
+        def my_nonconst_result(x):
+            result = numpy.int32(0)
+            result = x
+            return result
+
+        f = xp.vectorize(my_nonconst_result)
+        x = testing.shaped_random((20, 30), xp, numpy.int32, seed=1)
+        return f(x)
+
+
+class TestVectorizeStmts(unittest.TestCase):
+
+    @testing.numpy_cupy_array_equal()
+    def test_if(self, xp):
+        def func_if(x):
+            if x % 2 == 0:
+                y = x
+            else:
+                y = -x
+            return y
+
+        f = xp.vectorize(func_if)
+        x = xp.array([1, 2, 3, 4, 5])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_if_no_orlese(self, xp):
+        def func_if(x):
+            y = 0
+            if x % 2 == 0:
+                y = x
+            return y
+
+        f = xp.vectorize(func_if)
+        x = xp.array([1, 2, 3, 4, 5])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_elif(self, xp):
+        def func_if(x):
+            y = 0
+            if x % 2 == 0:
+                y = x
+            elif x % 3 == 0:
+                y = -x
+            return y
+
+        f = xp.vectorize(func_if)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_while(self, xp):
+        def func_while(x):
+            y = 0
+            while x > 0:
+                y += x
+                x -= 1
+            return y
+
+        f = xp.vectorize(func_while)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
+
+    @testing.for_dtypes('qQ')
+    @testing.numpy_cupy_array_equal()
+    def test_for(self, xp, dtype):
+        def func_for(x):
+            y = 0
+            for i in range(x):
+                y += i
+            return y
+
+        f = xp.vectorize(func_for)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype)
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_const_range(self, xp):
+        def func_for(x):
+            for i in range(3, 10):
+                x += i
+            return x
+
+        f = xp.vectorize(func_for)
+        x = xp.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_range_step(self, xp):
+        def func_for(x, y, z):
+            res = 0
+            for i in range(x, y, z):
+                res += i * i
+            return x
+
+        f = xp.vectorize(func_for)
+        start = xp.array([0, 1, 2, 3, 4, 5])
+        stop = xp.array([-21, -23, -19, 17, 27, 24])
+        step = xp.array([-3, -2, -1, 1, 2, 3])
+        return f(start, stop, step)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_update_counter(self, xp):
+        def func_for(x):
+            for i in range(10):
+                x += i
+                i += 1
+            return x
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_counter_after_loop(self, xp):
+        def func_for(x):
+            for i in range(10):
+                pass
+            return x + i
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_compound_expression_param(self, xp):
+        def func_for(x, y):
+            res = 0
+            for i in range(x * y):
+                res += i
+            return res
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x, x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_for_update_loop_condition(self, xp):
+        def func_for(x):
+            res = 0
+            for i in range(x):
+                res += i
+                x -= 1
+            return res
+
+        f = xp.vectorize(func_for)
+        x = xp.array([0, 1, 2, 3, 4])
+        return f(x)
+
+    @testing.numpy_cupy_array_equal()
+    def test_tuple(self, xp):
+        def func_tuple(x, y):
+            x, y = y, x
+            z = x, y
+            a, b = z
+            return a * a + b
+
+        f = xp.vectorize(func_tuple)
+        x = xp.array([0, 1, 2, 3, 4])
+        y = xp.array([5, 6, 7, 8, 9])
+        return f(x, y)
+
+    @testing.numpy_cupy_array_equal()
+    def test_return_tuple(self, xp):
+        def func_tuple(x, y):
+            return x + y, x / y
+
+        f = xp.vectorize(func_tuple)
+        x = xp.array([0, 1, 2, 3, 4])
+        y = xp.array([5, 6, 7, 8, 9])
+        return f(x, y)
 
 
 class _MyClass:
@@ -365,7 +573,7 @@ class TestVectorizeBroadcast(unittest.TestCase):
 
 class TestVectorize(unittest.TestCase):
 
-    @testing.for_all_dtypes(no_bool=True)
+    @testing.for_dtypes('qQefdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_vectorize_arithmetic_ops(self, xp, dtype):
         def my_func(x1, x2, x3):

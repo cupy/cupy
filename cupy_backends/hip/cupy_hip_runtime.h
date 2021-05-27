@@ -242,6 +242,31 @@ cudaError_t cudaGetDeviceProperties(cudaDeviceProp *prop, int device) {
     return hipGetDeviceProperties(prop, device);
 }
 
+cudaError_t cudaDeviceGetDefaultMemPool(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaDeviceGetMemPool(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaDeviceSetMemPool(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemPoolTrimTo(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemPoolGetAttribute(...) {
+    return hipErrorUnknown;
+}
+
+cudaError_t cudaMemPoolSetAttribute(...) {
+    return hipErrorUnknown;
+}
+
+
 // Stream and Event
 cudaError_t cudaStreamCreate(cudaStream_t *stream) {
     return hipStreamCreate(stream);

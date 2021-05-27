@@ -1,8 +1,8 @@
 import cupy
-from cupy import core
+from cupy import _core
 
 
-_packbits_kernel = core.ElementwiseKernel(
+_packbits_kernel = _core.ElementwiseKernel(
     'raw T myarray, raw int32 myarray_size', 'uint8 packed',
     '''for (int j = 0; j < 8; ++j) {
         int k = i * 8 + j;
@@ -42,7 +42,7 @@ def packbits(myarray):
     return _packbits_kernel(myarray, myarray.size, packed)
 
 
-_unpackbits_kernel = core.ElementwiseKernel(
+_unpackbits_kernel = _core.ElementwiseKernel(
     'raw uint8 myarray', 'T unpacked',
     'unpacked = (myarray[i / 8] >> (7 - i % 8)) & 1;',
     'unpackbits_kernel'

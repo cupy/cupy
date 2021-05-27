@@ -3,7 +3,7 @@ import warnings
 import numpy
 
 import cupy
-from cupy import core
+from cupy import _core
 from cupy import _util
 
 
@@ -111,13 +111,13 @@ def _label(x, structure, y):
 
 
 def _kernel_init():
-    return core.ElementwiseKernel(
+    return _core.ElementwiseKernel(
         'X x', 'Y y', 'if (x == 0) { y = -1; } else { y = i; }',
         'cupyx_nd_label_init')
 
 
 def _kernel_connect():
-    return core.ElementwiseKernel(
+    return _core.ElementwiseKernel(
         'raw int32 shape, raw int32 dirs, int32 ndirs, int32 ndim',
         'raw Y y',
         '''
@@ -160,7 +160,7 @@ def _kernel_connect():
 
 
 def _kernel_count():
-    return core.ElementwiseKernel(
+    return _core.ElementwiseKernel(
         '', 'raw Y y, raw int32 count',
         '''
         if (y[i] < 0) continue;
@@ -173,7 +173,7 @@ def _kernel_count():
 
 
 def _kernel_labels():
-    return core.ElementwiseKernel(
+    return _core.ElementwiseKernel(
         '', 'raw Y y, raw int32 count, raw int32 labels',
         '''
         if (y[i] != i) continue;
@@ -184,7 +184,7 @@ def _kernel_labels():
 
 
 def _kernel_finalize():
-    return core.ElementwiseKernel(
+    return _core.ElementwiseKernel(
         'int32 maxlabel', 'raw int32 labels, raw Y y',
         '''
         if (y[i] < 0) {
@@ -206,7 +206,7 @@ def _kernel_finalize():
         'cupyx_nd_label_finalize')
 
 
-_ndimage_variance_kernel = core.ElementwiseKernel(
+_ndimage_variance_kernel = _core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size, raw float64 mean',
     'raw float64 out',
     """
@@ -219,7 +219,7 @@ _ndimage_variance_kernel = core.ElementwiseKernel(
     """)
 
 
-_ndimage_sum_kernel = core.ElementwiseKernel(
+_ndimage_sum_kernel = _core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size',
     'raw float64 out',
     """
@@ -242,7 +242,7 @@ def _ndimage_sum_kernel_2(input, labels, index, sum_val, batch_size=4):
     return sum_val
 
 
-_ndimage_mean_kernel = core.ElementwiseKernel(
+_ndimage_mean_kernel = _core.ElementwiseKernel(
     'T input, R labels, raw X index, uint64 size',
     'raw float64 out, raw uint64 count',
     """
@@ -361,7 +361,7 @@ def variance(input, labels=None, index=None):
                                     out) / count
 
 
-def sum(input, labels=None, index=None):
+def sum_labels(input, labels=None, index=None):
     """Calculates the sum of the values of an n-D image array, optionally
        at specified sub-regions.
 
@@ -376,7 +376,7 @@ def sum(input, labels=None, index=None):
        sum (cupy.ndarray): sum of values, for each sub-region if
        `labels` and `index` are specified.
 
-    .. seealso:: :func:`scipy.ndimage.sum`
+    .. seealso:: :func:`scipy.ndimage.sum_labels`
     """
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
@@ -423,6 +423,31 @@ def sum(input, labels=None, index=None):
     if (input.size >= 262144 and index.size <= 4) or use_kern:
         return _ndimage_sum_kernel_2(input, labels, index, out)
     return _ndimage_sum_kernel(input, labels, index, index.size, out)
+
+
+def sum(input, labels=None, index=None):
+    """Calculates the sum of the values of an n-D image array, optionally
+       at specified sub-regions.
+
+    Args:
+        input (cupy.ndarray): Nd-image data to process.
+        labels (cupy.ndarray or None): Labels defining sub-regions in `input`.
+            If not None, must be same shape as `input`.
+        index (cupy.ndarray or None): `labels` to include in output. If None
+            (default), all values where `labels` is non-zero are used.
+
+    Returns:
+       sum (cupy.ndarray): sum of values, for each sub-region if
+       `labels` and `index` are specified.
+
+    Notes:
+        This is an alias for `cupyx.scipy.ndimage.sum_labels` kept for
+        backwards compatibility reasons. For new code please prefer
+        `sum_labels`.
+
+    .. seealso:: :func:`scipy.ndimage.sum`
+    """
+    return sum_labels(input, labels, index)
 
 
 def mean(input, labels=None, index=None):
@@ -665,8 +690,8 @@ def _select(input, labels=None, index=None, find_min=False, find_max=False,
     if find_positions:
         positions = positions.ravel()
 
-    using_cub = core._accelerator.ACCELERATOR_CUB in \
-        cupy.core.get_routine_accelerators()
+    using_cub = _core._accelerator.ACCELERATOR_CUB in \
+        cupy._core.get_routine_accelerators()
 
     if using_cub:
         # Cutoff values below were determined empirically for relatively large

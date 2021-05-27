@@ -1,6 +1,6 @@
-sphinx==3.4.3
-sphinx_rtd_theme==0.5.1
+sphinx==4.0.1
+pydata_sphinx_theme==0.6.3
 
 Cython==0.29.*
-numpy==1.19.*
+numpy==1.20.*
 scipy==1.6.*

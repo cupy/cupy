@@ -38,6 +38,8 @@ cdef extern from '../../cupy_rtc.h' nogil:
     int nvrtcGetProgramLog(Program prog, char* log)
     int nvrtcAddNameExpression(Program, const char*)
     int nvrtcGetLoweredName(Program, const char*, const char**)
+    int nvrtcGetNumSupportedArchs(int* numArchs)
+    int nvrtcGetSupportedArchs(int* supportedArchs)
 
 
 ###############################################################################
@@ -68,6 +70,21 @@ cpdef tuple getVersion():
         status = nvrtcVersion(&major, &minor)
     check_status(status)
     return major, minor
+
+
+cpdef tuple getSupportedArchs():
+    cdef int status, num_archs
+    cdef vector.vector[int] archs
+    if CUDA_VERSION < 11020 or runtime._is_hip_environment:
+        raise RuntimeError("getSupportedArchs is supported since CUDA 11.2")
+
+    with nogil:
+        status = nvrtcGetNumSupportedArchs(&num_archs)
+        if status == 0:
+            archs.resize(num_archs)
+            status = nvrtcGetSupportedArchs(archs.data())
+    check_status(status)
+    return tuple(archs)
 
 
 ###############################################################################

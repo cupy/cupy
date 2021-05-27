@@ -24,7 +24,8 @@ cudaError_t cudaGetLastError() {
 
 
 // Initialization
-cudaError_t cudaDriverGetVersion(...) {
+cudaError_t cudaDriverGetVersion(int* driverVersion) {
+    *driverVersion = 0;  // make the stub work safely without driver
     return cudaSuccess;
 }
 
@@ -220,8 +221,31 @@ cudaError_t cudaMemPrefetchAsync(...) {
     return cudaSuccess;
 }
 
-
 cudaError_t cudaPointerGetAttributes(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDeviceGetDefaultMemPool(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDeviceGetMemPool(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaDeviceSetMemPool(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemPoolTrimTo(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemPoolGetAttribute(...) {
+    return cudaSuccess;
+}
+
+cudaError_t cudaMemPoolSetAttribute(...) {
     return cudaSuccess;
 }
 

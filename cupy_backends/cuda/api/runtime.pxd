@@ -106,6 +106,9 @@ cdef extern from *:
     ctypedef struct cudaUUID 'cudaUUID_t':
         char bytes[16]
 
+    ctypedef void* MemPool 'cudaMemPool_t'
+    ctypedef int MemPoolAttr 'cudaMemPoolAttr'
+
     IF CUDA_VERSION >= 11000:
         # We can't use IF in the middle of structs declaration
         # to add or ignore fields in compile time so we have to
@@ -344,7 +347,7 @@ cdef extern from *:
             size_t       sharedMemPerBlockOptin
             int          pageableMemoryAccessUsesHostPageTables
             int          directManagedMemAccessFromHost
-    ELIF use_hip:
+    ELIF HIP_VERSION > 0:
         ctypedef struct deviceArch 'hipDeviceArch_t':
             unsigned hasGlobalInt32Atomics
             unsigned hasGlobalFloatAtomicExch
@@ -369,54 +372,115 @@ cdef extern from *:
             unsigned has3dGrid
             unsigned hasDynamicParallelism
 
-        ctypedef struct DeviceProp 'cudaDeviceProp':
-            char name[256]
-            size_t totalGlobalMem
-            size_t sharedMemPerBlock
-            int regsPerBlock
-            int warpSize
-            int maxThreadsPerBlock
-            int maxThreadsDim[3]
-            int maxGridSize[3]
-            int clockRate
-            int memoryClockRate
-            int memoryBusWidth
-            size_t totalConstMem
-            int major
-            int minor
-            int multiProcessorCount
-            int l2CacheSize
-            int maxThreadsPerMultiProcessor
-            int computeMode
-            int clockInstructionRate
-            deviceArch arch
-            int concurrentKernels
-            int pciDomainID
-            int pciBusID
-            int pciDeviceID
-            size_t maxSharedMemoryPerMultiProcessor
-            int isMultiGpuBoard
-            int canMapHostMemory
-            int gcnArch
-            int integrated
-            int cooperativeLaunch
-            int cooperativeMultiDeviceLaunch
-            int maxTexture1D
-            int maxTexture2D[2]
-            int maxTexture3D[3]
-            unsigned int* hdpMemFlushCntl
-            unsigned int* hdpRegFlushCntl
-            size_t memPitch
-            size_t textureAlignment
-            size_t texturePitchAlignment
-            int kernelExecTimeoutEnabled
-            int ECCEnabled
-            int tccDriver
-            int cooperativeMultiDeviceUnmatchedFunc
-            int cooperativeMultiDeviceUnmatchedGridDim
-            int cooperativeMultiDeviceUnmatchedBlockDim
-            int cooperativeMultiDeviceUnmatchedSharedMem
-            int isLargeBar
+        IF HIP_VERSION >= 310:
+            ctypedef struct DeviceProp 'cudaDeviceProp':
+                char name[256]
+                size_t totalGlobalMem
+                size_t sharedMemPerBlock
+                int regsPerBlock
+                int warpSize
+                int maxThreadsPerBlock
+                int maxThreadsDim[3]
+                int maxGridSize[3]
+                int clockRate
+                int memoryClockRate
+                int memoryBusWidth
+                size_t totalConstMem
+                int major
+                int minor
+                int multiProcessorCount
+                int l2CacheSize
+                int maxThreadsPerMultiProcessor
+                int computeMode
+                int clockInstructionRate
+                deviceArch arch
+                int concurrentKernels
+                int pciDomainID
+                int pciBusID
+                int pciDeviceID
+                size_t maxSharedMemoryPerMultiProcessor
+                int isMultiGpuBoard
+                int canMapHostMemory
+                int gcnArch
+                # gcnArchName is added since ROCm 3.6, but given it's just
+                # 'gfx'+str(gcnArch), in order not to duplicate another struct
+                # we add it here
+                char gcnArchName[256]
+                int integrated
+                int cooperativeLaunch
+                int cooperativeMultiDeviceLaunch
+                int maxTexture1D
+                int maxTexture2D[2]
+                int maxTexture3D[3]
+                unsigned int* hdpMemFlushCntl
+                unsigned int* hdpRegFlushCntl
+                size_t memPitch
+                size_t textureAlignment
+                size_t texturePitchAlignment
+                int kernelExecTimeoutEnabled
+                int ECCEnabled
+                int tccDriver
+                int cooperativeMultiDeviceUnmatchedFunc
+                int cooperativeMultiDeviceUnmatchedGridDim
+                int cooperativeMultiDeviceUnmatchedBlockDim
+                int cooperativeMultiDeviceUnmatchedSharedMem
+                int isLargeBar
+                # New since ROCm 3.10.0
+                int asicRevision
+                int managedMemory
+                int directManagedMemAccessFromHost
+                int concurrentManagedAccess
+                int pageableMemoryAccess
+                int pageableMemoryAccessUsesHostPageTables
+        ELSE:
+            ctypedef struct DeviceProp 'cudaDeviceProp':
+                char name[256]
+                size_t totalGlobalMem
+                size_t sharedMemPerBlock
+                int regsPerBlock
+                int warpSize
+                int maxThreadsPerBlock
+                int maxThreadsDim[3]
+                int maxGridSize[3]
+                int clockRate
+                int memoryClockRate
+                int memoryBusWidth
+                size_t totalConstMem
+                int major
+                int minor
+                int multiProcessorCount
+                int l2CacheSize
+                int maxThreadsPerMultiProcessor
+                int computeMode
+                int clockInstructionRate
+                deviceArch arch
+                int concurrentKernels
+                int pciDomainID
+                int pciBusID
+                int pciDeviceID
+                size_t maxSharedMemoryPerMultiProcessor
+                int isMultiGpuBoard
+                int canMapHostMemory
+                int gcnArch
+                int integrated
+                int cooperativeLaunch
+                int cooperativeMultiDeviceLaunch
+                int maxTexture1D
+                int maxTexture2D[2]
+                int maxTexture3D[3]
+                unsigned int* hdpMemFlushCntl
+                unsigned int* hdpRegFlushCntl
+                size_t memPitch
+                size_t textureAlignment
+                size_t texturePitchAlignment
+                int kernelExecTimeoutEnabled
+                int ECCEnabled
+                int tccDriver
+                int cooperativeMultiDeviceUnmatchedFunc
+                int cooperativeMultiDeviceUnmatchedGridDim
+                int cooperativeMultiDeviceUnmatchedBlockDim
+                int cooperativeMultiDeviceUnmatchedSharedMem
+                int isLargeBar
     ELSE:  # for RTD
         ctypedef struct DeviceProp 'cudaDeviceProp':
             char         name[256]
@@ -488,117 +552,6 @@ cpdef enum:
     CUDA_R_8U = 8  # 8 bit real as a signed integer
     CUDA_C_8U = 9  # 8 bit complex as a pair of signed integers
 
-    cudaDevAttrMaxThreadsPerBlock = 1
-    cudaDevAttrMaxBlockDimX = 2
-    cudaDevAttrMaxBlockDimY = 3
-    cudaDevAttrMaxBlockDimZ = 4
-    cudaDevAttrMaxGridDimX = 5
-    cudaDevAttrMaxGridDimY = 6
-    cudaDevAttrMaxGridDimZ = 7
-    cudaDevAttrMaxSharedMemoryPerBlock = 8
-    cudaDevAttrTotalConstantMemory = 9
-    cudaDevAttrWarpSize = 10
-    cudaDevAttrMaxPitch = 11
-    cudaDevAttrMaxRegistersPerBlock = 12
-    cudaDevAttrClockRate = 13
-    cudaDevAttrTextureAlignment = 14
-    cudaDevAttrGpuOverlap = 15
-    cudaDevAttrMultiProcessorCount = 16
-    cudaDevAttrKernelExecTimeout = 17
-    cudaDevAttrIntegrated = 18
-    cudaDevAttrCanMapHostMemory = 19
-    cudaDevAttrComputeMode = 20
-    cudaDevAttrMaxTexture1DWidth = 21
-    cudaDevAttrMaxTexture2DWidth = 22
-    cudaDevAttrMaxTexture2DHeight = 23
-    cudaDevAttrMaxTexture3DWidth = 24
-    cudaDevAttrMaxTexture3DHeight = 25
-    cudaDevAttrMaxTexture3DDepth = 26
-    cudaDevAttrMaxTexture2DLayeredWidth = 27
-    cudaDevAttrMaxTexture2DLayeredHeight = 28
-    cudaDevAttrMaxTexture2DLayeredLayers = 29
-    cudaDevAttrSurfaceAlignment = 30
-    cudaDevAttrConcurrentKernels = 31
-    cudaDevAttrEccEnabled = 32
-    cudaDevAttrPciBusId = 33
-    cudaDevAttrPciDeviceId = 34
-    cudaDevAttrTccDriver = 35
-    cudaDevAttrMemoryClockRate = 36
-    cudaDevAttrGlobalMemoryBusWidth = 37
-    cudaDevAttrL2CacheSize = 38
-    cudaDevAttrMaxThreadsPerMultiProcessor = 39
-    cudaDevAttrAsyncEngineCount = 40
-    cudaDevAttrUnifiedAddressing = 41
-    cudaDevAttrMaxTexture1DLayeredWidth = 42
-    cudaDevAttrMaxTexture1DLayeredLayers = 43
-    cudaDevAttrMaxTexture2DGatherWidth = 45
-    cudaDevAttrMaxTexture2DGatherHeight = 46
-    cudaDevAttrMaxTexture3DWidthAlt = 47
-    cudaDevAttrMaxTexture3DHeightAlt = 48
-    cudaDevAttrMaxTexture3DDepthAlt = 49
-    cudaDevAttrPciDomainId = 50
-    cudaDevAttrTexturePitchAlignment = 51
-    cudaDevAttrMaxTextureCubemapWidth = 52
-    cudaDevAttrMaxTextureCubemapLayeredWidth = 53
-    cudaDevAttrMaxTextureCubemapLayeredLayers = 54
-    cudaDevAttrMaxSurface1DWidth = 55
-    cudaDevAttrMaxSurface2DWidth = 56
-    cudaDevAttrMaxSurface2DHeight = 57
-    cudaDevAttrMaxSurface3DWidth = 58
-    cudaDevAttrMaxSurface3DHeight = 59
-    cudaDevAttrMaxSurface3DDepth = 60
-    cudaDevAttrMaxSurface1DLayeredWidth = 61
-    cudaDevAttrMaxSurface1DLayeredLayers = 62
-    cudaDevAttrMaxSurface2DLayeredWidth = 63
-    cudaDevAttrMaxSurface2DLayeredHeight = 64
-    cudaDevAttrMaxSurface2DLayeredLayers = 65
-    cudaDevAttrMaxSurfaceCubemapWidth = 66
-    cudaDevAttrMaxSurfaceCubemapLayeredWidth = 67
-    cudaDevAttrMaxSurfaceCubemapLayeredLayers = 68
-    cudaDevAttrMaxTexture1DLinearWidth = 69
-    cudaDevAttrMaxTexture2DLinearWidth = 70
-    cudaDevAttrMaxTexture2DLinearHeight = 71
-    cudaDevAttrMaxTexture2DLinearPitch = 72
-    cudaDevAttrMaxTexture2DMipmappedWidth = 73
-    cudaDevAttrMaxTexture2DMipmappedHeight = 74
-    # Use header version
-    # cudaDevAttrComputeCapabilityMajor = 75
-    # cudaDevAttrComputeCapabilityMinor = 76
-    cudaDevAttrMaxTexture1DMipmappedWidth = 77
-    cudaDevAttrStreamPrioritiesSupported = 78
-    cudaDevAttrGlobalL1CacheSupported = 79
-    cudaDevAttrLocalL1CacheSupported = 80
-    cudaDevAttrMaxSharedMemoryPerMultiprocessor = 81
-    cudaDevAttrMaxRegistersPerMultiprocessor = 82
-    cudaDevAttrManagedMemory = 83
-    cudaDevAttrIsMultiGpuBoard = 84
-    cudaDevAttrMultiGpuBoardGroupID = 85
-    cudaDevAttrHostNativeAtomicSupported = 86
-    cudaDevAttrSingleToDoublePrecisionPerfRatio = 87
-    cudaDevAttrPageableMemoryAccess = 88
-    cudaDevAttrConcurrentManagedAccess = 89
-    cudaDevAttrComputePreemptionSupported = 90
-    cudaDevAttrCanUseHostPointerForRegisteredMem = 91
-    cudaDevAttrReserved92 = 92
-    cudaDevAttrReserved93 = 93
-    cudaDevAttrReserved94 = 94
-    cudaDevAttrCooperativeLaunch = 95
-    cudaDevAttrCooperativeMultiDeviceLaunch = 96
-    cudaDevAttrMaxSharedMemoryPerBlockOptin = 97
-    cudaDevAttrCanFlushRemoteWrites = 98
-    cudaDevAttrHostRegisterSupported = 99
-    cudaDevAttrPageableMemoryAccessUsesHostPageTables = 100
-    cudaDevAttrDirectManagedMemAccessFromHost = 101
-    # added since CUDA 11.0
-    cudaDevAttrMaxBlocksPerMultiprocessor = 106
-    cudaDevAttrReservedSharedMemoryPerBlock = 111
-    # added since CUDA 11.1
-    cudaDevAttrSparseCudaArraySupported = 112
-    cudaDevAttrHostRegisterReadOnlySupported = 113
-    # added since CUDA 11.2
-    cudaDevAttrMaxTimelineSemaphoreInteropSupported = 114
-    cudaDevAttrMemoryPoolsSupported = 115
-
     # CUDA Limits
     cudaLimitStackSize = 0x00
     cudaLimitPrintfFifoSize = 0x01
@@ -640,10 +593,272 @@ cpdef enum:
     cudaReadModeElementType = 0
     cudaReadModeNormalizedFloat = 1
 
+    # cudaMemPoolAttr
+    # ----- added since 11.2 -----
+    cudaMemPoolReuseFollowEventDependencies = 0x1
+    cudaMemPoolReuseAllowOpportunistic = 0x2
+    cudaMemPoolReuseAllowInternalDependencies = 0x3
+    cudaMemPoolAttrReleaseThreshold = 0x4
+    # ----- added since 11.3 -----
+    cudaMemPoolAttrReservedMemCurrent = 0x5
+    cudaMemPoolAttrReservedMemHigh = 0x6
+    cudaMemPoolAttrUsedMemCurrent = 0x7
+    cudaMemPoolAttrUsedMemHigh = 0x8
+
+
+# This was a legacy mistake: the prefix "cuda" should have been removed
+# so that we can directly assign their C counterparts here. Now because
+# of backward compatibility and no flexible Cython macro (IF/ELSE), we
+# have to duplicate the enum. (CUDA and HIP use different values!)
+IF HIP_VERSION > 0:
+    # separate in groups of 10 for easier counting...
+    cpdef enum:
+        cudaDevAttrMaxThreadsPerBlock = 0
+        cudaDevAttrMaxBlockDimX
+        cudaDevAttrMaxBlockDimY
+        cudaDevAttrMaxBlockDimZ
+        cudaDevAttrMaxGridDimX
+        cudaDevAttrMaxGridDimY
+        cudaDevAttrMaxGridDimZ
+        cudaDevAttrMaxSharedMemoryPerBlock
+        cudaDevAttrTotalConstantMemory
+        cudaDevAttrWarpSize
+
+        cudaDevAttrMaxRegistersPerBlock
+        cudaDevAttrClockRate
+        cudaDevAttrMemoryClockRate
+        cudaDevAttrGlobalMemoryBusWidth
+        cudaDevAttrMultiProcessorCount
+        cudaDevAttrComputeMode
+        cudaDevAttrL2CacheSize
+        cudaDevAttrMaxThreadsPerMultiProcessor
+        # The following are exposed as "deviceAttributeCo..."
+        # cudaDevAttrComputeCapabilityMajor
+        # cudaDevAttrComputeCapabilityMinor
+
+        cudaDevAttrConcurrentKernels = 20
+        cudaDevAttrPciBusId
+        cudaDevAttrPciDeviceId
+        cudaDevAttrMaxSharedMemoryPerMultiprocessor
+        cudaDevAttrIsMultiGpuBoard
+        cudaDevAttrIntegrated
+        cudaDevAttrCooperativeLaunch
+        cudaDevAttrCooperativeMultiDeviceLaunch
+        cudaDevAttrMaxTexture1DWidth
+        cudaDevAttrMaxTexture2DWidth
+
+        cudaDevAttrMaxTexture2DHeight
+        cudaDevAttrMaxTexture3DWidth
+        cudaDevAttrMaxTexture3DHeight
+        cudaDevAttrMaxTexture3DDepth
+        # The following attributes do not exist in CUDA and cause segfualts
+        # if we try to access them
+        # hipDeviceAttributeHdpMemFlushCntl
+        # hipDeviceAttributeHdpRegFlushCntl
+        cudaDevAttrMaxPitch = 36
+        cudaDevAttrTextureAlignment
+        cudaDevAttrTexturePitchAlignment
+        cudaDevAttrKernelExecTimeout
+
+        cudaDevAttrCanMapHostMemory
+        cudaDevAttrEccEnabled
+        # The following attributes do not exist in CUDA
+        # hipDeviceAttributeCooperativeMultiDeviceUnmatchedFunc
+        # hipDeviceAttributeCooperativeMultiDeviceUnmatchedGridDim
+        # hipDeviceAttributeCooperativeMultiDeviceUnmatchedBlockDim
+        # hipDeviceAttributeCooperativeMultiDeviceUnmatchedSharedMem
+
+        # The rest do not have HIP correspondence...
+        # TODO(leofang): should we expose them anyway, with a value -1 to
+        # indicate they cannot be used in HIP?
+        # cudaDevAttrGpuOverlap
+        # cudaDevAttrMaxTexture2DLayeredWidth
+        # cudaDevAttrMaxTexture2DLayeredHeight
+        # cudaDevAttrMaxTexture2DLayeredLayers
+        # cudaDevAttrSurfaceAlignment
+        # cudaDevAttrTccDriver
+        # cudaDevAttrAsyncEngineCount
+        # cudaDevAttrUnifiedAddressing
+        # cudaDevAttrMaxTexture1DLayeredWidth
+        # cudaDevAttrMaxTexture1DLayeredLayers
+        # cudaDevAttrMaxTexture2DGatherWidth
+        # cudaDevAttrMaxTexture2DGatherHeight
+        # cudaDevAttrMaxTexture3DWidthAlt
+        # cudaDevAttrMaxTexture3DHeightAlt
+        # cudaDevAttrMaxTexture3DDepthAlt
+        # cudaDevAttrPciDomainId
+        # cudaDevAttrMaxTextureCubemapWidth
+        # cudaDevAttrMaxTextureCubemapLayeredWidth
+        # cudaDevAttrMaxTextureCubemapLayeredLayers
+        # cudaDevAttrMaxSurface1DWidth
+        # cudaDevAttrMaxSurface2DWidth
+        # cudaDevAttrMaxSurface2DHeight
+        # cudaDevAttrMaxSurface3DWidth
+        # cudaDevAttrMaxSurface3DHeight
+        # cudaDevAttrMaxSurface3DDepth
+        # cudaDevAttrMaxSurface1DLayeredWidth
+        # cudaDevAttrMaxSurface1DLayeredLayers
+        # cudaDevAttrMaxSurface2DLayeredWidth
+        # cudaDevAttrMaxSurface2DLayeredHeight
+        # cudaDevAttrMaxSurface2DLayeredLayers
+        # cudaDevAttrMaxSurfaceCubemapWidth
+        # cudaDevAttrMaxSurfaceCubemapLayeredWidth
+        # cudaDevAttrMaxSurfaceCubemapLayeredLayers
+        # cudaDevAttrMaxTexture1DLinearWidth
+        # cudaDevAttrMaxTexture2DLinearWidth
+        # cudaDevAttrMaxTexture2DLinearHeight
+        # cudaDevAttrMaxTexture2DLinearPitch
+        # cudaDevAttrMaxTexture2DMipmappedWidth
+        # cudaDevAttrMaxTexture2DMipmappedHeight
+        # cudaDevAttrMaxTexture1DMipmappedWidth
+        # cudaDevAttrStreamPrioritiesSupported
+        # cudaDevAttrGlobalL1CacheSupported
+        # cudaDevAttrLocalL1CacheSupported
+        # cudaDevAttrMaxRegistersPerMultiprocessor
+        # cudaDevAttrMultiGpuBoardGroupID
+        # cudaDevAttrHostNativeAtomicSupported
+        # cudaDevAttrSingleToDoublePrecisionPerfRatio
+        # cudaDevAttrComputePreemptionSupported
+        # cudaDevAttrCanUseHostPointerForRegisteredMem
+        # cudaDevAttrReserved92
+        # cudaDevAttrReserved93
+        # cudaDevAttrReserved94
+        # cudaDevAttrMaxSharedMemoryPerBlockOptin
+        # cudaDevAttrCanFlushRemoteWrites
+        # cudaDevAttrHostRegisterSupported
+    IF HIP_VERSION >= 310:
+        cpdef enum:
+            # hipDeviceAttributeAsicRevision  # does not exist in CUDA
+            cudaDevAttrManagedMemory = 47
+            cudaDevAttrDirectManagedMemAccessFromHost
+            cudaDevAttrConcurrentManagedAccess
+
+            cudaDevAttrPageableMemoryAccess
+            cudaDevAttrPageableMemoryAccessUsesHostPageTables
+ELSE:
+    # For CUDA/RTD
+    cpdef enum:
+        cudaDevAttrMaxThreadsPerBlock = 1
+        cudaDevAttrMaxBlockDimX
+        cudaDevAttrMaxBlockDimY
+        cudaDevAttrMaxBlockDimZ
+        cudaDevAttrMaxGridDimX
+        cudaDevAttrMaxGridDimY
+        cudaDevAttrMaxGridDimZ
+        cudaDevAttrMaxSharedMemoryPerBlock
+        cudaDevAttrTotalConstantMemory
+        cudaDevAttrWarpSize
+        cudaDevAttrMaxPitch
+        cudaDevAttrMaxRegistersPerBlock
+        cudaDevAttrClockRate
+        cudaDevAttrTextureAlignment
+        cudaDevAttrGpuOverlap
+        cudaDevAttrMultiProcessorCount
+        cudaDevAttrKernelExecTimeout
+        cudaDevAttrIntegrated
+        cudaDevAttrCanMapHostMemory
+        cudaDevAttrComputeMode
+        cudaDevAttrMaxTexture1DWidth
+        cudaDevAttrMaxTexture2DWidth
+        cudaDevAttrMaxTexture2DHeight
+        cudaDevAttrMaxTexture3DWidth
+        cudaDevAttrMaxTexture3DHeight
+        cudaDevAttrMaxTexture3DDepth
+        cudaDevAttrMaxTexture2DLayeredWidth
+        cudaDevAttrMaxTexture2DLayeredHeight
+        cudaDevAttrMaxTexture2DLayeredLayers
+        cudaDevAttrSurfaceAlignment
+        cudaDevAttrConcurrentKernels
+        cudaDevAttrEccEnabled
+        cudaDevAttrPciBusId
+        cudaDevAttrPciDeviceId
+        cudaDevAttrTccDriver
+        cudaDevAttrMemoryClockRate
+        cudaDevAttrGlobalMemoryBusWidth
+        cudaDevAttrL2CacheSize
+        cudaDevAttrMaxThreadsPerMultiProcessor
+        cudaDevAttrAsyncEngineCount
+        cudaDevAttrUnifiedAddressing
+        cudaDevAttrMaxTexture1DLayeredWidth
+        cudaDevAttrMaxTexture1DLayeredLayers  # = 43; 44 is missing
+        cudaDevAttrMaxTexture2DGatherWidth = 45
+        cudaDevAttrMaxTexture2DGatherHeight
+        cudaDevAttrMaxTexture3DWidthAlt
+        cudaDevAttrMaxTexture3DHeightAlt
+        cudaDevAttrMaxTexture3DDepthAlt
+        cudaDevAttrPciDomainId
+        cudaDevAttrTexturePitchAlignment
+        cudaDevAttrMaxTextureCubemapWidth
+        cudaDevAttrMaxTextureCubemapLayeredWidth
+        cudaDevAttrMaxTextureCubemapLayeredLayers
+        cudaDevAttrMaxSurface1DWidth
+        cudaDevAttrMaxSurface2DWidth
+        cudaDevAttrMaxSurface2DHeight
+        cudaDevAttrMaxSurface3DWidth
+        cudaDevAttrMaxSurface3DHeight
+        cudaDevAttrMaxSurface3DDepth
+        cudaDevAttrMaxSurface1DLayeredWidth
+        cudaDevAttrMaxSurface1DLayeredLayers
+        cudaDevAttrMaxSurface2DLayeredWidth
+        cudaDevAttrMaxSurface2DLayeredHeight
+        cudaDevAttrMaxSurface2DLayeredLayers
+        cudaDevAttrMaxSurfaceCubemapWidth
+        cudaDevAttrMaxSurfaceCubemapLayeredWidth
+        cudaDevAttrMaxSurfaceCubemapLayeredLayers
+        cudaDevAttrMaxTexture1DLinearWidth
+        cudaDevAttrMaxTexture2DLinearWidth
+        cudaDevAttrMaxTexture2DLinearHeight
+        cudaDevAttrMaxTexture2DLinearPitch
+        cudaDevAttrMaxTexture2DMipmappedWidth
+        cudaDevAttrMaxTexture2DMipmappedHeight
+        # The following are exposed as "deviceAttributeCo..."
+        # cudaDevAttrComputeCapabilityMajor  # = 75
+        # cudaDevAttrComputeCapabilityMinor  # = 76
+        cudaDevAttrMaxTexture1DMipmappedWidth = 77
+        cudaDevAttrStreamPrioritiesSupported
+        cudaDevAttrGlobalL1CacheSupported
+        cudaDevAttrLocalL1CacheSupported
+        cudaDevAttrMaxSharedMemoryPerMultiprocessor
+        cudaDevAttrMaxRegistersPerMultiprocessor
+        cudaDevAttrManagedMemory
+        cudaDevAttrIsMultiGpuBoard
+        cudaDevAttrMultiGpuBoardGroupID
+        cudaDevAttrHostNativeAtomicSupported
+        cudaDevAttrSingleToDoublePrecisionPerfRatio
+        cudaDevAttrPageableMemoryAccess
+        cudaDevAttrConcurrentManagedAccess
+        cudaDevAttrComputePreemptionSupported
+        cudaDevAttrCanUseHostPointerForRegisteredMem
+        cudaDevAttrReserved92
+        cudaDevAttrReserved93
+        cudaDevAttrReserved94
+        cudaDevAttrCooperativeLaunch
+        cudaDevAttrCooperativeMultiDeviceLaunch
+        cudaDevAttrMaxSharedMemoryPerBlockOptin
+        cudaDevAttrCanFlushRemoteWrites
+        cudaDevAttrHostRegisterSupported
+        cudaDevAttrPageableMemoryAccessUsesHostPageTables
+        cudaDevAttrDirectManagedMemAccessFromHost  # = 101
+        # added since CUDA 11.0
+        cudaDevAttrMaxBlocksPerMultiprocessor = 106
+        cudaDevAttrReservedSharedMemoryPerBlock = 111
+        # added since CUDA 11.1
+        cudaDevAttrSparseCudaArraySupported = 112
+        cudaDevAttrHostRegisterReadOnlySupported = 113
+        # added since CUDA 11.2
+        cudaDevAttrMaxTimelineSemaphoreInteropSupported = 114
+        cudaDevAttrMemoryPoolsSupported = 115
+        # added since CUDA 11.3
+        cudaDevAttrGPUDirectRDMASupported
+        cudaDevAttrGPUDirectRDMAFlushWritesOptions
+        cudaDevAttrGPUDirectRDMAWritesOrdering
+        cudaDevAttrMemoryPoolSupportedHandleTypes
+
 
 ###############################################################################
 # Error codes
 ###############################################################################
+
 cdef int errorMemoryAllocation
 cdef int errorInvalidValue
 cdef int errorPeerAccessAlreadyEnabled
@@ -654,9 +869,10 @@ cdef int errorInvalidResourceHandle
 ###############################################################################
 # Const value
 ###############################################################################
-cpdef bint _is_hip_environment
-cpdef int deviceAttributeComputeCapabilityMajor
-cpdef int deviceAttributeComputeCapabilityMinor
+
+cdef bint _is_hip_environment
+cdef int deviceAttributeComputeCapabilityMajor
+cdef int deviceAttributeComputeCapabilityMinor
 
 
 ###############################################################################
@@ -746,6 +962,12 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream)
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
+cpdef intptr_t deviceGetDefaultMemPool(int) except? 0
+cpdef intptr_t deviceGetMemPool(int) except? 0
+cpdef deviceSetMemPool(int, intptr_t)
+cpdef memPoolTrimTo(intptr_t, size_t)
+cpdef memPoolGetAttribute(intptr_t, int)
+cpdef memPoolSetAttribute(intptr_t, int, object)
 
 
 ###############################################################################

@@ -2,21 +2,23 @@ import numpy as _numpy
 import warnings as _warnings
 
 import cupy as _cupy
+from cupy import _util
+from cupy.cuda import device as _device
 
 from libc.stdint cimport intptr_t, uint32_t, uint64_t
-from cupy.core._carray cimport shape_t
-from cupy.core.core cimport ndarray
-from cupy.core cimport internal
+from cupy._core._carray cimport shape_t
+from cupy._core.core cimport ndarray
+from cupy._core cimport internal
 from cupy_backends.cuda.libs.cutensor cimport Handle
 from cupy_backends.cuda.libs.cutensor cimport TensorDescriptor
 from cupy_backends.cuda.libs.cutensor cimport ContractionDescriptor
 from cupy_backends.cuda.libs.cutensor cimport ContractionFind
 from cupy_backends.cuda.libs.cutensor cimport ContractionPlan
 
-from cupy.core cimport core
-from cupy.core cimport _dtype
-from cupy.core cimport _routines_linalg as _linalg
-from cupy.core cimport _reduction
+from cupy._core cimport core
+from cupy._core cimport _dtype
+from cupy._core cimport _routines_linalg as _linalg
+from cupy._core cimport _reduction
 from cupy.cuda cimport device
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.libs cimport cutensor
@@ -87,6 +89,19 @@ cdef dict _dict_compute_type_v10200 = {
     'F': cutensor.COMPUTE_32F,
     'D': cutensor.COMPUTE_64F,
 }
+cdef dict _available_compute_capability = {
+    'contraction': 60,
+    'reduction': 60,
+}
+
+
+@_util.memoize(for_each_device=True)
+def check_availability(name):
+    if name in _available_compute_capability:
+        compute_capability = int(_device.get_compute_capability())
+        if compute_capability < _available_compute_capability[name]:
+            return False
+    return True
 
 
 cdef class Mode(object):
@@ -718,6 +733,9 @@ def _try_reduction_routine(
     cdef shape_t out_shape
     cdef tuple reduce_axis, out_axis
     cdef TensorDescriptor desc_in, desc_out
+
+    if not check_availability('reduction'):
+        return None
 
     if dtype is None:
         dtype = x.dtype
