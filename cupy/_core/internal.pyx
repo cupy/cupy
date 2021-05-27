@@ -187,8 +187,8 @@ cpdef inline Py_ssize_t _extract_slice_element(x) except? 0:
 
 @cython.profile(False)
 cpdef slice complete_slice(slice slc, Py_ssize_t dim):
-    cpdef Py_ssize_t start=0, stop=0, step=0
-    cpdef bint start_none, stop_none
+    cdef Py_ssize_t start=0, stop=0, step=0
+    cdef bint start_none, stop_none
     if slc.step is None:
         step = 1
     else:

@@ -4647,7 +4647,7 @@ cpdef spMatGetSize(size_t desc, size_t rows, size_t cols, size_t nnz):
     check_status(status)
 
 cpdef int spMatGetStridedBatch(size_t desc):
-    cpdef int batchCount
+    cdef int batchCount
     status = cusparseSpMatGetStridedBatch(<SpMatDescr>desc, &batchCount)
     check_status(status)
     return batchCount
@@ -4725,8 +4725,8 @@ cpdef dnMatSetValues(size_t desc, intptr_t values):
     check_status(status)
 
 cpdef DnMatBatchAttributes dnMatGetStridedBatch(size_t desc):
-    cpdef int batchCount
-    cpdef int64_t batchStride
+    cdef int batchCount
+    cdef int64_t batchStride
     status = cusparseDnMatGetStridedBatch(<DnMatDescr>desc, &batchCount,
                                           &batchStride)
     check_status(status)
@@ -4743,7 +4743,7 @@ cpdef dnMatSetStridedBatch(size_t desc, int batchCount, int64_t batchStride):
 cpdef size_t spVV_bufferSize(intptr_t handle, Operation opX,
                              size_t vecX, size_t vecY,
                              intptr_t result, DataType computeType):
-    cpdef size_t bufferSize
+    cdef size_t bufferSize
     status = cusparseSpVV_bufferSize(<Handle>handle, opX,
                                      <SpVecDescr>vecX, <DnVecDescr>vecY,
                                      <void*>result, computeType, &bufferSize)
@@ -4761,7 +4761,7 @@ cpdef spVV(intptr_t handle, Operation opX, size_t vecX, size_t vecY,
 cpdef size_t spMV_bufferSize(intptr_t handle, Operation opA, intptr_t alpha,
                              size_t matA, size_t vecX, intptr_t beta,
                              size_t vecY, DataType computeType, SpMVAlg alg):
-    cpdef size_t bufferSize
+    cdef size_t bufferSize
     status = cusparseSpMV_bufferSize(<Handle>handle, opA, <void*>alpha,
                                      <SpMatDescr>matA, <DnVecDescr>vecX,
                                      <void*>beta, <DnVecDescr>vecY,
@@ -4782,7 +4782,7 @@ cpdef size_t spMM_bufferSize(intptr_t handle, Operation opA, Operation opB,
                              intptr_t alpha, size_t matA, size_t matB,
                              intptr_t beta, size_t matC, DataType computeType,
                              SpMMAlg alg):
-    cpdef size_t bufferSize
+    cdef size_t bufferSize
     status = cusparseSpMM_bufferSize(<Handle>handle, opA, opB, <void*>alpha,
                                      <SpMatDescr>matA, <DnMatDescr>matB,
                                      <void*>beta, <DnMatDescr>matC,
@@ -4805,7 +4805,7 @@ cpdef size_t constrainedGeMM_bufferSize(intptr_t handle, Operation opA,
                                         size_t matA, size_t matB,
                                         intptr_t beta, size_t matC,
                                         DataType computeType):
-    cpdef size_t bufferSize
+    cdef size_t bufferSize
     status = cusparseConstrainedGeMM_bufferSize(
         <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
         <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,
@@ -4826,7 +4826,7 @@ cpdef constrainedGeMM(intptr_t handle, Operation opA, Operation opB,
 
 cpdef size_t sparseToDense_bufferSize(intptr_t handle, size_t matA,
                                       size_t matB, int alg):
-    cpdef size_t bufferSize
+    cdef size_t bufferSize
     status = cusparseSparseToDense_bufferSize(
         <Handle>handle, <SpMatDescr>matA, <DnMatDescr>matB,
         <cusparseSparseToDenseAlg_t>alg, &bufferSize)
@@ -4842,7 +4842,7 @@ cpdef sparseToDense(intptr_t handle, size_t matA, size_t matB, int alg,
 
 cpdef size_t denseToSparse_bufferSize(intptr_t handle, size_t matA,
                                       size_t matB, int alg):
-    cpdef size_t bufferSize
+    cdef size_t bufferSize
     status = cusparseDenseToSparse_bufferSize(
         <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
         <cusparseDenseToSparseAlg_t>alg, &bufferSize)
@@ -4869,7 +4869,7 @@ cpdef size_t csr2cscEx2_bufferSize(
         intptr_t csrRowPtr, intptr_t csrColInd, intptr_t cscVal,
         intptr_t cscColPtr, intptr_t cscRowInd, DataType valType,
         Action copyValues, IndexBase idxBase, Csr2CscAlg alg):
-    cpdef size_t bufferSize
+    cdef size_t bufferSize
     status = cusparseCsr2cscEx2_bufferSize(
         <Handle>handle, m, n, nnz, <const void*>csrVal, <const int*>csrRowPtr,
         <const int*>csrColInd, <void*>cscVal, <int*>cscColPtr, <int*>cscRowInd,
