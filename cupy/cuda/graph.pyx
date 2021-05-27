@@ -31,7 +31,9 @@ cdef class Graph:
         runtime.graphLaunch(self.graphExec, stream_ptr)
 
     cpdef upload(self, stream=None):
-        # TODO(leofang): I actually don't understand the purpose of this API
-        # and did not find a meaningful way to test it, so let's disable it.
-        raise NotImplementedError('this function is currently disabled')
-        # runtime.graphUpload(self.graphExec, self.stream_ptr)
+        cdef intptr_t stream_ptr
+        if stream is None:
+            stream_ptr = stream_module.get_current_stream_ptr()
+        else:
+            stream_ptr = stream.ptr
+        runtime.graphUpload(self.graphExec, stream_ptr)
