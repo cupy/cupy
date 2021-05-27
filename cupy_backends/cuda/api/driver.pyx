@@ -192,7 +192,7 @@ cpdef ctxDestroy(intptr_t ctx):
 ###############################################################################
 
 cpdef intptr_t linkCreate() except? 0:
-    cpdef LinkState state
+    cdef LinkState state
     with nogil:
         status = cuLinkCreate(0, <CUjit_option*>0, <void**>0, &state)
     check_status(status)
