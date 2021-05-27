@@ -5,6 +5,8 @@ Discrete Fourier transforms (:mod:`cupyx.scipy.fft`)
 
 .. Hint:: `SciPy API Reference: Discrete Fourier transforms (scipy.fft) <https://docs.scipy.org/doc/scipy/reference/fft.html>`_
 
+.. seealso:: :ref:`../user_guide/fft`
+
 Fast Fourier Transforms (FFTs)
 ------------------------------
 

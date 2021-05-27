@@ -5,7 +5,7 @@ Discrete Fourier Transform (:mod:`cupy.fft`)
 
 .. Hint:: `NumPy API Reference: Discrete Fourier Transform (numpy.fft) <https://numpy.org/doc/stable/reference/routines.fft.html>`_
 
-.. seealso:: :doc:`scipy_fft`
+.. seealso:: :doc:`scipy_fft`, :ref:`../user_guide/fft`
 
 Standard FFTs
 -------------
