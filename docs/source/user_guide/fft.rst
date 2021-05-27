@@ -21,7 +21,7 @@ User-managed FFT plans
 
 For performance reasons, users may want to create, reuse, and manage the FFT plans themselves. CuPy provides a high-level *experimental* API :func:`~cupyx.scipy.fftpack.get_fft_plan` for this need. Users specify the transform to be performed as they would with most of the high-level FFT APIs, and a plan will be generated based on the input.
 
-.. code:: python
+.. code-block:: python
 
     import cupy as cp
     from cupyx.scipy.fft import get_fft_plan
@@ -31,7 +31,7 @@ For performance reasons, users may want to create, reuse, and manage the FFT pla
 
 The returned plan can be used either explicitly as an argument with the :mod:`cupyx.scipy.fft` APIs:
 
-.. code:: python
+.. code-block:: python
 
     import cupyx.scipy.fft
 
@@ -40,7 +40,7 @@ The returned plan can be used either explicitly as an argument with the :mod:`cu
 
 or as a context manager for the :mod:`cupy.fft` APIs:
 
-.. code:: python
+.. code-block:: python
 
     with plan:
         # the rest of the arguments must match those used when generating the plan
@@ -54,7 +54,7 @@ FFT plan cache
 
 There are occasions when users may *not* want to manage the FFT plans by themselves, however. Moreover, plans could also be reused internally in CuPy's routines, to which user-managed plans would not be applicable. Therefore, starting CuPy v8 we provide a built-in plan cache, enabled by default. The plan cache is done on a *per device, per thread* basis, and can be retrieved by the :func:`~cupy.fft.config.get_plan_cache` API.
 
-.. doctest::
+.. code-block:: python
 
     >>> import cupy as cp
     >>>
@@ -65,10 +65,10 @@ There are occasions when users may *not* want to manage the FFT plans by themsel
     current / max size   : 0 / 16 (counts)
     current / max memsize: 0 / (unlimited) (bytes)
     hits / misses: 0 / 0 (counts)
-    <BLANKLINE>
+    
     cached plans (most recently used first):
-    <BLANKLINE>
-    >>> # perform a transform
+    
+    >>> # perform a transform, which would generate a plan and cache it
     >>> a = cp.random.random((4, 64, 64))
     >>> out = cp.fft.fftn(a, axes=(1, 2))
     >>> cache.show_info()  # hit = 0
@@ -77,10 +77,10 @@ There are occasions when users may *not* want to manage the FFT plans by themsel
     current / max size   : 1 / 16 (counts)
     current / max memsize: 262144 / (unlimited) (bytes)
     hits / misses: 0 / 1 (counts)
-    <BLANKLINE>
+    
     cached plans (most recently used first):
     key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
-    <BLANKLINE>
+    
     >>> # perform the same transform again, the plan is looked up from cache and reused
     >>> out = cp.fft.fftn(a, axes=(1, 2))
     >>> cache.show_info()  # hit = 1
@@ -89,10 +89,10 @@ There are occasions when users may *not* want to manage the FFT plans by themsel
     current / max size   : 1 / 16 (counts)
     current / max memsize: 262144 / (unlimited) (bytes)
     hits / misses: 1 / 1 (counts)
-    <BLANKLINE>
+    
     cached plans (most recently used first):
     key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
-    <BLANKLINE>
+    
     >>> # clear the cache
     >>> cache.clear()
     >>> cp.fft.config.show_plan_cache_info()  # = cache.show_info(), for all devices
@@ -102,10 +102,9 @@ There are occasions when users may *not* want to manage the FFT plans by themsel
     current / max size   : 0 / 16 (counts)
     current / max memsize: 0 / (unlimited) (bytes)
     hits / misses: 0 / 0 (counts)
-    <BLANKLINE>
+    
     cached plans (most recently used first):
-    <BLANKLINE>
-    >>>
+    
 
 The returned :class:`~cupy.fft._cache.PlanCache` object has other methods for finer control, such as setting the cache size (either by counts or by memory usage), please refer to its documentation for more detail.
 
@@ -125,7 +124,7 @@ FFT callbacks
 This capability is supported *experimentally* by CuPy. Users need to supply custom load and/or store kernels as strings, and set up a context manager
 via :func:`~cupy.fft.config.set_cufft_callbacks`. Note that the load (store) kernel pointer has to be named as ``d_loadCallbackPtr`` (``d_storeCallbackPtr``).
 
-.. code:: python
+.. code-block:: python
 
     import cupy as cp
 
@@ -177,7 +176,7 @@ CuPy currently provides two kinds of *experimental* support for multi-GPU FFT.
 
 The first kind of support is with the high-level :func:`~cupy.fft.fft` and :func:`~cupy.fft.ifft` APIs, which requires the input array to reside on one of the participating GPUs. The multi-GPU calculation is done under the hood, and by the end of the calculation the result again resides on the device where it started. Currently only 1D complex-to-complex (C2C) transform is supported; complex-to-real (C2R) or real-to-complex (R2C) transforms (such as :func:`~cupy.fft.rfft` and friends) are not. The transform can be either batched (batch size > 1) or not (batch size = 1).
 
-.. code:: python
+.. code-block:: python
 
     import cupy as cp
 
@@ -194,7 +193,7 @@ If you need to perform 2D/3D transforms (ex: :func:`~cupy.fft.fftn`) instead of 
 
 The second kind of usage is to use the low-level, *private* CuPy APIs. You need to construct a :class:`~cupy.cuda.fft.Plan1d` object and use it as if you are programming in C/C++ with `cuFFT`_. Using this approach, your array can reside on the host as a :class:`numpy.ndarray`, so its size can be much larger than what a single GPU can accommodate, which is one of the main reasons to run multi-GPU FFT.
 
-.. code:: python
+.. code-block:: python
 
     import numpy as np
     import cupy as cp
@@ -238,7 +237,7 @@ Half-precision FFT
 
 `cuFFT`_ provides ``cufftXtMakePlanMany`` and ``cufftXtExec`` routines to support a wide range of FFT needs, including 64-bit indexing and half-precision FFT. CuPy provides an *experimental* support for this capability via the new (though *private*) :class:`~cupy.cuda.fft.XtPlanNd` API. For half-precision FFT, on supported hardware it can be twice as fast than its single-precision counterpart. NumPy does not yet provide the necessary infrastructure for half-precision complex numbers (i.e., ``numpy.complex32``), though, so the steps for this feature is currently a bit more involved than common cases.
 
-.. code:: python
+.. code-block:: python
 
     import cupy as cp
     import numpy as np
