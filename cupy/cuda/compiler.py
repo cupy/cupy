@@ -95,14 +95,14 @@ def _get_extra_path_for_msvc():
         # The compiler is already on PATH, no extra path needed.
         return None
 
-    from distutils import msvc9compiler
-    vcvarsall_bat = msvc9compiler.find_vcvarsall(
-        msvc9compiler.get_build_version())
-    if not vcvarsall_bat:
+    from setuptools import msvc
+    try:
+        vctools = msvc.EnvironmentInfo(platform.machine().lower()).VCTools
+    except distutils.errors.DistutilsPlatformError:
         # Failed to find VC.
         return None
 
-    path = os.path.join(os.path.dirname(vcvarsall_bat), 'bin')
+    path = vctools[-1]
     if not distutils.spawn.find_executable('cl.exe', path):
         # The compiler could not be found.
         return None
