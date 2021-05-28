@@ -711,7 +711,7 @@ cdef inline intptr_t _get_stream_identifier(intptr_t stream_ptr):
     if stream_ptr != runtime.streamPerThread:
         return stream_ptr
 
-    cpdef intptr_t tid
+    cdef intptr_t tid
     try:
         tid = _thread_local._tid
     except AttributeError:

@@ -490,7 +490,7 @@ cpdef deviceSynchronize():
     check_status(status)
 
 cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1:
-    cpdef int ret
+    cdef int ret
     status = cudaDeviceCanAccessPeer(&ret, device, peerDevice)
     check_status(status)
     return ret

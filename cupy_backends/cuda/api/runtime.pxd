@@ -838,9 +838,9 @@ cdef int errorInvalidResourceHandle
 # Const value
 ###############################################################################
 
-cpdef bint _is_hip_environment
-cpdef int deviceAttributeComputeCapabilityMajor
-cpdef int deviceAttributeComputeCapabilityMinor
+cdef bint _is_hip_environment
+cdef int deviceAttributeComputeCapabilityMajor
+cdef int deviceAttributeComputeCapabilityMinor
 
 
 ###############################################################################
