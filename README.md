@@ -40,7 +40,6 @@ Choose the right package for your platform.
 
 | Platform  | Command                        |
 | --------- | ------------------------------ |
-| CUDA 9.0  | `pip install cupy-cuda90`      |
 | CUDA 9.2  | `pip install cupy-cuda92`      |
 | CUDA 10.0 | `pip install cupy-cuda100`     |
 | CUDA 10.1 | `pip install cupy-cuda101`     |
@@ -48,7 +47,10 @@ Choose the right package for your platform.
 | CUDA 11.0 | `pip install cupy-cuda110`     |
 | CUDA 11.1 | `pip install cupy-cuda111`     |
 | CUDA 11.2 | `pip install cupy-cuda112`     |
+| CUDA 11.3 | `pip install cupy-cuda112` (*) |
 | ROCm 4.0  | `pip install cupy-rocm-4-0` (experimental; see [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details) |
+
+*(\*) CUDA 11.3 support is currently under verification. Meanwhile you can use wheels for CUDA 11.2 which is compatible with CUDA 11.3.*
 
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or building from source.
 
