@@ -1,8 +1,9 @@
-import numpy
+import functools
 import re
 
-import cupy
+import numpy
 
+import cupy
 import cupy._core._routines_manipulation as _manipulation
 from cupy._core import internal
 
@@ -208,6 +209,7 @@ class _GUFunc:
             if not isinstance(output_coredimss, list)
             else len(output_coredimss)
         )
+        functools.update_wrapper(self, func)
 
     def _apply_func_to_inputs(self, dim, sizes, dims, args, outs):
         # Apply function
