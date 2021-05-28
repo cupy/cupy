@@ -100,7 +100,7 @@ class _InstallInfo(object):
         return os.path.dirname(cupy_path)
 
 
-class _RuntimeInfo(object):
+class _RuntimeInfo:
 
     cupy_version = None
     cuda_path = None
@@ -136,7 +136,7 @@ class _RuntimeInfo(object):
     numpy_version = None
     scipy_version = None
 
-    def __init__(self):
+    def __init__(self, *, full=True):
         self.cupy_version = cupy.__version__
 
         if not is_hip:
@@ -158,10 +158,13 @@ class _RuntimeInfo(object):
             cupy.cuda.runtime.runtimeGetVersion,
             cupy.cuda.runtime.CUDARuntimeError)
 
-        self.cublas_version = _eval_or_error(
-            lambda: cupy.cuda.cublas.getVersion(
-                cupy.cuda.device.get_cublas_handle()),
-            cupy.cuda.cublas.CUBLASError)
+        if full:
+            self.cublas_version = _eval_or_error(
+                lambda: cupy.cuda.cublas.getVersion(
+                    cupy.cuda.device.get_cublas_handle()),
+                cupy.cuda.cublas.CUBLASError)
+        else:
+            self.cublas_version = '(available)'
         self.cufft_version = _eval_or_error(
             cupy.cuda.cufft.getVersion,
             cupy.cuda.cufft.CuFFTError)
@@ -171,10 +174,14 @@ class _RuntimeInfo(object):
         self.cusolver_version = _eval_or_error(
             cupy.cuda.cusolver._getVersion,
             cupy.cuda.cusolver.CUSOLVERError)
-        self.cusparse_version = _eval_or_error(
-            lambda: cupy.cuda.cusparse.getVersion(
-                cupy.cuda.device.get_cusparse_handle()),
-            cupy.cuda.cusparse.CuSparseError)
+        if full:
+            self.cusparse_version = _eval_or_error(
+                lambda: cupy.cuda.cusparse.getVersion(
+                    cupy.cuda.device.get_cusparse_handle()),
+                cupy.cuda.cusparse.CuSparseError)
+        else:
+            self.cusparse_version = '(available)'
+
         self.nvrtc_version = _eval_or_error(
             cupy.cuda.nvrtc.getVersion,
             cupy.cuda.nvrtc.NVRTCError)
@@ -281,8 +288,8 @@ class _RuntimeInfo(object):
         return s.getvalue()
 
 
-def get_runtime_info():
-    return _RuntimeInfo()
+def get_runtime_info(*, full=True):
+    return _RuntimeInfo(full=full)
 
 
 def get_install_info():
