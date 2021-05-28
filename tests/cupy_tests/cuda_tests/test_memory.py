@@ -772,29 +772,33 @@ class TestAllocator(unittest.TestCase):
         assert memory.get_allocator() == self.pool.malloc
 
     def test_allocator_thread_local(self):
+        barrier = threading.Barrier(2)
+
         def thread_body(self):
             cupy.cuda.Device().use()
             new_pool = memory.MemoryPool()
             with cupy.cuda.using_allocator(new_pool.malloc):
                 assert memory.get_allocator() == new_pool.malloc
-                threading.Barrier(2)
+                barrier.wait()
                 arr = cupy.zeros(128, dtype=cupy.int64)
-                threading.Barrier(2)
+                barrier.wait()
                 assert arr.data.mem.size == new_pool.used_bytes()
-                threading.Barrier(2)
+                barrier.wait()
             assert memory.get_allocator() == self.pool.malloc
+            self._success = True
 
         with cupy.cuda.Device():
-            t = threading.Thread(target=thread_body, args=(self,))
-            t.daemon = True
+            self._success = False
+            t = threading.Thread(target=thread_body, args=(self,), daemon=True)
             t.start()
-            threading.Barrier(2)
+            barrier.wait()
             assert memory.get_allocator() == self.pool.malloc
             arr = cupy.ones(256, dtype=cupy.int64)
-            threading.Barrier(2)
+            barrier.wait()
             assert arr.data.mem.size == self.pool.used_bytes()
-            threading.Barrier(2)
+            barrier.wait()
             t.join()
+            assert self._success
 
     def test_thread_local_valid(self):
         new_pool = memory.MemoryPool()
