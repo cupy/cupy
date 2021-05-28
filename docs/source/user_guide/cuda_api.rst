@@ -10,10 +10,10 @@ In this section we discuss basic usages for CUDA streams and events. For further
 :ref:`stream_event_api` for the API reference. For their roles in the CUDA programming model, please refer
 to `CUDA Programming Guide`_.
 
-CuPy provides high-level Python APIs :class:`~cupy.cuda.Stream` and :class:`~cupy.cuda.Event` for accessing
-this functionality. The :ref:`current_stream` can be queried via :func:`~cupy.cuda.get_current_stream`.
-Data copies and kernel launches are enqueued onto the current stream, which can be changed either by setting
-up a context manager:
+CuPy provides high-level Python APIs :class:`~cupy.cuda.Stream` and :class:`~cupy.cuda.Event` for creating
+streams and events, respectively. Data copies and kernel launches are enqueued onto the :ref:`current_stream`,
+which can be queried via :func:`~cupy.cuda.get_current_stream` and changed either by setting up a context
+manager:
 
 .. doctest::
 
@@ -29,13 +29,13 @@ up a context manager:
     >>> # fall back to the previous stream in use (here the default stream)
     >>> # when going out of the scope of s
 
-or use the :meth:`~cupy.cuda.Stream.use` method:
+or by using the :meth:`~cupy.cuda.Stream.use` method:
 
 .. doctest::
 
     >>> s = cp.cuda.Stream()
     >>> s.use()  # any subsequent operations are done on steam s  # doctest: +ELLIPSIS
-    <Stream ... (device 0)>
+    <Stream ... (device ...)>
     >>> b_np = cp.asnumpy(b_cp)
     >>> assert s == cp.cuda.get_current_stream()
     >>> cp.cuda.Stream.null.use()  # fall back to the default (null) stream
@@ -73,8 +73,8 @@ objects can also be used for synchronization.
 .. note::
 
     On NVIDIA GPUs, there are two stream singleton objects :obj:`~cupy.cuda.Stream.null` and
-    :obj:`~cupy.cuda.Stream.ptds`, referred to as the legacy default stream and the per-thread default
-    stream, respectively. CuPy uses the former as default when no user defined stream is in use. To
+    :obj:`~cupy.cuda.Stream.ptds`, referred to as the *legacy* default stream and the *per-thread* default
+    stream, respectively. CuPy uses the former as default when no user-defined stream is in use. To
     change this behavior, set the environment variable ``CUPY_CUDA_PER_THREAD_DEFAULT_STREAM`` to 1,
     see :ref:`environment`. This is not applicable to AMD GPUs.
 
