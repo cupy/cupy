@@ -10,10 +10,10 @@
 [![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
 
 [**Website**](https://cupy.dev/)
-| [**Docs**](https://docs.cupy.dev/en/stable/)
-| [**Install Guide**](https://docs.cupy.dev/en/stable/install.html)
-| [**Tutorial**](https://docs.cupy.dev/en/stable/tutorial/)
+| [**Install**](https://docs.cupy.dev/en/stable/install.html)
+| [**Tutorial**](https://docs.cupy.dev/en/stable/user_guide/basic.html)
 | [**Examples**](https://github.com/cupy/cupy/tree/master/examples)
+| [**Documentation**](https://docs.cupy.dev/en/stable/)
 | [**API Reference**](https://docs.cupy.dev/en/stable/reference/)
 | [**Forum**](https://groups.google.com/forum/#!forum/cupy)
 
