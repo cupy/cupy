@@ -96,6 +96,7 @@ def _get_extra_path_for_msvc():
         return None
 
     from setuptools import msvc
+    import platform
     try:
         vctools = msvc.EnvironmentInfo(platform.machine().lower()).VCTools
     except distutils.errors.DistutilsPlatformError:
