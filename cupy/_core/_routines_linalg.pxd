@@ -12,7 +12,7 @@ cpdef ndarray tensordot_core(
     ndarray a, ndarray b, ndarray out, Py_ssize_t n, Py_ssize_t m,
     Py_ssize_t k, const shape_t& ret_shape)
 
-cpdef ndarray _matmul(ndarray a, ndarray b, ndarray out=*)
+cpdef ndarray matmul(ndarray a, ndarray b, ndarray out=*)
 
 
 cpdef enum:
