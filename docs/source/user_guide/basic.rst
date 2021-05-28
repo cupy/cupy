@@ -53,7 +53,7 @@ See the :ref:`reference <cupy_reference>` for the supported subset of NumPy API.
 Understanding NumPy might help utilizing most features of CuPy.
 So, we recommend you to read the `NumPy documentation <https://docs.scipy.org/doc/numpy/index.html>`_.
 
-.. _cupy_device:
+.. _current_device:
 
 Current Device
 --------------
