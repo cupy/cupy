@@ -1,5 +1,6 @@
 from cupy_backends.cuda.api import runtime
 from cupyx.jit import _cuda_types
+from cupyx.jit._cuda_typerules import implicit_conversion
 from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
@@ -48,6 +49,48 @@ class RangeFunc(BuiltinFunc):
             assert False
 
         return Range(start, stop, step, ctype, step_is_positive)
+
+
+class Len(BuiltinFunc):
+    def call(self, env, *args, **kwds):
+        if len(args) > 1:
+            raise TypeError(f'len expects only 1 argument, got {len(args)}')
+        arg = args[0]
+        if isinstance(arg.ctype, _cuda_types.CArray):
+            return Data(f'{arg.code}.size()', _cuda_types.PtrDiff())
+        if isinstance(arg.ctype, _cuda_types.SharedMem):
+            return Constant(arg.ctype._size)
+        raise TypeError('len supports only array type')
+
+
+class Min(BuiltinFunc):
+    def call(self, env, *args, **kwds):
+        if len(args) < 2:
+            raise TypeError(
+                f'min expects at least 2 arguments, got {len(args)}')
+        if kwds:
+            raise TypeError('keyword arguments are not supported')
+        args = [Data.init(arg, env) for arg in args]
+        codes, ctypes = zip(*[(arg.code, arg.ctype) for arg in args])
+        code = 'min(' * (len(codes) - 1) + codes[0]
+        code += ''.join(f', {code})' for code in codes[1:])
+        ctype = implicit_conversion(*ctypes)
+        return Data(code, ctype)
+
+
+class Max(BuiltinFunc):
+    def call(self, env, *args, **kwds):
+        if len(args) < 2:
+            raise TypeError(
+                f'max expects at least 2 arguments, got {len(args)}')
+        if kwds:
+            raise TypeError('keyword arguments are not supported')
+        args = [Data.init(arg, env) for arg in args]
+        codes, ctypes = zip(*[(arg.code, arg.ctype) for arg in args])
+        code = 'max(' * (len(codes) - 1) + codes[0]
+        code += ''.join(f', {code})' for code in codes[1:])
+        ctype = implicit_conversion(*ctypes)
+        return Data(code, ctype)
 
 
 class SyncThreads(BuiltinFunc):
@@ -111,6 +154,9 @@ class AtomicOp(BuiltinFunc):
 
 builtin_functions_dict = {
     range: RangeFunc(),
+    len: Len(),
+    min: Min(),
+    max: Max(),
 }
 
 syncthreads = SyncThreads()

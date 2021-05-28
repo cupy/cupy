@@ -562,6 +562,21 @@ def _transpile_expr_internal(expr, env):
         value = _transpile_expr(expr.value, env)
         if is_constants(value):
             return Constant(getattr(value.obj, expr.attr))
+        if isinstance(value.ctype, _cuda_types.ArrayBase):
+            if 'ndim' == expr.attr:
+                return Constant(value.ctype.ndim)
+        if isinstance(value.ctype, _cuda_types.SharedMem):
+            if 'size' == expr.attr:
+                return _builtin_funcs.Len().call(value)
+        if isinstance(value.ctype, _cuda_types.CArray):
+            if 'size' == expr.attr:
+                return _builtin_funcs.Len().call(value)
+            if 'shape' == expr.attr:
+                ctype = _cuda_types.Ptr(_cuda_types.PtrDiff())
+                return Data(f'{value.code}.shape()', ctype)
+            if 'strides' == expr.attr:
+                ctype = _cuda_types.Ptr(_cuda_types.PtrDiff())
+                return Data(f'{value.code}.strides()', ctype)
         raise NotImplementedError('Not implemented: __getattr__')
 
     if isinstance(expr, ast.Tuple):
@@ -651,7 +666,7 @@ def _indexing(array, index, env):
             return Data(
                 f'{array.code}._indexing({index.code})',
                 array.ctype.child_type)
-        if isinstance(index.ctype, _cuda_types.Array):
+        if isinstance(index.ctype, _cuda_types.CArray):
             raise TypeError('Advanced indexing is not supported.')
         assert False  # Never reach.
 

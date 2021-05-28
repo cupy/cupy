@@ -154,3 +154,8 @@ def guess_routine(ufunc, in_types, dtype, mode):
         return ufunc._ops._guess_routine_from_dtype(dtype)
     can_cast = numpy.can_cast if mode == 'numpy' else _cuda_can_cast
     return ufunc._ops._guess_routine_from_in_types(tuple(in_types), can_cast)
+
+
+def implicit_conversion(*ctypes):
+    return _cuda_types.Scalar(_typechars[
+        max(_typechars.find(ctype.dtype.char) for ctype in ctypes)])
