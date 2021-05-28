@@ -21,6 +21,12 @@ including :func:`cupyx.empty_pinned`, :func:`cupyx.empty_like_pinned`, :func:`cu
 :func:`cupyx.zeros_like_pinned`. They return NumPy arrays backed by pinned memory. If CuPy's pinned memory pool
 is in use, the pinned memory is allocated from the pool.
 
+.. note::
+
+    CuPy v8 and above provides a :ref:`FFT plan cache <fft_plan_cache>` that could use a portion of device memory if FFT and related functions are used.
+    The memory taken can be released by shrinking or disabling the cache.
+
+
 Memory Pool Operations
 ----------------------
 
