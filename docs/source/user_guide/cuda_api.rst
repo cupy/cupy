@@ -6,10 +6,11 @@ Accessing CUDA Functionalities
 Streams and Events
 ------------------
 
-In this section we discuss basic usages for streams and events. For further information please see
-:ref:`stream_event_api` for the API reference.
+In this section we discuss basic usages for CUDA streams and events. For further information please see
+:ref:`stream_event_api` for the API reference. For their roles in the CUDA programming model, please refer
+to `CUDA Programming Guide_`.
 
-CuPy provides high-level Python APIs for accessing CUDA streams and events. Similar to :ref:`cupy_device`,
+CuPy provides high-level Python APIs for accessing streams and events. Similar to :ref:`cupy_device`,
 CuPy has the concept of *current streams*, which can be queried via :func:`~cp.cuda.get_current_stream`.
 Data copies and kernel launches are enqueued onto the current stream, which can be changed either by setting
 up a context manager:
@@ -63,12 +64,19 @@ Events can be created either manually or through the :meth:`~cupy.cuda.Stream.re
     >>> t = cp.cuda.get_elapsed_time(e1, e2)  # only include the compute time, not the copy time
 
 Just like the :class:`~cupy.cuda.Device` objects, :class:`~cupy.cuda.Stream` and :class:`~cupy.cuda.Event`
-objects can also be used for synchronization. For the roles of CUDA streams and events in the CUDA
-programming model, please refer to :ref:`CUDA Programming Guide_`.
+objects can also be used for synchronization.
 
 .. note::
 
     In CuPy, the :class:`~cupy.cuda.Stream` objects are managed on the per thread, per device basis.
+
+.. note::
+
+    On NVIDIA GPUs, there are two stream singleton objects :obj:`~cupy.cuda.Stream.null` and
+    :obj:`~cupy.cuda.Stream.ptds`, referring to as the legacy default stream and the per-thread default
+    stream, respectively. CuPy uses the former as default when no user defined stream is in use. To
+    change this behavior, set the environment variable ``CUPY_CUDA_PER_THREAD_DEFAULT_STREAM`` to 1,
+    see :ref:`environment`. This is not applicable to AMD GPUs.
 
 .. _CUDA Programming Guide: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
 
