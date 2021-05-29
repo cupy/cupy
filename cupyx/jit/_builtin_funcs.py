@@ -23,6 +23,13 @@ class RangeFunc(BuiltinFunc):
             raise TypeError(
                 f'range expected at most 3 argument, got {len(args)}')
 
+        if isinstance(step, Constant):
+            step_is_positive = step.obj >= 0
+        elif step.ctype.dtype.kind == 'u':
+            step_is_positive = True
+        else:
+            step_is_positive = None
+
         stop = Data.init(stop, env)
         start = Data.init(start, env)
         step = Data.init(step, env)
@@ -33,13 +40,6 @@ class RangeFunc(BuiltinFunc):
             raise TypeError('range supports only for integer type.')
         if step.ctype.dtype.kind not in 'iu':
             raise TypeError('range supports only for integer type.')
-
-        if isinstance(step, Constant):
-            step_is_positive = step.obj >= 0
-        elif step.ctype.dtype.kind == 'u':
-            step_is_positive = True
-        else:
-            step_is_positive = None
 
         if env.mode == 'numpy':
             ctype = _cuda_types.Scalar(int)
