@@ -53,7 +53,7 @@ class RangeFunc(BuiltinFunc):
 
 class Len(BuiltinFunc):
     def call(self, env, *args, **kwds):
-        if len(args) > 1:
+        if len(args) != 1:
             raise TypeError(f'len expects only 1 argument, got {len(args)}')
         arg = args[0]
         if isinstance(arg.ctype, _cuda_types.CArray):
