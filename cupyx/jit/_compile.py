@@ -565,9 +565,6 @@ def _transpile_expr_internal(expr, env):
         if isinstance(value.ctype, _cuda_types.ArrayBase):
             if 'ndim' == expr.attr:
                 return Constant(value.ctype.ndim)
-        if isinstance(value.ctype, _cuda_types.SharedMem):
-            if 'size' == expr.attr:
-                return _builtin_funcs.Len().call(value)
         if isinstance(value.ctype, _cuda_types.CArray):
             if 'size' == expr.attr:
                 return _builtin_funcs.Len().call(value)

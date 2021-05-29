@@ -56,13 +56,9 @@ class Len(BuiltinFunc):
         if len(args) != 1:
             raise TypeError(f'len expects only 1 argument, got {len(args)}')
         arg = args[0]
-        if isinstance(arg.ctype, _cuda_types.CArray):
-            return Data(f'{arg.code}.size()', _cuda_types.PtrDiff())
-        if isinstance(arg.ctype, _cuda_types.SharedMem):
-            if arg.ctype._size is None:
-                raise TypeError('unsized shared memory is not supported')
-            return Constant(arg.ctype._size)
-        raise TypeError('len supports only array type')
+        if not isinstance(arg.ctype, _cuda_types.CArray):
+            raise TypeError('len supports only array type')
+        return Data(f'{arg.code}.size()', _cuda_types.PtrDiff())
 
 
 class Min(BuiltinFunc):
