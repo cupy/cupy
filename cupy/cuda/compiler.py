@@ -89,22 +89,23 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
 
 @_util.memoize()
 def _get_extra_path_for_msvc():
-    import distutils.spawn
-    cl_exe = distutils.spawn.find_executable('cl.exe')
+    import shutil
+    cl_exe = shutil.which('cl.exe')
     if cl_exe:
         # The compiler is already on PATH, no extra path needed.
         return None
 
     from setuptools import msvc
+    from setuptools.errors import DistutilsError
     import platform
     try:
         vctools = msvc.EnvironmentInfo(platform.machine().lower()).VCTools
-    except distutils.errors.DistutilsPlatformError:
+    except DistutilsError:
         # Failed to find VC.
         return None
 
     path = vctools[-1]
-    if not distutils.spawn.find_executable('cl.exe', path):
+    if not shutil.which('cl.exe', path):
         # The compiler could not be found.
         return None
     return path
