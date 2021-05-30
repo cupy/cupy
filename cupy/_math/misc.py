@@ -316,44 +316,117 @@ fmin = _core.create_ufunc(
 
 _nan_to_num_preamble = '''
 template <class T>
-__device__ T nan_to_num(T x, T large) {
+__device__ T nan_to_num(T x, T nan, T posinf, T neginf) {
     if (isnan(x))
-        return 0;
+        return nan;
     if (isinf(x))
-        return copysign(large, x);
+        return x > 0 ? posinf : neginf;
     return x;
 }
 
 template <class T>
-__device__ complex<T> nan_to_num(complex<T> x, T large) {
-    T re = nan_to_num(x.real(), large);
-    T im = nan_to_num(x.imag(), large);
+__device__ complex<T> nan_to_num(complex<T> x, T nan, T posinf, T neginf) {
+    T re = nan_to_num(x.real(), nan, posinf, neginf);
+    T im = nan_to_num(x.imag(), nan, posinf, neginf);
     return complex<T>(re, im);
 }
 '''
 
 
-nan_to_num = _core.create_ufunc(
-    'cupy_nan_to_num',
-    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H',
-     'i->i', 'I->I', 'l->l', 'L->L', 'q->q', 'Q->Q',
-     ('e->e',
-      'out0 = nan_to_num(in0, float16(32 * 0x7FF))'),
-     ('f->f',
-      'out0 = nan_to_num(in0, __int_as_float(0x7F800000 - 1))'),
-     ('d->d',
-      'out0 = nan_to_num(in0, __longlong_as_double(0x7FF0000000000000 - 1))'),
-     ('F->F',
-      'out0 = nan_to_num(in0, __int_as_float(0x7F800000 - 1))'),
-     ('D->D',
-      'out0 = nan_to_num(in0, __longlong_as_double(0x7FF0000000000000 - 1))')),
-    'out0 = in0',
-    preamble=_nan_to_num_preamble,
-    doc='''Elementwise nan_to_num function.
+_c_nan_max_inf = (
+    {   # nan
+        'e': '__short_as_half(0xFFFF)',
+        'f': '__int_as_float(0xFFC00001)',
+        'd': '__longlong_as_double(0x7FF8000000000001)',
+        'F': '__int_as_float(0xFFC00001)',
+        'D': '__longlong_as_double(0x7FF8000000000001)'
+    },
+    {   # +max
+        'e': '__short_as_half(0x7BFF)',
+        'f': '__int_as_float(0x7F7FFFFF)',
+        'd': '__longlong_as_double(0x7FEFFFFFFFFFFFFF)',
+        'F': '__int_as_float(0x7F7FFFFF)',
+        'D': '__longlong_as_double(0x7FEFFFFFFFFFFFFF)'
+    },
+    {   # -max
+        'e': '__short_as_half(0xFBFF)',
+        'f': '__int_as_float(0xFF7FFFFF)',
+        'd': '__longlong_as_double(0xFFEFFFFFFFFFFFFF)',
+        'F': '__int_as_float(0xFF7FFFFF)',
+        'D': '__longlong_as_double(0xFFEFFFFFFFFFFFFF)'
+    },
+    {   # +inf
+        'e': '__short_as_half(0x7C00)',
+        'f': '__int_as_float(0x7F800000)',
+        'd': '__longlong_as_double(0x7FF0000000000000)',
+        'F': '__int_as_float(0x7F800000)',
+        'D': '__longlong_as_double(0x7FF0000000000000)'
+    },
+    {   # -inf
+        'e': '__short_as_half(0xFC00)',
+        'f': '__int_as_float(0xFF800000)',
+        'd': '__longlong_as_double(0xFFF0000000000000)',
+        'F': '__int_as_float(0xFF800000)',
+        'D': '__longlong_as_double(0xFFF0000000000000)'
+    }
+)
 
-    .. seealso:: :data:`numpy.nan_to_num`
+
+def _check_nan_inf(x, default=None):
+    if x is None:
+        if default is not None:
+            return _c_nan_max_inf[default]
+        x = 0
+    if cupy.isnan(x):
+        return _c_nan_max_inf[0]
+    if cupy.isinf(x):
+        return _c_nan_max_inf[3 + (x < 0)]
+    return {
+        'e': f'static_cast<__half>({x})',
+        'f': f'static_cast<float>({x})',
+        'd': f'static_cast<double>({x})',
+        'F': f'static_cast<float>({x})',
+        'D': f'static_cast<double>({x})'
+    }
+
+
+@cupy._util.memoize()
+def _create_nan_to_num(nan, posinf, neginf):
+    nan = _check_nan_inf(nan)
+    posinf = _check_nan_inf(posinf, 1)
+    neginf = _check_nan_inf(neginf, 2)
+    return _core.create_ufunc(
+        'cupy_nan_to_num',
+        ('?->?', 'b->b', 'B->B', 'h->h', 'H->H',
+         'i->i', 'I->I', 'l->l', 'L->L', 'q->q', 'Q->Q',
+         ('e->e',
+         f'out0 = nan_to_num(in0, {nan["e"]}, {posinf["e"]}, {neginf["e"]})'),
+         ('f->f',
+         f'out0 = nan_to_num(in0, {nan["f"]}, {posinf["f"]}, {neginf["f"]})'),
+         ('d->d',
+         f'out0 = nan_to_num(in0, {nan["d"]}, {posinf["d"]}, {neginf["d"]})'),
+         ('F->F',
+         f'out0 = nan_to_num(in0, {nan["F"]}, {posinf["F"]}, {neginf["F"]})'),
+         ('D->D',
+         f'out0 = nan_to_num(in0, {nan["D"]}, {posinf["D"]}, {neginf["D"]})')),
+        'out0 = in0',
+        preamble=_nan_to_num_preamble_,
+        doc=''' Elementwise nan_to_num function.
+
+    .. seealso:: :func:`numpy.nan_to_num`
 
     ''')
+
+
+def nan_to_num(x, /, out=None, *, nan=0.0, posinf=None, neginf=None, **kwds):
+    """ Elementwise nan_to_num function.
+
+    .. seealso:: :func:`numpy.nan_to_num`
+
+    """
+
+    kwds.setdefault('out', out)
+    return _create_nan_to_num(nan, posinf, neginf)(x, **kwds)
 
 
 # TODO(okuta): Implement real_if_close
