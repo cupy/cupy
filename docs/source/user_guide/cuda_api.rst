@@ -68,7 +68,7 @@ objects can also be used for synchronization.
 
 .. note::
 
-    In CuPy, the :class:`~cupy.cuda.Stream` objects are managed on the per thread, per device basis.
+    In CuPy, the :class:`~cupy.cuda.Stream` objects are managed on the per thread basis.
 
 .. note::
 
