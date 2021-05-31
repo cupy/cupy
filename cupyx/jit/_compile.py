@@ -569,10 +569,10 @@ def _transpile_expr_internal(expr, env):
             if 'size' == expr.attr:
                 return _builtin_funcs.Len().call(value)
             if 'shape' == expr.attr:
-                ctype = _cuda_types.Ptr(_cuda_types.PtrDiff())
+                ctype = _cuda_types.Ptr(_cuda_types.PtrDiff(), cv='c')
                 return Data(f'{value.code}.shape()', ctype)
             if 'strides' == expr.attr:
-                ctype = _cuda_types.Ptr(_cuda_types.PtrDiff())
+                ctype = _cuda_types.Ptr(_cuda_types.PtrDiff(), cv='c')
                 return Data(f'{value.code}.strides()', ctype)
         raise NotImplementedError('Not implemented: __getattr__')
 
@@ -631,7 +631,10 @@ def _indexing(array, index, env):
     array = Data.init(array, env)
 
     if isinstance(array.ctype, _cuda_types.Tuple):
-        raise NotImplementedError
+        if is_constants(index):
+            i = index.obj
+            return Data(f'thrust::get<{i}>({array.code})', array.types[i])
+        raise TypeError('Tuple is not subscriptable with non-constants.')
 
     if isinstance(array.ctype, _cuda_types.ArrayBase):
         index = Data.init(index, env)

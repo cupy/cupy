@@ -103,11 +103,15 @@ class SharedMem(ArrayBase):
 
 class Ptr(ArrayBase):
 
-    def __init__(self, child_type):
+    def __init__(self, child_type, cv=''):
         super().__init__(child_type, 1)
+        self.qualifiers = ''.join([
+            'const ' if 'c' in cv else '',
+            'volatile ' if 'v' in cv else ''
+        ])
 
     def __str__(self):
-        return f'{self.child_type}*'
+        return f'{self.qualifiers}{self.child_type}*'
 
 
 class Tuple(TypeBase):
