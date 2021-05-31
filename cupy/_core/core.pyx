@@ -19,6 +19,7 @@ from cupy._core import flags
 from cupy._core import syncdetect
 from cupy import cuda
 from cupy.cuda import memory as memory_module
+from cupy.cuda import stream as stream_mod
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
@@ -217,6 +218,34 @@ cdef class ndarray:
             desc['data'] = (0, False)
 
         return desc
+
+    def __dlpack__(self, stream=None):
+        # stream must be an int for CUDA/ROCm
+        if stream is None:
+            stream = 0
+        if not isinstance(stream, int):
+            raise ValueError
+        elif stream < -1:
+            raise ValueError
+        if not runtime._is_hip_environment:  # CUDA
+            if stream == 0:
+                raise ValueError
+        else:  # ROCm/HIP
+            if stream in (1, 2):
+                raise ValueError
+        # if -1, no stream order should be established
+        if stream >= 0:
+            curr_stream = stream_module.get_current_stream()
+            # establish stream order
+            if stream != curr_stream.ptr:
+                next_stream = stream_mod.ExternalStream(stream)
+                event = curr_stream.record()
+                next_stream.wait_event(event)
+        return dlpack.toDlpack(self)
+
+    def __dlpack_device__(self):
+        # TODO: fix me
+        return (2, self.device)
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.

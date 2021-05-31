@@ -9,6 +9,7 @@ from libc.stdint cimport intptr_t
 from libcpp.vector cimport vector
 
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda cimport stream as stream_module
 from cupy._core.core cimport ndarray
 from cupy.cuda cimport memory
 
@@ -89,9 +90,7 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
     stdlib.free(tensor)
 
 
-# The name of this function is following the framework integration guide of
-# TensorComprehensions.
-cpdef object toDlpack(ndarray array) except +:
+cdef object _cupy_ndarray_to_dlpack(ndarray array) except+:
     cdef DLManagedTensor* dlm_tensor = \
         <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
 
@@ -137,6 +136,15 @@ cpdef object toDlpack(ndarray array) except +:
     dlm_tensor.deleter = deleter
 
     return cpython.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
+
+
+# The name of this function is following the framework integration guide of
+# TensorComprehensions.
+cpdef object toDlpack(array) except +:
+    try:
+        return _cupy_ndarray_to_dlpack(array)
+    except TypeError:
+        raise NotImplementedError
 
 
 # TODO(leofang): Implement DLPackPinnedMemory for kDLCPUPinned
@@ -234,6 +242,10 @@ cpdef ndarray fromDlpack(object dltensor) except +:
         >>> cupy.testing.assert_array_equal(array1, array2)
 
     """
+    return _dlpack_to_cupy_array(dltensor)
+
+
+cpdef ndarray _dlpack_to_cupy_array(dltensor) except +:
     cdef DLPackMemory mem = DLPackMemory(dltensor)
     cdef DLDataType dtype = mem.dlm_tensor.dl_tensor.dtype
     cdef int bits = dtype.bits
@@ -303,3 +315,24 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     # Make sure this capsule will never be used again.
     cpython.PyCapsule_SetName(mem.dltensor, 'used_dltensor')
     return ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
+
+
+cpdef from_dlpack(array):
+    try:
+        dev_type, dev_id = array.__dlpack_device__()
+    except AttributeError:
+        raise ValueError
+    if dev_type == kDLGPU:
+        assert not runtime._is_hip_environment
+        stream = stream_module.get_current_stream_ptr()
+        if stream == 0:
+            stream = runtime.streamLegacy
+    elif dev_type == kDLROCM:
+        assert runtime._is_hip_environment
+        stream = stream_module.get_current_stream_ptr()
+    else:  
+        # TODO: support kDLCPUPinned
+        raise ValueError
+
+    dltensor = array.__dlpack__(stream=stream)
+    return _dlpack_to_cupy_array(dltensor)
