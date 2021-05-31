@@ -35,11 +35,11 @@ or by using the :meth:`~cupy.cuda.Stream.use` method:
 
     >>> s = cp.cuda.Stream()
     >>> s.use()  # any subsequent operations are done on steam s  # doctest: +ELLIPSIS
-    <Stream ... (device ...)>
+    <Stream ...>
     >>> b_np = cp.asnumpy(b_cp)
     >>> assert s == cp.cuda.get_current_stream()
     >>> cp.cuda.Stream.null.use()  # fall back to the default (null) stream
-    <Stream 0 (device -1)>
+    <Stream 0>
     >>> assert cp.cuda.Stream.null == cp.cuda.get_current_stream()
 
 Events can be created either manually or through the :meth:`~cupy.cuda.Stream.record` method.
