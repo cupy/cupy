@@ -1,11 +1,14 @@
+import cupy
+
 from cupy_backends.cuda.api import runtime
 from cupyx.jit import _cuda_types
-from cupyx.jit._cuda_typerules import implicit_conversion
 from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit._internal_types import Range
 from cupyx.jit import _compile
+
+from functools import reduce
 
 
 class RangeFunc(BuiltinFunc):
@@ -68,12 +71,8 @@ class Min(BuiltinFunc):
                 f'min expects at least 2 arguments, got {len(args)}')
         if kwds:
             raise TypeError('keyword arguments are not supported')
-        args = [Data.init(arg, env) for arg in args]
-        codes, ctypes = zip(*[(arg.code, arg.ctype) for arg in args])
-        code = 'min(' * (len(codes) - 1) + codes[0]
-        code += ''.join(f', {code})' for code in codes[1:])
-        ctype = implicit_conversion(*ctypes)
-        return Data(code, ctype)
+        return reduce(lambda a, b: _compile._call_ufunc(
+            cupy.minimum, (a, b), None, env), args)
 
 
 class Max(BuiltinFunc):
@@ -83,12 +82,8 @@ class Max(BuiltinFunc):
                 f'max expects at least 2 arguments, got {len(args)}')
         if kwds:
             raise TypeError('keyword arguments are not supported')
-        args = [Data.init(arg, env) for arg in args]
-        codes, ctypes = zip(*[(arg.code, arg.ctype) for arg in args])
-        code = 'max(' * (len(codes) - 1) + codes[0]
-        code += ''.join(f', {code})' for code in codes[1:])
-        ctype = implicit_conversion(*ctypes)
-        return Data(code, ctype)
+        return reduce(lambda a, b: _compile._call_ufunc(
+            cupy.maximum, (a, b), None, env), args)
 
 
 class SyncThreads(BuiltinFunc):
