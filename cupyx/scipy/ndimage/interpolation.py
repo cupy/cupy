@@ -354,10 +354,13 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
             0.0
         prefilter (bool): It is not used yet. It just exists for compatibility
             with :mod:`scipy.ndimage`.
-        texture_memory (bool): If True, uses GPU texture memory. Supports only
-            2D and 3D single-channel arrays; modes ``'constant'`` and
-            ``'nearest'``; order 0 (nearest neighbor) and 1 (bi/tri-linear
-            interpolation).
+        texture_memory (bool): If True, uses GPU texture memory. Supports only:
+
+            - 2D and 3D single-channel float32 arrays as input
+            - ``(ndim + 1, ndim + 1)`` homogeneous transformation matrix
+            - ``mode='constant'`` and ``mode='nearest'``
+            - ``order=0`` (nearest neighbor) and ``order=1`` (linear
+                interpolation)
 
     Returns:
         cupy.ndarray or None:
@@ -369,8 +372,13 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
 
     if texture_memory:
         tm_interp = 'linear' if order > 0 else 'nearest'
-        return _texture.affine_transformation(input, matrix, tm_interp, mode,
-                                              cval)
+        return _texture.affine_transformation(data=input,
+                                              transformation_matrix=matrix,
+                                              output_shape=output_shape,
+                                              output=output,
+                                              interpolation=tm_interp,
+                                              mode=mode,
+                                              border_value=cval)
 
     _check_parameter('affine_transform', order, mode)
 

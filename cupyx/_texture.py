@@ -9,12 +9,12 @@ _affine_transform_2d_array_kernel = _core.ElementwiseKernel(
     'U texObj, raw float32 m, uint64 width', 'T transformed_image',
     '''
     float3 pixel = make_float3(
-        (float)(i / width) + .5f,
-        (float)(i % width) + .5f,
+        (float)(i / width),
+        (float)(i % width),
         1.0f
     );
-    float x = dot(pixel, make_float3(m[0],  m[1],  m[2]));
-    float y = dot(pixel, make_float3(m[3],  m[4],  m[5]));
+    float x = dot(pixel, make_float3(m[0],  m[1],  m[2])) + .5f;
+    float y = dot(pixel, make_float3(m[3],  m[4],  m[5])) + .5f;
     transformed_image = tex2D<T>(texObj, y, x);
     ''',
     'affine_transformation_2d_array',
@@ -31,14 +31,14 @@ _affine_transform_3d_array_kernel = _core.ElementwiseKernel(
     'T transformed_volume',
     '''
     float4 voxel = make_float4(
-        (float)(i / (width * height)) + .5f,
-        (float)((i % (width * height)) / width) + .5f,
-        (float)((i % (width * height)) % width) + .5f,
+        (float)(i / (width * height)),
+        (float)((i % (width * height)) / width),
+        (float)((i % (width * height)) % width),
         1.0f
     );
-    float x = dot(voxel, make_float4(m[0],  m[1],  m[2],  m[3]));
-    float y = dot(voxel, make_float4(m[4],  m[5],  m[6],  m[7]));
-    float z = dot(voxel, make_float4(m[8],  m[9],  m[10], m[11]));
+    float x = dot(voxel, make_float4(m[0],  m[1],  m[2],  m[3])) + .5f;
+    float y = dot(voxel, make_float4(m[4],  m[5],  m[6],  m[7])) + .5f;
+    float z = dot(voxel, make_float4(m[8],  m[9],  m[10], m[11])) + .5f;
     transformed_volume = tex3D<T>(texObj, z, y, x);
     ''',
     'affine_transformation_3d_array',
@@ -89,7 +89,7 @@ def _create_texture_object(data,
         read_mode = runtime.cudaReadModeNormalizedFloat
     else:
         raise ValueError(
-            f'Unsupported read mode {read_mode}'
+            f'Unsupported read mode {read_mode} '
             '(supported: element_type, normalized_float)')
 
     texture_fmt = texture.ChannelFormatDescriptor(
@@ -111,6 +111,8 @@ def _create_texture_object(data,
 
 def affine_transformation(data,
                           transformation_matrix,
+                          output_shape=None,
+                          output=None,
                           interpolation: str = 'linear',
                           mode: str = 'constant',
                           border_value=0):
@@ -124,6 +126,12 @@ def affine_transformation(data,
         data (cupy.ndarray): The input array or texture object.
         transformation_matrix (cupy.ndarray): Affine transformation matrix.
             Must be a homogeneous and have shape ``(ndim + 1, ndim + 1)``.
+        output_shape (tuple of ints): Shape of output. If not specified,
+            the input array shape is used. Default is None.
+        output (cupy.ndarray or ~cupy.dtype): The array in which to place the
+            output, or the dtype of the returned array. If not specified,
+            creates the output array with shape of ``output_shape``. Default is
+            None.
         interpolation (str): Specifies interpolation mode: ``'linear'`` or
             ``'nearest'``. Default is ``'linear'``.
         mode (str): Specifies addressing mode for points outside of the array:
@@ -139,7 +147,6 @@ def affine_transformation(data,
     """
 
     ndim = data.ndim
-    shape = data.shape
     dtype = data.dtype
     if (ndim < 2) or (ndim > 3):
         raise ValueError(
@@ -165,6 +172,15 @@ def affine_transformation(data,
     else:
         kernel = _affine_transform_3d_array_kernel
 
-    output = cupy.empty(shape, dtype=dtype)
-    kernel(texture_object, transformation_matrix, *shape[1:], output)
+    if output_shape is None:
+        output_shape = data.shape
+
+    if output is None:
+        output = cupy.zeros(output_shape, dtype=dtype)
+    elif isinstance(output, (type, cupy.dtype)):
+        output = cupy.zeros(output_shape, dtype=output)
+    elif not isinstance(output, cupy.ndarray):
+        raise ValueError(f'Output must be None, cupy.ndarray or cupy.dtype')
+
+    kernel(texture_object, transformation_matrix, *output_shape[1:], output)
     return output

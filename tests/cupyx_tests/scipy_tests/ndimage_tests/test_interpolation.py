@@ -284,11 +284,105 @@ class TestAffineExceptions:
         for i in range(len(x)):
             with pytest.raises(ValueError):
                 aft(x[i], cupy.eye(i), texture_memory=True)
+        # wrong output
+        with pytest.raises(ValueError):
+            aft(x[2], cupy.eye(3), output='test', texture_memory=True)
         # wrong mode
         for m in ['mirror', 'reflect', 'wrap', 'grid-mirror',
                   'grid-wrap', 'grid-constant', 'opencv']:
             with pytest.raises(ValueError):
                 aft(x[2], cupy.eye(3), mode=m, texture_memory=True)
+
+
+@testing.parameterize(*testing.product({
+    'output': [None, numpy.float32],
+    'output_shape': [None, 10],
+    'order': [0, 1],
+    'mode': ['constant', 'nearest'],
+    'shape': [(100, 100), (10, 20), (10, 10, 10), (10, 20, 30)],
+    'theta': [0, 90, 180, 270]
+}))
+@testing.gpu
+@testing.with_requires('scipy')
+class TestAffineTransformTextureMemory:
+
+    _multiprocess_can_split = True
+
+    def _2d_rotation_matrix(self, theta, rotation_center):
+        c, s = scipy.special.cosdg(theta), scipy.special.sindg(theta)
+        m = numpy.array([
+            [1, 0, rotation_center[0]],
+            [0, 1, rotation_center[1]],
+            [0, 0, 1]
+        ], numpy.float32)
+        m = numpy.dot(m, numpy.array([
+            [c, -s, 0],
+            [s, c, 0],
+            [0, 0, 1]
+        ], numpy.float32))
+        m = numpy.dot(m, numpy.array([
+            [1, 0, -rotation_center[0]],
+            [0, 1, -rotation_center[1]],
+            [0, 0, 1]
+        ], numpy.float32))
+        return m
+
+    def _3d_rotation_matrix(self, theta, rotation_center):
+        c, s = scipy.special.cosdg(theta), scipy.special.sindg(theta)
+        m = numpy.array([
+            [1, 0, 0, rotation_center[0]],
+            [0, 1, 0, rotation_center[1]],
+            [0, 0, 1, rotation_center[2]],
+            [0, 0, 0, 1]
+        ], numpy.float32)
+        m = numpy.dot(m, numpy.array([
+            [1, 0, 0, 0],
+            [0, c, -s, 0],
+            [0, s, c, 0],
+            [0, 0, 0, 1]
+        ], numpy.float32))
+        m = numpy.dot(m, numpy.array([
+            [1, 0, 0, -rotation_center[0]],
+            [0, 1, 0, -rotation_center[1]],
+            [0, 0, 1, -rotation_center[2]],
+            [0, 0, 0, 1]
+        ], numpy.float32))
+        return m
+
+    @testing.numpy_cupy_allclose(atol=0.1, scipy_name='scp')
+    def test_affine_transform_texture_memory(self, xp, scp):
+        a = xp.ones(self.shape, dtype=xp.float32)
+        center = numpy.divide(numpy.subtract(self.shape, 1), 2)
+
+        if len(self.shape) == 2:
+            matrix = self._2d_rotation_matrix(self.theta, center)
+        elif len(self.shape) == 3:
+            matrix = self._3d_rotation_matrix(self.theta, center)
+        else:
+            return pytest.xfail('Unsupported shape')
+
+        if self.output == 'empty':
+            output = xp.empty_like(a)
+        else:
+            output = self.output
+
+        if self.output_shape:
+            output_shape = (self.output_shape, ) * len(self.shape)
+        else:
+            output_shape = self.output_shape
+        print(f'{output_shape=}')
+
+        if xp == cupy:
+            m = cupyx.scipy.ndimage.affine_transform
+            matrix = cupy.array(matrix)
+            return m(a, matrix, output_shape=output_shape,
+                     output=output, order=self.order,
+                     mode=self.mode, texture_memory=True)
+        else:
+            m = scp.ndimage.affine_transform
+            return m(a, matrix, output_shape=output_shape,
+                     output=output, order=self.order,
+                     mode=self.mode)
 
 
 @testing.gpu
