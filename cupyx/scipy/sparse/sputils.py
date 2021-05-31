@@ -1,5 +1,6 @@
 import cupy
 import operator
+import numpy
 
 from cupy._core._dtype import get_dtype
 
@@ -122,7 +123,7 @@ def check_shape(args, current_shape=None):
     """Check validity of the shape"""
 
     if len(args) == 0:
-        raise TypeError("function missing ! required positional argument: "
+        raise TypeError("function missing 1 required positional argument: "
                         "'shape'")
 
     elif len(args) == 1:
@@ -142,17 +143,17 @@ def check_shape(args, current_shape=None):
             raise ValueError("'shape' elements cannot be negative")
 
     else:
-        current_size = cupy.prod(cupy.asarray(current_shape))
+        current_size = cupy.prod(numpy.asarray(current_shape))
 
         negative_indexes = [i for i, x in enumerate(new_shape) if x < 0]
         if len(negative_indexes) == 0:
-            new_size = cupy.prod(cupy.asarray(new_shape))
+            new_size = cupy.prod(numpy.asarray(new_shape))
             if new_size != current_size:
                 raise ValueError('cannot reshape array of size {} into shape'
                                  '{}'.format(current_size, new_shape))
         elif len(negative_indexes) == 1:
             skip = negative_indexes[0]
-            specified = cupy.prod(cupy.asarray(
+            specified = cupy.prod(numpy.asarray(
                 new_shape[0:skip] + new_shape[skip+1:]))
             unspecified, remainder = divmod(current_size, specified)
             if remainder != 0:

@@ -436,18 +436,19 @@ class spmatrix(object):
 
     def reshape(self, *args, order='C'):
         """Gives a new shape to a sparse matrix without changing its data.
+
         Args:
-            shape: tuple of ints
+            shape (tuple):
                 The new shape should be compatible with the original shape.
-            order: {'C', 'F'}, optional
+            order: {'C', 'F'} (optional)
                 Read the elements using this index order. 'C' means to read and
                 write the elements using C-like index order. 'F' means to read
-                and write the elements using Fortran-like index order.
+                and write the elements using Fortran-like index order. Default:
+                C.
 
         Returns:
-            reshaped_matrix: sparse matrix
-                A sparse matrix with the given `shape`, not necessarily of the
-                same format as the current object.
+            cupyx.scipy.sparse.coo_matrix: sparse matrix
+
         """
         shape = sputils.check_shape(args, self.shape)
 
