@@ -333,89 +333,39 @@ __device__ complex<T> nan_to_num(complex<T> x, T nan, T posinf, T neginf) {
 '''
 
 
-_c_nan_max_inf = (
-    {   # nan
-        'e': '__short_as_half(0xFFFF)',
-        'f': '__int_as_float(0xFFC00001)',
-        'd': '__longlong_as_double(0x7FF8000000000001)',
-        'F': '__int_as_float(0xFFC00001)',
-        'D': '__longlong_as_double(0x7FF8000000000001)'
-    },
-    {   # +max
-        'e': '__short_as_half(0x7BFF)',
-        'f': '__int_as_float(0x7F7FFFFF)',
-        'd': '__longlong_as_double(0x7FEFFFFFFFFFFFFF)',
-        'F': '__int_as_float(0x7F7FFFFF)',
-        'D': '__longlong_as_double(0x7FEFFFFFFFFFFFFF)'
-    },
-    {   # -max
-        'e': '__short_as_half(0xFBFF)',
-        'f': '__int_as_float(0xFF7FFFFF)',
-        'd': '__longlong_as_double(0xFFEFFFFFFFFFFFFF)',
-        'F': '__int_as_float(0xFF7FFFFF)',
-        'D': '__longlong_as_double(0xFFEFFFFFFFFFFFFF)'
-    },
-    {   # +inf
-        'e': '__short_as_half(0x7C00)',
-        'f': '__int_as_float(0x7F800000)',
-        'd': '__longlong_as_double(0x7FF0000000000000)',
-        'F': '__int_as_float(0x7F800000)',
-        'D': '__longlong_as_double(0x7FF0000000000000)'
-    },
-    {   # -inf
-        'e': '__short_as_half(0xFC00)',
-        'f': '__int_as_float(0xFF800000)',
-        'd': '__longlong_as_double(0xFFF0000000000000)',
-        'F': '__int_as_float(0xFF800000)',
-        'D': '__longlong_as_double(0xFFF0000000000000)'
-    }
-)
-
-
-def _check_nan_inf(x, default=None):
-    if x is None:
-        if default is not None:
-            return _c_nan_max_inf[default]
-        x = 0
-    if cupy.isnan(x):
-        return _c_nan_max_inf[0]
-    if cupy.isinf(x):
-        return _c_nan_max_inf[3 + (x < 0)]
-    return {
-        'e': f'static_cast<__half>({x})',
-        'f': f'static_cast<float>({x})',
-        'd': f'static_cast<double>({x})',
-        'F': f'static_cast<float>({x})',
-        'D': f'static_cast<double>({x})'
-    }
-
-
-@cupy._util.memoize()
-def _create_nan_to_num(nan, posinf, neginf):
-    nan = _check_nan_inf(nan)
-    posinf = _check_nan_inf(posinf, 1)
-    neginf = _check_nan_inf(neginf, 2)
-    return _core.create_ufunc(
-        'cupy_nan_to_num',
-        ('?->?', 'b->b', 'B->B', 'h->h', 'H->H',
-         'i->i', 'I->I', 'l->l', 'L->L', 'q->q', 'Q->Q',
-         ('e->e',
-          f'out0 = nan_to_num(in0, {nan["e"]}, {posinf["e"]}, {neginf["e"]})'),
-         ('f->f',
-          f'out0 = nan_to_num(in0, {nan["f"]}, {posinf["f"]}, {neginf["f"]})'),
-         ('d->d',
-          f'out0 = nan_to_num(in0, {nan["d"]}, {posinf["d"]}, {neginf["d"]})'),
-         ('F->F',
-          f'out0 = nan_to_num(in0, {nan["F"]}, {posinf["F"]}, {neginf["F"]})'),
-         ('D->D',
-          f'out0 = nan_to_num(in0, {nan["D"]}, {posinf["D"]}, {neginf["D"]})')),
-        'out0 = in0',
-        preamble=_nan_to_num_preamble,
-        doc=''' Elementwise nan_to_num function.
+_nan_to_num = _core.create_ufunc(
+    'cupy_nan_to_num_',
+    ('????->?', 'bbbb->b', 'BBBB->B', 'hhhh->h', 'HHHH->H',
+     'iiii->i', 'IIII->I', 'llll->l', 'LLLL->L', 'qqqq->q', 'QQQQ->Q',
+     ('eeee->e',
+      'out0 = nan_to_num(in0, in1, in2, in3)'),
+     ('ffff->f',
+      'out0 = nan_to_num(in0, in1, in2, in3)'),
+     ('dddd->d',
+      'out0 = nan_to_num(in0, in1, in2, in3)'),
+     ('FFFF->F',
+      'out0 = nan_to_num(in0, in1, in2, in3)'),
+     ('DDDD->D',
+      'out0 = nan_to_num(in0, in1, in2, in3)')),
+    'out0 = in0',
+    preamble=_nan_to_num_preamble,
+    doc=''' Elementwise nan_to_num function.
 
     .. seealso:: :func:`numpy.nan_to_num`
 
     ''')
+
+
+def _check_nan_inf(x, dtype, neg=None):
+    if dtype.kind not in 'efdFD':
+        return 0
+    if x is None and neg is not None:
+        x = cupy.finfo(dtype).min if neg else cupy.finfo(dtype).max
+    elif cupy.isnan(x):
+        x = cupy.nan
+    elif cupy.isinf(x):
+        x = cupy.inf * (-1)**(x < 0)
+    return cupy.asanyarray(x, dtype)
 
 
 def nan_to_num(x, out=None, *, nan=0.0, posinf=None, neginf=None, **kwds):
@@ -426,7 +376,11 @@ def nan_to_num(x, out=None, *, nan=0.0, posinf=None, neginf=None, **kwds):
     """
 
     kwds.setdefault('out', out)
-    return _create_nan_to_num(nan, posinf, neginf)(x, **kwds)
+    dtype = cupy.asanyarray(x).dtype
+    nan = _check_nan_inf(nan, dtype)
+    posinf = _check_nan_inf(posinf, dtype, False)
+    neginf = _check_nan_inf(neginf, dtype, True)
+    return _nan_to_num(x, nan, posinf, neginf, **kwds)
 
 
 # TODO(okuta): Implement real_if_close
