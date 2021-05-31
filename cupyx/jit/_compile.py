@@ -567,7 +567,7 @@ def _transpile_expr_internal(expr, env):
                 return Constant(value.ctype.ndim)
         if isinstance(value.ctype, _cuda_types.CArray):
             if 'size' == expr.attr:
-                return _builtin_funcs.Len().call(value)
+                return _builtin_funcs.Len().call(env, value)
             if 'shape' == expr.attr:
                 ctype = _cuda_types.Ptr(_cuda_types.PtrDiff(), cv='c')
                 return Data(f'{value.code}.shape()', ctype)

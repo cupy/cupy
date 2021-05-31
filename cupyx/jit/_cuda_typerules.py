@@ -140,7 +140,7 @@ def get_ctype_from_scalar(mode, x):
     raise NotImplementedError(f'{x} is not scalar object.')
 
 
-_typechars = '?bBhHiIlLefdFD'
+_typechars = '?bBhHiIlLqQefdFD'
 
 
 def _cuda_can_cast(from_dtype, to_dtype):
