@@ -400,15 +400,15 @@ def _create_nan_to_num(nan, posinf, neginf):
         ('?->?', 'b->b', 'B->B', 'h->h', 'H->H',
          'i->i', 'I->I', 'l->l', 'L->L', 'q->q', 'Q->Q',
          ('e->e',
-         f'out0 = nan_to_num(in0, {nan["e"]}, {posinf["e"]}, {neginf["e"]})'),
+          f'out0 = nan_to_num(in0, {nan["e"]}, {posinf["e"]}, {neginf["e"]})'),
          ('f->f',
-         f'out0 = nan_to_num(in0, {nan["f"]}, {posinf["f"]}, {neginf["f"]})'),
+          f'out0 = nan_to_num(in0, {nan["f"]}, {posinf["f"]}, {neginf["f"]})'),
          ('d->d',
-         f'out0 = nan_to_num(in0, {nan["d"]}, {posinf["d"]}, {neginf["d"]})'),
+          f'out0 = nan_to_num(in0, {nan["d"]}, {posinf["d"]}, {neginf["d"]})'),
          ('F->F',
-         f'out0 = nan_to_num(in0, {nan["F"]}, {posinf["F"]}, {neginf["F"]})'),
+          f'out0 = nan_to_num(in0, {nan["F"]}, {posinf["F"]}, {neginf["F"]})'),
          ('D->D',
-         f'out0 = nan_to_num(in0, {nan["D"]}, {posinf["D"]}, {neginf["D"]})')),
+          f'out0 = nan_to_num(in0, {nan["D"]}, {posinf["D"]}, {neginf["D"]})')),
         'out0 = in0',
         preamble=_nan_to_num_preamble_,
         doc=''' Elementwise nan_to_num function.
@@ -418,7 +418,7 @@ def _create_nan_to_num(nan, posinf, neginf):
     ''')
 
 
-def nan_to_num(x, /, out=None, *, nan=0.0, posinf=None, neginf=None, **kwds):
+def nan_to_num(x, out=None, *, nan=0.0, posinf=None, neginf=None, **kwds):
     """ Elementwise nan_to_num function.
 
     .. seealso:: :func:`numpy.nan_to_num`
