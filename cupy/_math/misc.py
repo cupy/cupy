@@ -410,7 +410,7 @@ def _create_nan_to_num(nan, posinf, neginf):
          ('D->D',
           f'out0 = nan_to_num(in0, {nan["D"]}, {posinf["D"]}, {neginf["D"]})')),
         'out0 = in0',
-        preamble=_nan_to_num_preamble_,
+        preamble=_nan_to_num_preamble,
         doc=''' Elementwise nan_to_num function.
 
     .. seealso:: :func:`numpy.nan_to_num`
