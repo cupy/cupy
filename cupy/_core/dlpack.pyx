@@ -324,7 +324,7 @@ cpdef from_dlpack(array):
     .. note::
         This function is different from CuPy's legacy :func:`~cupy.fromDlpack`
         function in that the latter takes a :class:`PyCapsule` object that
-        contains the DLPack tensor as input, while the latter takes any array
+        contains the DLPack tensor as input, while the former takes any array
         API-complaint object.
 
     .. seealso::
