@@ -752,6 +752,7 @@ from cupy._core._reduction import ReductionKernel  # NOQA
 # -----------------------------------------------------------------------------
 
 from cupy._core import fromDlpack  # NOQA
+from cupy._core import from_dlpack  # NOQA
 
 
 def asnumpy(a, stream=None, order='C', out=None):

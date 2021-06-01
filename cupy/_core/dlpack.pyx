@@ -90,7 +90,9 @@ cdef void deleter(DLManagedTensor* tensor) with gil:
     stdlib.free(tensor)
 
 
-cdef object _cupy_ndarray_to_dlpack(ndarray array) except+:
+# The name of this function is following the framework integration guide of
+# TensorComprehensions.
+cpdef object toDlpack(ndarray array) except +:
     cdef DLManagedTensor* dlm_tensor = \
         <DLManagedTensor*>stdlib.malloc(sizeof(DLManagedTensor))
 
@@ -111,6 +113,8 @@ cdef object _cupy_ndarray_to_dlpack(ndarray array) except+:
     dl_tensor.byte_offset = 0
 
     cdef DLDevice* device = &dl_tensor.device
+    # TODO(leofang): if the CuPy array is backed by managed memory, we should
+    # switch to kDLCUDAManaged
     if not runtime._is_hip_environment:
         device.device_type = kDLGPU
     else:
@@ -138,18 +142,7 @@ cdef object _cupy_ndarray_to_dlpack(ndarray array) except+:
     return cpython.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
 
 
-# The name of this function is following the framework integration guide of
-# TensorComprehensions.
-cpdef object toDlpack(array) except +:
-    try:
-        return _cupy_ndarray_to_dlpack(array)
-    except TypeError:
-        raise NotImplementedError
-
-
-# TODO(leofang): Implement DLPackPinnedMemory for kDLCPUPinned
-
-
+# TODO(leofang): Support kDLCUDAPinned, kDLCUDAManaged, and kDLROCMPinned
 cdef class DLPackMemory(memory.BaseMemory):
 
     """Memory object for a dlpack tensor.
@@ -245,7 +238,7 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     return _dlpack_to_cupy_array(dltensor)
 
 
-cpdef ndarray _dlpack_to_cupy_array(dltensor) except +:
+cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
     cdef DLPackMemory mem = DLPackMemory(dltensor)
     cdef DLDataType dtype = mem.dlm_tensor.dl_tensor.dtype
     cdef int bits = dtype.bits
@@ -318,20 +311,44 @@ cpdef ndarray _dlpack_to_cupy_array(dltensor) except +:
 
 
 cpdef from_dlpack(array):
+    """Zero-copy conversion between array objects compliant with the Python
+    Array API standard via DLPack.
+
+    Args:
+        array (object): an array object that implements two methods:
+            ``__dlpack__()`` and ``__dlpack_device__()``.
+
+    Returns:
+        cupy.ndarray: a CuPy array (TODO: Are we sure about this?)
+
+    .. note::
+        This function is different from CuPy's legacy :func:`~cupy.fromDlpack`
+        function in that the latter takes a :class:`PyCapsule` object that
+        contains the DLPack tensor as input, while the latter takes any array
+        API-complaint object.
+
+    .. seealso::
+        `Data interchange mechanisms`_
+
+    .. _Data interchange mechanisms: https://data-apis.org/array-api/latest/design_topics/data_interchange.html
+    """
     try:
         dev_type, dev_id = array.__dlpack_device__()
     except AttributeError:
-        raise ValueError
-    if dev_type == kDLGPU:
+        raise ValueError('the input does not support the DLPack exchange '
+                         'protocol')
+
+    # CuPy is the consumer, so we provide our current stream to the producer
+    if dev_type == <int>kDLGPU:
         assert not runtime._is_hip_environment
         stream = stream_module.get_current_stream_ptr()
         if stream == 0:
-            stream = runtime.streamLegacy
-    elif dev_type == kDLROCM:
+            stream = stream_module.get_default_stream_ptr()
+    elif dev_type == <int>kDLROCM:
         assert runtime._is_hip_environment
         stream = stream_module.get_current_stream_ptr()
-    else:  
-        # TODO: support kDLCPUPinned
+    else:
+        # TODO(leofang): support kDLCUDAPinned, kDLCUDAManaged, etc
         raise ValueError
 
     dltensor = array.__dlpack__(stream=stream)

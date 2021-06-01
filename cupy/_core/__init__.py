@@ -69,6 +69,7 @@ from cupy._core.core import elementwise_copy  # NOQA
 from cupy._core.core import elementwise_copy_where  # NOQA
 from cupy._core.core import ndarray  # NOQA
 from cupy._core.dlpack import fromDlpack  # NOQA
+from cupy._core.dlpack import from_dlpack  # NOQA
 from cupy._core.internal import complete_slice  # NOQA
 from cupy._core.internal import get_size  # NOQA
 from cupy._core.raw import RawKernel  # NOQA

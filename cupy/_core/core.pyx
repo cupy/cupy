@@ -221,31 +221,42 @@ cdef class ndarray:
 
     def __dlpack__(self, stream=None):
         # stream must be an int for CUDA/ROCm
-        if stream is None:
-            stream = 0
-        if not isinstance(stream, int):
-            raise ValueError
-        elif stream < -1:
-            raise ValueError
         if not runtime._is_hip_environment:  # CUDA
-            if stream == 0:
-                raise ValueError
+            if stream is None:
+                stream = runtime.streamLegacy
+            elif not isinstance(stream, int) or stream < -1 or stream == 0:
+                raise ValueError(
+                    f'On CUDA, the valid stream for the DLPack protocol is -1,'
+                    ' 1, 2, or any larger value, but {stream} was provided')
         else:  # ROCm/HIP
-            if stream in (1, 2):
-                raise ValueError
-        # if -1, no stream order should be established
+            if stream is None:
+                stream = 0
+            elif (not isinstance(stream, int) or stream < -1
+                    or stream in (1, 2)):
+                raise ValueError(
+                    f'On ROCm/HIP, the valid stream for the DLPack protocol is'
+                    ' -1, 0, or any value > 2, but {stream} was provided')
+        # if -1, no stream order should be established; otherwise, the consumer
+        # stream should wait for the work on CuPy's current stream to finish
         if stream >= 0:
             curr_stream = stream_module.get_current_stream()
+            if curr_stream.ptr != 0:
+                curr_stream_ptr = curr_stream.ptr
+            else:
+                curr_stream_ptr = runtime.streamLegacy
             # establish stream order
-            if stream != curr_stream.ptr:
+            if stream != curr_stream_ptr:
                 next_stream = stream_mod.ExternalStream(stream)
                 event = curr_stream.record()
                 next_stream.wait_event(event)
         return dlpack.toDlpack(self)
 
     def __dlpack_device__(self):
-        # TODO: fix me
-        return (2, self.device)
+        if not runtime._is_hip_environment:
+            device_type = dlpack.device_CUDA
+        else:
+            device_type = dlpack.device_ROCM
+        return (device_type, self.device)
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
