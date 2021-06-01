@@ -1,7 +1,14 @@
 Interoperability
 ================
 
-CuPy can also be used in conjunction with other libraries.
+CuPy can be used in conjunction with other libraries.
+
+
+CUDA functionalities
+--------------------
+
+Under construction. For using CUDA streams created in foreign libraries in CuPy, see :ref:`cuda_stream_event`.
+
 
 NumPy
 -----
