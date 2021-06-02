@@ -107,7 +107,7 @@ cdef class Memory(BaseMemory):
             runtime.free(self.ptr)
 
 
-cdef inline void is_async_alloc_supported(int device_id) except*:
+cdef inline void check_async_alloc_supported(int device_id) except*:
     if CUDA_VERSION < 11020:
         raise RuntimeError("memory_async is supported since CUDA 11.2")
     if runtime._is_hip_environment:
@@ -135,48 +135,32 @@ cdef class MemoryAsync(BaseMemory):
 
     Args:
         size (int): Size of the memory allocation in bytes.
-        stream (intptr_t): Pointer to the stream on which the memory is
-            allocated and freed.
+        stream (Stream): The stream on which the memory is allocated and freed.
     """
-    cdef:
-        readonly intptr_t stream
 
-    def __init__(self, size_t size, intptr_t stream):
+    cdef:
+        readonly object stream_ref
+
+    def __init__(self, size_t size, stream):
         self.size = size
         self.device_id = device.get_device_id()
         # The stream is allowed to be destroyed before the memory is freed, so
-        # we don't need to hold a reference to the stream.
-        self.stream = stream
-        is_async_alloc_supported(self.device_id)
+        # we don't need to hold a strong reference to the stream.
+        self.stream_ref = weakref.ref(stream)
+        check_async_alloc_supported(self.device_id)
         if size > 0:
-            self.ptr = runtime.mallocAsync(size, stream)
+            self.ptr = runtime.mallocAsync(size, stream.ptr)
 
     def __dealloc__(self):
-        # Free is attempted in the following order until success:
-        # 1. Free on the stream on which this memory was allocated
-        # 2. Free on the current stream, as self.stream is likely
-        #    destroyed by now. To enable this we trust the user
-        #    has established a correct stream order.
-        # 3. Free synchronously (unlikely to happen)
-        # Note: Cannot raise in the destructor! (cython/cython#1613)
-
-        cdef intptr_t curr_stream = self.stream
-        cdef tuple ok_errors = (runtime.errorInvalidResourceHandle,
-                                runtime.errorContextIsDestroyed,)
-
-        if self.ptr:
-            try:
-                runtime.freeAsync(self.ptr, curr_stream)
-            except CUDARuntimeError as e:
-                if e.status not in ok_errors:
-                    raise
-                try:
-                    curr_stream = stream_module.get_current_stream_ptr()
-                    runtime.freeAsync(self.ptr, curr_stream)
-                except CUDARuntimeError as e:
-                    if e.status not in ok_errors:
-                        raise
-                    runtime.free(self.ptr)
+        # Free on the stream on which this memory was allocated.
+        # If the stream is already destroyed, free on the current stream. In
+        # this case, we trust the user has established a correct stream order.
+        if self.ptr == 0:
+            return
+        stream = self.stream_ref()
+        if stream is None:
+            stream = stream_module.get_current_stream()
+        runtime.freeAsync(self.ptr, stream.ptr)
 
 
 cdef class UnownedMemory(BaseMemory):
@@ -659,8 +643,7 @@ cpdef MemoryPointer malloc_async(size_t size):
         https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY__POOLS.html
     """
     cdef intptr_t stream_ptr
-    stream_ptr = stream_module.get_current_stream_ptr()
-    mem = MemoryAsync(size, stream_ptr)
+    mem = MemoryAsync(size, stream_module.get_current_stream())
     return MemoryPointer(mem, 0)
 
 
