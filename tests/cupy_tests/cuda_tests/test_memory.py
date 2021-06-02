@@ -728,8 +728,11 @@ class TestMemoryPool(unittest.TestCase):
             assert 0 == self.pool.total_bytes()
 
 
+# TODO(leofang): test MemoryAsyncPool. We currently remove the test because
+# this test class requires the ability of creating a new pool, which we do
+# not support yet for MemoryAsyncPool.
 @testing.parameterize(*testing.product({
-    'mempool': ('MemoryPool', 'MemoryAsyncPool'),
+    'mempool': ('MemoryPool',),
 }))
 @testing.gpu
 class TestAllocator(unittest.TestCase):
@@ -747,6 +750,7 @@ class TestAllocator(unittest.TestCase):
         memory.set_allocator(self.pool.malloc)
 
     def tearDown(self):
+        self.pool.set_limit(size=0)
         self.pool.free_all_blocks()
         memory.set_allocator(self.old_pool.malloc)
 
