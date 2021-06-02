@@ -434,7 +434,7 @@ class spmatrix(object):
     def power(self, n, dtype=None):
         return self.tocsr().power(n, dtype=dtype)
 
-    def reshape(self, *args, order='C'):
+    def reshape(self, *shape, order='C'):
         """Gives a new shape to a sparse matrix without changing its data.
 
         Args:
@@ -450,7 +450,7 @@ class spmatrix(object):
             cupyx.scipy.sparse.coo_matrix: sparse matrix
 
         """
-        shape = sputils.check_shape(args, self.shape)
+        shape = sputils.check_shape(shape, self.shape)
 
         if shape == self.shape:
             return self

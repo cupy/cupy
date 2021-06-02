@@ -305,7 +305,7 @@ class coo_matrix(sparse_data._data_matrix):
         return scipy.sparse.coo_matrix(
             (data, (row, col)), shape=self.shape)
 
-    def reshape(self, *args, order='C'):
+    def reshape(self, *shape, order='C'):
         """Gives a new shape to a sparse matrix without changing its data.
 
         Args:
@@ -322,7 +322,7 @@ class coo_matrix(sparse_data._data_matrix):
 
         """
 
-        shape = sputils.check_shape(args, self.shape)
+        shape = sputils.check_shape(shape, self.shape)
 
         if shape == self.shape:
             return self

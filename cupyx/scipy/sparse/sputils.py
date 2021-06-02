@@ -143,18 +143,17 @@ def check_shape(args, current_shape=None):
             raise ValueError("'shape' elements cannot be negative")
 
     else:
-        current_size = cupy.prod(numpy.asarray(current_shape))
+        current_size = numpy.prod(current_shape)
 
         negative_indexes = [i for i, x in enumerate(new_shape) if x < 0]
         if len(negative_indexes) == 0:
-            new_size = cupy.prod(numpy.asarray(new_shape))
+            new_size = numpy.prod(new_shape)
             if new_size != current_size:
                 raise ValueError('cannot reshape array of size {} into shape'
                                  '{}'.format(current_size, new_shape))
         elif len(negative_indexes) == 1:
             skip = negative_indexes[0]
-            specified = cupy.prod(numpy.asarray(
-                new_shape[0:skip] + new_shape[skip+1:]))
+            specified = numpy.prod(new_shape[0:skip] + new_shape[skip+1:])
             unspecified, remainder = divmod(current_size, specified)
             if remainder != 0:
                 err_shape = tuple('newshape'if x < 0 else x for x in new_shape)
