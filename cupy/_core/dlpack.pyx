@@ -11,6 +11,7 @@ from libcpp.vector cimport vector
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 from cupy._core.core cimport ndarray
+from cupy.cuda cimport device
 from cupy.cuda cimport memory
 
 import cupy
@@ -330,7 +331,8 @@ cpdef from_dlpack(array):
     .. seealso::
         `Data interchange mechanisms`_
 
-    .. _Data interchange mechanisms: https://data-apis.org/array-api/latest/design_topics/data_interchange.html
+    .. _Data interchange mechanisms:
+        https://data-apis.org/array-api/latest/design_topics/data_interchange.html
     """
     try:
         dev_type, dev_id = array.__dlpack_device__()
@@ -339,17 +341,19 @@ cpdef from_dlpack(array):
                          'protocol')
 
     # CuPy is the consumer, so we provide our current stream to the producer
-    if dev_type == <int>kDLGPU:
-        assert not runtime._is_hip_environment
-        stream = stream_module.get_current_stream_ptr()
-        if stream == 0:
-            stream = stream_module.get_default_stream_ptr()
-    elif dev_type == <int>kDLROCM:
-        assert runtime._is_hip_environment
-        stream = stream_module.get_current_stream_ptr()
-    else:
-        # TODO(leofang): support kDLCUDAPinned, kDLCUDAManaged, etc
-        raise ValueError
+    with device.Device(dev_id):
+        if dev_type == <int>kDLGPU:
+            assert not runtime._is_hip_environment
+            stream = stream_module.get_current_stream_ptr()
+            if stream == 0:
+                stream = stream_module.get_default_stream_ptr()
+        elif dev_type == <int>kDLROCM:
+            assert runtime._is_hip_environment
+            stream = stream_module.get_current_stream_ptr()
+        else:
+            # TODO(leofang): support kDLCUDAPinned, kDLCUDAManaged, etc
+            stream = None
+            raise ValueError
 
     dltensor = array.__dlpack__(stream=stream)
     return _dlpack_to_cupy_array(dltensor)
