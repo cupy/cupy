@@ -358,8 +358,8 @@ _nan_to_num = _core.create_ufunc(
 
 def _check_nan_inf(x, dtype, neg=None):
     if dtype.kind not in 'efdFD':
-        return 0
-    if x is None and neg is not None:
+        x = 0
+    elif x is None and neg is not None:
         x = cupy.finfo(dtype).min if neg else cupy.finfo(dtype).max
     elif cupy.isnan(x):
         x = cupy.nan
