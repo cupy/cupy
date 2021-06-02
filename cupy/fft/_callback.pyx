@@ -207,7 +207,8 @@ cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
         if not os.path.isfile(cufft_lib_cached):
             p = subprocess.run([_nvprune, '-arch=sm_' + arch,
                                 cufft_lib_full, '-o', cufft_lib_temp],
-                               env=os.environ, cwd=temp_dir)
+                               env=os.environ, cwd=temp_dir,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             p.check_returncode()
             if p.stderr:
                 # if no device code exists for sm_XX, nvprune exits normally
