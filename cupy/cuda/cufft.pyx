@@ -337,13 +337,14 @@ cdef class Plan1d:
                                          &work_size)
         check_result(result)
 
-        work_area = memory.alloc(work_size)
-        ptr = <intptr_t>(work_area.ptr)
-        with nogil:
-            result = cufftSetWorkArea(plan, <void*>(ptr))
-        check_result(result)
+        if work_size > 0:
+            work_area = memory.alloc(work_size)
+            ptr = <intptr_t>(work_area.ptr)
+            with nogil:
+                result = cufftSetWorkArea(plan, <void*>(ptr))
+            check_result(result)
 
-        self.work_area = work_area  # this is for cuFFT plan
+            self.work_area = work_area  # this is for cuFFT plan
 
     cdef void _multi_gpu_get_plan(self, Handle plan, int nx, int fft_type,
                                   int batch, devices, out) except*:
@@ -789,18 +790,18 @@ cdef class PlanNd:
                                                &work_size)
             check_result(result)
 
-        # TODO: for CUDA>=9.2 could also allow setting a work area policy
-        # result = cufftXtSetWorkAreaPolicy(plan, policy, &work_size)
-
-        work_area = memory.alloc(work_size)
-        ptr = <intptr_t>(work_area.ptr)
-        with nogil:
-            result = cufftSetWorkArea(plan, <void*>(ptr))
-        check_result(result)
+        if work_size > 0:
+            # TODO: for CUDA>=9.2 could also allow setting a work area policy
+            # result = cufftXtSetWorkAreaPolicy(plan, policy, &work_size)
+            work_area = memory.alloc(work_size)
+            ptr = <intptr_t>(work_area.ptr)
+            with nogil:
+                result = cufftSetWorkArea(plan, <void*>(ptr))
+            check_result(result)
+            self.work_area = work_area
 
         self.shape = tuple(shape)
         self.fft_type = <Type>fft_type
-        self.work_area = work_area
         self.order = order  # either 'C' or 'F'
         self.last_axis = last_axis  # ignored for C2C
         self.last_size = last_size  # = None (and ignored) for C2C
