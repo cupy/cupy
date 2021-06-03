@@ -799,6 +799,8 @@ cdef class PlanNd:
                 result = cufftSetWorkArea(plan, <void*>(ptr))
             check_result(result)
             self.work_area = work_area
+        else:
+            self.work_area = None
 
         self.shape = tuple(shape)
         self.fft_type = <Type>fft_type
