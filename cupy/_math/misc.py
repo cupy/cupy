@@ -343,9 +343,9 @@ _nan_to_num = _core.create_ufunc(
       'out0 = nan_to_num(in0, in1, in2, in3)'),
      ('dddd->d',
       'out0 = nan_to_num(in0, in1, in2, in3)'),
-     ('FFFF->F',
+     ('Ffff->F',
       'out0 = nan_to_num(in0, in1, in2, in3)'),
-     ('DDDD->D',
+     ('Dddd->D',
       'out0 = nan_to_num(in0, in1, in2, in3)')),
     'out0 = in0',
     preamble=_nan_to_num_preamble,
@@ -357,7 +357,9 @@ _nan_to_num = _core.create_ufunc(
 
 
 def _check_nan_inf(x, dtype, neg=None):
-    if dtype.kind not in 'efdFD':
+    if dtype.char in 'FD':
+        dtype = cupy.dtype(dtype.char.lower())
+    if dtype.char not in 'efd':
         x = 0
     elif x is None and neg is not None:
         x = cupy.finfo(dtype).min if neg else cupy.finfo(dtype).max
