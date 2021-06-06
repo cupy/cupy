@@ -119,8 +119,8 @@ def affine_transformation(data,
     """
     Apply an affine transformation.
 
-    The method uses texture memory and supports only 2D and 3D arrays without
-    channel dimension.
+    The method uses texture memory and supports only 2D and 3D float32 arrays
+    without channel dimension.
 
     Args:
         data (cupy.ndarray): The input array or texture object.
@@ -147,11 +147,15 @@ def affine_transformation(data,
     """
 
     ndim = data.ndim
-    dtype = data.dtype
     if (ndim < 2) or (ndim > 3):
         raise ValueError(
             'Texture memory affine transformation is defined only for '
             '2D and 3D arrays without channel dimension.')
+
+    dtype = data.dtype
+    if dtype != cupy.float32:
+        raise ValueError(f'Texture memory affine transformation is available '
+                         f'only for float32 data type (not {dtype})')
 
     if interpolation not in ['linear', 'nearest']:
         raise ValueError(
@@ -178,6 +182,10 @@ def affine_transformation(data,
     if output is None:
         output = cupy.zeros(output_shape, dtype=dtype)
     elif isinstance(output, (type, cupy.dtype)):
+        if output != cupy.float32:
+            raise ValueError(f'Texture memory affine transformation is '
+                             f'available only for float32 data type (not '
+                             f'{output})')
         output = cupy.zeros(output_shape, dtype=output)
     elif not isinstance(output, cupy.ndarray):
         raise ValueError(f'Output must be None, cupy.ndarray or cupy.dtype')

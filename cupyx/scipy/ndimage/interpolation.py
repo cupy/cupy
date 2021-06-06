@@ -356,8 +356,9 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
             with :mod:`scipy.ndimage`.
         texture_memory (bool): If True, uses GPU texture memory. Supports only:
 
-            - 2D and 3D single-channel float32 arrays as input
-            - ``(ndim + 1, ndim + 1)`` homogeneous transformation matrix
+            - 2D and 3D float32 arrays as input
+            - ``(ndim + 1, ndim + 1)`` homogeneous float32 transformation
+                matrix
             - ``mode='constant'`` and ``mode='nearest'``
             - ``order=0`` (nearest neighbor) and ``order=1`` (linear
                 interpolation)

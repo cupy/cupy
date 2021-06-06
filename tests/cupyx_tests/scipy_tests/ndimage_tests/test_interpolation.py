@@ -279,19 +279,28 @@ class TestAffineExceptions:
         # (ndim < 2) and (ndim > 3) must fail
         for i in [0, 3]:
             with pytest.raises(ValueError):
-                aft(x[i], cupy.eye(i + 1), texture_memory=True)
+                aft(x[i], cupy.eye(i + 1, dtype=cupy.float32),
+                    texture_memory=True)
+        # wrong input dtype
+        for dt in [cupy.float16, cupy.float64, cupy.int32, cupy.int64]:
+            with pytest.raises(ValueError):
+                aft(cupy.ones((8, 8), dtype=dt),
+                    cupy.eye(3, dtype=cupy.float32), texture_memory=True)
         # wrong matrix shape
         for i in range(len(x)):
             with pytest.raises(ValueError):
-                aft(x[i], cupy.eye(i), texture_memory=True)
+                aft(x[i], cupy.eye(i, dtype=cupy.float32),
+                    texture_memory=True)
         # wrong output
         with pytest.raises(ValueError):
-            aft(x[2], cupy.eye(3), output='test', texture_memory=True)
+            aft(x[2], cupy.eye(3, dtype=cupy.float32), output='wrong',
+                texture_memory=True)
         # wrong mode
         for m in ['mirror', 'reflect', 'wrap', 'grid-mirror',
                   'grid-wrap', 'grid-constant', 'opencv']:
             with pytest.raises(ValueError):
-                aft(x[2], cupy.eye(3), mode=m, texture_memory=True)
+                aft(x[2], cupy.eye(3, dtype=cupy.float32), mode=m,
+                    texture_memory=True)
 
 
 @testing.parameterize(*testing.product({
