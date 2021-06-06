@@ -345,6 +345,15 @@ def _transpile_stmt(stmt, is_toplevel, env):
                         'Cannot assign constant value not at top-level.')
             value = Data.init(value, env)
 
+        if (isinstance(target, ast.Tuple) and
+                isinstance(value.ctype, _cuda_types.Ptr) and
+                value.ctype.size is not None):
+            code = ', '.join([f'{value.code}[{i}]'
+                              for i in range(value.ctype.size)])
+            ctype = _cuda_types.Tuple(
+                [value.ctype.child_type] * value.ctype.size)
+            value = Data(f'thrust::make_tuple({code})', ctype)
+
         target = _transpile_lvalue(target, env, value.ctype)
         return [f'{target.code} = {value.code};']
 
@@ -568,12 +577,10 @@ def _transpile_expr_internal(expr, env):
         if isinstance(value.ctype, _cuda_types.CArray):
             if 'size' == expr.attr:
                 return _builtin_funcs.Len().call(env, value)
-            if 'shape' == expr.attr:
-                ctype = _cuda_types.Ptr(_cuda_types.PtrDiff(), cv='c')
-                return Data(f'{value.code}.shape()', ctype)
-            if 'strides' == expr.attr:
-                ctype = _cuda_types.Ptr(_cuda_types.PtrDiff(), cv='c')
-                return Data(f'{value.code}.strides()', ctype)
+            if 'shape' == expr.attr or 'strides' == expr.attr:
+                ctype = _cuda_types.Ptr(
+                    _cuda_types.PtrDiff(), False, value.ctype.ndim)
+                return Data(f'{value.code}.{expr.attr}()', ctype)
         raise NotImplementedError('Not implemented: __getattr__')
 
     if isinstance(expr, ast.Tuple):
