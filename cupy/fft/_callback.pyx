@@ -213,7 +213,7 @@ cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
             if p.stderr:
                 # if no device code exists for sm_XX, nvprune exits normally
                 # with a warning printed to stderr
-                assert 'No device code' in p.stderr
+                assert b'No device code' in p.stderr
                 cufft_lib_pruned = None
                 _cufft_static_no_device_code.append(arch)
             else:
