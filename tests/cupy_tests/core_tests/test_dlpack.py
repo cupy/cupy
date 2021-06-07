@@ -6,25 +6,42 @@ import cupy
 from cupy import testing
 
 
+def _gen_array(dtype):
+    if cupy.issubdtype(dtype, cupy.unsignedinteger):
+        array = cupy.random.randint(
+            0, 10, size=(2, 3)).astype(dtype)
+    elif cupy.issubdtype(dtype, cupy.integer):
+        array = cupy.random.randint(
+            -10, 10, size=(2, 3)).astype(dtype)
+    elif cupy.issubdtype(dtype, cupy.floating):
+        array = cupy.random.rand(
+            2, 3).astype(dtype)
+    elif cupy.issubdtype(dtype, cupy.complexfloating):
+        array = cupy.random.random((2,3)).astype(dtype)
+    else:
+        assert False, f'unrecognized dtype: {dtype}'
+    return array
+
+
 class TestDLPackConversion(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     def test_conversion(self, dtype):
-        self.dtype = dtype
-        if cupy.issubdtype(self.dtype, cupy.unsignedinteger):
-            self.array = cupy.random.randint(
-                0, 10, size=(2, 3)).astype(self.dtype)
-        elif cupy.issubdtype(self.dtype, cupy.integer):
-            self.array = cupy.random.randint(
-                -10, 10, size=(2, 3)).astype(self.dtype)
-        elif cupy.issubdtype(self.dtype, cupy.floating):
-            self.array = cupy.random.rand(
-                2, 3).astype(self.dtype)
+        orig_array = _gen_array(dtype)
+        tensor = orig_array.toDlpack()
+        out_array = cupy.fromDlpack(tensor)
+        testing.assert_array_equal(orig_array, out_array)
+        testing.assert_array_equal(orig_array.data.ptr, out_array.data.ptr)
 
-        tensor = self.array.toDlpack()
-        array = cupy.fromDlpack(tensor)
-        testing.assert_array_equal(self.array, array)
-        testing.assert_array_equal(self.array.data.ptr, array.data.ptr)
+
+class TestNewDLPackConversion(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_conversion(self, dtype):
+        orig_array = _gen_array(dtype)
+        out_array = cupy.from_dlpack(orig_array)
+        testing.assert_array_equal(orig_array, out_array)
+        testing.assert_array_equal(orig_array.data.ptr, out_array.data.ptr)
 
 
 class TestDLTensorMemory(unittest.TestCase):
