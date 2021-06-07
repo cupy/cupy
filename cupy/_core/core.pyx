@@ -220,6 +220,7 @@ cdef class ndarray:
         return desc
 
     def __dlpack__(self, stream=None):
+        # Note: the stream argument is supplied by the consumer, not by CuPy
         curr_stream = stream_module.get_current_stream()
         curr_stream_ptr = curr_stream.ptr
 
@@ -253,6 +254,7 @@ cdef class ndarray:
 
     def __dlpack_device__(self):
         if not runtime._is_hip_environment:
+            # TODO(leofang): support kDLCUDAManaged
             device_type = dlpack.device_CUDA
         else:
             device_type = dlpack.device_ROCM

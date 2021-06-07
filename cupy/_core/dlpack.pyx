@@ -311,22 +311,27 @@ cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
     return ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
 
 
+# TODO(leofang): this function is exposed to the cupy namespace, so it returns
+# a cupy.ndarray which is not compliant with the Python array API. When we have
+# a compliant object living in, say, cupy.array_api, we will expose another
+# function cupy.array_api.from_dlpack().
 cpdef from_dlpack(array):
-    """Zero-copy conversion between array objects compliant with the Python
-    Array API standard via DLPack.
+    """Zero-copy conversion between array objects compliant with the DLPack
+    data exchange protocol.
 
     Args:
         array (object): an array object that implements two methods:
             ``__dlpack__()`` and ``__dlpack_device__()``.
 
     Returns:
-        cupy.ndarray: a CuPy array (TODO: Are we sure about this?)
+        cupy.ndarray: a CuPy array that can be safely accessed on CuPy's
+            current stream.
 
     .. note::
         This function is different from CuPy's legacy :func:`~cupy.fromDlpack`
         function in that the latter takes a :class:`PyCapsule` object that
-        contains the DLPack tensor as input, while the former takes any array
-        API-complaint object.
+        contains the DLPack tensor as input, while the former takes any object
+        implementing the DLPack data exchange protocol.
 
     .. seealso::
         `Data interchange mechanisms`_
@@ -341,19 +346,21 @@ cpdef from_dlpack(array):
                          'protocol')
 
     # CuPy is the consumer, so we provide our current stream to the producer
-    with device.Device(dev_id):
-        if dev_type == <int>kDLGPU:
+    if dev_type == <int>kDLGPU:
+        with device.Device(dev_id):
             assert not runtime._is_hip_environment
             stream = stream_module.get_current_stream_ptr()
             if stream == 0:
                 stream = stream_module.get_default_stream_ptr()
-        elif dev_type == <int>kDLROCM:
+            dltensor = array.__dlpack__(stream=stream)
+    elif dev_type == <int>kDLROCM:
+        with device.Device(dev_id):
             assert runtime._is_hip_environment
             stream = stream_module.get_current_stream_ptr()
-        else:
-            # TODO(leofang): support kDLCUDAPinned, kDLCUDAManaged, etc
-            stream = None
-            raise ValueError
+            dltensor = array.__dlpack__(stream=stream)
+    else:
+        # TODO(leofang): support kDLCUDAPinned, kDLCUDAManaged, etc
+        dltensor = None
+        raise ValueError
 
-    dltensor = array.__dlpack__(stream=stream)
     return _dlpack_to_cupy_array(dltensor)
