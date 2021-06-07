@@ -1,6 +1,7 @@
 import ast
 
 import numpy
+import operator
 
 from cupy._logic import ops
 from cupy._math import arithmetic
@@ -47,27 +48,27 @@ _scalar_gte = _core.create_comparison('scalar_less', '>=')
 _py_ops = {
     ast.And: lambda x, y: x and y,
     ast.Or: lambda x, y: x or y,
-    ast.Add: lambda x, y: x + y,
-    ast.Sub: lambda x, y: x - y,
-    ast.Mult: lambda x, y: x * y,
-    ast.Pow: lambda x, y: x ** y,
-    ast.Div: lambda x, y: x / y,
-    ast.FloorDiv: lambda x, y: x // y,
-    ast.Mod: lambda x, y: x % y,
-    ast.LShift: lambda x, y: x << y,
-    ast.RShift: lambda x, y: x >> y,
-    ast.BitOr: lambda x, y: x | y,
-    ast.BitAnd: lambda x, y: x & y,
-    ast.BitXor: lambda x, y: x ^ y,
-    ast.Invert: lambda x: ~x,
-    ast.Not: lambda x: not x,
-    ast.Eq: lambda x, y: x == y,
-    ast.NotEq: lambda x, y: x != y,
-    ast.Lt: lambda x, y: x < y,
-    ast.LtE: lambda x, y: x <= y,
-    ast.Gt: lambda x, y: x > y,
-    ast.GtE: lambda x, y: x >= y,
-    ast.USub: lambda x: -x,
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Pow: operator.pow,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.LShift: operator.lshift,
+    ast.RShift: operator.rshift,
+    ast.BitOr: operator.or_,
+    ast.BitAnd: operator.and_,
+    ast.BitXor: operator.xor,
+    ast.Invert: operator.invert,
+    ast.Not: operator.not_,
+    ast.Eq: operator.eq,
+    ast.NotEq: operator.ne,
+    ast.Lt: operator.lt,
+    ast.LtE: operator.le,
+    ast.Gt: operator.gt,
+    ast.GtE: operator.ge,
+    ast.USub: operator.neg,
 }
 
 
