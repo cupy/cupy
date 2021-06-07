@@ -595,7 +595,7 @@ def _transpile_lvalue(target, env, ctype):
         elif env[name].ctype != ctype:
             raise TypeError(
                 f'Data type mismatch of variable: `{name}`: '
-                f'{env[name].ctype.dtype} != {ctype.dtype}')
+                f'{env[name].ctype} != {ctype}')
         return env[name]
 
     if isinstance(target, ast.Subscript):
