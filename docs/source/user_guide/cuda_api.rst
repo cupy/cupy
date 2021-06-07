@@ -6,9 +6,8 @@ Accessing CUDA Functionalities
 Streams and Events
 ------------------
 
-In this section we discuss basic usages for CUDA streams and events. For further information please see
-:ref:`stream_event_api` for the API reference. For their roles in the CUDA programming model, please refer
-to `CUDA Programming Guide`_.
+In this section we discuss basic usages for CUDA streams and events. For the API reference please see
+:ref:`stream_event_api`. For their roles in the CUDA programming model, please refer to `CUDA Programming Guide`_.
 
 CuPy provides high-level Python APIs :class:`~cupy.cuda.Stream` and :class:`~cupy.cuda.Event` for creating
 streams and events, respectively. Data copies and kernel launches are enqueued onto the :ref:`current_stream`,
@@ -43,7 +42,8 @@ or by using the :meth:`~cupy.cuda.Stream.use` method:
     >>> assert cp.cuda.Stream.null == cp.cuda.get_current_stream()
 
 Events can be created either manually or through the :meth:`~cupy.cuda.Stream.record` method.
-:class:`~cupy.cuda.Event` objects can be used for timing or setting up inter-stream dependencies:
+:class:`~cupy.cuda.Event` objects can be used for timing GPU activities (via :func:`~cupy.cuda.get_elapsed_time`)
+or setting up inter-stream dependencies:
 
 .. doctest::
 
@@ -79,6 +79,12 @@ objects can also be used for synchronization.
     see :ref:`environment`. This is not applicable to AMD GPUs.
 
 .. _CUDA Programming Guide: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
+
+To interoperate with streams created in other Python libraries, CuPy provides the :class:`~cupy.cuda.ExternalStream`
+API to wrap an existing stream pointer (given as a Python `int`). In this case, the stream lifetime is not managed
+by CuPy. In addition, you need to make sure the :class:`~cupy.cuda.ExternalStream` object is used on the device
+where the stream was created. But the created :class:`~cupy.cuda.ExternalStream` object can otherwise be used like
+a :class:`~cupy.cuda.Stream` object.
 
 CUDA Driver and Runtime API
 ---------------------------
