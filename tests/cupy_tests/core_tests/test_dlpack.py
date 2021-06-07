@@ -17,7 +17,7 @@ def _gen_array(dtype):
         array = cupy.random.rand(
             2, 3).astype(dtype)
     elif cupy.issubdtype(dtype, cupy.complexfloating):
-        array = cupy.random.random((2,3)).astype(dtype)
+        array = cupy.random.random((2, 3)).astype(dtype)
     else:
         assert False, f'unrecognized dtype: {dtype}'
     return array
