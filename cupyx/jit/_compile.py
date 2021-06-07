@@ -562,6 +562,12 @@ def _transpile_expr_internal(expr, env):
         value = _transpile_expr(expr.value, env)
         if is_constants(value):
             return Constant(getattr(value.obj, expr.attr))
+        if isinstance(value.ctype, _cuda_types.ArrayBase):
+            if 'ndim' == expr.attr:
+                return Constant(value.ctype.ndim)
+        if isinstance(value.ctype, _cuda_types.CArray):
+            if 'size' == expr.attr:
+                return Data(f'{value.code}.size()', _cuda_types.PtrDiff())
         raise NotImplementedError('Not implemented: __getattr__')
 
     if isinstance(expr, ast.Tuple):
@@ -619,7 +625,10 @@ def _indexing(array, index, env):
     array = Data.init(array, env)
 
     if isinstance(array.ctype, _cuda_types.Tuple):
-        raise NotImplementedError
+        if is_constants(index):
+            i = index.obj
+            return Data(f'thrust::get<{i}>({array.code})', array.types[i])
+        raise TypeError('Tuple is not subscriptable with non-constants.')
 
     if isinstance(array.ctype, _cuda_types.ArrayBase):
         index = Data.init(index, env)
@@ -651,7 +660,7 @@ def _indexing(array, index, env):
             return Data(
                 f'{array.code}._indexing({index.code})',
                 array.ctype.child_type)
-        if isinstance(index.ctype, _cuda_types.Array):
+        if isinstance(index.ctype, _cuda_types.CArray):
             raise TypeError('Advanced indexing is not supported.')
         assert False  # Never reach.
 

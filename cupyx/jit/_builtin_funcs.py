@@ -1,3 +1,5 @@
+import cupy
+
 from cupy_backends.cuda.api import runtime
 from cupyx.jit import _cuda_types
 from cupyx.jit._internal_types import BuiltinFunc
@@ -5,6 +7,8 @@ from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit._internal_types import Range
 from cupyx.jit import _compile
+
+from functools import reduce
 
 
 class RangeFunc(BuiltinFunc):
@@ -22,6 +26,13 @@ class RangeFunc(BuiltinFunc):
             raise TypeError(
                 f'range expected at most 3 argument, got {len(args)}')
 
+        if isinstance(step, Constant):
+            step_is_positive = step.obj >= 0
+        elif step.ctype.dtype.kind == 'u':
+            step_is_positive = True
+        else:
+            step_is_positive = None
+
         stop = Data.init(stop, env)
         start = Data.init(start, env)
         step = Data.init(step, env)
@@ -33,13 +44,6 @@ class RangeFunc(BuiltinFunc):
         if step.ctype.dtype.kind not in 'iu':
             raise TypeError('range supports only for integer type.')
 
-        if isinstance(step, Constant):
-            step_is_positive = step.obj >= 0
-        elif step.ctype.dtype.kind == 'u':
-            step_is_positive = True
-        else:
-            step_is_positive = None
-
         if env.mode == 'numpy':
             ctype = _cuda_types.Scalar(int)
         elif env.mode == 'cuda':
@@ -48,6 +52,42 @@ class RangeFunc(BuiltinFunc):
             assert False
 
         return Range(start, stop, step, ctype, step_is_positive)
+
+
+class Len(BuiltinFunc):
+    def call(self, env, *args, **kwds):
+        if len(args) != 1:
+            raise TypeError(f'len() expects only 1 argument, got {len(args)}')
+        if kwds:
+            raise TypeError('keyword arguments are not supported')
+        arg = args[0]
+        if not isinstance(arg.ctype, _cuda_types.CArray):
+            raise TypeError('len() supports only array type')
+        if not arg.ctype.ndim:
+            raise TypeError('len() of unsized array')
+        return Data(f'{arg.code}.shape()[0]', _cuda_types.PtrDiff())
+
+
+class Min(BuiltinFunc):
+    def call(self, env, *args, **kwds):
+        if len(args) < 2:
+            raise TypeError(
+                f'min() expects at least 2 arguments, got {len(args)}')
+        if kwds:
+            raise TypeError('keyword arguments are not supported')
+        return reduce(lambda a, b: _compile._call_ufunc(
+            cupy.minimum, (a, b), None, env), args)
+
+
+class Max(BuiltinFunc):
+    def call(self, env, *args, **kwds):
+        if len(args) < 2:
+            raise TypeError(
+                f'max() expects at least 2 arguments, got {len(args)}')
+        if kwds:
+            raise TypeError('keyword arguments are not supported')
+        return reduce(lambda a, b: _compile._call_ufunc(
+            cupy.maximum, (a, b), None, env), args)
 
 
 class SyncThreads(BuiltinFunc):
@@ -111,6 +151,9 @@ class AtomicOp(BuiltinFunc):
 
 builtin_functions_dict = {
     range: RangeFunc(),
+    len: Len(),
+    min: Min(),
+    max: Max(),
 }
 
 syncthreads = SyncThreads()

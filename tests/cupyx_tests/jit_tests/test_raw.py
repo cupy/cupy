@@ -62,6 +62,23 @@ class TestRaw(unittest.TestCase):
         f((5,), (6,), (x, y, n, m))
         assert bool((x == y).all())
 
+    def test_raw_multidimensional_array_with_attr(self):
+        @jit.rawkernel()
+        def f(x, y):
+            tid = jit.threadIdx.x + jit.blockDim.x * jit.blockIdx.x
+            ntid = jit.blockDim.x * jit.gridDim.x
+            n_col = x.size // len(x)
+            for i in range(tid, x.size, ntid):
+                i_row = i // n_col
+                i_col = i % n_col
+                y[i_row, i_col] = x[i_row, i_col]
+
+        n, m = numpy.uint32(12), numpy.uint32(13)
+        x = testing.shaped_random((n, m), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((n, m), dtype=numpy.int32, seed=1)
+        f((5,), (6,), (x, y))
+        assert bool((x == y).all())
+
     def test_raw_0dim_array(self):
         @jit.rawkernel()
         def f(x, y):
@@ -71,6 +88,20 @@ class TestRaw(unittest.TestCase):
         y = testing.shaped_random((), dtype=numpy.int32, seed=1)
         f((1,), (1,), (x, y))
         assert bool((x == y).all())
+
+    def test_min_max(self):
+        @jit.rawkernel()
+        def f(x, y, z, r):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            r[tid] = min(x[tid], max(y[tid], z[tid]))
+
+        x = testing.shaped_random((1024,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((1024,), dtype=numpy.int32, seed=1)
+        z = testing.shaped_random((1024,), dtype=numpy.int32, seed=2)
+        r = testing.shaped_random((1024,), dtype=numpy.int32, seed=3)
+        f((8,), (128,), (x, y, z, r))
+        expected = cupy.minimum(x, cupy.maximum(y, z))
+        assert bool((r == expected).all())
 
     def test_syncthreads(self):
         @jit.rawkernel()
