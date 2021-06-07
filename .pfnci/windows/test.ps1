@@ -27,9 +27,9 @@ function DownloadCache {
 }
 
 function UploadCache {
-    # Expires in 3 days, maximum 1 GB
+    # Maximum 1 GB
     echo "Trimming kernel cache..."
-    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --expiry 259200 --max-size 1000000000 --rm
+    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 1000000000 --rm
 
     pushd $Env:USERPROFILE
     # -mx=0 ... no compression
