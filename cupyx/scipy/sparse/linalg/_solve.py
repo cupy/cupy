@@ -1,11 +1,13 @@
 import numpy
 
 import cupy
+from cupy import cublas
 from cupy import cusparse
 from cupy.cuda import cusolver
 from cupy.cuda import device
 from cupy.linalg import _util
 from cupyx.scipy import sparse
+from cupyx.scipy.sparse.linalg import _interface
 
 import warnings
 try:
@@ -74,6 +76,214 @@ def lsqr(A, b):
     x = x.astype(numpy.float64)
     ret = (x, None, None, None, None, None, None, None, None, None)
     return ret
+
+
+def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
+    """Iterative solver for least-squares problems.
+    """
+    A = _interface.aslinearoperator(A)
+    b = b.squeeze()
+
+    m, n = A.shape
+    minDim = min([m, n])
+
+    if maxiter is None:
+        maxiter = minDim
+
+    u = b
+    beta = cublas.nrm2(b)
+
+    v = cupy.zeros(n)
+    alpha = 0
+
+    if beta > 0:
+        u = (1 / beta) * u
+        v = A.rmatvec(u)
+        alpha = cublas.nrm2(v)
+
+    if alpha > 0:
+        v = (1 / alpha) * v
+
+    # Initialize variables for 1st iteration.
+
+    itn = 0
+    zetabar = alpha * beta
+    alphabar = alpha
+    rho = 1
+    rhobar = 1
+    cbar = 1
+    sbar = 0
+
+    h = v.copy()
+    hbar = cupy.zeros(n)
+    x = cupy.zeros(n)
+
+    # Initialize variables for estimation of ||r||.
+
+    betadd = beta
+    betad = 0
+    rhodold = 1
+    tautildeold = 0
+    thetatilde = 0
+    zeta = 0
+    d = 0
+
+    # Initialize variables for estimation of ||A|| and cond(A)
+
+    normA2 = alpha * alpha
+    maxrbar = 0
+    minrbar = 1e+100
+    normA = alpha
+    condA = 1
+    normx = 0
+
+    # Items for use in stopping rules.
+    normb = beta
+    istop = 0
+    ctol = 0
+    if conlim > 0:
+        ctol = 1 / conlim
+    normr = beta
+
+    # Golub-Kahan process terminates when either alpha or beta is zero.
+    # Reverse the order here from the original matlab code because
+    # there was an error on return when arnorm==0
+    normar = alpha * beta
+    if normar == 0:
+        return x, istop, itn, normr, normar, normA, condA, normx
+
+    # Main iteration loop.
+    while itn < maxiter:
+        itn = itn + 1
+
+        # Perform the next step of the bidiagonalization to obtain the
+        # next  beta, u, alpha, v.  These satisfy the relations
+        #         beta*u  =  a*v   -  alpha*u,
+        #        alpha*v  =  A'*u  -  beta*v.
+
+        u = A.matvec(v) - alpha * u
+        beta = cublas.nrm2(u)  # norm(u)
+
+        if beta > 0:
+            u = (1 / beta) * u
+            v = A.rmatvec(u) - beta * v
+            alpha = cublas.nrm2(v)  # norm(v)
+            if alpha > 0:
+                v = (1 / alpha) * v
+
+        # At this point, beta = beta_{k+1}, alpha = alpha_{k+1}.
+
+        # Construct rotation Qhat_{k,2k+1}.
+
+        chat, shat, alphahat = _symOrtho(alphabar, damp)
+
+        # Use a plane rotation (Q_i) to turn B_i to R_i
+
+        rhoold = rho
+        c, s, rho = _symOrtho(alphahat, beta)
+        thetanew = s*alpha
+        alphabar = c*alpha
+
+        # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar
+
+        rhobarold = rhobar
+        zetaold = zeta
+        thetabar = sbar * rho
+        rhotemp = cbar * rho
+        cbar, sbar, rhobar = _symOrtho(cbar * rho, thetanew)
+        zeta = cbar * zetabar
+        zetabar = - sbar * zetabar
+
+        # Update h, h_hat, x.
+
+        hbar = h - (thetabar * rho / (rhoold * rhobarold)) * hbar
+        x = x + (zeta / (rho * rhobar)) * hbar
+        h = v - (thetanew / rho) * h
+
+        # Estimate of ||r||.
+
+        # Apply rotation Qhat_{k,2k+1}.
+        betaacute = chat * betadd
+        betacheck = -shat * betadd
+
+        # Apply rotation Q_{k,k+1}.
+        betahat = c * betaacute
+        betadd = -s * betaacute
+
+        # Apply rotation Qtilde_{k-1}.
+        # betad = betad_{k-1} here.
+
+        thetatildeold = thetatilde
+        ctildeold, stildeold, rhotildeold = _symOrtho(rhodold, thetabar)
+        thetatilde = stildeold * rhobar
+        rhodold = ctildeold * rhobar
+        betad = - stildeold * betad + ctildeold * betahat
+
+        # betad   = betad_k here.
+        # rhodold = rhod_k  here.
+
+        tautildeold = (zetaold - thetatildeold * tautildeold) / rhotildeold
+        taud = (zeta - thetatilde * tautildeold) / rhodold
+        d = d + betacheck * betacheck
+        normr = numpy.sqrt(d + (betad - taud)**2 + betadd * betadd)
+
+        # Estimate ||A||.
+        normA2 = normA2 + beta * beta
+        normA = numpy.sqrt(normA2)
+        normA2 = normA2 + alpha * alpha
+
+        # Estimate cond(A).
+        maxrbar = max(maxrbar, rhobarold)
+        if itn > 1:
+            minrbar = min(minrbar, rhobarold)
+        condA = max(maxrbar, rhotemp) / min(minrbar, rhotemp)
+
+        # Test for convergence.
+
+        # Compute norms for convergence testing.
+        normar = abs(zetabar)
+        normx = cublas.nrm2(x)
+
+        # Now use these norms to estimate certain other quantities,
+        # some of which will be small near a solution.
+
+        test1 = normr / normb
+        if (normA * normr) != 0:
+            test2 = normar / (normA * normr)
+        else:
+            test2 = numpy.infty
+        test3 = 1 / condA
+        t1 = test1 / (1 + normA*normx/normb)
+        rtol = btol + atol*normA*normx/normb
+
+        # The following tests guard against extremely small values of
+        # atol, btol or ctol.  (The user may have set any or all of
+        # the parameters atol, btol, conlim  to 0.)
+        # The effect is equivalent to the normAl tests using
+        # atol = eps,  btol = eps,  conlim = 1/eps.
+
+        if itn >= maxiter:
+            istop = 7
+        if 1 + test3 <= 1:
+            istop = 6
+        if 1 + test2 <= 1:
+            istop = 5
+        if 1 + t1 <= 1:
+            istop = 4
+
+        # Allow for tolerances set by the user.
+
+        if test3 <= ctol:
+            istop = 3
+        if test2 <= atol:
+            istop = 2
+        if test1 <= rtol:
+            istop = 1
+
+        if istop > 0:
+            break
+
+    return x, istop, itn, normr, normar, normA, condA, normx
 
 
 def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
@@ -402,3 +612,27 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
         permc_spec=permc_spec, diag_pivot_thresh=diag_pivot_thresh,
         relax=relax, panel_size=panel_size, options=options)
     return SuperLU(a_inv)
+
+
+def _symOrtho(a, b):
+    """
+    A stable implementation of Givens rotation according to
+    S.-C. Choi, "Iterative Methods for Singular Linear Equations
+      and Least-Squares Problems", Dissertation,
+      http://www.stanford.edu/group/SOL/dissertations/sou-cheng-choi-thesis.pdf
+    """
+    if b == 0:
+        return numpy.sign(a), 0, abs(a)
+    elif a == 0:
+        return 0, numpy.sign(b), abs(b)
+    elif abs(b) > abs(a):
+        tau = a / b
+        s = numpy.sign(b) / numpy.sqrt(1+tau*tau)
+        c = s * tau
+        r = b / s
+    else:
+        tau = b / a
+        c = numpy.sign(a) / numpy.sqrt(1+tau*tau)
+        s = c * tau
+        r = a / c
+    return c, s, r
