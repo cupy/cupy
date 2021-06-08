@@ -546,6 +546,8 @@ def preconfigure_modules(compiler, settings):
                     rocm_path = build.get_rocm_path()
                     inc_path = os.path.join(rocm_path, 'hipfft', 'include')
                     settings['include_dirs'].insert(0, inc_path)
+                    lib_path = os.path.join(rocm_path, 'hipfft', 'lib')
+                    settings['library_dirs'].insert(0, lib_path)
                 canonicalize_hip_libraries(hip_version, module['libraries'])
 
         print('')
