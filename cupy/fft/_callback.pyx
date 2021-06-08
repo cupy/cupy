@@ -39,6 +39,7 @@ cdef str _cuda_include = None
 cdef str _nvprune = None
 cdef str _build_ver = None
 cdef int _cufft_ver = 0
+cdef list _cufft_static_no_device_code = []
 cdef str _cupy_root = None
 cdef str _cupy_include = None
 cdef str _source_dir = None
@@ -196,7 +197,7 @@ cdef inline void _mod_compile(str tempdir, str mod_name, str obj_host) except*:
 cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
     cdef str cufft_lib_full, cufft_lib_pruned, cufft_lib_temp, cufft_lib_cached
 
-    if _nvprune:
+    if _nvprune and arch not in _cufft_static_no_device_code:
         cufft_lib_full = os.path.join(_cuda_path, 'lib64/libcufft_static.a')
         cufft_lib_pruned = 'cufft_static_' + _cufft_ver + '_sm' + arch
         cufft_lib_temp = os.path.join(temp_dir,
@@ -206,11 +207,19 @@ cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
         if not os.path.isfile(cufft_lib_cached):
             p = subprocess.run([_nvprune, '-arch=sm_' + arch,
                                 cufft_lib_full, '-o', cufft_lib_temp],
-                               env=os.environ, cwd=temp_dir)
+                               env=os.environ, cwd=temp_dir,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             p.check_returncode()
-            # atomic move with the destination guaranteed to be overwritten;
-            # using os.replace() is also ok here
-            os.rename(cufft_lib_temp, cufft_lib_cached)
+            if p.stderr:
+                # if no device code exists for sm_XX, nvprune exits normally
+                # with a warning printed to stderr
+                assert b'No device code' in p.stderr
+                cufft_lib_pruned = None
+                _cufft_static_no_device_code.append(arch)
+            else:
+                # atomic move with the destination guaranteed to be overwritten
+                # (using os.replace() is also ok here)
+                os.rename(cufft_lib_temp, cufft_lib_cached)
     else:
         # nvprune is not found, just link against the full static lib
         cufft_lib_pruned = None

@@ -21,6 +21,12 @@ including :func:`cupyx.empty_pinned`, :func:`cupyx.empty_like_pinned`, :func:`cu
 :func:`cupyx.zeros_like_pinned`. They return NumPy arrays backed by pinned memory. If CuPy's pinned memory pool
 is in use, the pinned memory is allocated from the pool.
 
+.. note::
+
+    CuPy v8 and above provides a :ref:`FFT plan cache <fft_plan_cache>` that could use a portion of device memory if FFT and related functions are used.
+    The memory taken can be released by shrinking or disabling the cache.
+
+
 Memory Pool Operations
 ----------------------
 
@@ -139,7 +145,9 @@ which may or may not be desired.
 Stream Ordered Memory Allocator is a new feature added since CUDA 11.2. CuPy provides an *experimental* interface to it.
 Similar to CuPy's memory pool, Stream Ordered Memory Allocator also allocates/deallocates memory *asynchronously* from/to
 a memory pool in a stream-ordered fashion. The key difference is that it is a built-in feature implemented in the CUDA
-driver by NVIDIA. To enable a memory pool that manages stream ordered memory, you can construct a new :class:`~cupy.cuda.MemoryAsyncPool`
+driver by NVIDIA, so other CUDA applications in the same processs can easily allocate memory from the same pool.
+
+To enable a memory pool that manages stream ordered memory, you can construct a new :class:`~cupy.cuda.MemoryAsyncPool`
 instance:
 
 .. code-block:: py
@@ -174,8 +182,9 @@ interplay with Stream Ordered Memory Allocator. Specifically, memory freed to th
 to ``cudaMalloc``, leading to potential out-of-memory errors. In this case, you can either call :meth:`~cupy.cuda.MemoryAsyncPool.free_all_blocks()`
 or just manually perform a (event/stream/device) synchronization, and retry.
 
-Currently the :class:`~cupy.cuda.MemoryAsyncPool` interface is *experimental*. In particular, unlike :class:`~cupy.cuda.MemoryPool`
-or :class:`~cupy.cuda.PinnedMemoryPool` most of the pool's methods are not supported due to CUDA's limitation.
+Currently the :class:`~cupy.cuda.MemoryAsyncPool` interface is *experimental*. In particular, while its API is largely identical
+to that of :class:`~cupy.cuda.MemoryPool`, several of the pool's methods require a sufficiently new driver (and of course, a
+supported hardware, CUDA version, and platform) due to CUDA's limitation.
 
 You can even disable the default memory pool by the code below.
 Be sure to do this before any other CuPy operations.

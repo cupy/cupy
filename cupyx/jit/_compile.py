@@ -549,58 +549,10 @@ def _transpile_expr_internal(expr, env):
     if isinstance(expr, ast.NameConstant):
         # Deprecated since py3.8
         return Constant(expr.value)
-
     if isinstance(expr, ast.Subscript):
-        value = _transpile_expr(expr.value, env)
+        array = _transpile_expr(expr.value, env)
         index = _transpile_expr(expr.slice, env)
-
-        if is_constants(value):
-            if is_constants(index):
-                return Constant(value.obj[index.obj])
-            raise TypeError(
-                f'{type(value.obj)} is not subscriptable with non-constants.')
-
-        value = Data.init(value, env)
-
-        if isinstance(value.ctype, _cuda_types.Tuple):
-            raise NotImplementedError
-
-        if isinstance(value.ctype, _cuda_types.ArrayBase):
-            index = Data.init(index, env)
-            ndim = value.ctype.ndim
-            if isinstance(index.ctype, _cuda_types.Scalar):
-                index_dtype = index.ctype.dtype
-                if ndim != 1:
-                    raise TypeError(
-                        'Scalar indexing is supported only for 1-dim array.')
-                if index_dtype.kind not in 'ui':
-                    raise TypeError('Array indices must be integers.')
-                return Data(
-                    f'{value.code}[{index.code}]', value.ctype.child_type)
-            if isinstance(index.ctype, _cuda_types.Tuple):
-                if ndim != len(index.ctype.types):
-                    raise IndexError(f'The size of index must be {ndim}')
-                for t in index.ctype.types:
-                    if not isinstance(t, _cuda_types.Scalar):
-                        raise TypeError('Array indices must be scalar.')
-                    if t.dtype.kind not in 'iu':
-                        raise TypeError('Array indices must be integer.')
-                if ndim == 0:
-                    return Data(
-                        f'{value.code}[0]', value.ctype.child_type)
-                if ndim == 1:
-                    return Data(
-                        f'{value.code}[thrust::get<0>({index.code})]',
-                        value.ctype.child_type)
-                return Data(
-                    f'{value.code}._indexing({index.code})',
-                    value.ctype.child_type)
-            if isinstance(index.ctype, _cuda_types.Array):
-                raise TypeError('Advanced indexing is not supported.')
-            assert False  # Never reach.
-
-        raise TypeError(f'{value.code} is not subscriptable.')
-
+        return _indexing(array, index, env)
     if isinstance(expr, ast.Name):
         value = env[expr.id]
         if value is None:
@@ -655,6 +607,55 @@ def _transpile_lvalue(target, env, ctype):
         # TODO: Support compile time constants.
         elts_code = ', '.join([x.code for x in elts])
         return Data(f'thrust::tie({elts_code})', ctype)
+
+
+def _indexing(array, index, env):
+    if is_constants(array):
+        if is_constants(index):
+            return Constant(array.obj[index.obj])
+        raise TypeError(
+            f'{type(array.obj)} is not subscriptable with non-constants.')
+
+    array = Data.init(array, env)
+
+    if isinstance(array.ctype, _cuda_types.Tuple):
+        raise NotImplementedError
+
+    if isinstance(array.ctype, _cuda_types.ArrayBase):
+        index = Data.init(index, env)
+        ndim = array.ctype.ndim
+        if isinstance(index.ctype, _cuda_types.Scalar):
+            index_dtype = index.ctype.dtype
+            if ndim != 1:
+                raise TypeError(
+                    'Scalar indexing is supported only for 1-dim array.')
+            if index_dtype.kind not in 'ui':
+                raise TypeError('Array indices must be integers.')
+            return Data(
+                f'{array.code}[{index.code}]', array.ctype.child_type)
+        if isinstance(index.ctype, _cuda_types.Tuple):
+            if ndim != len(index.ctype.types):
+                raise IndexError(f'The size of index must be {ndim}')
+            for t in index.ctype.types:
+                if not isinstance(t, _cuda_types.Scalar):
+                    raise TypeError('Array indices must be scalar.')
+                if t.dtype.kind not in 'iu':
+                    raise TypeError('Array indices must be integer.')
+            if ndim == 0:
+                return Data(
+                    f'{array.code}[0]', array.ctype.child_type)
+            if ndim == 1:
+                return Data(
+                    f'{array.code}[thrust::get<0>({index.code})]',
+                    array.ctype.child_type)
+            return Data(
+                f'{array.code}._indexing({index.code})',
+                array.ctype.child_type)
+        if isinstance(index.ctype, _cuda_types.Array):
+            raise TypeError('Advanced indexing is not supported.')
+        assert False  # Never reach.
+
+    raise TypeError(f'{array.code} is not subscriptable.')
 
 
 def _astype_scalar(x, ctype, casting, env):

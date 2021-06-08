@@ -11,6 +11,8 @@ cpdef enum:
     # cusparseComputeType
     CUSPARSE_COMPUTE_16F = 0
     CUSPARSE_COMPUTE_32I = 1
+    CUSPARSE_COMPUTE_TF32 = 2
+    CUSPARSE_COMPUTE_TF32_FAST = 3
 
     # cusparseLtMatmulAlg_t
     CUSPARSELT_MATMUL_ALG_DEFAULT = 0

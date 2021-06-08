@@ -361,7 +361,7 @@ def variance(input, labels=None, index=None):
                                     out) / count
 
 
-def sum(input, labels=None, index=None):
+def sum_labels(input, labels=None, index=None):
     """Calculates the sum of the values of an n-D image array, optionally
        at specified sub-regions.
 
@@ -376,7 +376,7 @@ def sum(input, labels=None, index=None):
        sum (cupy.ndarray): sum of values, for each sub-region if
        `labels` and `index` are specified.
 
-    .. seealso:: :func:`scipy.ndimage.sum`
+    .. seealso:: :func:`scipy.ndimage.sum_labels`
     """
     if not isinstance(input, cupy.ndarray):
         raise TypeError('input must be cupy.ndarray')
@@ -423,6 +423,31 @@ def sum(input, labels=None, index=None):
     if (input.size >= 262144 and index.size <= 4) or use_kern:
         return _ndimage_sum_kernel_2(input, labels, index, out)
     return _ndimage_sum_kernel(input, labels, index, index.size, out)
+
+
+def sum(input, labels=None, index=None):
+    """Calculates the sum of the values of an n-D image array, optionally
+       at specified sub-regions.
+
+    Args:
+        input (cupy.ndarray): Nd-image data to process.
+        labels (cupy.ndarray or None): Labels defining sub-regions in `input`.
+            If not None, must be same shape as `input`.
+        index (cupy.ndarray or None): `labels` to include in output. If None
+            (default), all values where `labels` is non-zero are used.
+
+    Returns:
+       sum (cupy.ndarray): sum of values, for each sub-region if
+       `labels` and `index` are specified.
+
+    Notes:
+        This is an alias for `cupyx.scipy.ndimage.sum_labels` kept for
+        backwards compatibility reasons. For new code please prefer
+        `sum_labels`.
+
+    .. seealso:: :func:`scipy.ndimage.sum`
+    """
+    return sum_labels(input, labels, index)
 
 
 def mean(input, labels=None, index=None):

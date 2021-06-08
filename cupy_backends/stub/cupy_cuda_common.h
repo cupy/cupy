@@ -195,6 +195,7 @@ typedef struct {
 } cudaDeviceProp;
 
 typedef void* cudaMemPool_t;
+enum cudaMemPoolAttr {};
 
 
 ///////////////////////////////////////////////////////////////////////////////

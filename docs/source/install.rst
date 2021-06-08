@@ -23,7 +23,7 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v9 is based on NumPy 1.20 and SciPy 1.6, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v10 is based on NumPy 1.20 and SciPy 1.6, and has been tested against the following versions:
 
 * `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19 / v1.20
 
@@ -50,17 +50,21 @@ Additional CUDA Libraries
 
 Part of the CUDA features in CuPy will be activated only when the corresponding libraries are installed.
 
-* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.2 (CUDA 10.1+)
+* `cuTENSOR <https://developer.nvidia.com/cutensor>`_: v1.3
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.4 (CUDA 9.2) / v2.6 (CUDA 10.0) / v2.7 (CUDA 10.1+) / v2.8 (CUDA 10.2+)
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.4 (CUDA 9.2) / v2.6 (CUDA 10.0) / v2.8.3 (CUDA 10.1) / v2.8.4 (CUDA 11.1 & 11.2)  / v2.9 (CUDA 10.2 & 11.0)
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 (CUDA 9.2 & 10.0) / v8.0 (CUDA 10.1) / v8.1 (CUDA 10.2+)
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 (CUDA 9.2 & 10.0) / v8.0 (CUDA 10.1) / v8.1 (CUDA 10.2+) / v8.2 (CUDA 10.2+)
 
     * The library to accelerate deep neural network computations.
+
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.1.0
+
+    * The library to accelerate sparse matrix-matrix multiplication.
 
 
 Installing CuPy
