@@ -79,6 +79,16 @@ class TestRaw(unittest.TestCase):
         f((5,), (6,), (x, y))
         assert bool((x == y).all())
 
+    def test_raw_ndim(self):
+        @jit.rawkernel()
+        def f(x, y):
+            y[0] = x.ndim
+
+        x = cupy.empty((1, 1, 1, 1, 1, 1, 1), dtype=numpy.int32)
+        y = cupy.zeros((1,), dtype=numpy.int64)
+        f((1,), (1,), (x, y))
+        assert y.item() == 7
+
     def test_raw_0dim_array(self):
         @jit.rawkernel()
         def f(x, y):
@@ -89,18 +99,32 @@ class TestRaw(unittest.TestCase):
         f((1,), (1,), (x, y))
         assert bool((x == y).all())
 
-    def test_min_max(self):
+    def test_min(self):
         @jit.rawkernel()
         def f(x, y, z, r):
             tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
-            r[tid] = min(x[tid], max(y[tid], z[tid]))
+            r[tid] = min(x[tid], y[tid], z[tid])
 
         x = testing.shaped_random((1024,), dtype=numpy.int32, seed=0)
         y = testing.shaped_random((1024,), dtype=numpy.int32, seed=1)
         z = testing.shaped_random((1024,), dtype=numpy.int32, seed=2)
         r = testing.shaped_random((1024,), dtype=numpy.int32, seed=3)
         f((8,), (128,), (x, y, z, r))
-        expected = cupy.minimum(x, cupy.maximum(y, z))
+        expected = cupy.minimum(x, cupy.minimum(y, z))
+        assert bool((r == expected).all())
+
+    def test_max(self):
+        @jit.rawkernel()
+        def f(x, y, z, r):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            r[tid] = max(x[tid], y[tid], z[tid])
+
+        x = testing.shaped_random((1024,), dtype=numpy.int32, seed=0)
+        y = testing.shaped_random((1024,), dtype=numpy.int32, seed=1)
+        z = testing.shaped_random((1024,), dtype=numpy.int32, seed=2)
+        r = testing.shaped_random((1024,), dtype=numpy.int32, seed=3)
+        f((8,), (128,), (x, y, z, r))
+        expected = cupy.maximum(x, cupy.maximum(y, z))
         assert bool((r == expected).all())
 
     def test_syncthreads(self):
