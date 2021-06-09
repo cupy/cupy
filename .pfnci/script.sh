@@ -79,7 +79,11 @@ main() {
       apt-get autoremove -qqy
 
       apt update -qqy
-      apt install rocm-dev hipblas hipfft hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl -qqy
+      apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl -qqy
+      # Also install hipfft for ROCm 4.1 or later
+      if [ "${TARGET}" == cupy.py37.rocm-latest ]; then
+          apt install hipfft -qqy
+      fi
       export HCC_AMDGPU_TARGET=gfx900
       export ROCM_HOME=/opt/rocm
       export CUPY_INSTALL_USE_HIP=1
