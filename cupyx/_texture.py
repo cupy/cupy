@@ -188,7 +188,7 @@ def affine_transformation(data,
                              f'{output})')
         output = cupy.zeros(output_shape, dtype=output)
     elif not isinstance(output, cupy.ndarray):
-        raise ValueError(f'Output must be None, cupy.ndarray or cupy.dtype')
+        raise ValueError('Output must be None, cupy.ndarray or cupy.dtype')
 
     kernel(texture_object, transformation_matrix, *output_shape[1:], output)
     return output
