@@ -145,6 +145,7 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "ROCM_REPO" value: "4.0.1" }
+    environment_variables { key: "ROCM_PACKAGES" value: "rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl" }
     command: "bash .pfnci/script.sh py37.rocm-4-0"
   }
 }
@@ -163,6 +164,7 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "ROCM_REPO" value: "debian" }
+    environment_variables { key: "ROCM_PACKAGES" value: "rocm-dev hipblas hipfft hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl" }
     command: "bash .pfnci/script.sh py37.rocm-latest"
   }
 }
