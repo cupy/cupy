@@ -81,7 +81,7 @@ main() {
       apt update -qqy
       apt install rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl -qqy
       # Also install hipfft for ROCm 4.1 or later
-      if [ "${TARGET}" == cupy.py37.rocm-latest ]; then
+      if [ "${TARGET}" == py37.rocm-latest ]; then
           apt install hipfft -qqy
       fi
       export HCC_AMDGPU_TARGET=gfx900
