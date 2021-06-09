@@ -107,7 +107,14 @@ class TestShowConfig(unittest.TestCase):
     def test_show_config(self):
         with mock.patch('sys.stdout.write') as write_func:
             cupy.show_config()
-        write_func.assert_called_once_with(str(cupyx.get_runtime_info()))
+        write_func.assert_called_once_with(
+            str(cupyx.get_runtime_info(full=False)))
+
+    def test_show_config_with_handles(self):
+        with mock.patch('sys.stdout.write') as write_func:
+            cupy.show_config(_full=True)
+        write_func.assert_called_once_with(
+            str(cupyx.get_runtime_info(full=True)))
 
 
 class TestAliases(unittest.TestCase):

@@ -1974,6 +1974,8 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-11.1'
         elif 11020 <= _cuda_runtime_version < 11030:
             bundled_include = 'cuda-11.2'
+        elif 11030 <= _cuda_runtime_version < 11040:
+            bundled_include = 'cuda-11.3'
         else:
             # CUDA versions not yet supported.
             bundled_include = None
@@ -2281,6 +2283,10 @@ cdef ndarray _send_object_to_gpu(obj, dtype, order, Py_ssize_t ndmin):
     cdef Py_ssize_t nbytes = a.nbytes
 
     stream = stream_module.get_current_stream()
+    # Note: even if obj is already backed by pinned memory, we still need to
+    # allocate an extra buffer and copy from it to avoid potential data race,
+    # see the discussion here:
+    # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
     cdef pinned_memory.PinnedMemoryPointer mem = (
         _alloc_async_transfer_buffer(nbytes))
     if mem is not None:
@@ -2307,6 +2313,10 @@ cdef ndarray _send_numpy_array_list_to_gpu(
     cdef size_t nbytes = itemcount * a_dtype.itemsize
 
     stream = stream_module.get_current_stream()
+    # Note: even if arrays are already backed by pinned memory, we still need
+    # to allocate an extra buffer and copy from it to avoid potential data
+    # race, see the discussion here:
+    # https://github.com/cupy/cupy/pull/5155#discussion_r621808782
     cdef pinned_memory.PinnedMemoryPointer mem = (
         _alloc_async_transfer_buffer(nbytes))
     cdef size_t offset, length

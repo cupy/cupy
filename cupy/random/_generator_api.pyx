@@ -34,18 +34,23 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void exponential(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
-    void poisson(
-        int generator, intptr_t state, intptr_t out,
-        ssize_t size, intptr_t stream, double lam)
     void standard_normal(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
     void standard_normal_float(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
+    # if the types are the same, but the names are different
+    # cython will fail when trying to create a PyObj wrapper
+    # to use these functions from python
+    # arg1 is shape
     void standard_gamma(
         int generator, intptr_t state, intptr_t out,
-        ssize_t size, intptr_t stream, intptr_t shape)
+        ssize_t size, intptr_t stream, intptr_t arg1)
+    # arg1 is lam
+    void poisson(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, intptr_t arg1)
 
 
 cdef ndarray _array_data(ndarray x):
@@ -166,10 +171,13 @@ class Generator:
         cdef ndarray y
         if high is None:
             lo = 0
-            hi1 = int(low) - 1
+            hi1 = int(low)
         else:
             lo = int(low)
-            hi1 = int(high) - 1
+            hi1 = int(high)
+
+        if not endpoint:
+            hi1 -= 1
 
         if lo > hi1:
             raise ValueError('low >= high')
@@ -181,8 +189,6 @@ class Generator:
                 'high is out of bounds for {}'.format(cupy.dtype(dtype).name))
 
         diff = hi1 - lo
-        if not endpoint:
-            diff -= 1
 
         cdef uint64_t mask = (1 << diff.bit_length()) - 1
         # TODO adjust dtype
@@ -323,8 +329,32 @@ class Generator:
             :meth:`numpy.random.Generator.poisson`
         """
         cdef ndarray y
+        cdef ndarray lam_arr
+
+        if not isinstance(lam, ndarray):
+            if type(lam) in (float, int):
+                lam_a = ndarray((), numpy.float64)
+                lam_a.fill(lam)
+                lam = lam_a
+            else:
+                raise TypeError('lam is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            # Check if size is broadcastable to shape
+            # but size determines the output
+            lam = lam.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        elif size is None:
+            size = lam.shape
+
         y = ndarray(size if size is not None else (), numpy.int64)
-        _launch_dist(self.bit_generator, poisson, y, (lam, ))
+
+        lam = cupy.broadcast_to(lam, y.shape)
+        lam_arr = _array_data(lam)
+        lam_ptr = lam_arr.data.ptr
+        _launch_dist(self.bit_generator, poisson, y, (lam_ptr,))
         return y
 
     def standard_normal(self, size=None, dtype=numpy.float64, out=None):
@@ -421,10 +451,12 @@ class Generator:
 
         if not isinstance(shape, ndarray):
             if type(shape) in (float, int):
-                shape_a = ndarray(1, numpy.float64)
+                shape_a = ndarray((), numpy.float64)
                 shape_a.fill(shape)
                 shape = shape_a
             else:
+                if shape is None:
+                    raise TypeError('shape must be real number, not NoneType')
                 raise ValueError('shape is required to be a cupy.ndarray'
                                  ' or a scalar')
         else:

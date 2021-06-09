@@ -333,8 +333,6 @@ class csr_matrix(compressed._compressed_sparse_matrix):
 
     # TODO(unno): Implement prune
 
-    # TODO(unno): Implement reshape
-
     def setdiag(self, values, k=0):
         """Set diagonal or off-diagonal elements of the array."""
         rows, cols = self.shape

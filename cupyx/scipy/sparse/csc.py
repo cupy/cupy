@@ -152,7 +152,6 @@ class csc_matrix(compressed._compressed_sparse_matrix):
     # TODO(unno): Implement minimum
     # TODO(unno): Implement multiply
     # TODO(unno): Implement prune
-    # TODO(unno): Implement reshape
 
     def sort_indices(self):
         """Sorts the indices of this matrix *in place*.
