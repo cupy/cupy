@@ -65,7 +65,8 @@ class Len(BuiltinFunc):
             raise TypeError('len() supports only array type')
         if not arg.ctype.ndim:
             raise TypeError('len() of unsized array')
-        return Data(f'{arg.code}.shape()[0]', _cuda_types.PtrDiff())
+        return Data(f'static_cast<long long>({arg.code}.shape()[0])',
+                    _cuda_types.Scalar('q'))
 
 
 class Min(BuiltinFunc):

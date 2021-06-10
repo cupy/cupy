@@ -343,8 +343,8 @@ def _transpile_stmt(stmt, is_toplevel, env):
                 else:
                     raise TypeError(
                         'Cannot assign constant value not at top-level.')
-            value = Data.init(value, env)
 
+        value = Data.init(value, env)
         target = _transpile_lvalue(target, env, value.ctype)
         return [f'{target.code} = {value.code};']
 
@@ -567,7 +567,8 @@ def _transpile_expr_internal(expr, env):
                 return Constant(value.ctype.ndim)
         if isinstance(value.ctype, _cuda_types.CArray):
             if 'size' == expr.attr:
-                return Data(f'{value.code}.size()', _cuda_types.PtrDiff())
+                return Data(f'static_cast<long long>({value.code}.size())',
+                            _cuda_types.Scalar('q'))
         raise NotImplementedError('Not implemented: __getattr__')
 
     if isinstance(expr, ast.Tuple):
