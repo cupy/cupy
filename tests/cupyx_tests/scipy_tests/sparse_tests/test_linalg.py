@@ -1268,3 +1268,28 @@ class TestSplu(unittest.TestCase):
         else:
             ainv = sp.linalg.spilu(a)
         return ainv.solve(b)
+
+
+@testing.parameterize(*testing.product({
+    'damp': [0, 1, 2]
+}))
+@testing.gpu
+class TestLsmr(unittest.TestCase):
+
+    def _make_matrix(self, sp):
+        A = testing.shaped_sparse_random((50, 50), sp, density=0.2)
+        return A
+
+    def _make_normalized_vector(self, xp):
+        b = testing.shaped_random((50,), xp, scale=1)
+        return b
+
+    def _test_lsmr(self, xp, sp, a, b):
+        return sp.linalg.lsmr(a, b, damp=0.0, atol=1e-6, btol=1e-6)
+
+    @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
+    def test_solution(self, xp, sp):
+        A = self._make_matrix(sp)
+        b = self._make_normalized_vector(xp)
+        ret = self._test_lsmr(xp, sp, A, b)
+        return ret[0]
