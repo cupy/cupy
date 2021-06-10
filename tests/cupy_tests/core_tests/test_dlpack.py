@@ -3,6 +3,7 @@ import unittest
 import pytest
 
 import cupy
+from cupy import cuda
 from cupy import testing
 
 
@@ -36,12 +37,32 @@ class TestDLPackConversion(unittest.TestCase):
 
 class TestNewDLPackConversion(unittest.TestCase):
 
+    def _get_stream(self, stream_name):
+        if stream_name == 'null':
+            return cuda.Stream.null
+        elif stream_name == 'ptds':
+            return cuda.Stream.ptds
+        else:
+            return cuda.Stream()
+
     @testing.for_all_dtypes(no_bool=True)
     def test_conversion(self, dtype):
-        orig_array = _gen_array(dtype)
-        out_array = cupy.from_dlpack(orig_array)
-        testing.assert_array_equal(orig_array, out_array)
-        testing.assert_array_equal(orig_array.data.ptr, out_array.data.ptr)
+        allowed_streams = ['null', True]
+        if not cuda.runtime.is_hip:
+            allowed_streams.append('ptds')
+
+        # stream order is automatically established via DLPack protocol
+        for src in allowed_streams:
+            src_s = self._get_stream(src)
+            for dst in allowed_streams:
+                dst_s = self._get_stream(dst)
+                with src_s:
+                    orig_array = _gen_array(dtype)
+                with dst_s:
+                    out_array = cupy.from_dlpack(orig_array)
+                    testing.assert_array_equal(orig_array, out_array)
+                    testing.assert_array_equal(
+                        orig_array.data.ptr, out_array.data.ptr)
 
 
 class TestDLTensorMemory(unittest.TestCase):
