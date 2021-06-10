@@ -54,7 +54,7 @@ class RangeFunc(BuiltinFunc):
         return Range(start, stop, step, ctype, step_is_positive)
 
 
-class Len(BuiltinFunc):
+class LenFunc(BuiltinFunc):
     def call(self, env, *args, **kwds):
         if len(args) != 1:
             raise TypeError(f'len() expects only 1 argument, got {len(args)}')
@@ -69,7 +69,7 @@ class Len(BuiltinFunc):
                     _cuda_types.Scalar('q'))
 
 
-class Min(BuiltinFunc):
+class MinFunc(BuiltinFunc):
     def call(self, env, *args, **kwds):
         if len(args) < 2:
             raise TypeError(
@@ -80,7 +80,7 @@ class Min(BuiltinFunc):
             cupy.minimum, (a, b), None, env), args)
 
 
-class Max(BuiltinFunc):
+class MaxFunc(BuiltinFunc):
     def call(self, env, *args, **kwds):
         if len(args) < 2:
             raise TypeError(
@@ -152,9 +152,9 @@ class AtomicOp(BuiltinFunc):
 
 builtin_functions_dict = {
     range: RangeFunc(),
-    len: Len(),
-    min: Min(),
-    max: Max(),
+    len: LenFunc(),
+    min: MinFunc(),
+    max: MaxFunc(),
 }
 
 syncthreads = SyncThreads()
