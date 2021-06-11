@@ -94,23 +94,22 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
             :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         b (cupy.ndarray): Right hand side of the linear system with shape
             ``(m,)`` or ``(m, 1)``.
-        damp (float):
-            Damping factor for regularized least-squares. `lsmr` solves
-            the regularized least-squares problem::
+        damp (float): Damping factor for regularized least-squares.
+            `lsmr` solves the regularized least-squares problem
+            ::
 
-            min ||(b) - (  A   )x||
-                 ||(0)   (damp*I) ||_2
+                min ||(b) - (  A   )x||
+                    ||(0)   (damp*I) ||_2
 
-            where damp is a scalar.  If damp is None or 0, the system
+            where damp is a scalar. If damp is None or 0, the system
             is solved without regularization.
         atol, btol (float):
             Stopping tolerances. `lsmr` continues iterations until a
             certain backward error estimate is smaller than some quantity
             depending on atol and btol.
-        conlim (float):
-            `lsmr` terminates if an estimate of ``cond(A)`` i.e. condition
-             number of matrix exceeds `conlim`. If `conlim` is None, the
-            default value is 1e+8.
+        conlim (float): `lsmr` terminates if an estimate of ``cond(A)`` i.e.
+            condition number of matrix exceeds `conlim`. If `conlim` is None,
+            the default value is 1e+8.
         maxiter (int): Maximum number of iterations.
 
     Returns:
@@ -118,18 +117,25 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
             - `x` (ndarray): Least-square solution returned.
             - `istop` (int):
                 istop gives the reason for stopping::
-                    istop   = 0 means x=0 is a solution.
-                  = 1 means x is an approximate solution to A*x = B,
-                      according to atol and btol.
-                  = 2 means x approximately solves the least-squares problem
-                      according to atol.
-                  = 3 means COND(A) seems to be greater than CONLIM.
-                  = 4 is the same as 1 with atol = btol = eps (machine
-                      precision)
-                  = 5 is the same as 2 with atol = eps.
-                  = 6 is the same as 3 with CONLIM = 1/eps.
-                  = 7 means ITN reached maxiter before the other stopping
-                      conditions were satisfied.
+                    0 means x=0 is a solution.
+                    1 means x is an approximate solution to A*x = B,
+                    according to atol and btol.
+
+                    2 means x approximately solves the least-squares problem
+                    according to atol.
+
+                    3 means COND(A) seems to be greater than CONLIM.
+
+                    4 is the same as 1 with atol = btol = eps (machine
+                    precision)
+
+                    5 is the same as 2 with atol = eps.
+
+                    6 is the same as 3 with CONLIM = 1/eps.
+
+                    7 means ITN reached maxiter before the other stopping
+                    conditions were satisfied.
+
             - itn (int): Number of iterations used.
             - normr(float): ``norm(b-Ax)``
             - normar (float): ``norm(A^T (b - Ax))``

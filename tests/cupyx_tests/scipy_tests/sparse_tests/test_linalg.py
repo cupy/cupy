@@ -1271,25 +1271,28 @@ class TestSplu(unittest.TestCase):
 
 
 @testing.parameterize(*testing.product({
-    'damp': [0, 1, 2]
+    'damp': [0.0, 1.0, 2.0],
+    'format': ['coo', 'csr', 'csc'],
+    'm': [30, 40, 50],
+    'n': [20, 30, 40, 50]
 }))
-@testing.gpu
 class TestLsmr(unittest.TestCase):
 
     def _make_matrix(self, sp):
-        A = testing.shaped_sparse_random((50, 50), sp, density=0.2)
+        A = testing.shaped_sparse_random((self.m, self.n), sp, density=0.2)
         return A
 
     def _make_normalized_vector(self, xp):
-        b = testing.shaped_random((50,), xp, scale=1)
+        b = testing.shaped_random((self.m,), xp, scale=1)
         return b
 
     def _test_lsmr(self, xp, sp, a, b):
-        return sp.linalg.lsmr(a, b, damp=0.0, atol=1e-6, btol=1e-6)
+        return sp.linalg.lsmr(a, b, damp=self.damp, atol=1e-6, btol=1e-6)
 
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
     def test_solution(self, xp, sp):
         A = self._make_matrix(sp)
+        A = A.asformat(format=self.format)
         b = self._make_normalized_vector(xp)
         ret = self._test_lsmr(xp, sp, A, b)
         return ret[0]
