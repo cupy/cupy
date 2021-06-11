@@ -345,8 +345,7 @@ def _transpile_stmt(stmt, is_toplevel, env):
                         'Cannot assign constant value not at top-level.')
 
         value = Data.init(value, env)
-        target = _transpile_lvalue(target, env, value.ctype)
-        return [f'{target.code} = {value.code};']
+        return _transpile_assign_stmt(target, env, value)
 
     if isinstance(stmt, ast.AugAssign):
         value = _transpile_expr(stmt.value, env)
@@ -585,35 +584,43 @@ def _transpile_expr_internal(expr, env):
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
-def _transpile_lvalue(target, env, ctype):
+def _emit_assign_stmt(lvalue, rvalue):
+    if is_constants(lvalue):
+        raise TypeError('lvalue of assignment must not be constant value')
+    if lvalue.ctype != rvalue.ctype:
+        raise TypeError(
+            f'Data type mismatch of variable: `{lvalue.code}`: '
+            f'{lvalue.ctype} != {rvalue.ctype}')
+    return [f'{lvalue.code} = {rvalue.code};']
+
+
+def _transpile_assign_stmt(target, env, value, depth=0):
     if isinstance(target, ast.Name):
         name = target.id
         if env[name] is None:
-            env[name] = Data(name, ctype)
-        elif is_constants(env[name]):
-            raise TypeError('Type mismatch of variable: `{name}`')
-        elif env[name].ctype != ctype:
-            raise TypeError(
-                f'Data type mismatch of variable: `{name}`: '
-                f'{env[name].ctype} != {ctype}')
-        return env[name]
+            env[name] = Data(name, value.ctype)
+        return _emit_assign_stmt(env[name], value)
 
     if isinstance(target, ast.Subscript):
-        return _transpile_expr(target, env)
+        target = _transpile_expr(target, env)
+        return _emit_assign_stmt(target, value)
 
     if isinstance(target, ast.Tuple):
-        if not isinstance(ctype, _cuda_types.Tuple):
-            raise ValueError(f'{ctype} cannot be unpack')
+        if not isinstance(value.ctype, _cuda_types.Tuple):
+            raise ValueError(f'{value.ctype} cannot be unpack')
         size = len(target.elts)
-        if len(ctype.types) > size:
+        if len(value.ctype.types) > size:
             raise ValueError(f'too many values to unpack (expected {size})')
-        if len(ctype.types) < size:
+        if len(value.ctype.types) < size:
             raise ValueError(f'not enough values to unpack (expected {size})')
-        elts = [_transpile_lvalue(x, env, t)
-                for x, t in zip(target.elts, ctype.types)]
-        # TODO: Support compile time constants.
-        elts_code = ', '.join([x.code for x in elts])
-        return Data(f'thrust::tie({elts_code})', ctype)
+        codes = [f'{value.ctype} _temp{depth} = {value.code};']
+        for i in range(size):
+            code = f'thrust::get<{i}>(_temp{depth})'
+            ctype = value.ctype.types[i]
+            stmt = _transpile_assign_stmt(
+                target.elts[i], env, Data(code, ctype), depth + 1)
+            codes.extend(stmt)
+        return [CodeBlock('', codes)]
 
 
 def _indexing(array, index, env):
