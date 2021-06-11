@@ -115,9 +115,10 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
     Returns:
         tuple:
             - `x` (ndarray): Least-square solution returned.
-            - `istop` (int):
-                istop gives the reason for stopping::
+            - `istop` (int): istop gives the reason for stopping
+
                     0 means x=0 is a solution.
+
                     1 means x is an approximate solution to A*x = B,
                     according to atol and btol.
 
@@ -136,12 +137,12 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
                     7 means ITN reached maxiter before the other stopping
                     conditions were satisfied.
 
-            - itn (int): Number of iterations used.
-            - normr(float): ``norm(b-Ax)``
-            - normar (float): ``norm(A^T (b - Ax))``
-            - norma (float): ``norm(A)``
-            - conda (float): Condition number of A.
-            - normx (float): ``norm(x)``
+            - `itn` (int): Number of iterations used.
+            - `normr` (float): ``norm(b-Ax)``
+            - `normar` (float): ``norm(A^T (b - Ax))``
+            - `norma` (float): ``norm(A)``
+            - `conda` (float): Condition number of A.
+            - `normx` (float): ``norm(x)``
 
     .. seealso:: :func:`scipy.sparse.linalg.lsmr`
 
@@ -166,12 +167,12 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
     alpha = 0
 
     if beta > 0:
-        u = (1 / beta) * u
+        u /= beta
         v = A.rmatvec(u)
         alpha = cublas.nrm2(v)
 
     if alpha > 0:
-        v = (1 / alpha) * v
+        v /= alpha
 
     # Initialize variables for 1st iteration.
 
@@ -234,11 +235,11 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
         beta = cublas.nrm2(u)  # norm(u)
 
         if beta > 0:
-            u = (1 / beta) * u
+            u /= beta
             v = A.rmatvec(u) - beta * v
             alpha = cublas.nrm2(v)  # norm(v)
             if alpha > 0:
-                v = (1 / alpha) * v
+                v /= alpha
 
         # At this point, beta = beta_{k+1}, alpha = alpha_{k+1}.
 
@@ -266,7 +267,7 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
         # Update h, h_hat, x.
 
         hbar = h - (thetabar * rho / (rhoold * rhobarold)) * hbar
-        x = x + (zeta / (rho * rhobar)) * hbar
+        x += (zeta / (rho * rhobar)) * hbar
         h = v - (thetanew / rho) * h
 
         # Estimate of ||r||.
