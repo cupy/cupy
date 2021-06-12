@@ -584,13 +584,18 @@ def _transpile_expr_internal(expr, env):
     raise ValueError('Not supported: type {}'.format(type(expr)))
 
 
-def _emit_assign_stmt(lvalue, rvalue):
+def _emit_assign_stmt(lvalue, rvalue, env):
     if is_constants(lvalue):
         raise TypeError('lvalue of assignment must not be constant value')
-    if lvalue.ctype != rvalue.ctype:
+
+    if (isinstance(lvalue.ctype, _cuda_types.Scalar)
+            and isinstance(rvalue.ctype, _cuda_types.Scalar)):
+        rvalue = _astype_scalar(rvalue, lvalue.ctype, 'same_kind', env)
+    elif lvalue.ctype != rvalue.ctype:
         raise TypeError(
             f'Data type mismatch of variable: `{lvalue.code}`: '
             f'{lvalue.ctype} != {rvalue.ctype}')
+
     return [f'{lvalue.code} = {rvalue.code};']
 
 
@@ -599,11 +604,11 @@ def _transpile_assign_stmt(target, env, value, depth=0):
         name = target.id
         if env[name] is None:
             env[name] = Data(name, value.ctype)
-        return _emit_assign_stmt(env[name], value)
+        return _emit_assign_stmt(env[name], value, env)
 
     if isinstance(target, ast.Subscript):
         target = _transpile_expr(target, env)
-        return _emit_assign_stmt(target, value)
+        return _emit_assign_stmt(target, value, env)
 
     if isinstance(target, ast.Tuple):
         if not isinstance(value.ctype, _cuda_types.Tuple):
