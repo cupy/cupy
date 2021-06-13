@@ -152,15 +152,34 @@ class AtomicOp(BuiltinFunc):
 
 class Grid(BuiltinFunc):
 
-    def call_const(self, env, *args, **kwargs):
-        if len(args) != 1:
-            raise TypeError
-        if kwargs:
-            raise TypeError
+    def __call__(self, ndim):
+        """Compute the thread index in the grid.
 
-        ndim = args[0]
+        Computation of the first integer is as follows::
+
+            jit.threadIdx.x + jit.blockIdx.x * jit.blockDim.x
+
+        and for the other two integers the ``y`` and ``z`` attributes are used.
+
+        Args:
+            ndim (int): The dimension of the grid. Only 1, 2, or 3 is allowed.
+
+        Returns:
+            int or tuple: If ``ndim`` is 1, an integer is returned, otherwise
+                a tuple.
+
+        .. note::
+            This function follows the convention of Numba's `numba.cuda.grid`_.
+
+        .. _numba.cuda.grid:
+            https://numba.readthedocs.io/en/stable/cuda/kernels.html#absolute-positions
+
+        """
+        super.__call__(self)
+
+    def call_const(self, env, ndim):
         if not isinstance(ndim, int):
-            raise TypeError('not int')
+            raise TypeError('ndim must be an integer')
 
         # Numba convention: for 1D we return a single variable,
         # otherwise a tuple
@@ -172,7 +191,7 @@ class Grid(BuiltinFunc):
         elif ndim == 3:
             dims = ('x', 'y', 'z')
         else:
-            raise ValueError
+            raise ValueError('Only ndim=1,2,3 are supported')
 
         elts_code = ', '.join(code.format(n=n) for n in dims)
         ctype = _cuda_types.Tuple([_cuda_types.uint32]*ndim)
