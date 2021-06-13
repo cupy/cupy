@@ -150,6 +150,34 @@ class AtomicOp(BuiltinFunc):
         return Data(f'{name}(&{target.code}, {value.code})', ctype)
 
 
+class Grid(BuiltinFunc):
+
+    def call_const(self, env, *args, **kwargs):
+        if len(args) != 1:
+            raise TypeError
+        if kwargs:
+            raise TypeError
+
+        ndim = args[0]
+        if not isinstance(ndim, int):
+            raise TypeError('not int')
+
+        # Numba convention: for 1D we return a single variable, otherwise a tuple
+        code = 'threadIdx.{n} + blockIdx.{n} * blockDim.{n}'
+        if ndim == 1:
+            return Data(code.format(n='x'), _cuda_types.uint32)
+        elif ndim == 2:
+            dims = ('x', 'y')
+        elif ndim == 3:
+            dims = ('x', 'y', 'z')
+        else:
+            raise ValueError
+
+        elts_code = ', '.join(code.format(n=n) for n in dims)
+        ctype = _cuda_types.Tuple([_cuda_types.uint32]*ndim)
+        return Data(f'thrust::make_tuple({elts_code})', ctype)
+
+
 builtin_functions_dict = {
     range: RangeFunc(),
     len: LenFunc(),
@@ -159,6 +187,7 @@ builtin_functions_dict = {
 
 syncthreads = SyncThreads()
 shared_memory = SharedMemory()
+grid = Grid()
 
 # TODO: Add more atomic functions.
 atomic_add = AtomicOp('Add', 'iILQefd')
