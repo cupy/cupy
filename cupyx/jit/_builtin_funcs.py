@@ -162,7 +162,8 @@ class Grid(BuiltinFunc):
         if not isinstance(ndim, int):
             raise TypeError('not int')
 
-        # Numba convention: for 1D we return a single variable, otherwise a tuple
+        # Numba convention: for 1D we return a single variable,
+        # otherwise a tuple
         code = 'threadIdx.{n} + blockIdx.{n} * blockDim.{n}'
         if ndim == 1:
             return Data(code.format(n='x'), _cuda_types.uint32)
