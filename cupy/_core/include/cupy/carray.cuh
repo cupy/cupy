@@ -384,9 +384,9 @@ public:
   }
 };
 
-template <typename T>
+template <typename T, bool _use_32bit_indexing>
 
-class CArray<T, 0, true, true> {
+class CArray<T, 0, true, _use_32bit_indexing> {
 private:
   T* data_;
   ptrdiff_t size_;
