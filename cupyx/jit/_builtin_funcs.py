@@ -165,8 +165,8 @@ class Grid(BuiltinFunc):
             ndim (int): The dimension of the grid. Only 1, 2, or 3 is allowed.
 
         Returns:
-            int or tuple: If ``ndim`` is 1, an integer is returned, otherwise
-                a tuple.
+            int or tuple:
+                If ``ndim`` is 1, an integer is returned, otherwise a tuple.
 
         .. note::
             This function follows the convention of Numba's `numba.cuda.grid`_.
