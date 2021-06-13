@@ -310,7 +310,7 @@ def map_coordinates(input, coordinates, output=None, order=3,
 
 
 def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
-                     order=3, mode='constant', cval=0.0, prefilter=True,
+                     order=3, mode='constant', cval=0.0, prefilter=True, *,
                      texture_memory=False):
     """Apply an affine transformation.
 
