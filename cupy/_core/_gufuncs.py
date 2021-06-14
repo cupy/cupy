@@ -346,19 +346,19 @@ class _GUFunc:
         return args, dimsizess, loop_output_dims, outs, missing_dims
 
     def _determine_order(self, args, order):
-        if order == 'K':
-            # order is determined by the majority of the arrays
-            # favor c_contiguous
-            # c_cont = len([a for a in args if a.flags.c_contiguous])
-            # f_cont = len([a for a in args if a.flags.f_contiguous])
-            # order = 'C' if c_cont >= f_cont else 'F'
+        if order.upper() in ('C', 'K'):
             return 'C'
-        elif order == 'A':
+        elif order.upper() == 'A':
             # order is F if all arrays are strictly F
             order = ('F' if all([a.flags.f_contiguous
                                  and not a.flags.c_contiguous
                                  for a in args]) else 'C')
-        return order
+            return order
+
+        elif order.upper() == 'F':
+            return 'F'
+        else:
+            raise RuntimeError(f'Unknown order {order}')
 
     def _can_cast(self, d1, d2, casting):
         if casting == 'same_kind' and get_dtype(d1).kind == get_dtype(d2).kind:
@@ -482,7 +482,7 @@ class _GUFunc:
             else:
                 raise TypeError('`outs` must be a tuple or `cupy.ndarray`')
 
-        order = self._determine_order(args, order)
+        filter_order = self._determine_order(args, order)
 
         input_coredimss = self._input_coredimss
         output_coredimss = self._output_coredimss
@@ -507,7 +507,12 @@ class _GUFunc:
                           + [dimsizess[od][0] for od in output_coredimss])
 
         if outs is None:
-            outs = (cupy.empty(out_shape, dtype=ret_dtype, order=order),)
+            outs = cupy.empty(out_shape, dtype=ret_dtype, order=filter_order)
+            if order == 'K':
+                strides = internal._get_strides_for_order_K(
+                              outs, ret_dtype, out_shape)
+                outs._set_shape_and_strides(out_shape, strides, True, True)
+            outs = (outs,)
         elif outs[0].shape != out_shape:
             raise ValueError(f'Invalid shape for out {outs[0].shape}'
                              f' needs {out_shape}')
