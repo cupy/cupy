@@ -187,7 +187,10 @@ def affine_transformation(data,
                              f'available only for float32 data type (not '
                              f'{output})')
         output = cupy.zeros(output_shape, dtype=output)
-    elif not isinstance(output, cupy.ndarray):
+    elif isinstance(output, cupy.ndarray):
+        if output.shape != output_shape:
+            raise ValueError(f'Output shapes do not match')
+    else:
         raise ValueError('Output must be None, cupy.ndarray or cupy.dtype')
 
     kernel(texture_object, transformation_matrix, *output_shape[1:], output)

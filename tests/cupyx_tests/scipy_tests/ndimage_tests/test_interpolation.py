@@ -274,7 +274,7 @@ class TestAffineExceptions:
 
     def test_invalid_texture_arguments(self):
         aft = cupyx.scipy.ndimage.affine_transform
-        x = [cupy.ones((8, ) * n) for n in range(1, 5)]
+        x = [cupy.ones((8, ) * n, dtype=cupy.float32) for n in range(1, 5)]
 
         # (ndim < 2) and (ndim > 3) must fail
         for i in [0, 3]:
@@ -301,10 +301,19 @@ class TestAffineExceptions:
             with pytest.raises(ValueError):
                 aft(x[2], cupy.eye(3, dtype=cupy.float32), mode=m,
                     texture_memory=True)
+        # non matching output_shape and output's shape
+        with pytest.raises(ValueError):
+            output = cupy.empty((7, 7, 7), dtype=cupy.float32)
+            aft(x[2], cupy.eye(3, dtype=cupy.float32), output_shape=(8, 8, 8),
+                output=output, texture_memory=True)
+        # non matching output_shape and input shape
+        with pytest.raises(ValueError):
+            aft(x[2], cupy.eye(3, dtype=cupy.float32), output_shape=(7, 7, 7),
+                texture_memory=True)
 
 
 @testing.parameterize(*testing.product({
-    'output': [None, numpy.float32],
+    'output': [None, numpy.float32, 'empty'],
     'output_shape': [None, 10],
     'order': [0, 1],
     'mode': ['constant', 'nearest'],
@@ -371,7 +380,10 @@ class TestAffineTransformTextureMemory:
             return pytest.xfail('Unsupported shape')
 
         if self.output == 'empty':
-            output = xp.empty_like(a)
+            output = xp.empty(self.shape, dtype=xp.float32)
+            if self.output_shape:
+                return pytest.skip('This combination is tested in '
+                                   'test_invalid_texture_arguments')
         else:
             output = self.output
 
@@ -379,7 +391,6 @@ class TestAffineTransformTextureMemory:
             output_shape = (self.output_shape, ) * len(self.shape)
         else:
             output_shape = self.output_shape
-        print(f'{output_shape=}')
 
         if xp == cupy:
             m = cupyx.scipy.ndimage.affine_transform
