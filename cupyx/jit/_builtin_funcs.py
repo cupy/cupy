@@ -150,6 +150,58 @@ class AtomicOp(BuiltinFunc):
         return Data(f'{name}(&{target.code}, {value.code})', ctype)
 
 
+class WarpShuffleOp(BuiltinFunc):
+
+    def __init__(self, op, dtypes):
+        self._op = op
+        self._name = '__shfl_' + (op + '_' if op else '') + 'sync'
+        self._dtypes = dtypes
+        super().__init__()
+
+    def call(self, env, mask, var, val_id, **kwargs):
+        name = self._name
+        ctype = var.ctype
+        if ctype.dtype.char not in self._dtypes:
+            raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
+        # TODO(leofang): check half support
+        if ctype.dtype.char == 'e' and runtime.runtimeGetVersion() < 10000:
+            raise RuntimeError
+        # TODO(leofang): are the two calls below to convert var below really
+        # necessary?
+        var = _compile._astype_scalar(var, ctype, 'same_kind', env)
+        var = Data.init(var, env)
+
+        if isinstance(mask, Constant):
+            mask = mask.obj
+        elif isinstance(mask, int):
+            mask = mask
+        else:
+            raise TypeError('mask must be an integer')
+        # TODO(leofang): handle HIP? (warp size 64, but they don't have the new
+        # shfl_*_sync API
+        if not (0x0 <= mask <= 0xffffffff):
+            raise ValueError('mask is out of range')
+
+        # val_id refers to "delta" for shfl_{up, down}, "srcLane" for shfl, and
+        # "laneMask" for shfl_xor
+        if name in ('up', 'down'):
+            val_id_t = _cuda_types.Scalar('I')
+        else:
+            val_id_t = _cuda_types.Scalar('i')
+        val_id = _compile._astype_scalar(val_id, val_id_t, 'same_kind', env)
+        val_id = Data.init(val_id, env)
+
+        # TODO(leofang): handle width (also be aware of HIP)
+        if kwargs:
+            raise ValueError
+        else:
+            width = None
+
+        code = f'{name}({hex(mask)}, {var.code}, {val_id.code}'
+        code += f', {width.code})' if width else ')'
+        return Data(code, ctype)
+
+
 builtin_functions_dict = {
     range: RangeFunc(),
     len: LenFunc(),
@@ -162,3 +214,9 @@ shared_memory = SharedMemory()
 
 # TODO: Add more atomic functions.
 atomic_add = AtomicOp('Add', 'iILQefd')
+
+# warp-shuffle functions
+shfl_sync = WarpShuffleOp('', 'iIlLqQefd')
+shfl_up_sync = WarpShuffleOp('up', 'iIlLqQefd')
+shfl_down_sync = WarpShuffleOp('down', 'iIlLqQefd')
+shfl_xor_sync = WarpShuffleOp('xor', 'iIlLqQefd')
