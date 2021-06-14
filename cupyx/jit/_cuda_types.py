@@ -112,7 +112,7 @@ class Tuple(TypeBase):
         return f'thrust::tuple<{types}>'
 
     def __eq__(self, other):
-        return self.types == other.types
+        return isinstance(other, Tuple) and self.types == other.types
 
 
 void = Void()

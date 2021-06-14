@@ -492,6 +492,32 @@ class TestVectorizeStmts(unittest.TestCase):
         return f(x, y)
 
     @testing.numpy_cupy_array_equal()
+    def test_tuple_pattern_match(self, xp):
+        def func_pattern_match(x, y):
+            x, y = y, x
+            z = x, y
+            (a, b), y = z, x
+            return a * a + b + y
+
+        f = xp.vectorize(func_pattern_match)
+        x = xp.array([0, 1, 2, 3, 4])
+        y = xp.array([5, 6, 7, 8, 9])
+        return f(x, y)
+
+    def test_tuple_pattern_match_type_error(self):
+        def func_pattern_match(x, y):
+            x, y = y, x
+            z = x, y
+            (a, b), z = z, x
+            return a * a + b
+
+        f = cupy.vectorize(func_pattern_match)
+        x = cupy.array([0, 1, 2, 3, 4])
+        y = cupy.array([5, 6, 7, 8, 9])
+        with pytest.raises(TypeError, match='Data type mismatch of variable:'):
+            return f(x, y)
+
+    @testing.numpy_cupy_array_equal()
     def test_return_tuple(self, xp):
         def func_tuple(x, y):
             return x + y, x / y
