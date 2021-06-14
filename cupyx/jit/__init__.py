@@ -8,6 +8,7 @@ from cupyx.jit._interface import gridDim  # NOQA
 from cupyx.jit._builtin_funcs import syncthreads  # NOQA
 from cupyx.jit._builtin_funcs import shared_memory  # NOQA
 from cupyx.jit._builtin_funcs import atomic_add  # NOQA
+from cupyx.jit._builtin_funcs import grid  # NOQA
 from cupyx.jit._builtin_funcs import shfl_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_up_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_down_sync  # NOQA

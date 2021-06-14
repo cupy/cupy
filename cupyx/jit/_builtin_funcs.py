@@ -150,6 +150,54 @@ class AtomicOp(BuiltinFunc):
         return Data(f'{name}(&{target.code}, {value.code})', ctype)
 
 
+class Grid(BuiltinFunc):
+
+    def __call__(self, ndim):
+        """Compute the thread index in the grid.
+
+        Computation of the first integer is as follows::
+
+            jit.threadIdx.x + jit.blockIdx.x * jit.blockDim.x
+
+        and for the other two integers the ``y`` and ``z`` attributes are used.
+
+        Args:
+            ndim (int): The dimension of the grid. Only 1, 2, or 3 is allowed.
+
+        Returns:
+            int or tuple:
+                If ``ndim`` is 1, an integer is returned, otherwise a tuple.
+
+        .. note::
+            This function follows the convention of Numba's `numba.cuda.grid`_.
+
+        .. _numba.cuda.grid:
+            https://numba.readthedocs.io/en/stable/cuda/kernels.html#absolute-positions
+
+        """
+        super.__call__(self)
+
+    def call_const(self, env, ndim):
+        if not isinstance(ndim, int):
+            raise TypeError('ndim must be an integer')
+
+        # Numba convention: for 1D we return a single variable,
+        # otherwise a tuple
+        code = 'threadIdx.{n} + blockIdx.{n} * blockDim.{n}'
+        if ndim == 1:
+            return Data(code.format(n='x'), _cuda_types.uint32)
+        elif ndim == 2:
+            dims = ('x', 'y')
+        elif ndim == 3:
+            dims = ('x', 'y', 'z')
+        else:
+            raise ValueError('Only ndim=1,2,3 are supported')
+
+        elts_code = ', '.join(code.format(n=n) for n in dims)
+        ctype = _cuda_types.Tuple([_cuda_types.uint32]*ndim)
+        return Data(f'thrust::make_tuple({elts_code})', ctype)
+
+
 class WarpShuffleOp(BuiltinFunc):
 
     def __init__(self, op, dtypes):
@@ -211,6 +259,7 @@ builtin_functions_dict = {
 
 syncthreads = SyncThreads()
 shared_memory = SharedMemory()
+grid = Grid()
 
 # TODO: Add more atomic functions.
 atomic_add = AtomicOp('Add', 'iILQefd')
