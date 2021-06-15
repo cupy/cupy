@@ -1,6 +1,7 @@
 import cupy
 
 from cupy_backends.cuda.api import runtime
+from cupyx.jit._cuda_typerules import get_ctype_from_scalar
 from cupyx.jit import _cuda_types
 from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
@@ -27,6 +28,12 @@ class RangeFunc(BuiltinFunc):
                 f'range expected at most 3 argument, got {len(args)}')
 
         if isinstance(step, Constant):
+            if isinstance(start, Constant) and isinstance(stop, Constant):
+                if env.mode == 'numpy':
+                    ctype = _cuda_types.Scalar(int)
+                else:
+                    ctype = get_ctype_from_scalar(env.mode, stop.obj)
+                return Range(start, stop, step, ctype, None, True)
             step_is_positive = step.obj >= 0
         elif step.ctype.dtype.kind == 'u':
             step_is_positive = True
@@ -51,7 +58,7 @@ class RangeFunc(BuiltinFunc):
         else:
             assert False
 
-        return Range(start, stop, step, ctype, step_is_positive)
+        return Range(start, stop, step, ctype, step_is_positive, False)
 
 
 class LenFunc(BuiltinFunc):

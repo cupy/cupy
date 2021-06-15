@@ -6,6 +6,8 @@ import re
 import sys
 import warnings
 
+from contextlib import contextmanager
+
 import numpy
 
 from cupy._core._codeblock import CodeBlock
@@ -144,6 +146,22 @@ class Environment:
     def get_fresh_variable_name(self, prefix='', suffix=''):
         self.count += 1
         return f'{prefix}{self.count}{suffix}'
+
+    @contextmanager
+    def shadow(self, key):
+        local_var = self.locals.pop(key, None)
+        param = self.params.pop(key, None)
+        const_var = self.consts.pop(key, None)
+        yield
+        self.locals.pop(key, None)
+        self.params.pop(key, None)
+        self.consts.pop(key, None)
+        if local_var is not None:
+            self.locals[key] = local_var
+        if param is not None:
+            self.params[key] = param
+        if const_var is not None:
+            self.consts[key] = const_var
 
 
 def _transpile_function(
@@ -364,31 +382,37 @@ def _transpile_stmt(stmt, is_toplevel, env):
         name = stmt.target.id
         iters = _transpile_expr(stmt.iter, env)
 
-        if env[name] is None:
-            env[name] = Data(stmt.target.id, iters.ctype)
-        elif env[name].ctype.dtype != iters.ctype.dtype:
-            raise TypeError(
-                f'Data type mismatch of variable: `{name}`: '
-                f'{env[name].ctype.dtype} != {iters.ctype.dtype}')
-
-        body = _transpile_stmts(stmt.body, False, env)
-
         if not isinstance(iters, _internal_types.Range):
             raise NotImplementedError(
                 'for-loop is supported only for range iterator.')
 
+        if iters.is_const:
+            with env.shadow(name):
+                codeblocks = []
+                for x in range(iters.start.obj,
+                               iters.stop.obj,
+                               iters.step.obj):
+                    env.consts[name] = Constant(x)
+                    codeblocks.append(CodeBlock(
+                        '', _transpile_stmts(stmt.body, False, env)))
+            return codeblocks
+
+        with env.shadow(name):
+            env[name] = Data(stmt.target.id, iters.ctype)
+            body = _transpile_stmts(stmt.body, False, env)
+
         init_code = (f'{iters.ctype} '
-                     f'__it = {iters.start.code}, '
+                     f'{name} = {iters.start.code}, '
                      f'__stop = {iters.stop.code}, '
                      f'__step = {iters.step.code}')
-        cond = '__step >= 0 ? __it < __stop : __it > __stop'
+        cond = f'__step >= 0 ? {name} < __stop : {name} > __stop'
         if iters.step_is_positive is True:
-            cond = '__it < __stop'
+            cond = f'{name} < __stop'
         elif iters.step_is_positive is False:
-            cond = '__it > __stop'
+            cond = f'{name} > __stop'
 
-        head = f'for ({init_code}; {cond}; __it += __step)'
-        return [CodeBlock(head, [f'{name} = __it;'] + body)]
+        head = f'for ({init_code}; {cond}; {name} += __step)'
+        return [CodeBlock(head, body)]
 
     if isinstance(stmt, ast.AsyncFor):
         raise ValueError('`async for` is not allowed.')
