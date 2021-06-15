@@ -48,14 +48,14 @@ class TestCUDAarray(unittest.TestCase):
                 kind = runtime.cudaChannelFormatKindSigned
             else:
                 kind = runtime.cudaChannelFormatKindUnsigned
-        arr2 = xp.zeros_like(arr)
 
         if self.c_contiguous:
+            arr2 = xp.zeros_like(arr)
             assert arr.flags.c_contiguous
             assert arr2.flags.c_contiguous
         else:
             arr = arr[..., ::2]
-            arr2 = xp.ascontiguousarray(arr2[..., ::2])
+            arr2 = xp.zeros_like(arr)
             width = arr.shape[-1] // n_channel
             assert not arr.flags.c_contiguous
             assert arr2.flags.c_contiguous
