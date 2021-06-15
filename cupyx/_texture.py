@@ -189,7 +189,7 @@ def affine_transformation(data,
         output = cupy.zeros(output_shape, dtype=output)
     elif isinstance(output, cupy.ndarray):
         if output.shape != output_shape:
-            raise ValueError(f'Output shapes do not match')
+            raise ValueError('Output shapes do not match')
     else:
         raise ValueError('Output must be None, cupy.ndarray or cupy.dtype')
 
