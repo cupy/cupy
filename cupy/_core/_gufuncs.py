@@ -41,7 +41,6 @@ def _parse_gufunc_signature(signature):
     # TODO(ecastill) multiple output support
     if len(outs) > 1:
         raise ValueError('Currently more than 1 output is not supported')
-    outs = outs[0] if ((len(outs) == 1) and (out_txt[-1] != ',')) else outs
     return ins, outs
 
 
@@ -61,7 +60,7 @@ def _validate_normalize_axes(
     if axes and not isinstance(axes, list):
         raise ValueError('`axes` has to be of type list')
 
-    output_coredimss = output_coredimss if nout > 1 else [output_coredimss]
+    # output_coredimss = output_coredimss if nout > 1 else [output_coredimss]
     filtered_core_dims = list(filter(len, input_coredimss))
     nr_outputs_with_coredims = len(
         [True for x in output_coredimss if len(x) > 0])
@@ -149,29 +148,24 @@ class _OpsRegister:
     '''
     class _Op:
         def __init__(self, in_types, out_types, func):
-            self.op = func
+            self.func = func
             self.in_types = tuple(numpy.dtype(i) for i in in_types)
             self.out_types = tuple(numpy.dtype(o) for o in out_types)
             self.sig_str = (''.join(
                 in_t.char for in_t in self.in_types) + '->' + ''.join(
                     out_t.char for out_t in self.out_types))
 
-    def __init__(self, signatures, default_func, nin, nout):
-        self. _ops = self._process_signatures(signatures)
+    def __init__(self, signatures, default_func, nin, nout, name):
         self._default_func = default_func
         self._nin = nin
         self._nout = nout
+        self._ops = self._process_signatures(signatures)
+        self._name = name
 
     def _sig_str_to_tuple(self, sig):
         sig = sig.replace(' ', '')
         toks = sig.split('->')
-        if sig.startswith('->'):
-            ins = ''
-            outs = toks
-        elif sig.endswith('->'):
-            ins = toks
-            outs = ''
-        elif len(toks) != 2:
+        if len(toks) != 2:
             raise ValueError(f'signature {sig} for dtypes is invalid')
         else:
             ins, outs = toks
@@ -185,24 +179,18 @@ class _OpsRegister:
             else:
                 op = self._default_func
             ins, outs = self._sig_str_to_tuple(sig)
-
             # Check the number of inputs and outputs matches the gufunc sig
-            if len(ins) != len(self._nin):
+            if len(ins) != self._nin:
                 raise ValueError(
                     f'signature {sig} for dtypes is invalid number of inputs '
                     'is not consistent with general signature')
-            if len(outs) != len(self._nout):
+            if len(outs) != self._nout:
                 raise ValueError(
                     f'signature {sig} for dtypes is invalid number of inputs '
                     'is not consistent with general signature')
 
             ops.append(_OpsRegister._Op(ins, outs, op))
         return ops
-
-    def _can_cast(self, d1, d2, casting):
-        if casting == 'same_kind' and get_dtype(d1).kind == get_dtype(d2).kind:
-            return True
-        return numpy.can_cast(d1, d2, casting=casting)
 
     def _determine_from_args(self, args, casting):
         n = len(args)
@@ -212,7 +200,7 @@ class _OpsRegister:
             for i in range(n):
                 it = in_types[i]
                 ot = op_types[i]
-                if self._can_cast(it, ot, casting):
+                if not numpy.can_cast(it, ot, casting=casting):
                     break
             else:
                 return op
@@ -234,16 +222,16 @@ class _OpsRegister:
         if isinstance(signature, tuple):
             # create a string to do a look-up on the ops
             if len(signature) == 1:
-                raise ValueError(
+                raise TypeError(
                     'The use of a length 1 tuple for the ufunc `signature` is'
                     ' not allowed. Use `dtype` or  fill the tuple with'
                     ' `None`s.')
             nin = self._nin
             nout = self._nout
             if len(signature) != (nin + nout):
-                raise ValueError(
+                raise TypeError(
                     'A type-tuple must be specified of length 1 or 3 for ufunc'
-                    f' {self.__name__}')
+                    f' {self._name}')
             signature = ''.join(
                 numpy.dtype(t).char for t in signature[:nin]) + '->' + ''.join(
                     numpy.dtype(t).char for t in signature[nin:nin+nout])
@@ -261,7 +249,7 @@ class _OpsRegister:
                     if op.sig_str == signature:
                         return op
         raise TypeError('No loop matching the specified signature and'
-                        f' casting was found for ufunc {self.__name__}')
+                        f' casting was found for ufunc {self._name}')
 
     def determine_dtype(self, args, dtype, casting, signature):
         ret_dtype = None
@@ -290,15 +278,16 @@ class _OpsRegister:
             # Convert args to the op specified in_types
             n_args = []
             for i, (arg, in_type) in enumerate(zip(args, op.in_types)):
-                if self._can_cast(arg.dtype, in_type, casting):
+                if numpy.can_cast(arg.dtype, in_type, casting=casting):
                     n_args.append(arg.astype(in_type, copy=False))
                 else:
                     raise TypeError(
-                        f'cannot cast ufunc {self.__name__} input {i} from'
+                        f'cannot cast ufunc {self._name} input {i} from'
                         f' {arg.dtype} to {dtype} with casting rule'
                         f' {casting}')
             args = n_args
             ret_dtype = op.out_types[0]
+            func = op.func
 
         return args, ret_dtype, func
 
@@ -342,7 +331,6 @@ class _GUFunc:
         # so we can avoid most of the __call__ stuff
         self._func = func
         self._signature = signature
-        self._default_casting = 'same_kind'
         self.__name__ = kwargs.get('name', func.__name__)
 
         # The following are attributes to avoid applying certain steps
@@ -378,13 +366,13 @@ class _GUFunc:
             else len(input_coredimss)
         )
         functools.update_wrapper(self, func)
-
         # Determines the function that will be run depending on the datatypes
         # Pass a list of signatures that are either the types in format
         # ii->o or a tuple with the string and a function other than func to be
         # executed for those types
+        # For some reason _nout is a tuple and now we get it with 0s
         self._ops_register = _OpsRegister(
-            signatures, self._func, self._nin, self._nout)
+            signatures, self._func, self._nin, self._nout, self.__name__)
 
     def _apply_func_to_inputs(self, func, dim, sizes, dims, args, outs):
         # Apply function
@@ -595,7 +583,6 @@ class _GUFunc:
         keepdims = kwargs.pop('keepdims', False)
         signature = kwargs.pop('signature', None)
         casting = kwargs.pop('casting', 'same_kind')
-
         if len(kwargs) > 0:
             raise RuntimeError(
                 'Unknown kwargs {}'.format(' '.join(kwargs.keys())))
@@ -637,8 +624,10 @@ class _GUFunc:
 
         # The output shape varies depending on optional dims or not
         # TODO(ecastill) this only works for one out argument
-        out_shape = tuple([dimsizess[od][0] for od in loop_output_dims]
-                          + [dimsizess[od][0] for od in output_coredimss])
+        out_shape = [dimsizess[od][0] for od in loop_output_dims]
+        if self._nout > 0:
+            out_shape += [dimsizess[od][0] for od in output_coredimss[0]]
+        out_shape = tuple(out_shape)
 
         if outs is None:
             outs = cupy.empty(out_shape, dtype=ret_dtype, order=filter_order)
@@ -696,4 +685,4 @@ class _GUFunc:
                     leaf_arr = leaf_arr.reshape(shape)
                 # leaf_arrs.append(leaf_arr.astype(leaf_arr.dtype, order=order))  # NOQA
                 leaf_arrs.append(leaf_arr)
-        return tuple(leaf_arrs) if self._nout else leaf_arrs[0]
+        return tuple(leaf_arrs) if self._nout > 1 else leaf_arrs[0]
