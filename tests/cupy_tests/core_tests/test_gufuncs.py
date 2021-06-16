@@ -7,6 +7,41 @@ from cupy import testing
 from cupy._core._gufuncs import _GUFunc
 
 
+class TestGUFuncSignature:
+    @pytest.mark.parametrize('signature', [
+        ('(i,j)->(i,j)', [('i', 'j')], [('i', 'j')]),
+        ('->(i)', [()], [('i',)]),
+        ('(i,j),(j,k)->(k,l)', [('i', 'j'), ('j', 'k')], [('k', 'l')]),
+        ('()->()', [()], [()])])
+    def test_signature_parsing(self, signature):
+        i, o = cupy._core._gufuncs._parse_gufunc_signature(signature[0])
+        assert i == signature[1]
+        assert o == signature[2]
+
+    @pytest.mark.parametrize('signature', [
+        '(i,j)(i,j)',
+        '(i,j)-(i,j)',
+        '(i,j)(i,j)->(i,j)',
+        'j->(i',
+        '',
+        '()->()->'])
+    def test_invalid_signature_parsing(self, signature):
+        with pytest.raises(ValueError):
+            cupy._core._gufuncs._parse_gufunc_signature(signature)
+
+
+class TestGUFuncAxes:
+    pass
+
+
+class TestGUFuncOut:
+    pass
+
+
+class TestGUFuncDtype:
+    pass
+
+
 class TestGUFuncOrder():
 
     @pytest.mark.parametrize('order', ['C', 'F', 'K'])
