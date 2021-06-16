@@ -31,7 +31,72 @@ class TestGUFuncSignature:
 
 
 class TestGUFuncAxes:
-    pass
+    def _get_gufunc(self, signature):
+        def func(x):
+            return x
+        return _GUFunc(func, signature)
+
+    def _get_gufunc_scalar(self, signature):
+        def func(x):
+            return x.sum()
+        return _GUFunc(func, signature)
+
+    @pytest.mark.parametrize('axes', [
+        ((-1, -2), (-1, -2)),
+        ((0, 1), (0, 1)),
+        ((0, 1), (-1, -2)),
+        ((1, 2), (-1, -2)),
+        ((1, 2), (1, 2)),
+        ((1, 2), (2, 3)),
+        ((2, 3), (-1, -2)),
+        ((2, 3), (0, 1)),
+        ((2, 3), (1, 2)),
+        ((0, 3), (1, 2)),
+        ((0, 3), (2, 0)),
+        ])
+    @testing.numpy_cupy_array_equal()
+    def test_axes_selection(self, xp, axes):
+        x = testing.shaped_arange((2, 3, 4, 5), xp=xp)
+        if xp is cupy:
+            z = self._get_gufunc('(i,j)->(i,j)')(x, axes=list(axes))
+        else:
+            z = numpy.moveaxis(x, axes[0], axes[1])
+        return z
+
+    @pytest.mark.parametrize('axes', [
+        (-1, -2),
+        (0, 1),
+        (1, 2),
+        (2, 3),
+        (0, 2),
+        (0, 3),
+        (1, 3),
+        (3, 0),
+        (2, 0),
+        (2, 1),
+        (1, 0),
+        ])
+    @testing.numpy_cupy_array_equal()
+    def test_axes_selection_single(self, xp, axes):
+        x = testing.shaped_arange((2, 3, 4, 5), xp=xp)
+        if xp is cupy:
+            return self._get_gufunc('(i)->(i)')(x, axes=list(axes))
+        else:
+            return numpy.moveaxis(x, axes[0], axes[1])
+
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @testing.numpy_cupy_array_equal()
+    def test_axis(self, xp, axis):
+        x = testing.shaped_arange((2, 3, 4, 5), xp=xp)
+        if xp is cupy:
+            return self._get_gufunc_scalar('(i)->()')(x, axis=axis)
+        else:
+            return x.sum(axis=axis)
+
+    def test_axis_invalid(self):
+        x = testing.shaped_arange((2, 3, 4, 5))
+        with pytest.raises(ValueError):
+            self._get_gufunc('(i, j)->(i, j)')(x, axis=((0, 1), (0, 1)))
 
 
 class TestGUFuncOut:
