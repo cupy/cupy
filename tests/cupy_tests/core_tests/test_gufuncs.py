@@ -139,9 +139,30 @@ class TestGUFuncOut:
         gu_func(x, out=out)
         testing.assert_allclose(x, out)
 
+    def test_invalid_output_shape(self):
+        x = testing.shaped_arange((2, 3, 4, 5))
+        out = cupy.empty((3, 3, 4, 5))
+        with pytest.raises(ValueError):
+            self._get_gufunc()(x, out=out)
+
+    def test_invalid_output_dtype(self):
+        x = testing.shaped_arange((2, 3, 4, 5))
+        out = cupy.empty((2, 3, 4, 5), dtype='h')
+        with pytest.raises(TypeError):
+            self._get_gufunc()(x, out=out)
+
 
 class TestGUFuncDtype:
-    pass
+    @testing.for_all_dtypes(name='dtype')
+    def test_dtypes(self, dtype):
+        x = testing.shaped_arange((2, 3, 4, 5), dtype=numpy.int32)
+        if dtype != numpy.bool_ and numpy.can_cast(dtype, x.dtype):
+            def func(x):
+                return x
+            gufunc = _GUFunc(func, '(i,j)->(i,j)')
+            z = gufunc(x, dtype=dtype)
+            assert z.dtype == dtype
+            testing.assert_allclose(z, x)
 
 
 class TestGUFuncOrder():
