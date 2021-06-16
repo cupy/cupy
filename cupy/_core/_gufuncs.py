@@ -321,6 +321,11 @@ class _GUFunc:
         supports_out (bool, optional):
             If the wrapped function supports out as one of its kwargs.
             Defaults to `False`.
+        signatures (list of tuple of str):
+            Contains strings in the form of 'ii->i' with i being the char of a
+            dtype. Each element of the list is a tuple with the string
+            and a alternative function to `func` to be executed when the inputs
+            of the function can be casted as described by this function.
         name (str, optional):
             Name for the GUFunc object. If not specified, ``func``'s name
             is used.
@@ -564,6 +569,28 @@ class _GUFunc:
                 signatures like ``'(i),(i)->()'`` or ``'(m,m)->()'``.
                 If used, the location of the dimensions in the output can
                 be controlled with axes and axis.
+            casting (str, optional):
+                Provides a policy for what kind of casting is permitted.
+                Defaults to ``'same_kind'``
+            signature (str or tuple of dtype, optional):
+                Either a data-type, a tuple of data-types, or a special
+                signature string indicating the input and output types of a
+                ufunc. This argument allows you to provide a specific
+                signature for the function to be used if registered in the
+                ``signatures`` kwarg of the ``__init__`` method.
+                If the loop specified does not exist for the ufunc, then
+                a TypeError is raised. Normally, a suitable loop is found
+                automatically by comparing the input types with what is
+                available and searching for a loop with data-types to
+                which all inputs can be cast safely. This keyword argument
+                lets you bypass that search and choose a particular loop.
+            order (str, optional):
+                Specifies the memory layout of the output array. Defaults to
+                ``'K'``.``'C'`` means the output should be C-contiguous,
+                ``'F'`` means F-contiguous, ``'A'`` means F-contiguous
+                if the inputs are F-contiguous and not also not C-contiguous,
+                C-contiguous otherwise, and ``'K'`` means to match the element
+                ordering of the inputs as closely as possible.
             out (cupy.ndarray): Output array. It outputs to new arrays
                 default.
 
