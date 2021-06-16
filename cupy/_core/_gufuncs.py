@@ -572,6 +572,9 @@ class _GUFunc:
             casting (str, optional):
                 Provides a policy for what kind of casting is permitted.
                 Defaults to ``'same_kind'``
+            dtype (dtype, optional):
+                Overrides the dtype of the calculation and output arrays.
+                Similar to signature.
             signature (str or tuple of dtype, optional):
                 Either a data-type, a tuple of data-types, or a special
                 signature string indicating the input and output types of a

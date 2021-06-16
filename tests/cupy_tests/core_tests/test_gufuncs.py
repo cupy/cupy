@@ -9,7 +9,7 @@ from cupy._core._gufuncs import _GUFunc
 
 class TestGUFuncOrder():
 
-    @pytest.mark.parametrize("order", ['C', 'F', 'K'])
+    @pytest.mark.parametrize('order', ['C', 'F', 'K'])
     @testing.numpy_cupy_array_equal(strides_check=True)
     def test_order(self, xp, order):
         x = testing.shaped_arange((2, 3, 4), xp=xp)
@@ -21,7 +21,7 @@ class TestGUFuncOrder():
         else:
             return xp.asarray(x, order=order)
 
-    @pytest.mark.parametrize("order", [('F', 'C', 'C'), ('F', 'F', 'F')])
+    @pytest.mark.parametrize('order', [('F', 'C', 'C'), ('F', 'F', 'F')])
     def test_order_a(self, order):
         x = testing.shaped_arange((2, 3, 4), order=order[0])
         y = testing.shaped_arange((2, 3, 4), order=order[1])
@@ -70,7 +70,7 @@ class TestGUFuncSignatures():
             else:
                 assert dtypes_access[dtype] == default
 
-    @pytest.mark.parametrize("sig,", ['ii->i', 'i', ('i', 'i', 'i')])
+    @pytest.mark.parametrize('sig,', ['ii->i', 'i', ('i', 'i', 'i')])
     def test_signature_lookup(self, sig):
         called = False
 
@@ -98,7 +98,7 @@ class TestGUFuncSignatures():
         assert z.dtype == numpy.int32
         assert called
 
-    @pytest.mark.parametrize("sigs,", [('i',), ('',), ('iii->i',), ('ii->',)])
+    @pytest.mark.parametrize('sigs,', [('i',), ('',), ('iii->i',), ('ii->',)])
     def test_invalid_signatures(self, sigs):
 
         def default(x, y):
@@ -107,7 +107,7 @@ class TestGUFuncSignatures():
         with pytest.raises(ValueError):
             _GUFunc(default, '(i),(i)->(i)', signatures=sigs)
 
-    @pytest.mark.parametrize("sig,", ['i->i', 'id->i', ''])
+    @pytest.mark.parametrize('sig,', ['i->i', 'id->i', ''])
     def test_invalid_lookup(self, sig):
 
         def default(x, y):
