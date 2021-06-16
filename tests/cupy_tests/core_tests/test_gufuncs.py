@@ -153,15 +153,16 @@ class TestGUFuncOut:
 
 
 class TestGUFuncDtype:
-    @testing.for_all_dtypes(name='dtype')
-    def test_dtypes(self, dtype):
-        x = testing.shaped_arange((2, 3, 4, 5), dtype=numpy.int32)
-        if dtype != numpy.bool_ and numpy.can_cast(dtype, x.dtype):
+    @testing.for_all_dtypes(name='dtype_i', no_bool=True, no_complex=True)
+    @testing.for_all_dtypes(name='dtype_o', no_bool=True, no_complex=True)
+    def test_dtypes(self, dtype_i, dtype_o):
+        x = testing.shaped_arange((2, 3, 4, 5), dtype=dtype_i)
+        if numpy.can_cast(dtype_o, x.dtype):
             def func(x):
                 return x
             gufunc = _GUFunc(func, '(i,j)->(i,j)')
-            z = gufunc(x, dtype=dtype)
-            assert z.dtype == dtype
+            z = gufunc(x, dtype=dtype_o)
+            assert z.dtype == dtype_o
             testing.assert_allclose(z, x)
 
 
