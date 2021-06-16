@@ -53,15 +53,14 @@ class TestGUFuncAxes:
         ((2, 3), (1, 2)),
         ((0, 3), (1, 2)),
         ((0, 3), (2, 0)),
-        ])
+    ])
     @testing.numpy_cupy_array_equal()
     def test_axes_selection(self, xp, axes):
         x = testing.shaped_arange((2, 3, 4, 5), xp=xp)
         if xp is cupy:
-            z = self._get_gufunc('(i,j)->(i,j)')(x, axes=list(axes))
+            return self._get_gufunc('(i,j)->(i,j)')(x, axes=list(axes))
         else:
-            z = numpy.moveaxis(x, axes[0], axes[1])
-        return z
+            return numpy.moveaxis(x, axes[0], axes[1])
 
     @pytest.mark.parametrize('axes', [
         (-1, -2),
@@ -75,7 +74,7 @@ class TestGUFuncAxes:
         (2, 0),
         (2, 1),
         (1, 0),
-        ])
+    ])
     @testing.numpy_cupy_array_equal()
     def test_axes_selection_single(self, xp, axes):
         x = testing.shaped_arange((2, 3, 4, 5), xp=xp)
@@ -98,9 +97,47 @@ class TestGUFuncAxes:
         with pytest.raises(ValueError):
             self._get_gufunc('(i, j)->(i, j)')(x, axis=((0, 1), (0, 1)))
 
+    @pytest.mark.parametrize('supports_batched', [True, False])
+    def test_supports_batched(self, supports_batched):
+        x = testing.shaped_arange((2, 3, 4, 5))
+
+        def func(x):
+            nonlocal supports_batched
+            if supports_batched:
+                assert x.ndim == 4
+            else:
+                assert x.ndim == 2
+            return x
+        gu_func = _GUFunc(func, '(i,j)->(i,j)',
+                          supports_batched=supports_batched)
+        gu_func(x)
+
 
 class TestGUFuncOut:
-    pass
+    def _get_gufunc(self):
+        def func(x):
+            return x
+        return _GUFunc(func, '(i,j)->(i,j)')
+
+    def test_out_array(self):
+        x = testing.shaped_arange((2, 3, 4, 5))
+        out = cupy.empty((2, 3, 4, 5))
+        self._get_gufunc()(x, out=out)
+        testing.assert_allclose(x, out)
+
+    def test_supports_out(self):
+        x = testing.shaped_arange((2, 3, 4, 5))
+        out = cupy.empty((2, 3, 4, 5))
+        out_ptr = out.data.ptr
+
+        def func(x, out=None):
+            nonlocal out_ptr
+            # Base is a view of the output due to the batching
+            assert out.base.data.ptr == out_ptr
+            return x
+        gu_func = _GUFunc(func, '(i,j)->(i,j)', supports_out=True)
+        gu_func(x, out=out)
+        testing.assert_allclose(x, out)
 
 
 class TestGUFuncDtype:

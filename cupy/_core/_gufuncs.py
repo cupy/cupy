@@ -387,7 +387,7 @@ class _GUFunc:
         if self._supports_batched or dim == len(dims):
             # Check if the function supports out, order and other args
             if self._supports_out and outs is not None:
-                outs = outs[0] if len(outs) == 0 else outs
+                outs = outs[0] if len(outs) == 1 else outs
                 func(*args, out=outs)
             else:
                 fouts = func(*args)
