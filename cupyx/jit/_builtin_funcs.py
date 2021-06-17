@@ -1,3 +1,5 @@
+import warnings
+
 import cupy
 
 from cupy_backends.cuda.api import runtime
@@ -208,40 +210,43 @@ class WarpShuffleOp(BuiltinFunc):
 
     def call(self, env, mask, var, val_id, **kwargs):
         name = self._name
+
+        var = Data.init(var, env)
         ctype = var.ctype
         if ctype.dtype.char not in self._dtypes:
             raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
-        # TODO(leofang): check half support
-        if ctype.dtype.char == 'e' and runtime.runtimeGetVersion() < 10000:
-            raise RuntimeError
-        # TODO(leofang): are the two calls below to convert var below really
-        # necessary?
-        var = _compile._astype_scalar(var, ctype, 'same_kind', env)
-        var = Data.init(var, env)
 
-        if isinstance(mask, Constant):
+        try:
             mask = mask.obj
-        elif isinstance(mask, int):
-            mask = mask
-        else:
+        except Exception:
             raise TypeError('mask must be an integer')
-        # TODO(leofang): handle HIP? (warp size 64, but they don't have the new
-        # shfl_*_sync API
+        if runtime.is_hip:
+            warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
         if not (0x0 <= mask <= 0xffffffff):
             raise ValueError('mask is out of range')
 
         # val_id refers to "delta" for shfl_{up, down}, "srcLane" for shfl, and
         # "laneMask" for shfl_xor
-        if name in ('up', 'down'):
-            val_id_t = _cuda_types.Scalar('I')
+        if self._op in ('up', 'down'):
+            val_id_t = _cuda_types.uint32
         else:
-            val_id_t = _cuda_types.Scalar('i')
+            val_id_t = _cuda_types.int32
         val_id = _compile._astype_scalar(val_id, val_id_t, 'same_kind', env)
         val_id = Data.init(val_id, env)
 
-        # TODO(leofang): handle width (also be aware of HIP)
         if kwargs:
-            raise ValueError
+            width = kwargs.pop('width')
+            if len(kwargs):
+                raise ValueError('keyword arguments not supported')
+            if isinstance(width, Constant):
+                if width.obj not in (2, 4, 8, 16, 32):
+                    raise ValueError('width needs to be power of 2')
+            if runtime.is_hip:
+                warnings.warn(
+                    f'width ({width}) is ignored on HIP', RuntimeWarning)
+            width = _compile._astype_scalar(
+                width, _cuda_types.int32, 'same_kind', env)
+            width = Data.init(width, env)
         else:
             width = None
 
