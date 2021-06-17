@@ -1115,12 +1115,14 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
     @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
                         reason='used_bytes is supported with driver 11.3+')
+    @pytest.mark.skip(reason='unstable, see #5349')
     def test_used_bytes(self):
         with cupy.cuda.Device():
             assert 0 == self.pool.used_bytes()
 
     @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
                         reason='used_bytes is supported with driver 11.3+')
+    @pytest.mark.skip(reason='unstable, see #5349')
     def test_used_bytes2(self):
         p1 = self.pool.malloc(self.unit * 2)
         assert self.unit * 2 == self.pool.used_bytes()
@@ -1136,6 +1138,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
     @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
                         reason='used_bytes is supported with driver 11.3+')
+    @pytest.mark.skip(reason='unstable, see #5349')
     def test_used_bytes_stream(self):
         p1 = self.pool.malloc(self.unit * 4)
         del p1
@@ -1146,12 +1149,14 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
     @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
                         reason='free_bytes is supported with driver 11.3+')
+    @pytest.mark.skip(reason='unstable, see #5349')
     def test_free_bytes(self):
         with cupy.cuda.Device():
             assert 0 == self.pool.free_bytes()
 
     @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
                         reason='free_bytes is supported with driver 11.3+')
+    @pytest.mark.skip(reason='unstable, see #5349')
     def test_free_bytes2(self):
         # Note: MemoryAsyncPool works differently from MemoryPool. The first
         # allocation would be much bigger than requested, and the pool size
@@ -1184,6 +1189,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
     @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
                         reason='free_bytes is supported with driver 11.3+')
+    @pytest.mark.skip(reason='unstable, see #5349')
     def test_free_bytes_stream(self):
         p1 = self.pool.malloc(self.unit * 4)
         del p1
@@ -1195,12 +1201,14 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
     @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
                         reason='total_bytes is supported with driver 11.3+')
+    @pytest.mark.skip(reason='unstable, see #5349')
     def test_total_bytes(self):
         with cupy.cuda.Device():
             assert 0 == self.pool.total_bytes()
 
     @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
                         reason='total_bytes is supported with driver 11.3+')
+    @pytest.mark.skip(reason='unstable, see #5349')
     def test_total_bytes2(self):
         # Note: MemoryAsyncPool works differently from MemoryPool. The first
         # allocation would be much bigger than requested, and the pool size
@@ -1232,6 +1240,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
 
     @pytest.mark.skipif(cupy.cuda.runtime.driverGetVersion() < 11030,
                         reason='total_bytes is supported with driver 11.3+')
+    @pytest.mark.skip(reason='unstable, see #5349')
     def test_total_bytes_stream(self):
         # Note: MemoryAsyncPool works differently from MemoryPool. The first
         # allocation would be much bigger than requested, and the pool size
