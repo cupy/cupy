@@ -122,7 +122,7 @@ class SyncWarp(BuiltinFunc):
         .. _Synchronization functions:
             https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions
         """
-        super.__call__(self)
+        super().__call__()
 
     def call(self, env, **kwargs):
         if kwargs:
@@ -245,7 +245,16 @@ class WarpShuffleOp(BuiltinFunc):
         self._op = op
         self._name = '__shfl_' + (op + '_' if op else '') + 'sync'
         self._dtypes = dtypes
-        super().__init__()
+        doc = f"""Call the {self._name} function. Please refer to
+        `Warp Shuffle Functions`_ for detail explanation.
+
+        .. _Warp Shuffle Functions:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions
+        """
+        self.__doc__ = doc
+
+    def __call__(self, mask, var, val_id, width=32):
+        super().__call__()
 
     def call(self, env, mask, var, val_id, **kwargs):
         name = self._name

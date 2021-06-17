@@ -325,6 +325,8 @@ class TestRaw(unittest.TestCase):
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iILQfd')
     def test_shfl(self, dtype):
+        # strictly speaking this function is invalid in Python (see the
+        # discussion in cupy/cupy#5340), but it serves for our purpose
         @jit.rawkernel()
         def f(a, b):
             laneId = jit.threadIdx.x & 0x1f
@@ -352,7 +354,7 @@ class TestRaw(unittest.TestCase):
             a = cupy.int32(100)
             b = cupy.arange(32, dtype=cupy.int32)
             f[1, 32](a, b, w)
-            c[c%w!=0] = c[c%w==0]
+            c[c % w != 0] = c[c % w == 0]
             assert (b == c).all()
 
     # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
