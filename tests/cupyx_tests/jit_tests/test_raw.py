@@ -210,6 +210,41 @@ class TestRaw(unittest.TestCase):
         f((1,), (32, 32), (x, y, buf))
         assert bool((x == y).all())
 
+    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
+    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
+    def test_syncwarp(self):
+        @jit.rawkernel()
+        def f(x):
+            laneId = jit.threadIdx.x & 0x1f
+            if laneId < 16:
+                x[laneId] = 1
+            else:
+                x[laneId] = 2
+            jit.syncwarp()
+
+        x = cupy.zeros((32,), dtype=numpy.int32)
+        y = cupy.ones_like(x)
+        f((1,), (32,), (x,))
+        y[16:] += 1
+        assert bool((x == y).all())
+
+    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
+    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
+    def test_syncwarp_mask(self):
+        @jit.rawkernel()
+        def f(x, m):
+            laneId = jit.threadIdx.x & 0x1f
+            if laneId < m:
+                x[laneId] = 1
+                jit.syncwarp(mask=m)
+
+        for mask in (2, 4, 8, 16, 32):
+            x = cupy.zeros((32,), dtype=numpy.int32)
+            y = cupy.zeros_like(x)
+            f((1,), (32,), (x, mask))
+            y[:mask] += 1
+            assert bool((x == y).all())
+
     def test_shared_memory_static(self):
         @jit.rawkernel()
         def f(x, y):
@@ -354,6 +389,8 @@ class TestRaw(unittest.TestCase):
         expected = [i for i in range(N, 32)] + [(32-N+i) for i in range(N)]
         assert(a == cupy.asarray(expected, dtype=dtype)).all()
 
+    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
+    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iILQfd')
     def test_shfl_xor(self, dtype):

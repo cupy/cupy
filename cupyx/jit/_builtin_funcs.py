@@ -96,12 +96,51 @@ class MaxFunc(BuiltinFunc):
 class SyncThreads(BuiltinFunc):
 
     def __call__(self):
-        """Calls ``__syncthreads()``
+        """Calls ``__syncthreads()``.
+
+        .. seealso:: `Synchronization functions`_
+
+        .. _Synchronization functions:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions
         """
         super.__call__(self)
 
     def call_const(self, env):
         return Data('__syncthreads()', _cuda_types.void)
+
+
+class SyncWarp(BuiltinFunc):
+
+    def __call__(self, mask=0xffffffff):
+        """Calls ``__syncwarp()``.
+
+        Args:
+            mask (int): Active threads in a warp. Default is 0xffffffff.
+
+        .. seealso:: `Synchronization functions`_
+
+        .. _Synchronization functions:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions
+        """
+        super.__call__(self)
+
+    def call(self, env, **kwargs):
+        if kwargs:
+            mask = kwargs.pop('mask')
+            if len(kwargs):
+                raise ValueError('keyword arguments not supported')
+            if isinstance(mask, Constant):
+                if not (0x0 <= mask.obj <= 0xffffffff):
+                    raise ValueError('mask is out of range')
+            if runtime.is_hip:
+                warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
+            mask = _compile._astype_scalar(
+                mask, _cuda_types.int32, 'same_kind', env)
+            mask = Data.init(mask, env)
+            code = f'__syncwarp({mask.code})'
+        else:
+            code = '__syncwarp()'
+        return Data(code, _cuda_types.void)
 
 
 class SharedMemory(BuiltinFunc):
@@ -263,6 +302,7 @@ builtin_functions_dict = {
 }
 
 syncthreads = SyncThreads()
+syncwarp = SyncWarp()
 shared_memory = SharedMemory()
 grid = Grid()
 
