@@ -84,7 +84,7 @@ _available_compute_capability = {
 }
 
 
-@_util.memoize()
+@_util.memoize(for_each_device=True)
 def check_availability(name):
     if not _runtime.is_hip:
         available_version = _available_cuda_version

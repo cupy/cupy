@@ -380,3 +380,60 @@ You can install the library by:
             lib=lib, exc_type=type(exc).__name__, exc=str(exc),
             cuda=config['cuda'])
         warnings.warn(msg)
+
+
+def _detect_duplicate_installation():
+    # importlib.metadata only available in Python 3.8+.
+    if sys.version_info < (3, 8):
+        return
+    import importlib.metadata
+
+    # List of all CuPy packages, including out-dated ones.
+    known = [
+        'cupy',
+        'cupy-cuda80',
+        'cupy-cuda90',
+        'cupy-cuda91',
+        'cupy-cuda92',
+        'cupy-cuda100',
+        'cupy-cuda101',
+        'cupy-cuda102',
+        'cupy-cuda110',
+        'cupy-cuda111',
+        'cupy-cuda112',
+        'cupy-cuda113',
+        'cupy-rocm-4-0',
+        'cupy-rocm-4-1',
+        'cupy-rocm-4-2',
+    ]
+    cupy_installed = [
+        name for name in known
+        if list(importlib.metadata.distributions(name=name))]
+    if 1 < len(cupy_installed):
+        cupy_packages_list = ', '.join(sorted(cupy_installed))
+        warnings.warn(f'''
+--------------------------------------------------------------------------------
+
+  CuPy may not function correctly because multiple CuPy packages are installed
+  in your environment:
+
+    {cupy_packages_list}
+
+  Follow these steps to resolve this issue:
+
+    1. For all packages listed above, run the following command to remove all
+       existing CuPy installations:
+
+         $ pip uninstall <package_name>
+
+      If you previously installed CuPy via conda, also run the following:
+
+         $ conda uninstall cupy
+
+    2. Install the appropriate CuPy package.
+       Refer to the Installation Guide for detailed instructions.
+
+         https://docs.cupy.dev/en/stable/install.html
+
+--------------------------------------------------------------------------------
+''')

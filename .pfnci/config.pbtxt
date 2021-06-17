@@ -131,7 +131,7 @@ configs {
 
 # ROCm build test
 configs {
-  key: "cupy.py3.amd"
+  key: "cupy.py37.rocm-4-0"
   value {
     requirement {
       cpu: 8
@@ -144,10 +144,30 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    command: "bash .pfnci/script.sh py37.amd"
+    environment_variables { key: "ROCM_REPO" value: "4.0.1" }
+    environment_variables { key: "ROCM_PACKAGES" value: "rocm-dev hipblas hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl" }
+    command: "bash .pfnci/script.sh py37.rocm-4-0"
   }
 }
-
+configs {
+  key: "cupy.py37.rocm-latest"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "ROCM_REPO" value: "debian" }
+    environment_variables { key: "ROCM_PACKAGES" value: "rocm-dev hipblas hipfft hipsparse rocsparse rocrand rocthrust rocsolver rocfft hipcub rocprim rccl" }
+    command: "bash .pfnci/script.sh py37.rocm-latest"
+  }
+}
 
 # ChainerCV's tests are disabled in the master branch, but configs can be removed
 # only after removing web hooks.

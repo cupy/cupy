@@ -1,6 +1,6 @@
 <div align="center"><img src="https://raw.githubusercontent.com/cupy/cupy/master/docs/image/cupy_logo_1000px.png" width="400"/></div>
 
-# CuPy : A NumPy-compatible array library accelerated by CUDA
+# CuPy : NumPy & SciPy for GPU
 
 [![pypi](https://img.shields.io/pypi/v/cupy.svg)](https://pypi.python.org/pypi/cupy)
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/cupy.svg)](https://anaconda.org/conda-forge/cupy)
@@ -10,15 +10,28 @@
 [![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
 
 [**Website**](https://cupy.dev/)
-| [**Docs**](https://docs.cupy.dev/en/stable/)
-| [**Install Guide**](https://docs.cupy.dev/en/stable/install.html)
-| [**Tutorial**](https://docs.cupy.dev/en/stable/tutorial/)
+| [**Install**](https://docs.cupy.dev/en/stable/install.html)
+| [**Tutorial**](https://docs.cupy.dev/en/stable/user_guide/basic.html)
 | [**Examples**](https://github.com/cupy/cupy/tree/master/examples)
+| [**Documentation**](https://docs.cupy.dev/en/stable/)
 | [**API Reference**](https://docs.cupy.dev/en/stable/reference/)
 | [**Forum**](https://groups.google.com/forum/#!forum/cupy)
 
-*CuPy* is an implementation of NumPy-compatible multi-dimensional array on CUDA.
-CuPy consists of the core multi-dimensional array class, `cupy.ndarray`, and [many functions](https://docs.cupy.dev/en/stable/reference/comparison.html) on it.
+CuPy is a NumPy/SciPy-compatible array library for GPU-accelerated computing with Python.
+CuPy acts as a [drop-in replacement](https://docs.cupy.dev/en/stable/reference/comparison.html) to run existing NumPy/SciPy code on NVIDIA CUDA or AMD ROCm platforms.
+
+```py
+>>> import cupy as cp
+>>> x = cp.arange(6).reshape(2, 3).astype('f')
+>>> x
+array([[ 0.,  1.,  2.],
+       [ 3.,  4.,  5.]], dtype=float32)
+>>> x.sum(axis=1)
+array([  3.,  12.], dtype=float32)
+```
+
+CuPy also provides access to low-level CUDA features.
+You can pass `ndarray` to existing CUDA C/C++ programs via [RawKernels](https://docs.cupy.dev/en/stable/user_guide/kernel.html#raw-kernels), use [Streams](https://docs.cupy.dev/en/stable/reference/cuda.html) for performance, or even call [CUDA Runtime APIs](https://docs.cupy.dev/en/stable/reference/cuda.html#runtime-api) directly.
 
 ## Installation
 
@@ -33,7 +46,10 @@ Choose the right package for your platform.
 | CUDA 11.0 | `pip install cupy-cuda110`     |
 | CUDA 11.1 | `pip install cupy-cuda111`     |
 | CUDA 11.2 | `pip install cupy-cuda112`     |
+| CUDA 11.3 | `pip install cupy-cuda112` (*) |
 | ROCm 4.0  | `pip install cupy-rocm-4-0` (experimental; see [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details) |
+
+*(\*) CUDA 11.3 support is currently under verification. Meanwhile you can use wheels for CUDA 11.2 which is compatible with CUDA 11.3.*
 
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or building from source.
 

@@ -224,6 +224,20 @@ class TestCooMatrix(unittest.TestCase):
         ]
         cupy.testing.assert_allclose(m, expect)
 
+    # reshape
+    def test_reshape_0(self):
+        assert self.m.reshape((12, 1)).shape == (12, 1)
+
+    def test_reshape_1(self):
+        m = self.m.reshape((1, 12)).toarray()
+        expect = [[0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 3, 0]]
+        cupy.testing.assert_allclose(m, expect)
+
+    def test_reshape_2(self):
+        m = self.m.reshape((1, 12), order='F').toarray()
+        expect = [[1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0]]
+        cupy.testing.assert_allclose(m, expect)
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],

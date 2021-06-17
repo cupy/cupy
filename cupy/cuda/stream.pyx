@@ -1,9 +1,8 @@
-from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda cimport stream as stream_module
-
 import os
 import threading
-import weakref
+
+from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda cimport stream as backends_stream
 
 from cupy import _util
 
@@ -12,24 +11,23 @@ cdef object _thread_local = threading.local()
 
 
 cdef class _ThreadLocal:
-    # We keep both current_stream_ref and current_stream_stack because the
+    # We keep both current_stream and current_stream_stack because the
     # former is also used when calling stream.use(). This bookkeeping enables
     # correct rewinding when "with" blocks are mixed with ".use()" (though
-    # this is considered an anti-pattern). As the name suggested, stream
-    # lifetime is not tracked in current_stream_ref.
+    # this is considered an anti-pattern).
 
-    cdef list current_stream_ref  # list of object
+    cdef list current_stream  # list of object
     cdef list current_device_id_stack  # list of int
     cdef list current_stream_stack  # list of list
 
     def __init__(self):
         cdef int i, num_devices = runtime.getDeviceCount()
-        self.current_stream_ref = []
+        self.current_stream = []
         self.current_device_id_stack = []
         self.current_stream_stack = []
         for i in range(num_devices):
             default_stream = get_default_stream()
-            self.current_stream_ref.append(weakref.ref(default_stream))
+            self.current_stream.append(default_stream)
             self.current_stream_stack.append([default_stream])
 
     @staticmethod
@@ -59,21 +57,21 @@ cdef class _ThreadLocal:
         cdef int device_id = stream.device_id
         if device_id == -1:
             device_id = runtime.getDevice()
-        stream_module.set_current_stream_ptr(ptr, device_id)
-        self.current_stream_ref[device_id] = weakref.ref(stream)
+        backends_stream.set_current_stream_ptr(ptr, device_id)
+        self.current_stream[device_id] = stream
 
     cdef get_current_stream(self, int device_id=-1):
         if device_id == -1:
             device_id = runtime.getDevice()
-        stream_ref = self.current_stream_ref[device_id]
-        return stream_ref()
+        stream_ref = self.current_stream[device_id]
+        return stream_ref
 
     cdef intptr_t get_current_stream_ptr(self):
-        return stream_module.get_current_stream_ptr()
+        return backends_stream.get_current_stream_ptr()
 
 
 cdef get_default_stream():
-    return Stream.ptds if stream_module.is_ptds_enabled() else Stream.null
+    return Stream.ptds if backends_stream.is_ptds_enabled() else Stream.null
 
 
 cdef intptr_t get_current_stream_ptr():
@@ -188,7 +186,7 @@ cdef int check_stream_device_match(int device_id) except? -1:
     return device_id
 
 
-class BaseStream(object):
+class _BaseStream:
 
     """CUDA stream.
 
@@ -199,12 +197,14 @@ class BaseStream(object):
 
     """
 
-    null = None
+    def __init__(self, ptr, device_id):
+        self.ptr = ptr
+        self.device_id = device_id
 
     def __eq__(self, other):
-        # This operator is implemented to compare the singleton instance
-        # of null stream (Stream.null) can safely be compared with null
-        # stream instance created by a user.
+        # This operator needed as the ptr may be shared between multiple Stream
+        # instances (e.g, `Stream.null` singleton and `Stream(null=True)` or
+        # `ExternalStream`s).
         return self.ptr == other.ptr
 
     def __enter__(self):
@@ -316,7 +316,7 @@ class BaseStream(object):
         runtime.streamWaitEvent(self.ptr, event.ptr)
 
 
-class Stream(BaseStream):
+class Stream(_BaseStream):
 
     """CUDA stream.
 
@@ -346,48 +346,43 @@ class Stream(BaseStream):
 
     """
 
+    null = None
+    ptds = None
+
     def __init__(self, null=False, non_blocking=False, ptds=False):
         if null:
             # TODO(pentschev): move to streamLegacy. This wasn't possible
             # because of a NCCL bug that should be fixed in the version
             # following 2.8.3-1.
-            self.ptr = 0
-            self.device_id = -1
+            ptr = 0
+            device_id = -1
         elif ptds:
             if runtime._is_hip_environment:
                 raise ValueError('HIP does not support per-thread '
                                  'default stream (ptds)')
-            self.ptr = runtime.streamPerThread
-            self.device_id = -1
+            ptr = runtime.streamPerThread
+            device_id = -1
         elif non_blocking:
-            self.ptr = runtime.streamCreateWithFlags(
-                runtime.streamNonBlocking)
-            self.device_id = runtime.getDevice()
+            ptr = runtime.streamCreateWithFlags(runtime.streamNonBlocking)
+            device_id = runtime.getDevice()
         else:
-            self.ptr = runtime.streamCreate()
-            self.device_id = runtime.getDevice()
+            ptr = runtime.streamCreate()
+            device_id = runtime.getDevice()
+        super().__init__(ptr, device_id)
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
-        cdef intptr_t current_ptr
         if is_shutting_down():
             return
         tls = _ThreadLocal.get()
         if self.ptr not in (0, runtime.streamLegacy, runtime.streamPerThread):
-            current_ptr = tls.get_current_stream_ptr()
-            if <intptr_t>self.ptr == current_ptr:
-                tls.set_current_stream(get_default_stream())
             runtime.streamDestroy(self.ptr)
-        else:
-            current_stream = tls.get_current_stream()
-            if current_stream == self:
-                tls.set_current_stream(get_default_stream())
         # Note that we can not release memory pool of the stream held in CPU
         # because the memory would still be used in kernels executed in GPU.
 
 
-class ExternalStream(BaseStream):
+class ExternalStream(_BaseStream):
 
-    """CUDA stream.
+    """CUDA stream not managed by CuPy.
 
     This class allows to use external streams in CuPy by providing the
     stream pointer obtained from the CUDA runtime call.
@@ -411,14 +406,13 @@ class ExternalStream(BaseStream):
     """
 
     def __init__(self, ptr, device_id=-1):
-        self.ptr = ptr
         # It is in theory unsafe to just call runtime.getDevice() here, as the
         # stream pointer could come from a different device (although
         # unlikely). While we could use driver API combos cuStreamGetCtx ->
         # cuCtxSetCurrent -> cuCtxGetDevice -> ... to retrieve the device ID
-        # associated with the stream, it is way too complicated. Let us keep
-        # this as thin as possible.
-        self.device_id = device_id
+        # associated with the stream, it is way too complicated and does not
+        # work with HIP. Let us keep this as thin as possible.
+        super().__init__(ptr, device_id)
 
 
 Stream.null = Stream(null=True)

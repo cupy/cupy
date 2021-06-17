@@ -1,3 +1,5 @@
+import cupy
+
 from cupy_backends.cuda.api import runtime
 from cupyx.jit import _cuda_types
 from cupyx.jit._internal_types import BuiltinFunc
@@ -5,6 +7,8 @@ from cupyx.jit._internal_types import Data
 from cupyx.jit._internal_types import Constant
 from cupyx.jit._internal_types import Range
 from cupyx.jit import _compile
+
+from functools import reduce
 
 
 class RangeFunc(BuiltinFunc):
@@ -22,6 +26,13 @@ class RangeFunc(BuiltinFunc):
             raise TypeError(
                 f'range expected at most 3 argument, got {len(args)}')
 
+        if isinstance(step, Constant):
+            step_is_positive = step.obj >= 0
+        elif step.ctype.dtype.kind == 'u':
+            step_is_positive = True
+        else:
+            step_is_positive = None
+
         stop = Data.init(stop, env)
         start = Data.init(start, env)
         step = Data.init(step, env)
@@ -33,13 +44,6 @@ class RangeFunc(BuiltinFunc):
         if step.ctype.dtype.kind not in 'iu':
             raise TypeError('range supports only for integer type.')
 
-        if isinstance(step, Constant):
-            step_is_positive = step.obj >= 0
-        elif step.ctype.dtype.kind == 'u':
-            step_is_positive = True
-        else:
-            step_is_positive = None
-
         if env.mode == 'numpy':
             ctype = _cuda_types.Scalar(int)
         elif env.mode == 'cuda':
@@ -48,6 +52,43 @@ class RangeFunc(BuiltinFunc):
             assert False
 
         return Range(start, stop, step, ctype, step_is_positive)
+
+
+class LenFunc(BuiltinFunc):
+    def call(self, env, *args, **kwds):
+        if len(args) != 1:
+            raise TypeError(f'len() expects only 1 argument, got {len(args)}')
+        if kwds:
+            raise TypeError('keyword arguments are not supported')
+        arg = args[0]
+        if not isinstance(arg.ctype, _cuda_types.CArray):
+            raise TypeError('len() supports only array type')
+        if not arg.ctype.ndim:
+            raise TypeError('len() of unsized array')
+        return Data(f'static_cast<long long>({arg.code}.shape()[0])',
+                    _cuda_types.Scalar('q'))
+
+
+class MinFunc(BuiltinFunc):
+    def call(self, env, *args, **kwds):
+        if len(args) < 2:
+            raise TypeError(
+                f'min() expects at least 2 arguments, got {len(args)}')
+        if kwds:
+            raise TypeError('keyword arguments are not supported')
+        return reduce(lambda a, b: _compile._call_ufunc(
+            cupy.minimum, (a, b), None, env), args)
+
+
+class MaxFunc(BuiltinFunc):
+    def call(self, env, *args, **kwds):
+        if len(args) < 2:
+            raise TypeError(
+                f'max() expects at least 2 arguments, got {len(args)}')
+        if kwds:
+            raise TypeError('keyword arguments are not supported')
+        return reduce(lambda a, b: _compile._call_ufunc(
+            cupy.maximum, (a, b), None, env), args)
 
 
 class SyncThreads(BuiltinFunc):
@@ -109,12 +150,64 @@ class AtomicOp(BuiltinFunc):
         return Data(f'{name}(&{target.code}, {value.code})', ctype)
 
 
+class Grid(BuiltinFunc):
+
+    def __call__(self, ndim):
+        """Compute the thread index in the grid.
+
+        Computation of the first integer is as follows::
+
+            jit.threadIdx.x + jit.blockIdx.x * jit.blockDim.x
+
+        and for the other two integers the ``y`` and ``z`` attributes are used.
+
+        Args:
+            ndim (int): The dimension of the grid. Only 1, 2, or 3 is allowed.
+
+        Returns:
+            int or tuple:
+                If ``ndim`` is 1, an integer is returned, otherwise a tuple.
+
+        .. note::
+            This function follows the convention of Numba's `numba.cuda.grid`_.
+
+        .. _numba.cuda.grid:
+            https://numba.readthedocs.io/en/stable/cuda/kernels.html#absolute-positions
+
+        """
+        super.__call__(self)
+
+    def call_const(self, env, ndim):
+        if not isinstance(ndim, int):
+            raise TypeError('ndim must be an integer')
+
+        # Numba convention: for 1D we return a single variable,
+        # otherwise a tuple
+        code = 'threadIdx.{n} + blockIdx.{n} * blockDim.{n}'
+        if ndim == 1:
+            return Data(code.format(n='x'), _cuda_types.uint32)
+        elif ndim == 2:
+            dims = ('x', 'y')
+        elif ndim == 3:
+            dims = ('x', 'y', 'z')
+        else:
+            raise ValueError('Only ndim=1,2,3 are supported')
+
+        elts_code = ', '.join(code.format(n=n) for n in dims)
+        ctype = _cuda_types.Tuple([_cuda_types.uint32]*ndim)
+        return Data(f'thrust::make_tuple({elts_code})', ctype)
+
+
 builtin_functions_dict = {
     range: RangeFunc(),
+    len: LenFunc(),
+    min: MinFunc(),
+    max: MaxFunc(),
 }
 
 syncthreads = SyncThreads()
 shared_memory = SharedMemory()
+grid = Grid()
 
 # TODO: Add more atomic functions.
 atomic_add = AtomicOp('Add', 'iILQefd')
