@@ -376,7 +376,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v3.5+
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.0 / v4.2
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -407,12 +407,17 @@ Installing Binary Packages
 --------------------------
 
 Wheels (precompiled binary packages) are available for Linux (x86_64).
+Package names are different depending on your ROCm version.
 
-Currently we only offer wheels for ROCm v4.0.x.
+.. list-table::
+   :header-rows: 1
 
-::
-
-  $ pip install cupy-rocm-4-0
+   * - ROCm
+     - Command
+   * - v4.0
+     - ``$ pip install cupy-rocm-4-0``
+   * - v4.2
+     - ``$ pip install cupy-rocm-4-2``
 
 Building CuPy for ROCm From Source
 ----------------------------------
