@@ -551,6 +551,8 @@ class TestDistributionsPoisson(unittest.TestCase):
         self.check_distribution(_distributions.poisson, lam_dtype, dtype)
 
     @cupy.testing.for_float_dtypes('lam_dtype')
+    @pytest.mark.xfail(
+        runtime.is_hip, reason='Generator API not supported in HIP')
     def test_poisson_generator(self, lam_dtype):
         self.check_distribution(cupy.random.default_rng(0).poisson,
                                 lam_dtype)
