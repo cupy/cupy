@@ -339,11 +339,11 @@ cpdef from_dlpack(array):
     .. _Data interchange mechanisms:
         https://data-apis.org/array-api/latest/design_topics/data_interchange.html
     """
-    try:
-        dev_type, dev_id = array.__dlpack_device__()
-    except AttributeError:
+    if not hasattr(array, '__dlpack_device__'):
         raise ValueError('the input does not support the DLPack exchange '
                          'protocol')
+    else:
+        dev_type, dev_id = array.__dlpack_device__()
 
     # CuPy is the consumer, so we provide our current stream to the producer
     if dev_type == <int>kDLGPU:
