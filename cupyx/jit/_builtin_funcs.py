@@ -125,10 +125,7 @@ class SyncWarp(BuiltinFunc):
         super().__call__()
 
     def call(self, env, *, mask=None):
-        if kwargs:
-            mask = kwargs.pop('mask')
-            if len(kwargs):
-                raise ValueError('keyword arguments not supported')
+        if mask:
             if isinstance(mask, Constant):
                 if not (0x0 <= mask.obj <= 0xffffffff):
                     raise ValueError('mask is out of range')
@@ -253,10 +250,10 @@ class WarpShuffleOp(BuiltinFunc):
         """
         self.__doc__ = doc
 
-    def __call__(self, mask, var, val_id, width=32):
+    def __call__(self, mask, var, val_id, *, width=32):
         super().__call__()
 
-    def call(self, env, mask, var, val_id, **kwargs):
+    def call(self, env, mask, var, val_id, *, width=None):
         name = self._name
 
         var = Data.init(var, env)
@@ -282,10 +279,7 @@ class WarpShuffleOp(BuiltinFunc):
         val_id = _compile._astype_scalar(val_id, val_id_t, 'same_kind', env)
         val_id = Data.init(val_id, env)
 
-        if kwargs:
-            width = kwargs.pop('width')
-            if len(kwargs):
-                raise ValueError('keyword arguments not supported')
+        if width:
             if isinstance(width, Constant):
                 if width.obj not in (2, 4, 8, 16, 32):
                     raise ValueError('width needs to be power of 2')
@@ -295,8 +289,6 @@ class WarpShuffleOp(BuiltinFunc):
             width = _compile._astype_scalar(
                 width, _cuda_types.int32, 'same_kind', env)
             width = Data.init(width, env)
-        else:
-            width = None
 
         code = f'{name}({hex(mask)}, {var.code}, {val_id.code}'
         code += f', {width.code})' if width else ')'
