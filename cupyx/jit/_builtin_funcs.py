@@ -111,7 +111,7 @@ class SyncThreads(BuiltinFunc):
 
 class SyncWarp(BuiltinFunc):
 
-    def __call__(self, mask=0xffffffff):
+    def __call__(self, *, mask=0xffffffff):
         """Calls ``__syncwarp()``.
 
         Args:
@@ -124,7 +124,7 @@ class SyncWarp(BuiltinFunc):
         """
         super().__call__()
 
-    def call(self, env, **kwargs):
+    def call(self, env, *, mask=None):
         if kwargs:
             mask = kwargs.pop('mask')
             if len(kwargs):
