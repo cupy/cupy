@@ -125,12 +125,14 @@ class SyncWarp(BuiltinFunc):
         super().__call__()
 
     def call(self, env, *, mask=None):
+        if runtime.is_hip:
+            warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
+            mask = None
+
         if mask:
             if isinstance(mask, Constant):
                 if not (0x0 <= mask.obj <= 0xffffffff):
                     raise ValueError('mask is out of range')
-            if runtime.is_hip:
-                warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
             mask = _compile._astype_scalar(
                 mask, _cuda_types.int32, 'same_kind', env)
             mask = Data.init(mask, env)
@@ -283,12 +285,14 @@ class WarpShuffleOp(BuiltinFunc):
             if isinstance(width, Constant):
                 if width.obj not in (2, 4, 8, 16, 32):
                     raise ValueError('width needs to be power of 2')
-            width = _compile._astype_scalar(
-                width, _cuda_types.int32, 'same_kind', env)
-            width = Data.init(width, env)
+        else:
+            width = Constant(64) if runtime.is_hip else Constant(32)
+        width = _compile._astype_scalar(
+            width, _cuda_types.int32, 'same_kind', env)
+        width = Data.init(width, env)
 
         code = f'{name}({hex(mask)}, {var.code}, {val_id.code}'
-        code += f', {width.code})' if width else ')'
+        code += f', {width.code})'
         return Data(code, ctype)
 
 
@@ -308,7 +312,9 @@ grid = Grid()
 atomic_add = AtomicOp('Add', 'iILQefd')
 
 # warp-shuffle functions
-shfl_sync = WarpShuffleOp('', 'iIlLqQefd')
-shfl_up_sync = WarpShuffleOp('up', 'iIlLqQefd')
-shfl_down_sync = WarpShuffleOp('down', 'iIlLqQefd')
-shfl_xor_sync = WarpShuffleOp('xor', 'iIlLqQefd')
+shfl_sync = WarpShuffleOp('', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+shfl_up_sync = WarpShuffleOp('up', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+shfl_down_sync = WarpShuffleOp('down',
+                               'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+shfl_xor_sync = WarpShuffleOp('xor',
+                              'iIlqfd' if runtime.is_hip else 'iIlLqQefd')

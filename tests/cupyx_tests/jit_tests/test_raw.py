@@ -290,7 +290,7 @@ class TestRaw(unittest.TestCase):
         else:
             testing.assert_allclose(a, e, rtol=1e-5, atol=1e-5)
 
-    @testing.for_dtypes('iILQefd')
+    @testing.for_dtypes('iILQfd' if runtime.is_hip else 'iILQefd')
     def test_atomic_add(self, dtype):
         @jit.rawkernel()
         def f(x, index, out):
@@ -323,7 +323,7 @@ class TestRaw(unittest.TestCase):
     # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
     @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
-    @testing.for_dtypes('iILQfd')
+    @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl(self, dtype):
         # strictly speaking this function is invalid in Python (see the
         # discussion in cupy/cupy#5340), but it serves for our purpose
@@ -360,7 +360,7 @@ class TestRaw(unittest.TestCase):
     # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
     @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
-    @testing.for_dtypes('iILQfd')
+    @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_up(self, dtype):
         N = 5
 
@@ -377,7 +377,7 @@ class TestRaw(unittest.TestCase):
     # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
     @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
-    @testing.for_dtypes('iILQfd')
+    @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_down(self, dtype):
         N = 5
 
@@ -394,7 +394,7 @@ class TestRaw(unittest.TestCase):
     # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
     @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
-    @testing.for_dtypes('iILQfd')
+    @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_xor(self, dtype):
         @jit.rawkernel()
         def f_shfl_xor(a):
