@@ -4,10 +4,10 @@
 #ifdef __HIP_DEVICE_COMPILE__
 
 // ignore mask
-#define __shfl_sync(m, x, y, z) __shfl(x, y, z)
-#define __shfl_up_sync(m, x, y, z) __shfl_up(x, y, z)
-#define __shfl_down_sync(m, x, y, z) __shfl_down(x, y, z)
-#define __shfl_xor_sync(m, x, y, z) __shfl_xor(x, y, z)
+#define __shfl_sync(mask, ...) __shfl(__VA_ARGS__)
+#define __shfl_up_sync(mask, ...) __shfl_up(__VA_ARGS__)
+#define __shfl_down_sync(mask, ...) __shfl_down(__VA_ARGS__)
+#define __shfl_xor_sync(mask, ...) __shfl_xor(__VA_ARGS__)
 
 // It is guaranteed to be safe on AMD's hardware, see
 // https://rocmdocs.amd.com/en/latest/Programming_Guides/HIP-GUIDE.html#warp-cross-lane-functions
