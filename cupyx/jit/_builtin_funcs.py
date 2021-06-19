@@ -267,7 +267,7 @@ class WarpShuffleOp(BuiltinFunc):
             raise TypeError('mask must be an integer')
         if runtime.is_hip:
             warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
-        if not (0x0 <= mask <= 0xffffffff):
+        elif not (0x0 <= mask <= 0xffffffff):
             raise ValueError('mask is out of range')
 
         # val_id refers to "delta" for shfl_{up, down}, "srcLane" for shfl, and
@@ -283,9 +283,6 @@ class WarpShuffleOp(BuiltinFunc):
             if isinstance(width, Constant):
                 if width.obj not in (2, 4, 8, 16, 32):
                     raise ValueError('width needs to be power of 2')
-            if runtime.is_hip:
-                warnings.warn(
-                    f'width ({width}) is ignored on HIP', RuntimeWarning)
             width = _compile._astype_scalar(
                 width, _cuda_types.int32, 'same_kind', env)
             width = Data.init(width, env)
