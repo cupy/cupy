@@ -35,17 +35,31 @@ def _make_cudnn_url(public_version, filename):
 def _make_cudnn_record(
         cuda_version, public_version, filename_linux, filename_windows):
     major_version = public_version.split('.')[0]
+
+    if major_version == '7':
+        suffix_list = ['']
+    elif major_version == '8':
+        # Dependency order is documented at:
+        # https://docs.nvidia.com/deeplearning/cudnn/api/index.html
+        suffix_list = ['', '_ops_infer', '_ops_train',
+                       '_cnn_infer', '_cnn_train',
+                       '_adv_infer', '_adv_train']
+    else:
+        raise AssertionError
+
     return {
         'cuda': cuda_version,
         'cudnn': public_version,
         'assets': {
             'Linux': {
                 'url': _make_cudnn_url(public_version, filename_linux),
-                'filename': 'libcudnn.so.{}'.format(public_version),
+                'filenames': [f'libcudnn{suffix}.so.{public_version}'
+                              for suffix in suffix_list]
             },
             'Windows': {
                 'url': _make_cudnn_url(public_version, filename_windows),
-                'filename': 'cudnn64_{}.dll'.format(major_version),
+                'filenames': [f'cudnn{suffix}64_{major_version}.dll'
+                              for suffix in suffix_list]
             },
         }
     }
@@ -102,11 +116,11 @@ def _make_cutensor_record(
         'assets': {
             'Linux': {
                 'url': _make_cutensor_url(public_version, filename_linux),
-                'filename': 'libcutensor.so.{}'.format(public_version),
+                'filenames': ['libcutensor.so.{}'.format(public_version)],
             },
             'Windows': {
                 'url': _make_cutensor_url(public_version, filename_windows),
-                'filename': 'cutensor.dll',
+                'filenames': ['cutensor.dll'],
             },
         }
     }
@@ -154,7 +168,7 @@ def _make_nccl_record(
         'assets': {
             'Linux': {
                 'url': _make_nccl_url(public_version, filename_linux),
-                'filename': 'libnccl.so.{}'.format(full_version),
+                'filenames': ['libnccl.so.{}'.format(full_version)],
             },
         },
     }
