@@ -13,7 +13,7 @@ Dropping CUDA 9.2 Support
 CUDA 9.2 is no longer supported.
 Use CUDA 10.0 or later.
 
-Dropping Support of NCCL v2.4
+Dropping NCCL v2.4 Support
 -----------------------------
 
 NCCL v2.4 is no longer supported.
@@ -41,7 +41,8 @@ For example, the following code raises an error in CuPy v9 or earlier:
            cupy.arange(10)  # -> CUDA_ERROR_INVALID_HANDLE: invalid resource handle
 
 CuPy v10 manages the current stream per-device, thus eliminating the need of switching the stream every time the active device is changed.
-In the above example, in CuPy v10 ``with s0:`` only changes the current stream for the device 0, so ``cupy.arange(10)`` will run on the current stream for device 1, which is by default the legacy (null) default stream.
+When using CuPy v10, the above example behaves differently because whenever a stream is created, it is automatically associated with the current device and will be ignored when switching devices. 
+In early versions, trying to use `s0` in device 1 raises an error because `s0` is associated with device 0. However, in v10, this `s0` is ignored and the default stream for device 1 will be used instead.
 
 Current stream set via ``use()`` will not be restored when exiting ``with`` block
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
