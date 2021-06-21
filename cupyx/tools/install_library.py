@@ -113,25 +113,25 @@ def _make_cutensor_record(
 
 
 _cutensor_records.append(_make_cutensor_record(
-    '11.3', '1.3.0',
-    'libcutensor-linux-x86_64-1.3.0.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.0.3.zip'))
+    '11.3', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '11.2', '1.3.0',
-    'libcutensor-linux-x86_64-1.3.0.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.0.3.zip'))
+    '11.2', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '11.1', '1.3.0',
-    'libcutensor-linux-x86_64-1.3.0.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.0.3.zip'))
+    '11.1', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '11.0', '1.3.0',
-    'libcutensor-linux-x86_64-1.3.0.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.0.3.zip'))
+    '11.0', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '10.2', '1.3.0',
-    'libcutensor-linux-x86_64-1.3.0.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.0.3.zip'))
+    '10.2', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
     '10.1', '1.2.2',
     'libcutensor-linux-x86_64-1.2.2.5.tar.gz',
