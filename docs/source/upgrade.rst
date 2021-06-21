@@ -7,7 +7,7 @@ This is a list of changes introduced in each release that users should be aware 
 CuPy v10
 ========
 
-Dropping Support of CUDA 9.2
+Dropping CUDA 9.2 Support
 ----------------------------
 
 CUDA 9.2 is no longer supported.
@@ -40,7 +40,7 @@ For example, the following code raises an error in CuPy v9 or earlier:
            # Try to use the stream on device 1
            cupy.arange(10)  # -> CUDA_ERROR_INVALID_HANDLE: invalid resource handle
 
-CuPy v10 manages the current stream per-device so that you don't have to take care of the consistency between streams and devices.
+CuPy v10 manages the current stream per-device, thus eliminating the need of switching the stream every time the active device is changed.
 In the above example, in CuPy v10 ``with s0:`` only changes the current stream for the device 0, so ``cupy.arange(10)`` will run on the current stream for device 1, which is by default the legacy (null) default stream.
 
 Current stream set via ``use()`` will not be restored when exiting ``with`` block
@@ -65,12 +65,12 @@ Streams can now be shared between threads
 
 The same :class:`cupy.cuda.Stream` instance can now safely be shared between multiple threads.
 
-To achieve this, CuPy v10 will not destroy the stream (``cudaStreamDestroy``) if the stream is set to the current stream of any threads.
+To achieve this, CuPy v10 will not destroy the stream (``cudaStreamDestroy``) if the stream is the current stream of any thread.
 
 API Changes
 -----------
 
-Device synchronize detection APIs (``cupyx.allow_synchronize`` and ``cupyx.DeviceSynchronized``), which was introduced as an experimental feature in CuPy v8, has been marked as deprecated because it is impossible to reliable detect synchronizations.
+Device synchronize detection APIs (``cupyx.allow_synchronize`` and ``cupyx.DeviceSynchronized``), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
 
 Deprecated APIs may be removed in the future CuPy releases.
 
