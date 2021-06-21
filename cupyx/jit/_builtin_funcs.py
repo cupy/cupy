@@ -126,8 +126,9 @@ class SyncWarp(BuiltinFunc):
 
     def call(self, env, *, mask=None):
         if runtime.is_hip:
-            warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
-            mask = None
+            if mask is not None:
+                warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
+                mask = None
 
         if mask:
             if isinstance(mask, Constant):
