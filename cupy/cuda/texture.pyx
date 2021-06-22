@@ -4,6 +4,7 @@ from libc.string cimport memset as c_memset
 import numpy
 
 from cupy._core.core cimport ndarray
+from cupy._core.core cimport _internal_ascontiguousarray
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime cimport Array,\
@@ -378,7 +379,7 @@ cdef class CUDAarray:
 
         return <void*>param
 
-    def _prepare_copy(self, arr, stream, direction):
+    cdef void _prepare_copy(self, arr, stream, direction) except*:
         cdef dict ch = self.desc.get_channel_format()
 
         # sanity checks:
@@ -469,13 +470,23 @@ cdef class CUDAarray:
             where ``nch`` is the number of channels specified in
             :attr:`~CUDAarray.desc`.
         '''
+        # ensure the array is C-contiguous
+        if isinstance(in_arr, ndarray):
+            if stream is None:
+                s = stream_module.get_current_stream()
+            else:
+                s = stream
+            with s:
+                in_arr = _internal_ascontiguousarray(in_arr)
+        elif isinstance(in_arr, numpy.ndarray):
+            in_arr = numpy.ascontiguousarray(in_arr)
         self._prepare_copy(in_arr, stream, direction='in')
 
     def copy_to(self, out_arr, stream=None):
         '''Copy data from CUDA array to device or host array.
 
         Args:
-            out_arr (cupy.ndarray or numpy.ndarray)
+            out_arr (cupy.ndarray or numpy.ndarray): must be C-contiguous
             stream (cupy.cuda.Stream): if not ``None``, an asynchronous copy is
                 performed.
 
@@ -490,6 +501,8 @@ cdef class CUDAarray:
             where ``nch`` is the number of channels specified in
             :attr:`~CUDAarray.desc`.
         '''
+        if not out_arr.flags.c_contiguous:
+            raise ValueError('The output array must be C-contiguous')
         self._prepare_copy(out_arr, stream, direction='out')
 
 
