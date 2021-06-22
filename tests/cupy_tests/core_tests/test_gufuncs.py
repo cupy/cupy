@@ -134,7 +134,7 @@ class TestGUFuncOut:
             nonlocal out_ptr
             # Base is a view of the output due to the batching
             assert out.base.data.ptr == out_ptr
-            return x
+            out[:] = x
         gu_func = _GUFunc(func, '(i,j)->(i,j)', supports_out=True)
         gu_func(x, out=out)
         testing.assert_allclose(x, out)
