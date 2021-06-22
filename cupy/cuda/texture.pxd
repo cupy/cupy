@@ -31,6 +31,7 @@ cdef class CUDAarray:
 
         int _get_memory_kind(self, src, dst)
         void* _make_cudaMemcpy3DParms(self, src, dst)
+        void _prepare_copy(self, arr, stream, direction) except*
 
 
 cdef class TextureObject:
