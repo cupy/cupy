@@ -309,7 +309,8 @@ shared_memory = SharedMemory()
 grid = Grid()
 
 # TODO: Add more atomic functions.
-atomic_add = AtomicOp('Add', 'iILQefd')
+atomic_add = AtomicOp(
+    'Add', 'iILQfd' if runtime.is_hip else 'iILQefd')
 
 # warp-shuffle functions
 shfl_sync = WarpShuffleOp('', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
