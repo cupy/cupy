@@ -51,6 +51,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void poisson(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t arg1)
+    void binomial(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, intptr arg1, intptr arg2)
 
 
 cdef ndarray _array_data(ndarray x):
@@ -494,6 +497,30 @@ class Generator:
         # cython cant call astype with the default values for
         # omitted args.
         return (<object>y).astype(dtype, copy=False)
+
+    def binomial(self, n, p, size=None):
+        """binomial"""
+        cdef ndarray y
+        cdef ndarray n_arr
+        cdef ndarray p_arr
+
+        n = cupy.asarray(n)
+        p = cupy.asarray(p)
+
+        if size is None:
+            size = cupy.broadcast(n, p).shape
+
+        y = ndarray(size if size is not None else (), numpy.int64)
+
+        n = cupy.broadcast_to(n, y.shape)
+        p = cupy.broadcast_to(p, y.shape)
+        n_arr = _array_data(n)
+        p_arr = _array_data(p)
+        n_ptr = n_arr.data.ptr
+        p_ptr = p_arr.data.ptr
+
+        _launch_dist(self.bit_generator, binomial, y, (n_ptr, p_ptr,))
+        return y
 
 
 def init_curand(generator, state, seed, size):

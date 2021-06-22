@@ -34,6 +34,7 @@ void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape);
+void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p);
 
 # else 
 
@@ -53,6 +54,7 @@ void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream){}
 void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t shape) {}
+void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p) {}
 
 #endif
 #endif
