@@ -273,7 +273,7 @@ class _OpsRegister:
                 for arg in args:
                     ret_dtype = numpy.promote_types(dtype, arg.dtype)
             else:
-                ret_dtype = get_dtype(dtype).type
+                ret_dtype = get_dtype(dtype)
         else:
             # Convert args to the op specified in_types
             n_args = []
@@ -387,7 +387,7 @@ class _GUFunc:
         if self._supports_batched or dim == len(dims):
             # Check if the function supports out, order and other args
             if self._supports_out and outs is not None:
-                outs = outs[0] if len(outs) == 0 else outs
+                outs = outs[0] if len(outs) == 1 else outs
                 func(*args, out=outs)
             else:
                 fouts = func(*args)
@@ -666,9 +666,13 @@ class _GUFunc:
                     outs, ret_dtype, out_shape)
                 outs._set_shape_and_strides(out_shape, strides, True, True)
             outs = (outs,)
-        elif outs[0].shape != out_shape:
-            raise ValueError(f'Invalid shape for out {outs[0].shape}'
-                             f' needs {out_shape}')
+        else:
+            if outs[0].shape != out_shape:
+                raise ValueError(f'Invalid shape for out {outs[0].shape}'
+                                 f' needs {out_shape}')
+            if not numpy.can_cast(ret_dtype, outs[0].dtype, casting=casting):
+                raise TypeError(f'Cannot cast out dtype from {outs[0].dtype}'
+                                f' to {ret_dtype} with rule {casting}')
         self._apply_func_to_inputs(
             func, 0, dimsizess, loop_output_dims, args, outs)
 
