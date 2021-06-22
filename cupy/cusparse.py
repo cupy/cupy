@@ -1664,7 +1664,6 @@ def denseToSparse(x, format='csr'):
     _cusparse.spMatGetSize(desc_y.desc, num_rows_tmp.ctypes.data,
                            num_cols_tmp.ctypes.data, nnz.ctypes.data)
     nnz = int(nnz)
-    print('# nnz: {}'.format(nnz))
     if format == 'csr':
         indptr = y.indptr
         indices = _cupy.empty(nnz, 'i')
