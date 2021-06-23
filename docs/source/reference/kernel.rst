@@ -23,6 +23,7 @@ JIT kernel definition
    cupyx.jit.blockIdx
    cupyx.jit.gridDim
    cupyx.jit.grid
+   cupyx.jit.range
    cupyx.jit.syncthreads
    cupyx.jit.syncwarp
    cupyx.jit.shfl_sync

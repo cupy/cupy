@@ -15,6 +15,31 @@ from functools import reduce
 
 class RangeFunc(BuiltinFunc):
 
+    def __call__(self, *args, unroll=None):
+        """Range with loop unrolling support.
+
+        Args:
+            start (int):
+                Same as that of built-in range.
+            stop (int):
+                Same as that of built-in range.
+            step (int):
+                Same as that of built-in range.
+            unroll (int or bool or None):
+                If ``True``, add ``#pragma unroll`` directive before the loop.
+                If ``False``, add ``#pragma unroll(1)`` directive before the
+                loop to disable unrolling.
+                If ``int`` type, add ``#pragma unroll(n)`` directive before the
+                loop, where ``n`` means the number of iterations to unroll.
+                If ``None``, leave the control of loop unrolling to compiler.
+
+        .. seealso:: `#pragma unroll`_
+
+        .. _#pragma unroll:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#pragma-unroll
+        """
+        super.__call__(self)
+
     def call(self, env, *args, **kwargs):
         if len(args) == 0:
             raise TypeError('range expected at least 1 argument, got 0')
