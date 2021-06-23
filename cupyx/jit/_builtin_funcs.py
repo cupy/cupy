@@ -171,11 +171,32 @@ class AtomicOp(BuiltinFunc):
         self._op = op
         self._name = 'atomic' + op
         self._dtypes = dtypes
-        super().__init__()
+        doc = f"""Call the ``{self._name}`` function to operate atomically on
+        ``array[index]``. Please refer to `Atomic Functions`_ for detailed
+        explanation.
 
-    def __call__(self):
-        # TODO(leofang): add docstring
-        pass
+        Args:
+            array: A :class:`cupy.ndarray` to index over.
+            index: A valid index such that the address to the corresponding
+                array element can be computed.
+            value: Represent the value to use for the specified operation. For
+                the case of :obj:`atomic_cas`, this is the value for
+                ``array[index]``to compare with.
+            alt_value: Only used in :obj:`atomic_cas` to represent the value
+                to swap to.
+
+        .. seealso:: `Numba's corresponding atomic functions`_
+
+        .. _Atomic Functions:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomic-functions
+
+        .. _Numba's corresponding atomic functions:
+            https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#synchronization-and-atomic-operations
+        """
+        self.__doc__ = doc
+
+    def __call__(self, array, index, value, *, alt_value=None):
+        super().__call__()
 
     def call(self, env, array, index, value, value2=None):
         name = self._name
@@ -187,7 +208,7 @@ class AtomicOp(BuiltinFunc):
         ctype = target.ctype
         if ctype.dtype.char not in self._dtypes:
             raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
-        # TODO(leofang): how about HIP?
+        # On HIP, 'e' is not supported and we will never reach here
         if (op == 'Add' and ctype.dtype.char == 'e'
                 and runtime.runtimeGetVersion() < 10000):
             raise RuntimeError(
@@ -200,6 +221,7 @@ class AtomicOp(BuiltinFunc):
             value2 = Data.init(value2, env)
             code = f'{name}(&{target.code}, {value.code}, {value2.code})'
         else:
+            assert value2 is None
             code = f'{name}(&{target.code}, {value.code})'
         return Data(code, ctype)
 
@@ -258,8 +280,8 @@ class WarpShuffleOp(BuiltinFunc):
         self._op = op
         self._name = '__shfl_' + (op + '_' if op else '') + 'sync'
         self._dtypes = dtypes
-        doc = f"""Call the {self._name} function. Please refer to
-        `Warp Shuffle Functions`_ for detail explanation.
+        doc = f"""Call the ``{self._name}`` function. Please refer to
+        `Warp Shuffle Functions`_ for detailed explanation.
 
         .. _Warp Shuffle Functions:
             https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions
@@ -322,6 +344,7 @@ syncwarp = SyncWarp()
 shared_memory = SharedMemory()
 grid = Grid()
 
+# atomic functions
 atomic_add = AtomicOp(
     'Add', 'iILQfd' if runtime.is_hip else 'iILQefd')
 atomic_sub = AtomicOp(
@@ -346,9 +369,11 @@ atomic_xor = AtomicOp(
     'Xor', 'iILQ')
 
 # warp-shuffle functions
-shfl_sync = WarpShuffleOp('', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
-shfl_up_sync = WarpShuffleOp('up', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
-shfl_down_sync = WarpShuffleOp('down',
-                               'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
-shfl_xor_sync = WarpShuffleOp('xor',
-                              'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+shfl_sync = WarpShuffleOp(
+    '', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+shfl_up_sync = WarpShuffleOp(
+    'up', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+shfl_down_sync = WarpShuffleOp(
+    'down', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+shfl_xor_sync = WarpShuffleOp(
+    'xor', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
