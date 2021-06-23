@@ -134,7 +134,10 @@ def unwrap(p, discont=numpy.pi, axis=-1):
     slice1[axis] = slice(1, None)
     slice1 = tuple(slice1)
     ph_correct = _unwrap_correct(dd, discont)
-    up = cupy.array(p, copy=True, dtype='d')
+    dtype = 'd'
+    if numpy.dtype(p.dtype).kind == 'f':
+        dtype = p.dtype
+    up = cupy.array(p, copy=True, dtype=dtype)
     up[slice1] = p[slice1] + cupy.cumsum(ph_correct, axis=axis)
     return up
 
