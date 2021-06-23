@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v9.2 / v10.0 / v10.1 / v10.2 / v11.0 / v11.1 / v11.2
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v10.0 / v10.1 / v10.2 / v11.0 / v11.1 / v11.2
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -54,11 +54,11 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.4 (CUDA 9.2) / v2.6 (CUDA 10.0) / v2.8.3 (CUDA 10.1) / v2.8.4 (CUDA 11.1 & 11.2)  / v2.9 (CUDA 10.2 & 11.0)
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.6 / v2.7 / v2.8 / v2.9
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 (CUDA 9.2 & 10.0) / v8.0 (CUDA 10.1) / v8.1 (CUDA 10.2+) / v8.2 (CUDA 10.2+)
+* `cuDNN <https://developer.nvidia.com/cudnn>`_: v7.6 / v8.0 / v8.1 / v8.2
 
     * The library to accelerate deep neural network computations.
 
@@ -78,8 +78,6 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - v9.2
-     - ``$ pip install cupy-cuda92``
    * - v10.0
      - ``$ pip install cupy-cuda100``
    * - v10.1
@@ -378,7 +376,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://github.com/RadeonOpenCompute/ROCm#Hardware-and-Software-Support>`_
 
-* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v3.5+
+* `ROCm <https://rocmdocs.amd.com/en/latest/index.html>`_: v4.0 / v4.2
     * See the `ROCm Installation Guide <https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -409,12 +407,17 @@ Installing Binary Packages
 --------------------------
 
 Wheels (precompiled binary packages) are available for Linux (x86_64).
+Package names are different depending on your ROCm version.
 
-Currently we only offer wheels for ROCm v4.0.x.
+.. list-table::
+   :header-rows: 1
 
-::
-
-  $ pip install cupy-rocm-4-0
+   * - ROCm
+     - Command
+   * - v4.0
+     - ``$ pip install cupy-rocm-4-0``
+   * - v4.2
+     - ``$ pip install cupy-rocm-4-2``
 
 Building CuPy for ROCm From Source
 ----------------------------------

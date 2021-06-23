@@ -14,34 +14,34 @@ Basics of cupy.ndarray
 ----------------------
 
 CuPy is a GPU array backend that implements a subset of NumPy interface.
-In the following code, ``cp`` is an abbreviation of ``cupy``, following the convention of abbreviating ``numpy`` to ``np``:
+In the following code, ``cp`` is an abbreviation of ``cupy``, following the standard convention of abbreviating ``numpy`` as ``np``:
 
 .. doctest::
 
    >>> import numpy as np
    >>> import cupy as cp
 
-The :class:`cupy.ndarray` class is in its core, which is a compatible GPU alternative of :class:`numpy.ndarray`.
+The :class:`cupy.ndarray` class is at the core of ``CuPy`` and is a replacement class for ``NumPy``'s :class:`numpy.ndarray`.
 
 .. doctest::
 
    >>> x_gpu = cp.array([1, 2, 3])
 
-``x_gpu`` in the above example is an instance of :class:`cupy.ndarray`.
-You can see its creation of identical to ``NumPy``'s one, except that ``numpy`` is replaced with ``cupy``.
-The main difference of :class:`cupy.ndarray` from :class:`numpy.ndarray` is that the content is allocated on the device memory.
-Its data is allocated on the *current device*, which will be explained later.
+``x_gpu`` above is an instance of :class:`cupy.ndarray`.
+As one can see, CuPy's syntax here is identical to that of NumPy.
+The main difference between :class:`cupy.ndarray` and :class:`numpy.ndarray` is that
+the CuPy arrays are allocated on the *current device*, which we will talk about later.
 
 Most of the array manipulations are also done in the way similar to NumPy.
-Take the Euclidean norm (a.k.a L2 norm) for example.
-NumPy has :func:`numpy.linalg.norm` to calculate it on CPU.
+Take the Euclidean norm (a.k.a L2 norm), for example.
+NumPy has :func:`numpy.linalg.norm` function that calculates it on CPU.
 
 .. doctest::
 
    >>> x_cpu = np.array([1, 2, 3])
    >>> l2_cpu = np.linalg.norm(x_cpu)
 
-We can calculate it on GPU with CuPy in a similar way:
+Using CuPy, we can perform the same calculations on GPU in a similar way:
 
 .. doctest::
 
@@ -50,23 +50,23 @@ We can calculate it on GPU with CuPy in a similar way:
 
 CuPy implements many functions on :class:`cupy.ndarray` objects.
 See the :ref:`reference <cupy_reference>` for the supported subset of NumPy API.
-Understanding NumPy might help utilizing most features of CuPy.
-So, we recommend you to read the `NumPy documentation <https://docs.scipy.org/doc/numpy/index.html>`_.
+Knowledge of NumPy will help you utilize most of the CuPy features.
+We, therefore, recommend you familiarize yourself with the `NumPy documentation <https://docs.scipy.org/doc/numpy/index.html>`_.
 
 
 Current Device
 --------------
 
-CuPy has a concept of *current devices*, which is the default device on which
-the allocation, manipulation, calculation, etc., of arrays are taken place.
-Suppose the ID of current device is 0.
-The following code allocates array contents on GPU 0.
+CuPy has a concept of a *current device*, which is the default GPU device on which
+the allocation, manipulation, calculation, etc., of arrays take place.
+Suppose ID of the current device is 0.
+In such a case, the following code would create an array ``x_on_gpu0`` on GPU 0.
 
 .. doctest::
 
    >>> x_on_gpu0 = cp.array([1, 2, 3, 4, 5])
 
-The current device can be changed by :class:`cupy.cuda.Device.use()` as follows:
+The current device can be changed using :class:`cupy.cuda.Device.use()` as follows:
 
 .. doctest::
 
@@ -74,7 +74,7 @@ The current device can be changed by :class:`cupy.cuda.Device.use()` as follows:
    >>> cp.cuda.Device(1).use()
    >>> x_on_gpu1 = cp.array([1, 2, 3, 4, 5])
 
-If you switch the current GPU temporarily, *with* statement comes in handy.
+To temporarily switch to another GPU device, use ``with`` context manager:
 
 .. doctest::
 
@@ -82,8 +82,8 @@ If you switch the current GPU temporarily, *with* statement comes in handy.
    ...    x_on_gpu1 = cp.array([1, 2, 3, 4, 5])
    >>> x_on_gpu0 = cp.array([1, 2, 3, 4, 5])
 
-Most operations of CuPy are done on the current device.
-Be careful that if processing of an array on a non-current device will cause an error:
+Most CuPy operations are performed on the currently active device and
+attempts to process an array stored on a different device will result in an error:
 
 .. doctest::
 
@@ -106,7 +106,7 @@ Be careful that if processing of an array on a non-current device will cause an 
 
 .. note::
 
-   If the environment has only one device, such explicit device switching is not needed.
+   When only one device is available, explicit device switching is not needed.
 
 
 .. _current_stream:

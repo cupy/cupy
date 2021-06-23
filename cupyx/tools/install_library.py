@@ -35,17 +35,31 @@ def _make_cudnn_url(public_version, filename):
 def _make_cudnn_record(
         cuda_version, public_version, filename_linux, filename_windows):
     major_version = public_version.split('.')[0]
+
+    if major_version == '7':
+        suffix_list = ['']
+    elif major_version == '8':
+        # Dependency order is documented at:
+        # https://docs.nvidia.com/deeplearning/cudnn/api/index.html
+        suffix_list = ['', '_ops_infer', '_ops_train',
+                       '_cnn_infer', '_cnn_train',
+                       '_adv_infer', '_adv_train']
+    else:
+        raise AssertionError
+
     return {
         'cuda': cuda_version,
         'cudnn': public_version,
         'assets': {
             'Linux': {
                 'url': _make_cudnn_url(public_version, filename_linux),
-                'filename': 'libcudnn.so.{}'.format(public_version),
+                'filenames': [f'libcudnn{suffix}.so.{public_version}'
+                              for suffix in suffix_list]
             },
             'Windows': {
                 'url': _make_cudnn_url(public_version, filename_windows),
-                'filename': 'cudnn64_{}.dll'.format(major_version),
+                'filenames': [f'cudnn{suffix}64_{major_version}.dll'
+                              for suffix in suffix_list]
             },
         }
     }
@@ -53,25 +67,25 @@ def _make_cudnn_record(
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
 _cudnn_records.append(_make_cudnn_record(
-    '11.3', '8.2.0',
-    'cudnn-11.3-linux-x64-v8.2.0.53.tgz',
-    'cudnn-11.3-windows-x64-v8.2.0.53.zip'))
+    '11.3', '8.2.1',
+    'cudnn-11.3-linux-x64-v8.2.1.32.tgz',
+    'cudnn-11.3-windows-x64-v8.2.1.32.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.2', '8.2.0',
-    'cudnn-11.3-linux-x64-v8.2.0.53.tgz',
-    'cudnn-11.3-windows-x64-v8.2.0.53.zip'))
+    '11.2', '8.2.1',
+    'cudnn-11.3-linux-x64-v8.2.1.32.tgz',
+    'cudnn-11.3-windows-x64-v8.2.1.32.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.1', '8.2.0',
-    'cudnn-11.3-linux-x64-v8.2.0.53.tgz',
-    'cudnn-11.3-windows-x64-v8.2.0.53.zip'))
+    '11.1', '8.2.1',
+    'cudnn-11.3-linux-x64-v8.2.1.32.tgz',
+    'cudnn-11.3-windows-x64-v8.2.1.32.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.0', '8.2.0',
-    'cudnn-11.3-linux-x64-v8.2.0.53.tgz',
-    'cudnn-11.3-windows-x64-v8.2.0.53.zip'))
+    '11.0', '8.2.1',
+    'cudnn-11.3-linux-x64-v8.2.1.32.tgz',
+    'cudnn-11.3-windows-x64-v8.2.1.32.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '10.2', '8.2.0',
-    'cudnn-10.2-linux-x64-v8.2.0.53.tgz',
-    'cudnn-10.2-windows10-x64-v8.2.0.53.zip'))
+    '10.2', '8.2.1',
+    'cudnn-10.2-linux-x64-v8.2.1.32.tgz',
+    'cudnn-10.2-windows10-x64-v8.2.1.32.zip'))
 _cudnn_records.append(_make_cudnn_record(
     '10.1', '8.0.5',
     'cudnn-10.1-linux-x64-v8.0.5.39.tgz',
@@ -102,36 +116,36 @@ def _make_cutensor_record(
         'assets': {
             'Linux': {
                 'url': _make_cutensor_url(public_version, filename_linux),
-                'filename': 'libcutensor.so.{}'.format(public_version),
+                'filenames': ['libcutensor.so.{}'.format(public_version)],
             },
             'Windows': {
                 'url': _make_cutensor_url(public_version, filename_windows),
-                'filename': 'cutensor.dll',
+                'filenames': ['cutensor.dll'],
             },
         }
     }
 
 
 _cutensor_records.append(_make_cutensor_record(
-    '11.3', '1.3.0',
-    'libcutensor-linux-x86_64-1.3.0.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.0.3.zip'))
+    '11.3', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '11.2', '1.3.0',
-    'libcutensor-linux-x86_64-1.3.0.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.0.3.zip'))
+    '11.2', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '11.1', '1.3.0',
-    'libcutensor-linux-x86_64-1.3.0.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.0.3.zip'))
+    '11.1', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '11.0', '1.3.0',
-    'libcutensor-linux-x86_64-1.3.0.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.0.3.zip'))
+    '11.0', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
-    '10.2', '1.3.0',
-    'libcutensor-linux-x86_64-1.3.0.3.tar.gz',
-    'libcutensor-windows-x86_64-1.3.0.3.zip'))
+    '10.2', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
     '10.1', '1.2.2',
     'libcutensor-linux-x86_64-1.2.2.5.tar.gz',
@@ -154,7 +168,7 @@ def _make_nccl_record(
         'assets': {
             'Linux': {
                 'url': _make_nccl_url(public_version, filename_linux),
-                'filename': 'libnccl.so.{}'.format(full_version),
+                'filenames': ['libnccl.so.{}'.format(full_version)],
             },
         },
     }

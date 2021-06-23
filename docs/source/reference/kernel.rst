@@ -24,6 +24,11 @@ JIT kernel definition
    cupyx.jit.gridDim
    cupyx.jit.grid
    cupyx.jit.syncthreads
+   cupyx.jit.syncwarp
+   cupyx.jit.shfl_sync
+   cupyx.jit.shfl_up_sync
+   cupyx.jit.shfl_down_sync
+   cupyx.jit.shfl_xor_sync
    cupyx.jit.shared_memory
    cupyx.jit._interface._JitRawKernel
 

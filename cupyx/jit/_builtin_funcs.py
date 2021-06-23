@@ -1,3 +1,5 @@
+import warnings
+
 import cupy
 
 from cupy_backends.cuda.api import runtime
@@ -101,12 +103,50 @@ class MaxFunc(BuiltinFunc):
 class SyncThreads(BuiltinFunc):
 
     def __call__(self):
-        """Calls ``__syncthreads()``
+        """Calls ``__syncthreads()``.
+
+        .. seealso:: `Synchronization functions`_
+
+        .. _Synchronization functions:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions
         """
         super.__call__(self)
 
     def call_const(self, env):
         return Data('__syncthreads()', _cuda_types.void)
+
+
+class SyncWarp(BuiltinFunc):
+
+    def __call__(self, *, mask=0xffffffff):
+        """Calls ``__syncwarp()``.
+
+        Args:
+            mask (int): Active threads in a warp. Default is 0xffffffff.
+
+        .. seealso:: `Synchronization functions`_
+
+        .. _Synchronization functions:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions
+        """
+        super().__call__()
+
+    def call(self, env, *, mask=None):
+        if runtime.is_hip:
+            warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
+            mask = None
+
+        if mask:
+            if isinstance(mask, Constant):
+                if not (0x0 <= mask.obj <= 0xffffffff):
+                    raise ValueError('mask is out of range')
+            mask = _compile._astype_scalar(
+                mask, _cuda_types.int32, 'same_kind', env)
+            mask = Data.init(mask, env)
+            code = f'__syncwarp({mask.code})'
+        else:
+            code = '__syncwarp()'
+        return Data(code, _cuda_types.void)
 
 
 class SharedMemory(BuiltinFunc):
@@ -205,6 +245,64 @@ class Grid(BuiltinFunc):
         return Data(f'thrust::make_tuple({elts_code})', ctype)
 
 
+class WarpShuffleOp(BuiltinFunc):
+
+    def __init__(self, op, dtypes):
+        self._op = op
+        self._name = '__shfl_' + (op + '_' if op else '') + 'sync'
+        self._dtypes = dtypes
+        doc = f"""Call the {self._name} function. Please refer to
+        `Warp Shuffle Functions`_ for detail explanation.
+
+        .. _Warp Shuffle Functions:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions
+        """
+        self.__doc__ = doc
+
+    def __call__(self, mask, var, val_id, *, width=32):
+        super().__call__()
+
+    def call(self, env, mask, var, val_id, *, width=None):
+        name = self._name
+
+        var = Data.init(var, env)
+        ctype = var.ctype
+        if ctype.dtype.char not in self._dtypes:
+            raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
+
+        try:
+            mask = mask.obj
+        except Exception:
+            raise TypeError('mask must be an integer')
+        if runtime.is_hip:
+            warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
+        elif not (0x0 <= mask <= 0xffffffff):
+            raise ValueError('mask is out of range')
+
+        # val_id refers to "delta" for shfl_{up, down}, "srcLane" for shfl, and
+        # "laneMask" for shfl_xor
+        if self._op in ('up', 'down'):
+            val_id_t = _cuda_types.uint32
+        else:
+            val_id_t = _cuda_types.int32
+        val_id = _compile._astype_scalar(val_id, val_id_t, 'same_kind', env)
+        val_id = Data.init(val_id, env)
+
+        if width:
+            if isinstance(width, Constant):
+                if width.obj not in (2, 4, 8, 16, 32):
+                    raise ValueError('width needs to be power of 2')
+        else:
+            width = Constant(64) if runtime.is_hip else Constant(32)
+        width = _compile._astype_scalar(
+            width, _cuda_types.int32, 'same_kind', env)
+        width = Data.init(width, env)
+
+        code = f'{name}({hex(mask)}, {var.code}, {val_id.code}'
+        code += f', {width.code})'
+        return Data(code, ctype)
+
+
 builtin_functions_dict = {
     range: RangeFunc(),
     len: LenFunc(),
@@ -213,8 +311,17 @@ builtin_functions_dict = {
 }
 
 syncthreads = SyncThreads()
+syncwarp = SyncWarp()
 shared_memory = SharedMemory()
 grid = Grid()
 
 # TODO: Add more atomic functions.
 atomic_add = AtomicOp('Add', 'iILQefd')
+
+# warp-shuffle functions
+shfl_sync = WarpShuffleOp('', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+shfl_up_sync = WarpShuffleOp('up', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+shfl_down_sync = WarpShuffleOp('down',
+                               'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+shfl_xor_sync = WarpShuffleOp('xor',
+                              'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
