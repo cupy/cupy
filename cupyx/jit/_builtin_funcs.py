@@ -38,9 +38,9 @@ class RangeFunc(BuiltinFunc):
         .. _#pragma unroll:
             https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#pragma-unroll
         """
-        super.__call__(self)
+        super().__call__()
 
-    def call(self, env, *args, **kwargs):
+    def call(self, env, *args, *, unroll=None):
         if len(args) == 0:
             raise TypeError('range expected at least 1 argument, got 0')
         elif len(args) == 1:
@@ -53,7 +53,6 @@ class RangeFunc(BuiltinFunc):
             raise TypeError(
                 f'range expected at most 3 argument, got {len(args)}')
 
-        unroll = kwargs.get('unroll')
         if unroll is not None:
             if not all(isinstance(x, Constant)
                        for x in (start, stop, step, unroll)):
