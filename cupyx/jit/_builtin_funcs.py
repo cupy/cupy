@@ -173,21 +173,35 @@ class AtomicOp(BuiltinFunc):
         self._dtypes = dtypes
         super().__init__()
 
-    def call(self, env, array, index, value):
+    def __call__(self):
+        # TODO(leofang): add docstring
+        pass
+
+    def call(self, env, array, index, value, value2=None):
+        name = self._name
+        op = self._op
         array = Data.init(array, env)
         if not isinstance(array.ctype, (_cuda_types.CArray, _cuda_types.Ptr)):
             raise TypeError('The first argument must be of array type.')
         target = _compile._indexing(array, index, env)
         ctype = target.ctype
-        value = _compile._astype_scalar(value, ctype, 'same_kind', env)
-        name = self._name
-        value = Data.init(value, env)
         if ctype.dtype.char not in self._dtypes:
             raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
-        if ctype.dtype.char == 'e' and runtime.runtimeGetVersion() < 10000:
+        # TODO(leofang): how about HIP?
+        if (op == 'Add' and ctype.dtype.char == 'e'
+                and runtime.runtimeGetVersion() < 10000):
             raise RuntimeError(
                 'float16 atomic operation is not supported this CUDA version.')
-        return Data(f'{name}(&{target.code}, {value.code})', ctype)
+        value = _compile._astype_scalar(value, ctype, 'same_kind', env)
+        value = Data.init(value, env)
+        if self._op == 'CAS':
+            assert value2 is not None
+            value2 = _compile._astype_scalar(value2, ctype, 'same_kind', env)
+            value2 = Data.init(value2, env)
+            code = f'{name}(&{target.code}, {value.code}, {value2.code})'
+        else:
+            code = f'{name}(&{target.code}, {value.code})'
+        return Data(code, ctype)
 
 
 class Grid(BuiltinFunc):
@@ -308,9 +322,28 @@ syncwarp = SyncWarp()
 shared_memory = SharedMemory()
 grid = Grid()
 
-# TODO: Add more atomic functions.
 atomic_add = AtomicOp(
     'Add', 'iILQfd' if runtime.is_hip else 'iILQefd')
+atomic_sub = AtomicOp(
+    'Sub', 'iI')
+atomic_exch = AtomicOp(
+    'Exch', 'iILQf')
+atomic_min = AtomicOp(
+    'Min', 'iILQ')
+atomic_max = AtomicOp(
+    'Max', 'iILQ')
+atomic_inc = AtomicOp(
+    'Inc', 'i')
+atomic_dec = AtomicOp(
+    'Dec', 'i')
+atomic_cas = AtomicOp(
+    'CAS', 'iILQ' if runtime.is_hip else 'iHILQ')
+atomic_and = AtomicOp(
+    'And', 'iILQ')
+atomic_or = AtomicOp(
+    'Or', 'iILQ')
+atomic_xor = AtomicOp(
+    'Xor', 'iILQ')
 
 # warp-shuffle functions
 shfl_sync = WarpShuffleOp('', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')

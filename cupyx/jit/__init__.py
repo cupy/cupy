@@ -9,6 +9,16 @@ from cupyx.jit._builtin_funcs import syncthreads  # NOQA
 from cupyx.jit._builtin_funcs import syncwarp  # NOQA
 from cupyx.jit._builtin_funcs import shared_memory  # NOQA
 from cupyx.jit._builtin_funcs import atomic_add  # NOQA
+from cupyx.jit._builtin_funcs import atomic_sub  # NOQA
+from cupyx.jit._builtin_funcs import atomic_exch  # NOQA
+from cupyx.jit._builtin_funcs import atomic_min  # NOQA
+from cupyx.jit._builtin_funcs import atomic_max  # NOQA
+from cupyx.jit._builtin_funcs import atomic_inc  # NOQA
+from cupyx.jit._builtin_funcs import atomic_dec  # NOQA
+from cupyx.jit._builtin_funcs import atomic_cas  # NOQA
+from cupyx.jit._builtin_funcs import atomic_and  # NOQA
+from cupyx.jit._builtin_funcs import atomic_or  # NOQA
+from cupyx.jit._builtin_funcs import atomic_xor  # NOQA
 from cupyx.jit._builtin_funcs import grid  # NOQA
 from cupyx.jit._builtin_funcs import shfl_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_up_sync  # NOQA
