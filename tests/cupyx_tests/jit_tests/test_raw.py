@@ -378,7 +378,7 @@ class TestRaw(unittest.TestCase):
         self._check(out, expected)
 
     def test_atomic_dec(self):
-        dtype = cupy.uint32  # atomic_inc only supports 1 dtype
+        dtype = cupy.uint32  # atomic_dec only supports 1 dtype
 
         @jit.rawkernel()
         def f(x, out):

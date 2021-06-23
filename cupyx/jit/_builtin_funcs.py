@@ -212,11 +212,16 @@ class AtomicOp(BuiltinFunc):
         if (op == 'Add' and ctype.dtype.char == 'e'
                 and runtime.runtimeGetVersion() < 10000):
             raise RuntimeError(
-                'float16 atomic operation is not supported this CUDA version.')
+                'float16 atomic operation is not supported before CUDA 10.0.')
         value = _compile._astype_scalar(value, ctype, 'same_kind', env)
         value = Data.init(value, env)
-        if self._op == 'CAS':
+        if op == 'CAS':
             assert value2 is not None
+            # On HIP, 'H' is not supported and we will never reach here
+            if ctype.dtype.char == 'H' and runtime.runtimeGetVersion() < 10010:
+                raise RuntimeError(
+                    'uint16 atomic operation is not supported before '
+                    'CUDA 10.1')
             value2 = _compile._astype_scalar(value2, ctype, 'same_kind', env)
             value2 = Data.init(value2, env)
             code = f'{name}(&{target.code}, {value.code}, {value2.code})'
