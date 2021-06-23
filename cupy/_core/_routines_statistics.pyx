@@ -443,7 +443,7 @@ cpdef ndarray _nanmedian(
 
     if axis is None:
         axis = tuple(range(a.ndim))
-    if not isinstance(axis, tuple):
+    if not sequence.PySequence_Check(axis):
         axis = (axis,)
 
     reduce_axis = []
