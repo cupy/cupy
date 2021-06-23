@@ -195,7 +195,7 @@ class AtomicOp(BuiltinFunc):
         """
         self.__doc__ = doc
 
-    def __call__(self, array, index, value, *, alt_value=None):
+    def __call__(self, array, index, value, alt_value=None):
         super().__call__()
 
     def call(self, env, array, index, value, value2=None):
