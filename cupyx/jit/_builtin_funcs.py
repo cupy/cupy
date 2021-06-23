@@ -40,7 +40,7 @@ class RangeFunc(BuiltinFunc):
         """
         super().__call__()
 
-    def call(self, env, *args, *, unroll=None):
+    def call(self, env, *args, unroll=None):
         if len(args) == 0:
             raise TypeError('range expected at least 1 argument, got 0')
         elif len(args) == 1:
