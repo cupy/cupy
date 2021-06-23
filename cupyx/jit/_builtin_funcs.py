@@ -333,9 +333,9 @@ atomic_min = AtomicOp(
 atomic_max = AtomicOp(
     'Max', 'iILQ')
 atomic_inc = AtomicOp(
-    'Inc', 'i')
+    'Inc', 'I')
 atomic_dec = AtomicOp(
-    'Dec', 'i')
+    'Dec', 'I')
 atomic_cas = AtomicOp(
     'CAS', 'iILQ' if runtime.is_hip else 'iHILQ')
 atomic_and = AtomicOp(

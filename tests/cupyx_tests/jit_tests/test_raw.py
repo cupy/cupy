@@ -307,6 +307,162 @@ class TestRaw(unittest.TestCase):
         cupyx.scatter_add(expected, index, x)
         self._check(out, expected)
 
+    @testing.for_dtypes('iI')
+    def test_atomic_sub(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_sub(out, 0, x[tid])
+
+        x = cupy.ones((1024,), dtype=dtype)
+        out = cupy.sum(x, dtype=dtype).reshape(1,)
+        f((32,), (32,), (x, out))
+        expected = cupy.zeros_like(out)
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQf')
+    def test_atomic_exch(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_exch(out, x.size - tid - 1, x[tid])
+
+        x = cupy.arange(1024, dtype=dtype)
+        out = cupy.zeros_like(x)
+        f((32,), (32,), (x, out))
+        expected = x[::-1]
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQ')
+    def test_atomic_min(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_min(out, tid, x[tid])
+
+        x = cupy.arange(1024, dtype=dtype)
+        out = x + 1
+        f((32,), (32,), (x, out))  # effectively copy x to out
+        self._check(out, x)
+
+    @testing.for_dtypes('iILQ')
+    def test_atomic_max(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_max(out, tid, x[tid])
+
+        x = cupy.arange(1, 1025, dtype=dtype)
+        out = x - 1
+        f((32,), (32,), (x, out))  # effectively copy x to out
+        self._check(out, x)
+
+    def test_atomic_inc(self):
+        dtype = cupy.uint32  # atomic_inc only supports 1 dtype
+
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                # = 0 if out[tid] >= x[tid] else out[tid] + 1
+                jit.atomic_inc(out, tid, x[tid])
+
+        x = cupy.arange(1, 1025, dtype=dtype)
+        out = x - 1
+        f((32,), (32,), (x, out))
+        expected = x
+        self._check(out, expected)
+
+    def test_atomic_dec(self):
+        dtype = cupy.uint32  # atomic_inc only supports 1 dtype
+
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                # = x[tid] if (out[tid] == 0 or out[tid] >= x[tid]) \
+                # else out[tid] - 1
+                jit.atomic_dec(out, tid, x[tid])
+
+        x = cupy.zeros(1024, dtype=dtype)
+        out = cupy.arange(1024, dtype=dtype)
+        f((32,), (32,), (x, out))
+        expected = x
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQ' if runtime.is_hip else 'iHILQ')
+    def test_atomic_cas(self, dtype):
+        @jit.rawkernel()
+        def f(x, y, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                # = y[tid] if out[tid] == x[tid] else out[tid]
+                jit.atomic_cas(out, tid, x[tid], y[tid])
+
+        x = cupy.arange(1024, dtype=dtype)
+        y = x.copy()
+        y[512:] = 0
+        out = x.copy()
+        out[:512] = 0
+        f((32,), (32,), (x, y, out))
+        expected = cupy.zeros_like(out)
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQ')
+    def test_atomic_and(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_and(out, tid, x[tid])
+
+        x = cupy.arange(1024, dtype=dtype)
+        out = cupy.ones_like(x)
+        f((32,), (32,), (x, out))
+        expected = cupy.zeros_like(out)
+        expected[1::2] = 1
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQ')
+    def test_atomic_or(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_or(out, tid, x[tid])
+
+        x = testing.shaped_random((1024,), dtype=dtype, seed=0)
+        out = testing.shaped_random((1024,), dtype=dtype, seed=1)
+        y = out.copy()
+        f((32,), (32,), (x, out))
+        expected = x | y
+        self._check(out, expected)
+
+    @testing.for_dtypes('iILQ')
+    def test_atomic_xor(self, dtype):
+        @jit.rawkernel()
+        def f(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                jit.atomic_xor(out, tid, x[tid])
+
+        @jit.rawkernel()
+        def f_no_atomic(x, out):
+            tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
+            if tid < x.size:
+                out[tid] = out[tid] ^ x[tid]
+
+        x = testing.shaped_random((1024,), dtype=dtype, seed=0)
+        out = testing.shaped_random((1024,), dtype=dtype, seed=1)
+        expected = out.copy()
+        f((32,), (32,), (x, out))
+        f((32,), (32,), (x, expected))
+        self._check(out, expected)
+
     def test_raw_grid_block_interface(self):
         @jit.rawkernel()
         def f(x, y, size):
