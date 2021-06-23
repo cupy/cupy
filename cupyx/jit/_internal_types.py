@@ -47,13 +47,13 @@ class Constant(Expr):
 
 class Range(Expr):
 
-    def __init__(self, start, stop, step, ctype, step_is_positive, is_const):
+    def __init__(self, start, stop, step, ctype, step_is_positive, unroll):
         self.start = start
         self.stop = stop
         self.step = step
         self.ctype = ctype
         self.step_is_positive = step_is_positive  # True, False or None
-        self.is_const = is_const
+        self.unroll = unroll
 
 
 class BuiltinFunc(Expr):
