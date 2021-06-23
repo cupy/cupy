@@ -509,10 +509,9 @@ def medfilt(volume, kernel_size=None):
     .. seealso:: :func:`cupyx.scipy.ndimage.median_filter`
     .. seealso:: :func:`scipy.signal.medfilt`
     """
-    if volume.dtype.kind == 'c':
-        # scipy doesn't support complex
-        raise ValueError("complex types not supported")
-    # output is forced to float64 to match scipy
+    if volume.dtype not in (cupy.uint8, cupy.float32, cupy.float64):
+        # Scipy's version only supports uint8, float32, and float64
+        raise ValueError("only supports uint8, float32, and float64")
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
     if any(k > s for k, s in zip(kernel_size, volume.shape)):
         warnings.warn('kernel_size exceeds volume extent: '
@@ -520,7 +519,7 @@ def medfilt(volume, kernel_size=None):
 
     size = internal.prod(kernel_size)
     return filters.rank_filter(volume, size // 2, size=kernel_size,
-                               output=float, mode='constant')
+                               mode='constant')
 
 
 def medfilt2d(input, kernel_size=3):
