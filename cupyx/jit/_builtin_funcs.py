@@ -178,10 +178,10 @@ class AtomicOp(BuiltinFunc):
         Args:
             array: A :class:`cupy.ndarray` to index over.
             index: A valid index such that the address to the corresponding
-                array element can be computed.
+                array element ``array[index]`` can be computed.
             value: Represent the value to use for the specified operation. For
                 the case of :obj:`atomic_cas`, this is the value for
-                ``array[index]``to compare with.
+                ``array[index]`` to compare with.
             alt_value: Only used in :obj:`atomic_cas` to represent the value
                 to swap to.
 
