@@ -1,5 +1,5 @@
 ============================================================
-CuPy -- A NumPy-compatible array library accelerated by CUDA
+CuPy -- NumPy & SciPy for GPU
 ============================================================
 
 .. module:: cupy

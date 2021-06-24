@@ -145,7 +145,7 @@ Operating System :: Microsoft :: Windows
 setup(
     name=package_name,
     version=__version__,  # NOQA
-    description='CuPy: A NumPy-compatible array library accelerated by CUDA',
+    description='CuPy: NumPy & SciPy for GPU',
     long_description=long_description,
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',
