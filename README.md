@@ -50,7 +50,7 @@ Choose the right package for your platform.
 | ROCm 4.0 (*)  | `pip install cupy-rocm-4-0`   |
 | ROCm 4.2 (*)  | `pip install cupy-rocm-4-2`   |
 
-*(\*) ROCm support is an experimental feature. Refer to the [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details.
+(\*) ROCm support is an experimental feature. Refer to the [docs](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental) for details.
 
 See the [Installation Guide](https://docs.cupy.dev/en/stable/install.html) if you are using Conda/Anaconda or building from source.
 
