@@ -1597,7 +1597,7 @@ cpdef _Algorithm _get_algorithm_bwd_data(
         return algo
     cdef list ret
     cdef bint skip
-    if cudnn_version() == 7000:
+    if cudnn_version() >= 7000:
         ret = cudnn.getConvolutionBackwardDataAlgorithm_v7(
             handle, filter_desc, x_desc, conv_desc, y_desc, 10)
         skip = False
