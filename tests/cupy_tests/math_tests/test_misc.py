@@ -41,7 +41,7 @@ class TestMisc(unittest.TestCase):
 
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary_inf(self, name, xp, dtype, kwargs={}):
+    def check_unary_inf(self, name, xp, dtype, **kwargs):
         inf = numpy.inf
         if numpy.dtype(dtype).kind != 'c':
             a = xp.array([0, -1, 1, -inf, inf], dtype=dtype)
@@ -54,7 +54,7 @@ class TestMisc(unittest.TestCase):
 
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
-    def check_unary_nan(self, name, xp, dtype, kwargs={}):
+    def check_unary_nan(self, name, xp, dtype, **kwargs):
         nan = numpy.nan
         if numpy.dtype(dtype).kind != 'c':
             a = xp.array([0, -1, 1, -nan, nan], dtype=dtype)
@@ -213,11 +213,10 @@ class TestMisc(unittest.TestCase):
         self.check_unary_inf_nan('nan_to_num')
 
     def test_nan_to_num_nan_arg(self):
-        self.check_unary_nan('nan_to_num', kwargs={'nan': 1.0})
+        self.check_unary_nan('nan_to_num', nan=1.0)
 
     def test_nan_to_num_inf_arg(self):
-        self.check_unary_inf(
-            'nan_to_num', kwargs={'posinf': 1.0, 'neginf': -1.0})
+        self.check_unary_inf('nan_to_num', posinf=1.0, neginf=-1.0)
 
     @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
     @testing.for_all_dtypes(name='dtype_y', no_bool=True)

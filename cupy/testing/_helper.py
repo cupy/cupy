@@ -1,4 +1,3 @@
-from collections import abc
 import contextlib
 import functools
 import inspect
@@ -227,7 +226,7 @@ def _make_positive_mask(self, impl, args, kw, name, sp_name, scipy_name):
 
 
 def _contains_signed_and_unsigned(kw):
-    vs = set(filter(lambda x: isinstance(x, abc.Hashable), kw.values()))
+    vs = set(kw.values())
     return any(d in vs for d in _unsigned_dtypes) and \
         any(d in vs for d in _float_dtypes + _signed_dtypes)
 
