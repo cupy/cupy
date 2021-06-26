@@ -14,6 +14,8 @@ from cupy._core.core cimport ndarray
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
 
+import warnings
+
 import cupy
 
 
@@ -214,18 +216,22 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     Returns:
         array (:class:`~cupy.ndarray`): A CuPy ndarray.
 
+    .. warning::
+
+        This function is deprecated in favor of :func:from_dlpack` and will be
+        removed in a future version of CuPy.
+
+    .. warning::
+
+        As of the DLPack v0.5 specification, it is implicitly assumed that
+        the user is responsible to ensure the Producer and the Consumer are
+        operating on the same stream.
+
     .. seealso::
 
         :meth:`cupy.ndarray.toDlpack` is a method for zero-copy conversion
         from a :class:`~cupy.ndarray` to a DLPack tensor (which is encapsulated
         in a :class:`PyCapsule` object).
-
-    .. warning::
-
-        As of the DLPack v0.3 specification, it is (implicitly) assumed that
-        the user is responsible to ensure the Producer and the Consumer are
-        operating on the same stream. This requirement might be relaxed/changed
-        in a future DLPack version.
 
     .. admonition:: Example
 
@@ -236,6 +242,8 @@ cpdef ndarray fromDlpack(object dltensor) except +:
         >>> cupy.testing.assert_array_equal(array1, array2)
 
     """
+    warnings.warn('This function is deprecated in favor of cupy.from_dlpack',
+                  DeprecationWarning)
     return _dlpack_to_cupy_array(dltensor)
 
 
@@ -329,9 +337,12 @@ cpdef from_dlpack(array):
 
     .. note::
         This function is different from CuPy's legacy :func:`~cupy.fromDlpack`
-        function in that the latter takes a :class:`PyCapsule` object that
-        contains the DLPack tensor as input, while the former takes any object
-        implementing the DLPack data exchange protocol.
+        function. This function takes any object implementing the DLPack data
+        exchange protocol, as well as a raw :class:`PyCapsule` object that
+        contains the DLPack tensor as input (for backward compatibility),
+        whereas :func:`~cupy.fromDlpack` only accepts :class:`PyCapsule`
+        objects. If the input object is not compliant with the protocol, users
+        are responsible to ensure data safety.
 
     .. seealso::
         `Data interchange mechanisms`_
@@ -340,8 +351,9 @@ cpdef from_dlpack(array):
         https://data-apis.org/array-api/latest/design_topics/data_interchange.html
     """
     if not hasattr(array, '__dlpack_device__'):
-        raise ValueError('the input does not support the DLPack exchange '
-                         'protocol')
+        # backward compatibility: accept passing in a pycapsule
+        dltensor = array
+        return _dlpack_to_cupy_array(dltensor)
     else:
         dev_type, dev_id = array.__dlpack_device__()
 

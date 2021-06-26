@@ -26,6 +26,7 @@ def _gen_array(dtype):
 
 class TestDLPackConversion(unittest.TestCase):
 
+    @pytest.mark.filterwarnings('ignore::DeprecationWarning')
     @testing.for_all_dtypes(no_bool=True)
     def test_conversion(self, dtype):
         orig_array = _gen_array(dtype)
@@ -88,6 +89,7 @@ class TestDLTensorMemory(unittest.TestCase):
         del tensor
         assert self.pool.n_free_blocks() == 1
 
+    @pytest.mark.filterwarnings('ignore::DeprecationWarning')
     def test_deleter2(self):
         # memory is freed when array2 is deleted, as tensor is consumed
         array = cupy.empty(10)
@@ -103,6 +105,7 @@ class TestDLTensorMemory(unittest.TestCase):
         del tensor
         assert self.pool.n_free_blocks() == 1
 
+    @pytest.mark.filterwarnings('ignore::DeprecationWarning')
     def test_multiple_consumption_error(self):
         # Prevent segfault, see #3611
         array = cupy.empty(10)
