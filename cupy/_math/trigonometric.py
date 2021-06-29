@@ -104,28 +104,28 @@ rad2deg = _core.create_ufunc(
 
 
 def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
-    """Unwrap by taking the complement of large deltas w.r.t. the period.
+    r"""Unwrap by taking the complement of large deltas w.r.t. the period.
 
     This unwraps a signal `p` by changing elements which have an absolute
     difference from their predecessor of more than ``max(discont, period/2)``
     to their `period`-complementary values.
 
-    For the default case where `period` is ``2 * pi`` and is `discont` is
-    ``pi``, this unwraps a radian phase `p` such that adjacent differences
-    are never greater than ``pi`` by adding ``2ki*pi`` for some
-    integer ``k``.
+    For the default case where `period` is :math:`2\pi` and is ``discont``
+    is :math:`\pi`, this unwraps a radian phase `p` such that adjacent
+    differences are never greater than :math:`\pi` by adding :math:`2kipi`
+    for some integer :math:`k`.
 
     Args:
         p (cupy.ndarray): Input array.
-        discont (float): Maximum discontinuity between values, default is
-        ``period/2``. Values below ``period/2`` are treated as if they were
-        ``period/2``. To have an effect different from the default, `discont`
-        should be larger than ``period/2``.
+            discont (float): Maximum discontinuity between values, default is
+            ``period/2``. Values below ``period/2`` are treated as if they were
+            ``period/2``. To have an effect different from the default,
+            ``discont`` should be larger than ``period/2``.
         axis (int): Axis along which unwrap will operate, default is the last
             axis.
         period: float, optional
-        Size of the range over which the input wraps. By default, it is
-        ``2 pi``.
+            Size of the range over which the input wraps. By default, it is
+            :math:`2\pi`.
     Returns:
         cupy.ndarray: The result array.
 
@@ -141,7 +141,7 @@ def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
     slice1[axis] = slice(1, None)
     slice1 = tuple(slice1)
     dtype = numpy.result_type(dd.dtype, period)
-    if numpy.core.numeric.issubdtype(dtype, numpy.core.numeric.integer):
+    if numpy.issubdtype(dtype, numpy.integer):
         interval_high, rem = divmod(period, 2)
         boundary_ambiguous = rem == 0
     else:
