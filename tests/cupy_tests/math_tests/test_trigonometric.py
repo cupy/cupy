@@ -56,6 +56,7 @@ class TestTrigonometric(unittest.TestCase):
         self.check_unary('rad2deg')
 
 
+@testing.with_requires('numpy>=1.21.0')
 @testing.gpu
 class TestUnwrap(unittest.TestCase):
 
