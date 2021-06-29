@@ -213,7 +213,6 @@ class CArray {
 public:
   static const int ndim = _ndim;
   static const bool c_contiguous = _c_contiguous;
-  static const bool use_32bit_indexing = _use_32bit_indexing;
   typedef typename cupy::type_traits::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
 private:
   T* data_;
