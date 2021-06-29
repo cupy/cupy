@@ -12,6 +12,6 @@ RUN apt-get update -y && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN pip3 install --no-cache-dir -U install setuptools pip
-RUN pip3 install --no-cache-dir "cupy-rocm-4-0[all]==10.0.0a1"
+RUN pip3 install --no-cache-dir "cupy-rocm-4-0[all]==10.0.0a2"
 
 USER rocm-user
