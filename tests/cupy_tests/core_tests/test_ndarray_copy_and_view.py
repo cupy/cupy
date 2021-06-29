@@ -155,6 +155,12 @@ class TestArrayCopyAndView(unittest.TestCase):
                                      xp.empty((2, 3, 2), dtype=src_dtype))
         return astype_without_warning(src, dst_dtype, order='K').strides
 
+    @testing.numpy_cupy_array_equal()
+    def test_astype_boolean_view(self, xp):
+        # See #4354
+        a = xp.array([0, 1, 2], dtype=numpy.int8).view(dtype=numpy.bool_)
+        return a.astype(numpy.int8)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_diagonal1(self, xp, dtype):
