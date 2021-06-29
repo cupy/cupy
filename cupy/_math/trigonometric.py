@@ -112,7 +112,7 @@ def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
 
     For the default case where `period` is :math:`2\pi` and is ``discont``
     is :math:`\pi`, this unwraps a radian phase `p` such that adjacent
-    differences are never greater than :math:`\pi` by adding :math:`2kipi`
+    differences are never greater than :math:`\pi` by adding :math:`2k\pi`
     for some integer :math:`k`.
 
     Args:
