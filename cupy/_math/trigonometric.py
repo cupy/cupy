@@ -103,15 +103,6 @@ rad2deg = _core.create_ufunc(
     ''')
 
 
-@_core.fusion.fuse()
-def _unwrap_correct(dd, discont):
-    ddmod = cupy.mod(dd + numpy.pi, 2*numpy.pi) - numpy.pi
-    cupy.copyto(ddmod, numpy.pi, where=(ddmod == -numpy.pi) & (dd > 0))
-    ph_correct = ddmod - dd
-    cupy.copyto(ph_correct, 0., where=cupy.abs(dd) < discont)
-    return ph_correct
-
-
 def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
     """Unwrap by taking the complement of large deltas w.r.t. the period.
 
@@ -149,7 +140,6 @@ def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
     slice1 = [slice(None, None)]*nd     # full slices
     slice1[axis] = slice(1, None)
     slice1 = tuple(slice1)
-    ph_correct = _unwrap_correct(dd, discont)
     dtype = numpy.result_type(dd.dtype, period)
     if numpy.core.numeric.issubdtype(dtype, numpy.core.numeric.integer):
         interval_high, rem = divmod(period, 2)
@@ -160,11 +150,10 @@ def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
     interval_low = -interval_high
     ddmod = cupy.mod(dd - interval_low, period) + interval_low
     if boundary_ambiguous:
-        # for `mask = (abs(dd) == period/2)`, the above line made
-        # `ddmod[mask] == -period/2`. correct these such that
-        # `ddmod[mask] == sign(dd[mask])*period/2`.
-        ddmod[(ddmod == interval_low) & (dd > 0)] = interval_high
-
+        cupy.copyto(ddmod, interval_high, where=(
+            ddmod == interval_low) & (dd > 0))
+    ph_correct = ddmod - dd
+    cupy.copyto(ph_correct, 0, where=abs(dd) < discont)
     up = cupy.array(p, copy=True, dtype=dtype)
     up[slice1] = p[slice1] + cupy.cumsum(ph_correct, axis=axis)
     return up

@@ -73,6 +73,18 @@ class TestUnwrap(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
+    def test_unwrap_1dim_with_period(self, xp, dtype):
+        a = testing.shaped_random((5,), xp, dtype)
+        return xp.unwrap(a, period=1.2)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_unwrap_1dim_with_discont_and_period(self, xp, dtype):
+        a = testing.shaped_random((5,), xp, dtype)
+        return xp.unwrap(a, discont=1.0, period=1.2)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
     def test_unwrap_2dim_without_axis(self, xp, dtype):
         a = testing.shaped_random((4, 5), xp, dtype)
         return xp.unwrap(a)
@@ -88,3 +100,15 @@ class TestUnwrap(unittest.TestCase):
     def test_unwrap_2dim_with_discont(self, xp, dtype):
         a = testing.shaped_random((4, 5), xp, dtype)
         return xp.unwrap(a, discont=5.0, axis=1)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_unwrap_2dim_with_period(self, xp, dtype):
+        a = testing.shaped_random((4, 5), xp, dtype)
+        return xp.unwrap(a, axis=1, period=4.5)
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_unwrap_2dim_with_discont_and_period(self, xp, dtype):
+        a = testing.shaped_random((4, 5), xp, dtype)
+        return xp.unwrap(a, discont=5.0, axis=1, period=4.5)
