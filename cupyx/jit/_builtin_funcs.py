@@ -103,7 +103,7 @@ class SyncThreads(BuiltinFunc):
         .. _Synchronization functions:
             https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#synchronization-functions
         """
-        super.__call__(self)
+        super().__call__()
 
     def call_const(self, env):
         return Data('__syncthreads()', _cuda_types.void)
@@ -154,7 +154,7 @@ class SharedMemory(BuiltinFunc):
                 If ``int`` type, the size of static shared memory.
                 If ``None``, declares the shared memory with extern specifier.
         """
-        super.__call__(self)
+        super().__call__()
 
     def call_const(self, env, dtype, size):
         name = env.get_fresh_variable_name(prefix='_smem')
@@ -215,7 +215,7 @@ class Grid(BuiltinFunc):
             https://numba.readthedocs.io/en/stable/cuda/kernels.html#absolute-positions
 
         """
-        super.__call__(self)
+        super().__call__()
 
     def call_const(self, env, ndim):
         if not isinstance(ndim, int):
