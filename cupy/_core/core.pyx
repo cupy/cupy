@@ -19,6 +19,7 @@ from cupy._core import flags
 from cupy._core import syncdetect
 from cupy import cuda
 from cupy.cuda import memory as memory_module
+from cupy.cuda import stream as stream_mod
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
@@ -217,6 +218,47 @@ cdef class ndarray:
             desc['data'] = (0, False)
 
         return desc
+
+    def __dlpack__(self, stream=None):
+        # Note: the stream argument is supplied by the consumer, not by CuPy
+        curr_stream = stream_module.get_current_stream()
+        curr_stream_ptr = curr_stream.ptr
+
+        # stream must be an int for CUDA/ROCm
+        if not runtime._is_hip_environment:  # CUDA
+            if stream is None:
+                stream = runtime.streamLegacy
+            elif not isinstance(stream, int) or stream < -1 or stream == 0:
+                raise ValueError(
+                    f'On CUDA, the valid stream for the DLPack protocol is -1,'
+                    ' 1, 2, or any larger value, but {stream} was provided')
+            if curr_stream_ptr == 0:
+                curr_stream_ptr = runtime.streamLegacy
+        else:  # ROCm/HIP
+            if stream is None:
+                stream = 0
+            elif (not isinstance(stream, int) or stream < -1
+                    or stream in (1, 2)):
+                raise ValueError(
+                    f'On ROCm/HIP, the valid stream for the DLPack protocol is'
+                    ' -1, 0, or any value > 2, but {stream} was provided')
+
+        # if -1, no stream order should be established; otherwise, the consumer
+        # stream should wait for the work on CuPy's current stream to finish
+        if stream >= 0 and stream != curr_stream_ptr:
+            next_stream = stream_mod.ExternalStream(stream)
+            event = curr_stream.record()
+            next_stream.wait_event(event)
+
+        return dlpack.toDlpack(self)
+
+    def __dlpack_device__(self):
+        if not runtime._is_hip_environment:
+            # TODO(leofang): support kDLCUDAManaged
+            device_type = dlpack.device_CUDA
+        else:
+            device_type = dlpack.device_ROCM
+        return (device_type, self.device)
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
