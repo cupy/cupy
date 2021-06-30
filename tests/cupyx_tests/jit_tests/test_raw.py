@@ -396,7 +396,7 @@ class TestRaw(unittest.TestCase):
 
     @testing.for_dtypes('iILQ' if runtime.is_hip else 'iHILQ')
     def test_atomic_cas(self, dtype):
-        if dtype == 'H' and runtime.runtimeGetVersion() < 10010:
+        if dtype == cupy.uint16 and runtime.runtimeGetVersion() < 10010:
             self.skipTest('not supported')
 
         @jit.rawkernel()
