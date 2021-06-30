@@ -396,6 +396,9 @@ class TestRaw(unittest.TestCase):
 
     @testing.for_dtypes('iILQ' if runtime.is_hip else 'iHILQ')
     def test_atomic_cas(self, dtype):
+        if dtype == 'H' and runtime.runtimeGetVersion() < 10010:
+            self.skipTest('not supported')
+
         @jit.rawkernel()
         def f(x, y, out):
             tid = jit.blockDim.x * jit.blockIdx.x + jit.threadIdx.x
