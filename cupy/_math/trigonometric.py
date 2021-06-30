@@ -103,24 +103,29 @@ rad2deg = _core.create_ufunc(
     ''')
 
 
-@_core.fusion.fuse()
-def _unwrap_correct(dd, discont):
-    ddmod = cupy.mod(dd + numpy.pi, 2*numpy.pi) - numpy.pi
-    cupy.copyto(ddmod, numpy.pi, where=(ddmod == -numpy.pi) & (dd > 0))
-    ph_correct = ddmod - dd
-    cupy.copyto(ph_correct, 0., where=cupy.abs(dd) < discont)
-    return ph_correct
+def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
+    r"""Unwrap by taking the complement of large deltas w.r.t. the period.
 
+    This unwraps a signal `p` by changing elements which have an absolute
+    difference from their predecessor of more than ``max(discont, period/2)``
+    to their `period`-complementary values.
 
-def unwrap(p, discont=numpy.pi, axis=-1):
-    """Unwrap by changing deltas between values to 2*pi complement.
+    For the default case where `period` is :math:`2\pi` and is ``discont``
+    is :math:`\pi`, this unwraps a radian phase `p` such that adjacent
+    differences are never greater than :math:`\pi` by adding :math:`2k\pi`
+    for some integer :math:`k`.
 
     Args:
         p (cupy.ndarray): Input array.
-        discont (float): Maximum discontinuity between values, default is
-            ``pi``.
+            discont (float): Maximum discontinuity between values, default is
+            ``period/2``. Values below ``period/2`` are treated as if they were
+            ``period/2``. To have an effect different from the default,
+            ``discont`` should be larger than ``period/2``.
         axis (int): Axis along which unwrap will operate, default is the last
             axis.
+        period: float, optional
+            Size of the range over which the input wraps. By default, it is
+            :math:`2\pi`.
     Returns:
         cupy.ndarray: The result array.
 
@@ -130,11 +135,26 @@ def unwrap(p, discont=numpy.pi, axis=-1):
     p = cupy.asarray(p)
     nd = p.ndim
     dd = sumprod.diff(p, axis=axis)
+    if discont is None:
+        discont = period/2
     slice1 = [slice(None, None)]*nd     # full slices
     slice1[axis] = slice(1, None)
     slice1 = tuple(slice1)
-    ph_correct = _unwrap_correct(dd, discont)
-    up = cupy.array(p, copy=True, dtype='d')
+    dtype = numpy.result_type(dd.dtype, period)
+    if numpy.issubdtype(dtype, numpy.integer):
+        interval_high, rem = divmod(period, 2)
+        boundary_ambiguous = rem == 0
+    else:
+        interval_high = period / 2
+        boundary_ambiguous = True
+    interval_low = -interval_high
+    ddmod = cupy.mod(dd - interval_low, period) + interval_low
+    if boundary_ambiguous:
+        cupy.copyto(ddmod, interval_high, where=(
+            ddmod == interval_low) & (dd > 0))
+    ph_correct = ddmod - dd
+    cupy.copyto(ph_correct, 0, where=abs(dd) < discont)
+    up = cupy.array(p, copy=True, dtype=dtype)
     up[slice1] = p[slice1] + cupy.cumsum(ph_correct, axis=axis)
     return up
 
