@@ -26,7 +26,6 @@ For further detail see :ref:`dlpack`.
 .. autosummary::
    :toctree: generated/
 
-   cupy.fromDlpack
    cupy.from_dlpack
 
 
