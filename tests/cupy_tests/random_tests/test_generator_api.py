@@ -77,6 +77,14 @@ class TestPoisson(
 ):
     pass
 
+@testing.parameterize(*common_distributions.binomial_params)
+@testing.with_requires('numpy>=1.17.0')
+@testing.fix_random()
+class TestBinomial(
+    common_distributions.Binomial,
+    GeneratorTestCase
+):
+    pass
 
 @testing.parameterize(*common_distributions.beta_params)
 @testing.with_requires('numpy>=1.17.0')

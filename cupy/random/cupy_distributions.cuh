@@ -1,6 +1,6 @@
 #ifndef _CUPY_TEST_H
 #define _CUPY_TEST_H
-
+#define CUPY_USE_BINOMIAL
 
 #if defined(_MSC_VER)
 #include <BaseTsd.h>
