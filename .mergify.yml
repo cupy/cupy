@@ -9,3 +9,9 @@ pull_request_rules:
       merge:
         method: merge
         strict: false  # strict mode and manually-triggered CIs do not get along
+  - name: Notify conflict
+    conditions:
+      - conflict
+    actions:
+      comment:
+        message: This pull request is now in conflicts. Could you fix it @{{author}}? 🙏
