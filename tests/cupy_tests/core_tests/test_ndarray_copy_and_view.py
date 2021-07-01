@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -18,7 +16,7 @@ def astype_without_warning(x, dtype, *args, **kwargs):
 
 
 @testing.gpu
-class TestArrayCopyAndView(unittest.TestCase):
+class TestArrayCopyAndView:
 
     @testing.numpy_cupy_array_equal()
     def test_view(self, xp):
@@ -110,7 +108,7 @@ class TestArrayCopyAndView(unittest.TestCase):
     @testing.for_all_dtypes()
     def test_fill_with_numpy_nonscalar_ndarray(self, dtype):
         a = testing.shaped_arange((2, 3, 4), cupy, dtype)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             a.fill(numpy.ones((1,), dtype=dtype))
 
     @testing.for_all_dtypes()
@@ -189,7 +187,8 @@ class TestArrayCopyAndView(unittest.TestCase):
         a = testing.shaped_arange((3, 4, 5), xp, dtype)
         return a.diagonal(-1, 2, 0)
 
-    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
     @testing.for_orders('CF')
     @testing.for_dtypes([numpy.int16, numpy.int64,
                          numpy.float16, numpy.float64])
@@ -200,14 +199,16 @@ class TestArrayCopyAndView(unittest.TestCase):
         b[:] = a
         return b
 
-    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
     def test_isinstance_numpy_copy_wrong_dtype(self):
         a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
         b = cupy.empty(a.shape, dtype=numpy.int32)
         with pytest.raises(ValueError):
             b[:] = a
 
-    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
     def test_isinstance_numpy_copy_wrong_shape(self):
         for xp in (numpy, cupy):
             a = numpy.arange(100, dtype=numpy.float64).reshape(10, 10)
@@ -215,14 +216,16 @@ class TestArrayCopyAndView(unittest.TestCase):
             with pytest.raises(ValueError):
                 b[:] = a
 
-    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
     @testing.numpy_cupy_array_equal()
     def test_isinstance_numpy_copy_not_slice(self, xp):
         a = xp.arange(5, dtype=numpy.float64)
         a[a < 3] = 0
         return a
 
-    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
     def test_copy_host_to_device_view(self):
         dev = cupy.empty((10, 10), dtype=numpy.float32)[2:5, 1:8]
         host = numpy.arange(3 * 7, dtype=numpy.float32).reshape(3, 7)
@@ -235,8 +238,9 @@ class TestArrayCopyAndView(unittest.TestCase):
     {'src_order': 'F'},
 )
 @testing.gpu
-class TestNumPyArrayCopyView(unittest.TestCase):
-    @unittest.skipUnless(_util.ENABLE_SLICE_COPY, 'Special copy disabled')
+class TestNumPyArrayCopyView:
+    @pytest.mark.skipif(
+        not _util.ENABLE_SLICE_COPY, reason='Special copy disabled')
     @testing.for_orders('CF')
     @testing.for_dtypes([numpy.int16, numpy.int64,
                          numpy.float16, numpy.float64])
