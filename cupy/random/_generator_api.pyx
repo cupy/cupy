@@ -53,7 +53,7 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         ssize_t size, intptr_t stream, intptr_t arg1)
     void binomial(
         int generator, intptr_t state, intptr_t out,
-        ssize_t size, intptr_t stream, intptr arg1, intptr arg2)
+        ssize_t size, intptr_t stream, intptr_t arg1, double arg2)
 
 
 cdef ndarray _array_data(ndarray x):
