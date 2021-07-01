@@ -7,6 +7,7 @@ import cupy
 import cupyx
 from cupyx import jit
 from cupy import testing
+from cupy.cuda import device
 from cupy.cuda import runtime
 
 
@@ -396,8 +397,10 @@ class TestRaw(unittest.TestCase):
 
     @testing.for_dtypes('iILQ' if runtime.is_hip else 'iHILQ')
     def test_atomic_cas(self, dtype):
-        if dtype == cupy.uint16 and runtime.runtimeGetVersion() < 10010:
-            self.skipTest('not supported')
+        if dtype == cupy.uint16:
+            if (runtime.runtimeGetVersion() < 10010 or
+                    int(device.get_compute_capability()) < 70):
+                self.skipTest('not supported')
 
         @jit.rawkernel()
         def f(x, y, out):

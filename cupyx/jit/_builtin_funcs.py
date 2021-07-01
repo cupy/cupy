@@ -3,6 +3,7 @@ import warnings
 import cupy
 
 from cupy_backends.cuda.api import runtime
+from cupy.cuda import device
 from cupyx.jit import _cuda_types
 from cupyx.jit._internal_types import BuiltinFunc
 from cupyx.jit._internal_types import Data
@@ -218,10 +219,15 @@ class AtomicOp(BuiltinFunc):
         if op == 'CAS':
             assert value2 is not None
             # On HIP, 'H' is not supported and we will never reach here
-            if ctype.dtype.char == 'H' and runtime.runtimeGetVersion() < 10010:
-                raise RuntimeError(
-                    'uint16 atomic operation is not supported before '
-                    'CUDA 10.1')
+            if ctype.dtype.char == 'H':
+                if runtime.runtimeGetVersion() < 10010:
+                    raise RuntimeError(
+                        'uint16 atomic operation is not supported before '
+                        'CUDA 10.1')
+                if int(device.get_compute_capability()) < 70:
+                    raise RuntimeError(
+                        'uint16 atomic operation is not supported before '
+                        'sm_70')
             value2 = _compile._astype_scalar(value2, ctype, 'same_kind', env)
             value2 = Data.init(value2, env)
             code = f'{name}(&{target.code}, {value.code}, {value2.code})'
