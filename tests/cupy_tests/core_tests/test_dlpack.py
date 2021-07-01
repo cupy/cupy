@@ -20,6 +20,11 @@ class TestDLPackConversion(unittest.TestCase):
         elif cupy.issubdtype(self.dtype, cupy.floating):
             self.array = cupy.random.rand(
                 2, 3).astype(self.dtype)
+        elif cupy.issubdtype(dtype, cupy.complexfloating):
+            self.array = cupy.random.random(
+                (2, 3)).astype(self.dtype)
+        else:
+            assert False, f'unrecognized dtype: {self.dtype}'
 
         tensor = self.array.toDlpack()
         array = cupy.fromDlpack(tensor)
