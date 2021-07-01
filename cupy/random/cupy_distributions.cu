@@ -351,8 +351,8 @@ __device__ int64_t rk_binomial_btpe(rk_state *state, long n, double p) {
   /* sigh ... */
   Step10:
     nrq = n*r*q;
-    u = rk_double(state)*p4;
-    v = rk_double(state);
+    u = state->rk_double()*p4;
+    v = state->rk_double();
     if (u > p1) goto Step20;
     y = (long)floor(xm - p1*v + u);
     goto Step60;
@@ -441,13 +441,13 @@ __device__ int64_t rk_binomial_inversion(rk_state *state, int n, double p) {
     }
     X = 0;
     px = qn;
-    U = rk_double(state);
+    U = state->rk_double();
     while (U > px) {
         X++;
         if (X > bound) {
             X = 0;
             px = qn;
-            U = rk_double(state);
+            U = state->rk_double();
         } else {
             U -= px;
             px  = ((n-X+1) * p * px)/(X*q);
@@ -655,7 +655,7 @@ void standard_gamma(int generator, intptr_t state, intptr_t out, ssize_t size, i
     generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(shape));
 }
 
-void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, intptr_t p) {
+void binomial(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t n, double p) {
     kernel_launcher<binomial_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(n), reinterpret_cast<int64_t*>(p));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(n), p);
 }
