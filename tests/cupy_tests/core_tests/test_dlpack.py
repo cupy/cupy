@@ -20,7 +20,7 @@ class TestDLPackConversion(unittest.TestCase):
         elif cupy.issubdtype(self.dtype, cupy.floating):
             self.array = cupy.random.rand(
                 2, 3).astype(self.dtype)
-        elif cupy.issubdtype(dtype, cupy.complexfloating):
+        elif cupy.issubdtype(self.dtype, cupy.complexfloating):
             self.array = cupy.random.random(
                 (2, 3)).astype(self.dtype)
         else:
