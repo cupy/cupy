@@ -580,7 +580,6 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.view`
 
         """
-        # Use __new__ instead of __init__ to skip recomputation of contiguity
         cdef Py_ssize_t ndim
         cdef int self_is, v_is
         v = self._view(self._shape, self._strides, False, False)
@@ -1787,6 +1786,7 @@ cdef class ndarray:
                        bint update_c_contiguity,
                        bint update_f_contiguity):
         cdef ndarray v
+        # Use __new__ instead of __init__ to skip recomputation of contiguity
         v = ndarray.__new__(ndarray)
         v.data = self.data
         v.base = self.base if self.base is not None else self
