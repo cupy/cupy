@@ -54,6 +54,28 @@ class TestArrayCopyAndView(unittest.TestCase):
             with pytest.raises(ValueError):
                 a.view(dtype=dtype)
 
+    @testing.for_dtypes([numpy.int16, numpy.int64])
+    @testing.numpy_cupy_array_equal()
+    def test_view_f_contiguous(self, dtype, xp):
+        a = testing.shaped_arange((2, 2, 2), xp, dtype=numpy.float32)
+        a = a.T
+        with testing.assert_warns(DeprecationWarning):
+            return a.view(dtype=dtype)
+
+    def test_view_assert_divisible(self):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3,), xp, dtype=numpy.int32)
+            with pytest.raises(ValueError):
+                a.view(dtype=numpy.int64)
+
+    @testing.for_dtypes([numpy.float32, numpy.float64])
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_view_relaxed_contiguous(self, xp, dtype):
+        a = testing.shaped_arange((1, 3, 5), xp, dtype=dtype)
+        a = xp.moveaxis(a, 0, 2)  # (3, 5, 1)
+        b = a.view(dtype=numpy.int32)
+        return b
+
     @testing.numpy_cupy_array_equal()
     def test_flatten(self, xp):
         a = testing.shaped_arange((2, 3, 4), xp)
