@@ -466,7 +466,7 @@ class TestRaw(unittest.TestCase):
         out = testing.shaped_random((1024,), dtype=dtype, seed=1)
         expected = out.copy()
         f((32,), (32,), (x, out))
-        f((32,), (32,), (x, expected))
+        f_no_atomic((32,), (32,), (x, expected))
         self._check(out, expected)
 
     def test_raw_grid_block_interface(self):
