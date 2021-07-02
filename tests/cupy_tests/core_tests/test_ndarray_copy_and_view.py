@@ -87,9 +87,9 @@ class TestArrayCopyAndView:
     @testing.numpy_cupy_equal()
     def test_view_flags_smaller(self, xp, order, shape):
         a = xp.zeros(shape, numpy.int32, order)
-        with (
-                testing.assert_warns(DeprecationWarning) if order == 'F'
-                else contextlib.nullcontext()):
+        with contextlib.ExitStack() as stack:
+            if order == 'F':
+                stack.enter_context(testing.assert_warns(DeprecationWarning))
             b = a.view(numpy.int16)
         return b.flags.c_contiguous, b.flags.f_contiguous, b.flags.owndata
 
@@ -105,9 +105,9 @@ class TestArrayCopyAndView:
     @testing.numpy_cupy_equal()
     def test_view_flags_larger(self, xp, order, shape):
         a = xp.zeros(shape, numpy.int16, order)
-        with (
-                testing.assert_warns(DeprecationWarning) if order == 'F'
-                else contextlib.nullcontext()):
+        with contextlib.ExitStack() as stack:
+            if order == 'F':
+                stack.enter_context(testing.assert_warns(DeprecationWarning))
             b = a.view(numpy.int32)
         return b.flags.c_contiguous, b.flags.f_contiguous, b.flags.owndata
 
