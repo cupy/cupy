@@ -189,7 +189,7 @@ How to write device agnostic code
 ----------------------------------
 
 CuPy's compatibility with NumPy makes it possible to write device agnostic code.
-For this purpose, CuPy implements the :func:`cupy.get_array_module` function, that
+For this purpose, CuPy implements the :func:`cupy.get_array_module` function that
 returns a reference to :mod:`cupy` if any of its arguments resides on a GPU
 and :mod:`numpy` otherwise.
 Here is an example of a device agnostic function that computes ``log1p``:
@@ -202,8 +202,8 @@ Here is an example of a device agnostic function that computes ``log1p``:
    ...     print("Using module:", mod.__name__)
    ...     return mod.maximum(0, x) + mod.log1p(mod.exp(-abs(x)))
 
-When you need to operate on arrays that reside on CPU and GPU,
-you first need to transfer them to the same device -- either CPU or GPU.
+When you need to manipulate CPU and GPU arrays, an explicit data
+transfer may be required to move them to the same location -- either CPU or GPU.
 For this purpose, CuPy implements two sister methods called :func:`cupy.asnumpy`  and
 :func:`cupy.asarray`. Here is an example that demonstrates the use of both methods:
 
@@ -229,5 +229,5 @@ For this purpose, CuPy implements two sister methods called :func:`cupy.asnumpy`
 
 The :func:`cupy.asnumpy` method returns a NumPy array (array on the host),
 whereas :func:`cupy.asarray` method returns a CuPy array (array on the current device).
-Both of these methods act on an arbitrary source, meaning that they can be applied to any data
-on the host or device that can be converted to an array.
+Both methods can accept arbitrary input, meaning that they can be applied to any data that
+is located on either the host or device and can be converted to an array.
