@@ -49,7 +49,7 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
 
     Returns:
         cupy.ndarray: The indices of the maximum of ``a``
-            along an axis ignoring NaN values.
+        along an axis ignoring NaN values.
 
     .. note:: For performance reasons, ``cupy.nanargmax`` returns
             ``out of range values`` for all-NaN slice
@@ -104,7 +104,7 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
 
     Returns:
         cupy.ndarray: The indices of the minimum of ``a``
-            along an axis ignoring NaN values.
+        along an axis ignoring NaN values.
 
     .. note:: For performance reasons, ``cupy.nanargmin`` returns
             ``out of range values`` for all-NaN slice
@@ -186,9 +186,9 @@ def where(condition, x=None, y=None):
 
     Returns:
         cupy.ndarray: Each element of output contains elements of ``x`` when
-            ``condition`` is ``True``, otherwise elements of ``y``. If only
-            ``condition`` is given, return the tuple ``condition.nonzero()``,
-            the indices where ``condition`` is True.
+        ``condition`` is ``True``, otherwise elements of ``y``. If only
+        ``condition`` is given, return the tuple ``condition.nonzero()``,
+        the indices where ``condition`` is True.
 
     .. warning::
 

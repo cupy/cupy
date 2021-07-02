@@ -512,7 +512,7 @@ def bincount(x, weights=None, minlength=None):
 
     Returns:
         cupy.ndarray: The result of binning the input array. The length of
-            output is equal to ``max(cupy.max(x) + 1, minlength)``.
+        output is equal to ``max(cupy.max(x) + 1, minlength)``.
 
     .. warning::
 

@@ -333,7 +333,7 @@ cpdef from_dlpack(array):
 
     Returns:
         cupy.ndarray: a CuPy array that can be safely accessed on CuPy's
-            current stream.
+        current stream.
 
     .. note::
         This function is different from CuPy's legacy :func:`~cupy.fromDlpack`
