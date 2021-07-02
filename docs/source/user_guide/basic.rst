@@ -185,14 +185,14 @@ Check :doc:`./memory` for a detailed description of how memory is managed in CuP
 using memory pools.
 
 
-How to write device agnostic code
+How to write CPU/GPU agnostic code
 ----------------------------------
 
-CuPy's compatibility with NumPy makes it possible to write device agnostic code.
+CuPy's compatibility with NumPy makes it possible to write CPU/GPU agnostic code.
 For this purpose, CuPy implements the :func:`cupy.get_array_module` function that
 returns a reference to :mod:`cupy` if any of its arguments resides on a GPU
 and :mod:`numpy` otherwise.
-Here is an example of a device agnostic function that computes ``log1p``:
+Here is an example of a CPU/GPU agnostic function that computes ``log1p``:
 
 .. doctest::
 
