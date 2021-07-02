@@ -115,8 +115,8 @@ Current Stream
 --------------
 
 Associated with the concept of current devices are *current streams*, which help avoid explicitly passing streams
-in every single operation so as to keep the APIs pythonic and user-friendly. In CuPy, any CUDA operations
-such as data transfer (see the next section) and kernel launches are enqueued onto the current stream,
+in every single operation so as to keep the APIs pythonic and user-friendly. In CuPy, all CUDA operations
+such as data transfer (see the :ref:`data-transfer-basics` section) and kernel launches are enqueued onto the current stream,
 and the queued tasks on the same stream will be executed in serial (but *asynchronously* with respect to the host).
 
 The default current stream in CuPy is CUDA's null stream (i.e., stream 0). It is also known as the *legacy*
@@ -127,6 +127,7 @@ retrieved using :func:`cupy.cuda.get_current_stream`.
 It is worth noting that CuPy's current stream is managed on a *per thread, per device* basis, meaning that on different
 Python threads or different devices the current stream (if not the null stream) can be different.
 
+.. _data-transfer-basics:
 
 Data Transfer
 -------------
@@ -180,34 +181,39 @@ We can also use :meth:`cupy.ndarray.get()`:
 Memory management
 -----------------
 
-Check :doc:`./memory` for a detailed description of how is memory managed in CuPy
+Check :doc:`./memory` for a detailed description of how memory is managed in CuPy
 using memory pools.
 
 
-How to write CPU/GPU agnostic code
+How to write device agnostic code
 ----------------------------------
 
-The compatibility of CuPy with NumPy enables us to write CPU/GPU generic code.
-It can be made easy by the :func:`cupy.get_array_module` function.
-This function returns the :mod:`numpy` or :mod:`cupy` module based on arguments.
-A CPU/GPU generic function is defined using it like follows:
+CuPy's compatibility with NumPy makes it possible to write device agnostic code.
+For this purpose, CuPy implements the :func:`cupy.get_array_module` function, that
+returns a reference to :mod:`cupy` if any of its arguments resides on a GPU
+and :mod:`numpy` otherwise.
+Here is an example of a device agnostic function that computes ``log1p``:
 
 .. doctest::
 
    >>> # Stable implementation of log(1 + exp(x))
    >>> def softplus(x):
-   ...     xp = cp.get_array_module(x)
-   ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
+   ...     mod = cp.get_array_module(x)
+   ...     print("Using module:", mod.__name__)
+   ...     return mod.maximum(0, x) + mod.log1p(mod.exp(-abs(x)))
 
-Sometimes, an explicit conversion to a host or device array may be required.
-:func:`cupy.asarray` and :func:`cupy.asnumpy` can be used in agnostic implementations
-to get host or device arrays from either CuPy or NumPy arrays.
+When you need to operate on arrays that reside on CPU and GPU,
+you first need to transfer them to the same device -- either CPU or GPU.
+For this purpose, CuPy implements two sister methods called :func:`cupy.asnumpy`  and
+:func:`cupy.asarray`. Here is an example that demonstrates the use of both methods:
 
 .. doctest::
 
+   >>> x_cpu = np.array([1, 2, 3])
    >>> y_cpu = np.array([4, 5, 6])
    >>> x_cpu + y_cpu
    array([5, 7, 9])
+   >>> x_gpu = cp.asarray(x_cpu)
    >>> x_gpu + y_cpu
    Traceback (most recent call last):
    ...
@@ -220,3 +226,8 @@ to get host or device arrays from either CuPy or NumPy arrays.
    array([5, 7, 9])
    >>> cp.asarray(x_gpu) + cp.asarray(y_cpu)
    array([5, 7, 9])
+
+The :func:`cupy.asnumpy` method returns a NumPy array (array on the host),
+whereas :func:`cupy.asarray` method returns a CuPy array (array on the current device).
+Both of these methods act on an arbitrary source, meaning that they can be applied to any data
+on the host or device that can be converted to an array.
