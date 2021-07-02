@@ -1,3 +1,5 @@
+import contextlib
+
 import numpy
 import pytest
 
@@ -73,6 +75,41 @@ class TestArrayCopyAndView:
         a = xp.moveaxis(a, 0, 2)  # (3, 5, 1)
         b = a.view(dtype=numpy.int32)
         return b
+
+    @pytest.mark.parametrize(('order', 'shape'), [
+        ('C', (3,)),
+        ('C', (3, 5)),
+        ('F', (3, 5)),
+        ('C', (0,)),
+        ('C', (1, 3)),
+        ('C', (3, 1)),
+    ], ids=str)
+    @testing.numpy_cupy_equal()
+    def test_view_flags_smaller(self, xp, order, shape):
+        a = xp.zeros(shape, numpy.int32, order)
+        with (
+                testing.assert_warns(DeprecationWarning) if order == 'F'
+                else contextlib.nullcontext()):
+            b = a.view(numpy.int16)
+        return b.flags.c_contiguous, b.flags.f_contiguous, b.flags.owndata
+
+    @pytest.mark.parametrize(('order', 'shape'), [
+        ('C', (6,)),
+        ('C', (3, 10)),
+        ('F', (6, 5)),
+        ('C', (0,)),
+        ('C', (1, 6)),
+        ('F', (2, 3)),
+        ('C', (3, 2)),
+    ], ids=str)
+    @testing.numpy_cupy_equal()
+    def test_view_flags_larger(self, xp, order, shape):
+        a = xp.zeros(shape, numpy.int16, order)
+        with (
+                testing.assert_warns(DeprecationWarning) if order == 'F'
+                else contextlib.nullcontext()):
+            b = a.view(numpy.int32)
+        return b.flags.c_contiguous, b.flags.f_contiguous, b.flags.owndata
 
     @testing.numpy_cupy_array_equal()
     def test_flatten(self, xp):
