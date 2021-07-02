@@ -198,9 +198,9 @@ Here is an example of a device agnostic function that computes ``log1p``:
 
    >>> # Stable implementation of log(1 + exp(x))
    >>> def softplus(x):
-   ...     mod = cp.get_array_module(x)
-   ...     print("Using module:", mod.__name__)
-   ...     return mod.maximum(0, x) + mod.log1p(mod.exp(-abs(x)))
+   ...     xp = cp.get_array_module(x)  # 'xp' is a standard usage in the community
+   ...     print("Using:", xp.__name__)
+   ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
 When you need to manipulate CPU and GPU arrays, an explicit data
 transfer may be required to move them to the same location -- either CPU or GPU.
