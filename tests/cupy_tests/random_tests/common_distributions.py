@@ -268,3 +268,22 @@ class Gamma:
     def test_gamma_ks(self):
         self.check_ks(0.05)(
             self.shape, self.scale, size=2000)
+
+
+geometric_params = [
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 1.0},]
+
+
+class Geometric:
+
+    target_method = 'geometric'
+
+    def test_geometric(self):
+        self.generate(p=self.p, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_geometric_ks(self, dtype):
+        self.check_ks(0.05)(
+            p=self.p, size=2000, dtype=dtype)

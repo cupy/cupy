@@ -30,6 +30,7 @@ void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask);
 void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b);
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
+void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p);
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam);
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream);
@@ -49,6 +50,7 @@ void interval_32(int generator, intptr_t state, intptr_t out, ssize_t size, intp
 void interval_64(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {}
 void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, double a, double b) {}
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
+void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {}
 void standard_normal(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {}
 void standard_normal_float(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream){}

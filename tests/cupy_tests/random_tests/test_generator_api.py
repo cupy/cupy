@@ -275,3 +275,13 @@ class TestRandomStateThreadSafe(unittest.TestCase):
         actual = cupy.random.default_rng(seed).standard_exponential()
         expected = cupy.random.default_rng(seed).standard_exponential()
         assert actual == expected
+
+
+@testing.parameterize(*common_distributions.geometric_params)
+@testing.with_requires('numpy>=1.17.0')
+@testing.fix_random()
+class TestGeometric(
+    common_distributions.Geometric,
+    GeneratorTestCase
+):
+    pass
