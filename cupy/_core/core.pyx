@@ -628,6 +628,11 @@ cdef class ndarray:
             #     'divisor of the size of original dtype')
         v._shape[axis] = tmp_size // v_is
         v.size = v.size * self_is // v_is  # divisible because shape[axis] is.
+
+        if axis != ndim - 1:
+            v._update_c_contiguity()
+        if axis != 0:
+            v._update_f_contiguity()
         return v
 
     # TODO(okuta): Implement getfield
