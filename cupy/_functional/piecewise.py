@@ -24,7 +24,7 @@ def piecewise(x, condlist, funclist):
 
         Returns:
             cupy.ndarray: the scalar values in funclist on portions of x
-                defined by condlist.
+            defined by condlist.
 
         .. warning::
 

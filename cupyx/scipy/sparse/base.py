@@ -172,7 +172,7 @@ class spmatrix(object):
 
         Returns:
             cupyx.scipy.sparse.spmatrix: A sparse matrix representing n-th
-                power of this matrix.
+            power of this matrix.
 
         """
         m, n = self.shape
