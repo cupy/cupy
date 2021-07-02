@@ -316,9 +316,12 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
             function at the bin, ``bin_count / sample_count / bin_volume``.
 
     Returns:
-        H (cupy.ndarray): The multidimensional histogram of sample x. See
+        tuple:
+        H (cupy.ndarray):
+            The multidimensional histogram of sample x. See
             normed and weights for the different possible semantics.
-        edges (list of cupy.ndarray): A list of D arrays describing the bin
+        edges (list of cupy.ndarray):
+            A list of D arrays describing the bin
             edges for each dimension.
 
     .. warning::
@@ -460,11 +463,15 @@ def histogram2d(x, y, bins=10, range=None, weights=None, density=None):
             function at the bin, ``bin_count / sample_count / bin_volume``.
 
     Returns:
-        H (cupy.ndarray): The multidimensional histogram of sample x. See
+        tuple:
+        H (cupy.ndarray):
+            The multidimensional histogram of sample x. See
             normed and weights for the different possible semantics.
-        edges0 (tuple of cupy.ndarray): A list of D arrays describing the bin
+        edges0 (tuple of cupy.ndarray):
+            A list of D arrays describing the bin
             edges for the first dimension.
-        edges1 (tuple of cupy.ndarray): A list of D arrays describing the bin
+        edges1 (tuple of cupy.ndarray):
+            A list of D arrays describing the bin
             edges for the second dimension.
 
     .. warning::
