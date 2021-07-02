@@ -1004,7 +1004,17 @@ def _nvcc_gencode_options(cuda_version):
         #
         #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
 
-        if cuda_version >= 11000:
+        if cuda_version >= 11040:
+            arch_list = ['compute_35',
+                         'compute_50',
+                         ('compute_60', 'sm_60'),
+                         ('compute_61', 'sm_61'),
+                         ('compute_70', 'sm_70'),
+                         ('compute_75', 'sm_75'),
+                         ('compute_80', 'sm_80'),
+                         ('compute_86', 'sm_86'),
+                         'compute_86']
+        elif cuda_version >= 11000:
             arch_list = ['compute_35',
                          'compute_50',
                          ('compute_60', 'sm_60'),
