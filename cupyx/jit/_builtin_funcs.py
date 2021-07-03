@@ -1,3 +1,4 @@
+import sys
 import warnings
 
 import cupy
@@ -171,6 +172,11 @@ class AtomicOp(BuiltinFunc):
     def __init__(self, op, dtypes):
         self._op = op
         self._name = 'atomic' + op
+        if sys.platform.startswith('win'):
+            extra = {'i': 'l', 'I': 'L'}
+            for k, v in extra.items():
+                if k in dtypes:
+                    dtypes += v
         self._dtypes = dtypes
         doc = f"""Call the ``{self._name}`` function to operate atomically on
         ``array[index]``. Please refer to `Atomic Functions`_ for detailed
