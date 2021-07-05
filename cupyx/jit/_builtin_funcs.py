@@ -208,7 +208,7 @@ class AtomicOp(BuiltinFunc):
             raise TypeError('The first argument must be of array type.')
         target = _compile._indexing(array, index, env)
         ctype = target.ctype
-        if ctype.dtype.char not in self._dtypes:
+        if ctype.dtype.name not in self._dtypes:
             raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
         # On HIP, 'e' is not supported and we will never reach here
         if (op == 'Add' and ctype.dtype.char == 'e'
@@ -308,7 +308,7 @@ class WarpShuffleOp(BuiltinFunc):
 
         var = Data.init(var, env)
         ctype = var.ctype
-        if ctype.dtype.char not in self._dtypes:
+        if ctype.dtype.name not in self._dtypes:
             raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
 
         try:
@@ -358,34 +358,37 @@ grid = Grid()
 
 # atomic functions
 atomic_add = AtomicOp(
-    'Add', 'iILQfd' if runtime.is_hip else 'iILQefd')
+    'Add',
+    ('int32', 'uint32', 'uint64', 'float32', 'float64')
+    + (() if runtime.is_hip else ('float16',)))
 atomic_sub = AtomicOp(
-    'Sub', 'iI')
+    'Sub', ('int32', 'uint32'))
 atomic_exch = AtomicOp(
-    'Exch', 'iILQf')
+    'Exch', ('int32', 'uint32', 'uint64', 'float32'))
 atomic_min = AtomicOp(
-    'Min', 'iILQ')
+    'Min', ('int32', 'uint32', 'uint64'))
 atomic_max = AtomicOp(
-    'Max', 'iILQ')
+    'Max', ('int32', 'uint32', 'uint64'))
 atomic_inc = AtomicOp(
-    'Inc', 'I')
+    'Inc', ('uint32',))
 atomic_dec = AtomicOp(
-    'Dec', 'I')
+    'Dec', ('uint32',))
 atomic_cas = AtomicOp(
-    'CAS', 'iILQ' if runtime.is_hip else 'iHILQ')
+    'CAS',
+    ('int32', 'uint32', 'uint64')
+    + (() if runtime.is_hip else ('uint16',)))
 atomic_and = AtomicOp(
-    'And', 'iILQ')
+    'And', ('int32', 'uint32', 'uint64'))
 atomic_or = AtomicOp(
-    'Or', 'iILQ')
+    'Or', ('int32', 'uint32', 'uint64'))
 atomic_xor = AtomicOp(
-    'Xor', 'iILQ')
+    'Xor', ('int32', 'uint32', 'uint64'))
 
 # warp-shuffle functions
-shfl_sync = WarpShuffleOp(
-    '', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
-shfl_up_sync = WarpShuffleOp(
-    'up', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
-shfl_down_sync = WarpShuffleOp(
-    'down', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
-shfl_xor_sync = WarpShuffleOp(
-    'xor', 'iIlqfd' if runtime.is_hip else 'iIlLqQefd')
+_shfl_dtypes = (
+    ('int32', 'uint32', 'int64', 'float32', 'float64')
+    + (() if runtime.is_hip else ('uint64', 'float16')))
+shfl_sync = WarpShuffleOp('', _shfl_dtypes)
+shfl_up_sync = WarpShuffleOp('up', _shfl_dtypes)
+shfl_down_sync = WarpShuffleOp('down', _shfl_dtypes)
+shfl_xor_sync = WarpShuffleOp('xor', _shfl_dtypes)
