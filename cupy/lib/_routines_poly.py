@@ -143,7 +143,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
         cupy.ndarray or tuple:
         p (cupy.ndarray of shape (deg + 1,) or (deg + 1, K)):
             Polynomial coefficients from highest to lowest degree
-        residuals, rank, singular_values, rcond
+        residuals, rank, singular_values, rcond \
         (cupy.ndarray, int, cupy.ndarray, float):
             Present only if ``full=True``.
             Sum of squared residuals of the least-squares fit,

@@ -514,11 +514,16 @@ def convolution_matrix(a, n, mode='full'):
             This is analogous to ``mode`` in ``numpy.convolve(v, a, mode)``.
 
     Returns:
-        cupy.ndarray: The convolution matrix whose row count depends on
+        cupy.ndarray: The convolution matrix whose row count k depends on
         ``mode``:
-            ``'full'   m + n -1``
-            ``'same'   max(m, n)``
-            ``'valid'  max(m, n) - min(m, n) + 1``
+
+        =========== =========================
+        ``mode``    k
+        =========== =========================
+        ``'full'``  m + n - 1
+        ``'same'``  max(m, n)
+        ``'valid'`` max(m, n) - min(m, n) + 1
+        =========== =========================
 
     .. seealso:: :func:`cupyx.scipy.linalg.toeplitz`
     .. seealso:: :func:`scipy.linalg.convolution_matrix`
