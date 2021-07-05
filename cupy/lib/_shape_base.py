@@ -23,7 +23,7 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
             shape of the return value of ``func1d``. So if ``func1d`` returns a
             scalar ``out`` will have one fewer dimensions than ``arr``.
 
-    .. seealso:: :func:`numpy.apply_over_axes`
+    .. seealso:: :func:`numpy.apply_along_axis`
     """
     ndim = arr.ndim
     axis = internal._normalize_axis_index(axis, ndim)
