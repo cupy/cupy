@@ -244,6 +244,16 @@ class TestRandom(InvalidOutsMixin, GeneratorTestCase):
         self.check_ks(0.05)(size=2000, dtype=dtype)
 
 
+@testing.parameterize(*common_distributions.geometric_params)
+@testing.with_requires('numpy>=1.17.0')
+@testing.fix_random()
+class TestGeometric(
+    common_distributions.Geometric,
+    GeneratorTestCase
+):
+    pass
+
+
 @testing.with_requires('numpy>=1.17.0')
 @testing.gpu
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
@@ -275,13 +285,3 @@ class TestRandomStateThreadSafe(unittest.TestCase):
         actual = cupy.random.default_rng(seed).standard_exponential()
         expected = cupy.random.default_rng(seed).standard_exponential()
         assert actual == expected
-
-
-@testing.parameterize(*common_distributions.geometric_params)
-@testing.with_requires('numpy>=1.17.0')
-@testing.fix_random()
-class TestGeometric(
-    common_distributions.Geometric,
-    GeneratorTestCase
-):
-    pass
