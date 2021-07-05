@@ -211,8 +211,6 @@ class TestRaw(unittest.TestCase):
         f((1,), (32, 32), (x, y, buf))
         assert bool((x == y).all())
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     def test_syncwarp(self):
         @jit.rawkernel()
         def f(x):
@@ -229,8 +227,6 @@ class TestRaw(unittest.TestCase):
         y[16:] += 1
         assert bool((x == y).all())
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     def test_syncwarp_mask(self):
         @jit.rawkernel()
         def f(x, m):
@@ -482,8 +478,6 @@ class TestRaw(unittest.TestCase):
         f[5, 6](x, y, numpy.uint32(1024))
         assert bool((x == y).all())
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl(self, dtype):
@@ -502,8 +496,6 @@ class TestRaw(unittest.TestCase):
         f[1, 32](a, b)
         assert (b == a * cupy.ones((32,), dtype=dtype)).all()
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     def test_shfl_width(self):
         @jit.rawkernel()
         def f(a, b, w):
@@ -519,8 +511,6 @@ class TestRaw(unittest.TestCase):
             c[c % w != 0] = c[c % w == 0]
             assert (b == c).all()
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_up(self, dtype):
@@ -536,25 +526,24 @@ class TestRaw(unittest.TestCase):
         expected = [i for i in range(N)] + [i for i in range(32-N)]
         assert(a == cupy.asarray(expected, dtype=dtype)).all()
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_down(self, dtype):
         N = 5
+        # __shfl_down() on HIP does not seem to have the same behavior...
+        block = 64 if runtime.is_hip else 32
 
         @jit.rawkernel()
         def f(a):
             value = jit.shfl_down_sync(0xffffffff, a[jit.threadIdx.x], N)
             a[jit.threadIdx.x] = value
 
-        a = cupy.arange(32, dtype=dtype)
-        f[1, 32](a)
-        expected = [i for i in range(N, 32)] + [(32-N+i) for i in range(N)]
+        a = cupy.arange(block, dtype=dtype)
+        f[1, block](a)
+        expected = [i for i in range(N, block)]
+        expected += [(block-N+i) for i in range(N)]
         assert(a == cupy.asarray(expected, dtype=dtype)).all()
 
-    # TODO(leofang): enable HIP when cupy/cupy#5348 is resolved
-    @unittest.skipIf(runtime.is_hip, 'HIP is not yet supported')
     # TODO(leofang): test float16 ('e') once cupy/cupy#5346 is resolved
     @testing.for_dtypes('iIlqfd' if runtime.is_hip else 'iIlLqQfd')
     def test_shfl_xor(self, dtype):
