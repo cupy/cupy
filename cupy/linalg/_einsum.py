@@ -34,8 +34,8 @@ def _transpose_ex(a, axeses):
         axeses (sequence of sequences of ints)
 
     Returns:
-        p: a with its axes permutated. A writeable view is returned whenever
-            possible.
+        ndarray: a with its axes permutated. A writeable view is returned
+        whenever possible.
     """
 
     shape = []

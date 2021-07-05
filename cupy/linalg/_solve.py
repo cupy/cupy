@@ -399,7 +399,7 @@ def pinv(a, rcond=1e-15):
 
     Returns:
         cupy.ndarray: The pseudoinverse of ``a`` with dimension
-            ``(..., N, M)``.
+        ``(..., N, M)``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield

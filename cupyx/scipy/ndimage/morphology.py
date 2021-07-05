@@ -95,7 +95,7 @@ def iterate_structure(structure, iterations, origin=None):
 
     Returns:
         cupy.ndarray: A new structuring element obtained by dilating
-             ``structure`` (``iterations`` - 1) times with itself.
+        ``structure`` (``iterations`` - 1) times with itself.
 
     .. seealso:: :func:`scipy.ndimage.iterate_structure`
     """
@@ -134,8 +134,8 @@ def generate_binary_structure(rank, connectivity):
 
     Returns:
         cupy.ndarray: Structuring element which may be used for binary
-            morphological operations, with ``rank`` dimensions and all
-            dimensions equal to 3.
+        morphological operations, with ``rank`` dimensions and all
+        dimensions equal to 3.
 
     .. seealso:: :func:`scipy.ndimage.generate_binary_structure`
     """
@@ -492,7 +492,7 @@ def binary_hit_or_miss(input, structure1=None, structure2=None, output=None,
 
     Returns:
         cupy.ndarray: Hit-or-miss transform of ``input`` with the given
-            structuring element (``structure1``, ``structure2``).
+        structuring element (``structure1``, ``structure2``).
 
     .. warning::
 
@@ -574,7 +574,7 @@ def binary_fill_holes(input, structure=None, output=None, origin=0):
 
     Returns:
         cupy.ndarray: Transformation of the initial image ``input`` where holes
-            have been filled.
+        have been filled.
 
     .. warning::
 

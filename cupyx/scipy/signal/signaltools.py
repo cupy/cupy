@@ -335,7 +335,7 @@ def convolve2d(in1, in2, mode='full', boundary='fill', fillvalue=0):
 
     Returns:
         cupy.ndarray: A 2-dimensional array containing a subset of the discrete
-            linear convolution of ``in1`` with ``in2``.
+        linear convolution of ``in1`` with ``in2``.
 
     .. seealso:: :func:`cupyx.scipy.signal.convolve`
     .. seealso:: :func:`cupyx.scipy.signal.fftconvolve`
@@ -378,7 +378,7 @@ def correlate2d(in1, in2, mode='full', boundary='fill', fillvalue=0):
 
     Returns:
         cupy.ndarray: A 2-dimensional array containing a subset of the discrete
-            linear cross-correlation of ``in1`` with ``in2``.
+        linear cross-correlation of ``in1`` with ``in2``.
 
     Note:
         When using ``"same"`` mode with even-length inputs, the outputs of
@@ -475,7 +475,7 @@ def order_filter(a, domain, rank):
 
     Returns:
         cupy.ndarray: The results of the order filter in an array with the same
-            shape as `a`.
+        shape as `a`.
 
     .. seealso:: :func:`cupyx.scipy.ndimage.rank_filter`
     .. seealso:: :func:`scipy.signal.order_filter`
@@ -539,7 +539,8 @@ def medfilt2d(input, kernel_size=3):
 
     Returns:
         cupy.ndarray: An array the same size as input containing the median
-            filtered result.
+        filtered result.
+
     See also
     --------
     .. seealso:: :func:`cupyx.scipy.ndimage.median_filter`

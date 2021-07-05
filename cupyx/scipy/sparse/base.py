@@ -568,7 +568,7 @@ def issparse(x):
 
     Returns:
         bool: Returns if ``x`` is :class:`cupyx.scipy.sparse.spmatrix` that is
-            a base class of all sparse matrix classes.
+        a base class of all sparse matrix classes.
 
     """
     return isinstance(x, spmatrix)

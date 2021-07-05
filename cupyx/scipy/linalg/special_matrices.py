@@ -100,7 +100,7 @@ def toeplitz(c, r=None):
 
     Returns:
         cupy.ndarray: The Toeplitz matrix. Dtype is the same as
-            ``(c[0] + r[0]).dtype``.
+        ``(c[0] + r[0]).dtype``.
 
     .. seealso:: :func:`cupyx.scipy.linalg.circulant`
     .. seealso:: :func:`cupyx.scipy.linalg.hankel`
@@ -149,7 +149,7 @@ def hankel(c, r=None):
 
     Returns:
         cupy.ndarray: The Hankel matrix. Dtype is the same as
-            ``(c[0] + r[0]).dtype``.
+        ``(c[0] + r[0]).dtype``.
 
     .. seealso:: :func:`cupyx.scipy.linalg.toeplitz`
     .. seealso:: :func:`cupyx.scipy.linalg.circulant`
@@ -211,8 +211,8 @@ def leslie(f, s):
 
     Returns:
         cupy.ndarray: The array is zero except for the first row, which is
-            ``f``, and the first sub-diagonal, which is ``s``. The data-type of
-            the array will be the data-type of ``f[0]+s[0]``.
+        ``f``, and the first sub-diagonal, which is ``s``. The data-type of
+        the array will be the data-type of ``f[0]+s[0]``.
 
     .. seealso:: :func:`scipy.linalg.leslie`
     """
@@ -270,7 +270,7 @@ def block_diag(*arrs):
 
     Returns:
         (cupy.ndarray): Array with ``A``, ``B``, ``C``, ... on the diagonal.
-            Output has the same dtype as ``A``.
+        Output has the same dtype as ``A``.
 
     .. seealso:: :func:`scipy.linalg.block_diag`
     """
@@ -312,8 +312,8 @@ def companion(a):
 
     Returns:
         (cupy.ndarray): The first row of the output is ``-a[1:]/a[0]``, and the
-            first sub-diagonal is all ones. The data-type of the array is the
-            same as the data-type of ``-a[1:]/a[0]``.
+        first sub-diagonal is all ones. The data-type of the array is the
+        same as the data-type of ``-a[1:]/a[0]``.
 
     .. seealso:: :func:`cupyx.scipy.linalg.fiedler_companion`
     .. seealso:: :func:`scipy.linalg.companion`
@@ -348,7 +348,7 @@ def helmert(n, full=False):
 
     Returns:
         cupy.ndarray: The Helmert matrix. The shape is (n, n) or (n-1, n)
-            depending on the ``full`` argument.
+        depending on the ``full`` argument.
 
     .. seealso:: :func:`scipy.linalg.helmert`
     """
@@ -515,10 +515,10 @@ def convolution_matrix(a, n, mode='full'):
 
     Returns:
         cupy.ndarray: The convolution matrix whose row count depends on
-            ``mode``:
-                ``'full'   m + n -1``
-                ``'same'   max(m, n)``
-                ``'valid'  max(m, n) - min(m, n) + 1``
+        ``mode``:
+            ``'full'   m + n -1``
+            ``'same'   max(m, n)``
+            ``'valid'  max(m, n) - min(m, n) + 1``
 
     .. seealso:: :func:`cupyx.scipy.linalg.toeplitz`
     .. seealso:: :func:`scipy.linalg.convolution_matrix`
