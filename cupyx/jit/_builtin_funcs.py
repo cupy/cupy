@@ -117,4 +117,5 @@ syncthreads = SyncThreads()
 shared_memory = SharedMemory()
 
 # TODO: Add more atomic functions.
-atomic_add = AtomicOp('Add', 'iILQefd')
+atomic_add = AtomicOp(
+    'Add', 'iILQfd' if runtime.is_hip else 'iILQefd')
