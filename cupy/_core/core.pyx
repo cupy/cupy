@@ -538,8 +538,7 @@ cdef class ndarray:
         .. seealso:: :meth:`numpy.ndarray.view`
 
         """
-        # Use __new__ instead of __init__ to skip recomputation of contiguity
-        cdef Py_ssize_t ndim
+        cdef Py_ssize_t ndim, axis, tmp_size
         cdef int self_is, v_is
         v = self._view(self._shape, self._strides, False, False)
         if dtype is None:
@@ -555,13 +554,43 @@ cdef class ndarray:
             raise ValueError(
                 'Changing the dtype of a 0d array is only supported if '
                 'the itemsize is unchanged')
-        if not self._c_contiguous:
+        if self._c_contiguous:
+            axis = ndim - 1
+        elif self._f_contiguous:
+            warnings.warn(
+                'Changing the shape of an F-contiguous array by '
+                'descriptor assignment is deprecated. To maintain the '
+                'Fortran contiguity of a multidimensional Fortran '
+                'array, use \'a.T.view(...).T\' instead',
+                DeprecationWarning)
+            axis = 0
+        else:
+            # Don't mention the deprecated F-contiguous support
             raise ValueError(
                 'To change to a dtype of a different size, the array must '
                 'be C-contiguous')
-        v._shape[ndim - 1] = v._shape[ndim - 1] * self_is // v_is
-        v._strides[ndim - 1] = v._strides[ndim - 1] * v_is // self_is
-        v.size = v.size * self_is // v_is
+
+        # Normalize `_strides[axis]` whenever itemsize changes
+        v._strides[axis] = v_is
+
+        tmp_size = v._shape[axis] * self_is
+        if tmp_size % v_is != 0:
+            raise ValueError(
+                'When changing to a larger dtype, its size must be a '
+                'divisor of the total size in bytes of the last axis '
+                'of the array.')
+            # itemsize of dtype in CuPy is one of 1, 2, 4, 8, 16.
+            # Thus, CuPy does not raise the following:
+            # raise ValueError(
+            #     'When changing to a smaller dtype, its size must be a '
+            #     'divisor of the size of original dtype')
+        v._shape[axis] = tmp_size // v_is
+        v.size = v.size * self_is // v_is  # divisible because shape[axis] is.
+
+        if axis != ndim - 1:
+            v._update_c_contiguity()
+        if axis != 0:
+            v._update_f_contiguity()
         return v
 
     # TODO(okuta): Implement getfield
@@ -1745,6 +1774,7 @@ cdef class ndarray:
                        bint update_c_contiguity,
                        bint update_f_contiguity):
         cdef ndarray v
+        # Use __new__ instead of __init__ to skip recomputation of contiguity
         v = ndarray.__new__(ndarray)
         v.data = self.data
         v.base = self.base if self.base is not None else self
