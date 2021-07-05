@@ -55,7 +55,7 @@ class SyncThreads(BuiltinFunc):
     def __call__(self):
         """Calls ``__syncthreads()``
         """
-        super.__call__(self)
+        super().__call__()
 
     def call_const(self, env):
         return Data('__syncthreads()', _cuda_types.void)
@@ -73,7 +73,7 @@ class SharedMemory(BuiltinFunc):
                 If ``int`` type, the size of static shared memory.
                 If ``None``, declares the shared memory with extern specifier.
         """
-        super.__call__(self)
+        super().__call__()
 
     def call_const(self, env, dtype, size):
         name = env.get_fresh_variable_name(prefix='_smem')
