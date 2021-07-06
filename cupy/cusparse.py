@@ -194,8 +194,9 @@ def csrmvExIsAligned(a, x, y=None):
         required by csrmvEx.
 
     Returns:
-        bool: ``True`` if all pointers are aligned.
-              ``False`` if otherwise.
+        bool:
+        ``True`` if all pointers are aligned.
+        ``False`` if otherwise.
 
     """
 

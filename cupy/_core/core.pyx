@@ -1814,7 +1814,7 @@ cdef class ndarray:
 
         Returns:
             dltensor (:class:`PyCapsule`): Output DLPack tensor which is
-                encapsulated in a :class:`PyCapsule` object.
+            encapsulated in a :class:`PyCapsule` object.
 
         .. seealso::
 

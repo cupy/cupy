@@ -44,7 +44,7 @@ def require(a, dtype=None, requirements=None):
 
     Returns:
         ~cupy.ndarray: The input array ``a`` with specified requirements and
-            type if provided.
+        type if provided.
 
     .. seealso:: :func:`numpy.require`
 

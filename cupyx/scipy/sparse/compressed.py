@@ -798,7 +798,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         Returns:
             (cupy.ndarray): Reduce result for nonzeros in each
-                major_index.
+            major_index.
 
         """
         out_shape = self.shape[1 - axis]
@@ -832,7 +832,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         Returns:
             (cupy.ndarray): Reduce result for nonzeros in each
-                major_index
+            major_index
 
         """
 
