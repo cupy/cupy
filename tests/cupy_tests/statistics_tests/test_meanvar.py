@@ -86,7 +86,7 @@ class TestMedianAxis(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'shape': [(3, 4, 5)],
-        'axis': [None, 0, 1, -1, (0, 1), (0, 2), (-1, -2)],
+        'axis': [None, 0, 1, -1, (0, 1), (0, 2), (-1, -2), [0, 1]],
         'keepdims': [True, False],
         'overwrite_input': [True, False]
     })
