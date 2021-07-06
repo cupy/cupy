@@ -275,7 +275,8 @@ class Generator:
             f(x) = p(1-p)^{k-1}.
 
         Args:
-            p (float): Success probability of the geometric distribution.
+            p (float or array_like of floats): Success probability of
+                the geometric distribution.
             size (int or tuple of ints): The shape of the array. If ``None``, a
                 zero-dimensional array is generated.
 
@@ -368,7 +369,8 @@ class Generator:
             f(x) = \\frac{\\lambda^xe^{-\\lambda}}{x!}.
 
         Args:
-            lam (array_like of floats): Parameter of the poisson distribution
+            lam (float or array_like of floats): Parameter of
+                the poisson distribution
                 :math:`\\lambda`.
             size (int or tuple of ints): The shape of the array. If ``None``,
             this function generate an array whose shape is `lam.shape`.
