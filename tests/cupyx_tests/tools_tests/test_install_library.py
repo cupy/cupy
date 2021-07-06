@@ -27,17 +27,19 @@ class TestInstallLibrary(unittest.TestCase):
         for rec in install_library.library_records[self.library]:
             cuda = rec['cuda']
             version = rec[self.library]
-            filename = rec['assets'][system]['filename']
+            filenames = rec['assets'][system]['filenames']
             with tempfile.TemporaryDirectory() as d:
                 install_library.install_lib(cuda, d, self.library)
-                self._check_installed(d, cuda, self.library, version, filename)
+                self._check_installed(
+                    d, cuda, self.library, version, filenames)
 
-    def _check_installed(self, prefix, cuda, lib, version, filename):
+    def _check_installed(self, prefix, cuda, lib, version, filenames):
         install_root = os.path.join(prefix, cuda, lib, version)
         assert os.path.isdir(install_root)
         for _x, _y, files in os.walk(install_root):
-            if filename in files:
-                return
+            for filename in filenames:
+                if filename in files:
+                    return
         pytest.fail('expected file cound not be found')
 
     def test_urls(self):
