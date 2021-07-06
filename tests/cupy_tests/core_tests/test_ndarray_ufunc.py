@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+import pytest
 
 import cupy
 from cupy import testing
@@ -89,3 +90,22 @@ class TestArrayUfunc(unittest.TestCase):
         b = xp.transpose(a)
         a += b
         return a
+
+
+class TestUfunc:
+    @pytest.mark.parametrize('ufunc', [
+        'add',
+        'sin',
+    ])
+    @testing.numpy_cupy_equal()
+    def test_types(self, xp, ufunc):
+        types = getattr(xp, ufunc).types
+        if xp == np:
+            assert isinstance(types, list)
+            types = list(dict.fromkeys(  # remove dups: numpy/numpy#7897
+                sig for sig in types
+                # CuPy does not support the following dtypes:
+                # (c)longdouble, datetime, timedelta, and object.
+                if not any(t in sig for t in 'GgMmO')
+            ))
+        return types
