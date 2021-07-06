@@ -18,10 +18,10 @@ def apply_along_axis(func1d, axis, arr, *args, **kwargs):
 
     Returns:
         cupy.ndarray: The output array. The shape of ``out`` is identical to
-            the shape of ``arr``, except along the ``axis`` dimension. This
-            axis is removed, and replaced with new dimensions equal to the
-            shape of the return value of ``func1d``. So if ``func1d`` returns a
-            scalar ``out`` will have one fewer dimensions than ``arr``.
+        the shape of ``arr``, except along the ``axis`` dimension. This
+        axis is removed, and replaced with new dimensions equal to the
+        shape of the return value of ``func1d``. So if ``func1d`` returns a
+        scalar ``out`` will have one fewer dimensions than ``arr``.
 
     .. seealso:: :func:`numpy.apply_along_axis`
     """

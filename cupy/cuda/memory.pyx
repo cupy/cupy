@@ -936,8 +936,8 @@ cdef class _Arena:
 
         Returns:
             bool: ``True`` if the chunk can successfully be removed from
-                the free list. ``False`` otherwise (e.g., the chunk could not
-                be found in the free list as the chunk is allocated.)
+            the free list. ``False`` otherwise (e.g., the chunk could not
+            be found in the free list as the chunk is allocated.)
         """
 
         cdef size_t index, bin_index

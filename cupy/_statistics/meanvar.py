@@ -82,7 +82,7 @@ def average(a, axis=None, weights=None, returned=False):
 
     Returns:
         cupy.ndarray or tuple of cupy.ndarray: The average of the input array
-            along the axis and the sum of weights.
+        along the axis and the sum of weights.
 
     .. warning::
 

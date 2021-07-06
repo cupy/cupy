@@ -329,9 +329,9 @@ def gradient(f, *varargs, axis=None, edge_order=1):
 
     Returns:
         gradient (cupy.ndarray or list of cupy.ndarray): A set of ndarrays
-            (or a single ndarray if there is only one dimension) corresponding
-            to the derivatives of f with respect to each dimension. Each
-            derivative has the same shape as f.
+        (or a single ndarray if there is only one dimension) corresponding
+        to the derivatives of f with respect to each dimension. Each
+        derivative has the same shape as f.
 
     .. seealso:: :func:`numpy.gradient`
     """
