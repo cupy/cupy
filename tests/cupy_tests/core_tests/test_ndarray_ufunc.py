@@ -1,5 +1,3 @@
-import unittest
-
 import numpy
 import pytest
 
@@ -8,7 +6,7 @@ from cupy import testing
 
 
 @testing.gpu
-class TestArrayUfunc(unittest.TestCase):
+class TestArrayUfunc:
 
     @testing.for_all_dtypes()
     def test_unary_op(self, dtype):
@@ -57,23 +55,23 @@ class TestArrayUfunc(unittest.TestCase):
     def test_binary_mixed_op(self, dtype):
         a1 = cupy.array(numpy.array([0, 1, 2]), dtype=dtype)
         a2 = cupy.array(numpy.array([0, 1, 2]), dtype=dtype).get()
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             # attempt to add cupy and numpy arrays
             numpy.add(a1, a2)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             # check reverse order
             numpy.add(a2, a1)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             # reject numpy output from cupy
             numpy.add(a1, a1, out=a2)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             # reject cupy output from numpy
             numpy.add(a2, a2, out=a1)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             # bad form for out=
             # this is also an error with numpy array
             numpy.sin(a1, out=())
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             # bad form for out=
             # this is also an error with numpy array
             numpy.sin(a1, out=(a1, a1))
