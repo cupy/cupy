@@ -59,6 +59,12 @@ main() {
     =====================================================================
   "
 
+  if which gcloud &> /dev/null; then
+    gcloud auth configure-docker || echo "Failed to configure access to GCR"
+  else
+    echo "Skipping GCR configuration"
+  fi
+
   set -x
   for stage in ${STAGES}; do case "${stage}" in
     build )
