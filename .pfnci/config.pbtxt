@@ -28,6 +28,7 @@ configs {
       cpu: 12
       memory: 64
       disk: 10
+      image: "docker"
     }
     time_limit: {
       seconds: 3600
