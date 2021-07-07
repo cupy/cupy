@@ -231,7 +231,7 @@ cdef class ndarray:
             elif not isinstance(stream, int) or stream < -1 or stream == 0:
                 raise ValueError(
                     f'On CUDA, the valid stream for the DLPack protocol is -1,'
-                    ' 1, 2, or any larger value, but {stream} was provided')
+                    f' 1, 2, or any larger value, but {stream} was provided')
             if curr_stream_ptr == 0:
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
@@ -241,7 +241,7 @@ cdef class ndarray:
                     or stream in (1, 2)):
                 raise ValueError(
                     f'On ROCm/HIP, the valid stream for the DLPack protocol is'
-                    ' -1, 0, or any value > 2, but {stream} was provided')
+                    f' -1, 0, or any value > 2, but {stream} was provided')
 
         # if -1, no stream order should be established; otherwise, the consumer
         # stream should wait for the work on CuPy's current stream to finish
