@@ -6,8 +6,7 @@ import cupy
 from cupy import _core
 from cupy._core import internal
 from cupy._core._gufuncs import _GUFunc
-
-from cupy.linalg._solve import inv
+from cupy.linalg import _solve
 
 _gu_func_matmul = _GUFunc(
     _core.matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True)
@@ -371,7 +370,7 @@ def matrix_power(M, n):
     if n == 0:
         return cupy.identity(M.shape[0], dtype=M.dtype)
     elif n < 0:
-        M = inv(M)
+        M = _solve.inv(M)
         n *= -1
 
     # short-cuts
