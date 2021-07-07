@@ -360,8 +360,6 @@ def matrix_power(M, n):
     Returns:
         ~cupy.ndarray: Output array.
 
-    .. note:: M must be of dtype `float32` or `float64`.
-
     ..seealso:: :func:`numpy.linalg.matrix_power`
     """
     _util._assert_cupy_array(M)
