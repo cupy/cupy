@@ -22,3 +22,5 @@ pushd tests
 python3 -c 'import cupy; cupy.show_config()'
 python3 -m pytest "${pytest_opts[@]}" .
 popd
+
+python3 .pfnci/trim_cupy_kernel_cache.py --max-size $((5*1024*1024*1024)) --rm
