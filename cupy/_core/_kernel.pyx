@@ -1011,7 +1011,7 @@ cdef class ufunc:
 
         """
         types = []
-        for op in self._ops:
+        for op in self._ops.ops:
             in_str = ''.join([<str>get_dtype(t).char for t in op.in_types])
             out_str = ''.join([<str>get_dtype(t).char for t in op.out_types])
             types.append('%s->%s' % (in_str, out_str))
