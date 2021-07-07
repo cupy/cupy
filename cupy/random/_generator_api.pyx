@@ -306,7 +306,7 @@ class Generator:
             size = (size,)
         elif size is None:
             size = p.shape
-        y = ndarray(size if size is not None else(), numpy.int64)
+        y = ndarray(size if size is not None else (), numpy.int64)
 
         p = cupy.broadcast_to(p, y.shape)
         p_arr = _array_data(p)
