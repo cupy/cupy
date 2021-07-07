@@ -27,7 +27,7 @@ def append(arr, values, axis=None):
             given, both ``arr`` and ``values`` are flattened before use.
 
     Returns:
-        cupy.ndarray
+        cupy.ndarray:
             A copy of ``arr`` with ``values`` appended to ``axis``.  Note that
             ``append`` does not occur in-place: a new array is allocated and
             filled.  If ``axis`` is None, ``out`` is a flattened array.

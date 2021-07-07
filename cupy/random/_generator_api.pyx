@@ -284,7 +284,7 @@ class Generator:
                 to this array
         Returns:
             cupy.ndarray: Samples drawn from the standard exponential
-                distribution.
+            distribution.
 
         .. seealso::
             :meth:`numpy.random.Generator.standard_exponential`

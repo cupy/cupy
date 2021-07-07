@@ -23,11 +23,15 @@ def _lu_factor(a_t, dtype):
         dtype (numpy.dtype): float32, float64, complex64, or complex128.
 
     Returns:
-        lu_t (cupy.ndarray): ``L`` without its unit diagonal and ``U`` with
+        tuple:
+        lu_t (cupy.ndarray):
+            ``L`` without its unit diagonal and ``U`` with
             dimension ``(..., N, N)``.
-        piv (cupy.ndarray): 1-origin pivot indices with dimension
+        piv (cupy.ndarray):
+            1-origin pivot indices with dimension
             ``(..., N)``.
-        dev_info (cupy.ndarray): ``getrf`` info with dimension ``(...)``.
+        dev_info (cupy.ndarray):
+            ``getrf`` info with dimension ``(...)``.
 
     .. seealso:: :func:`scipy.linalg.lu_factor`
 

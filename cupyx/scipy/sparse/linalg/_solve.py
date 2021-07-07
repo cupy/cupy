@@ -286,7 +286,7 @@ def factorized(A):
 
     Returns:
         callable: a function to solve the linear system of equations given in
-            ``A``.
+        ``A``.
 
     Note:
         This function computes LU decomposition of a sparse matrix on the CPU

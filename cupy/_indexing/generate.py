@@ -275,7 +275,7 @@ def ravel_multi_index(multi_index, dims, mode='wrap', order='C'):
 
     Returns:
         raveled_indices (cupy.ndarray): An array of indices into the flattened
-            version of an array of dimensions ``dims``.
+        version of an array of dimensions ``dims``.
 
     .. warning::
 

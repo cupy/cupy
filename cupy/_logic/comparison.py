@@ -50,7 +50,7 @@ def array_equal(a1, a2, equal_nan=False):
 
     Returns:
         cupy.ndarray: A boolean 0-dim array.
-            If its value is ``True``, two arrays are element-wise equal.
+        If its value is ``True``, two arrays are element-wise equal.
 
     .. seealso:: :func:`numpy.array_equal`
 
@@ -88,8 +88,8 @@ def allclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
 
     Returns:
         cupy.ndarray: A boolean 0-dim array.
-            If its value is ``True``, two arrays are element-wise equal within
-            a tolerance.
+        If its value is ``True``, two arrays are element-wise equal within
+        a tolerance.
 
     .. seealso:: :func:`numpy.allclose`
 

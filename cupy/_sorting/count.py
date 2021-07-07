@@ -17,8 +17,8 @@ def count_nonzero(a, axis=None):
             counted along a flattened version of ``a``
     Returns:
         cupy.ndarray of int: Number of non-zero values in the array
-            along a given axis. Otherwise, the total number of non-zero values
-            in the array is returned.
+        along a given axis. Otherwise, the total number of non-zero values
+        in the array is returned.
     """
 
     return _count_nonzero(a, axis=axis)
