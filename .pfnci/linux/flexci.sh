@@ -5,6 +5,7 @@
 set -uex
 
 TARGET="${1}"
+export CACHE_DIR=/tmp/cupy_cache
 
 env
 
