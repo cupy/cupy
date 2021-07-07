@@ -10,14 +10,15 @@ Arguments:
   - build: Build a docker image used for testing.
   - push: Push the built docker image so that further test runs can reuse
           the image.
-  - cache_get: Pull cache from GCS to CACHE_DIR.
-  - cache_put: Push cache from CACHE_DIR to GCS.
+  - cache_get: Pull cache from Google Cloud Storage to CACHE_DIR.
+  - cache_put: Push cache from CACHE_DIR to Google Cloud Storage.
   - test: Run tests.
 
 Environment variables:
 
 - GPU: Number of GPUs available for testing.
-- CACHE_DIR: Directory to store cache files.
+- CACHE_DIR: Path to the local directory to store cache files.
+- CACHE_GCS_DIR: Path to the GCS directory to store a cache archive.
 - DOCKER_IMAGE: Base name of the Docker image (without a tag).
 "
 
@@ -40,6 +41,8 @@ main() {
   repo_root="$(cd "$(dirname "${BASH_SOURCE}")/../.."; pwd)"
   base_branch="$(cat "${repo_root}/.pfnci/BRANCH")"
   docker_image="${DOCKER_IMAGE:-asia.gcr.io/pfn-public-ci/cupy-ci}:${TARGET}-${base_branch}"
+  cache_archive="cupy_ci_cache_${TARGET}-${base_branch}.tar.gz"
+  cache_gcs_dir="${CACHE_GCS_DIR:-gs://tmp-asia-pfn-public-ci/cupy-ci}"
 
   echo "
     =====================================================================
@@ -47,29 +50,49 @@ main() {
     =====================================================================
     Target              : ${TARGET}
     Stages              : ${STAGES}
+    GPUs                : ${GPU:-(not set)}
     Repository Root     : ${repo_root}
     Base Branch         : ${base_branch}
     Docker Image        : ${docker_image}
-    GPUs                : ${GPU:-(not set)}
-    Cache Directory     : ${CACHE_DIR:-(not set)}
+    Remote Cache        : ${cache_gcs_dir}/${cache_archive}
+    Local Cache         : ${CACHE_DIR:-(not set)}
     =====================================================================
   "
 
+  set -x
   for stage in ${STAGES}; do case "${stage}" in
     build )
-      pushd "${repo_root}/.pfnci/linux/tests"
-      docker build -t "${docker_image}" -f "${TARGET}.Dockerfile" .
-      popd
+      tests_dir="${repo_root}/.pfnci/linux/tests"
+      docker build -t "${docker_image}" -f "${tests_dir}/${TARGET}.Dockerfile" "${tests_dir}"
       ;;
+
     push )
       docker push "${docker_image}"
       ;;
+
     cache_get )
-      # TODO: download from GCS and extract to $CACHE_DIR
+      # Download from GCS and extract to $CACHE_DIR.
+      if [[ "${CACHE_DIR:-}" = "" ]]; then
+        echo "ERROR: CACHE_DIR is not set!"
+        exit 1
+      fi
+      mkdir -p "${CACHE_DIR}"
+      gsutil -m -q cp "${cache_gcs_dir}/${cache_archive}" .
+      tar -x -f "${cache_archive}" -C "${CACHE_DIR}"
+      rm -f "${cache_archive}"
       ;;
+
     cache_put )
-      # TODO: compress $CACHE_DIR and upload to GCS
+      # Compress $CACHE_DIR and upload to GCS.
+      if [[ "${CACHE_DIR:-}" = "" ]]; then
+        echo "ERROR: CACHE_DIR is not set!"
+        exit 1
+      fi
+      tar -c -f "${cache_archive}" -C "${CACHE_DIR}" .
+      gsutil -m -q cp "${cache_archive}" "${cache_gcs_dir}"
+      rm -f "${cache_archive}"
       ;;
+
     test )
       container_name="cupy_ci_$$_$RANDOM"
       docker_args=(
@@ -98,13 +121,13 @@ main() {
       fi
 
       docker_args+=("${docker_image}" timeout 8h "/src/.pfnci/linux/tests/${TARGET}.sh")
-      echo "+ ${docker_args[@]}"
       "${docker_args[@]}" &
       docker_pid=$!
       trap "docker kill '${container_name}'; exit 1" TERM INT HUP
       wait $docker_pid
       trap TERM INT HUP
       ;;
+
     * )
       echo "Unsupported stage: ${stage}" >&2
       exit 1
