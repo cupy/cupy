@@ -16,6 +16,17 @@ for DF in "$(dirname ${0})"/tests/*.Dockerfile; do
 done
 
 # Wait until the build and push complete.
+FAILURES=0
 for P in ${WAIT_PIDS}; do
-    wait ${P} || echo "flexci-prep: Build failed for PID ${P}"
+    WAIT_RESULT=0
+    wait ${P} || WAIT_RESULT=$?
+    if [[ "${WAIT_RESULT}" != "0" ]]; then
+        echo "flexci-prep: Build failed for PID ${P}"
+        FAILURES="$((${FAILURES} + 1))"
+    fi
 done
+
+if [[ "${FAILURES}" != "0" ]]; then
+    echo "flexci-prep: ${FAILURES} failures"
+    exit 1
+fi
