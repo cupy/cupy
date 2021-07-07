@@ -126,7 +126,7 @@ main() {
         exit 1
       fi
 
-      docker_args+=("${docker_image}" timeout 8h "/src/.pfnci/linux/tests/${TARGET}.sh")
+      docker_args+=("${docker_image}" timeout 8h bash "/src/.pfnci/linux/tests/${TARGET}.sh")
       "${docker_args[@]}" &
       docker_pid=$!
       trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP

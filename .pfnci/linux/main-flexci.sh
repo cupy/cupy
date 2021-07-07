@@ -27,4 +27,6 @@ echo "Last 100 lines of the log:"
 tail -n 100 /tmp/log.txt
 echo "Full log is available at: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/log.txt"
 
+# TODO: implement gitter notification
+
 exit ${test_retval}
