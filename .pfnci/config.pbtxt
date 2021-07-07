@@ -25,8 +25,8 @@ configs {
   key: "cupy.prep-linux"
   value {
     requirement {
-      cpu: 8
-      memory: 24
+      cpu: 12
+      memory: 64
       disk: 10
     }
     time_limit: {
