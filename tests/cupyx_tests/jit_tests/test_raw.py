@@ -638,3 +638,15 @@ class TestRaw(unittest.TestCase):
         f((1,), (N*2,), (x,))
         y = cupy.arange(N*2, dtype=cupy.uint32) % N
         assert (x == y).all()
+
+    def test_warpsize(self):
+        @jit.rawkernel()
+        def f(arr):
+            x = jit.grid(1)
+            if x == 0:
+                arr[0] = jit.warpsize
+
+        N = 64 if runtime.is_hip else 32
+        x = cupy.zeros((1,), dtype=cupy.uint32)
+        f((1,), (1,), (x,))
+        assert x == N

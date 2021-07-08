@@ -180,3 +180,13 @@ threadIdx = _Dim3('threadIdx')
 blockDim = _Dim3('blockDim')
 blockIdx = _Dim3('blockIdx')
 gridDim = _Dim3('gridDim')
+
+warpsize = _internal_types.Data(
+    '64' if runtime.is_hip else '32', _cuda_types.uint32)
+warpsize.__doc__ = r"""Returns the number of threads in a warp.
+
+In CUDA this is always 32, and in ROCm/HIP always 64.
+
+.. seealso::
+    `numba.cuda.warpsize <https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#numba.cuda.warpsize>`_  # NOQA
+"""
