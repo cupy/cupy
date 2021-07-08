@@ -80,6 +80,54 @@ class TestRaw(unittest.TestCase):
             with pytest.raises(err):
                 f((1,), (1,), ())
 
+    def test_raw_gridsize_1D(self):
+        @jit.rawkernel()
+        def f(arr):
+            x = jit.grid(1)
+            gx = jit.gridsize(1)
+            if x == 0:
+                arr[x] = gx
+
+        x = cupy.zeros(1)
+        grid = 8
+        block = 10
+        f((grid,), (block,), (x,))
+        assert x == grid * block
+
+    def test_raw_gridsize_2D(self):
+        @jit.rawkernel()
+        def f(arr):
+            x, y = jit.grid(2)
+            gx, gy = jit.gridsize(2)
+            if x == 0 and y == 0:
+                arr[0] = gx
+                arr[1] = gy
+
+        x = cupy.zeros(2)
+        grid = (2, 7)
+        block = (3, 5)
+        f(grid, block, (x,))
+        assert x[0] == grid[0] * block[0]
+        assert x[1] == grid[1] * block[1]
+
+    def test_raw_gridsize_3D(self):
+        @jit.rawkernel()
+        def f(arr):
+            x, y, z = jit.grid(3)
+            gx, gy, gz = jit.gridsize(3)
+            if x == 0 and y == 0 and z == 0:
+                arr[0] = gx
+                arr[1] = gy
+                arr[2] = gz
+
+        x = cupy.zeros(3)
+        grid = (2, 7, 4)
+        block = (3, 5, 11)
+        f(grid, block, (x,))
+        assert x[0] == grid[0] * block[0]
+        assert x[1] == grid[1] * block[1]
+        assert x[2] == grid[2] * block[2]
+
     def test_raw_one_thread(self):
         @jit.rawkernel()
         def f(x, y):
