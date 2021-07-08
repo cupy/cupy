@@ -299,19 +299,12 @@ cpdef ndarray _reshape(ndarray self, const shape_t &shape_spec):
     if internal.vector_equal(shape, self._shape):
         return self.view()
 
-    cdef Py_ssize_t shape_size = internal.prod(shape)
-    if self.size != shape_size:
-        raise ValueError('cannot reshape array of size {}'
-                         ' into shape {}'.format(self.size, shape_size))
-
     _get_strides_for_nocopy_reshape(self, shape, strides)
     if strides.size() == shape.size():
         return self._view(shape, strides, False, True)
     newarray = self.copy()
     _get_strides_for_nocopy_reshape(newarray, shape, strides)
 
-    if shape.size() != strides.size():
-        raise ValueError('total size of new array must be unchanged')
     # TODO(niboshi): Confirm update_x_contiguity flags
     newarray._set_shape_and_strides(shape, strides, False, True)
     return newarray
@@ -669,8 +662,6 @@ cdef _get_strides_for_nocopy_reshape(
     cdef Py_ssize_t size, itemsize, ndim, dim, last_stride
     size = a.size
     newstrides.clear()
-    if size != internal.prod(newshape):
-        return
 
     itemsize = a.itemsize
     if size == 1:
