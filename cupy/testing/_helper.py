@@ -105,6 +105,14 @@ def _call_func_numpy_cupy(self, impl, args, kw, name, sp_name, scipy_name):
         numpy_result, numpy_error)
 
 
+def _assert_no_return(ret, decorator_name):
+    if ret is not None:
+        raise AssertionError(
+            f'function inside `@{decorator_name}` unexpectedly returned a '
+            f'value: {ret}'
+        )
+
+
 _numpy_errors = [
     AttributeError, Exception, IndexError, TypeError, ValueError,
     NotImplementedError, DeprecationWarning,
@@ -822,12 +830,14 @@ def for_dtypes(dtypes, name='dtype'):
             for dtype in dtypes:
                 try:
                     kw[name] = numpy.dtype(dtype).type
-                    impl(self, *args, **kw)
+                    ret = impl(self, *args, **kw)
                 except _skip_classes as e:
                     print('skipped: {} = {} ({})'.format(name, dtype, e))
                 except Exception:
                     print(name, 'is', dtype)
                     raise
+                else:
+                    _assert_no_return(ret, 'for_dtypes')
 
         return test_func
     return decorator
@@ -1065,7 +1075,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
                 kw_copy.update(dtypes)
 
                 try:
-                    impl(self, *args, **kw_copy)
+                    ret = impl(self, *args, **kw_copy)
                 except _skip_classes as e:
                     msg = ', '.join(
                         '{} = {}'.format(name, dtype)
@@ -1074,6 +1084,8 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
                 except Exception:
                     print(dtypes)
                     raise
+                else:
+                    _assert_no_return(ret, 'for_dtypes_combination')
 
         return test_func
     return decorator
@@ -1172,10 +1184,12 @@ def for_orders(orders, name='order'):
             for order in orders:
                 try:
                     kw[name] = order
-                    impl(self, *args, **kw)
+                    ret = impl(self, *args, **kw)
                 except Exception:
                     print(name, 'is', order)
                     raise
+                else:
+                    _assert_no_return(ret, 'for_orders')
 
         return test_func
     return decorator
@@ -1222,11 +1236,13 @@ def for_contiguous_axes(name='axis'):
                     raise ValueError('Please specify the array order.')
                 try:
                     kw[name] = a
-                    impl(self, *args, **kw)
+                    ret = impl(self, *args, **kw)
                 except Exception:
                     print(name, 'is', a, ', ndim is', ndim, ', shape is',
                           self.shape, ', order is', order)
                     raise
+                else:
+                    _assert_no_return(ret, 'for_contiguous_axes')
         return test_func
     return decorator
 
