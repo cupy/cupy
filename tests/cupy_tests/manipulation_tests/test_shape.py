@@ -95,6 +95,12 @@ class TestReshape(unittest.TestCase):
             with pytest.raises(ValueError):
                 a.reshape(())
 
+    def test_reshape_zerosize_invalid_unknown(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros((0,))
+            with pytest.raises(ValueError):
+                a.reshape((-1, 0))
+
     @testing.numpy_cupy_array_equal()
     def test_reshape_zerosize(self, xp):
         a = xp.zeros((0,))

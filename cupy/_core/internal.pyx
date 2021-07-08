@@ -171,8 +171,8 @@ cpdef shape_t infer_unknown_dimension(
         return ret
     if cnt > 1:
         raise ValueError('can only specify one unknown dimension')
-    if (size != 0 and new_size == 0) or size % new_size != 0:
-        raise ValueError('total size of new array must be unchanged')
+    if new_size == 0 or size % new_size != 0:
+        raise ValueError('wip')
     ret[index] = size // new_size
     return ret
 
