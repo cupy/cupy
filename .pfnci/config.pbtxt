@@ -33,7 +33,7 @@ configs {
     time_limit: {
       seconds: 3600
     }
-    command: ".pfnci/linux/flexci-prep.sh"
+    command: ".pfnci/linux/main-flexci-prep.sh"
   }
 }
 
@@ -51,7 +51,7 @@ configs {
       seconds: 14400
     }
     environment_variables { key: "GPU" value: "2" }
-    command: ".pfnci/linux/flexci.sh cuda114"
+    command: ".pfnci/linux/main-flexci.sh cuda114"
   }
 }
 
