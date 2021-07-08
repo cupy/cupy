@@ -104,7 +104,17 @@ class TestReshape(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_reshape_zerosize(self, xp):
         a = xp.zeros((0,))
-        return a.reshape((0,))
+        b = a.reshape((0,))
+        assert b.base is a
+        return b
+
+    @testing.for_orders('CFA')
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_reshape_zerosize2(self, xp, order):
+        a = xp.zeros((2, 0, 3))
+        b = a.reshape((5, 0, 4), order=order)
+        assert b.base is a
+        return b
 
     @testing.for_orders('CFA')
     @testing.numpy_cupy_array_equal()

@@ -667,6 +667,10 @@ cdef _get_strides_for_nocopy_reshape(
     if size == 1:
         newstrides.assign(<Py_ssize_t>newshape.size(), itemsize)
         return
+    if size == 0:
+        internal.get_contiguous_strides_inplace(
+            newshape, newstrides, itemsize, True)
+        return
 
     cdef shape_t shape
     cdef strides_t strides
