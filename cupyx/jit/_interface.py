@@ -188,5 +188,8 @@ warpsize.__doc__ = r"""Returns the number of threads in a warp.
 In CUDA this is always 32, and in ROCm/HIP always 64.
 
 .. seealso::
-    `numba.cuda.warpsize <https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#numba.cuda.warpsize>`_  # NOQA
+    `numba.cuda.warpsize`_
+
+.. _numba.cuda.warpsize:
+    https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#numba.cuda.warpsize
 """
