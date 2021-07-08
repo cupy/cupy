@@ -191,7 +191,7 @@ class TestPinv(unittest.TestCase):
 
 
 @testing.gpu
-class TestLstsq(unittest.TestCase):
+class TestLstsq:
 
     @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose(atol=1e-3)
@@ -220,7 +220,7 @@ class TestLstsq(unittest.TestCase):
     def check_invalid_shapes(self, a_shape, b_shape):
         a = cupy.random.rand(*a_shape)
         b = cupy.random.rand(*b_shape)
-        with self.assertRaises(numpy.linalg.LinAlgError):
+        with pytest.raises(numpy.linalg.LinAlgError):
             cupy.linalg.lstsq(a, b, rcond=None)
 
     def test_lstsq_solutions(self):
