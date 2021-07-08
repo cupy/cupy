@@ -173,7 +173,7 @@ class AtomicOp(BuiltinFunc):
         self._op = op
         self._name = 'atomic' + op
         self._dtypes = dtypes
-        doc = f"""Call the ``{self._name}`` function to operate atomically on
+        doc = f"""Calls the ``{self._name}`` function to operate atomically on
         ``array[index]``. Please refer to `Atomic Functions`_ for detailed
         explanation.
 
@@ -307,7 +307,7 @@ class WarpShuffleOp(BuiltinFunc):
         self._op = op
         self._name = '__shfl_' + (op + '_' if op else '') + 'sync'
         self._dtypes = dtypes
-        doc = f"""Call the ``{self._name}`` function. Please refer to
+        doc = f"""Calls the ``{self._name}`` function. Please refer to
         `Warp Shuffle Functions`_ for detailed explanation.
 
         .. _Warp Shuffle Functions:
@@ -359,6 +359,41 @@ class WarpShuffleOp(BuiltinFunc):
         return Data(code, ctype)
 
 
+class LaneID(BuiltinFunc):
+    def __call__(self):
+        """Returns the lane ID of the calling thread, ranging in
+        ``[0, jit.warpsize)``.
+
+        .. note::
+            Unlike `numba.cuda.laneid`_, this is a callable function instead
+            of a property.
+
+        .. _numba.cuda.laneid:
+            https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html#numba.cuda.laneid
+        """
+        super().__call__()
+
+    def _get_preamble(self):
+        preamble = '__device__ __forceinline__ unsigned int LaneId() {'
+        if not runtime.is_hip:
+            # see https://github.com/NVIDIA/cub/blob/main/cub/util_ptx.cuh#L419
+            preamble += """
+                unsigned int ret;
+                asm ("mov.u32 %0, %%laneid;" : "=r"(ret) );
+                return ret; }
+            """
+        else:
+            # defined in hip/hcc_detail/device_functions.h
+            preamble += """
+                return __lane_id(); }
+            """
+        return preamble
+
+    def call_const(self, env):
+        env.preambles.add(self._get_preamble())
+        return Data('LaneId()', _cuda_types.uint32)
+
+
 builtin_functions_dict = {
     range: RangeFunc(),
     len: LenFunc(),
@@ -371,6 +406,7 @@ syncwarp = SyncWarp()
 shared_memory = SharedMemory()
 grid = GridFunc('grid')
 gridsize = GridFunc('gridsize')
+laneid = LaneID()
 
 # atomic functions
 atomic_add = AtomicOp(

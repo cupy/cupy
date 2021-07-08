@@ -625,3 +625,16 @@ class TestRaw(unittest.TestCase):
         x = cupy.zeros((10,), dtype=numpy.float32)
         with pytest.raises(NameError, match=mes):
             f((1,), (1,), (x,))
+
+    def test_laneid(self):
+        @jit.rawkernel()
+        def f(arr):
+            x = jit.grid(1)
+            if x < arr.size:
+                arr[x] = jit.laneid()
+
+        N = 64 if runtime.is_hip else 32
+        x = cupy.zeros((N*2,), dtype=cupy.uint32)
+        f((1,), (N*2,), (x,))
+        y = cupy.arange(N*2, dtype=cupy.uint32) % N
+        assert (x == y).all()
