@@ -41,8 +41,8 @@ main() {
   repo_root="$(cd "$(dirname "${BASH_SOURCE}")/../.."; pwd)"
   base_branch="$(cat "${repo_root}/.pfnci/BRANCH")"
   docker_image="${DOCKER_IMAGE:-asia.gcr.io/pfn-public-ci/cupy-ci}:${TARGET}-${base_branch}"
-  cache_archive="cupy_ci_cache_${TARGET}-${base_branch}.tar.gz"
-  cache_gcs_dir="${CACHE_GCS_DIR:-gs://tmp-asia-pfn-public-ci/cupy-ci}"
+  cache_archive="linux-${TARGET}-${base_branch}.tar.gz"
+  cache_gcs_dir="${CACHE_GCS_DIR:-gs://tmp-asia-pfn-public-ci/cupy-ci/cache}"
 
   echo "
     =====================================================================
