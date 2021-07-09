@@ -78,7 +78,25 @@ def main(hip_h, stubs, hip_version):
             if hip_version == 305:
                 # insert the include after the include guard
                 hip_stub_h.append('#include <hipsparse.h>')
-                hip_stub_h.append('#include <hip/hip_version.h>  // for HIP_VERSION')
+                hip_stub_h.append('#include <hip/hip_version.h>    // for HIP_VERSION')
+                hip_stub_h.append('#include <hip/library_types.h>  // for hipDataType')
+
+                cudaDataType_converter = r"""
+#if HIP_VERSION >= 402
+static hipDataType convert_hipDatatype(cudaDataType type) {
+    switch(static_cast<int>(type)) {
+        case 2 /* CUDA_R_16F */: return HIP_R_16F;
+        case 0 /* CUDA_R_32F */: return HIP_R_32F;
+        case 1 /* CUDA_R_64F */: return HIP_R_64F;
+        case 6 /* CUDA_C_16F */: return HIP_C_16F;
+        case 4 /* CUDA_C_32F */: return HIP_C_32F;
+        case 5 /* CUDA_C_64F */: return HIP_C_64F;
+        default: throw std::runtime_error("unrecognized type");
+    }
+}
+#endif
+"""
+                hip_stub_h.append(cudaDataType_converter)
     
         elif line.startswith('typedef'):
             old_line = ''
@@ -221,6 +239,16 @@ def main(hip_h, stubs, hip_version):
                         s = s.split()
                         decl = '  // This is needed to be safe with -Wstrict-aliasing.\n'
                         decl += f'  hipDoubleComplex blah;\n  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
+                        arg = 'blah' + s[-1][-1]
+                        cast = ''
+                    elif 'cudaDataType*' in s:
+                        s = s.split()
+                        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+                        cast = 'reinterpret_cast<hipDataType*>'
+                    elif 'cudaDataType' in s:
+                        s = s.split()
+                        decl = '  // This is needed to be safe with -Wstrict-aliasing.\n'
+                        decl += f'  hipDataType blah = convert_hipDatatype(' + s[-1][:-1] + ');\n'
                         arg = 'blah' + s[-1][-1]
                         cast = ''
                     else:
