@@ -11,7 +11,6 @@ except ImportError:
 import cupy
 from cupy import testing
 from cupy import cusparse
-from cupy.cuda import device
 from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
