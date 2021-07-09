@@ -2364,7 +2364,7 @@ cusparseStatus_t cusparseCnnz_compress(cusparseHandle_t         handle,
                                        int*                     nnzPerRow,
                                        int*                     nnzC,
                                        cuComplex                tol) {
-  return hipsparseCnnz_compress(handle, m, descr, reinterpret_cast<const hipComplex*>(csrSortedValA), csrSortedRowPtrA, nnzPerRow, nnzC, tol);
+  return hipsparseCnnz_compress(handle, m, descr, reinterpret_cast<const hipComplex*>(csrSortedValA), csrSortedRowPtrA, nnzPerRow, nnzC, *reinterpret_cast<hipComplex*>(&tol));
 }
 
 cusparseStatus_t cusparseZnnz_compress(cusparseHandle_t         handle,
@@ -2375,7 +2375,7 @@ cusparseStatus_t cusparseZnnz_compress(cusparseHandle_t         handle,
                                        int*                     nnzPerRow,
                                        int*                     nnzC,
                                        cuDoubleComplex          tol) {
-  return hipsparseZnnz_compress(handle, m, descr, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedRowPtrA, nnzPerRow, nnzC, tol);
+  return hipsparseZnnz_compress(handle, m, descr, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedRowPtrA, nnzPerRow, nnzC, *reinterpret_cast<hipDoubleComplex*>(&tol));
 }
 
 cusparseStatus_t cusparseScsr2csr_compress(cusparseHandle_t         handle,
@@ -2423,7 +2423,7 @@ cusparseStatus_t cusparseCcsr2csr_compress(cusparseHandle_t         handle,
                                            int*                     csrSortedColIndC,
                                            int*                     csrSortedRowPtrC,
                                            cuComplex                tol) {
-  return hipsparseCcsr2csr_compress(handle, m, n, descrA, reinterpret_cast<const hipComplex*>(csrSortedValA), csrSortedColIndA, csrSortedRowPtrA, nnzA, nnzPerRow, reinterpret_cast<hipComplex*>(csrSortedValC), csrSortedColIndC, csrSortedRowPtrC, tol);
+  return hipsparseCcsr2csr_compress(handle, m, n, descrA, reinterpret_cast<const hipComplex*>(csrSortedValA), csrSortedColIndA, csrSortedRowPtrA, nnzA, nnzPerRow, reinterpret_cast<hipComplex*>(csrSortedValC), csrSortedColIndC, csrSortedRowPtrC, *reinterpret_cast<hipComplex*>(&tol));
 }
 
 cusparseStatus_t cusparseZcsr2csr_compress(cusparseHandle_t         handle,
@@ -2439,7 +2439,7 @@ cusparseStatus_t cusparseZcsr2csr_compress(cusparseHandle_t         handle,
                                            int*                     csrSortedColIndC,
                                            int*                     csrSortedRowPtrC,
                                            cuDoubleComplex          tol) {
-  return hipsparseZcsr2csr_compress(handle, m, n, descrA, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedColIndA, csrSortedRowPtrA, nnzA, nnzPerRow, reinterpret_cast<hipDoubleComplex*>(csrSortedValC), csrSortedColIndC, csrSortedRowPtrC, tol);
+  return hipsparseZcsr2csr_compress(handle, m, n, descrA, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedColIndA, csrSortedRowPtrA, nnzA, nnzPerRow, reinterpret_cast<hipDoubleComplex*>(csrSortedValC), csrSortedColIndC, csrSortedRowPtrC, *reinterpret_cast<hipDoubleComplex*>(&tol));
 }
 
 }  // extern "C"

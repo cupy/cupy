@@ -110,6 +110,7 @@ for i, line in enumerate(stubs):
             for s in cu_sig:
                 # TODO: prettier print?
                 # each line ends with an argument
+                # TODO: I am being silly here; this can probably handled gracefully using regex...
                 if 'const cuComplex*' in s:
                     s = s.split()
                     arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
@@ -126,6 +127,16 @@ for i, line in enumerate(stubs):
                     s = s.split()
                     arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
                     cast = 'reinterpret_cast<hipDoubleComplex*>'
+                elif 'cuComplex' in s:
+                    # TODO: this violates -Wstrict-aliasing...
+                    s = s.split()
+                    arg = '(&' + s[-1][:-1] + ')' + s[-1][-1]
+                    cast = '*reinterpret_cast<hipComplex*>'
+                elif 'cuDoubleComplex' in s:
+                    # TODO: this violates -Wstrict-aliasing...
+                    s = s.split()
+                    arg = '(&' + s[-1][:-1] + ')' + s[-1][-1]
+                    cast = '*reinterpret_cast<hipDoubleComplex*>'
                 else:
                     s = s.split()
                     arg = s[-1]
