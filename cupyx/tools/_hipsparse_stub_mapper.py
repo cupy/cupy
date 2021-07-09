@@ -29,12 +29,21 @@ with open('/usr/local/cuda-11.3/include/cusparse.h', 'r') as f:
 with open('/opt/rocm-3.5.0/include/hipsparse.h', 'r') as f:
     hip_h = f.read()
 
-# typedefs (no generic API)
+# typedefs
 typedefs = ('cusparseIndexBase_t', 'cusparseStatus_t', 'cusparseHandle_t',
-            'cusparseMatDescr_t', 
+            'cusparseMatDescr_t', 'csrsv2Info_t', 'csrsm2Info_t',
+            'csric02Info_t', 'bsric02Info_t', 'csrilu02Info_t',
+            'bsrilu02Info_t', 'csrgemm2Info_t',
             'cusparseMatrixType_t', 'cusparseFillMode_t', 'cusparseDiagType_t',
             'cusparsePointerMode_t', 'cusparseAction_t', 'cusparseDirection_t',
             'cusparseSolvePolicy_t', 'cusparseOperation_t')
+
+# typedefs for generic API
+typedefs += ('cusparseSpVecDescr_t', 'cusparseDnVecDescr_t', 'cusparseSpMatDescr_t',
+             'cusparseDnMatDescr_t', 'cusparseIndexType_t', 'cusparseFormat_t',
+             'cusparseOrder_t', 'cusparseSpMVAlg_t', 'cusparseSpMMAlg_t',
+             'cusparseSparseToDenseAlg_t', 'cusparseDenseToSparseAlg_t',
+             'cusparseCsr2CscAlg_t',)
 
 # output HIP stub
 hip_stub_h = []
@@ -63,8 +72,15 @@ for i, line in enumerate(stubs):
     elif line.startswith('typedef'):
         for t in typedefs:
             if t in line:
-                hip_t = t[2:] if t.startswith('cu') else t
-                line = 'typedef hip' + hip_t + ' ' + t + ';'
+                hip_t = 'hip' + t[2:] if t.startswith('cu') else t
+                if hip_t in hip_h:
+                    if t != hip_t:
+                        line = 'typedef ' + hip_t + ' ' + t + ';'
+                    else:
+                        line = ''
+                else:
+                    # new API not supported yet, use typedef from stub
+                    pass
                 break
         hip_stub_h.append(line)
             

@@ -11,13 +11,13 @@ typedef hipsparseStatus_t cusparseStatus_t;
 
 typedef hipsparseHandle_t cusparseHandle_t;
 typedef hipsparseMatDescr_t cusparseMatDescr_t;
-typedef void* csrsv2Info_t;
-typedef void* csrsm2Info_t;
-typedef void* csric02Info_t;
+
+
+
 typedef void* bsric02Info_t;
-typedef void* csrilu02Info_t;
+
 typedef void* bsrilu02Info_t;
-typedef void* csrgemm2Info_t;
+
 
 typedef hipsparseMatrixType_t cusparseMatrixType_t;
 typedef hipsparseFillMode_t cusparseFillMode_t;
