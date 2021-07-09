@@ -4,6 +4,8 @@ import numpy as _numpy
 import platform as _platform
 
 import cupy as _cupy
+from cupy_backends.cuda.api import driver as _driver
+from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy._core import _dtype
 from cupy.cuda import device as _device
@@ -105,6 +107,40 @@ _available_cusparse_version = {
 }
 
 
+_available_hipsparse_version = {
+    # For APIs supported by CUDA but not yet by HIP, we still need them here
+    # so that our test suite can cover both platforms.
+    'csrmv': (8000, 11000),
+    'csrmvEx': (8000, 11000),
+    'csrmm': (8000, 11000),
+    'csrmm2': (8000, 11000),
+    'csrgeam': (8000, 11000),
+    'csrgeam2': (9020, None),
+    'csrgemm': (_numpy.inf, None),
+    'csrgemm2': (8000, None),
+    'spmv': (_numpy.inf, None),
+    'spmm': (_numpy.inf, None),
+    'csr2dense': (8000, None),
+    'csc2dense': (305, None),
+    'csrsort': (305, None),
+    'cscsort': (305, None),
+    'coosort': (305, None),
+    'coo2csr': (8000, None),
+    'csr2coo': (305, None),
+    'csr2csc': (8000, 11000),
+    'csc2csr': (8000, 11000),  # the entity is csr2csc
+    'csr2cscEx2': (10200, None),
+    'csc2csrEx2': (10200, None),  # the entity is csr2cscEx2
+    'dense2csc': (305, None),
+    'dense2csr': (305, None),
+    'csr2csr_compress': (8000, None),
+    'csrsm2': (9020, None),
+    'csrilu02': (305, None),
+    'denseToSparse': (_numpy.inf, None),
+    'sparseToDense': (_numpy.inf, None),
+}
+
+
 def _get_version(x):
     if isinstance(x, dict):
         os_name = _platform.system()
@@ -118,16 +154,21 @@ def _get_version(x):
 
 @_util.memoize()
 def check_availability(name):
-    if name not in _available_cusparse_version:
+    if not _runtime.is_hip:
+        available_version = _available_cusparse_version
+        version = _cusparse.getVersion(_device.get_cusparse_handle())
+    else:
+        available_version = _available_hipsparse_version
+        version = _driver.get_build_version()  # = HIP_VERSION
+    if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
-    version_added, version_removed = _available_cusparse_version[name]
+    version_added, version_removed = available_version[name]
     version_added = _get_version(version_added)
     version_removed = _get_version(version_removed)
-    cusparse_version = _cusparse.getVersion(_device.get_cusparse_handle())
-    if version_added is not None and cusparse_version < version_added:
+    if version_added is not None and version < version_added:
         return False
-    if version_removed is not None and cusparse_version >= version_removed:
+    if version_removed is not None and version >= version_removed:
         return False
     return True
 

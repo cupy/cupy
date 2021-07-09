@@ -14,11 +14,6 @@ from cupy import cusparse
 from cupyx.scipy import sparse
 
 
-if cupy.cuda.runtime.is_hip:
-    pytest.skip('HIP sparse support is not yet ready',
-                allow_module_level=True)
-
-
 class TestMatDescriptor(unittest.TestCase):
 
     def test_create(self):

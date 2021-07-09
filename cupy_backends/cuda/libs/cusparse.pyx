@@ -1,6 +1,7 @@
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver
+from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime cimport DataType
 from cupy_backends.cuda cimport stream as stream_module
 
@@ -1384,6 +1385,22 @@ cdef dict STATUS = {
 }
 
 
+cdef dict HIP_STATUS = {
+    0: 'HIPSPARSE_STATUS_SUCCESS',
+    1: 'HIPSPARSE_STATUS_NOT_INITIALIZED',
+    2: 'HIPSPARSE_STATUS_ALLOC_FAILED',
+    3: 'HIPSPARSE_STATUS_INVALID_VALUE',
+    4: 'HIPSPARSE_STATUS_ARCH_MISMATCH',
+    5: 'HIPSPARSE_STATUS_MAPPING_ERROR',
+    6: 'HIPSPARSE_STATUS_EXECUTION_FAILED',
+    7: 'HIPSPARSE_STATUS_INTERNAL_ERROR',
+    8: 'HIPSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED',
+    9: 'HIPSPARSE_STATUS_ZERO_PIVOT',
+    10: 'HIPSPARSE_STATUS_NOT_SUPPORTED',
+    11: 'HIPSPARSE_STATUS_INSUFFICIENT_RESOURCES',
+}
+
+
 cdef class SpVecAttributes:
 
     def __init__(self, int64_t size, int64_t nnz,
@@ -1478,7 +1495,12 @@ class CuSparseError(RuntimeError):
 
     def __init__(self, int status):
         self.status = status
-        super(CuSparseError, self).__init__('%s' % (STATUS[status]))
+        cdef str err
+        if runtime._is_hip_environment:
+            err = HIP_STATUS[status]
+        else:
+            err = STATUS[status]
+        super(CuSparseError, self).__init__('%s' % (err))
 
     def __reduce__(self):
         return (type(self), (self.status,))
