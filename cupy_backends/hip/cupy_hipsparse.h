@@ -3043,7 +3043,7 @@ cusparseStatus_t cusparseSpVV_bufferSize(cusparseHandle_t     handle,
 #if HIP_VERSION >= 402
   // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(computeType);
-  return hipsparseSpVV_bufferSize(handle, opX, vecX, vecY, result, blah, bufferSize);
+  return hipsparseSpVV_bufferSize(handle, opX, vecX, vecY, const_cast<void*>(result), blah, bufferSize);
 #else
   return HIPSPARSE_STATUS_INTERNAL_ERROR;
 #endif

@@ -251,6 +251,11 @@ static hipDataType convert_hipDatatype(cudaDataType type) {
                         decl += f'  hipDataType blah = convert_hipDatatype(' + s[-1][:-1] + ');\n'
                         arg = 'blah' + s[-1][-1]
                         cast = ''
+                    elif 'const void*' in s and hip_func == 'hipsparseSpVV_bufferSize':
+                        # work around HIP's bad typing...
+                        s = s.split()
+                        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+                        cast = 'const_cast<void*>'
                     else:
                         s = s.split()
                         arg = s[-1]
