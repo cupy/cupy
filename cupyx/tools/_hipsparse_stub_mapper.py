@@ -31,10 +31,25 @@ with open('/opt/rocm-3.5.0/include/hipsparse.h', 'r') as f:
 typedefs = ('cusparseIndexBase_t', 'cusparseStatus_t', 'cusparseHandle_t',
             'cusparseMatDescr_t', 
             'cusparseMatrixType_t', 'cusparseFillMode_t', 'cusparseDiagType_t',
-            'cusparsePointerMode_t', 'cusparseAction_t', 'cusparseDirection_t')
+            'cusparsePointerMode_t', 'cusparseAction_t', 'cusparseDirection_t',
+            'cusparseSolvePolicy_t', 'cusparseOperation_t')
 
 # output HIP stub
 hip_stub_h = []
+
+def get_idx_to_func(cu_h, cu_func):
+    cu_sig = cu_h.find(cu_func)
+    # 1. function names are always followed immediately by a "("
+    # 2. we need a loop here to find the exact match
+    while True:
+        #print(cu_func, cu_sig, cu_h[cu_sig+len(cu_func)  ])
+        if cu_sig == -1:
+            break
+        elif cu_h[cu_sig+len(cu_func)] != "(":
+            cu_sig = cu_h.find(cu_func, cu_sig+1)
+        else:
+            break  # match
+    return cu_sig
 
 for i, line in enumerate(stubs):
     if i == 3:
@@ -60,9 +75,9 @@ for i, line in enumerate(stubs):
         hip_func = 'hip' + cu_func[2:]
 
         # find the full signature from cuSPARSE header
-        cu_sig = cu_h.find(cu_func)
+        cu_sig = get_idx_to_func(cu_h, cu_func)
         # check if HIP has the corresponding function
-        hip_sig = hip_h.find(hip_func)
+        hip_sig = get_idx_to_func(hip_h, hip_func)
         if cu_sig == -1:
             print(cu_func, "not found in cuSPARSE, maybe removed?", file=sys.stderr)
             can_map = False
