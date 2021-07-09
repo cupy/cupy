@@ -273,6 +273,9 @@ class TestAffineExceptions:
                 ndi.affine_transform(x, xp.ones((0, 3)), output=output)
 
     def test_invalid_texture_arguments(self):
+        if runtime.is_hip:
+            pytest.skip('texture memory not supported yet')
+
         aft = cupyx.scipy.ndimage.affine_transform
         x = [cupy.ones((8, ) * n, dtype=cupy.float32) for n in range(1, 5)]
 
