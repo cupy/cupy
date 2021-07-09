@@ -202,6 +202,76 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
     return mx, info
 
 
+def cgs(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
+        atol=None):
+    """Use Conjugate Gradient Squared iteration to solve Ax = b."""
+    A, M, x, b = _make_system(A, M, x0, b)
+
+    matvec = A.matvec
+    psolve = M.matvec
+
+    n = A.shape[0]
+    if n == 0:
+        return cupy.empty_like(b), 0
+    b_norm = cupy.linalg.norm(b)
+    if b_norm == 0:
+        return b, 0
+    if atol is None:
+        atol = tol * float(b_norm)
+    else:
+        atol = max(float(atol), tol * float(b_norm))
+    if maxiter is None:
+        maxiter = n * 5
+
+    r0 = b - matvec(x)
+
+    rho = cupy.dot(r0, r0)
+    r_norm = numpy.sqrt(rho)
+
+    # initialise vectors
+    r = r0.copy()
+    u = r0
+    p = r0.copy()
+
+    iters = 0
+    while True:
+        y = psolve(p)
+        v = matvec(y)
+        sigma = numpy.dot(r0, v)
+        alpha = rho / sigma
+        q = u - alpha * v
+
+        z = psolve(u + q)
+        x += alpha * z
+        Az = matvec(z)
+        r -= alpha * Az
+
+        # Update residual norm and check convergence
+        r_norm = numpy.linalg.norm(r)
+
+        iters += 1
+        if callback is not None:
+            callback(x)
+
+        if r_norm <= atol or iters >= maxiter:
+            break
+
+        rho_new = numpy.dot(r0, r)
+        beta = rho_new / rho
+        rho = rho_new
+        u = r + beta * q
+        p *= beta
+        p += q
+        p *= beta
+        p += u
+
+    info = 0
+    if iters == maxiter and not (r_norm < atol):
+        info = iters
+
+    return x, info
+
+
 def _make_system(A, M, x0, b):
     """Make a linear system Ax = b
 
