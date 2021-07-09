@@ -30,6 +30,7 @@ with open('/opt/rocm-3.5.0/include/hipsparse.h', 'r') as f:
 # output HIP stub
 hip_stub_h = []
 
+x = 0
 for i, line in enumerate(stubs):
     if '...' in line:
         # ex: line = "cusparseStatus_t cusparseDestroyMatDescr(...) {"
@@ -48,19 +49,24 @@ for i, line in enumerate(stubs):
         if cu_sig == -1:
             print(cu_func, "not found in cuSPARSE, maybe removed?", file=sys.stderr)
             can_map = False
-            hip_stub_h.append(' '.join(sig))  # TODO: prettier print?
         elif hip_sig == -1:
             print(hip_func, "not found in hipSPARSE, maybe not supported?", file=sys.stderr)
             can_map = False
-            hip_stub_h.append(' '.join(sig))  # TODO: prettier print?
         else:
             end_idx = cu_h[cu_sig:].find(')')
             assert end_idx != -1
             cu_sig = cu_h[cu_sig:cu_sig+end_idx+1]
+
+            # pretty print
+            cu_sig = cu_sig.split('\n')
+            new_cu_sig = cu_sig[0] + '\n'
+            for s in cu_sig[1:]:
+                new_cu_sig += (' ' * (len(sig[0]) + 1)) + s + '\n'
+            cu_sig = new_cu_sig[:-1]
+
             sig[1] = cu_sig
             can_map = True
-            #print('\n'.join(sig))  # TODO: prettier print?
-            hip_stub_h.append(' '.join(sig))  # TODO: prettier print?
+        hip_stub_h.append(' '.join(sig))
 
         # now we have the full signature, map the return to HIP's function;
         # note that the "return" line is the very next line
