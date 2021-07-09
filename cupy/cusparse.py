@@ -110,34 +110,34 @@ _available_cusparse_version = {
 _available_hipsparse_version = {
     # For APIs supported by CUDA but not yet by HIP, we still need them here
     # so that our test suite can cover both platforms.
-    'csrmv': (8000, 11000),
-    'csrmvEx': (8000, 11000),
-    'csrmm': (8000, 11000),
-    'csrmm2': (8000, 11000),
-    'csrgeam': (8000, 11000),
-    'csrgeam2': (9020, None),
+    'csrmv': (_numpy.inf, None),
+    'csrmvEx': (_numpy.inf, None),
+    'csrmm': (_numpy.inf, None),
+    'csrmm2': (_numpy.inf, None),
+    'csrgeam': (_numpy.inf, None),
+    'csrgeam2': (305, None),
     'csrgemm': (_numpy.inf, None),
-    'csrgemm2': (8000, None),
-    'spmv': (_numpy.inf, None),
-    'spmm': (_numpy.inf, None),
-    'csr2dense': (8000, None),
+    'csrgemm2': (_numpy.inf, None),  # seems buggy on 305?
+    'spmv': (402, None),
+    'spmm': (402, None),
+    'csr2dense': (305, None),
     'csc2dense': (305, None),
     'csrsort': (305, None),
     'cscsort': (305, None),
     'coosort': (305, None),
-    'coo2csr': (8000, None),
+    'coo2csr': (305, None),
     'csr2coo': (305, None),
-    'csr2csc': (8000, 11000),
-    'csc2csr': (8000, 11000),  # the entity is csr2csc
-    'csr2cscEx2': (10200, None),
-    'csc2csrEx2': (10200, None),  # the entity is csr2cscEx2
+    'csr2csc': (_numpy.inf, None),
+    'csc2csr': (_numpy.inf, None),  # the entity is csr2csc
+    'csr2cscEx2': (_numpy.inf, None),
+    'csc2csrEx2': (_numpy.inf, None),  # the entity is csr2cscEx2
     'dense2csc': (305, None),
     'dense2csr': (305, None),
-    'csr2csr_compress': (8000, None),
-    'csrsm2': (9020, None),
+    'csr2csr_compress': (305, None),
+    'csrsm2': (_numpy.inf, None),  # seems buggy on 305?
     'csrilu02': (305, None),
-    'denseToSparse': (_numpy.inf, None),
-    'sparseToDense': (_numpy.inf, None),
+    'denseToSparse': (402, None),
+    'sparseToDense': (402, None),
 }
 
 
