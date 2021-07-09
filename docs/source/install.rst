@@ -27,7 +27,7 @@ NumPy/SciPy-compatible API in CuPy v10 is based on NumPy 1.21 and SciPy 1.7, and
 
 * `NumPy <https://numpy.org/>`_: v1.17 / v1.18 / v1.19 / v1.20 / v1.21
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6 / v.1.7
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.4 / v1.5 / v1.6 / v1.7
 
     * Required only when using :doc:`../reference/scipy` (``cupyx.scipy``).
 
