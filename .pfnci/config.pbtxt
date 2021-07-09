@@ -20,6 +20,42 @@ configs {
   }
 }
 
+# Project to build Docker images
+configs {
+  key: "cupy.prep-linux"
+  value {
+    requirement {
+      cpu: 12
+      memory: 64
+      disk: 10
+      image: "docker"
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    command: ".pfnci/linux/main-flexci-prep.sh"
+  }
+}
+
+# CUDA 11.4
+configs {
+  key: "cupy.linux.cuda114"
+  value {
+    requirement {
+      cpu: 8
+      memory: 24
+      disk: 10
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 14400
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda114"
+  }
+}
+
+
 # ROCm build test
 configs {
   key: "cupy.py37.rocm-4-0"
