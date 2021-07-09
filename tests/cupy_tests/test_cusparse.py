@@ -511,12 +511,6 @@ class TestSpmv(unittest.TestCase):
     beta = 0.25
 
     def setUp(self):
-        if runtime.is_hip:
-            if ((self.format == 'csr' and self.transa is True)
-                    or (self.format == 'csc' and self.transa is False)
-                    or (self.format == 'coo' and self.transa is True)):
-                pytest.xfail('may be buggy')
-
         m, n = self.shape
         self.op_a = scipy.sparse.random(m, n, density=0.5, format=self.format,
                                         dtype=self.dtype)
@@ -536,6 +530,12 @@ class TestSpmv(unittest.TestCase):
     def test_spmv(self):
         if not cupy.cusparse.check_availability('spmv'):
             pytest.skip('spmv is not available')
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
+
         a = self.sparse_matrix(self.a)
         if not a.has_canonical_format:
             a.sum_duplicates()
@@ -547,6 +547,12 @@ class TestSpmv(unittest.TestCase):
     def test_spmv_with_y(self):
         if not cupy.cusparse.check_availability('spmv'):
             pytest.skip('spmv is not available')
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
+
         a = self.sparse_matrix(self.a)
         if not a.has_canonical_format:
             a.sum_duplicates()
@@ -605,12 +611,6 @@ class TestSpmm(unittest.TestCase):
     beta = 0.25
 
     def setUp(self):
-        if runtime.is_hip:
-            if ((self.format == 'csr' and self.transa is True)
-                    or (self.format == 'csc' and self.transa is False)
-                    or (self.format == 'coo' and self.transa is True)):
-                pytest.xfail('may be buggy')
-
         m, n, k = self.dims
         self.op_a = scipy.sparse.random(m, k, density=0.5, format=self.format,
                                         dtype=self.dtype)
@@ -634,6 +634,12 @@ class TestSpmm(unittest.TestCase):
     def test_spmm(self):
         if not cupy.cusparse.check_availability('spmm'):
             pytest.skip('spmm is not available')
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
+
         a = self.sparse_matrix(self.a)
         if not a.has_canonical_format:
             a.sum_duplicates()
@@ -646,6 +652,12 @@ class TestSpmm(unittest.TestCase):
     def test_spmm_with_c(self):
         if not cupy.cusparse.check_availability('spmm'):
             pytest.skip('spmm is not available')
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
+
         a = self.sparse_matrix(self.a)
         if not a.has_canonical_format:
             a.sum_duplicates()
@@ -762,6 +774,7 @@ class TestCsrsm2(unittest.TestCase):
             raise unittest.SkipTest('csrsm2 is not available')
         if runtime.is_hip and self.transa == 'H':
             pytest.xfail('may be buggy')
+
         if (self.format == 'csc' and numpy.dtype(dtype).char in 'FD' and
                 self.transa == 'H'):
             raise unittest.SkipTest('unsupported combination')
