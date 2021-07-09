@@ -123,17 +123,38 @@ static hipDataType convert_hipDatatype(cudaDataType type) {
                 t = None
 
             if line is not None:
-                if typedef_found and hip_version > 305:
+                # hack...
+                if t == 'cusparseOrder_t' and hip_version == 402:
+                    cusparseOrder_converter = r"""
+#if HIP_VERSION >= 402
+typedef enum {} cusparseOrder_t;
+static hipsparseOrder_t convert_hipsparseOrder_t(cusparseOrder_t type) {
+    switch(static_cast<int>(type)) {
+        case 1 /* CUSPARSE_ORDER_COL */: return HIPSPARSE_ORDER_COLUMN;
+        case 2 /* CUSPARSE_ORDER_ROW */: return HIPSPARSE_ORDER_ROW;
+        default: throw std::runtime_error("unrecognized type");
+    }
+}
+"""
+                    hip_stub_h.append(cusparseOrder_converter)
+
+                elif typedef_found and hip_version > 305:
                     if typedef_needed:
                         hip_stub_h.append(f'#if HIP_VERSION >= {hip_version}')
                     else:
                         hip_stub_h.append(f'#if HIP_VERSION < {hip_version}')
-                hip_stub_h.append(line)
+
+                # hack...
+                if not (t == 'cusparseOrder_t' and hip_version == 402):
+                    hip_stub_h.append(line)
+
                 if typedef_found and hip_version > 305:
+
                     if typedef_needed:
                         hip_stub_h.append('#else')
                         hip_stub_h.append(old_line)
                     hip_stub_h.append('#endif\n')
+
             if t is not None and typedef_found:
                 processed_typedefs.add(t)
                 
@@ -231,13 +252,11 @@ static hipDataType convert_hipDatatype(cudaDataType type) {
                         cast = 'reinterpret_cast<hipDoubleComplex*>'
                     elif 'cuComplex' in s:
                         s = s.split()
-                        decl = '  // This is needed to be safe with -Wstrict-aliasing.\n'
                         decl += f'  hipComplex blah;\n  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
                         arg = 'blah' + s[-1][-1]
                         cast = ''
                     elif 'cuDoubleComplex' in s:
                         s = s.split()
-                        decl = '  // This is needed to be safe with -Wstrict-aliasing.\n'
                         decl += f'  hipDoubleComplex blah;\n  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
                         arg = 'blah' + s[-1][-1]
                         cast = ''
@@ -247,9 +266,18 @@ static hipDataType convert_hipDatatype(cudaDataType type) {
                         cast = 'reinterpret_cast<hipDataType*>'
                     elif 'cudaDataType' in s:
                         s = s.split()
-                        decl = '  // This is needed to be safe with -Wstrict-aliasing.\n'
                         decl += f'  hipDataType blah = convert_hipDatatype(' + s[-1][:-1] + ');\n'
                         arg = 'blah' + s[-1][-1]
+                        cast = ''
+                    elif 'cusparseOrder_t*' in s:
+                        s = s.split()
+                        decl += f'  hipsparseOrder_t blah2 = convert_hipsparseOrder_t(*' + s[-1][:-1] + ');\n'
+                        arg = '&blah2' + s[-1][-1]
+                        cast = ''
+                    elif 'cusparseOrder_t' in s:
+                        s = s.split()
+                        decl += f'  hipsparseOrder_t blah2 = convert_hipsparseOrder_t(' + s[-1][:-1] + ');\n'
+                        arg = 'blah2' + s[-1][-1]
                         cast = ''
                     elif 'const void*' in s and hip_func == 'hipsparseSpVV_bufferSize':
                         # work around HIP's bad typing...

@@ -2619,8 +2619,17 @@ typedef hipsparseFormat_t cusparseFormat_t;
 typedef enum {} cusparseFormat_t;
 #endif
 
+
 #if HIP_VERSION >= 402
-typedef hipsparseOrder_t cusparseOrder_t;
+typedef enum {} cusparseOrder_t;
+static hipsparseOrder_t convert_hipsparseOrder_t(cusparseOrder_t type) {
+    switch(static_cast<int>(type)) {
+        case 1 /* CUSPARSE_ORDER_COL */: return HIPSPARSE_ORDER_COLUMN;
+        case 2 /* CUSPARSE_ORDER_ROW */: return HIPSPARSE_ORDER_ROW;
+        default: throw std::runtime_error("unrecognized type");
+    }
+}
+
 #else
 typedef enum {} cusparseOrder_t;
 #endif
@@ -2659,7 +2668,6 @@ cusparseStatus_t cusparseCreateSpVec(cusparseSpVecDescr_t* spVecDescr,
                                      cusparseIndexBase_t   idxBase,
                                      cudaDataType          valueType) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(valueType);
   return hipsparseCreateSpVec(spVecDescr, size, nnz, indices, values, idxType, idxBase, blah);
 #else
@@ -2728,7 +2736,6 @@ cusparseStatus_t cusparseCreateCoo(cusparseSpMatDescr_t* spMatDescr,
                                    cusparseIndexBase_t   idxBase,
                                    cudaDataType          valueType) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(valueType);
   return hipsparseCreateCoo(spMatDescr, rows, cols, nnz, cooRowInd, cooColInd, cooValues, cooIdxType, idxBase, blah);
 #else
@@ -2746,7 +2753,6 @@ cusparseStatus_t cusparseCreateCooAoS(cusparseSpMatDescr_t* spMatDescr,
                                       cusparseIndexBase_t   idxBase,
                                       cudaDataType          valueType) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(valueType);
   return hipsparseCreateCooAoS(spMatDescr, rows, cols, nnz, cooInd, cooValues, cooIdxType, idxBase, blah);
 #else
@@ -2766,7 +2772,6 @@ cusparseStatus_t cusparseCreateCsr(cusparseSpMatDescr_t* spMatDescr,
                                    cusparseIndexBase_t   idxBase,
                                    cudaDataType          valueType) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(valueType);
   return hipsparseCreateCsr(spMatDescr, rows, cols, nnz, csrRowOffsets, csrColInd, csrValues, csrRowOffsetsType, csrColIndType, idxBase, blah);
 #else
@@ -2786,7 +2791,6 @@ cusparseStatus_t cusparseCreateCsc(cusparseSpMatDescr_t* spMatDescr,
                                    cusparseIndexBase_t   idxBase,
                                    cudaDataType          valueType) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(valueType);
   return hipsparseCreateCsc(spMatDescr, rows, cols, nnz, cscColOffsets, cscRowInd, cscValues, cscColOffsetsType, cscRowIndType, idxBase, blah);
 #else
@@ -2924,7 +2928,6 @@ cusparseStatus_t cusparseCreateDnVec(cusparseDnVecDescr_t* dnVecDescr,
                                      void*                 values,
                                      cudaDataType          valueType) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(valueType);
   return hipsparseCreateDnVec(dnVecDescr, size, values, blah);
 #else
@@ -2977,9 +2980,9 @@ cusparseStatus_t cusparseCreateDnMat(cusparseDnMatDescr_t* dnMatDescr,
                                      cudaDataType          valueType,
                                      cusparseOrder_t       order) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(valueType);
-  return hipsparseCreateDnMat(dnMatDescr, rows, cols, ld, values, blah, order);
+  hipsparseOrder_t blah2 = convert_hipsparseOrder_t(order);
+  return hipsparseCreateDnMat(dnMatDescr, rows, cols, ld, values, blah, blah2);
 #else
   return HIPSPARSE_STATUS_INTERNAL_ERROR;
 #endif
@@ -3001,7 +3004,8 @@ cusparseStatus_t cusparseDnMatGet(cusparseDnMatDescr_t dnMatDescr,
                                   cudaDataType*        type,
                                   cusparseOrder_t*     order) {
 #if HIP_VERSION >= 402
-  return hipsparseDnMatGet(dnMatDescr, rows, cols, ld, values, reinterpret_cast<hipDataType*>(type), order);
+  hipsparseOrder_t blah2 = convert_hipsparseOrder_t(*order);
+  return hipsparseDnMatGet(dnMatDescr, rows, cols, ld, values, reinterpret_cast<hipDataType*>(type), &blah2);
 #else
   return HIPSPARSE_STATUS_INTERNAL_ERROR;
 #endif
@@ -3041,7 +3045,6 @@ cusparseStatus_t cusparseSpVV_bufferSize(cusparseHandle_t     handle,
                                          cudaDataType         computeType,
                                          size_t*              bufferSize) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(computeType);
   return hipsparseSpVV_bufferSize(handle, opX, vecX, vecY, const_cast<void*>(result), blah, bufferSize);
 #else
@@ -3057,7 +3060,6 @@ cusparseStatus_t cusparseSpVV(cusparseHandle_t     handle,
                               cudaDataType         computeType,
                               void*                externalBuffer) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(computeType);
   return hipsparseSpVV(handle, opX, vecX, vecY, result, blah, externalBuffer);
 #else
@@ -3076,7 +3078,6 @@ cusparseStatus_t cusparseSpMV_bufferSize(cusparseHandle_t    handle,
                                          cusparseSpMVAlg_t    alg,
                                          size_t*              bufferSize) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(computeType);
   return hipsparseSpMV_bufferSize(handle, opA, alpha, matA, vecX, beta, vecY, blah, alg, bufferSize);
 #else
@@ -3095,7 +3096,6 @@ cusparseStatus_t cusparseSpMV(cusparseHandle_t     handle,
                               cusparseSpMVAlg_t    alg,
                               void*                externalBuffer) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(computeType);
   return hipsparseSpMV(handle, opA, alpha, matA, vecX, beta, vecY, blah, alg, externalBuffer);
 #else
@@ -3115,7 +3115,6 @@ cusparseStatus_t cusparseSpMM_bufferSize(cusparseHandle_t     handle,
                                          cusparseSpMMAlg_t    alg,
                                          size_t*              bufferSize) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(computeType);
   return hipsparseSpMM_bufferSize(handle, opA, opB, alpha, matA, matB, beta, matC, blah, alg, bufferSize);
 #else
@@ -3135,7 +3134,6 @@ cusparseStatus_t cusparseSpMM(cusparseHandle_t     handle,
                               cusparseSpMMAlg_t    alg,
                               void*                externalBuffer) {
 #if HIP_VERSION >= 402
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDataType blah = convert_hipDatatype(computeType);
   return hipsparseSpMM(handle, opA, opB, alpha, matA, matB, beta, matC, blah, alg, externalBuffer);
 #else
@@ -3256,7 +3254,6 @@ cusparseStatus_t cusparseCnnz_compress(cusparseHandle_t         handle,
                                        int*                     nnzPerRow,
                                        int*                     nnzC,
                                        cuComplex                tol) {
-  // This is needed to be safe with -Wstrict-aliasing.
   hipComplex blah;
   blah.x=tol.x;
   blah.y=tol.y;
@@ -3271,7 +3268,6 @@ cusparseStatus_t cusparseZnnz_compress(cusparseHandle_t         handle,
                                        int*                     nnzPerRow,
                                        int*                     nnzC,
                                        cuDoubleComplex          tol) {
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDoubleComplex blah;
   blah.x=tol.x;
   blah.y=tol.y;
@@ -3323,7 +3319,6 @@ cusparseStatus_t cusparseCcsr2csr_compress(cusparseHandle_t         handle,
                                            int*                     csrSortedColIndC,
                                            int*                     csrSortedRowPtrC,
                                            cuComplex                tol) {
-  // This is needed to be safe with -Wstrict-aliasing.
   hipComplex blah;
   blah.x=tol.x;
   blah.y=tol.y;
@@ -3343,7 +3338,6 @@ cusparseStatus_t cusparseZcsr2csr_compress(cusparseHandle_t         handle,
                                            int*                     csrSortedColIndC,
                                            int*                     csrSortedRowPtrC,
                                            cuDoubleComplex          tol) {
-  // This is needed to be safe with -Wstrict-aliasing.
   hipDoubleComplex blah;
   blah.x=tol.x;
   blah.y=tol.y;
