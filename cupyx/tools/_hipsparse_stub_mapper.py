@@ -90,16 +90,33 @@ for i, line in enumerate(stubs):
         line = stubs[i+1]
         assert 'return' in line
         if can_map:
-            # the function arguments either end with "," or ")"
-            cu_sig = cu_sig.split()
-            #print(cu_sig)
+            cu_sig = cu_sig.split('\n')
             hip_sig = '  return ' + hip_func + '('
             for s in cu_sig:
                 # TODO: prettier print?
-                if s[-1] in (',', ')'):
-                    hip_sig += (s[:-1] + ', ')
-            hip_sig = hip_sig[:-2] + ');'
-            #print(hip_sig)
+                # each line ends with an argument
+                if 'const cuComplex*' in s:
+                    s = s.split()
+                    arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+                    cast = 'reinterpret_cast<const hipComplex*>'
+                elif 'const cuDoubleComplex*' in s:
+                    s = s.split()
+                    arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+                    cast = 'reinterpret_cast<const hipDoubleComplex*>'
+                elif 'cuComplex*' in s:
+                    s = s.split()
+                    arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+                    cast = 'reinterpret_cast<hipComplex*>'
+                elif 'cuDoubleComplex*' in s:
+                    s = s.split()
+                    arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+                    cast = 'reinterpret_cast<hipDoubleComplex*>'
+                else:
+                    s = s.split()
+                    arg = s[-1]
+                    cast = ''
+                hip_sig += (cast + arg + ' ')
+            hip_sig = hip_sig[:-1] + ';'
             hip_stub_h.append(hip_sig)
         else:
             hip_stub_h.append(line[:line.find('return')+6] + ' HIPSPARSE_STATUS_INTERNAL_ERROR;')
