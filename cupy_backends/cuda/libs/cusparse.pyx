@@ -4857,6 +4857,7 @@ cpdef size_t sparseToDense_bufferSize(intptr_t handle, size_t matA,
 
 cpdef sparseToDense(intptr_t handle, size_t matA, size_t matB, int alg,
                     intptr_t buffer):
+    _setStream(handle)
     status = cusparseSparseToDense(
         <Handle>handle, <SpMatDescr>matA, <DnMatDescr>matB,
         <cusparseSparseToDenseAlg_t>alg, <void*>buffer)
@@ -4873,6 +4874,7 @@ cpdef size_t denseToSparse_bufferSize(intptr_t handle, size_t matA,
 
 cpdef denseToSparse_analysis(intptr_t handle, size_t matA, size_t matB,
                              int alg, intptr_t buffer):
+    _setStream(handle)
     status = cusparseDenseToSparse_analysis(
         <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
         <cusparseDenseToSparseAlg_t>alg, <void*>buffer)
@@ -4880,6 +4882,7 @@ cpdef denseToSparse_analysis(intptr_t handle, size_t matA, size_t matB,
 
 cpdef denseToSparse_convert(intptr_t handle, size_t matA, size_t matB,
                             int alg, intptr_t buffer):
+    _setStream(handle)
     status = cusparseDenseToSparse_convert(
         <Handle>handle, <DnMatDescr>matA, <SpMatDescr>matB,
         <cusparseDenseToSparseAlg_t>alg, <void*>buffer)

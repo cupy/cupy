@@ -1712,12 +1712,20 @@ def denseToSparse(x, format='csr'):
         data = _cupy.empty(nnz, x.dtype)
         y = cupyx.scipy.sparse.csr_matrix((data, indices, indptr),
                                           shape=x.shape)
+        if _runtime.is_hip:
+            if y.indices.data.ptr == 0 or y.data.data.ptr == 0:
+                raise ValueError('hipSPARSE currently cannot handle '
+                                 'sparse matrices with null ptrs')
     elif format == 'csc':
         indptr = y.indptr
         indices = _cupy.empty(nnz, 'i')
         data = _cupy.empty(nnz, x.dtype)
         y = cupyx.scipy.sparse.csc_matrix((data, indices, indptr),
                                           shape=x.shape)
+        if _runtime.is_hip:
+            if y.indices.data.ptr == 0 or y.data.data.ptr == 0:
+                raise ValueError('hipSPARSE currently cannot handle '
+                                 'sparse matrices with null ptrs')
     elif format == 'coo':
         row = _cupy.zeros(nnz, 'i')
         col = _cupy.zeros(nnz, 'i')
@@ -1726,6 +1734,10 @@ def denseToSparse(x, format='csr'):
         # so I used zeros() instead.
         data = _cupy.empty(nnz, x.dtype)
         y = cupyx.scipy.sparse.coo_matrix((data, (row, col)), shape=x.shape)
+        if _runtime.is_hip:
+            if y.row.data.ptr == 0 or y.data.data.ptr == 0:
+                raise ValueError('hipSPARSE currently cannot handle '
+                                 'sparse matrices with null ptrs')
     desc_y = SpMatDescriptor.create(y)
     _cusparse.denseToSparse_convert(handle, desc_x.desc,
                                     desc_y.desc, algo, buff.data.ptr)
@@ -1763,6 +1775,15 @@ def sparseToDense(x, out=None):
     buff_size = _cusparse.sparseToDense_bufferSize(handle, desc_x.desc,
                                                    desc_out.desc, algo)
     buff = _cupy.empty(buff_size, _cupy.int8)
+    if _runtime.is_hip:
+        if x.format in ('csr', 'csc'):
+            if x.indices.data.ptr == 0 or x.data.data.ptr == 0:
+                raise ValueError('hipSPARSE currently cannot handle '
+                                 'sparse matrices with null ptrs')
+        elif x.format == 'coo':
+            if x.row.data.ptr == 0 or x.data.data.ptr == 0:
+                raise ValueError('hipSPARSE currently cannot handle '
+                                 'sparse matrices with null ptrs')
     _cusparse.sparseToDense(handle, desc_x.desc,
                             desc_out.desc, algo, buff.data.ptr)
 

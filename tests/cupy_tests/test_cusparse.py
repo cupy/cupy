@@ -11,6 +11,7 @@ except ImportError:
 import cupy
 from cupy import testing
 from cupy import cusparse
+from cupy.cuda import device
 from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
@@ -862,7 +863,13 @@ class TestSparseMatrixConversion(unittest.TestCase):
             pytest.skip('denseToSparse is not available')
         x = cupy.random.uniform(0, 1, self.shape).astype(dtype)
         x[x < self.density] = 0
-        y = cusparse.denseToSparse(x, format=self.format)
+        try:
+            y = cusparse.denseToSparse(x, format=self.format)
+        except ValueError:
+            if runtime.is_hip:
+                pytest.xfail('may be buggy')
+            else:
+                raise
         assert y.format == self.format
         testing.assert_array_equal(x, y.todense())
 
@@ -879,5 +886,11 @@ class TestSparseMatrixConversion(unittest.TestCase):
             x = sparse.csc_matrix(x)
         elif self.format == 'coo':
             x = sparse.coo_matrix(x)
-        y = cusparse.sparseToDense(x)
+        try:
+            y = cusparse.sparseToDense(x)
+        except ValueError:
+            if runtime.is_hip:
+                pytest.xfail('may be buggy')
+            else:
+                raise
         testing.assert_array_equal(x.todense(), y)
