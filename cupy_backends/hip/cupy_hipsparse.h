@@ -1,17 +1,15 @@
 // This file is a stub header file of cusparse for Read the Docs.
 
 #ifndef INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H
-#define INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H
+#include <hipsparse.h>
 
 extern "C" {
 
-typedef enum {} cusparseIndexBase_t;
-typedef enum {
-  CUSPARSE_STATUS_SUCCESS=0,
-}  cusparseStatus_t;
+typedef hipsparseIndexBase_t cusparseIndexBase_t;
+typedef hipsparseStatus_t cusparseStatus_t;
 
-typedef void* cusparseHandle_t;
-typedef void* cusparseMatDescr_t;
+typedef hipsparseHandle_t cusparseHandle_t;
+typedef hipsparseMatDescr_t cusparseMatDescr_t;
 typedef void* csrsv2Info_t;
 typedef void* csrsm2Info_t;
 typedef void* csric02Info_t;
@@ -20,13 +18,13 @@ typedef void* csrilu02Info_t;
 typedef void* bsrilu02Info_t;
 typedef void* csrgemm2Info_t;
 
-typedef enum {} cusparseMatrixType_t;
-typedef enum {} cusparseFillMode_t;
-typedef enum {} cusparseDiagType_t;
+typedef hipsparseMatrixType_t cusparseMatrixType_t;
+typedef hipsparseFillMode_t cusparseFillMode_t;
+typedef hipsparseDiagType_t cusparseDiagType_t;
 typedef enum {} cusparseOperation_t;
-typedef enum {} cusparsePointerMode_t;
-typedef enum {} cusparseAction_t;
-typedef enum {} cusparseDirection_t;
+typedef hipsparsePointerMode_t cusparsePointerMode_t;
+typedef hipsparseAction_t cusparseAction_t;
+typedef hipsparseDirection_t cusparseDirection_t;
 typedef enum {} cusparseAlgMode_t;
 typedef enum {} cusparseSolvePolicy_t;
 

@@ -27,12 +27,29 @@ with open('/usr/local/cuda-11.3/include/cusparse.h', 'r') as f:
 with open('/opt/rocm-3.5.0/include/hipsparse.h', 'r') as f:
     hip_h = f.read()
 
+# typedefs (no generic API)
+typedefs = ('cusparseIndexBase_t', 'cusparseStatus_t', 'cusparseHandle_t',
+            'cusparseMatDescr_t', 
+            'cusparseMatrixType_t', 'cusparseFillMode_t', 'cusparseDiagType_t',
+            'cusparsePointerMode_t', 'cusparseAction_t', 'cusparseDirection_t')
+
 # output HIP stub
 hip_stub_h = []
 
-x = 0
 for i, line in enumerate(stubs):
-    if '...' in line:
+    if i == 3:
+        # insert the include after the include guard
+        hip_stub_h.append('#include <hipsparse.h>')
+
+    elif line.startswith('typedef'):
+        for t in typedefs:
+            if t in line:
+                hip_t = t[2:] if t.startswith('cu') else t
+                line = 'typedef hip' + hip_t + ' ' + t + ';'
+                break
+        hip_stub_h.append(line)
+            
+    elif '...' in line:
         # ex: line = "cusparseStatus_t cusparseDestroyMatDescr(...) {"
         sig = line.split()
         assert len(sig) == 3
