@@ -12,3 +12,10 @@ export CUPY_DUMP_CUDA_SOURCE_ON_ERROR="1"
 if [[ "${UID}" != "0" && "${HOME:-/}" == "/" ]]; then
     export HOME=/tmp
 fi
+
+# Show GPU statistics
+( which nvidia-smi &> /dev/null ) && nvidia-smi
+( which hipconfig &> /dev/null ) && hipconfig
+
+# Show environment variables
+env
