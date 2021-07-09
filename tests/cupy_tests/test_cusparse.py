@@ -11,6 +11,7 @@ except ImportError:
 import cupy
 from cupy import testing
 from cupy import cusparse
+from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
 
@@ -510,6 +511,12 @@ class TestSpmv(unittest.TestCase):
     beta = 0.25
 
     def setUp(self):
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
+
         m, n = self.shape
         self.op_a = scipy.sparse.random(m, n, density=0.5, format=self.format,
                                         dtype=self.dtype)
@@ -598,6 +605,12 @@ class TestSpmm(unittest.TestCase):
     beta = 0.25
 
     def setUp(self):
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
+
         m, n, k = self.dims
         self.op_a = scipy.sparse.random(m, k, density=0.5, format=self.format,
                                         dtype=self.dtype)
@@ -747,6 +760,8 @@ class TestCsrsm2(unittest.TestCase):
     def test_csrsm2(self, dtype):
         if not cusparse.check_availability('csrsm2'):
             raise unittest.SkipTest('csrsm2 is not available')
+        if runtime.is_hip and self.transa == 'H':
+            pytest.xfail('may be buggy')
         if (self.format == 'csc' and numpy.dtype(dtype).char in 'FD' and
                 self.transa == 'H'):
             raise unittest.SkipTest('unsupported combination')

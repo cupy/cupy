@@ -117,7 +117,7 @@ _available_hipsparse_version = {
     'csrgeam': (_numpy.inf, None),
     'csrgeam2': (305, None),
     'csrgemm': (_numpy.inf, None),
-    'csrgemm2': (_numpy.inf, None),  # seems buggy on 305?
+    'csrgemm2': (400, None),  # avaiable since 305 but seems buggy
     'spmv': (402, None),
     'spmm': (402, None),
     'csr2dense': (305, None),
@@ -134,7 +134,7 @@ _available_hipsparse_version = {
     'dense2csc': (305, None),
     'dense2csr': (305, None),
     'csr2csr_compress': (305, None),
-    'csrsm2': (_numpy.inf, None),  # seems buggy on 305?
+    'csrsm2': (400, None),  # avaiable since 305 but seems buggy
     'csrilu02': (305, None),
     'denseToSparse': (402, None),
     'sparseToDense': (402, None),
