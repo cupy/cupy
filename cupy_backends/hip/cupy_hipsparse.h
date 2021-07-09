@@ -1,6 +1,7 @@
 // This file is a stub header file of cusparse for Read the Docs.
 
 #ifndef INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H
+#define INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H
 #include <hipsparse.h>
 
 extern "C" {
@@ -2364,6 +2365,7 @@ cusparseStatus_t cusparseCnnz_compress(cusparseHandle_t         handle,
                                        int*                     nnzPerRow,
                                        int*                     nnzC,
                                        cuComplex                tol) {
+  // This is needed to be safe with -Wstrict-aliasing...
   hipComplex blah;
   blah.x=tol.x;
   blah.y=tol.y;
@@ -2378,6 +2380,7 @@ cusparseStatus_t cusparseZnnz_compress(cusparseHandle_t         handle,
                                        int*                     nnzPerRow,
                                        int*                     nnzC,
                                        cuDoubleComplex          tol) {
+  // This is needed to be safe with -Wstrict-aliasing...
   hipDoubleComplex blah;
   blah.x=tol.x;
   blah.y=tol.y;
@@ -2429,6 +2432,7 @@ cusparseStatus_t cusparseCcsr2csr_compress(cusparseHandle_t         handle,
                                            int*                     csrSortedColIndC,
                                            int*                     csrSortedRowPtrC,
                                            cuComplex                tol) {
+  // This is needed to be safe with -Wstrict-aliasing...
   hipComplex blah;
   blah.x=tol.x;
   blah.y=tol.y;
@@ -2448,6 +2452,7 @@ cusparseStatus_t cusparseZcsr2csr_compress(cusparseHandle_t         handle,
                                            int*                     csrSortedColIndC,
                                            int*                     csrSortedRowPtrC,
                                            cuDoubleComplex          tol) {
+  // This is needed to be safe with -Wstrict-aliasing...
   hipDoubleComplex blah;
   blah.x=tol.x;
   blah.y=tol.y;

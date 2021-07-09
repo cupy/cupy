@@ -3,8 +3,10 @@ import sys
 
 
 # Take cupy_backends/stub/cupy_cusparse.h and generate cupy_backends/hip/cupy_hipsparse.h,
-# with all return values replaced by an error if not supprted. Except for functions, all
-# structs, enums, typedefs, etc, are handled manually after cupy_hipsparse.h is generated.
+# with all return values replaced by an error if not supprted. This script mainly focuses
+# on getting the CUDA -> HIP API mapping done correctly; structs, enums, etc, are handled
+# in a naive fasion.
+#
 # The stub functions, such as this,
 #
 # cusparseStatus_t cusparseDestroyMatDescr(...) {
@@ -53,8 +55,10 @@ def get_idx_to_func(cu_h, cu_func):
 
 for i, line in enumerate(stubs):
     if i == 3:
+        hip_stub_h.append(line)
         # insert the include after the include guard
         hip_stub_h.append('#include <hipsparse.h>')
+
 
     elif line.startswith('typedef'):
         for t in typedefs:
@@ -110,7 +114,7 @@ for i, line in enumerate(stubs):
             decl = ''
             for s in cu_sig:
                 # TODO: prettier print?
-                # each line ends with an argument
+                # each line ends with an argument, which is followed by a "," or ")"
                 # TODO: I am being silly here; this can probably handled gracefully using regex...
                 if 'const cuComplex*' in s:
                     s = s.split()
@@ -130,12 +134,14 @@ for i, line in enumerate(stubs):
                     cast = 'reinterpret_cast<hipDoubleComplex*>'
                 elif 'cuComplex' in s:
                     s = s.split()
-                    decl = f'  hipComplex blah;\n  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
+                    decl = '  // This is needed to be safe with -Wstrict-aliasing...\n'
+                    decl += f'  hipComplex blah;\n  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
                     arg = 'blah' + s[-1][-1]
                     cast = ''
                 elif 'cuDoubleComplex' in s:
                     s = s.split()
-                    decl = f'  hipDoubleComplex blah;\n  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
+                    decl = '  // This is needed to be safe with -Wstrict-aliasing...\n'
+                    decl += f'  hipDoubleComplex blah;\n  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
                     arg = 'blah' + s[-1][-1]
                     cast = ''
                 else:
