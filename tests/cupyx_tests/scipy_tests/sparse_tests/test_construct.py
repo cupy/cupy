@@ -12,6 +12,7 @@ except ImportError:
 
 import cupy
 from cupy import testing
+from cupy.cuda import runtime
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse import construct
 
@@ -407,7 +408,14 @@ class TestKron(unittest.TestCase):
 
     def _make_sp_mat(self, xp, sp, arr, dtype):
         a = xp.array(arr, dtype=dtype)
-        a = sp.csr_matrix(a)
+        try:
+            a = sp.csr_matrix(a)
+        except ValueError as e:  # 0-size matrices
+            if runtime.is_hip:
+                assert 'hipSPARSE' in str(e)
+                pytest.xfail('may be buggy')
+            else:
+                raise
         return a
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -445,7 +453,12 @@ class TestKronsum(unittest.TestCase):
 
     def _make_sp_mat(self, xp, sp, arr, dtype):
         a = xp.array(arr, dtype=dtype)
-        a = sp.csr_matrix(a)
+        try:
+            a = sp.csr_matrix(a)
+        except ValueError as e:  # 0-size matrices
+            if runtime.is_hip:
+                assert 'hipSPARSE' in str(e)
+                pytest.xfail('may be buggy')
         return a
 
     @testing.numpy_cupy_allclose(sp_name='sp')

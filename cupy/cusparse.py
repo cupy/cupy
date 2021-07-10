@@ -1173,6 +1173,10 @@ def dense2csr(x):
         x.data.ptr, m, nnz_per_row.data.ptr, nnz.ctypes.data)
 
     nnz = int(nnz)
+    if _runtime.is_hip:
+        if nnz == 0:
+            raise ValueError('hipSPARSE currently cannot handle '
+                             'sparse matrices with null ptrs')
     data = _cupy.empty(nnz, x.dtype)
     indptr = _cupy.empty(m + 1, 'i')
     indices = _cupy.empty(nnz, 'i')

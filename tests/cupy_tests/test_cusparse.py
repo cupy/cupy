@@ -891,8 +891,9 @@ class TestSparseMatrixConversion(unittest.TestCase):
         x[x < self.density] = 0
         try:
             y = cusparse.denseToSparse(x, format=self.format)
-        except ValueError:
+        except ValueError as e:  # 0-size matrices
             if runtime.is_hip:
+                assert 'hipSPARSE' in str(e)  
                 pytest.xfail('may be buggy')
             else:
                 raise
@@ -914,8 +915,9 @@ class TestSparseMatrixConversion(unittest.TestCase):
             x = sparse.coo_matrix(x)
         try:
             y = cusparse.sparseToDense(x)
-        except ValueError:
+        except ValueError as e:  # 0-size matrices
             if runtime.is_hip:
+                assert 'hipSPARSE' in str(e)  
                 pytest.xfail('may be buggy')
             else:
                 raise
