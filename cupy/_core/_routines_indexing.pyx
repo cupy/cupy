@@ -429,12 +429,6 @@ cdef ndarray _simple_getitem(ndarray a, list slice_list):
     return v
 
 
-_preamble = '' if not runtime._is_hip_environment else r'''
-    // ignore mask
-    #define __shfl_up_sync(m, x, y, z) __shfl_up(x, y, z)
-    '''
-
-
 @cupy._util.memoize(for_each_device=True)
 def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
     in_params = 'raw T a, raw S b'
@@ -485,7 +479,7 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
     """).substitute(block_size=block_size, warp_size=warp_size)
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
                                   'nonzero_kernel_incomplete_scan',
-                                  loop_prep=loop_prep, preamble=_preamble)
+                                  loop_prep=loop_prep)
 
 
 _nonzero_kernel = ElementwiseKernel(
