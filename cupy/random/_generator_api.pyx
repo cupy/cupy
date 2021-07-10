@@ -275,10 +275,11 @@ class Generator:
             f(x) = p(1-p)^{k-1}.
 
         Args:
-            p (float or array_like of floats): Success probability of
+            p (float or cupy.ndarray of floats): Success probability of
                 the geometric distribution.
-            size (int or tuple of ints): The shape of the array. If ``None``, a
-                zero-dimensional array is generated.
+            size (int or tuple of ints, optional): The shape of the output
+                array. If `None`(default), a single value is returned if ``p``
+                is scalar. Otherwise, ``p.size`` samples are drawn.
 
         Returns:
             cupy.ndarray: Samples drawn from the geometric distribution.
@@ -298,8 +299,6 @@ class Generator:
                 raise TypeError('p is required to be a cupy.ndarray'
                                 ' or a scalar')
         else:
-            # Check if size is broadcastable to shape
-            # but size determines the output
             p = p.astype('d', copy=False)
 
         if size is not None and not isinstance(size, tuple):

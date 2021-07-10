@@ -274,6 +274,7 @@ geometric_params = [
     {'p': 0.5},
     {'p': 0.1},
     {'p': 1.0},
+    {'p': [0.1, 0.5]},
 ]
 
 
@@ -282,9 +283,14 @@ class Geometric:
     target_method = 'geometric'
 
     def test_geometric(self):
-        self.generate(p=self.p, size=(3, 2))
+        p = self.p
+        if not isinstance(self.p, float):
+            p = cupy.array(self.p)
+        self.generate(p=p, size=(3, 2))
 
     @_condition.repeat_with_success_at_least(10, 3)
     def test_geometric_ks(self):
+        if not isinstance(self.p, float):
+            self.skipTest('Statistical checks only for scalar `p`')
         self.check_ks(0.05)(
             p=self.p, size=2000)
