@@ -144,20 +144,68 @@ cusparseStatus_t cusparseZgthr(cusparseHandle_t       handle,
 }
 
 // cuSPARSE Level2 Function
-cusparseStatus_t cusparseScsrmv(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseScsrmv(cusparseHandle_t         handle,
+                                cusparseOperation_t      transA,
+                                int                      m,
+                                int                      n,
+                                int                      nnz,
+                                const float*             alpha,
+                                const cusparseMatDescr_t descrA,
+                                const float*             csrSortedValA,
+                                const int*               csrSortedRowPtrA,
+                                const int*               csrSortedColIndA,
+                                const float*             x,
+                                const float*             beta,
+                                float*                   y) {
+  return hipsparseScsrmv(handle, transA, m, n, nnz, alpha, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, x, beta, y);
 }
 
-cusparseStatus_t cusparseDcsrmv(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseDcsrmv(cusparseHandle_t         handle,
+                                cusparseOperation_t      transA,
+                                int                      m,
+                                int                      n,
+                                int                      nnz,
+                                const double*            alpha,
+                                const cusparseMatDescr_t descrA,
+                                const double*            csrSortedValA,
+                                const int*               csrSortedRowPtrA,
+                                const int*               csrSortedColIndA,
+                                const double*            x,
+                                const double*            beta,
+                                double*                  y) {
+  return hipsparseDcsrmv(handle, transA, m, n, nnz, alpha, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, x, beta, y);
 }
 
-cusparseStatus_t cusparseCcsrmv(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseCcsrmv(cusparseHandle_t         handle,
+                                cusparseOperation_t      transA,
+                                int                      m,
+                                int                      n,
+                                int                      nnz,
+                                const cuComplex*         alpha,
+                                const cusparseMatDescr_t descrA,
+                                const cuComplex*         csrSortedValA,
+                                const int*               csrSortedRowPtrA,
+                                const int*               csrSortedColIndA,
+                                const cuComplex*         x,
+                                const cuComplex*         beta,
+                                cuComplex*               y) {
+  return hipsparseCcsrmv(handle, transA, m, n, nnz, reinterpret_cast<const hipComplex*>(alpha), descrA, reinterpret_cast<const hipComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, reinterpret_cast<const hipComplex*>(x), reinterpret_cast<const hipComplex*>(beta), reinterpret_cast<hipComplex*>(y));
 }
 
-cusparseStatus_t cusparseZcsrmv(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseZcsrmv(cusparseHandle_t         handle,
+                                cusparseOperation_t      transA,
+                                int                      m,
+                                int                      n,
+                                int                      nnz,
+                                const cuDoubleComplex*   alpha,
+                                const cusparseMatDescr_t descrA,
+                                const cuDoubleComplex*   csrSortedValA,
+                                const int*               csrSortedRowPtrA,
+                                const int*               csrSortedColIndA,
+                                const cuDoubleComplex*   x,
+                                const cuDoubleComplex*   beta,
+                                cuDoubleComplex*         y) {
+  return hipsparseZcsrmv(handle, transA, m, n, nnz, reinterpret_cast<const hipDoubleComplex*>(alpha), descrA, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, reinterpret_cast<const hipDoubleComplex*>(x), reinterpret_cast<const hipDoubleComplex*>(beta), reinterpret_cast<hipDoubleComplex*>(y));
 }
 
 cusparseStatus_t cusparseCsrmvEx_bufferSize(...) {
@@ -359,36 +407,160 @@ cusparseStatus_t cusparseXcsrsv2_zeroPivot(cusparseHandle_t handle,
 }
 
 // cuSPARSE Level3 Function
-cusparseStatus_t cusparseScsrmm(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseScsrmm(cusparseHandle_t         handle,
+                                cusparseOperation_t      transA,
+                                int                      m,
+                                int                      n,
+                                int                      k,
+                                int                      nnz,
+                                const float*             alpha,
+                                const cusparseMatDescr_t descrA,
+                                const float*             csrSortedValA,
+                                const int*               csrSortedRowPtrA,
+                                const int*               csrSortedColIndA,
+                                const float*             B,
+                                int                      ldb,
+                                const float*             beta,
+                                float*                   C,
+                                int                      ldc) {
+  return hipsparseScsrmm(handle, transA, m, n, k, nnz, alpha, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, B, ldb, beta, C, ldc);
 }
 
-cusparseStatus_t cusparseDcsrmm(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseDcsrmm(cusparseHandle_t         handle,
+                                cusparseOperation_t      transA,
+                                int                      m,
+                                int                      n,
+                                int                      k,
+                                int                      nnz,
+                                const double*            alpha,
+                                const cusparseMatDescr_t descrA,
+                                const double*            csrSortedValA,
+                                const int*               csrSortedRowPtrA,
+                                const int*               csrSortedColIndA,
+                                const double*            B,
+                                int                      ldb,
+                                const double*            beta,
+                                double*                  C,
+                                int                      ldc) {
+  return hipsparseDcsrmm(handle, transA, m, n, k, nnz, alpha, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, B, ldb, beta, C, ldc);
 }
 
-cusparseStatus_t cusparseCcsrmm(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseCcsrmm(cusparseHandle_t         handle,
+                                cusparseOperation_t      transA,
+                                int                      m,
+                                int                      n,
+                                int                      k,
+                                int                      nnz,
+                                const cuComplex*         alpha,
+                                const cusparseMatDescr_t descrA,
+                                const cuComplex*         csrSortedValA,
+                                const int*               csrSortedRowPtrA,
+                                const int*               csrSortedColIndA,
+                                const cuComplex*         B,
+                                int                      ldb,
+                                const cuComplex*         beta,
+                                cuComplex*               C,
+                                int                      ldc) {
+  return hipsparseCcsrmm(handle, transA, m, n, k, nnz, reinterpret_cast<const hipComplex*>(alpha), descrA, reinterpret_cast<const hipComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, reinterpret_cast<const hipComplex*>(B), ldb, reinterpret_cast<const hipComplex*>(beta), reinterpret_cast<hipComplex*>(C), ldc);
 }
 
-cusparseStatus_t cusparseZcsrmm(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseZcsrmm(cusparseHandle_t         handle,
+                                cusparseOperation_t      transA,
+                                int                      m,
+                                int                      n,
+                                int                      k,
+                                int                      nnz,
+                                const cuDoubleComplex*   alpha,
+                                const cusparseMatDescr_t descrA,
+                                const cuDoubleComplex*   csrSortedValA,
+                                const int*               csrSortedRowPtrA,
+                                const int*               csrSortedColIndA,
+                                const cuDoubleComplex*   B,
+                                int                      ldb,
+                                const cuDoubleComplex*   beta,
+                                cuDoubleComplex*         C,
+                                int                      ldc) {
+  return hipsparseZcsrmm(handle, transA, m, n, k, nnz, reinterpret_cast<const hipDoubleComplex*>(alpha), descrA, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, reinterpret_cast<const hipDoubleComplex*>(B), ldb, reinterpret_cast<const hipDoubleComplex*>(beta), reinterpret_cast<hipDoubleComplex*>(C), ldc);
 }
 
-cusparseStatus_t cusparseScsrmm2(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseScsrmm2(cusparseHandle_t         handle,
+                                 cusparseOperation_t      transA,
+                                 cusparseOperation_t      transB,
+                                 int                      m,
+                                 int                      n,
+                                 int                      k,
+                                 int                      nnz,
+                                 const float*             alpha,
+                                 const cusparseMatDescr_t descrA,
+                                 const float*             csrSortedValA,
+                                 const int*               csrSortedRowPtrA,
+                                 const int*               csrSortedColIndA,
+                                 const float*             B,
+                                 int                      ldb,
+                                 const float*             beta,
+                                 float*                   C,
+                                 int                      ldc) {
+  return hipsparseScsrmm2(handle, transA, transB, m, n, k, nnz, alpha, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, B, ldb, beta, C, ldc);
 }
 
-cusparseStatus_t cusparseDcsrmm2(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseDcsrmm2(cusparseHandle_t         handle,
+                                 cusparseOperation_t      transA,
+                                 cusparseOperation_t      transB,
+                                 int                      m,
+                                 int                      n,
+                                 int                      k,
+                                 int                      nnz,
+                                 const double*            alpha,
+                                 const cusparseMatDescr_t descrA,
+                                 const double* csrSortedValA,
+                                 const int*    csrSortedRowPtrA,
+                                 const int*    csrSortedColIndA,
+                                 const double* B,
+                                 int           ldb,
+                                 const double* beta,
+                                 double*       C,
+                                 int           ldc) {
+  return hipsparseDcsrmm2(handle, transA, transB, m, n, k, nnz, alpha, descrA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, B, ldb, beta, C, ldc);
 }
 
-cusparseStatus_t cusparseCcsrmm2(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseCcsrmm2(cusparseHandle_t         handle,
+                                 cusparseOperation_t      transA,
+                                 cusparseOperation_t      transB,
+                                 int                      m,
+                                 int                      n,
+                                 int                      k,
+                                 int                      nnz,
+                                 const cuComplex*         alpha,
+                                 const cusparseMatDescr_t descrA,
+                                 const cuComplex* csrSortedValA,
+                                 const int*       csrSortedRowPtrA,
+                                 const int*       csrSortedColIndA,
+                                 const cuComplex* B,
+                                 int              ldb,
+                                 const cuComplex* beta,
+                                 cuComplex*       C,
+                                 int              ldc) {
+  return hipsparseCcsrmm2(handle, transA, transB, m, n, k, nnz, reinterpret_cast<const hipComplex*>(alpha), descrA, reinterpret_cast<const hipComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, reinterpret_cast<const hipComplex*>(B), ldb, reinterpret_cast<const hipComplex*>(beta), reinterpret_cast<hipComplex*>(C), ldc);
 }
 
-cusparseStatus_t cusparseZcsrmm2(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseZcsrmm2(cusparseHandle_t         handle,
+                                 cusparseOperation_t      transA,
+                                 cusparseOperation_t      transB,
+                                 int                      m,
+                                 int                      n,
+                                 int                      k,
+                                 int                      nnz,
+                                 const cuDoubleComplex*   alpha,
+                                 const cusparseMatDescr_t descrA,
+                                 const cuDoubleComplex*   csrSortedValA,
+                                 const int*               csrSortedRowPtrA,
+                                 const int*               csrSortedColIndA,
+                                 const cuDoubleComplex*   B,
+                                 int                      ldb,
+                                 const cuDoubleComplex*   beta,
+                                 cuDoubleComplex*         C,
+                                 int                      ldc) {
+  return hipsparseZcsrmm2(handle, transA, transB, m, n, k, nnz, reinterpret_cast<const hipDoubleComplex*>(alpha), descrA, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, reinterpret_cast<const hipDoubleComplex*>(B), ldb, reinterpret_cast<const hipDoubleComplex*>(beta), reinterpret_cast<hipDoubleComplex*>(C), ldc);
 }
 
 cusparseStatus_t cusparseCreateCsrsm2Info(csrsm2Info_t* info) {
@@ -636,24 +808,109 @@ cusparseStatus_t cusparseXcsrsm2_zeroPivot(cusparseHandle_t handle,
 }
 
 // cuSPARSE Extra Function
-cusparseStatus_t cusparseXcsrgeamNnz(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseXcsrgeamNnz(cusparseHandle_t         handle,
+                                     int                      m,
+                                     int                      n,
+                                     const cusparseMatDescr_t descrA,
+                                     int                      nnzA,
+                                     const int*               csrSortedRowPtrA,
+                                     const int*               csrSortedColIndA,
+                                     const cusparseMatDescr_t descrB,
+                                     int                      nnzB,
+                                     const int*               csrSortedRowPtrB,
+                                     const int*               csrSortedColIndB,
+                                     const cusparseMatDescr_t descrC,
+                                     int*                     csrSortedRowPtrC,
+                                     int*                     nnzTotalDevHostPtr) {
+  return hipsparseXcsrgeamNnz(handle, m, n, descrA, nnzA, csrSortedRowPtrA, csrSortedColIndA, descrB, nnzB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedRowPtrC, nnzTotalDevHostPtr);
 }
 
-cusparseStatus_t cusparseScsrgeam(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseScsrgeam(cusparseHandle_t         handle,
+                                  int                      m,
+                                  int                      n,
+                                  const float*             alpha,
+                                  const cusparseMatDescr_t descrA,
+                                  int                      nnzA,
+                                  const float*             csrSortedValA,
+                                  const int*               csrSortedRowPtrA,
+                                  const int*               csrSortedColIndA,
+                                  const float*             beta,
+                                  const cusparseMatDescr_t descrB,
+                                  int                      nnzB,
+                                  const float*             csrSortedValB,
+                                  const int*               csrSortedRowPtrB,
+                                  const int*               csrSortedColIndB,
+                                  const cusparseMatDescr_t descrC,
+                                  float*                   csrSortedValC,
+                                  int*                     csrSortedRowPtrC,
+                                  int*                     csrSortedColIndC) {
+  return hipsparseScsrgeam(handle, m, n, alpha, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, beta, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC);
 }
 
-cusparseStatus_t cusparseDcsrgeam(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseDcsrgeam(cusparseHandle_t         handle,
+                                  int                      m,
+                                  int                      n,
+                                  const double*            alpha,
+                                  const cusparseMatDescr_t descrA,
+                                  int                      nnzA,
+                                  const double*            csrSortedValA,
+                                  const int*               csrSortedRowPtrA,
+                                  const int*               csrSortedColIndA,
+                                  const double*            beta,
+                                  const cusparseMatDescr_t descrB,
+                                  int                      nnzB,
+                                  const double*            csrSortedValB,
+                                  const int*               csrSortedRowPtrB,
+                                  const int*               csrSortedColIndB,
+                                  const cusparseMatDescr_t descrC,
+                                  double*                  csrSortedValC,
+                                  int*                     csrSortedRowPtrC,
+                                  int*                     csrSortedColIndC) {
+  return hipsparseDcsrgeam(handle, m, n, alpha, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, beta, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC);
 }
 
-cusparseStatus_t cusparseCcsrgeam(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseCcsrgeam(cusparseHandle_t         handle,
+                                  int                      m,
+                                  int                      n,
+                                  const cuComplex*         alpha,
+                                  const cusparseMatDescr_t descrA,
+                                  int                      nnzA,
+                                  const cuComplex*         csrSortedValA,
+                                  const int*               csrSortedRowPtrA,
+                                  const int*               csrSortedColIndA,
+                                  const cuComplex*         beta,
+                                  const cusparseMatDescr_t descrB,
+                                  int                      nnzB,
+                                  const cuComplex*         csrSortedValB,
+                                  const int*               csrSortedRowPtrB,
+                                  const int*               csrSortedColIndB,
+                                  const cusparseMatDescr_t descrC,
+                                  cuComplex*               csrSortedValC,
+                                  int*                     csrSortedRowPtrC,
+                                  int*                     csrSortedColIndC) {
+  return hipsparseCcsrgeam(handle, m, n, reinterpret_cast<const hipComplex*>(alpha), descrA, nnzA, reinterpret_cast<const hipComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, reinterpret_cast<const hipComplex*>(beta), descrB, nnzB, reinterpret_cast<const hipComplex*>(csrSortedValB), csrSortedRowPtrB, csrSortedColIndB, descrC, reinterpret_cast<hipComplex*>(csrSortedValC), csrSortedRowPtrC, csrSortedColIndC);
 }
 
-cusparseStatus_t cusparseZcsrgeam(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseZcsrgeam(cusparseHandle_t         handle,
+                                  int                      m,
+                                  int                      n,
+                                  const cuDoubleComplex*   alpha,
+                                  const cusparseMatDescr_t descrA,
+                                  int                      nnzA,
+                                  const cuDoubleComplex*   csrSortedValA,
+                                  const int*               csrSortedRowPtrA,
+                                  const int*               csrSortedColIndA,
+                                  const cuDoubleComplex*   beta,
+                                  const cusparseMatDescr_t descrB,
+                                  int                      nnzB,
+                                  const cuDoubleComplex*   csrSortedValB,
+                                  const int*               csrSortedRowPtrB,
+                                  const int*               csrSortedColIndB,
+                                  const cusparseMatDescr_t descrC,
+                                  cuDoubleComplex*         csrSortedValC,
+                                  int*                     csrSortedRowPtrC,
+                                  int*                     csrSortedColIndC) {
+  return hipsparseZcsrgeam(handle, m, n, reinterpret_cast<const hipDoubleComplex*>(alpha), descrA, nnzA, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, reinterpret_cast<const hipDoubleComplex*>(beta), descrB, nnzB, reinterpret_cast<const hipDoubleComplex*>(csrSortedValB), csrSortedRowPtrB, csrSortedColIndB, descrC, reinterpret_cast<hipDoubleComplex*>(csrSortedValC), csrSortedRowPtrC, csrSortedColIndC);
 }
 
 cusparseStatus_t cusparseScsrgeam2_bufferSizeExt(cusparseHandle_t         handle,
@@ -858,24 +1115,116 @@ cusparseStatus_t cusparseZcsrgeam2(cusparseHandle_t         handle,
   return hipsparseZcsrgeam2(handle, m, n, reinterpret_cast<const hipDoubleComplex*>(alpha), descrA, nnzA, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, reinterpret_cast<const hipDoubleComplex*>(beta), descrB, nnzB, reinterpret_cast<const hipDoubleComplex*>(csrSortedValB), csrSortedRowPtrB, csrSortedColIndB, descrC, reinterpret_cast<hipDoubleComplex*>(csrSortedValC), csrSortedRowPtrC, csrSortedColIndC, pBuffer);
 }
 
-cusparseStatus_t cusparseXcsrgemmNnz(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseXcsrgemmNnz(cusparseHandle_t         handle,
+                                     cusparseOperation_t      transA,
+                                     cusparseOperation_t      transB,
+                                     int                      m,
+                                     int                      n,
+                                     int                      k,
+                                     const cusparseMatDescr_t descrA,
+                                     const int                nnzA,
+                                     const int*               csrSortedRowPtrA,
+                                     const int*               csrSortedColIndA,
+                                     const cusparseMatDescr_t descrB,
+                                     const int                nnzB,
+                                     const int*               csrSortedRowPtrB,
+                                     const int*               csrSortedColIndB,
+                                     const cusparseMatDescr_t descrC,
+                                     int*                     csrSortedRowPtrC,
+                                     int*                     nnzTotalDevHostPtr) {
+  return hipsparseXcsrgemmNnz(handle, transA, transB, m, n, k, descrA, nnzA, csrSortedRowPtrA, csrSortedColIndA, descrB, nnzB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedRowPtrC, nnzTotalDevHostPtr);
 }
 
-cusparseStatus_t cusparseScsrgemm(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseScsrgemm(cusparseHandle_t         handle,
+                                  cusparseOperation_t      transA,
+                                  cusparseOperation_t      transB,
+                                  int                      m,
+                                  int                      n,
+                                  int                      k,
+                                  const cusparseMatDescr_t descrA,
+                                  const int                nnzA,
+                                  const float*             csrSortedValA,
+                                  const int*               csrSortedRowPtrA,
+                                  const int*               csrSortedColIndA,
+                                  const cusparseMatDescr_t descrB,
+                                  const int                nnzB,
+                                  const float*             csrSortedValB,
+                                  const int*               csrSortedRowPtrB,
+                                  const int*               csrSortedColIndB,
+                                  const cusparseMatDescr_t descrC,
+                                  float*                   csrSortedValC,
+                                  const int*               csrSortedRowPtrC,
+                                  int*                     csrSortedColIndC) {
+  return hipsparseScsrgemm(handle, transA, transB, m, n, k, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC);
 }
 
-cusparseStatus_t cusparseDcsrgemm(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseDcsrgemm(cusparseHandle_t         handle,
+                                  cusparseOperation_t      transA,
+                                  cusparseOperation_t      transB,
+                                  int                      m,
+                                  int                      n,
+                                  int                      k,
+                                  const cusparseMatDescr_t descrA,
+                                  int                      nnzA,
+                                  const double*            csrSortedValA,
+                                  const int*               csrSortedRowPtrA,
+                                  const int*               csrSortedColIndA,
+                                  const cusparseMatDescr_t descrB,
+                                  int                      nnzB,
+                                  const double*            csrSortedValB,
+                                  const int*               csrSortedRowPtrB,
+                                  const int*               csrSortedColIndB,
+                                  const cusparseMatDescr_t descrC,
+                                  double*                  csrSortedValC,
+                                  const int*               csrSortedRowPtrC,
+                                  int*                     csrSortedColIndC) {
+  return hipsparseDcsrgemm(handle, transA, transB, m, n, k, descrA, nnzA, csrSortedValA, csrSortedRowPtrA, csrSortedColIndA, descrB, nnzB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, descrC, csrSortedValC, csrSortedRowPtrC, csrSortedColIndC);
 }
 
-cusparseStatus_t cusparseCcsrgemm(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseCcsrgemm(cusparseHandle_t         handle,
+                                  cusparseOperation_t      transA,
+                                  cusparseOperation_t      transB,
+                                  int                      m,
+                                  int                      n,
+                                  int                      k,
+                                  const cusparseMatDescr_t descrA,
+                                  int                      nnzA,
+                                  const cuComplex*         csrSortedValA,
+                                  const int*               csrSortedRowPtrA,
+                                  const int*               csrSortedColIndA,
+                                  const cusparseMatDescr_t descrB,
+                                  int                      nnzB,
+                                  const cuComplex*         csrSortedValB,
+                                  const int*               csrSortedRowPtrB,
+                                  const int*               csrSortedColIndB,
+                                  const cusparseMatDescr_t descrC,
+                                  cuComplex*               csrSortedValC,
+                                  const int*               csrSortedRowPtrC,
+                                  int*                     csrSortedColIndC) {
+  return hipsparseCcsrgemm(handle, transA, transB, m, n, k, descrA, nnzA, reinterpret_cast<const hipComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, descrB, nnzB, reinterpret_cast<const hipComplex*>(csrSortedValB), csrSortedRowPtrB, csrSortedColIndB, descrC, reinterpret_cast<hipComplex*>(csrSortedValC), csrSortedRowPtrC, csrSortedColIndC);
 }
 
-cusparseStatus_t cusparseZcsrgemm(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseZcsrgemm(cusparseHandle_t         handle,
+                                  cusparseOperation_t      transA,
+                                  cusparseOperation_t      transB,
+                                  int                      m,
+                                  int                      n,
+                                  int                      k,
+                                  const cusparseMatDescr_t descrA,
+                                  int                      nnzA,
+                                  const cuDoubleComplex*   csrSortedValA,
+                                  const int*               csrSortedRowPtrA,
+                                  const int*               csrSortedColIndA,
+                                  const cusparseMatDescr_t descrB,
+                                  int                      nnzB,
+                                  const cuDoubleComplex*   csrSortedValB,
+                                  const int*               csrSortedRowPtrB,
+                                  const int*               csrSortedColIndB,
+                                  const cusparseMatDescr_t descrC,
+                                  cuDoubleComplex*         csrSortedValC,
+                                  const int*               csrSortedRowPtrC,
+                                  int*                     csrSortedColIndC) {
+  return hipsparseZcsrgemm(handle, transA, transB, m, n, k, descrA, nnzA, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, descrB, nnzB, reinterpret_cast<const hipDoubleComplex*>(csrSortedValB), csrSortedRowPtrB, csrSortedColIndB, descrC, reinterpret_cast<hipDoubleComplex*>(csrSortedValC), csrSortedRowPtrC, csrSortedColIndC);
 }
 
 cusparseStatus_t cusparseCreateCsrgemm2Info(csrgemm2Info_t* info) {
@@ -1189,20 +1538,64 @@ cusparseStatus_t cusparseXcsr2coo(cusparseHandle_t    handle,
   return hipsparseXcsr2coo(handle, csrSortedRowPtr, nnz, m, cooRowInd, idxBase);
 }
 
-cusparseStatus_t cusparseScsr2csc(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseScsr2csc(cusparseHandle_t    handle,
+                                  int                 m,
+                                  int                 n,
+                                  int                 nnz,
+                                  const float*        csrSortedVal,
+                                  const int*          csrSortedRowPtr,
+                                  const int*          csrSortedColInd,
+                                  float*              cscSortedVal,
+                                  int*                cscSortedRowInd,
+                                  int*                cscSortedColPtr,
+                                  cusparseAction_t    copyValues,
+                                  cusparseIndexBase_t idxBase) {
+  return hipsparseScsr2csc(handle, m, n, nnz, csrSortedVal, csrSortedRowPtr, csrSortedColInd, cscSortedVal, cscSortedRowInd, cscSortedColPtr, copyValues, idxBase);
 }
 
-cusparseStatus_t cusparseDcsr2csc(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseDcsr2csc(cusparseHandle_t    handle,
+                                  int                 m,
+                                  int                 n,
+                                  int                 nnz,
+                                  const double*       csrSortedVal,
+                                  const int*          csrSortedRowPtr,
+                                  const int*          csrSortedColInd,
+                                  double*             cscSortedVal,
+                                  int*                cscSortedRowInd,
+                                  int*                cscSortedColPtr,
+                                  cusparseAction_t    copyValues,
+                                  cusparseIndexBase_t idxBase) {
+  return hipsparseDcsr2csc(handle, m, n, nnz, csrSortedVal, csrSortedRowPtr, csrSortedColInd, cscSortedVal, cscSortedRowInd, cscSortedColPtr, copyValues, idxBase);
 }
 
-cusparseStatus_t cusparseCcsr2csc(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseCcsr2csc(cusparseHandle_t    handle,
+                                  int                 m,
+                                  int                 n,
+                                  int                 nnz,
+                                  const cuComplex*    csrSortedVal,
+                                  const int*          csrSortedRowPtr,
+                                  const int*          csrSortedColInd,
+                                  cuComplex*          cscSortedVal,
+                                  int*                cscSortedRowInd,
+                                  int*                cscSortedColPtr,
+                                  cusparseAction_t    copyValues,
+                                  cusparseIndexBase_t idxBase) {
+  return hipsparseCcsr2csc(handle, m, n, nnz, reinterpret_cast<const hipComplex*>(csrSortedVal), csrSortedRowPtr, csrSortedColInd, reinterpret_cast<hipComplex*>(cscSortedVal), cscSortedRowInd, cscSortedColPtr, copyValues, idxBase);
 }
 
-cusparseStatus_t cusparseZcsr2csc(...) {
-  return HIPSPARSE_STATUS_INTERNAL_ERROR;
+cusparseStatus_t cusparseZcsr2csc(cusparseHandle_t       handle,
+                                  int                    m,
+                                  int                    n,
+                                  int                    nnz,
+                                  const cuDoubleComplex* csrSortedVal,
+                                  const int*             csrSortedRowPtr,
+                                  const int*             csrSortedColInd,
+                                  cuDoubleComplex*       cscSortedVal,
+                                  int*                   cscSortedRowInd,
+                                  int*                   cscSortedColPtr,
+                                  cusparseAction_t       copyValues,
+                                  cusparseIndexBase_t    idxBase) {
+  return hipsparseZcsr2csc(handle, m, n, nnz, reinterpret_cast<const hipDoubleComplex*>(csrSortedVal), csrSortedRowPtr, csrSortedColInd, reinterpret_cast<hipDoubleComplex*>(cscSortedVal), cscSortedRowInd, cscSortedColPtr, copyValues, idxBase);
 }
 
 
