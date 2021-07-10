@@ -50,6 +50,10 @@ class TestCsrmm(unittest.TestCase):
     def test_csrmm(self):
         if not cusparse.check_availability('csrmm'):
             pytest.skip('csrmm is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         y = cupy.cusparse.csrmm(a, b, alpha=self.alpha, transa=self.transa)
@@ -59,6 +63,10 @@ class TestCsrmm(unittest.TestCase):
     def test_csrmm_with_c(self):
         if not cusparse.check_availability('csrmm'):
             pytest.skip('csrmm is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
@@ -96,6 +104,10 @@ class TestCsrmm2(unittest.TestCase):
     def test_csrmm2(self):
         if not cusparse.check_availability('csrmm2'):
             pytest.skip('csrmm2 is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         y = cupy.cusparse.csrmm2(
@@ -106,6 +118,10 @@ class TestCsrmm2(unittest.TestCase):
     def test_csrmm2_with_c(self):
         if not cusparse.check_availability('csrmm2'):
             pytest.skip('csrmm2 is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
@@ -236,6 +252,9 @@ class TestCsrgemm(unittest.TestCase):
     def test_csrgemm(self):
         if not cupy.cusparse.check_availability('csrgemm'):
             pytest.skip('csrgemm is not available.')
+        if runtime.is_hip:
+            if self.transa or self.transb:
+                pytest.xfail('may be buggy')
 
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
@@ -358,6 +377,10 @@ class TestCsrmv(unittest.TestCase):
     def test_csrmv(self):
         if not cusparse.check_availability('csrmv'):
             pytest.skip('csrmv is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.cusparse.csrmv(
@@ -368,6 +391,10 @@ class TestCsrmv(unittest.TestCase):
     def test_csrmv_with_y(self):
         if not cusparse.check_availability('csrmv'):
             pytest.skip('csrmv is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.array(self.y, order='f')
