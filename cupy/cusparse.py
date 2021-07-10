@@ -1717,7 +1717,7 @@ def denseToSparse(x, format='csr'):
         y = cupyx.scipy.sparse.csr_matrix((data, indices, indptr),
                                           shape=x.shape)
         if _runtime.is_hip:
-            if y.indices.data.ptr == 0 or y.data.data.ptr == 0:
+            if y.nnz == 0: 
                 raise ValueError('hipSPARSE currently cannot handle '
                                  'sparse matrices with null ptrs')
     elif format == 'csc':
@@ -1727,7 +1727,7 @@ def denseToSparse(x, format='csr'):
         y = cupyx.scipy.sparse.csc_matrix((data, indices, indptr),
                                           shape=x.shape)
         if _runtime.is_hip:
-            if y.indices.data.ptr == 0 or y.data.data.ptr == 0:
+            if y.nnz == 0:
                 raise ValueError('hipSPARSE currently cannot handle '
                                  'sparse matrices with null ptrs')
     elif format == 'coo':
@@ -1739,7 +1739,7 @@ def denseToSparse(x, format='csr'):
         data = _cupy.empty(nnz, x.dtype)
         y = cupyx.scipy.sparse.coo_matrix((data, (row, col)), shape=x.shape)
         if _runtime.is_hip:
-            if y.row.data.ptr == 0 or y.data.data.ptr == 0:
+            if y.nnz == 0:
                 raise ValueError('hipSPARSE currently cannot handle '
                                  'sparse matrices with null ptrs')
     desc_y = SpMatDescriptor.create(y)

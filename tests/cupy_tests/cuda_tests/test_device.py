@@ -6,7 +6,6 @@ import pytest
 
 import cupy
 from cupy import cuda
-from cupy.cuda import runtime
 from cupy import testing
 
 
