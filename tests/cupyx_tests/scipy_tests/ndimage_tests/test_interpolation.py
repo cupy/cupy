@@ -273,6 +273,9 @@ class TestAffineExceptions:
                 ndi.affine_transform(x, xp.ones((0, 3)), output=output)
 
     def test_invalid_texture_arguments(self):
+        if runtime.is_hip:
+            pytest.skip('texture memory not supported yet')
+
         aft = cupyx.scipy.ndimage.affine_transform
         x = [cupy.ones((8, ) * n, dtype=cupy.float32) for n in range(1, 5)]
 
@@ -312,6 +315,7 @@ class TestAffineExceptions:
                 texture_memory=True)
 
 
+@pytest.mark.skipif(runtime.is_hip, reason='texture memory not supported yet')
 @testing.parameterize(*testing.product({
     'output': [None, numpy.float32, 'empty'],
     'output_shape': [None, 10],
@@ -327,6 +331,7 @@ class TestAffineTransformTextureMemory:
     _multiprocess_can_split = True
 
     def _2d_rotation_matrix(self, theta, rotation_center):
+        import scipy.special
         c, s = scipy.special.cosdg(theta), scipy.special.sindg(theta)
         m = numpy.array([
             [1, 0, rotation_center[0]],
