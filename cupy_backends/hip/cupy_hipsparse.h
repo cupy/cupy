@@ -1,7 +1,7 @@
-// This file is a stub header file of cusparse for Read the Docs.
 
-#ifndef INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H
-#define INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H
+
+#ifndef INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H
+#define INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H
 #include <hipsparse.h>
 #include <hip/hip_version.h>    // for HIP_VERSION
 #include <hip/library_types.h>  // for hipDataType
@@ -2972,7 +2972,7 @@ cusparseStatus_t cusparseZgpsvInterleavedBatch(...) {
   return HIPSPARSE_STATUS_INTERNAL_ERROR;
 }
 
-#define CUSPARSE_VERSION -1
+#define CUSPARSE_VERSION (hipsparseVersionMajor*100000+hipsparseVersionMinor*100+hipsparseVersionPatch)
 
 // cuSPARSE generic API
 #if HIP_VERSION >= 402
@@ -3740,4 +3740,4 @@ cusparseStatus_t cusparseZcsr2csr_compress(cusparseHandle_t         handle,
 }  // extern "C"
 
 
-#endif  // INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H
+#endif  // INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H

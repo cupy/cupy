@@ -376,5 +376,16 @@ if __name__ == '__main__':
             stubs = main(hip_h, cu_h, stubs, hip_ver, init)
             init = True
 
+    # more hacks...
+    stubs = stubs.replace(
+        '#define CUSPARSE_VERSION -1',
+        ('#define CUSPARSE_VERSION '
+         '(hipsparseVersionMajor*100000+hipsparseVersionMinor*100'
+         '+hipsparseVersionPatch)'))
+    stubs = stubs.replace(
+        'INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H',
+        'INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H')
+    stubs = stubs[stubs.find('\n'):]
+
     with open('cupy_backends/hip/cupy_hipsparse.h', 'w') as f:
         f.write(stubs)

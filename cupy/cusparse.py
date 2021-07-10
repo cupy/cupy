@@ -1717,7 +1717,7 @@ def denseToSparse(x, format='csr'):
         y = cupyx.scipy.sparse.csr_matrix((data, indices, indptr),
                                           shape=x.shape)
         if _runtime.is_hip:
-            if y.nnz == 0: 
+            if y.nnz == 0:
                 raise ValueError('hipSPARSE currently cannot handle '
                                  'sparse matrices with null ptrs')
     elif format == 'csc':
