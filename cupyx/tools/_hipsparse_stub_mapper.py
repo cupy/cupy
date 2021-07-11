@@ -134,6 +134,75 @@ def merge_bad_broken_lines(cu_sig):
     return cu_sig_processed
 
 
+def process_func_args(s, hip_sig, decl, hip_func):
+    # TODO(leofang): prettier print? note that we currently rely on "hip_sig"
+    # being a one-liner...
+    # TODO(leofang): I am being silly here; these can probably be handled more
+    # elegantly using regex...
+    if 'const cuComplex*' in s:
+        s = s.split()
+        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+        cast = 'reinterpret_cast<const hipComplex*>'
+    elif 'const cuDoubleComplex*' in s:
+        s = s.split()
+        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+        cast = 'reinterpret_cast<const hipDoubleComplex*>'
+    elif 'cuComplex*' in s:
+        s = s.split()
+        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+        cast = 'reinterpret_cast<hipComplex*>'
+    elif 'cuDoubleComplex*' in s:
+        s = s.split()
+        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+        cast = 'reinterpret_cast<hipDoubleComplex*>'
+    elif 'cuComplex' in s:
+        s = s.split()
+        decl += '  hipComplex blah;\n'
+        decl += f'  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
+        arg = 'blah' + s[-1][-1]
+        cast = ''
+    elif 'cuDoubleComplex' in s:
+        s = s.split()
+        decl += '  hipDoubleComplex blah;\n'
+        decl += f'  blah.x={s[-1][:-1]}.x;\n  blah.y={s[-1][:-1]}.y;\n'
+        arg = 'blah' + s[-1][-1]
+        cast = ''
+    elif 'cudaDataType*' in s:
+        s = s.split()
+        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+        cast = 'reinterpret_cast<hipDataType*>'
+    elif 'cudaDataType' in s:
+        s = s.split()
+        decl += '  hipDataType blah = convert_hipDatatype('
+        decl += s[-1][:-1] + ');\n'
+        arg = 'blah' + s[-1][-1]
+        cast = ''
+    elif 'cusparseOrder_t*' in s:
+        s = s.split()
+        decl += '  hipsparseOrder_t blah2 = '
+        decl += 'convert_hipsparseOrder_t(*' + s[-1][:-1] + ');\n'
+        arg = '&blah2' + s[-1][-1]
+        cast = ''
+    elif 'cusparseOrder_t' in s:
+        s = s.split()
+        decl += '  hipsparseOrder_t blah2 = '
+        decl += 'convert_hipsparseOrder_t(' + s[-1][:-1] + ');\n'
+        arg = 'blah2' + s[-1][-1]
+        cast = ''
+    elif ('const void*' in s
+            and hip_func == 'hipsparseSpVV_bufferSize'):
+        # work around HIP's bad typing...
+        s = s.split()
+        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
+        cast = 'const_cast<void*>'
+    else:
+        s = s.split()
+        arg = s[-1]
+        cast = ''
+    hip_sig += (cast + arg + ' ')
+    return hip_sig, decl
+
+
 def main(hip_h, cu_h, stubs, hip_version, init):
     hip_version = get_hip_ver_num(hip_version)
 
@@ -262,75 +331,8 @@ def main(hip_h, cu_h, stubs, hip_version, init):
                 hip_sig = '  return ' + hip_func + '('
                 decl = ''
                 for s in cu_sig:
-                    # TODO(leofang): prettier print? note that we currently
-                    # rely on "hip_sig" being a one-liner...
-                    # TODO(leofang): I am being silly here; these can probably
-                    # be handled more elegantly using regex...
-                    if 'const cuComplex*' in s:
-                        s = s.split()
-                        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-                        cast = 'reinterpret_cast<const hipComplex*>'
-                    elif 'const cuDoubleComplex*' in s:
-                        s = s.split()
-                        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-                        cast = 'reinterpret_cast<const hipDoubleComplex*>'
-                    elif 'cuComplex*' in s:
-                        s = s.split()
-                        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-                        cast = 'reinterpret_cast<hipComplex*>'
-                    elif 'cuDoubleComplex*' in s:
-                        s = s.split()
-                        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-                        cast = 'reinterpret_cast<hipDoubleComplex*>'
-                    elif 'cuComplex' in s:
-                        s = s.split()
-                        decl += '  hipComplex blah;\n'
-                        decl += f'  blah.x={s[-1][:-1]}.x;\n'
-                        decl += f'  blah.y={s[-1][:-1]}.y;\n'
-                        arg = 'blah' + s[-1][-1]
-                        cast = ''
-                    elif 'cuDoubleComplex' in s:
-                        s = s.split()
-                        decl += '  hipDoubleComplex blah;\n'
-                        decl += f'  blah.x={s[-1][:-1]}.x;\n'
-                        decl += f'  blah.y={s[-1][:-1]}.y;\n'
-                        arg = 'blah' + s[-1][-1]
-                        cast = ''
-                    elif 'cudaDataType*' in s:
-                        s = s.split()
-                        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-                        cast = 'reinterpret_cast<hipDataType*>'
-                    elif 'cudaDataType' in s:
-                        s = s.split()
-                        decl += '  hipDataType blah = convert_hipDatatype('
-                        decl += s[-1][:-1] + ');\n'
-                        arg = 'blah' + s[-1][-1]
-                        cast = ''
-                    elif 'cusparseOrder_t*' in s:
-                        s = s.split()
-                        decl += '  hipsparseOrder_t blah2 = '
-                        decl += 'convert_hipsparseOrder_t(*' + s[-1][:-1]
-                        decl += ');\n'
-                        arg = '&blah2' + s[-1][-1]
-                        cast = ''
-                    elif 'cusparseOrder_t' in s:
-                        s = s.split()
-                        decl += '  hipsparseOrder_t blah2 = '
-                        decl += 'convert_hipsparseOrder_t(' + s[-1][:-1]
-                        decl += ');\n'
-                        arg = 'blah2' + s[-1][-1]
-                        cast = ''
-                    elif ('const void*' in s
-                            and hip_func == 'hipsparseSpVV_bufferSize'):
-                        # work around HIP's bad typing...
-                        s = s.split()
-                        arg = '(' + s[-1][:-1] + ')' + s[-1][-1]
-                        cast = 'const_cast<void*>'
-                    else:
-                        s = s.split()
-                        arg = s[-1]
-                        cast = ''
-                    hip_sig += (cast + arg + ' ')
+                    hip_sig, decl = process_func_args(
+                        s, hip_sig, decl, hip_func)
                 hip_sig = hip_sig[:-1] + ';'
                 hip_stub_h.append(decl+hip_sig)
                 if hip_version != 305:
@@ -344,7 +346,7 @@ def main(hip_h, cu_h, stubs, hip_version, init):
                      + ' HIPSPARSE_STATUS_NOT_SUPPORTED;'))
 
         elif 'return' in line:
-            if 'CUSPARSE_STATUS_SUCCESS' in line:
+            if 'CUSPARSE_STATUS' in line:
                 # don't do anything, as we handle the return when
                 # parsing "(...)"
                 pass
