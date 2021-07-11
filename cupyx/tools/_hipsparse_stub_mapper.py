@@ -11,7 +11,7 @@ import sys
 # The stub functions, such as this,
 #
 # cusparseStatus_t cusparseDestroyMatDescr(...) {
-#   return HIPSPARSE_STATUS_INTERNAL_ERROR;
+#   return HIPSPARSE_STATUS_NOT_SUPPORTED;
 # }
 #
 # are mapped to their HIP counterparts, like this
@@ -80,6 +80,12 @@ static hipsparseOrder_t convert_hipsparseOrder_t(cusparseOrder_t type) {
 }
 """
 
+default_return_code = r"""
+#if HIP_VERSION < 401
+#define HIPSPARSE_STATUS_NOT_SUPPORTED (hipsparseStatus_t)10
+#endif
+"""
+
 
 # keep track of typedefs that are already handled (as we move from older
 # to newer HIP version)
@@ -145,6 +151,7 @@ def main(hip_h, cu_h, stubs, hip_version, init):
                 hip_stub_h.append(
                     '#include <hip/library_types.h>  // for hipDataType')
                 hip_stub_h.append(cudaDataType_converter)
+                hip_stub_h.append(default_return_code)
 
         elif line.startswith('typedef'):
             old_line = ''
@@ -329,19 +336,19 @@ def main(hip_h, cu_h, stubs, hip_version, init):
                 if hip_version != 305:
                     hip_stub_h.append("#else")
                     hip_stub_h.append(
-                        '  return HIPSPARSE_STATUS_INTERNAL_ERROR;')
+                        '  return HIPSPARSE_STATUS_NOT_SUPPORTED;')
                     hip_stub_h.append("#endif")
             else:
                 hip_stub_h.append(
                     (line[:line.find('return')+6]
-                     + ' HIPSPARSE_STATUS_INTERNAL_ERROR;'))
+                     + ' HIPSPARSE_STATUS_NOT_SUPPORTED;'))
 
         elif 'return' in line:
             if 'CUSPARSE_STATUS_SUCCESS' in line:
                 # don't do anything, as we handle the return when
                 # parsing "(...)"
                 pass
-            elif 'HIPSPARSE_STATUS_INTERNAL_ERROR' in line:
+            elif 'HIPSPARSE_STATUS_NOT_SUPPORTED' in line:
                 if '#else' in stubs[i-1]:
                     # just copy from the stub
                     hip_stub_h.append(line)
