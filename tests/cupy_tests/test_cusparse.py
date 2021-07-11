@@ -895,8 +895,7 @@ class TestSparseMatrixConversion(unittest.TestCase):
             if runtime.is_hip:
                 assert 'hipSPARSE' in str(e)
                 pytest.xfail('may be buggy')
-            else:
-                raise
+            raise
         assert y.format == self.format
         testing.assert_array_equal(x, y.todense())
 
@@ -919,6 +918,5 @@ class TestSparseMatrixConversion(unittest.TestCase):
             if runtime.is_hip:
                 assert 'hipSPARSE' in str(e)
                 pytest.xfail('may be buggy')
-            else:
-                raise
+            raise
         testing.assert_array_equal(x.todense(), y)
