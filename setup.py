@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import importlib.util
 import glob
 import os
 from setuptools import setup, find_packages
@@ -85,6 +86,14 @@ setup_requires = requirements['setup']
 install_requires = requirements['install']
 tests_require = requirements['test']
 
+incompatible_packages = ['pythran']
+
+for pkg in incompatible_packages:
+    if importlib.util.find_spec(pkg) is not None:
+        raise RuntimeError(
+            f'CuPy can\'t be built due to an incompatibility with {pkg}')
+
+
 # List of files that needs to be in the distribution (sdist/wheel).
 # Notes:
 # - Files only needed in sdist should be added to `MANIFEST.in`.
@@ -140,7 +149,6 @@ Topic :: Scientific/Engineering
 Operating System :: POSIX
 Operating System :: Microsoft :: Windows
 """
-
 
 setup(
     name=package_name,
