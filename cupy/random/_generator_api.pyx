@@ -521,7 +521,7 @@ cdef void _launch_dist(bit_generator, func, out, args) except*:
     cdef ssize_t size = out.size
     cdef ndarray chunk
     cdef int generator = bit_generator.generator
-
+    out = out.ravel()
     cdef bsize = bit_generator._state_size()
     if out.shape == () or bsize == 0:
         func(generator, state, y_ptr, out.size, strm, *args)
