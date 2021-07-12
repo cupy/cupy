@@ -34,6 +34,9 @@ cdef extern from 'cupy_distributions.cuh' nogil:
     void exponential(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
+    void geometric(
+        int generator, intptr_t state, intptr_t out,
+        ssize_t size, intptr_t stream, intptr_t arg1)
     void standard_normal(
         int generator, intptr_t state, intptr_t out,
         ssize_t size, intptr_t stream)
@@ -262,6 +265,54 @@ class Generator:
         """
         return self.standard_exponential(size) * scale
 
+    def geometric(self, p, size=None):
+        """Geometric distribution.
+
+        Returns an array of samples drawn from the geometric distribution. Its
+        probability mass function is defined as
+
+        .. math::
+            f(x) = p(1-p)^{k-1}.
+
+        Args:
+            p (float or cupy.ndarray of floats): Success probability of
+                the geometric distribution.
+            size (int or tuple of ints, optional): The shape of the output
+                array. If `None`(default), a single value is returned if ``p``
+                is scalar. Otherwise, ``p.size`` samples are drawn.
+
+        Returns:
+            cupy.ndarray: Samples drawn from the geometric distribution.
+
+        .. seealso::
+            :func:`numpy.random.Generator.geometric`
+        """
+        cdef ndarray y
+        cdef ndarray p_arr
+
+        if not isinstance(p, ndarray):
+            if type(p) in (float, int):
+                p_a = ndarray((), numpy.float64)
+                p_a.fill(p)
+                p = p_a
+            else:
+                raise TypeError('p is required to be a cupy.ndarray'
+                                ' or a scalar')
+        else:
+            p = p.astype('d', copy=False)
+
+        if size is not None and not isinstance(size, tuple):
+            size = (size,)
+        elif size is None:
+            size = p.shape
+        y = ndarray(size if size is not None else (), numpy.int64)
+
+        p = cupy.broadcast_to(p, y.shape)
+        p_arr = _array_data(p)
+        p_ptr = p_arr.data.ptr
+        _launch_dist(self.bit_generator, geometric, y, (p_ptr,))
+        return y
+
     def standard_exponential(
             self, size=None, dtype=numpy.float64,
             method='inv', out=None):
@@ -317,7 +368,8 @@ class Generator:
             f(x) = \\frac{\\lambda^xe^{-\\lambda}}{x!}.
 
         Args:
-            lam (array_like of floats): Parameter of the poisson distribution
+            lam (float or array_like of floats): Parameter of
+                the poisson distribution
                 :math:`\\lambda`.
             size (int or tuple of ints): The shape of the array. If ``None``,
             this function generate an array whose shape is `lam.shape`.
