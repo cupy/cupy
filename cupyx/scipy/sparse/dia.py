@@ -11,6 +11,8 @@ from cupyx.scipy.sparse import data
 from cupyx.scipy.sparse import _util
 
 
+# TODO(leofang): The current implementation is CSC-based, which is troublesome
+# on ROCm/HIP. We should convert it to CSR-based for portability.
 class dia_matrix(data._data_matrix):
 
     """Sparse matrix with DIAgonal storage.

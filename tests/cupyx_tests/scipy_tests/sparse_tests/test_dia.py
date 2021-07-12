@@ -12,6 +12,8 @@ except ImportError:
 
 import cupy
 from cupy import testing
+from cupy.cuda import driver
+from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
 
@@ -207,6 +209,13 @@ class TestDiaMatrixInit(unittest.TestCase):
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestDiaMatrixScipyComparison(unittest.TestCase):
 
+    def setUp(self):
+        if runtime.is_hip:
+            if self.make_method in ('_make_empty',):
+                # xcsr2coo could raise HIPSPARSE_STATUS_INVALID_VALUE, maybe
+                # because we have a zero matrix (nnz=0)?
+                pytest.xfail('may be buggy')
+
     @property
     def make(self):
         return globals()[self.make_method]
@@ -309,6 +318,14 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
 class TestDiaMatrixSum(unittest.TestCase):
+
+    def setUp(self):
+        if runtime.is_hip and self.axis in (0, -2):
+            HIP_version = driver.get_build_version()
+            if HIP_version <= 402:
+                # internally a temporary CSC matrix is generated and thus
+                # casues problems (see test_csc.py)
+                pytest.xfail('spmv is buggy (trans=True)')
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum(self, xp, sp):
