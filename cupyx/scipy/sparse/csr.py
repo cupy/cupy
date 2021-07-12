@@ -13,6 +13,7 @@ from cupy_backends.cuda.api import driver
 import cupy
 from cupy._core import _accelerator
 from cupy.cuda import cub
+from cupy.cuda import runtime
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
@@ -161,7 +162,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         elif csc.isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('csrgemm'):
+            if cusparse.check_availability('csrgemm') and not runtime.is_hip:
+                # trans=True is still buggy as of ROCm 4.2.0
                 return cusparse.csrgemm(self, other.T, transb=True)
             elif cusparse.check_availability('csrgemm2'):
                 b = other.tocsr()

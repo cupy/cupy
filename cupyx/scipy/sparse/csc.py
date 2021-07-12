@@ -6,6 +6,7 @@ except ImportError:
 
 import cupy
 from cupy import cusparse
+from cupy.cuda import runtime
 import cupyx.scipy.sparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
@@ -83,7 +84,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         elif cupyx.scipy.sparse.isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('csrgemm'):
+            if cusparse.check_availability('csrgemm') and not runtime.is_hip:
+                # trans=True is still buggy as of ROCm 4.2.0
                 a = self.T
                 return cusparse.csrgemm(a, other, transa=True)
             elif cusparse.check_availability('csrgemm2'):
@@ -95,7 +97,8 @@ class csc_matrix(compressed._compressed_sparse_matrix):
         elif isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('csrgemm'):
+            if cusparse.check_availability('csrgemm') and not runtime.is_hip:
+                # trans=True is still buggy as of ROCm 4.2.0
                 a = self.T
                 b = other.T
                 return cusparse.csrgemm(a, b, transa=True, transb=True)
