@@ -18,6 +18,12 @@ from install import build
 from install.build import PLATFORM_LINUX
 from install.build import PLATFORM_WIN32
 
+try:
+    # This is to avoid getting numpy imported inside other modules and
+    # overwritting setuptools compilers (#5476)
+    import numpy.distutils  # NOQA
+except Exception:
+    pass
 
 # Cython requirements (minimum version and versions known to be broken).
 # Note: this must be in sync with setup_requires defined in setup.py.
