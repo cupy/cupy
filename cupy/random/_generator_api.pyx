@@ -523,9 +523,9 @@ cdef void _launch_dist(bit_generator, func, out, args) except*:
     cdef int generator = bit_generator.generator
     # out is always c-contiguous, when out parameter is specified the checks
     # ensure it
-    out = out.ravel()
+    out = out.ravel(order='A')
     cdef bsize = bit_generator._state_size()
-    if out.shape == () or bsize == 0:
+    if bsize == 0:
         func(generator, state, y_ptr, out.size, strm, *args)
     else:
         chunks = (out.size + bsize - 1) // bsize
