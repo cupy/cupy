@@ -66,10 +66,13 @@ def _syevd(a, UPLO, with_eigen_vector):
 
 
 def eigh(a, UPLO='L'):
-    """Eigenvalues and eigenvectors of a symmetric matrix.
+    """
+    Return the eigenvalues and eigenvectors of a complex Hermitian
+    (conjugate symmetric) or a real symmetric matrix.
 
-    This method calculates eigenvalues and eigenvectors of a given
-    symmetric matrix.
+    Returns two objects, a 1-D array containing the eigenvalues of `a`, and
+    a 2-D square array or matrix (depending on the input type) of the
+    corresponding eigenvectors (in columns).
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
@@ -111,11 +114,10 @@ def eigh(a, UPLO='L'):
 
 
 def eigvalsh(a, UPLO='L'):
-    """Calculates eigenvalues of a symmetric matrix.
+    """
+    Compute the eigenvalues of a complex Hermitian or real symmetric matrix.
 
-    This method calculates eigenvalues a given symmetric matrix.
-    Note that :func:`cupy.linalg.eigh` calculates both eigenvalues and
-    eigenvectors.
+    Main difference from eigh: the eigenvectors are not computed.
 
     Args:
         a (cupy.ndarray): A symmetric 2-D square matrix ``(M, M)`` or a batch
