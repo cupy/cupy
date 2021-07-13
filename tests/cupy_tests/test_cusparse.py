@@ -1,3 +1,4 @@
+import functools
 import pickle
 import unittest
 
@@ -875,6 +876,21 @@ class TestCsrilu02(unittest.TestCase):
             cusparse.csrilu02(a, level_info=self.level_info)
 
 
+def skip_HIP_0_size_matrix():
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            try:
+                impl(self, *args, **kw)
+            except ValueError as e:
+                if runtime.is_hip:
+                    assert 'hipSPARSE' in str(e)
+                    pytest.xfail('may be buggy')
+                raise
+        return test_func
+    return decorator
+
+
 @testing.parameterize(*testing.product({
     'shape': [(3, 4), (4, 4), (4, 3)],
     'density': [0.0, 0.5, 1.0],
@@ -883,22 +899,18 @@ class TestCsrilu02(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestSparseMatrixConversion(unittest.TestCase):
 
+    @skip_HIP_0_size_matrix()
     @testing.for_dtypes('fdFD')
     def test_denseToSparse(self, dtype):
         if not cusparse.check_availability('denseToSparse'):
             pytest.skip('denseToSparse is not available')
         x = cupy.random.uniform(0, 1, self.shape).astype(dtype)
         x[x < self.density] = 0
-        try:
-            y = cusparse.denseToSparse(x, format=self.format)
-        except ValueError as e:  # 0-size matrices
-            if runtime.is_hip:
-                assert 'hipSPARSE' in str(e)
-                pytest.xfail('may be buggy')
-            raise
+        y = cusparse.denseToSparse(x, format=self.format)
         assert y.format == self.format
         testing.assert_array_equal(x, y.todense())
 
+    @skip_HIP_0_size_matrix()
     @testing.for_dtypes('fdFD')
     def test_sparseToDense(self, dtype):
         if not cusparse.check_availability('sparseToDense'):
@@ -912,11 +924,5 @@ class TestSparseMatrixConversion(unittest.TestCase):
             x = sparse.csc_matrix(x)
         elif self.format == 'coo':
             x = sparse.coo_matrix(x)
-        try:
-            y = cusparse.sparseToDense(x)
-        except ValueError as e:  # 0-size matrices
-            if runtime.is_hip:
-                assert 'hipSPARSE' in str(e)
-                pytest.xfail('may be buggy')
-            raise
+        y = cusparse.sparseToDense(x)
         testing.assert_array_equal(x.todense(), y)

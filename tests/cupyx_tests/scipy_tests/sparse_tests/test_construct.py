@@ -1,3 +1,4 @@
+import functools
 import re
 import unittest
 from unittest import mock
@@ -397,6 +398,21 @@ _arrs_kron = [
     [[0.5, 0.125, 0, 3.25], [0, 2.5, 0, 0]], ]
 
 
+def skip_HIP_0_size_matrix():
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            try:
+                impl(self, *args, **kw)
+            except AssertionError as e:
+                if runtime.is_hip:
+                    assert 'ValueError: hipSPARSE' in str(e)
+                    pytest.xfail('may be buggy')
+                raise
+        return test_func
+    return decorator
+
+
 @testing.parameterize(*testing.product({
     'dtype': (numpy.float32, numpy.float64, numpy.complex64, numpy.complex128),
     'format': ('csr', 'csc', 'coo'),
@@ -408,16 +424,10 @@ class TestKron(unittest.TestCase):
 
     def _make_sp_mat(self, xp, sp, arr, dtype):
         a = xp.array(arr, dtype=dtype)
-        try:
-            a = sp.csr_matrix(a)
-        except ValueError as e:  # 0-size matrices
-            if runtime.is_hip:
-                assert 'hipSPARSE' in str(e)
-                pytest.xfail('may be buggy')
-            else:
-                raise
+        a = sp.csr_matrix(a)
         return a
 
+    @skip_HIP_0_size_matrix()
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_kron(self, xp, sp):
         a = self._make_sp_mat(xp, sp, self.arrA, self.dtype)
@@ -453,14 +463,10 @@ class TestKronsum(unittest.TestCase):
 
     def _make_sp_mat(self, xp, sp, arr, dtype):
         a = xp.array(arr, dtype=dtype)
-        try:
-            a = sp.csr_matrix(a)
-        except ValueError as e:  # 0-size matrices
-            if runtime.is_hip:
-                assert 'hipSPARSE' in str(e)
-                pytest.xfail('may be buggy')
+        a = sp.csr_matrix(a)
         return a
 
+    @skip_HIP_0_size_matrix()
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_kronsum(self, xp, sp):
         a = self._make_sp_mat(xp, sp, self.arrA, self.dtype)
