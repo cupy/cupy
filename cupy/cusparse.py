@@ -117,7 +117,7 @@ _available_hipsparse_version = {
     'csrgeam': (305, None),
     'csrgeam2': (305, None),
     'csrgemm': (305, None),
-    'csrgemm2': (400, None),  # avaiable since 305 but seems buggy
+    'csrgemm2': (402, None),  # avaiable since 305 but seems buggy
     'spmv': (402, None),
     'spmm': (402, None),
     'csr2dense': (305, None),

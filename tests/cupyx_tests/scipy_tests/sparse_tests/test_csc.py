@@ -636,7 +636,7 @@ class TestCscMatrixScipyComparison(unittest.TestCase):
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m.dot(x)
 
-    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() <= 400,
                         reason='no working implementation')
     def test_dot_dense_matrix_invalid_shape(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):

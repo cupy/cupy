@@ -60,6 +60,9 @@ class TestDiaMatrix(unittest.TestCase):
             self.m.data, cupy.array([[0, 1, 2], [3, 4, 5]], self.dtype))
 
     def test_offsets(self):
+        if (runtime.is_hip and self.dtype == numpy.float32
+                and driver.get_build_version() == 400):
+            pytest.xfail('generated wrong result -- may be buggy?')
         assert self.m.offsets.dtype == numpy.int32
         testing.assert_array_equal(
             self.m.offsets, cupy.array([0, -1], self.dtype))
