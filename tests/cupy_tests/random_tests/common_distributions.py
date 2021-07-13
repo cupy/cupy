@@ -190,6 +190,7 @@ standard_normal_params = [
     {'size': None},
     {'size': (1, 2, 3)},
     {'size': 3},
+    {'size': (1000, 1000)},
     {'size': (3, 3)},
     {'size': ()}]
 
@@ -240,6 +241,9 @@ class Poisson:
     def test_poisson_ks(self):
         self.check_ks(0.05)(
             lam=self.lam, size=2000)
+
+    def test_poisson_large(self):
+        self.generate(lam=self.lam, size=(1000, 1000))
 
 
 gamma_params = [
