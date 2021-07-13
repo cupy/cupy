@@ -71,6 +71,10 @@ cudaError_t cudaDeviceEnablePeerAccess(int peerDeviceId, unsigned int flags) {
     return hipDeviceEnablePeerAccess(peerDeviceId, flags);
 }
 
+cudaError_t cudaDeviceDisablePeerAccess(int peerDeviceId) {
+    return hipDeviceDisablePeerAccess(peerDeviceId);
+}
+
 cudaError_t cudaDeviceGetLimit(size_t* pValue, cudaLimit limit) {
     return hipDeviceGetLimit(pValue, limit);
 }
