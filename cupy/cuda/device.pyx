@@ -19,6 +19,7 @@ cdef object _thread_local = threading.local()
 
 cdef dict _devices = {}
 cdef dict _compute_capabilities = {}
+cdef dict _peer_access_checked = {}
 
 
 cdef class _ThreadLocalStack:
@@ -88,6 +89,31 @@ cpdef str get_compute_capability():
     if ret is not None:
         return ret
     return Device().compute_capability
+
+
+cdef bint _enable_peer_access(int device, int peer) except -1:
+    """Enable accessing memory allocated on `peer` from `device`."""
+    device_pair = device, peer
+
+    if device_pair in _peer_access_checked:
+        return _peer_access_checked[device_pair]
+    cdef int can_access = runtime.deviceCanAccessPeer(device, peer)
+    if can_access == 0:
+        _peer_access_checked[device_pair] = False
+        return False
+
+    cdef int current = runtime.getDevice()
+    runtime.setDevice(device)
+    try:
+        runtime.deviceEnablePeerAccess(peer)
+    except runtime_module.CUDARuntimeError as e:
+        # peer access could already be set by external libraries at this point
+        if e.status != runtime.errorPeerAccessAlreadyEnabled:
+            raise
+    finally:
+        runtime.setDevice(current)
+    _peer_access_checked[device_pair] = True
+    return True
 
 
 @_util.memoize()
