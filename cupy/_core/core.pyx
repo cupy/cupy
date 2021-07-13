@@ -231,7 +231,7 @@ cdef class ndarray:
             elif not isinstance(stream, int) or stream < -1 or stream == 0:
                 raise ValueError(
                     f'On CUDA, the valid stream for the DLPack protocol is -1,'
-                    ' 1, 2, or any larger value, but {stream} was provided')
+                    f' 1, 2, or any larger value, but {stream} was provided')
             if curr_stream_ptr == 0:
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
@@ -241,7 +241,7 @@ cdef class ndarray:
                     or stream in (1, 2)):
                 raise ValueError(
                     f'On ROCm/HIP, the valid stream for the DLPack protocol is'
-                    ' -1, 0, or any value > 2, but {stream} was provided')
+                    f' -1, 0, or any value > 2, but {stream} was provided')
 
         # if -1, no stream order should be established; otherwise, the consumer
         # stream should wait for the work on CuPy's current stream to finish
@@ -504,6 +504,14 @@ cdef class ndarray:
                 'Casting complex values to real discards the imaginary part',
                 numpy.ComplexWarning)
             elementwise_copy(self.real, newarray)
+        elif self.dtype.kind == 'b':
+            # See #4354. The result of `astype` from a ndarray whose dtype is
+            # boolean to another dtype is expected to be zero or one. However,
+            # its underlying representation is not necessarily zero or one
+            # (i.g. a view). In such a case,`elementwise_copy` copies the data
+            # as it is, resulting in an undesirable output. To keep it off, we
+            # give a special path for a boolean ndarray.
+            cupy.not_equal(self, 0, out=newarray)
         else:
             elementwise_copy(self, newarray)
         return newarray

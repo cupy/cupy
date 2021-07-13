@@ -267,25 +267,13 @@ class TestGamma(
     pass
 
 
-@testing.parameterize(
-    {'p': 0.5},
-    {'p': 0.1},
-    {'p': 1.0},
-)
-@testing.gpu
+@testing.parameterize(*common_distributions.geometric_params)
 @testing.fix_random()
-class TestGeometric(RandomGeneratorTestCase):
-
-    target_method = 'geometric'
-
-    def test_geometric(self):
-        self.generate(p=self.p, size=(3, 2))
-
-    @testing.for_dtypes('fd')
-    @_condition.repeat_with_success_at_least(10, 3)
-    def test_geometric_ks(self, dtype):
-        self.check_ks(0.05)(
-            p=self.p, size=2000, dtype=dtype)
+class TestGeometric(
+    common_distributions.Geometric,
+    RandomGeneratorTestCase
+):
+    pass
 
 
 @testing.parameterize(

@@ -194,35 +194,51 @@ class TestStandardNormalInvalid(InvalidOutsMixin, GeneratorTestCase):
 @testing.gpu
 @testing.fix_random()
 class TestIntegers(GeneratorTestCase):
-    # TODO(niboshi):
-    #   Test soundness of distribution.
-    #   Currently only reprocibility is checked.
-
     target_method = 'integers'
 
-    def test_randint_1(self):
+    def test_integers_1(self):
         self.generate(3)
 
-    def test_randint_2(self):
+    def test_integers_2(self):
         self.generate(3, 4, size=(3, 2))
 
-    def test_randint_empty1(self):
+    def test_integers_empty1(self):
         self.generate(3, 10, size=0)
 
-    def test_randint_empty2(self):
+    def test_integers_empty2(self):
         self.generate(3, size=(4, 0, 5))
 
-    def test_randint_overflow(self):
+    def test_integers_overflow(self):
         self.generate(numpy.int8(-100), numpy.int8(100))
 
-    def test_randint_float1(self):
+    def test_integers_float1(self):
         self.generate(-1.2, 3.4, 5)
 
-    def test_randint_float2(self):
+    def test_integers_float2(self):
         self.generate(6.7, size=(2, 3))
 
-    def test_randint_int64_1(self):
+    def test_integers_int64_1(self):
         self.generate(2**34, 2**40, 3)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_integers_ks(self):
+        self.check_ks(0.05)(
+            low=100, high=1000, size=2000)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_integers_ks_low(self):
+        self.check_ks(0.05)(
+            low=100, size=2000)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_integers_ks_large(self):
+        self.check_ks(0.05)(
+            low=2**34, high=2**40, size=2000)
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_integers_ks_large2(self):
+        self.check_ks(0.05)(
+            2**40, size=2000)
 
 
 @testing.with_requires('numpy>=1.17.0')
@@ -242,6 +258,16 @@ class TestRandom(InvalidOutsMixin, GeneratorTestCase):
     @_condition.repeat_with_success_at_least(10, 3)
     def test_random_ks(self, dtype):
         self.check_ks(0.05)(size=2000, dtype=dtype)
+
+
+@testing.parameterize(*common_distributions.geometric_params)
+@testing.with_requires('numpy>=1.17.0')
+@testing.fix_random()
+class TestGeometric(
+    common_distributions.Geometric,
+    GeneratorTestCase
+):
+    pass
 
 
 @testing.with_requires('numpy>=1.17.0')

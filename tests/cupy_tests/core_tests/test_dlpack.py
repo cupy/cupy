@@ -48,19 +48,33 @@ class TestNewDLPackConversion(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     def test_conversion(self, dtype):
+        orig_array = _gen_array(dtype)
+        out_array = cupy.from_dlpack(orig_array)
+        testing.assert_array_equal(orig_array, out_array)
+        testing.assert_array_equal(
+            orig_array.data.ptr, out_array.data.ptr)
+
+    def test_stream(self):
         allowed_streams = ['null', True]
         if not cuda.runtime.is_hip:
             allowed_streams.append('ptds')
 
         # stream order is automatically established via DLPack protocol
-        for src in allowed_streams:
-            src_s = self._get_stream(src)
-            for dst in allowed_streams:
-                dst_s = self._get_stream(dst)
+        for src_s in [self._get_stream(s) for s in allowed_streams]:
+            for dst_s in [self._get_stream(s) for s in allowed_streams]:
                 with src_s:
-                    orig_array = _gen_array(dtype)
+                    orig_array = _gen_array(cupy.float32)
+                    # If src_s != dst_s, dst_s waits until src_s complete.
+                    # Null stream (0) must be passed as streamLegacy (1)
+                    # on CUDA.
+                    if not cuda.runtime.is_hip and dst_s.ptr == 0:
+                        s_ptr = 1
+                    else:
+                        s_ptr = dst_s.ptr
+                    dltensor = orig_array.__dlpack__(s_ptr)
+
                 with dst_s:
-                    out_array = cupy.from_dlpack(orig_array)
+                    out_array = cupy.from_dlpack(dltensor)
                     testing.assert_array_equal(orig_array, out_array)
                     testing.assert_array_equal(
                         orig_array.data.ptr, out_array.data.ptr)

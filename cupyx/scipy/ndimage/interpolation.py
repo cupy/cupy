@@ -5,6 +5,7 @@ import cupy
 import numpy
 
 from cupy._core import internal
+from cupy.cuda import runtime
 from cupyx import _texture
 from cupyx.scipy.ndimage import _util
 from cupyx.scipy.ndimage import _interp_kernels
@@ -362,6 +363,7 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
             - ``mode='constant'`` and ``mode='nearest'``
             - ``order=0`` (nearest neighbor) and ``order=1`` (linear
                 interpolation)
+            - NVIDIA CUDA GPUs
 
     Returns:
         cupy.ndarray or None:
@@ -372,6 +374,9 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     """
 
     if texture_memory:
+        if runtime.is_hip:
+            raise RuntimeError(
+                'HIP currently does not support texture acceleration')
         tm_interp = 'linear' if order > 0 else 'nearest'
         return _texture.affine_transformation(data=input,
                                               transformation_matrix=matrix,

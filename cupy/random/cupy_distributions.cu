@@ -183,6 +183,33 @@ __device__ double rk_beta(rk_state* state, double a, double b) {
     }
 }
 
+__device__ int64_t rk_geometric_search(rk_state *state, double p) {
+    double U, sum, prod, q;
+    int64_t X;
+    X = 1;
+    sum = prod = p;
+    q = 1.0 - p;
+    U = state->rk_double();
+    while (U > sum) {
+        prod *= q;
+        sum += prod;
+        X++;
+    }
+    return X;
+}
+
+__device__ int64_t rk_geometric_inversion(rk_state *state, double p) {
+    return ceil(log(1.0-state->rk_double())/log(1.0-p));
+}
+
+__device__ int64_t rk_geometric(rk_state *state, double p) {
+    if (p >= 0.333333333333333333333333) {
+        return rk_geometric_search(state, p);
+    } else {
+        return rk_geometric_inversion(state, p);
+    }
+}
+
 __device__ double loggam(double x) {
     double x0, x2, xp, gl, gl0;
     long k, n;
@@ -352,6 +379,13 @@ struct exponential_functor {
     }
 };
 
+struct geometric_functor {
+    template<typename... Args>
+    __device__ int64_t operator () (Args&&... args) {
+        return rk_geometric(args...);
+    }
+};
+
 struct standard_normal_functor {
     template<typename... Args>
     __device__ double operator () (Args&&... args) {
@@ -451,6 +485,11 @@ void beta(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t st
 void exponential(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream) {
     kernel_launcher<exponential_functor, double> launcher(size, reinterpret_cast<cudaStream_t>(stream));
     generator_dispatcher(generator, launcher, state, out, size);
+}
+
+void geometric(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {
+    kernel_launcher<geometric_functor, int64_t> launcher(size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, out, size, reinterpret_cast<int64_t*>(p));
 }
 
 void poisson(int generator, intptr_t state, intptr_t out, ssize_t size, intptr_t stream, intptr_t lam) {
