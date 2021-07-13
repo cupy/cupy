@@ -1,6 +1,14 @@
-name: cupy
-type: sphinx
-base: docs/source
-requirements_file: docs/requirements.txt
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+submodules:
+    recursive: true
+formats: all
+sphinx:
+    configuration: docs/source/conf.py
 python:
-  pip_install: true
+    version: 3.8
+    install:
+    - method: pip
+      path: .
+    - requirements: docs/requirements.txt
