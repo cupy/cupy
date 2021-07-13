@@ -201,8 +201,7 @@ class Generator:
                 f'high - low must be within uint64 range (actual: {diff})')
 
         y = ndarray(size if size is not None else (), pdtype)
-
-        if dtype is numpy.uint32:
+        if pdtype is numpy.uint32:
             _launch_dist(self.bit_generator, interval_32, y, (diff, mask))
         else:
             _launch_dist(self.bit_generator, interval_64, y, (diff, mask))
