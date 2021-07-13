@@ -521,7 +521,7 @@ cdef void _launch_dist(bit_generator, func, out, args) except*:
     cdef ssize_t size = out.size
     cdef ndarray chunk
     cdef int generator = bit_generator.generator
-    # out is always c-contiguous, when out parameter is specified the checks
+    # out is always contiguous, when out parameter is specified the checks
     # ensure it
     out = out.ravel(order='A')
     cdef bsize = bit_generator._state_size()
