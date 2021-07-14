@@ -58,7 +58,9 @@ cdef _ndarray_shape_setter(ndarray self, newshape):
     shape = internal.infer_unknown_dimension(newshape, self.size)
     _get_strides_for_nocopy_reshape(self, shape, strides)
     if strides.size() != shape.size():
-        raise AttributeError('incompatible shape')
+        raise AttributeError(
+            'Incompatible shape for in-place modification. Use `.reshape()` '
+            'to make a copy with the desired shape.')
     self._shape = shape
     self._strides = strides
     self._update_f_contiguity()
