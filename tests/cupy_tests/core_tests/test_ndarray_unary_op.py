@@ -31,7 +31,6 @@ class TestArrayBoolOp(unittest.TestCase):
         assert not bool(cupy.array([False], dtype=numpy.bool_))
 
     @testing.for_all_dtypes()
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_bool_one_element(self, dtype):
         assert bool(cupy.array([1], dtype=dtype))
         assert not bool(cupy.array([0], dtype=dtype))
