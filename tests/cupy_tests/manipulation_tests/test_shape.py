@@ -95,10 +95,26 @@ class TestReshape(unittest.TestCase):
             with pytest.raises(ValueError):
                 a.reshape(())
 
+    def test_reshape_zerosize_invalid_unknown(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros((0,))
+            with pytest.raises(ValueError):
+                a.reshape((-1, 0))
+
     @testing.numpy_cupy_array_equal()
     def test_reshape_zerosize(self, xp):
         a = xp.zeros((0,))
-        return a.reshape((0,))
+        b = a.reshape((0,))
+        assert b.base is a
+        return b
+
+    @testing.for_orders('CFA')
+    @testing.numpy_cupy_array_equal(strides_check=True)
+    def test_reshape_zerosize2(self, xp, order):
+        a = xp.zeros((2, 0, 3))
+        b = a.reshape((5, 0, 4), order=order)
+        assert b.base is a
+        return b
 
     @testing.for_orders('CFA')
     @testing.numpy_cupy_array_equal()
