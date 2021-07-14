@@ -74,12 +74,23 @@ cdef inline int _get_kind_score(int kind):
 
 
 @cython.profile(False)
-cdef inline _check_array_device_id(ndarray arr, int device_id):
-    if arr.data.device_id != device_id:
+cdef inline _check_peer_access(ndarray arr, int device_id):
+    if arr.data.device_id == device_id:
+        return
+
+    msg = (
+        f'The device where the array resides ({arr.data.device_id}) is '
+        f'different from the current device ({device_id}).'
+    )
+
+    cdef bint peer_access = device._enable_peer_access(
+        device_id, arr.data.device_id)
+    if not peer_access:
         raise ValueError(
-            'Array device must be same as the current '
-            'device: array device = %d while current = %d'
-            % (arr.data.device_id, device_id))
+            f'{msg} Peer access could not be activated automatically.')
+    warnings.warn(
+        f'{msg} Peer access has been activated automatically.',
+        _util.PerformanceWarning)
 
 
 cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
@@ -95,12 +106,12 @@ cdef list _preprocess_args(int dev_id, args, bint use_c_scalar):
     for arg in args:
         if isinstance(arg, ndarray):
             s = arg
-            _check_array_device_id(<ndarray>s, dev_id)
+            _check_peer_access(<ndarray>s, dev_id)
         elif isinstance(arg, texture.TextureObject):
             s = arg
         elif hasattr(arg, '__cuda_array_interface__'):
             s = _convert_object_with_cuda_array_interface(arg)
-            _check_array_device_id(<ndarray>s, dev_id)
+            _check_peer_access(<ndarray>s, dev_id)
         else:  # scalars or invalid args
             if use_c_scalar:
                 s = _scalar.scalar_to_c_scalar(arg)

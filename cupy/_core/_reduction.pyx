@@ -9,7 +9,7 @@ from cupy._core cimport _cub_reduction
 from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _kernel
 from cupy._core._kernel cimport _broadcast
-from cupy._core._kernel cimport _check_array_device_id
+from cupy._core._kernel cimport _check_peer_access
 from cupy._core._kernel cimport _get_arginfos
 from cupy._core._kernel cimport _get_kernel_params
 from cupy._core._kernel cimport _get_out_args
@@ -548,12 +548,12 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         in_args = [arr]
 
         dev_id = device.get_device_id()
-        _check_array_device_id(arr, dev_id)
+        _check_peer_access(arr, dev_id)
 
         if out is None:
             out_args = []
         else:
-            _check_array_device_id(out, dev_id)
+            _check_peer_access(out, dev_id)
             out_args = [out]
 
         reduce_dims = True
