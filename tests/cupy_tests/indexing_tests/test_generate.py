@@ -4,7 +4,6 @@ import numpy
 import pytest
 
 import cupy
-from cupy.cuda import runtime
 from cupy._indexing import generate
 from cupy import testing
 
