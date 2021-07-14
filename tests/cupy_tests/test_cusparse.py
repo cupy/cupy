@@ -12,6 +12,7 @@ except ImportError:
 import cupy
 from cupy import testing
 from cupy import cusparse
+from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
@@ -293,6 +294,8 @@ class TestCsrgemm2(unittest.TestCase):
     def test_csrgemm2_abpd(self):
         if not cupy.cusparse.check_availability('csrgemm2'):
             pytest.skip('csrgemm2 is not available.')
+        if runtime.is_hip and driver.get_build_version() < 402:
+            pytest.xfail('csrgemm2 is buggy')
 
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
@@ -800,8 +803,12 @@ class TestCsrsm2(unittest.TestCase):
     def test_csrsm2(self, dtype):
         if not cusparse.check_availability('csrsm2'):
             raise unittest.SkipTest('csrsm2 is not available')
-        if runtime.is_hip and self.transa == 'H':
-            pytest.xfail('may be buggy')
+        if runtime.is_hip:
+            if (self.transa == 'H'
+                or (driver.get_build_version() < 400
+                    and ((self.format == 'csc' and self.transa == 'N')
+                    or (self.format == 'csr' and self.transa == 'T')))):
+                pytest.xfail('may be buggy')
 
         if (self.format == 'csc' and numpy.dtype(dtype).char in 'FD' and
                 self.transa == 'H'):

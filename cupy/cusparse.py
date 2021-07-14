@@ -117,7 +117,7 @@ _available_hipsparse_version = {
     'csrgeam': (305, None),
     'csrgeam2': (305, None),
     'csrgemm': (305, None),
-    'csrgemm2': (402, None),  # avaiable since 305 but seems buggy
+    'csrgemm2': (305, None),
     'spmv': (402, None),
     'spmm': (402, None),
     'csr2dense': (305, None),
@@ -134,7 +134,7 @@ _available_hipsparse_version = {
     'dense2csc': (305, None),
     'dense2csr': (305, None),
     'csr2csr_compress': (305, None),
-    'csrsm2': (400, None),  # avaiable since 305 but seems buggy
+    'csrsm2': (305, None),  # avaiable since 305 but seems buggy
     'csrilu02': (305, None),
     'denseToSparse': (402, None),
     'sparseToDense': (402, None),
@@ -679,6 +679,8 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
         assert d.has_canonical_format
         if a.shape[0] != d.shape[0] or b.shape[1] != d.shape[1]:
             raise ValueError('mismatched shape')
+        if _runtime.is_hip and _driver.get_build_version() < 402:
+            raise RuntimeError('d != None is supported since ROCm 4.2.0')
 
     handle = _device.get_cusparse_handle()
     m, k = a.shape
