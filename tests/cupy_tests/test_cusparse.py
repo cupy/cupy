@@ -807,7 +807,7 @@ class TestCsrsm2(unittest.TestCase):
             if (self.transa == 'H'
                 or (driver.get_build_version() < 400
                     and ((self.format == 'csc' and self.transa == 'N')
-                    or (self.format == 'csr' and self.transa == 'T')))):
+                         or (self.format == 'csr' and self.transa == 'T')))):
                 pytest.xfail('may be buggy')
 
         if (self.format == 'csc' and numpy.dtype(dtype).char in 'FD' and
