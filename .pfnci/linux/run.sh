@@ -95,7 +95,7 @@ main() {
         exit 1
       fi
       tar -c -f "${cache_archive}" -C "${CACHE_DIR}" .
-      gsutil -m -q cp "${cache_archive}" "${cache_gcs_dir}"
+      gsutil -m -q cp "${cache_archive}" "${cache_gcs_dir}/"
       rm -f "${cache_archive}"
       ;;
 
