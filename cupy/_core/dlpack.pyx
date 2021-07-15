@@ -20,25 +20,19 @@ import cupy
 
 
 cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
-    '''
-    // stringification is currently needed as the version is "030"...
-    #define _stringify_(s) #s
-    #define _xstringify_(s) _stringify_(s)
-    const char* DLPACK_VER_STR = _xstringify_(DLPACK_VERSION);
-    #undef _xstringify_
-    #undef _stringify_
-    '''
-    const char* DLPACK_VER_STR
+    cdef int DLPACK_VERSION
 
     cdef enum DLDeviceType:
         kDLCPU
-        kDLGPU
-        kDLCPUPinned
+        kDLCUDA
+        kDLCUDAHost
+        kDLCUDAManaged
+        kDLROCM
+        kDLROCMHost
         kDLOpenCL
         kDLVulkan
         kDLMetal
         kDLVPI
-        kDLROCM
 
     ctypedef struct DLDevice:
         DLDeviceType device_type
@@ -72,7 +66,7 @@ cdef extern from './include/cupy/dlpack/dlpack.h' nogil:
 
 
 def get_build_version():
-    return DLPACK_VER_STR.decode()
+    return str(DLPACK_VERSION)
 
 
 cdef void pycapsule_deleter(object dltensor):
@@ -119,7 +113,7 @@ cpdef object toDlpack(ndarray array) except +:
     # TODO(leofang): if the CuPy array is backed by managed memory, we should
     # switch to kDLCUDAManaged
     if not runtime._is_hip_environment:
-        device.device_type = kDLGPU
+        device.device_type = kDLCUDA
     else:
         device.device_type = kDLROCM
     device.device_id = array.data.device_id
@@ -172,7 +166,7 @@ cdef class DLPackMemory(memory.BaseMemory):
                                    'from the backend that backs the incoming '
                                    'DLPack tensor')
         else:
-            if dlm_tensor.dl_tensor.device.device_type != kDLGPU:
+            if dlm_tensor.dl_tensor.device.device_type != kDLCUDA:
                 raise RuntimeError('CuPy is built against CUDA, different '
                                    'from the backend that backs the incoming '
                                    'DLPack tensor')
@@ -358,7 +352,7 @@ cpdef from_dlpack(array):
         dev_type, dev_id = array.__dlpack_device__()
 
     # CuPy is the consumer, so we provide our current stream to the producer
-    if dev_type == <int>kDLGPU:
+    if dev_type == <int>kDLCUDA:
         with device.Device(dev_id):
             assert not runtime._is_hip_environment
             stream = stream_module.get_current_stream_ptr()
