@@ -11,6 +11,8 @@ except ImportError:
 
 import cupy
 from cupy import testing
+from cupy.cuda import driver
+from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
 
@@ -564,6 +566,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(ValueError):
                 m.dot(x)
 
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
+                        reason='no working implementation')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_csc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -741,6 +745,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
             with pytest.raises(ValueError):
                 m * x
 
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
+                        reason='no working implementation')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mul_csc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -815,6 +821,8 @@ class TestCooMatrixScipyComparison(unittest.TestCase):
         x = _make3(xp, sp, self.dtype)
         return x * m
 
+    @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 400,
+                        reason='no working implementation')
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_rmul_csc(self, xp, sp):
         m = _make(xp, sp, self.dtype)
