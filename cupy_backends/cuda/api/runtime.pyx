@@ -11,7 +11,7 @@ There are four differences compared to the original C API.
 """
 from libc.stdint cimport uint64_t
 
-import threading
+import threading as _threading
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -32,7 +32,7 @@ cdef class PointerAttributes:
 # Thread-local storage
 ###############################################################################
 
-cdef object _thread_local = threading.local()
+cdef object _thread_local = _threading.local()
 
 
 cdef class _ThreadLocal:
