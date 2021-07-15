@@ -49,8 +49,7 @@ to avoid using context managers:
 
 .. note::
 
-    Currently in case of conflicts the precedence of the three APIs is :func:`~scipy.fft.set_backend` > :func:`~scipy.fft.set_global_backend`
-    > :func:`~scipy.fft.register_backend`. For further information, please refer to `SciPy FFT documentation`_.
+    Please refer to `SciPy FFT documentation`_ for further information.
 
 .. note::
     To use the backend together with an explicit ``plan`` argument requires SciPy version 1.5.0 or higher.
