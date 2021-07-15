@@ -204,7 +204,34 @@ def gmres(A, b, x0=None, tol=1e-5, restart=None, maxiter=None, M=None,
 
 def cgs(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         atol=None):
-    """Use Conjugate Gradient Squared iteration to solve Ax = b."""
+    """Use Conjugate Gradient Squared iteration to solve ``Ax = b``.
+
+    Args:
+        A (ndarray, spmatrix or LinearOperator): The real or complex matrix of
+            the linear system with shape ``(n, n)``.
+        b (cupy.ndarray): Right hand side of the linear system with shape
+            ``(n,)`` or ``(n, 1)``.
+        x0 (cupy.ndarray): Starting guess for the solution.
+        tol (float): Tolerance for convergence.
+        maxiter (int): Maximum number of iterations.
+        M (ndarray, spmatrix or LinearOperator): Preconditioner for ``A``.
+            The preconditioner should approximate the inverse of ``A``.
+            ``M`` must be :class:`cupy.ndarray`,
+            :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
+        callback (function): User-specified function to call after each
+            iteration. It is called as ``callback(xk)``, where ``xk`` is the
+            current solution vector.
+        atol (float): Tolerance for convergence.
+
+    Returns:
+        tuple:
+            It returns ``x`` (cupy.ndarray) and ``info`` (int) where ``x`` is
+            the converged solution and ``info`` provides convergence
+            information.
+
+    .. seealso:: :func:`scipy.sparse.linalg.cgs`
+    """
     A, M, x, b = _make_system(A, M, x0, b)
 
     matvec = A.matvec
@@ -237,7 +264,7 @@ def cgs(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
     while True:
         y = psolve(p)
         v = matvec(y)
-        sigma = numpy.dot(r0, v)
+        sigma = cupy.dot(r0, v)
         alpha = rho / sigma
         q = u - alpha * v
 
@@ -247,7 +274,7 @@ def cgs(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         r -= alpha * Az
 
         # Update residual norm and check convergence
-        r_norm = numpy.linalg.norm(r)
+        r_norm = cupy.linalg.norm(r)
 
         iters += 1
         if callback is not None:
@@ -256,7 +283,7 @@ def cgs(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
         if r_norm <= atol or iters >= maxiter:
             break
 
-        rho_new = numpy.dot(r0, r)
+        rho_new = cupy.dot(r0, r)
         beta = rho_new / rho
         rho = rho_new
         u = r + beta * q
