@@ -4,6 +4,8 @@ import numpy as _numpy
 import platform as _platform
 
 import cupy as _cupy
+from cupy_backends.cuda.api import driver as _driver
+from cupy_backends.cuda.api import runtime as _runtime
 from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy._core import _dtype
 from cupy.cuda import device as _device
@@ -105,6 +107,40 @@ _available_cusparse_version = {
 }
 
 
+_available_hipsparse_version = {
+    # For APIs supported by CUDA but not yet by HIP, we still need them here
+    # so that our test suite can cover both platforms.
+    'csrmv': (305, None),
+    'csrmvEx': (_numpy.inf, None),
+    'csrmm': (305, None),
+    'csrmm2': (305, None),
+    'csrgeam': (305, None),
+    'csrgeam2': (305, None),
+    'csrgemm': (305, None),
+    'csrgemm2': (305, None),
+    'spmv': (402, None),
+    'spmm': (402, None),
+    'csr2dense': (305, None),
+    'csc2dense': (305, None),
+    'csrsort': (305, None),
+    'cscsort': (305, None),
+    'coosort': (305, None),
+    'coo2csr': (305, None),
+    'csr2coo': (305, None),
+    'csr2csc': (305, None),
+    'csc2csr': (305, None),  # the entity is csr2csc
+    'csr2cscEx2': (_numpy.inf, None),
+    'csc2csrEx2': (_numpy.inf, None),  # the entity is csr2cscEx2
+    'dense2csc': (305, None),
+    'dense2csr': (305, None),
+    'csr2csr_compress': (305, None),
+    'csrsm2': (305, None),  # avaiable since 305 but seems buggy
+    'csrilu02': (305, None),
+    'denseToSparse': (402, None),
+    'sparseToDense': (402, None),
+}
+
+
 def _get_version(x):
     if isinstance(x, dict):
         os_name = _platform.system()
@@ -118,16 +154,21 @@ def _get_version(x):
 
 @_util.memoize()
 def check_availability(name):
-    if name not in _available_cusparse_version:
+    if not _runtime.is_hip:
+        available_version = _available_cusparse_version
+        version = _cusparse.getVersion(_device.get_cusparse_handle())
+    else:
+        available_version = _available_hipsparse_version
+        version = _driver.get_build_version()  # = HIP_VERSION
+    if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
-    version_added, version_removed = _available_cusparse_version[name]
+    version_added, version_removed = available_version[name]
     version_added = _get_version(version_added)
     version_removed = _get_version(version_removed)
-    cusparse_version = _cusparse.getVersion(_device.get_cusparse_handle())
-    if version_added is not None and cusparse_version < version_added:
+    if version_added is not None and version < version_added:
         return False
-    if version_removed is not None and cusparse_version >= version_removed:
+    if version_removed is not None and version >= version_removed:
         return False
     return True
 
@@ -638,6 +679,8 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
         assert d.has_canonical_format
         if a.shape[0] != d.shape[0] or b.shape[1] != d.shape[1]:
             raise ValueError('mismatched shape')
+        if _runtime.is_hip and _driver.get_build_version() < 402:
+            raise RuntimeError('d != None is supported since ROCm 4.2.0')
 
     handle = _device.get_cusparse_handle()
     m, k = a.shape
@@ -1132,6 +1175,10 @@ def dense2csr(x):
         x.data.ptr, m, nnz_per_row.data.ptr, nnz.ctypes.data)
 
     nnz = int(nnz)
+    if _runtime.is_hip:
+        if nnz == 0:
+            raise ValueError('hipSPARSE currently cannot handle '
+                             'sparse matrices with null ptrs')
     data = _cupy.empty(nnz, x.dtype)
     indptr = _cupy.empty(m + 1, 'i')
     indices = _cupy.empty(nnz, 'i')
@@ -1665,6 +1712,10 @@ def denseToSparse(x, format='csr'):
     _cusparse.spMatGetSize(desc_y.desc, num_rows_tmp.ctypes.data,
                            num_cols_tmp.ctypes.data, nnz.ctypes.data)
     nnz = int(nnz)
+    if _runtime.is_hip:
+        if nnz == 0:
+            raise ValueError('hipSPARSE currently cannot handle '
+                             'sparse matrices with null ptrs')
     if format == 'csr':
         indptr = y.indptr
         indices = _cupy.empty(nnz, 'i')
@@ -1722,6 +1773,10 @@ def sparseToDense(x, out=None):
     buff_size = _cusparse.sparseToDense_bufferSize(handle, desc_x.desc,
                                                    desc_out.desc, algo)
     buff = _cupy.empty(buff_size, _cupy.int8)
+    if _runtime.is_hip:
+        if x.nnz == 0:
+            raise ValueError('hipSPARSE currently cannot handle '
+                             'sparse matrices with null ptrs')
     _cusparse.sparseToDense(handle, desc_x.desc,
                             desc_out.desc, algo, buff.data.ptr)
 

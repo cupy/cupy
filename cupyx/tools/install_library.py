@@ -67,25 +67,29 @@ def _make_cudnn_record(
 
 # Latest cuDNN versions: https://developer.nvidia.com/rdp/cudnn-download
 _cudnn_records.append(_make_cudnn_record(
-    '11.3', '8.2.1',
-    'cudnn-11.3-linux-x64-v8.2.1.32.tgz',
-    'cudnn-11.3-windows-x64-v8.2.1.32.zip'))
+    '11.4', '8.2.2',
+    'cudnn-11.4-linux-x64-v8.2.2.26.tgz',
+    'cudnn-11.4-windows-x64-v8.2.2.26.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.2', '8.2.1',
-    'cudnn-11.3-linux-x64-v8.2.1.32.tgz',
-    'cudnn-11.3-windows-x64-v8.2.1.32.zip'))
+    '11.3', '8.2.2',
+    'cudnn-11.4-linux-x64-v8.2.2.26.tgz',
+    'cudnn-11.4-windows-x64-v8.2.2.26.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.1', '8.2.1',
-    'cudnn-11.3-linux-x64-v8.2.1.32.tgz',
-    'cudnn-11.3-windows-x64-v8.2.1.32.zip'))
+    '11.2', '8.2.2',
+    'cudnn-11.4-linux-x64-v8.2.2.26.tgz',
+    'cudnn-11.4-windows-x64-v8.2.2.26.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '11.0', '8.2.1',
-    'cudnn-11.3-linux-x64-v8.2.1.32.tgz',
-    'cudnn-11.3-windows-x64-v8.2.1.32.zip'))
+    '11.1', '8.2.2',
+    'cudnn-11.4-linux-x64-v8.2.2.26.tgz',
+    'cudnn-11.4-windows-x64-v8.2.2.26.zip'))
 _cudnn_records.append(_make_cudnn_record(
-    '10.2', '8.2.1',
-    'cudnn-10.2-linux-x64-v8.2.1.32.tgz',
-    'cudnn-10.2-windows10-x64-v8.2.1.32.zip'))
+    '11.0', '8.2.2',
+    'cudnn-11.4-linux-x64-v8.2.2.26.tgz',
+    'cudnn-11.4-windows-x64-v8.2.2.26.zip'))
+_cudnn_records.append(_make_cudnn_record(
+    '10.2', '8.2.2',
+    'cudnn-10.2-linux-x64-v8.2.2.26.tgz',
+    'cudnn-10.2-windows10-x64-v8.2.2.26.zip'))
 _cudnn_records.append(_make_cudnn_record(
     '10.1', '8.0.5',
     'cudnn-10.1-linux-x64-v8.0.5.39.tgz',
@@ -126,6 +130,10 @@ def _make_cutensor_record(
     }
 
 
+_cutensor_records.append(_make_cutensor_record(
+    '11.4', '1.3.1',
+    'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
+    'libcutensor-windows-x86_64-1.3.1.3.zip'))
 _cutensor_records.append(_make_cutensor_record(
     '11.3', '1.3.1',
     'libcutensor-linux-x86_64-1.3.1.3.tar.gz',
@@ -174,6 +182,9 @@ def _make_nccl_record(
     }
 
 
+_nccl_records.append(_make_nccl_record(
+    '11.4', '2.9.9', '2.9',
+    'nccl_2.9.9-1+cuda11.3_x86_64.txz'))
 _nccl_records.append(_make_nccl_record(
     '11.3', '2.9.9', '2.9',
     'nccl_2.9.9-1+cuda11.3_x86_64.txz'))

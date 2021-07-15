@@ -512,7 +512,12 @@ def medfilt(volume, kernel_size=None):
     if volume.dtype.kind == 'c':
         # scipy doesn't support complex
         raise ValueError("complex types not supported")
-    # output is forced to float64 to match scipy
+    if volume.dtype.char == 'e':
+        # scipy doesn't support float16
+        raise ValueError("float16 type not supported")
+    if volume.dtype.kind == 'b':
+        # scipy doesn't support bool
+        raise ValueError("bool type not supported")
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
     if any(k > s for k, s in zip(kernel_size, volume.shape)):
         warnings.warn('kernel_size exceeds volume extent: '
@@ -520,7 +525,7 @@ def medfilt(volume, kernel_size=None):
 
     size = internal.prod(kernel_size)
     return filters.rank_filter(volume, size // 2, size=kernel_size,
-                               output=float, mode='constant')
+                               mode='constant')
 
 
 def medfilt2d(input, kernel_size=3):
@@ -547,9 +552,15 @@ def medfilt2d(input, kernel_size=3):
     .. seealso:: :func:`cupyx.scipy.signal.medfilt`
     .. seealso:: :func:`scipy.signal.medfilt2d`
     """
-    if input.dtype not in (cupy.uint8, cupy.float32, cupy.float64):
-        # Scipy's version only supports uint8, float32, and float64
-        raise ValueError("only supports uint8, float32, and float64")
+    if input.dtype.kind == 'c':
+        # scipy doesn't support complex
+        raise ValueError("complex types not supported")
+    if input.dtype.char == 'e':
+        # scipy doesn't support float16
+        raise ValueError("float16 type not supported")
+    if input.dtype.kind == 'b':
+        # scipy doesn't support bool
+        raise ValueError("bool type not supported")
     if input.ndim != 2:
         raise ValueError('input must be 2d')
     kernel_size = _get_kernel_size(kernel_size, input.ndim)

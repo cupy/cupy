@@ -20,6 +20,7 @@ from cupyx.jit._builtin_funcs import atomic_and  # NOQA
 from cupyx.jit._builtin_funcs import atomic_or  # NOQA
 from cupyx.jit._builtin_funcs import atomic_xor  # NOQA
 from cupyx.jit._builtin_funcs import grid  # NOQA
+from cupyx.jit._builtin_funcs import gridsize  # NOQA
 from cupyx.jit._builtin_funcs import shfl_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_up_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_down_sync  # NOQA

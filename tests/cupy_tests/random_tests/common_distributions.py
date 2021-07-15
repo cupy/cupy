@@ -190,6 +190,7 @@ standard_normal_params = [
     {'size': None},
     {'size': (1, 2, 3)},
     {'size': 3},
+    {'size': (1000, 1000)},
     {'size': (3, 3)},
     {'size': ()}]
 
@@ -241,6 +242,9 @@ class Poisson:
         self.check_ks(0.05)(
             lam=self.lam, size=2000)
 
+    def test_poisson_large(self):
+        self.generate(lam=self.lam, size=(1000, 1000))
+
 
 gamma_params = [
     {'shape': 0.5, 'scale': 0.5},
@@ -268,3 +272,29 @@ class Gamma:
     def test_gamma_ks(self):
         self.check_ks(0.05)(
             self.shape, self.scale, size=2000)
+
+
+geometric_params = [
+    {'p': 0.5},
+    {'p': 0.1},
+    {'p': 1.0},
+    {'p': [0.1, 0.5]},
+]
+
+
+class Geometric:
+
+    target_method = 'geometric'
+
+    def test_geometric(self):
+        p = self.p
+        if not isinstance(self.p, float):
+            p = cupy.array(self.p)
+        self.generate(p=p, size=(3, 2))
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_geometric_ks(self):
+        if not isinstance(self.p, float):
+            self.skipTest('Statistical checks only for scalar `p`')
+        self.check_ks(0.05)(
+            p=self.p, size=2000)

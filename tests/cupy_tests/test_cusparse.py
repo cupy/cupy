@@ -1,3 +1,4 @@
+import functools
 import pickle
 import unittest
 
@@ -11,12 +12,9 @@ except ImportError:
 import cupy
 from cupy import testing
 from cupy import cusparse
+from cupy.cuda import driver
+from cupy.cuda import runtime
 from cupyx.scipy import sparse
-
-
-if cupy.cuda.runtime.is_hip:
-    pytest.skip('HIP sparse support is not yet ready',
-                allow_module_level=True)
 
 
 class TestMatDescriptor(unittest.TestCase):
@@ -54,6 +52,10 @@ class TestCsrmm(unittest.TestCase):
     def test_csrmm(self):
         if not cusparse.check_availability('csrmm'):
             pytest.skip('csrmm is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         y = cupy.cusparse.csrmm(a, b, alpha=self.alpha, transa=self.transa)
@@ -63,6 +65,10 @@ class TestCsrmm(unittest.TestCase):
     def test_csrmm_with_c(self):
         if not cusparse.check_availability('csrmm'):
             pytest.skip('csrmm is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
@@ -100,6 +106,10 @@ class TestCsrmm2(unittest.TestCase):
     def test_csrmm2(self):
         if not cusparse.check_availability('csrmm2'):
             pytest.skip('csrmm2 is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         y = cupy.cusparse.csrmm2(
@@ -110,6 +120,10 @@ class TestCsrmm2(unittest.TestCase):
     def test_csrmm2_with_c(self):
         if not cusparse.check_availability('csrmm2'):
             pytest.skip('csrmm2 is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.c, order='f')
@@ -240,6 +254,9 @@ class TestCsrgemm(unittest.TestCase):
     def test_csrgemm(self):
         if not cupy.cusparse.check_availability('csrgemm'):
             pytest.skip('csrgemm is not available.')
+        if runtime.is_hip:
+            if self.transa or self.transb:
+                pytest.xfail('may be buggy')
 
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
@@ -277,6 +294,8 @@ class TestCsrgemm2(unittest.TestCase):
     def test_csrgemm2_abpd(self):
         if not cupy.cusparse.check_availability('csrgemm2'):
             pytest.skip('csrgemm2 is not available.')
+        if runtime.is_hip and driver.get_build_version() < 402:
+            pytest.xfail('csrgemm2 is buggy')
 
         a = sparse.csr_matrix(self.a)
         b = sparse.csr_matrix(self.b)
@@ -362,6 +381,10 @@ class TestCsrmv(unittest.TestCase):
     def test_csrmv(self):
         if not cusparse.check_availability('csrmv'):
             pytest.skip('csrmv is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.cusparse.csrmv(
@@ -372,6 +395,10 @@ class TestCsrmv(unittest.TestCase):
     def test_csrmv_with_y(self):
         if not cusparse.check_availability('csrmv'):
             pytest.skip('csrmv is not available')
+        if runtime.is_hip:
+            if self.transa:
+                pytest.xfail('may be buggy')
+
         a = sparse.csr_matrix(self.a)
         x = cupy.array(self.x, order='f')
         y = cupy.array(self.y, order='f')
@@ -534,6 +561,12 @@ class TestSpmv(unittest.TestCase):
     def test_spmv(self):
         if not cupy.cusparse.check_availability('spmv'):
             pytest.skip('spmv is not available')
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
+
         a = self.sparse_matrix(self.a)
         if not a.has_canonical_format:
             a.sum_duplicates()
@@ -545,6 +578,12 @@ class TestSpmv(unittest.TestCase):
     def test_spmv_with_y(self):
         if not cupy.cusparse.check_availability('spmv'):
             pytest.skip('spmv is not available')
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
+
         a = self.sparse_matrix(self.a)
         if not a.has_canonical_format:
             a.sum_duplicates()
@@ -626,6 +665,12 @@ class TestSpmm(unittest.TestCase):
     def test_spmm(self):
         if not cupy.cusparse.check_availability('spmm'):
             pytest.skip('spmm is not available')
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
+
         a = self.sparse_matrix(self.a)
         if not a.has_canonical_format:
             a.sum_duplicates()
@@ -638,6 +683,12 @@ class TestSpmm(unittest.TestCase):
     def test_spmm_with_c(self):
         if not cupy.cusparse.check_availability('spmm'):
             pytest.skip('spmm is not available')
+        if runtime.is_hip:
+            if ((self.format == 'csr' and self.transa is True)
+                    or (self.format == 'csc' and self.transa is False)
+                    or (self.format == 'coo' and self.transa is True)):
+                pytest.xfail('may be buggy')
+
         a = self.sparse_matrix(self.a)
         if not a.has_canonical_format:
             a.sum_duplicates()
@@ -752,6 +803,13 @@ class TestCsrsm2(unittest.TestCase):
     def test_csrsm2(self, dtype):
         if not cusparse.check_availability('csrsm2'):
             raise unittest.SkipTest('csrsm2 is not available')
+        if runtime.is_hip:
+            if (self.transa == 'H'
+                or (driver.get_build_version() < 400
+                    and ((self.format == 'csc' and self.transa == 'N')
+                         or (self.format == 'csr' and self.transa == 'T')))):
+                pytest.xfail('may be buggy')
+
         if (self.format == 'csc' and numpy.dtype(dtype).char in 'FD' and
                 self.transa == 'H'):
             raise unittest.SkipTest('unsupported combination')
@@ -825,6 +883,21 @@ class TestCsrilu02(unittest.TestCase):
             cusparse.csrilu02(a, level_info=self.level_info)
 
 
+def skip_HIP_0_size_matrix():
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            try:
+                impl(self, *args, **kw)
+            except ValueError as e:
+                if runtime.is_hip:
+                    assert 'hipSPARSE' in str(e)
+                    pytest.xfail('may be buggy')
+                raise
+        return test_func
+    return decorator
+
+
 @testing.parameterize(*testing.product({
     'shape': [(3, 4), (4, 4), (4, 3)],
     'density': [0.0, 0.5, 1.0],
@@ -833,6 +906,7 @@ class TestCsrilu02(unittest.TestCase):
 @testing.with_requires('scipy')
 class TestSparseMatrixConversion(unittest.TestCase):
 
+    @skip_HIP_0_size_matrix()
     @testing.for_dtypes('fdFD')
     def test_denseToSparse(self, dtype):
         if not cusparse.check_availability('denseToSparse'):
@@ -843,6 +917,7 @@ class TestSparseMatrixConversion(unittest.TestCase):
         assert y.format == self.format
         testing.assert_array_equal(x, y.todense())
 
+    @skip_HIP_0_size_matrix()
     @testing.for_dtypes('fdFD')
     def test_sparseToDense(self, dtype):
         if not cusparse.check_availability('sparseToDense'):

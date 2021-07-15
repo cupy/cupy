@@ -13,6 +13,7 @@ from cupy_backends.cuda.api import driver
 import cupy
 from cupy._core import _accelerator
 from cupy.cuda import cub
+from cupy.cuda import runtime
 from cupy import cusparse
 from cupyx.scipy.sparse import base
 from cupyx.scipy.sparse import compressed
@@ -161,7 +162,8 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         elif csc.isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('csrgemm'):
+            if cusparse.check_availability('csrgemm') and not runtime.is_hip:
+                # trans=True is still buggy as of ROCm 4.2.0
                 return cusparse.csrgemm(self, other.T, transb=True)
             elif cusparse.check_availability('csrgemm2'):
                 b = other.tocsr()
@@ -187,6 +189,7 @@ class csr_matrix(compressed._compressed_sparse_matrix):
                 is_cub_safe &= (driver.get_build_version() < 11000)
                 for accelerator in _accelerator.get_routine_accelerators():
                     if (accelerator == _accelerator.ACCELERATOR_CUB
+                            and not runtime.is_hip
                             and is_cub_safe and other.flags.c_contiguous):
                         return cub.device_csrmv(
                             self.shape[0], self.shape[1], self.nnz,
@@ -393,7 +396,9 @@ class csr_matrix(compressed._compressed_sparse_matrix):
         x = self.copy()
         x.has_canonical_format = False  # need to enforce sum_duplicates
         x.sum_duplicates()
-        if cusparse.check_availability('sparseToDense'):
+        if (cusparse.check_availability('sparseToDense')
+                and (not runtime.is_hip or (x.nnz > 0))):
+            # On HIP, nnz=0 is problematic as of ROCm 4.2.0
             y = cusparse.sparseToDense(x)
             if order == 'F':
                 return y

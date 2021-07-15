@@ -504,6 +504,14 @@ cdef class ndarray:
                 'Casting complex values to real discards the imaginary part',
                 numpy.ComplexWarning)
             elementwise_copy(self.real, newarray)
+        elif self.dtype.kind == 'b':
+            # See #4354. The result of `astype` from a ndarray whose dtype is
+            # boolean to another dtype is expected to be zero or one. However,
+            # its underlying representation is not necessarily zero or one
+            # (i.g. a view). In such a case,`elementwise_copy` copies the data
+            # as it is, resulting in an undesirable output. To keep it off, we
+            # give a special path for a boolean ndarray.
+            cupy.not_equal(self, 0, out=newarray)
         else:
             elementwise_copy(self, newarray)
         return newarray
@@ -2049,6 +2057,8 @@ cpdef function.Module compile_with_cache(
             bundled_include = 'cuda-11.2'
         elif 11030 <= _cuda_runtime_version < 11040:
             bundled_include = 'cuda-11.3'
+        elif 11040 <= _cuda_runtime_version < 11050:
+            bundled_include = 'cuda-11.4'
         else:
             # CUDA versions not yet supported.
             bundled_include = None

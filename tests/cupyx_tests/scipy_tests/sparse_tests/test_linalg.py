@@ -1,6 +1,6 @@
 import contextlib
+import functools
 import re
-import cupy
 import io
 import unittest
 import warnings
@@ -16,7 +16,10 @@ try:
 except ImportError:
     scipy_available = False
 
+import cupy
+from cupy import cusparse
 from cupy import testing
+from cupy.cuda import runtime
 from cupy.testing import _condition
 from cupyx.scipy import sparse
 import cupyx.scipy.sparse.linalg  # NOQA
@@ -26,6 +29,7 @@ import cupyx.scipy.sparse.linalg  # NOQA
     'dtype': [numpy.float32, numpy.float64],
 }))
 @testing.with_requires('scipy')
+@pytest.mark.skipif(runtime.is_hip, reason='lsqr not supported')
 class TestLsqr(unittest.TestCase):
 
     def setUp(self):
@@ -82,6 +86,8 @@ class TestMatrixNorm(unittest.TestCase):
                                  accept_error=(ValueError,
                                                NotImplementedError))
     def test_matrix_norm(self, xp, sp):
+        if runtime.is_hip and self.ord in (1, -1, numpy.Inf, -numpy.Inf):
+            pytest.xfail('csc spmv is buggy')
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
@@ -103,9 +109,15 @@ class TestMatrixNorm(unittest.TestCase):
 @testing.with_requires('scipy')
 @testing.gpu
 class TestVectorNorm(unittest.TestCase):
+
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-4, sp_name='sp',
                                  accept_error=(ValueError,))
     def test_vector_norm(self, xp, sp):
+        if runtime.is_hip:
+            if (self.axis in (0, (-2,))
+                    and self.ord in (-2, -1, 0, 1, 2, None)):
+                pytest.xfail('csc spmv is buggy')
+
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
@@ -155,6 +167,9 @@ class TestEigsh:
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
     def test_sparse(self, format, dtype, xp, sp):
+        if runtime.is_hip and format == 'csc':
+            pytest.xfail('may be buggy')  # trans=True
+
         a = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
         if self.use_linear_operator:
@@ -240,6 +255,9 @@ class TestSvds:
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
     def test_sparse(self, format, dtype, xp, sp):
+        if runtime.is_hip and format in ('csr', 'csc'):
+            pytest.xfail('may be buggy')  # trans=True
+
         a = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
         if self.use_linear_operator:
@@ -356,6 +374,9 @@ class TestCg:
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_sparse(self, format, dtype, xp, sp):
+        if runtime.is_hip and format == 'csc':
+            pytest.xfail('may be buggy')  # trans=True
+
         a, M = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
         if self.use_linear_operator:
@@ -512,6 +533,9 @@ class TestGmres:
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_sparse(self, format, dtype, xp, sp):
+        if runtime.is_hip and format == 'csc':
+            pytest.xfail('may be buggy')  # trans=True
+
         a, M = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
         if self.use_linear_operator:
@@ -601,6 +625,18 @@ class TestGmres:
             sp.linalg.gmres(ng_a, b)
 
 
+def skip_HIP_spMM_error(outer=()):
+    def decorator(impl):
+        @functools.wraps(impl)
+        def test_func(self, *args, **kw):
+            if (runtime.is_hip and self.inner_modification == 'sparse'
+                    and self.outer_modification in outer):
+                pytest.xfail('spMM is buggy')  # trans=True
+            impl(self, *args, **kw)
+        return test_func
+    return decorator
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'outer_modification': [
@@ -675,6 +711,7 @@ class TestLinearOperator(unittest.TestCase):
             return self._inner_cases(xp, sp, A.T.conj()).H
         assert False
 
+    @skip_HIP_spMM_error(outer=('transpose', 'hermitian'))
     @testing.numpy_cupy_allclose(sp_name='sp', rtol=1e-6)
     def test_matvec(self, xp, sp):
         linop = self._generate_linear_operator(xp, sp)
@@ -682,6 +719,7 @@ class TestLinearOperator(unittest.TestCase):
         x_2dim = testing.shaped_random((self.N, 1), xp, self.dtype)
         return linop.matvec(x_1dim), linop.matvec(x_2dim)
 
+    @skip_HIP_spMM_error(outer=('transpose', 'hermitian'))
     @testing.numpy_cupy_allclose(
         sp_name='sp', rtol=1e-6, contiguous_check=False)
     def test_matmat(self, xp, sp):
@@ -689,6 +727,7 @@ class TestLinearOperator(unittest.TestCase):
         x = testing.shaped_random((self.N, 8), xp, self.dtype)
         return linop.matmat(x)
 
+    @skip_HIP_spMM_error(outer=('normal',))
     @testing.numpy_cupy_allclose(sp_name='sp', rtol=1e-6)
     def test_rmatvec(self, xp, sp):
         linop = self._generate_linear_operator(xp, sp)
@@ -696,6 +735,7 @@ class TestLinearOperator(unittest.TestCase):
         x_2dim = testing.shaped_random((self.M, 1), xp, self.dtype)
         return linop.rmatvec(x_1dim), linop.rmatvec(x_2dim)
 
+    @skip_HIP_spMM_error(outer=('normal',))
     @testing.numpy_cupy_allclose(
         sp_name='sp', rtol=1e-6, contiguous_check=False)
     def test_rmatmat(self, xp, sp):
@@ -703,6 +743,7 @@ class TestLinearOperator(unittest.TestCase):
         x = testing.shaped_random((self.M, 8), xp, self.dtype)
         return linop.rmatmat(x)
 
+    @skip_HIP_spMM_error(outer=('transpose', 'hermitian'))
     @testing.numpy_cupy_allclose(
         sp_name='sp', rtol=1e-6, contiguous_check=False)
     def test_dot(self, xp, sp):
@@ -712,6 +753,7 @@ class TestLinearOperator(unittest.TestCase):
         x2 = testing.shaped_random((self.N, 8), xp, self.dtype)
         return linop.dot(x0), linop.dot(x1), linop.dot(x2)
 
+    @skip_HIP_spMM_error(outer=('transpose', 'hermitian'))
     @testing.numpy_cupy_allclose(
         sp_name='sp', rtol=1e-6, contiguous_check=False)
     def test_mul(self, xp, sp):
@@ -730,6 +772,8 @@ class TestLinearOperator(unittest.TestCase):
 }))
 @testing.with_requires('scipy>=1.4.0')
 @testing.gpu
+@pytest.mark.skipif(not cusparse.check_availability('csrsm2'),
+                    reason='no working implementation')
 class TestSpsolveTriangular:
 
     n = 10
@@ -808,6 +852,7 @@ class TestSpsolveTriangular:
     'reorder': [0, 1, 2, 3],
 }))
 @testing.with_requires('scipy')
+@pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
 class TestCsrlsvqr(unittest.TestCase):
 
     n = 8
@@ -858,6 +903,7 @@ def _eigen_vec_transform(block_vec, xp):
 
 @testing.with_requires('scipy>=1.4')
 @testing.gpu
+@pytest.mark.xfail(runtime.is_hip, reason='syevd not working')
 # tests adapted from scipy's tests of lobpcg
 class TestLOBPCG(unittest.TestCase):
 
@@ -1154,6 +1200,7 @@ class TestLOBPCG(unittest.TestCase):
     'Y_dtype': [cupy.float32, cupy.float64],
     'sparse_format': ['coo', 'csr', 'csc']
 }))
+@pytest.mark.xfail(runtime.is_hip, reason='either spMM or syevd not working')
 # test class for testing against diagonal matrices overall various data types
 class TestLOBPCGForDiagInput(unittest.TestCase):
 
@@ -1212,6 +1259,8 @@ class TestLOBPCGForDiagInput(unittest.TestCase):
     'order': ['C', 'F']
 }))
 @unittest.skipUnless(scipy_available, 'requires scipy')
+@pytest.mark.skipif(not cusparse.check_availability('csrsm2'),
+                    reason='no working implementation')
 @testing.gpu
 class TestSplu(unittest.TestCase):
 

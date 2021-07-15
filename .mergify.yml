@@ -12,6 +12,7 @@ pull_request_rules:
   - name: Notify conflict
     conditions:
       - conflict
+      - -closed
     actions:
       comment:
         message: This pull request is now in conflicts. Could you fix it @{{author}}? 🙏

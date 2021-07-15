@@ -4,6 +4,7 @@ import cupy
 from cupy import cusparse
 from cupy.cuda import cusolver
 from cupy.cuda import device
+from cupy.cuda import runtime
 from cupy.linalg import _util
 from cupyx.scipy import sparse
 
@@ -39,7 +40,8 @@ def lsqr(A, b):
 
     .. seealso:: :func:`scipy.sparse.linalg.lsqr`
     """
-
+    if runtime.is_hip:
+        raise RuntimeError('HIP does not support lsqr')
     if not sparse.isspmatrix_csr(A):
         A = sparse.csr_matrix(A)
     _util._assert_nd_squareness(A)
@@ -228,6 +230,8 @@ class SuperLU():
                              .format(self.shape, rhs.shape))
         if trans not in ('N', 'T', 'H'):
             raise ValueError('trans must be \'N\', \'T\', or \'H\'')
+        if not cusparse.check_availability('csrsm2'):
+            raise NotImplementedError
 
         x = rhs.astype(self.L.dtype)
         if trans == 'N':

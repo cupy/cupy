@@ -18,6 +18,12 @@ from install import build
 from install.build import PLATFORM_LINUX
 from install.build import PLATFORM_WIN32
 
+try:
+    # This is to avoid getting numpy imported inside other modules and
+    # overwritting setuptools compilers (#5476)
+    import numpy.distutils  # NOQA
+except Exception:
+    pass
 
 # Cython requirements (minimum version and versions known to be broken).
 # Note: this must be in sync with setup_requires defined in setup.py.
@@ -117,10 +123,12 @@ if use_hip:
             'hipblas',
             ('hipfft', lambda hip_version: hip_version >= 401),
             'hiprand',
+            'hipsparse',
             'rocfft',
             'roctx64',
             'rocblas',
             'rocsolver',
+            'rocsparse',
         ],
         'check_method': build.check_hip_version,
         'version_method': build.get_hip_version,
@@ -1004,7 +1012,17 @@ def _nvcc_gencode_options(cuda_version):
         #
         #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
 
-        if cuda_version >= 11000:
+        if cuda_version >= 11010:
+            arch_list = ['compute_35',
+                         'compute_50',
+                         ('compute_60', 'sm_60'),
+                         ('compute_61', 'sm_61'),
+                         ('compute_70', 'sm_70'),
+                         ('compute_75', 'sm_75'),
+                         ('compute_80', 'sm_80'),
+                         ('compute_86', 'sm_86'),
+                         'compute_86']
+        elif cuda_version >= 11000:
             arch_list = ['compute_35',
                          'compute_50',
                          ('compute_60', 'sm_60'),
