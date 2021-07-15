@@ -114,6 +114,7 @@ if use_hip:
             'hip/hiprtc.h',
             'hipblas.h',
             'hiprand/hiprand.h',
+            'hipsparse.h',
             'hipfft.h',
             'roctx.h',
             'rocsolver.h',
