@@ -254,8 +254,12 @@ cdef class ndarray:
 
     def __dlpack_device__(self):
         if not runtime._is_hip_environment:
-            # TODO(leofang): support kDLCUDAManaged
-            device_type = dlpack.device_CUDA
+            attrs = runtime.pointerGetAttributes(self.data.ptr)
+            is_managed = (attrs.hostPointer == attrs.devicePointer != 0)
+            if is_managed:
+                device_type = dlpack.managed_CUDA
+            else:
+                device_type = dlpack.device_CUDA
         else:
             device_type = dlpack.device_ROCM
         return (device_type, self.device)
