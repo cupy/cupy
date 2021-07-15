@@ -16,6 +16,8 @@ Arguments:
 
 Environment variables:
 
+- PULL_REQUEST: ID of the pull-request to test; should be empty when testing
+                a branch.
 - GPU: Number of GPUs available for testing.
 - CACHE_DIR: Path to the local directory to store cache files.
 - CACHE_GCS_DIR: Path to the GCS directory to store a cache archive.
@@ -50,6 +52,7 @@ main() {
     =====================================================================
     Target              : ${TARGET}
     Stages              : ${STAGES}
+    Pull-Request        : ${PULL_REQUEST:-no}
     GPUs                : ${GPU:-(not set)}
     Repository Root     : ${repo_root}
     Base Branch         : ${base_branch}
@@ -95,7 +98,7 @@ main() {
         exit 1
       fi
       tar -c -f "${cache_archive}" -C "${CACHE_DIR}" .
-      gsutil -m -q cp "${cache_archive}" "${cache_gcs_dir}"
+      gsutil -m -q cp "${cache_archive}" "${cache_gcs_dir}/"
       rm -f "${cache_archive}"
       ;;
 
@@ -107,12 +110,16 @@ main() {
         --name "${container_name}"
         --volume="${repo_root}:/src:ro"
         --workdir "/src"
+        --env "BASE_BRANCH=${base_branch}"
       )
       if [[ -t 1 ]]; then
         docker_args+=(--interactive)
       fi
       if [[ "${CACHE_DIR:-}" != "" ]]; then
         docker_args+=(--volume="${CACHE_DIR}:${CACHE_DIR}" --env "CACHE_DIR=${CACHE_DIR}")
+      fi
+      if [[ "${PULL_REQUEST:-}" != "" ]]; then
+        docker_args+=(--env "PULL_REQUEST=${PULL_REQUEST}")
       fi
       if [[ "${GPU:-}" != "" ]]; then
         docker_args+=(--env "GPU=${GPU}")
