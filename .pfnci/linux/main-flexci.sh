@@ -5,7 +5,6 @@
 set -ue
 
 TARGET="${1}"
-export CACHE_DIR=/tmp/cupy_cache
 
 echo "Environment Variables:"
 env
@@ -16,8 +15,15 @@ if [[ "${FLEXCI_BRANCH:-}" != refs/pull/* ]]; then
     stages+=(cache_put)
 fi
 
+pull_req=""
+if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
+    # Extract pull-request ID
+    pull_req="$(echo "${FLEXCI_BRANCH}" | cut -d/ -f3)"
+    echo "Testing Pull-Request: #${pull_req}"
+fi
+
 echo "Starting: "${TARGET}" "${stages[@]}""
-"$(dirname ${0})/run.sh" "${TARGET}" "${stages[@]}" > /tmp/log.txt 2>&1 && echo Test succeeded!
+CACHE_DIR=/tmp/cupy_cache PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${stages[@]}" > /tmp/log.txt 2>&1 && echo Test succeeded!
 test_retval=$?
 echo "Exit with status ${test_retval}"
 
