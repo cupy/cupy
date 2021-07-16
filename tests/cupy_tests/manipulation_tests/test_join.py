@@ -96,8 +96,12 @@ class TestJoin:
         for i in range(10):
             with cuda.Device(i % 2):
                 arrs.append(cupy.empty((2, 3, 4)))
-        with pytest.raises(ValueError):
-            cupy.concatenate(arrs)
+        if cuda.runtime.deviceCanAccessPeer(0, 1) == 1:
+            with pytest.warns(cupy._util.PerformanceWarning):
+                cupy.concatenate(arrs)
+        else:
+            with pytest.raises(ValueError):
+                cupy.concatenate(arrs)
 
     @testing.for_all_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()

@@ -75,11 +75,15 @@ class TestBasic:
             with cuda.Device(dev3):
                 c = testing.shaped_arange((2, 3, 4), cupy, '?')
             with cuda.Device(dev4):
-                with pytest.raises(
-                        ValueError,
-                        match='^Array device must be same as the '
-                        'current device'):
-                    cupy.copyto(a, b, where=c)
+                if all([(dev4 == dev) or (cuda.runtime.deviceCanAccessPeer(dev4, dev) == 1)
+                        for dev in (dev1, dev2, dev3)]):
+                    with pytest.warns(cupy._util.PerformanceWarning):
+                        cupy.copyto(a, b, where=c)
+                else:
+                    with self.assertRaisesRegex(
+                            ValueError,
+                            'Peer access could not be activated automatically'):
+                        cupy.copyto(a, b, where=c)
 
     @testing.multi_gpu(2)
     @testing.for_all_dtypes()
