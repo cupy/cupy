@@ -6,8 +6,8 @@ import cupy
 from cupy import _core
 from cupy._core import internal
 from cupy._core._gufuncs import _GUFunc
-
-from cupy.linalg._solve import inv
+from cupy.linalg import _solve
+from cupy.linalg import _util
 
 _gu_func_matmul = _GUFunc(
     _core.matmul, '(n?,k),(k,m?)->(n?,m?)', supports_batched=True)
@@ -349,6 +349,7 @@ def tensordot(a, b, axes=2):
     return _core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
+# TODO: rename `M` to `a`
 def matrix_power(M, n):
     """Raise a square matrix to the (integer) power `n`.
 
@@ -359,19 +360,19 @@ def matrix_power(M, n):
     Returns:
         ~cupy.ndarray: Output array.
 
-    .. note:: M must be of dtype `float32` or `float64`.
-
     ..seealso:: :func:`numpy.linalg.matrix_power`
     """
-    if M.ndim != 2 or M.shape[0] != M.shape[1]:
-        raise ValueError('input must be a square array')
+    _util._assert_cupy_array(M)
+    _util._assert_nd_squareness(M)
     if not isinstance(n, int):
         raise TypeError('exponent must be an integer')
 
     if n == 0:
-        return cupy.identity(M.shape[0], dtype=M.dtype)
+        M = cupy.empty_like(M)
+        M[...] = cupy.identity(M.shape[-2], dtype=M.dtype)
+        return M
     elif n < 0:
-        M = inv(M)
+        M = _solve.inv(M)
         n *= -1
 
     # short-cuts
