@@ -10,6 +10,8 @@ cdef class PointerAttributes:
         public int device
         public intptr_t devicePointer
         public intptr_t hostPointer
+    IF CUDA_VERSION > 0:
+        cdef readonly int type
 
 cdef extern from *:
     ctypedef int Error 'cudaError_t'
@@ -578,6 +580,12 @@ cpdef enum:
     # cudaTextureReadMode
     cudaReadModeElementType = 0
     cudaReadModeNormalizedFloat = 1
+
+    # cudaMemoryType
+    memoryTypeUnregistered = 0
+    memoryTypeHost = 1
+    memoryTypeDevice = 2
+    memoryTypeManaged = 3
 
     # cudaMemPoolAttr
     # ----- added since 11.2 -----
