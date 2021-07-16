@@ -218,8 +218,8 @@ cpdef ndarray fromDlpack(object dltensor) except +:
 
     .. warning::
 
-        This function is deprecated in favor of :func:from_dlpack` and will be
-        removed in a future version of CuPy.
+        This function is deprecated in favor of :func:`~cupy.from_dlpack` and
+        will be removed in a future version of CuPy.
 
     .. warning::
 
