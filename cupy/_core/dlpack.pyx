@@ -115,7 +115,7 @@ cpdef object toDlpack(ndarray array) except +:
     cdef int dev_id = array.data.device_id
     if not runtime._is_hip_environment:
         attrs = runtime.pointerGetAttributes(data_ptr)
-        is_managed = (attrs.hostPointer == attrs.devicePointer != 0)
+        is_managed = (attrs.type == runtime.memoryTypeManaged)
         if is_managed:
             device.device_type = kDLCUDAManaged
             dev_id = 0  # make it accessible on CPU too
