@@ -218,7 +218,7 @@ cdef class MatmulPlan:
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
-        raise cusparse.CuSparseError(status)
+        raise _cusparse.CuSparseError(status)
 
 ###############################################################################
 # cuSPARSELt: Library Management Functions
