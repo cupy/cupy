@@ -15,10 +15,9 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _util
 
-if not runtime.is_hip:
-    _cuda_version = driver.get_build_version()
-    if _cuda_version > 0:
-        from cupy.cuda.jitify import jitify
+_cuda_hip_version = driver.get_build_version()
+if not runtime.is_hip and _cuda_hip_version > 0:
+    from cupy.cuda.jitify import jitify
 
 
 _nvrtc_version = None
@@ -631,7 +630,7 @@ class _NVRTCProgram(object):
                     mapping[ker] = nvrtc.getLoweredName(self.ptr, ker)
             if log_stream is not None:
                 log_stream.write(nvrtc.getProgramLog(self.ptr))
-            # TODO(leofang): use getCUBIN() for _cuda_version >= 11010?
+            # TODO(leofang): use getCUBIN() for _cuda_hip_version >= 11010?
             return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
             log = nvrtc.getProgramLog(self.ptr)
@@ -722,7 +721,8 @@ _hip_extra_source = None
 
 
 def _convert_to_hip_source(source, extra_source, is_hiprtc):
-    if not is_hiprtc:
+    if (not is_hiprtc) or (is_hiprtc and _cuda_hip_version >= 402):
+        # "-I" is fixed on ROCm 4.2.0+
         return '#include <hip/hip_runtime.h>\n' + source
 
     # Workaround for hiprtc: it does not follow the -I option to search
