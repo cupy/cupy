@@ -155,32 +155,36 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
     """
     A = _interface.aslinearoperator(A)
     b = b.squeeze()
-
+    matvec = A.matvec
+    rmatvec = A.rmatvec
     m, n = A.shape
     minDim = min([m, n])
 
     if maxiter is None:
-        maxiter = minDim
+        maxiter = minDim * 5
 
     u = b
     beta = cublas.nrm2(b)
+    beta_cpu = beta.get().item()
 
     v = cupy.zeros(n)
-    alpha = 0
+    alpha = cupy.zeros((), dtype=beta.dtype)
+    alpha_cpu = 0
 
-    if beta > 0:
+    if beta_cpu > 0:
         u /= beta
         v = A.rmatvec(u)
         alpha = cublas.nrm2(v)
+        alpha_cpu = alpha.get().item()
 
-    if alpha > 0:
+    if alpha_cpu > 0:
         v /= alpha
 
     # Initialize variables for 1st iteration.
 
     itn = 0
-    zetabar = alpha * beta
-    alphabar = alpha
+    zetabar = alpha_cpu * beta_cpu
+    alphabar = alpha_cpu
     rho = 1
     rhobar = 1
     cbar = 1
@@ -192,7 +196,7 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
 
     # Initialize variables for estimation of ||r||.
 
-    betadd = beta
+    betadd = beta_cpu
     betad = 0
     rhodold = 1
     tautildeold = 0
@@ -202,25 +206,25 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
 
     # Initialize variables for estimation of ||A|| and cond(A)
 
-    normA2 = alpha * alpha
+    normA2 = alpha_cpu * alpha_cpu
     maxrbar = 0
     minrbar = 1e+100
-    normA = alpha
+    normA = alpha_cpu
     condA = 1
     normx = 0
 
     # Items for use in stopping rules.
-    normb = beta
+    normb = beta_cpu
     istop = 0
     ctol = 0
     if conlim > 0:
         ctol = 1 / conlim
-    normr = beta
+    normr = beta_cpu
 
     # Golub-Kahan process terminates when either alpha or beta is zero.
     # Reverse the order here from the original matlab code because
     # there was an error on return when arnorm==0
-    normar = alpha * beta
+    normar = alpha_cpu * beta_cpu
     if normar == 0:
         return x, istop, itn, normr, normar, normA, condA, normx
 
@@ -233,14 +237,18 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
         #         beta*u  =  a*v   -  alpha*u,
         #        alpha*v  =  A'*u  -  beta*v.
 
-        u = A.matvec(v) - alpha * u
+        u *= -alpha
+        u += matvec(v)
         beta = cublas.nrm2(u)  # norm(u)
+        beta_cpu = beta.get().item()
 
-        if beta > 0:
+        if beta_cpu > 0:
             u /= beta
-            v = A.rmatvec(u) - beta * v
+            v *= -beta
+            v += rmatvec(u)
             alpha = cublas.nrm2(v)  # norm(v)
-            if alpha > 0:
+            alpha_cpu = alpha.get().item()
+            if alpha_cpu > 0:
                 v /= alpha
 
         # At this point, beta = beta_{k+1}, alpha = alpha_{k+1}.
@@ -252,9 +260,9 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
         # Use a plane rotation (Q_i) to turn B_i to R_i
 
         rhoold = rho
-        c, s, rho = _symOrtho(alphahat, beta)
-        thetanew = s*alpha
-        alphabar = c*alpha
+        c, s, rho = _symOrtho(alphahat, beta_cpu)
+        thetanew = s * alpha_cpu
+        alphabar = c * alpha_cpu
 
         # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar
 
@@ -268,9 +276,13 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
 
         # Update h, h_hat, x.
 
-        hbar = h - (thetabar * rho / (rhoold * rhobarold)) * hbar
+        # hbar = h - (thetabar * rho / (rhoold * rhobarold)) * hbar
+        hbar *= -(thetabar * rho / (rhoold * rhobarold))
+        hbar += h
         x += (zeta / (rho * rhobar)) * hbar
-        h = v - (thetanew / rho) * h
+        # h = v - (thetanew / rho) * h
+        h *= -(thetanew / rho)
+        h += v
 
         # Estimate of ||r||.
 
@@ -300,9 +312,9 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
         normr = numpy.sqrt(d + (betad - taud)**2 + betadd * betadd)
 
         # Estimate ||A||.
-        normA2 = normA2 + beta * beta
+        normA2 = normA2 + beta_cpu * beta_cpu
         normA = numpy.sqrt(normA2)
-        normA2 = normA2 + alpha * alpha
+        normA2 = normA2 + alpha_cpu * alpha_cpu
 
         # Estimate cond(A).
         maxrbar = max(maxrbar, rhobarold)
@@ -315,6 +327,7 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
         # Compute norms for convergence testing.
         normar = abs(zetabar)
         normx = cublas.nrm2(x)
+        normx = normx.get().item()
 
         # Now use these norms to estimate certain other quantities,
         # some of which will be small near a solution.
