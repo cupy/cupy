@@ -9,6 +9,7 @@ from cupyx.scipy.sparse.base import spmatrix
 
 from cupy_backends.cuda.libs import cusparse
 from cupy.cuda import device
+from cupy.cuda import runtime
 
 import numpy
 
@@ -141,6 +142,9 @@ def _csr_indptr_to_coo_rows(nnz, Bp):
     # Calling backend cusparse API directly to avoid
     # constructing a whole COO object.
     handle = device.get_cusparse_handle()
+    if runtime.is_hip and nnz == 0:
+        raise ValueError('hipSPARSE currently cannot handle '
+                         'sparse matrices with null ptrs')
     cusparse.xcsr2coo(
         handle, Bp.data.ptr, nnz, Bp.size-1, out_rows.data.ptr,
         cusparse.CUSPARSE_INDEX_BASE_ZERO)

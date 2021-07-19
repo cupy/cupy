@@ -34,7 +34,7 @@ def trimseq(seq):
 
     Returns:
         cupy.ndarray: input array with trailing zeros removed. If the
-            resulting output is empty, it returns the first element
+        resulting output is empty, it returns the first element.
 
     .. seealso:: :func:`numpy.polynomial.polyutils.trimseq`
 

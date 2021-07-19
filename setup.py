@@ -31,11 +31,11 @@ requirements = {
     ],
 
     'install': [
-        'numpy>=1.17',
+        'numpy>=1.17,<1.24',  # see #4773
         'fastrlock>=0.5',
     ],
     'all': [
-        'scipy>=1.4',
+        'scipy>=1.4,<1.10',  # see #4773
         'optuna>=2.0',
     ],
 
@@ -145,7 +145,7 @@ Operating System :: Microsoft :: Windows
 setup(
     name=package_name,
     version=__version__,  # NOQA
-    description='CuPy: A NumPy-compatible array library accelerated by CUDA',
+    description='CuPy: NumPy & SciPy for GPU',
     long_description=long_description,
     author='Seiya Tokui',
     author_email='tokui@preferred.jp',

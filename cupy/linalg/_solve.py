@@ -261,11 +261,13 @@ def lstsq(a, b, rcond='warn'):
         rcond = numpy.finfo(s.dtype).eps
 
     # number of singular values and matrix rank
-    cutoff = rcond * s.max()
     s1 = 1 / s
-    sing_vals = s <= cutoff
-    s1[sing_vals] = 0
-    rank = s.size - sing_vals.sum(dtype=numpy.int32)
+    rank = cupy.array(s.size, numpy.int32)
+    if s.size > 0:
+        cutoff = rcond * s.max()
+        sing_vals = s <= cutoff
+        s1[sing_vals] = 0
+        rank -= sing_vals.sum(dtype=numpy.int32)
 
     # Solve the least-squares solution
     # x = vh.T.conj() @ diag(s1) @ u.T.conj() @ b
@@ -399,7 +401,7 @@ def pinv(a, rcond=1e-15):
 
     Returns:
         cupy.ndarray: The pseudoinverse of ``a`` with dimension
-            ``(..., N, M)``.
+        ``(..., N, M)``.
 
     .. warning::
         This function calls one or more cuSOLVER routine(s) which may yield

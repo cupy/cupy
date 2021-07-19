@@ -298,8 +298,8 @@ def variance(input, labels=None, index=None):
             (default), all values where `labels` is non-zero are used.
 
     Returns:
-        variance (cupy.ndarray): Values of variance, for each sub-region if
-            `labels` and `index` are specified.
+        cupy.ndarray: Values of variance, for each sub-region if
+        `labels` and `index` are specified.
 
     .. seealso:: :func:`scipy.ndimage.variance`
     """

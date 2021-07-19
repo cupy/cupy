@@ -11,7 +11,7 @@ There are four differences compared to the original C API.
 """
 from libc.stdint cimport uint64_t
 
-import threading
+import threading as _threading
 
 cimport cpython  # NOQA
 cimport cython  # NOQA
@@ -32,7 +32,7 @@ cdef class PointerAttributes:
 # Thread-local storage
 ###############################################################################
 
-cdef object _thread_local = threading.local()
+cdef object _thread_local = _threading.local()
 
 
 cdef class _ThreadLocal:
@@ -97,6 +97,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaDeviceCanAccessPeer(int* canAccessPeer, int device,
                                 int peerDevice)
     int cudaDeviceEnablePeerAccess(int peerDevice, unsigned int flags)
+    int cudaDeviceDisablePeerAccess(int peerDevice)
 
     int cudaDeviceGetLimit(size_t* value, Limit limit)
     int cudaDeviceSetLimit(Limit limit, size_t value)
@@ -500,6 +501,10 @@ cpdef int deviceCanAccessPeer(int device, int peerDevice) except? -1:
 
 cpdef deviceEnablePeerAccess(int peerDevice):
     status = cudaDeviceEnablePeerAccess(peerDevice, 0)
+    check_status(status)
+
+cpdef deviceDisablePeerAccess(int peerDevice):
+    status = cudaDeviceDisablePeerAccess(peerDevice)
     check_status(status)
 
 cpdef size_t deviceGetLimit(int limit) except? -1:

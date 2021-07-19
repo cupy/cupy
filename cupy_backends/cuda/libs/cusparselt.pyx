@@ -8,7 +8,8 @@ from libc.stdint cimport uint8_t, int32_t, uint32_t, int64_t, intptr_t
 from cupy_backends.cuda cimport stream as stream_module
 from cupy_backends.cuda.api cimport driver
 
-from cupy_backends.cuda.libs import cusparse
+from cupy_backends.cuda.libs import cusparse as _cusparse
+
 
 cdef extern from '../../cupy_cusparselt.h' nogil:
     ctypedef int cusparseStatus_t 'cusparseStatus_t'
@@ -217,7 +218,7 @@ cdef class MatmulPlan:
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
-        raise cusparse.CuSparseError(status)
+        raise _cusparse.CuSparseError(status)
 
 ###############################################################################
 # cuSPARSELt: Library Management Functions

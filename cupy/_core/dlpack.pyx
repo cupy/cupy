@@ -9,8 +9,12 @@ from libc.stdint cimport intptr_t
 from libcpp.vector cimport vector
 
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda cimport stream as stream_module
 from cupy._core.core cimport ndarray
+from cupy.cuda cimport device
 from cupy.cuda cimport memory
+
+import warnings
 
 import cupy
 
@@ -112,6 +116,8 @@ cpdef object toDlpack(ndarray array) except +:
     dl_tensor.byte_offset = 0
 
     cdef DLDevice* device = &dl_tensor.device
+    # TODO(leofang): if the CuPy array is backed by managed memory, we should
+    # switch to kDLCUDAManaged
     if not runtime._is_hip_environment:
         device.device_type = kDLGPU
     else:
@@ -139,9 +145,7 @@ cpdef object toDlpack(ndarray array) except +:
     return cpython.PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_deleter)
 
 
-# TODO(leofang): Implement DLPackPinnedMemory for kDLCPUPinned
-
-
+# TODO(leofang): Support kDLCUDAPinned, kDLCUDAManaged, and kDLROCMPinned
 cdef class DLPackMemory(memory.BaseMemory):
 
     """Memory object for a dlpack tensor.
@@ -212,18 +216,22 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     Returns:
         array (:class:`~cupy.ndarray`): A CuPy ndarray.
 
+    .. warning::
+
+        This function is deprecated in favor of :func:`~cupy.from_dlpack` and
+        will be removed in a future version of CuPy.
+
+    .. warning::
+
+        As of the DLPack v0.5 specification, it is implicitly assumed that
+        the user is responsible to ensure the Producer and the Consumer are
+        operating on the same stream.
+
     .. seealso::
 
         :meth:`cupy.ndarray.toDlpack` is a method for zero-copy conversion
         from a :class:`~cupy.ndarray` to a DLPack tensor (which is encapsulated
         in a :class:`PyCapsule` object).
-
-    .. warning::
-
-        As of the DLPack v0.3 specification, it is (implicitly) assumed that
-        the user is responsible to ensure the Producer and the Consumer are
-        operating on the same stream. This requirement might be relaxed/changed
-        in a future DLPack version.
 
     .. admonition:: Example
 
@@ -234,6 +242,12 @@ cpdef ndarray fromDlpack(object dltensor) except +:
         >>> cupy.testing.assert_array_equal(array1, array2)
 
     """
+    warnings.warn('This function is deprecated in favor of cupy.from_dlpack',
+                  DeprecationWarning)
+    return _dlpack_to_cupy_array(dltensor)
+
+
+cdef inline ndarray _dlpack_to_cupy_array(dltensor) except +:
     cdef DLPackMemory mem = DLPackMemory(dltensor)
     cdef DLDataType dtype = mem.dlm_tensor.dl_tensor.dtype
     cdef int bits = dtype.bits
@@ -303,3 +317,62 @@ cpdef ndarray fromDlpack(object dltensor) except +:
     # Make sure this capsule will never be used again.
     cpython.PyCapsule_SetName(mem.dltensor, 'used_dltensor')
     return ndarray(shape_vec, cp_dtype, mem_ptr, strides=strides_vec)
+
+
+# TODO(leofang): this function is exposed to the cupy namespace, so it returns
+# a cupy.ndarray which is not compliant with the Python array API. When we have
+# a compliant object living in, say, cupy.array_api, we will expose another
+# function cupy.array_api.from_dlpack().
+cpdef from_dlpack(array):
+    """Zero-copy conversion between array objects compliant with the DLPack
+    data exchange protocol.
+
+    Args:
+        array (object): an array object that implements two methods:
+            ``__dlpack__()`` and ``__dlpack_device__()``.
+
+    Returns:
+        cupy.ndarray: a CuPy array that can be safely accessed on CuPy's
+        current stream.
+
+    .. note::
+        This function is different from CuPy's legacy :func:`~cupy.fromDlpack`
+        function. This function takes any object implementing the DLPack data
+        exchange protocol, as well as a raw :class:`PyCapsule` object that
+        contains the DLPack tensor as input (for backward compatibility),
+        whereas :func:`~cupy.fromDlpack` only accepts :class:`PyCapsule`
+        objects. If the input object is not compliant with the protocol, users
+        are responsible to ensure data safety.
+
+    .. seealso::
+        `Data interchange mechanisms`_
+
+    .. _Data interchange mechanisms:
+        https://data-apis.org/array-api/latest/design_topics/data_interchange.html
+    """
+    if not hasattr(array, '__dlpack_device__'):
+        # backward compatibility: accept passing in a pycapsule
+        dltensor = array
+        return _dlpack_to_cupy_array(dltensor)
+    else:
+        dev_type, dev_id = array.__dlpack_device__()
+
+    # CuPy is the consumer, so we provide our current stream to the producer
+    if dev_type == <int>kDLGPU:
+        with device.Device(dev_id):
+            assert not runtime._is_hip_environment
+            stream = stream_module.get_current_stream_ptr()
+            if stream == 0:
+                stream = stream_module.get_default_stream_ptr()
+            dltensor = array.__dlpack__(stream=stream)
+    elif dev_type == <int>kDLROCM:
+        with device.Device(dev_id):
+            assert runtime._is_hip_environment
+            stream = stream_module.get_current_stream_ptr()
+            dltensor = array.__dlpack__(stream=stream)
+    else:
+        # TODO(leofang): support kDLCUDAPinned, kDLCUDAManaged, etc
+        dltensor = None
+        raise ValueError
+
+    return _dlpack_to_cupy_array(dltensor)

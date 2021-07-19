@@ -1348,7 +1348,7 @@ def shaped_random(
 
     Returns:
          numpy.ndarray or cupy.ndarray: The array with
-             given shape, array module,
+         given shape, array module,
 
     If ``dtype`` is ``numpy.bool_``, the elements are
     independently drawn from ``True`` and ``False``

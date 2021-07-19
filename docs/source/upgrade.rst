@@ -4,6 +4,78 @@ Upgrade Guide
 
 This is a list of changes introduced in each release that users should be aware of when migrating from older versions.
 
+CuPy v10
+========
+
+Dropping CUDA 9.2 Support
+----------------------------
+
+CUDA 9.2 is no longer supported.
+Use CUDA 10.0 or later.
+
+Dropping NCCL v2.4 Support
+-----------------------------
+
+NCCL v2.4 is no longer supported.
+
+Changes in :class:`cupy.cuda.Stream` Behavior
+---------------------------------------------
+
+Stream is now managed per-device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Previoulys, it was users' responsibility to keep the current stream consistent with the current CUDA device.
+For example, the following code raises an error in CuPy v9 or earlier:
+
+.. code-block:: py
+
+   import cupy
+
+   with cupy.cuda.Device(0):
+       # Create a stream on device 0.
+       s0 = cupy.cuda.Stream()
+
+   with cupy.cuda.Device(1):
+       with s0:
+           # Try to use the stream on device 1
+           cupy.arange(10)  # -> CUDA_ERROR_INVALID_HANDLE: invalid resource handle
+
+CuPy v10 manages the current stream per-device, thus eliminating the need of switching the stream every time the active device is changed.
+When using CuPy v10, the above example behaves differently because whenever a stream is created, it is automatically associated with the current device and will be ignored when switching devices. 
+In early versions, trying to use `s0` in device 1 raises an error because `s0` is associated with device 0. However, in v10, this `s0` is ignored and the default stream for device 1 will be used instead.
+
+Current stream set via ``use()`` will not be restored when exiting ``with`` block
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The current stream set via :func:`cupy.cuda.Stream.use` will not be reactivated when exiting a stream context manager.
+An existing code mixing ``with stream:`` block and ``stream.use()`` may get different results between CuPy v10 and v9.
+
+.. code-block:: py
+
+   s1 = cupy.cuda.Stream()
+   s2 = cupy.cuda.Stream()
+   s3 = cupy.cuda.Stream()
+   with s1:
+       s2.use()
+       with s3:
+           pass
+       cupy.cuda.get_current_stream()  # -> CuPy v10 returns `s1` instead of `s2`.
+
+Streams can now be shared between threads
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The same :class:`cupy.cuda.Stream` instance can now safely be shared between multiple threads.
+
+To achieve this, CuPy v10 will not destroy the stream (``cudaStreamDestroy``) if the stream is the current stream of any thread.
+
+API Changes
+-----------
+
+Device synchronize detection APIs (``cupyx.allow_synchronize`` and ``cupyx.DeviceSynchronized``), introduced as an experimental feature in CuPy v8, have been marked as deprecated because it is impossible to detect synchronizations reliably.
+
+Deprecated APIs may be removed in the future CuPy releases.
+
+
 CuPy v9
 =======
 

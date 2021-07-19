@@ -191,7 +191,7 @@ class TestPinv(unittest.TestCase):
 
 
 @testing.gpu
-class TestLstsq(unittest.TestCase):
+class TestLstsq:
 
     @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose(atol=1e-3)
@@ -220,7 +220,7 @@ class TestLstsq(unittest.TestCase):
     def check_invalid_shapes(self, a_shape, b_shape):
         a = cupy.random.rand(*a_shape)
         b = cupy.random.rand(*b_shape)
-        with self.assertRaises(numpy.linalg.LinAlgError):
+        with pytest.raises(numpy.linalg.LinAlgError):
             cupy.linalg.lstsq(a, b, rcond=None)
 
     def test_lstsq_solutions(self):
@@ -247,6 +247,18 @@ class TestLstsq(unittest.TestCase):
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=0.5)
                 self.check_lstsq_solution((i, j), (i, ), seed+1, rcond=1e-6,
                                           singular=True)
+
+    @pytest.mark.parametrize("rcond", [-1, None, 0.5])
+    @pytest.mark.parametrize("k", [None, 0, 1, 4])
+    @pytest.mark.parametrize(("i", "j"), [(0, 0), (3, 0), (0, 7)])
+    @testing.for_dtypes('ifdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_lstsq_empty_matrix(self, xp, dtype, i, j, k, rcond):
+        a = xp.empty((i, j), dtype)
+        assert a.size == 0
+        b_shape = (i,) if k is None else (i, k)
+        b = testing.shaped_random(b_shape, xp, dtype)
+        return xp.linalg.lstsq(a, b, rcond)
 
     def test_invalid_shapes(self):
         self.check_invalid_shapes((4, 3), (3, ))

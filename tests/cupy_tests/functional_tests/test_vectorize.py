@@ -492,6 +492,32 @@ class TestVectorizeStmts(unittest.TestCase):
         return f(x, y)
 
     @testing.numpy_cupy_array_equal()
+    def test_tuple_pattern_match(self, xp):
+        def func_pattern_match(x, y):
+            x, y = y, x
+            z = x, y
+            (a, b), y = z, x
+            return a * a + b + y
+
+        f = xp.vectorize(func_pattern_match)
+        x = xp.array([0, 1, 2, 3, 4])
+        y = xp.array([5, 6, 7, 8, 9])
+        return f(x, y)
+
+    def test_tuple_pattern_match_type_error(self):
+        def func_pattern_match(x, y):
+            x, y = y, x
+            z = x, y
+            (a, b), z = z, x
+            return a * a + b
+
+        f = cupy.vectorize(func_pattern_match)
+        x = cupy.array([0, 1, 2, 3, 4])
+        y = cupy.array([5, 6, 7, 8, 9])
+        with pytest.raises(TypeError, match='Data type mismatch of variable:'):
+            return f(x, y)
+
+    @testing.numpy_cupy_array_equal()
     def test_return_tuple(self, xp):
         def func_tuple(x, y):
             return x + y, x / y
@@ -573,7 +599,7 @@ class TestVectorizeBroadcast(unittest.TestCase):
 
 class TestVectorize(unittest.TestCase):
 
-    @testing.for_dtypes('qQefdFD')
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(rtol=1e-5)
     def test_vectorize_arithmetic_ops(self, xp, dtype):
         def my_func(x1, x2, x3):
@@ -582,7 +608,7 @@ class TestVectorize(unittest.TestCase):
             return x1 + x2 + x3
 
         f = xp.vectorize(my_func)
-        x1 = testing.shaped_random((20, 30), xp, dtype, seed=1)
+        x1 = testing.shaped_random((20, 30), xp, dtype, seed=1, scale=5)
         x2 = testing.shaped_random((20, 30), xp, dtype, seed=2)
         x3 = testing.shaped_random((20, 30), xp, dtype, seed=3)
         return f(x1, x2, x3)

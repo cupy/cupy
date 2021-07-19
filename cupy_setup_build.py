@@ -18,6 +18,12 @@ from install import build
 from install.build import PLATFORM_LINUX
 from install.build import PLATFORM_WIN32
 
+try:
+    # This is to avoid getting numpy imported inside other modules and
+    # overwritting setuptools compilers (#5476)
+    import numpy.distutils  # NOQA
+except Exception:
+    pass
 
 # Cython requirements (minimum version and versions known to be broken).
 # Note: this must be in sync with setup_requires defined in setup.py.
@@ -108,6 +114,7 @@ if use_hip:
             'hip/hiprtc.h',
             'hipblas.h',
             'hiprand/hiprand.h',
+            'hipsparse.h',
             'hipfft.h',
             'roctx.h',
             'rocsolver.h',
@@ -115,11 +122,14 @@ if use_hip:
         'libraries': [
             'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
             'hipblas',
+            ('hipfft', lambda hip_version: hip_version >= 401),
             'hiprand',
+            'hipsparse',
             'rocfft',
             'roctx64',
             'rocblas',
             'rocsolver',
+            'rocsparse',
         ],
         'check_method': build.check_hip_version,
         'version_method': build.get_hip_version,
@@ -452,6 +462,20 @@ def check_library(compiler, includes=(), libraries=(),
     return True
 
 
+def canonicalize_hip_libraries(hip_version, libraries):
+    def ensure_tuple(x):
+        return x if isinstance(x, tuple) else (x, None)
+    new_libraries = []
+    for library in libraries:
+        lib_name, pred = ensure_tuple(library)
+        if pred is None:
+            new_libraries.append(lib_name)
+        elif pred(hip_version):
+            new_libraries.append(lib_name)
+    libraries.clear()
+    libraries.extend(new_libraries)
+
+
 def preconfigure_modules(compiler, settings):
     """Returns a list of modules buildable in given environment and settings.
 
@@ -519,6 +543,21 @@ def preconfigure_modules(compiler, settings):
             lib_path = os.path.join(cugraph_path, 'lib')
             if os.path.exists(lib_path):
                 settings['library_dirs'].append(lib_path)
+
+        # In ROCm 4.1 and later, we need to use the independent version of
+        # hipfft as well as rocfft. We configure the lists of include
+        # directories and libraries to link here depending on ROCm version
+        # before the configuration process following.
+        if use_hip and module['name'] == 'cuda':
+            if module['check_method'](compiler, settings):
+                hip_version = module['version_method']()
+                if hip_version >= 401:
+                    rocm_path = build.get_rocm_path()
+                    inc_path = os.path.join(rocm_path, 'hipfft', 'include')
+                    settings['include_dirs'].insert(0, inc_path)
+                    lib_path = os.path.join(rocm_path, 'hipfft', 'lib')
+                    settings['library_dirs'].insert(0, lib_path)
+                canonicalize_hip_libraries(hip_version, module['libraries'])
 
         print('')
         print('-------- Configuring Module: {} --------'.format(
@@ -974,7 +1013,17 @@ def _nvcc_gencode_options(cuda_version):
         #
         #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
 
-        if cuda_version >= 11000:
+        if cuda_version >= 11010:
+            arch_list = ['compute_35',
+                         'compute_50',
+                         ('compute_60', 'sm_60'),
+                         ('compute_61', 'sm_61'),
+                         ('compute_70', 'sm_70'),
+                         ('compute_75', 'sm_75'),
+                         ('compute_80', 'sm_80'),
+                         ('compute_86', 'sm_86'),
+                         'compute_86']
+        elif cuda_version >= 11000:
             arch_list = ['compute_35',
                          'compute_50',
                          ('compute_60', 'sm_60'),

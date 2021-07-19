@@ -1,0 +1,15 @@
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+submodules:
+    include: all
+    recursive: true
+formats: all
+sphinx:
+    configuration: docs/source/conf.py
+python:
+    version: 3.8
+    install:
+    - method: pip
+      path: .
+    - requirements: docs/requirements.txt

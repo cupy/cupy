@@ -88,7 +88,7 @@ def compress(condition, a, axis=None, out=None):
 
     Returns:
         cupy.ndarray: A copy of a without the slices along axis for which
-            condition is false.
+        condition is false.
 
     .. warning::
 

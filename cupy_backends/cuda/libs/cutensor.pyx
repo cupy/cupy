@@ -727,7 +727,7 @@ cpdef int32_t contractionMaxAlgos():
 
     Returns:
         maxNumAlgos (int32_t): The maximum number of algorithms available for
-            cutensorContraction().
+        cutensorContraction().
     """
     cdef int32_t maxNumAlgos = 0
     status = cutensorContractionMaxAlgos(&maxNumAlgos)
@@ -837,7 +837,7 @@ cpdef uint64_t reductionGetWorkspace(
 
     Returns:
         workspaceSize (uint64_t): The workspace size (in bytes) that is
-            required for the given tensor reduction.
+        required for the given tensor reduction.
     """
     cdef uint64_t workspaceSize = 0
     status = cutensorReductionGetWorkspace(

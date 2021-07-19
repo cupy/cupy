@@ -84,14 +84,13 @@ _available_compute_capability = {
 }
 
 
-@_util.memoize()
+@_util.memoize(for_each_device=True)
 def check_availability(name):
     if not _runtime.is_hip:
         available_version = _available_cuda_version
-        version = _runtime.runtimeGetVersion()
     else:
         available_version = _available_hip_version
-        version = _driver.get_build_version()  # = HIP_VERSION
+    version = _driver.get_build_version()
     if name not in available_version:
         msg = 'No available version information specified for {}'.format(name)
         raise ValueError(msg)
@@ -101,7 +100,7 @@ def check_availability(name):
     if version_removed is not None and version >= version_removed:
         return False
     # CUDA specific stuff
-    if name in _available_compute_capability:
+    if not _runtime.is_hip and name in _available_compute_capability:
         compute_capability = int(_device.get_compute_capability())
         if compute_capability < _available_compute_capability[name]:
             return False

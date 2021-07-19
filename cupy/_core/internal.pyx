@@ -167,12 +167,14 @@ cpdef shape_t infer_unknown_dimension(
             index = i
         else:
             new_size *= shape[i]
-    if cnt == 0:
+    if cnt == 0 and new_size == size:
         return ret
     if cnt > 1:
-        raise ValueError('can only specify only one unknown dimension')
-    if (size != 0 and new_size == 0) or size % new_size != 0:
-        raise ValueError('total size of new array must be unchanged')
+        raise ValueError('can only specify one unknown dimension')
+    if cnt == 0 or new_size == 0 or size % new_size != 0:
+        # TODO(kataoka): print "newaxis" for unknown
+        raise ValueError(
+            f'cannot reshape array of size {size} into shape {tuple(shape)}')
     ret[index] = size // new_size
     return ret
 

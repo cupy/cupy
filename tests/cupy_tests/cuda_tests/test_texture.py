@@ -20,10 +20,11 @@ if cupy.cuda.runtime.is_hip:
 @testing.parameterize(*testing.product({
     'xp': ('numpy', 'cupy'),
     'stream': (True, False),
-    'dimensions': ((67, 0, 0), (67, 19, 0), (67, 19, 31)),
+    'dimensions': ((68, 0, 0), (68, 19, 0), (68, 19, 31)),
     'n_channels': (1, 2, 4),
     'dtype': (numpy.float16, numpy.float32, numpy.int8, numpy.int16,
               numpy.int32, numpy.uint8, numpy.uint16, numpy.uint32),
+    'c_contiguous': (True, False),
 }))
 class TestCUDAarray(unittest.TestCase):
     def test_array_gen_cpy(self):
@@ -47,10 +48,18 @@ class TestCUDAarray(unittest.TestCase):
                 kind = runtime.cudaChannelFormatKindSigned
             else:
                 kind = runtime.cudaChannelFormatKindUnsigned
-        arr2 = xp.zeros_like(arr)
 
-        assert arr.flags['C_CONTIGUOUS']
-        assert arr2.flags['C_CONTIGUOUS']
+        if self.c_contiguous:
+            arr2 = xp.zeros_like(arr)
+            assert arr.flags.c_contiguous
+            assert arr2.flags.c_contiguous
+        else:
+            arr = arr[..., ::2]
+            arr2 = xp.zeros_like(arr)
+            width = arr.shape[-1] // n_channel
+            assert not arr.flags.c_contiguous
+            assert arr2.flags.c_contiguous
+            assert arr.shape[-1] == n_channel*width
 
         # create a CUDA array
         ch_bits = [0, 0, 0, 0]
