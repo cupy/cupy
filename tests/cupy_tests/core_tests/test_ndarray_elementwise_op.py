@@ -469,7 +469,6 @@ class TestArrayElementwiseOp(unittest.TestCase):
     @testing.for_all_dtypes(name='x_type', no_float16=True)
     @testing.numpy_cupy_allclose()
     def check_array_boolarray_op(self, op, xp, x_type):
-        x_dtype = numpy.dtype(x_type)
         a = xp.array([[2, 7, 1], [8, 2, 8]], x_type)
         # Cast from np.bool8 array should not read bytes
         b = xp.array([[3, 1, 4], [-1, -5, -9]], numpy.int8).view(bool)
