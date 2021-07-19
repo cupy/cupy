@@ -79,6 +79,7 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
             void* hostPointer
     ELSE:
         ctypedef struct _PointerAttributes 'cudaPointerAttributes':
+            int memoryType
             int device
             void* devicePointer
             void* hostPointer
@@ -797,7 +798,8 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
         return PointerAttributes(
             attrs.device,
             <intptr_t>attrs.devicePointer,
-            <intptr_t>attrs.hostPointer)
+            <intptr_t>attrs.hostPointer,
+            attrs.memoryType)
 
 cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
     '''Get the default mempool on the current device.'''
