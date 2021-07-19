@@ -253,7 +253,6 @@ def cgs(A, b, x0=None, tol=1e-5, maxiter=None, M=None, callback=None,
     r0 = b - matvec(x)
 
     rho = cupy.dot(r0, r0)
-    r_norm = numpy.sqrt(rho)
 
     # initialise vectors
     r = r0.copy()

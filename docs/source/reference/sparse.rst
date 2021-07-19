@@ -129,6 +129,7 @@ Iterative methods for linear equation systems:
 
    cg
    gmres
+   cgs
 
 Iterative methods for least-squares problems:
 
