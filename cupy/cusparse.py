@@ -124,7 +124,7 @@ def check_availability(name):
     version_added, version_removed = _available_cusparse_version[name]
     version_added = _get_version(version_added)
     version_removed = _get_version(version_removed)
-    cusparse_version = _cusparse.getVersion(_device.get_cusparse_handle())
+    cusparse_version = _cusparse.get_build_version()
     if version_added is not None and cusparse_version < version_added:
         return False
     if version_removed is not None and cusparse_version >= version_removed:
