@@ -145,13 +145,13 @@ def _get_arch():
         return min(arch, _nvrtc_max_compute_capability)
 
 
-def _get_arch_for_options(arch=None):
+def _get_arch_for_options(arch=None, jitify=False):
     # This is needed to differentiate between
     # compute or sm depending on the CUDA version
     # needed to ensure backwards compatibility with nvrtc
     if arch is None:
         arch = _get_arch()
-    if _cuda_version >= 11010:
+    if not runtime.is_hip and _cuda_hip_version >= 11010 and not jitify:
         return f'-arch=sm_{arch}'
     return f'-arch=compute_{arch}'
 
@@ -247,10 +247,6 @@ def _jitify_prep(source, options, cu_path):
 def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
                         name_expressions=None, log_stream=None,
                         cache_in_memory=False, jitify=False):
-    # For hipRTC, arch is ignored
-    if not runtime.is_hip:
-        options += (_get_arch_for_options(),)
-
     def _compile(
             source, options, cu_path, name_expressions, log_stream, jitify):
 
@@ -263,6 +259,11 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions)
         try:
+            if not runtime.is_hip and _cuda_hip_version >= 11010 and jitify:
+                # Convert the virtual arch to a real arch
+                options = [f'-arch=sm_{arch}' if opt.startswith('-arch=')
+                           else opt for opt in options]
+                options = tuple(options)
             ptx, mapping = prog.compile(options, log_stream)
         except CompileException as e:
             dump = _get_bool_env_variable(
@@ -377,8 +378,10 @@ def compile_using_nvcc(source, options=(), arch=None,
 
 def _preprocess(source, options, arch, backend):
     if backend == 'nvrtc':
-        options += (_get_arch_for_options(arch),)
-
+        if not runtime.is_hip and _cuda_hip_version >= 11010:
+            options += ('-arch=sm_{}'.format(arch),)
+        else:
+            options += ('-arch=compute_{}'.format(arch),)
         prog = _NVRTCProgram(source)
         try:
             result, _ = prog.compile(options)
@@ -484,6 +487,10 @@ def _compile_with_cache_cuda(
         # This is for checking NVRTC/NVCC compiler internal version
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
+
+    # For hipRTC, arch is ignored
+    # Get it here to invalidate previously generated cache
+    options += (_get_arch_for_options(arch=arch, jitify=jitify),)
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
@@ -640,7 +647,7 @@ class _NVRTCProgram(object):
             if log_stream is not None:
                 log_stream.write(nvrtc.getProgramLog(self.ptr))
             # This is to ensure backwards compatibility with nvrtc
-            if _cuda_version >= 11010:
+            if not runtime.is_hip and _cuda_hip_version >= 11010:
                 return nvrtc.getCUBIN(self.ptr), mapping
             return nvrtc.getPTX(self.ptr), mapping
         except nvrtc.NVRTCError:
