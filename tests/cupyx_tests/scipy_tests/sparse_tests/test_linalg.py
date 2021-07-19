@@ -1385,6 +1385,9 @@ class TestCgs:
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_sparse(self, format, dtype, xp, sp):
+        if runtime.is_hip and format == 'csc':
+            pytest.xfail('may be buggy')  # trans=True
+
         a, M = self._make_matrix(dtype, xp)
         a = sp.coo_matrix(a).asformat(format)
         if self.use_linear_operator:
