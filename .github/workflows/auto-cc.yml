@@ -18,13 +18,13 @@ jobs:
         uses: peter-evans/find-comment@v1
         id: fc
         with:
-            issue-number: ${{github.event.number}}
+            issue-number: ${{ (github.event_name == 'issues' && github.event.issue.number) || github.event.pull_request.number }}
             body-includes: "<!-- Added by CuPy Auto Notify Bot -->"
 
       - name: Create comment
         uses: peter-evans/create-or-update-comment@v1
         with:
-            issue-number: ${{github.event.number}}
+            issue-number: ${{ (github.event_name == 'issues' && github.event.issue.number) || github.event.pull_request.number }}
             comment-id: ${{steps.fc.outputs.comment-id}}
             edit-mode: replace
             body: |
