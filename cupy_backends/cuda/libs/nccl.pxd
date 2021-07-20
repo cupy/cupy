@@ -6,6 +6,7 @@ cpdef enum:
     NCCL_PROD = 1
     NCCL_MAX = 2
     NCCL_MIN = 3
+    NCCL_AVG = 4
 
     NCCL_INT8 = 0
     NCCL_CHAR = 0
