@@ -273,6 +273,8 @@ def compile_using_nvrtc(source, options=(), arch=None, filename='kern.cu',
             raise
         return ptx, mapping
 
+    options += (_get_arch_for_options(arch=arch, jitify=jitify),)
+
     if not cache_in_memory:
         with tempfile.TemporaryDirectory() as root_dir:
             cu_path = os.path.join(root_dir, filename)
@@ -487,11 +489,6 @@ def _compile_with_cache_cuda(
         # This is for checking NVRTC/NVCC compiler internal version
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
-
-    # For hipRTC, arch is ignored
-    # Get it here to invalidate previously generated cache
-    if backend == 'nvrtc':
-        options += (_get_arch_for_options(arch=arch, jitify=jitify),)
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
