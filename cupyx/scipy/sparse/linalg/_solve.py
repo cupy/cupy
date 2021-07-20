@@ -163,7 +163,7 @@ def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None):
     if maxiter is None:
         maxiter = minDim * 5
 
-    u = b
+    u = b.copy()
     beta = cublas.nrm2(b)
     beta_cpu = beta.get().item()
 
