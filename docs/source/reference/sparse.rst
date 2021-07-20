@@ -6,7 +6,7 @@ Sparse matrices (:mod:`cupyx.scipy.sparse`)
 .. Hint:: `SciPy API Reference: Sparse matrices (scipy.sparse) <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_
 
 CuPy supports sparse matrices using `cuSPARSE <https://developer.nvidia.com/cusparse>`_.
-These matrices have the same interfaces of `SciPy's sparse matrices <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_.
+These matrices have the same interfaces of `SciPy's sparse matrices <https://numpy.org/doc/stable/reference/routines.bitwise.html>`_.
 
 Conversion to/from SciPy sparse matrices
 ----------------------------------------
