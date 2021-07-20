@@ -114,7 +114,7 @@ cdef class ndarray:
 
             .. seealso::
                `Data type objects (dtype) \
-               <https://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html>`_
+               <https://numpy.org/doc/stable/reference/arrays.dtypes.html>`_
         ~ndarray.size (int): Number of elements this array holds.
 
             This is equivalent to product over the shape tuple.
@@ -262,7 +262,7 @@ cdef class ndarray:
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
-    # https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html
+    # https://numpy.org/doc/stable/reference/arrays.ndarray.html
 
     # -------------------------------------------------------------------------
     # Memory layout
