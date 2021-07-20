@@ -490,7 +490,8 @@ def _compile_with_cache_cuda(
 
     # For hipRTC, arch is ignored
     # Get it here to invalidate previously generated cache
-    options += (_get_arch_for_options(arch=arch, jitify=jitify),)
+    if backend == 'nvrtc':
+        options += (_get_arch_for_options(arch=arch, jitify=jitify),)
 
     key_src = '%s %s %s %s' % (env, base, source, extra_source)
     key_src = key_src.encode('utf-8')
