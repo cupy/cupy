@@ -12,7 +12,7 @@ interface.
 
 The following is a brief overview of supported subset of NumPy interface:
 
-- `Basic indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_
+- `Basic indexing <https://numpy.org/doc/stable/reference/routines.bitwise.html>`_
   (indexing by ints, slices, newaxes, and Ellipsis)
 - Most of `Advanced indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing>`_
   (except for some indexing patterns with boolean masks)
