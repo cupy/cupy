@@ -654,6 +654,7 @@ cdef Py_ssize_t _get_stride_for_strided_batched_gemm(ndarray a) except? 0:
 cdef _mat_ptrs_kernel = ElementwiseKernel(
     'T base, T stride', 'T out',
     'out = base + _ind.get()[_ind.ndim - 1] * stride', 'mat_ptrs',
+    'cupy_mat_ptrs',
     reduce_dims=False)
 
 
