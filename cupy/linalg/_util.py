@@ -129,7 +129,7 @@ def _check_cublas_info_array_if_synchronization_allowed(routine, info_array):
 _tril_kernel = _core.ElementwiseKernel(
     'int64 k', 'S x',
     'x = (_ind.get()[1] - _ind.get()[0] <= k) ? x : 0',
-    'tril_kernel',
+    'cupy_tril_kernel',
     reduce_dims=False
 )
 
@@ -142,7 +142,7 @@ def _tril(x, k=0):
 _triu_kernel = _core.ElementwiseKernel(
     'int64 k', 'S x',
     'x = (_ind.get()[1] - _ind.get()[0] >= k) ? x : 0',
-    'triu_kernel',
+    'cupy_triu_kernel',
     reduce_dims=False
 )
 
