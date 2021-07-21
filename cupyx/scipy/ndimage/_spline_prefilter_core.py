@@ -250,4 +250,6 @@ def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type='int',
     # generate code handling batch operation of the 1d filter
     code += _batch_spline1d_strided_template.format(ndim=ndim, axis=axis,
                                                     block_size=block_size)
-    return cupy.RawKernel(code, 'cupyx_spline_filter')
+    kernel_name = (f'cupyx_scipy_ndimage_spline_filter_{ndim}d_ord{order}_'
+                   f'axis{axis}_{mode}')
+    return cupy.RawKernel(code, kernel_name)
