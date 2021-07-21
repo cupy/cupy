@@ -909,7 +909,8 @@ cdef function.Function _get_ufunc_kernel(
         arginfo = arginfos[i + len(in_types)]
         types.append(('out%d_type' % i, x))
         if arginfo.dtype == x:
-            op.append('out{0}_type &out{0} = _raw_out{0}[_ind.get()];'.format(i))
+            op.append(
+                'out{0}_type &out{0} = _raw_out{0}[_ind.get()];'.format(i))
         else:
             op.append(
                 'out{0}_type out{0}({1});'
