@@ -286,7 +286,7 @@ _unique_mask_kern = _core.ElementwiseKernel(
             mask[i+1] = false;
     }
     """,
-    'cupyx_scipy_sparse_unique_mask_kern'
+    'cupyx_scipy_sparse_unique_mask_kern',
     no_return=True
 )
 
